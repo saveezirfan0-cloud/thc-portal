@@ -1,0 +1,3327 @@
+
+
+===== PAGE 1 =====
+1 
+Scope of Work 
+The Hospitality Company · Staffing platform 
+Staff management platform for an event-staffing agency 
+Version 1.6 · 17 September 2026 
+This document defines the scope — exactly what will be built in the first version of the platform. It consolidates 
+what was agreed on the calls, the official documents supplied by The Hospitality Company, and the screens 
+already designed. 
+This document is the agreement. Everything described here will be built. Anything not described here is not part 
+of the first version and is discussed separately. 
+Order of precedence where sources disagree (top down): 
+1. This Scope of Work and the approved design — the primary source. This is what records the agreement and 
+this is what gets built. 
+2. What was agreed on the calls — this document and the design are based on it. 
+3. The initial documents supplied by THC — reference material (templates for forms and formats). Where a 
+call agreed something different from an initial document, what was agreed wins. 
+How this document is structured 
+Every behaviour in this document is a decided requirement. There are no open questions and no items left to 
+agree: where a choice existed it has been made and written down, and where something is deliberately not 
+being built the exclusion is stated in the section it belongs to. If a requirement needs to change, it changes by re-
+issuing this document with a new version number (see Document version, at the end). 
+• 
+Part I · Core mechanics — the rules the whole platform runs on: roles and access, onboarding, scheduling 
+and auto-assign, compliance, check-in, scoring, background jobs, notifications. 
+• 
+Part II · Back Office Portal — every screen THC's admin staff work in. 
+• 
+Part III · Staff App — every screen the worker sees. 
+• 
+Part IV · Client Portal — what the customer sees, and the timesheet documents they receive. 
+• 
+Appendices — the candidate's journey end to end (A), the inputs and assets THC supplies to the build and 
+when they are needed (B), and the key decisions in one table. 
+Reading order for approval: the Key decisions table at the end is the fastest way to check the shape of the 
+product; §3 (Scheduling and Auto-Assign), §4 (Compliance), §5 (Check-in), §9.9 (Reports) and §11.3 (timesheet 
+documents) are where the specification meets THC's day-to-day operation. 
+📎 Documents supplied by The Hospitality Company 
+These documents are source material: templates for forms, formats and thresholds were taken from them. They 
+are not the final requirements: where the calls agreed something different, this Scope of Work applies (see the 
+order of precedence above). 
+
+
+===== PAGE 2 =====
+2 
+Document 
+What was taken from it 
+Right to Work — Document Upload Flow 
+Template for the 5 RTW branches (§2.5) — which documents 
+belong to each, hour limits 
+HMRC New Starter Checklist 
+Form fields (§2.8) + contents of the New Starter report (§9.9) 
+Health & Safety Induction 
+(§10.3, step 5/11) 
+Health & Safety — Questions 
+Quiz questions + pass mark 80% (§2.9) 
+Health & Safety — Answers 
+Correct answers → auto-marking logic 
+PDF Timesheet (THC's current form) 
+Format template for the allocation / sign-out documents 
+(§11.3) 
+ 
+Product summary (at a glance) 
+The Hospitality Company platform is a bespoke system (THC owns the code, with IP transfer) that carries 
+temporary staff for an event agency from application through to payment. Three applications around a single 
+database: 
+1. Back Office Portal (web) — the back office: onboarding, scheduling + auto-assign, compliance, check-in 
+monitor, clients / venues / roles, reports, feedback. 
+2. Staffing App (mobile, native Flutter iOS + Android) — the worker's app: onboarding, shifts, radar of open 
+shifts, invites, check-in / check-out with background geofence, documents. 
+3. Client Portal (web) — a restricted portal for the customer: their own events + line-up, with no rates or 
+charges. 
+Brand: one name and one logo across the whole system — "The Hospitality Company" + the "two glasses" logo 
+in a cyan box. 
+Visual system (Design System): deep navy background (#04080f), cyan accent (#3edcec), Space Grotesk 
+(headings) / Inter (body) / IBM Plex Mono (labels), zero border-radius everywhere, square avatars. Components: 
+Web/Sidebar, Web/Topbar, AppHeader (mobile), Web/Pill, Web/Button, SegToggle, Input, DocRow. 
+Taxonomy 
+The platform = three applications on a shared database. Modules are grouped under the application they 
+belong to. 
+Back Office Portal (web) — the agency's admin staff 
+General information · Onboarding / ATS · Scheduling + Auto-Assign · Compliance · Check-in / Check-out · Clients · 
+Venues · Roles and rates · Reports · Feedback 
+Staffing App (mobile) — the worker 
+Auth and access · Onboarding wizard · Shifts · Radar of open shifts · Invites · Check-in / Check-out · Documents 
+Client Portal (web) — the customer 
+Auth and access · Their own events · Line-up · Feedback · Timesheet documents 
+Cross-cutting sections: Notifications and emails · Auto-assign scoring · Background and time-based rules 
+
+
+===== PAGE 3 =====
+3 
+PART I · CORE MECHANICS 
+How the system works under the bonnet: rules, processes, calculations. This is the shared foundation for all 
+three applications. 
+1. GENERAL INFORMATION / CROSS-CUTTING 
+1.1 Context and goal 
+• 
+Client: The Hospitality Company (London), an event-staffing agency, ~1,000 external workers on the books, 
+10–15 events per day in season. 
+• 
+Goal: replace the old Accelerate system (awkward UI) with an in-house one — modern, fast, and built for a 
+Gen-Z (18–30) audience. 
+• 
+Employment model: zero-hours (Uber-style). Workers are employed by THC (PAYE / payroll on the client's 
+side). Onboarding → compliant → the worker receives shift invitations → accept / reject. 
+• 
+The code is transferred to THC in full. Hosting: the development environment sits with the supplier for the 
+duration of the build; production — DigitalOcean or AWS, at THC's discretion. 
+1.2 Three applications on a shared backend 
+1. Back Office Portal (web, admin staff) — responsive; works on tablet and phone. 
+2. Staffing App (mobile, native Flutter iOS + Android — critical for the background geofence). 
+3. Client Portal (web, the customer — their own events + line-up, no money) — responsive in the same way as 
+the Back Office Portal: it must work on phone and tablet, not desktop only. 
+1.3 Technology stack (FIXED) 
+• 
+Backend: Django + DRF + PostgreSQL + PostGIS (geo: distances, geofence radii). Auth = DRF Token. 
+• 
+Web (Office + Client): React (Vite + React Router + axios) — the production stack from day one, nothing 
+throwaway. 
+• 
+Staffing App: Flutter — one codebase, background geolocation via plugins (geolocator + 
+flutter_background_geolocation). 
+• 
+Geo: address → geo point (reverse geocoding), home ↔ venue distance, geofence radius per venue. 
+• 
+Notifications: push (FCM / APNs, device-level) + SMS (via Willo). 
+1.4 Roles and RBAC 
+Role 
+Where 
+Access 
+Admin 
+Back Office Portal 
+events and shifts · onboarding · staff · 
+compliance · clients · venues · roles · 
+reports · feedback 
+Client 
+Client Portal 
+ONLY their own events + line-up (no 
+rates and no totals) 
+Staff 
+Staffing App 
+their own onboarding, shifts, invites, 
+check-in 
+ 
+• 
+Login for back office and client — email + password. A worker is activated through a personal link and sets 
+their own password. Role-based routing: the client never sees the back office and vice versa. 
+
+
+===== PAGE 4 =====
+4 
+1.5 Data model (key entities) 
+• 
+Role: name · description (internal, optional) · pay_rate (£/h base). Derived: final = pay × 1.1207 (holiday 
++12.07%, calculated, not stored). 
+• 
+Staff / Candidate: name · email · phone (international picker) · dob (all branches) · home_address + lat/lng · 
+photo_url (selfie) · status (state machine, §2) · rating · reliability · roles[] (minimum age 18) · 
+client_qualifications[] (which client + role combinations this worker is cleared for, §9.6) · left_at · 
+leave_reason (both set when the worker leaves through the app, §10.6) · term_dates[] (the holiday ranges 
+read from the verified University Term Dates Letter) · graduated_at (set when a completion letter is verified, 
+§4.5) · wtr_optout (48h opt-out) · user (login). There is no stored weekly hours cap. The cap is a calculated 
+value, derived from these fields on the date it is being evaluated (RULE-20, §4.4) — it is never typed in, 
+never stored, and never edited by anyone. 
+• 
+Client: name · contact_name · email · phone · rate_cards[] · default_onsite_contact. 
+• 
+ClientRateCard: client · role · charge_rate (£/h, individual per client) · dress_code (predefined list + "Other" 
+free text — set per client per role, since the same role can have a different dress code at different clients, 
+confirmed by THC). 
+• 
+Venue: name · address · lat/lng · venue_type · geofence_radius_m (100–3000). 
+• 
+Event: client · venue · title · date · start/end · notes · dress_code (per role, from the list or Other) · 
+onsite_contact (pre-filled from the client) · status (Upcoming / Ongoing / Completed / Cancelled — 
+computed automatically from the event's start/end time, except Cancelled, which is set manually via the 
+Cancel event action, §3.2) · shifts[]. The event's start/end is the event window — the earliest start and the 
+latest end across its roles (§3.2). It is what the status calculation, the Client Portal and the calendar use; it is 
+not itself the time any individual worker is booked for. 
+• 
+ShiftRequirement: event · role · start · end · headcount · buffer · charge_rate · pay_rate (filled counts ONLY 
+confirmed). Start and end are held per role, not only on the event: a single event can carry a Chef section 
+starting at 07:00 and a Waiting Staff section starting at 17:00, each with its own finish time (§3.2). Every 
+scheduled-time rule in this document — RULE-01's pay window, the 30-minute check-in grace, the 15-
+minute and 4-hour check-out windows, the day-before 12:00 cutoff, BG-01/BG-02 reminders — is evaluated 
+against the role's start and end, because that is the shift the worker actually agreed to. 
+• 
+ClientQualification: client · role · staff · granted_by (manager, or "system") · granted_at · do_not_return 
+(bool) · note (optional, internal). The qualification is held per client AND per role, not per client alone: a 
+worker can be cleared as Waiting Staff at Client A and not at Client B, and can be cleared as Waiting Staff but 
+not as Bar Staff at the same client. A row exists only where a worker is cleared; there is no "unqualified" 
+record. This is what makes a worker part of the first-choice pool for that client's events (§3.4, §9.6, §9.7). 
+• 
+Booking: shift · staff · status · source (auto / manual / self) · created_at · confirmed_at · 
+day_before_confirmed_at · on_day_confirmed_at. 
+• 
+CriminalDeclaration: staff · declared_at · source (onboarding / in-employment) · answer (yes / no) · details 
+(free text, only where the answer is yes) · conviction_date (optional) · review_status (pending / verified / 
+rejected) · reviewed_by · reviewed_at · review_note. A worker has a history of declarations, not one value: 
+the onboarding answer is the first record and every later declaration made from the app (§10.7) is added 
+alongside it. A declaration is never edited or overwritten once submitted — the record of what was 
+declared, and when, is the point of it. 
+• 
+ComplianceDoc: staff · doc_type · expiry_date · review_status (pending / verified / rejected) · 
+rejection_reason · share_code (value) + gov_report (PDF) + right_to_work_until · ai_confidence / 
+needs_manual_review. 
+• 
+CheckLog: booking · check_in_at · check_out_at · on_site_verified · attempted_at (timestamp of every 
+check-in button press, logged regardless of outcome — including attempts that are rejected, e.g. turned 
+
+
+===== PAGE 5 =====
+5 
+away under a strict buffer policy or blocked for being outside the geofence) · outcome (checked_in / 
+turned_away / out_of_radius) — this attempt-level record is what RULE-15 (§5.2, §7) uses to determine 
+whether a turned-away worker arrived on time or late. 
+• 
+Violation: staff · booking · type · detected_at · resolved. 
+• 
+Feedback: client / office · staff · event · rating · text · read. 
+1.6 Brand and design system (STRICT) 
+• 
+One name + one logo across the whole system = "The Hospitality Company" + the "two glasses" logo in a 
+cyan box. No other product name is shown anywhere in the UI. 
+• 
+Palette: bg #04080F · panel #0B1220 · line #1C2839 · cyan #3EDCEC (primary) · purple #A879FF (Auto-Assign) 
+· green #3DDC97 · amber #F5B83D · coral #FF6E61 (danger) · text #E9EEF5 · muted #8A97A3. 
+• 
+Fonts: Space Grotesk (headings) / Inter (body) / IBM Plex Mono (labels, uppercase + letter-spacing). 
+• 
+Zero border-radius throughout (square corners: cards / buttons / pills / inputs / nav / stepper / square 
+avatars). The only exception is the circular logo. 
+• 
+Sidebar active state: a cyan left bar + a subtle cyan fill + cyan text, consistent on every page. 
+• 
+Buttons have a hover animation. Mobile: iOS-17 / Slack frosted glass (blur) on the top bar / bottom 
+navigation / sheets + a cyan/purple glow beneath the glass; collapsing header (on scroll, the logo stays on 
+the left and the profile on the right). 
+1.7 GDPR / security / non-functional 
+• 
+Everything is notification-driven; the UI is fast, built for Gen-Z. 
+• 
+Age ≥ 18 — enforced on the form and on the backend. GDPR consent on /apply. 
+• 
+GDPR "Remove from system": double confirmation → irreversible anonymisation of personal data (name → 
+"Deleted account #id", contacts / documents / photo wiped), login disabled, future bookings released, status 
+Removed; history (bookings / feedback) is retained for reporting. 
+• 
+The removed worker's profile can still be opened by an admin (confirmed 28.07.2026): personal data 
+(RTW/HMRC documents, bank details, contacts) is gone, while non-personal data — event history and 
+feedback — remains visible, consistent with the "retained for reporting" rule above. 
+• 
+In the Staff directory's Removed tab, and anywhere a removed worker's row appears on a past or upcoming 
+event they worked (Event board §3.3, Check-in monitor §9.5), the row is NOT filtered out — it stays, labelled 
+"Deleted account #id", so the slot/headcount isn't skewed. Fields not tied to personal identity, such as roles 
+and rating, can remain visible; the name and photo stay anonymised as above. 
+• 
+Already-generated Timesheet / Allocation Sheet PDFs (§11.3) that were created and sent before a GDPR 
+removal request keep the worker's real name and photo exactly as issued — they are a historical record of 
+what the client actually received, retained for billing/HMRC purposes, and are never retroactively edited or 
+reissued. If a manager regenerates or re-downloads a timesheet or allocation sheet for a past event AFTER 
+the worker has been removed, that new copy uses the anonymised "Deleted account #id" label and no 
+photo, the same as the live views — confirmed 31.07.2026. 
+• 
+Feedback comments are free text and may name the worker directly (e.g. "[name] ran the floor 
+brilliantly..."). Confirmed by THC: the worker's name should ideally be redacted from this text as part of 
+anonymisation. Automatically detecting and redacting a name inside free text requires an LLM step and is 
+not built in v1. The v1 behaviour is defined instead: on removal, feedback comments are retained verbatim 
+and the office redacts a name by editing the entry (office feedback) or deleting it (client feedback, §9.10) if 
+asked to. 
+• 
+TLS in transit, encryption at rest, role-based access. 
+
+
+===== PAGE 6 =====
+6 
+1.8 Time zones — how times are displayed 
+The client and every event are in the UK, so all times are stored and calculated in UK time (Europe/London). This 
+section governs display only. It changes no rule anywhere in this document: RULE-01's pay window, the 12:00 
+day-before cutoff, the 30-minute check-in and 15-minute check-out grace windows, and the 4-hour check-out 
+limit are all evaluated in UK time regardless of where the person reading the screen happens to be. 
+Why it needs stating: the office can be staffed from outside the UK, so the same screen may be read in a 
+different zone from the one the event runs in. The rule for a SCHEDULED time is to show both zones, with the 
+local line omitted when the two coincide — never a single unlabelled clock that the reader could mistake for 
+their own. 
+Check-in monitor (§9.5), WINDOW column: the scheduled shift window is shown on two lines — "06:15 – 23:00 
+UK time" on the first, "08:15 – 01:00 your time" on the second. The second line is not rendered at all for a viewer 
+already in UK time. The same dual display applies on the event card, in event details, in the Client Portal and in 
+reports (client decision, 02.09.2026, recorded as ADR 0058). One deliberate exception to the dual-display rule: a 
+status pill is too narrow to carry a zone label, so the "Due [scheduled start time]" pill on the same monitor (§9.5) 
+shows the viewer's local time only, with no "UK time" / "your time" suffix. This is intentional and must not be 
+"fixed" back to UK time — the WINDOW column in the same row already carries both zones, so the UK reference 
+sits directly next to it on screen. If the underlying value carries no zone to convert from, the pill falls back to UK 
+time, as before. Actual check-in and check-out stamps are treated differently from scheduled times and are 
+shown in the viewer's local zone only, on a single line, never dual: they are real instants rather than an 
+arrangement about the future, and keeping them in the same zone as the "Due" pill is what makes the lateness 
+arithmetic on the monitor read correctly (e.g. Due 08:15 against 08:47 · GPS). This is settled, not pending — it 
+should not be "aligned" with the dual display used for scheduled times. Input works the other way round from 
+display: every field where a manager TYPES a time — the event form, and the actual-finish field when resolving a 
+"No check-out" violation (§9.5) — is entered in UK time, because the server reads a zoneless value as 
+Europe/London. Any such field must carry "(UK time)" in its own label, since the manager reads local times 
+everywhere else on the same screen and would otherwise have no way to tell which zone is expected. A third 
+category sits apart from both: audit records — the contract-signature timestamp (§2.11) and the document-
+verification stamps beside it (§9.6) — are always shown in UK time and never converted, because they evidence 
+when something was signed or approved and the hour must read identically to everyone who opens that file. So 
+the real distinction is not "scheduled versus actual" but "operational versus audit": stamps a manager acts on 
+today (Due, check-in, check-out) follow the viewer's zone, records of a decision already taken do not. 
+2. ONBOARDING / ATS 
+ATS = Applicant Tracking System — the entire journey of a person from application to becoming a member of 
+Staff, in one pipeline. Here the ATS is the onboarding module of the Back Office Portal: public form → AI video 
+interview (Willo) → Right to Work + documents → H&S quiz → contract signed → the candidate becomes Staff 
+and leaves the pipeline. In parallel, the module performs compliance intake (collecting and verifying 
+documents, gov.uk share-code checks, AI date extraction) — which is why "Onboarding" and "ATS" mean the 
+same thing in this document. 
+2.1 Public application form /apply 
+• 
+Public URL, no registration. Fields: First name · Surname · Email · Mobile (international picker) · Age (select 
+from 18) + GDPR consent. 
+• 
+Under 18 → the application is rejected (checked both on the form and on the server). 
+
+
+===== PAGE 7 =====
+7 
+• 
+Rule: there is no separate "Applied" stage — submitting the form automatically sends the Willo interview, 
+and the candidate lands straight in "Interview requested". 
+2.2 Onboarding pipeline /onboarding (kanban) 
+• 
+Stages: Interview requested → Interview completed → Documents → Quiz → Additional info → Contract. 
+• 
+Once the contract is signed the candidate leaves the pipeline and becomes Staff. 
+• 
+Rejected candidates are not shown on the kanban by default — a filter toggle at the top of the screen 
+("Active / Rejected", the same pattern as the Staff directory filters, §9.6) switches the view to show only 
+Rejected candidates, so they stay reachable without leaving the Onboarding screen. 
+2.3 Candidate profile /onboarding/:id 
+• 
+For EACH phase — only the relevant fields + the correct stepper (documents are not held on the early 
+phases). Phase states: Interview requested · Interview completed · Documents · Quiz · Additional info · 
+Contract (separate screens + states). 
+• 
+Documents come with two actions: Verify and Reject. There are no other top area buttons in the profile — 
+only Reject candidate. Rejecting a candidate is final — there is no "un-reject" action on this record. If THC 
+wants to reconsider them, the person applies again via /apply (§2.1), which creates a brand-new candidate 
+record and runs the full onboarding process from scratch, the same as any other applicant. The Criminal 
+Record declaration follows the same Verify/Reject mechanic only when the candidate answered Yes; a No 
+answer is auto-verified on submission and never needs a manual action. 
+• 
+What happens when a document is rejected: the manager gives a reason → the document becomes 
+Rejected → the worker receives a push: "Document rejected — [reason]" + a "Re-upload" button. They 
+upload a new one and the document returns to review. 
+• 
+The move to the quiz is automatic: as soon as ALL documents — including the Criminal Record declaration — 
+are verified, the candidate advances to the "Quiz" stage by themselves. A No Criminal Record answer is 
+auto-verified on submission; a Yes answer needs the manager's manual Verify, same as a document. While 
+anything remains unverified, the quiz stays locked. 
+• 
+Weekly hours limit — displayed, never edited. The profile shows the worker's cap for the current week and 
+what produced it, e.g. "20 h/week — term time until 13.12.2026" or "48 h/week — university holiday until 
+05.01.2027". There is no field to type a number into, for any worker, student or not: the cap follows 
+automatically from the verified term dates (RULE-20, §4.4). What the manager verifies is the document and 
+the dates read off it — the cap then takes care of itself. 
+• 
+Term dates (students): the AI reads the holiday ranges from the University Term Dates Letter and pre-fills 
+them; the manager checks them against the letter and verifies, exactly as for any other document. These 
+dates are the single input to the cap calculation — correcting a date here changes the worker's cap from that 
+moment on, automatically, with nothing else to update. The manager confirms the dates, not the hours. All 
+periods from the letter are shown — no cap on how many. A "+ Add period" control is needed next to the 
+AI-extracted vacation ranges, so the manager can manually add a period the AI missed (e.g. a poorly 
+scanned letter, non-standard format) — the manager should not be a hostage to OCR/recognition quality. The 
+number of periods stays arbitrary (as already stated) — the "5" shown in the design is demo data, not a fixed 
+constant. Real cases range from zero periods to three or four. 
+• 
+Share code: the applicant/worker enters the code themselves (and their DOB) on the registration page in the 
+app (§2.5) — not the manager. Once entered, the system queries gov.uk itself, gets back the validity and the 
+right-to-work expiry date, and stores the PDF report on the profile, visible here on the candidate's card. 
+Nobody types the date by hand. 
+
+
+===== PAGE 8 =====
+8 
+2.4 AI video interview — Willo (willo.video) 
+• 
+Pipeline: Applied → Interview requested → Interview completed → (Accept) Documents / (Reject). 
+• 
+How it works: the candidate submits the form → the system automatically creates them in Willo and Willo 
+sends them the interview invitation. 
+• 
+The system tracks the status ITSELF (no manual updating, no periodic checking): the moment the candidate 
+completes the interview, their card moves to "Interview completed" on its own. 
+• 
+The manager makes the decision inside Willo (that is where the video is watched). The candidate profile 
+carries a direct "Review interview on Willo" link. 
+• 
+Rejected in Willo → the system rejects automatically. Accepted → the candidate advances to "Documents" 
+by themselves. The decision does not have to be repeated in the system. At this same point, the manager 
+selects the candidate's qualified role type(s) on their profile (§9.6) — this is what makes them eligible for 
+shifts of that role later. 
+• 
+Integration inputs supplied by THC before the onboarding sprint: Willo API key, interview key and the 
+mapping of Willo stages to the kanban stages above (Appendix B). The keys are held as environment 
+configuration, never in the codebase, and the stage mapping is editable in Django Admin so a change to the 
+Willo pipeline does not need a release. 
+2.5 Right to Work — 5 branches 
+The share code is entered manually in the mobile app (a field, not a file upload) — the system then checks it 
+against gov.uk itself (§2.6). Date of birth is mandatory in every branch.Share code format (corrected 31.07.2026 
+— the earlier "letters only" wording was wrong and should be disregarded wherever it appears in this 
+document): exactly 9 alphanumeric characters (letters and numbers), starting with "W", e.g. W123AB4CD; case-
+insensitive; spaces are ignored on input (people often paste it as three groups of three, e.g. "W12 3AB 4CD"); 
+valid for ~90 days from generation; used together with DOB by the checking organisation (gov.uk) to run the 
+check. The input field should validate against this format (9 alphanumeric characters starting with "W", case-
+insensitive, spaces stripped) before submitting to gov.uk. 
+1. UK / Irish citizen — passport (photo) OR birth certificate + a document showing the NI number. No share 
+code. + 48h opt-out. 
+2. EU/EEA settled / pre-settled — passport / ID (upload) + Share Code (input) + DOB + 48h opt-out. Pre-settled: 
+expiry + reminders. 
+3. Work visa — passport (upload) + Share Code (input) + visa type (dropdown) + expiry (date) + upload of the 
+visa photo/PDF (the manager cross-checks the details against the document). 
+4. International student — passport + Share Code (input) + University Term Dates Letter (upload), and — once 
+they graduate — the Official University Completion Letter (upload, §4.5). Limit 20 h/week during term; 
+outside term 48 h + opt-out; holidays = the dates from the term letter (expiry rule — see §4.2). The in-term 
+limit is 20 h/week for every student-visa worker, whatever the course, and it follows automatically from the 
+verified term dates (RULE-20, §4.4). Nobody sets the number. No separate student visa upload — the Share 
+Code's gov.uk check already returns visa status, work conditions, and expiry, so a visa upload adds no 
+compliance value on top of it (confirmed 04.09.2026). 
+5. Dependant / other visa — passport + Share Code (input) + visa / status document (upload) + expiry. 
+6. The mobile document screens cover each Right to Work branch and each document status. 
+7. Accepted National Insurance evidence (branch 1, and any worker supplying an NI number): an NI card or 
+letter, an HMRC or DWP letter showing the number, a P60, or a payslip from a previous employer showing 
+the number. Any of these satisfies the requirement — the manager verifies that the number on the 
+
+
+===== PAGE 9 =====
+9 
+document matches the number typed into the profile. File types and limits are the same as every other 
+document upload: PDF, JPG, PNG or HEIC, up to 10 MB per file. 
+8. Document sets per branch are exactly as listed in points 1–5 above; no further documents are collected at 
+onboarding. Sample term-date letters and completion letters are supplied by THC for the AI extraction to be 
+built and tested against (Appendix B). 
+2.6 AI integrations in onboarding 
+This covers the agreed AI capabilities: reading dates off documents, recognising a student's term dates, and the 
+automatic gov.uk share-code check. 
+• 
+Share code + DOB → gov.uk/view-right-to-work → right-to-work-until date → PDF report stored on the 
+profile; that date becomes the expiry used for reminders. On failure or low confidence → flagged for 
+"manual review". 
+• 
+The AI reads EVERY uploaded document and extracts the expiry date from it, and from the University Term 
+Dates Letter it extracts terms and holidays. It writes those dates onto the profile automatically. 
+• 
+From the Official University Completion Letter (§4.5) the AI extracts the completion / award date and the 
+awarding institution, and pre-fills them the same way; the letter still goes to a manager for verification like 
+any other document. 
+• 
+The AI provider for all document extraction in v1 is Gemini (decided 17.07.2026). The integration is written 
+behind a single provider interface so the model can be swapped without touching the onboarding or 
+compliance flows. 
+• 
+  The final word belongs to a human. The AI does not verify a document. It only pre-fills the data and 
+shows its confidence level; the manager checks and confirms manually. Where the AI is unsure, the 
+document is flagged as "needs manual review". 
+2.7 Screens and system behaviour 
+Screens in this module (public · web Back Office Portal · mobile Staffing App): 
+Screen 
+Where 
+What it does / how the system behaves 
+Apply /apply 
+public 
+Public form (no registration). Submit → 
+age ≥ 18 check → the candidate is 
+created automatically in the "Interview 
+requested" stage, and Willo sends them 
+the interview invitation. 
+Apply submitted 
+public 
+A "check your inbox" screen confirming 
+the submission. From here the candidate 
+acts on the Willo email. 
+Onboarding kanban /onboarding 
+web 
+The pipeline kanban: Interview 
+requested → Interview completed → 
+Documents → Quiz → Additional info → 
+Contract (six columns, confirmed against 
+the approved "Onboarding / Kanban / 
+Active" design). The card moves through 
+the stages; after the contract it 
+disappears (becomes Staff). Rejected 
+candidates are not shown on the kanban 
+by default — reachable via the 
+Active/Rejected filter (§2.2). 
+
+
+===== PAGE 10 =====
+10 
+Screen 
+Where 
+What it does / how the system behaves 
+Candidate profile /onboarding/:id 
+web 
+A profile organised by phase — only the 
+relevant fields + the stepper. Verify / 
+Reject on documents (reject → reason 
+→ the worker gets Re-upload), the 
+gov.uk report, AI confidence badges, the 
+calculated weekly limit and the term 
+dates behind it (read-only, RULE-20), 
+share code. The quiz unlocks 
+automatically once every document is 
+verified. 
+Activate · Activated 
+public / auth 
+After Accept, the candidate sets a 
+password from the activation email → 
+activated → CTA "download the app". 
+Mobile onboarding · documents · quiz · 
+contract 
+app 
+The candidate completes the 
+onboarding wizard themselves (§10.3): 
+RTW branch (§2.5) → documents → quiz 
+→ contract. Each phase has its own 
+screens with its own stepper. 
+ 
+System behaviour — the key rules: 
+• 
+Submitting the form = an automatic Willo interview (there is no separate "Applied" stage). 
+• 
+The status arrives from Willo on its own — the moment the candidate completes the interview, the card 
+moves to "Interview completed". Rejected in Willo → the system rejects automatically. 
+• 
+The quiz unlocks automatically once every document is verified. 
+• 
+Quiz: pass mark 80%, up to 3 attempts, and after the third failure — automatic rejection. 
+• 
+Contract signed → the candidate becomes Staff and leaves the kanban; the selfie avatar taken during 
+onboarding follows them through the whole system. The system auto-generates their Employee ID at this 
+exact moment (fully onboarded / compliant) — this is the identifier used in payroll and printed on every 
+timesheet document (§9.9, §11.3). (confirmed by THC, 14.07.2026: Employee Numbers are auto-generated 
+at the point the candidate becomes fully onboarded / compliant.) 
+• 
+AI + gov.uk: the AI reads the documents (expiry, terms), share code + DOB → gov.uk report → the right-to-
+work-until date becomes the expiry used for reminders; on failure or low confidence → flagged for "manual 
+review". 
+2.8 HMRC New Starter Checklist — how the form works 
+What it is. The mandatory HMRC form for a new employee. Without it the employer does not know which tax 
+code to apply — and is not allowed to pay. Its data is exported into the New Starter report (§9.9). No P45 upload 
+or parsing (decided 13.08.2026, not in scope). A P45 document type was considered for onboarding and 
+deliberately rejected: the app does not accept, store or read a P45 file. Every worker completes the Starter 
+Checklist in full, manually, even where they physically hold a P45 — if they have one, they read the equivalent 
+figures off it and type them in. The reason is that the checklist is the form HMRC actually requires and it has to 
+be complete and declared either way (see the Declaration tick-box below), so accepting a second document 
+would add an upload, an AI extraction step, a review queue entry and a reconciliation problem without removing 
+a single field from the form. 
+
+
+===== PAGE 11 =====
+11 
+Why "6 April". The UK tax year runs 6 April → 5 April. Every question on the form is anchored to "since 6 April" 
+because that is the start of the current tax year — the period used to work out whether this is the person's first / 
+only job and how much they have already earned. 
+Statements A / B / C — not selected directly by the worker. The system derives the statement automatically 
+from three sequential Yes/No questions (mirrors HMRC's own routing logic, form questions 8–10): 
+Do you have another job? 
+Shown only if Q1 = No — Do you receive payments from a State, workplace or private pension? 
+Shown only if Q1 = No and Q2 = No — Since 6 April have you received payments from: another job which has 
+ended, or any of the following taxable benefits — Jobseeker's Allowance (JSA), Employment and Support 
+Allowance (ESA), Incapacity Benefit? 
+The combination of answers maps to one of the three statements below, per HMRC's own rules — the worker 
+never sees the resulting letter: 
+Option 
+What it means 
+A 
+This is my first job since 6 April, and I have had no other 
+income or taxable benefits 
+B 
+This is my only job now, BUT since 6 April I have had another 
+job / received taxable benefits. I do not receive a pension 
+C 
+I have another job or I receive a pension 
+ 
+What the system does: it records the tax code that corresponds to the derived statement (A, B or C) and passes 
+it into the New Starter report (§9.9). The code itself is defined by HMRC — the system does not invent it. 
+Independent fields (not tied to A / B / C): 
+• 
+Student Loan — a separate question carrying the full HMRC option set: No · Plan 1 · Plan 2 · Plan 4 · 
+Postgraduate Loan. Plan and Postgraduate are not mutually exclusive — a worker can be repaying a Plan 
+loan and a Postgraduate Loan at the same time, so the Postgraduate option is a separate tick-box alongside 
+the plan selection. The answer determines the student loan deduction and is carried into the New Starter 
+report (§9.9). 
+• 
+National Insurance number — the identifier for payroll. No temporary NI number (removed, client decision 
+14.07.2026): if it isn't available yet, the worker can still be onboarded and paid — payroll runs without one. 
+The worker applies for their NI number themselves (outside the app); once issued, it's added to the profile 
+and payroll records are updated from that point on (§9.6, §2.10). Once entered, the NI number is displayed 
+masked (e.g. ●●●●●●●2B) and locks — any correction goes through the office (confirmed against the 
+approved "Profile details" design, 04.09.2026). 
+• 
+Declaration — a tick-box: "I confirm that the information I've given on this form is correct." Required before 
+the worker can submit the checklist — confirmed 28.07.2026: "the HMRC form which the candidate 
+completes, should also include a declaration confirming that the information they provided is correct." 
+Order in the wizard (11 steps — the mobile app splits some blocks differently from the Back Office; this is 
+intentional and confirmed against the approved design): 1 Right to work · 2 Home address · 3 Profile selfie · 4 
+Documents (incl. Criminal Record declaration) · 5 Health & Safety induction · 6 Safety quiz · 7 HMRC New Starter 
+· 8 Two references · 9 Bank & payroll · 10 Contract · 11 How it works. The quiz is no longer the penultimate step 
+— the wizard now ends Contract → How it works. 
+Onboarding notifications and emails (the full register is in §8): 
+
+
+===== PAGE 12 =====
+12 
+• 
+E1 — Willo sends the interview invitation (email only), immediately on form submission. 
+• 
+E2 — interview rejection, sent by the system (not by Willo), so the wording is THC's and is the same for every 
+rejection route. 
+• 
+E3 — mandatory: accepted after the interview — activation + password + "download the app". 
+• 
+E4 — quiz failed 3×; required, and carries the same wording as the in-app terminal screen (§10.1). 
+• 
+N8 (push) — document rejected (reason + a Re-upload button). 
+• 
+N1–N4 (push) — document expiry reminders + automatic block on the expiry day (§4). 
+2.9 Health & Safety quiz 
+• 
+Pass mark 80%, multiple choice, 3 attempts in total, and failing the third → automatic rejection. The 80% 
+threshold comes from THC's own document "Health and Safety Presentation Questions" ("the pass mark for 
+this is 80%"). The questions and the correct answers are taken from the same source. 
+• 
+Gate: the quiz is available ONLY once every document is verified (§2.3). 
+2.10 Additional onboarding steps 
+  All the data from these steps is shown on the candidate card and on the worker card — Two references · 
+Criminal convictions · National Insurance · Bank & payroll details · HMRC New Starter Checklist · a student's term 
+dates (from the AI term-date recognition) and the weekly limit they produce. The manager sees them in one 
+place, without hunting through tabs. 
+Agreed on the call of 12 July and included in the first version. 
+• 
+Two references — 2 referees: name · relationship · phone · email (both phone and email are mandatory, not 
+either/or). No relatives. Mandatory — 2 references are always required, with no exception for candidates 
+without prior work history (e.g. students): referees are not limited to employers — a university tutor, 
+lecturer, teacher, course leader, volunteering supervisor or coach are all accepted (confirmed 31.07.2026). 
+The step's copy and field labels should make this explicit to the candidate, so it's clear where to source a 
+reference from if they've never had a job. A dedicated wizard step (8/11). These references are not formally 
+reviewed or verified by a manager and there is no reference-check stage in the pipeline: they are collected, 
+stored and displayed on the profile as supporting information, and the office contacts a referee off-system if 
+it ever wants to. No Verify / Reject action and no queue entry is generated for them. 
+• 
+Criminal convictions declaration — Yes/No + a details field if Yes (unspent convictions only; this is a legal 
+declaration). Moved onto the Documents screen (step 4/11) — reviewed by the manager alongside the 
+RTW/compliance documents, so there is a single combined blocker instead of two separate ones. If the 
+answer is No, the declaration is auto-verified the moment it's submitted — no manual admin action, and it 
+never enters the review queue. If the answer is Yes, it follows the same Verify/Reject mechanic as a 
+document — the manager must review the details before it counts as verified. The duty does not end at 
+onboarding: a worker who is convicted of something while working for THC declares it from the app at any 
+time (§10.7), and the contract says so in terms (§2.11). 
+• 
+National Insurance — the NI number field. No temporary NI number — removed (client decision, 
+14.07.2026). If the worker doesn't have one yet, they simply leave it blank and continue; no 
+placeholder/temporary number is generated, and payroll is processed without one. The worker applies for 
+their NI number themselves (outside the app); once HMRC issues it, it's entered on the profile and payroll 
+records are updated from that point on. When entered, the system sends a notification email to 
+gisela@thehospitalitycompany.co.uk and thc_payroll@topsourceworldwide.com (§8, E6) — same pattern as 
+the bank-details change notification (§8, E5). 
+
+
+===== PAGE 13 =====
+13 
+• 
+Bank & payroll details — step 9/11. Also editable later, once the worker is Staff — not onboarding-only. The 
+worker can update their bank details from their app profile (§10.1) at any point while working. When saved, 
+the system sends a notification email to gisela@thehospitalitycompany.co.uk and 
+thc_payroll@topsourceworldwide.com to alert them of the change (§8, E5). (recipients confirmed by THC: 
+gisela@thehospitalitycompany.co.uk and thc_payroll@topsourceworldwide.com.) 
+• 
+AI student term-date recognition — the input to the calculated weekly cap; see §2.6, §4.4 and §4.5. 
+2.11 Contract / T&C 
+• 
+The scrollable text of the zero-hours agreement + a tick-box "I agree" = the signature (the timestamp is 
+recorded: "Signed electronically · date/time — this timestamp is your signature"). 
+• 
+The agreement includes an ongoing duty to disclose: the worker undertakes to declare any unspent criminal 
+conviction that arises during their employment, as soon as reasonably practicable, using the declaration 
+route in the app (§10.7). This is what makes §10.7 an obligation the worker has already accepted rather than 
+an optional form, and it is why the app's own copy can point back to it. 
+2.12 State machine (Staff.status) 
+/apply → interview_requested → interview_completed → documents → quiz → contract → compliant; branch 
+→ rejected (Willo reject / quiz failed 3×); compliant ⇄ blocked (expired document, automatically or manually; 
+unblocked after verification); compliant → blocked (the worker declares a criminal conviction from the app, 
+§10.7 — released the same way as any other block, by verification plus the full compliance re-check); compliant 
+/ blocked → inactive (the worker leaves, through the app, §10.6); compliant → removed (GDPR, irreversible). 
+Blocked, inactive and removed workers receive no invitations and are not in the scoring pool. 
+inactive is the leaver state. It is reached only one way — the worker requests it themselves in the app (§10.6) — 
+and is left only one way: a manager presses Reset to candidate (§9.6) and the person completes onboarding 
+again on the same record. There is no "reactivate" that puts a leaver straight back to compliant, because their 
+Right to Work, tax position and contract all have to be re-established before they can legally work again. Leaving 
+is not a punishment and does not touch show-rate, rating or feedback. 
+A worker who left and comes back goes through onboarding from scratch — the full wizard again, not a partial 
+document recheck — but does so on their existing record, not as a second one (see Reset to candidate below). 
+Full re-onboarding covers: application → Willo interview → Right to Work + all documents → HMRC New Starter 
+Checklist (tax situation may have changed) → Criminal convictions (may have a new conviction since) → H&S 
+quiz (again) → contract. 
+Why the full wizard rather than a partial recheck: tax and criminal-record status may have changed since they 
+left; the Willo interview lets THC re-assess presentation, which can be very different a year on; and a returning 
+leaver is not entitled to skip steps every other applicant goes through. It also removes the need to build and 
+maintain a separate "partial re-onboarding" path. 
+The record is never deleted. It stays blocked until a manager decides what to do with it, so the person's 
+historical show-rate, feedback and violations are all in front of them before they decide whether to take the 
+person back. To work again, the person completes onboarding from zero on that same record. 
+Returning workers keep one record — "Reset to candidate". 
+A worker who comes back is re-onboarded on their existing record, not as a new one. A Reset to candidate 
+action is available on a blocked or rejected profile in the Back Office (§9.6): the manager presses it, gives a 
+
+
+===== PAGE 14 =====
+14 
+reason, and the profile returns to the start of the onboarding pipeline with the full wizard to complete again 
+(§10.3). 
+What a reset does, precisely: 
+1. Status returns to `interview_requested` and the person re-enters the onboarding kanban (§2.2) as a 
+candidate; a fresh Willo interview is sent as for any applicant (§2.4). 
+2. The Employee ID is retained. One person keeps one Employee ID across every period of employment, so 
+payroll and every historical timesheet continue to reconcile (§2.7, §9.9). 
+3. Compliance evidence is cleared so nothing stale can satisfy the new check: every Right to Work and 
+compliance document, the share-code result, the HMRC New Starter Checklist, the criminal-convictions 
+declaration, the H&S quiz result and the signed contract are all marked superseded and must be supplied 
+again. Superseded documents are retained, read-only, on the profile as the record of what was held during 
+the previous period — they are not deleted and they are never used to satisfy the new compliance check. 
+4. History is retained and stays visible: shift history, show-rate, rating, feedback and violations carry over, 
+which is exactly what a manager needs in order to decide whether to take the person back. 
+5. Bookings are unaffected because a blocked or rejected worker holds none; the worker cannot be invited or 
+self-apply until they are compliant again (§4.4). 
+To make this the only route back, the public application form (§2.1) performs a duplicate check on submission: 
+email, and mobile number plus date of birth. A match against an existing record does not create a second 
+candidate — the application is routed to the office as a "returning applicant" entry on the onboarding screen, 
+naming the existing record, and the manager either presses Reset to candidate on it or rejects the application. 
+The applicant sees the ordinary "check your inbox" confirmation either way; they are never told the reason a 
+previous record was blocked. 
+A GDPR-removed worker (§1.7) is the one exception: their personal data is gone and cannot be matched against, 
+so they apply as a genuinely new candidate and receive a new Employee ID. 
+3. SCHEDULING + AUTO-ASSIGN 
+3.1 Views /events 
+• 
+Two views: List + Calendar (Month / Week / Day). The toggle reads "List" first, "Calendar" second; the same 
+toggle appears in the calendar (working both ways); one toggle, no duplicate. 
+• 
+*Date navigation works the same way in both views: back and forward arrows around the current period 
+label, so past events are browsable in List view too, not only in Calendar. 
+• 
+The "+ New event" button sits in the top-right corner of the header, the same in every view (not in a sub-
+toolbar). 
+• 
+Holds 10–15 events per day (cells scroll). Fill indication: EventChip full / N-open + a daily counter "N ev · M 
+open". 
+• 
+Week view, specified. Seven day columns, Monday to Sunday, with the current day highlighted. Each 
+column is a vertical list of that day's event chips ordered by the event window start (§3.2) — not a time-
+gridded diary, because a day carries 10–15 events with overlapping windows and a time grid collapses at 
+that density. Each chip shows: start–end (the derived event window), client, venue, and a fill pill reading "N 
+of M" that is amber while the event is short and green when every role is confirmed. A day column header 
+carries the date and the same "N ev · M open" counter as the month view. Columns scroll independently; 
+clicking a chip opens the event board (§3.3). 
+
+
+===== PAGE 15 =====
+15 
+3.2 Creating / editing an event (Shift Builder) 
+• 
+Client → venue (address → geo point, type → radius) → date/time → roles: start + end (per role) + 
+headcount + buffer + charge (from the client's rate card) + auto-assign allocation. 
+• 
+Multiple roles, each with its own hours. An event is built as a list of role sections and every section carries 
+its own start and end time. The manager sets an event date and an overall start/end first; each role added to 
+the event is pre-filled with that window and can then be changed independently — so one event can run 
+Chefs 07:00–15:00, Kitchen Porters 09:00–17:00 and Waiting Staff 17:00–23:30 without being split into 
+three events. The event's own window is then derived: the earliest role start to the latest role end (§1.5). 
+This is what the calendar, the event list, the Client Portal (§11.1) and the Upcoming events block on the 
+Dashboard (§9.1) display, and what drives the Upcoming / Ongoing / Completed status. 
+• 
+Adding a role after the event has been built pre-fills it with the current event window in the same way; 
+editing a role's times updates the derived event window immediately, and changing a role's start or end 
+triggers re-confirmation for the staff already booked on that role only (§3.5) — the other role sections are 
+untouched and their workers are not asked to re-confirm. 
+• 
+Each role's times are shown wherever that role appears: on the role section header on the event board 
+(§3.3), on the invitation and the shift card in the app (§10.4), in the WINDOW column of the check-in 
+monitor (§9.5), and in the Start Time column of the allocation sheet / timesheet (§11.3). A worker is never 
+shown the event window in place of their own role's hours. 
+• 
+Editing an existing event: every field above (venue, date/time, headcount, buffer, charge rate, dress code), 
+as well as the PO Number, can be edited after the event is created, the same way as at creation time. 
+• 
+Editing is only allowed up to the event's start time. Once the event has started — and therefore for any past 
+event — editing is locked. 
+• 
+*Editing headcount below the number of workers already confirmed does NOT auto-remove anyone; the 
+manager decides manually who to withdraw (§3.3). 
+• 
+Buffer = an absolute number (not a %); displayed as "6 (+1)" (6 required by the client + 1 buffer), NOT the 
+total "7". In the list / calendar, headcount reads "N (+buffer)". 
+• 
+Why the buffer exists: THC deliberately overbooks shifts because people turn up late or drop out on the day. 
+The buffer is the insurance against same-day dropouts (which is why the on-the-day confirmation does not 
+release the slot, §3.5). 
+• 
+Dress code per event: for each role, defaults to the dress code already set for this client + role combination 
+on the client's Rate card (§9.7) + an "Other" → free text override available per event. 
+• 
+On-site contact: free text, pre-filled from the client profile, editable per event. Notes / specific instructions 
+(gap identified 14.07.2026): a free-text field on the event, visible to staff on their shift details in the app 
+(§10.4) — for anything that doesn't fit dress code or on-site contact (e.g. entrance to use, parking, a specific 
+ask from the client). This uses the existing notes field on the Event entity (§1.5), which had no UI wired to it 
+before. 
+• 
+PO Number (Purchase Order) — the customer's order reference. 
+• 
+Entered manually by the manager (client decision, 14.07.2026 — reverses the earlier auto-generation 
+decision). The system does NOT generate a PO number, and it does not enforce any format or uniqueness 
+rule — PO Numbers come from the client, vary in format from client to client, and are typed in exactly as 
+given. The "PO-4471" example shown elsewhere in this document is illustrative only, not a required pattern. 
+The client sends THC their PO reference by phone/email once they have it, and the manager types it into the 
+event field at that point — the field can stay empty for a while and can be entered or edited at any time, not 
+only when the event is created. (confirmed by THC: the system must not self-generate the PO Number — 
+the manager adds it once the client has told them what it is.) 
+
+
+===== PAGE 16 =====
+16 
+• 
+The same number is shown read-only: in the header of the event page (a "PO NUMBER" chip) and as a 
+separate PO column in the "Events · this client" table on the client card. The header also carries a status pill 
+— Upcoming / Ongoing / Completed / Cancelled (§1.5) — and the same pill appears on each event's row in 
+the List view and Calendar (§3.1). 
+• 
+Why: corporate customers require their own PO number on the allocation sheet / timesheet / invoice so 
+that their finance team can reconcile the payment. The number carries through into the timesheet 
+document (§11.3). 
+• 
+Break policy — a toggle at CLIENT level (in the event creation form): 
+• 
+A simple switch: "the client pays for breaks / does not pay". The system does not limit the length or the 
+number of breaks — only whether they are paid or not is recorded. 
+• 
+Pays → the worker has no break buttons and logs nothing. 
+• 
+Does NOT pay → in the app the worker presses Start break / Finish break (§5.2b). Break time is deducted 
+from the hours → and therefore from both pay AND charge. 
+• 
+*Buffer policy — a toggle at CLIENT level (in the event creation form, alongside Break policy): "the client 
+pays for the buffer / does not pay" (client decision). 
+• 
+Pays for the buffer — no special handling. Everyone invited and accepted (headcount + buffer) works and 
+gets paid normally under RULE-01 (§5.2): full pay if on time, a reduced amount if late. Who accepted the 
+invite first is irrelevant — everyone accepted gets to work. 
+• 
+Does NOT pay for the buffer (strict) — acceptance on the day is decided by actual check-in order, not by who 
+accepted the invite first: the first headcount people to check in are always accepted and work, on time or 
+late, paid under the normal RULE-01 rule. Once headcount is filled, anyone checking in afterwards is turned 
+away: the check-in button stays pressable, but the attempt is rejected — the app records the timestamp of 
+that attempt (CheckLog.attempted_at, §1.5) and shows: "Thanks for coming — this shift is already fully 
+staffed, so you're not needed today. We've logged that you arrived on time and you'll be paid for 4 hours. 
+Please check your app for other shifts." (the second sentence is shown only where the attempt was inside 
+the grace window, per RULE-15); it is this logged attempt timestamp, not a successful check-in, that 
+determines whether they were on time or late for RULE-15 below. A worker turned away who was 
+themselves on time is paid a fixed 4-hour minimum regardless of the shift's scheduled length (RULE-15, 
+§5.2), absorbed by THC and not billed to the client; a worker turned away who was themselves late is paid 
+nothing for that shift (RULE-15, §5.2). 
+• 
+Shifts are mostly single-day, 4–8 h, minimum 4 h — enforced as a hard validation on the Shift Builder form, 
+per role: the manager cannot save a role section whose end time is less than 4 hours after its own start 
+time. A role may end after midnight (e.g. 17:00–01:30), and may start before or finish after any other role on 
+the same event; what is not allowed is a role end that falls before its own start on the same calendar day. 
+Multi-day = separate events created via Duplicate (the clone copies the roles, NOT the staff). 
+3.3 Event board /events/:id (role sections + auto-assign) 
+• 
+A block per role (clicking the heading collapses it): header reads "N confirmed · M invited · K open of H" 
+(slots count ONLY confirmed), followed by that role's own start–end window (§3.2), the role's dress code 
+(pulled from the client's Rate card, §9.7) and pay/charge rate. Where roles on the same event run at 
+different times, the sections are ordered by start time, earliest first, so the board reads like the running 
+order of the day. The event page header also shows the client's Break policy and Buffer policy as read-only 
+checkmarks (§3.2), so both stay visible after creation, not only while building the event. 
+• 
+Sections: Confirmed (avatar + name + role) → Invited · awaiting response → Potential pool (ranked, with 
+search for manual selection) → Unavailable (with reasons: blocked-compliance / booked-elsewhere / hours 
+limit reached / rejected — self-cancelled a confirmed booking more than 72h before the shift, permanently 
+
+
+===== PAGE 17 =====
+17 
+excluded from this event, §3.4, §3.6). No-shows are not a separate section — a no-show worker stays listed 
+inside Confirmed, marked with a "No show" status badge and a "Get back" action, rather than moving to a 
+different list (see below). Invited and Potential pool are shown only while the role actually has open or 
+invited slots to fill — once a role is fully confirmed and stable (an Ongoing event with no shortfall, or a 
+Completed / Cancelled event), these two sections are hidden entirely, not just shown empty.If a shortfall 
+reopens on an already-Ongoing event (e.g. a no-show or a departure leaves a role short-handed), Invited 
+and Potential pool reappear for that role so the manager can fill it (per the approved design, confirmed 
+against the "Ongoing but has re-opened slots" state). Workers who are qualified at this client (§9.6) are 
+listed above unqualified workers in the Potential pool and carry a "Qualified — [client] · [role]" chip, so a 
+manual pick defaults to the same first-choice pool auto-assign uses (§3.4). Anyone who self-applied via 
+Radar (Booking.source = self) carries an "Applied" marker in the Potential pool, plus a relative timestamp 
+(e.g. "Applied 2h ago"), and the manager can sort/filter the pool by application status; the pool's existing 
+ranking and search stay intact alongside this. A worker already in Invited who also self-applies is not 
+duplicated into Potential pool — the marker shows on their existing Invited entry instead (confirmed 
+04.09.2026). 
+• 
+No-shows are not their own section — a worker marked No-show (automatically at start+30min, or 
+manually, §3.3) stays inside the Confirmed list, shown with a "No show" status badge and a "Get back" 
+action next to their name, rather than moving to a separate list. This is so the manager immediately sees 
+who needs replacing, and whose show-rate will drop (which feeds the auto-assign scoring, §6), without 
+losing their place in the roster. 
+• 
+The WORKER confirms, in the app — the manager has no Confirm button, only Withdraw (remove from the 
+shift). 
+• 
+Each candidate's match score (hovering shows the breakdown by factor) — see §6. 
+• 
+Late / No-show — a 30-minute grace window after the shift's scheduled start time (confirmed 31.07.2026). 
+The check-in button stays active through this window. A worker who checks in during it is automatically 
+marked Late (Violation(type=late) created), minutes-late calculated from their actual check-in time — no 
+manager action needed, and No-show is never triggered first.If a worker still hasn't checked in 30 minutes 
+after the scheduled start, the system automatically marks them No-show (Violation(type=no_show) created, 
+show-rate penalty applied) — and at that exact moment the check-in button locks, so the worker can no 
+longer check themselves in. This automatic 30-minute lock does not apply to a booking confirmed after the 
+shift's scheduled start (e.g. a Buffer-exhausted escalation replacement, §3.4) — their check-in stays open 
+until the shift ends (confirmed 01.09.2026). The manager can also press "No show" manually on a confirmed 
+worker, for edge cases the automatic check doesn't cover.The manual button becomes available the 
+moment the shift starts and stays available for 2 weeks after the shift ends — so a no-show can still be 
+recorded during the following week's pay-and-bill run. Recording one after that shift's payroll has already 
+been exported (§7, BG-08) does not reverse the payment: the system never corrects a run that has already 
+gone to finance, and the late No-show only affects the worker's show-rate. So that this is unambiguous to 
+the office, marking a No-show on an already-exported shift shows a warning line on the confirmation — 
+"This shift has already been included in a payroll export. Marking a No-show now will not reverse the 
+payment — please notify Finance to reverse it." — making clear the money correction happens in THC's own 
+finance process, outside the app (confirmed 08.09.2026). Once locked out, "Get back" is the only way back 
+in — pressing it on the event's roster screen (or "Resolve" on the same entry in the Violation log, §9.5) 
+registers the worker as arrived and reclassifies them from No-show to Late, with the minutes-late figure 
+based on the moment the manager pressed it. A worker reclassified this way is treated exactly like anyone 
+else who arrived late — the normal RULE-01 pay-window deduction applies to their actual (or manager-
+registered) check-in time (§5.2). The same payroll-timing caveat applies in reverse: if that shift's payroll has 
+already been exported, reclassifying a No-show to Late increases what the worker is owed, but the system 
+
+
+===== PAGE 18 =====
+18 
+does not top up an export that has already gone to finance. "Get back" and "Resolve" therefore carry the 
+mirror-image warning on an already-exported shift — "This shift has already been included in a payroll 
+export. This change will not add the payment — please notify Finance to pay it." — and the adjustment is 
+made in THC's own finance process, outside the app. 
+• 
+Cancel event (gap identified 14 
+.07.2026 — confirmed in scope). A "Cancel event" action on the event page, for when the client cancels the 
+whole booking. The manager must give a reason (free text, same pattern as manual Block, §9.6). On confirm: 
+1. The event is marked Cancelled (stays visible in the list/calendar, greyed out with a "Cancelled" label — not 
+deleted, for record-keeping). 
+2. Every confirmed and invited worker is notified automatically — push: "This event has been cancelled" (§8, 
+N12) — and the same push now also reaches anyone with an open Radar application for this event 
+(Booking.source = self, still pending review), not just Confirmed/Invited workers (confirmed 08.09.2026) — 
+no manual notification round needed. 
+3. All their bookings for this event move to cancelled; open invitations are withdrawn; auto-assign stops for 
+this event immediately. 
+4. Excluded from financial reports (§9.9) — a cancelled event contributes no margin/revenue/payroll, since no 
+work happened. This applies only when the cancellation happens before the day of the event; see the 
+resolved edge case below for cancellations on the day or after work has started. 
+5. No Allocation Sheet / Timesheet is generated or sent for a cancelled event (§11.3, §11.4). 
+Edge case — resolved: if the client cancels on the day of the event, or after some staff have already checked in / 
+started the shift, the scheduled hours — not the actual worked hours — are billed to the client in full, and every 
+affected worker is paid for their full scheduled hours, regardless of how much of the shift they actually worked. 
+This overrides the "no margin/revenue/payroll" rule above (point 4), which still applies only to events cancelled 
+before the day, when nothing has started yet. 
+3.4 Auto-Assign (a switch, default ON) 
+• 
+Auto-assign is a switch, default ON (replacing the manual "invite N" button, which has been removed). It can 
+be turned off at event or role level — for example when the client asks for a specific person. 
+• 
+On creation: role → headcount + buffer + allocation (how many invites per hour), with the default = 
+headcount + buffer, editable. 
+• 
+If it is ON: from the moment the event is created it adds allocation invites every hour, in descending score 
+order; earlier invitations stay open (they are not pulled or rejected); it keeps adding until headcount + buffer 
+is filled — buffer is part of the confirmation target, not the actual working headcount (§3.2, §5.2 RULE-15). 
+Auto-assign runs per role section, against that role's own start and end times (§3.2), so a single event can be 
+filling an early Chef section and a late Waiting Staff section at the same time, with different pools and 
+different overlap arithmetic. 
+• 
+  Qualified staff are invited first (RULE-17). Each hourly round draws from two waves, in order: 
+• 
+Wave 1 — qualified. Every worker who holds a ClientQualification for this event's client and this 
+specific role (§9.6, §1.5) and passes the ordinary hard gates (right role, compliant, not booked 
+elsewhere, inside their weekly hours limit, not self-cancelled off this event). They are ranked by the 
+normal §6 score and invited in that order. 
+• 
+Wave 2 — everyone else. Workers who qualify for the role in general (§9.6) but hold no qualification for 
+this client + role combination. Because the qualification is per role, a worker who is a Wave 1 candidate 
+for the Waiting Staff section of an event can be a Wave 2 candidate for the Bar Staff section of the same 
+event. Auto-assign only reaches them once every eligible worker in Wave 1 has already been invited and 
+
+
+===== PAGE 19 =====
+19 
+the role is still short — never before, and never because an unqualified worker scores higher. A worker 
+with a match score of 94 who has never worked this client will always be invited after a qualified worker 
+scoring 71. 
+• 
+Client qualification is therefore a priority wave, not a hard gate: an unqualified worker is still a valid, 
+invitable candidate, they are simply second in the queue. They appear in the Potential pool without the 
+"Qualified" chip (§3.3) and the manager can always invite them by hand at any point. The same two-wave 
+order applies to the same-day Buffer-exhausted escalation below, within its widened 3-mile pool — qualified 
+workers inside the radius are called before unqualified ones. 
+• 
+Radar (§10.4) follows the same order in the way it exposes shifts: an open role at a client the worker is 
+qualified at is visible to them from the moment the role opens; a role at a client they are not qualified at 
+only surfaces on their Radar once Wave 1 has been exhausted. This stops self-apply quietly bypassing the 
+priority the invitations are meant to enforce. 
+• 
+One person can receive several invitations (different roles / events, if they cover waiting / bar / host). 
+Overlap resolution — automatic withdrawal (client decision, 14.07.2026). Since a worker can hold several 
+open invitations at once even when their time windows overlap, the moment the worker presses Accept on 
+one of them, the system automatically withdraws all of that worker's other open invitations that overlap its 
+time window — they disappear from the worker's Invites list with no action needed from them, and move to 
+Unavailable → Booked elsewhere on the event board (§3.3, §6). As a safety net for the rare case of two 
+overlapping Accepts landing almost simultaneously, the system also blocks Accept on a shift that already 
+overlaps a just-confirmed booking — a popup tells the worker: "You're already booked for an overlapping 
+shift." (Client's own words when asked to choose between blocking-on-attempt vs. auto-removal: "We need 
+the Staff APP to be as clear as possible for the staff member in this instance" — i.e. overlapping invitations 
+should be cleared automatically rather than left to fail when the worker taps them.) 
+• 
+* Booked-elsewhere — how it's computed (confirmed by THC): only the worker's other CONFIRMED 
+bookings count; a booking they've merely been invited to (not yet accepted) never excludes them. Two 
+confirmed bookings at the SAME venue, back-to-back, are always fine — no gap is required. Two confirmed 
+bookings at DIFFERENT venues need at least a 2-hour gap between the end of one and the start of the other; 
+if the gap is under 2 hours,the worker is Unavailable → Booked elsewhere for the later shift. This 2-hour 
+figure is a fixed, hardcoded value for v1 — NOT a real travel-time calculation between the two venues 
+(scoped out as future work, since it needs a routing / maps integration); the same 2-hour rule applies 
+regardless of how close or far apart the two venues actually are. 
+• 
+* The Unavailable list (and the whole event board — Confirmed / Invited / Potential pool / Unavailable) is 
+calculated freshevery time the event page is opened, not a cached snapshot from the last time auto-assign 
+ran its scoring. 
+• 
+  The hours limit is a hard gate. Auto-assign will not invite a worker if the shift would take them over their 
+weekly hours limit for the Mon–Sun week the shift falls in. That limit is the calculated value described in 
+RULE-20 (§4.4) — read live at the moment the round runs, so a worker who moved from term time into a 
+holiday overnight is in the pool for 48 hours of work that morning without anyone touching their profile. 
+Those people appear in the Unavailable section with the reason "hours limit reached" — the manager can 
+see why the person is not in the pool and can decide manually. The same hard-gate treatment applies to a 
+worker who self-cancelled a confirmed booking for this specific event (RULE-04, §3.6): they are excluded 
+from this event's candidate pool for auto-assign, from self-apply on Radar, and from manual invitation by 
+the manager, shown as Unavailable → Rejected. 
+• 
+First-to-confirm takes the slot. If a worker presses "Accept" and the slot has already gone, a popup appears 
+in the app: "Sorry, this shift has been taken — someone confirmed first." The invitation then moves to 
+"Closed" and disappears from the list of active invites (it does not linger as if it were live). 
+
+
+===== PAGE 20 =====
+20 
+• 
+Fallback: the pool is exhausted / not filling → the manager steps in (a phone call / manual invitations). 
+• 
+Buffer-exhausted escalation (same-day): the moment a shift starts, responsibility for filling it passes from the 
+ordinary hourly auto_staffing cron to a separate job of its own. The handover is exclusive, not parallel — 
+from that point the hourly cron does not touch this event at all. The escalation job runs every 10 minutes 
+against events that are already under way and still short of workers; it widens the invite pool to every 
+worker qualified for that role within a 3-mile radius of the venue, ignoring the event's original headcount + 
+buffer cap, and keeps inviting on that 10-minute cycle until the shift is filled or the widened pool is 
+exhausted. Why the split: before the start, an hour between rounds is acceptable because there is still time 
+to find someone; once people are already working short-handed, an hour is useless, and proximity to the 
+venue matters more than the match score. A replacement confirmed after the shift has already started is 
+exempt from the §5.1/§3.3 30-minute check-in auto-lock — their check-in window stays open until the shift 
+ends (confirmed 01.09.2026). 
+3.5 Three-stage confirmation (the anti-no-show core) 
+The problem it solves: a worker can confirm a shift two weeks out — and forget all about it by the date. One 
+confirmation is therefore not enough. 
+1. Initial confirm — the worker accepts the invitation (possibly two weeks ahead). Invited → Confirmed. 
+2. Day-before "I'm ready" — the ONLY hard deadline. 
+• 
+The day before, the worker must press "I'm ready" (push). 
+• 
+The deadline is 12:00 noon the day before. 
+• 
+Not pressed by 12:00 → the system automatically releases the slot, sends the worker a push confirming 
+they've been removed (N6b, §8), and starts auto-assigning a replacement. 
+• 
+Why noon: any later and there is no time to find a replacement and get them to tomorrow's morning shift. 
+3. On-the-day — attendance confirmation (WITHOUT automatic slot release). 
+• 
+On the day of the shift the worker gets one more push: "Confirm today's shift." 
+• 
+  This is a reminder, NOT a deadline. If they do not confirm, the slot is not released automatically: on the 
+day itself, finding a replacement is unrealistic. 
+• 
+So why have it: it is an early warning for the office. Whoever has not confirmed is shown with the status 
+"Not confirmed today" in the Check-in monitor (§9.5) — they can still check in normally, exactly like anyone 
+else — and the manager still has time to react manually (call them, pull someone from the buffer), 
+confirmed 31.07.2026. 
+• 
+Same-day dropouts are covered by the BUFFER (§3.2) — that is exactly why THC overbooks (people turn up 
+late or vanish on the day). 
+If the event time / date, venue address, or dress code changes → everyone booked must re-confirm (an 
+"Awaiting" state, not a banner) + push, since these changes affect the worker's job on the day. This applies 
+whether it's the start time or the end time that changes — either one triggers the same re-confirmation flow. 
+The push (N11, §8) is a standard device-level notification (FCM/APNs, §1.3) and reaches the worker even if the 
+Staffing App is closed. The card shows a "Time Changed" tag, a line stating what changed (e.g. "Start time moved 
+by the office (was 09:00–14:00)"), and a "Confirm new time" button (confirmed against the approved design and 
+by THC, correspondence, 01.09.2026). Editing headcount, buffer, charge rate, or PO number applies silently — 
+no re-confirmation is triggered for already-booked staff. 
+
+
+===== PAGE 21 =====
+21 
+3.6 Booking state machine 
+invited ─(worker Accepts in the app, blocked if the shift overlaps another of the worker's CONFIRMED bookings 
+— §3.4)→ confirmed → auto-withdraws the worker's other open invitations that overlap this shift's time window 
+(§3.4) ─ [shift + checklog]→ worked; invited/confirmed → cancelled (office Withdraw / the 12:00 cutoff passes 
+without "I'm ready" / GDPR) → the slot is released → auto-assign tops it up. Invitations (invited) have no 
+deadline and are never withdrawn by auto-assign (it only adds new, additive batches). A separate, worker-
+initiated transition exists for confirmed → cancelled: self-cancel, available only while more than 72h remain 
+before the shift's scheduled start (RULE-04, §7). Unlike the other cancelled triggers above, self-cancel 
+permanently excludes the worker from that specific event — no self-apply, no auto-assign invitation, and no 
+manual invitation from the manager — and the worker is shown on the event board as Unavailable → Rejected 
+(§3.3, §3.4). A separate branch exists off worked itself, not a new top-level state: if check-out is never pressed 
+within 4 hours of the shift's scheduled end, the booking stays worked but its payable time is undetermined, 
+flagged as a "No check-out" Violation (RULE-02, §5.2, §9.5) — it only settles once a manager resolves that 
+violation by entering the worker's actual finish time, after which the booking's payable time is fixed and it 
+proceeds through payroll as normal (§7, BG-08). 
+4. COMPLIANCE 
+4.1 Compliance /compliance — two tabs 
+Tab 1 · "Needs review" (the manager's queue) 
+Why it exists. Candidates are reviewed on the onboarding kanban. But an existing worker who re-uploads a 
+document (after an expiry or a rejection) never appears on that kanban — they have long since been Staff, not a 
+candidate. Without this tab, nobody would ever see that document. 
+• 
+A list of every profile with a document — or a Criminal Record declaration answered Yes, whether made at 
+onboarding or from the app while working (§10.7) — in the "under review" state — candidates and current 
+workers alike, excluding Rejected candidates and Removed (GDPR) workers: once someone leaves the 
+pipeline as Rejected, or is anonymised via Remove, their outstanding documents no longer need manager 
+review and drop out of this queue automatically. A No answer is auto-verified on submission and never 
+appears in this queue. 
+• 
+Each row: who · which document · when it was uploaded · what the AI found (the extracted date + a 
+confidence level) · [Verify] / [Reject]. 
+• 
+Reject → the manager gives a reason → the worker gets a push, "Document rejected — [reason]" + a "Re-
+upload" button (§2.3). 
+• 
+Verify → the document is confirmed. If the worker was blocked, the system re-checks their full compliance 
+status (§4.3) — they are only unblocked once every document is verified and not expired, and the Criminal 
+Record declaration (if answered Yes) is also verified. Verifying this one document does not, by itself, unblock 
+them if anything else is still outstanding. 
+• 
+A counter in the menu — so the manager can see the queue is not empty. 
+Tab 2 · "Radar" (what is expiring) 
+• 
+Counters: expired (blocking) / expiring. 
+• 
+Table: who · document · expiry date · days left · status. 
+• 
+Blocking is fully automatic; there is no manual "Send reminder" button — the reminders go out by 
+themselves (§4.2). 
+
+
+===== PAGE 22 =====
+22 
+4.2 Document expiry reminders 
+The worker receives a push notification on their phone (not an email — Gen-Z does not read email): 
+When 
+What they get 
+1 month before expiry 
+"Update your [document] — it expires on [date]" 
+2 weeks before 
+The same, more insistent 
+1 week before 
+Final warning 
+On the expiry day 
+"You have been blocked — update your document" (the 
+automatic block fires at the same moment, §4.3) 
+ 
+The reminders are fully automatic — the manager presses nothing. 
+Expiry rule for the University Term Dates Letter: 
+• 
+  The graduation date printed on the letter is NOT the expiry date — ignore it for reminder purposes. 
+• 
+  The letter itself expires 31 December (end of calendar year), regardless of what dates are printed on it. 
+• 
+  Reminders start from the beginning of December (one month out), then follow the same standard 
+ladder as other documents (§4.2). 
+• 
+  The AI must verify that the dates found in the document are in the future, not the past — an already-
+expired letter is not accepted. 
+• 
+Explicitly rejected: triggering the reminder one month before the last vacation date listed in the letter (too 
+early — the student won't physically have next year's letter yet, and we'd block someone who did nothing 
+wrong). 
+• 
+If the student is late uploading a new letter (e.g. it arrives mid-January) — they get blocked until they upload 
+it. This is treated the same as an expired passport: not a punishment, just "can't proceed until renewed." 
+• 
+A student who has finished their course should not be chased for next year's term letter at all — that is 
+what the Official University Completion Letter is for (§4.5). Once a completion letter is verified, the term-
+letter reminder ladder for that worker stops. 
+4.5 Graduation — the Official University Completion Letter 
+The problem it solves. Today a student-visa worker is permanently cycled between 20 h/week in term and 48 
+h/week out of term, off the dates in their University Term Dates Letter. When they actually graduate, the course 
+is over and the term cycling is meaningless — but nothing in the system tells it that, so the worker stays capped 
+at 20 hours every time the calendar says "term". 
+What is built. A new document type, Official University Completion Letter, added to the same document model 
+as every other compliance document (§4.4) — it is uploaded, sits as pending, is read by the AI, appears in the 
+manager's "Needs review" queue (§4.1) with Verify / Reject, and a rejection sends the worker the standard push 
+with the reason and a Re-upload button (§2.3, §8 N8). No new review mechanism is introduced. 
+• 
+Where it is uploaded. Not a wizard step — the worker graduates long after onboarding. It sits on the 
+Documents tab of the app (§10.4) as an optional document available to any worker on the International 
+student branch, and on the candidate / staff profile in the Back Office (§2.3, §9.6). 
+• 
+What it does when verified. Verification sets `graduated_at` on the worker, and from that date the cap 
+calculation (RULE-20, §4.4) stops consulting their term dates and returns a flat 48 h/week, permanently. As 
+everywhere else, nobody types a number — verifying the document is the whole action. The change is 
+
+
+===== PAGE 23 =====
+23 
+effective-dated from the verification, not backdated: hours already worked and already paid under the old 
+cap are untouched, and the worker receives push N14 (§8) telling them their limit has changed. 
+• 
+It overrides the term-time cycle outright. Once a completion letter is verified, the University Term Dates 
+Letter stops driving that worker's cap and stops generating expiry reminders (§4.2). The term dates are 
+retained on the profile as history — they are evidence of what the cap was at the time a past shift was 
+worked — but they no longer switch anything. The worker's profile shows "48 h/week — graduated, 
+completion letter verified [date]" in place of the term-time cycle. 
+• 
+Above 48 hours. The completion letter unlocks 48 h; it does not unlock more. To work beyond 48 h the 
+worker must also sign the 48-hour opt-out (§4.4), which stays exactly what it is today — a tick-box 
+agreement, revocable by the worker on notice. A verified completion letter plus a signed opt-out is what 
+removes the weekly ceiling. 
+• 
+The visa still wins. The completion letter changes the study limit, not the visa. Where the worker's right to 
+work carries its own condition or expiry (§2.5, §4.4), that condition continues to take precedence and the 
+gov.uk share-code expiry keeps running its own reminder ladder. A graduate whose student visa expires is 
+blocked on the visa, completion letter or not. 
+• 
+Reporting. A dedicated Student visa view in the Staff directory (§9.6) lists every worker on the International 
+student branch with their current weekly cap, which evidence set that cap (term letter or completion letter, 
+with its verification date), and their right-to-work expiry — so the office can see the whole student 
+population and its caps in one place rather than opening profiles one at a time. 
+• 
+Scope note. This is a self-contained addition — a document type, a cap-override rule and a report view — 
+and is estimated and scheduled as its own piece of work rather than folded into the existing compliance 
+build. 
+4.3 Document expiry — the consequences (automatic) 
+On the day a document expires, the system does the following by itself, with no manager involved: 
+1. Moves the worker to blocked. 
+2. Removes them from ALL future allocations (confirmed shifts) — those slots are released and go into auto-
+assign for a replacement. 
+3. Withdraws all of their open invitations — they disappear from their app. 
+4. Excludes them from scoring — they enter no new auto-assign round and do not appear in the candidate 
+pool. 
+5. Locks the app: the worker can still log in, but sees ONLY the "Documents" tab. Shifts, Radar and Invites are 
+unavailable until they supply a valid document. 
+Unblocking (auto-blocked workers): the worker uploads a new document → the office verifies it. Verifying any 
+document automatically re-checks the person's FULL compliance status — every document (not just the one that 
+caused the block) must be verified and not expired, and the Criminal Record declaration, if answered Yes, must 
+also be verified. Only when every one of these is satisfied does the system unblock the worker automatically — 
+no separate manual "Unblock" step is needed. If any other document has also expired during their time away, 
+the worker can log in but still sees ONLY the Documents tab — Shifts / Radar / Invites stay locked until that 
+document too is uploaded and verified. Example from the call: right to work was valid until 30 July. The person 
+left 26 July, came back in March 2027. When they upload and get verified on the document that triggered the 
+block, the system also checks their share code — already dead — so the app stays locked to Documents instead 
+of fully unblocking. There is no automatic restoration to the shifts they were removed from — those may already 
+have gone to someone else. 
+
+
+===== PAGE 24 =====
+24 
+Unblocking (manually-blocked workers, §9.6): since a manual block is not caused by documents, the manager 
+must press Unblock explicitly on the profile. Pressing it runs the same full compliance check described above 
+before the block is actually lifted. 
+4.4 Other rules 
+• 
+Hard gate: a non-compliant / blocked worker cannot be assigned to a shift (checked before scoring). 
+• 
+Document states: upload → pending → verified → expiring (≤ 30 days) → expired; or rejected (with a 
+reason) → "Re-upload" → upload → pending. 
+• 
+Right-to-work-until from gov.uk = the expiry date used for reminders. 
+• 
+Weekly hours limit — calculated automatically (RULE-20). The cap is never set by the office and is never 
+stored as a number on the worker. It is derived, every time it is needed, from the term dates on the worker's 
+verified University Term Dates Letter: 
+Worker 
+Cap for a given date 
+Not on a student visa 
+48 h — or no weekly ceiling where the worker has signed the 
+48-hour opt-out 
+Student visa, date falls inside a holiday range from the verified 
+letter 
+48 h — or no ceiling with a signed opt-out 
+Student visa, date falls outside every holiday range (i.e. term 
+time) 
+20 h — the opt-out cannot lift this, because it is a visa 
+condition (§4.4 table below) 
+Student visa, completion letter verified (§4.5) 
+48 h — permanently, term dates no longer apply — or no 
+ceiling with a signed opt-out 
+ 
+• 
+A week that straddles term and holiday takes the lower cap. The cap applied to a Mon–Sun week is the 
+lowest cap in force on any day of that week. A week in which term restarts on the Thursday is a 20-hour 
+week, not a 48-hour one. This is the safe reading of the visa condition and it is applied automatically — there 
+is no judgement call for anyone to make and no override. 
+• 
+Because the cap is calculated rather than stored, it moves on its own the moment a term or a holiday 
+begins: no cron flips a value, no manager remembers to change anything, and a worker whose holiday 
+started overnight can pick up 48 hours of shifts the same morning. The evening before, the same worker 
+would have been hard-gated at 20 (§3.4). 
+• 
+The worker is told when their cap changes. On the morning the band changes, the daily compliance job 
+sends push N14 (§8): "Your weekly limit is now [20 / 48] hours — [term time / university holiday] until 
+[date]." It fires once per change, never more. 
+• 
+Where a student's term letter has expired or is missing, there is no cap to calculate because the worker is 
+already blocked and cannot be booked at all (§4.2, §4.3). The cap question only arises for a compliant 
+worker. 
+• 
+48h opt-out (Working Time Regulations) — a tick box. This is general UK employment law, so it is available to 
+every worker regardless of nationality. BUT an opt-out cannot exceed a limit imposed by a visa: 
+Right to work type 
+Does the 48h opt-out apply 
+UK / Irish citizen 
+  Yes — there is no visa limit 
+EU/EEA settled / pre-settled 
+  Yes — there is no visa limit 
+International student 
+  In term — NO (the visa limit of 20 h/week stands; an opt-
+out does not override it).   Out of term — yes 
+Work visa 
+  Only within what the visa allows — the visa conditions 
+
+
+===== PAGE 25 =====
+25 
+Right to work type 
+Does the 48h opt-out apply 
+take precedence over the opt-out 
+Dependant / other visa 
+  The same — the conditions of the specific visa decide 
+ 
+5. CHECK-IN / CHECK-OUT (GEOFENCE, GPS) 
+5.1 Mobile check-in / check-out 
+• 
+GPS states: 
+• 
+Out of radius for check-IN — a red message giving the distance, and the "Check in — verify GPS" button is 
+disabled. 
+• 
+Out of radius for check-OUT — checked in but outside the zone → the button stays enabled from the start of 
+the shift until 4 hours after the scheduled end (see below); pressing it off-site shows a message using the last 
+known on-site time from background tracking, e.g. "You checked out away from the venue — we've 
+recorded your last time on site, 16:00" (§5.2). This value can never be empty: check-in itself is a GPS-verified 
+on-site fix (see the check-IN state above), so if background tracking produced nothing at all after check-in, 
+the last known on-site time falls back to the check-in timestamp. Because that would make the shift zero-
+length and is almost certainly wrong, a check-out recorded this way raises the same "No check-out" 
+Violation (RULE-02, §9.5) so a manager confirms the real finish time, and the worker sees "We couldn't 
+confirm when you left the venue — the office will confirm your finish time with you" instead of the normal 
+message above. If the button is never pressed within that 4-hour window, it locks and the shift is handled 
+through the "No check-out" Violation instead (RULE-02, §9.5). 
+• 
+In radius for check-OUT — green, check-out available, records the actual check-out time as normal. 
+• 
+The check-out confirmation screen shows the shift duration, hourly rate, and total earnings for the shift — 
+with emphasis on the total earnings figure. Holiday pay is excluded and not shown here (consistent with §9.8 
+— the worker only ever sees the base rate, never the +12.07% holiday component). The screen's payroll 
+copy reads: "Your hours are sent to the office as a timesheet. You're paid the Friday after the week you 
+worked." — replacing an earlier inconsistent draft ("payroll runs Monday") that contradicted RULE-06 
+(payroll week Mon–Sun, paid on Friday, §7); confirmed 01.09.2026. 
+• 
+Check-out is enabled from anywhere once the shift has started, until 4 hours after the scheduled end — not 
+gated by the geofence (this previously contradicted the "forgot to check out" example below, where check-
+out is pressed off-site; fixed and confirmed 01.09.2026). After that 4-hour window, the button locks and the 
+shift instead raises a "No check-out" Violation that only a manager can resolve (RULE-02, §9.5, confirmed 
+07.09.2026). Being on site only affects which timestamp is recorded (§5.2, RULE-01) and which confirmation 
+message is shown, per the GPS states above. 
+• 
+Late arrival — a 30-minute grace window after the shift's scheduled start time: checking in during this 
+window auto-marks the worker Late (not No-show), minutes late calculated from the actual check-in time. If 
+the worker still hasn't checked in 30 minutes after the scheduled start, the system marks them No-show and 
+the check-in button locks — the worker can no longer check themselves in; a manager must press "Get 
+back" in the Back Office to register their arrival and reclassify them to Late (§3.3, §9.5), confirmed 
+31.07.2026. Exception: a booking confirmed AFTER the shift's scheduled start time (e.g. a replacement 
+brought in via the Buffer-exhausted escalation, §3.4) is not subject to this 30-minute auto-lock at all — the 
+check-in button stays open for that worker until the shift ends, since they may be arriving from across 
+London and a fixed window measured from the original start time would be meaningless for them 
+(confirmed 01.09.2026). 
+
+
+===== PAGE 26 =====
+26 
+Background GPS tracking during the shift — a core requirement, and the reason the technology has to be 
+native: 
+• 
+The app tracks the worker's GPS position in the background for the whole shift — even when the app is 
+closed and the phone is in their pocket. 
+• 
+Why: to prove the person actually was on site for the whole shift, rather than badging in and walking off. 
+Without it, a check-in is just a button press that proves nothing. 
+• 
+The system records any exit from the geofence during the shift → creates a Violation → it lands in the 
+Violation log (§8) and the manager deals with it manually. 
+• 
+It also covers the "forgot to check out" case: if the worker left at 16:00 but pressed check-out at 21:00 from 
+home, the system takes the last moment they were on site (16:00), not 21:00 (§5.2). 
+• 
+  Background tracking is precisely why the app is native — web and hybrid apps do not hold GPS in the 
+background. 
+5.2 Time rules for pay 
+• 
+RULE-01 pay-window: payable time = the intersection of [check-in, check-out] with the scheduled [start, 
+end], where check-out is either the timestamp the worker actually recorded (in-radius press, or the last 
+known on-site GPS time when pressed off-site) or, for a shift closed via the "No check-out" Violation (§9.5), 
+the finish date and time the manager enters when resolving it. Arrived 13:30 for a 14:00 start → those 30 
+minutes are NOT paid; left early → deducted. A 15-minute grace window applies symmetrically on check-
+out: checking out up to 15 minutes after the scheduled end is still paid only up to the scheduled end time 
+(e.g. checked out at 16:15 for a 16:00 finish → paid to 16:00 — mirrors the check-in side, where checking in 
+during the 30-minute grace window is paid from the scheduled start, not the actual check-in time). Between 
+15 minutes and 4 hours after the scheduled end, a late check-out still pays only up to the scheduled end and 
+raises a red flag on the Check-in monitor (§9.5) so the manager can verify with the worker — it does not 
+change the payable amount. If check-out is still not pressed 4 hours after the scheduled end, RULE-02 takes 
+over instead of any default (confirmed 07.09.2026). 
+• 
+RULE-02 no check-out: the "No check-out" Violation (§9.5) is raised on either of two triggers. First, and the 
+usual one: check-out has not been pressed at all 4 hours after the shift's scheduled end — the button locks 
+and the violation is raised instead of defaulting to the scheduled finish. Second: check-out was pressed off-
+site but background tracking gives no on-site time after check-in, so the only available finish time would be 
+the check-in timestamp itself (§5.1) — the violation is raised immediately on that press, rather than 
+recording a zero-length shift. The shift's payable time stays undetermined until a manager resolves that 
+violation by entering the worker's actual finish date and time — that manager-entered time is then used as 
+the check-out for RULE-01's pay-window calculation. There is no silent default for a shift that is never closed 
+(confirmed 07.09.2026). 
+• 
+RULE-14 4-hour minimum: this rule applies only to a worker who actually checked in and worked the shift. If 
+their payable time then comes out under 4 hours, they are paid a 4-hour minimum regardless of the actual 
+hours worked — unless the shortfall is explained by a Violation against them. A logged "Left early" Violation 
+(§9.5) always blocks the floor, resolved or not — the normal RULE-01 pay-window deduction applies instead, 
+no minimum. A "No check-out" Violation (§9.5, RULE-02) blocks the floor only while it stays unresolved — 
+the same RULE-01 deduction with no minimum applies for as long as the manager hasn't resolved it. Once a 
+manager resolves a "No check-out" Violation via "Resolve", the shift is treated as satisfactorily closed for the 
+worker: the 4-hour floor applies again (if the manager-entered finish time still comes out under 4 hours), 
+and the violation stops counting against the worker's show-rate — mirroring the fact that Resolving it means 
+the shift ended to the client's satisfaction (confirmed 08.09.2026). The floor never applies to someone who 
+did not work the shift at all: a buffer turn-away is governed solely by RULE-15 below (a fixed 4 hours if they 
+
+
+===== PAGE 27 =====
+27 
+were on time, nothing if they were late — RULE-14 does not override that "nothing"), a No-show is paid 
+nothing, and a cancelled or withdrawn booking is handled under §3.3, not here. 
+• 
+RULE-15 buffer turn-away pay: under a strict Buffer policy (§3.2), a worker whose check-in attempt is logged 
+(CheckLog.attempted_at, §1.5) within the 30-minute grace window but is turned away because headcount is 
+already filled is paid a fixed 4 hours — a flat amount, not tied to the shift's scheduled length and not half the 
+shift, since they never actually worked. A worker turned away who was themselves late is paid nothing for 
+that shift. 
+5.2b Breaks 
+• 
+Governed by the client's break policy (§3.2). If the client pays for breaks, the worker logs nothing — there 
+are no buttons. 
+• 
+If the client does NOT pay, a breaks block appears on the shift screen in the worker's app. For shifts longer 
+than 6 hours, this block also shows a banner/label: "A break will be applied to all shifts over 6 hours — 
+please check with your Manager on site" (confirmed 01.09.2026) — this is informational copy only, 
+referencing UK law (a mandatory 20-minute break for shifts over 6 hours); the system does not enforce or 
+validate that any particular break length is actually taken. 
+• 
+Start break — available ONLY after check-in (you cannot be on a break you never started a shift for). Before 
+check-in the button is disabled, with the hint "Unlocks after check-in". The Breaks block then stays available 
+for the rest of the shift, right through until the worker actually checks out — it is not tied to the shift's 
+scheduled end time and does not disable or disappear if the shift runs longer than planned (confirmed 
+01.09.2026). 
+• 
+"On break" state: the break timer runs, the chargeable timer is paused, and the button becomes "Finish 
+break — back to work". 
+• 
+6-hour break alert (added 02.09.2026). Where the client does NOT pay for breaks, a worker who has been 
+checked in for 6 hours with no break logged receives a push: "You've been on shift 6 hours — please ask 
+your manager on site about taking your break." (§8, N13). It fires once per shift, is skipped entirely if any 
+break has already been started, and is informational — it prompts the worker, it does not create a Violation, 
+pause the chargeable timer or enforce a break. 
+• 
+Scope note on the alert: this is not a by-product of the Breaks column on the check-in monitor (§9.5). That 
+column is cheap because it renders data the system already stores, on page load. A push needs its own 
+scheduled job, continuously checking every in-progress shift for "6 hours since check-in, no break logged 
+yet" and firing at that moment — the same shape of background work as the check-in and check-out 
+reminders (§7, BG-01 / BG-02 / BG-03). It is specified and estimated as its own item, BG-10. 
+• 
+Several breaks per shift are allowed. 
+• 
+The total break time is deducted from the hours worked → affecting both pay and charge. 
+• 
+Breaks appear in the Comments column of the sign-out timesheet (§11.3). 
+6. AUTO-ASSIGN SCORING (pure maths, no AI) 
+The match score is 0–100 = a weighted sum of 5 factors (each normalised to 0–100). 
+Factor 
+Weight 
+Formula (0–100) 
+Show-rate (reliability) 
+30% 
+(reliability − 90)/10 × 100, clamped 
+Client rating 
+25% 
+(rating − 4.0)/1.0 × 100, clamped 
+Proximity (haversine) 
+25% 
+100 − km × 9, clamped 
+Fair rotation 
+10% 
+100 − min(future_shifts, 5) × 20 
+
+
+===== PAGE 28 =====
+28 
+Factor 
+Weight 
+Formula (0–100) 
+Venue history 
+10% 
+min(times, 10)/10 × 100 
+ 
+score = 0.30·show + 0.25·rating + 0.25·proximity + 0.10·fair + 0.10·venue. * Weightings are configurable, but not 
+from a dedicated screen in the Back Office Portal — they are exposed as editable fields in Django Admin (a 
+lightweight backend panel), since they are not expected to change often in day-to-day use (confirmed by THC). 
+• 
+Sorted descending within each wave: the qualified pool is scored and exhausted first, and only then is the 
+unqualified pool scored and worked through (RULE-17, §3.4). Client qualification is deliberately not one of 
+the five factors above — a weighting could always be out-scored by proximity or rotation, and the rule THC 
+asked for is an ordering, not a nudge. 
+• 
+Sorted descending; the allocation of invites defaults to headcount + buffer and is editable (§3.4). 
+• 
+Explainability: the match number + a per-factor breakdown (on hover) + a legend of the weights + reason 
+chips with tooltips. 
+• 
+Hard-gate exclusions (not scored at all): wrong-role · blocked-compliance · booked-elsewhere · hours limit 
+reached · rejected — the worker self-cancelled a confirmed booking for this specific event (RULE-04, §3.6), 
+which blocks auto-assign, self-apply on Radar and manual invitation alike for that event (§3.3, §3.4, §4.4). Of 
+these five, wrong-role behaves differently on screen: it produces no row on the event board at all, not even 
+under Unavailable. A worker who isn't qualified for the role was never a candidate for it, and listing every 
+unqualified worker in Unavailable would bury the section under hundreds of names. The other four do 
+appear under Unavailable with their reason shown, because those people would otherwise be genuine 
+candidates and the manager needs to see why they are not in the pool (§3.3). Not being qualified at the 
+client is not a hard-gate exclusion and never sends a worker to Unavailable — it only puts them in the 
+second invitation wave (RULE-17, §3.4). 
+7. BACKGROUND AND TIME-BASED RULES (they run themselves, with no 
+screen) 
+# 
+Process 
+Trigger 
+Action 
+BG-01 
+Push check-in reminder 
+−30 min before the start 
+remind them to check in — 
+skipped if they've already 
+checked in 
+BG-02 
+Push "don't forget check-out" 
+−30 min before the end 
+remind them to check out — 
+skipped if they've already 
+checked out 
+BG-02b 
+Push "you still haven't 
+checked out" 
++30 min after the scheduled 
+end 
+ 
+remind them to check out 
+while the button is still active 
+— skipped if they've already 
+checked out; prevents most 
+"No check-out" Violations 
+(BG-09) from ever reaching 
+the office (confirmed 
+08.09.2026) 
+ 
+ 
+ 
+BG-03 
+Red alert to the manager 
+worker not signed in ~−30 
+min before the start 
+"−1 worker on this event", 
+escalate; the system keeps 
+
+
+===== PAGE 29 =====
+29 
+# 
+Process 
+Trigger 
+Action 
+re-checking until 30 minutes 
+after the shift's scheduled 
+start — if the worker still 
+hasn't checked in by then, 
+they are automatically 
+marked No-show with the 
+show-rate penalty applied, 
+and their check-in button 
+locks (§3.3, §5.1, §9.5). Does 
+not apply to a worker whose 
+booking was confirmed after 
+the shift's scheduled start 
+(e.g. a Buffer-exhausted 
+escalation replacement, §3.4) 
+— their check-in stays open 
+until the shift ends 
+BG-04 
+Doc-expiry reminder 
+1 month / 2 weeks / 1 week 
+push "re-upload" 
+BG-05 
+Auto-block on expiry 
+the moment the document 
+expires 
+status → blocked + release 
+future bookings 
+BG-06 
+Background geofence 
+tracking 
+during the shift (native, 
+background) 
+catch any exit from the radius 
+BG-07 
+Violation auto-flag 
+exit from the geofence during 
+a shift 
+log in/out → manager 
+reviews case by case 
+BG-08 
+Automatic reports to the 
+finance team 
+every Monday at 09:00 
+1 email: payroll CSV (always) 
++ HMRC new-starter CSV 
+(only if there are new 
+starters) — §9.9. A shift still 
+carrying an unresolved "No 
+check-out" Violation (§9.5) is 
+held out of that week's CSV 
+until a manager resolves it; if 
+it is still unresolved when the 
+export runs, it rolls forward 
+and goes out with the 
+following Monday's run 
+instead (confirmed 
+07.09.2026). 
+BG-09 
+Auto-raise "No check-out" 
+Violation 
+check-out still not pressed 4 
+hours after the shift's 
+scheduled end 
+button locks, "No check-out" 
+Violation raised (§9.5), 
+payable time held until a 
+manager resolves it 
+BG-10 
+6-hour break alert 
+6 hours after check-in with 
+no break logged, on a shift 
+where the client does not 
+pay for breaks 
+push N13 prompting the 
+worker to ask about their 
+break (§5.2b) — fires once 
+per shift, skipped if a break 
+has already been started; 
+informational only, no 
+Violation and no effect on 
+pay 
+cron 
+auto_staffing (hourly, at :17) 
+every event with an unfilled 
+additively invites the next 
+
+
+===== PAGE 30 =====
+30 
+# 
+Process 
+Trigger 
+Action 
+slot, however far in the 
+future, up to the moment 
+that shift starts — confirmed 
+28.07.2026: "The system 
+should start to auto assign as 
+soon as the shift is built." 
+Once the shift has started, 
+this cron drops the event 
+entirely and the escalation 
+job takes over (§3.4) 
+highest scores (allocation) 
+until it is filled 
+cron 
+auto_staffing --cutoff (12:05) 
+tomorrow's shifts 
+drop confirmed workers who 
+did not press "I'm ready" → 
+re-fill 
+cron 
+auto_staffing --escalation 
+(every 10 minutes) 
+events already under way 
+that are still short of workers 
+widen the invite pool to a 3-
+mile radius around the venue, 
+ignoring the headcount + 
+buffer cap, and keep inviting 
+on that cycle until the shift is 
+filled or the pool is exhausted 
+(§3.4) 
+cron 
+compliance_daily (05:00) 
+daily 
+auto-block expired 
+documents + release their 
+bookings + compute the N1–
+N4 tiers + send N14 to any 
+worker whose calculated 
+weekly cap changes band 
+today (term starts or ends, 
+§4.4). The job does not set or 
+store a cap — the cap is 
+always calculated at the point 
+of use; this run only notifies 
+webhook 
+Willo 
+event-driven 
+New Response → completed; 
+Stage Change → Accept / 
+Reject 
+ 
+Calculation rules: RULE-01 pay-window · RULE-02 no check-out (4h+) · RULE-03 first-to-confirm · RULE-04 self-
+cancel window — worker can cancel a CONFIRMED booking any time until 72h before shift start (no show-rate 
+impact), which permanently excludes them from that event (self-apply, auto-assign, and manual invite all 
+blocked; shown as Unavailable → Rejected, §3.3, §3.4, §3.6); declining an invite before confirmation remains 
+unrestricted at any time, §10.4· RULE-05 notify-count (now allocation, §3.4) · RULE-06 payroll Mon–Sun, paid on 
+Friday · RULE-07 buffer = an absolute number per role · RULE-08 same-day shifts get auto-assign the same as any 
+other shift — notify + self-apply remains available as an additional channel, but is not a substitute for auto-assign 
+(confirmed 01.09.2026) · RULE-09 quiz 80% / 3 attempts · RULE-10 documents → quiz gate · RULE-12 compliance 
+hard-gate · RULE-13 zero-hours · RULE-14 4-hour minimum (gated by absence of a "Left early" Violation, or by an 
+unresolved "No check-out" Violation — resolving it restores the floor, §5.2)· RULE-15 buffer turn-away pay (fixed 
+4h, strict buffer policy only, §3.2, §5.2) · RULE-16 stale invite/application auto-close — an invitation (not yet 
+accepted or declined) automatically disappears from the worker's Invites list the moment the event it belongs to 
+has ended; the same live filter (event.end_time < now) also applies to a still-pending Radar self-application 
+(Booking.source = self) that was never confirmed or resolved via N10/N10c — it drops out of the worker's 
+
+
+===== PAGE 31 =====
+31 
+"Applied" section on Radar and the event board's Potential pool once the event has ended, with no push (silent, 
+matching the invite behaviour above), since the event itself has already passed. Both are live filters on the 
+relevant queries, not a background job, and need no separate cron entry (§3.4, §10.4). · RULE-17 qualified-first 
+— auto-assign, the Potential pool ordering and Radar visibility all work through the pool qualified for that client 
+and that role in full before any unqualified worker is invited or shown the shift; it is a priority wave, not a hard 
+gate, and the manager can override it by inviting anyone manually (§3.4, §6, §9.6, §9.7, §10.4) · RULE-21 in-
+employment disclosure — a worker can declare a criminal conviction from the app at any time (§10.7); on 
+submission they are suspended exactly as an expired document suspends them, every future booking is 
+released, email E9 reaches the office without the declaration text, and the block lifts only on a manager verifying 
+the declaration and the full compliance re-check passing (§4.1, §4.3, §9.6) · RULE-20 calculated weekly cap — 
+the weekly hours cap is derived from the worker's verified term dates at the moment it is evaluated, never 
+stored and never set by the office; a Mon–Sun week spanning term and holiday takes the lower of the two caps, 
+and the visa condition cannot be lifted by the 48-hour opt-out (§1.5, §2.3, §4.4) · RULE-19 worker-initiated 
+leaving — a worker can leave at any time from the app (§10.6); on confirmation their status becomes inactive, 
+every booking whose shift has not yet started is released to auto-assign, open invitations and pending Radar 
+applications are withdrawn, a shift already under way is untouched and paid normally, and email E8 goes to the 
+office with the released shifts listed. Leaving carries no show-rate penalty. · RULE-18 per-role shift window — 
+start and end times belong to the role section, not the event; every scheduled-time calculation in this document 
+is run against the role's own window, and the event's window is simply the earliest start to the latest end across 
+its roles (§1.5, §3.2). 
+8. NOTIFICATIONS AND EMAILS 
+The principle: an 18–30 audience barely reads email → the main channel is push in the app. Email survives only 
+where the app does not exist yet (before onboarding) or where Willo sends the message itself. The only 
+mandatory system email is E3 (activation after acceptance). 
+PUSH (Staffing App, delivered via FCM / APNs) 
+# 
+Trigger 
+Content 
+Timing 
+N1 
+Document expiring 
+"update your [doc]" 
+1 month before 
+N2 
+Document expiring 
+"Update your [doc] — 2 
+weeks left" 
+2 weeks before 
+N3 
+Document expiring 
+"Final reminder: update your 
+[doc]" 
+1 week before 
+N4 
+Document expired 
+"You have been blocked — 
+please update" 
+on the day (+ automatic 
+block) 
+N5 
+Shift invitation 
+"[role] · [event] · [date/time] · 
+[rate]/h" 
+on invite 
+N6 
+Day-before 
+"Confirm tomorrow's shift by 
+12:00 today — or you'll be 
+removed from it" 
+the day before (cutoff 12:00) 
+N6b 
+Automatically dropped for 
+missing the day-before 
+deadline 
+"You have been removed 
+from your shift tomorrow as 
+we have not received your re-
+confirmation by the 12:00 
+deadline" 
+at the moment of the 
+automatic 12:05 cutoff 
+(confirmed 01.09.2026) 
+
+
+===== PAGE 32 =====
+32 
+# 
+Trigger 
+Content 
+Timing 
+N7 
+On-the-day 
+"Confirm today's shift" 
+on the day of the shift 
+N8 
+Document rejected 
+"Re-upload, here is the 
+reason" 
+on reject 
+N9 
+30 min before start / end 
+"Time to check in" / "Don't 
+forget to check out" — each 
+half is skipped if the worker 
+has already signed in / signed 
+out respectively 
+−30 min 
+N9b 
+Still not checked out 30 
+minutes after the shift's 
+scheduled end 
+"You haven't checked out of 
+[event] yet — tap to check 
+out." 
++30 min after the scheduled 
+end — skipped if the worker 
+has already checked out; sent 
+once, not repeated, and 
+leaves 3.5 hours before the 
+check-out button locks (RULE-
+02, §5.2) 
+N10 
+Radar application accepted 
+"You're booked! Your 
+application for [event] on 
+[date] has been accepted. 
+Tap to view your shift 
+details." 
+on the booking's transition to 
+Confirmed for a Radar self-
+application (Booking.source = 
+self) — whether the manager 
+picks the applicant manually 
+from the Potential pool, or 
+auto-assign/first-to-confirm 
+fills the role while the 
+application is still pending — 
+mandatory 
+N10b 
+Shift cancelled by the office 
+(manager presses Withdraw) 
+"You've been removed from 
+[event] · [date/time]" 
+on change — mandatory 
+(confirmed 14.07.2026) 
+N10c 
+Radar application not taken 
+forward (the role fills before 
+or without the office 
+reviewing this specific 
+application) 
+"Shift update: the [event] 
+shift on [date] has now been 
+filled. Keep an eye on Radar 
+— new shifts are added 
+regularly." 
+the moment the role 
+becomes fully confirmed and 
+drops off the event board 
+(§3.3) — one trigger covers 
+both a manual office pick of 
+someone else and an 
+automatic auto-assign/first-
+to-confirm fill — mandatory 
+N11 
+Event time / date changed 
+(start time OR end time — 
+either one triggers this push) 
+"Shift time changed — now 
+[…]" 
+on change — delivered as a 
+standard device-level push 
+(FCM/APNs, §1.3), reaching 
+the worker even if the 
+Staffing App is closed 
+N15 
+A declared conviction has 
+been reviewed and accepted, 
+and the worker is unblocked 
+(§10.7) 
+"Thanks for your patience — 
+your shifts are open again. 
+Tap to see what's available." 
+On the manager verifying the 
+declaration and the full 
+compliance re-check passing 
+(§4.3) 
+N14 
+Weekly hours cap changes 
+band — term time starts or 
+ends, or a completion letter is 
+verified (§4.4, §4.5) 
+"Your weekly limit is now [20 
+/ 48] hours — [term time / 
+university holiday] until 
+[date]." 
+On the morning the change 
+takes effect, from the daily 
+compliance job (§7) — once 
+per change 
+N13 
+6 hours on shift with no break 
+"You've been on shift 6 hours 
++6 h after check-in — once 
+
+
+===== PAGE 33 =====
+33 
+# 
+Trigger 
+Content 
+Timing 
+logged (unpaid-break clients 
+only) 
+— please ask your manager 
+on site about taking your 
+break." 
+per shift, skipped if a break 
+has already been started 
+(§5.2b, §7 BG-10) 
+N12 
+Event cancelled by the office 
+(client cancelled the booking) 
+— reaches every Confirmed 
+and Invited worker, plus 
+anyone with an open Radar 
+application for this event 
+(Booking.source = self, still 
+pending), not just 
+Confirmed/Invited 
+(confirmed 08.09.2026) 
+"This event has been 
+cancelled" 
+on cancel — mandatory 
+ 
+EMAIL 
+# 
+Trigger 
+Sender 
+Phase 
+E1 
+Form submitted 
+Willo — interview invitation (email 
+only) 
+ 
+E2 
+Interview rejection 
+The system (not Willo) — "Thank you 
+for taking the time to complete your 
+interview with The Hospitality 
+Company. On this occasion we will not 
+be taking your application further. We 
+wish you the very best." 
+mandatory 
+E3 
+Accepted after the 
+interview 
+The system — activation + password + 
+"download the app" 
+mandatory 
+E4 
+Quiz failed 3× 
+The system — the Health & Safety 
+Assessment — Unsuccessful wording 
+in §10.1, sent as an email as well as 
+shown in the app 
+mandatory 
+E5 
+Worker updates bank & 
+payroll details (§2.10) 
+The system — notifies 
+gisela@thehospitalitycompany.co.uk 
+and 
+thc_payroll@topsourceworldwide.com 
+of the change 
+mandatory 
+E6 
+Worker enters their NI 
+number after joining 
+without one (§2.10) 
+The system — notifies 
+gisela@thehospitalitycompany.co.uk 
+and 
+thc_payroll@topsourceworldwide.com 
+mandatory 
+E7 
+Worker updates their email 
+address or home address in 
+Profile details (§10.1) 
+The system — notifies 
+admin@thehospitalitycompany.co.uk 
+and 
+thc_payroll@topsourceworldwide.com 
+of the change 
+mandatory 
+E9 
+Worker declares a criminal 
+conviction while working 
+(§10.7) 
+The system — notifies 
+admin@thehospitalitycompany.co.uk 
+immediately. Subject "Criminal 
+mandatory 
+
+
+===== PAGE 34 =====
+34 
+# 
+Trigger 
+Sender 
+Phase 
+conviction declared — [name], 
+Employee ID [id]"; body carries name, 
+Employee ID, the time of the 
+declaration and the list of future shifts 
+released by it (event, client, venue, 
+role, date). The declaration details are 
+not included in the email — they are 
+read in the Back Office, where access 
+is role-controlled 
+E8 
+Worker requests their P45 
+and leaves (§10.6) 
+The system — notifies 
+admin@thehospitalitycompany.co.uk 
+immediately. Subject "P45 requested 
+— [name], Employee ID [id]"; body 
+carries name, Employee ID, NI 
+number, date and time of the request, 
+the reason given, the date of their last 
+completed shift, and the list of future 
+shifts released by the request (event, 
+client, venue, role, date) 
+mandatory 
+ 
+PART II · BACK OFFICE PORTAL 
+The workplace of THC's admin staff. 
+9. BACK OFFICE PORTAL — screens 
+This is the workplace of THC's admin staff. Below, each menu item is treated as its own screen: what the 
+manager sees and what they do with it. 
+Menu (top to bottom): Dashboard · Onboarding · Scheduling · Compliance · Check In / Out · (divider) · Staff · 
+Clients · Roles · Reports · Feedback · Venues. 
+9.1 Dashboard /dashboard 
+What it is: the first screen after login. It answers the question "what is on fire right now". 
+• 
+4 operational KPIs on a single row (values "as of this minute"): 
+• 
+Open positions — how many positions across ALL events are still unfilled (even a year out). This is "sold but 
+not staffed" — the headline number of the business. 
+• 
+On shift now — how many people are checked in and working right now. 
+• 
+Staff available — how many compliant workers are available. 
+• 
+Compliance blocks — how many people are blocked over documents. 
+• 
+A financial snapshot for the current week (Mon–Sun): Chargeable · Payable · Margin (including holiday pay). 
+• 
+Upcoming events — 10 days ahead, by date. On each role's row, the margin +£X/h in green (charge − final 
+pay). 
+
+
+===== PAGE 35 =====
+35 
+9.2 Onboarding /onboarding 
+The candidate kanban. Described in full in §2 (Onboarding / ATS). 
+9.3 Scheduling /events 
+The calendar and event building. Described in full in §3 (Scheduling + Auto-Assign). 
+9.4 Compliance /compliance 
+The document review queue + the expiry radar. Described in full in §4. 
+9.5 Check In / Out — the live monitor /checkin 
+What it is: the screen for the day of an event. It shows, in real time, who is already on site and who is not. 
+The top half — the live state of today's events. A table: 
+Column 
+What it shows 
+Staff 
+Photo + name (the real selfie taken during onboarding) 
+Event 
+Which event they are assigned to 
+Window 
+The scheduled window of that worker's own role, not the 
+event's (e.g. 19:00–02:00) — on an event with roles running at 
+different times, two rows for the same event will correctly 
+show different windows (§3.2). Dual-zone display per §1.8 
+Check-in 
+The actual check-in time — or empty if they have not checked 
+in yet 
+Breaks 
+Number of breaks logged so far this shift, plus the time of the 
+most recent one (e.g. "2 · last 14:10") — blank where the 
+client pays for breaks (§3.2), since the app holds no break data 
+at all in that case — shown as a dash, never as "0": "no data" 
+and "took no breaks" must not look the same to the manager, 
+or an absent value would read as a worker who never broke all 
+shift.This is a passive display of data already tracked for the 
+pay/charge deduction (§5.2b), not a new automated alert — 
+the manager uses it to spot at a glance if someone has gone a 
+long stretch without a break and can step in themselves 
+(confirmed 01.09.2026). The worker is prompted separately 
+and automatically at the 6-hour mark by push N13 (§5.2b, §7 
+BG-10). 
+Status 
+On shift (green — on site) · Off-site (amber/red — checked in 
+but the background GPS detected them leaving the geofence 
+mid-shift, §5.1; used only while the shift is still running, never 
+as an end state) · Checked out [time] (neutral — the shift 
+closed normally, showing the recorded check-out time) · No 
+check-out (red — the shift ended, check-out was never 
+pressed, and at 4 hours past the scheduled end the button 
+locked and a "No check-out" Violation was raised, RULE-02, 
+§5.2; the row stays in this state until a manager resolves that 
+violation in the Violation log below) · Due [scheduled start 
+time] (amber, waiting) · Not confirmed today (a variant of Due, 
+shown instead of it for a worker who hasn't pressed the on-
+the-day "I'm ready" confirmation, §3.5 — the worker can still 
+
+
+===== PAGE 36 =====
+36 
+Column 
+What it shows 
+check in normally, exactly like Due; it only gives the manager 
+visibility on who skipped the day-of approval, confirmed 
+31.07.2026) · Not checked in — 30 min alert (red), remaining 
+the same label through the automatic No-show at 
+start+30min; there is no separate status pill for No-show 
+ 
+• 
+The red alert: if a worker has not checked in 30 minutes before the start, their Status pill turns red ("Not 
+checked in — 30 min alert") and the event is flagged "−1 worker". Red is always carried on the Status pill, 
+never as a row-level background — the monitor table has no row-level red state. The manager sees the 
+problem before it becomes a failure and still has time to pull someone from the buffer — and if the buffer is 
+already exhausted, this is also the trigger for the automatic Auto-Assign escalation described in §3.4. 
+• 
+If a checked-in worker leaves the venue geofence mid-shift, their Status changes from "On shift" to "Off-site" 
+immediately (client decision, confirmed by THC) — a live status on the main table, not only a line in the 
+Violation log below, so the manager can see straight away who has left site. 
+• 
+Late check-out red flag: if a worker's recorded check-out time — the actual on-site departure, not the 
+moment the button was pressed (§5.1) — is more than 15 minutes after the shift's scheduled end time, the 
+"Checked out [time]" pill in the Status column is rendered red instead of neutral, flagging the late finish for 
+the manager to verify with the worker — mirroring the check-in red alert above, but on the check-out side. 
+This does not affect pay: RULE-01 (§5.2) still caps payable time at the scheduled end regardless of the actual 
+check-out time. This red-flag state lasts until 4 hours after the scheduled end; if check-out is still not pressed 
+by then, the button locks and the shift instead raises a "No check-out" Violation below, requiring the 
+manager to enter the worker's actual finish time to resolve it (RULE-02, §5.2, confirmed 07.09.2026). 
+• 
+The same screen shows who has not confirmed their shift on the day (§3.5) — the early warning. 
+The bottom half — the Violation log. 
+• 
+* A history of violations: Staff · Event · Violation · Time. Clicking a row opens a separate detail window for 
+that worker's violation (confirmed against the approved design, 01.09.2026) — this is where the check-in / 
+check-out timestamps and the Resolve action with its mandatory note live, rather than being crammed into 
+the 4-column table itself. The window doubles as the audit trail: on an already-resolved entry it shows the 
+manager's note and the name of the manager who closed it, and for a resolved "No check-out" it 
+additionally shows the finish time that manager entered. The note is never write-only — resolving cancels a 
+show-rate penalty, so the reasoning and its author stay visible on the entry afterwards. The row itself is 
+clickable, with a "Details" button alongside as the keyboard path. As built, the window also carries a 
+"Flagged as" line that the server composes as the violation name plus the event name (e.g. "Checked out 
+early — Gala Dinner"). Both values already appear in the window's own title and subtitle, so the line adds 
+nothing; it is kept as-is for v1 rather than reworked, and is recorded here so it is not later mistaken for a 
+defect. Note also that the wording used there can differ from the window title for the same violation 
+("Checked out early" against "Left early") — they are the same thing. 
+• 
+Types: No-show · Late · Left early · Left the geofence during the shift · No check-out. "Left early" is a planned 
+early finish — the worker presses check-out themselves, before the scheduled end, while still on site (§5.2). 
+"Left the geofence during the shift" is an unplanned, GPS-detected departure — the worker walks off site 
+mid-shift without checking out, caught automatically by the background GPS tracking (§5.1) and reflected 
+immediately as the "Off-site" status above. "No check-out" is raised automatically if check-out is still not 
+pressed 4 hours after the shift's scheduled end (RULE-02, §5.2) — at that point the check-out button locks 
+and payable time for the shift stays undetermined until a manager resolves it. All five are logged as separate 
+Violation types. Three of them — Late, Left early, Left the geofence during the shift — are only ever 
+
+
+===== PAGE 37 =====
+37 
+reviewed by the manager case by case, with no automatic consequence. The other two are raised 
+automatically by the system, as described below: No-show at 30 minutes after the scheduled start, and No 
+check-out at 4 hours after the scheduled end. 
+• 
+Coral highlighting, newest first. 
+• 
+Show resolved — a checkbox at the top of the Violation log, unchecked by default. Once an entry is resolved, 
+it is hidden from the log; ticking "Show resolved" reveals resolved entries again, unticking hides them 
+(confirmed against the approved Check-in monitor design). 
+• 
+Every violation type — No-show, Late, Left early, Left the geofence during the shift, No check-out — carries a 
+"Resolve" action with a mandatory note explaining the outcome (confirmed 31.07.2026). Resolving removes 
+or reduces the effect on the worker's show-rate and marks the entry as reviewed. For No-show specifically, 
+Resolve has the same effect as pressing "Get back" on the event roster (§3.3) — it also reclassifies the entry 
+from No-show to Late. For No check-out specifically, Resolve additionally requires the manager to enter the 
+worker's actual finish date and time — a field labelled "Actual finish (UK time)", entered in UK time per §1.8, 
+with the zone stated in the label because every other time on that screen is shown in the manager's own 
+zone — that value becomes the shift's check-out for RULE-01's pay-window calculation (§5.2), replacing the 
+old behaviour of silently defaulting to the scheduled finish (confirmed 07.09.2026). The entered value is 
+validated on the server and rejected if it falls before the worker's check-in time or in the future; the dialog 
+stays open with the reason shown, so the manager can correct it on the spot. No upper bound against the 
+scheduled end is applied — a worker may genuinely have finished later, and RULE-01 caps the payable 
+amount at the scheduled end regardless (§5.2). 
+• 
+The manager reviews every case manually - the system does not punish automatically, with two exceptions: 
+No-show is applied automatically 30 minutes after the shift's scheduled start if the worker still hasn't 
+checked in (§3.3), and can be reverted afterwards via "Get back" / "Resolve"; and "No check-out" is applied 
+automatically 4 hours after the shift's scheduled end if check-out still hasn't been pressed (RULE-02, §5.2, §7 
+BG-09), and can only be reverted by a manager entering the worker's actual finish time via "Resolve". They 
+can see the check-in / check-out timestamps (route maps are NOT shown — that is personal data). 
+• 
+A violation affects the show-rate, and that affects the person's place in auto-assign (§6). 
+9.6 Staff — directory and profile /staff 
+Directory /staff: 
+• 
+A list of workers: photo · name · role(s) · rating · reliability (show-rate) · compliance status. Where a worker 
+has reached their calculated weekly hours limit (RULE-20, §4.4) for the current Mon–Sun week, a separate 
+"Limit reached" badge/subline is shown next to the compliance status, with the cap and its reason on hover 
+(e.g. "20 h — term time until 13.12.2026") — this is a temporary, per-week condition, not a state in the 
+Staff.status state machine (§2.12), and it does not replace or change the Compliant / Blocked / Removed 
+value. 
+• 
+Rating colour coding: the star icon and score are colour-coded by value — 0–2.9 red · 3.0–3.9 amber · 4.0 
+and above green (confirmed against the approved Staff directory design). 
+• 
+Filters: All · Compliant · Blocked · Inactive · Removed. The Inactive tab lists everyone who has left through 
+the app (§10.6), newest first, showing the date they left and the reason they gave — so the office has a 
+single place to work through outstanding P45s and final pay. 
+• 
+Search + pagination. The name is clickable → the profile. 
+Profile /staff/:id: 
+
+
+===== PAGE 38 =====
+38 
+• 
+Worker data — everything collected during onboarding, in one place: contacts · date of birth · address · 
+Right to Work branch · Two references · Criminal convictions · National Insurance · Bank & payroll details · 
+HMRC New Starter Checklist · a student's term dates and the weekly limit calculated from them. 
+• 
+Role management (gap identified 14.07.2026). The manager can add/remove which role(s) a worker is 
+qualified for, directly on their profile — this is what makes them eligible to be invited or auto-assigned to a 
+given role in the first place (§3.4, §6). Initial assignment happens during onboarding, right after Willo 
+acceptance — the moment the candidate advances into "Documents" (§2.4) — when the manager selects 
+their qualified role type(s) and it's added to the profile; roles can still be edited later the same way. (agreed 
+14.07.2026: because shifts are pushed only to staff who qualify for that specific role, the profile has to be 
+where role qualification is managed, and the initial selection is made at the point of onboarding, 
+immediately after the Willo acceptance.) 
+• 
+Client qualification. A second, separate list on the same profile: which client + role combinations this 
+worker is cleared for — each entry names a client and one of that worker's roles, so "Waiting Staff at Client 
+A" and "Bar Staff at Client A" are two separate entries and a worker can hold one without the other. Role 
+qualification says what they can do anywhere; client qualification says where, and in what capacity, they are 
+a known quantity — the people a venue already knows, who have the site induction, who the client has 
+asked for again. It is what auto-assign works through first (RULE-17, §3.4). 
+• 
+Set by the manager — a "+ Add client" control on the profile picks a client from the directory and then 
+one or more of that worker's roles; each entry can carry an optional internal note and can be removed 
+at any time. The same list is editable from the other end, on the client card (§9.7), so whichever screen 
+the manager is on, they can do it there. 
+• 
+Granted automatically after a clean shift — when a worker completes a shift at a client with no 
+unresolved Violation against them (§9.5), the system adds the qualification itself for that client and the 
+role they actually worked, marked "granted automatically" with the date and the event it came from. 
+Working a Waiting Staff shift at a client does not qualify them as Bar Staff there. Working somewhere 
+successfully is the evidence THC would use anyway, so the list builds itself as the operation runs rather 
+than needing someone to maintain it. An automatic grant can be removed by a manager exactly like a 
+manual one — removing it does not stop it being re-granted by a later clean shift, so where a client has 
+asked for someone not to return, the manager blocks the worker for that client rather than deleting the 
+row (see below). 
+• 
+Do-not-return. Removing a qualification is not the same as barring someone. A "Do not return" toggle 
+on the entry marks that worker as excluded from this client outright: they are not invited in either wave, 
+the shift never appears on their Radar, they cannot be invited manually, and they show under 
+Unavailable → Do not return on that client's events with the manager's reason attached. This is the 
+client-scoped equivalent of the manual Block above, and it is the only thing on this screen that acts as a 
+hard gate. 
+• 
+Documents — a list with statuses, with the ability to download the file. The panel closes with a one-line 
+compliance summary — "Documents verified, quiz passed. Contract signed electronically: 12.07.2026 14:42" 
+— carrying the signature timestamp from §2.11, shown in UK time as an audit record (§1.8). Until the 
+contract is signed that line ends "Compliant and bookable." instead, never with an empty slot. The Criminal 
+Record declaration appears in this same list (Yes/No + details, no file to download): if the answer is No, it 
+shows as auto-verified with no admin action taken; if Yes, it carries its own status and Verify/Reject actions, 
+same as a document. 
+• 
+Attendance & show-rate — a row of KPI cards on the profile: Shifts worked · Hours this week (worked / 
+calculated weekly limit, with the reason for the limit on hover — RULE-20, §4.4) · No-shows · Rating · Show-
+rate. The profile also carries a Shifts tab holding that worker's own shift history together with their Violation 
+
+
+===== PAGE 39 =====
+39 
+log — the same entries, the same detail window and the same "Resolve" action with its mandatory note as 
+the log in §9.5, just scoped to one person instead of to today's events. The two surfaces are deliberately 
+identical in behaviour: a violation resolved from the profile is resolved everywhere, and the note is 
+mandatory in both. If Hours this week reaches the full weekly limit (e.g. 48/48), the value is highlighted 
+amber. If No-shows is greater than zero, the number is highlighted red. 
+• 
+Feedback — from clients and from the office (§9.10), stars + comments. 
+• 
+Block / Unblock — blocking releases all of that person's future bookings; unblocking mechanics (what has to 
+be true before a block is lifted) are defined once, in §4.3. 
+Block — two distinct kinds, not to be confused: 
+• 
+Auto-block (expired document) — system-triggered, a temporary suspension, not a penalty. No reason 
+needed. 
+• 
+Manual block (manager presses Block) — human-triggered, always means something went wrong. Requires 
+a reason. 
+Manager presses Block → a popup opens: "describe the reason" (free text). The reason is saved and shown as a 
+label on the profile: Blocked — <reason>. When a manager later opens a blocked profile to decide whether to 
+unblock, they see the reason first. Example reasons: a client instruction not to re-engage someone, or conduct 
+the office needs to look into. A manual Block is not the route for someone who has simply left — a worker who 
+resigns leaves through the app and lands in the Inactive state instead (§10.6), which is a neutral record rather 
+than one that reads as a problem when the profile is reopened. 
+• 
+Reset to candidate — available on a blocked, rejected or inactive profile. The manager gives a reason, the 
+profile returns to the start of the onboarding pipeline, compliance evidence is superseded and the Employee 
+ID and history are retained (§2.12). A confirmation dialog states plainly what will be cleared and what will be 
+kept before the reset is applied. 
+• 
+Remove (GDPR) — irreversible anonymisation (§1.7). 
+9.7 Clients /clients 
+Directory /clients: search, pagination, a New client button. 
+Creating a client (the "New client" modal): 
+• 
+Client name 
+• 
+Contact full name + Contact phone 
+• 
+Staff contact point — the on-site contact the staff will see at the venue 
+• 
+Contact emails — several are allowed (2–3 people): the allocation sheet and the timesheet go to these 
+• 
+Break policy — whether this client pays for breaks (§3.2) 
+• 
+Buffer policy — whether this client is charged for buffer staff who attend (§3.2), confirmed against the 
+approved "Edit client" design 
+• 
+All fields on this form are mandatory — none can be skipped. 
+Client card /clients/:id — four blocks: 
+1. General info — contact · phone · the average margin on this client. An "Edit" action opens all of the client's 
+fields (client name, contact full name, contact phone, staff contact point, allocation email(s), break policy, 
+buffer policy) for editing at any time (confirmed 01.09.2026, and against the approved "Edit client" design) 
+— there is no Delete action; a client record cannot be removed from the system, only edited. 
+2. Rate card — built by explicitly adding roles to the client via a "+ Add role" action, a dropdown listing the 
+system Roles catalog (§9.8) as the base. If the role you need isn't in the dropdown yet, it must first be 
+
+
+===== PAGE 40 =====
+40 
+created in the Roles section (§9.8, "New role") — once created there, it becomes available to add to any 
+client's Rate card. Roles are not shared automatically across all clients — each client's Rate card holds its 
+own explicitly-added set. For each role added to a client, the manager sets and edits the charge rate and the 
+dress code — both are individual to each client, and this is the only place either can be added or edited, not 
+in the Roles section. Dress codes are built as a list: type a value into "Add a dress code" and press "+ Add" to 
+append it, repeatable for as many dress codes as the role needs at this client. This list becomes the 
+predefined set pulled into the dress-code field when building an event for this client (§3.2) — where a 
+separate "Other" free-text field lets the manager type a one-off custom dress code for that single event 
+only; it is not saved back into this predefined list. The final pay and the margin are shown alongside, 
+calculated from the role's base staff pay rate (§9.8) and this client's charge rate. Editing needs to stay 
+available on an ongoing basis, since both staff pay rates and client charge rates can change during the year. 
+3. Qualified staff — the list of workers cleared to work at this client (§9.6), the same data seen from the client's 
+end, grouped by role so the manager can see the depth of each pool separately: photo · name · qualified 
+role(s) at this client · rating · show-rate · how the qualification was granted (manually, by whom, or 
+automatically from a named event) · date. A "+ Add staff" control adds workers in bulk from the staff 
+directory — useful when a new client takes on a team that already works there — and each row can be 
+removed or switched to Do not return. A counter per role group shows how deep the first-choice pool is 
+(e.g. "Waiting Staff · 34 qualified"), which is what tells a manager whether auto-assign is likely to fill that role 
+section from Wave 1 alone (§3.4). 
+4. Events · this client — every event for this client. Columns: event · PO (read-only, §3.2) · date · venue · roles · 
+margin. Clicking an event opens its page. Where an event's roles run at different times, the date column 
+shows the derived event window and the individual role times are on the event page itself (§3.2). 
+9.8 Roles & rates /roles 
+What it is: THC's internal directory of roles (waiting staff, bar staff, host…) with their base rates. 
+The roles table: 
+Column 
+What it is 
+Role 
+The role name 
+Description 
+An internal description (never shown to the client) 
+Staff pay rate ✎ 
+The base £/h rate — editable 
+Holiday +12.07% 
+Calculated automatically, read-only 
+Final rate 
+Base + holiday. All margin across the system is calculated 
+from this figure 
+ 
+• 
+Edit / Delete buttons per row; New role at the top right. 
+• 
+Editing a role happens in a modal (not inline): Role name · Staff pay rate · Description. 
+• 
+Dress code is NOT set here — it is client-specific, not role-specific (the same role can require a different 
+dress code at different clients, e.g. Waiting Staff at the Dorchester vs. Waiting Staff at the Mandarin 
+Oriental). It is managed per client, on that client's Rate card (§9.7), and that is where it is pulled from when 
+an event is created (§3.2). 
+• 
+  Holiday pay 12.07% is a permanently visible label, not just a tooltip. In the app the worker sees only the 
+base rate (without holiday). 
+
+
+===== PAGE 41 =====
+41 
+9.9 Reports /reports — three tabs 
+Tab 1 · Financial report 
+• 
+Defaults to the current week (Mon–Sun), with a "This week" button + an arbitrary date range. 
+• 
+3 KPIs: Staff payroll · Client invoicing (at the charge rate) · Gross margin. The 12.07% holiday pay element is 
+broken out and clearly labelled separately from the base staff payroll figure — never blended into one 
+combined number, consistent with how Tab 2 (Payroll report) already separates base / holiday / including-
+holiday, and how §9.8 already treats holiday as a permanently visible label rather than a hidden component. 
+• 
+Payable hours = the intersection of check-in/out with the scheduled time (§5.2). 
+• 
+  Invoicing here is a revenue forecast for the period, NOT the PO-based invoices. THC has its own invoicing 
+process. 
+• 
+The "Forecast for the period" label is shown for the current week and continues to show for the immediately 
+preceding week through Tuesday. It disappears starting Wednesday morning for that previous week, once 
+real invoicing is expected to be complete — confirmed 28.07.2026: the payroll report is exported Monday, 
+and invoicing for the previous week is completed by Tuesday evening. 
+Tab 2 · Payroll report 
+• 
+A date range + a quick "Last week" button (which sets Mon–Sun of the previous week itself). 
+• 
+Period summary: how many workers were on shifts · how many shifts · the total to be paid · how many 
+hours. 
+• 
+Breakdown by person. Each person's summary row shows: Staff · Employee ID · 
+Shifts · Payable hours · Base · Holiday · Total payroll. Clicking a person expands the list of ALL their shifts, each 
+showing the scheduled and the actual times side by side: Event · Client · Role · Date · Start–End (scheduled) · 
+Check in/out (actual, with a late check-in or early check-out highlighted in amber) · Payable hours · Rate · Payroll 
+— confirmed 28.07.2026, so that what a worker is actually being paid can be read against their original 
+scheduled hours. Role was added to the same breakdown on a follow-up request (28.07.2026), so it is also clear 
+which role they worked. A buffer turn-away (RULE-15, §5.2) shows "Turned away" in place of check-in/out times; 
+a shift with unpaid breaks shows the deducted break time under Payable hours. A shift with an unresolved "No 
+check-out" Violation shows "Pending" in place of Payable hours/Payroll and is excluded from the CSV export (§7, 
+BG-08) until a manager resolves it. 
+• 
+Holiday as its own column: base · holiday (+12.07%) · including holiday. Payroll normally takes base. 
+• 
+CSV export: one row per SHIFT, never averaged. In a single week a person works at different rates (waiting 
+£14, a senior role costs more) — payroll must see the exact rate on every line. 5 + 4 + 2 shifts = 11 rows, not 
+3. Every row carries an Employee ID. 
+Tab 3 · New Starter (HMRC) report 
+• 
+A separate tab — the columns and the data are entirely different from payroll's and must not be merged. 
+• 
+Pick a date + preview: you immediately see the list of people who will be in the report. Then — Export CSV. 
+• 
+Preview table columns, confirmed 28.07.2026: Staff · Employee ID · NI Number · Home address · Postcode · 
+Country · Date of birth · Gender (M/F) · First shift date · HMRC Statement (A/B/C) · Student Loan. Role and a 
+title / salutation field are explicitly excluded — roles are not required on the New Starter (HMRC) report, and 
+no salutation is needed. 
+• 
+Only NEW workers who ACTUALLY WORKED a shift last week — not every new starter, only those who need 
+to be paid. 
+
+
+===== PAGE 42 =====
+42 
+• 
+The data is held from onboarding, and it is sent for the first time when the person needs to be paid. 
+Onboarded on a Friday, first shift two weeks later → the HMRC report goes out on that Monday. 
+Automatic send-out — every Monday at 09:00 
+• 
+One email to the finance team — thc_payroll@topsourceworldwide.com and 
+gisela@thehospitalitycompany.co.uk (same recipients as §8, E5/E6) — with 1–2 CSVs: Payroll — always; New 
+Starter (HMRC) — only if there were new starters. Confirmed by THC (correspondence, 28.07.2026): this 
+automatic send-out is in scope as specified. 
+• 
+Why this is safe to automate: for every shift except one carrying an unresolved "No check-out" Violation, the 
+reports are read-only — a timesheet is never edited by hand (check-in cannot be earlier than the start, 
+check-out cannot be later than the end), so there is nothing to review. The one exception is a shift resolved 
+via "No check-out" (§9.5, RULE-02), where a manager does manually enter the actual finish time — which is 
+exactly why that specific shift is held out of the automatic export until it's resolved (§7, BG-08), rather than 
+going out with an unreviewed or undetermined figure. 
+• 
+The tabs remain in the UI for looking back at past periods manually. 
+• 
+Send status in the UI (confirmed 28.07.2026): each tab shows the last-sent date/time and a status — "Failed 
+to send report" if the automatic send failed, or "Last sent: [date], [time]" if it went out successfully. For New 
+Starter (HMRC) specifically, a week with no new starters shows "No new: [date], [time]" instead of a failure 
+state, since there was nothing due to be sent that week. 
+9.10 Feedback /feedback 
+What it is: every piece of feedback about workers, in one place. Client feedback and office feedback are shown 
+in two separate tabs, not a combined list — confirmed 28.07.2026 — the two are to be visually separated, not 
+combined 
+• 
+Search by staff name — available in both the Office and Client feedback tabs, so the manager can quickly 
+find every entry relating to one worker (confirmed 31.07.2026). 
+• 
+Feedback from clients — arrives from the Client Portal (§11.2): stars + a comment, tied to a worker and an 
+event. A list, with mark as read — this action exists only on client feedback (confirmed 01.09.2026): office 
+feedback has no equivalent, since the office is the one entering it and there is nothing to acknowledge. It 
+cannot be replied to — this is a read-only channel. 
+• 
+Feedback from the office — the manager gives a worker stars + a comment themselves. Why: not every 
+client uses the portal, and a complaint or a compliment often simply arrives by phone. There is no limit on 
+how many entries a person can have. Office feedback entries can be edited or deleted after submission, 
+from both the general Feedback screen and the worker's own profile (§9.6) — client feedback stays read-
+only, it cannot be edited or deleted. 
+• 
+Both types feed the rating score, which affects the person's place in auto-assign (§6). For client feedback, 
+this only happens once the manager presses "Mark as read" — submission alone does not affect the rating. 
+Office feedback has no "Mark as read" step, so it counts toward the rating immediately on submission 
+(confirmed 01.09.2026). 
+• 
+Displayed on the worker's profile (§9.6): a star input + a feed of entries (stars · author · date · comment). For 
+office feedback, the author shown is the manager's own name, not a generic "Office" label (confirmed 
+28.07.2026). 
+9.11 Venues — geofences /venues 
+What it is: the directory of venues. Whether a worker can check in at all depends on the geofence radius. 
+
+
+===== PAGE 43 =====
+43 
+List /venues — a table of venues: 
+Column 
+What it shows 
+Venue 
+The venue name 
+Address 
+The full address 
+Geofence 
+The geofence radius in metres 
+Events 
+How many events have taken place at this venue 
+ 
+• 
+A "+ New venue" button and the List / On map tabs sit together in a toolbar row directly under the page title 
+(not in the page's top-right corner); Search by name and address sits on the right side of that same row. 
+• 
+Two tabs — List / On map. List is the table described above. On map shows every venue's geofence circle at 
+once on a single full-width map, so the manager can see where they are and how big they are, relative to 
+each other. 
+• 
+Each row has explicit Edit and Delete buttons. 
+Creating / editing a venue — a modal over the list, NOT a separate screen: 
+• 
+An interactive map with a pin — full width, at the top. 
+• 
+Venue type sets the starting radius. Choosing the venue type pre-fills the slider from the standard table 
+below; the manager can then move it anywhere in the 100–3000 m range for that specific site. The standard 
+values are: Restaurant / bar 100 m · Hotel 150 m · Private residence 150 m · Conference or banqueting 
+venue 250 m · Exhibition centre 400 m · Stadium or arena 500 m · Racecourse or showground 1500 m · 
+Outdoor or festival site 3000 m · Other 150 m. These defaults are editable in Django Admin so THC can tune 
+them without a release. 
+• 
+The geofence radius is set with a slider (100–3000 m). The circle on the map changes with the slider, so the 
+manager can see that it covers the whole site. The number is not typed by hand, and the circle is not 
+dragged with the mouse. 
+• 
+The address is filled in automatically from the pin (reverse geocoding), read-only; the lat/lng coordinates are 
+also shown as plain text under the address once a pin is set. 
+• 
+New venue: Cancel / Create venue buttons, in a modal titled "New venue". Editing an existing venue: Cancel 
+/ Save changes buttons, in a modal titled with the venue's name, pre-filled with its current pin, address and 
+radius. 
+• 
+Deleting a venue — a confirmation modal, not an inline action: "Are you sure you want to delete this venue? 
+This action cannot be undone." If the venue is used on any upcoming events, the modal also states how 
+many (e.g. "This venue is used on 4 upcoming events") and explains: deleting removes it from venue 
+selection when creating new events, but existing events keep their own address and geofence radius as they 
+were at the time they were built — deleting a venue never breaks a past or already-scheduled event 
+(confirmed against the approved Venues design). 
+9.12 The system's corporate email address 
+• 
+A corporate THC email address is configured in the system — ALL outgoing mail is sent from it: allocation 
+sheets, timesheets, password resets, invitations, finance reports. 
+• 
+Two sender addresses are configured, and no others are used: timesheets@thehospitalitycompany.co.uk 
+for Allocation Sheets and Timesheets (§11.4), and admin@thehospitalitycompany.co.uk for everything else 
+— password resets, activation and invitation emails, and the finance reports (both confirmed 14.07.2026). 
+Both are configured as environment settings, so either can be changed without a release. Replies to either 
+address go to a monitored THC mailbox; no-reply addresses are not used. A worker's self-cancel of a 
+
+
+===== PAGE 44 =====
+44 
+confirmed booking (RULE-04, §3.6) also triggers an immediate email to 
+admin@thehospitalitycompany.co.uk, flagging which event/role/shift lost a confirmed worker so the office 
+can follow up if auto-assign doesn't backfill it in time. 
+PART III · STAFF APP (the mobile application) 
+What the worker themselves sees and does. 
+10. THE MOBILE STAFF APP (Flutter, native) 
+10.1 The app's design system 
+• 
+iOS-17 / Slack frosted glass (blur on the top bar / bottom navigation / profile sheet) + a cyan/purple 
+background glow. A collapsing header (on scroll, the logo and the profile remain). Zero radii. THC branding 
+throughout. 
+• 
+Profile sheet (tap the avatar): the worker's details, links (Profile details / Security settings / Payment 
+information), sign-out, and a "Need help? Please contact us at: admin@thehospitalitycompany.co.uk" 
+contact line — not a separate tappable screen (confirmed against the approved design, 04.09.2026). The 
+"pay" link opens a Payment information screen with two tabs (confirmed against the approved design): 
+Earnings history — a card per completed, paid shift (role · rate/h · event name · venue address · date/time · 
+the amount earned on that shift), with a "No earnings yet" empty state before the worker's first paid shift; 
+and Bank & payroll — the same account holder / sort code / account number fields as onboarding (§2.10), 
+editable here via a "Save changes" button, which triggers the same E5 notification (§8) as at onboarding. On 
+Profile details: contact details (phone, email) and home address are editable by the worker — a new email is 
+verified via a confirmation code before it replaces the old one, and both an email change and an address 
+change trigger a new notification (E7, §8). Name is not worker-editable, since it's tied to the right-to-work 
+check and payroll — corrections go through the office. The avatar is set once during onboarding and then 
+locked; changing it afterwards also goes through the office. The sheet also carries the Request my P45 
+action at the bottom, below sign-out and visually separated from the everyday links (§10.6). 
+• 
+Bottom navigation: Documents · Shifts · Invites · Radar. 
+• 
+ App lock — three distinct cases. (1) Auto-block on documents: if a worker is not compliant OR has an 
+expired document, ONLY the "Documents" tab is available. Shifts, Invites and Radar are locked until they 
+supply a valid document (§4.3). (2) Manual block by a manager (§9.6): there is nothing for the worker to fix 
+themselves, so the Documents tab is not shown as an action either — the app opens on a static screen 
+reading "Your account is on hold. Please contact the office at: admin@thehospitalitycompany.co.uk". The 
+manager's reason for the block is internal and is never shown to the worker. Only a manager pressing 
+Unblock lifts it (§4.3). (3) Rejected after failing the H&S quiz three times (§2.9): the onboarding wizard is 
+replaced by a terminal screen carrying the same wording as the rejection email — "Health & Safety 
+Assessment — Unsuccessful. Unfortunately, you haven't passed the Health & Safety assessment after three 
+attempts, which is the maximum number permitted at this stage. As passing this assessment is a required 
+part of onboarding, we're unable to progress your application any further at this time." (copy supplied by 
+THC) — plus the same contact line. (4) The worker has left through Request my P45 (§10.6): the app opens 
+on the leaver screen described there, with Shifts, Radar, Invites and Documents all closed but Payment 
+information still reachable, so their earnings history stays available to them. A GDPR-removed worker 
+cannot log in at all (§1.7), so no screen applies. 
+• 
+The selfie avatar from onboarding becomes their photo across the whole system (falling back to initials). 
+
+
+===== PAGE 45 =====
+45 
+10.2 Auth 
+• 
+A0 Login · A1 Forgot password · A2 Reset link sent · A3 Set new password. 
+10.3 The onboarding wizard (post-login) 
+11 steps, with a progress bar and an N/11 counter (the mobile app lays some blocks out differently from the 
+Back Office Portal wizard — confirmed as intentional and final against the approved design, 22.07.2026): 
+Step 
+Screen 
+1/11 
+Right to work — choose the branch (UK/Irish · EU/EEA · Work 
+visa · International student · Dependant), §2.5 
+2/11 
+Home address — a pin on the map (needed to calculate the 
+home ↔ venue distance) 
+3/11 
+Profile selfie — the camera. This photo becomes their avatar 
+across the system and is printed on the timesheet 
+4/11 
+Documents — the set depends on the Right to Work branch. 
+The candidate also declares here whether they have an 
+unspent criminal conviction (Yes/No + a details field if Yes). If 
+No, it's auto-verified immediately; if Yes, the manager reviews 
+it together with the documents, with the same Verify/Reject 
+actions. 
+5/11 
+Health & Safety induction — the induction deck supplied by 
+THC, shown slide by slide in the app's built-in viewer. The 
+supplied file is used as-is; re-drawing the induction content as 
+native app screens is not in scope for v1 (decided 17.07.2026, 
+after the supplied deck was checked on a phone and 
+confirmed legible) 
+6/11 
+Safety quiz — pass mark 80%, up to 3 attempts 
+7/11 
+HMRC New Starter Checklist — statement A/B/C · student loan 
+· NI (§2.8) 
+8/11 
+Two references — 2 referees (no relatives) 
+9/11 
+Bank & payroll details 
+10/11 
+Contract — the zero-hours agreement + "I agree" tick-box 
+(§2.11) 
+11/11 
+How it works — a short tutorial and an "Open app" button 
+ 
+• 
+Continue is disabled until the step is complete. 
+• 
+After Submit — the Documents hub: the worker sees the status of each of their documents while the office 
+reviews them. 
+• 
+There is no separate "Student status" step — the Right to Work branch determines it. 
+10.4 The working screens 
+• 
+Shifts (segmented): My shifts · N! (booked; the three-stage confirmation; cards awaiting action get an amber 
+border + a NEEDS CONFIRMATION chip; today's shift carries check-in inside the card) / Open shifts (only for 
+their own roles, soonest dates first, self-apply). The times shown on a shift card are always the worker's own 
+role's start and end (§3.2), never the event's overall window — on an event where the kitchen starts at 
+07:00 and the floor at 17:00, each worker sees only their own hours, and their check-in, check-out and 
+
+
+===== PAGE 46 =====
+46 
+reminder windows run off those. The venue address sits under the name; the dress code, on-site contact, 
+and any notes / specific instructions (§3.2) are in the details; a time change → re-confirmation (Awaiting). A 
+confirmed (booked) shift also carries a "Cancel shift" action, available only while more than 72 hours remain 
+before the shift's scheduled start; tapping it shows a confirmation dialog ("We'll offer this shift to the next 
+person on the list. This can't be undone.") and, once confirmed, releases the slot to auto-assign with no 
+show-rate impact — but permanently removes this event from the worker's reach (RULE-04, §3.6, §3.4). 
+• 
+Tapping into a shift that has since been cancelled by the office (N12), had its booking withdrawn (N10b), or 
+locked for a "No check-out" Violation (RULE-02, §5.2, §9.5 — check-out never pressed, 4 hours after the 
+scheduled end) opens a static message screen instead of the normal shift details — no map, no check-
+in/check-out, no breaks block. The three cases carry distinct copy: event cancelled shows "This event has 
+been cancelled"; booking withdrawn shows "You've been removed from this shift"; no check-out recorded 
+shows "We didn't receive your check-out for this shift — the office is following up with you directly." All 
+three include a contact line ("If you believe there has been an error, please contact us at: 
+admin@thehospitalitycompany.co.uk") and an "OK, I understand" button (confirmed against the approved 
+design and by THC, correspondence, 01.09.2026). For the cancelled and withdrawn cases, the shift's card 
+simply disappears from the Shifts list the moment the push arrives, and this fallback screen mainly exists to 
+cover a worker tapping a stale, already-superseded push notification afterwards. The "No check-out" case is 
+different — the card does NOT disappear, since the booking stays worked rather than becoming cancelled 
+(§3.6); it remains visible in My shifts, showing this static screen in place of the normal check-out controls, 
+until a manager resolves the violation. 
+• 
+Radar: open shifts nearby right now, with a km badge, closest first. Shifts at clients the worker is qualified at 
+(§9.6) are shown first, under a "You've worked here before" grouping, and become visible the moment the 
+role opens; shifts at clients they are not qualified at appear only once the qualified pool for that role has 
+been exhausted (RULE-17, §3.4). Tapping one opens its details — including the role's dress code, shown 
+before the worker decides, for the same reason as on Invites (§10.4) — where the worker can apply. If 
+applying would take the worker over their calculated weekly hours limit for that Mon–Sun week (RULE-20, 
+§4.4), the app blocks the action and shows a "Limit Reached" label instead — confirmed 31.07.2026: e.g. a 
+worker who has already worked 18 hours that week cannot be booked onto a 4-hour shift, since 18 + 4 
+exceeds the 20-hour limit. Applying re-checks live availability first, the same defensive pattern already used 
+for Invites (§3.4): if the shift filled since the screen loaded, the app shows "Sorry, this shift is now full" and 
+does not record the application. Once applied, the card does not disappear — it stays visible with an 
+"Applied" status, grouped together with the worker's other pending applications under their own "Applied" 
+section on Radar, until it resolves one way or the other (moves to Shifts once confirmed, or leaves Radar 
+once closed) — either way the worker gets a push confirming the outcome: "You're booked!" if the 
+application is accepted (N10, §8), or a "shift filled" push if the role fills without them (N10c, §8); if the event 
+itself is cancelled while the application is pending, the existing event-cancellation push reaches them too 
+(N12, §8). 
+• 
+Invites: personal invitations → Accept / Decline (+ confirm dialogs); decline is always possible, at any time, 
+with no show-rate impact; first-to-confirm; confirming a shift automatically removes any other overlapping 
+invitations from this list — no dead invites left for the worker to tap (§3.4, §3.6). The invite card shows the 
+role's dress code before the worker decides, so they can judge whether to accept before committing 
+(confirmed 08.09.2026); on-site contact and break policy are NOT shown on the invite — on-site contact 
+only appears once the shift is accepted, in the Shifts card details (§3.2), shown as the free-text value entered 
+on the event as-is, not split into separate name/phone fields; break policy is likewise only visible after 
+acceptance, via the Breaks block on the shift screen (§5.2b). The same weekly-hours hard gate applies here 
+as on Radar (§4.4): if accepting would take the worker over their weekly limit for that Mon–Sun week, 
+
+
+===== PAGE 47 =====
+47 
+Accept is blocked and shows "Limit Reached" instead. An open invitation also disappears on its own once the 
+event it belongs to has ended — even if the worker never accepted or declined it (RULE-16, §7). 
+• 
+Documents: statuses (Missing / In review / Verified / Re-upload with a reason), Upload, pull-to-refresh. The 
+tab also carries the Declare a criminal conviction action at the foot of the list, set apart from the document 
+rows (§10.7). 
+• 
+Push notifications about DOCUMENT expiry (not shifts): 1 month · 2 weeks · 1 week before · and on the 
+expiry day — "Update your [document], it expires on [date]" (§4.2). 
+• 
+On the expiry day the worker is automatically removed from all future shifts and their invitations are 
+withdrawn (§4.3). 
+10.5 Push (device-level, works with the app closed) — see §8. 
+10.6 Leaving — "Request my P45" 
+Why it exists. A zero-hours workforce turns over constantly, and until now there was no way for a worker to say 
+they were finished. People simply stopped accepting shifts, stayed in the scoring pool, kept receiving invitations, 
+and — worst of all — stayed sitting on confirmed bookings for events weeks away that nobody knew were going 
+to be a no-show. This gives the worker a clean exit and gives the office the earliest possible warning. 
+Where it is. A Request my P45 action at the bottom of the profile sheet in the app (§10.1), below the sign-out 
+link, set apart from the everyday links and not styled as a primary action. 
+What the worker sees. Tapping it opens a confirmation sheet headed "Leaving The Hospitality Company?", 
+which states plainly and in full what will happen: their P45 will be requested from the office, they will be taken 
+off every shift they are booked on, and they will not be able to book or be invited to shifts again unless they re-
+apply. It carries an optional free-text "Reason for leaving" field, a Cancel and a confirm button reading "Yes, 
+request my P45". The confirm button is deliberately not the default-styled action, and a second short "Are you 
+sure? This can't be undone from the app" step sits behind it, so this cannot be triggered by a stray tap. 
+What the system does, the moment it is confirmed: 
+1. Status → inactive (§2.12), with `left_at` and the reason recorded on the profile (§1.5). 
+2. Every future booking is released. All of the worker's confirmed bookings whose shift has not yet started are 
+cancelled, the slots reopen on the event board (§3.3) and auto-assign begins back-filling them immediately 
+(§3.4) — exactly as it does for any other released slot. 
+3. A shift already under way is not touched. If a shift has started, or the worker is checked in, that booking 
+stands and is paid and billed normally — the release applies only to shifts with a start time in the future, so 
+leaving can never disturb the pay or the timesheet for work already being done. A worker who is checked in 
+cannot submit the request at all: the action is disabled for the duration of that shift, with the hint "Available 
+once you've checked out". 
+4. Open invitations are withdrawn and any pending Radar self-application is cancelled, so nothing of theirs is 
+left sitting on a manager's event board. 
+5. They leave the scoring pool (§6) and cannot be invited, auto-assigned or manually added to any event. 
+6. Email E8 goes to admin@thehospitalitycompany.co.uk (§8) — immediately, not batched. Subject: "P45 
+requested — [name], Employee ID [id]". The body carries the worker's name, Employee ID, NI number, the 
+date and time of the request, the reason they gave if any, the date of their last completed shift, and a list of 
+the future shifts that were just released with the event, client, venue, role and date of each — so whoever 
+picks it up can see instantly whether a big event has just lost someone as well as action the P45. 
+7. The app locks to a leaver screen: "You've left The Hospitality Company. Your P45 has been requested and 
+the office will be in touch. If this was a mistake, please contact us at: admin@thehospitalitycompany.co.uk." 
+
+
+===== PAGE 48 =====
+48 
+Shifts, Radar, Invites and Documents are all closed; the worker can still sign in and still reach Payment 
+information (§10.1), so their earnings history stays available to them after they leave. 
+What it does not do. The system does not produce the P45 itself. A P45 is issued by payroll, and for the same 
+reason the app neither accepts nor generates one (§2.8) — this action is the trigger and the audit record for THC 
+to issue it through its own payroll process, nothing more. Leaving also does not anonymise anything: the profile, 
+its documents and its history remain intact and visible to the office, because they are employment records THC 
+has to keep. A worker who additionally wants their personal data erased makes a GDPR request and the office 
+uses Remove (§1.7), which is a separate and irreversible action. 
+Coming back. A former worker who wants to return is re-onboarded on the same record via Reset to candidate 
+(§2.12, §9.6) — one person, one Employee ID, full wizard again. Their client qualifications (§9.6) are retained on 
+the record while they are inactive, so a returning worker goes straight back into the first-choice pool for the 
+clients they used to work at once they are compliant again (RULE-17, §3.4). 
+10.7 Declaring a criminal conviction while working 
+Why it exists. The convictions question is asked once, at onboarding, and then never again — so a worker 
+convicted of something in their second year has no way to tell THC other than a phone call that may never get 
+recorded. The contract obliges them to disclose (§2.11); this is the route that makes that possible, and it 
+produces a dated, auditable record rather than a note in someone's inbox. 
+Where it is. A Declare a criminal conviction action at the bottom of the Documents tab (§10.4), below the 
+document list — the same screen the original declaration was made on during onboarding (§10.3, step 4/11), so 
+it is where a worker would think to look. Available to any compliant worker at any time. 
+What the worker sees. A short form: a required free-text details field, an optional date of conviction, and a 
+plainly-worded notice above the submit button stating what will happen — that their upcoming shifts will be 
+paused while the office reviews the declaration, that the office will be in touch, and that declaring is a 
+requirement of their agreement, not something they are being penalised for. Submit is followed by a 
+confirmation step, because the consequences are real. 
+What the system does on submission: 
+1. A CriminalDeclaration record is created (§1.5), `source = in-employment`, pending review. Nothing already 
+on the profile is altered — this is added to the history. 
+2. The worker is suspended immediately, exactly as an expired document suspends them (§4.3): status → 
+blocked, with the internal block reason "Criminal conviction declared — under review". 
+3. Every future booking is released and goes back into auto-assign for a replacement (§3.4); open invitations 
+are withdrawn and any pending Radar application is cancelled; they leave the scoring pool (§6). 
+4. A shift already under way is not disturbed. As with leaving (§10.6), the release applies only to shifts with a 
+start time in the future, so a declaration made mid-shift cannot upset that day's pay or timesheet. 
+5. The app locks to the Documents tab, with copy that is factual rather than punitive: "Thanks for telling us. 
+We've paused your upcoming shifts while the office reviews your declaration, and we'll be in touch. If you 
+need to speak to someone, contact us at: admin@thehospitalitycompany.co.uk." The details the worker 
+typed are never displayed back to them on a shared screen, and never appear anywhere in the Client Portal. 
+6. Email E9 goes to admin@thehospitalitycompany.co.uk (§8) immediately — not batched, and not carrying 
+the declaration text itself. It names the worker and Employee ID, the time of the declaration, and the future 
+shifts that were just released with event, client, venue, role and date, so the office can see the operational 
+hole at the same moment it learns of the declaration. The details are read in the Back Office, where access is 
+role-controlled. 
+
+
+===== PAGE 49 =====
+49 
+What the office does. The declaration appears in Compliance → Needs review (§4.1) alongside documents 
+awaiting a decision, and on the worker's profile (§9.6). The manager reads the details and takes one of two 
+actions: 
+• 
+Verify — the declaration is accepted. The block lifts through the ordinary full compliance re-check (§4.3): the 
+worker is returned to compliant only if everything else on their profile is also verified and in date. They 
+receive push N15 (§8) telling them their shifts are open again. Bookings released in the meantime are not 
+restored — they may already have gone to someone else. 
+• 
+Reject — the declaration is not accepted. The block stands and converts to a manual block (§9.6) with the 
+manager's reason recorded, so only a manager can ever lift it. The worker is not told the reason through the 
+app; the office contacts them directly, because this is a conversation rather than a push notification. 
+Access and retention. Declaration details are personal data of the most sensitive kind. They are visible only to 
+Admin users in the Back Office, never in the Client Portal (§11) and never in any report or export (§9.9). On GDPR 
+removal (§1.7) the details are wiped with the rest of the worker's personal data, while the fact that a declaration 
+existed and its review outcome are retained as part of the compliance record. 
+PART IV · CLIENT PORTAL 
+What the customer sees + the documents they receive. 
+11. CLIENT PORTAL + TIMESHEET DOCUMENTS 
+11.1 The portal /client 
+• 
+The client role only. They see only their own events. Read-only — no editing whatsoever. 
+• 
+No money anywhere: no pay rates, no charge rates, no margin. 
+• 
+Event list: name · venue · date/time · "N of M confirmed" · photos of the confirmed workers (not initials — 
+so the customer recognises the people by face) · a button to download the document (Allocation sheet / 
+Signed timesheet) · a link into the details. 
+11.2 Event page /client/events/:id (read-only) 
+• 
+We show ONLY the confirmed staff, grouped by role: photo · name · role. 
+• 
+The customer sees ONLY the confirmed line-up. The selection process — Invited · Potential pool · 
+Unavailable · the Auto Invite toggle — stays internal to THC and is not shown in the portal. 
+• 
+"Leave feedback" next to each confirmed worker → a popup (stars + comment) → once submitted the 
+button becomes "✓ Feedback sent". Feedback only unlocks after the event has started. 
+• 
+"↓ Download Allocation Sheet" in the header. 
+11.3 Timesheet documents (PDF) 
+The format is 1:1 with THC's current form (the PDF Timesheet supplied). We are not inventing our own format. 
+• 
+ONE document per EVENT (all roles together), NOT one per role — otherwise a single event would generate 
+6–7 sheets. 
+• 
+Name: Client name – Event name (pulled from the event build), e.g. Leonardo Hotel St Pauls – Waiting M&E. 
+• 
+Header: the THC logo + name · STAFF ALLOCATION · Date: DD/MM/YYYY. 
+• 
+Columns (as in the original): 
+
+
+===== PAGE 50 =====
+50 
+Column 
+Contents 
+Photo 
+The worker's photo — so the person can be matched to the 
+sheet on site 
+Staff Name 
+Name (Employee ID) + (Role M&E). The Employee ID is the id 
+in the database, the same one that goes into payroll 
+Start Time 
+The scheduled start + the forecast finish in brackets 
+Finish Time 
+The actual finish 
+Signature 
+The worker's signature (by hand) 
+Comments 
+A comment (breaks and so on) — clients write these in by 
+hand, so the column stays 
+Hours Worked 
+The hours worked 
+ 
+• 
+Footer: Total Hours · Manager's Name (PRINT) · Manager's Signature · Date + the company details 
+(Registered Company 12411407, email, website). 
+• 
+Pagination, specified. A page carries at most 12 staff rows. Where an event has more, the document 
+continues onto further pages: the THC header block and the column headers repeat on every page, each 
+page is footed "Page X of Y", and every page after the first carries the event name and date again with 
+"(continued)" beside it. A staff row is never split across a page break. The footer block — Total Hours, 
+Manager's Name (PRINT), Manager's Signature and Date, plus the company details — appears once, on the 
+final page only, and Total Hours is the total for the whole event rather than the page. Staff are ordered by 
+role section, and within a role by surname, so the same person is easy to find on a 60-name sheet. 
+The document exists in two states: 
+1. Allocation report — the blank form, sent BEFORE the event (typically a day ahead). No time restriction on 
+when it can be emailed or downloaded — the manager can send or download it at any point, including mid-
+event, not only in the day-ahead window described above. 
+It contains the assigned workers and the hours allotted to them. The Finish · Signature · Comments · Hours 
+columns are left empty — the client fills them in by hand on site and uses the sheet as the record of work done. 
+2. Sign-out timesheet — filled in, generated AFTER the event. 
+The system populates everything from check-in / check-out: the actual finish time, the breaks from the break 
+log, the hours worked, and the calculated Total Hours. If a worker's shift still carries an unresolved "No check-
+out" Violation (§9.5, RULE-02) at the moment the document is generated, that worker's own Finish Time and 
+Hours Worked cells are left blank instead of guessing — the rest of the document, everyone else on the event, 
+generates normally. Regenerating the document after a manager resolves the violation fills those cells in from 
+the manager-entered time, the same way it would from a normal check-out. 
+• 
+Signature stays empty in both — that is the client's signature, made by hand. 
+• 
+The PO Number from the event (§3.2) carries into the document. 
+11.4 Sending the documents 
+• 
+On the event page: "Send allocation sheet" (an action) + "Download" (a PDF — so it can be dropped into 
+WhatsApp) + email. 
+• 
+Several recipients per event (e.g. Dorchester → 3 people) — the addresses come from the client card (§9.7). 
+• 
+The sender is timesheets@thehospitalitycompany.co.uk (confirmed 14.07.2026; §9.12). 
+
+
+===== PAGE 51 =====
+51 
+11.5 Feedback 
+• 
+Client feedback per staff / event → lands in the office Feedback inbox + feeds the score (§6). 
+• 
+The office can leave feedback too — because not every client uses the portal (§9.10). 
+APPENDICES 
+Appendix A · THE CANDIDATE'S JOURNEY 
+What the person themselves sees — from application to first shift. 
+1. They apply on the public page — name, email, phone, age. Anyone under 18 is rejected on the spot. 
+2. They receive an email from Willo with a link to the video interview (the system sends it automatically). 
+3. They complete the video interview. The manager makes the decision inside Willo. 
+4. Accepted → they get an email from the system: set your password and download the app. Rejected → the 
+system rejects the candidate itself. 
+5. They complete onboarding in the app — 11 steps: right to work → address → selfie → documents (incl. 
+criminal record declaration) → H&S induction → H&S quiz (pass mark 80%) → HMRC form → 2 references → 
+bank details → contract → "How it works". 
+6. They wait for their documents to be reviewed. In the app they see the statuses: under review · verified · 
+rejected (with a reason and a re-upload button). 
+7. They become a worker — documents verified, contract signed. Shifts, Radar and Invites unlock in the app. 
+8. They work — receiving invitations, confirming them, and checking in. 
+9. They leave, when they choose to — Request my P45 in the app (§10.6). Their P45 is requested from the 
+office, they come off every future shift, and the account closes to a leaver screen with their earnings history 
+still reachable. If they want to come back later, they re-apply and are re-onboarded on the same record. 
+What arrives in their app: 
+• 
+A document is expiring → reminders a month before, 2 weeks before, a week before, and on the expiry day. 
+• 
+A document is rejected → the reason + a re-upload button. 
+• 
+A shift invitation · confirm tomorrow's shift · confirm today's shift · time to check in (30 min before the 
+start). 
+Where they can be rejected: 
+• 
+Under 18 — on the application form. 
+• 
+Rejected at the interview in Willo. 
+• 
+Failing the H&S quiz three times. 
+• 
+Failing document review — the app will only open the "Documents" tab, and there will be no shifts. 
+Appendix B · INPUTS AND DEPENDENCIES 
+Everything in Parts I–IV is specified and decided. This appendix lists the assets and access THC supplies so that 
+the specification can be built, and when each is needed. Nothing here is an open question — each item is a 
+delivery dependency with an owner and a deadline. 
+# 
+What THC supplies 
+Needed by 
+Why 
+B1 
+Willo API key, interview key and 
+Start of the onboarding 
+The application form 
+
+
+===== PAGE 52 =====
+52 
+# 
+What THC supplies 
+Needed by 
+Why 
+stage mapping 
+build 
+creates the candidate in 
+Willo and the webhook 
+moves the kanban card 
+(§2.4) 
+B2 
+The zero-hours contract text 
+Before the contract step is 
+built 
+It is stored as versioned 
+contract text and the 
+version signed is recorded 
+against the worker (§2.11) 
+B3 
+Sample University Term Dates 
+Letters and Official University 
+Completion Letters (3–5 of each, real 
+formats) 
+Start of the AI extraction 
+work 
+The extraction is built and 
+tested against real layouts 
+rather than idealised ones 
+(§2.6, §4.5) 
+B4 
+Hi-res logo (SVG and PNG) 
+Start of the front-end build 
+The brand is fixed at one 
+name and one logo across 
+all three applications; 
+colours and fonts are 
+already specified (§1.6) 
+B5 
+Old-system export: workers and 
+clients (CSV, one row per record, with 
+the column list agreed at kick-off) 
+Four weeks before go-live 
+Migration is a one-off 
+import run against staging 
+first, then production; see 
+B6 
+B6 
+Sign-off on the migration dry run 
+Two weeks before go-live 
+The import is run against 
+staging and THC checks a 
+sample of migrated workers 
+and clients before it is run 
+for real. Migrated workers 
+arrive as `compliant` where 
+their documents are in date 
+and `blocked` where they 
+are not, and are notified to 
+re-upload (§4.3) 
+B7 
+DNS records for the two sender 
+addresses (SPF, DKIM, DMARC for 
+timesheets@ and 
+admin@thehospitalitycompany.co.uk) 
+Before UAT 
+Without them the system's 
+mail is filtered as spam 
+(§9.12) 
+B8 
+Production hosting decision and 
+account (DigitalOcean or AWS) 
+Before UAT 
+The code is transferred to 
+THC in full; production runs 
+in THC's own account (§1.1) 
+ 
+Everything else previously carried as a question is now specified in the body of this document: the share-code 
+format and accepted NI evidence (§2.5), the New Starter report columns (§9.9), quiz attempts (§2.9), same-day 
+auto-assign (§3.4), venue types and their standard radii (§9.11), the weekly calendar view (§3.1), timesheet 
+pagination (§11.3), returning workers (§2.12), the graduation route off the student cap (§4.5) and the email 
+register including E2 and E4 (§8). 
+The agreement comprises: this Scope of Work and the approved design pack (Mobile · Web · Design system). 
+Where the two disagree, the order of precedence at the top of this document applies. 
+
+
+===== PAGE 53 =====
+53 
+Key decisions (summary) 
+The decisions that define the product, in one table. Each is specified in full in the section referenced; this is a 
+summary, not a separate source of truth. 
+Question 
+Decision in V1 
+The product name in the UI 
+The Hospitality Company — one name and one logo across 
+the whole system 
+H&S quiz 
+Pass mark 80%, up to 3 attempts; failing the third → 
+automatic rejection 
+PO Number 
+Entered manually by the manager when the client provides it 
+— the system does not auto-generate one (updated 
+14.07.2026) 
+Photos on the timesheet 
+Present — at THC's request 
+Strikes 
+Managed by THC internally. On its side, the system records 
+every violation (no-show / late / left early / left the geofence 
+during the shift / no check-out, §9.5) — it affects the worker's 
+show-rate, and that affects their place in auto-assign 
+Roles on an event 
+Many roles per event, each with its own start and end time 
+— pre-filled from the event window and overridable per role; 
+the event window is derived (earliest start → latest end). Every 
+scheduled-time rule runs off the role's own window (RULE-18, 
+§3.2) 
+Who gets offered a shift first 
+Staff qualified for that client AND that role, in full, before 
+anyone else — a priority wave, not a hard gate. Qualification is 
+held per client + role (cleared as Waiting Staff at Client A ≠ 
+cleared at Client B, or as Bar Staff at Client A), set by the 
+manager and granted automatically after a clean shift in that 
+role at that client; a "Do not return" flag bars a worker from 
+the client outright (RULE-17, §3.4, §9.6) 
+Weekly hours cap 
+Calculated, never set. Derived from the worker's verified term 
+dates at the moment it is evaluated — 20 h in term, 48 h in 
+university holidays, 48 h permanently once a completion letter 
+is verified. A week straddling both takes the lower cap. No 
+editable field anywhere, for any worker (RULE-20, §4.4) 
+Declaring a conviction while working 
+The worker declares it from the app at any time (§10.7) — an 
+ongoing duty written into the contract (§2.11). On submission 
+they are suspended like any expired document: future 
+bookings released, invitations withdrawn, app locked to 
+Documents, and E9 emails the office without carrying the 
+details. A manager verifies (unblock via the full compliance re-
+check) or rejects (becomes a manual block) 
+Leaving 
+The worker leaves from the app — "Request my P45" — 
+status becomes inactive, every future booking is released to 
+auto-assign, open invitations are withdrawn, a shift already 
+under way is untouched, and E8 emails 
+admin@thehospitalitycompany.co.uk with the released shifts 
+listed. The system does not generate the P45; payroll issues it 
+(§10.6) 
+Returning workers 
+Re-onboarded on their existing record via Reset to candidate 
+
+
+===== PAGE 54 =====
+54 
+Question 
+Decision in V1 
+— full wizard again, compliance evidence superseded, 
+Employee ID and history retained. The application form runs a 
+duplicate check and routes a match to the office rather than 
+creating a second record (§2.12, §9.6) 
+Onboarding stages 
+Interview requested → Interview completed → Documents → 
+Quiz → Additional info → Contract 
+The worker's wizard 
+11 steps (mobile app numbering — laid out slightly differently 
+from the Back Office wizard); the H&S quiz is step 6/11, 
+Contract is step 10/11 
+Right to Work 
+Share code — an input field (9 alphanumeric characters 
+starting with "W", case-insensitive, spaces ignored, valid ~90 
+days) + an automatic gov.uk check 
+Auto-assign 
+A toggle, ON by default + an editable number of invitations 
+per iteration 
+Shift confirmation 
+Done by the worker, in the app; the manager only has 
+Withdraw 
+Dashboard 
+4 operational KPIs + a financial snapshot of the week 
+Auto-assign scoring 
+Show-rate 30% / Rating 25% / Proximity 25% / Fair rotation 
+10% / Venue history 10% 
+Reports · Invoicing 
+A revenue forecast for the period, NOT PO-based invoices 
+(THC has its own invoicing) 
+Criminal Record 
+Merged into the Documents step (4/11) — single Verify/Reject 
+blocker, auto-verified if No 
+ 
+Document version 
+Version 
+Date 
+Status 
+1.0 
+13.07.2026 
+First complete version of the Scope of 
+Work — for THC's review and approval 
+1.1 
+17.09.2026 
+Adds per-role start and end times on an 
+event build (RULE-18) and client-level 
+staff qualification with qualified-first 
+offering (RULE-17) 
+1.2 
+17.09.2026 
+Qualification scoped per client and role; 
+Official University Completion Letter 
+(§4.5); 6-hour break alert (N13 / BG-10); 
+P45 decision recorded (§2.8). Review 
+commentary folded into the body; no 
+individuals named 
+1.3 
+17.09.2026 
+Every remaining open question closed 
+and specified as a requirement: 
+returning workers via Reset to candidate 
+(§2.12, §9.6), E2 / E4 emails (§8), venue 
+types and standard radii (§9.11), the 
+weekly calendar view (§3.1), timesheet 
+pagination (§11.3), accepted NI evidence 
+
+
+===== PAGE 55 =====
+55 
+Version 
+Date 
+Status 
+and document sets (§2.5), the full 
+student-loan option set (§2.8), 
+references handling (§2.10), buffer turn-
+away wording (§3.2) and sender 
+addresses (§9.12). Appendix B becomes 
+a list of delivery dependencies rather 
+than questions 
+1.4 
+17.09.2026 
+Adds worker-initiated leaving: "Request 
+my P45" in the Staff App (§10.6), the 
+new `inactive` state (§2.12), the Inactive 
+filter in the staff directory (§9.6), email 
+E8 (§8) and RULE-19 (§7) 
+1.5 
+17.09.2026 
+The weekly hours cap becomes a 
+calculated value (RULE-20): derived from 
+the verified term dates, never stored 
+and never set by the office. Removes the 
+editable cap field (§1.5, §2.3, §2.5), adds 
+the split-week rule and push N14 (§4.4, 
+§8). The in-term cap is 20 h for every 
+student-visa worker; the below-degree-
+level 10 h variant is not applied 
+1.6 
+17.09.2026 
+Adds in-employment disclosure of 
+criminal convictions from the Staff App 
+(§10.7, RULE-21), the 
+CriminalDeclaration history (§1.5), the 
+ongoing duty in the contract (§2.11), and 
+email E9 / push N15 (§8) 
+ 

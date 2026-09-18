@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Design system — THC wireframes</title>
+<link rel="stylesheet" href="assets/thc.css">
+<script src="assets/thc.js" defer></script>
+<style>
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .sw { border: 1px solid var(--line); }
+  .sw i { display: block; height: 56px; }
+  .sw div { padding: 8px 10px; font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+  .sw div b { display: block; color: var(--text); font-weight: 500; }
+  .demo { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .type-sample h1 { font-size: 32px; } .type-sample h2 { font-size: 22px; }
+</style>
+</head>
+<body>
+<div class="wf-bar"><a href="index.html">← Hub</a><span class="t">Design system</span><span class="pill">§1.6 · §10.1</span><span class="spacer"></span><a href="backoffice/login.html">Next: Back Office →</a></div>
+
+<div class="wf-section">
+  <h2>1 · Palette<small>Tokens in assets/thc.css. Purple is reserved for Auto-Assign; coral is danger. Zero border-radius everywhere except the logo.</small></h2>
+  <div class="swatches">
+    <div class="sw"><i style="background:#04080F;border-bottom:1px solid var(--line)"></i><div><b>bg</b>#04080F</div></div>
+    <div class="sw"><i style="background:#0B1220"></i><div><b>panel</b>#0B1220</div></div>
+    <div class="sw"><i style="background:#1C2839"></i><div><b>line</b>#1C2839</div></div>
+    <div class="sw"><i style="background:#3EDCEC"></i><div><b>cyan · primary</b>#3EDCEC</div></div>
+    <div class="sw"><i style="background:#A879FF"></i><div><b>purple · auto-assign</b>#A879FF</div></div>
+    <div class="sw"><i style="background:#3DDC97"></i><div><b>green</b>#3DDC97</div></div>
+    <div class="sw"><i style="background:#F5B83D"></i><div><b>amber</b>#F5B83D</div></div>
+    <div class="sw"><i style="background:#FF6E61"></i><div><b>coral · danger</b>#FF6E61</div></div>
+    <div class="sw"><i style="background:#E9EEF5"></i><div><b>text</b>#E9EEF5</div></div>
+    <div class="sw"><i style="background:#8A97A3"></i><div><b>muted</b>#8A97A3</div></div>
+  </div>
+</div>
+
+<div class="wf-section">
+  <h2>2 · Type<small>Space Grotesk headings · Inter body · IBM Plex Mono labels (uppercase, letter-spaced)</small></h2>
+  <div class="panel"><div class="panel-b type-sample stack">
+    <h1>Gala Dinner · Leonardo Hotel St Pauls</h1>
+    <h2>Waiting Staff · 17:00 – 23:30</h2>
+    <h3>Confirmed · 9 of 12</h3>
+    <p>Body copy in Inter. The worker confirms in the app — the manager has no Confirm button, only Withdraw. Buffer is displayed as 12 (+2), never 14.</p>
+    <span class="label">Mono label · uppercase · letter-spacing 0.12em</span>
+    <span class="mono">Mono values: 17:00 – 23:30 · £14.00/h · W123AB4CD · Employee ID 10042</span>
+  </div></div>
+</div>
+
+<div class="wf-section">
+  <h2>3 · Brand<small>One name, one logo: "The Hospitality Company" + the two-glasses logo in a cyan box. The circle is the only rounded element in the system.</small></h2>
+  <div class="demo">
+    <div class="brand"><span class="logo round">🥂</span><div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div></div>
+    <div class="brand"><span class="logo">🥂</span><div><div class="name">The Hospitality Company</div><div class="sub">Staff App</div></div></div>
+    <div class="brand"><span class="logo round">🥂</span><div><div class="name">The Hospitality Company</div><div class="sub">Client Portal</div></div></div>
+  </div>
+</div>
+
+<div class="wf-section">
+  <h2>4 · Web/Button<small>Hover = lift + sheen. Primary cyan · Purple only for Auto-Assign · Danger coral outline (solid for destructive confirm)</small></h2>
+  <div class="demo">
+    <button class="btn primary">+ New event</button><button class="btn">Secondary</button><button class="btn outline">Apply for this shift</button>
+    <button class="btn purple">Auto-assign · ON</button><button class="btn green">Verify</button><button class="btn danger">Reject</button><button class="btn danger solid">Remove (GDPR)</button>
+    <button class="btn ghost">Cancel</button><button class="btn sm">Small</button><button class="btn lg primary">Check in — verify GPS</button><button class="btn" disabled>Disabled</button>
+  </div>
+</div>
+
+<div class="wf-section">
+  <h2>5 · Web/Pill — the status vocabulary<small>Square, mono, uppercase. Tones are fixed per status (docs/07-design-system.md).</small></h2>
+  <div class="stack">
+    <div class="demo"><span class="label" style="width:110px">Event</span><span class="pill cyan">Upcoming</span><span class="pill green">Ongoing</span><span class="pill">Completed</span><span class="pill">Cancelled</span></div>
+    <div class="demo"><span class="label" style="width:110px">Booking</span><span class="pill">Invited</span><span class="pill green">Confirmed</span><span class="pill amber">Needs confirmation</span><span class="pill amber">Time changed</span><span class="pill">Awaiting</span><span class="pill coral">No show</span><span class="pill purple">Applied 2h ago</span><span class="pill solid green">9 of 12</span><span class="pill solid amber">4 of 10</span></div>
+    <div class="demo"><span class="label" style="width:110px">Monitor</span><span class="pill green">On shift</span><span class="pill amber">Off-site</span><span class="pill">Checked out 23:41</span><span class="pill coral">Checked out 00:05</span><span class="pill coral">No check-out</span><span class="pill amber">Due 17:00</span><span class="pill amber">Not confirmed today</span><span class="pill coral">Not checked in — 30 min alert</span></div>
+    <div class="demo"><span class="label" style="width:110px">Documents</span><span class="pill">Missing</span><span class="pill amber">In review</span><span class="pill green">Verified</span><span class="pill coral">Re-upload</span><span class="pill amber">Expiring · 12 d</span><span class="pill coral">Expired</span><span class="pill">Superseded</span><span class="pill cyan">AI 94%</span><span class="pill amber">Needs manual review</span></div>
+    <div class="demo"><span class="label" style="width:110px">Staff</span><span class="pill green">Compliant</span><span class="pill coral">Blocked</span><span class="pill">Inactive</span><span class="pill">Removed</span><span class="pill amber">Limit reached</span><span class="chip purple">Qualified — Leonardo · Waiting Staff</span><span class="chip">Waiting Staff <span class="x">×</span></span></div>
+    <div class="demo"><span class="label" style="width:110px">Rating</span><span class="rating coral">★ 2.6</span><span class="rating amber">★ 3.7</span><span class="rating green">★ 4.6</span><span class="score">87 <span class="bar"><i style="width:87%"></i></span></span></div>
+  </div>
+</div>
+
+<div class="wf-section">
+  <h2>6 · SegToggle · Tabs · Switch · Input · DocRow · Stepper<small>Inputs: navy field, cyan focus ring. Time inputs typed by a manager carry "(UK time)" in the label (§1.8).</small></h2>
+  <div class="grid c2">
+    <div class="stack">
+      <div class="seg"><button class="on">List</button><button>Calendar</button></div>
+      <div class="seg"><button class="on">Active</button><button>Rejected <span class="n">4</span></button></div>
+      <div class="tabs"><button class="active">Needs review <span class="n alert">7</span></button><button>Radar</button></div>
+      <div class="demo"><label class="switch purple on"><span class="track"></span>Auto-assign</label><label class="switch on"><span class="track"></span>Client pays for breaks</label><label class="switch"><span class="track"></span>Client pays for buffer</label></div>
+      <div class="demo"><label class="check"><span class="box on"></span>I confirm that the information I've given on this form is correct.</label></div>
+      <div class="demo"><label class="check radio"><span class="box on"></span>UK / Irish citizen</label><label class="check radio"><span class="box"></span>International student</label></div>
+      <div class="slider"><div class="fill" style="width:32%"></div><div class="knob" style="left:32%"></div></div>
+      <div class="progress"><div class="fill" style="width:45%"></div></div>
+    </div>
+    <div class="stack">
+      <div class="field"><span class="label">Start (UK time)</span><input class="input mono" value="17:00"></div>
+      <div class="field"><span class="label">Share code</span><input class="input mono err" value="W12 3AB 4C"><span class="error">9 characters starting with W, e.g. W123AB4CD</span></div>
+      <div class="field"><span class="label">National Insurance number</span><input class="input mono readonly" readonly value="●●●●●●●2B"><span class="hint">Locked once entered — corrections go through the office</span></div>
+      <div class="field"><span class="label">Search</span><div class="search"><input class="input" placeholder="Search staff by name"></div></div>
+      <div class="stack" style="gap:0">
+        <div class="docrow verified"><span class="ico">PDF</span><div><div class="t">Passport</div><div class="m">Verified · expires 14.03.2031 · AI 96%</div></div><div class="right"><span class="pill green">Verified</span><button class="btn sm">↓</button></div></div>
+        <div class="docrow pending"><span class="ico">JPG</span><div><div class="t">University Term Dates Letter</div><div class="m">Uploaded 2 h ago · AI found 5 holiday periods · 71%</div></div><div class="right"><span class="pill amber">Needs manual review</span><button class="btn sm green">Verify</button><button class="btn sm danger">Reject</button></div></div>
+        <div class="docrow rejected"><span class="ico">—</span><div><div class="t">NI evidence</div><div class="m">Rejected · "Photo is blurred — please re-take"</div></div><div class="right"><span class="pill coral">Re-upload</span></div></div>
+      </div>
+      <div class="stepper"><div class="st done"><span class="k">1</span><span class="t">Interview requested</span></div><div class="st done"><span class="k">2</span><span class="t">Interview completed</span></div><div class="st now"><span class="k">3</span><span class="t">Documents</span></div><div class="st"><span class="k">4</span><span class="t">Quiz</span></div><div class="st"><span class="k">5</span><span class="t">Additional info</span></div><div class="st"><span class="k">6</span><span class="t">Contract</span></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="wf-section">
+  <h2>7 · Avatars · KPI · Table · Alerts · Modal<small>Square avatars (real selfies in product). Removed workers show "Deleted account #id".</small></h2>
+  <div class="grid c2">
+    <div class="stack">
+      <div class="demo"><span class="avatar sm photo">AK</span><span class="avatar photo">TR</span><span class="avatar lg photo">PS</span><span class="avatar xl photo">LM</span><span class="avatar lg deleted">#1042</span><div class="avatars"><span class="avatar photo">AK</span><span class="avatar photo">TR</span><span class="avatar photo">PS</span><span class="avatar">+6</span></div></div>
+      <div class="grid c2"><div class="kpi accent"><span class="label">Open positions</span><span class="v">37</span><span class="d">Sold but not staffed</span></div><div class="kpi danger"><span class="label">No-shows</span><span class="v">2</span><span class="d">Highlighted red when &gt; 0</span></div></div>
+      <div class="alert">Confirm by <b>12:00 today</b> — or you'll be removed from this shift.</div>
+      <div class="alert coral">This shift has already been included in a payroll export. Marking a No-show now will not reverse the payment — please notify Finance to reverse it.</div>
+      <div class="toast green">Document verified — full compliance re-check passed, worker unblocked.</div>
+    </div>
+    <div class="stack">
+      <div class="panel"><div class="panel-b tight"><table class="tbl"><thead><tr><th>Staff</th><th>Window</th><th class="num">Hours</th><th>Status</th></tr></thead><tbody>
+        <tr><td><div class="person"><span class="avatar sm photo">AK</span><div><div class="n">Amara K.</div><div class="s">Waiting Staff</div></div></div></td><td class="mono sm">17:00 – 23:30<span class="sub">UK time</span>19:00 – 01:30<span class="sub">your time</span></td><td class="num">6.5</td><td><span class="pill green">On shift</span></td></tr>
+        <tr><td><div class="person"><span class="avatar sm deleted">#</span><div><div class="n muted">Deleted account #1042</div><div class="s">Bar Staff</div></div></div></td><td class="mono sm">18:00 – 01:00</td><td class="num">7.0</td><td><span class="pill">Checked out 01:02</span></td></tr>
+      </tbody></table></div></div>
+      <div class="modal-inline" style="min-height:230px"><div class="modal-back" style="position:relative;padding:12px"><div class="modal"><div class="mh"><h3>Block Jonah W.</h3></div><div class="mb"><div class="field"><span class="label">Reason (required)</span><textarea class="input" placeholder="Describe the reason — shown on the profile as “Blocked — reason”"></textarea></div><p class="sm muted">Blocking releases all of this worker's future bookings. Unblock runs the full compliance check first.</p></div><div class="mf"><button class="btn ghost">Cancel</button><button class="btn danger solid">Block worker</button></div></div></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="wf-section">
+  <h2>8 · Mobile chrome (§10.1)<small>Frosted glass top bar / bottom nav / sheet with a cyan/purple glow beneath; collapsing header keeps the logo left and the avatar right.</small></h2>
+  <div class="phones">
+    <div class="phone-wrap"><div class="cap">AppHeader · <b>expanded</b> + BottomNav</div><div class="phone short">
+      <div class="statusbar"><span>14:32</span><span>●●● 5G ▮</span></div>
+      <div class="app-header"><span class="logo round">🥂</span><div class="title">Invites</div><span class="avatar photo">AK</span></div>
+      <div class="app-body"><div class="mcard"><div class="h"><span class="pill purple">Invitation</span><span class="ml-auto mono sm">Sat 20 · 11:00 – 00:30</span></div><div class="t">Wedding — Marquee · Waiting Staff</div><div class="m">Hurst Manor, RH17 · £14.00/h · Black &amp; whites</div><div class="row"><button class="btn primary grow">Accept</button><button class="btn grow">Decline</button></div></div></div>
+      <nav class="bottom-nav"><a href="#"><span class="i"></span>Documents</a><a href="#"><span class="i"></span>Shifts</a><a class="active" href="#"><span class="i"></span>Invites<span class="badge">2</span></a><a href="#"><span class="i"></span>Radar</a></nav>
+    </div></div>
+    <div class="phone-wrap"><div class="cap">AppHeader · <b>collapsed on scroll</b> + Sheet (glass)</div><div class="phone short">
+      <div class="statusbar"><span>14:32</span><span>●●● 5G ▮</span></div>
+      <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Shifts</div><span class="avatar photo">AK</span></div>
+      <div class="app-body"><div class="mcard muted"><div class="t">Gala Dinner · Waiting Staff</div><div class="m">17:00 – 23:30</div></div><div class="mcard muted"><div class="t">Awards Night · Waiting Staff</div><div class="m">Tue 23 · 16:00 – 02:00</div></div></div>
+      <div class="sheet-back"></div>
+      <div class="sheet"><div class="grab"></div><div class="row"><span class="avatar lg photo">AK</span><div><div class="strong">Amara K.</div><div class="sm muted">Employee ID 10042 · Waiting Staff · Bar Staff</div></div></div><div class="mlist"><div class="mrow"><span class="t">Profile details</span><span class="right muted">›</span></div><div class="mrow"><span class="t">Security settings</span><span class="right muted">›</span></div><div class="mrow"><span class="t">Payment information</span><span class="right muted">›</span></div><div class="mrow"><span class="t">Sign out</span></div></div><div class="xs muted">Need help? Please contact us at: admin@thehospitalitycompany.co.uk</div><hr><a class="xs muted" href="#">Request my P45</a></div>
+    </div></div>
+  </div>
+</div>
+</body>
+</html>

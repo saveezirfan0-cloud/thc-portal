@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>THC Wireframes</title>
+<meta name="description" content="UI wireframes for every screen of The Hospitality Company staffing platform — Back Office, Staff App (PWA), Client Portal, public pages.">
+<link rel="stylesheet" href="assets/thc.css">
+<style>
+  .hub { max-width: 1240px; margin: 0 auto; padding: 32px 24px 64px; display: flex; flex-direction: column; gap: 28px; }
+  .hero { display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap; }
+  .hero h1 { font-size: 30px; }
+  .hero p { color: var(--muted); max-width: 720px; }
+  .apps { display: grid; grid-template-columns: repeat(auto-fit, minmax(480px, 1fr)); gap: 16px; }
+  @media (max-width: 560px) { .apps { grid-template-columns: 1fr; } }
+  .app { background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--cyan); display: flex; flex-direction: column; }
+  .app.staff { border-top-color: var(--purple); } .app.client { border-top-color: var(--green); } .app.public { border-top-color: var(--amber); }
+  .app .h { padding: 14px 16px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 10px; }
+  .app .h h2 { font-size: 16px; } .app .h small { margin-left: auto; }
+  .app ol { list-style: none; margin: 0; padding: 6px 0; }
+  .app li { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-bottom: 1px solid rgba(255,255,255,.03); }
+  .app li:last-child { border-bottom: 0; }
+  .app li .r { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); width: 118px; flex: 0 0 auto; }
+  .app li a { flex: 1; }
+  .app li a { color: var(--text); font-weight: 500; }
+  .app li a:hover { color: var(--cyan); text-decoration: none; }
+  .app li .s { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--muted); letter-spacing: .06em; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="hub">
+  <div class="hero">
+    <span class="logo round" style="width:48px;height:48px;font-size:22px">🥂</span>
+    <div>
+      <span class="label cyan">The Hospitality Company · Scope of Work v1.6 · wireframes</span>
+      <h1>Every screen, every state</h1>
+      <p>Static wireframes in the real design system (§1.6 / §10.1). They are the visual contract for the build: a screen is done when it matches its wireframe. Sample data is consistent across pages (Gala Dinner, Fri 19 Sep 2026, Leonardo Hotel St Pauls). Web pages carry a state switcher under the top bar; mobile pages show one phone per state.</p>
+      <div class="legend mt-8"><span><span class="pill cyan">route</span> app route</span><span><span class="pill">§9.5</span> scope section</span><span><a href="design-system.html">Design system sheet →</a></span><span><a href="CONVENTIONS.md">Conventions →</a></span></div>
+    </div>
+  </div>
+
+  <div class="apps">
+    <section class="app public">
+      <div class="h"><h2>Public</h2><small>candidate, before the app exists</small></div>
+      <ol>
+        <li><span class="r">/apply</span><a href="public/apply.html">Application form · submitted</a><span class="s">§2.1</span></li>
+        <li><span class="r">/activate</span><a href="public/activate.html">Set password · Activated · Install the app</a><span class="s">§2.7</span></li>
+      </ol>
+    </section>
+
+    <section class="app">
+      <div class="h"><h2>Back Office Portal</h2><small>admin · web · responsive</small></div>
+      <ol>
+        <li><span class="r">/login</span><a href="backoffice/login.html">Login</a><span class="s">§1.4</span></li>
+        <li><span class="r">/dashboard</span><a href="backoffice/dashboard.html">Dashboard</a><span class="s">§9.1</span></li>
+        <li><span class="r">/onboarding</span><a href="backoffice/onboarding.html">Onboarding kanban</a><span class="s">§2.2</span></li>
+        <li><span class="r">/onboarding/:id</span><a href="backoffice/candidate.html">Candidate profile (6 phases)</a><span class="s">§2.3</span></li>
+        <li><span class="r">/events</span><a href="backoffice/events.html">Scheduling · List · Month · Week · Day</a><span class="s">§3.1</span></li>
+        <li><span class="r">/events/new</span><a href="backoffice/shift-builder.html">Shift Builder</a><span class="s">§3.2</span></li>
+        <li><span class="r">/events/:id</span><a href="backoffice/event-board.html">Event board · auto-assign · cancel</a><span class="s">§3.3</span></li>
+        <li><span class="r">/compliance</span><a href="backoffice/compliance.html">Needs review · Radar</a><span class="s">§4.1</span></li>
+        <li><span class="r">/checkin</span><a href="backoffice/checkin.html">Check-in monitor · Violation log</a><span class="s">§9.5</span></li>
+        <li><span class="r">/staff</span><a href="backoffice/staff.html">Staff directory · Student visa view</a><span class="s">§9.6</span></li>
+        <li><span class="r">/staff/:id</span><a href="backoffice/staff-profile.html">Staff profile · block · reset · remove</a><span class="s">§9.6</span></li>
+        <li><span class="r">/clients</span><a href="backoffice/clients.html">Clients · New client</a><span class="s">§9.7</span></li>
+        <li><span class="r">/clients/:id</span><a href="backoffice/client-card.html">Client card (4 blocks)</a><span class="s">§9.7</span></li>
+        <li><span class="r">/roles</span><a href="backoffice/roles.html">Roles &amp; rates</a><span class="s">§9.8</span></li>
+        <li><span class="r">/reports</span><a href="backoffice/reports.html">Financial · Payroll · New Starter</a><span class="s">§9.9</span></li>
+        <li><span class="r">/feedback</span><a href="backoffice/feedback.html">Client · Office feedback</a><span class="s">§9.10</span></li>
+        <li><span class="r">/venues</span><a href="backoffice/venues.html">Venues · map · geofence modal</a><span class="s">§9.11</span></li>
+      </ol>
+    </section>
+
+    <section class="app staff">
+      <div class="h"><h2>Staff App</h2><small>worker · PWA · 390×844</small></div>
+      <ol>
+        <li><span class="r">/login …</span><a href="staff/auth.html">Auth A0–A3 · Install · Notifications</a><span class="s">§10.2</span></li>
+        <li><span class="r">/onboarding/1–4</span><a href="staff/onboarding-1.html">Right to work · Address · Selfie · Documents</a><span class="s">§10.3</span></li>
+        <li><span class="r">/onboarding/5–8</span><a href="staff/onboarding-2.html">H&amp;S induction · Quiz · HMRC · References</a><span class="s">§10.3</span></li>
+        <li><span class="r">/onboarding/9–11</span><a href="staff/onboarding-3.html">Bank · Contract · How it works · Documents hub</a><span class="s">§10.3</span></li>
+        <li><span class="r">/shifts</span><a href="staff/shifts.html">Shifts · My shifts · Open shifts</a><span class="s">§10.4</span></li>
+        <li><span class="r">/shifts/:id</span><a href="staff/shift-detail.html">Shift detail · check-in/out · breaks · static screens</a><span class="s">§5</span></li>
+        <li><span class="r">/radar</span><a href="staff/radar.html">Radar</a><span class="s">§10.4</span></li>
+        <li><span class="r">/invites</span><a href="staff/invites.html">Invites</a><span class="s">§10.4</span></li>
+        <li><span class="r">/documents</span><a href="staff/documents.html">Documents · declare a conviction</a><span class="s">§10.4 · §10.7</span></li>
+        <li><span class="r">sheet · /profile</span><a href="staff/profile.html">Profile sheet · details · payments · Request my P45</a><span class="s">§10.1 · §10.6</span></li>
+        <li><span class="r">locks</span><a href="staff/locks.html">App-lock cases · push register N1–N15</a><span class="s">§10.1 · §8</span></li>
+      </ol>
+    </section>
+
+    <section class="app client">
+      <div class="h"><h2>Client Portal</h2><small>customer · web · no money</small></div>
+      <ol>
+        <li><span class="r">/login</span><a href="client/login.html">Login</a><span class="s">§1.4</span></li>
+        <li><span class="r">/client</span><a href="client/events.html">Event list</a><span class="s">§11.1</span></li>
+        <li><span class="r">/client/events/:id</span><a href="client/event.html">Event page · line-up · feedback</a><span class="s">§11.2</span></li>
+        <li><span class="r">PDF</span><a href="client/timesheet.html">Allocation sheet · Sign-out timesheet</a><span class="s">§11.3</span></li>
+      </ol>
+    </section>
+  </div>
+
+  <div class="note"><b>How to read these.</b> Amber mono annotations (▸) on the canvas call out a rule that governs what you see. The note at the foot of each page lists the behaviours with § references. Times are shown for a viewer in the UK; the second "your time" line appears only for a viewer in another zone (§1.8). Worker screens show base pay only; client screens show no money.</div>
+</div>
+</body>
+</html>

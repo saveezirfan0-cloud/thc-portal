@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff App · Shifts — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Shifts</span><span class="pill cyan">/shifts</span><span class="pill">§10.4 · §3.5 · §5</span>
+  <span class="spacer"></span>
+  <a href="shift-detail.html">Next: Shift detail →</a>
+</div>
+
+<div class="wf-section">
+  <h2>Shifts tab — segmented "My shifts" / "Open shifts"<small>Cards awaiting action get an amber border + NEEDS CONFIRMATION chip. Today's shift carries check-in inside the card. Times shown are always the worker's own role window (RULE-18), never the event window.</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ Screen: My shifts ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shifts · <b>My shifts</b> · 3 need action</div>
+      <div class="phone">
+        <div class="statusbar"><span>14:32</span><span>●●● 5G ▮</span></div>
+        <div class="app-header">
+          <span class="logo round">🥂</span>
+          <div class="title">Shifts</div>
+          <span class="avatar photo" title="tap → profile sheet">AK</span>
+        </div>
+        <div class="app-body">
+          <div class="seg" style="align-self:stretch;display:flex"><button class="on" style="flex:1">My shifts <span class="n alert">3!</span></button><button style="flex:1">Open shifts</button></div>
+
+          <!-- Today's shift: check-in inside the card -->
+          <div class="mcard today">
+            <div class="h"><span class="pill cyan">Today</span><span class="pill green">Confirmed</span><span class="ml-auto mono sm">17:00 – 23:30</span></div>
+            <div class="t">Gala Dinner · Waiting Staff</div>
+            <div class="m">Leonardo Royal Hotel, 10 Godliman St, EC4V 5AJ</div>
+            <div class="m">£14.00/h · Dress code: Black &amp; whites</div>
+            <div class="gps ok"><span class="dot"></span>On site · 42 m from the venue centre</div>
+            <button class="btn primary block lg">Check in — verify GPS</button>
+            <div class="xs muted">Check-in opens now · shift starts in 2 h 28 m</div>
+          </div>
+
+          <!-- Day-before "I'm ready" needed (hard deadline 12:00) -->
+          <div class="mcard needs">
+            <div class="h"><span class="pill amber">Needs confirmation</span><span class="ml-auto mono sm">Tomorrow · 18:00 – 01:00</span></div>
+            <div class="t">Product Launch — Bar · Bar Staff</div>
+            <div class="m">Mandarin Oriental, 66 Knightsbridge, SW1X 7LA</div>
+            <div class="alert">Confirm by <b>12:00 today</b> — or you'll be removed from this shift.</div>
+            <button class="btn primary block">I'm ready for tomorrow</button>
+          </div>
+
+          <!-- Time changed → re-confirm (Awaiting) -->
+          <div class="mcard needs">
+            <div class="h"><span class="pill amber">Time changed</span><span class="pill">Awaiting</span><span class="ml-auto mono sm">Sat 20 · 11:00 – 00:30</span></div>
+            <div class="t">Wedding — Marquee · Waiting Staff</div>
+            <div class="m">Hurst Manor, Cuckfield RH17 5LB</div>
+            <div class="m coral">Start time moved by the office (was 12:00–00:30)</div>
+            <button class="btn primary block">Confirm new time</button>
+          </div>
+
+          <!-- Confirmed, future, cancellable (>72h) -->
+          <div class="mcard">
+            <div class="h"><span class="pill green">Confirmed</span><span class="ml-auto mono sm">Tue 23 · 16:00 – 02:00</span></div>
+            <div class="t">Awards Night · Waiting Staff</div>
+            <div class="m">The Dorchester, 53 Park Lane, W1K 1QA</div>
+            <div class="row"><span class="xs muted">Cancel available until Sat 20, 16:00 (72 h before start)</span><button class="btn ghost sm ml-auto">Cancel shift</button></div>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a class="active" href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Screen: Open shifts ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shifts · <b>Open shifts</b> · own roles only, soonest first</div>
+      <div class="phone">
+        <div class="statusbar"><span>14:32</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed">
+          <span class="logo round">🥂</span>
+          <div class="title">Shifts</div>
+          <span class="avatar photo">AK</span>
+        </div>
+        <div class="app-body">
+          <div class="seg" style="align-self:stretch;display:flex"><button style="flex:1">My shifts <span class="n alert">3!</span></button><button class="on" style="flex:1">Open shifts</button></div>
+          <div class="xs muted">Shifts for your roles: Waiting Staff · Bar Staff. Auto-assign still runs; self-apply is an extra channel (RULE-08).</div>
+
+          <div class="mcard">
+            <div class="h"><span class="pill purple">You've worked here before</span><span class="ml-auto mono sm">Sat 20 · 11:00 – 00:30</span></div>
+            <div class="t">Wedding — Marquee · Waiting Staff</div>
+            <div class="m">Hurst Manor, RH17 · 38 km</div>
+            <div class="m">£14.00/h · Dress code: Black &amp; whites · 6 open</div>
+            <button class="btn outline block">Apply for this shift</button>
+          </div>
+
+          <div class="mcard">
+            <div class="h"><span class="ml-auto mono sm">Tue 23 · 17:00 – 02:00</span></div>
+            <div class="t">Awards Night · Bar Staff</div>
+            <div class="m">The Dorchester, W1K · 4.1 km</div>
+            <div class="m">£15.50/h · Dress code: Black tie · 5 open</div>
+            <button class="btn outline block">Apply for this shift</button>
+          </div>
+
+          <div class="mcard muted">
+            <div class="h"><span class="pill coral">Limit reached</span><span class="ml-auto mono sm">Thu 25 · 08:00 – 16:00</span></div>
+            <div class="t">Conference Breakfast · Waiting Staff</div>
+            <div class="m">ExCeL London, E16 · 12 km</div>
+            <div class="m">This 8 h shift would take you over your 20 h/week limit (term time until 13.12.2026)</div>
+            <button class="btn block disabled">Limit reached</button>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a class="active" href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Screen: On-the-day push + "Sorry, taken" popup ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shifts · <b>Push N7 + first-to-confirm popup</b> (RULE-03)</div>
+      <div class="phone short">
+        <div class="statusbar"><span>09:00</span><span>●●● 5G ▮</span></div>
+        <div style="padding:8px 12px"><div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · now</div><div class="b"><b>Confirm today's shift</b> — Gala Dinner · Waiting Staff · 17:00–23:30</div></div></div></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Shifts</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:24px">
+          <div class="mcard today">
+            <div class="h"><span class="pill cyan">Today</span><span class="pill amber">Not confirmed today</span><span class="ml-auto mono sm">17:00 – 23:30</span></div>
+            <div class="t">Gala Dinner · Waiting Staff</div>
+            <div class="m">Reminder only — no deadline. Confirming tells the office you're on your way (§3.5).</div>
+            <button class="btn primary block">Confirm today's shift</button>
+          </div>
+          <div class="modal-inline" style="min-height:220px">
+            <div class="modal-back" style="padding:16px">
+              <div class="modal">
+                <div class="mh"><h3>Sorry, this shift has been taken</h3></div>
+                <div class="mb"><p class="muted">Someone confirmed first. The invitation has moved to Closed and is no longer in your list.</p></div>
+                <div class="mf"><button class="btn primary">OK</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> Three-stage confirmation (§3.5): Accept → day-before "I'm ready" by 12:00 (hard deadline; missed → slot released, push N6b) → on-the-day confirm (reminder only). "Cancel shift" only while >72 h remain (RULE-04) and permanently excludes the worker from that event. Weekly-hours hard gate blocks Apply/Accept with "Limit reached" (RULE-20). Cards for cancelled/withdrawn shifts disappear the moment the push arrives.</div>
+</body>
+</html>
