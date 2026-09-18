@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff App · Onboarding 9–11 — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+/* page-local helpers (wireframe only) */
+.app-body>*{flex-shrink:0}
+.wiz-foot{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:12px 16px 26px;background:rgba(11,18,32,.6);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:6px}
+.wiz-foot .xs{text-align:center}
+.contract{height:300px;overflow:auto;border:1px solid var(--line);background:rgba(11,18,32,.85);padding:12px 14px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:8px;position:relative}
+.contract h4{color:var(--text);font-size:12.5px;margin-top:4px}
+.contract p b{color:var(--text)}
+.contract .fade{position:sticky;bottom:-12px;left:0;right:0;height:36px;background:linear-gradient(transparent,rgba(11,18,32,1));margin:-36px -14px -12px;pointer-events:none}
+.sig{border:1px solid var(--green);background:var(--green-dim);padding:10px 12px;font-family:var(--font-mono);font-size:11px;color:var(--green);letter-spacing:.02em}
+.tut{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border:1px solid var(--line);background:rgba(11,18,32,.85)}
+.tut .ic{width:32px;height:32px;border:1px solid var(--cyan);color:var(--cyan);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px}
+.tut .t{font-family:var(--font-head);font-size:14.5px;font-weight:600}
+.tut .m{font-size:12px;color:var(--muted)}
+.dots{display:flex;gap:6px;justify-content:center}
+.dots i{width:18px;height:3px;background:var(--line);display:block}
+.dots i.on{background:var(--cyan)}
+.docrow{padding:10px 12px}
+.docrow .ico{width:30px;height:30px}
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Onboarding wizard 9/11 – 11/11 + Documents hub</span><span class="pill cyan">/onboarding · /documents</span><span class="pill">§10.3 · §2.10 · §2.11 · §4.3</span>
+  <span class="spacer"></span>
+  <a href="shifts.html">Next: Shifts →</a>
+</div>
+
+<div class="wf-section">
+  <h2>Wizard steps 9–11: Bank &amp; payroll · Contract · How it works — then the Documents hub<small>The "I agree" tick is the signature; its UK-time timestamp is an audit record and is never converted to the viewer's zone (§2.11, §1.8). After Submit the worker waits in the Documents hub with Shifts / Invites / Radar locked until everything is verified (§10.3, §4.3).</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ 9/11 Bank & payroll ============ -->
+    <div class="phone-wrap">
+      <div class="cap">9/11 Bank &amp; payroll · <b>Complete</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>10:14</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">9/11 · Bank &amp; payroll</div><div class="progress"><div class="fill" style="width:82%"></div></div><h2>Where should we pay you?</h2><div class="sm muted">A UK account in your own name. You're paid by bank transfer on the Friday after the week you worked (Mon–Sun weeks).</div></div>
+          <div class="field"><span class="label">Account holder name <span class="coral">*</span></span><input class="input" value="Amara Kalu"><span class="hint">Exactly as it appears on your bank card or statement.</span></div>
+          <div class="row">
+            <div class="field" style="width:130px"><span class="label">Sort code <span class="coral">*</span></span><input class="input mono" value="40-47-84"></div>
+            <div class="field grow"><span class="label">Account number <span class="coral">*</span></span><input class="input mono" value="31926819"></div>
+          </div>
+          <div class="mcard"><div class="row"><span class="green">✓</span><div><div class="sm strong">HSBC UK · sort code recognised</div><div class="xs muted">Format check only — we don't verify the account with the bank.</div></div></div></div>
+          <div class="note xs">You can change these later in Profile → Payment information → Bank &amp; payroll. Each change is emailed to the office and payroll (E5, §2.10).</div>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg">Continue</button></div>
+      </div>
+    </div>
+
+    <!-- ============ 10/11 Contract · unsigned ============ -->
+    <div class="phone-wrap">
+      <div class="cap">10/11 Contract · <b>Reading — not yet agreed</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>10:16</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">10/11 · Contract</div><div class="progress"><div class="fill" style="width:91%"></div></div><h2>Zero-hours agreement</h2><div class="sm muted">Please read it all. Ticking "I agree" signs it.</div></div>
+          <div class="contract">
+            <h4>Casual worker agreement — The Hospitality Company Ltd</h4>
+            <p><b>1. Status.</b> This is a zero-hours agreement. The Company is under no obligation to offer you work and you are under no obligation to accept any work offered. Each assignment you accept is a separate engagement.</p>
+            <p><b>2. Pay.</b> You are paid at the base hourly rate shown for each shift, calculated on the payable time recorded through the app (check-in to check-out within the scheduled shift, less unpaid breaks where the client does not pay for breaks). Holiday pay is accrued and paid in accordance with the Working Time Regulations. Pay is made on the Friday following the Mon–Sun week worked.</p>
+            <p><b>3. Confirmations and attendance.</b> You agree to confirm each accepted shift the day before by 12:00, to check in and out on site using the app, and that a confirmed shift not re-confirmed by that deadline may be reallocated.</p>
+            <p><b>4. Right to work.</b> You confirm the right-to-work information and documents you have supplied are true and complete, and you will supply renewed documents before they expire.</p>
+            <p><b>5. Ongoing duty to disclose convictions.</b> You confirm that the criminal-conviction declaration you made during onboarding is accurate, and you <b>undertake to declare any unspent criminal conviction that arises during your engagement, as soon as reasonably practicable, using the "Declare a criminal conviction" route in the app</b>. The Company may pause your assignments while such a declaration is reviewed.</p>
+            <p><b>6. Conduct on site.</b> You will follow the client's reasonable instructions, the dress code for the shift and the Health &amp; Safety induction you have completed.</p>
+            <p><b>7. Data.</b> Your personal data, including your location while checked in to a shift, is processed as described in the Privacy Notice.</p>
+            <p><b>8. Ending the agreement.</b> Either party may end this agreement at any time; you may do so from the app ("Request my P45").</p>
+            <div class="fade"></div>
+          </div>
+          <label class="check" style="border:1px solid var(--line);padding:10px 12px;background:rgba(11,18,32,.85)"><span class="box"></span><span><b>I agree</b> to the zero-hours agreement above. Ticking this box is my electronic signature.</span></label>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg disabled">Continue</button><div class="xs muted">Tick "I agree" to sign and continue</div></div>
+      </div>
+    </div>
+
+    <!-- ============ 10/11 Contract · signed ============ -->
+    <div class="phone-wrap">
+      <div class="cap">10/11 Contract · <b>Agreed — signed electronically</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:42</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">10/11 · Contract</div><div class="progress"><div class="fill" style="width:91%"></div></div><h2>Zero-hours agreement</h2></div>
+          <div class="contract" style="height:150px">
+            <h4>Casual worker agreement — The Hospitality Company Ltd</h4>
+            <p><b>1. Status.</b> This is a zero-hours agreement. The Company is under no obligation to offer you work and you are under no obligation to accept any work offered…</p>
+            <p><b>5. Ongoing duty to disclose convictions.</b> …you undertake to declare any unspent criminal conviction that arises during your engagement…</p>
+            <div class="fade"></div>
+          </div>
+          <label class="check" style="border:1px solid var(--cyan);padding:10px 12px;background:var(--cyan-dim)"><span class="box on"></span><span><b>I agree</b> to the zero-hours agreement above. Ticking this box is my electronic signature.</span></label>
+          <div class="sig">Signed electronically · 18.09.2026 14:42 UK time — this timestamp is your signature</div>
+          <div class="xs muted">A copy of the signed agreement is kept on your profile. The timestamp is always shown in UK time, wherever you are (§1.8).</div>
+          <span class="annot">contract signed → candidate becomes Staff, Employee ID generated at this moment (§2.7)</span>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg">Continue</button></div>
+      </div>
+    </div>
+
+    <!-- ============ 11/11 How it works · card 1 ============ -->
+    <div class="phone-wrap">
+      <div class="cap">11/11 How it works · <b>Tutorial cards 1–4 + Open app</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:43</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px;gap:10px">
+          <div class="wizard-top"><div class="n">11/11 · How it works</div><div class="progress"><div class="fill" style="width:100%"></div></div><h2>You're nearly there, Amara</h2></div>
+          <div class="tut"><span class="ic">1</span><div class="t">Invitations arrive as notifications</div><div class="m">Open <b>Invites</b> to Accept or Decline. Declining never counts against you. First to accept takes the slot.</div></div>
+          <div class="tut"><span class="ic">2</span><div class="t">The day before, press "I'm ready" by 12:00</div><div class="m">The only hard deadline. Miss it and you're taken off the shift so someone else can be found in time.</div></div>
+          <div class="tut"><span class="ic">3</span><div class="t">On the day, confirm you're coming</div><div class="m">A reminder, not a deadline — it tells the office you're on your way.</div></div>
+          <div class="tut"><span class="ic">4</span><div class="t">Check in on site with GPS, check out when you finish</div><div class="m">Check-in only works within the venue's radius and locks 30 min after the start. You're paid the Friday after the week you worked.</div></div>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg">Open app</button></div>
+      </div>
+    </div>
+
+    <!-- ============ Documents hub · after 4/11 submit (quiz gate) ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Documents hub · <b>After 4/11 submit — waiting for verification, quiz locked</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>11:26</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Documents</div><span class="avatar photo">AK</span></div>
+        <div class="app-body">
+          <div class="alert cyan"><b>Thanks — your documents are with the office.</b> We check them within 1–2 working days and we'll notify you. Steps 5–11 unlock once every document is verified.</div>
+          <div class="xs muted" style="text-align:center">↓ Pull to refresh</div>
+          <div class="mlist">
+            <div class="docrow pending"><span class="ico">JPG</span><div><div class="t">Passport — photo page</div><div class="m">Uploaded 18 Sep · 11:24</div></div><div class="right"><span class="pill amber">In review</span></div></div>
+            <div class="docrow pending"><span class="ico">PDF</span><div><div class="t">University Term Dates Letter</div><div class="m">Uploaded 18 Sep · 11:24</div></div><div class="right"><span class="pill amber">In review</span></div></div>
+            <div class="docrow pending"><span class="ico">gov</span><div><div class="t">Right to work · share code W123AB4CD</div><div class="m">gov.uk check running · DOB 22.11.2003</div></div><div class="right"><span class="pill amber">In review</span></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">Criminal conviction declaration</div><div class="m">Answered "No" · verified automatically 18 Sep</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+          </div>
+          <div class="mcard muted" style="opacity:.7">
+            <div class="h"><span class="pill">Onboarding paused</span><span class="ml-auto mono sm">4 of 11 done</span></div>
+            <div class="progress"><div class="fill" style="width:36%"></div></div>
+            <button class="btn block disabled">Continue onboarding — locked</button>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <a class="active" href="documents.html"><span class="i"></span>Documents</a>
+          <a class="locked" href="shifts.html"><span class="i"></span>Shifts</a>
+          <a class="locked" href="invites.html"><span class="i"></span>Invites</a>
+          <a class="locked" href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Documents hub · mixed statuses incl. rejected ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Documents hub · <b>After submit — In review / Verified / Rejected + Re-upload</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>16:05</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Documents</div><span class="avatar photo">AK</span></div>
+        <div class="app-body">
+          <div class="alert"><b>One document needs your attention.</b> Shifts, Invites and Radar unlock once everything below is verified.</div>
+          <div class="xs muted" style="text-align:center">↓ Pull to refresh</div>
+          <div class="mlist">
+            <div class="docrow rejected"><span class="ico">✕</span><div><div class="t">Passport — photo page</div><div class="m coral">Rejected · "Photo is blurred — please re-take"</div></div><div class="right"><button class="btn primary sm">Re-upload</button></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">University Term Dates Letter</div><div class="m">Verified 18 Sep · term dates read: 21 Sep – 12 Dec 2026 · expires 31.12.2026</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+            <div class="docrow pending"><span class="ico">gov</span><div><div class="t">Right to work · share code</div><div class="m">gov.uk report received · awaiting the office</div></div><div class="right"><span class="pill amber">In review</span></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">Criminal conviction declaration</div><div class="m">Answered "No" · verified automatically</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+          </div>
+          <div style="padding:8px 12px"><div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 16:02</div><div class="b"><b>Document rejected</b> — Passport: "Photo is blurred — please re-take". Tap to re-upload. <span class="xs muted">(N8)</span></div></div></div></div>
+          <div class="xs muted">Weekly limit from your verified term letter: <b>20 h/week</b> in term time until 13.12.2026 — calculated, not set by anyone (RULE-20).</div>
+        </div>
+        <nav class="bottom-nav">
+          <a class="active" href="documents.html"><span class="i"></span>Documents</a>
+          <a class="locked" href="shifts.html"><span class="i"></span>Shifts</a>
+          <a class="locked" href="invites.html"><span class="i"></span>Invites</a>
+          <a class="locked" href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Documents hub · all verified → unlocked ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Documents hub · <b>Everything verified — app unlocked</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>09:12</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Documents</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="alert green"><b>You're all set.</b> Every document is verified — Shifts, Invites and Radar are open. Your Employee ID is <b class="mono">THC-00417</b>.</div>
+          <div class="mlist">
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">Passport — photo page</div><div class="m">Verified · expires 14.03.2031</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">University Term Dates Letter</div><div class="m">Verified · expires 31.12.2026</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">Right to work · share code</div><div class="m">Verified · right to work until 31.01.2028</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">Criminal conviction declaration</div><div class="m">Verified</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+          </div>
+          <button class="btn primary block lg">Go to Shifts</button>
+        </div>
+        <nav class="bottom-nav">
+          <a class="active" href="documents.html"><span class="i"></span>Documents</a>
+          <a href="shifts.html"><span class="i"></span>Shifts</a>
+          <a href="invites.html"><span class="i"></span>Invites</a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> <b>9/11</b> account holder · sort code · account number (§2.10); editable later from Profile → Payment information → Bank &amp; payroll, and every save emails gisela@ and thc_payroll@ (E5, §8). <b>10/11</b> the scrollable zero-hours agreement + "I agree" tick = signature; the record reads "Signed electronically · date/time — this timestamp is your signature" and is an audit stamp shown in UK time and never converted (§2.11, §1.8). The agreement contains the ongoing duty to disclose convictions via the in-app route (§10.7). Contract signed → status compliant, candidate leaves the kanban, Employee ID generated at that moment (§2.7, §2.12). <b>11/11</b> tutorial → "Open app". <b>Documents hub</b> after Submit (§10.3): every document shows In review / Verified / Rejected (reason + Re-upload, push N8). Because the quiz at 6/11 only unlocks once every step-4 document is verified (§2.9), the worker normally sees this hub between 4/11 and 6/11 with onboarding paused; it also applies whenever a document is rejected or expires later (§4.3). While anything is unverified, only the Documents tab works — Shifts / Invites / Radar are locked (§10.1 case 1). The verified term letter drives the 20 h/48 h weekly cap automatically (RULE-20, §4.4). Employee ID format is not defined in the spec — <code>THC-00417</code> is a placeholder.</div>
+</body>
+</html>

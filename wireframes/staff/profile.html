@@ -1,0 +1,289 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff App · Profile — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+/* page-local helpers (wireframe only) */
+.app-body>*{flex-shrink:0}
+.title .back{display:block;font-family:var(--font-mono);font-size:9.5px;color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+.sheet .link{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid rgba(255,255,255,.08);font-weight:500;font-size:13.5px;color:var(--text)}
+.sheet .link .chev{margin-left:auto;color:var(--muted)}
+.sheet .link:last-of-type{border-bottom:0}
+.sheet .p45{margin-top:10px;padding-top:12px;border-top:1px dashed rgba(255,255,255,.15);display:flex;flex-direction:column;gap:4px}
+.lockf .input{color:var(--muted);background:var(--panel-2)}
+.lockf .label::after{content:' · locked';color:var(--muted);text-transform:none;letter-spacing:0}
+.code{display:flex;gap:6px}
+.code span{flex:1;height:44px;border:1px solid var(--line);background:var(--bg);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:18px}
+.code span.cur{border-color:var(--cyan)}
+.earn{font-family:var(--font-head);font-size:20px;font-weight:600;color:var(--green)}
+.tot{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--line);background:rgba(11,18,32,.85)}
+.tot .v{font-family:var(--font-head);font-size:26px;font-weight:600}
+.consq{display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+.consq div::before{content:'— ';color:var(--coral)}
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Profile sheet · details · security · payment · P45</span><span class="pill cyan">/profile</span><span class="pill">§10.1 · §10.6 · §2.8 · §2.10 · §8 E5/E6/E7/E8</span>
+  <span class="spacer"></span>
+  <a href="locks.html">Next: Locks →</a>
+</div>
+
+<div class="wf-section">
+  <h2>Profile sheet and its screens<small>Glass sheet from the avatar (§10.1): details · links · sign out · help line · "Request my P45" set apart at the very bottom (§10.6). Name, NI number and avatar are locked; phone, email (verified by code) and address are editable and trigger E7. Bank changes trigger E5.</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ Profile sheet ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Profile · <b>Sheet over dimmed Shifts</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:32</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Shifts</div><span class="avatar photo" style="outline:2px solid var(--cyan)">AK</span></div>
+        <div class="app-body">
+          <div class="seg" style="align-self:stretch;display:flex"><button class="on" style="flex:1">My shifts <span class="n alert">3!</span></button><button style="flex:1">Open shifts</button></div>
+          <div class="mcard today"><div class="h"><span class="pill cyan">Today</span><span class="pill green">Confirmed</span><span class="ml-auto mono sm">17:00 – 23:30</span></div><div class="t">Gala Dinner · Waiting Staff</div><div class="m">Leonardo Royal Hotel, 10 Godliman St, EC4V 5AJ</div></div>
+          <div class="mcard needs"><div class="h"><span class="pill amber">Needs confirmation</span><span class="ml-auto mono sm">Tomorrow · 18:00 – 01:00</span></div><div class="t">Product Launch — Bar · Bar Staff</div></div>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a class="active" href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+        <div class="sheet-back"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="row" style="gap:12px"><span class="avatar photo xl">AK</span><div><div style="font-family:var(--font-head);font-size:18px;font-weight:600">Amara Kalu</div><div class="mono xs muted">Employee ID THC-00417</div><div class="xs muted">Waiting Staff · Bar Staff · International student</div><div class="row" style="gap:6px;margin-top:4px"><span class="pill green">Compliant</span><span class="pill">Show-rate 97%</span></div></div></div>
+          <div>
+            <a class="link" href="#details">Profile details<span class="chev">›</span></a>
+            <a class="link" href="#security">Security settings<span class="chev">›</span></a>
+            <a class="link" href="#pay">Payment information<span class="chev">›</span></a>
+          </div>
+          <button class="btn block">Sign out</button>
+          <div class="xs muted" style="text-align:center">Need help? Please contact us at: <b class="cyan">admin@thehospitalitycompany.co.uk</b></div>
+          <div class="p45">
+            <a class="xs muted" href="#p45" style="text-align:center;text-decoration:underline">Request my P45 — leaving The Hospitality Company</a>
+            <span class="annot" style="text-align:center">below sign-out, separated, not a primary action (§10.6)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Profile details ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Profile details · <b>Locked name / NI / avatar, editable phone · email · address</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:35</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Profile details</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:12px">
+          <div class="row" style="gap:12px"><span class="avatar photo xl">AK</span><div><div class="sm strong">Profile photo · locked</div><div class="xs muted">Set once at onboarding — it's printed on timesheets. To change it, contact the office.</div></div></div>
+          <div class="field lockf"><span class="label">Full name</span><input class="input" value="Amara Kalu" readonly><span class="hint">Tied to your right-to-work check and payroll — corrections go through the office.</span></div>
+          <div class="field lockf"><span class="label">National Insurance number</span><input class="input mono" value="●●●●●●●2B" readonly><span class="hint">Masked and locked once entered. Joined without one? Add it here once HMRC issues it (E6).</span></div>
+          <div class="field"><span class="label">Mobile</span><input class="input mono" value="+44 7700 900321"></div>
+          <div class="field"><span class="label">Email</span><div class="input-row"><input class="input" value="amara.k@example.com"><span class="addon">Change</span></div><span class="hint">A new email is verified with a code before it replaces this one.</span></div>
+          <div class="field"><span class="label">Home address</span><input class="input" value="Flat 4, 22 Roman Road, London E2 0RY"><span class="hint">Used for venue distances. Changing it notifies the office (E7).</span></div>
+          <button class="btn primary block lg">Save changes</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Email verification code ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Profile details · <b>Change email — verification code step</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:36</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile details</span>Verify your new email</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:14px;padding-bottom:24px">
+          <p class="sm muted">We sent a 6-digit code to <b class="cyan">amara.kalu@gmail.com</b>. Your current email stays in place until you enter it.</p>
+          <div class="code"><span>4</span><span>8</span><span>1</span><span class="cur">_</span><span></span><span></span></div>
+          <div class="xs muted">Code expires in 9:41 · <a href="#">Resend code</a></div>
+          <button class="btn primary block lg disabled">Verify &amp; save</button>
+          <button class="btn ghost block">Cancel — keep amara.k@example.com</button>
+          <span class="annot">on success: email replaced + E7 to admin@ and thc_payroll@ (§10.1, §8)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Security settings ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Security settings · <b>Change password</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:37</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Security settings</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:14px;padding-bottom:24px">
+          <div class="field"><span class="label">Current password</span><input class="input" type="password" value="••••••••••"></div>
+          <div class="field"><span class="label">New password</span><input class="input" type="password" value="••••••••••••"><span class="hint">At least 10 characters, with a number.</span></div>
+          <div class="field"><span class="label">Confirm new password</span><input class="input" type="password" value="••••••••••••"></div>
+          <button class="btn primary block lg">Update password</button>
+          <div class="mlist">
+            <div class="mrow"><div><div class="t">Signed-in devices</div><div class="s">iPhone · this device · London</div></div><div class="right"><button class="btn ghost sm">Sign out others</button></div></div>
+            <div class="mrow"><div><div class="t">Notifications</div><div class="s">Allowed on this device</div></div><div class="right"><span class="pill green">On</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Payment information · Earnings history ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Payment information · <b>Earnings history — a card per paid shift</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:38</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Payment information</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px">
+          <div class="mtabs"><a class="active" href="#">Earnings history</a><a href="#">Bank &amp; payroll</a></div>
+          <div class="tot"><span class="label">Paid so far · Sep 2026</span><span class="v">£312.50</span><span class="xs muted">Base pay only. Payslips and holiday pay come from payroll, not this app.</span></div>
+          <div class="mcard">
+            <div class="h"><span class="pill green">Paid Fri 11 Sep</span><span class="ml-auto earn">£112.00</span></div>
+            <div class="t">Waiting Staff · £14.00/h</div>
+            <div class="m">Board Dinner · Leonardo Royal Hotel, 10 Godliman St, EC4V 5AJ</div>
+            <div class="m">Sat 5 Sep · 15:00 – 23:00 · 8 h</div>
+          </div>
+          <div class="mcard">
+            <div class="h"><span class="pill green">Paid Fri 11 Sep</span><span class="ml-auto earn">£77.50</span></div>
+            <div class="t">Bar Staff · £15.50/h</div>
+            <div class="m">Cocktail Reception · Mandarin Oriental, 66 Knightsbridge, SW1X 7LA</div>
+            <div class="m">Wed 2 Sep · 18:00 – 23:00 · 5 h</div>
+          </div>
+          <div class="mcard">
+            <div class="h"><span class="pill green">Paid Fri 4 Sep</span><span class="ml-auto earn">£56.00</span></div>
+            <div class="t">Waiting Staff · £14.00/h</div>
+            <div class="m">Summer Party · Private client (Hurst), Hurst Manor, RH17 5LB</div>
+            <div class="m">Sat 29 Aug · 12:00 – 16:00 · 4 h (4-hour minimum applied)</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Payment information · empty ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Payment information · <b>Earnings history — "No earnings yet"</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:38</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Payment information</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px;padding-bottom:24px">
+          <div class="mtabs"><a class="active" href="#">Earnings history</a><a href="#">Bank &amp; payroll</a></div>
+          <div class="empty"><h3>No earnings yet</h3>Your first paid shift will appear here after the Friday it's paid. You're paid the Friday after the week you worked.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Payment information · Bank & payroll ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Payment information · <b>Bank &amp; payroll — Save changes → E5</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:39</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Payment information</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:12px;padding-bottom:24px">
+          <div class="mtabs"><a href="#">Earnings history</a><a class="active" href="#">Bank &amp; payroll</a></div>
+          <div class="field"><span class="label">Account holder name</span><input class="input" value="Amara Kalu"></div>
+          <div class="row">
+            <div class="field" style="width:130px"><span class="label">Sort code</span><input class="input mono" value="40-47-84"></div>
+            <div class="field grow"><span class="label">Account number</span><input class="input mono" value="31926819"></div>
+          </div>
+          <button class="btn primary block lg">Save changes</button>
+          <div class="note xs">Changes apply from the next payroll run. When you save, an email goes to the office and to payroll (gisela@thehospitalitycompany.co.uk, thc_payroll@topsourceworldwide.com) to flag the change (E5, §2.10).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ P45 · confirmation sheet ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Request my P45 · <b>Confirmation sheet — "Leaving The Hospitality Company?"</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:40</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Shifts</div><span class="avatar photo">AK</span></div>
+        <div class="app-body"><div class="mcard today"><div class="t">Gala Dinner · Waiting Staff</div></div></div>
+        <div class="sheet-back"></div>
+        <div class="sheet" style="gap:10px">
+          <div class="grab"></div>
+          <div style="font-family:var(--font-head);font-size:18px;font-weight:600">Leaving The Hospitality Company?</div>
+          <p class="sm muted">Here's exactly what will happen if you continue:</p>
+          <div class="consq">
+            <div>Your <b>P45 will be requested</b> from the office and they'll be in touch about it.</div>
+            <div>You'll be <b>taken off every shift you're booked on</b> — 3 upcoming shifts will be offered to other staff straight away.</div>
+            <div>Any open invitations and Radar applications are withdrawn.</div>
+            <div>You <b>won't be able to book or be invited to shifts again</b> unless you re-apply and complete onboarding again.</div>
+            <div>A shift you're working right now is not affected and is paid as normal.</div>
+          </div>
+          <div class="field"><span class="label">Reason for leaving · optional</span><textarea class="input" style="min-height:56px" placeholder="e.g. moving away, found a permanent job…"></textarea></div>
+          <div class="row"><button class="btn primary block" style="flex:1">Cancel</button><button class="btn block" style="flex:1">Yes, request my P45</button></div>
+          <span class="annot" style="text-align:center">confirm is deliberately NOT the default-styled action (§10.6)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ P45 · Are you sure ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Request my P45 · <b>Second step — "Are you sure? This can't be undone from the app"</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:40</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Shifts</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="min-height:420px;padding-bottom:24px">
+          <div class="modal-inline" style="min-height:300px">
+            <div class="modal-back" style="padding:12px">
+              <div class="modal">
+                <div class="mh"><h3>Are you sure? This can't be undone from the app</h3></div>
+                <div class="mb"><p class="muted">Your account will close to a leaver screen. Only the office can bring you back, and you'd complete onboarding again on the same record.</p></div>
+                <div class="mf"><button class="btn primary">Go back</button><button class="btn danger">Request my P45</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ P45 · disabled while checked in ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Request my P45 · <b>Disabled while checked in — "Available once you've checked out"</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>19:14</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Shifts</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="min-height:400px"><div class="mcard today"><div class="h"><span class="pill green"><span class="dot"></span>Checked in</span></div><div class="t">Gala Dinner · Waiting Staff</div><div class="timer">02:14:36</div></div></div>
+        <div class="sheet-back"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="row" style="gap:12px"><span class="avatar photo lg">AK</span><div><div style="font-family:var(--font-head);font-size:16px;font-weight:600">Amara Kalu</div><div class="mono xs muted">Employee ID THC-00417</div></div></div>
+          <div><a class="link" href="#">Profile details<span class="chev">›</span></a><a class="link" href="#">Security settings<span class="chev">›</span></a><a class="link" href="#">Payment information<span class="chev">›</span></a></div>
+          <button class="btn block">Sign out</button>
+          <div class="xs muted" style="text-align:center">Need help? Please contact us at: <b class="cyan">admin@thehospitalitycompany.co.uk</b></div>
+          <div class="p45"><span class="xs muted" style="text-align:center;opacity:.5;text-decoration:underline">Request my P45</span><span class="xs muted" style="text-align:center">Available once you've checked out</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Leaver screen ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Leaver · <b>"You've left The Hospitality Company" — only Payment information reachable</b> (app lock case 4)</div>
+      <div class="phone">
+        <div class="statusbar"><span>14:41</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">The Hospitality Company</div><span class="avatar photo">AK</span></div>
+        <div class="app-body center">
+          <div class="static-screen">
+            <span class="pill lg">Left · 18.09.2026</span>
+            <h2>You've left The Hospitality Company.</h2>
+            <p>Your P45 has been requested and the office will be in touch. If this was a mistake, please contact us at: <b class="cyan">admin@thehospitalitycompany.co.uk</b>.</p>
+            <button class="btn outline block">Payment information — earnings history</button>
+            <button class="btn ghost block">Sign out</button>
+            <span class="annot">status inactive · email E8 to the office · Shifts / Radar / Invites / Documents closed · earnings history stays (§10.6)</span>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <a class="locked" href="#"><span class="i"></span>Documents</a>
+          <a class="locked" href="#"><span class="i"></span>Shifts</a>
+          <a class="locked" href="#"><span class="i"></span>Invites</a>
+          <a class="locked" href="#"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> Profile sheet (§10.1): opens from the avatar as a frosted-glass sheet; square selfie avatar, name, Employee ID, links Profile details / Security settings / Payment information, Sign out, the help line "Need help? Please contact us at: admin@thehospitalitycompany.co.uk" (not a separate screen), and "Request my P45" at the very bottom, below sign-out, separated and not styled as a primary action (§10.6). <b>Profile details</b>: name locked (tied to RTW and payroll — corrections via the office), avatar locked (set once at onboarding), NI masked ●●●●●●●2B and locked once entered (entering it for the first time sends E6); phone, email and home address editable — a new email is verified by a confirmation code before it replaces the old one; email and address changes send E7 to admin@ and thc_payroll@ (§8). <b>Payment information</b>: Earnings history = a card per completed, paid shift (role · rate/h · event · venue address · date/time · amount) with a "No earnings yet" empty state; base pay only — never holiday pay. Bank &amp; payroll = the onboarding fields, "Save changes" → E5 to gisela@ and thc_payroll@ (§2.10). <b>Request my P45</b> (§10.6): confirmation sheet "Leaving The Hospitality Company?" states the consequences in full, optional reason, Cancel + non-default "Yes, request my P45", then "Are you sure? This can't be undone from the app". Disabled while checked in ("Available once you've checked out"). On confirm: status → inactive with left_at and reason; every future booking released to auto-assign; open invites and Radar applications withdrawn; out of the scoring pool; E8 to the office immediately; the app locks to the leaver screen with only Payment information reachable. Nothing is anonymised (GDPR Remove is separate, §1.7); coming back = Reset to candidate, same record, same Employee ID, full wizard again (§2.12). Employee ID format is not specified — THC-00417 is a placeholder.</div>
+</body>
+</html>

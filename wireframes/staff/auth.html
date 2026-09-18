@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff App · Auth — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+/* page-local helpers (wireframe only) */
+.app-body>*{flex-shrink:0}
+.auth-hero{display:flex;flex-direction:column;align-items:center;gap:10px;padding:26px 0 8px;text-align:center}
+.auth-hero .logo{width:56px;height:56px;font-size:24px}
+.auth-hero .name{font-family:var(--font-head);font-size:20px;font-weight:600}
+.auth-hero .sub{font-family:var(--font-mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.browser{height:34px;display:flex;align-items:center;gap:8px;padding:0 12px;background:#0b1220;border-bottom:1px solid var(--line);font-family:var(--font-mono);font-size:10.5px;color:var(--muted)}
+.browser .url{flex:1;background:var(--bg);border:1px solid var(--line);padding:3px 8px;color:var(--text)}
+.ios-sheet{position:absolute;left:0;right:0;bottom:0;z-index:5;background:rgba(11,18,32,.92);backdrop-filter:blur(22px);border-top:1px solid rgba(255,255,255,.12);padding:12px 16px 26px;display:flex;flex-direction:column;gap:10px}
+.ios-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+.ios-row .ic{width:30px;height:30px;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:center;font-size:14px;flex:0 0 30px}
+.ios-row.hl{border:1px solid var(--cyan);background:var(--cyan-dim);padding:10px 12px}
+.ios-toolbar{position:absolute;left:0;right:0;bottom:0;height:64px;display:flex;justify-content:space-around;align-items:center;background:rgba(11,18,32,.7);backdrop-filter:blur(14px);border-top:1px solid rgba(255,255,255,.08);font-size:18px;color:var(--muted);z-index:2}
+.ios-toolbar .share{color:var(--cyan);border:1px solid var(--cyan);width:34px;height:34px;display:inline-flex;align-items:center;justify-content:center}
+.and-banner{position:absolute;left:12px;right:12px;bottom:18px;z-index:5;background:#0f1828;border:1px solid var(--line);padding:12px;display:flex;gap:12px;align-items:center;box-shadow:0 20px 40px rgba(0,0,0,.6)}
+.perm{position:absolute;left:20px;right:20px;top:110px;z-index:6;background:#0f1828;border:1px solid var(--line);box-shadow:0 30px 80px rgba(0,0,0,.7)}
+.perm .ph{padding:12px 14px;font-size:13px;font-weight:600;border-bottom:1px solid var(--line)}
+.perm .pb{padding:10px 14px;font-size:12.5px;color:var(--muted)}
+.perm .pf{display:flex;gap:8px;justify-content:flex-end;padding:8px 10px 10px}
+.arrow{position:absolute;font-size:26px;color:var(--cyan);z-index:6}
+.code{display:flex;gap:6px}
+.code span{flex:1;height:44px;border:1px solid var(--line);background:var(--bg);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:18px}
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Auth &amp; install</span><span class="pill cyan">/login · /forgot · /reset</span><span class="pill">§10.2 · §2.7 · §8 E3</span>
+  <span class="spacer"></span>
+  <a href="onboarding-1.html">Next: Onboarding 1 →</a>
+</div>
+
+<div class="wf-section">
+  <h2>Auth A0–A3 + PWA install + notification permission<small>There is no sign-up in the app: the account is created from the activation email (E3) after the Willo interview. The PWA is installed to the home screen and Web Push must be granted — every N1–N15 notification is delivered that way.</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ A0 Login ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Auth · <b>A0 Login</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:32</span><span>●●● 5G ▮</span></div>
+        <div class="app-body center" style="gap:14px">
+          <div class="auth-hero"><span class="logo round">🥂</span><div class="name">The Hospitality Company</div><div class="sub">Staff app</div></div>
+          <div class="field"><span class="label">Email</span><input class="input" value="amara.k@example.com"></div>
+          <div class="field"><span class="label">Password</span><div class="input-row"><input class="input" type="password" value="••••••••••"><span class="addon">show</span></div></div>
+          <button class="btn primary block lg">Sign in</button>
+          <div class="row" style="justify-content:center"><a href="#a1" class="sm">Forgot password?</a></div>
+          <div class="note xs" style="margin-top:8px">No account yet? Your login is created when the office accepts your interview — look for the activation email from admin@thehospitalitycompany.co.uk.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ A0 Login · error ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Auth · <b>A0 Login · wrong password</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:32</span><span>●●● 5G ▮</span></div>
+        <div class="app-body center" style="gap:14px">
+          <div class="auth-hero"><span class="logo round">🥂</span><div class="name">The Hospitality Company</div><div class="sub">Staff app</div></div>
+          <div class="alert coral">Email or password is incorrect. Try again or reset your password.</div>
+          <div class="field"><span class="label">Email</span><input class="input" value="amara.k@example.com"></div>
+          <div class="field"><span class="label">Password</span><input class="input err" type="password" value="••••••••"></div>
+          <button class="btn primary block lg">Sign in</button>
+          <div class="row" style="justify-content:center"><a href="#a1" class="sm">Forgot password?</a></div>
+          <div class="xs muted" style="text-align:center">Blocked, on hold or leaver accounts still sign in — they land on the matching lock screen (<a href="locks.html">locks</a>). A GDPR-removed account cannot sign in at all (§1.7).</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ A1 Forgot password ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Auth · <b>A1 Forgot password</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:33</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">‹ Back to sign in</div></div>
+        <div class="app-body" style="gap:14px;padding-bottom:24px">
+          <div class="wizard-top"><h2>Forgot your password?</h2><div class="sm muted">Enter the email you signed up with and we'll send a link to set a new one. The link is valid for 60 minutes.</div></div>
+          <div class="field"><span class="label">Email</span><input class="input" value="amara.k@example.com"></div>
+          <button class="btn primary block lg">Send reset link</button>
+          <div class="xs muted">The email comes from admin@thehospitalitycompany.co.uk (§9.12). If you don't see it, check spam — or contact the office.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ A2 Reset link sent ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Auth · <b>A2 Reset link sent</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:33</span><span>●●● 5G ▮</span></div>
+        <div class="app-body center">
+          <div class="static-screen">
+            <span class="logo round" style="width:48px;height:48px;font-size:20px">✉</span>
+            <h2>Check your inbox</h2>
+            <p>If <b class="cyan">amara.k@example.com</b> is registered, we've sent a link to set a new password. It expires in 60 minutes.</p>
+            <button class="btn outline block">Open mail app</button>
+            <button class="btn ghost block">Didn't get it? Resend in 0:48</button>
+            <span class="annot">same copy whether or not the email exists — no account enumeration (§1.7)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ A3 Set new password ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Auth · <b>A3 Set new password</b> · from the emailed link</div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:41</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Set a new password</div></div>
+        <div class="app-body" style="gap:14px;padding-bottom:24px">
+          <div class="field"><span class="label">New password</span><input class="input" type="password" value="••••••••••••"><span class="hint">At least 10 characters, with a number. Not one you've used before.</span></div>
+          <div class="field"><span class="label">Confirm new password</span><input class="input err" type="password" value="•••••••••"><span class="error">Passwords don't match.</span></div>
+          <div class="mlist">
+            <div class="mrow" style="padding:6px 0"><span class="green">✓</span><span class="sm">10+ characters</span></div>
+            <div class="mrow" style="padding:6px 0"><span class="green">✓</span><span class="sm">Contains a number</span></div>
+            <div class="mrow" style="padding:6px 0"><span class="coral">✕</span><span class="sm">Both fields match</span></div>
+          </div>
+          <button class="btn primary block lg disabled">Save password &amp; sign in</button>
+          <div class="xs muted">Setting a new password signs you out of every other device.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Activated → Install handoff ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Activation · <b>Activated → install the app</b> · after /activate (E3)</div>
+      <div class="phone">
+        <div class="statusbar"><span>11:06</span><span>●●● 5G ▮</span></div>
+        <div class="browser"><span>AA</span><span class="url">app.thehospitalitycompany.co.uk/activate</span><span>↻</span></div>
+        <div class="app-body center" style="gap:16px">
+          <div class="auth-hero"><span class="logo round">🥂</span><div class="name">You're activated, Amara</div><div class="sub">Password set · account ready</div></div>
+          <p class="sm muted" style="text-align:center">Next, put the app on your home screen and turn on notifications. Shift invitations, reminders and check-in all happen in the app.</p>
+          <div class="mcard">
+            <div class="h"><span class="pill cyan">1</span><span class="t" style="font-size:14px">Install the app</span></div>
+            <div class="m">Add it to your home screen so it opens full-screen like any other app.</div>
+          </div>
+          <div class="mcard">
+            <div class="h"><span class="pill cyan">2</span><span class="t" style="font-size:14px">Allow notifications</span></div>
+            <div class="m">Shift invitations and the 12:00 "I'm ready" reminder are notifications — without them you'll miss shifts.</div>
+          </div>
+          <div class="mcard">
+            <div class="h"><span class="pill cyan">3</span><span class="t" style="font-size:14px">Finish onboarding</span></div>
+            <div class="m">11 short steps: right to work, documents, safety quiz, HMRC form, contract.</div>
+          </div>
+          <button class="btn primary block lg">Open the app</button>
+          <div class="xs muted" style="text-align:center">Already installed? Open it from your home screen and sign in.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Install prompt · iOS ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Install · <b>iOS — Add to Home Screen hint</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>11:07</span><span>●●● 5G ▮</span></div>
+        <div class="browser"><span>AA</span><span class="url">app.thehospitalitycompany.co.uk</span><span>↻</span></div>
+        <div class="app-body center" style="gap:14px;padding-bottom:80px;justify-content:flex-start">
+          <div class="auth-hero"><span class="logo round">🥂</span><div class="name">Install the app</div><div class="sub">iPhone · Safari</div></div>
+          <div class="mlist">
+            <div class="mrow"><span class="pill cyan">1</span><div><div class="t">Tap the Share button below</div><div class="s">The square with an arrow, in Safari's toolbar.</div></div></div>
+            <div class="mrow"><span class="pill cyan">2</span><div><div class="t">Choose "Add to Home Screen"</div><div class="s">Scroll the list if you don't see it.</div></div></div>
+            <div class="mrow"><span class="pill cyan">3</span><div><div class="t">Tap "Add", then open it from your home screen</div><div class="s">Sign in once — you'll stay signed in.</div></div></div>
+          </div>
+          <div class="alert cyan sm">Notifications on iPhone only work from the installed app, not from the Safari tab — so this step is required (iOS 16.4+).</div>
+        </div>
+        <div class="ios-sheet">
+          <div class="row"><span class="logo round" style="width:28px;height:28px;font-size:12px">🥂</span><div><div class="sm strong">The Hospitality Company</div><div class="xs muted">app.thehospitalitycompany.co.uk</div></div><span class="ml-auto muted">✕</span></div>
+          <div class="ios-row"><span class="ic">✉</span>Mail</div>
+          <div class="ios-row hl"><span class="ic">⊞</span>Add to Home Screen<span class="ml-auto cyan">‹ tap this</span></div>
+          <div class="ios-row" style="border:0"><span class="ic">☆</span>Add Bookmark</div>
+        </div>
+        <div class="ios-toolbar"><span>‹</span><span>›</span><span class="share">⇧</span><span>▢</span><span>▤</span></div>
+        <div class="arrow" style="left:178px;bottom:66px">▲</div>
+      </div>
+    </div>
+
+    <!-- ============ Install prompt · Android ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Install · <b>Android — install banner</b> (beforeinstallprompt)</div>
+      <div class="phone short">
+        <div class="statusbar"><span>11:07</span><span>●●● 5G ▮</span></div>
+        <div class="browser"><span>🔒</span><span class="url">app.thehospitalitycompany.co.uk</span><span>⋮</span></div>
+        <div class="app-body center" style="gap:14px;padding-bottom:120px;justify-content:flex-start">
+          <div class="auth-hero"><span class="logo round">🥂</span><div class="name">Install the app</div><div class="sub">Android · Chrome</div></div>
+          <div class="mlist">
+            <div class="mrow"><span class="pill cyan">1</span><div><div class="t">Tap "Install" on the banner</div><div class="s">Or use ⋮ → "Add to Home screen".</div></div></div>
+            <div class="mrow"><span class="pill cyan">2</span><div><div class="t">Open it from your home screen</div><div class="s">It opens full-screen without the browser bar.</div></div></div>
+          </div>
+          <button class="btn primary block lg">Install app</button>
+          <div class="xs muted" style="text-align:center">Uses the browser's own install prompt where it's available; otherwise the ⋮ menu route above.</div>
+        </div>
+        <div class="and-banner"><span class="logo round" style="width:36px;height:36px;font-size:15px">🥂</span><div style="flex:1"><div class="sm strong">Install The Hospitality Company</div><div class="xs muted">app.thehospitalitycompany.co.uk</div></div><button class="btn primary sm">Install</button></div>
+      </div>
+    </div>
+
+    <!-- ============ Notifications permission ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Permissions · <b>Notifications — pre-prompt + system dialog</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>11:09</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Notifications</div><span class="avatar photo">AK</span></div>
+        <div class="app-body center" style="gap:14px;justify-content:flex-start">
+          <div class="auth-hero" style="padding-top:10px"><span class="logo round" style="background:var(--purple)">🔔</span><div class="name">Turn on notifications</div></div>
+          <p class="sm muted">Everything time-critical arrives as a notification — and they work even when the app is closed:</p>
+          <div class="mlist">
+            <div class="mrow"><span class="pill purple">N5</span><div><div class="t">Shift invitations</div><div class="s">First to confirm takes the slot.</div></div></div>
+            <div class="mrow"><span class="pill purple">N6</span><div><div class="t">"I'm ready" — the 12:00 deadline</div><div class="s">Miss it and you're removed from the shift.</div></div></div>
+            <div class="mrow"><span class="pill purple">N9</span><div><div class="t">Time to check in / check out</div><div class="s">30 minutes before start and end.</div></div></div>
+            <div class="mrow"><span class="pill purple">N1</span><div><div class="t">Document expiry warnings</div><div class="s">A month, 2 weeks, 1 week before — and on the day.</div></div></div>
+          </div>
+          <button class="btn primary block lg">Turn on notifications</button>
+          <div class="xs muted" style="text-align:center">You can change this later in your phone's settings.</div>
+        </div>
+        <div class="sheet-back"></div>
+        <div class="perm">
+          <div class="ph">app.thehospitalitycompany.co.uk wants to</div>
+          <div class="pb">🔔 Show notifications</div>
+          <div class="pf"><button class="btn sm">Block</button><button class="btn primary sm">Allow</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Notifications denied ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Permissions · <b>Notifications blocked</b> · persistent banner in the app</div>
+      <div class="phone short">
+        <div class="statusbar"><span>11:10</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Shifts</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="alert coral"><b>Notifications are off.</b> You won't get shift invitations, the 12:00 "I'm ready" reminder or check-in reminders. <br><span class="xs">Settings → Notifications → The Hospitality Company → Allow. <a href="#">Show me how</a></span></div>
+          <div class="seg" style="align-self:stretch;display:flex"><button class="on" style="flex:1">My shifts</button><button style="flex:1">Open shifts</button></div>
+          <div class="empty"><h3>No shifts yet</h3>Invitations will appear in the Invites tab.</div>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a class="active" href="shifts.html"><span class="i"></span>Shifts</a>
+          <a href="invites.html"><span class="i"></span>Invites</a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> Auth is four screens (§10.2): A0 Login · A1 Forgot password · A2 Reset link sent · A3 Set new password. No self-registration: a worker is activated through the personal link in E3 (accepted after the Willo interview, §2.7 "Activate · Activated", §8) and sets a password there; the public <code>/activate</code> page then hands off to the app. Reset and activation emails come from admin@thehospitalitycompany.co.uk (§9.12). A blocked, on-hold, quiz-rejected or leaver account can still sign in and lands on the corresponding lock screen (§10.1, see <a href="locks.html">locks</a>); a GDPR-removed worker cannot sign in (§1.7). PWA specifics: the app is installed to the home screen (iOS: Share → Add to Home Screen; Android: install prompt) and the Web Push permission must be granted, because the entire push register N1–N15 (§8) is delivered device-level and must reach the worker with the app closed (§10.5). Background GPS during a shift (§5.1) is the one native capability a PWA cannot fully replicate — flagged for the build, not a screen concern.</div>
+</body>
+</html>

@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff App · Onboarding 5–8 — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+/* page-local helpers (wireframe only) */
+.app-body>*{flex-shrink:0}
+.wiz-foot{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:12px 16px 26px;background:rgba(11,18,32,.6);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:6px}
+.wiz-foot .xs{text-align:center}
+.slide{aspect-ratio:16/10;width:100%;background:#0f1828;border:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:8px;position:relative}
+.slide .st{font-family:var(--font-head);font-size:16px;font-weight:600}
+.slide .ln{height:8px;background:var(--line);width:88%}
+.slide .ln.s{width:64%}.slide .ln.m{width:76%}
+.slide .pic{position:absolute;right:16px;bottom:16px;width:74px;height:54px;border:1px dashed var(--muted);display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px;color:var(--muted)}
+.dots{display:flex;gap:4px;justify-content:center}
+.dots i{width:14px;height:3px;background:var(--line);display:block}
+.dots i.on{background:var(--cyan)}
+.dots i.done{background:var(--muted)}
+.score-big{font-family:var(--font-head);font-size:56px;font-weight:600;line-height:1}
+.q{font-family:var(--font-head);font-size:16px;font-weight:600;line-height:1.35}
+.quiz-opt .k{border:1px solid var(--line);width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 22px}
+.quiz-opt.sel .k{border-color:var(--cyan);color:var(--cyan)}
+.qblock{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--line);background:rgba(11,18,32,.85)}
+.qblock .qt{font-size:13px;font-weight:500}
+.qblock.off{opacity:.4}
+.ref{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--line);background:rgba(11,18,32,.85)}
+.ref .rh{display:flex;align-items:center;gap:8px;font-family:var(--font-head);font-weight:600;font-size:14px}
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Onboarding wizard 5/11 – 8/11</span><span class="pill cyan">/onboarding</span><span class="pill">§10.3 · §2.8 · §2.9 · §2.10 · §10.1(3)</span>
+  <span class="spacer"></span>
+  <a href="onboarding-3.html">Next: Onboarding 3 →</a>
+</div>
+
+<div class="wf-section">
+  <h2>Wizard steps 5–8: H&amp;S induction · Safety quiz · HMRC New Starter Checklist · Two references<small>The quiz is gated: it unlocks only once every document from step 4 is verified (§2.9). Pass mark 80%, three attempts, third failure = automatic rejection and the terminal screen (§10.1 case 3).</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ 5/11 Induction ============ -->
+    <div class="phone-wrap">
+      <div class="cap">5/11 H&amp;S induction · <b>Slide viewer — slide 3 of 14</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>09:40</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">5/11 · Health &amp; Safety induction</div><div class="progress"><div class="fill" style="width:45%"></div></div><h2>Health &amp; Safety induction</h2><div class="sm muted">THC's induction deck, slide by slide. Read every slide — the quiz that follows is based on it.</div></div>
+          <div class="slide">
+            <div class="label cyan">Section 2 · Fire safety</div>
+            <div class="st">If you discover a fire</div>
+            <div class="ln"></div><div class="ln m"></div><div class="ln s"></div><div class="ln m"></div>
+            <div class="pic">image</div>
+          </div>
+          <div class="row"><span class="mono sm">Slide 3 of 14</span><span class="ml-auto xs muted">≈ 6 min left</span></div>
+          <div class="dots"><i class="done"></i><i class="done"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+          <div class="row"><button class="btn block" style="flex:1">‹ Previous</button><button class="btn primary block" style="flex:1">Next ›</button></div>
+          <div class="xs muted" style="text-align:center">Pinch to zoom. You can come back to any slide before you start the quiz.</div>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg disabled">Continue to the quiz</button><div class="xs muted">Unlocks on the last slide (14 of 14)</div></div>
+      </div>
+    </div>
+
+    <!-- ============ 6/11 Quiz question ============ -->
+    <div class="phone-wrap">
+      <div class="cap">6/11 Safety quiz · <b>Question 4 of 10 — attempt 1 of 3</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>09:48</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">6/11 · Safety quiz</div><div class="progress"><div class="fill" style="width:55%"></div></div>
+            <div class="row"><h2 style="font-size:18px">Question 4 of 10</h2><span class="pill ml-auto">Attempt 1 of 3</span></div>
+            <div class="progress"><div class="fill green" style="width:40%"></div></div>
+          </div>
+          <div class="q">You discover a small fire in the kitchen. What should you do first?</div>
+          <div class="quiz-opt"><span class="k">A</span><span>Try to put it out with water</span></div>
+          <div class="quiz-opt sel"><span class="k">B</span><span>Raise the alarm and alert the people around you</span></div>
+          <div class="quiz-opt"><span class="k">C</span><span>Finish the service you're on, then report it</span></div>
+          <div class="quiz-opt"><span class="k">D</span><span>Open the windows to let the smoke out</span></div>
+          <div class="xs muted">One answer per question. Pass mark 80% (8 of 10). Your answers are checked at the end, not one by one.</div>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg">Next question ›</button></div>
+      </div>
+    </div>
+
+    <!-- ============ 6/11 Quiz result · pass ============ -->
+    <div class="phone-wrap">
+      <div class="cap">6/11 Safety quiz · <b>Result — passed (90%)</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>09:55</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">6/11 · Safety quiz</div><div class="progress"><div class="fill" style="width:55%"></div></div></div>
+          <div class="static-screen" style="padding:20px 8px">
+            <span class="pill green lg">Passed</span>
+            <div class="score-big green">90%</div>
+            <h2>Well done, Amara</h2>
+            <p>9 of 10 correct — the pass mark is 80%. Your result is saved on your profile.</p>
+          </div>
+          <div class="mlist">
+            <div class="mrow" style="padding:8px 0"><span class="sm">Attempt 1 of 3</span><span class="right mono sm green">9 / 10</span></div>
+          </div>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg">Continue</button></div>
+      </div>
+    </div>
+
+    <!-- ============ 6/11 Quiz result · fail ============ -->
+    <div class="phone-wrap">
+      <div class="cap">6/11 Safety quiz · <b>Result — not passed (70%), 2 attempts left</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>09:55</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:150px">
+          <div class="wizard-top"><div class="n">6/11 · Safety quiz</div><div class="progress"><div class="fill" style="width:55%"></div></div></div>
+          <div class="static-screen" style="padding:20px 8px">
+            <span class="pill coral lg">Not passed</span>
+            <div class="score-big coral">70%</div>
+            <h2>Not quite this time</h2>
+            <p>7 of 10 correct — you need 80%. <b class="amber">You have 2 attempts left.</b> Go back over the induction slides before you try again.</p>
+          </div>
+          <div class="alert sm">After three unsuccessful attempts your application can't continue (§2.9).</div>
+          <div class="mlist">
+            <div class="mrow" style="padding:8px 0"><span class="sm">Attempt 1 of 3</span><span class="right mono sm coral">7 / 10</span></div>
+          </div>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg">Try again — attempt 2 of 3</button><button class="btn ghost block">Review the induction slides</button></div>
+      </div>
+    </div>
+
+    <!-- ============ 6/11 Quiz · terminal after 3rd failure ============ -->
+    <div class="phone-wrap">
+      <div class="cap">6/11 Safety quiz · <b>Terminal — failed 3 times (app lock case 3)</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>10:31</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">The Hospitality Company</div><span class="avatar photo">AK</span></div>
+        <div class="app-body center">
+          <div class="static-screen">
+            <span class="pill coral lg">Application closed</span>
+            <h2>Health &amp; Safety Assessment — Unsuccessful</h2>
+            <p>Unfortunately, you haven't passed the Health &amp; Safety assessment after three attempts, which is the maximum number permitted at this stage. As passing this assessment is a required part of onboarding, we're unable to progress your application any further at this time.</p>
+            <p>If you have any questions, please contact us at: <b class="cyan">admin@thehospitalitycompany.co.uk</b></p>
+            <div class="mlist" style="width:100%;text-align:left;margin-top:8px">
+              <div class="mrow" style="padding:6px 0"><span class="sm muted">Attempt 1</span><span class="right mono sm coral">7 / 10</span></div>
+              <div class="mrow" style="padding:6px 0"><span class="sm muted">Attempt 2</span><span class="right mono sm coral">6 / 10</span></div>
+              <div class="mrow" style="padding:6px 0"><span class="sm muted">Attempt 3</span><span class="right mono sm coral">7 / 10</span></div>
+            </div>
+            <button class="btn ghost block" style="margin-top:8px">Sign out</button>
+            <span class="annot">same wording as email E4 · no nav, no wizard, nothing to fix</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 7/11 HMRC — Q1 = No → Q2 → Q3 ============ -->
+    <div class="phone-wrap">
+      <div class="cap">7/11 HMRC New Starter Checklist · <b>Top — Q1 = No → Q2 shown = No → Q3 shown</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>10:02</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px;gap:8px">
+          <div class="wizard-top"><div class="n">7/11 · HMRC New Starter Checklist</div><div class="progress"><div class="fill" style="width:64%"></div></div><h2>Your tax position</h2><div class="sm muted">Needed for your tax code. The tax year starts 6 April. Have a P45? Read the figures off it — we don't take the document.</div></div>
+
+          <div class="qblock">
+            <div class="qt">1 · Do you have another job?</div>
+            <div class="row" style="gap:18px"><label class="check radio"><span class="box"></span>Yes</label><label class="check radio"><span class="box on"></span>No</label></div>
+          </div>
+          <div class="qblock">
+            <div class="qt">2 · Do you receive payments from a State, workplace or private pension?</div>
+            <div class="row" style="gap:18px"><label class="check radio"><span class="box"></span>Yes</label><label class="check radio"><span class="box on"></span>No</label></div>
+          </div>
+          <div class="qblock" style="border-color:var(--cyan)">
+            <div class="qt">3 · Since 6 April, have you received payments from another job which has ended, or any of these taxable benefits: Jobseeker's Allowance (JSA), Employment and Support Allowance (ESA), Incapacity Benefit?</div>
+            <div class="row" style="gap:18px"><label class="check radio"><span class="box"></span>Yes</label><label class="check radio"><span class="box"></span>No</label></div>
+          </div>
+          <span class="annot">system derives statement A/B/C from these — the worker never sees the letter</span>
+
+          <div class="qblock">
+            <div class="qt">Student loan</div>
+            <div class="row wrap" style="gap:14px"><label class="check radio"><span class="box on"></span>No</label><label class="check radio"><span class="box"></span>Plan 1</label><label class="check radio"><span class="box"></span>Plan 2</label><label class="check radio"><span class="box"></span>Plan 4</label></div>
+            <label class="check"><span class="box"></span><span>I'm also repaying a <b>Postgraduate Loan</b> <span class="xs muted">— can be ticked together with a plan</span></span></label>
+          </div>
+
+          <div class="xs muted" style="text-align:center">↓ National Insurance number · Declaration (next phone)</div>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg disabled">Submit checklist</button><div class="xs muted">Answer question 3 and tick the declaration to continue</div></div>
+      </div>
+    </div>
+
+    <!-- ============ 7/11 HMRC — Q1 = Yes → Q2/Q3 hidden ============ -->
+    <div class="phone-wrap">
+      <div class="cap">7/11 HMRC · <b>Scrolled — Q1 = Yes (Q2/Q3 hidden) · student loan · NI optional · declaration ticked</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>10:02</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px;gap:10px">
+          <div class="wizard-top"><div class="n">7/11 · HMRC New Starter Checklist</div><div class="progress"><div class="fill" style="width:64%"></div></div><h2>Your tax position</h2></div>
+          <div class="qblock">
+            <div class="qt">1 · Do you have another job?</div>
+            <div class="row" style="gap:18px"><label class="check radio"><span class="box on"></span>Yes</label><label class="check radio"><span class="box"></span>No</label></div>
+          </div>
+          <span class="annot">Q2 and Q3 only appear when Q1 = No (and Q3 only when Q2 = No too) — HMRC questions 8–10 routing</span>
+          <div class="qblock">
+            <div class="qt">Student loan</div>
+            <div class="row wrap" style="gap:14px"><label class="check radio"><span class="box"></span>No</label><label class="check radio"><span class="box on"></span>Plan 1</label><label class="check radio"><span class="box"></span>Plan 2</label><label class="check radio"><span class="box"></span>Plan 4</label></div>
+            <label class="check"><span class="box on"></span><span>I'm also repaying a <b>Postgraduate Loan</b></span></label>
+          </div>
+          <div class="field"><span class="label">National Insurance number · optional</span><input class="input mono" value="QQ 12 34 56 B"><span class="hint">Leave blank if you don't have one yet — you can still be onboarded and paid; add it in Profile details once HMRC issues it (§2.10). Once saved it's shown masked (●●●●●●●6B) and locked.</span></div>
+          <label class="check" style="border:1px solid var(--line);padding:10px 12px;background:rgba(11,18,32,.85)"><span class="box on"></span><span>I confirm that the information I've given on this form is correct.</span></label>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg">Submit checklist</button></div>
+      </div>
+    </div>
+
+    <!-- ============ 8/11 References ============ -->
+    <div class="phone-wrap">
+      <div class="cap">8/11 Two references · <b>Referee 1 complete, referee 2 missing email</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>10:09</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px;gap:10px">
+          <div class="wizard-top"><div class="n">8/11 · Two references</div><div class="progress"><div class="fill" style="width:73%"></div></div><h2>Two references</h2><div class="sm muted"><b>Not relatives.</b> Employers, university tutors, lecturers, teachers, course leaders, volunteering supervisors or coaches all count — so you can give references even with no work history. Phone <b>and</b> email are both required.</div></div>
+
+          <div class="ref" style="gap:4px">
+            <div class="rh"><span class="pill cyan">Referee 1</span><span class="ml-auto pill green">Complete</span><a class="xs" href="#">Edit</a></div>
+            <div class="sm">Dr Helen Okafor · Personal tutor, UCL</div>
+            <div class="xs muted mono">+44 20 7679 2000 · h.okafor@ucl.ac.uk</div>
+          </div>
+
+          <div class="ref">
+            <div class="rh"><span class="pill cyan">Referee 2</span><span class="ml-auto pill amber">Incomplete</span></div>
+            <div class="field"><span class="label">Full name <span class="coral">*</span></span><input class="input" value="Sam Whitfield"></div>
+            <div class="field"><span class="label">Relationship to you <span class="coral">*</span></span><input class="input" value="Volunteering supervisor, Crisis at Christmas"></div>
+            <div class="field"><span class="label">Phone <span class="coral">*</span></span><input class="input mono" value="07700 900456"></div>
+            <div class="field"><span class="label">Email <span class="coral">*</span></span><input class="input err" placeholder="name@example.com"><span class="error">Email is required — phone and email are both mandatory, not either/or.</span></div>
+          </div>
+          <div class="xs muted">References are stored on your profile as supporting information. The office may contact them; there is no separate reference-check stage (§2.10).</div>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg disabled">Continue</button><div class="xs muted">Complete both referees to continue</div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> <b>5/11</b> the induction deck is THC's own file shown as-is in the built-in viewer (no native redraw, §10.3); Continue unlocks on the last slide. <b>6/11</b> the quiz is available only once every step-4 document is verified (§2.9 gate); multiple choice, pass mark 80%, up to 3 attempts; the third failure moves the candidate to rejected (§2.12) and replaces the wizard with the terminal screen whose copy is identical to email E4 (§10.1 case 3, §8). <b>7/11</b> HMRC New Starter Checklist (§2.8): three sequential Yes/No questions — Q2 only if Q1 = No, Q3 only if Q1 = No and Q2 = No — from which the system derives statement A/B/C and the matching tax code for the New Starter report (§9.9); the worker never sees the letter. Student loan is an independent radio set (No · Plan 1 · Plan 2 · Plan 4) plus a separate Postgraduate Loan tick, since a plan and a PG loan can run together. NI number is optional (no temporary number — payroll runs without one; entering it later sends E6) and locks masked once saved. The declaration tick is required before submit. No P45 upload exists anywhere in the app. <b>8/11</b> two referees with name · relationship · phone · email, phone and email both mandatory, no relatives, tutors/lecturers/coaches/volunteering supervisors accepted; not reviewed or verified by anyone — stored and shown on the profile only (§2.10).</div>
+</body>
+</html>

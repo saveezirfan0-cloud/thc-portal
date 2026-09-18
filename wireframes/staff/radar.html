@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff App · Radar — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+/* page-local helpers (wireframe only) */
+.app-body>*{flex-shrink:0}
+.title .back{display:block;font-family:var(--font-mono);font-size:9.5px;color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+.km{font-family:var(--font-mono);font-size:10.5px;padding:2px 6px;border:1px solid var(--cyan-line);color:var(--cyan);background:var(--cyan-dim);letter-spacing:.06em}
+.grp{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.grp::after{content:'';flex:1;border-top:1px solid var(--line)}
+.grp.purple{color:var(--purple)}
+.kv{display:flex;gap:10px;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+.kv .k{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);width:84px;flex:0 0 84px;padding-top:3px}
+.kv .v{flex:1;min-width:0}
+.kvs{border:1px solid var(--line);background:rgba(11,18,32,.85);padding:2px 12px}
+.kvs .kv:last-child{border-bottom:0}
+.meter{display:flex;flex-direction:column;gap:6px;padding:10px 12px;border:1px solid var(--line);background:rgba(11,18,32,.85)}
+.meter .row{font-size:12px}
+.push .k{font-family:var(--font-mono);font-size:9.5px;color:var(--amber);letter-spacing:.06em;margin-top:3px}
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Radar</span><span class="pill cyan">/radar</span><span class="pill">§10.4 · §3.4 RULE-17 · §4.4 RULE-20 · §8 N10/N10c</span>
+  <span class="spacer"></span>
+  <a href="invites.html">Next: Invites →</a>
+</div>
+
+<div class="wf-section">
+  <h2>Radar — open shifts nearby right now, closest first<small>Qualified clients ("You've worked here before") appear the moment the role opens; other clients only surface once Wave 1 is exhausted (RULE-17). Weekly-hours hard gate blocks Apply with "Limit Reached" (RULE-20). Applying re-checks live availability first.</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ Radar list · top ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Radar · <b>List — "You've worked here before" first</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:32</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Radar</div><span class="avatar photo">AK</span></div>
+        <div class="app-body">
+          <div class="meter"><div class="row"><span class="xs muted">Waiting Staff · Bar Staff</span><span class="ml-auto chip">◎ Near E2 · 14:32</span></div><div class="row"><span>This week (Mon 14 – Sun 20)</span><span class="ml-auto mono">8 h of 20 h</span></div><div class="progress"><div class="fill" style="width:40%"></div></div></div>
+
+          <div class="grp purple">You've worked here before</div>
+          <div class="mcard">
+            <div class="h"><span class="pill purple">Worked here before</span><span class="ml-auto km">1.2 km</span></div>
+            <div class="t">Board Dinner · Waiting Staff</div>
+            <div class="m">Leonardo Royal Hotel, EC4V · Sat 20 · 18:00 – 23:00</div>
+            <div class="m">£14.00/h · Dress code: Black &amp; whites · 2 open</div>
+            <button class="btn outline block">View &amp; apply</button>
+          </div>
+          <div class="mcard">
+            <div class="h"><span class="pill purple">Worked here before</span><span class="ml-auto km">3.4 km</span></div>
+            <div class="t">Product Launch — Bar · Bar Staff</div>
+            <div class="m">Mandarin Oriental, SW1X · Fri 19 · 18:00 – 01:00</div>
+            <div class="m">£15.50/h · Dress code: Black shirt &amp; trousers · 1 open</div>
+            <button class="btn outline block">View &amp; apply</button>
+          </div>
+
+          <div class="grp">Other clients</div>
+          <span class="annot">shown only once every qualified worker for this role has been invited (RULE-17)</span>
+          <div class="mcard">
+            <div class="h"><span class="ml-auto km">4.1 km</span></div>
+            <div class="t">Awards Night · Bar Staff</div>
+            <div class="m">The Dorchester, W1K · Tue 23 · 17:00 – 02:00</div>
+            <div class="m">£15.50/h · Dress code: Black tie · 5 open</div>
+            <button class="btn outline block">View &amp; apply</button>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a class="active" href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Radar list · scrolled: limit reached + Applied ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Radar · <b>Scrolled ↓ — Limit Reached card + "Applied" section</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:32</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Radar</div><span class="avatar photo">AK</span></div>
+        <div class="app-body">
+          <div class="mcard muted">
+            <div class="h"><span class="pill coral">Limit reached</span><span class="ml-auto km">6.8 km</span></div>
+            <div class="t">Brunch Service · Waiting Staff</div>
+            <div class="m">Private client (Hurst), N1 · Sun 27 · 10:00 – 14:00 · 4 h</div>
+            <div class="m">You've worked 18 h in the week of Mon 21 — 18 h + 4 h is over your 20 h limit (term time until 13.12.2026).</div>
+            <button class="btn block disabled">Limit reached</button>
+          </div>
+
+          <div class="grp purple">Applied · waiting for the office</div>
+          <div class="mcard applied">
+            <div class="h"><span class="pill purple">Applied</span><span class="ml-auto km">38 km</span></div>
+            <div class="t">Wedding — Marquee · Waiting Staff</div>
+            <div class="m">Hurst Manor, RH17 · Sat 20 · 11:00 – 00:30</div>
+            <div class="m">Applied today 13:05 · you'll get a push either way</div>
+            <button class="btn ghost block sm">Withdraw application</button>
+          </div>
+          <div class="mcard applied">
+            <div class="h"><span class="pill purple">Applied</span><span class="ml-auto km">9.5 km</span></div>
+            <div class="t">Members' Evening · Bar Staff</div>
+            <div class="m">Private client (Hurst), N1 · Wed 24 · 19:00 – 23:00</div>
+            <div class="m">Applied Tue 16 · 1 open</div>
+          </div>
+          <div class="xs muted" style="text-align:center">Applied shifts stay here until they resolve — into Shifts once confirmed (N10), or off Radar when filled (N10c) or cancelled (N12).</div>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a class="active" href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Radar detail · Apply ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Radar · <b>Shift detail — dress code shown before applying</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:33</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Radar</span>Board Dinner · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px">
+          <div class="row"><span class="pill purple">Worked here before</span><span class="km">1.2 km</span><span class="ml-auto mono sm">Sat 20 Sep</span></div>
+          <div class="row"><span style="font-family:var(--font-head);font-size:24px;font-weight:600">18:00 – 23:00</span><span class="ml-auto sm muted">5 h · £14.00/h</span></div>
+          <div class="kvs">
+            <div class="kv"><span class="k">Venue</span><span class="v">Leonardo Royal Hotel, 10 Godliman St, London EC4V 5AJ</span></div>
+            <div class="kv"><span class="k">Dress code</span><span class="v"><b>Black &amp; whites</b> — black trousers/skirt, white shirt, black shoes. <span class="annot">shown before you decide (§10.4)</span></span></div>
+            <div class="kv"><span class="k">Rate</span><span class="v">£14.00 per hour · base rate</span></div>
+            <div class="kv"><span class="k">Open</span><span class="v">2 of 8 (+1) still to fill</span></div>
+          </div>
+          <div class="map" style="height:120px">
+            <div class="circle" style="left:60%;top:45%;width:70px;height:70px"></div>
+            <div class="pin" style="left:60%;top:45%"></div>
+            <div class="me" style="left:22%;top:70%"></div>
+            <div class="lbl" style="left:8px;top:8px">1.2 km from home</div>
+          </div>
+          <div class="meter"><div class="row"><span>Week of Mon 14 with this shift</span><span class="ml-auto mono green">13 h of 20 h</span></div><div class="progress"><div class="fill green" style="width:65%"></div></div></div>
+          <div class="note xs">On-site contact and break policy appear once you're booked, on the shift screen. Applying isn't a booking — the office (or auto-assign) confirms it and you'll get a push either way.</div>
+          <button class="btn primary block lg">Apply for this shift</button>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a class="active" href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Radar detail · Limit reached ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Radar · <b>Shift detail — Limit Reached (18 h + 4 h &gt; 20 h)</b> (RULE-20)</div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:33</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Radar</span>Brunch Service · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px;padding-bottom:24px">
+          <div class="row"><span class="km">6.8 km</span><span class="ml-auto mono sm">Sun 27 Sep</span></div>
+          <div class="row"><span style="font-family:var(--font-head);font-size:24px;font-weight:600">10:00 – 14:00</span><span class="ml-auto sm muted">4 h · £14.00/h</span></div>
+          <div class="kvs">
+            <div class="kv"><span class="k">Dress code</span><span class="v">Black &amp; whites</span></div>
+            <div class="kv"><span class="k">Venue</span><span class="v">Private client (Hurst), Islington N1</span></div>
+          </div>
+          <div class="meter" style="border-color:var(--coral)"><div class="row"><span>Week of Mon 21 with this shift</span><span class="ml-auto mono coral">22 h of 20 h</span></div><div class="progress"><div class="fill" style="width:100%;background:var(--coral)"></div></div><div class="xs muted">18 h already booked/worked + 4 h = 22 h — over your 20 h term-time limit. The limit is a visa condition; the 48 h opt-out can't lift it in term (§4.4).</div></div>
+          <button class="btn block disabled">Limit Reached</button>
+          <span class="annot">hard gate, checked live against the Mon–Sun week the shift falls in — the cap is calculated, never stored</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ "Sorry, this shift is now full" ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Radar · <b>Apply → live re-check failed — "Sorry, this shift is now full"</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:34</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Radar</span>Product Launch — Bar · Bar Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="min-height:440px;padding-bottom:24px">
+          <div class="row"><span class="pill purple">Worked here before</span><span class="km">3.4 km</span><span class="ml-auto mono sm">Fri 19 · 18:00 – 01:00</span></div>
+          <div class="kvs"><div class="kv"><span class="k">Dress code</span><span class="v">Black shirt, black trousers, black shoes</span></div><div class="kv"><span class="k">Rate</span><span class="v">£15.50 per hour</span></div></div>
+          <div class="modal-inline" style="min-height:240px">
+            <div class="modal-back" style="padding:12px">
+              <div class="modal">
+                <div class="mh"><h3>Sorry, this shift is now full</h3></div>
+                <div class="mb"><p class="muted">It filled while you were looking. Your application wasn't recorded. Keep an eye on Radar — new shifts are added regularly.</p></div>
+                <div class="mf"><button class="btn primary">Back to Radar</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Push gallery ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Push gallery · <b>N10 booked · N10c filled · N12 cancelled while pending</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>09:05</span><span>●●● 5G ▮</span></div>
+        <div style="padding:8px 12px;display:flex;flex-direction:column;gap:8px">
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 09:05</div><div class="b">You're booked! Your application for Wedding — Marquee on Sat 20 Sep has been accepted. Tap to view your shift details.</div><div class="k">N10 · on Confirmed for a self-application (manual pick or auto fill) · mandatory</div></div></div>
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 11:40</div><div class="b">Shift update: the Members' Evening shift on Wed 24 Sep has now been filled. Keep an eye on Radar — new shifts are added regularly.</div><div class="k">N10c · the moment the role is fully confirmed · mandatory</div></div></div>
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 16:20</div><div class="b">This event has been cancelled — Conference Lunch · Sun 21 Sep</div><div class="k">N12 · also reaches pending Radar applicants (§8)</div></div></div>
+        </div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Radar</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:24px">
+          <div class="grp purple">Applied · waiting for the office</div>
+          <div class="empty" style="padding:24px"><h3>Nothing pending</h3>Wedding — Marquee moved to Shifts · Members' Evening was filled.</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> Radar lists open shifts for the worker's own roles nearby right now, km badge, closest first (§10.4). Ordering mirrors auto-assign's two waves (RULE-17, §3.4): shifts at clients where the worker holds a ClientQualification for that role are grouped first under "You've worked here before" and are visible from the moment the role opens; shifts at other clients surface only once every eligible qualified worker has been invited and the role is still short — self-apply can't bypass the priority the invitations enforce. The detail shows the dress code before the worker decides; on-site contact and break policy only appear after booking (§10.4). Apply is blocked with "Limit Reached" when the shift would take the Mon–Sun week over the calculated cap (RULE-20, §4.4 — e.g. 18 h worked + 4 h &gt; 20 h); the cap is derived live from the verified term letter and is never typed by anyone. Apply re-checks live availability: if the role filled since the screen loaded → "Sorry, this shift is now full", nothing recorded. An applied shift stays visible under "Applied" (purple) until it resolves: Confirmed → moves to Shifts + push N10; filled without them → leaves Radar + push N10c; event cancelled → N12 reaches pending applicants too (§8). A worker who self-cancelled off an event never sees that event on Radar again (RULE-04). Blocked / inactive workers don't see Radar at all (§4.3, §10.1). Self-apply is an extra channel — auto-assign keeps running (RULE-08).</div>
+</body>
+</html>

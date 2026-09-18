@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff App · Documents — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+/* page-local helpers (wireframe only) */
+.app-body>*{flex-shrink:0}
+.title .back{display:block;font-family:var(--font-mono);font-size:9.5px;color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+.docrow{padding:10px 12px}
+.docrow .ico{width:30px;height:30px}
+.docrow.expired .ico{color:var(--coral);border-color:var(--coral)}
+.docrow.optional{opacity:.85;border-style:dashed}
+.declare{margin-top:18px;padding-top:14px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:6px}
+.declare .t{font-weight:500;font-size:13px}
+.ptr{text-align:center;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.push .k{font-family:var(--font-mono);font-size:9.5px;color:var(--amber);letter-spacing:.06em;margin-top:3px}
+.notice{border:1px solid var(--line);border-left:3px solid var(--cyan);background:rgba(11,18,32,.85);padding:10px 12px;font-size:12.5px;display:flex;flex-direction:column;gap:6px}
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Documents</span><span class="pill cyan">/documents</span><span class="pill">§10.4 · §4.2 · §4.3 · §4.4 · §4.5 · §10.7 · §8 N1–N4/N14/N15</span>
+  <span class="spacer"></span>
+  <a href="profile.html">Next: Profile →</a>
+</div>
+
+<div class="wf-section">
+  <h2>Documents tab — statuses, expiry reminders, auto-block, criminal-conviction declaration<small>Document states: upload → pending → verified → expiring (≤30 days) → expired; or rejected (reason) → Re-upload → pending (§4.4). On the expiry day the block is automatic and only the Documents tab stays open (§4.3). "Declare a criminal conviction" sits at the foot, set apart (§10.7).</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ Documents · compliant ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Documents · <b>Compliant worker — all verified, expiry dates shown</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:32</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Documents</div><span class="avatar photo">AK</span></div>
+        <div class="app-body">
+          <div class="ptr">↓ Pull to refresh · updated 14:32</div>
+          <div class="row"><span class="pill green"><span class="dot"></span>Compliant</span><span class="xs muted">International student · 20 h/week in term until 13.12.2026</span></div>
+          <div class="mlist">
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">Passport — photo page</div><div class="m">Verified · expires 14.03.2031</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">Right to work · share code</div><div class="m">Verified · right to work until 31.01.2028 (gov.uk)</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">University Term Dates Letter</div><div class="m">Verified · expires 31.12.2026 · reminders from 1 Dec</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">Criminal conviction declaration</div><div class="m">Verified · answered "No" at onboarding, 18.09.2026</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+            <div class="docrow optional"><span class="ico">+</span><div><div class="t">Official University Completion Letter</div><div class="m">Optional · upload when you graduate — sets your limit to 48 h/week permanently (§4.5)</div></div><div class="right"><button class="btn sm">Upload</button></div></div>
+          </div>
+          <div class="declare">
+            <div class="t">Declare a criminal conviction</div>
+            <div class="xs muted">Your agreement requires you to tell us about any unspent conviction that happens while you work for us.</div>
+            <button class="btn ghost block sm" style="justify-content:flex-start">Declare a criminal conviction ›</button>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <a class="active" href="documents.html"><span class="i"></span>Documents</a>
+          <a href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Documents · mixed statuses ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Documents · <b>Missing / In review / Verified / Re-upload with reason</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>09:41</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Documents</div><span class="avatar photo">AK</span></div>
+        <div class="app-body">
+          <div class="ptr">↓ Pull to refresh</div>
+          <div class="alert"><b>2 documents need your attention.</b> You stay compliant while a replacement is in review before the old one expires.</div>
+          <div class="mlist">
+            <div class="docrow rejected"><span class="ico">✕</span><div><div class="t">Passport — photo page</div><div class="m coral">Re-upload · "Photo is blurred — please re-take"</div></div><div class="right"><button class="btn primary sm">Re-upload</button></div></div>
+            <div class="docrow"><span class="ico">—</span><div><div class="t">University Term Dates Letter 2027</div><div class="m">Missing · current letter expires 31.12.2026 (12 days)</div></div><div class="right"><button class="btn primary sm">Upload</button></div></div>
+            <div class="docrow pending"><span class="ico">PDF</span><div><div class="t">Right to work · share code</div><div class="m">In review · new code W987ZY6XK entered 18 Dec · gov.uk report received</div></div><div class="right"><span class="pill amber">In review</span></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">Criminal conviction declaration</div><div class="m">Verified</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+            <div class="docrow optional"><span class="ico">+</span><div><div class="t">Official University Completion Letter</div><div class="m">Optional · student branch only</div></div><div class="right"><button class="btn sm">Upload</button></div></div>
+          </div>
+          <div class="declare">
+            <div class="t">Declare a criminal conviction</div>
+            <button class="btn ghost block sm" style="justify-content:flex-start">Declare a criminal conviction ›</button>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <a class="active" href="documents.html"><span class="i"></span>Documents</a>
+          <a href="shifts.html"><span class="i"></span>Shifts</a>
+          <a href="invites.html"><span class="i"></span>Invites</a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Expiry pushes N1–N4 ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Push gallery · <b>Expiry ladder N1 → N2 → N3 → N4 (block)</b> (§4.2)</div>
+      <div class="phone short">
+        <div class="statusbar"><span>08:00</span><span>●●● 5G ▮</span></div>
+        <div style="padding:8px 12px;display:flex;flex-direction:column;gap:8px">
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 1 Dec</div><div class="b">Update your University Term Dates Letter — it expires on 31 Dec 2026</div><div class="k">N1 · 1 month before expiry</div></div></div>
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 17 Dec</div><div class="b">Update your University Term Dates Letter — 2 weeks left. It expires on 31 Dec 2026.</div><div class="k">N2 · 2 weeks before · more insistent</div></div></div>
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 24 Dec</div><div class="b">Final reminder: update your University Term Dates Letter — it expires on 31 Dec 2026</div><div class="k">N3 · 1 week before · final warning</div></div></div>
+          <div class="push" style="border-color:var(--coral)"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 31 Dec</div><div class="b"><b>You have been blocked — please update your document.</b> Your University Term Dates Letter expired today.</div><div class="k">N4 · on the expiry day · automatic block fires at the same moment (§4.3)</div></div></div>
+        </div>
+        <div class="app-body" style="padding-bottom:24px">
+          <div class="note xs">Term-letter rule: the letter expires 31 December regardless of the dates printed on it; reminders start 1 December. The graduation date on it is ignored. A verified completion letter stops this ladder (§4.2, §4.5). Nobody presses anything — fully automatic.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Blocked ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Documents · <b>Blocked — passport expired, only Documents tab available</b> (app lock case 1)</div>
+      <div class="phone">
+        <div class="statusbar"><span>08:02</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Documents</div><span class="avatar photo">JW</span></div>
+        <div class="app-body">
+          <div class="alert coral"><b>You have been blocked — update your document.</b><br><span class="xs">Your passport expired on 17 Sep 2026. You've been taken off your upcoming shifts and your invitations have been withdrawn. Upload a valid document — once the office verifies it (and everything else is in date) you're unblocked automatically.</span></div>
+          <div class="ptr">↓ Pull to refresh</div>
+          <div class="mlist">
+            <div class="docrow expired"><span class="ico">!</span><div><div class="t">Passport — photo page</div><div class="m coral">Expired 17.09.2026</div></div><div class="right"><button class="btn primary sm">Upload</button></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">NI evidence — P60</div><div class="m">Verified</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">Criminal conviction declaration</div><div class="m">Verified</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+          </div>
+          <div class="note xs">Shifts, Invites and Radar are locked until every document is verified and in date (§4.3). Shifts you were removed from aren't restored — they may already have gone to someone else.</div>
+          <div class="declare">
+            <div class="t">Declare a criminal conviction</div>
+            <button class="btn ghost block sm" style="justify-content:flex-start">Declare a criminal conviction ›</button>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <a class="active" href="documents.html"><span class="i"></span>Documents</a>
+          <a class="locked" href="shifts.html"><span class="i"></span>Shifts</a>
+          <a class="locked" href="invites.html"><span class="i"></span>Invites</a>
+          <a class="locked" href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Declaration form ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Declare a conviction · <b>Form — details required, date optional, plain notice</b> (§10.7)</div>
+      <div class="phone">
+        <div class="statusbar"><span>14:40</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Documents</span>Declare a criminal conviction</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:12px">
+          <p class="sm muted">Use this to tell us about an <b>unspent</b> criminal conviction that has happened since you joined. Your agreement (clause 5) requires it — you're not being penalised for telling us.</p>
+          <div class="field"><span class="label">Details <span class="coral">*</span></span><textarea class="input" style="min-height:96px" placeholder="What the conviction was for, the court and the outcome."></textarea><span class="hint">Read only by admin users in the office. Never shown to clients, never in reports, and not shown back to you on this screen after you submit.</span></div>
+          <div class="field"><span class="label">Date of conviction · optional</span><div class="input-row"><input class="input mono" placeholder="DD / MM / YYYY"><span class="addon">📅</span></div></div>
+          <div class="notice">
+            <div class="strong">What happens when you submit</div>
+            <div>• Your upcoming shifts are <b>paused</b> while the office reviews your declaration, and any open invitations are withdrawn.</div>
+            <div>• A shift you're already working today isn't affected.</div>
+            <div>• The office will be in touch. If the declaration is accepted, your shifts open again automatically.</div>
+            <div class="xs muted">Declaring is a requirement of your agreement with The Hospitality Company, not a penalty.</div>
+          </div>
+          <button class="btn primary block lg disabled">Submit declaration</button>
+          <div class="xs muted" style="text-align:center">Enter the details to submit</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Declaration confirm ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Declare a conviction · <b>Confirmation step — "Are you sure?"</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:43</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Documents</span>Declare a criminal conviction</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="min-height:480px;padding-bottom:24px">
+          <div class="field"><span class="label">Details <span class="coral">*</span></span><textarea class="input" style="min-height:70px">Driving while disqualified — Thames Magistrates' Court, 9 Sep 2026, community order.</textarea></div>
+          <button class="btn primary block lg">Submit declaration</button>
+          <div class="modal-inline" style="min-height:300px">
+            <div class="modal-back" style="padding:12px">
+              <div class="modal">
+                <div class="mh"><h3>Are you sure?</h3></div>
+                <div class="mb">
+                  <p class="muted">Submitting pauses your upcoming shifts straight away — <b>3 booked shifts</b> will be released and offered to other staff. This can't be undone from the app.</p>
+                  <p class="xs muted">The office will review your declaration and contact you.</p>
+                </div>
+                <div class="mf"><button class="btn">Go back</button><button class="btn danger">Yes, submit</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Post-submit locked ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Declare a conviction · <b>After submit — locked to Documents, shifts paused</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:44</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Documents</div><span class="avatar photo">AK</span></div>
+        <div class="app-body">
+          <div class="alert cyan"><b>Thanks for telling us.</b> We've paused your upcoming shifts while the office reviews your declaration, and we'll be in touch. If you need to speak to someone, contact us at: <b>admin@thehospitalitycompany.co.uk</b>.</div>
+          <div class="mlist">
+            <div class="docrow pending"><span class="ico">…</span><div><div class="t">Criminal conviction declaration</div><div class="m">In review · declared 18.09.2026 14:44 · details not shown here</div></div><div class="right"><span class="pill amber">In review</span></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">Passport — photo page</div><div class="m">Verified · expires 14.03.2031</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">Right to work · share code</div><div class="m">Verified · until 31.01.2028</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">University Term Dates Letter</div><div class="m">Verified · expires 31.12.2026</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+          </div>
+          <span class="annot">status → blocked ("Criminal conviction declared — under review") · future bookings released · invites withdrawn · Radar application cancelled · email E9 to the office (§10.7)</span>
+        </div>
+        <nav class="bottom-nav">
+          <a class="active" href="documents.html"><span class="i"></span>Documents</a>
+          <a class="locked" href="shifts.html"><span class="i"></span>Shifts</a>
+          <a class="locked" href="invites.html"><span class="i"></span>Invites</a>
+          <a class="locked" href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Push N15 + N14 ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Push gallery · <b>N15 shifts open again · N14 weekly limit changed</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>07:30</span><span>●●● 5G ▮</span></div>
+        <div style="padding:8px 12px;display:flex;flex-direction:column;gap:8px">
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 10:15</div><div class="b">Thanks for your patience — your shifts are open again. Tap to see what's available.</div><div class="k">N15 · manager verifies the declaration + full compliance re-check passes (§4.3) · released bookings are not restored</div></div></div>
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 07:30</div><div class="b">Your weekly limit is now 48 hours — university holiday until 10 Jan 2027.</div><div class="k">N14 · morning the band changes, daily compliance job · once per change (§4.4)</div></div></div>
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 07:30</div><div class="b">Your weekly limit is now 20 hours — term time until 27 Mar 2027.</div><div class="k">N14 · term restarts · a week straddling term and holiday takes the lower cap</div></div></div>
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 11:02</div><div class="b">Your weekly limit is now 48 hours — graduated, completion letter verified 3 Jul 2027.</div><div class="k">N14 · Official University Completion Letter verified → 48 h permanently (§4.5)</div></div></div>
+        </div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Documents</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:24px">
+          <div class="row"><span class="pill green"><span class="dot"></span>Compliant</span><span class="xs muted">48 h/week — graduated, completion letter verified 03.07.2027</span></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> Documents tab (§10.4): a row per document with Missing / In review / Verified (with expiry) / Re-upload (with the manager's reason, push N8), an Upload button and pull-to-refresh. Document lifecycle upload → pending → verified → expiring (≤30 d) → expired, or rejected → Re-upload (§4.4). The AI pre-fills the expiry (and term dates from the term letter) but a manager verifies (§2.6). The Official University Completion Letter is an optional row for the International student branch only; once verified it sets 48 h/week permanently and stops the term-letter reminder ladder (§4.5). Expiry pushes N1 (1 month) · N2 (2 weeks) · N3 (1 week) · N4 on the day, fully automatic (§4.2); the term letter always expires 31 Dec with reminders from 1 Dec. On expiry the system blocks the worker, releases all future bookings, withdraws invites, drops them from scoring and locks the app to the Documents tab (§4.3, §10.1 case 1); verifying any document re-runs the full compliance check and unblocks only when everything is verified and in date — nothing is restored. <b>Declare a criminal conviction</b> (§10.7): at the foot of the tab, set apart; required details, optional date, a plain notice, Submit → "Are you sure?"; on confirm a CriminalDeclaration (source = in-employment) is created, status → blocked, future bookings released, invites and Radar applications withdrawn, email E9 to the office without the details; the app locks to Documents with the "Thanks for telling us…" copy and the details are never shown back. Verify → full re-check → N15; Reject → converts to a manual block, the office calls. N14 announces every cap change (RULE-20, §4.4).</div>
+</body>
+</html>

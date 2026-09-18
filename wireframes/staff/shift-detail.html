@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff App · Shift detail — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+/* page-local helpers (wireframe only) */
+.app-body>*{flex-shrink:0}
+.title .back{display:block;font-family:var(--font-mono);font-size:9.5px;color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+.kv{display:flex;gap:10px;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+.kv .k{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);width:84px;flex:0 0 84px;padding-top:3px}
+.kv .v{flex:1;min-width:0}
+.kvs{border:1px solid var(--line);background:rgba(11,18,32,.85);padding:2px 12px}
+.kvs .kv:last-child{border-bottom:0}
+.tblock{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border:1px solid var(--line);background:rgba(11,18,32,.85)}
+.tblock .lab{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.tblock.paused .timer{color:var(--muted)}
+.tblock.brk{border-color:var(--amber)}
+.tblock.brk .timer{color:var(--amber)}
+.breaks{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--line);background:rgba(11,18,32,.85)}
+.breaks .h{display:flex;align-items:center;gap:8px;font-family:var(--font-head);font-weight:600;font-size:14px}
+.earn{font-family:var(--font-head);font-size:44px;font-weight:600;line-height:1;color:var(--green)}
+.sum .kv .v{text-align:right;font-family:var(--font-mono)}
+.push .k{font-family:var(--font-mono);font-size:9.5px;color:var(--amber);letter-spacing:.06em;margin-top:3px}
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Shift detail — check-in / check-out / breaks</span><span class="pill cyan">/shifts/:id</span><span class="pill">§10.4 · §5.1 · §5.2 · §5.2b · §3.5 · RULE-01/02/04/14/15</span>
+  <span class="spacer"></span>
+  <a href="radar.html">Next: Radar →</a>
+</div>
+
+<div class="wf-section">
+  <h2>Shift detail — every GPS, break and check-out state<small>One phone per state (a)–(o). Times are always the worker's own role window (RULE-18). The worker sees the base rate only (£14.00/h), never the +12.07% holiday element. Distances/geofence radius come from the Venue record (§9.11).</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ (a) Details before the day ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shift detail · <b>(a) Before the day — confirmed, cancellable (&gt;72 h)</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:32</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Awards Night · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px">
+          <div class="row"><span class="pill green">Confirmed</span><span class="pill">The Dorchester</span><span class="ml-auto mono sm">Tue 23 Sep</span></div>
+          <div class="row"><span class="big" style="font-family:var(--font-head);font-size:24px;font-weight:600">16:00 – 02:00</span><span class="ml-auto sm muted">10 h · £14.00/h</span></div>
+          <div class="kvs">
+            <div class="kv"><span class="k">Venue</span><span class="v">The Dorchester, 53 Park Lane, London W1K 1QA<br><a class="xs" href="#">Open in Maps ↗</a></span></div>
+            <div class="kv"><span class="k">Dress code</span><span class="v">Black tie — black suit, white shirt, black bow tie, polished black shoes</span></div>
+            <div class="kv"><span class="k">On-site contact</span><span class="v">Priya at the Ballroom service door — 020 7629 8888 ext. 412 <span class="annot">free text, as typed on the event</span></span></div>
+            <div class="kv"><span class="k">Notes</span><span class="v">Enter via the Deanery St staff entrance. No parking on site. Briefing in the Ballroom at 16:00 sharp.</span></div>
+            <div class="kv"><span class="k">Rate</span><span class="v">£14.00 per hour · base rate</span></div>
+          </div>
+          <div class="map" style="height:110px">
+            <div class="circle" style="left:50%;top:50%;width:90px;height:90px"></div>
+            <div class="pin" style="left:50%;top:50%"></div>
+            <div class="lbl" style="left:8px;top:8px">Park Lane · geofence 150 m</div>
+          </div>
+          <div class="xs muted">Check-in opens Tue 23 at 15:30 (30 min before start), within 150 m of the venue. Breaks: unpaid by this client — the Breaks block unlocks after check-in.</div>
+          <div class="row"><span class="xs muted">Cancel available until Sat 20, 16:00 (72 h before start)</span><button class="btn ghost sm ml-auto coral">Cancel shift</button></div>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a class="active" href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ (a2) Cancel confirmation ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shift detail · <b>(a) Cancel shift — confirmation dialog</b> (RULE-04)</div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:32</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Awards Night · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="min-height:460px;padding-bottom:24px">
+          <div class="row"><span class="pill green">Confirmed</span><span class="ml-auto mono sm">Tue 23 · 16:00 – 02:00</span></div>
+          <div class="kvs"><div class="kv"><span class="k">Venue</span><span class="v">The Dorchester, 53 Park Lane, W1K 1QA</span></div><div class="kv"><span class="k">Dress code</span><span class="v">Black tie</span></div></div>
+          <div class="modal-inline" style="min-height:260px">
+            <div class="modal-back" style="padding:12px">
+              <div class="modal">
+                <div class="mh"><h3>Cancel this shift?</h3></div>
+                <div class="mb"><p class="muted">We'll offer this shift to the next person on the list. This can't be undone.</p><p class="xs muted">Cancelling doesn't affect your show-rate, but you won't be able to work this event again.</p></div>
+                <div class="mf"><button class="btn">Keep my shift</button><button class="btn danger">Yes, cancel shift</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ (b) Out of radius for check-in ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shift detail · <b>(b) Today — out of radius, check-in disabled</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>16:48</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Gala Dinner · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px">
+          <div class="row"><span class="pill cyan">Today</span><span class="pill green">Confirmed</span><span class="ml-auto mono sm">17:00 – 23:30</span></div>
+          <div class="kvs">
+            <div class="kv"><span class="k">Venue</span><span class="v">Leonardo Royal Hotel, 10 Godliman St, EC4V 5AJ</span></div>
+            <div class="kv"><span class="k">Dress code</span><span class="v">Black &amp; whites</span></div>
+            <div class="kv"><span class="k">On-site contact</span><span class="v">Marco, Banqueting Manager — 07700 900123, ask at the staff entrance</span></div>
+          </div>
+          <div class="map" style="height:170px">
+            <div class="circle" style="left:68%;top:38%;width:70px;height:70px"></div>
+            <div class="pin" style="left:68%;top:38%"></div>
+            <div class="me" style="left:14%;top:78%"></div>
+            <div class="lbl" style="left:8px;top:8px">Geofence 150 m</div>
+            <div class="lbl" style="left:14%;top:84%;color:var(--purple)">you</div>
+          </div>
+          <div class="gps bad"><span class="dot"></span><span><b>You're 1.8 km from the venue.</b> Check-in opens within 150 m of Leonardo Royal Hotel.</span></div>
+          <button class="btn primary block lg disabled">Check in — verify GPS</button>
+          <div class="xs muted">Check-in window 16:30 – 17:30. You're paid from 17:00 whenever you arrive before it; after 17:00 you're marked Late; at 17:30 check-in locks (§5.1).</div>
+          <div class="breaks" style="opacity:.6"><div class="h">Breaks <span class="pill ml-auto">Unpaid by client</span></div><button class="btn block disabled">Start break</button><div class="xs muted">Unlocks after check-in</div></div>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a class="active" href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ (c) In radius ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shift detail · <b>(c) Today — in radius, check-in enabled</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>16:52</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Gala Dinner · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px">
+          <div class="row"><span class="pill cyan">Today</span><span class="pill green">Confirmed</span><span class="ml-auto mono sm">17:00 – 23:30</span></div>
+          <div class="kvs">
+            <div class="kv"><span class="k">Venue</span><span class="v">Leonardo Royal Hotel, 10 Godliman St, EC4V 5AJ</span></div>
+            <div class="kv"><span class="k">Dress code</span><span class="v">Black &amp; whites</span></div>
+            <div class="kv"><span class="k">On-site contact</span><span class="v">Marco, Banqueting Manager — 07700 900123, ask at the staff entrance</span></div>
+            <div class="kv"><span class="k">Notes</span><span class="v">Use the Godliman St staff entrance. No bags on the floor.</span></div>
+          </div>
+          <div class="map" style="height:150px">
+            <div class="circle" style="left:50%;top:50%;width:110px;height:110px"></div>
+            <div class="pin" style="left:50%;top:50%"></div>
+            <div class="me" style="left:56%;top:44%"></div>
+            <div class="lbl" style="left:8px;top:8px">Geofence 150 m</div>
+          </div>
+          <div class="gps ok"><span class="dot"></span><span><b>On site</b> · 42 m from the venue centre</span></div>
+          <button class="btn primary block lg">Check in — verify GPS</button>
+          <div class="xs muted">Shift starts in 8 min · you're paid from 17:00.</div>
+          <div class="breaks" style="opacity:.6"><div class="h">Breaks <span class="pill ml-auto">Unpaid by client</span></div><button class="btn block disabled">Start break</button><div class="xs muted">Unlocks after check-in</div></div>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a class="active" href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ (e) Break button before check-in ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shift detail · <b>(e) Before check-in — Start break disabled, "Unlocks after check-in"</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>16:52</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Gala Dinner · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px;padding-bottom:24px">
+          <div class="row"><span class="pill cyan">Today</span><span class="pill green">Confirmed</span><span class="ml-auto mono sm">17:00 – 23:30</span></div>
+          <div class="gps ok"><span class="dot"></span><span><b>On site</b> · 42 m from the venue centre</span></div>
+          <button class="btn primary block lg">Check in — verify GPS</button>
+          <div class="breaks">
+            <div class="h">Breaks <span class="pill ml-auto">Unpaid by client</span></div>
+            <div class="alert sm">A break will be applied to all shifts over 6 hours — please check with your Manager on site</div>
+            <button class="btn block disabled">Start break</button>
+            <div class="xs muted" style="text-align:center">Unlocks after check-in</div>
+            <span class="annot">you cannot be on a break for a shift you haven't started (§5.2b)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ (d) Checked in · unpaid breaks ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shift detail · <b>(d) Checked in — client does NOT pay breaks</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>19:14</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Gala Dinner · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px">
+          <div class="row"><span class="pill green"><span class="dot"></span>Checked in</span><span class="pill">Leonardo Royal</span><span class="ml-auto mono sm">17:00 – 23:30</span></div>
+          <div class="tblock"><span class="lab">On shift · chargeable time</span><span class="timer">02:14:36</span><span class="xs muted">Checked in 16:52 · paid from 17:00 (RULE-01) · scheduled end 23:30</span></div>
+          <div class="gps ok"><span class="dot"></span><span>On site · background tracking on for the whole shift</span></div>
+          <div class="breaks">
+            <div class="h">Breaks <span class="pill ml-auto">Unpaid by client</span></div>
+            <div class="alert sm">A break will be applied to all shifts over 6 hours — please check with your Manager on site</div>
+            <button class="btn outline block lg">Start break</button>
+            <div class="xs muted">No breaks logged yet. Break time is deducted from your hours. You can take more than one.</div>
+          </div>
+          <button class="btn block">Check out</button>
+          <div class="xs muted" style="text-align:center">Check-out works from anywhere until 03:30 (4 h after the end) — being on site only affects the time we record.</div>
+          <div class="kvs"><div class="kv"><span class="k">On-site contact</span><span class="v">Marco, Banqueting Manager — 07700 900123</span></div></div>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a class="active" href="shifts.html"><span class="i"></span>Shifts</a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ (f) On break ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shift detail · <b>(f) On break — break timer runs, chargeable timer paused</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>19:39</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Gala Dinner · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px">
+          <div class="row"><span class="pill amber"><span class="dot"></span>On break</span><span class="pill">Leonardo Royal</span><span class="ml-auto mono sm">17:00 – 23:30</span></div>
+          <div class="tblock brk"><span class="lab">Break · running</span><span class="timer">00:08:12</span><span class="xs muted">Break started 19:31</span></div>
+          <div class="tblock paused"><span class="lab">Chargeable time · paused</span><span class="timer">02:31:04</span><span class="xs muted">Resumes when you finish your break</span></div>
+          <div class="breaks">
+            <div class="h">Breaks <span class="pill ml-auto">Unpaid by client</span></div>
+            <button class="btn primary block lg">Finish break — back to work</button>
+            <div class="mlist">
+              <div class="mrow" style="padding:8px 0"><span class="sm">Break 1</span><span class="right mono sm amber">19:31 – now</span></div>
+            </div>
+          </div>
+          <button class="btn block">Check out</button>
+          <div class="xs muted" style="text-align:center">Breaks are shown in the Comments column of the timesheet the client signs (§11.3).</div>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a class="active" href="shifts.html"><span class="i"></span>Shifts</a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ (g) Checked in · client PAYS breaks ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shift detail · <b>(g) Checked in — client PAYS breaks, no break buttons</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>20:05</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Product Launch — Bar · Bar Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px">
+          <div class="row"><span class="pill green"><span class="dot"></span>Checked in</span><span class="pill">Mandarin Oriental</span><span class="ml-auto mono sm">18:00 – 01:00</span></div>
+          <div class="tblock"><span class="lab">On shift · chargeable time</span><span class="timer">02:05:11</span><span class="xs muted">Checked in 17:49 · paid from 18:00 · scheduled end 01:00</span></div>
+          <div class="gps ok"><span class="dot"></span><span>On site · 66 Knightsbridge, SW1X 7LA</span></div>
+          <div class="kvs">
+            <div class="kv"><span class="k">Rate</span><span class="v">£15.50 per hour</span></div>
+            <div class="kv"><span class="k">Dress code</span><span class="v">Black shirt, black trousers, black shoes</span></div>
+            <div class="kv"><span class="k">On-site contact</span><span class="v">Bar manager Jules — via the Loading Bay reception</span></div>
+            <div class="kv"><span class="k">Breaks</span><span class="v">Paid by this client — take them as your manager on site directs. Nothing to log.</span></div>
+          </div>
+          <span class="annot">no Breaks block at all — the client's break policy = pays (§3.2, §5.2b)</span>
+          <button class="btn block">Check out</button>
+          <div class="xs muted" style="text-align:center">Check-out works from anywhere until 05:00 (4 h after the end).</div>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a class="active" href="shifts.html"><span class="i"></span>Shifts</a>
+          <a href="invites.html"><span class="i"></span>Invites</a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ (h) Check-out in radius ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shift detail · <b>(h) Check-out — in radius, green</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>23:31</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Gala Dinner · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px">
+          <div class="row"><span class="pill green"><span class="dot"></span>Checked in</span><span class="pill cyan">Shift ended 23:30</span><span class="ml-auto mono sm">17:00 – 23:30</span></div>
+          <div class="tblock"><span class="lab">On shift · chargeable time</span><span class="timer">06:11:02</span><span class="xs muted">Checked in 16:52 · 1 break (20 min) · paid up to 23:30 — checking out within 15 min of the end doesn't add time (RULE-01)</span></div>
+          <div class="map" style="height:120px">
+            <div class="circle" style="left:50%;top:50%;width:100px;height:100px"></div>
+            <div class="pin" style="left:50%;top:50%"></div>
+            <div class="me" style="left:47%;top:56%"></div>
+          </div>
+          <div class="gps ok"><span class="dot"></span><span><b>On site</b> · 31 m from the venue centre — your check-out time will be recorded as now</span></div>
+          <button class="btn green block lg">Check out</button>
+          <div class="breaks" style="opacity:.85">
+            <div class="h">Breaks <span class="pill ml-auto">Unpaid by client</span></div>
+            <div class="mlist"><div class="mrow" style="padding:6px 0"><span class="sm">Break 1</span><span class="right mono sm">19:31 – 19:51 · 20 min</span></div></div>
+            <button class="btn block sm">Start another break</button>
+            <div class="xs muted">Still available until you check out, even after the scheduled end (§5.2b).</div>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a class="active" href="shifts.html"><span class="i"></span>Shifts</a>
+          <a href="invites.html"><span class="i"></span>Invites</a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ (k) Check-out confirmation ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shift detail · <b>(k) Check-out confirmation — total earnings</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>23:32</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Gala Dinner · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body center" style="gap:12px">
+          <div class="static-screen" style="padding:10px 0 0;gap:6px">
+            <span class="pill green lg">Checked out · 23:32</span>
+            <h2>Shift complete — thank you, Amara</h2>
+          </div>
+          <div class="kvs sum">
+            <div class="kv"><span class="k">Worked</span><span class="v">17:00 – 23:30 · 6 h 30 m</span></div>
+            <div class="kv"><span class="k">Unpaid break</span><span class="v">− 20 m</span></div>
+            <div class="kv"><span class="k">Payable</span><span class="v">6 h 10 m</span></div>
+            <div class="kv"><span class="k">Hourly rate</span><span class="v">£14.00 / h</span></div>
+          </div>
+          <div class="tblock" style="border-color:var(--green);align-items:center;text-align:center;padding:16px">
+            <span class="lab">Total earnings for this shift</span>
+            <span class="earn">£86.33</span>
+            <span class="xs muted">before tax · base rate only</span>
+          </div>
+          <p class="sm muted" style="text-align:center">Your hours are sent to the office as a timesheet. You're paid the Friday after the week you worked.</p>
+          <button class="btn primary block lg">Done</button>
+          <span class="annot" style="text-align:center">holiday pay (+12.07%) is never shown to the worker (§5.1, §9.8)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ (i) Check-out pressed off-site ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shift detail · <b>(i) Check-out pressed off-site — last on-site time used</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>21:04</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Conference Breakfast · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px;padding-bottom:24px">
+          <div class="row"><span class="pill">ExCeL London</span><span class="ml-auto mono sm">Thu 25 · 08:00 – 16:00</span></div>
+          <div class="gps bad"><span class="dot"></span><span>You're 9.6 km from the venue</span></div>
+          <div class="alert"><b>You checked out away from the venue — we've recorded your last time on site, 16:00.</b></div>
+          <div class="kvs sum">
+            <div class="kv"><span class="k">Checked in</span><span class="v">07:51 · paid from 08:00</span></div>
+            <div class="kv"><span class="k">Last on site</span><span class="v">16:00 (background GPS)</span></div>
+            <div class="kv"><span class="k">Pressed at</span><span class="v">21:04 · not used</span></div>
+          </div>
+          <button class="btn primary block lg">Continue to summary</button>
+          <span class="annot">RULE-01: the off-site press never extends payable time; the last on-site fix is the check-out (§5.1)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ (j) Off-site, no on-site fix ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shift detail · <b>(j) Off-site check-out with no on-site fix → "No check-out" Violation</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>21:04</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Conference Breakfast · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px;padding-bottom:24px">
+          <div class="row"><span class="pill">ExCeL London</span><span class="ml-auto mono sm">Thu 25 · 08:00 – 16:00</span></div>
+          <div class="gps bad"><span class="dot"></span><span>You're 9.6 km from the venue</span></div>
+          <div class="alert coral"><b>We couldn't confirm when you left the venue — the office will confirm your finish time with you.</b></div>
+          <div class="xs muted">Your check-in at 07:51 was recorded on site, but we have no location after it. Rather than record a zero-length shift, the office will enter your real finish time.</div>
+          <button class="btn primary block lg">OK, I understand</button>
+          <span class="annot">RULE-02 second trigger: raised immediately on the press; pay stays undetermined until a manager resolves it (§5.2)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ (l) Check-in locked after 30-min grace ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shift detail · <b>(l) Check-in locked — 30 min after start (No-show)</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>17:31</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Gala Dinner · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px;padding-bottom:24px">
+          <div class="row"><span class="pill cyan">Today</span><span class="pill coral">Not attended</span><span class="ml-auto mono sm">17:00 – 23:30</span></div>
+          <div class="gps ok" style="opacity:.6"><span class="dot"></span><span>On site · 40 m from the venue centre</span></div>
+          <button class="btn primary block lg disabled">Check-in closed</button>
+          <div class="alert coral"><b>You've been marked as not attended — contact the office.</b><br><span class="xs">Check-in closed at 17:30, 30 minutes after your start time. If you're on site, a manager can register your arrival: admin@thehospitalitycompany.co.uk</span></div>
+          <span class="annot">manager "Get back" in the Check-in monitor reclassifies to Late (§9.5); a replacement confirmed after the start is exempt from this lock (§3.4)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ (m) Buffer turn-away ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Shift detail · <b>(m) Buffer turn-away — on time, shift already fully staffed</b> (RULE-15)</div>
+      <div class="phone short">
+        <div class="statusbar"><span>16:58</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Gala Dinner · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body center">
+          <div class="static-screen" style="padding:24px 8px">
+            <span class="pill amber lg">Not needed today</span>
+            <h2>Thanks for coming</h2>
+            <p>Thanks for coming — this shift is already fully staffed, so you're not needed today. We've logged that you arrived on time and you'll be paid for 4 hours. Please check your app for other shifts.</p>
+            <button class="btn primary block">OK, I understand</button>
+            <button class="btn ghost block">Open Radar</button>
+            <span class="annot">strict buffer policy · check-in attempt logged at 16:58 · 4 h flat, nothing if late (§3.2, RULE-15)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ (n1) Event cancelled ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Static message · <b>(n) This event has been cancelled</b> (N12)</div>
+      <div class="phone short">
+        <div class="statusbar"><span>09:20</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Conference Lunch · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body center">
+          <div class="static-screen" style="padding:24px 8px">
+            <span class="pill coral lg">Cancelled</span>
+            <h2>This event has been cancelled</h2>
+            <p>Conference Lunch · Sun 21 Sep · ExCeL London</p>
+            <p class="xs">If you believe there has been an error, please contact us at: <b class="cyan">admin@thehospitalitycompany.co.uk</b></p>
+            <button class="btn primary block">OK, I understand</button>
+            <span class="annot">no map, no check-in/out, no breaks · card already gone from My shifts — this covers a stale push tap (§10.4)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ (n2) Removed from shift ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Static message · <b>(n) You've been removed from this shift</b> (N10b)</div>
+      <div class="phone short">
+        <div class="statusbar"><span>09:20</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Wedding — Marquee · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body center">
+          <div class="static-screen" style="padding:24px 8px">
+            <span class="pill coral lg">Withdrawn</span>
+            <h2>You've been removed from this shift</h2>
+            <p>Wedding — Marquee · Sat 20 Sep · 11:00 – 00:30</p>
+            <p class="xs">If you believe there has been an error, please contact us at: <b class="cyan">admin@thehospitalitycompany.co.uk</b></p>
+            <button class="btn primary block">OK, I understand</button>
+            <span class="annot">office Withdraw (N10b) or missed 12:00 "I'm ready" (N6b) — no show-rate effect for the office withdraw</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ (n3) No check-out received ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Static message · <b>(n) No check-out received — locked, card stays in My shifts</b> (RULE-02)</div>
+      <div class="phone short">
+        <div class="statusbar"><span>09:20</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Gala Dinner · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body center">
+          <div class="static-screen" style="padding:24px 8px">
+            <span class="pill amber lg">Awaiting the office</span>
+            <h2>We didn't receive your check-out for this shift — the office is following up with you directly.</h2>
+            <p>Gala Dinner · 17:00 – 23:30 · checked in 16:52</p>
+            <p class="xs">If you believe there has been an error, please contact us at: <b class="cyan">admin@thehospitalitycompany.co.uk</b></p>
+            <button class="btn primary block">OK, I understand</button>
+            <span class="annot">4 h after the scheduled end with no check-out → button locked, "No check-out" Violation; booking stays worked (§3.6, §9.5)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ (o) Push gallery ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Push gallery · <b>(o) N9 check-in / check-out · N9b · N13</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>16:30</span><span>●●● 5G ▮</span></div>
+        <div style="padding:8px 12px;display:flex;flex-direction:column;gap:8px">
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 16:30</div><div class="b"><b>Time to check in</b> — Gala Dinner · Waiting Staff starts at 17:00. Check in when you're within 150 m of Leonardo Royal Hotel.</div><div class="k">N9 · −30 min before start · skipped if already checked in</div></div></div>
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 23:00</div><div class="b"><b>Don't forget to check out</b> — Gala Dinner ends at 23:30.</div><div class="k">N9 · −30 min before end · skipped if already checked out</div></div></div>
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 00:00</div><div class="b">You haven't checked out of Gala Dinner yet — tap to check out.</div><div class="k">N9b · +30 min after scheduled end · once · button locks at +4 h (RULE-02)</div></div></div>
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 22:52</div><div class="b">You've been on shift 6 hours — please ask your manager on site about taking your break.</div><div class="k">N13 · 6 h after check-in, no break logged · unpaid-break clients only · once per shift (BG-10)</div></div></div>
+        </div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Shifts</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:24px">
+          <div class="mcard today">
+            <div class="h"><span class="pill cyan">Today</span><span class="pill green">Confirmed</span><span class="ml-auto mono sm">17:00 – 23:30</span></div>
+            <div class="t">Gala Dinner · Waiting Staff</div>
+            <div class="gps ok"><span class="dot"></span>On site · 42 m from the venue centre</div>
+            <button class="btn primary block lg">Check in — verify GPS</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> Details (§10.4, §3.2): own role window only (RULE-18), venue address, dress code, on-site contact as free text exactly as entered on the event, notes/specific instructions, base rate. "Cancel shift" only while &gt;72 h remain (RULE-04): dialog "We'll offer this shift to the next person on the list. This can't be undone." → slot released to auto-assign, no show-rate impact, worker permanently excluded from that event (§3.6). <b>Check-in</b> (§5.1): out of radius → red message with distance and disabled button; in radius → green and enabled; check-in during the 30-min grace = Late, paid from the scheduled start (RULE-01); 30 min after start → No-show, button locks, only a manager's "Get back" reclassifies (§9.5); a replacement confirmed after the start is exempt (§3.4). Strict buffer turn-away: on-time attempt logged → fixed 4 h pay, late → nothing (RULE-15). <b>Breaks</b> (§5.2b): shown only when the client does NOT pay breaks; Start break disabled before check-in ("Unlocks after check-in"); on break the break timer runs, the chargeable timer pauses, button reads "Finish break — back to work"; several breaks allowed, total deducted from pay and charge, listed in the timesheet Comments; the 6-hour banner is informational; N13 fires once at 6 h with no break. Client pays breaks → no buttons at all. <b>Check-out</b>: enabled from anywhere from the start until 4 h after the scheduled end; on site → actual time; off site → last on-site time from background tracking, or if none, the "No check-out" Violation and the "we couldn't confirm" copy (RULE-02); up to 15 min late still pays to the scheduled end (RULE-01); never pressed within 4 h → locks, Violation, static "we didn't receive your check-out" screen while the card stays in My shifts. Confirmation shows duration, rate and total earnings emphasised, base rate only, with the payroll copy (paid the Friday after the week worked, RULE-06). Static screens for cancelled (N12) / removed (N10b) / no check-out carry the contact line and "OK, I understand". Background GPS during the shift is the one native-only capability a PWA cannot fully honour — flagged for the build.</div>
+</body>
+</html>

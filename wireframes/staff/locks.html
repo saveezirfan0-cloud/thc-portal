@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff App · App locks &amp; push register — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+/* page-local helpers (wireframe only) */
+.app-body>*{flex-shrink:0}
+.docrow{padding:10px 12px}
+.docrow .ico{width:30px;height:30px}
+.docrow.expired .ico{color:var(--coral);border-color:var(--coral)}
+.push .k{font-family:var(--font-mono);font-size:9.5px;color:var(--amber);letter-spacing:.06em;margin-top:3px}
+.push .n{font-family:var(--font-mono);font-size:10px;color:var(--cyan);letter-spacing:.08em;flex:0 0 32px;padding-top:2px}
+.push .b b{color:var(--text)}
+.pushes{padding:8px 12px 20px;display:flex;flex-direction:column;gap:8px}
+.grp{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:6px 0 2px}
+.grp::after{content:'';flex:1;border-top:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · App locks (4 cases) + push register N1–N15</span><span class="pill cyan">/documents · /locked · /leaver</span><span class="pill">§10.1 · §4.3 · §9.6 · §2.9 · §10.6 · §8</span>
+  <span class="spacer"></span>
+  <a href="../public/apply.html">Next: Public · Apply →</a>
+</div>
+
+<div class="wf-section">
+  <h2>App lock — the four cases side by side<small>§10.1: (1) auto-block on documents → Documents tab only; (2) manual block → static "on hold" screen, no Documents action, reason never shown; (3) quiz failed 3× → terminal screen = email E4; (4) leaver → leaver screen with only Payment information reachable. A GDPR-removed worker cannot sign in at all.</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ (1) Auto-block on documents ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Lock 1 · <b>Auto-block on documents — Documents tab only</b> (§4.3)</div>
+      <div class="phone">
+        <div class="statusbar"><span>08:02</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Documents</div><span class="avatar photo">JW</span></div>
+        <div class="app-body">
+          <div class="alert coral"><b>You have been blocked — update your document.</b><br><span class="xs">Your passport expired on 17 Sep 2026. You've been removed from your upcoming shifts and your invitations have been withdrawn. Upload a valid document; once the office verifies it — and everything else is in date — you're unblocked automatically.</span></div>
+          <div class="mlist">
+            <div class="docrow expired"><span class="ico">!</span><div><div class="t">Passport — photo page</div><div class="m coral">Expired 17.09.2026</div></div><div class="right"><button class="btn primary sm">Upload</button></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">NI evidence — P60</div><div class="m">Verified</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">Criminal conviction declaration</div><div class="m">Verified</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+          </div>
+          <div class="note xs">Same lock while a criminal-conviction declaration made from the app is under review (§10.7), and while any document is unverified after onboarding (§10.3). Shifts, Invites and Radar stay locked until the full compliance re-check passes — verifying one document alone doesn't unblock (§4.3).</div>
+          <span class="annot">worker can still sign in · sees ONLY Documents · not in scoring, no invites (§2.12)</span>
+        </div>
+        <nav class="bottom-nav">
+          <a class="active" href="documents.html"><span class="i"></span>Documents</a>
+          <a class="locked" href="#"><span class="i"></span>Shifts</a>
+          <a class="locked" href="#"><span class="i"></span>Invites</a>
+          <a class="locked" href="#"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ (2) Manual block ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Lock 2 · <b>Manual block by a manager — "Your account is on hold"</b> (§9.6)</div>
+      <div class="phone">
+        <div class="statusbar"><span>08:02</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">The Hospitality Company</div><span class="avatar photo">TR</span></div>
+        <div class="app-body center">
+          <div class="static-screen">
+            <span class="pill amber lg">On hold</span>
+            <h2>Your account is on hold.</h2>
+            <p>Please contact the office at: <b class="cyan">admin@thehospitalitycompany.co.uk</b></p>
+            <button class="btn ghost block" style="margin-top:12px">Sign out</button>
+            <span class="annot">no Documents tab, no action to take · the manager's reason is internal and never shown · only Unblock (+ full compliance check) lifts it</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ (3) Quiz failed ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Lock 3 · <b>Quiz failed 3× — terminal screen (= email E4)</b> (§2.9)</div>
+      <div class="phone">
+        <div class="statusbar"><span>10:31</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">The Hospitality Company</div><span class="avatar photo">AK</span></div>
+        <div class="app-body center">
+          <div class="static-screen">
+            <span class="pill coral lg">Application closed</span>
+            <h2>Health &amp; Safety Assessment — Unsuccessful</h2>
+            <p>Unfortunately, you haven't passed the Health &amp; Safety assessment after three attempts, which is the maximum number permitted at this stage. As passing this assessment is a required part of onboarding, we're unable to progress your application any further at this time.</p>
+            <p>If you have any questions, please contact us at: <b class="cyan">admin@thehospitalitycompany.co.uk</b></p>
+            <button class="btn ghost block" style="margin-top:12px">Sign out</button>
+            <span class="annot">status rejected · wizard replaced by this screen · copy supplied by THC, identical to E4 · Reset to candidate is the only way back (§2.12)</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ (4) Leaver ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Lock 4 · <b>Leaver — Request my P45 done, Payment information still reachable</b> (§10.6)</div>
+      <div class="phone">
+        <div class="statusbar"><span>14:41</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">The Hospitality Company</div><span class="avatar photo">AK</span></div>
+        <div class="app-body center">
+          <div class="static-screen">
+            <span class="pill lg">Left · 18.09.2026</span>
+            <h2>You've left The Hospitality Company.</h2>
+            <p>Your P45 has been requested and the office will be in touch. If this was a mistake, please contact us at: <b class="cyan">admin@thehospitalitycompany.co.uk</b>.</p>
+            <button class="btn outline block">Payment information — earnings history</button>
+            <button class="btn ghost block">Sign out</button>
+            <span class="annot">status inactive · Shifts / Radar / Invites / Documents closed · earnings history stays · E8 sent to the office</span>
+          </div>
+        </div>
+        <nav class="bottom-nav">
+          <a class="locked" href="#"><span class="i"></span>Documents</a>
+          <a class="locked" href="#"><span class="i"></span>Shifts</a>
+          <a class="locked" href="#"><span class="i"></span>Invites</a>
+          <a class="locked" href="#"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-section">
+  <h2>Push notification register — N1–N15 with exact copy and timing (§8)<small>All device-level (Web Push in the PWA), reaching the worker with the app closed (§10.5). Bracketed values are substituted. Split across two phones: documents &amp; compliance, then shifts.</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ Register · documents & compliance ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Push register · <b>Documents &amp; compliance — N1 N2 N3 N4 N8 N14 N15</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>08:00</span><span>●●● 5G ▮</span></div>
+        <div class="pushes">
+          <div class="grp">Document expiry ladder (§4.2)</div>
+          <div class="push"><span class="n">N1</span><div><div class="app">Document expiring · 1 month before</div><div class="b">Update your [document] — it expires on [date]</div><div class="k">1 month before expiry · automatic</div></div></div>
+          <div class="push"><span class="n">N2</span><div><div class="app">Document expiring · 2 weeks before</div><div class="b">Update your [document] — 2 weeks left</div><div class="k">2 weeks before · same, more insistent</div></div></div>
+          <div class="push"><span class="n">N3</span><div><div class="app">Document expiring · 1 week before</div><div class="b">Final reminder: update your [document]</div><div class="k">1 week before · final warning</div></div></div>
+          <div class="push" style="border-color:var(--coral)"><span class="n">N4</span><div><div class="app">Document expired</div><div class="b">You have been blocked — please update</div><div class="k">on the expiry day · automatic block fires at the same moment (§4.3)</div></div></div>
+          <div class="grp">Review outcomes</div>
+          <div class="push"><span class="n">N8</span><div><div class="app">Document rejected</div><div class="b">Document rejected — [reason]. Re-upload.</div><div class="k">on reject · carries the manager's reason + a Re-upload button (§2.3, §4.1)</div></div></div>
+          <div class="push"><span class="n">N15</span><div><div class="app">Declared conviction accepted · unblocked</div><div class="b">Thanks for your patience — your shifts are open again. Tap to see what's available.</div><div class="k">on Verify + full compliance re-check passing (§10.7, §4.3)</div></div></div>
+          <div class="grp">Weekly hours cap</div>
+          <div class="push"><span class="n">N14</span><div><div class="app">Weekly cap changed band</div><div class="b">Your weekly limit is now [20 / 48] hours — [term time / university holiday] until [date].</div><div class="k">morning the change takes effect · daily compliance job · once per change (§4.4, §4.5)</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Register · shifts ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Push register · <b>Shifts 1 — N5 N6 N6b N7 · N9 N9b N13</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>12:00</span><span>●●● 5G ▮</span></div>
+        <div class="pushes">
+          <div class="grp">Invitation &amp; three-stage confirmation (§3.5)</div>
+          <div class="push"><span class="n">N5</span><div><div class="app">Shift invitation</div><div class="b">[role] · [event] · [date/time] · [rate]/h</div><div class="k">on invite</div></div></div>
+          <div class="push"><span class="n">N6</span><div><div class="app">Day-before</div><div class="b">Confirm tomorrow's shift by 12:00 today — or you'll be removed from it</div><div class="k">the day before · cutoff 12:00 · the only hard deadline</div></div></div>
+          <div class="push" style="border-color:var(--coral)"><span class="n">N6b</span><div><div class="app">Dropped for missing the day-before deadline</div><div class="b">You have been removed from your shift tomorrow as we have not received your re-confirmation by the 12:00 deadline</div><div class="k">at the automatic 12:05 cutoff · slot released · auto-assign backfills</div></div></div>
+          <div class="push"><span class="n">N7</span><div><div class="app">On-the-day</div><div class="b">Confirm today's shift</div><div class="k">on the day · reminder only, no slot release · "Not confirmed today" on the monitor (§9.5)</div></div></div>
+          <div class="grp">Check-in / check-out / breaks (§5)</div>
+          <div class="push"><span class="n">N9</span><div><div class="app">30 min before start / end</div><div class="b">Time to check in &nbsp;/&nbsp; Don't forget to check out</div><div class="k">−30 min · each half skipped if already checked in / out</div></div></div>
+          <div class="push"><span class="n">N9b</span><div><div class="app">Still not checked out</div><div class="b">You haven't checked out of [event] yet — tap to check out.</div><div class="k">+30 min after scheduled end · once · skipped if checked out · 3.5 h before the button locks (RULE-02)</div></div></div>
+          <div class="push"><span class="n">N13</span><div><div class="app">6 h on shift, no break logged</div><div class="b">You've been on shift 6 hours — please ask your manager on site about taking your break.</div><div class="k">+6 h after check-in · unpaid-break clients only · once per shift · skipped if a break was started (§5.2b, BG-10)</div></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Register · radar & office changes ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Push register · <b>Shifts 2 — N10 N10b N10c N11 N12</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>09:05</span><span>●●● 5G ▮</span></div>
+        <div class="pushes">
+          <div class="grp">Radar &amp; office changes</div>
+          <div class="push"><span class="n">N10</span><div><div class="app">Radar application accepted</div><div class="b">You're booked! Your application for [event] on [date] has been accepted. Tap to view your shift details.</div><div class="k">on Confirmed for a self-application (manual pick or auto fill) · mandatory</div></div></div>
+          <div class="push"><span class="n">N10b</span><div><div class="app">Shift cancelled by the office (Withdraw)</div><div class="b">You've been removed from [event] · [date/time]</div><div class="k">on change · mandatory · card disappears from Shifts</div></div></div>
+          <div class="push"><span class="n">N10c</span><div><div class="app">Radar application not taken forward</div><div class="b">Shift update: the [event] shift on [date] has now been filled. Keep an eye on Radar — new shifts are added regularly.</div><div class="k">the moment the role becomes fully confirmed · mandatory</div></div></div>
+          <div class="push"><span class="n">N11</span><div><div class="app">Event time / date changed</div><div class="b">Shift time changed — now […]</div><div class="k">on change of start OR end · device-level · card shows "Time changed" + Awaiting + "Confirm new time"</div></div></div>
+          <div class="push" style="border-color:var(--coral)"><span class="n">N12</span><div><div class="app">Event cancelled by the office</div><div class="b">This event has been cancelled</div><div class="k">on cancel · Confirmed + Invited + pending Radar applicants · mandatory</div></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> App lock cases (§10.1): <b>(1)</b> Auto-block on documents — not compliant or an expired document (§4.3), a declaration under review (§10.7), or anything unverified after onboarding (§10.3): the worker signs in but sees ONLY the Documents tab; Shifts, Invites and Radar are locked until every document is verified and in date and any "Yes" declaration is verified — the full compliance re-check runs on every Verify and unblocks automatically, with no restoration of released shifts. <b>(2)</b> Manual block by a manager (§9.6): nothing for the worker to fix, so no Documents action — a static "Your account is on hold. Please contact the office at: admin@thehospitalitycompany.co.uk" screen; the reason is internal and never shown; only Unblock (which also runs the full compliance check) lifts it. A rejected conviction declaration converts to this manual block (§10.7). <b>(3)</b> Rejected after the third quiz failure (§2.9): the wizard is replaced by the terminal screen with THC's copy, identical to email E4. <b>(4)</b> Leaver via Request my P45 (§10.6): the leaver screen, Shifts / Radar / Invites / Documents closed, Payment information (earnings history) still reachable. GDPR-removed: cannot sign in (§1.7). Blocked, inactive and removed workers receive no invitations and leave the scoring pool (§2.12). <b>Push register</b> (§8): the main channel is push — email survives only before the app exists (E1–E3) or for Willo; all N1–N15 are device-level and, in the PWA, delivered as Web Push, which is why the permission screen on <a href="auth.html">auth</a> is mandatory. Copy above is verbatim from §8; bracketed fields are substituted at send time.</div>
+</body>
+</html>

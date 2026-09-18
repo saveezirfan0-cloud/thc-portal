@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff App · Onboarding 1–4 — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+/* page-local helpers (wireframe only) */
+.app-body>*{flex-shrink:0}
+.wiz-foot{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:12px 16px 26px;background:rgba(11,18,32,.6);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:6px}
+.wiz-foot .xs{text-align:center}
+.optcard{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);background:rgba(11,18,32,.85)}
+.optcard.sel{border-color:var(--cyan);background:var(--cyan-dim)}
+.optcard .rb{width:16px;height:16px;border:1px solid var(--muted);flex:0 0 16px;margin-top:2px}
+.optcard.sel .rb{border:5px solid var(--cyan)}
+.optcard .t{font-weight:600;font-size:13.5px}
+.optcard .m{font-size:11.5px;color:var(--muted);margin-top:2px}
+.docrow{padding:9px 12px}
+.docrow .ico{width:30px;height:30px}
+.cam{aspect-ratio:1/1;width:100%;background:linear-gradient(160deg,#1b2436,#0a1020);border:1px solid var(--line);position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.cam .guide{width:64%;height:78%;border:1.5px dashed var(--cyan);opacity:.8}
+.cam .lbl{position:absolute;bottom:8px;left:0;right:0;text-align:center;font-family:var(--font-mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.cam .corner{position:absolute;width:18px;height:18px;border:2px solid var(--cyan)}
+.shutter{width:62px;height:62px;border:3px solid var(--text);background:transparent;display:flex;align-items:center;justify-content:center;margin:0 auto}
+.shutter i{width:48px;height:48px;background:var(--text);display:block}
+.photo-preview{aspect-ratio:1/1;width:100%;background:linear-gradient(135deg,#223047,#35507a);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:64px;font-weight:600;color:rgba(233,238,245,.55);border:1px solid var(--line)}
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Onboarding wizard 1/11 – 4/11</span><span class="pill cyan">/onboarding</span><span class="pill">§10.3 · §2.5 · §2.10 · §4.4</span>
+  <span class="spacer"></span>
+  <a href="onboarding-2.html">Next: Onboarding 2 →</a>
+</div>
+
+<div class="wf-section">
+  <h2>Wizard steps 1–4: Right to work · Home address · Profile selfie · Documents<small>Progress bar + N/11 counter on every step; Continue stays disabled until the step is complete (§10.3). Date of birth is mandatory in every RTW branch; the share code is typed, not uploaded (§2.5).</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ 1/11 Branch picker ============ -->
+    <div class="phone-wrap">
+      <div class="cap">1/11 Right to work · <b>Branch picker — nothing selected</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>11:12</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">1/11 · Right to work</div><div class="progress"><div class="fill" style="width:9%"></div></div><h2>Which describes you?</h2><div class="sm muted">This decides which documents we ask for. We check your right to work with gov.uk (§2.6).</div></div>
+          <div class="optcard"><span class="rb"></span><div><div class="t">UK or Irish citizen</div><div class="m">Passport — or birth certificate + a document showing your NI number. No share code.</div></div></div>
+          <div class="optcard"><span class="rb"></span><div><div class="t">EU / EEA — settled or pre-settled status</div><div class="m">Passport or national ID + your gov.uk share code.</div></div></div>
+          <div class="optcard"><span class="rb"></span><div><div class="t">Work visa</div><div class="m">Passport + share code + visa type, expiry and a copy of the visa.</div></div></div>
+          <div class="optcard"><span class="rb"></span><div><div class="t">International student</div><div class="m">Passport + share code + your University Term Dates Letter. 20 h/week in term time.</div></div></div>
+          <div class="optcard"><span class="rb"></span><div><div class="t">Dependant or other visa</div><div class="m">Passport + share code + visa / status document and its expiry.</div></div></div>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg disabled">Continue</button><div class="xs muted">Choose one to continue</div></div>
+      </div>
+    </div>
+
+    <!-- ============ 1/11 UK / Irish ============ -->
+    <div class="phone-wrap">
+      <div class="cap">1/11 Right to work · <b>UK / Irish citizen</b> · no share code</div>
+      <div class="phone">
+        <div class="statusbar"><span>11:13</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">TR</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">1/11 · Right to work</div><div class="progress"><div class="fill" style="width:9%"></div></div><div class="row"><h2>UK / Irish citizen</h2><a class="ml-auto sm" href="#">Change</a></div></div>
+          <div class="field"><span class="label">Date of birth <span class="coral">*</span></span><div class="input-row"><input class="input mono" value="14 / 02 / 2001"><span class="addon">📅</span></div><span class="hint">Required in every branch (§2.5).</span></div>
+          <div class="field"><span class="label">Which documents will you provide?</span>
+            <div class="seg" style="display:flex"><button class="on" style="flex:1">Passport</button><button style="flex:1">Birth cert. + NI evidence</button></div>
+          </div>
+          <div class="label">Required documents · uploaded at step 4</div>
+          <div class="mlist" style="border:1px solid var(--line);background:rgba(11,18,32,.85)">
+            <div class="docrow" style="border:0;border-bottom:1px solid var(--line)"><span class="ico">PDF</span><div><div class="t">Passport — photo page</div><div class="m">Photo or scan · PDF, JPG, PNG or HEIC, up to 10 MB</div></div><span class="pill right">Step 4</span></div>
+            <div class="docrow" style="border:0;opacity:.5"><span class="ico">—</span><div><div class="t">Birth certificate + NI evidence</div><div class="m">Only if you don't have a passport. NI evidence: NI card/letter, HMRC/DWP letter, P60 or a payslip showing the number (§2.5 pt 7).</div></div></div>
+          </div>
+          <label class="check"><span class="box on"></span><span>I opt out of the 48-hour weekly working limit (Working Time Regulations). I can withdraw this on notice. <span class="xs muted">Optional — no visa limit applies to you (§4.4).</span></span></label>
+          <span class="annot">no share code in this branch (§2.5 pt 1)</span>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg">Continue</button></div>
+      </div>
+    </div>
+
+    <!-- ============ 1/11 EU/EEA · share code error ============ -->
+    <div class="phone-wrap">
+      <div class="cap">1/11 Right to work · <b>EU/EEA settled / pre-settled — share code invalid</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>11:13</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">PS</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">1/11 · Right to work</div><div class="progress"><div class="fill" style="width:9%"></div></div><div class="row"><h2>EU / EEA — settled or pre-settled</h2><a class="ml-auto sm" href="#">Change</a></div></div>
+          <div class="field"><span class="label">Date of birth <span class="coral">*</span></span><div class="input-row"><input class="input mono" value="30 / 09 / 1999"><span class="addon">📅</span></div></div>
+          <div class="field"><span class="label">Share code <span class="coral">*</span></span><input class="input mono err" value="W12 3AB"><span class="error">Share code must be 9 letters and numbers starting with W — e.g. W123AB4CD. Spaces are fine, we'll remove them.</span><span class="hint">Get it at gov.uk/prove-right-to-work · valid for about 90 days.</span></div>
+          <div class="label">Required documents · uploaded at step 4</div>
+          <div class="mlist" style="border:1px solid var(--line);background:rgba(11,18,32,.85)">
+            <div class="docrow" style="border:0"><span class="ico">JPG</span><div><div class="t">Passport or national ID card</div><div class="m">PDF, JPG, PNG or HEIC, up to 10 MB</div></div><span class="pill right">Step 4</span></div>
+          </div>
+          <label class="check"><span class="box"></span><span>I opt out of the 48-hour weekly working limit (Working Time Regulations). <span class="xs muted">Optional (§4.4).</span></span></label>
+          <div class="note xs">Pre-settled status: your "right to work until" date comes back from the gov.uk check and becomes the expiry we remind you about (§2.6, §4.2).</div>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg disabled">Continue</button><div class="xs muted">Fix the share code to continue</div></div>
+      </div>
+    </div>
+
+    <!-- ============ 1/11 Work visa ============ -->
+    <div class="phone-wrap">
+      <div class="cap">1/11 Right to work · <b>Work visa</b> · share code valid</div>
+      <div class="phone">
+        <div class="statusbar"><span>11:14</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">LM</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">1/11 · Right to work</div><div class="progress"><div class="fill" style="width:9%"></div></div><div class="row"><h2>Work visa</h2><a class="ml-auto sm" href="#">Change</a></div></div>
+          <div class="field"><span class="label">Date of birth <span class="coral">*</span></span><div class="input-row"><input class="input mono" value="08 / 06 / 1997"><span class="addon">📅</span></div></div>
+          <div class="field"><span class="label">Share code <span class="coral">*</span></span><div class="input-row"><input class="input mono" value="W123AB4CD"><span class="addon green">✓</span></div><span class="hint">9 characters starting with W, e.g. W123AB4CD.</span></div>
+          <div class="field"><span class="label">Visa type <span class="coral">*</span></span><select class="input"><option>Skilled Worker</option><option>Youth Mobility Scheme</option><option>Graduate</option><option>Other work visa</option></select></div>
+          <div class="field"><span class="label">Visa expiry <span class="coral">*</span></span><div class="input-row"><input class="input mono" value="31 / 03 / 2028"><span class="addon">📅</span></div><span class="hint">Cross-checked by the office against the visa you upload and the gov.uk result.</span></div>
+          <div class="label">Required documents · uploaded at step 4</div>
+          <div class="mlist" style="border:1px solid var(--line);background:rgba(11,18,32,.85)">
+            <div class="docrow" style="border:0;border-bottom:1px solid var(--line)"><span class="ico">PDF</span><div><div class="t">Passport — photo page</div></div><span class="pill right">Step 4</span></div>
+            <div class="docrow" style="border:0"><span class="ico">PDF</span><div><div class="t">Visa — photo or PDF (BRP / eVisa)</div><div class="m">PDF, JPG, PNG or HEIC, up to 10 MB</div></div><span class="pill right">Step 4</span></div>
+          </div>
+          <label class="check"><span class="box"></span><span>I opt out of the 48-hour weekly limit. <span class="xs muted">Only within what your visa allows — visa conditions take precedence (§4.4).</span></span></label>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg">Continue</button></div>
+      </div>
+    </div>
+
+    <!-- ============ 1/11 International student ============ -->
+    <div class="phone-wrap">
+      <div class="cap">1/11 Right to work · <b>International student</b> · Amara K.</div>
+      <div class="phone">
+        <div class="statusbar"><span>11:14</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">1/11 · Right to work</div><div class="progress"><div class="fill" style="width:9%"></div></div><div class="row"><h2>International student</h2><a class="ml-auto sm" href="#">Change</a></div></div>
+          <div class="field"><span class="label">Date of birth <span class="coral">*</span></span><div class="input-row"><input class="input mono" value="22 / 11 / 2003"><span class="addon">📅</span></div></div>
+          <div class="field"><span class="label">Share code <span class="coral">*</span></span><div class="input-row"><input class="input mono" value="W12 3AB 4CD"><span class="addon green">✓</span></div><span class="hint">9 characters starting with W, e.g. W123AB4CD — pasted with spaces is fine.</span></div>
+          <div class="label">Required documents · uploaded at step 4</div>
+          <div class="mlist" style="border:1px solid var(--line);background:rgba(11,18,32,.85)">
+            <div class="docrow" style="border:0;border-bottom:1px solid var(--line)"><span class="ico">PDF</span><div><div class="t">Passport — photo page</div></div><span class="pill right">Step 4</span></div>
+            <div class="docrow" style="border:0"><span class="ico">PDF</span><div><div class="t">University Term Dates Letter</div><div class="m">We read your term and holiday dates from it — they set your weekly limit automatically (RULE-20). Expires 31 December each year.</div></div><span class="pill right">Step 4</span></div>
+          </div>
+          <div class="alert cyan sm">In term time you can work up to <b>20 h/week</b> — a visa condition. Outside term: 48 h (or more with the opt-out below). Nobody sets this — it follows your verified term dates (§4.4).</div>
+          <label class="check"><span class="box"></span><span>I opt out of the 48-hour weekly limit. <span class="xs muted">Applies outside term time only (§4.4).</span></span></label>
+          <span class="annot">no separate student-visa upload — the gov.uk share-code check returns visa status &amp; expiry (§2.5 pt 4)</span>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg">Continue</button></div>
+      </div>
+    </div>
+
+    <!-- ============ 1/11 Dependant ============ -->
+    <div class="phone-wrap">
+      <div class="cap">1/11 Right to work · <b>Dependant / other visa</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>11:14</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">—</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">1/11 · Right to work</div><div class="progress"><div class="fill" style="width:9%"></div></div><div class="row"><h2>Dependant / other visa</h2><a class="ml-auto sm" href="#">Change</a></div></div>
+          <div class="field"><span class="label">Date of birth <span class="coral">*</span></span><div class="input-row"><input class="input mono" placeholder="DD / MM / YYYY"><span class="addon">📅</span></div></div>
+          <div class="field"><span class="label">Share code <span class="coral">*</span></span><input class="input mono" placeholder="W123AB4CD"><span class="hint">9 characters starting with W, e.g. W123AB4CD.</span></div>
+          <div class="field"><span class="label">Visa / status expiry <span class="coral">*</span></span><div class="input-row"><input class="input mono" placeholder="DD / MM / YYYY"><span class="addon">📅</span></div></div>
+          <div class="label">Required documents · uploaded at step 4</div>
+          <div class="mlist" style="border:1px solid var(--line);background:rgba(11,18,32,.85)">
+            <div class="docrow" style="border:0;border-bottom:1px solid var(--line)"><span class="ico">PDF</span><div><div class="t">Passport — photo page</div></div><span class="pill right">Step 4</span></div>
+            <div class="docrow" style="border:0"><span class="ico">PDF</span><div><div class="t">Visa or status document</div><div class="m">PDF, JPG, PNG or HEIC, up to 10 MB</div></div><span class="pill right">Step 4</span></div>
+          </div>
+          <label class="check"><span class="box"></span><span>I opt out of the 48-hour weekly limit. <span class="xs muted">The conditions of your visa decide whether this applies (§4.4).</span></span></label>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg disabled">Continue</button><div class="xs muted">Date of birth, share code and expiry are required</div></div>
+      </div>
+    </div>
+
+    <!-- ============ 2/11 Home address ============ -->
+    <div class="phone-wrap">
+      <div class="cap">2/11 Home address · <b>Pin on the map</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>11:16</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">2/11 · Home address</div><div class="progress"><div class="fill" style="width:18%"></div></div><h2>Where do you live?</h2><div class="sm muted">We use it to work out how far each venue is from you — closer shifts rank higher (§6) and Radar shows distances from here.</div></div>
+          <div class="search"><input class="input" value="22 Roman Road, London"></div>
+          <div class="map" style="height:250px">
+            <div class="lbl" style="left:8px;top:8px">Bethnal Green</div>
+            <div class="lbl" style="left:230px;top:180px">Roman Rd</div>
+            <div class="pin" style="left:55%;top:52%"></div>
+            <div class="lbl" style="left:50%;top:62%;transform:translateX(-50%);color:var(--cyan)">drag the pin to your front door</div>
+            <button class="btn sm" style="position:absolute;right:8px;bottom:8px">◎ Use my location</button>
+          </div>
+          <div class="field"><span class="label">Address line</span><input class="input" value="Flat 4, 22 Roman Road"></div>
+          <div class="row"><div class="field grow"><span class="label">Town / city</span><input class="input" value="London"></div><div class="field" style="width:120px"><span class="label">Postcode</span><input class="input mono" value="E2 0RY"></div></div>
+          <div class="xs muted">You can change your address later in Profile details — the office is notified of the change (E7).</div>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg">Continue</button></div>
+      </div>
+    </div>
+
+    <!-- ============ 3/11 Selfie · viewfinder ============ -->
+    <div class="phone-wrap">
+      <div class="cap">3/11 Profile selfie · <b>Camera viewfinder</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>11:17</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">3/11 · Profile selfie</div><div class="progress"><div class="fill" style="width:27%"></div></div><h2>Take your profile photo</h2><div class="sm muted"><b class="cyan">This becomes your photo across the system and on the timesheet</b> — the office and the client see it. Plain background, face the camera, no hat or sunglasses.</div></div>
+          <div class="cam">
+            <div class="corner" style="left:10px;top:10px;border-right:0;border-bottom:0"></div>
+            <div class="corner" style="right:10px;top:10px;border-left:0;border-bottom:0"></div>
+            <div class="corner" style="left:10px;bottom:10px;border-right:0;border-top:0"></div>
+            <div class="corner" style="right:10px;bottom:10px;border-left:0;border-top:0"></div>
+            <div class="guide"></div>
+            <div class="lbl">Front camera · square crop</div>
+          </div>
+          <div class="shutter"><i></i></div>
+          <div class="xs muted" style="text-align:center">You'll be able to check it before you continue. It's set once — changing it later goes through the office (§10.1).</div>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg disabled">Continue</button><div class="xs muted">Take a photo to continue</div></div>
+      </div>
+    </div>
+
+    <!-- ============ 3/11 Selfie · review ============ -->
+    <div class="phone-wrap">
+      <div class="cap">3/11 Profile selfie · <b>Review — Use photo / Retake</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>11:17</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">3/11 · Profile selfie</div><div class="progress"><div class="fill" style="width:27%"></div></div><h2>Happy with this one?</h2></div>
+          <div class="photo-preview">AK</div>
+          <div class="row"><button class="btn outline block" style="flex:1">Retake</button><button class="btn primary block" style="flex:1">Use this photo</button></div>
+          <div class="row" style="gap:12px;align-items:center"><span class="avatar photo lg">AK</span><span class="avatar photo">AK</span><span class="avatar photo sm">AK</span><span class="xs muted">Square avatar — how it appears in the app, the Back Office and on the timesheet (§1.6).</span></div>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg disabled">Continue</button><div class="xs muted">Choose "Use this photo" to continue</div></div>
+      </div>
+    </div>
+
+    <!-- ============ 4/11 Documents · student branch · missing ============ -->
+    <div class="phone-wrap">
+      <div class="cap">4/11 Documents · <b>International student — term letter missing, declaration = No</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>11:19</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">4/11 · Documents</div><div class="progress"><div class="fill" style="width:36%"></div></div><h2>Your documents</h2><div class="sm muted">For your branch: International student. PDF, JPG, PNG or HEIC, up to 10 MB per file.</div></div>
+          <div class="mlist">
+            <div class="docrow pending"><span class="ico">JPG</span><div><div class="t">Passport — photo page</div><div class="m">passport_amara.jpg · 2.1 MB</div></div><div class="right"><span class="pill amber">Uploaded</span></div></div>
+            <div class="docrow"><span class="ico">—</span><div><div class="t">University Term Dates Letter</div><div class="m">Missing · this year's letter from your university</div></div><div class="right"><button class="btn primary sm">Upload</button></div></div>
+            <div class="docrow verified"><span class="ico">✓</span><div><div class="t">Share code · W123AB4CD</div><div class="m">Checked with gov.uk automatically after you submit</div></div><div class="right"><span class="pill">Entered</span></div></div>
+          </div>
+          <div class="mcard">
+            <div class="t" style="font-size:14px">Criminal conviction declaration</div>
+            <div class="m">Do you have any <b>unspent</b> criminal convictions? This is a legal declaration. Spent convictions don't need to be declared. You must also tell us about any conviction that happens while you work for us (§10.7).</div>
+            <div class="row" style="gap:18px"><label class="check radio"><span class="box"></span>Yes</label><label class="check radio"><span class="box on"></span>No</label></div>
+            <div class="xs muted">"No" is recorded as verified straight away — nothing for the office to review.</div>
+          </div>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg disabled">Submit documents</button><div class="xs muted">Upload your University Term Dates Letter to continue</div></div>
+      </div>
+    </div>
+
+    <!-- ============ 4/11 Documents · upload sheet ============ -->
+    <div class="phone-wrap">
+      <div class="cap">4/11 Documents · <b>Upload sheet</b> · camera / photos / files</div>
+      <div class="phone short">
+        <div class="statusbar"><span>11:19</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px;min-height:420px">
+          <div class="wizard-top"><div class="n">4/11 · Documents</div><div class="progress"><div class="fill" style="width:36%"></div></div><h2>Your documents</h2></div>
+          <div class="mlist">
+            <div class="docrow pending"><span class="ico">JPG</span><div><div class="t">Passport — photo page</div></div><div class="right"><span class="pill amber">Uploaded</span></div></div>
+            <div class="docrow"><span class="ico">—</span><div><div class="t">University Term Dates Letter</div><div class="m">Missing</div></div><div class="right"><button class="btn primary sm">Upload</button></div></div>
+          </div>
+        </div>
+        <div class="sheet-back"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div class="strong">Upload University Term Dates Letter</div>
+          <div class="mlist">
+            <div class="mrow"><span class="docrow-ico ico">📷</span><div class="t">Take a photo</div></div>
+            <div class="mrow"><span>🖼</span><div class="t">Choose from photos</div></div>
+            <div class="mrow"><span>📁</span><div class="t">Browse files</div></div>
+          </div>
+          <div class="xs muted">PDF, JPG, PNG or HEIC · up to 10 MB · all pages of a multi-page letter, please.</div>
+          <button class="btn ghost block">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ 4/11 Documents · complete · declaration = Yes ============ -->
+    <div class="phone-wrap">
+      <div class="cap">4/11 Documents · <b>All uploaded — declaration = Yes, details required</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>11:24</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:110px">
+          <div class="wizard-top"><div class="n">4/11 · Documents</div><div class="progress"><div class="fill" style="width:36%"></div></div><h2>Your documents</h2></div>
+          <div class="mlist">
+            <div class="docrow pending"><span class="ico">JPG</span><div><div class="t">Passport — photo page</div><div class="m">passport_amara.jpg · 2.1 MB</div></div><div class="right"><span class="pill amber">Uploaded</span></div></div>
+            <div class="docrow pending"><span class="ico">PDF</span><div><div class="t">University Term Dates Letter</div><div class="m">UCL_term_dates_2026-27.pdf · 340 KB</div></div><div class="right"><span class="pill amber">Uploaded</span><a class="xs" href="#">Replace</a></div></div>
+          </div>
+          <div class="mcard">
+            <div class="t" style="font-size:14px">Criminal conviction declaration</div>
+            <div class="m">Do you have any <b>unspent</b> criminal convictions? Unspent convictions only — this is a legal declaration.</div>
+            <div class="row" style="gap:18px"><label class="check radio"><span class="box on"></span>Yes</label><label class="check radio"><span class="box"></span>No</label></div>
+            <div class="field"><span class="label">Details <span class="coral">*</span></span><textarea class="input" style="min-height:70px">Driving without insurance, fined at Thames Magistrates' Court, March 2025.</textarea><span class="hint">Offence, date and outcome. Reviewed by the office together with your documents — it is not shown anywhere else.</span></div>
+            <div class="field"><span class="label">Date of conviction · optional</span><div class="input-row"><input class="input mono" value="12 / 03 / 2025"><span class="addon">📅</span></div></div>
+          </div>
+          <div class="xs muted">Everything here goes to the office for review as one set (§2.10). You'll see each item's status on your Documents tab.</div>
+        </div>
+        <div class="wiz-foot"><button class="btn primary block lg">Submit documents</button></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> Wizard = 11 steps with progress bar and N/11 counter; Continue is disabled until the step is complete (§10.3). <b>1/11</b> Right to work: the five branches and their document sets are exactly §2.5 pts 1–5 — nothing else is collected. DOB is mandatory in every branch; the share code is typed (never uploaded), validated as 9 alphanumerics starting with "W", case-insensitive, spaces stripped, then checked against gov.uk with the DOB (§2.5, §2.6) — the returned right-to-work-until date becomes the expiry used for reminders. The 48 h opt-out tick is offered to everyone but never overrides a visa limit (§4.4 table); in term time a student's 20 h/week stands regardless (RULE-20). <b>2/11</b> the pin gives the home ↔ venue distance used by scoring (§6) and Radar. <b>3/11</b> the selfie is the square avatar everywhere, printed on the timesheet, and locked after onboarding (§10.1). <b>4/11</b> documents upload → pending → verified / rejected-with-reason → Re-upload (§4.4); the AI pre-fills expiry and term dates but a manager confirms (§2.6). The criminal-conviction declaration sits on this step so there is one combined blocker: "No" is auto-verified on submit; "Yes" enters the manager's Needs-review queue with Verify/Reject like a document (§2.10, §4.1). File limits: PDF, JPG, PNG or HEIC, ≤10 MB. The quiz at 6/11 only unlocks once every document is verified (§2.9) — see the Documents hub on <a href="onboarding-3.html">onboarding-3</a>.</div>
+</body>
+</html>

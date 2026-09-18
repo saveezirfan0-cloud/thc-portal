@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff App · Invites — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+/* page-local helpers (wireframe only) */
+.app-body>*{flex-shrink:0}
+.title .back{display:block;font-family:var(--font-mono);font-size:9.5px;color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+.kv{display:flex;gap:10px;font-size:12.5px;padding:7px 0;border-bottom:1px solid var(--line);align-items:flex-start}
+.kv .k{font-family:var(--font-mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);width:84px;flex:0 0 84px;padding-top:3px}
+.kv .v{flex:1;min-width:0}
+.kvs{border:1px solid var(--line);background:rgba(11,18,32,.85);padding:2px 12px}
+.kvs .kv:last-child{border-bottom:0}
+.kv.off{opacity:.45}
+.kv.off .v{text-decoration:line-through}
+.push .k{font-family:var(--font-mono);font-size:9.5px;color:var(--amber);letter-spacing:.06em;margin-top:3px}
+.actions{display:flex;gap:8px}
+.actions .btn{flex:1}
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Invites</span><span class="pill cyan">/invites</span><span class="pill">§10.4 · §3.4 · §3.5 · §3.6 · RULE-16 · RULE-20 · §8</span>
+  <span class="spacer"></span>
+  <a href="documents.html">Next: Documents →</a>
+</div>
+
+<div class="wf-section">
+  <h2>Invites — personal invitations: Accept / Decline<small>Invitations have no deadline and are never withdrawn by auto-assign; first to confirm takes the slot. Accepting auto-withdraws every other open invitation that overlaps its window (§3.4). Stale invites vanish on their own once the event has ended (RULE-16). Decline is always possible with no show-rate impact.</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ Invites list ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Invites · <b>List — 3 open invitations</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:32</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Invites</div><span class="avatar photo">AK</span></div>
+        <div class="app-body">
+          <div class="mcard">
+            <div class="h"><span class="pill cyan">Invited 2 h ago</span><span class="ml-auto mono sm">Fri 19 · 18:00 – 01:00</span></div>
+            <div class="t">Product Launch — Bar · Bar Staff</div>
+            <div class="m">Mandarin Oriental, 66 Knightsbridge, SW1X 7LA</div>
+            <div class="m">£15.50/h · Dress code: Black shirt, black trousers, black shoes</div>
+            <div class="actions"><button class="btn block">Decline</button><button class="btn primary block">Accept</button></div>
+          </div>
+
+          <div class="mcard">
+            <div class="h"><span class="pill cyan">Invited yesterday</span><span class="ml-auto mono sm">Tue 23 · 17:00 – 02:00</span></div>
+            <div class="t">Awards Night · Bar Staff</div>
+            <div class="m">The Dorchester, 53 Park Lane, W1K 1QA</div>
+            <div class="m">£15.50/h · Dress code: Black tie</div>
+            <div class="m amber">Overlaps your confirmed Awards Night · Waiting Staff 16:00 – 02:00</div>
+            <div class="actions"><button class="btn block">Decline</button><button class="btn primary block">Accept</button></div>
+          </div>
+
+          <div class="mcard muted">
+            <div class="h"><span class="pill coral">Limit reached</span><span class="ml-auto mono sm">Thu 25 · 08:00 – 16:00</span></div>
+            <div class="t">Conference Breakfast · Waiting Staff</div>
+            <div class="m">ExCeL London, E16 · £14.00/h · Dress code: Black &amp; whites</div>
+            <div class="m">This 8 h shift would take you over your 20 h/week limit for the week of Mon 21 (term time).</div>
+            <div class="actions"><button class="btn block">Decline</button><button class="btn block disabled">Limit Reached</button></div>
+          </div>
+
+          <span class="annot">accept → overlapping invites vanish (§3.4) · ended events vanish (RULE-16)</span>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a class="active" href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Invite detail ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Invites · <b>Invite detail — dress code shown, contact &amp; break policy withheld</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:33</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Invites</span>Product Launch — Bar · Bar Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px">
+          <div class="row"><span class="pill cyan">Invited</span><span class="pill">Mandarin Oriental</span><span class="ml-auto mono sm">Fri 19 Sep</span></div>
+          <div class="row"><span style="font-family:var(--font-head);font-size:24px;font-weight:600">18:00 – 01:00</span><span class="ml-auto sm muted">7 h · £15.50/h</span></div>
+          <div class="kvs">
+            <div class="kv"><span class="k">Venue</span><span class="v">Mandarin Oriental Hyde Park, 66 Knightsbridge, London SW1X 7LA · 3.4 km</span></div>
+            <div class="kv"><span class="k">Dress code</span><span class="v"><b>Black shirt, black trousers, black shoes.</b> No visible logos. Hair tied back.</span></div>
+            <div class="kv"><span class="k">Rate</span><span class="v">£15.50 per hour · base rate</span></div>
+            <div class="kv"><span class="k">Role window</span><span class="v">Fri 19 Sep · 18:00 – 01:00 (your hours — the event itself may run longer)</span></div>
+            <div class="kv off"><span class="k">On-site contact</span><span class="v">Shown after you accept</span></div>
+            <div class="kv off"><span class="k">Breaks</span><span class="v">Shown after you accept</span></div>
+          </div>
+          <span class="annot">on-site contact and break policy are NOT on the invite — they appear on the Shifts card once booked (§10.4, §3.2)</span>
+          <div class="note xs">Invitations don't expire — but the slot goes to the first person who confirms. If you accept, you'll be asked to press "I'm ready" by 12:00 the day before.</div>
+          <div class="actions"><button class="btn block lg">Decline</button><button class="btn primary block lg">Accept</button></div>
+        </div>
+        <nav class="bottom-nav">
+          <a href="documents.html"><span class="i"></span>Documents</a>
+          <a href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a class="active" href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Accept confirm dialog ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Invites · <b>Accept — confirm dialog</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:33</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Invites</span>Product Launch — Bar · Bar Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="min-height:460px;padding-bottom:24px">
+          <div class="row"><span class="pill cyan">Invited</span><span class="ml-auto mono sm">Fri 19 · 18:00 – 01:00</span></div>
+          <div class="kvs"><div class="kv"><span class="k">Dress code</span><span class="v">Black shirt, black trousers, black shoes</span></div><div class="kv"><span class="k">Rate</span><span class="v">£15.50 per hour</span></div></div>
+          <div class="modal-inline" style="min-height:300px">
+            <div class="modal-back" style="padding:12px">
+              <div class="modal">
+                <div class="mh"><h3>Accept this shift?</h3></div>
+                <div class="mb">
+                  <p class="muted">You'll be booked for <b class="cyan">Product Launch — Bar · Bar Staff</b>, Fri 19 Sep, 18:00 – 01:00 at Mandarin Oriental.</p>
+                  <p class="xs muted">Any other invitation that overlaps this time will be withdrawn automatically. You'll need to press "I'm ready" by 12:00 on Thu 18.</p>
+                </div>
+                <div class="mf"><button class="btn">Not now</button><button class="btn primary">Accept shift</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Decline confirm dialog ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Invites · <b>Decline — confirm dialog ("no effect on your show-rate")</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:33</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Invites</span>Product Launch — Bar · Bar Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="min-height:440px;padding-bottom:24px">
+          <div class="row"><span class="pill cyan">Invited</span><span class="ml-auto mono sm">Fri 19 · 18:00 – 01:00</span></div>
+          <div class="kvs"><div class="kv"><span class="k">Dress code</span><span class="v">Black shirt, black trousers, black shoes</span></div></div>
+          <div class="modal-inline" style="min-height:280px">
+            <div class="modal-back" style="padding:12px">
+              <div class="modal">
+                <div class="mh"><h3>Decline this invitation?</h3></div>
+                <div class="mb">
+                  <p class="muted">Declining has <b>no effect on your show-rate</b>. The invitation moves to Closed and leaves your list. You can still apply for this shift on Radar later if it's open.</p>
+                </div>
+                <div class="mf"><button class="btn">Keep it</button><button class="btn danger">Decline</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Overlap popup ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Invites · <b>Accept blocked — "You're already booked for an overlapping shift."</b> (§3.4 safety net)</div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:34</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Invites</span>Awards Night · Bar Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="min-height:460px;padding-bottom:24px">
+          <div class="row"><span class="pill cyan">Invited</span><span class="ml-auto mono sm">Tue 23 · 17:00 – 02:00</span></div>
+          <div class="kvs"><div class="kv"><span class="k">Venue</span><span class="v">The Dorchester, 53 Park Lane, W1K 1QA</span></div><div class="kv"><span class="k">Dress code</span><span class="v">Black tie</span></div></div>
+          <div class="modal-inline" style="min-height:300px">
+            <div class="modal-back" style="padding:12px">
+              <div class="modal">
+                <div class="mh"><h3>You're already booked for an overlapping shift.</h3></div>
+                <div class="mb">
+                  <p class="muted">Awards Night · Waiting Staff · Tue 23 · 16:00 – 02:00 is confirmed in your Shifts. Only your <b>confirmed</b> bookings count — other open invitations don't block you.</p>
+                  <p class="xs muted">Two confirmed shifts at the same venue back-to-back are fine; at different venues you need a 2-hour gap (§3.4).</p>
+                </div>
+                <div class="mf"><button class="btn primary">OK</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Limit reached detail ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Invites · <b>Detail — Accept blocked, "Limit Reached"</b> (RULE-20)</div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:34</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Invites</span>Conference Breakfast · Waiting Staff</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px;padding-bottom:24px">
+          <div class="row"><span class="pill cyan">Invited</span><span class="pill coral">Limit reached</span><span class="ml-auto mono sm">Thu 25 Sep</span></div>
+          <div class="row"><span style="font-family:var(--font-head);font-size:24px;font-weight:600">08:00 – 16:00</span><span class="ml-auto sm muted">8 h · £14.00/h</span></div>
+          <div class="kvs">
+            <div class="kv"><span class="k">Venue</span><span class="v">ExCeL London, Royal Victoria Dock, E16 1XL · 12 km</span></div>
+            <div class="kv"><span class="k">Dress code</span><span class="v">Black &amp; whites</span></div>
+          </div>
+          <div class="alert coral"><b>Limit Reached.</b> With this shift you'd be at 26 h in the week of Mon 21 — your limit is 20 h/week in term time (until 13.12.2026). The limit is a visa condition and can't be lifted by the 48 h opt-out.</div>
+          <div class="actions"><button class="btn block lg">Decline</button><button class="btn block lg disabled">Limit Reached</button></div>
+          <span class="annot">same hard gate as Radar and auto-assign — checked live for the Mon–Sun week (§4.4)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Push gallery 1 ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Push gallery · <b>N5 invitation · N6 day-before · N6b removed at 12:05</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>12:05</span><span>●●● 5G ▮</span></div>
+        <div style="padding:8px 12px;display:flex;flex-direction:column;gap:8px">
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 12:31</div><div class="b"><b>New shift invitation</b> — Bar Staff · Product Launch — Bar · Fri 19 Sep 18:00–01:00 · £15.50/h</div><div class="k">N5 · on invite · [role] · [event] · [date/time] · [rate]/h</div></div></div>
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 08:00</div><div class="b">Confirm tomorrow's shift by 12:00 today — or you'll be removed from it. Product Launch — Bar · Fri 19 · 18:00–01:00</div><div class="k">N6 · the day before · cutoff 12:00 (the only hard deadline, §3.5)</div></div></div>
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 12:05</div><div class="b">You have been removed from your shift tomorrow as we have not received your re-confirmation by the 12:00 deadline</div><div class="k">N6b · automatic 12:05 cutoff · slot released, auto-assign backfills</div></div></div>
+        </div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Invites</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:24px">
+          <div class="empty" style="padding:24px"><h3>No open invitations</h3>New invitations arrive as notifications.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Push gallery 2 ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Push gallery · <b>N11 time changed · N12 cancelled · N10b removed by office</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>10:12</span><span>●●● 5G ▮</span></div>
+        <div style="padding:8px 12px;display:flex;flex-direction:column;gap:8px">
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 10:12</div><div class="b">Shift time changed — now Sat 20 Sep · 11:00 – 00:30 (was 12:00 – 00:30). Wedding — Marquee · Waiting Staff. Tap to confirm the new time.</div><div class="k">N11 · start OR end time change · device-level, reaches the worker with the app closed · card shows "Time changed" + Awaiting</div></div></div>
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 16:20</div><div class="b">This event has been cancelled — Conference Lunch · Sun 21 Sep</div><div class="k">N12 · reaches Confirmed, Invited and pending Radar applicants · mandatory</div></div></div>
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 17:45</div><div class="b">You've been removed from Wedding — Marquee · Sat 20 Sep · 11:00–00:30</div><div class="k">N10b · manager presses Withdraw · card disappears from Shifts · mandatory</div></div></div>
+        </div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Shifts</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="padding-bottom:24px">
+          <div class="mcard needs">
+            <div class="h"><span class="pill amber">Time changed</span><span class="pill">Awaiting</span><span class="ml-auto mono sm">Sat 20 · 11:00 – 00:30</span></div>
+            <div class="t">Wedding — Marquee · Waiting Staff</div>
+            <div class="m coral">Start time moved by the office (was 12:00–00:30)</div>
+            <button class="btn primary block">Confirm new time</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> Invite card = role · event · date/time (own role window, RULE-18) · base rate/h · dress code · Accept / Decline, with confirm dialogs (§10.4). Dress code is shown before the worker decides; on-site contact and break policy are deliberately withheld until the shift is accepted (§10.4, §3.2, §5.2b). Invitations have no deadline and are never pulled by auto-assign (§3.6); first to confirm takes the slot — a late Accept gets "Sorry, this shift has been taken" and the invite moves to Closed (§3.4, shown on <a href="shifts.html">shifts</a>). Accept → Confirmed and the system auto-withdraws every other open invitation that overlaps the window (they vanish from this list, shown as Booked elsewhere on the board). Safety net: Accept on a shift overlapping a just-confirmed booking is blocked with "You're already booked for an overlapping shift." — only confirmed bookings count, same venue back-to-back OK, different venues need a 2 h gap (§3.4). Weekly-hours hard gate: "Limit Reached" replaces Accept when the Mon–Sun week would exceed the calculated cap (RULE-20, §4.4). Decline is always allowed, no show-rate impact. RULE-16: an open invite disappears on its own once its event has ended. Pushes (§8): N5 on invite; N6 day-before with the 12:00 cutoff; N6b at the 12:05 automatic release; N11 on any start/end change → card gets "Time changed" + Awaiting + "Confirm new time" (§3.5); N12 event cancelled; N10b office Withdraw. Headcount, buffer, charge-rate or PO edits are silent.</div>
+</body>
+</html>
