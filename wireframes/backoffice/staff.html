@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Staff — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .limit { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; padding: 1px 6px; border: 1px solid rgba(245,184,61,.45); color: var(--amber); background: var(--amber-dim); cursor: help; border-bottom: 1px dotted var(--amber); }
+  .hover-annot { border: 1px dashed rgba(245,184,61,.5); background: var(--amber-dim); padding: 6px 10px; font-family: var(--font-mono); font-size: 10.5px; color: var(--text); display: inline-block; margin-top: 4px; }
+  .tbl td.name a { color: var(--text); font-weight: 500; }
+  .tbl td.name a:hover { color: var(--cyan); }
+  .tbl .chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tbl .chips .chip { padding: 1px 6px; font-size: 11px; }
+  .pager { display: flex; align-items: center; gap: 10px; }
+  .cap { font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; }
+  .cap.t { color: var(--amber); } .cap.h { color: var(--green); } .cap.g { color: var(--cyan); }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Staff directory</span><span class="pill cyan">/staff</span><span class="pill">§9.6 · §4.5 · §4.4 · §10.6 · §1.7</span>
+  <span class="spacer"></span>
+  <a href="staff-profile.html">Next: Staff profile →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a class="active" href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Staff</h1>
+      <span class="crumbs">directory · <b>1,012 workers</b> · 934 compliant · 9 blocked · 61 inactive · 8 removed</span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/London (UK)</span>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="st"><button data-state="all">All</button><button data-state="inactive">Inactive tab</button><button data-state="student-visa">Student visa view</button></div>
+
+      <!-- ================= ALL ================= -->
+      <section data-state-of="st" data-state="all" class="stack">
+        <div class="toolbar">
+          <div class="seg"><button class="on">All <span class="n">1,012</span></button><button>Compliant <span class="n">934</span></button><button>Blocked <span class="n alert">9</span></button><button>Inactive <span class="n">61</span></button><button>Removed <span class="n">8</span></button></div>
+          <div class="seg"><button class="on">Directory</button><button>Student visa <span class="n">38</span></button></div>
+          <div class="right">
+            <div class="search"><input class="input" style="height:32px;width:240px" placeholder="Search name, Employee ID, phone"></div>
+            <select class="input" style="height:32px;width:150px"><option>Any role</option><option>Waiting Staff</option><option>Bar Staff</option><option>Chef</option><option>Kitchen Porter</option><option>Host</option></select>
+            <select class="input" style="height:32px;width:150px"><option>Sort: name A–Z</option><option>Sort: rating</option><option>Sort: show-rate</option><option>Sort: newest</option></select>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th></th><th>Name</th><th>Employee ID</th><th>Role(s)</th><th>Rating</th><th>Show-rate</th><th>Compliance status</th><th>Right to work</th></tr></thead>
+              <tbody>
+                <tr class="clickable" onclick="location.href='staff-profile.html'"><td><span class="avatar photo">AK</span></td><td class="name"><a href="staff-profile.html">Amara K.</a></td><td class="mono sm">THC-00873</td><td><div class="chips"><span class="chip">Waiting Staff</span><span class="chip">Host</span></div></td><td><span class="rating green">★ 4.6</span></td><td class="mono">98%</td><td><span class="pill green">Compliant</span> <span class="limit" title="20 h — term time until 13.12.2026">Limit reached</span><div class="hover-annot">hover: 20 h — term time until 13.12.2026 · 18 h booked Mon 15 – Sun 21</div></td><td class="sm muted">International student · to 31.03.2028</td></tr>
+                <tr class="clickable"><td><span class="avatar photo">TR</span></td><td class="name"><a href="staff-profile.html">Tom R.</a></td><td class="mono sm">THC-00412</td><td><div class="chips"><span class="chip">Waiting Staff</span><span class="chip">Bar Staff</span></div></td><td><span class="rating green">★ 4.8</span></td><td class="mono">99%</td><td><span class="pill green">Compliant</span></td><td class="sm muted">UK citizen · passport expiring 7 d</td></tr>
+                <tr class="clickable"><td><span class="avatar photo">PS</span></td><td class="name"><a href="staff-profile.html">Priya S.</a></td><td class="mono sm">THC-00655</td><td><div class="chips"><span class="chip">Waiting Staff</span><span class="chip">Host</span></div></td><td><span class="rating green">★ 4.9</span></td><td class="mono">99%</td><td><span class="pill green">Compliant</span></td><td class="sm muted">EU pre-settled · to 04.10.2026</td></tr>
+                <tr class="clickable"><td><span class="avatar photo">LM</span></td><td class="name"><a href="staff-profile.html">Luca M.</a></td><td class="mono sm">THC-00701</td><td><div class="chips"><span class="chip">Bar Staff</span><span class="chip">Waiting Staff</span></div></td><td><span class="rating green">★ 4.2</span></td><td class="mono">95%</td><td><span class="pill green">Compliant</span></td><td class="sm muted">Work visa · to 15.10.2026</td></tr>
+                <tr class="clickable" onclick="location.href='staff-profile.html#sp=blocked'"><td><span class="avatar photo">JW</span></td><td class="name"><a href="staff-profile.html#sp=blocked">Jonah W.</a></td><td class="mono sm">THC-00398</td><td><div class="chips"><span class="chip">Waiting Staff</span><span class="chip">Kitchen Porter</span></div></td><td><span class="rating green">★ 4.5</span></td><td class="mono">96%</td><td><span class="pill coral">Blocked</span><span class="sub">auto — passport expired 02.09.2026 · re-upload in review</span></td><td class="sm muted">UK citizen</td></tr>
+                <tr class="clickable"><td><span class="avatar photo">DN</span></td><td class="name"><a href="staff-profile.html#sp=blocked">Dara N.</a></td><td class="mono sm">THC-00920</td><td><div class="chips"><span class="chip">Bar Staff</span></div></td><td><span class="rating amber">★ 3.6</span></td><td class="mono">93%</td><td><span class="pill coral">Blocked</span><span class="sub">Criminal conviction declared — under review (§10.7)</span></td><td class="sm muted">UK citizen</td></tr>
+                <tr class="clickable"><td><span class="avatar photo">HP</span></td><td class="name"><a href="staff-profile.html">Hannah P.</a></td><td class="mono sm">THC-00287</td><td><div class="chips"><span class="chip">Waiting Staff</span><span class="chip">Host</span></div></td><td><span class="rating coral">★ 2.7</span></td><td class="mono">88%</td><td><span class="pill green">Compliant</span><span class="sub">Do not return: Leonardo Hotel St Pauls</span></td><td class="sm muted">UK citizen</td></tr>
+                <tr class="clickable"><td><span class="avatar photo">MB</span></td><td class="name"><a href="staff-profile.html">Marcus B.</a></td><td class="mono sm">THC-00811</td><td><div class="chips"><span class="chip">Bar Staff</span><span class="chip">Waiting Staff</span></div></td><td><span class="rating green">★ 4.1</span></td><td class="mono">97%</td><td><span class="pill green">Compliant</span><span class="sub coral">1 unresolved violation — No check-out</span></td><td class="sm muted">EU settled</td></tr>
+                <tr class="clickable"><td><span class="avatar photo">KN</span></td><td class="name"><a href="staff-profile.html">Kai N.</a></td><td class="mono sm">THC-00944</td><td><div class="chips"><span class="chip">Waiting Staff</span></div></td><td><span class="rating amber">★ 3.2</span></td><td class="mono">84%</td><td><span class="pill green">Compliant</span><span class="sub">2 no-shows in 30 days</span></td><td class="sm muted">UK citizen</td></tr>
+                <tr class="clickable"><td><span class="avatar photo">RP</span></td><td class="name"><a href="staff-profile.html">Ravi P.</a></td><td class="mono sm">THC-00530</td><td><div class="chips"><span class="chip">Kitchen Porter</span><span class="chip">Chef</span></div></td><td><span class="rating green">★ 4.7</span></td><td class="mono">100%</td><td><span class="pill green">Compliant</span></td><td class="sm muted">EU settled</td></tr>
+                <tr class="clickable"><td><span class="avatar photo">FA</span></td><td class="name"><a href="staff-profile.html">Femi A.</a></td><td class="mono sm">THC-00988</td><td><div class="chips"><span class="chip">Host</span></div></td><td><span class="rating green">★ 4.4</span></td><td class="mono">97%</td><td><span class="pill coral">Blocked</span><span class="sub">auto — visa expired today 05:00 · 2 bookings released</span></td><td class="sm muted">Work visa · expired</td></tr>
+                <tr class="clickable"><td><span class="avatar photo">GL</span></td><td class="name"><a href="staff-profile.html">Grace L.</a></td><td class="mono sm">THC-00619</td><td><div class="chips"><span class="chip">Waiting Staff</span></div></td><td><span class="rating green">★ 4.6</span></td><td class="mono">98%</td><td><span class="pill green">Compliant</span></td><td class="sm muted">UK citizen</td></tr>
+                <tr class="clickable"><td><span class="avatar photo">SO</span></td><td class="name"><a href="staff-profile.html">Sam O.</a></td><td class="mono sm">THC-00777</td><td><div class="chips"><span class="chip">Waiting Staff</span></div></td><td><span class="rating amber">★ 3.9</span></td><td class="mono">91%</td><td><span class="pill coral">Blocked</span><span class="sub">auto — University Term Dates Letter expired 31.12.2025</span></td><td class="sm muted">International student</td></tr>
+                <tr class="clickable"><td><span class="avatar deleted">#</span></td><td class="name muted"><i>Deleted account #1042</i></td><td class="mono sm muted">—</td><td><div class="chips"><span class="chip">Waiting Staff</span></div></td><td><span class="rating green">★ 4.3</span></td><td class="mono">97%</td><td><span class="pill">Removed</span><span class="sub">GDPR · 19.09.2026 · name, photo, contacts wiped; roles and rating stay (§1.7)</span></td><td class="sm muted">—</td></tr>
+                <tr class="clickable"><td><span class="avatar photo">NH</span></td><td class="name"><a href="staff-profile.html">Nadia H.</a></td><td class="mono sm">THC-00702</td><td><div class="chips"><span class="chip">Waiting Staff</span></div></td><td><span class="rating green">★ 4.5</span></td><td class="mono">96%</td><td><span class="pill green">Compliant</span></td><td class="sm muted">UK citizen</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-h" style="border-bottom:0;border-top:1px solid var(--line)"><span class="muted sm">Showing 1–15 of 1,012</span><div class="right pager"><button class="btn sm ghost" disabled>‹ Prev</button><span class="mono sm">1 / 68</span><button class="btn sm ghost">Next ›</button><select class="input" style="height:28px;width:90px;font-size:12px"><option>15 / page</option><option>50 / page</option></select></div></div>
+        </div>
+        <div class="row wrap sm muted" style="gap:16px"><span>Rating colour: <span class="rating coral">★ 0–2.9</span> · <span class="rating amber">★ 3.0–3.9</span> · <span class="rating green">★ 4.0+</span></span><span>"Limit reached" is a per-week condition, not a status — it never replaces Compliant / Blocked / Removed (§9.6, RULE-20).</span></div>
+      </section>
+
+      <!-- ================= INACTIVE ================= -->
+      <section data-state-of="st" data-state="inactive" class="stack hide">
+        <div class="toolbar">
+          <div class="seg"><button>All <span class="n">1,012</span></button><button>Compliant <span class="n">934</span></button><button>Blocked <span class="n alert">9</span></button><button class="on">Inactive <span class="n">61</span></button><button>Removed <span class="n">8</span></button></div>
+          <div class="right"><div class="search"><input class="input" style="height:32px;width:240px" placeholder="Search name, Employee ID"></div><span class="muted sm">newest first</span></div>
+        </div>
+        <div class="alert cyan sm">Everyone who left through the app ("Request my P45", §10.6) — one place to work through outstanding P45s and final pay. Leaving is not a punishment: show-rate, rating and feedback are untouched. The only way back is <b>Reset to candidate</b> on the profile (§2.12).</div>
+        <div class="panel">
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th></th><th>Name</th><th>Employee ID</th><th>Left</th><th>Reason given</th><th>Last completed shift</th><th>Released shifts</th><th>P45</th></tr></thead>
+              <tbody>
+                <tr class="clickable"><td><span class="avatar photo">RT</span></td><td class="name"><a href="staff-profile.html">Rosa T.</a></td><td class="mono sm">THC-00566</td><td class="mono sm">Wed 17 Sep 21:14</td><td>"Moving back to Spain in October"</td><td class="sm">Corporate Lunch · The Dorchester · 16 Sep</td><td class="sm">2 — Gala Dinner 19 Sep, Awards Night 23 Sep</td><td><span class="pill amber">Requested</span><span class="sub">E8 sent 21:14</span></td></tr>
+                <tr class="clickable"><td><span class="avatar photo">JK</span></td><td class="name"><a href="staff-profile.html">Jamal K.</a></td><td class="mono sm">THC-00341</td><td class="mono sm">Mon 15 Sep 10:02</td><td>"Got a full-time job"</td><td class="sm">Wedding · Hurst Manor · 12 Sep</td><td class="sm">1 — Charity Ball 25 Sep</td><td><span class="pill amber">Requested</span></td></tr>
+                <tr class="clickable"><td><span class="avatar photo">MT</span></td><td class="name"><a href="staff-profile.html">Mei-Ling T.</a></td><td class="mono sm">THC-00478</td><td class="mono sm">Fri 11 Sep 18:30</td><td class="muted">— no reason given</td><td class="sm">Gala Dinner · Leonardo · 05 Sep</td><td class="sm">0</td><td><span class="pill green">Issued</span><span class="sub">payroll 14 Sep</span></td></tr>
+                <tr class="clickable"><td><span class="avatar photo">AR</span></td><td class="name"><a href="staff-profile.html">Aiden R.</a></td><td class="mono sm">THC-00203</td><td class="mono sm">Wed 02 Sep 08:12</td><td>"Back to university full-time"</td><td class="sm">Expo · ExCeL · 03 Sep <span class="annot">shift under way when he left — paid normally</span></td><td class="sm">3</td><td><span class="pill green">Issued</span></td></tr>
+                <tr class="clickable"><td><span class="avatar photo">CB</span></td><td class="name"><a href="staff-profile.html">Callum B.</a></td><td class="mono sm">THC-00159</td><td class="mono sm">Mon 24 Aug 14:40</td><td>"Relocating to Manchester"</td><td class="sm">Members' Night · Dorchester · 22 Aug</td><td class="sm">0</td><td><span class="pill green">Issued</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-h" style="border-bottom:0;border-top:1px solid var(--line)"><span class="muted sm">Showing 1–5 of 61</span><div class="right pager"><button class="btn sm ghost" disabled>‹ Prev</button><span class="mono sm">1 / 5</span><button class="btn sm ghost">Next ›</button></div></div>
+        </div>
+      </section>
+
+      <!-- ================= STUDENT VISA VIEW ================= -->
+      <section data-state-of="st" data-state="student-visa" class="stack hide">
+        <div class="toolbar">
+          <div class="seg"><button>Directory</button><button class="on">Student visa <span class="n">38</span></button></div>
+          <div class="right"><div class="search"><input class="input" style="height:32px;width:240px" placeholder="Search name"></div><select class="input" style="height:32px;width:170px"><option>All caps</option><option>20 h · term time</option><option>48 h · holiday</option><option>48 h · graduated</option><option>Blocked</option></select></div>
+        </div>
+        <div class="grid c4">
+          <div class="kpi"><span class="label">On the International student branch</span><span class="v">38</span><span class="d">every worker on branch 4 (§2.5)</span></div>
+          <div class="kpi warn"><span class="label">20 h · term time this week</span><span class="v">26</span><span class="d">hard-gated at 20 h Mon–Sun (RULE-20)</span></div>
+          <div class="kpi ok"><span class="label">48 h · university holiday</span><span class="v">7</span><span class="d">holiday range from the verified letter</span></div>
+          <div class="kpi accent"><span class="label">48 h · graduated</span><span class="v">3</span><span class="d">completion letter verified — term dates no longer apply (§4.5)</span></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h3>Student visa · caps and evidence</h3><span class="muted sm">the whole student population in one place, not one profile at a time (§4.5)</span></div>
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>Worker</th><th>Current weekly cap</th><th>Evidence set</th><th>Right-to-work expiry</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr class="clickable" onclick="location.href='staff-profile.html'"><td><div class="person"><span class="avatar photo">AK</span><div><div class="n">Amara K.</div><div class="s">THC-00873 · QMUL</div></div></div></td><td><span class="cap t">20 h/week</span><span class="sub">term time until 13.12.2026 · 18 h booked this week</span></td><td class="sm">University Term Dates Letter · verified 11.07.2026 · expires 31.12.2026<span class="sub amber">Official University Completion Letter · under review (uploaded today)</span></td><td class="mono sm">31.03.2028</td><td><span class="pill green">Compliant</span></td></tr>
+                <tr class="clickable"><td><div class="person"><span class="avatar photo">YA</span><div><div class="n">Yusuf A.</div><div class="s">THC-00744 · UCL</div></div></div></td><td><span class="cap h">48 h/week</span><span class="sub">university holiday until 04.10.2026 · then 20 h</span></td><td class="sm">University Term Dates Letter · verified 12.02.2026 · expires 31.12.2026</td><td class="mono sm">15.01.2028</td><td><span class="pill green">Compliant</span></td></tr>
+                <tr class="clickable"><td><div class="person"><span class="avatar photo">IM</span><div><div class="n">Isla M.</div><div class="s">THC-00512 · King's College</div></div></div></td><td><span class="cap g">48 h/week</span><span class="sub">graduated, completion letter verified 21.07.2026 · permanent</span></td><td class="sm">Official University Completion Letter · verified 21.07.2026<span class="sub">Term Dates Letter retained as history — no longer drives the cap, reminders stopped</span></td><td class="mono sm">30.11.2026 <span class="pill amber">73 d</span></td><td><span class="pill green">Compliant</span><span class="sub">the visa still wins — blocked on 30.11 unless renewed</span></td></tr>
+                <tr class="clickable"><td><div class="person"><span class="avatar photo">CW</span><div><div class="n">Chen W.</div><div class="s">THC-00960 · Imperial</div></div></div></td><td><span class="cap t">20 h/week</span><span class="sub">term time until 19.12.2026</span></td><td class="sm">University Term Dates Letter · verified 03.09.2026 · expires 31.12.2026</td><td class="mono sm">31.08.2027</td><td><span class="pill green">Compliant</span></td></tr>
+                <tr class="clickable"><td><div class="person"><span class="avatar photo">OS</span><div><div class="n">Omar S.</div><div class="s">THC-00833 · LSE</div></div></div></td><td><span class="cap t">20 h/week</span><span class="sub">week Mon 21 – Sun 27 straddles holiday → term (Thu 24) — takes the lower cap</span></td><td class="sm">University Term Dates Letter · verified 15.01.2026 · expires 31.12.2026</td><td class="mono sm">28.02.2028</td><td><span class="pill green">Compliant</span></td></tr>
+                <tr class="clickable"><td><div class="person"><span class="avatar photo">SO</span><div><div class="n">Sam O.</div><div class="s">THC-00777 · Westminster</div></div></div></td><td><span class="cap coral">—</span><span class="sub">no cap to calculate — blocked, cannot be booked</span></td><td class="sm coral">University Term Dates Letter · expired 31.12.2025 · nothing uploaded for 2026</td><td class="mono sm">30.06.2027</td><td><span class="pill coral">Blocked</span></td></tr>
+                <tr class="clickable"><td><div class="person"><span class="avatar photo">LN</span><div><div class="n">Lin N.</div><div class="s">THC-00991 · Goldsmiths</div></div></div></td><td><span class="cap g">48 h/week + opt-out</span><span class="sub">graduated 07.2026 · 48h opt-out signed 02.08.2026 → no weekly ceiling</span></td><td class="sm">Official University Completion Letter · verified 30.07.2026</td><td class="mono sm">31.05.2027</td><td><span class="pill green">Compliant</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-h" style="border-bottom:0;border-top:1px solid var(--line)"><span class="muted sm">Showing 1–7 of 38</span><div class="right pager"><button class="btn sm ghost" disabled>‹ Prev</button><span class="mono sm">1 / 3</span><button class="btn sm ghost">Next ›</button></div></div>
+        </div>
+        <div class="note">The cap is never typed or stored — it is derived on the date it is evaluated from the verified term dates (RULE-20, §4.4): 20 h in term, 48 h in a holiday range, 48 h permanently once a completion letter is verified (§4.5); the 48h opt-out cannot lift the in-term visa limit. Push N14 tells the worker on the morning a band changes (§7 compliance_daily).</div>
+      </section>
+    </div>
+
+    <div class="wf-note note"><b>Behaviour notes.</b> Directory columns: photo · name (clickable → profile) · role(s) · rating (0–2.9 red, 3.0–3.9 amber, 4.0+ green) · reliability / show-rate · compliance status; a separate "Limit reached" badge next to the status when the calculated weekly cap for the current Mon–Sun week is reached, with cap and reason on hover — a temporary per-week condition, not a Staff.status value (§9.6, RULE-20). Filters All · Compliant · Blocked · Inactive · Removed, search and pagination (§9.6). Inactive lists everyone who left via the app, newest first, with the date they left and the reason they gave, so the office can work through P45s and final pay (§9.6, §10.6). Removed rows are not filtered out — they read "Deleted account #id" with name, photo and contacts anonymised while roles and rating remain (§1.7). The dedicated Student visa view lists every worker on the International student branch with their current weekly cap, the evidence set that produced it (term letter or completion letter, with verification date) and their right-to-work expiry (§4.5).</div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Client card — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .kv { display: grid; grid-template-columns: 170px 1fr; gap: 8px 14px; font-size: 13px; align-items: baseline; }
+  .kv .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .blk { display: flex; align-items: center; gap: 10px; }
+  .blk h3 { white-space: nowrap; }
+  .blk .n { width: 24px; height: 24px; border: 1px solid var(--cyan-line); background: var(--cyan-dim); color: var(--cyan); font-family: var(--font-mono); font-size: 11px; display: inline-flex; align-items: center; justify-content: center; }
+  .tbl .rate { font-family: var(--font-mono); white-space: nowrap; }
+  .tbl .rate input { width: 84px; height: 30px; padding: 0 8px; font-size: 12.5px; }
+  .dcs { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .dcs .chip .x { margin-left: 2px; }
+  .dcs input { height: 28px; width: 150px; font-size: 12px; }
+  .grp { border: 1px solid var(--line); background: var(--panel); }
+  .grp .gh { display: flex; align-items: center; gap: 10px; padding: 10px 14px; background: var(--panel-2); border-bottom: 1px solid var(--line); cursor: pointer; }
+  .grp .gh h4 { font-size: 13.5px; }
+  .grp .gh .cnt { font-family: var(--font-mono); font-size: 11px; color: var(--cyan); }
+  .grp + .grp { border-top: 0; }
+  .dim { opacity: .45; pointer-events: none; }
+  .f2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .emails { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 6px 8px; border: 1px solid var(--line); background: var(--bg); min-height: 38px; }
+  .emails input { background: transparent; border: 0; color: var(--text); font-family: var(--font-body); font-size: 13px; outline: none; min-width: 160px; flex: 1; }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Client card</span><span class="pill cyan">/clients/:id</span><span class="pill">§9.7 · §9.8 · §9.6 · §3.2</span>
+  <span class="spacer"></span>
+  <a href="roles.html">Next: Roles →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a class="active" href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Client</h1>
+      <span class="crumbs"><a href="clients.html">Clients</a> / <b>Leonardo Hotel St Pauls</b></span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/London (UK)</span>
+      <a class="btn primary sm" href="shift-builder.html">+ New event for this client</a>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="cc"><button data-state="card">Client card</button><button data-state="edit">Edit client modal</button></div>
+
+      <!-- ================= CARD ================= -->
+      <section data-state-of="cc" data-state="card" class="stack" style="gap:16px">
+
+        <!-- 1 · General info -->
+        <div class="panel">
+          <div class="panel-h"><div class="blk"><span class="n">1</span><h3>General info</h3></div><div class="right"><button class="btn sm">Edit</button><span class="annot">no Delete — a client record is only ever edited (§9.7)</span></div></div>
+          <div class="panel-b grid c3">
+            <div class="kv" style="grid-column:span 2">
+              <span class="k">Client name</span><span><b>Leonardo Hotel St Pauls</b></span>
+              <span class="k">Contact</span><span>Marco V. · F&amp;B manager</span>
+              <span class="k">Phone</span><span class="mono">+44 20 7074 1000</span>
+              <span class="k">Staff contact point</span><span>Marco V. · F&amp;B manager · staff entrance on Carter Lane <span class="muted xs">(pre-fills on-site contact on every event)</span></span>
+              <span class="k">Allocation emails</span><span class="row wrap"><span class="chip">events@leonardo-stpauls.example</span><span class="chip">m.vidal@leonardo-stpauls.example</span></span>
+              <span class="k">Break policy</span><span>Does <b>not</b> pay for breaks — staff log Start / Finish break; break time deducted from pay and charge (§3.2)</span>
+              <span class="k">Buffer policy</span><span>Pays for the buffer — everyone accepted works and is paid normally (§3.2)</span>
+              <span class="k">Default venue</span><span>Leonardo Royal Hotel · 10 Godliman St, EC4V 5AJ · Hotel · geofence 150 m</span>
+            </div>
+            <div class="stack">
+              <div class="kpi ok"><span class="label">Average margin</span><span class="v">32.4%</span><span class="d">47 completed events · after holiday pay</span></div>
+              <div class="kpi"><span class="label">Events · this year</span><span class="v">47</span><span class="d">4 upcoming · 1 ongoing</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2 · Rate card -->
+        <div class="panel">
+          <div class="panel-h"><div class="blk"><span class="n">2</span><h3>Rate card</h3></div><span class="muted sm">charge rate + dress codes are individual to this client and edited only here (§9.7)</span><div class="right"><select class="input" style="height:28px;width:230px;font-size:12px"><option>+ Add role from the Roles catalog…</option><option>Barista · base £14.50</option><option>Event Supervisor · base £18.00</option></select><span class="annot">a role missing here must first be created in Roles (§9.8)</span></div></div>
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>Role</th><th>Charge rate ✎</th><th>Base pay</th><th>Final pay (×1.1207)</th><th>Margin</th><th>Dress codes for this client</th><th></th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><b>Waiting Staff</b></td><td class="rate"><div class="input-row"><span class="addon l">£</span><input class="input mono" value="22.97"></div></td><td class="rate">£14.00</td><td class="rate">£15.69</td><td class="rate green">+£7.28/h <span class="sub muted">31.7%</span></td>
+                  <td><div class="dcs"><span class="chip">Black &amp; whites <span class="x">×</span></span><span class="chip">All black <span class="x">×</span></span><input class="input" placeholder="Add a dress code"><button class="btn sm">+ Add</button></div></td>
+                  <td style="text-align:right"><button class="btn sm ghost">Remove</button></td>
+                </tr>
+                <tr>
+                  <td><b>Bar Staff</b></td><td class="rate"><div class="input-row"><span class="addon l">£</span><input class="input mono" value="25.42"></div></td><td class="rate">£15.50</td><td class="rate">£17.37</td><td class="rate green">+£8.05/h <span class="sub muted">31.7%</span></td>
+                  <td><div class="dcs"><span class="chip">Black shirt &amp; apron <span class="x">×</span></span><input class="input" placeholder="Add a dress code"><button class="btn sm">+ Add</button></div></td>
+                  <td style="text-align:right"><button class="btn sm ghost">Remove</button></td>
+                </tr>
+                <tr>
+                  <td><b>Chef</b></td><td class="rate"><div class="input-row"><span class="addon l">£</span><input class="input mono" value="30.69"></div></td><td class="rate">£19.00</td><td class="rate">£21.29</td><td class="rate green">+£9.40/h <span class="sub muted">30.6%</span></td>
+                  <td><div class="dcs"><span class="chip">Chef whites <span class="x">×</span></span><span class="chip">Kitchen blacks <span class="x">×</span></span><input class="input" placeholder="Add a dress code"><button class="btn sm">+ Add</button></div></td>
+                  <td style="text-align:right"><button class="btn sm ghost">Remove</button></td>
+                </tr>
+                <tr>
+                  <td><b>Kitchen Porter</b></td><td class="rate"><div class="input-row"><span class="addon l">£</span><input class="input mono" value="21.23"></div></td><td class="rate">£13.50</td><td class="rate">£15.13</td><td class="rate green">+£6.10/h <span class="sub muted">28.7%</span></td>
+                  <td><div class="dcs"><span class="chip">Kitchen blacks <span class="x">×</span></span><input class="input" placeholder="Add a dress code"><button class="btn sm">+ Add</button></div></td>
+                  <td style="text-align:right"><button class="btn sm ghost">Remove</button></td>
+                </tr>
+                <tr>
+                  <td><b>Host</b></td><td class="rate"><div class="input-row"><span class="addon l">£</span><input class="input mono" value="26.83"></div></td><td class="rate">£16.00</td><td class="rate">£17.93</td><td class="rate green">+£8.90/h <span class="sub muted">33.2%</span></td>
+                  <td><div class="dcs"><span class="chip">Business suit (navy) <span class="x">×</span></span><input class="input" placeholder="Add a dress code"><button class="btn sm">+ Add</button></div></td>
+                  <td style="text-align:right"><button class="btn sm ghost">Remove</button></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-h" style="border-bottom:0;border-top:1px solid var(--line)"><span class="muted sm">Base pay comes from the Roles catalog (§9.8); final = base × 1.1207; margin = charge − final. Both staff pay and charge rates change during the year — editing stays open. The dress-code list is what the event form's dress-code select offers for this client + role; "Other" on an event is a one-off and is not saved back here (§3.2).</span><div class="right"><button class="btn sm primary">Save rate card</button></div></div>
+        </div>
+
+        <!-- 3 · Qualified staff -->
+        <div class="panel">
+          <div class="panel-h"><div class="blk"><span class="n">3</span><h3>Qualified staff</h3></div><span class="muted sm">cleared to work at this client, grouped by role — auto-assign's first wave (RULE-17)</span><div class="right"><div class="search"><input class="input" style="height:28px;width:180px;font-size:12px" placeholder="Search name"></div><button class="btn sm primary">+ Add staff</button><span class="annot">bulk pick from the directory, then role(s)</span></div></div>
+          <div class="panel-b stack tight">
+            <div class="grp">
+              <div class="gh"><span class="muted">▾</span><h4>Waiting Staff</h4><span class="cnt">34 qualified</span><span class="muted xs">— deep enough for Gala Dinner's 12 (+2) from Wave 1 alone</span></div>
+              <table class="tbl">
+                <thead><tr><th>Worker</th><th>Role(s) at this client</th><th>Rating</th><th>Show-rate</th><th>How granted</th><th>Date</th><th>Do not return</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td><div class="person"><span class="avatar photo">AK</span><div><div class="n"><a href="staff-profile.html">Amara K.</a></div><div class="s">THC-00873</div></div></div></td><td><span class="chip">Waiting Staff</span> <span class="chip">Host</span></td><td><span class="rating green">★ 4.6</span></td><td class="mono">98%</td><td class="sm">automatically from <a href="event-board.html">Gala Dinner 05.09.2026</a></td><td class="mono sm">05.09.2026</td><td><label class="switch"><span class="track"></span></label></td><td style="text-align:right"><button class="btn sm ghost">Remove</button></td></tr>
+                  <tr><td><div class="person"><span class="avatar photo">GL</span><div><div class="n"><a href="staff-profile.html">Grace L.</a></div><div class="s">THC-00619</div></div></div></td><td><span class="chip">Waiting Staff</span></td><td><span class="rating green">★ 4.6</span></td><td class="mono">98%</td><td class="sm">manual by Gisela M. · "site induction done"</td><td class="mono sm">14.02.2026</td><td><label class="switch"><span class="track"></span></label></td><td style="text-align:right"><button class="btn sm ghost">Remove</button></td></tr>
+                  <tr><td><div class="person"><span class="avatar photo">TR</span><div><div class="n"><a href="staff-profile.html">Tom R.</a></div><div class="s">THC-00412</div></div></div></td><td><span class="chip">Waiting Staff</span> <span class="chip">Bar Staff</span></td><td><span class="rating green">★ 4.8</span></td><td class="mono">99%</td><td class="sm">automatically from Breakfast Briefing 15.09.2026</td><td class="mono sm">15.09.2026</td><td><label class="switch"><span class="track"></span></label></td><td style="text-align:right"><button class="btn sm ghost">Remove</button></td></tr>
+                  <tr><td><div class="person"><span class="avatar photo">PS</span><div><div class="n"><a href="staff-profile.html">Priya S.</a></div><div class="s">THC-00655</div></div></div></td><td><span class="chip">Waiting Staff</span></td><td><span class="rating green">★ 4.9</span></td><td class="mono">99%</td><td class="sm">automatically from Lunch Service 01.09.2026</td><td class="mono sm">01.09.2026</td><td><label class="switch"><span class="track"></span></label></td><td style="text-align:right"><button class="btn sm ghost">Remove</button></td></tr>
+                  <tr style="background:var(--coral-dim)"><td><div class="person"><span class="avatar photo">HP</span><div><div class="n"><a href="staff-profile.html">Hannah P.</a></div><div class="s">THC-00287</div></div></div></td><td><span class="chip">Waiting Staff</span> <span class="chip">Host</span></td><td><span class="rating coral">★ 2.7</span></td><td class="mono">88%</td><td class="sm">manual by Gisela M. · "client asked not to re-engage after Feb banquet"</td><td class="mono sm">14.02.2026</td><td><label class="switch on" style="--cyan:var(--coral);--cyan-dim:var(--coral-dim)"><span class="track"></span><span class="coral xs">ON</span></label></td><td style="text-align:right"><button class="btn sm ghost">Remove</button></td></tr>
+                  <tr><td colspan="8" class="muted sm" style="text-align:center"><a href="#" onclick="return false">Show all 34 →</a></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="grp">
+              <div class="gh"><span class="muted">▾</span><h4>Bar Staff</h4><span class="cnt">12 qualified</span></div>
+              <table class="tbl">
+                <tbody>
+                  <tr><td><div class="person"><span class="avatar photo">TR</span><div><div class="n"><a href="staff-profile.html">Tom R.</a></div><div class="s">THC-00412</div></div></div></td><td><span class="chip">Waiting Staff</span> <span class="chip">Bar Staff</span></td><td><span class="rating green">★ 4.8</span></td><td class="mono">99%</td><td class="sm">manual by Gisela M.</td><td class="mono sm">03.03.2026</td><td><label class="switch"><span class="track"></span></label></td><td style="text-align:right"><button class="btn sm ghost">Remove</button></td></tr>
+                  <tr><td><div class="person"><span class="avatar photo">MB</span><div><div class="n"><a href="staff-profile.html">Marcus B.</a></div><div class="s">THC-00811</div></div></div></td><td><span class="chip">Bar Staff</span></td><td><span class="rating green">★ 4.1</span></td><td class="mono">97%</td><td class="sm">automatically from Reception 04.09.2026</td><td class="mono sm">04.09.2026</td><td><label class="switch"><span class="track"></span></label></td><td style="text-align:right"><button class="btn sm ghost">Remove</button></td></tr>
+                  <tr><td colspan="8" class="muted sm" style="text-align:center"><a href="#" onclick="return false">Show all 12 →</a></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="grp"><div class="gh"><span class="muted">▸</span><h4>Host</h4><span class="cnt">6 qualified</span><span class="muted xs">collapsed</span></div></div>
+            <div class="grp"><div class="gh"><span class="muted">▸</span><h4>Chef</h4><span class="cnt">4 qualified</span><span class="muted xs">collapsed</span></div></div>
+            <div class="grp"><div class="gh"><span class="muted">▸</span><h4>Kitchen Porter</h4><span class="cnt">9 qualified</span><span class="muted xs">collapsed</span></div></div>
+          </div>
+          <div class="panel-h" style="border-bottom:0;border-top:1px solid var(--line)"><span class="muted sm">A row exists only where a worker is cleared — no "unqualified" record. Working a Waiting Staff shift here does not qualify someone as Bar Staff here. Removing an automatic grant does not stop the next clean shift re-granting it; to keep someone away, switch <b>Do not return</b> on — they are then Unavailable → Do not return on every event of this client, with the reason attached (§9.6, §9.7).</span></div>
+        </div>
+
+        <!-- 4 · Events · this client -->
+        <div class="panel">
+          <div class="panel-h"><div class="blk"><span class="n">4</span><h3>Events · this client</h3></div><span class="muted sm">every event for Leonardo Hotel St Pauls · click opens the event page</span><div class="right"><select class="input" style="height:28px;width:150px;font-size:12px"><option>All statuses</option><option>Upcoming</option><option>Completed</option><option>Cancelled</option></select></div></div>
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>Event</th><th>PO</th><th>Date · window (UK time)</th><th>Venue</th><th>Roles</th><th class="num">Margin</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr class="clickable" onclick="location.href='event-board.html'"><td><b>Gala Dinner</b></td><td class="mono sm">4471-A</td><td class="mono sm">Fri 19 Sep · 07:00 – 23:30<span class="sub">roles at different times — see event page</span></td><td class="sm">Leonardo Royal Hotel</td><td class="sm">Chef 2 (+0) · Kitchen Porter 3 (+1) · Waiting Staff 12 (+2)</td><td class="num green">£939 <span class="sub muted">32.2% forecast</span></td><td><span class="pill cyan">Upcoming</span></td></tr>
+                <tr class="clickable" onclick="location.href='event-board.html'"><td><b>Breakfast</b></td><td class="mono sm muted">—</td><td class="mono sm">Fri 19 Sep · 06:00 – 11:00</td><td class="sm">Leonardo Royal Hotel</td><td class="sm">Waiting Staff 4 (+0)</td><td class="num green">£146</td><td><span class="pill cyan">Upcoming</span></td></tr>
+                <tr class="clickable" onclick="location.href='event-board.html'"><td><b>Afternoon Tea</b></td><td class="mono sm">4470</td><td class="mono sm">Thu 18 Sep · 15:00 – 21:00</td><td class="sm">Leonardo Royal Hotel</td><td class="sm">Waiting Staff 4 (+1)</td><td class="num green">£175</td><td><span class="pill cyan">Upcoming</span></td></tr>
+                <tr class="clickable" onclick="location.href='event-board.html#board=completed'"><td><b>Breakfast Briefing</b></td><td class="mono sm">4462</td><td class="mono sm">Mon 15 Sep · 06:00 – 11:00</td><td class="sm">Leonardo Royal Hotel</td><td class="sm">Waiting Staff 6 (+1)</td><td class="num green">£218 <span class="sub muted">31.7%</span></td><td><span class="pill">Completed</span></td></tr>
+                <tr class="clickable" onclick="location.href='event-board.html#board=completed'"><td><b>Brunch</b></td><td class="mono sm">4455</td><td class="mono sm">Sun 13 Sep · 11:00 – 16:00</td><td class="sm">Leonardo Royal Hotel</td><td class="sm">Waiting Staff 5 (+1) · Host 1 (+0)</td><td class="num green">£241</td><td><span class="pill">Completed</span></td></tr>
+                <tr class="clickable" onclick="location.href='event-board.html#board=completed'"><td><b>Gala Dinner</b></td><td class="mono sm">4419</td><td class="mono sm">Sat 05 Sep · 16:00 – 23:30</td><td class="sm">Leonardo Royal Hotel</td><td class="sm">Waiting Staff 14 (+2) · Bar Staff 4 (+1)</td><td class="num green">£1,012 <span class="sub muted">32.9%</span></td><td><span class="pill">Completed</span></td></tr>
+                <tr><td class="muted"><s>Lunch Service</s></td><td class="mono sm muted">4431</td><td class="mono sm muted">Wed 26 Aug · 11:00 – 16:00</td><td class="sm muted">Leonardo Royal Hotel</td><td class="sm muted">Waiting Staff 6 (+1)</td><td class="num muted">— <span class="sub">excluded</span></td><td><span class="pill">Cancelled</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-h" style="border-bottom:0;border-top:1px solid var(--line)"><span class="muted sm">Showing 1–7 of 47</span><div class="right"><button class="btn sm ghost" disabled>‹ Prev</button><span class="mono sm">1 / 7</span><button class="btn sm ghost">Next ›</button></div></div>
+        </div>
+      </section>
+
+      <!-- ================= EDIT CLIENT MODAL ================= -->
+      <section data-state-of="cc" data-state="edit" class="hide">
+        <div class="modal-inline" style="min-height:720px">
+          <div class="stack dim" style="gap:16px">
+            <div class="panel"><div class="panel-h"><div class="blk"><span class="n">1</span><h3>General info</h3></div><div class="right"><button class="btn sm">Edit</button></div></div><div class="panel-b kv"><span class="k">Client name</span><span><b>Leonardo Hotel St Pauls</b></span><span class="k">Contact</span><span>Marco V.</span><span class="k">Phone</span><span class="mono">+44 20 7074 1000</span></div></div>
+            <div class="panel"><div class="panel-h"><div class="blk"><span class="n">2</span><h3>Rate card</h3></div></div></div>
+          </div>
+          <div class="modal-back">
+            <div class="modal">
+              <div class="mh"><h3>Edit client</h3><span class="pill">Leonardo Hotel St Pauls</span></div>
+              <div class="mb">
+                <div class="field"><span class="label">Client name <span class="coral">*</span></span><input class="input" value="Leonardo Hotel St Pauls"></div>
+                <div class="f2">
+                  <div class="field"><span class="label">Contact full name <span class="coral">*</span></span><input class="input" value="Marco Vidal"></div>
+                  <div class="field"><span class="label">Contact phone <span class="coral">*</span></span><input class="input mono" value="+44 20 7074 1000"></div>
+                </div>
+                <div class="field"><span class="label">Staff contact point <span class="coral">*</span></span><input class="input" value="Marco V. · F&amp;B manager · staff entrance on Carter Lane"></div>
+                <div class="field"><span class="label">Allocation email(s) <span class="coral">*</span></span><div class="emails"><span class="chip">events@leonardo-stpauls.example <span class="x">×</span></span><span class="chip">m.vidal@leonardo-stpauls.example <span class="x">×</span></span><input placeholder="add another email ↵"></div></div>
+                <div class="f2">
+                  <div class="field"><span class="label">Break policy <span class="coral">*</span></span><label class="switch"><span class="track"></span>Client pays for breaks — <b>OFF</b></label></div>
+                  <div class="field"><span class="label">Buffer policy <span class="coral">*</span></span><label class="switch on"><span class="track"></span>Client pays for the buffer — <b>ON</b></label></div>
+                </div>
+                <div class="alert sm">Changing a policy applies to events built from now on; existing events keep the policy they were built with. Rate card and qualified staff are edited on the card itself, not here.</div>
+              </div>
+              <div class="mf"><button class="btn ghost">Cancel</button><button class="btn primary">Save changes</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="wf-note note"><b>Behaviour notes.</b> Four blocks (§9.7). <b>1 General info</b> — contact · phone · average margin; Edit opens every client field (name, contact full name, contact phone, staff contact point, allocation emails, break policy, buffer policy); there is no Delete. <b>2 Rate card</b> — roles are added explicitly via "+ Add role", a dropdown of the Roles catalog (§9.8); a role missing from the catalog must be created there first; per role the manager sets the charge rate and builds the dress-code list ("Add a dress code" + "+ Add", repeatable); final pay (base × 1.1207) and margin are calculated alongside; editing stays open all year. This list is the predefined set offered on the event form's dress-code field; the event-level "Other" is not saved back (§3.2). <b>3 Qualified staff</b> — grouped by role with a per-role counter ("Waiting Staff · 34 qualified") showing the depth of the first-choice pool; photo · name · role(s) here · rating · show-rate · how granted (manual by whom / automatically from a named event) · date; "+ Add staff" bulk-adds from the directory; per row Remove or Do not return (§9.6). <b>4 Events · this client</b> — event · PO (read-only) · date (derived window) · venue · roles · margin; click opens the event page (§3.2).</div>
+  </div>
+</div>
+</body>
+</html>

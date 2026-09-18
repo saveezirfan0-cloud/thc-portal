@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Clients — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .tbl td.name a { color: var(--text); font-weight: 600; }
+  .tbl td.name a:hover { color: var(--cyan); }
+  .tbl .chips { display: flex; gap: 4px; flex-wrap: wrap; }
+  .tbl .chips .chip { padding: 1px 6px; font-size: 11px; }
+  .emails { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; padding: 6px 8px; border: 1px solid var(--line); background: var(--bg); min-height: 38px; }
+  .emails input { background: transparent; border: 0; color: var(--text); font-family: var(--font-body); font-size: 13px; outline: none; min-width: 160px; flex: 1; }
+  .dim { opacity: .45; pointer-events: none; }
+  .f2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Clients</span><span class="pill cyan">/clients</span><span class="pill">§9.7 · §3.2 · §11.4</span>
+  <span class="spacer"></span>
+  <a href="client-card.html">Next: Client card →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a class="active" href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Clients</h1>
+      <span class="crumbs">directory · <b>27 clients</b> · 214 events this year</span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/London (UK)</span>
+      <button class="btn primary sm">+ New client</button>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="cl"><button data-state="list">Directory</button><button data-state="new-client-modal">New client modal</button></div>
+
+      <!-- ================= DIRECTORY ================= -->
+      <section data-state-of="cl" data-state="list" class="stack">
+        <div class="toolbar">
+          <div class="search"><input class="input" style="height:32px;width:280px" placeholder="Search client, contact, email"></div>
+          <select class="input" style="height:32px;width:170px"><option>Sort: name A–Z</option><option>Sort: most events</option><option>Sort: margin</option></select>
+          <div class="right"><span class="muted sm">Average margin = (charge − final pay) ÷ charge across completed events, after holiday pay</span></div>
+        </div>
+        <div class="panel">
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>Client</th><th>Contact</th><th>Phone</th><th>Rate card roles</th><th>Policies</th><th class="num">Events</th><th class="num">Avg margin</th></tr></thead>
+              <tbody>
+                <tr class="clickable" onclick="location.href='client-card.html'">
+                  <td class="name"><a href="client-card.html">Leonardo Hotel St Pauls</a><span class="sub">Leonardo Royal Hotel, 10 Godliman St, EC4V 5AJ</span></td>
+                  <td>Marco V.<span class="sub">F&amp;B manager · events@leonardo-stpauls.example +1</span></td><td class="mono sm">+44 20 7074 1000</td>
+                  <td><div class="chips"><span class="chip">Waiting Staff</span><span class="chip">Bar Staff</span><span class="chip">Chef</span><span class="chip">Kitchen Porter</span><span class="chip">Host</span></div></td>
+                  <td class="sm"><span class="muted">Breaks:</span> unpaid · <span class="muted">Buffer:</span> paid</td>
+                  <td class="num">47</td><td class="num green">32.4%</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='client-card.html'">
+                  <td class="name"><a href="client-card.html">Mandarin Oriental</a><span class="sub">66 Knightsbridge, SW1X 7LA</span></td>
+                  <td>Sophie L.<span class="sub">Banqueting · banqueting@mo-london.example +2</span></td><td class="mono sm">+44 20 7235 2000</td>
+                  <td><div class="chips"><span class="chip">Waiting Staff</span><span class="chip">Bar Staff</span><span class="chip">Host</span></div></td>
+                  <td class="sm"><span class="muted">Breaks:</span> unpaid · <span class="muted">Buffer:</span> strict</td>
+                  <td class="num">31</td><td class="num green">33.1%</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='client-card.html'">
+                  <td class="name"><a href="client-card.html">The Dorchester</a><span class="sub">53 Park Lane, W1K 1QA</span></td>
+                  <td>James H.<span class="sub">Banqueting manager · 3 allocation emails</span></td><td class="mono sm">+44 20 7629 8888</td>
+                  <td><div class="chips"><span class="chip">Waiting Staff</span><span class="chip">Bar Staff</span><span class="chip">Host</span><span class="chip">Chef</span></div></td>
+                  <td class="sm"><span class="muted">Breaks:</span> paid · <span class="muted">Buffer:</span> paid</td>
+                  <td class="num">58</td><td class="num green">31.8%</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='client-card.html'">
+                  <td class="name"><a href="client-card.html">Private client (Hurst)</a><span class="sub">Hurst Manor, Cuckfield RH17 5LB</span></td>
+                  <td>Eleanor Hurst<span class="sub">Owner · eleanor@hurst.example +1</span></td><td class="mono sm">+44 7700 900 555</td>
+                  <td><div class="chips"><span class="chip">Waiting Staff</span><span class="chip">Host</span><span class="chip">Chef</span></div></td>
+                  <td class="sm"><span class="muted">Breaks:</span> unpaid · <span class="muted">Buffer:</span> paid</td>
+                  <td class="num">6</td><td class="num green">36.0%</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='client-card.html'">
+                  <td class="name"><a href="client-card.html">ExCeL London</a><span class="sub">Royal Victoria Dock, E16 1XL</span></td>
+                  <td>Dana R.<span class="sub">Events desk · 2 allocation emails</span></td><td class="mono sm">+44 20 7069 5000</td>
+                  <td><div class="chips"><span class="chip">Host</span><span class="chip">Bar Staff</span><span class="chip">Waiting Staff</span></div></td>
+                  <td class="sm"><span class="muted">Breaks:</span> paid · <span class="muted">Buffer:</span> strict</td>
+                  <td class="num">72</td><td class="num green">29.9%</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='client-card.html'">
+                  <td class="name"><a href="client-card.html">Sky Garden Events</a><span class="sub">1 Sky Garden Walk, EC3M 8AF</span></td>
+                  <td>Priyanka D.<span class="sub">Events coordinator</span></td><td class="mono sm">+44 20 7337 2344</td>
+                  <td><div class="chips"><span class="chip">Bar Staff</span><span class="chip">Waiting Staff</span></div></td>
+                  <td class="sm"><span class="muted">Breaks:</span> unpaid · <span class="muted">Buffer:</span> paid</td>
+                  <td class="num">12</td><td class="num green">30.6%</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='client-card.html'">
+                  <td class="name"><a href="client-card.html">Lord's Cricket Ground</a><span class="sub">St John's Wood Rd, NW8 8QN</span></td>
+                  <td>Ollie F.<span class="sub">Hospitality operations · 3 allocation emails</span></td><td class="mono sm">+44 20 7616 8500</td>
+                  <td><div class="chips"><span class="chip">Bar Staff</span><span class="chip">Waiting Staff</span><span class="chip">Kitchen Porter</span></div></td>
+                  <td class="sm"><span class="muted">Breaks:</span> paid · <span class="muted">Buffer:</span> paid</td>
+                  <td class="num">9</td><td class="num amber">27.2%</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='client-card.html'">
+                  <td class="name"><a href="client-card.html">Riverside Rooms</a><span class="sub">Bankside, SE1 9DT</span></td>
+                  <td>Tomasz W.<span class="sub">General manager</span></td><td class="mono sm">+44 20 7928 1111</td>
+                  <td><div class="chips"><span class="chip">Waiting Staff</span></div><span class="sub amber">rate card has 1 role — add roles before building events</span></td>
+                  <td class="sm"><span class="muted">Breaks:</span> unpaid · <span class="muted">Buffer:</span> paid</td>
+                  <td class="num">0</td><td class="num muted">—</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-h" style="border-bottom:0;border-top:1px solid var(--line)"><span class="muted sm">Showing 1–8 of 27</span><div class="right"><button class="btn sm ghost" disabled>‹ Prev</button><span class="mono sm">1 / 4</span><button class="btn sm ghost">Next ›</button></div></div>
+        </div>
+        <div class="note">A client record can be edited at any time but never deleted (§9.7). Charge rates and dress codes are per client, per role — set on the client card, nowhere else.</div>
+      </section>
+
+      <!-- ================= NEW CLIENT MODAL ================= -->
+      <section data-state-of="cl" data-state="new-client-modal" class="hide">
+        <div class="modal-inline" style="min-height:720px">
+          <div class="stack dim">
+            <div class="toolbar"><div class="search"><input class="input" style="height:32px;width:280px" placeholder="Search client"></div></div>
+            <div class="panel"><div class="panel-b tight"><table class="tbl"><thead><tr><th>Client</th><th>Contact</th><th>Phone</th><th>Rate card roles</th><th class="num">Events</th><th class="num">Avg margin</th></tr></thead><tbody>
+              <tr><td class="name">Leonardo Hotel St Pauls</td><td>Marco V.</td><td class="mono sm">+44 20 7074 1000</td><td>5 roles</td><td class="num">47</td><td class="num green">32.4%</td></tr>
+              <tr><td class="name">Mandarin Oriental</td><td>Sophie L.</td><td class="mono sm">+44 20 7235 2000</td><td>3 roles</td><td class="num">31</td><td class="num green">33.1%</td></tr>
+              <tr><td class="name">The Dorchester</td><td>James H.</td><td class="mono sm">+44 20 7629 8888</td><td>4 roles</td><td class="num">58</td><td class="num green">31.8%</td></tr>
+            </tbody></table></div></div>
+          </div>
+          <div class="modal-back">
+            <div class="modal">
+              <div class="mh"><h3>New client</h3><span class="pill amber">all fields mandatory</span></div>
+              <div class="mb">
+                <div class="field"><span class="label">Client name <span class="coral">*</span></span><input class="input" value="Claridge's"></div>
+                <div class="f2">
+                  <div class="field"><span class="label">Contact full name <span class="coral">*</span></span><input class="input" value="Helena Ashworth"></div>
+                  <div class="field"><span class="label">Contact phone <span class="coral">*</span></span><input class="input mono" value="+44 20 7629 8860"></div>
+                </div>
+                <div class="field"><span class="label">Staff contact point <span class="coral">*</span></span><input class="input" value="Helena Ashworth · Banqueting office, staff entrance on Brook's Mews"><span class="hint">The on-site contact the staff see at the venue — pre-fills the event form's on-site contact (§3.2).</span></div>
+                <div class="field"><span class="label">Contact emails <span class="coral">*</span> <span class="muted">· 2–3 people</span></span>
+                  <div class="emails"><span class="chip">h.ashworth@claridges.example <span class="x">×</span></span><span class="chip">banqueting@claridges.example <span class="x">×</span></span><input placeholder="add another email ↵"></div>
+                  <span class="hint">The allocation sheet and the timesheet go to every address here, from timesheets@thehospitalitycompany.co.uk (§11.4).</span>
+                </div>
+                <div class="f2">
+                  <div class="field"><span class="label">Break policy <span class="coral">*</span></span><label class="switch"><span class="track"></span>Client pays for breaks — <b>OFF</b></label><span class="hint">Off = staff get Start / Finish break buttons; break time is deducted from pay and charge (§3.2, §5.2b).</span></div>
+                  <div class="field"><span class="label">Buffer policy <span class="coral">*</span></span><label class="switch on"><span class="track"></span>Client pays for the buffer — <b>ON</b></label><span class="hint">Off = strict: surplus workers are turned away at check-in and paid a fixed 4 h if on time (RULE-15).</span></div>
+                </div>
+                <div class="note">Rate card (roles, charge rates, dress codes) and qualified staff are added on the client card after creation (§9.7). Neither switch has a "not set" state — both are mandatory.</div>
+              </div>
+              <div class="mf"><button class="btn ghost">Cancel</button><button class="btn primary">Create client</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="wf-note note"><b>Behaviour notes.</b> Directory with search, pagination and a New client button (§9.7). Columns: name · contact · phone · rate card roles · events · average margin (plus the two client-level policies for orientation). New client modal — every field mandatory: Client name · Contact full name · Contact phone · Staff contact point (the on-site contact staff see at the venue, pre-filled into each event, §3.2) · Contact emails (several, 2–3 people — the allocation sheet and timesheet go to these, §11.4) · Break policy (pays / does not pay for breaks, §3.2) · Buffer policy (pays / strict, §3.2, RULE-15). No Delete anywhere — a client record cannot be removed, only edited (§9.7). Rate cards are per client: a role has to exist in the Roles catalog (§9.8) before it can be added to a client, and charge rate + dress codes live only on the client card.</div>
+  </div>
+</div>
+</body>
+</html>

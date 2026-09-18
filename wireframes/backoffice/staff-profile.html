@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Staff profile — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .phead { display: flex; gap: 18px; align-items: flex-start; background: var(--panel); border: 1px solid var(--line); padding: 18px 20px; }
+  .phead .who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+  .phead h1 { font-size: 24px; }
+  .phead .facts { display: flex; gap: 6px 18px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+  .phead .facts b { color: var(--text); font-weight: 500; }
+  .phead .acts { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; flex: 0 0 auto; }
+  .roles-edit { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .kv { display: grid; grid-template-columns: 160px 1fr; gap: 8px 14px; font-size: 13px; align-items: baseline; }
+  .kv .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .kpi .v.tip { cursor: help; border-bottom: 1px dotted currentColor; display: inline-block; }
+  .hover-annot { border: 1px dashed rgba(245,184,61,.5); background: var(--amber-dim); padding: 4px 8px; font-family: var(--font-mono); font-size: 10px; color: var(--text); }
+  .fb { border: 1px solid var(--line); background: var(--bg); padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; }
+  .fb .h { display: flex; gap: 10px; align-items: center; font-size: 12.5px; }
+  .fb .h .who { font-weight: 600; }
+  .fb .h .when { color: var(--muted); font-family: var(--font-mono); font-size: 11px; }
+  .fb.client { border-left: 3px solid var(--cyan); }
+  .fb.office { border-left: 3px solid var(--purple); }
+  .starpick { font-family: var(--font-mono); font-size: 20px; letter-spacing: .1em; color: var(--muted); cursor: pointer; }
+  .starpick b { color: var(--amber); font-weight: 400; }
+  .dim { opacity: .45; pointer-events: none; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .two .card h4 { margin-bottom: 8px; }
+  .two ul { margin: 0; padding-left: 18px; font-size: 12.5px; display: flex; flex-direction: column; gap: 4px; }
+  .blocklbl { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border: 1px solid var(--coral); background: var(--coral-dim); font-size: 14px; }
+  .blocklbl b { color: var(--coral); }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Staff profile</span><span class="pill cyan">/staff/:id</span><span class="pill">§9.6 · §2.10 · §2.12 · §4.3 · §4.4 · §9.10 · §1.7</span>
+  <span class="spacer"></span>
+  <a href="clients.html">Next: Clients →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a class="active" href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Staff</h1>
+      <span class="crumbs"><a href="staff.html">Directory</a> / <b>Amara K.</b> · THC-00873</span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/London (UK)</span>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="sp"><button data-state="compliant">Compliant</button><button data-state="blocked">Blocked (manual)</button><button data-state="block-modal">Block modal</button><button data-state="reset-dialog">Reset to candidate dialog</button><button data-state="remove-confirm">Remove (GDPR) · double confirmation</button></div>
+
+      <!-- ================= COMPLIANT ================= -->
+      <section data-state-of="sp" data-state="compliant" class="stack" style="gap:16px">
+        <div class="phead">
+          <span class="avatar xl photo">AK</span>
+          <div class="who">
+            <div class="row wrap"><h1>Amara K.</h1><span class="pill green lg">Compliant</span><span class="mono sm muted">Employee ID <b class="cyan">THC-00873</b></span></div>
+            <div class="facts"><span>Right to Work <b>International student</b> · until 31.03.2028</span><span>Weekly limit <b>20 h/week — term time until 13.12.2026</b></span><span>Joined <b>12.07.2026</b></span><span><b>amara.k@example.com</b></span><span><b>+44 7700 900 873</b></span></div>
+            <div class="roles-edit"><span class="label">Roles</span><span class="chip">Waiting Staff <span class="x">×</span></span><span class="chip">Host <span class="x">×</span></span><button class="btn sm ghost">+ Add role</button><span class="muted xs">role qualification = what she can do anywhere; eligible for invitations of these roles only (§9.6)</span></div>
+          </div>
+          <div class="acts">
+            <div class="row"><button class="btn sm danger">Block</button><button class="btn sm" disabled title="only on a blocked, rejected or inactive profile">Reset to candidate</button><button class="btn sm danger">Remove (GDPR)</button></div>
+            <span class="muted xs">Reset to candidate is available only on a blocked, rejected or inactive profile (§9.6)</span>
+          </div>
+        </div>
+
+        <div class="grid c5">
+          <div class="kpi"><span class="label">Shifts worked</span><span class="v">23</span><span class="d">since 12.07.2026</span></div>
+          <div class="kpi warn"><span class="label">Hours this week</span><span class="v tip" title="20 h — term time until 13.12.2026">18 / 20</span><span class="d">Mon 15 – Sun 21 · booked + worked <span class="hover-annot">hover: 20 h — term time until 13.12.2026 (RULE-20)</span></span></div>
+          <div class="kpi danger"><span class="label">No-shows</span><span class="v">1</span><span class="d">14.03.2026 — later reclassified to Late via Get back</span></div>
+          <div class="kpi ok"><span class="label">Rating</span><span class="v">4.6</span><span class="d">★ from 11 feedback entries (client + office)</span></div>
+          <div class="kpi ok"><span class="label">Show-rate</span><span class="v">98%</span><span class="d">feeds the auto-assign score (30%, §6)</span></div>
+        </div>
+
+        <div class="tabs">
+          <button class="active" data-tab="ov" data-tabgroup="pt">Overview</button>
+          <button data-tab="docs" data-tabgroup="pt">Documents <span class="n alert">1</span></button>
+          <button data-tab="cq" data-tabgroup="pt">Client qualification <span class="n">4</span></button>
+          <button data-tab="sh" data-tabgroup="pt">Shifts <span class="n">23</span></button>
+          <button data-tab="fb" data-tabgroup="pt">Feedback <span class="n">11</span></button>
+        </div>
+
+        <!-- TAB · Overview -->
+        <div data-tabpanel="pt" data-tab="ov" class="grid c2">
+          <div class="panel">
+            <div class="panel-h"><h3>Contacts &amp; identity</h3></div>
+            <div class="panel-b kv">
+              <span class="k">Email</span><span>amara.k@example.com <span class="muted xs">(worker-editable in the app, E7 on change)</span></span>
+              <span class="k">Mobile</span><span>🇬🇧 +44 7700 900 873</span>
+              <span class="k">Date of birth</span><span>14.05.2004 (22)</span>
+              <span class="k">Home address</span><span>23 Mile End Rd, London E1 4TP<br><span class="mono muted xs">51.5215, −0.0480 · 1.9 km from Leonardo Royal</span></span>
+              <span class="k">Right to Work</span><span>International student (branch 4) · share code <span class="mono">W45 6CD 7EF</span> · gov.uk report <a href="#" onclick="return false">PDF</a> · valid until <b>31.03.2028</b> · conditions: 20 h/week in term</span>
+              <span class="k">48h opt-out</span><span class="muted">Not offered in term (visa condition) · offered out of term (§4.4)</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>Two references</h3><span class="muted sm">not reviewed · supporting information only</span></div>
+            <div class="panel-b grid c2">
+              <div class="card"><div class="label">Referee 1</div><div class="kv" style="grid-template-columns:90px 1fr;margin-top:6px"><span class="k">Name</span><span>Prof. Adebayo O.</span><span class="k">Relationship</span><span>Personal tutor, QMUL</span><span class="k">Phone</span><span>+44 20 7882 4444</span><span class="k">Email</span><span>a.o@qmul.ac.uk</span></div></div>
+              <div class="card"><div class="label">Referee 2</div><div class="kv" style="grid-template-columns:90px 1fr;margin-top:6px"><span class="k">Name</span><span>Beth Carter</span><span class="k">Relationship</span><span>Volunteering supervisor</span><span class="k">Phone</span><span>+44 7700 900 111</span><span class="k">Email</span><span>beth@foodbank.example</span></div></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>Criminal convictions · history</h3><span class="muted sm">declarations are never edited or overwritten (§1.5)</span></div>
+            <div class="panel-b tight">
+              <div class="docrow verified" style="border:0"><span class="ico">DECL</span><div><div class="t">Onboarding declaration · <b>No</b></div><div class="m">Declared 09.07.2026 18:12 · auto-verified on submission — no admin action</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+              <div class="note" style="border:0;border-top:1px dashed var(--line)">A conviction declared later from the app (§10.7) would be appended here as a second entry (source: in-employment, pending → verified / rejected, with reviewer and note) and would block her until verified.</div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>National Insurance · Bank &amp; payroll · HMRC</h3></div>
+            <div class="panel-b kv">
+              <span class="k">NI number</span><span class="mono">●●●●●●●2B <span class="pill">locked</span> <span class="muted xs">corrections go through the office</span></span>
+              <span class="k">Account holder</span><span>Amara Kone</span>
+              <span class="k">Sort code / account</span><span class="mono">40-••-•• · ••••3310 <span class="muted xs">last changed 02.08.2026 (E5 sent)</span></span>
+              <span class="k">HMRC statement</span><span><b>A</b> <span class="pill cyan">derived</span> · first job since 6 April, no other income</span>
+              <span class="k">Student loan</span><span>Plan 2 ✓ · Postgraduate ☐</span>
+              <span class="k">Declaration</span><span class="green">✓ 10.07.2026 09:40</span>
+            </div>
+          </div>
+          <div class="panel" style="grid-column:1/-1">
+            <div class="panel-h"><h3>Term dates &amp; calculated weekly limit</h3><span class="pill">read-only · RULE-20</span><div class="right"><span class="muted xs">from the University Term Dates Letter verified 11.07.2026 · correcting a date on the Documents tab changes the cap from that moment</span></div></div>
+            <div class="panel-b row wrap" style="gap:24px">
+              <div><span class="label">This week</span><div><b>20 h/week — term time until 13.12.2026</b></div></div>
+              <div><span class="label">Holiday ranges</span><div class="row sm wrap"><span class="chip">13.12.2026 – 10.01.2027 → 48 h</span><span class="chip">27.03.2027 – 25.04.2027 → 48 h</span><span class="chip">19.06.2027 – 19.09.2027 → 48 h</span></div></div>
+              <div><span class="label">Pending change</span><div class="sm amber">Completion Letter under review → if verified: 48 h/week permanently from that date (§4.5)</div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB · Documents -->
+        <div data-tabpanel="pt" data-tab="docs" class="stack hide">
+          <div class="panel">
+            <div class="panel-h"><h3>Documents</h3><span class="muted sm">statuses + download · verification stamps in UK time (audit, §1.8)</span></div>
+            <div class="panel-b stack tight">
+              <div class="docrow verified"><span class="ico">PDF</span><div><div class="t">Passport</div><div class="m">Expires 22.08.2029 · AI 96% · Verified by Gisela M. · 10.07.2026 11:02 UK time</div></div><div class="right"><span class="pill green">Verified</span><button class="btn sm ghost">Download</button></div></div>
+              <div class="docrow verified"><span class="ico">GOV</span><div><div class="t">gov.uk right-to-work report · share code W45 6CD 7EF</div><div class="m">Checked automatically 09.07.2026 · right to work until 31.03.2028 · Student, 20 h/week in term</div></div><div class="right"><span class="pill green">Valid</span><button class="btn sm ghost">Download</button></div></div>
+              <div class="docrow verified"><span class="ico">PDF</span><div><div class="t">University Term Dates Letter · 2026/27</div><div class="m">3 holiday ranges · AI 94% · Verified by Gisela M. · 11.07.2026 09:30 UK time · expires 31.12.2026 (reminders from 1 Dec)</div></div><div class="right"><span class="pill green">Verified</span><button class="btn sm ghost">Download</button></div></div>
+              <div class="docrow pending"><span class="ico">PDF</span><div><div class="t">Official University Completion Letter</div><div class="m">Uploaded today 11:05 from the app · AI: award date 10.07.2026, QMUL · 91% · optional document, International student branch (§4.5)</div></div><div class="right"><span class="pill amber">Under review</span><button class="btn sm green">Verify</button><button class="btn sm danger">Reject</button><button class="btn sm ghost">Download</button></div></div>
+              <div class="docrow verified"><span class="ico">DECL</span><div><div class="t">Criminal Record declaration · No</div><div class="m">Auto-verified 09.07.2026 · no file to download</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+              <div class="docrow verified"><span class="ico">IMG</span><div><div class="t">Profile selfie</div><div class="m">Taken 09.07.2026 · locked — changes go through the office</div></div><div class="right"><span class="pill green">Set</span><button class="btn sm ghost">Download</button></div></div>
+            </div>
+            <div class="panel-h" style="border-top:1px solid var(--line);border-bottom:0"><h3 class="muted">Superseded · read-only</h3><span class="muted sm">record of what was held during a previous period — never used to satisfy the current check (§2.12)</span></div>
+            <div class="panel-b stack tight" style="padding-top:0;opacity:.7">
+              <div class="docrow"><span class="ico">PDF</span><div><div class="t">University Term Dates Letter · 2025/26</div><div class="m">Verified 09.01.2026 · expired 31.12.2025 · superseded by the 2026/27 letter</div></div><div class="right"><span class="pill">Superseded</span><button class="btn sm ghost">Download</button></div></div>
+            </div>
+            <div class="panel-h" style="border-top:1px solid var(--line);border-bottom:0"><span class="sm">Documents verified, quiz passed. Contract signed electronically: <b>12.07.2026 14:42 UK time</b></span><span class="annot">closing summary line — reads "…Compliant and bookable." until a contract is signed, never an empty slot</span></div>
+          </div>
+        </div>
+
+        <!-- TAB · Client qualification -->
+        <div data-tabpanel="pt" data-tab="cq" class="stack hide">
+          <div class="panel">
+            <div class="panel-h"><h3>Client qualification</h3><span class="muted sm">which client + role combinations she is cleared for — auto-assign's first wave (RULE-17)</span><div class="right"><button class="btn sm primary">+ Add client</button></div></div>
+            <div class="panel-b tight">
+              <table class="tbl">
+                <thead><tr><th>Client</th><th>Role</th><th>Granted by</th><th>Date</th><th>Note (internal)</th><th>Do not return</th><th></th></tr></thead>
+                <tbody>
+                  <tr><td><b>Leonardo Hotel St Pauls</b></td><td><span class="chip">Waiting Staff</span></td><td>automatically from <a href="event-board.html">Gala Dinner 05.09.2026</a></td><td class="mono sm">05.09.2026</td><td class="muted sm">—</td><td><label class="switch"><span class="track"></span></label></td><td style="text-align:right"><button class="btn sm ghost">Remove</button></td></tr>
+                  <tr><td><b>Leonardo Hotel St Pauls</b></td><td><span class="chip">Host</span></td><td>manual by Gisela M.</td><td class="mono sm">20.08.2026</td><td class="sm">"Client asked for her on the front desk"</td><td><label class="switch"><span class="track"></span></label></td><td style="text-align:right"><button class="btn sm ghost">Remove</button></td></tr>
+                  <tr><td><b>The Dorchester</b></td><td><span class="chip">Waiting Staff</span></td><td>automatically from <a href="event-board.html">Corporate Lunch 16.09.2026</a></td><td class="mono sm">16.09.2026</td><td class="muted sm">—</td><td><label class="switch"><span class="track"></span></label></td><td style="text-align:right"><button class="btn sm ghost">Remove</button></td></tr>
+                  <tr style="background:var(--coral-dim)"><td><b>Mandarin Oriental</b></td><td><span class="chip">Waiting Staff</span></td><td>manual by Gisela M.</td><td class="mono sm">14.07.2026</td><td class="sm">"Do not return — client complaint 02.09.2026, service attitude" <span class="muted xs">(reason shown under Unavailable on Mandarin events)</span></td><td><label class="switch on" style="--cyan:var(--coral);--cyan-dim:var(--coral-dim)"><span class="track"></span><span class="coral xs">ON</span></label></td><td style="text-align:right"><button class="btn sm ghost">Remove</button></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="grid c2 sm">
+            <div class="note"><b>Add client:</b> pick a client from the directory, then one or more of her roles (Waiting Staff / Host); each entry can carry an internal note. The same list is editable from the client card (§9.7).</div>
+            <div class="note"><b>Removing ≠ barring.</b> Removing an automatic grant does not stop it being re-granted by the next clean shift. To keep someone away from a client, switch <b>Do not return</b> on: not invited in either wave, never on their Radar, cannot be invited manually — the only hard gate on this tab (§9.6).</div>
+          </div>
+        </div>
+
+        <!-- TAB · Shifts -->
+        <div data-tabpanel="pt" data-tab="sh" class="stack hide">
+          <div class="panel">
+            <div class="panel-h"><h3>Shift history</h3><span class="muted sm">scheduled vs actual · payable = intersection (RULE-01)</span><div class="right"><select class="input" style="height:28px;width:150px;font-size:12px"><option>Last 90 days</option><option>All</option></select></div></div>
+            <div class="panel-b tight">
+              <table class="tbl">
+                <thead><tr><th>Date</th><th>Event</th><th>Client · Venue</th><th>Role</th><th>Scheduled (UK)</th><th>Check in / out</th><th>Payable</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr class="clickable" onclick="location.href='event-board.html'"><td class="mono sm">Fri 19 Sep</td><td>Gala Dinner</td><td class="sm">Leonardo Hotel St Pauls</td><td><span class="chip">Waiting Staff</span></td><td class="mono sm">17:00 – 23:30</td><td class="mono sm muted">—</td><td class="mono sm muted">—</td><td><span class="pill amber">Unavailable — hours limit</span></td></tr>
+                  <tr class="clickable"><td class="mono sm">Wed 17 Sep</td><td>Press Night</td><td class="sm">Mandarin Oriental</td><td><span class="chip">Waiting Staff</span></td><td class="mono sm">17:00 – 23:30</td><td class="mono sm">17:03 <span class="amber">late</span> · 00:05 <span class="coral">+35</span></td><td class="mono sm">6.5 h · −0:20</td><td><span class="pill">Worked</span></td></tr>
+                  <tr class="clickable"><td class="mono sm">Tue 16 Sep</td><td>Corporate Lunch</td><td class="sm">The Dorchester</td><td><span class="chip">Waiting Staff</span></td><td class="mono sm">11:00 – 16:00</td><td class="mono sm">10:52 · 16:04</td><td class="mono sm">5.0 h</td><td><span class="pill">Worked</span> <span class="pill green">clean → qualified</span></td></tr>
+                  <tr class="clickable"><td class="mono sm">Sat 12 Sep</td><td>Wedding</td><td class="sm">Private client (Hurst)</td><td><span class="chip">Waiting Staff</span></td><td class="mono sm">12:00 – 23:00</td><td class="mono sm">11:48 · 23:02</td><td class="mono sm">6.5 h <span class="muted">(cap week 20 h)</span></td><td><span class="pill">Worked</span></td></tr>
+                  <tr class="clickable"><td class="mono sm">Sat 05 Sep</td><td>Gala Dinner</td><td class="sm">Leonardo Hotel St Pauls</td><td><span class="chip">Waiting Staff</span></td><td class="mono sm">16:00 – 23:30</td><td class="mono sm">15:50 · 23:31</td><td class="mono sm">7.5 h · −0:20</td><td><span class="pill">Worked</span> <span class="pill green">clean → qualified</span></td></tr>
+                  <tr class="clickable"><td class="mono sm">Sat 14 Mar</td><td>Awards Lunch</td><td class="sm">The Dorchester</td><td><span class="chip">Waiting Staff</span></td><td class="mono sm">11:00 – 17:00</td><td class="mono sm">11:52 <span class="coral">Get back</span> · 17:03</td><td class="mono sm">5.1 h</td><td><span class="pill amber">Late (was No-show)</span></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>Violation log · Amara K.</h3><span class="muted sm">same entries, same detail window, same Resolve as /checkin — scoped to one person (§9.6)</span><div class="right"><label class="check sm"><span class="box on"></span>Show resolved</label></div></div>
+            <div class="panel-b tight">
+              <table class="tbl">
+                <thead><tr><th>Event</th><th>Violation</th><th>Time</th><th>Status</th><th></th></tr></thead>
+                <tbody>
+                  <tr class="violation clickable"><td>Press Night — Mandarin Oriental<span class="sub">Waiting Staff · 17:00 – 23:30 UK time</span></td><td><b>Late</b><span class="sub">3 min · auto inside the grace window · paid from 17:00</span></td><td class="mono sm">Wed 17 Sep · 17:03</td><td><span class="pill coral">Unresolved</span></td><td style="text-align:right"><a class="btn sm" href="checkin.html#ci=violation-detail">Details / Resolve</a></td></tr>
+                  <tr class="clickable" style="opacity:.6"><td>Awards Lunch — The Dorchester<span class="sub">Waiting Staff · 11:00 – 17:00 UK time</span></td><td><b>No-show → Late</b><span class="sub">Get back pressed 11:52 by Gisela M. · note: "train strike, arrived 52 min late, worked the full lunch"</span></td><td class="mono sm">Sat 14 Mar · 11:30</td><td><span class="pill green">Resolved</span></td><td style="text-align:right"><a class="btn sm ghost" href="checkin.html#ci=resolved-entry">Details</a></td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB · Feedback -->
+        <div data-tabpanel="pt" data-tab="fb" class="grid c2 hide">
+          <div class="stack">
+            <div class="panel">
+              <div class="panel-h"><h3>New office feedback</h3><span class="muted sm">author = Gisela M. · counts toward the rating immediately (§9.10)</span></div>
+              <div class="panel-b stack">
+                <div class="starpick"><b>★★★★</b>☆ <span class="sm muted" style="font-family:var(--font-body);letter-spacing:0">4 of 5</span></div>
+                <textarea class="input" placeholder="Comment — e.g. a compliment or complaint that came in by phone"></textarea>
+                <div class="row"><select class="input" style="width:220px"><option>Not tied to an event</option><option>Press Night · 17 Sep</option><option>Corporate Lunch · 16 Sep</option></select><button class="btn primary ml-auto">Add feedback</button></div>
+              </div>
+            </div>
+            <div class="note">Client feedback here is read-only — it arrives from the Client Portal and "Mark as read" lives only on the <a href="feedback.html">Feedback screen</a>; it counts toward the rating only once marked read. Office entries can be edited or deleted from here or from the Feedback screen (§9.10).</div>
+          </div>
+          <div class="stack">
+            <div class="fb client"><div class="h"><span class="stars green">★★★★★</span><span class="who">Leonardo Hotel St Pauls</span><span class="pill cyan">client</span><span class="when">06.09.2026 · Gala Dinner</span><span class="pill green" style="margin-left:auto">Read</span></div><div class="sm">"Amara ran the floor brilliantly — guests asked for her by name. Please send her again."</div></div>
+            <div class="fb office"><div class="h"><span class="stars green">★★★★☆</span><span class="who">Gisela M.</span><span class="pill purple">office</span><span class="when">17.09.2026 · Press Night</span><span class="row" style="margin-left:auto;gap:4px"><button class="btn sm ghost">Edit</button><button class="btn sm ghost">Delete</button></span></div><div class="sm">"Great attitude, arrived 3 minutes late — spoke to her, tube delay."</div></div>
+            <div class="fb client"><div class="h"><span class="stars amber">★★★☆☆</span><span class="who">Mandarin Oriental</span><span class="pill cyan">client</span><span class="when">02.09.2026 · Late Bar</span><span class="pill amber" style="margin-left:auto">Unread — not in rating yet</span></div><div class="sm">"Service was slow on the terrace section during the rush."</div></div>
+            <div class="fb office"><div class="h"><span class="stars green">★★★★★</span><span class="who">Gisela M.</span><span class="pill purple">office</span><span class="when">20.08.2026</span><span class="row" style="margin-left:auto;gap:4px"><button class="btn sm ghost">Edit</button><button class="btn sm ghost">Delete</button></span></div><div class="sm">"Leonardo F&amp;B manager phoned to say she was excellent on the front desk."</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= BLOCKED (manual) ================= -->
+      <section data-state-of="sp" data-state="blocked" class="stack hide" style="gap:16px">
+        <div class="blocklbl"><span class="pill coral lg">Blocked</span><span><b>Blocked — Client complaint at Mandarin Oriental 02.09.2026, conduct under review</b><br><span class="muted sm">Manual block by Gisela M. · 17.09.2026 16:20 UK time · 2 future bookings released (Gala Dinner 19 Sep, Awards Night 23 Sep) · invitations withdrawn · out of scoring · app shows "Your account is on hold" (§9.6, §10.1)</span></span><button class="btn primary sm ml-auto">Unblock</button><span class="muted xs">runs the full compliance check before the block lifts (§4.3)</span></div>
+        <div class="phead">
+          <span class="avatar xl photo">AK</span>
+          <div class="who">
+            <div class="row wrap"><h1>Amara K.</h1><span class="pill coral lg">Blocked</span><span class="mono sm muted">Employee ID <b class="cyan">THC-00873</b></span></div>
+            <div class="facts"><span>Right to Work <b>International student</b> · until 31.03.2028</span><span>Weekly limit <b class="muted">— (blocked, cannot be booked)</b></span><span>Joined <b>12.07.2026</b></span></div>
+            <div class="roles-edit"><span class="label">Roles</span><span class="chip">Waiting Staff <span class="x">×</span></span><span class="chip">Host <span class="x">×</span></span><button class="btn sm ghost">+ Add role</button></div>
+          </div>
+          <div class="acts">
+            <div class="row"><button class="btn sm primary">Unblock</button><button class="btn sm">Reset to candidate</button><button class="btn sm danger">Remove (GDPR)</button></div>
+            <span class="muted xs">the reason is shown first, before anything else, when a blocked profile is opened (§9.6)</span>
+          </div>
+        </div>
+        <div class="grid c5">
+          <div class="kpi"><span class="label">Shifts worked</span><span class="v">23</span></div>
+          <div class="kpi"><span class="label">Hours this week</span><span class="v muted">0 / —</span><span class="d">no cap to calculate while blocked</span></div>
+          <div class="kpi danger"><span class="label">No-shows</span><span class="v">1</span></div>
+          <div class="kpi ok"><span class="label">Rating</span><span class="v">4.6</span></div>
+          <div class="kpi ok"><span class="label">Show-rate</span><span class="v">98%</span></div>
+        </div>
+        <div class="grid c2">
+          <div class="panel"><div class="panel-h"><h3>Two kinds of block</h3><span class="pill">§9.6</span></div><div class="panel-b sm stack tight">
+            <div><b>Auto-block</b> (expired document, or an in-employment conviction declaration) — system-triggered, temporary, no reason needed; lifts by itself after verification + the full re-check. Label reads e.g. "Blocked — passport expired 02.09.2026".</div>
+            <div><b>Manual block</b> (this one) — a manager pressed Block and gave a reason; it always means something went wrong; only a manager's Unblock lifts it. The worker never sees the reason.</div>
+            <div class="muted">A worker who has simply left is not blocked — they land in Inactive via the app (§10.6).</div>
+          </div></div>
+          <div class="panel"><div class="panel-h"><h3>Tabs unchanged</h3></div><div class="panel-b sm muted">Overview · Documents · Client qualification · Shifts · Feedback stay exactly as in the Compliant state — history, show-rate, feedback and violations are all in front of the manager before deciding what to do with the record.</div></div>
+        </div>
+      </section>
+
+      <!-- ================= BLOCK MODAL ================= -->
+      <section data-state-of="sp" data-state="block-modal" class="hide">
+        <div class="modal-inline" style="min-height:560px">
+          <div class="stack dim" style="gap:16px">
+            <div class="phead"><span class="avatar xl photo">AK</span><div class="who"><div class="row wrap"><h1>Amara K.</h1><span class="pill green lg">Compliant</span></div></div><div class="acts"><div class="row"><button class="btn sm danger">Block</button><button class="btn sm" disabled>Reset to candidate</button><button class="btn sm danger">Remove (GDPR)</button></div></div></div>
+          </div>
+          <div class="modal-back">
+            <div class="modal">
+              <div class="mh"><h3>Block Amara K.</h3><span class="pill coral">manual block</span></div>
+              <div class="mb">
+                <div class="field"><span class="label">Describe the reason <span class="coral">*</span></span><textarea class="input">Client complaint at Mandarin Oriental 02.09.2026 — conduct under review.</textarea><span class="hint">Saved and shown on the profile as "Blocked — &lt;reason&gt;". Internal — never shown to the worker (§9.6). Examples: a client instruction not to re-engage someone; conduct the office needs to look into.</span></div>
+                <div class="label">On confirm</div>
+                <div class="sm stack tight">
+                  <div>• All future bookings released to auto-assign: <b>Gala Dinner · Fri 19 Sep · Waiting Staff</b>, <b>Awards Night · Tue 23 Sep · Waiting Staff</b> (push N10b to her)</div>
+                  <div>• Open invitations withdrawn · pending Radar applications cancelled · out of the scoring pool</div>
+                  <div>• App opens on the static "Your account is on hold. Please contact the office at admin@thehospitalitycompany.co.uk" screen (§10.1)</div>
+                  <div>• Only a manager's <b>Unblock</b> lifts it, after the full compliance check (§4.3)</div>
+                </div>
+              </div>
+              <div class="mf"><button class="btn ghost">Cancel</button><button class="btn danger solid">Block</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= RESET DIALOG ================= -->
+      <section data-state-of="sp" data-state="reset-dialog" class="hide">
+        <div class="modal-inline" style="min-height:620px">
+          <div class="stack dim" style="gap:16px">
+            <div class="blocklbl"><span class="pill coral lg">Blocked</span><span><b>Blocked — Client complaint at Mandarin Oriental 02.09.2026</b></span></div>
+            <div class="phead"><span class="avatar xl photo">AK</span><div class="who"><div class="row wrap"><h1>Amara K.</h1><span class="pill coral lg">Blocked</span></div></div><div class="acts"><div class="row"><button class="btn sm primary">Unblock</button><button class="btn sm">Reset to candidate</button><button class="btn sm danger">Remove (GDPR)</button></div></div></div>
+          </div>
+          <div class="modal-back">
+            <div class="modal wide">
+              <div class="mh"><h3>Reset to candidate</h3><span class="pill amber">Amara K. · THC-00873</span></div>
+              <div class="mb">
+                <p class="sm">The profile returns to the <b>start of the onboarding pipeline</b> on this same record. She completes the full wizard again — application → Willo interview → Right to Work + all documents → HMRC New Starter → Criminal convictions → H&amp;S quiz → contract (§2.12).</p>
+                <div class="two">
+                  <div class="card danger"><h4 class="coral">Will be cleared (superseded)</h4><ul>
+                    <li>Every Right to Work and compliance document, and the share-code result</li>
+                    <li>HMRC New Starter Checklist</li>
+                    <li>Criminal convictions declaration</li>
+                    <li>H&amp;S quiz result</li>
+                    <li>Signed contract</li>
+                    <li>Status → <b>interview_requested</b>; a fresh Willo interview is sent</li>
+                  </ul><div class="muted xs mt-8">Superseded documents stay on the profile read-only as the record of the previous period — never used to satisfy the new check.</div></div>
+                  <div class="card" style="border-color:var(--green)"><h4 class="green">Will be kept</h4><ul>
+                    <li>Employee ID <b>THC-00873</b> — one person, one ID across every period, so payroll and historical timesheets reconcile</li>
+                    <li>Shift history, show-rate, rating, feedback and violations</li>
+                    <li>Client qualifications (back in the first-choice pool once compliant again)</li>
+                    <li>Bookings: none to touch — a blocked worker holds none</li>
+                  </ul></div>
+                </div>
+                <div class="field"><span class="label">Reason <span class="coral">*</span></span><input class="input" value="Returning after the complaint review — client agreed to a fresh start; full re-onboarding required."></div>
+              </div>
+              <div class="mf"><button class="btn ghost">Cancel</button><button class="btn primary">Reset to candidate</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= REMOVE (GDPR) ================= -->
+      <section data-state-of="sp" data-state="remove-confirm" class="hide">
+        <div class="modal-inline" style="min-height:640px">
+          <div class="stack dim" style="gap:16px">
+            <div class="phead"><span class="avatar xl photo">AK</span><div class="who"><div class="row wrap"><h1>Amara K.</h1><span class="pill green lg">Compliant</span></div></div><div class="acts"><div class="row"><button class="btn sm danger">Block</button><button class="btn sm" disabled>Reset to candidate</button><button class="btn sm danger">Remove (GDPR)</button></div></div></div>
+          </div>
+          <div class="modal-back">
+            <div class="modal wide">
+              <div class="mh"><h3>Remove from system (GDPR)</h3><span class="pill coral">irreversible</span><span class="pill" style="margin-left:auto">step 2 of 2</span></div>
+              <div class="mb">
+                <div class="card" style="opacity:.6"><div class="row"><span class="pill green">✓ step 1</span><b>"Remove Amara K. from the system?"</b><span class="muted sm">— consequences shown, "Continue" pressed</span></div></div>
+                <div class="alert coral"><b>This cannot be undone.</b> Personal data is anonymised irreversibly: name → "Deleted account #873", contacts, documents (RTW / HMRC / bank details) and photo wiped; login disabled; 2 future bookings released; status → Removed.</div>
+                <div class="two sm">
+                  <div class="card"><h4>Gone</h4><ul><li>Name, photo, email, phone, address, DOB</li><li>Every document and the share-code report</li><li>NI number, bank details, HMRC checklist</li><li>Criminal declaration details (the fact one existed and its outcome stay)</li></ul></div>
+                  <div class="card"><h4>Retained for reporting</h4><ul><li>Booking and shift history, violations</li><li>Feedback (comments verbatim — redact a name by editing office / deleting client entries if asked)</li><li>Roles and rating on the anonymised row</li><li>Timesheets already sent keep the real name; any regenerated copy uses "Deleted account #873"</li></ul></div>
+                </div>
+                <div class="field"><span class="label">Type <span class="mono">REMOVE</span> to confirm <span class="coral">*</span></span><input class="input mono" placeholder="REMOVE"></div>
+                <div class="note">A removed worker cannot log in and cannot be matched by the duplicate check — if they ever apply again they are a brand-new candidate with a new Employee ID (§2.12). The profile stays openable by an admin with the non-personal history visible (§1.7).</div>
+              </div>
+              <div class="mf"><button class="btn ghost">Cancel</button><button class="btn danger solid" disabled>Remove permanently</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="wf-note note"><b>Behaviour notes.</b> Everything collected during onboarding in one place: contacts · DOB · address · Right to Work branch · Two references · Criminal convictions (a history, never overwritten) · NI (masked, locked) · Bank &amp; payroll · HMRC New Starter Checklist · term dates and the calculated weekly limit (§9.6, §2.10, RULE-20). Role management on the profile (+ Add role / ×) is what makes her eligible for a role's invitations (§9.6). Client qualification is a second, separate list: client + role, granted manually (by whom) or automatically after a clean shift (event + date), optional note, Remove, and a Do not return toggle that is the only hard gate on the screen (§9.6, RULE-17). KPI row: Shifts worked · Hours this week (worked / calculated limit, reason on hover, amber at the limit) · No-shows (red when &gt; 0) · Rating · Show-rate. Documents: statuses + download, superseded documents read-only, closing compliance summary line with the contract timestamp in UK time (§9.6, §1.8, §2.11). Shifts tab: history + this worker's Violation log with the same detail window and mandatory-note Resolve as /checkin (§9.5, §9.6). Feedback: star input + feed (stars · author = the manager's own name · date · comment); office entries editable / deletable, client entries read-only, Mark as read only on the Feedback screen (§9.10). Block (manual, reason required, label "Blocked — reason" shown first) / Unblock (full compliance check, §4.3); Reset to candidate on a blocked, rejected or inactive profile with a dialog stating what is cleared vs kept (§2.12, §9.6); Remove (GDPR) with double confirmation and irreversible anonymisation (§1.7).</div>
+  </div>
+</div>
+</body>
+</html>

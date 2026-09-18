@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Reports — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .daterange { display: inline-flex; align-items: center; gap: 6px; }
+  .daterange .input { height: 32px; width: 150px; font-size: 12.5px; }
+  .tbl td.money, .tbl th.money { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+  .tbl tr.person td { cursor: pointer; }
+  .tbl tr.person.open td { background: var(--panel-2); border-bottom: 0; }
+  .tbl tr.shifts td { background: var(--panel-2); padding: 0 12px 12px; }
+  .tbl tr.shifts .inner { border: 1px solid var(--line); background: var(--bg); overflow: auto; }
+  .tbl tr.shifts .inner .tbl { table-layout: auto; min-width: 900px; }
+  .tbl tr.shifts .inner .tbl { font-size: 12.5px; }
+  .tbl tr.shifts .inner .tbl th { font-size: 10px; padding: 8px 10px; }
+  .tbl tr.shifts .inner .tbl td { padding: 8px 10px; }
+  .sent { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11.5px; padding: 4px 10px; border: 1px solid var(--line); background: var(--panel-2); }
+  .sent.ok { border-color: rgba(61,220,151,.4); color: var(--green); }
+  .sent.none { border-color: var(--line); color: var(--muted); }
+  .sent.fail { border-color: rgba(255,110,97,.45); color: var(--coral); background: var(--coral-dim); }
+  .kpi .split { display: flex; gap: 14px; font-family: var(--font-mono); font-size: 11.5px; margin-top: 2px; }
+  .kpi .split b { color: var(--text); font-weight: 500; }
+  .mini { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .mini th { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  .mini td { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  .mini td.money { font-family: var(--font-mono); text-align: right; }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Reports</span><span class="pill cyan">/reports</span><span class="pill">§9.9 · §5.2 · §2.8 · §7 BG-08</span>
+  <span class="spacer"></span>
+  <a href="feedback.html">Next: Feedback →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a class="active" href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Reports</h1>
+      <span class="crumbs">three tabs · automatic send-out every <b>Monday 09:00</b> to thc_payroll@topsourceworldwide.com + gisela@thehospitalitycompany.co.uk</span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/London (UK)</span>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="rp"><button data-state="financial">Tab 1 · Financial</button><button data-state="payroll">Tab 2 · Payroll</button><button data-state="newstarter">Tab 3 · New Starter (HMRC)</button></div>
+
+      <!-- ================= FINANCIAL ================= -->
+      <section data-state-of="rp" data-state="financial" class="stack">
+        <div class="tabs"><button class="active">Financial report</button><button>Payroll report</button><button>New Starter (HMRC)</button></div>
+        <div class="toolbar">
+          <button class="btn sm primary">This week</button>
+          <div class="daterange"><input class="input mono" value="Mon 15 Sep 2026"><span class="muted">→</span><input class="input mono" value="Sun 21 Sep 2026"></div>
+          <button class="btn sm">Apply</button>
+          <span class="pill amber lg">Forecast for the period</span>
+          <span class="annot">shown for the current week, and for the previous week through Tuesday; gone from Wednesday morning once invoicing is complete (§9.9)</span>
+          <div class="right"><button class="btn sm">Export CSV</button></div>
+        </div>
+        <div class="grid c3">
+          <div class="kpi"><span class="label">Staff payroll</span><span class="v">£31,406</span><span class="d">payable hours × base rate, holiday broken out — never blended</span><div class="split"><span>Base <b>£28,024</b></span><span>Holiday +12.07% <b>£3,382</b></span></div></div>
+          <div class="kpi accent"><span class="label">Client invoicing · at the charge rate</span><span class="v">£48,920</span><span class="d">1,864 payable hours × each role's charge rate</span><div class="split"><span class="amber">Revenue forecast — NOT the PO-based invoices</span></div></div>
+          <div class="kpi ok"><span class="label">Gross margin</span><span class="v">£17,514</span><span class="d">invoicing − payroll incl. holiday</span><div class="split"><span>35.8%</span><span>after holiday pay</span></div></div>
+        </div>
+        <div class="alert cyan sm"><b>Invoicing here is a revenue forecast for the period, not the PO-based invoices.</b> THC has its own invoicing process; PO Numbers carry into the timesheet documents (§3.2, §11.3), not into this figure. Payable hours = the intersection of check-in/out with the scheduled window (RULE-01, §5.2). Cancelled events contribute nothing (§3.3).</div>
+        <div class="panel">
+          <div class="panel-h"><h3>Breakdown · Mon 15 – Sun 21 Sep</h3><div class="right"><div class="seg sm"><button class="on">By day</button><button>By client</button><button>By role</button></div></div></div>
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>Day</th><th>Events</th><th class="money">Payable hours</th><th class="money">Base payroll</th><th class="money">Holiday +12.07%</th><th class="money">Payroll incl. holiday</th><th class="money">Invoicing</th><th class="money">Margin</th><th></th></tr></thead>
+              <tbody>
+                <tr><td>Mon 15</td><td class="sm">1 · Breakfast Briefing</td><td class="money">35.0</td><td class="money">£490</td><td class="money muted">£59</td><td class="money">£549</td><td class="money">£804</td><td class="money green">£255</td><td class="sm"><span class="pill green">actual</span></td></tr>
+                <tr><td>Tue 16</td><td class="sm">1 · Corporate Lunch</td><td class="money">44.0</td><td class="money">£626</td><td class="money muted">£76</td><td class="money">£702</td><td class="money">£1,070</td><td class="money green">£368</td><td class="sm"><span class="pill green">actual</span></td></tr>
+                <tr><td>Wed 17</td><td class="sm">1 · Press Night</td><td class="money">78.5</td><td class="money">£1,166</td><td class="money muted">£141</td><td class="money">£1,307</td><td class="money">£1,912</td><td class="money green">£605</td><td class="sm"><span class="pill amber">1 shift pending</span></td></tr>
+                <tr><td>Thu 18</td><td class="sm">3 · Conference Day 2 · Afternoon Tea · Board Dinner</td><td class="money">137.0</td><td class="money">£2,061</td><td class="money muted">£249</td><td class="money">£2,310</td><td class="money">£3,528</td><td class="money green">£1,218</td><td class="sm"><span class="pill amber">forecast</span></td></tr>
+                <tr><td>Fri 19</td><td class="sm">11 events</td><td class="money">612.0</td><td class="money">£9,204</td><td class="money muted">£1,111</td><td class="money">£10,315</td><td class="money">£16,110</td><td class="money green">£5,795</td><td class="sm"><span class="pill amber">forecast</span></td></tr>
+                <tr><td>Sat 20</td><td class="sm">2 · Wedding — Marquee · Dinner</td><td class="money">184.0</td><td class="money">£2,732</td><td class="money muted">£330</td><td class="money">£3,062</td><td class="money">£4,780</td><td class="money green">£1,718</td><td class="sm"><span class="pill amber">forecast</span></td></tr>
+                <tr><td>Sun 21</td><td class="sm muted"><s>Conference Lunch</s> · cancelled</td><td class="money muted">—</td><td class="money muted">—</td><td class="money muted">—</td><td class="money muted">—</td><td class="money muted">—</td><td class="money muted">—</td><td class="sm"><span class="pill">excluded</span></td></tr>
+                <tr><td class="muted sm" colspan="2">Remaining forecast (Fri–Sun open positions filled at the same rates)</td><td class="money">773.5</td><td class="money">£11,745</td><td class="money muted">£1,416</td><td class="money">£13,161</td><td class="money">£20,716</td><td class="money green">£7,555</td><td></td></tr>
+                <tr style="background:var(--panel-2)"><td><b>Total</b></td><td></td><td class="money"><b>1,864.0</b></td><td class="money"><b>£28,024</b></td><td class="money"><b>£3,382</b></td><td class="money"><b>£31,406</b></td><td class="money"><b>£48,920</b></td><td class="money green"><b>£17,514</b></td><td></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= PAYROLL ================= -->
+      <section data-state-of="rp" data-state="payroll" class="stack hide">
+        <div class="tabs"><button>Financial report</button><button class="active">Payroll report</button><button>New Starter (HMRC)</button></div>
+        <div class="toolbar">
+          <button class="btn sm primary">Last week</button>
+          <div class="daterange"><input class="input mono" value="Mon 08 Sep 2026"><span class="muted">→</span><input class="input mono" value="Sun 14 Sep 2026"></div>
+          <button class="btn sm">Apply</button>
+          <span class="annot">"Last week" sets Mon–Sun of the previous week itself (RULE-06: payroll week Mon–Sun, paid on Friday)</span>
+          <div class="right"><span class="sent ok">✓ Last sent: Mon 15 Sep, 09:00 · payroll CSV · 486 rows</span><button class="btn sm primary">Export CSV</button></div>
+        </div>
+        <div class="grid c4">
+          <div class="kpi"><span class="label">Workers on shifts</span><span class="v">212</span><span class="d">Mon 8 – Sun 14 Sep</span></div>
+          <div class="kpi"><span class="label">Shifts</span><span class="v">486</span><span class="d">1 pending · 3 turned away</span></div>
+          <div class="kpi accent"><span class="label">Total to be paid</span><span class="v">£31,118</span><span class="d">base £27,767 · holiday £3,351 <span class="annot">payroll normally takes base</span></span></div>
+          <div class="kpi"><span class="label">Payable hours</span><span class="v">1,842.5</span><span class="d">after unpaid-break deductions</span></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h3>Breakdown by person</h3><span class="muted sm">click a person to expand ALL their shifts, scheduled next to actual</span><div class="right"><div class="search"><input class="input" style="height:28px;width:200px;font-size:12px" placeholder="Search name / Employee ID"></div></div></div>
+          <div class="panel-b tight">
+            <table class="tbl" style="table-layout:fixed">
+              <colgroup><col style="width:32px"><col><col style="width:120px"><col style="width:70px"><col style="width:150px"><col style="width:110px"><col style="width:140px"><col style="width:130px"></colgroup>
+              <thead><tr><th></th><th>Staff</th><th>Employee ID</th><th class="money">Shifts</th><th class="money">Payable hours</th><th class="money">Base</th><th class="money">Holiday +12.07%</th><th class="money">Total payroll</th></tr></thead>
+              <tbody>
+                <tr class="person"><td class="muted">▸</td><td><div class="person"><span class="avatar photo sm">AK</span><span>Amara K.</span></div></td><td class="mono sm">THC-00873</td><td class="money">2</td><td class="money">12.50</td><td class="money">£175.00</td><td class="money muted">£21.12</td><td class="money"><b>£196.12</b></td></tr>
+                <tr class="person"><td class="muted">▸</td><td><div class="person"><span class="avatar photo sm">PS</span><span>Priya S.</span></div></td><td class="mono sm">THC-00655</td><td class="money">4</td><td class="money">26.00</td><td class="money">£372.00</td><td class="money muted">£44.90</td><td class="money"><b>£416.90</b></td></tr>
+                <tr class="person open"><td class="cyan">▾</td><td><div class="person"><span class="avatar photo sm">TR</span><span><b>Tom R.</b></span></div></td><td class="mono sm">THC-00412</td><td class="money">5</td><td class="money">20.77 <span class="sub amber">+ 1 pending</span></td><td class="money">£319.27</td><td class="money muted">£38.54</td><td class="money"><b>£357.81</b></td></tr>
+                <tr class="shifts"><td colspan="8">
+                  <div class="inner">
+                    <table class="tbl">
+                      <thead><tr><th>Event</th><th>Client</th><th>Role</th><th>Date</th><th>Start – End (scheduled)</th><th>Check in / out (actual)</th><th class="money">Payable hours</th><th class="money">Rate</th><th class="money">Payroll</th></tr></thead>
+                      <tbody>
+                        <tr><td>Launch</td><td>Mandarin Oriental</td><td><span class="chip">Bar Staff</span></td><td class="mono">Mon 08 Sep</td><td class="mono">18:00 – 23:00</td><td class="mono">17:55 · 23:02</td><td class="money">4.67<span class="sub">5.00 − 0:20 break</span></td><td class="money">£15.50</td><td class="money">£72.33</td></tr>
+                        <tr><td>Conference</td><td>ExCeL London</td><td><span class="chip">Host</span></td><td class="mono">Wed 10 Sep</td><td class="mono">08:00 – 16:00</td><td class="mono"><span class="amber">08:14</span> · 16:01<span class="sub amber">late check-in — paid from 08:14</span></td><td class="money">7.77</td><td class="money">£16.00</td><td class="money">£124.27</td></tr>
+                        <tr><td>Drinks</td><td>Mandarin Oriental</td><td><span class="chip">Bar Staff</span></td><td class="mono">Fri 11 Sep</td><td class="mono">17:00 – 22:00</td><td><span class="pill amber">Turned away</span><span class="sub">strict buffer · attempt logged 16:52, on time → fixed 4 h, absorbed by THC (RULE-15)</span></td><td class="money">4.00</td><td class="money">£15.50</td><td class="money">£62.00</td></tr>
+                        <tr style="background:var(--coral-dim)"><td>Party</td><td>Mandarin Oriental</td><td><span class="chip">Bar Staff</span></td><td class="mono">Sat 12 Sep</td><td class="mono">18:00 – 01:00</td><td class="mono">17:58 · <span class="coral">—</span><span class="sub coral">No check-out — unresolved</span></td><td><span class="pill coral">Pending</span></td><td class="money">£15.50</td><td><span class="pill coral">Pending</span><span class="sub">excluded from the CSV until resolved; rolls forward to the next Monday (BG-08)</span></td></tr>
+                        <tr><td>Brunch</td><td>Leonardo Hotel St Pauls</td><td><span class="chip">Waiting Staff</span></td><td class="mono">Sun 13 Sep</td><td class="mono">11:00 – 16:00</td><td class="mono">10:50 · <span class="amber">15:40</span><span class="sub amber">early check-out — Left early, no 4 h floor</span></td><td class="money">4.33<span class="sub">4.67 − 0:20 break</span></td><td class="money">£14.00</td><td class="money">£60.67</td></tr>
+                        <tr style="background:var(--panel-2)"><td colspan="6"><b>Tom R. · week total</b> <span class="muted sm">(4 payable shifts + 1 pending)</span></td><td class="money"><b>20.77</b></td><td></td><td class="money"><b>£319.27</b> <span class="sub muted">+ holiday £38.54 = £357.81</span></td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </td></tr>
+                <tr class="person"><td class="muted">▸</td><td><div class="person"><span class="avatar photo sm">LM</span><span>Luca M.</span></div></td><td class="mono sm">THC-00701</td><td class="money">3</td><td class="money">22.50</td><td class="money">£348.75</td><td class="money muted">£42.09</td><td class="money"><b>£390.84</b></td></tr>
+                <tr class="person"><td class="muted">▸</td><td><div class="person"><span class="avatar photo sm">MB</span><span>Marcus B.</span></div></td><td class="mono sm">THC-00811</td><td class="money">3</td><td class="money">19.00</td><td class="money">£294.50</td><td class="money muted">£35.55</td><td class="money"><b>£330.05</b></td></tr>
+                <tr class="person"><td class="muted">▸</td><td><div class="person"><span class="avatar photo sm">GL</span><span>Grace L.</span></div></td><td class="mono sm">THC-00619</td><td class="money">4</td><td class="money">24.50</td><td class="money">£343.00</td><td class="money muted">£41.40</td><td class="money"><b>£384.40</b></td></tr>
+                <tr class="person"><td class="muted">▸</td><td><div class="person"><span class="avatar deleted sm">#</span><span class="muted"><i>Deleted account #1042</i></span></div></td><td class="mono sm muted">THC-00354</td><td class="money">2</td><td class="money">13.00</td><td class="money">£182.00</td><td class="money muted">£21.97</td><td class="money"><b>£203.97</b></td></tr>
+                <tr class="person"><td class="muted">▸</td><td><div class="person"><span class="avatar photo sm">CW</span><span>Chen W.</span></div></td><td class="mono sm">THC-00960</td><td class="money">1</td><td class="money">6.00</td><td class="money">£84.00</td><td class="money muted">£10.14</td><td class="money"><b>£94.14</b></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-h" style="border-bottom:0;border-top:1px solid var(--line)"><span class="muted sm">Showing 1–8 of 212 workers</span><div class="right"><button class="btn sm ghost" disabled>‹ Prev</button><span class="mono sm">1 / 27</span><button class="btn sm ghost">Next ›</button></div></div>
+        </div>
+        <div class="grid c2">
+          <div class="note"><b>CSV export: one row per SHIFT, never averaged</b> — a person working waiting at £14 and a senior role at more in the same week gets a line per shift with the exact rate; 5 + 4 + 2 shifts = 11 rows, not 3. Every row carries the Employee ID (§9.9). Columns: Employee ID · Staff · Event · Client · Role · Date · Scheduled start–end · Check in · Check out · Break deduction · Payable hours · Rate · Base · Holiday · Total.</div>
+          <div class="note"><b>Held out:</b> a shift with an unresolved "No check-out" Violation shows Pending and is excluded from the export until a manager resolves it; if still unresolved when Monday's run fires, it goes out with the following Monday's CSV (§7 BG-08). Everything else is read-only — a timesheet is never edited by hand.</div>
+        </div>
+      </section>
+
+      <!-- ================= NEW STARTER (HMRC) ================= -->
+      <section data-state-of="rp" data-state="newstarter" class="stack hide">
+        <div class="tabs"><button>Financial report</button><button>Payroll report</button><button class="active">New Starter (HMRC)</button></div>
+        <div class="toolbar">
+          <span class="label">Pick a date</span>
+          <div class="daterange"><input class="input mono" value="Mon 15 Sep 2026"></div>
+          <button class="btn sm">Preview</button>
+          <span class="muted sm">→ new workers who <b>actually worked</b> a shift in the week before that date (Mon 8 – Sun 14 Sep)</span>
+          <div class="right"><span class="sent ok">✓ Last sent: Mon 15 Sep, 09:00 · 3 new starters</span><button class="btn sm primary">Export CSV</button></div>
+        </div>
+        <div class="alert cyan sm">Only NEW workers who actually worked a shift last week — not every new starter, only those who need to be paid. Onboarded on a Friday, first shift two weeks later → they appear in that Monday's report (§9.9). Columns and data are entirely different from payroll's and are never merged. Role and a title / salutation field are explicitly excluded.</div>
+        <div class="panel">
+          <div class="panel-h"><h3>Preview · 3 people will be in the report</h3><span class="muted sm">HMRC Statement is the letter derived from the three routed questions (§2.8); the worker never saw it</span></div>
+          <div class="panel-b tight" style="overflow:auto">
+            <table class="tbl">
+              <thead><tr><th>Staff</th><th>Employee ID</th><th>NI Number</th><th>Home address</th><th>Postcode</th><th>Country</th><th>Date of birth</th><th>Gender</th><th>First shift date</th><th>HMRC Statement</th><th>Student Loan</th></tr></thead>
+              <tbody>
+                <tr><td><div class="person"><span class="avatar photo sm">CW</span><span>Chen W.</span></div></td><td class="mono sm">THC-00960</td><td class="mono sm">●●●●●●●1A <span class="sub">full number in the CSV</span></td><td class="sm">Flat 4, 12 Exhibition Rd, London</td><td class="mono sm">SW7 2HE</td><td class="sm">United Kingdom</td><td class="mono sm">21.11.2003</td><td class="mono sm">M</td><td class="mono sm">10.09.2026</td><td><span class="pill cyan">B</span></td><td class="sm">Plan 2</td></tr>
+                <tr><td><div class="person"><span class="avatar photo sm">FA</span><span>Femi A.</span></div></td><td class="mono sm">THC-00988</td><td class="mono sm">●●●●●●●7C</td><td class="sm">88 Camberwell Church St, London</td><td class="mono sm">SE5 8QZ</td><td class="sm">United Kingdom</td><td class="mono sm">02.02.1999</td><td class="mono sm">M</td><td class="mono sm">12.09.2026</td><td><span class="pill cyan">A</span></td><td class="sm">No</td></tr>
+                <tr><td><div class="person"><span class="avatar photo sm">LN</span><span>Lin N.</span></div></td><td class="mono sm">THC-00991</td><td class="mono sm muted">— <span class="sub">not yet issued — payroll runs without it; E6 when added</span></td><td class="sm">3 Laurie Grove, London</td><td class="mono sm">SE14 6NH</td><td class="sm">United Kingdom</td><td class="mono sm">15.06.2001</td><td class="mono sm">F</td><td class="mono sm">13.09.2026</td><td><span class="pill cyan">C</span></td><td class="sm">Plan 1 + Postgraduate</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-h"><h3>Send status · history</h3><span class="muted sm">each tab shows the last-sent date/time and a status (§9.9)</span></div>
+          <div class="panel-b stack tight">
+            <div class="row wrap"><span class="mono sm muted" style="width:130px">Mon 15 Sep 09:00</span><span class="sent ok">✓ Last sent: Mon 15 Sep, 09:00</span><span class="sm muted">3 new starters · one email with 2 CSVs (payroll + HMRC)</span></div>
+            <div class="row wrap"><span class="mono sm muted" style="width:130px">Mon 08 Sep 09:00</span><span class="sent none">No new: Mon 08 Sep, 09:00</span><span class="sm muted">a week with no new starters shows this instead of a failure — nothing was due; only the payroll CSV went out</span></div>
+            <div class="row wrap"><span class="mono sm muted" style="width:130px">Mon 01 Sep 09:00</span><span class="sent fail">✕ Failed to send report</span><span class="sm muted">SMTP timeout from admin@thehospitalitycompany.co.uk · 2 new starters</span><button class="btn sm danger">Retry send</button></div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="wf-note note"><b>Behaviour notes.</b> Three tabs (§9.9). <b>Financial</b>: defaults to the current Mon–Sun week with a "This week" button + arbitrary range; KPIs Staff payroll (base and the 12.07% holiday element broken out and labelled separately, never blended) · Client invoicing at the charge rate · Gross margin; payable hours = intersection of check-in/out with the scheduled time (RULE-01); invoicing is a revenue forecast, not the PO invoices; the "Forecast for the period" label shows for the current week and the previous week through Tuesday. <b>Payroll</b>: date range + "Last week"; period summary (workers · shifts · total · hours); per-person rows Staff · Employee ID · Shifts · Payable hours · Base · Holiday · Total payroll; expanding a person lists ALL their shifts with Event · Client · Role · Date · Start–End (scheduled) · Check in/out (actual, late check-in / early check-out in amber) · Payable hours (unpaid break deduction shown) · Rate · Payroll; buffer turn-aways read "Turned away" (fixed 4 h, RULE-15); an unresolved No check-out reads "Pending" and is excluded from the CSV (BG-08). CSV = one row per shift, never averaged, Employee ID on every row. <b>New Starter (HMRC)</b>: pick a date → preview → Export CSV; columns Staff · Employee ID · NI Number · Home address · Postcode · Country · Date of birth · Gender · First shift date · HMRC Statement (A/B/C) · Student Loan; only new workers who actually worked last week. Automatic send-out every Monday 09:00 — one email, payroll CSV always, HMRC CSV only if there are new starters; each tab shows "Last sent: [date], [time]", "Failed to send report" or, for HMRC, "No new: [date], [time]" (§9.9). Week boundaries follow the wireframe anchor Thu 18 Sep 2026 (Mon 15 – Sun 21).</div>
+  </div>
+</div>
+</body>
+</html>

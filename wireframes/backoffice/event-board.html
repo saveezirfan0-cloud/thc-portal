@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Event board — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .evhead { display: grid; grid-template-columns: minmax(0,1fr) 440px; gap: 16px 24px; align-items: start; background: var(--panel); border: 1px solid var(--line); padding: 16px 20px; }
+  @media (max-width: 1100px) { .evhead { grid-template-columns: 1fr; } .evhead .acts { align-items: flex-start; } }
+  .evhead h1 { font-size: 24px; }
+  .evhead .meta { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--muted); margin-top: 6px; }
+  .evhead .meta b { color: var(--text); font-weight: 500; }
+  .evhead .win { font-family: var(--font-mono); font-size: 13px; line-height: 1.4; white-space: nowrap; }
+  .evhead .blocks { display: flex; gap: 28px; align-items: flex-start; flex-wrap: wrap; margin-top: 8px; }
+  .evhead .blocks > div { flex: 0 0 auto; }
+  .evhead .win .l2 { color: var(--muted); font-size: 11.5px; display: block; }
+  .evhead .acts { display: flex; flex-direction: column; gap: 8px; align-items: flex-end; min-width: 0; }
+  .evhead .acts .xs { text-align: right; }
+  .evhead .acts .row { justify-content: flex-end; flex-wrap: wrap; }
+  .pochip { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--cyan-line); background: var(--cyan-dim); padding: 3px 10px; font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; }
+  .pochip .k { text-transform: uppercase; color: var(--muted); font-size: 9.5px; }
+  .pochip .v { color: var(--cyan); font-weight: 600; }
+  .policy .check { cursor: default; font-size: 12px; align-items: center; }
+  .policy .box.off { border-color: var(--line); background: var(--panel-2); }
+  .rsec { border: 1px solid var(--line); background: var(--panel); }
+  .rsh { display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); cursor: pointer; flex-wrap: wrap; }
+  .rsh:hover { background: rgba(255,255,255,.02); }
+  .rsh .car { color: var(--muted); font-size: 12px; width: 12px; }
+  .rsh h3 { font-size: 15px; }
+  .rsh .cnt { font-family: var(--font-mono); font-size: 12px; letter-spacing: .02em; }
+  .rsh .cnt .c { color: var(--green); } .rsh .cnt .i { color: var(--amber); } .rsh .cnt .o { color: var(--coral); }
+  .rsh .win { font-family: var(--font-mono); font-size: 12px; line-height: 1.3; }
+  .rsh .win .l2 { display: block; color: var(--muted); font-size: 10.5px; }
+  .rsh .dc, .rsh .rate { font-size: 12px; color: var(--muted); }
+  .rsh .rate b { color: var(--text); font-weight: 500; font-family: var(--font-mono); }
+  .rsh .right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+  .sub { border-top: 1px solid var(--line); }
+  .subh { display: flex; align-items: center; gap: 10px; padding: 8px 16px; background: var(--panel-2); font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); flex-wrap: wrap; }
+  .subh .n { color: var(--text); }
+  .subh .right { margin-left: auto; display: flex; gap: 8px; align-items: center; text-transform: none; letter-spacing: 0; font-family: var(--font-body); font-size: 12px; }
+  .prow { display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-top: 1px solid var(--line); font-size: 13px; }
+  .prow:first-of-type { border-top: 0; }
+  .prow .rank { width: 18px; font-family: var(--font-mono); font-size: 11px; color: var(--muted); text-align: right; }
+  .prow .who { min-width: 150px; }
+  .prow .who .n { font-weight: 500; line-height: 1.15; }
+  .prow .who .s { font-size: 11px; color: var(--muted); }
+  .prow .right { margin-left: auto; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .prow.noshow { background: var(--coral-dim); }
+  .prow.deleted .n { color: var(--muted); font-style: italic; }
+  .factors { display: flex; gap: 4px; flex-wrap: wrap; }
+  .fc { font-family: var(--font-mono); font-size: 9.5px; padding: 1px 5px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; cursor: help; }
+  .applied { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; padding: 1px 6px; border: 1px solid rgba(168,121,255,.45); color: var(--purple); background: var(--purple-dim); text-transform: uppercase; }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+  .legend b { color: var(--purple); font-weight: 600; }
+  .tooltip-annot { border: 1px dashed rgba(168,121,255,.5); background: var(--purple-dim); padding: 8px 12px; font-family: var(--font-mono); font-size: 11px; color: var(--text); margin: 8px 16px; }
+  .tooltip-annot .k { color: var(--purple); }
+  .stamp { font-family: var(--font-mono); font-size: 11.5px; color: var(--muted); white-space: nowrap; }
+  .stamp b { color: var(--text); font-weight: 500; }
+  .dim { opacity: .45; pointer-events: none; }
+  .consq { display: flex; flex-direction: column; gap: 8px; font-size: 13px; }
+  .consq div { display: flex; gap: 10px; }
+  .consq .n { font-family: var(--font-mono); color: var(--coral); flex: 0 0 18px; }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Event board</span><span class="pill cyan">/events/:id</span><span class="pill">§3.3 · §3.4 · §3.5 · §3.6 · §6 · §11.4 · §1.8</span>
+  <span class="spacer"></span>
+  <a href="compliance.html">Next: Compliance →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a class="active" href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Event</h1>
+      <span class="crumbs"><a href="events.html">Scheduling</a> / <b>Gala Dinner</b> · Fri 19 Sep 2026</span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/Athens (UK +2h) <span class="annot">office staffed from abroad → dual-zone scheduled times (§1.8)</span></span>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="board">
+        <button data-state="filling">Upcoming · filling (Thu 18, 14:32)</button>
+        <button data-state="ongoing">Ongoing · re-opened slot (Fri 19, 17:40)</button>
+        <button data-state="completed">Completed (Sat 20)</button>
+        <button data-state="cancel">Cancel event modal</button>
+        <button data-state="noshow">No-show warning (after payroll export)</button>
+      </div>
+
+      <!-- ======================================================= FILLING ======================================================= -->
+      <section data-state-of="board" data-state="filling" class="stack" style="gap:16px">
+        <div class="evhead">
+          <div>
+            <div class="row wrap"><h1>Gala Dinner</h1><span class="pill cyan lg">Upcoming</span><span class="pochip"><span class="k">PO number</span><span class="v">4471-A</span></span></div>
+            <div class="meta"><span>Client <b>Leonardo Hotel St Pauls</b></span><span>Venue <b>Leonardo Royal Hotel · 10 Godliman St, EC4V 5AJ</b> · geofence 150 m</span><span>Date <b>Fri 19 Sep 2026</b></span><span>On-site <b>Marco V. · +44 20 7074 1000</b></span></div>
+            <div class="blocks">
+              <div><span class="label">Event window</span><div class="win">07:00 – 23:30 UK time<span class="l2">09:00 – 01:30 your time</span></div><span class="muted xs">earliest role start → latest role end (RULE-18)</span></div>
+              <div class="policy stack tight"><span class="label">Client policies</span><label class="check"><span class="box off"></span>Break policy — client does not pay breaks (staff log breaks)</label><label class="check"><span class="box on"></span>Buffer policy — client pays for the buffer</label></div>
+              <div><span class="label">Notes for staff</span><div class="sm muted" style="max-width:320px">Staff entrance on Carter Lane. Bring own black shoes. No parking on site.</div></div>
+            </div>
+          </div>
+          <div class="acts">
+            <div class="row"><a class="btn sm" href="shift-builder.html#sb=edit">Edit</a><button class="btn sm">Duplicate</button><button class="btn sm primary">Send allocation sheet</button><button class="btn sm">Download</button><button class="btn sm danger">Cancel event</button></div>
+            <label class="switch purple on"><span class="track"></span>Auto-assign · event level</label>
+            <span class="muted xs">Allocation sheet → events@leonardo-stpauls.example, m.vidal@… from timesheets@thehospitalitycompany.co.uk (§11.4)</span>
+            <span class="muted xs">Board recalculated fresh on every open — not a cached snapshot (§3.4)</span>
+          </div>
+        </div>
+
+        <!-- ROLE: Chef (fully confirmed → Invited + Pool hidden) -->
+        <div class="rsec">
+          <div class="rsh"><span class="car">▾</span><h3>Chef</h3><span class="cnt"><span class="c">2 confirmed</span> · <span class="i">0 invited</span> · <span class="o">0 open</span> of 2</span><span class="win">07:00 – 15:00 UK time<span class="l2">09:00 – 17:00 your time</span></span><span class="dc">Dress code: <b>Chef whites</b></span><span class="rate">Pay <b>£19.00</b> · final £21.29 · charge <b>£30.69</b> · <span class="green">+£9.40/h</span></span><div class="right"><span class="pill">2 (+0)</span><label class="switch purple on"><span class="track"></span>Auto-assign</label></div></div>
+          <div class="sub">
+            <div class="subh">Confirmed <span class="n">2</span><span class="right muted">the worker confirms in the app — no Confirm button here, only Withdraw</span></div>
+            <div class="prow"><span class="avatar photo">DK</span><div class="who"><div class="n">Dev K.</div><div class="s">Chef · confirmed 12 Sep · I'm ready ✓ 09:40 today</div></div><span class="chip cyan">Qualified — Leonardo · Chef</span><div class="right"><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">SB</span><div class="who"><div class="n">Sara B.</div><div class="s">Chef · confirmed 13 Sep · I'm ready ✓ 08:15 today</div></div><div class="right"><button class="btn sm ghost">Withdraw</button></div></div>
+          </div>
+          <div class="sub"><div class="subh muted" style="background:transparent">Invited · Potential pool<span class="right annot">hidden entirely — role fully confirmed and stable (§3.3)</span></div></div>
+          <div class="sub"><div class="subh">Unavailable <span class="n">1</span><span class="right muted">▸ collapsed</span></div></div>
+        </div>
+
+        <!-- ROLE: Kitchen Porter -->
+        <div class="rsec">
+          <div class="rsh"><span class="car">▾</span><h3>Kitchen Porter</h3><span class="cnt"><span class="c">2 confirmed</span> · <span class="i">3 invited</span> · <span class="o">1 open</span> of 3</span><span class="win">09:00 – 17:00 UK time<span class="l2">11:00 – 19:00 your time</span></span><span class="dc">Dress code: <b>Kitchen blacks</b></span><span class="rate">Pay <b>£13.50</b> · final £15.13 · charge <b>£21.23</b> · <span class="green">+£6.10/h</span></span><div class="right"><span class="pill">3 (+1)</span><span class="muted xs">target 4 · allocation 4/h</span><label class="switch purple on"><span class="track"></span>Auto-assign</label></div></div>
+          <div class="sub">
+            <div class="subh">Confirmed <span class="n">2</span></div>
+            <div class="prow"><span class="avatar photo">RP</span><div class="who"><div class="n">Ravi P.</div><div class="s">Kitchen Porter · confirmed 11 Sep · I'm ready ✓ 10:02 today</div></div><span class="chip cyan">Qualified — Leonardo · Kitchen Porter</span><div class="right"><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">LK</span><div class="who"><div class="n">Leo K.</div><div class="s">Kitchen Porter · confirmed 16 Sep · I'm ready ✓ 11:48 today</div></div><div class="right"><button class="btn sm ghost">Withdraw</button></div></div>
+          </div>
+          <div class="sub">
+            <div class="subh">Invited · awaiting response <span class="n">3</span><span class="right muted">invitations have no deadline and are never withdrawn by auto-assign (§3.6)</span></div>
+            <div class="prow"><span class="avatar photo">MC</span><div class="who"><div class="n">Mia C.</div><div class="s">invited 13:17 UK · round 3 · auto</div></div><span class="chip cyan">Qualified — Leonardo · Kitchen Porter</span><div class="right"><span class="pill amber">Awaiting</span><button class="btn sm ghost">Withdraw invite</button></div></div>
+            <div class="prow"><span class="avatar photo">EJ</span><div class="who"><div class="n">Ethan J.</div><div class="s">invited 12:17 UK · round 2 · auto</div></div><div class="right"><span class="pill amber">Awaiting</span><button class="btn sm ghost">Withdraw invite</button></div></div>
+            <div class="prow"><span class="avatar photo">ZA</span><div class="who"><div class="n">Zara A.</div><div class="s">invited 11:17 UK · round 1 · manual (Gisela M.)</div></div><div class="right"><span class="pill amber">Awaiting</span><button class="btn sm ghost">Withdraw invite</button></div></div>
+          </div>
+          <div class="sub">
+            <div class="subh">Potential pool <span class="n">3</span><span class="right"><span class="muted xs">ranked · qualified first</span></span></div>
+            <div class="prow"><span class="rank">1</span><span class="avatar photo">IM</span><div class="who"><div class="n">Isla M.</div><div class="s">Kitchen Porter · Chef</div></div><span class="chip cyan">Qualified — Leonardo · Kitchen Porter</span><div class="factors"><span class="fc">show 97%</span><span class="fc">4.4★</span><span class="fc">3.1 km</span><span class="fc">2 future</span><span class="fc">4 visits</span></div><div class="right"><span class="score">82 <span class="bar"><i style="width:82%"></i></span></span><button class="btn sm outline">Invite</button></div></div>
+            <div class="prow"><span class="rank">2</span><span class="avatar photo">OS</span><div class="who"><div class="n">Omar S.</div><div class="s">Kitchen Porter · Waiting Staff</div></div><div class="factors"><span class="fc">show 95%</span><span class="fc">4.6★</span><span class="fc">1.9 km</span><span class="fc">3 future</span><span class="fc">0 visits</span></div><div class="right"><span class="score">76 <span class="bar"><i style="width:76%"></i></span></span><button class="btn sm outline">Invite</button></div></div>
+            <div class="prow"><span class="rank">3</span><span class="avatar photo">BT</span><div class="who"><div class="n">Ben T.</div><div class="s">Kitchen Porter</div></div><div class="factors"><span class="fc">show 92%</span><span class="fc">4.1★</span><span class="fc">6.8 km</span><span class="fc">1 future</span><span class="fc">1 visit</span></div><div class="right"><span class="score">58 <span class="bar"><i style="width:58%"></i></span></span><button class="btn sm outline">Invite</button></div></div>
+          </div>
+          <div class="sub">
+            <div class="subh">Unavailable <span class="n">2</span></div>
+            <div class="prow"><span class="avatar">AV</span><div class="who"><div class="n">Arjun V.</div><div class="s">Kitchen Porter</div></div><div class="right"><span class="pill amber">Booked elsewhere</span><span class="muted xs">Waiting Staff on this event 17:00 — same venue, but the KP shift overlaps 09:00–17:00</span></div></div>
+            <div class="prow"><span class="avatar">JW</span><div class="who"><div class="n">Jonah W.</div><div class="s">Kitchen Porter · Waiting Staff</div></div><div class="right"><span class="pill coral">Blocked — compliance</span><span class="muted xs">passport expired 02.09.2026</span></div></div>
+          </div>
+        </div>
+
+        <!-- ROLE: Waiting Staff -->
+        <div class="rsec">
+          <div class="rsh"><span class="car">▾</span><h3>Waiting Staff</h3><span class="cnt"><span class="c">9 confirmed</span> · <span class="i">4 invited</span> · <span class="o">3 open</span> of 12</span><span class="win">17:00 – 23:30 UK time<span class="l2">19:00 – 01:30 your time</span></span><span class="dc">Dress code: <b>Black &amp; whites, burgundy bow tie (supplied on site)</b> <span class="annot">"Other" override for this event</span></span><span class="rate">Pay <b>£14.00</b> · final £15.69 · charge <b>£22.97</b> · <span class="green">+£7.28/h</span></span><div class="right"><span class="pill">12 (+2)</span><span class="muted xs">target 14 · allocation 14/h · next round 15:17</span><label class="switch purple on"><span class="track"></span>Auto-assign</label></div></div>
+
+          <div class="sub">
+            <div class="subh">Confirmed <span class="n">9</span><span class="right muted">slots count ONLY confirmed · buffer is part of the target, not the working headcount</span></div>
+            <div class="prow"><span class="avatar photo">GL</span><div class="who"><div class="n">Grace L.</div><div class="s">Waiting Staff · confirmed 10 Sep · I'm ready ✓ 08:31 today</div></div><span class="chip cyan">Qualified — Leonardo · Waiting Staff</span><div class="right"><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">OW</span><div class="who"><div class="n">Olivia W.</div><div class="s">Waiting Staff · confirmed 10 Sep · I'm ready ✓ 09:02 today</div></div><span class="chip cyan">Qualified — Leonardo · Waiting Staff</span><div class="right"><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">TR</span><div class="who"><div class="n">Tom R.</div><div class="s">Waiting Staff · confirmed 11 Sep · I'm ready ✓ 07:55 today</div></div><span class="chip cyan">Qualified — Leonardo · Waiting Staff</span><div class="right"><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">SR</span><div class="who"><div class="n">Sofia R.</div><div class="s">Waiting Staff · confirmed 11 Sep · I'm ready ✓ 10:20 today</div></div><div class="right"><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">NF</span><div class="who"><div class="n">Noah F.</div><div class="s">Waiting Staff · confirmed 12 Sep · I'm ready ✓ 11:10 today</div></div><div class="right"><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">RS</span><div class="who"><div class="n">Ruby S.</div><div class="s">Waiting Staff · confirmed 12 Sep · I'm ready ✓ 11:58 today</div></div><span class="chip cyan">Qualified — Leonardo · Waiting Staff</span><div class="right"><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">AV</span><div class="who"><div class="n">Arjun V.</div><div class="s">Waiting Staff · confirmed 14 Sep · I'm ready ✓ 09:47 today</div></div><div class="right"><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">FH</span><div class="who"><div class="n">Freddie H.</div><div class="s">Waiting Staff · confirmed 15 Sep · I'm ready ✓ 11:31 today</div></div><div class="right"><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">LC</span><div class="who"><div class="n">Leah C.</div><div class="s">Waiting Staff · self-applied via Radar, picked by Gisela M. 16 Sep (N10 sent) · I'm ready ✓ 10:05 today</div></div><span class="applied">Applied</span><div class="right"><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="note" style="border:0;border-top:1px dashed var(--line)">Zara A. was <b>released at 12:05 today</b> — no "I'm ready" by the 12:00 day-before cutoff (N6b) → slot re-opened, auto-assign topped up at 13:17 (§3.5). Withdraw sends N10b "You've been removed from Gala Dinner · Fri 19 Sep 17:00".</div>
+          </div>
+
+          <div class="sub">
+            <div class="subh">Invited · awaiting response <span class="n">4</span><span class="right muted">a worker already Invited who also self-applies is not duplicated into the pool — the marker shows here</span></div>
+            <div class="prow"><span class="avatar photo">MB</span><div class="who"><div class="n">Marcus B.</div><div class="s">invited 13:17 UK · round 3 · auto</div></div><span class="chip cyan">Qualified — Leonardo · Waiting Staff</span><div class="right"><span class="pill amber">Awaiting</span><button class="btn sm ghost">Withdraw invite</button></div></div>
+            <div class="prow"><span class="avatar photo">CD</span><div class="who"><div class="n">Chloe D.</div><div class="s">invited 12:17 UK · round 2 · auto</div></div><div class="right"><span class="pill amber">Awaiting</span><button class="btn sm ghost">Withdraw invite</button></div></div>
+            <div class="prow"><span class="avatar photo">DO</span><div class="who"><div class="n">Daniel O.</div><div class="s">invited 11:17 UK · round 1 · auto</div></div><span class="applied">Applied 2h ago</span><div class="right"><span class="pill amber">Awaiting</span><button class="btn sm ghost">Withdraw invite</button></div></div>
+            <div class="prow"><span class="avatar photo">BT</span><div class="who"><div class="n">Ben T.</div><div class="s">invited 10:17 UK · round 1 · auto</div></div><div class="right"><span class="pill amber">Awaiting</span><button class="btn sm ghost">Withdraw invite</button></div></div>
+          </div>
+
+          <div class="sub">
+            <div class="subh">Potential pool <span class="n">6</span>
+              <span class="right">
+                <div class="search"><input class="input" style="height:28px;width:200px;font-size:12px" placeholder="Search by name"></div>
+                <div class="seg sm"><button class="on">All</button><button>Applied <span class="n">2</span></button><button>Not applied</button></div>
+                <select class="input" style="height:28px;width:150px;font-size:12px"><option>Sort: score ↓</option><option>Sort: applied first</option><option>Sort: name</option></select>
+              </span>
+            </div>
+            <div class="legend" style="padding:8px 16px;border-bottom:1px solid var(--line)"><span>Score = </span><span><b>30%</b> show-rate</span><span><b>25%</b> client rating</span><span><b>25%</b> proximity</span><span><b>10%</b> fair rotation</span><span><b>10%</b> venue history</span><span class="muted">· weights editable in Django Admin (§6) · hover a score for the breakdown</span></div>
+            <div class="prow"><span class="rank">1</span><span class="avatar photo">PS</span><div class="who"><div class="n">Priya S.</div><div class="s">Waiting Staff · Host · EU settled</div></div><span class="chip cyan">Qualified — Leonardo · Waiting Staff</span><div class="factors"><span class="fc" title="show-rate 99% → 90">show 99%</span><span class="fc" title="rating 4.9 → 90">4.9★</span><span class="fc" title="0.8 km → 93">0.8 km</span><span class="fc" title="0 future shifts → 100">0 future</span><span class="fc" title="6 visits → 60">6 visits</span></div><div class="right"><span class="score tip" title="breakdown">89 <span class="bar"><i style="width:89%"></i></span></span><button class="btn sm outline">Invite</button></div></div>
+            <div class="tooltip-annot"><span class="k">hover breakdown for Priya S.:</span> show-rate 99% → (99−90)/10 = <b>90</b> × 0.30 = 27.0 · rating 4.9 → (4.9−4.0)/1.0 = <b>90</b> × 0.25 = 22.5 · proximity 0.8 km → 100−0.8×9 = <b>93</b> × 0.25 = 23.2 · fair rotation 0 future shifts → <b>100</b> × 0.10 = 10.0 · venue history 6 of 10 → <b>60</b> × 0.10 = 6.0 → <b>88.7 ≈ 89</b></div>
+            <div class="prow"><span class="rank">2</span><span class="avatar photo">NH</span><div class="who"><div class="n">Nadia H.</div><div class="s">Waiting Staff</div></div><span class="chip cyan">Qualified — Leonardo · Waiting Staff</span><div class="factors"><span class="fc">show 98%</span><span class="fc">4.7★</span><span class="fc">2.4 km</span><span class="fc">1 future</span><span class="fc">3 visits</span></div><div class="right"><span class="score">84 <span class="bar"><i style="width:84%"></i></span></span><button class="btn sm outline">Invite</button></div></div>
+            <div class="prow"><span class="rank">3</span><span class="avatar photo">YA</span><div class="who"><div class="n">Yusuf A.</div><div class="s">Waiting Staff · Bar Staff</div></div><span class="chip cyan">Qualified — Leonardo · Waiting Staff</span><div class="factors"><span class="fc">show 94%</span><span class="fc">4.3★</span><span class="fc">5.5 km</span><span class="fc">2 future</span><span class="fc">2 visits</span></div><div class="right"><span class="score">71 <span class="bar"><i style="width:71%"></i></span></span><button class="btn sm outline">Invite</button></div></div>
+            <div class="prow" style="border-top:1px dashed var(--purple)"><span class="rank">4</span><span class="avatar photo">EF</span><div class="who"><div class="n">Ella F.</div><div class="s">Waiting Staff · UK citizen</div></div><span class="applied">Applied 40 min ago</span><div class="factors"><span class="fc">show 100%</span><span class="fc">4.9★</span><span class="fc">0.4 km</span><span class="fc">0 future</span><span class="fc">0 visits</span></div><div class="right"><span class="score">94 <span class="bar"><i style="width:94%"></i></span></span><button class="btn sm outline">Invite</button></div></div>
+            <div class="prow"><span class="rank">5</span><span class="avatar photo">IM</span><div class="who"><div class="n">Isla M.</div><div class="s">Waiting Staff · Kitchen Porter</div></div><div class="factors"><span class="fc">show 97%</span><span class="fc">4.4★</span><span class="fc">3.1 km</span><span class="fc">2 future</span><span class="fc">0 visits</span></div><div class="right"><span class="score">77 <span class="bar"><i style="width:77%"></i></span></span><button class="btn sm outline">Invite</button></div></div>
+            <div class="prow"><span class="rank">6</span><span class="avatar photo">OS</span><div class="who"><div class="n">Omar S.</div><div class="s">Waiting Staff · Kitchen Porter</div></div><span class="applied">Applied 3h ago</span><div class="factors"><span class="fc">show 95%</span><span class="fc">4.6★</span><span class="fc">1.9 km</span><span class="fc">3 future</span><span class="fc">0 visits</span></div><div class="right"><span class="score">63 <span class="bar"><i style="width:63%"></i></span></span><button class="btn sm outline">Invite</button></div></div>
+            <div class="note" style="border:0;border-top:1px dashed var(--line)"><b>RULE-17:</b> the qualified wave is exhausted before any unqualified worker is invited — Yusuf A. (71, qualified) sits above Ella F. (94, unqualified). Qualification is a priority wave, not a hard gate: the manager can still press Invite on anyone. Picking an "Applied" worker sends N10; when the role fills, remaining applicants get N10c.</div>
+          </div>
+
+          <div class="sub">
+            <div class="subh">Unavailable <span class="n">5</span><span class="right muted">wrong-role never produces a row here (§6)</span></div>
+            <div class="prow"><span class="avatar">JW</span><div class="who"><div class="n">Jonah W.</div><div class="s">Waiting Staff · Kitchen Porter</div></div><div class="right"><span class="pill coral">Blocked — compliance</span><span class="muted xs">passport expired 02.09.2026 · auto-block (§4.3)</span></div></div>
+            <div class="prow"><span class="avatar">LM</span><div class="who"><div class="n">Luca M.</div><div class="s">Waiting Staff · Bar Staff</div></div><div class="right"><span class="pill amber">Booked elsewhere</span><span class="muted xs">Product Launch — Bar, Mandarin Oriental 18:00–01:00 · different venue, gap &lt; 2 h (fixed value, not travel time)</span></div></div>
+            <div class="prow"><span class="avatar">AK</span><div class="who"><div class="n">Amara K.</div><div class="s">Waiting Staff · student visa</div></div><div class="right"><span class="pill amber">Hours limit reached</span><span class="muted xs">20 h/week — term time until 13.12.2026 · 18 h already booked Mon 15 – Sun 21 · this 6.5 h shift would exceed (RULE-20)</span></div></div>
+            <div class="prow"><span class="avatar">KN</span><div class="who"><div class="n">Kai N.</div><div class="s">Waiting Staff</div></div><div class="right"><span class="pill coral">Rejected — self-cancelled</span><span class="muted xs">cancelled a confirmed booking on 12 Sep (&gt;72 h before) · permanently excluded from this event: no auto-assign, no Radar, no manual invite (RULE-04)</span></div></div>
+            <div class="prow"><span class="avatar">HP</span><div class="who"><div class="n">Hannah P.</div><div class="s">Waiting Staff · Host</div></div><div class="right"><span class="pill coral">Do not return</span><span class="muted xs">Leonardo Hotel St Pauls · set by Gisela M. 14.02.2026: "client asked not to re-engage after Feb banquet"</span></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================= ONGOING · RE-OPENED ======================================================= -->
+      <section data-state-of="board" data-state="ongoing" class="stack hide" style="gap:16px">
+        <div class="alert cyan"><b>As it looks Fri 19 Sep at 17:40 UK time (19:40 your time).</b> Chef and Kitchen Porter finished their windows; Waiting Staff started at 17:00. Freddie H. never checked in → auto No-show at 17:30 (start + 30 min) → one slot re-opened on an Ongoing event → Invited and Potential pool <b>reappear for this role only</b>; the same-day escalation job (every 10 min, 3-mile radius, ignoring the headcount + buffer cap) has taken over from the hourly cron (§3.3, §3.4).</div>
+        <div class="evhead">
+          <div>
+            <div class="row wrap"><h1>Gala Dinner</h1><span class="pill green lg"><span class="dot"></span>Ongoing</span><span class="pochip"><span class="k">PO number</span><span class="v">4471-A</span></span></div>
+            <div class="meta"><span>Client <b>Leonardo Hotel St Pauls</b></span><span>Venue <b>Leonardo Royal Hotel · 10 Godliman St, EC4V 5AJ</b></span><span>Date <b>Fri 19 Sep 2026</b></span></div>
+            <div class="blocks">
+              <div><span class="label">Event window</span><div class="win">07:00 – 23:30 UK time<span class="l2">09:00 – 01:30 your time</span></div></div>
+              <div class="policy stack tight"><span class="label">Client policies</span><label class="check"><span class="box off"></span>Break policy — not paid</label><label class="check"><span class="box on"></span>Buffer policy — paid</label></div>
+            </div>
+          </div>
+          <div class="acts">
+            <div class="row"><button class="btn sm" disabled title="editing locked at event start">Edit</button><button class="btn sm">Duplicate</button><button class="btn sm primary">Send allocation sheet</button><button class="btn sm">Download</button><button class="btn sm danger">Cancel event</button></div>
+            <label class="switch purple on"><span class="track"></span>Auto-assign · event level</label>
+            <span class="muted xs">Editing locked — the event has started (§3.2). Allocation sheet can still be sent / downloaded mid-event (§11.3). Cancelling now = on-the-day edge case: scheduled hours billed and paid in full (§3.3).</span>
+          </div>
+        </div>
+
+        <div class="rsec">
+          <div class="rsh"><span class="car">▸</span><h3>Chef</h3><span class="cnt"><span class="c">2 confirmed</span> · 0 invited · 0 open of 2</span><span class="win">07:00 – 15:00 UK time<span class="l2">09:00 – 17:00 your time</span></span><span class="pill">window ended</span><div class="right"><span class="muted xs">2 checked out · collapsed</span></div></div>
+        </div>
+        <div class="rsec">
+          <div class="rsh"><span class="car">▸</span><h3>Kitchen Porter</h3><span class="cnt"><span class="c">4 confirmed</span> · 0 invited · 0 open of 3</span><span class="win">09:00 – 17:00 UK time<span class="l2">11:00 – 19:00 your time</span></span><span class="pill">window ended</span><div class="right"><span class="annot">fully confirmed → Invited + Potential pool hidden entirely</span></div></div>
+        </div>
+
+        <div class="rsec" style="border-color:var(--amber)">
+          <div class="rsh"><span class="car">▾</span><h3>Waiting Staff</h3><span class="cnt"><span class="c">11 confirmed</span> · <span class="i">3 invited</span> · <span class="o">1 open</span> of 12</span><span class="win">17:00 – 23:30 UK time<span class="l2">19:00 – 01:30 your time</span></span><span class="dc">Dress code: <b>Black &amp; whites, burgundy bow tie</b></span><span class="rate">Pay <b>£14.00</b> · charge <b>£22.97</b></span><div class="right"><span class="pill">12 (+2)</span><span class="pill purple">Escalation · every 10 min · 3-mile pool</span><label class="switch purple on"><span class="track"></span>Auto-assign</label></div></div>
+
+          <div class="sub">
+            <div class="subh">Confirmed <span class="n">11</span> <span class="muted">+ 1 no-show</span><span class="right muted">check-in stamps in your local zone (§1.8)</span></div>
+            <div class="prow noshow"><span class="avatar photo">FH</span><div class="who"><div class="n">Freddie H.</div><div class="s">Waiting Staff · confirmed 15 Sep · I'm ready ✓ · today's push not confirmed</div></div><span class="pill coral">No show</span><span class="muted xs">auto at 17:30 UK (start + 30) · check-in locked · show-rate penalty applied</span><div class="right"><button class="btn sm primary">Get back</button><span class="muted xs">registers arrival now → reclassified to Late (minutes from this press), RULE-01 deduction applies</span></div></div>
+            <div class="prow"><span class="avatar photo">GL</span><div class="who"><div class="n">Grace L.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>18:52</b> your time</span><div class="right"><span class="pill green">On shift</span><button class="btn sm ghost">No show</button><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">OW</span><div class="who"><div class="n">Olivia W.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>18:58</b></span><div class="right"><span class="pill green">On shift</span><button class="btn sm ghost">No show</button><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">TR</span><div class="who"><div class="n">Tom R.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>19:12</b> · Late 12 min</span><div class="right"><span class="pill green">On shift</span><button class="btn sm ghost">No show</button><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">SR</span><div class="who"><div class="n">Sofia R.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>18:49</b></span><div class="right"><span class="pill green">On shift</span><button class="btn sm ghost">No show</button><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow deleted"><span class="avatar deleted">#</span><div class="who"><div class="n">Deleted account #1042</div><div class="s">Waiting Staff · GDPR-removed 19 Sep 19:20 your time, after check-in — row stays so the headcount isn't skewed (§1.7)</div></div><span class="stamp">in <b>18:55</b></span><div class="right"><span class="pill green">On shift</span><button class="btn sm ghost">No show</button></div></div>
+            <div class="prow"><span class="avatar photo">NF</span><div class="who"><div class="n">Noah F.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>19:01</b></span><div class="right"><span class="pill green">On shift</span><button class="btn sm ghost">No show</button><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">RS</span><div class="who"><div class="n">Ruby S.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>18:57</b></span><div class="right"><span class="pill green">On shift</span><button class="btn sm ghost">No show</button><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">AV</span><div class="who"><div class="n">Arjun V.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>18:44</b></span><div class="right"><span class="pill green">On shift</span><button class="btn sm ghost">No show</button><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">LC</span><div class="who"><div class="n">Leah C.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>19:03</b></span><div class="right"><span class="pill green">On shift</span><button class="btn sm ghost">No show</button><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">MB</span><div class="who"><div class="n">Marcus B.</div><div class="s">Waiting Staff · accepted 18 Sep 15:40</div></div><span class="stamp">in <b>18:50</b></span><div class="right"><span class="pill green">On shift</span><button class="btn sm ghost">No show</button><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">CD</span><div class="who"><div class="n">Chloe D.</div><div class="s">Waiting Staff · accepted 18 Sep 16:02 (buffer)</div></div><span class="stamp">in <b>18:59</b></span><div class="right"><span class="pill green">On shift</span><button class="btn sm ghost">No show</button><button class="btn sm ghost">Withdraw</button></div></div>
+            <div class="prow"><span class="avatar photo">PS</span><div class="who"><div class="n">Priya S.</div><div class="s">Waiting Staff · accepted 18 Sep 17:20 (buffer)</div></div><span class="stamp">in <b>18:47</b></span><div class="right"><span class="pill green">On shift</span><button class="btn sm ghost">No show</button><button class="btn sm ghost">Withdraw</button></div></div>
+          </div>
+
+          <div class="sub" style="border-top:1px solid var(--amber)">
+            <div class="subh">Invited · awaiting response <span class="n">3</span><span class="right"><span class="pill purple">re-opened</span><span class="muted">escalation invites, proximity first</span></span></div>
+            <div class="prow"><span class="avatar photo">EF</span><div class="who"><div class="n">Ella F.</div><div class="s">invited 17:40 UK · escalation · 0.4 mi</div></div><span class="applied">Applied 4h ago</span><div class="right"><span class="pill amber">Awaiting</span><button class="btn sm ghost">Withdraw invite</button></div></div>
+            <div class="prow"><span class="avatar photo">NH</span><div class="who"><div class="n">Nadia H.</div><div class="s">invited 17:30 UK · escalation · 1.5 mi</div></div><span class="chip cyan">Qualified — Leonardo · Waiting Staff</span><div class="right"><span class="pill amber">Awaiting</span><button class="btn sm ghost">Withdraw invite</button></div></div>
+            <div class="prow"><span class="avatar photo">DO</span><div class="who"><div class="n">Daniel O.</div><div class="s">invited 17:30 UK · escalation · 2.2 mi</div></div><div class="right"><span class="pill amber">Awaiting</span><button class="btn sm ghost">Withdraw invite</button></div></div>
+            <div class="note" style="border:0;border-top:1px dashed var(--line)">A replacement confirmed after the scheduled start is exempt from the 30-minute check-in lock — their check-in stays open until 23:30 (§3.4, §5.1).</div>
+          </div>
+
+          <div class="sub">
+            <div class="subh">Potential pool <span class="n">2</span> <span class="muted">within 3 miles</span><span class="right"><div class="search"><input class="input" style="height:28px;width:180px;font-size:12px" placeholder="Search by name"></div><div class="seg sm"><button class="on">All</button><button>Applied</button><button>Not applied</button></div></span></div>
+            <div class="prow"><span class="rank">1</span><span class="avatar photo">YA</span><div class="who"><div class="n">Yusuf A.</div><div class="s">Waiting Staff · 2.8 mi</div></div><span class="chip cyan">Qualified — Leonardo · Waiting Staff</span><div class="factors"><span class="fc">show 94%</span><span class="fc">4.3★</span><span class="fc">4.5 km</span><span class="fc">2 future</span><span class="fc">2 visits</span></div><div class="right"><span class="score">73 <span class="bar"><i style="width:73%"></i></span></span><button class="btn sm outline">Invite</button></div></div>
+            <div class="prow"><span class="rank">2</span><span class="avatar photo">OS</span><div class="who"><div class="n">Omar S.</div><div class="s">Waiting Staff · 1.2 mi</div></div><span class="applied">Applied 7h ago</span><div class="factors"><span class="fc">show 95%</span><span class="fc">4.6★</span><span class="fc">1.9 km</span><span class="fc">3 future</span><span class="fc">0 visits</span></div><div class="right"><span class="score">63 <span class="bar"><i style="width:63%"></i></span></span><button class="btn sm outline">Invite</button></div></div>
+          </div>
+          <div class="sub"><div class="subh">Unavailable <span class="n">5</span><span class="right muted">▸ collapsed · same reasons as before</span></div></div>
+        </div>
+      </section>
+
+      <!-- ======================================================= COMPLETED ======================================================= -->
+      <section data-state-of="board" data-state="completed" class="stack hide" style="gap:16px">
+        <div class="alert cyan"><b>As it looks Sat 20 Sep.</b> No Invited / Potential pool / Unavailable sections on a Completed event — they are hidden entirely, not shown empty (§3.3). Manual "No show" stays available for 2 weeks after the end; "Get back" remains on the no-show row (§3.3).</div>
+        <div class="evhead">
+          <div>
+            <div class="row wrap"><h1>Gala Dinner</h1><span class="pill lg">Completed</span><span class="pochip"><span class="k">PO number</span><span class="v">4471-A</span></span></div>
+            <div class="meta"><span>Client <b>Leonardo Hotel St Pauls</b></span><span>Venue <b>Leonardo Royal Hotel · 10 Godliman St, EC4V 5AJ</b></span><span>Date <b>Fri 19 Sep 2026</b></span></div>
+            <div class="blocks">
+              <div><span class="label">Event window</span><div class="win">07:00 – 23:30 UK time<span class="l2">09:00 – 01:30 your time</span></div></div>
+              <div class="policy stack tight"><span class="label">Client policies</span><label class="check"><span class="box off"></span>Break policy — not paid</label><label class="check"><span class="box on"></span>Buffer policy — paid</label></div>
+              <div><span class="label">Result</span><div class="sm">18 worked · 1 no-show · 1 no check-out (pending) · 112.4 payable h · charge £2,714 · margin <span class="green">£866</span></div></div>
+            </div>
+          </div>
+          <div class="acts">
+            <div class="row"><button class="btn sm" disabled>Edit</button><button class="btn sm">Duplicate</button><button class="btn sm primary">Send sign-out timesheet</button><button class="btn sm">Download sign-out timesheet</button><button class="btn sm danger" disabled>Cancel event</button></div>
+            <span class="muted xs">One PDF per event, all roles, THC timesheet format 1:1 (§11.3). Marcus B.'s Finish Time and Hours Worked stay blank until his "No check-out" is resolved; regenerate afterwards.</span>
+            <span class="muted xs">Regenerated after a GDPR removal → "Deleted account #1042", no photo; copies sent before it keep the real name (§1.7).</span>
+          </div>
+        </div>
+
+        <div class="rsec">
+          <div class="rsh"><span class="car">▾</span><h3>Chef</h3><span class="cnt"><span class="c">2 worked</span> of 2</span><span class="win">07:00 – 15:00 UK time<span class="l2">09:00 – 17:00 your time</span></span><span class="rate">Pay <b>£19.00</b> · charge <b>£30.69</b></span><div class="right"><span class="pill">2 (+0)</span></div></div>
+          <div class="sub">
+            <div class="subh">Confirmed <span class="n">2</span><span class="right muted">check-in / out in your local zone · payable = intersection with the scheduled window (RULE-01)</span></div>
+            <div class="prow"><span class="avatar photo">DK</span><div class="who"><div class="n">Dev K.</div><div class="s">Chef</div></div><span class="stamp">in <b>08:51</b> · out <b>17:04</b></span><span class="stamp">payable <b>8.0 h</b> · −0:20 break</span><div class="right"><span class="pill">Checked out 17:04</span><button class="btn sm ghost">No show</button></div></div>
+            <div class="prow"><span class="avatar photo">SB</span><div class="who"><div class="n">Sara B.</div><div class="s">Chef</div></div><span class="stamp">in <b>09:06</b> · out <b>17:00</b></span><span class="stamp">payable <b>8.0 h</b> · −0:20 break</span><div class="right"><span class="pill">Checked out 17:00</span><button class="btn sm ghost">No show</button></div></div>
+          </div>
+        </div>
+        <div class="rsec">
+          <div class="rsh"><span class="car">▸</span><h3>Kitchen Porter</h3><span class="cnt"><span class="c">4 worked</span> of 3 (+1)</span><span class="win">09:00 – 17:00 UK time<span class="l2">11:00 – 19:00 your time</span></span><span class="rate">Pay <b>£13.50</b> · charge <b>£21.23</b></span><div class="right"><span class="muted xs">collapsed</span></div></div>
+        </div>
+        <div class="rsec">
+          <div class="rsh"><span class="car">▾</span><h3>Waiting Staff</h3><span class="cnt"><span class="c">12 worked</span> · <span class="o">1 no-show</span> of 12 (+2)</span><span class="win">17:00 – 23:30 UK time<span class="l2">19:00 – 01:30 your time</span></span><span class="rate">Pay <b>£14.00</b> · charge <b>£22.97</b></span><div class="right"><span class="pill">12 (+2)</span></div></div>
+          <div class="sub">
+            <div class="subh">Confirmed <span class="n">13</span></div>
+            <div class="prow noshow"><span class="avatar photo">FH</span><div class="who"><div class="n">Freddie H.</div><div class="s">Waiting Staff</div></div><span class="pill coral">No show</span><span class="muted xs">auto 17:30 UK · paid nothing · show-rate penalty · Violation logged</span><div class="right"><button class="btn sm primary">Get back</button></div></div>
+            <div class="prow"><span class="avatar photo">GL</span><div class="who"><div class="n">Grace L.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>18:52</b> · out <b>01:34</b></span><span class="stamp">payable <b>6.5 h</b> · −0:20 break</span><div class="right"><span class="pill">Checked out 01:34</span><button class="btn sm ghost">No show</button></div></div>
+            <div class="prow"><span class="avatar photo">TR</span><div class="who"><div class="n">Tom R.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>19:12</b> · out <b>01:31</b></span><span class="stamp">payable <b>6.3 h</b> · Late 12 min</span><div class="right"><span class="pill">Checked out 01:31</span><span class="pill amber">Late</span><button class="btn sm ghost">No show</button></div></div>
+            <div class="prow"><span class="avatar photo">OW</span><div class="who"><div class="n">Olivia W.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>18:58</b> · out <b>22:40</b></span><span class="stamp">payable <b>3.7 h</b> · no 4 h floor</span><div class="right"><span class="pill">Checked out 22:40</span><span class="pill coral">Left early</span><button class="btn sm ghost">No show</button></div></div>
+            <div class="prow"><span class="avatar photo">MB</span><div class="who"><div class="n">Marcus B.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>18:50</b> · out <b>—</b></span><span class="stamp">payable <b>pending</b></span><div class="right"><span class="pill coral">No check-out</span><a class="btn sm outline" href="checkin.html#ci=resolve-nocheckout">Resolve in Violation log</a></div></div>
+            <div class="prow deleted"><span class="avatar deleted">#</span><div class="who"><div class="n">Deleted account #1042</div><div class="s">Waiting Staff · GDPR-removed — name, photo and contacts wiped; history retained for reporting</div></div><span class="stamp">in <b>18:55</b> · out <b>01:32</b></span><span class="stamp">payable <b>6.5 h</b></span><div class="right"><span class="pill">Checked out 01:32</span></div></div>
+            <div class="prow"><span class="avatar photo">SR</span><div class="who"><div class="n">Sofia R.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>18:49</b> · out <b>01:30</b></span><span class="stamp">payable <b>6.5 h</b></span><div class="right"><span class="pill">Checked out 01:30</span><button class="btn sm ghost">No show</button></div></div>
+            <div class="prow"><span class="avatar photo">NF</span><div class="who"><div class="n">Noah F.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>19:01</b> · out <b>01:33</b></span><span class="stamp">payable <b>6.5 h</b></span><div class="right"><span class="pill">Checked out 01:33</span><button class="btn sm ghost">No show</button></div></div>
+            <div class="prow"><span class="avatar photo">RS</span><div class="who"><div class="n">Ruby S.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>18:57</b> · out <b>01:34</b></span><span class="stamp">payable <b>6.5 h</b></span><div class="right"><span class="pill">Checked out 01:34</span><button class="btn sm ghost">No show</button></div></div>
+            <div class="prow"><span class="avatar photo">AV</span><div class="who"><div class="n">Arjun V.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>18:44</b> · out <b>01:30</b></span><span class="stamp">payable <b>6.5 h</b></span><div class="right"><span class="pill">Checked out 01:30</span><button class="btn sm ghost">No show</button></div></div>
+            <div class="prow"><span class="avatar photo">LC</span><div class="who"><div class="n">Leah C.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>19:03</b> · out <b>01:36</b></span><span class="stamp">payable <b>6.5 h</b></span><div class="right"><span class="pill">Checked out 01:36</span><button class="btn sm ghost">No show</button></div></div>
+            <div class="prow"><span class="avatar photo">CD</span><div class="who"><div class="n">Chloe D.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>18:59</b> · out <b>01:31</b></span><span class="stamp">payable <b>6.5 h</b></span><div class="right"><span class="pill">Checked out 01:31</span><button class="btn sm ghost">No show</button></div></div>
+            <div class="prow"><span class="avatar photo">PS</span><div class="who"><div class="n">Priya S.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>18:47</b> · out <b>01:30</b></span><span class="stamp">payable <b>6.5 h</b></span><div class="right"><span class="pill">Checked out 01:30</span><button class="btn sm ghost">No show</button></div></div>
+            <div class="note" style="border:0;border-top:1px dashed var(--line)">Clean shifts (no unresolved Violation) auto-granted <b>Leonardo · Waiting Staff</b> qualification to Sofia R., Noah F., Arjun V., Leah C., Chloe D. and Priya S. — "granted automatically from Gala Dinner 19.09.2026" on their profiles (§9.6).</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================= CANCEL MODAL ======================================================= -->
+      <section data-state-of="board" data-state="cancel" class="hide">
+        <div class="modal-inline" style="min-height:640px">
+          <div class="stack dim" style="gap:16px">
+            <div class="evhead"><div><div class="row wrap"><h1>Gala Dinner</h1><span class="pill cyan lg">Upcoming</span><span class="pochip"><span class="k">PO number</span><span class="v">4471-A</span></span></div><div class="meta"><span>Client <b>Leonardo Hotel St Pauls</b></span><span>Date <b>Fri 19 Sep 2026</b></span></div></div><div class="acts"><div class="row"><button class="btn sm">Edit</button><button class="btn sm">Duplicate</button><button class="btn sm primary">Send allocation sheet</button><button class="btn sm">Download</button><button class="btn sm danger">Cancel event</button></div></div></div>
+            <div class="rsec"><div class="rsh"><h3>Chef</h3><span class="cnt">2 confirmed · 0 invited · 0 open of 2</span></div></div>
+            <div class="rsec"><div class="rsh"><h3>Kitchen Porter</h3><span class="cnt">2 confirmed · 3 invited · 1 open of 3</span></div></div>
+            <div class="rsec"><div class="rsh"><h3>Waiting Staff</h3><span class="cnt">9 confirmed · 4 invited · 3 open of 12</span></div></div>
+          </div>
+          <div class="modal-back">
+            <div class="modal">
+              <div class="mh"><h3>Cancel event</h3><span class="pill coral">Gala Dinner · Fri 19 Sep 2026</span></div>
+              <div class="mb">
+                <div class="field"><span class="label">Reason <span class="coral">*</span></span><textarea class="input" placeholder="Why has the client cancelled? (mandatory, free text — same pattern as manual Block)">Client cancelled the booking by phone 18 Sep 14:10 — banquet moved to November, new date to follow.</textarea></div>
+                <div class="label">What happens on confirm (§3.3)</div>
+                <div class="consq">
+                  <div><span class="n">1</span><span>The event is marked <b>Cancelled</b> — it stays in the list and calendar, greyed out with a Cancelled label; it is not deleted.</span></div>
+                  <div><span class="n">2</span><span><b>13 confirmed</b>, <b>7 invited</b> and <b>2 open Radar applicants</b> get push N12 "This event has been cancelled" — no manual round needed.</span></div>
+                  <div><span class="n">3</span><span>All their bookings move to cancelled; open invitations are withdrawn; auto-assign stops for this event immediately.</span></div>
+                  <div><span class="n">4</span><span>Excluded from financial reports — no margin, revenue or payroll, since no work happened (cancelled before the day).</span></div>
+                  <div><span class="n">5</span><span>No Allocation Sheet or Timesheet is generated or sent.</span></div>
+                </div>
+                <div class="alert">Edge case: if the client cancels <b>on the day</b> or after staff have checked in, the <b>scheduled</b> hours are billed to the client in full and every affected worker is paid their full scheduled hours — this overrides point 4.</div>
+              </div>
+              <div class="mf"><button class="btn ghost">Keep event</button><button class="btn danger solid">Cancel event</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ======================================================= NO-SHOW WARNING ======================================================= -->
+      <section data-state-of="board" data-state="noshow" class="hide">
+        <div class="alert cyan"><b>As it looks Tue 22 Sep</b> — the Monday 09:00 payroll export (BG-08) has already run for the week of Gala Dinner. The manual No-show button stays available for 2 weeks after the shift; on an already-exported shift the confirmation carries the payroll warning (§3.3).</div>
+        <div class="modal-inline" style="min-height:560px">
+          <div class="stack dim" style="gap:16px">
+            <div class="evhead"><div><div class="row wrap"><h1>Gala Dinner</h1><span class="pill lg">Completed</span><span class="pochip"><span class="k">PO number</span><span class="v">4471-A</span></span></div><div class="meta"><span>Client <b>Leonardo Hotel St Pauls</b></span><span>Date <b>Fri 19 Sep 2026</b></span><span class="amber">Payroll exported Mon 21 Sep 09:00</span></div></div></div>
+            <div class="rsec"><div class="rsh"><h3>Waiting Staff</h3><span class="cnt">12 worked · 1 no-show of 12 (+2)</span></div>
+              <div class="sub"><div class="prow"><span class="avatar photo">RS</span><div class="who"><div class="n">Ruby S.</div><div class="s">Waiting Staff</div></div><span class="stamp">in <b>18:57</b> · out <b>01:34</b></span><div class="right"><span class="pill">Checked out 01:34</span><button class="btn sm danger">No show</button></div></div></div>
+            </div>
+          </div>
+          <div class="modal-back">
+            <div class="modal">
+              <div class="mh"><h3>Mark as No-show?</h3><span class="pill coral">Ruby S.</span></div>
+              <div class="mb">
+                <div class="sm">Gala Dinner · Waiting Staff · Fri 19 Sep · 17:00 – 23:30 UK time. Ruby S. is currently recorded as <b>worked</b> (check-in 18:57 · check-out 01:34, your time). Marking a No-show creates a Violation, applies the show-rate penalty and sets her pay for this shift to nothing.</div>
+                <div class="alert coral"><b>This shift has already been included in a payroll export. Marking a No-show now will not reverse the payment — please notify Finance to reverse it.</b></div>
+                <div class="field"><span class="label">Note (optional)</span><input class="input" placeholder="e.g. client reported she never arrived — check-in made from outside by a colleague"></div>
+                <div class="note">Mirror image on "Get back" / "Resolve" for an already-exported shift: <i>"This shift has already been included in a payroll export. This change will not add the payment — please notify Finance to pay it."</i> The system never corrects a run that has gone to finance (§3.3, §7 BG-08).</div>
+              </div>
+              <div class="mf"><button class="btn ghost">Cancel</button><button class="btn danger solid">Mark No-show</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="wf-note note"><b>Behaviour notes.</b> One block per role, collapsible on its heading, ordered by start time so the board reads like the running order of the day; header "N confirmed · M invited · K open of H" counts ONLY confirmed, followed by the role's own window (dual-zone for a non-UK viewer, §1.8), dress code from the client's rate card and pay/charge (§3.3). Header carries title, client, venue, date, derived event window, PO NUMBER chip, status pill, Break/Buffer policy checkmarks and actions Edit · Duplicate · Send allocation sheet · Download · Cancel event (§3.2, §11.4). Sections: Confirmed → Invited · awaiting response → Potential pool (ranked, search, sort/filter by application status, "Qualified — client · role" chip, "Applied" marker with relative time, Invite per row) → Unavailable with reasons blocked-compliance / booked-elsewhere / hours limit reached / rejected (self-cancelled, RULE-04) / do not return; wrong-role never appears (§3.3, §6, §9.6). Invited and Potential pool exist only while a role has open or invited slots; hidden entirely when a role is fully confirmed and stable, and they reappear on an Ongoing event when a shortfall re-opens (§3.3). No-shows stay inside Confirmed with a "No show" badge and "Get back" (reclassifies to Late from the moment pressed); auto No-show at start + 30 min; manual button live from shift start to 2 weeks after; payroll-export warning verbatim from §3.3. Manager has Withdraw only — the worker confirms in the app (§3.3, §3.5). Auto-assign is a purple switch, default ON, per event and per role; hourly rounds at :17 in score order, qualified wave first (RULE-17), hours limit and compliance are hard gates, 2-hour gap rule for different venues; same-day escalation every 10 minutes within 3 miles (§3.4). Score = 30/25/25/10/10 with per-factor hover breakdown and legend (§6). Cancel event needs a reason and lists its consequences (§3.3). Completed events offer Send / Download sign-out timesheet, one PDF per event (§11.3). Removed workers stay as "Deleted account #id" so the headcount isn't skewed (§1.7).</div>
+  </div>
+</div>
+</body>
+</html>

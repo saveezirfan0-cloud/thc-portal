@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Roles &amp; rates — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .tbl td.money, .tbl th.money { font-family: var(--font-mono); text-align: right; white-space: nowrap; }
+  .tbl td.money.hol { color: var(--muted); }
+  .tbl td.money.fin { font-weight: 600; }
+  .hol-lbl { display: inline-flex; align-items: center; gap: 6px; }
+  .hol-lbl .pill { height: 18px; font-size: 9.5px; }
+  .dim { opacity: .45; pointer-events: none; }
+  .calc { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .calc .c { border: 1px solid var(--line); background: var(--bg); padding: 10px 12px; }
+  .calc .c .label { display: block; margin-bottom: 4px; }
+  .calc .c .v { font-family: var(--font-mono); font-size: 16px; font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Roles &amp; rates</span><span class="pill cyan">/roles</span><span class="pill">§9.8 · §1.5 · §9.7</span>
+  <span class="spacer"></span>
+  <a href="reports.html">Next: Reports →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a class="active" href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Roles &amp; rates</h1>
+      <span class="crumbs">THC's internal role catalog · <b>7 roles</b> · base £/h</span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/London (UK)</span>
+      <button class="btn primary sm">+ New role</button>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="rl"><button data-state="table">Roles table</button><button data-state="edit-modal">Edit role modal</button><button data-state="delete-confirm">Delete confirmation</button></div>
+
+      <!-- ================= TABLE ================= -->
+      <section data-state-of="rl" data-state="table" class="stack">
+        <div class="panel">
+          <div class="panel-h"><h3>Roles</h3><span class="muted sm">description is internal — never shown to the client</span><div class="right"><span class="hol-lbl"><span class="pill amber">Holiday +12.07%</span><span class="muted xs">calculated, never stored (§1.5) — a permanently visible label, not a tooltip (§9.8)</span></span></div></div>
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>Role</th><th>Description</th><th class="money">Staff pay rate ✎</th><th class="money">Holiday +12.07%</th><th class="money">Final rate</th><th>On rate cards</th><th style="text-align:right">Actions</th></tr></thead>
+              <tbody>
+                <tr><td><b>Waiting Staff</b></td><td class="sm muted">Silver service and plated service; bar-back where needed. Minimum 18.</td><td class="money">£14.00</td><td class="money hol">+£1.69</td><td class="money fin">£15.69</td><td class="sm">27 clients</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+                <tr><td><b>Bar Staff</b></td><td class="sm muted">Cocktail and wine service, cellar basics; personal licence not required.</td><td class="money">£15.50</td><td class="money hol">+£1.87</td><td class="money fin">£17.37</td><td class="sm">22 clients</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+                <tr><td><b>Chef</b></td><td class="sm muted">Chef de partie level and above; own knives and whites.</td><td class="money">£19.00</td><td class="money hol">+£2.29</td><td class="money fin">£21.29</td><td class="sm">14 clients</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+                <tr><td><b>Kitchen Porter</b></td><td class="sm muted">Pot wash, prep support, deliveries.</td><td class="money">£13.50</td><td class="money hol">+£1.63</td><td class="money fin">£15.13</td><td class="sm">18 clients</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+                <tr><td><b>Host</b></td><td class="sm muted">Front of house, guest lists, cloakroom; strong spoken English.</td><td class="money">£16.00</td><td class="money hol">+£1.93</td><td class="money fin">£17.93</td><td class="sm">19 clients</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+                <tr><td><b>Barista</b></td><td class="sm muted">Espresso bar; latte art a plus.</td><td class="money">£14.50</td><td class="money hol">+£1.75</td><td class="money fin">£16.25</td><td class="sm">4 clients</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+                <tr><td><b>Event Supervisor</b></td><td class="sm muted">Runs a team of up to 15 on site; THC's on-site lead.</td><td class="money">£18.00</td><td class="money hol">+£2.17</td><td class="money fin">£20.17</td><td class="sm">0 clients <span class="annot">added 16 Sep · not on any rate card yet</span></td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="grid c2">
+          <div class="note"><b>Final rate</b> = base + holiday (12.07%). All margin across the system is calculated from this figure: margin/h = client charge rate − final rate (§9.8, §9.1). In the app the worker only ever sees the base rate — never the +12.07% (§9.8, §10.1).</div>
+          <div class="note"><b>Dress code is NOT set here</b> — it is client-specific, not role-specific (Waiting Staff at the Dorchester vs at the Mandarin Oriental). It is managed per client on the client's Rate card (§9.7) and pulled from there when an event is created (§3.2). Charge rates likewise live on the client card only.</div>
+        </div>
+      </section>
+
+      <!-- ================= EDIT MODAL ================= -->
+      <section data-state-of="rl" data-state="edit-modal" class="hide">
+        <div class="modal-inline" style="min-height:560px">
+          <div class="stack dim">
+            <div class="panel"><div class="panel-b tight"><table class="tbl"><thead><tr><th>Role</th><th>Description</th><th class="money">Staff pay rate ✎</th><th class="money">Holiday +12.07%</th><th class="money">Final rate</th><th></th></tr></thead><tbody>
+              <tr><td><b>Waiting Staff</b></td><td class="sm muted">Silver service and plated service</td><td class="money">£14.00</td><td class="money hol">+£1.69</td><td class="money fin">£15.69</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+              <tr><td><b>Bar Staff</b></td><td class="sm muted">Cocktail and wine service</td><td class="money">£15.50</td><td class="money hol">+£1.87</td><td class="money fin">£17.37</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+            </tbody></table></div></div>
+          </div>
+          <div class="modal-back">
+            <div class="modal">
+              <div class="mh"><h3>Edit role</h3><span class="pill">Waiting Staff</span><span class="annot" style="margin-left:auto">a modal, not inline (§9.8)</span></div>
+              <div class="mb">
+                <div class="field"><span class="label">Role name <span class="coral">*</span></span><input class="input" value="Waiting Staff"></div>
+                <div class="field"><span class="label">Staff pay rate (base £/h) <span class="coral">*</span></span><div class="input-row" style="max-width:200px"><span class="addon l">£</span><input class="input mono" value="14.50"><span class="addon">/h</span></div><span class="hint">Was £14.00. Applies to events built from now on; the holiday element and the final rate recalculate automatically.</span></div>
+                <div class="calc">
+                  <div class="c"><span class="label">Base</span><span class="v">£14.50</span></div>
+                  <div class="c"><span class="label">Holiday +12.07%</span><span class="v muted">+£1.75</span></div>
+                  <div class="c"><span class="label">Final rate</span><span class="v cyan">£16.25</span></div>
+                </div>
+                <div class="field"><span class="label">Description <span class="muted">· internal, optional</span></span><textarea class="input">Silver service and plated service; bar-back where needed. Minimum 18.</textarea></div>
+                <div class="note">No dress code field here — it belongs to the client's Rate card (§9.7). No charge rate here either — per client. Margin on the 27 rate cards using this role drops by £0.56/h unless their charge rates are updated.</div>
+              </div>
+              <div class="mf"><button class="btn ghost">Cancel</button><button class="btn primary">Save role</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= DELETE CONFIRM ================= -->
+      <section data-state-of="rl" data-state="delete-confirm" class="hide">
+        <div class="modal-inline" style="min-height:420px">
+          <div class="stack dim">
+            <div class="panel"><div class="panel-b tight"><table class="tbl"><tbody>
+              <tr><td><b>Event Supervisor</b></td><td class="sm muted">Runs a team of up to 15 on site</td><td class="money">£18.00</td><td class="money hol">+£2.17</td><td class="money fin">£20.17</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+            </tbody></table></div></div>
+          </div>
+          <div class="modal-back">
+            <div class="modal">
+              <div class="mh"><h3>Delete role?</h3><span class="pill coral">Event Supervisor</span></div>
+              <div class="mb">
+                <p class="sm">Are you sure you want to delete <b>Event Supervisor</b>? This action cannot be undone.</p>
+                <div class="alert cyan sm">Not on any client's rate card and not used on any event — safe to delete. A role that is on a rate card or on an event cannot be deleted while it is in use: remove it from those rate cards first (past events keep their own copy of the rate).</div>
+              </div>
+              <div class="mf"><button class="btn ghost">Cancel</button><button class="btn danger solid">Delete role</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="wf-note note"><b>Behaviour notes.</b> THC's internal directory of roles with their base rates (§9.8). Columns: Role · Description (internal, never shown to the client) · Staff pay rate ✎ (base £/h, editable) · Holiday +12.07% (calculated automatically, read-only, a permanently visible label rather than a tooltip) · Final rate (base + holiday — all margin in the system is computed from this figure). Edit / Delete per row, New role top-right. Editing happens in a modal (Role name · Staff pay rate · Description), not inline. Dress code is deliberately absent — it is client-specific and lives on each client's Rate card (§9.7), as does the charge rate. Final = pay × 1.1207 is derived, never stored (§1.5). Workers see the base rate only (§9.8). The delete guard for a role in use is a wireframe assumption — the spec only says Delete exists per row.</div>
+  </div>
+</div>
+</body>
+</html>

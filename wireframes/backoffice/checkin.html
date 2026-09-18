@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Check In / Out — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .win2 { font-family: var(--font-mono); font-size: 12.5px; line-height: 1.35; white-space: nowrap; }
+  .win2 .l2 { display: block; color: var(--muted); font-size: 11px; }
+  .stamp { font-family: var(--font-mono); font-size: 13px; }
+  .stamp .sub { font-family: var(--font-body); }
+  .tbl tr.evfirst td { border-top: 2px solid var(--line); }
+  .evflag { display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .06em; padding: 1px 7px; background: var(--coral); color: var(--bg); font-weight: 700; }
+  .evstrip { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+  .evcard { background: var(--panel); border: 1px solid var(--line); padding: 10px 14px; display: flex; flex-direction: column; gap: 4px; }
+  .evcard.flag { border-color: var(--coral); }
+  .evcard .t { font-weight: 600; font-size: 13.5px; display: flex; gap: 8px; align-items: center; }
+  .evcard .m { font-size: 11.5px; color: var(--muted); }
+  .evcard .c { font-family: var(--font-mono); font-size: 11px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .kv { display: grid; grid-template-columns: 170px 1fr; gap: 8px 14px; font-size: 13px; align-items: baseline; }
+  .kv .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .dim { opacity: .45; pointer-events: none; }
+  .audit { border-left: 3px solid var(--green); background: var(--green-dim); padding: 10px 14px; font-size: 13px; display: flex; flex-direction: column; gap: 6px; }
+  @media (max-width: 1024px) { .evstrip { grid-template-columns: repeat(2, 1fr); } }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Check In / Out</span><span class="pill cyan">/checkin</span><span class="pill">§9.5 · §5.1 · §5.2 · §3.5 · §1.8</span>
+  <span class="spacer"></span>
+  <a href="staff.html">Next: Staff →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a class="active" href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Check In / Out</h1>
+      <span class="crumbs">live monitor · Thu 18 Sep 2026 · as of <b>16:32 your time</b> (14:32 UK) · refreshes every 30 s</span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/Athens (UK +2h)</span>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="ci"><button data-state="monitor">Live monitor</button><button data-state="violation-detail">Violation detail · Left early</button><button data-state="resolve-nocheckout">Resolve · No check-out (validation error)</button><button data-state="resolved-entry">Resolved entry · audit trail</button></div>
+
+      <!-- ================= MONITOR ================= -->
+      <section data-state-of="ci" data-state="monitor" class="stack" style="gap:16px">
+        <div class="evstrip">
+          <div class="evcard"><div class="t">Press Night <span class="pill">ended 03:00</span></div><div class="m">Mandarin Oriental · Wed 17 → Thu 18</div><div class="c"><span class="green">11 checked out</span><span class="coral">1 late check-out</span><span class="coral">1 no check-out</span></div></div>
+          <div class="evcard"><div class="t">Conference Day 2 <span class="pill green"><span class="dot"></span>Ongoing</span></div><div class="m">ExCeL London · 10:00 – 22:00 your time</div><div class="c"><span class="green">9 on shift</span><span class="amber">1 off-site</span></div></div>
+          <div class="evcard flag"><div class="t">Afternoon Tea <span class="evflag">−1 worker</span></div><div class="m">Leonardo Royal · starts 17:00 your time (15:00 UK) · in 28 min</div><div class="c"><span class="green">1 on shift</span><span class="coral">1 not checked in</span><span class="amber">2 due</span></div></div>
+          <div class="evcard"><div class="t">Board Dinner <span class="pill cyan">Upcoming</span></div><div class="m">The Dorchester · 19:00 – 01:30 your time</div><div class="c"><span class="amber">1 due · 1 not confirmed today</span></div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h"><h3>Today's events · live</h3><span class="muted sm">status pills carry the colour — the table has no row-level red (§9.5)</span><div class="right"><div class="seg sm"><button class="on">All</button><button>Needs attention <span class="n alert">5</span></button></div><select class="input" style="height:28px;width:180px;font-size:12px"><option>All events today</option><option>Press Night</option><option>Conference Day 2</option><option>Afternoon Tea</option><option>Board Dinner</option></select></div></div>
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>Staff</th><th>Event</th><th>Window</th><th>Check-in</th><th>Breaks</th><th>Status</th></tr></thead>
+              <tbody>
+                <!-- Press Night (ended) -->
+                <tr class="evfirst"><td><div class="person"><span class="avatar photo">PS</span><div><div class="n">Priya S.</div><div class="s">Waiting Staff</div></div></div></td><td><b>Press Night</b><span class="sub">Mandarin Oriental · Wed 17</span></td><td><span class="win2">17:00 – 23:30 UK time<span class="l2">19:00 – 01:30 your time</span></span></td><td class="stamp">18:56<span class="sub">GPS · on site</span></td><td class="mono sm">2 · last 23:10</td><td><span class="pill">Checked out 01:41</span><span class="sub">11 min after end — inside the 15-min grace, paid to 01:30</span></td></tr>
+                <tr><td><div class="person"><span class="avatar photo">AK</span><div><div class="n">Amara K.</div><div class="s">Waiting Staff</div></div></div></td><td><b>Press Night</b><span class="sub">Mandarin Oriental</span></td><td><span class="win2">17:00 – 23:30 UK time<span class="l2">19:00 – 01:30 your time</span></span></td><td class="stamp">19:03<span class="sub">GPS · on site · 3 min late</span></td><td class="mono sm">1 · last 22:40</td><td><span class="pill coral">Checked out 02:05</span><span class="sub">35 min after end — late check-out red flag, verify with worker; pay still capped at 01:30 (RULE-01)</span></td></tr>
+                <tr><td><div class="person"><span class="avatar photo">MB</span><div><div class="n">Marcus B.</div><div class="s">Bar Staff</div></div></div></td><td><b>Press Night</b><span class="sub">Mandarin Oriental</span></td><td><span class="win2">18:00 – 01:00 UK time<span class="l2">20:00 – 03:00 your time</span></span></td><td class="stamp">19:04<span class="sub">GPS · on site · early</span></td><td class="mono sm">1 · last 00:20</td><td><span class="pill coral">No check-out</span><span class="sub">button locked 07:00 (4 h after end) · Violation raised · stays until resolved below</span></td></tr>
+                <!-- Conference Day 2 (ongoing) — ExCeL pays breaks → dash -->
+                <tr class="evfirst"><td><div class="person"><span class="avatar photo">TR</span><div><div class="n">Tom R.</div><div class="s">Host</div></div></div></td><td><b>Conference Day 2</b><span class="sub">ExCeL London</span></td><td><span class="win2">08:00 – 16:00 UK time<span class="l2">10:00 – 18:00 your time</span></span></td><td class="stamp">09:52<span class="sub">GPS · on site</span></td><td class="mono sm muted">—</td><td><span class="pill green">On shift</span></td></tr>
+                <tr><td><div class="person"><span class="avatar deleted">#</span><div><div class="n muted"><i>Deleted account #1042</i></div><div class="s">Host</div></div></div></td><td><b>Conference Day 2</b><span class="sub">ExCeL London</span></td><td><span class="win2">08:00 – 16:00 UK time<span class="l2">10:00 – 18:00 your time</span></span></td><td class="stamp">09:49<span class="sub">GPS · on site</span></td><td class="mono sm muted">—</td><td><span class="pill green">On shift</span><span class="sub">row kept so the headcount isn't skewed (§1.7)</span></td></tr>
+                <tr><td><div class="person"><span class="avatar photo">LM</span><div><div class="n">Luca M.</div><div class="s">Bar Staff</div></div></div></td><td><b>Conference Day 2</b><span class="sub">ExCeL London</span></td><td><span class="win2">12:00 – 20:00 UK time<span class="l2">14:00 – 22:00 your time</span></span></td><td class="stamp">13:58<span class="sub">GPS · on site</span></td><td class="mono sm muted">—</td><td><span class="pill amber">Off-site</span><span class="sub">left the 400 m geofence 16:12 — live, not only in the log; Violation logged</span></td></tr>
+                <tr><td><div class="person"><span class="avatar photo">CD</span><div><div class="n">Chloe D.</div><div class="s">Bar Staff</div></div></div></td><td><b>Conference Day 2</b><span class="sub">ExCeL London</span></td><td><span class="win2">12:00 – 20:00 UK time<span class="l2">14:00 – 22:00 your time</span></span></td><td class="stamp">14:21<span class="sub">GPS · on site · <span class="amber">Late 21 min</span></span></td><td class="mono sm muted">—</td><td><span class="pill green">On shift</span></td></tr>
+                <!-- Afternoon Tea (starts in 28 min) — Leonardo: breaks not paid → 0 -->
+                <tr class="evfirst"><td><div class="person"><span class="avatar photo">SR</span><div><div class="n">Sofia R.</div><div class="s">Waiting Staff</div></div></div></td><td><b>Afternoon Tea</b> <span class="evflag">−1 worker</span><span class="sub">Leonardo Royal</span></td><td><span class="win2">15:00 – 21:00 UK time<span class="l2">17:00 – 23:00 your time</span></span></td><td class="stamp">16:41<span class="sub">GPS · on site · early — paid from 17:00</span></td><td class="mono sm">0</td><td><span class="pill green">On shift</span></td></tr>
+                <tr><td><div class="person"><span class="avatar photo">DO</span><div><div class="n">Daniel O.</div><div class="s">Waiting Staff</div></div></div></td><td><b>Afternoon Tea</b><span class="sub">Leonardo Royal</span></td><td><span class="win2">15:00 – 21:00 UK time<span class="l2">17:00 – 23:00 your time</span></span></td><td class="stamp muted">—</td><td class="mono sm">0</td><td><span class="pill coral">Not checked in — 30 min alert</span><span class="sub">label stays through the auto No-show at 17:30 (start + 30) · BG-03</span></td></tr>
+                <tr><td><div class="person"><span class="avatar photo">NH</span><div><div class="n">Nadia H.</div><div class="s">Waiting Staff</div></div></div></td><td><b>Afternoon Tea</b><span class="sub">Leonardo Royal</span></td><td><span class="win2">15:00 – 21:00 UK time<span class="l2">17:00 – 23:00 your time</span></span></td><td class="stamp muted">—</td><td class="mono sm">0</td><td><span class="pill amber">Due 17:00</span><span class="sub">viewer's local time, no zone suffix — deliberate (§1.8)</span></td></tr>
+                <tr><td><div class="person"><span class="avatar photo">BT</span><div><div class="n">Ben T.</div><div class="s">Waiting Staff</div></div></div></td><td><b>Afternoon Tea</b><span class="sub">Leonardo Royal</span></td><td><span class="win2">15:00 – 21:00 UK time<span class="l2">17:00 – 23:00 your time</span></span></td><td class="stamp muted">—</td><td class="mono sm">0</td><td><span class="pill amber">Not confirmed today</span><span class="sub">skipped the on-the-day push (N7) · can still check in normally (§3.5)</span></td></tr>
+                <!-- Board Dinner (upcoming) — Dorchester pays breaks → dash -->
+                <tr class="evfirst"><td><div class="person"><span class="avatar photo">YA</span><div><div class="n">Yusuf A.</div><div class="s">Waiting Staff</div></div></div></td><td><b>Board Dinner</b><span class="sub">The Dorchester</span></td><td><span class="win2">17:00 – 23:30 UK time<span class="l2">19:00 – 01:30 your time</span></span></td><td class="stamp muted">—</td><td class="mono sm muted">—</td><td><span class="pill amber">Due 19:00</span></td></tr>
+                <tr><td><div class="person"><span class="avatar photo">EF</span><div><div class="n">Ella F.</div><div class="s">Waiting Staff</div></div></div></td><td><b>Board Dinner</b><span class="sub">The Dorchester</span></td><td><span class="win2">17:00 – 23:30 UK time<span class="l2">19:00 – 01:30 your time</span></span></td><td class="stamp muted">—</td><td class="mono sm muted">—</td><td><span class="pill amber">Not confirmed today</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-b" style="border-top:1px solid var(--line);padding:10px 16px">
+            <div class="row wrap sm muted" style="gap:14px">
+              <span><b class="muted">Window</b> = the worker's own role window, two lines: UK time + "your time". <span class="annot">the second line is not rendered at all for a viewer already in UK time (§1.8)</span></span>
+              <span><b class="muted">Check-in</b> = actual stamp, viewer's local zone only, single line.</span>
+              <span><b class="muted">Breaks</b> = "—" where the client pays breaks (no data), "0" where none logged yet — never the same glyph.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Violation log -->
+        <div class="panel">
+          <div class="panel-h"><h3>Violation log</h3><span class="muted sm">newest first · coral highlight</span><div class="right"><label class="check sm"><span class="box"></span>Show resolved</label><span class="muted xs">unchecked by default — resolved entries are hidden (§9.5)</span></div></div>
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>Staff</th><th>Event</th><th>Violation</th><th>Time</th><th></th></tr></thead>
+              <tbody>
+                <tr class="violation clickable"><td><div class="person"><span class="avatar photo sm">LM</span><div class="n">Luca M.</div></div></td><td>Conference Day 2 — ExCeL London<span class="sub">Bar Staff · 12:00 – 20:00 UK time</span></td><td><b>Left the geofence during the shift</b><span class="sub">GPS-detected, unplanned · status now Off-site · reviewed case by case</span></td><td class="mono sm">today 16:12<span class="sub">your time</span></td><td style="text-align:right"><button class="btn sm">Details</button></td></tr>
+                <tr class="violation clickable"><td><div class="person"><span class="avatar photo sm">CD</span><div class="n">Chloe D.</div></div></td><td>Conference Day 2 — ExCeL London<span class="sub">Bar Staff · 12:00 – 20:00 UK time</span></td><td><b>Late</b><span class="sub">21 min · auto-marked inside the 30-min grace · paid from the scheduled start</span></td><td class="mono sm">today 14:21</td><td style="text-align:right"><button class="btn sm">Details</button></td></tr>
+                <tr class="violation clickable"><td><div class="person"><span class="avatar photo sm">MB</span><div class="n">Marcus B.</div></div></td><td>Press Night — Mandarin Oriental<span class="sub">Bar Staff · 18:00 – 01:00 UK time</span></td><td><b>No check-out</b><span class="sub">raised automatically 4 h after the scheduled end (RULE-02, BG-09) · payable time undetermined · held out of Monday's CSV</span></td><td class="mono sm">today 07:00</td><td style="text-align:right"><button class="btn sm primary">Details</button></td></tr>
+                <tr class="violation clickable"><td><div class="person"><span class="avatar photo sm">OS</span><div class="n">Omar S.</div></div></td><td>Press Night — Mandarin Oriental<span class="sub">Waiting Staff · 17:00 – 23:30 UK time</span></td><td><b>Left early</b><span class="sub">checked out on site 2 h 42 m before the end · planned early finish · blocks the 4 h floor (RULE-14)</span></td><td class="mono sm">Wed 17 · 22:48</td><td style="text-align:right"><button class="btn sm">Details</button></td></tr>
+                <tr class="violation clickable"><td><div class="person"><span class="avatar photo sm">KN</span><div class="n">Kai N.</div></div></td><td>Press Night — Mandarin Oriental<span class="sub">Waiting Staff · 17:00 – 23:30 UK time</span></td><td><b>No-show</b><span class="sub">auto at start + 30 min · show-rate penalty · Resolve = "Get back" (reclassifies to Late)</span></td><td class="mono sm">Wed 17 · 19:30</td><td style="text-align:right"><button class="btn sm">Details</button></td></tr>
+                <tr class="clickable" style="opacity:.45"><td><div class="person"><span class="avatar photo sm">GL</span><div class="n">Grace L.</div></div></td><td>Corporate Lunch — The Dorchester<span class="sub">Waiting Staff · 11:00 – 16:00 UK time</span></td><td><b>No check-out</b> <span class="pill green">Resolved</span><span class="sub">by Gisela M. · Tue 16 · shown only with "Show resolved" ticked <span class="annot">rendered here for the wireframe</span></span></td><td class="mono sm">Tue 16 · 22:00</td><td style="text-align:right"><button class="btn sm ghost">Details</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= VIOLATION DETAIL ================= -->
+      <section data-state-of="ci" data-state="violation-detail" class="hide">
+        <div class="modal-inline" style="min-height:640px">
+          <div class="stack dim" style="gap:16px">
+            <div class="panel"><div class="panel-h"><h3>Violation log</h3></div><div class="panel-b tight"><table class="tbl"><thead><tr><th>Staff</th><th>Event</th><th>Violation</th><th>Time</th><th></th></tr></thead><tbody>
+              <tr class="violation"><td>Luca M.</td><td>Conference Day 2 — ExCeL London</td><td>Left the geofence during the shift</td><td class="mono sm">today 16:12</td><td></td></tr>
+              <tr class="violation"><td>Omar S.</td><td>Press Night — Mandarin Oriental</td><td>Left early</td><td class="mono sm">Wed 17 · 22:48</td><td></td></tr>
+            </tbody></table></div></div>
+          </div>
+          <div class="modal-back">
+            <div class="modal">
+              <div class="mh"><h3>Left early</h3><span class="pill coral">Unresolved</span></div>
+              <div class="mb">
+                <div class="sm muted">Omar S. · Press Night — Mandarin Oriental · Waiting Staff · Wed 17 Sep · 17:00 – 23:30 UK time (19:00 – 01:30 your time)</div>
+                <div class="kv">
+                  <span class="k">Flagged as</span><span>Checked out early — Press Night <span class="annot">server-composed line (violation name + event); same thing as the title, kept as-is for v1 (§9.5)</span></span>
+                  <span class="k">Check-in</span><span class="mono">18:58 your time · GPS verified on site</span>
+                  <span class="k">Check-out</span><span class="mono">22:48 your time · pressed in radius</span>
+                  <span class="k">Scheduled end</span><span class="mono">01:30 your time · left 2 h 42 m early</span>
+                  <span class="k">Pay effect</span><span>Payable 3.8 h (RULE-01) · the 4-hour floor does <b>not</b> apply while a Left early Violation exists, resolved or not (RULE-14)</span>
+                  <span class="k">Show-rate</span><span>Counts against the worker until resolved</span>
+                </div>
+                <div class="note">Route maps are <b>not</b> shown — that is personal data (§9.5). Only the check-in / check-out timestamps are visible.</div>
+                <div class="field"><span class="label">Resolve — note <span class="coral">*</span></span><textarea class="input" placeholder="Mandatory. Explain the outcome — e.g. sent home early by the client's manager, agreed by phone."></textarea><span class="hint">Resolving removes or reduces the effect on show-rate and marks the entry reviewed; the note and your name stay visible on the entry afterwards.</span></div>
+              </div>
+              <div class="mf"><button class="btn ghost">Close</button><button class="btn primary" disabled>Resolve</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= RESOLVE · NO CHECK-OUT ================= -->
+      <section data-state-of="ci" data-state="resolve-nocheckout" class="hide">
+        <div class="modal-inline" style="min-height:700px">
+          <div class="stack dim" style="gap:16px">
+            <div class="panel"><div class="panel-b tight"><table class="tbl"><thead><tr><th>Staff</th><th>Event</th><th>Window</th><th>Check-in</th><th>Breaks</th><th>Status</th></tr></thead><tbody>
+              <tr><td>Marcus B.</td><td>Press Night</td><td><span class="win2">18:00 – 01:00 UK time<span class="l2">20:00 – 03:00 your time</span></span></td><td class="stamp">19:04</td><td class="mono sm">1 · last 00:20</td><td><span class="pill coral">No check-out</span></td></tr>
+            </tbody></table></div></div>
+          </div>
+          <div class="modal-back">
+            <div class="modal">
+              <div class="mh"><h3>No check-out</h3><span class="pill coral">Unresolved · payable time undetermined</span></div>
+              <div class="mb">
+                <div class="sm muted">Marcus B. · Press Night — Mandarin Oriental · Bar Staff · Wed 17 Sep · 18:00 – 01:00 UK time (20:00 – 03:00 your time)</div>
+                <div class="kv">
+                  <span class="k">Flagged as</span><span>No check-out — Press Night</span>
+                  <span class="k">Check-in</span><span class="mono">19:04 your time · GPS verified on site</span>
+                  <span class="k">Check-out</span><span class="mono muted">— never pressed · button locked 07:00 your time (4 h after the scheduled end, BG-09)</span>
+                  <span class="k">Last on-site GPS</span><span class="mono">02:51 your time <span class="muted">(background tracking — shown to help, not applied automatically)</span></span>
+                  <span class="k">Breaks logged</span><span class="mono">1 · 00:20 – 00:40 (−0:20)</span>
+                </div>
+                <div class="field">
+                  <span class="label">Actual finish (UK time) <span class="coral">*</span></span>
+                  <div class="row"><input class="input mono err" style="width:170px" value="Wed 17 Sep 2026"><input class="input mono err" style="width:90px" value="16:30"></div>
+                  <span class="error">Finish time cannot be before the worker's check-in (17:04)</span>
+                  <span class="hint">Entered in <b>UK time</b> — every other time in this window is in your zone, so the label says which is expected (§1.8). Server rejects a value before the check-in or in the future and keeps the dialog open with the reason. No upper bound against the scheduled end: RULE-01 caps pay at 01:00 UK regardless.</span>
+                </div>
+                <div class="field"><span class="label">Note <span class="coral">*</span></span><textarea class="input">Phoned Marcus 09:10 — he left with the bar team at 00:50 UK, phone was flat. Confirmed with the Mandarin duty manager.</textarea></div>
+                <div class="note">On Resolve: the entered time becomes the shift's check-out for RULE-01 → payable time fixed → the monitor row reads "Checked out [time]" → the 4 h floor applies again and the violation stops counting against show-rate → the shift goes into the next Monday 09:00 payroll CSV (§5.2, §7 BG-08). Regenerating the timesheet fills in his Finish Time and Hours Worked (§11.3).</div>
+              </div>
+              <div class="mf"><button class="btn ghost">Cancel</button><button class="btn primary">Resolve</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= RESOLVED ENTRY · AUDIT ================= -->
+      <section data-state-of="ci" data-state="resolved-entry" class="hide">
+        <div class="modal-inline" style="min-height:560px">
+          <div class="stack dim" style="gap:16px">
+            <div class="panel"><div class="panel-h"><h3>Violation log</h3><div class="right"><label class="check sm"><span class="box on"></span>Show resolved</label></div></div><div class="panel-b tight"><table class="tbl"><thead><tr><th>Staff</th><th>Event</th><th>Violation</th><th>Time</th><th></th></tr></thead><tbody>
+              <tr><td>Grace L.</td><td>Corporate Lunch — The Dorchester</td><td>No check-out <span class="pill green">Resolved</span></td><td class="mono sm">Tue 16 · 22:00</td><td></td></tr>
+            </tbody></table></div></div>
+          </div>
+          <div class="modal-back">
+            <div class="modal">
+              <div class="mh"><h3>No check-out</h3><span class="pill green">Resolved</span></div>
+              <div class="mb">
+                <div class="sm muted">Grace L. · Corporate Lunch — The Dorchester · Waiting Staff · Tue 16 Sep · 11:00 – 16:00 UK time (13:00 – 18:00 your time)</div>
+                <div class="kv">
+                  <span class="k">Flagged as</span><span>No check-out — Corporate Lunch</span>
+                  <span class="k">Check-in</span><span class="mono">12:52 your time · GPS verified on site</span>
+                  <span class="k">Check-out</span><span class="mono muted">— never pressed · button locked 22:00 your time</span>
+                </div>
+                <div class="audit">
+                  <div><span class="label" style="color:var(--green)">Audit trail</span></div>
+                  <div><b>Resolved by Gisela M.</b> · Tue 16 Sep 2026, 18:40 UK time</div>
+                  <div>Actual finish entered: <b class="mono">Tue 16 Sep 2026 · 16:10 UK time</b></div>
+                  <div>Note: "Phoned Grace — she left at 16:10 with the client's manager; her phone had died so no check-out. Confirmed with James H. at the Dorchester."</div>
+                  <div class="muted sm">Effect: payable 5.0 h (paid to the scheduled 16:00, RULE-01) · 4 h floor restored · show-rate penalty cancelled · included in the Mon 21 Sep 09:00 payroll CSV. The note is never write-only — resolving cancels a penalty, so the reasoning and its author stay visible (§9.5).</div>
+                </div>
+              </div>
+              <div class="mf"><button class="btn ghost">Close</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="wf-note note"><b>Behaviour notes.</b> Top half: today's live state — Staff (photo + name) · Event · Window (the worker's own role window, dual-zone: "UK time" line + "your time" line, the second omitted for a UK viewer, §1.8 / ADR 0058) · Check-in (actual stamp, viewer local, single line) · Breaks ("N · last HH:MM"; a dash where the client pays breaks, never "0" for no data) · Status (§9.5). Status pills: On shift (green) · Off-site (amber — background GPS detected a geofence exit mid-shift, live on the table) · Checked out [time] (neutral; red when the recorded departure is more than 15 min after the scheduled end, until 4 h) · No check-out (red, raised at +4 h, RULE-02) · Due [start] (amber, local time only, no zone suffix — deliberate) · Not confirmed today (amber, skipped the on-the-day confirmation, can still check in) · Not checked in — 30 min alert (red, same label through the auto No-show at start + 30, BG-03). The −1 worker flag is carried on the event (§9.5, §7). Red lives on the pill, never as a row background. Bottom half: Violation log Staff · Event · Violation · Time, coral highlight, newest first; row clickable + "Details" as the keyboard path; "Show resolved" checkbox unchecked by default. Types: No-show · Late · Left early · Left the geofence during the shift · No check-out; the first two of the automatic ones (No-show at +30 min, No check-out at +4 h) are system-raised, the other three reviewed case by case. Every type has Resolve with a mandatory note; No-show Resolve = "Get back"; No check-out Resolve additionally needs "Actual finish (UK time)", server-validated (not before check-in, not in the future), which then becomes the check-out for RULE-01. Route maps are never shown. The detail window doubles as the audit trail — note, manager name and (for No check-out) the entered finish time stay visible (§9.5). The same log, scoped to one worker, lives on the staff profile's Shifts tab (§9.6).</div>
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Feedback — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .fb { border: 1px solid var(--line); background: var(--panel); padding: 12px 16px; display: grid; grid-template-columns: 120px 220px minmax(0,1fr) 300px; gap: 14px; align-items: center; }
+  .fb + .fb { border-top: 0; }
+  .fb.unread { border-left: 3px solid var(--amber); }
+  .fb.read { border-left: 3px solid var(--line); }
+  .fb.office { border-left: 3px solid var(--purple); }
+  .fb .stars { font-size: 15px; }
+  .fb .who .n { font-weight: 600; }
+  .fb .who .s { font-size: 11.5px; color: var(--muted); }
+  .fb .txt { font-size: 13px; }
+  .fb .txt .m { display: block; font-size: 11.5px; color: var(--muted); margin-top: 3px; font-family: var(--font-mono); }
+  .fb .acts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+  .fb .acts .annot { flex: 1 1 100%; text-align: right; font-size: 9.5px; }
+  .fbhead { display: grid; grid-template-columns: 120px 220px minmax(0,1fr) 300px; gap: 14px; padding: 6px 16px; }
+  .starpick { font-family: var(--font-mono); font-size: 22px; letter-spacing: .12em; color: var(--muted); cursor: pointer; }
+  .starpick b { color: var(--amber); font-weight: 400; }
+  .typeahead { position: relative; }
+  .typeahead .dd { position: absolute; left: 0; right: 0; top: 40px; background: var(--panel); border: 1px solid var(--cyan-line); z-index: 3; }
+  .typeahead .dd .o { display: flex; align-items: center; gap: 10px; padding: 8px 12px; font-size: 13px; cursor: pointer; }
+  .typeahead .dd .o:hover, .typeahead .dd .o.sel { background: var(--cyan-dim); }
+  .typeahead .dd .o .s { color: var(--muted); font-size: 11.5px; }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Feedback</span><span class="pill cyan">/feedback</span><span class="pill">§9.10 · §11.5 · §6 · §1.7</span>
+  <span class="spacer"></span>
+  <a href="venues.html">Next: Venues →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a class="active" href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Feedback</h1>
+      <span class="crumbs">every piece of feedback about workers, in one place · <b>4 unread</b> from clients</span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/London (UK)</span>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="fb"><button data-state="client">Tab 1 · Client feedback</button><button data-state="office">Tab 2 · Office feedback</button></div>
+
+      <!-- ================= CLIENT FEEDBACK ================= -->
+      <section data-state-of="fb" data-state="client" class="stack">
+        <div class="tabs"><button class="active">Client feedback <span class="n alert">4</span></button><button>Office feedback</button></div>
+        <div class="toolbar">
+          <div class="search"><input class="input" style="height:32px;width:260px" placeholder="Search by staff name"></div>
+          <select class="input" style="height:32px;width:170px"><option>All clients</option><option>Leonardo Hotel St Pauls</option><option>Mandarin Oriental</option><option>The Dorchester</option><option>ExCeL London</option></select>
+          <div class="seg sm"><button class="on">All</button><button>Unread <span class="n alert">4</span></button><button>Read</button></div>
+          <div class="right"><span class="annot">read-only channel — arrives from the Client Portal (§11.2); cannot be replied to, edited or deleted</span></div>
+        </div>
+        <div class="alert cyan sm"><b>Rating impact:</b> a client entry feeds the worker's rating (25% of the auto-assign score, §6) only once a manager presses <b>Mark as read</b> — submission alone does not affect the rating. "Mark as read" exists only on this tab (§9.10).</div>
+        <div>
+          <div class="fbhead"><span class="label">Stars</span><span class="label">Worker · event</span><span class="label">Comment</span><span class="label">Status</span></div>
+          <div class="fb unread">
+            <span class="stars coral">★★☆☆☆</span>
+            <div class="who"><div class="n"><a href="staff-profile.html">Kai N.</a></div><div class="s">Press Night · Mandarin Oriental · Wed 17 Sep · Waiting Staff</div></div>
+            <div class="txt">"Did not turn up and we were a person short on the terrace all night."<span class="m">from Sophie L. (client) · submitted Thu 18 Sep 09:12</span></div>
+            <div class="acts"><span class="pill amber">Unread — not in rating</span><button class="btn sm primary">Mark as read</button></div>
+          </div>
+          <div class="fb unread">
+            <span class="stars amber">★★★☆☆</span>
+            <div class="who"><div class="n"><a href="staff-profile.html">Amara K.</a></div><div class="s">Late Bar · Mandarin Oriental · Wed 02 Sep · Waiting Staff</div></div>
+            <div class="txt">"Service was slow on the terrace section during the rush."<span class="m">from Sophie L. (client) · submitted Thu 03 Sep 11:40</span></div>
+            <div class="acts"><span class="pill amber">Unread — not in rating</span><button class="btn sm primary">Mark as read</button></div>
+          </div>
+          <div class="fb unread">
+            <span class="stars green">★★★★☆</span>
+            <div class="who"><div class="n"><a href="staff-profile.html">Tom R.</a></div><div class="s">Conference · ExCeL London · Fri 11 Sep · Host</div></div>
+            <div class="txt">"Polite and organised on the registration desk. Was a few minutes late on the Wednesday."<span class="m">from Dana R. (client) · submitted Sat 12 Sep 08:03</span></div>
+            <div class="acts"><span class="pill amber">Unread — not in rating</span><button class="btn sm primary">Mark as read</button></div>
+          </div>
+          <div class="fb unread">
+            <span class="stars green">★★★★★</span>
+            <div class="who"><div class="n"><a href="staff-profile.html">Priya S.</a></div><div class="s">Corporate Lunch · The Dorchester · Tue 16 Sep · Waiting Staff</div></div>
+            <div class="txt">"Outstanding — anticipated everything. Please send Priya for the Awards Night."<span class="m">from James H. (client) · submitted Tue 16 Sep 17:55</span></div>
+            <div class="acts"><span class="pill amber">Unread — not in rating</span><button class="btn sm primary">Mark as read</button></div>
+          </div>
+          <div class="fb read">
+            <span class="stars green">★★★★★</span>
+            <div class="who"><div class="n"><a href="staff-profile.html">Amara K.</a></div><div class="s">Gala Dinner · Leonardo Hotel St Pauls · Sat 05 Sep · Waiting Staff</div></div>
+            <div class="txt">"Amara ran the floor brilliantly — guests asked for her by name. Please send her again."<span class="m">from Marco V. (client) · submitted Sun 06 Sep 10:20</span></div>
+            <div class="acts"><span class="pill green">Read · Gisela M. · 07 Sep</span><span class="muted xs">in rating</span></div>
+          </div>
+          <div class="fb read">
+            <span class="stars green">★★★★★</span>
+            <div class="who"><div class="n muted"><i>Deleted account #1042</i></div><div class="s">Brunch · Leonardo Hotel St Pauls · Sun 13 Sep · Waiting Staff</div></div>
+            <div class="txt">"Jamie was superb with the kids' table — a natural."<span class="m">from Marco V. (client) · submitted Mon 14 Sep 09:30 · worker GDPR-removed 19 Sep — comment retained verbatim (§1.7)</span></div>
+            <div class="acts"><span class="pill green">Read · Gisela M. · 14 Sep</span><button class="btn sm ghost">Delete</button><span class="annot">the one exception to read-only: deleting a client entry to redact a name after GDPR removal, if asked (§1.7)</span></div>
+          </div>
+          <div class="fb read">
+            <span class="stars amber">★★★☆☆</span>
+            <div class="who"><div class="n"><a href="staff-profile.html">Marcus B.</a></div><div class="s">Reception · Mandarin Oriental · Fri 04 Sep · Bar Staff</div></div>
+            <div class="txt">"Good cocktails, but kept disappearing for smoke breaks."<span class="m">from Sophie L. (client) · submitted Sat 05 Sep 12:10</span></div>
+            <div class="acts"><span class="pill green">Read · Gisela M. · 05 Sep</span></div>
+          </div>
+        </div>
+        <div class="row"><span class="muted sm">Showing 1–7 of 312</span><div class="ml-auto row"><button class="btn sm ghost" disabled>‹ Prev</button><span class="mono sm">1 / 45</span><button class="btn sm ghost">Next ›</button></div></div>
+      </section>
+
+      <!-- ================= OFFICE FEEDBACK ================= -->
+      <section data-state-of="fb" data-state="office" class="stack hide">
+        <div class="tabs"><button>Client feedback <span class="n alert">4</span></button><button class="active">Office feedback</button></div>
+        <div class="panel">
+          <div class="panel-h"><h3>New feedback</h3><span class="muted sm">not every client uses the portal — a complaint or a compliment often arrives by phone (§9.10)</span><div class="right"><span class="pill purple">author: Gisela M.</span></div></div>
+          <div class="panel-b grid c3">
+            <div class="field typeahead"><span class="label">Worker <span class="coral">*</span></span><input class="input" value="Mar"><div class="dd"><div class="o sel"><span class="avatar photo sm">MB</span><span>Marcus B.</span><span class="s">THC-00811 · Bar Staff</span></div><div class="o"><span class="avatar photo sm">MV</span><span>Marta V.</span><span class="s">THC-00602 · Waiting Staff · blocked</span></div><div class="o"><span class="avatar photo sm">MC</span><span>Mia C.</span><span class="s">THC-00845 · Kitchen Porter</span></div></div></div>
+            <div class="field"><span class="label">Stars <span class="coral">*</span></span><div class="starpick"><b>★★</b>☆☆☆</div><span class="hint">counts toward the rating immediately on submission — no Mark as read step for office entries</span></div>
+            <div class="field"><span class="label">Event <span class="muted">· optional</span></span><select class="input"><option>Not tied to an event</option><option>Press Night · Mandarin Oriental · 17 Sep</option><option>Reception · Mandarin Oriental · 04 Sep</option></select></div>
+            <div class="field" style="grid-column:1/-1"><span class="label">Comment <span class="coral">*</span></span><textarea class="input">Sophie L. at the Mandarin phoned: Marcus left the bar unattended twice during the reception. Spoke to him — he says he was collecting glassware. Warned.</textarea></div>
+            <div class="row" style="grid-column:1/-1"><span class="muted xs">No limit on how many entries a person can have. Also available from the worker's profile (§9.6).</span><button class="btn primary ml-auto">Add feedback</button></div>
+          </div>
+        </div>
+        <div class="toolbar">
+          <div class="search"><input class="input" style="height:32px;width:260px" placeholder="Search by staff name"></div>
+          <select class="input" style="height:32px;width:170px"><option>All authors</option><option>Gisela M.</option><option>Ben A.</option></select>
+          <div class="right"><span class="muted sm">editable / deletable here and on the worker's profile · author = the manager's own name, never a generic "Office"</span></div>
+        </div>
+        <div>
+          <div class="fbhead"><span class="label">Stars</span><span class="label">Worker · event</span><span class="label">Comment</span><span class="label">Author</span></div>
+          <div class="fb office">
+            <span class="stars green">★★★★☆</span>
+            <div class="who"><div class="n"><a href="staff-profile.html">Amara K.</a></div><div class="s">Press Night · Mandarin Oriental · Wed 17 Sep</div></div>
+            <div class="txt">"Great attitude, arrived 3 minutes late — spoke to her, tube delay."<span class="m">17 Sep 2026 · 23:50</span></div>
+            <div class="acts"><span class="pill purple">Gisela M.</span><button class="btn sm ghost">Edit</button><button class="btn sm ghost">Delete</button></div>
+          </div>
+          <div class="fb office">
+            <span class="stars coral">★☆☆☆☆</span>
+            <div class="who"><div class="n"><a href="staff-profile.html">Kai N.</a></div><div class="s">Press Night · Mandarin Oriental · Wed 17 Sep</div></div>
+            <div class="txt">"No-show, second this month. Called twice, no answer. Will discuss before any further shifts."<span class="m">18 Sep 2026 · 08:40</span></div>
+            <div class="acts"><span class="pill purple">Ben A.</span><button class="btn sm ghost">Edit</button><button class="btn sm ghost">Delete</button></div>
+          </div>
+          <div class="fb office">
+            <span class="stars green">★★★★★</span>
+            <div class="who"><div class="n"><a href="staff-profile.html">Ravi P.</a></div><div class="s">Not tied to an event</div></div>
+            <div class="txt">"Dorchester head chef phoned to praise Ravi's prep on Tuesday — asked for him weekly."<span class="m">16 Sep 2026 · 18:12</span></div>
+            <div class="acts"><span class="pill purple">Gisela M.</span><button class="btn sm ghost">Edit</button><button class="btn sm ghost">Delete</button></div>
+          </div>
+          <div class="fb office">
+            <span class="stars green">★★★★★</span>
+            <div class="who"><div class="n"><a href="staff-profile.html">Amara K.</a></div><div class="s">Not tied to an event</div></div>
+            <div class="txt">"Leonardo F&amp;B manager phoned to say she was excellent on the front desk."<span class="m">20 Aug 2026 · 14:05</span></div>
+            <div class="acts"><span class="pill purple">Gisela M.</span><button class="btn sm ghost">Edit</button><button class="btn sm ghost">Delete</button></div>
+          </div>
+          <div class="fb office">
+            <span class="stars amber">★★★☆☆</span>
+            <div class="who"><div class="n muted"><i>Deleted account #1042</i></div><div class="s">Brunch · Leonardo Hotel St Pauls · Sun 13 Sep</div></div>
+            <div class="txt">"[name redacted] was late setting up; otherwise fine."<span class="m">13 Sep 2026 · 17:30 · edited 19 Sep to redact the name after GDPR removal (§1.7)</span></div>
+            <div class="acts"><span class="pill purple">Gisela M.</span><button class="btn sm ghost">Edit</button><button class="btn sm ghost">Delete</button></div>
+          </div>
+        </div>
+        <div class="row"><span class="muted sm">Showing 1–5 of 148</span><div class="ml-auto row"><button class="btn sm ghost" disabled>‹ Prev</button><span class="mono sm">1 / 30</span><button class="btn sm ghost">Next ›</button></div></div>
+      </section>
+    </div>
+
+    <div class="wf-note note"><b>Behaviour notes.</b> Client feedback and office feedback are two separate tabs, never a combined list (§9.10). Search by staff name on both. <b>Client feedback</b> arrives from the Client Portal (§11.2): stars + a comment tied to a worker and an event; a list with <b>Mark as read</b> — this action exists only here; the channel is read-only (no reply, edit or delete), and the entry counts toward the rating only once marked read. <b>Office feedback</b>: the manager gives a worker stars + a comment (worker search, stars, comment, optional event); entries can be edited or deleted after submission, here and on the worker's profile; the author shown is the manager's own name; it counts toward the rating immediately. Both types feed the rating that is 25% of the auto-assign score (§6). On GDPR removal, comments are retained verbatim and the office redacts a name by editing an office entry or deleting a client entry if asked (§1.7).</div>
+  </div>
+</div>
+</body>
+</html>

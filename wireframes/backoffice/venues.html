@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Venues — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .tbl td.name a { color: var(--text); font-weight: 600; }
+  .tbl td.name a:hover { color: var(--cyan); }
+  .vt { font-size: 11.5px; color: var(--muted); }
+  .map.big { height: 620px; }
+  .map .lbl.name { color: var(--text); font-size: 11px; }
+  .map .scale { position: absolute; right: 12px; bottom: 12px; display: flex; flex-direction: column; gap: 3px; align-items: flex-end; font-family: var(--font-mono); font-size: 9.5px; color: var(--muted); }
+  .map .scale i { display: block; height: 0; border-top: 2px solid var(--text); width: 120px; }
+  .map .legend { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 12px; font-family: var(--font-mono); font-size: 9.5px; color: var(--muted); background: rgba(4,8,15,.7); padding: 4px 8px; }
+  .map .legend b { color: var(--cyan); }
+  .map .ctrl { position: absolute; right: 12px; top: 12px; display: flex; flex-direction: column; }
+  .map .ctrl button { width: 28px; height: 28px; background: var(--panel); border: 1px solid var(--line); color: var(--text); cursor: pointer; }
+  .radius-row { display: flex; align-items: center; gap: 14px; }
+  .radius-row .val { font-family: var(--font-mono); font-size: 16px; font-weight: 600; color: var(--cyan); min-width: 70px; text-align: right; }
+  .ticks { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 9.5px; color: var(--muted); margin-top: -8px; }
+  .dim { opacity: .45; pointer-events: none; }
+  .types { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 14px; font-size: 11.5px; color: var(--muted); }
+  .types b { color: var(--text); font-family: var(--font-mono); font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Venues</span><span class="pill cyan">/venues</span><span class="pill">§9.11 · §1.5 · §5.1</span>
+  <span class="spacer"></span>
+  <a href="../index.html">Next: Hub →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a class="active" href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Venues</h1>
+      <span class="crumbs">geofences · <b>10 venues</b> · whether a worker can check in at all depends on the radius</span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/London (UK)</span>
+      <span class="annot">no button up here — "+ New venue" sits in the toolbar under the title (§9.11)</span>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="vn"><button data-state="list">List</button><button data-state="map">On map</button><button data-state="venue-modal">New venue modal</button><button data-state="delete-confirm">Delete confirmation</button></div>
+
+      <!-- ================= LIST ================= -->
+      <section data-state-of="vn" data-state="list" class="stack">
+        <div class="toolbar">
+          <button class="btn primary sm">+ New venue</button>
+          <div class="tabs" style="border-bottom:0"><button class="active">List</button><button>On map</button></div>
+          <div class="right"><div class="search"><input class="input" style="height:32px;width:280px" placeholder="Search by name and address"></div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>Venue</th><th>Address</th><th>Type</th><th class="num">Geofence (m)</th><th class="num">Events</th><th style="text-align:right">Actions</th></tr></thead>
+              <tbody>
+                <tr><td class="name"><a href="#" onclick="return false">Leonardo Royal Hotel</a><span class="sub mono">51.5133, −0.0990</span></td><td>10 Godliman St, London EC4V 5AJ</td><td class="vt">Hotel</td><td class="num">150</td><td class="num">47</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+                <tr><td class="name"><a href="#" onclick="return false">Mandarin Oriental Hyde Park</a><span class="sub mono">51.5022, −0.1601</span></td><td>66 Knightsbridge, London SW1X 7LA</td><td class="vt">Hotel</td><td class="num">150</td><td class="num">31</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+                <tr><td class="name"><a href="#" onclick="return false">The Dorchester</a><span class="sub mono">51.5071, −0.1523</span></td><td>53 Park Lane, London W1K 1QA</td><td class="vt">Hotel</td><td class="num">150</td><td class="num">58</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+                <tr><td class="name"><a href="#" onclick="return false">Hurst Manor</a><span class="sub mono">51.0034, −0.1455</span></td><td>Cuckfield, Haywards Heath RH17 5LB</td><td class="vt">Private residence</td><td class="num">250 <span class="sub muted">default 150, widened for the grounds</span></td><td class="num">6</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+                <tr><td class="name"><a href="#" onclick="return false">ExCeL London</a><span class="sub mono">51.5081, 0.0294</span></td><td>Royal Victoria Dock, London E16 1XL</td><td class="vt">Exhibition centre</td><td class="num">400</td><td class="num">72</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+                <tr><td class="name"><a href="#" onclick="return false">Sky Garden</a><span class="sub mono">51.5112, −0.0836</span></td><td>1 Sky Garden Walk, London EC3M 8AF</td><td class="vt">Restaurant / bar</td><td class="num">100</td><td class="num">12</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+                <tr><td class="name"><a href="#" onclick="return false">Lord's Cricket Ground</a><span class="sub mono">51.5294, −0.1727</span></td><td>St John's Wood Rd, London NW8 8QN</td><td class="vt">Stadium / arena</td><td class="num">500</td><td class="num">9</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+                <tr><td class="name"><a href="#" onclick="return false">Epsom Downs Racecourse</a><span class="sub mono">51.3113, −0.2586</span></td><td>Epsom Downs, Epsom KT18 5LQ</td><td class="vt">Racecourse / showground</td><td class="num">1500</td><td class="num">3</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+                <tr><td class="name"><a href="#" onclick="return false">Victoria Park · festival site</a><span class="sub mono">51.5362, −0.0396</span></td><td>Grove Rd, London E3 5TB</td><td class="vt">Outdoor / festival site</td><td class="num">3000</td><td class="num">2</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+                <tr><td class="name"><a href="#" onclick="return false">Riverside Rooms</a><span class="sub mono">51.5064, −0.0995</span></td><td>Bankside, London SE1 9DT</td><td class="vt">Conference / banqueting venue</td><td class="num">250</td><td class="num">0</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="note">Events = how many events have taken place at this venue. The geofence radius (100–3000 m) is what the check-in button checks against (§5.1) and what background tracking watches for exits (BG-06/07). Editing opens the same modal titled with the venue's name, pre-filled with its pin, address and radius, with Cancel / Save changes (§9.11).</div>
+      </section>
+
+      <!-- ================= ON MAP ================= -->
+      <section data-state-of="vn" data-state="map" class="stack hide">
+        <div class="toolbar">
+          <button class="btn primary sm">+ New venue</button>
+          <div class="tabs" style="border-bottom:0"><button>List</button><button class="active">On map</button></div>
+          <div class="right"><div class="search"><input class="input" style="height:32px;width:280px" placeholder="Search by name and address"></div></div>
+        </div>
+        <div class="map big">
+          <!-- scale: 1000 m ≈ 120 px (illustrative) -->
+          <span class="circle" style="left:62%;top:38%;width:36px;height:36px"></span><span class="pin" style="left:62%;top:38%"></span><span class="lbl name" style="left:63.5%;top:41.5%">Leonardo Royal · 150 m</span>
+          <span class="circle" style="left:66.5%;top:31%;width:24px;height:24px"></span><span class="pin" style="left:66.5%;top:31%"></span><span class="lbl name" style="left:68%;top:27%">Sky Garden · 100 m</span>
+          <span class="circle" style="left:58%;top:48%;width:60px;height:60px"></span><span class="pin" style="left:58%;top:48%"></span><span class="lbl name" style="left:50%;top:54%">Riverside Rooms · 250 m</span>
+          <span class="circle" style="left:40%;top:44%;width:36px;height:36px"></span><span class="pin" style="left:40%;top:44%"></span><span class="lbl name" style="left:41.5%;top:39%">The Dorchester · 150 m</span>
+          <span class="circle" style="left:37%;top:49%;width:36px;height:36px"></span><span class="pin" style="left:37%;top:49%"></span><span class="lbl name" style="left:38.5%;top:52%">Mandarin Oriental · 150 m</span>
+          <span class="circle" style="left:33%;top:26%;width:120px;height:120px"></span><span class="pin" style="left:33%;top:26%"></span><span class="lbl name" style="left:34.5%;top:16%">Lord's · 500 m</span>
+          <span class="circle" style="left:84%;top:40%;width:96px;height:96px"></span><span class="pin" style="left:84%;top:40%"></span><span class="lbl name" style="left:86%;top:32%">ExCeL London · 400 m</span>
+          <span class="circle" style="left:78%;top:14%;width:360px;height:360px;border-color:rgba(62,220,236,.5)"></span><span class="pin" style="left:78%;top:14%"></span><span class="lbl name" style="left:79.5%;top:9%">Victoria Park · 3000 m</span>
+          <span class="circle" style="left:20%;top:86%;width:180px;height:180px;border-color:rgba(62,220,236,.6)"></span><span class="pin" style="left:20%;top:86%"></span><span class="lbl name" style="left:22%;top:80%">Epsom Downs · 1500 m</span>
+          <span class="lbl" style="left:48%;top:92%">↓ Hurst Manor · 250 m · 60 km south (off this extent)</span>
+          <span class="lbl" style="left:46%;top:6%">Thames ▸ grid = 1 km</span>
+          <div class="ctrl"><button>+</button><button>−</button></div>
+          <div class="legend"><span><b>●</b> pin</span><span><b>○</b> geofence circle, to scale</span><span>zoom to compare sizes</span></div>
+          <div class="scale"><i></i><span>1 km</span></div>
+        </div>
+        <span class="annot">every venue's geofence circle at once on a single full-width map — where they are and how big they are relative to each other (§9.11). Clicking a pin opens its Edit modal</span>
+      </section>
+
+      <!-- ================= NEW VENUE MODAL ================= -->
+      <section data-state-of="vn" data-state="venue-modal" class="hide">
+        <div class="modal-inline" style="min-height:860px">
+          <div class="stack dim">
+            <div class="toolbar"><button class="btn primary sm">+ New venue</button><div class="tabs" style="border-bottom:0"><button class="active">List</button><button>On map</button></div></div>
+            <div class="panel"><div class="panel-b tight"><table class="tbl"><thead><tr><th>Venue</th><th>Address</th><th class="num">Geofence (m)</th><th class="num">Events</th></tr></thead><tbody>
+              <tr><td class="name">Leonardo Royal Hotel</td><td>10 Godliman St, EC4V 5AJ</td><td class="num">150</td><td class="num">47</td></tr>
+              <tr><td class="name">ExCeL London</td><td>Royal Victoria Dock, E16 1XL</td><td class="num">400</td><td class="num">72</td></tr>
+            </tbody></table></div></div>
+          </div>
+          <div class="modal-back" style="align-items:flex-start;padding-top:16px">
+            <div class="modal wide">
+              <div class="mh"><h3>New venue</h3><span class="muted sm">editing an existing one is titled with the venue's name and ends Cancel / Save changes</span></div>
+              <div class="mb">
+                <div class="map" style="height:300px">
+                  <span class="circle" style="left:50%;top:52%;width:36px;height:36px"></span>
+                  <span class="pin" style="left:50%;top:52%"></span>
+                  <span class="lbl" style="left:52.5%;top:44%">150 m</span>
+                  <span class="lbl" style="left:12px;top:12px">Drop / drag the pin · the circle follows the slider, not the mouse</span>
+                  <div class="ctrl"><button>+</button><button>−</button></div>
+                  <div class="scale"><i></i><span>1 km</span></div>
+                </div>
+                <div class="grid c2">
+                  <div class="field"><span class="label">Venue name <span class="coral">*</span></span><input class="input" value="Claridge's"></div>
+                  <div class="field"><span class="label">Venue type <span class="coral">*</span> <span class="muted">· sets the starting radius</span></span><select class="input"><option>Restaurant / bar · 100 m</option><option selected>Hotel · 150 m</option><option>Private residence · 150 m</option><option>Conference or banqueting venue · 250 m</option><option>Exhibition centre · 400 m</option><option>Stadium or arena · 500 m</option><option>Racecourse or showground · 1500 m</option><option>Outdoor or festival site · 3000 m</option><option>Other · 150 m</option></select></div>
+                </div>
+                <div class="field">
+                  <span class="label">Geofence radius <span class="coral">*</span> <span class="muted">· slider 100 – 3000 m, not typed, circle not dragged</span></span>
+                  <div class="radius-row"><div class="slider grow"><span class="fill" style="width:1.7%"></span><span class="knob" style="left:1.7%"></span></div><span class="val">150 m</span></div>
+                  <div class="ticks"><span>100</span><span>500</span><span>1000</span><span>1500</span><span>2000</span><span>2500</span><span>3000</span></div>
+                  <span class="hint">Pre-filled from the venue type (Hotel → 150 m); move it anywhere in range for this specific site so the circle covers the whole venue. Defaults per type are editable in Django Admin.</span>
+                </div>
+                <div class="grid c2">
+                  <div class="field"><span class="label">Address <span class="muted">· from the pin, read-only</span></span><input class="input readonly" readonly value="Brook Street, London W1K 4HR"><span class="hint">Reverse geocoding — not typed.</span></div>
+                  <div class="field"><span class="label">Coordinates</span><div class="input readonly mono" style="display:flex;align-items:center">51.5127, −0.1477</div><span class="hint">Shown as plain text once a pin is set.</span></div>
+                </div>
+                <div class="types"><span>Restaurant / bar <b>100</b></span><span>Hotel <b>150</b></span><span>Private residence <b>150</b></span><span>Conference / banqueting <b>250</b></span><span>Exhibition centre <b>400</b></span><span>Stadium / arena <b>500</b></span><span>Racecourse / showground <b>1500</b></span><span>Outdoor / festival <b>3000</b></span><span>Other <b>150</b></span></div>
+              </div>
+              <div class="mf"><button class="btn ghost">Cancel</button><button class="btn primary">Create venue</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= DELETE CONFIRM ================= -->
+      <section data-state-of="vn" data-state="delete-confirm" class="hide">
+        <div class="modal-inline" style="min-height:480px">
+          <div class="stack dim">
+            <div class="toolbar"><button class="btn primary sm">+ New venue</button><div class="tabs" style="border-bottom:0"><button class="active">List</button><button>On map</button></div></div>
+            <div class="panel"><div class="panel-b tight"><table class="tbl"><thead><tr><th>Venue</th><th>Address</th><th class="num">Geofence (m)</th><th class="num">Events</th><th></th></tr></thead><tbody>
+              <tr><td class="name">Leonardo Royal Hotel</td><td>10 Godliman St, EC4V 5AJ</td><td class="num">150</td><td class="num">47</td><td style="text-align:right"><button class="btn sm">Edit</button> <button class="btn sm danger">Delete</button></td></tr>
+            </tbody></table></div></div>
+          </div>
+          <div class="modal-back">
+            <div class="modal">
+              <div class="mh"><h3>Delete venue?</h3><span class="pill coral">Leonardo Royal Hotel</span></div>
+              <div class="mb">
+                <p>Are you sure you want to delete this venue? <b>This action cannot be undone.</b></p>
+                <div class="alert"><b>This venue is used on 4 upcoming events</b> — Afternoon Tea (Thu 18 Sep), Breakfast (Fri 19 Sep), Gala Dinner (Fri 19 Sep), Lunch Service (Thu 2 Oct).</div>
+                <div class="sm muted">Deleting removes it from venue selection when creating new events. Existing events keep their own address and geofence radius exactly as they were at the time they were built — deleting a venue never breaks a past or already-scheduled event (§9.11).</div>
+              </div>
+              <div class="mf"><button class="btn ghost">Cancel</button><button class="btn danger solid">Delete venue</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="wf-note note"><b>Behaviour notes.</b> Directory of venues (§9.11). Toolbar row directly under the page title: "+ New venue" + the List / On map tabs together, search by name and address on the right — not in the page's top-right corner. List columns: Venue · Address · Geofence (m) · Events (how many took place there), explicit Edit and Delete per row. On map shows every venue's geofence circle at once on a single full-width map. Creating / editing is a modal over the list: an interactive map with a pin, full width at the top; Venue type pre-fills the radius from the standard table (Restaurant / bar 100 · Hotel 150 · Private residence 150 · Conference or banqueting 250 · Exhibition centre 400 · Stadium or arena 500 · Racecourse or showground 1500 · Outdoor or festival site 3000 · Other 150 — editable in Django Admin); the radius is set only with the 100–3000 m slider and the circle follows it (not typed, not dragged); the address is reverse-geocoded from the pin, read-only, with lat/lng as plain text underneath. New: "New venue" · Cancel / Create venue. Edit: titled with the venue's name, pre-filled, Cancel / Save changes. Delete: a confirmation modal ("This action cannot be undone"), stating how many upcoming events use the venue and that existing events keep their own address and radius. Venue entity: name · address · lat/lng · venue_type · geofence_radius_m (§1.5).</div>
+  </div>
+</div>
+</body>
+</html>

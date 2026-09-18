@@ -1,0 +1,339 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Shift Builder — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .builder { display: grid; grid-template-columns: minmax(0,1fr) 320px; gap: 20px; align-items: start; }
+  .builder .side { position: sticky; top: calc(var(--topbar-h) + 16px); display: flex; flex-direction: column; gap: 16px; }
+  .f4 { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 12px; }
+  .f3 { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+  .f2 { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 12px; }
+  .rolesec { border: 1px solid var(--line); background: var(--panel); }
+  .rolesec .rh { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line); background: var(--panel-2); }
+  .rolesec .rh .n { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .rolesec .rb { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .rolesec.err { border-color: var(--coral); }
+  .rolesec .grid6 { display: grid; grid-template-columns: 1.4fr 1fr 1fr .8fr .8fr 1fr 1fr; gap: 10px; }
+  .policy { display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; }
+  .policy .check { cursor: default; }
+  .policy .box.off { border-color: var(--line); background: var(--panel-2); }
+  .locked .input, .locked select, .locked textarea { opacity: .55; pointer-events: none; }
+  .locked .btn:not(.keep) { opacity: .45; pointer-events: none; }
+  .sumrow { display: flex; justify-content: space-between; font-size: 12.5px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+  .sumrow:last-child { border-bottom: 0; }
+  .sumrow .v { font-family: var(--font-mono); }
+  @media (max-width: 1024px) { .builder { grid-template-columns: 1fr; } .rolesec .grid6 { grid-template-columns: repeat(2, 1fr); } .f4 { grid-template-columns: repeat(2,1fr);} }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Shift Builder</span><span class="pill cyan">/events/new · /events/:id/edit</span><span class="pill">§3.2 · §3.4 · §3.5 · §1.8</span>
+  <span class="spacer"></span>
+  <a href="event-board.html">Next: Event board →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a class="active" href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>New event</h1>
+      <span class="crumbs"><a href="events.html">Scheduling</a> / <b>Shift Builder</b></span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/London (UK)</span>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="sb"><button data-state="new">New event (with validation error)</button><button data-state="edit">Edit existing · time change</button><button data-state="locked">Locked · event has started</button></div>
+
+      <!-- ================= NEW EVENT ================= -->
+      <section data-state-of="sb" data-state="new" class="builder">
+        <div class="stack" style="gap:16px">
+          <div class="panel">
+            <div class="panel-h"><h3>1 · Client &amp; venue</h3><span class="muted sm">client → venue (address → geo point, type → radius)</span></div>
+            <div class="panel-b stack">
+              <div class="f2">
+                <div class="field"><span class="label">Client <span class="coral">*</span></span><select class="input"><option>Leonardo Hotel St Pauls</option><option>Mandarin Oriental</option><option>The Dorchester</option><option>Private client (Hurst)</option><option>ExCeL London</option></select><span class="hint">Loads this client's rate card, dress codes, on-site contact and policies.</span></div>
+                <div class="field"><span class="label">Venue <span class="coral">*</span></span><select class="input"><option>Leonardo Royal Hotel — 10 Godliman St, EC4V 5AJ</option><option>ExCeL London — Royal Victoria Dock, E16 1XL</option><option>Hurst Manor — Cuckfield, RH17 5LB</option><option>Mandarin Oriental — 66 Knightsbridge, SW1X 7LA</option><option>The Dorchester — 53 Park Lane, W1K 1QA</option></select><span class="hint">From the <a href="venues.html">Venues</a> directory. Address and geofence come with it, read-only here.</span></div>
+              </div>
+              <div class="f3">
+                <div class="field"><span class="label">Address</span><input class="input readonly" readonly value="10 Godliman St, London EC4V 5AJ"></div>
+                <div class="field"><span class="label">Venue type</span><input class="input readonly" readonly value="Hotel"></div>
+                <div class="field"><span class="label">Geofence radius</span><input class="input readonly mono" readonly value="150 m"><span class="hint">Set on the venue, not per event (§9.11).</span></div>
+              </div>
+              <div class="f2">
+                <div class="field"><span class="label">Event title <span class="coral">*</span></span><input class="input" value="Gala Dinner"></div>
+                <div class="field"><span class="label">PO Number</span><input class="input mono" value="4471-A" placeholder="Optional — as given by the client"><span class="hint">Free text, optional, no format or uniqueness rule; can be added or edited any time, also after creation (§3.2).</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-h"><h3>2 · Date &amp; overall window</h3><span class="muted sm">every role added below is pre-filled with this window, then edited independently</span></div>
+            <div class="panel-b stack">
+              <div class="f3">
+                <div class="field"><span class="label">Date <span class="coral">*</span></span><input class="input mono" value="Fri 19 Sep 2026"></div>
+                <div class="field"><span class="label">Overall start (UK time) <span class="coral">*</span></span><input class="input mono" value="07:00"></div>
+                <div class="field"><span class="label">Overall end (UK time) <span class="coral">*</span></span><input class="input mono" value="23:30"><span class="hint">A role may end after midnight (e.g. 17:00–01:30).</span></div>
+              </div>
+              <div class="note">Every field where a manager <b>types</b> a time carries "(UK time)" in its label — the server reads a zoneless value as Europe/London (§1.8). The saved event window is derived from the roles: earliest start → latest end (RULE-18); the overall window above is only the pre-fill.</div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-h"><h3>3 · Roles</h3><span class="muted sm">one section per role, each with its own start and end (RULE-18)</span><div class="right"><button class="btn sm">+ Add role</button></div></div>
+            <div class="panel-b stack">
+
+              <!-- Role 1: Chef -->
+              <div class="rolesec">
+                <div class="rh"><span class="n">Role 1</span><b>Chef</b><span class="mono sm muted">07:00 – 15:00 · 8 h</span><span class="pill">2 (+0)</span><span class="green mono sm">margin +£9.40/h</span><div class="right"><label class="switch purple on"><span class="track"></span>Auto-assign</label><button class="btn sm ghost">Remove</button></div></div>
+                <div class="rb">
+                  <div class="grid6">
+                    <div class="field"><span class="label">Role</span><select class="input"><option>Chef</option><option>Kitchen Porter</option><option>Waiting Staff</option><option>Bar Staff</option><option>Host</option></select></div>
+                    <div class="field"><span class="label">Start (UK time)</span><input class="input mono" value="07:00"></div>
+                    <div class="field"><span class="label">End (UK time)</span><input class="input mono" value="15:00"></div>
+                    <div class="field"><span class="label">Headcount</span><input class="input mono" value="2"></div>
+                    <div class="field"><span class="label">Buffer</span><input class="input mono" value="0"><span class="hint">absolute, not %</span></div>
+                    <div class="field"><span class="label">Charge rate</span><div class="input-row"><span class="addon l">£</span><input class="input readonly mono" readonly value="30.69"></div><span class="hint">Leonardo rate card · <a href="#" onclick="return false">override</a></span></div>
+                    <div class="field"><span class="label">Pay rate (base)</span><div class="input-row"><span class="addon l">£</span><input class="input mono" value="19.00"></div><span class="hint">final £21.29 (+12.07%)</span></div>
+                  </div>
+                  <div class="f3">
+                    <div class="field"><span class="label">Dress code</span><select class="input"><option>Chef whites</option><option>Kitchen blacks</option><option>Other…</option></select><span class="hint">Client's list for Chef (rate card, §9.7) + "Other" free text for this event only.</span></div>
+                    <div class="field"><span class="label">Allocation per hour</span><input class="input mono" value="2"><span class="hint">Invites per hourly round · default headcount + buffer = 2 · editable (§3.4)</span></div>
+                    <div class="field"><span class="label">Confirmation target</span><input class="input readonly mono" readonly value="2 (+0) = 2"><span class="hint">Buffer is part of the target, not the working headcount.</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Role 2: Kitchen Porter -->
+              <div class="rolesec">
+                <div class="rh"><span class="n">Role 2</span><b>Kitchen Porter</b><span class="mono sm muted">09:00 – 17:00 · 8 h</span><span class="pill">3 (+1)</span><span class="green mono sm">margin +£6.10/h</span><div class="right"><label class="switch purple on"><span class="track"></span>Auto-assign</label><button class="btn sm ghost">Remove</button></div></div>
+                <div class="rb">
+                  <div class="grid6">
+                    <div class="field"><span class="label">Role</span><select class="input"><option>Kitchen Porter</option></select></div>
+                    <div class="field"><span class="label">Start (UK time)</span><input class="input mono" value="09:00"></div>
+                    <div class="field"><span class="label">End (UK time)</span><input class="input mono" value="17:00"></div>
+                    <div class="field"><span class="label">Headcount</span><input class="input mono" value="3"></div>
+                    <div class="field"><span class="label">Buffer</span><input class="input mono" value="1"><span class="hint">shown as 3 (+1)</span></div>
+                    <div class="field"><span class="label">Charge rate</span><div class="input-row"><span class="addon l">£</span><input class="input readonly mono" readonly value="21.23"></div><span class="hint">Leonardo rate card</span></div>
+                    <div class="field"><span class="label">Pay rate (base)</span><div class="input-row"><span class="addon l">£</span><input class="input mono" value="13.50"></div><span class="hint">final £15.13</span></div>
+                  </div>
+                  <div class="f3">
+                    <div class="field"><span class="label">Dress code</span><select class="input"><option>Kitchen blacks</option><option>Other…</option></select></div>
+                    <div class="field"><span class="label">Allocation per hour</span><input class="input mono" value="4"><span class="hint">default 3 + 1</span></div>
+                    <div class="field"><span class="label">Confirmation target</span><input class="input readonly mono" readonly value="3 (+1) = 4"></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Role 3: Waiting Staff -->
+              <div class="rolesec">
+                <div class="rh"><span class="n">Role 3</span><b>Waiting Staff</b><span class="mono sm muted">17:00 – 23:30 · 6.5 h</span><span class="pill">12 (+2)</span><span class="green mono sm">margin +£7.28/h</span><div class="right"><label class="switch purple on"><span class="track"></span>Auto-assign</label><button class="btn sm ghost">Remove</button></div></div>
+                <div class="rb">
+                  <div class="grid6">
+                    <div class="field"><span class="label">Role</span><select class="input"><option>Waiting Staff</option></select></div>
+                    <div class="field"><span class="label">Start (UK time)</span><input class="input mono" value="17:00"></div>
+                    <div class="field"><span class="label">End (UK time)</span><input class="input mono" value="23:30"></div>
+                    <div class="field"><span class="label">Headcount</span><input class="input mono" value="12"></div>
+                    <div class="field"><span class="label">Buffer</span><input class="input mono" value="2"><span class="hint">shown as 12 (+2)</span></div>
+                    <div class="field"><span class="label">Charge rate</span><div class="input-row"><span class="addon l">£</span><input class="input readonly mono" readonly value="22.97"></div><span class="hint">Leonardo rate card</span></div>
+                    <div class="field"><span class="label">Pay rate (base)</span><div class="input-row"><span class="addon l">£</span><input class="input mono" value="14.00"></div><span class="hint">final £15.69</span></div>
+                  </div>
+                  <div class="f3">
+                    <div class="field"><span class="label">Dress code</span><select class="input"><option>Other…</option><option>Black &amp; whites</option><option>All black</option></select></div>
+                    <div class="field"><span class="label">Other — dress code for this event only</span><input class="input" value="Black &amp; whites, burgundy bow tie (supplied on site)"><span class="hint">Not saved back to the client's list (§9.7).</span></div>
+                    <div class="field"><span class="label">Allocation per hour</span><input class="input mono" value="14"><span class="hint">default 12 + 2</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Role 4: validation error -->
+              <div class="rolesec err">
+                <div class="rh"><span class="n">Role 4</span><b>Host</b><span class="mono sm muted">18:00 – 21:00 · 3 h</span><span class="pill">1 (+0)</span><div class="right"><label class="switch purple"><span class="track"></span>Auto-assign <span class="annot">OFF — client asked for a named person</span></label><button class="btn sm ghost">Remove</button></div></div>
+                <div class="rb">
+                  <div class="grid6">
+                    <div class="field"><span class="label">Role</span><select class="input"><option>Host</option></select></div>
+                    <div class="field"><span class="label">Start (UK time)</span><input class="input mono" value="18:00"></div>
+                    <div class="field"><span class="label">End (UK time)</span><input class="input mono err" value="21:00"><span class="error">Minimum shift length is 4 hours</span></div>
+                    <div class="field"><span class="label">Headcount</span><input class="input mono" value="1"></div>
+                    <div class="field"><span class="label">Buffer</span><input class="input mono" value="0"></div>
+                    <div class="field"><span class="label">Charge rate</span><div class="input-row"><span class="addon l">£</span><input class="input readonly mono" readonly value="26.83"></div></div>
+                    <div class="field"><span class="label">Pay rate (base)</span><div class="input-row"><span class="addon l">£</span><input class="input mono" value="16.00"></div><span class="hint">final £17.93</span></div>
+                  </div>
+                  <div class="alert coral">This role section cannot be saved: its end time is less than 4 hours after its own start (§3.2). A role may end after midnight, but its end can never fall before its start on the same calendar day.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="panel-h"><h3>4 · On-site contact &amp; instructions</h3></div>
+            <div class="panel-b stack">
+              <div class="f2">
+                <div class="field"><span class="label">On-site contact</span><input class="input" value="Marco V. · F&amp;B manager · +44 20 7074 1000"><span class="hint">Pre-filled from the client profile ("Staff contact point"), editable per event.</span></div>
+                <div class="field"><span class="label">Allocation sheet recipients</span><div class="row wrap"><span class="chip">events@leonardo-stpauls.example <span class="x">×</span></span><span class="chip">m.vidal@leonardo-stpauls.example <span class="x">×</span></span></div><span class="hint">From the client card — where "Send allocation sheet" goes (§11.4).</span></div>
+              </div>
+              <div class="field"><span class="label">Notes / specific instructions</span><textarea class="input">Staff entrance on Carter Lane (not the main lobby). Bring your own black shoes. No parking on site — Blackfriars is the nearest station.</textarea><span class="hint">Visible to staff on their shift details in the app (§10.4) — entrance, parking, a specific ask from the client.</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sticky summary -->
+        <div class="side">
+          <div class="panel">
+            <div class="panel-h"><h3>Client policies</h3><span class="pill">read-only</span></div>
+            <div class="panel-b policy">
+              <label class="check"><span class="box off"></span><span><b>Break policy</b> — Leonardo does <b>not</b> pay for breaks<br><span class="muted xs">Workers get Start / Finish break buttons; break time is deducted from pay and charge (§5.2b).</span></span></label>
+              <label class="check"><span class="box on"></span><span><b>Buffer policy</b> — Leonardo pays for the buffer<br><span class="muted xs">Everyone accepted works and is paid normally. Strict policy would turn away the surplus at check-in (RULE-15).</span></span></label>
+              <span class="muted xs">Set at client level (<a href="client-card.html">client card</a>), shown here and on the event board.</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>Summary</h3></div>
+            <div class="panel-b">
+              <div class="sumrow"><span>Derived event window</span><span class="v">07:00 – 23:30</span></div>
+              <div class="sumrow"><span>Roles</span><span class="v">3 valid · 1 error</span></div>
+              <div class="sumrow"><span>Headcount (+buffer)</span><span class="v">17 (+3)</span></div>
+              <div class="sumrow"><span>Payable hours (forecast)</span><span class="v">118.0 h</span></div>
+              <div class="sumrow"><span>Charge (forecast)</span><span class="v">£2,915.51</span></div>
+              <div class="sumrow"><span>Pay incl. holiday</span><span class="v">£1,976.72</span></div>
+              <div class="sumrow"><span>Margin</span><span class="v green">£938.79 · 32.2%</span></div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>Auto-assign</h3><label class="switch purple on"><span class="track"></span>Event level</label></div>
+            <div class="panel-b sm muted">Default ON at event and role level. From the moment the event is saved, auto_staffing adds <i>allocation</i> invites every hour (at :17) in score order — qualified staff first (RULE-17) — until headcount + buffer is filled (§3.4). Turn a role off when the client asks for a specific person.</div>
+          </div>
+          <div class="stack tight">
+            <button class="btn primary lg block" disabled>Save event</button>
+            <button class="btn block">Cancel</button>
+            <span class="muted xs">Save is disabled while a role section fails validation.</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= EDIT EXISTING ================= -->
+      <section data-state-of="sb" data-state="edit" class="builder hide">
+        <div class="stack" style="gap:16px">
+          <div class="alert"><b>Editing Gala Dinner · Fri 19 Sep 2026 · PO 4471-A.</b> Allowed up to the event's start time (07:00 tomorrow). Every field — venue, date/time, headcount, buffer, charge rate, dress code, PO Number — is editable the same way as at creation (§3.2).</div>
+          <div class="panel">
+            <div class="panel-h"><h3>1 · Client &amp; venue</h3></div>
+            <div class="panel-b stack">
+              <div class="f2">
+                <div class="field"><span class="label">Client</span><select class="input"><option>Leonardo Hotel St Pauls</option></select></div>
+                <div class="field"><span class="label">Venue</span><select class="input"><option>Leonardo Royal Hotel — 10 Godliman St, EC4V 5AJ</option></select><span class="hint amber">Changing the venue address triggers re-confirmation for everyone booked (§3.5).</span></div>
+              </div>
+              <div class="f2">
+                <div class="field"><span class="label">Event title</span><input class="input" value="Gala Dinner"></div>
+                <div class="field"><span class="label">PO Number</span><input class="input mono" value="4471-A"><span class="hint">Applies silently — no re-confirmation.</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>3 · Roles</h3><div class="right"><button class="btn sm">+ Add role</button><span class="annot">a role added now is pre-filled with the current event window</span></div></div>
+            <div class="panel-b stack">
+              <div class="rolesec" style="border-color:var(--amber)">
+                <div class="rh"><span class="n">Role 3</span><b>Waiting Staff</b><span class="mono sm muted"><s>17:00</s> 16:30 – 23:30 · 7 h</span><span class="pill">12 (+2)</span><span class="pill amber">9 confirmed will be asked to re-confirm</span><div class="right"><label class="switch purple on"><span class="track"></span>Auto-assign</label></div></div>
+                <div class="rb">
+                  <div class="grid6">
+                    <div class="field"><span class="label">Role</span><select class="input"><option>Waiting Staff</option></select></div>
+                    <div class="field"><span class="label">Start (UK time)</span><input class="input mono" value="16:30" style="border-color:var(--amber)"><span class="hint amber">was 17:00</span></div>
+                    <div class="field"><span class="label">End (UK time)</span><input class="input mono" value="23:30"></div>
+                    <div class="field"><span class="label">Headcount</span><input class="input mono" value="10" style="border-color:var(--amber)"><span class="hint amber">was 12</span></div>
+                    <div class="field"><span class="label">Buffer</span><input class="input mono" value="2"></div>
+                    <div class="field"><span class="label">Charge rate</span><div class="input-row"><span class="addon l">£</span><input class="input mono" value="22.97"></div></div>
+                    <div class="field"><span class="label">Pay rate (base)</span><div class="input-row"><span class="addon l">£</span><input class="input mono" value="14.00"></div></div>
+                  </div>
+                  <div class="alert"><b>Start time changed for this role only</b> → the 9 workers confirmed on Waiting Staff move to "Awaiting" and get push N11 ("Time Changed" tag + "Confirm new time"). Chef and Kitchen Porter are untouched (§3.2, §3.5). The derived event window updates immediately: <span class="mono">07:00 – 23:30</span> stays, because Chef still starts first.</div>
+                  <div class="alert cyan"><b>Headcount 12 → 10 with 9 confirmed:</b> nobody is auto-removed — if it later drops below the confirmed count, the manager withdraws people by hand on the event board (§3.2, §3.3).</div>
+                </div>
+              </div>
+              <div class="rolesec"><div class="rh"><span class="n">Role 1</span><b>Chef</b><span class="mono sm muted">07:00 – 15:00</span><span class="pill">2 (+0)</span><div class="right"><span class="muted xs">unchanged · collapsed</span></div></div></div>
+              <div class="rolesec"><div class="rh"><span class="n">Role 2</span><b>Kitchen Porter</b><span class="mono sm muted">09:00 – 17:00</span><span class="pill">3 (+1)</span><div class="right"><span class="muted xs">unchanged · collapsed</span></div></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="side">
+          <div class="panel">
+            <div class="panel-h"><h3>What triggers re-confirmation</h3><span class="pill">§3.5</span></div>
+            <div class="panel-b sm stack tight">
+              <div><span class="amber">▲</span> Start or end time of a role · date · venue address · dress code → everyone booked on <b>that role</b> re-confirms (push N11).</div>
+              <div><span class="muted">○</span> Headcount · buffer · charge rate · PO Number · notes → applied silently.</div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>Duplicate</h3></div>
+            <div class="panel-b sm muted">Multi-day = separate events created via <b>Duplicate</b> on the event board. The clone copies the roles (times, headcount, buffer, rates, dress code), <b>not the staff</b>, and starts filling from zero (§3.2).</div>
+          </div>
+          <div class="stack tight">
+            <button class="btn primary lg block">Save event</button>
+            <button class="btn block">Cancel</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= LOCKED ================= -->
+      <section data-state-of="sb" data-state="locked" class="builder hide locked">
+        <div class="stack" style="gap:16px">
+          <div class="alert coral"><b>Editing is locked — Conference Day 2 started at 08:00 today.</b> Once the event has started (and for any past event) no field can be changed (§3.2). What is still possible is on the event board: Withdraw, No show / Get back, Cancel event, Send / Download documents.</div>
+          <div class="panel">
+            <div class="panel-h"><h3>1 · Client &amp; venue</h3><span class="pill">locked</span></div>
+            <div class="panel-b stack">
+              <div class="f2">
+                <div class="field"><span class="label">Client</span><select class="input"><option>ExCeL London</option></select></div>
+                <div class="field"><span class="label">Venue</span><select class="input"><option>ExCeL London — Royal Victoria Dock, E16 1XL</option></select></div>
+              </div>
+              <div class="f2">
+                <div class="field"><span class="label">Event title</span><input class="input" value="Conference Day 2"></div>
+                <div class="field"><span class="label">PO Number</span><input class="input mono" value="EX-2026-311"></div>
+              </div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>3 · Roles</h3><span class="pill">locked</span></div>
+            <div class="panel-b stack">
+              <div class="rolesec"><div class="rh"><span class="n">Role 1</span><b>Host</b><span class="mono sm muted">08:00 – 16:00</span><span class="pill">4 (+0)</span><span class="pill green">Ongoing</span></div></div>
+              <div class="rolesec"><div class="rh"><span class="n">Role 2</span><b>Bar Staff</b><span class="mono sm muted">12:00 – 20:00</span><span class="pill">6 (+1)</span><span class="pill green">Ongoing</span></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="side">
+          <div class="stack tight">
+            <a class="btn primary lg block keep" href="event-board.html#board=ongoing">Open event board →</a>
+            <a class="btn block keep" href="events.html">Back to scheduling</a>
+            <button class="btn block" disabled>Save event</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="wf-note note"><b>Behaviour notes.</b> Order of entry: Client → venue (address → geo point, type → radius) → date/time → roles (§3.2). The overall start/end only pre-fills each role; every role section holds its own start and end, headcount, buffer (absolute, shown "6 (+1)"), charge rate from the client's rate card, pay rate, dress code (client's list for that role + "Other" free text for this event only) and auto-assign allocation (default headcount + buffer, editable; switch default ON, purple — §3.4). Hard validation per role: end must be at least 4 hours after start; after-midnight ends are allowed (§3.2). Time inputs are entered in UK time and say so in the label (§1.8). PO Number is manual, optional, free-format, editable any time (§3.2). On-site contact and notes are visible to staff in the app (§10.4). Break policy and Buffer policy are client-level toggles shown here read-only (§3.2). Editing is allowed only up to the event's start; changing a role's time / date / venue / dress code re-confirms that role's booked staff only (N11, §3.5); headcount below confirmed never auto-removes anyone. Duplicate copies roles, not staff. The derived event window (earliest start → latest end, RULE-18) drives status and the calendar.</div>
+  </div>
+</div>
+</body>
+</html>

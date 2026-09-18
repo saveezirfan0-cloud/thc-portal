@@ -1,0 +1,486 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Candidate profile — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .cand-head { display: flex; gap: 16px; align-items: flex-start; }
+  .cand-head > .page-head { flex: 0 0 auto; margin-left: auto; }
+  .cand-head .who { display: flex; flex-direction: column; gap: 6px; min-width: 0; flex: 1; }
+  .cand-head h1 { font-size: 22px; }
+  .cand-head .facts { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--muted); }
+  .cand-head .facts b { color: var(--text); font-weight: 500; }
+  .kv { display: grid; grid-template-columns: 170px 1fr; gap: 8px 14px; font-size: 13px; align-items: baseline; }
+  .kv .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .ai { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; padding: 1px 6px; border: 1px solid var(--line); color: var(--muted); }
+  .ai.hi { color: var(--green); border-color: rgba(61,220,151,.4); }
+  .ai.mid { color: var(--amber); border-color: rgba(245,184,61,.45); }
+  .ai.manual { color: var(--coral); border-color: rgba(255,110,97,.45); }
+  .period { display: grid; grid-template-columns: 24px 1fr 130px 20px 130px 90px 60px; gap: 8px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); background: var(--bg); font-size: 12.5px; }
+  .period + .period { border-top: 0; }
+  .period .input { height: 30px; font-size: 12px; }
+  .rolepick { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .rolepick .check { padding: 8px 10px; border: 1px solid var(--line); background: var(--bg); }
+  .rolepick .check.sel { border-color: var(--cyan); background: var(--cyan-dim); }
+  .pdfcard { display: flex; gap: 14px; border: 1px solid var(--line); background: var(--bg); padding: 12px 14px; }
+  .pdfcard .thumb { width: 64px; height: 84px; border: 1px solid var(--line); background: var(--panel-2); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 10px; color: var(--muted); flex: 0 0 auto; }
+  .attempt { display: grid; grid-template-columns: 90px 1fr 90px 120px; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--line); background: var(--bg); font-size: 12.5px; }
+  .attempt + .attempt { border-top: 0; }
+  .contract { max-height: 220px; overflow: auto; border: 1px solid var(--line); background: var(--bg); padding: 14px 16px; font-size: 12.5px; color: var(--muted); line-height: 1.55; }
+  .contract h4 { color: var(--text); margin-bottom: 6px; }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Candidate profile</span><span class="pill cyan">/onboarding/:id</span><span class="pill">§2.3 · §2.5 · §2.6 · §2.10 · §2.11 · §4.4</span>
+  <span class="spacer"></span>
+  <a href="events.html">Next: Scheduling →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a class="active" href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Candidate</h1>
+      <span class="crumbs"><a href="onboarding.html">Onboarding</a> / <b>Hana K.</b></span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/London (UK)</span>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="cand">
+        <button data-state="interview-requested">1 · Interview requested</button>
+        <button data-state="interview-completed">2 · Interview completed</button>
+        <button data-state="documents">3 · Documents</button>
+        <button data-state="reject-doc">3b · Reject document modal</button>
+        <button data-state="quiz">4 · Quiz</button>
+        <button data-state="additional-info">5 · Additional info</button>
+        <button data-state="contract">6 · Contract</button>
+      </div>
+      <span class="annot">one candidate (Hana K., International student branch) shown at each phase — only the fields relevant to that phase exist on the screen (§2.3)</span>
+
+      <!-- ================= 1 · INTERVIEW REQUESTED ================= -->
+      <section data-state-of="cand" data-state="interview-requested" class="stack">
+        <div class="cand-head">
+          <span class="avatar xl">HK</span>
+          <div class="who">
+            <div class="row"><h1>Hana K.</h1><span class="pill">Candidate</span><span class="pill cyan">Interview requested</span><span class="pill">3 d in stage</span></div>
+            <div class="facts"><span>Applied <b>Thu 10 Sep 2026 09:58</b> via /apply</span><span>Age <b>21</b></span><span><b>hana.k@example.com</b></span><span><b>+44 7700 900 456</b></span><span>GDPR consent <b>✓ 10.09.2026</b></span></div>
+          </div>
+          <div class="page-head" style="margin-left:auto"><div class="actions"><button class="btn danger">Reject candidate</button></div></div>
+        </div>
+        <div class="stepper">
+          <div class="st now"><span class="k">1</span><span class="t">Interview requested</span></div>
+          <div class="st"><span class="k">2</span><span class="t">Interview completed</span></div>
+          <div class="st"><span class="k">3</span><span class="t">Documents</span></div>
+          <div class="st"><span class="k">4</span><span class="t">Quiz</span></div>
+          <div class="st"><span class="k">5</span><span class="t">Additional info</span></div>
+          <div class="st"><span class="k">6</span><span class="t">Contract</span></div>
+        </div>
+        <div class="grid c2">
+          <div class="panel">
+            <div class="panel-h"><h3>Application</h3><span class="pill">/apply · §2.1</span></div>
+            <div class="panel-b kv">
+              <span class="k">First name</span><span>Hana</span>
+              <span class="k">Surname</span><span>Kowalska</span>
+              <span class="k">Email</span><span>hana.k@example.com</span>
+              <span class="k">Mobile</span><span>🇬🇧 +44 7700 900 456</span>
+              <span class="k">Age</span><span>21 <span class="muted sm">(select from 18 — under 18 is rejected on the form and on the server)</span></span>
+              <span class="k">GDPR consent</span><span class="green">✓ given 10.09.2026 09:58</span>
+              <span class="k">Duplicate check</span><span class="muted">No match on email or mobile + DOB → new record created (§2.12)</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>AI video interview · Willo</h3><span class="pill amber">Invitation sent</span></div>
+            <div class="panel-b stack">
+              <div class="kv">
+                <span class="k">Created in Willo</span><span>10.09.2026 10:02 — automatically on submission (E1)</span>
+                <span class="k">Invitation</span><span>Sent by Willo by email · opened 11.09 · <span class="amber">not started</span></span>
+                <span class="k">Tracking</span><span>Status arrives from the Willo webhook by itself — nothing to update by hand</span>
+              </div>
+              <a class="btn outline" href="#" onclick="return false">Review interview on Willo ↗</a>
+              <div class="note">No documents are held on this phase — the Documents panel appears only once the candidate is accepted (§2.3).</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 2 · INTERVIEW COMPLETED ================= -->
+      <section data-state-of="cand" data-state="interview-completed" class="stack hide">
+        <div class="cand-head">
+          <span class="avatar xl">HK</span>
+          <div class="who">
+            <div class="row"><h1>Hana K.</h1><span class="pill">Candidate</span><span class="pill cyan">Interview completed</span><span class="pill">1 d in stage</span></div>
+            <div class="facts"><span>Applied <b>Thu 10 Sep 2026</b></span><span>Age <b>21</b></span><span><b>hana.k@example.com</b></span><span><b>+44 7700 900 456</b></span></div>
+          </div>
+          <div class="page-head" style="margin-left:auto"><div class="actions"><button class="btn danger">Reject candidate</button></div></div>
+        </div>
+        <div class="stepper">
+          <div class="st done"><span class="k">1</span><span class="t">Interview requested</span></div>
+          <div class="st now"><span class="k">2</span><span class="t">Interview completed</span></div>
+          <div class="st"><span class="k">3</span><span class="t">Documents</span></div>
+          <div class="st"><span class="k">4</span><span class="t">Quiz</span></div>
+          <div class="st"><span class="k">5</span><span class="t">Additional info</span></div>
+          <div class="st"><span class="k">6</span><span class="t">Contract</span></div>
+        </div>
+        <div class="grid c2">
+          <div class="panel">
+            <div class="panel-h"><h3>AI video interview · Willo</h3><span class="pill green">Completed 12.09.2026 18:44</span></div>
+            <div class="panel-b stack">
+              <div class="kv">
+                <span class="k">Completed</span><span>Sat 12 Sep 2026 18:44 — card moved here on its own (Willo "New Response" webhook)</span>
+                <span class="k">Answers</span><span>6 of 6 video answers · 11 min total</span>
+                <span class="k">Decision</span><span class="amber">Awaiting — made inside Willo, where the video is watched</span>
+              </div>
+              <a class="btn primary" href="#" onclick="return false">Review interview on Willo ↗</a>
+              <div class="note">Rejected in Willo → the system rejects automatically and sends E2 (THC wording). Accepted in Willo → the profile advances to Documents by itself and E3 (activation + password + "download the app") goes out. The decision is not repeated here (§2.4).</div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>Accept → qualified role type(s)</h3><span class="pill">§2.4 · §9.6</span></div>
+            <div class="panel-b stack">
+              <p class="sm muted">On acceptance the manager selects the role(s) the candidate is qualified for — this is what makes them eligible for shifts of that role later. Multi-select; editable later on the staff profile.</p>
+              <div class="rolepick">
+                <label class="check sel"><span class="box on"></span>Waiting Staff</label>
+                <label class="check sel"><span class="box on"></span>Host</label>
+                <label class="check"><span class="box"></span>Bar Staff</label>
+                <label class="check"><span class="box"></span>Chef</label>
+                <label class="check"><span class="box"></span>Kitchen Porter</label>
+              </div>
+              <div class="row"><button class="btn primary">Accept — move to Documents</button><button class="btn danger">Reject (E2)</button><span class="annot">mirrors the Willo stage change; roles are mandatory before Accept</span></div>
+              <div class="field"><span class="label">Internal note (optional)</span><input class="input" placeholder="e.g. strong English, has silver-service experience"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 3 · DOCUMENTS ================= -->
+      <section data-state-of="cand" data-state="documents" class="stack hide">
+        <div class="cand-head">
+          <span class="avatar xl photo">HK</span>
+          <div class="who">
+            <div class="row"><h1>Hana K.</h1><span class="pill">Candidate</span><span class="pill amber">Documents</span><span class="pill">2 d in stage</span><span class="chip">Waiting Staff</span><span class="chip">Host</span></div>
+            <div class="facts"><span>DOB <b>03.04.2005</b></span><span>Right to Work <b>International student</b> (branch 4)</span><span><b>hana.k@example.com</b></span><span><b>+44 7700 900 456</b></span><span>Activated <b>13.09.2026</b> (E3)</span><span>Address <b>14 Cephas St, London E1 4AX</b></span></div>
+          </div>
+          <div class="page-head" style="margin-left:auto"><div class="actions"><button class="btn danger">Reject candidate</button></div></div>
+        </div>
+        <div class="stepper">
+          <div class="st done"><span class="k">1</span><span class="t">Interview requested</span></div>
+          <div class="st done"><span class="k">2</span><span class="t">Interview completed</span></div>
+          <div class="st now"><span class="k">3</span><span class="t">Documents</span></div>
+          <div class="st"><span class="k">4</span><span class="t">Quiz</span></div>
+          <div class="st"><span class="k">5</span><span class="t">Additional info</span></div>
+          <div class="st"><span class="k">6</span><span class="t">Contract</span></div>
+        </div>
+
+        <div class="alert"><b>3 of 5 items verified.</b> The quiz stays locked until every document <i>and</i> the Criminal Record declaration (answered Yes) are verified — then the candidate advances to Quiz by themselves (§2.3, RULE-10). The AI pre-fills and shows confidence; it never verifies — the final word is the manager's (§2.6).</div>
+
+        <div class="panel">
+          <div class="panel-h"><h3>Right to Work · International student</h3><span class="pill cyan">Branch 4 of 5</span><span class="muted sm">passport + share code + University Term Dates Letter (+ Completion Letter after graduation, §4.5)</span><div class="right"><span class="muted xs">PDF · JPG · PNG · HEIC · ≤10 MB</span></div></div>
+          <div class="panel-b stack">
+
+            <div class="docrow verified">
+              <span class="ico">PDF</span>
+              <div><div class="t">Passport <span class="ai hi">AI 96%</span></div><div class="m">Uploaded 13.09.2026 14:20 · AI expiry <b>14.02.2031</b> · Verified by Gisela M. · 14.09.2026 09:12 UK time</div></div>
+              <div class="right"><span class="pill green">Verified</span><button class="btn sm ghost">Download</button></div>
+            </div>
+
+            <!-- gov.uk share-code report card -->
+            <div class="pdfcard">
+              <div class="thumb">GOV.UK<br>PDF</div>
+              <div class="grow stack tight">
+                <div class="row"><b>gov.uk right-to-work report</b><span class="pill green">Valid</span><span class="ai hi">automatic check</span></div>
+                <div class="kv" style="grid-template-columns:150px 1fr">
+                  <span class="k">Share code</span><span class="mono">W12 3AB 4CD <span class="muted xs">(entered by the candidate in the app with DOB — never by the manager)</span></span>
+                  <span class="k">Right to work until</span><span><b>31.03.2028</b> <span class="muted sm">— becomes the expiry used for reminders (§2.6, §4.4)</span></span>
+                  <span class="k">Conditions</span><span>Student — max 20 h/week in term time; full time in vacations</span>
+                  <span class="k">Checked</span><span>13.09.2026 07:12 UK time · gov.uk/view-right-to-work</span>
+                </div>
+                <div class="row"><button class="btn sm">Open PDF report</button><span class="annot">on failure or low confidence the check is flagged "manual review" instead of a date</span></div>
+              </div>
+            </div>
+
+            <div class="docrow pending">
+              <span class="ico">PDF</span>
+              <div><div class="t">University Term Dates Letter <span class="ai hi">AI 94%</span></div><div class="m">Uploaded 15.09.2026 21:07 · Queen Mary University of London · AI found 3 holiday ranges (below) · Letter expires <b>31.12.2026</b> (calendar-year rule, §4.2)</div></div>
+              <div class="right"><span class="pill amber">Under review</span><button class="btn sm green">Verify</button><button class="btn sm danger">Reject</button><button class="btn sm ghost">Download</button></div>
+            </div>
+
+            <!-- Term dates + calculated cap -->
+            <div class="card" style="border-left:3px solid var(--amber)">
+              <div class="row mb-8"><h4>Term dates read from the letter</h4><span class="muted sm">Verify the dates against the letter — the manager confirms the dates, not the hours (§2.3)</span><span class="ml-auto annot">AI must confirm the dates are in the future — an expired letter is not accepted</span></div>
+              <div class="period" style="background:transparent;border:0;padding:0 10px 4px"><span class="label">#</span><span class="label">Period</span><span class="label">From</span><span></span><span class="label">To</span><span class="label">Source</span><span></span></div>
+              <div class="period"><span class="mono muted">1</span><span>Winter vacation</span><input class="input mono" value="13.12.2026"><span class="muted">→</span><input class="input mono" value="10.01.2027"><span class="ai hi">AI 94%</span><a href="#" onclick="return false" class="xs muted">remove</a></div>
+              <div class="period"><span class="mono muted">2</span><span>Spring vacation</span><input class="input mono" value="27.03.2027"><span class="muted">→</span><input class="input mono" value="25.04.2027"><span class="ai hi">AI 92%</span><a href="#" onclick="return false" class="xs muted">remove</a></div>
+              <div class="period"><span class="mono muted">3</span><span>Summer vacation</span><input class="input mono" value="19.06.2027"><span class="muted">→</span><input class="input mono" value="19.09.2027"><span class="ai mid">AI 71%</span><a href="#" onclick="return false" class="xs muted">remove</a></div>
+              <div class="row mt-8"><button class="btn sm">+ Add period</button><span class="muted xs">for a range the AI missed (poor scan, non-standard letter) — any number of periods, zero to four is typical</span></div>
+              <hr>
+              <div class="kv">
+                <span class="k">Weekly limit (calculated)</span><span><b>20 h/week — term time until 13.12.2026</b> <span class="pill">read-only</span><br><span class="muted sm">then 48 h/week — university holiday until 10.01.2027. Derived live from these dates (RULE-20, §4.4); never typed, never stored; a Mon–Sun week straddling both takes the lower cap. 48h opt-out does not apply in term (visa condition).</span></span>
+              </div>
+            </div>
+
+            <div class="docrow pending">
+              <span class="ico">JPG</span>
+              <div><div class="t">National Insurance evidence · HMRC letter <span class="ai manual">needs manual review</span></div><div class="m">Uploaded 16.09.2026 08:41 · AI confidence 41% — number partly obscured · Profile NI: ●●●●●●●2B — check the number on the letter matches (§2.5 pt 7)</div></div>
+              <div class="right"><span class="pill amber">Under review</span><button class="btn sm green">Verify</button><button class="btn sm danger">Reject</button><button class="btn sm ghost">Download</button></div>
+            </div>
+
+            <div class="docrow verified">
+              <span class="ico">IMG</span>
+              <div><div class="t">Profile selfie</div><div class="m">Taken in the app 13.09.2026 · becomes the avatar across the whole system · locked after onboarding (changes go through the office)</div></div>
+              <div class="right"><span class="pill green">Set</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h"><h3>Criminal Record declaration</h3><span class="pill">§2.10 · legal declaration, unspent convictions only</span></div>
+          <div class="panel-b tight">
+            <div class="docrow pending" style="border:0">
+              <span class="ico">DECL</span>
+              <div><div class="t">Answer: <b class="coral">Yes</b> · declared 13.09.2026 15:02 (onboarding)</div><div class="m">Details: "Driving without insurance — fixed penalty and 6 points, March 2024." · Conviction date: 03.2024 · No file — text only</div></div>
+              <div class="right"><span class="pill amber">Under review</span><button class="btn sm green">Verify</button><button class="btn sm danger">Reject</button></div>
+            </div>
+            <div class="note" style="border:0;border-top:1px dashed var(--line)">Verify / Reject appear <b>only</b> when the answer is Yes. A <b>No</b> answer is auto-verified on submission and never needs a manual action (it would show here as "No · auto-verified 13.09.2026" with no buttons). Declarations are a history, never overwritten — later in-employment declarations (§10.7) are added alongside.</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 3b · REJECT DOCUMENT MODAL ================= -->
+      <section data-state-of="cand" data-state="reject-doc" class="stack hide">
+        <div class="modal-inline" style="min-height:560px">
+          <div class="cand-head" style="opacity:.5">
+            <span class="avatar xl photo">HK</span>
+            <div class="who"><div class="row"><h1>Hana K.</h1><span class="pill amber">Documents</span></div></div>
+            <div class="page-head" style="margin-left:auto"><div class="actions"><button class="btn danger">Reject candidate</button></div></div>
+          </div>
+          <div class="stack" style="opacity:.5;margin-top:16px">
+            <div class="docrow verified"><span class="ico">PDF</span><div><div class="t">Passport</div><div class="m">Verified 14.09.2026</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+            <div class="docrow pending"><span class="ico">PDF</span><div><div class="t">University Term Dates Letter</div><div class="m">Under review</div></div><div class="right"><span class="pill amber">Under review</span><button class="btn sm green">Verify</button><button class="btn sm danger">Reject</button></div></div>
+            <div class="docrow pending"><span class="ico">JPG</span><div><div class="t">National Insurance evidence · HMRC letter</div><div class="m">Under review</div></div><div class="right"><span class="pill amber">Under review</span><button class="btn sm green">Verify</button><button class="btn sm danger">Reject</button></div></div>
+          </div>
+          <div class="modal-back">
+            <div class="modal">
+              <div class="mh"><h3>Reject document</h3><span class="pill coral">University Term Dates Letter</span></div>
+              <div class="mb">
+                <div class="sm muted">Hana K. · uploaded 15.09.2026 21:07 · AI 94%</div>
+                <div class="field">
+                  <span class="label">Reason <span class="coral">*</span></span>
+                  <textarea class="input">The letter is for the 2025/26 academic year — please upload the current 2026/27 term dates letter from the university.</textarea>
+                  <span class="hint">Sent to the worker word for word in push N8: "Document rejected — [reason]" with a <b>Re-upload</b> button. The new upload returns to review (§2.3, §4.1).</span>
+                </div>
+                <div class="note">The document becomes <b>Rejected</b>; the candidate stays in Documents. Nothing else on the profile changes. Rejecting a document is not rejecting the candidate.</div>
+              </div>
+              <div class="mf"><button class="btn ghost">Cancel</button><button class="btn danger solid">Reject document</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 4 · QUIZ ================= -->
+      <section data-state-of="cand" data-state="quiz" class="stack hide">
+        <div class="cand-head">
+          <span class="avatar xl photo">HK</span>
+          <div class="who">
+            <div class="row"><h1>Hana K.</h1><span class="pill">Candidate</span><span class="pill cyan">Quiz</span><span class="pill">1 d in stage</span><span class="chip">Waiting Staff</span><span class="chip">Host</span></div>
+            <div class="facts"><span>DOB <b>03.04.2005</b></span><span>Right to Work <b>International student</b> · until 31.03.2028</span><span>Weekly limit <b>20 h/week — term time until 13.12.2026</b></span><span><b>+44 7700 900 456</b></span></div>
+          </div>
+          <div class="page-head" style="margin-left:auto"><div class="actions"><button class="btn danger">Reject candidate</button></div></div>
+        </div>
+        <div class="stepper">
+          <div class="st done"><span class="k">1</span><span class="t">Interview requested</span></div>
+          <div class="st done"><span class="k">2</span><span class="t">Interview completed</span></div>
+          <div class="st done"><span class="k">3</span><span class="t">Documents</span></div>
+          <div class="st now"><span class="k">4</span><span class="t">Quiz</span></div>
+          <div class="st"><span class="k">5</span><span class="t">Additional info</span></div>
+          <div class="st"><span class="k">6</span><span class="t">Contract</span></div>
+        </div>
+        <div class="grid c2">
+          <div class="panel">
+            <div class="panel-h"><h3>Health &amp; Safety quiz</h3><span class="pill green">Unlocked</span><span class="muted sm">unlocked 17.09.2026 09:12 — the moment the last document was verified</span></div>
+            <div class="panel-b stack">
+              <div class="grid c3">
+                <div class="kpi"><span class="label">Pass mark</span><span class="v">80%</span><span class="d">from THC's "Health and Safety Presentation Questions"</span></div>
+                <div class="kpi warn"><span class="label">Attempts</span><span class="v">1 / 3</span><span class="d">third failure → automatic rejection (E4)</span></div>
+                <div class="kpi danger"><span class="label">Best score</span><span class="v">70%</span><span class="d">14 of 20 correct</span></div>
+              </div>
+              <div>
+                <div class="attempt" style="background:transparent;border:0;padding:0 10px 4px"><span class="label">Attempt</span><span class="label">When</span><span class="label">Score</span><span class="label">Result</span></div>
+                <div class="attempt"><span class="mono">1</span><span>Wed 17 Sep 2026 19:20 · 12 min</span><span class="mono coral">70%</span><span class="pill coral">Failed</span></div>
+                <div class="attempt"><span class="mono">2</span><span class="muted">not started</span><span class="mono muted">—</span><span class="pill">Available</span></div>
+                <div class="attempt"><span class="mono">3</span><span class="muted">—</span><span class="mono muted">—</span><span class="pill">Last attempt</span></div>
+              </div>
+              <div class="note">Read-only for the manager: the quiz is taken in the app (wizard step 6/11 after the H&amp;S induction, step 5). Multiple choice; questions and answers come from THC's own document (§2.9). Passing moves the card to Additional info.</div>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="panel">
+              <div class="panel-h"><h3>Gate — why it is unlocked</h3><span class="pill">RULE-10</span></div>
+              <div class="panel-b stack tight">
+                <div class="docrow verified"><span class="ico">PDF</span><div><div class="t">Passport</div><div class="m">Verified 14.09.2026 09:12</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+                <div class="docrow verified"><span class="ico">PDF</span><div><div class="t">University Term Dates Letter</div><div class="m">Verified 17.09.2026 09:12 · 3 periods confirmed</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+                <div class="docrow verified"><span class="ico">JPG</span><div><div class="t">NI evidence · HMRC letter</div><div class="m">Verified 16.09.2026 17:48</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+                <div class="docrow verified"><span class="ico">DECL</span><div><div class="t">Criminal Record declaration · Yes</div><div class="m">Verified 16.09.2026 17:50 · note: "minor motoring offence, disclosed"</div></div><div class="right"><span class="pill green">Verified</span></div></div>
+              </div>
+            </div>
+            <div class="panel" style="opacity:.75">
+              <div class="panel-h"><h3>Locked variant</h3><span class="pill amber">Locked</span><span class="annot">shown instead of the card above while anything is unverified</span></div>
+              <div class="panel-b"><div class="empty"><h3>Quiz locked</h3>1 document still under review — the worker sees "Unlocks once your documents are verified" in the app. No attempts can be started.</div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 5 · ADDITIONAL INFO ================= -->
+      <section data-state-of="cand" data-state="additional-info" class="stack hide">
+        <div class="cand-head">
+          <span class="avatar xl photo">HK</span>
+          <div class="who">
+            <div class="row"><h1>Hana K.</h1><span class="pill">Candidate</span><span class="pill cyan">Additional info</span><span class="pill">0 d in stage</span><span class="chip">Waiting Staff</span><span class="chip">Host</span></div>
+            <div class="facts"><span>Quiz <b class="green">passed 85%</b> (attempt 2)</span><span>Right to Work <b>International student</b> · until 31.03.2028</span><span>Weekly limit <b>20 h/week — term time until 13.12.2026</b></span></div>
+          </div>
+          <div class="page-head" style="margin-left:auto"><div class="actions"><button class="btn danger">Reject candidate</button></div></div>
+        </div>
+        <div class="stepper">
+          <div class="st done"><span class="k">1</span><span class="t">Interview requested</span></div>
+          <div class="st done"><span class="k">2</span><span class="t">Interview completed</span></div>
+          <div class="st done"><span class="k">3</span><span class="t">Documents</span></div>
+          <div class="st done"><span class="k">4</span><span class="t">Quiz</span></div>
+          <div class="st now"><span class="k">5</span><span class="t">Additional info</span></div>
+          <div class="st"><span class="k">6</span><span class="t">Contract</span></div>
+        </div>
+        <div class="alert cyan">Everything from wizard steps 7–9 lands here, in one place, without hunting through tabs (§2.10): HMRC New Starter Checklist · Two references · Bank &amp; payroll · National Insurance. None of these has a Verify / Reject action or a queue entry.</div>
+        <div class="grid c2">
+          <div class="panel">
+            <div class="panel-h"><h3>Two references</h3><span class="pill green">2 of 2</span><span class="muted sm">step 8/11 · mandatory · no relatives · tutors / coaches accepted</span></div>
+            <div class="panel-b grid c2">
+              <div class="card">
+                <div class="label">Referee 1</div>
+                <div class="kv" style="grid-template-columns:90px 1fr;margin-top:6px"><span class="k">Name</span><span>Dr Sarah Okafor</span><span class="k">Relationship</span><span>Course leader, QMUL</span><span class="k">Phone</span><span>+44 20 7882 5555</span><span class="k">Email</span><span>s.okafor@qmul.ac.uk</span></div>
+              </div>
+              <div class="card">
+                <div class="label">Referee 2</div>
+                <div class="kv" style="grid-template-columns:90px 1fr;margin-top:6px"><span class="k">Name</span><span>Marek Nowak</span><span class="k">Relationship</span><span>Volunteering supervisor</span><span class="k">Phone</span><span>+48 601 234 567</span><span class="k">Email</span><span>marek@fundacja.pl</span></div>
+              </div>
+              <div class="muted xs" style="grid-column:1/-1">Collected and displayed only — not reviewed or verified; the office contacts a referee off-system if it wants to (§2.10).</div>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>National Insurance · Bank &amp; payroll</h3><span class="pill">step 9/11</span></div>
+            <div class="panel-b kv">
+              <span class="k">NI number</span><span class="mono">●●●●●●●2B <span class="pill">locked</span> <span class="muted sm">entered 17.09.2026 · masked once entered; corrections go through the office. If blank, payroll still runs — E6 is sent when it is later added.</span></span>
+              <span class="k">Account holder</span><span>Hana Kowalska</span>
+              <span class="k">Sort code</span><span class="mono">40-••-••</span>
+              <span class="k">Account number</span><span class="mono">••••4821</span>
+              <span class="k">Saved</span><span>17.09.2026 12:01 · E5 sent to gisela@ and thc_payroll@ (§8)</span>
+              <span class="k">48h opt-out (WTR)</span><span class="muted">Not offered in term — a visa condition an opt-out cannot lift (§4.4). Offered out of term.</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>HMRC New Starter Checklist</h3><span class="pill green">Submitted 17.09.2026 12:03</span><span class="muted sm">step 7/11 · no P45 upload — every worker completes this form (§2.8)</span></div>
+            <div class="panel-b kv">
+              <span class="k">Q1 Another job?</span><span>No</span>
+              <span class="k">Q2 Pension?</span><span>No <span class="muted xs">(shown only because Q1 = No)</span></span>
+              <span class="k">Q3 Since 6 April…</span><span>Yes — another job which has ended <span class="muted xs">(shown only because Q1 = No and Q2 = No)</span></span>
+              <span class="k">HMRC Statement</span><span><b>B</b> <span class="pill cyan">derived</span> <span class="muted sm">— "only job now, but another job / taxable benefit since 6 April". The worker never sees the letter; it goes into the New Starter report (§9.9).</span></span>
+              <span class="k">Student loan</span><span>Plan 2 ✓ · Postgraduate Loan ☐ <span class="muted xs">(separate tick-box — not mutually exclusive)</span></span>
+              <span class="k">Declaration</span><span class="green">✓ "I confirm that the information I've given on this form is correct." — 17.09.2026 12:03</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>Term dates &amp; weekly limit</h3><span class="pill">read-only · RULE-20</span></div>
+            <div class="panel-b stack tight">
+              <div class="kv"><span class="k">Weekly limit</span><span><b>20 h/week — term time until 13.12.2026</b></span></div>
+              <div class="row sm"><span class="chip">13.12.2026 – 10.01.2027</span><span class="chip">27.03.2027 – 25.04.2027</span><span class="chip">19.06.2027 – 19.09.2027</span></div>
+              <div class="muted xs">From the verified University Term Dates Letter (verified 17.09.2026). Correcting a date on the Documents phase changes the cap from that moment on — nothing else to update.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 6 · CONTRACT ================= -->
+      <section data-state-of="cand" data-state="contract" class="stack hide">
+        <div class="cand-head">
+          <span class="avatar xl photo">HK</span>
+          <div class="who">
+            <div class="row"><h1>Hana K.</h1><span class="pill">Candidate</span><span class="pill green">Contract</span><span class="pill">signed today</span><span class="chip">Waiting Staff</span><span class="chip">Host</span></div>
+            <div class="facts"><span>Employee ID <b class="cyan">THC-01187</b> <span class="annot">generated at this exact moment</span></span><span>Right to Work <b>International student</b> · until 31.03.2028</span><span>Weekly limit <b>20 h/week — term time until 13.12.2026</b></span></div>
+          </div>
+          <div class="page-head" style="margin-left:auto"><div class="actions"><button class="btn danger" disabled title="signed → now Staff; use Block on the staff profile">Reject candidate</button></div></div>
+        </div>
+        <div class="stepper">
+          <div class="st done"><span class="k">1</span><span class="t">Interview requested</span></div>
+          <div class="st done"><span class="k">2</span><span class="t">Interview completed</span></div>
+          <div class="st done"><span class="k">3</span><span class="t">Documents</span></div>
+          <div class="st done"><span class="k">4</span><span class="t">Quiz</span></div>
+          <div class="st done"><span class="k">5</span><span class="t">Additional info</span></div>
+          <div class="st now"><span class="k">6</span><span class="t">Contract</span></div>
+        </div>
+        <div class="grid c2">
+          <div class="panel">
+            <div class="panel-h"><h3>Zero-hours agreement · T&amp;C</h3><span class="pill">§2.11 · step 10/11</span></div>
+            <div class="panel-b stack">
+              <div class="contract">
+                <h4>The Hospitality Company — Zero-hours worker agreement (v3, 2026)</h4>
+                1. Nature of engagement. This is a zero-hours agreement. The Company is under no obligation to offer work and the Worker is under no obligation to accept it …<br><br>
+                2. Pay. Pay is at the base hourly rate shown for each shift. Holiday pay is accrued at 12.07% and paid alongside …<br><br>
+                3. Attendance. The Worker confirms each shift the day before by 12:00 and checks in on site via the app …<br><br>
+                7. Ongoing duty to disclose. The Worker undertakes to declare any unspent criminal conviction that arises during their engagement, as soon as reasonably practicable, using the declaration route in the app (§10.7) …<br><br>
+                12. Data. The Worker may request the erasure of their personal data at any time …
+              </div>
+              <label class="check"><span class="box on"></span>I agree — this timestamp is my signature</label>
+              <div class="alert green"><b>Signed electronically · 18.09.2026 09:14 UK time</b> — shown in UK time and never converted: it is an audit record, not an operational time (§1.8).</div>
+            </div>
+          </div>
+          <div class="stack">
+            <div class="panel">
+              <div class="panel-h"><h3>What happened on signature</h3><span class="pill green">Candidate → Staff</span></div>
+              <div class="panel-b stack tight sm">
+                <div>✓ Status <b>compliant</b> — the card left the onboarding kanban (§2.7)</div>
+                <div>✓ Employee ID <b>THC-01187</b> auto-generated — used in payroll and printed on every timesheet (§9.9, §11.3)</div>
+                <div>✓ Selfie avatar follows her through the whole system</div>
+                <div>✓ Wizard step 11 "How it works" shown in the app; Shifts · Radar · Invites unlocked</div>
+                <div>✓ Eligible for Waiting Staff and Host invitations from the next auto_staffing round (hourly at :17, §7)</div>
+                <div class="row mt-8"><a class="btn primary sm" href="staff-profile.html">Open staff profile →</a></div>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-h"><h3>Compliance summary</h3></div>
+              <div class="panel-b sm">Documents verified, quiz passed. Contract signed electronically: <b>18.09.2026 09:14 UK time</b>. <span class="muted">Before signature this line reads "Documents verified, quiz passed. Compliant and bookable." — never an empty slot (§9.6).</span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="wf-note note"><b>Behaviour notes.</b> One profile organised by phase with the correct stepper; documents are not held on the early phases (§2.3). The only top-area action is <b>Reject candidate</b> — final, no un-reject; a re-application creates the returning-applicant route (§2.3, §2.12). Documents carry Verify / Reject; Reject asks for a reason → document Rejected → push N8 with a Re-upload button (§2.3, §4.1). AI (Gemini, behind a provider interface) reads every upload, extracts expiry dates and term ranges, writes them onto the profile and shows a confidence badge; low confidence = "needs manual review"; the manager confirms (§2.6). Share code W + 8 alphanumerics is typed by the worker in the app with DOB; the system queries gov.uk and stores the PDF report — the right-to-work-until date drives the reminder ladder (§2.5, §2.6, §4.2). Term dates: all AI-extracted ranges shown, "+ Add period" for missed ones, the weekly limit is calculated (RULE-20) and shown read-only — 20 h in term, 48 h in vacation, lower cap for a straddling week; the University Term Dates Letter expires 31 Dec regardless of printed dates (§4.2). Criminal Record: Yes → Verify / Reject like a document; No → auto-verified (§2.10). Quiz gate RULE-10: unlocks only when every document and a Yes declaration are verified; 80% / 3 attempts / auto-reject (RULE-09). Additional info shows references (not reviewed), NI masked and locked, bank details (E5), HMRC statement derived A/B/C from three routed questions plus student loan and the declaration tick-box (§2.8, §2.10). Contract: tick-box = signature; timestamp always in UK time as an audit record (§1.8, §2.11); Employee ID generated at signature (§2.7).</div>
+  </div>
+</div>
+</body>
+</html>

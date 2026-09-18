@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Compliance — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .ai { display: inline-flex; align-items: center; gap: 5px; font-family: var(--font-mono); font-size: 10px; letter-spacing: .06em; padding: 1px 6px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+  .ai.hi { color: var(--green); border-color: rgba(61,220,151,.4); }
+  .ai.mid { color: var(--amber); border-color: rgba(245,184,61,.45); }
+  .ai.manual { color: var(--coral); border-color: rgba(255,110,97,.45); }
+  .tbl td .found { display: block; font-size: 12.5px; }
+  .tbl td .found b { font-family: var(--font-mono); font-weight: 500; }
+  .days { font-family: var(--font-mono); font-weight: 600; }
+  .days.neg { color: var(--coral); } .days.soon { color: var(--amber); } .days.ok { color: var(--green); }
+  .ladder { display: grid; grid-template-columns: 150px 1fr; gap: 6px 14px; font-size: 12.5px; }
+  .ladder .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .dim { opacity: .45; pointer-events: none; }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Compliance</span><span class="pill cyan">/compliance</span><span class="pill">§4.1 · §4.2 · §4.3 · §4.5 · §9.4 · §10.7</span>
+  <span class="spacer"></span>
+  <a href="checkin.html">Next: Check In / Out →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a class="active" href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Compliance</h1>
+      <span class="crumbs">review queue + expiry radar · <b>7 to review</b> · 9 blocked</span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/London (UK)</span>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="cp"><button data-state="review">Tab 1 · Needs review</button><button data-state="reject">Reject modal</button><button data-state="radar">Tab 2 · Radar</button></div>
+
+      <!-- ================= TAB 1 · NEEDS REVIEW ================= -->
+      <section data-state-of="cp" data-state="review" class="stack">
+        <div class="tabs"><button class="active">Needs review <span class="n alert">7</span></button><button>Radar <span class="n">9 expired · 14 expiring</span></button></div>
+        <div class="toolbar">
+          <div class="search"><input class="input" style="height:32px;width:240px" placeholder="Search by name"></div>
+          <select class="input" style="height:32px;width:170px"><option>Candidates + staff</option><option>Candidates only</option><option>Staff only</option></select>
+          <select class="input" style="height:32px;width:200px"><option>Any document</option><option>Passport / ID</option><option>Visa document</option><option>University Term Dates Letter</option><option>Official University Completion Letter</option><option>NI evidence</option><option>Criminal Record declaration</option></select>
+          <div class="right"><span class="muted sm">Oldest first · the menu counter is this number</span></div>
+        </div>
+        <div class="alert cyan sm"><b>Why this tab exists:</b> a current worker who re-uploads after an expiry or a rejection never reappears on the onboarding kanban. Every profile with a document — or a Criminal Record declaration answered Yes (onboarding or in-employment, §10.7) — in the "under review" state lands here, candidates and staff alike (§4.1).</div>
+        <div class="panel">
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>Who</th><th>Document</th><th>Uploaded</th><th>AI found</th><th style="text-align:right">Actions</th></tr></thead>
+              <tbody>
+                <tr>
+                  <td><div class="person"><span class="avatar photo">HK</span><div><div class="n"><a href="candidate.html#cand=documents">Hana K.</a></div><div class="s">Candidate · Documents · International student</div></div></div></td>
+                  <td><b>Criminal Record declaration</b><span class="sub">Answer: <span class="coral">Yes</span> · onboarding · "Driving without insurance — fixed penalty, March 2024"</span></td>
+                  <td class="mono sm">13 Sep 15:02<span class="sub">5 days ago</span></td>
+                  <td><span class="found muted">— no AI extraction (text declaration)</span></td>
+                  <td style="text-align:right"><button class="btn sm green">Verify</button> <button class="btn sm danger">Reject</button></td>
+                </tr>
+                <tr>
+                  <td><div class="person"><span class="avatar photo">HK</span><div><div class="n"><a href="candidate.html#cand=documents">Hana K.</a></div><div class="s">Candidate · Documents</div></div></div></td>
+                  <td><b>University Term Dates Letter</b><span class="sub">Queen Mary University of London · PDF 1.2 MB</span></td>
+                  <td class="mono sm">15 Sep 21:07<span class="sub">3 days ago</span></td>
+                  <td><span class="found">3 holiday ranges · first <b>13.12.2026 – 10.01.2027</b></span><span class="ai hi">AI 94%</span> <span class="muted xs">letter expires 31.12.2026 (rule)</span></td>
+                  <td style="text-align:right"><button class="btn sm green">Verify</button> <button class="btn sm danger">Reject</button></td>
+                </tr>
+                <tr>
+                  <td><div class="person"><span class="avatar photo">HK</span><div><div class="n"><a href="candidate.html#cand=documents">Hana K.</a></div><div class="s">Candidate · Documents</div></div></div></td>
+                  <td><b>National Insurance evidence</b><span class="sub">HMRC letter · JPG 3.8 MB · profile NI ●●●●●●●2B</span></td>
+                  <td class="mono sm">16 Sep 08:41<span class="sub">2 days ago</span></td>
+                  <td><span class="found">NI number partly obscured</span><span class="ai manual">needs manual review</span> <span class="muted xs">confidence 41%</span></td>
+                  <td style="text-align:right"><button class="btn sm green">Verify</button> <button class="btn sm danger">Reject</button></td>
+                </tr>
+                <tr>
+                  <td><div class="person"><span class="avatar photo">JW</span><div><div class="n"><a href="staff-profile.html#sp=blocked">Jonah W.</a></div><div class="s">Staff · <span class="coral">Blocked — passport expired 02.09.2026</span></div></div></div></td>
+                  <td><b>Passport</b> <span class="pill amber">re-upload</span><span class="sub">UK citizen · replaces the expired document</span></td>
+                  <td class="mono sm">17 Sep 19:20<span class="sub">yesterday</span></td>
+                  <td><span class="found">Expiry <b>03.06.2036</b></span><span class="ai hi">AI 97%</span></td>
+                  <td style="text-align:right"><button class="btn sm green">Verify</button> <button class="btn sm danger">Reject</button><span class="sub muted xs">Verify → full compliance re-check → unblocks only if everything else is valid (§4.3)</span></td>
+                </tr>
+                <tr>
+                  <td><div class="person"><span class="avatar photo">LM</span><div><div class="n"><a href="staff-profile.html">Luca M.</a></div><div class="s">Staff · Compliant · Work visa</div></div></div></td>
+                  <td><b>Visa document</b> <span class="pill amber">re-upload</span><span class="sub">Skilled Worker · rejected 15 Sep ("photo page cut off") → re-uploaded</span></td>
+                  <td class="mono sm">17 Sep 12:44<span class="sub">yesterday</span></td>
+                  <td><span class="found">Expiry <b>30.11.2027</b> · matches share code</span><span class="ai hi">AI 89%</span></td>
+                  <td style="text-align:right"><button class="btn sm green">Verify</button> <button class="btn sm danger">Reject</button></td>
+                </tr>
+                <tr>
+                  <td><div class="person"><span class="avatar photo">DN</span><div><div class="n"><a href="staff-profile.html#sp=blocked">Dara N.</a></div><div class="s">Staff · <span class="coral">Blocked — Criminal conviction declared, under review</span></div></div></div></td>
+                  <td><b>Criminal Record declaration</b> <span class="pill purple">in-employment</span><span class="sub">Answer: <span class="coral">Yes</span> · declared from the app (§10.7) · details visible to Admin only, never in reports or the Client Portal</span></td>
+                  <td class="mono sm">17 Sep 22:10<span class="sub">yesterday · 3 future shifts released, E9 sent</span></td>
+                  <td><span class="found muted">— no AI extraction</span></td>
+                  <td style="text-align:right"><button class="btn sm green">Verify</button> <button class="btn sm danger">Reject</button><span class="sub muted xs">Verify → re-check → N15 "your shifts are open again" · Reject → converts to a manual block</span></td>
+                </tr>
+                <tr>
+                  <td><div class="person"><span class="avatar photo">AK</span><div><div class="n"><a href="staff-profile.html">Amara K.</a></div><div class="s">Staff · Compliant · International student · 20 h/week in term</div></div></div></td>
+                  <td><b>Official University Completion Letter</b><span class="sub">Optional document, International student branch · uploaded from the app's Documents tab (§4.5)</span></td>
+                  <td class="mono sm">18 Sep 11:05<span class="sub">today</span></td>
+                  <td><span class="found">Award date <b>10.07.2026</b> · Queen Mary University of London</span><span class="ai hi">AI 91%</span></td>
+                  <td style="text-align:right"><button class="btn sm green">Verify</button> <button class="btn sm danger">Reject</button><span class="sub muted xs">Verify → graduated_at set → 48 h/week permanently, term-letter reminders stop, N14 sent</span></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="note"><b>Dropped out automatically:</b> Dina F. (candidate, rejected 10 Sep) — 2 pending documents; Deleted account #1042 (GDPR-removed) — 1 pending document. Once someone is Rejected or Removed their outstanding documents no longer need review and leave this queue (§4.1). A "No" Criminal Record answer is auto-verified on submission and never appears here (§2.10). References are never reviewed and never queue (§2.10).</div>
+      </section>
+
+      <!-- ================= REJECT MODAL ================= -->
+      <section data-state-of="cp" data-state="reject" class="hide">
+        <div class="modal-inline" style="min-height:520px">
+          <div class="stack dim">
+            <div class="tabs"><button class="active">Needs review <span class="n alert">7</span></button><button>Radar</button></div>
+            <div class="panel"><div class="panel-b tight"><table class="tbl"><thead><tr><th>Who</th><th>Document</th><th>Uploaded</th><th>AI found</th><th></th></tr></thead><tbody>
+              <tr><td><div class="person"><span class="avatar photo">HK</span><div><div class="n">Hana K.</div><div class="s">Candidate</div></div></div></td><td><b>National Insurance evidence</b></td><td class="mono sm">16 Sep 08:41</td><td><span class="ai manual">needs manual review</span></td><td style="text-align:right"><button class="btn sm green">Verify</button> <button class="btn sm danger">Reject</button></td></tr>
+              <tr><td><div class="person"><span class="avatar photo">JW</span><div><div class="n">Jonah W.</div><div class="s">Staff · Blocked</div></div></div></td><td><b>Passport</b></td><td class="mono sm">17 Sep 19:20</td><td><span class="ai hi">AI 97%</span></td><td style="text-align:right"><button class="btn sm green">Verify</button> <button class="btn sm danger">Reject</button></td></tr>
+            </tbody></table></div></div>
+          </div>
+          <div class="modal-back">
+            <div class="modal">
+              <div class="mh"><h3>Reject document</h3><span class="pill coral">National Insurance evidence</span></div>
+              <div class="mb">
+                <div class="row"><span class="avatar photo sm">HK</span><div class="sm">Hana K. · Candidate · uploaded 16 Sep 08:41 · AI confidence 41%</div></div>
+                <div class="field">
+                  <span class="label">Reason <span class="coral">*</span></span>
+                  <textarea class="input">The NI number on the letter is not readable — please upload a clear photo of the full HMRC letter, or a P60 / payslip showing your NI number.</textarea>
+                  <span class="hint">Goes to the worker word for word in push N8 — "Document rejected — [reason]" — with a <b>Re-upload</b> button. The new upload comes back to this queue (§4.1, §2.3).</span>
+                </div>
+                <div class="note">Document → <b>Rejected</b>. The candidate stays in Documents and the quiz stays locked until this is re-uploaded and verified. Nothing else on the profile changes.</div>
+              </div>
+              <div class="mf"><button class="btn ghost">Cancel</button><button class="btn danger solid">Reject document</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TAB 2 · RADAR ================= -->
+      <section data-state-of="cp" data-state="radar" class="stack hide">
+        <div class="tabs"><button>Needs review <span class="n alert">7</span></button><button class="active">Radar <span class="n">9 expired · 14 expiring</span></button></div>
+        <div class="grid c3">
+          <div class="kpi danger"><span class="label">Expired · blocking</span><span class="v">9</span><span class="d">Auto-blocked on the expiry day (compliance_daily 05:00) · future bookings released · app locked to Documents (§4.3)</span></div>
+          <div class="kpi warn"><span class="label">Expiring · ≤ 30 days</span><span class="v">14</span><span class="d">Push reminders at 1 month · 2 weeks · 1 week · expiry day — automatic, nothing to press (§4.2)</span></div>
+          <div class="kpi"><span class="label">Term letters · expire 31 Dec</span><span class="v">38</span><span class="d">Every University Term Dates Letter expires 31 December regardless of printed dates; reminders start 1 Dec</span></div>
+        </div>
+        <div class="toolbar">
+          <div class="seg"><button class="on">All <span class="n">23</span></button><button>Expired <span class="n alert">9</span></button><button>Expiring <span class="n">14</span></button></div>
+          <div class="search"><input class="input" style="height:32px;width:220px" placeholder="Search by name"></div>
+          <select class="input" style="height:32px;width:190px"><option>Any document</option><option>Passport / ID</option><option>Right to work (share code)</option><option>Visa document</option><option>University Term Dates Letter</option></select>
+          <div class="right"><span class="annot">no manual "Send reminder" — the ladder runs itself (§4.1)</span></div>
+        </div>
+        <div class="panel">
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>Who</th><th>Document</th><th>Expiry date</th><th>Days left</th><th>Status</th><th>Reminders sent</th></tr></thead>
+              <tbody>
+                <tr><td><div class="person"><span class="avatar photo">JW</span><div><div class="n"><a href="staff-profile.html#sp=blocked">Jonah W.</a></div><div class="s">UK citizen</div></div></div></td><td>Passport</td><td class="mono">02.09.2026</td><td><span class="days neg">−16 d</span></td><td><span class="pill coral">Expired · blocked</span><span class="sub">re-upload in Needs review</span></td><td class="sm muted">N1 02 Aug · N2 19 Aug · N3 26 Aug · N4 02 Sep</td></tr>
+                <tr><td><div class="person"><span class="avatar photo">MV</span><div><div class="n"><a href="staff-profile.html">Marta V.</a></div><div class="s">EU pre-settled</div></div></div></td><td>Right to work (share code)</td><td class="mono">11.09.2026</td><td><span class="days neg">−7 d</span></td><td><span class="pill coral">Expired · blocked</span><span class="sub">nothing re-uploaded yet</span></td><td class="sm muted">N1 · N2 · N3 · N4 11 Sep</td></tr>
+                <tr><td><div class="person"><span class="avatar photo">SO</span><div><div class="n"><a href="staff-profile.html">Sam O.</a></div><div class="s">International student</div></div></div></td><td>University Term Dates Letter</td><td class="mono">31.12.2025</td><td><span class="days neg">−261 d</span></td><td><span class="pill coral">Expired · blocked</span><span class="sub">since 01.01.2026 — "can't proceed until renewed"</span></td><td class="sm muted">N1 01 Dec · N2 · N3 · N4 31 Dec</td></tr>
+                <tr><td><div class="person"><span class="avatar photo">FA</span><div><div class="n"><a href="staff-profile.html">Femi A.</a></div><div class="s">Work visa</div></div></div></td><td>Visa document</td><td class="mono">18.09.2026</td><td><span class="days neg">0 d</span></td><td><span class="pill coral">Expires today · blocked 05:00</span><span class="sub">2 future bookings released → auto-assign</span></td><td class="sm muted">N4 today 05:00 "You have been blocked — update your document"</td></tr>
+                <tr><td><div class="person"><span class="avatar photo">TR</span><div><div class="n"><a href="staff-profile.html">Tom R.</a></div><div class="s">UK citizen</div></div></div></td><td>Passport</td><td class="mono">25.09.2026</td><td><span class="days soon">7 d</span></td><td><span class="pill amber">Expiring</span></td><td class="sm muted">N1 25 Aug · N2 11 Sep · N3 today (final warning)</td></tr>
+                <tr><td><div class="person"><span class="avatar photo">PS</span><div><div class="n"><a href="staff-profile.html">Priya S.</a></div><div class="s">EU pre-settled</div></div></div></td><td>Right to work (share code)</td><td class="mono">04.10.2026</td><td><span class="days soon">16 d</span></td><td><span class="pill amber">Expiring</span></td><td class="sm muted">N1 04 Sep · N2 today</td></tr>
+                <tr><td><div class="person"><span class="avatar photo">LM</span><div><div class="n"><a href="staff-profile.html">Luca M.</a></div><div class="s">Work visa</div></div></div></td><td>Visa document</td><td class="mono">15.10.2026</td><td><span class="days soon">27 d</span></td><td><span class="pill amber">Expiring</span><span class="sub">a newer visa (to 30.11.2027) is in Needs review</span></td><td class="sm muted">N1 15 Sep</td></tr>
+                <tr><td><div class="person"><span class="avatar photo">BT</span><div><div class="n"><a href="staff-profile.html">Ben T.</a></div><div class="s">EU settled</div></div></div></td><td>Right to work (share code)</td><td class="mono">30.10.2026</td><td><span class="days ok">42 d</span></td><td><span class="pill">Valid</span></td><td class="sm muted">first reminder 30 Sep</td></tr>
+                <tr><td><div class="person"><span class="avatar photo">AK</span><div><div class="n"><a href="staff-profile.html">Amara K.</a></div><div class="s">International student</div></div></div></td><td>University Term Dates Letter</td><td class="mono">31.12.2026</td><td><span class="days ok">104 d</span></td><td><span class="pill">Valid</span><span class="sub">31 Dec rule — the printed graduation date is ignored</span></td><td class="sm muted">ladder starts 1 Dec · stops if her Completion Letter is verified (§4.5)</td></tr>
+                <tr><td><div class="person"><span class="avatar photo">AK</span><div><div class="n"><a href="staff-profile.html">Amara K.</a></div><div class="s">International student</div></div></div></td><td>Right to work (share code)</td><td class="mono">31.03.2028</td><td><span class="days ok">559 d</span></td><td><span class="pill">Valid</span><span class="sub">the visa still wins over any completion letter</span></td><td class="sm muted">—</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-h" style="border-bottom:0;border-top:1px solid var(--line)"><span class="muted sm">Showing 10 of 23</span><div class="right"><button class="btn sm ghost" disabled>‹ Prev</button><span class="mono sm">1 / 3</span><button class="btn sm ghost">Next ›</button></div></div>
+        </div>
+        <div class="grid c2">
+          <div class="panel">
+            <div class="panel-h"><h3>Reminder ladder · push, not email</h3><span class="pill">§4.2 · BG-04 / BG-05</span></div>
+            <div class="panel-b ladder">
+              <span class="k">1 month before</span><span>N1 "Update your [document] — it expires on [date]"</span>
+              <span class="k">2 weeks before</span><span>N2 the same, more insistent</span>
+              <span class="k">1 week before</span><span>N3 final warning</span>
+              <span class="k">Expiry day</span><span>N4 "You have been blocked — update your document" + the automatic block fires at the same moment</span>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>What the block does · automatically</h3><span class="pill">§4.3</span></div>
+            <div class="panel-b sm stack tight">
+              <div>1. Status → <b>blocked</b> · 2. removed from ALL future confirmed shifts → slots released to auto-assign · 3. open invitations withdrawn · 4. out of scoring · 5. app locked to the Documents tab.</div>
+              <div class="muted">Unblock: the worker re-uploads → the office verifies in Needs review → the FULL compliance status is re-checked (every document in date + a Yes declaration verified) → unblocked automatically. No manual Unblock for an auto-block; a manual block needs the manager's Unblock on the profile (§9.6).</div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <div class="wf-note note"><b>Behaviour notes.</b> Two tabs (§4.1). <b>Needs review</b> lists every profile — candidate or staff — with a document, or a Criminal Record declaration answered Yes (onboarding or in-employment, §10.7), in the under-review state; Rejected candidates and Removed workers drop out automatically. Each row: who · which document · when it was uploaded · what the AI found (extracted date + confidence, or "needs manual review") · Verify / Reject. Reject asks for a reason → push N8 with a Re-upload button. Verify confirms the document; for a blocked worker it triggers the full compliance re-check of §4.3 — this one document alone does not unblock them if anything else is outstanding. The menu carries a counter (7). The Official University Completion Letter goes through this same queue (§4.5): verifying it sets graduated_at, turns the cap to 48 h/week permanently, stops the term-letter reminder ladder and sends N14. <b>Radar</b>: counters expired (blocking) / expiring; table who · document · expiry date · days left · status. Blocking is fully automatic and there is no manual "Send reminder" — the push ladder (1 month, 2 weeks, 1 week, expiry day) runs from the daily job (§4.2, §7 BG-04/05). University Term Dates Letters expire 31 December regardless of printed dates, with reminders from 1 December; an already-expired letter is not accepted. Right-to-work-until from gov.uk is the expiry used for share-code reminders (§4.4).</div>
+  </div>
+</div>
+</body>
+</html>

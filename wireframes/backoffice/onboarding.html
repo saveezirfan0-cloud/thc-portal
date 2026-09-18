@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Onboarding — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .kanban.six { grid-auto-columns: minmax(184px, 1fr); }
+  .kcard .top { display: flex; align-items: center; gap: 8px; }
+  .kcard .nm { font-weight: 600; font-size: 13px; line-height: 1.15; }
+  .kcard .age { margin-left: auto; font-family: var(--font-mono); font-size: 10px; color: var(--muted); white-space: nowrap; }
+  .kcard .age.warn { color: var(--amber); }
+  .kcard .age.bad { color: var(--coral); }
+  .kcard .chips { display: flex; flex-wrap: wrap; gap: 4px; }
+  .kcard .chips .chip { padding: 1px 6px; font-size: 10.5px; }
+  .kcard .meta { font-size: 11px; color: var(--muted); }
+  .kcard .willo { font-size: 11.5px; }
+  .kcard .acts { display: flex; gap: 6px; margin-top: 2px; flex-wrap: wrap; }
+  .kh .t.c1 { color: var(--muted); } .kh .t.c3 { color: var(--amber); } .kh .t.c6 { color: var(--green); }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Onboarding</span><span class="pill cyan">/onboarding</span><span class="pill">§2.2 · §2.4 · §2.12 · §9.2</span>
+  <span class="spacer"></span>
+  <a href="candidate.html">Next: Candidate profile →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a class="active" href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Onboarding</h1>
+      <span class="crumbs">candidate pipeline · <b>19 active</b> · 3 rejected</span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/London (UK)</span>
+      <a class="btn sm" href="../public/apply.html">Open /apply form ↗</a>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="kb"><button data-state="active">Active (default)</button><button data-state="rejected">Rejected</button></div>
+
+      <!-- ============ State: Active ============ -->
+      <section data-state-of="kb" data-state="active" class="stack">
+        <div class="toolbar">
+          <div class="seg"><button class="on">Active <span class="n">19</span></button><button>Rejected <span class="n">3</span></button></div>
+          <span class="annot">same filter pattern as the Staff directory (§9.6) — rejected cards are hidden by default (§2.2)</span>
+          <div class="right">
+            <div class="search"><input class="input" style="height:32px;width:240px" placeholder="Search candidates"></div>
+            <select class="input" style="height:32px;width:150px"><option>Any role</option><option>Waiting Staff</option><option>Bar Staff</option><option>Chef</option><option>Kitchen Porter</option><option>Host</option></select>
+          </div>
+        </div>
+
+        <div class="alert cyan sm"><b>No "Applied" stage.</b> Submitting /apply creates the candidate straight in <b>Interview requested</b> and Willo sends the interview invitation (E1) itself. Cards move between the first two columns on their own from the Willo webhook; the manager decides <i>inside Willo</i> (§2.4).</div>
+
+        <div class="kanban six">
+
+          <!-- Column 1: Interview requested -->
+          <div class="kcol">
+            <div class="kh"><span class="t c1">Interview requested</span><span class="n">5</span></div>
+            <div class="kb">
+              <!-- Returning applicant: duplicate check on /apply matched an existing record (§2.12) -->
+              <div class="kcard returning">
+                <div class="top"><span class="avatar photo sm">JW</span><div class="nm">Jonah W.</div><span class="age warn">today</span></div>
+                <span class="pill amber">Returning applicant</span>
+                <div class="meta">Matches existing record <b class="cyan">Jonah W. · THC-00412</b> (email + mobile + DOB). Status: <span class="coral">Blocked — passport expired</span>. History: 41 shifts · show-rate 96% · rating 4.5.</div>
+                <div class="meta">No second record was created. The applicant saw the ordinary "check your inbox" screen and is never told why.</div>
+                <div class="acts"><button class="btn sm primary">Reset to candidate</button><button class="btn sm danger">Reject</button></div>
+              </div>
+              <div class="kcard" onclick="location.href='candidate.html#cand=interview-requested'">
+                <div class="top"><span class="avatar photo sm">NA</span><div class="nm">Noor A.</div><span class="age">3 d</span></div>
+                <div class="meta">Applied Tue 15 Sep · age 22 · +44 7700 900 123</div>
+                <a class="willo" href="#" onclick="return false">Review interview on Willo ↗</a>
+                <div class="meta">Willo invite sent 15 Sep 10:02 · not started</div>
+              </div>
+              <div class="kcard">
+                <div class="top"><span class="avatar photo sm">JP</span><div class="nm">Jake P.</div><span class="age">1 d</span></div>
+                <div class="meta">Applied Wed 17 Sep · age 19</div>
+                <a class="willo" href="#" onclick="return false">Review interview on Willo ↗</a>
+                <div class="meta">Willo invite sent · in progress (2 of 6 answers)</div>
+              </div>
+              <div class="kcard">
+                <div class="top"><span class="avatar photo sm">LO</span><div class="nm">Lily O.</div><span class="age">0 d</span></div>
+                <div class="meta">Applied today 11:20 · age 24</div>
+                <a class="willo" href="#" onclick="return false">Review interview on Willo ↗</a>
+              </div>
+              <div class="kcard">
+                <div class="top"><span class="avatar photo sm">SW</span><div class="nm">Sam W.</div><span class="age bad">6 d</span></div>
+                <div class="meta">Applied Sat 12 Sep · age 27</div>
+                <a class="willo" href="#" onclick="return false">Review interview on Willo ↗</a>
+                <div class="meta coral">No response to the Willo invite in 6 days</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 2: Interview completed -->
+          <div class="kcol">
+            <div class="kh"><span class="t">Interview completed</span><span class="n">3</span></div>
+            <div class="kb">
+              <div class="kcard" onclick="location.href='candidate.html#cand=interview-completed'">
+                <div class="top"><span class="avatar photo sm">ML</span><div class="nm">Mei L.</div><span class="age">1 d</span></div>
+                <div class="meta">Interview completed Wed 17 Sep 18:44 (Willo webhook)</div>
+                <a class="willo" href="#" onclick="return false">Review interview on Willo ↗</a>
+                <div class="meta">Decision is made in Willo → Accept moves the card to Documents; Reject rejects here automatically (E2)</div>
+              </div>
+              <div class="kcard">
+                <div class="top"><span class="avatar photo sm">AO</span><div class="nm">Ade O.</div><span class="age">2 d</span></div>
+                <div class="meta">Interview completed Tue 16 Sep</div>
+                <a class="willo" href="#" onclick="return false">Review interview on Willo ↗</a>
+              </div>
+              <div class="kcard">
+                <div class="top"><span class="avatar photo sm">FS</span><div class="nm">Finn S.</div><span class="age warn">4 d</span></div>
+                <div class="meta">Interview completed Mon 14 Sep</div>
+                <a class="willo" href="#" onclick="return false">Review interview on Willo ↗</a>
+                <div class="meta amber">Awaiting a Willo decision for 4 days</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 3: Documents -->
+          <div class="kcol">
+            <div class="kh"><span class="t c3">Documents</span><span class="n">5</span></div>
+            <div class="kb">
+              <div class="kcard" onclick="location.href='candidate.html#cand=documents'">
+                <div class="top"><span class="avatar photo sm">HK</span><div class="nm">Hana K.</div><span class="age">2 d</span></div>
+                <div class="chips"><span class="chip">Waiting Staff</span></div>
+                <div class="meta">International student · 3 of 5 verified · <span class="amber">2 under review</span></div>
+                <div class="meta">Criminal Record: <b>Yes</b> — needs manual Verify</div>
+              </div>
+              <div class="kcard">
+                <div class="top"><span class="avatar photo sm">MG</span><div class="nm">Mateo G.</div><span class="age warn">5 d</span></div>
+                <div class="chips"><span class="chip">Bar Staff</span><span class="chip">Waiting Staff</span></div>
+                <div class="meta">EU settled · 2 of 3 verified · share code W98 2CD 1EF checked ✓</div>
+              </div>
+              <div class="kcard">
+                <div class="top"><span class="avatar photo sm">AB</span><div class="nm">Aisha B.</div><span class="age">1 d</span></div>
+                <div class="chips"><span class="chip">Kitchen Porter</span></div>
+                <div class="meta">UK citizen · 0 of 3 uploaded yet · activated 17 Sep</div>
+              </div>
+              <div class="kcard">
+                <div class="top"><span class="avatar photo sm">RD</span><div class="nm">Rory D.</div><span class="age bad">9 d</span></div>
+                <div class="chips"><span class="chip">Chef</span></div>
+                <div class="meta coral">1 document rejected — awaiting re-upload (push N8 sent 14 Sep)</div>
+              </div>
+              <div class="kcard">
+                <div class="top"><span class="avatar photo sm">ZT</span><div class="nm">Zoe T.</div><span class="age">3 d</span></div>
+                <div class="chips"><span class="chip">Host</span></div>
+                <div class="meta">Work visa · 4 of 4 uploaded · <span class="amber">all under review</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 4: Quiz -->
+          <div class="kcol">
+            <div class="kh"><span class="t">Quiz</span><span class="n">2</span></div>
+            <div class="kb">
+              <div class="kcard" onclick="location.href='candidate.html#cand=quiz'">
+                <div class="top"><span class="avatar photo sm">IP</span><div class="nm">Ivan P.</div><span class="age">1 d</span></div>
+                <div class="chips"><span class="chip">Waiting Staff</span></div>
+                <div class="meta">All documents verified 17 Sep → quiz unlocked automatically</div>
+                <div class="meta">Attempts <b>0 / 3</b> · not started</div>
+              </div>
+              <div class="kcard">
+                <div class="top"><span class="avatar photo sm">LM</span><div class="nm">Lena M.</div><span class="age">2 d</span></div>
+                <div class="chips"><span class="chip">Bar Staff</span></div>
+                <div class="meta">Attempts <b>2 / 3</b> · best 70% <span class="coral">(pass mark 80%)</span></div>
+                <div class="meta amber">One attempt left — a third failure rejects automatically (E4)</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 5: Additional info -->
+          <div class="kcol">
+            <div class="kh"><span class="t">Additional info</span><span class="n">2</span></div>
+            <div class="kb">
+              <div class="kcard" onclick="location.href='candidate.html#cand=additional-info'">
+                <div class="top"><span class="avatar photo sm">ON</span><div class="nm">Oscar N.</div><span class="age">2 d</span></div>
+                <div class="chips"><span class="chip">Waiting Staff</span><span class="chip">Host</span></div>
+                <div class="meta">Quiz passed 90% · HMRC ✓ · References ✓ · Bank ✗</div>
+              </div>
+              <div class="kcard">
+                <div class="top"><span class="avatar photo sm">FH</span><div class="nm">Freya H.</div><span class="age">1 d</span></div>
+                <div class="chips"><span class="chip">Bar Staff</span></div>
+                <div class="meta">Quiz passed 85% · HMRC ✓ · References 1 of 2 · Bank ✓</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Column 6: Contract -->
+          <div class="kcol">
+            <div class="kh"><span class="t c6">Contract</span><span class="n">2</span></div>
+            <div class="kb">
+              <div class="kcard" onclick="location.href='candidate.html#cand=contract'">
+                <div class="top"><span class="avatar photo sm">TB</span><div class="nm">Theo B.</div><span class="age">0 d</span></div>
+                <div class="chips"><span class="chip">Waiting Staff</span></div>
+                <div class="meta">Contract presented in the app today 09:40 · not yet signed</div>
+              </div>
+              <div class="kcard">
+                <div class="top"><span class="avatar photo sm">MS</span><div class="nm">Maya S.</div><span class="age warn">3 d</span></div>
+                <div class="chips"><span class="chip">Chef</span></div>
+                <div class="meta">Contract presented Mon 15 Sep · reminder push sent</div>
+              </div>
+              <div class="note" style="margin-top:4px">Signed → the card leaves the kanban, Employee ID is generated and the person appears in <a href="staff.html">Staff</a> as Compliant (§2.7).</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ State: Rejected ============ -->
+      <section data-state-of="kb" data-state="rejected" class="stack hide">
+        <div class="toolbar">
+          <div class="seg"><button>Active <span class="n">19</span></button><button class="on">Rejected <span class="n">3</span></button></div>
+          <span class="annot">rejected cards stay reachable without leaving this screen; they sit in the column where they were rejected</span>
+          <div class="right">
+            <div class="search"><input class="input" style="height:32px;width:240px" placeholder="Search candidates"></div>
+            <select class="input" style="height:32px;width:170px"><option>Any reason</option><option>Rejected in Willo</option><option>Quiz failed 3×</option><option>Rejected by manager</option></select>
+          </div>
+        </div>
+
+        <div class="kanban six">
+          <div class="kcol">
+            <div class="kh"><span class="t c1">Interview requested</span><span class="n">0</span></div>
+            <div class="kb"><div class="empty" style="padding:24px 10px;font-size:12px">Nothing rejected at this stage</div></div>
+          </div>
+          <div class="kcol">
+            <div class="kh"><span class="t">Interview completed</span><span class="n">1</span></div>
+            <div class="kb">
+              <div class="kcard">
+                <div class="top"><span class="avatar photo sm">CV</span><div class="nm">Carl V.</div><span class="age">Tue 15 Sep</span></div>
+                <span class="pill coral">Rejected · in Willo</span>
+                <div class="meta">Rejected in Willo → the system rejected automatically and sent email E2 (THC wording, not Willo's).</div>
+                <a class="willo" href="#" onclick="return false">Review interview on Willo ↗</a>
+              </div>
+            </div>
+          </div>
+          <div class="kcol">
+            <div class="kh"><span class="t c3">Documents</span><span class="n">1</span></div>
+            <div class="kb">
+              <div class="kcard">
+                <div class="top"><span class="avatar photo sm">DF</span><div class="nm">Dina F.</div><span class="age">Thu 10 Sep</span></div>
+                <div class="chips"><span class="chip">Waiting Staff</span></div>
+                <span class="pill coral">Rejected · by Gisela M.</span>
+                <div class="meta">Reason: "Right to work could not be established — share code invalid twice, no alternative evidence."</div>
+                <div class="meta">Her 2 pending documents dropped out of Compliance → Needs review automatically (§4.1).</div>
+              </div>
+            </div>
+          </div>
+          <div class="kcol">
+            <div class="kh"><span class="t">Quiz</span><span class="n">1</span></div>
+            <div class="kb">
+              <div class="kcard">
+                <div class="top"><span class="avatar photo sm">PK</span><div class="nm">Pavel K.</div><span class="age">Sat 12 Sep</span></div>
+                <div class="chips"><span class="chip">Kitchen Porter</span></div>
+                <span class="pill coral">Rejected · quiz failed 3×</span>
+                <div class="meta">Attempts 65% · 75% · 70% — automatic rejection after the third failure; email E4 + terminal screen in the app (§2.9).</div>
+              </div>
+            </div>
+          </div>
+          <div class="kcol">
+            <div class="kh"><span class="t">Additional info</span><span class="n">0</span></div>
+            <div class="kb"><div class="empty" style="padding:24px 10px;font-size:12px">Nothing rejected at this stage</div></div>
+          </div>
+          <div class="kcol">
+            <div class="kh"><span class="t c6">Contract</span><span class="n">0</span></div>
+            <div class="kb"><div class="empty" style="padding:24px 10px;font-size:12px">Nothing rejected at this stage</div></div>
+          </div>
+        </div>
+        <div class="alert">Rejection is final on this record — there is no "un-reject" (§2.3). If the person applies again via /apply, the duplicate check (email, or mobile + DOB) routes them to the office as a <b>Returning applicant</b> card in Interview requested, where the manager presses <b>Reset to candidate</b> or rejects the application (§2.12).</div>
+      </section>
+
+    </div>
+
+    <div class="wf-note note"><b>Behaviour notes.</b> Six columns, confirmed against the approved "Onboarding / Kanban / Active" design (§2.7): Interview requested → Interview completed → Documents → Quiz → Additional info → Contract. Cards carry the selfie avatar (initials here), name, days in the current stage, and from Documents onwards the qualified role chips the manager picked right after the Willo acceptance (§2.4, §9.6). "Review interview on Willo" is a direct link on the two interview columns — the decision is made in Willo and reaches the system through the webhook (New Response → completed; Stage Change → Accept / Reject, §7). Documents → Quiz is automatic once every document and a Yes Criminal Record declaration are verified (§2.3, RULE-10). Quiz: 80% pass mark, 3 attempts, third failure rejects automatically (RULE-09). Contract signed → Employee ID generated, card leaves the board (§2.7). Active / Rejected toggle per §2.2. The amber "Returning applicant" card is the duplicate-check route of §2.12: it names the existing record, the manager either presses Reset to candidate (same record, same Employee ID, full wizard again, compliance evidence superseded) or rejects; a GDPR-removed worker cannot be matched and applies as new.</div>
+  </div>
+</div>
+</body>
+</html>

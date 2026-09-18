@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Scheduling — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .datenav { display: inline-flex; align-items: center; border: 1px solid var(--line); background: var(--panel); }
+  .datenav button { height: 32px; width: 34px; background: transparent; border: 0; color: var(--muted); font-size: 16px; cursor: pointer; }
+  .datenav button:hover { color: var(--text); }
+  .datenav .lbl { font-family: var(--font-head); font-weight: 600; font-size: 14px; padding: 0 14px; min-width: 200px; text-align: center; border-left: 1px solid var(--line); border-right: 1px solid var(--line); height: 32px; display: inline-flex; align-items: center; justify-content: center; }
+  .tbl .roles { display: flex; flex-direction: column; gap: 4px; }
+  .tbl .roles .r { display: flex; gap: 8px; align-items: center; font-size: 12px; }
+  /* week view */
+  .wk { display: grid; grid-template-columns: repeat(7, minmax(0,1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+  .wk .col { background: var(--panel); display: flex; flex-direction: column; min-height: 520px; }
+  .wk .col.today { outline: 1px solid var(--cyan); outline-offset: -1px; }
+  .wk .ch { padding: 8px 10px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+  .wk .ch .d { font-family: var(--font-mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .wk .col.today .ch .d { color: var(--cyan); }
+  .wk .ch .c { font-family: var(--font-mono); font-size: 10px; color: var(--amber); }
+  .wk .ch .c.ok { color: var(--green); }
+  .wk .list { padding: 6px; display: flex; flex-direction: column; gap: 6px; overflow: auto; max-height: 480px; }
+  .wk .list > * { flex: 0 0 auto; }
+  .cal .day .scroll > * { flex: 0 0 auto; }
+  .wchip { background: var(--bg); border-left: 3px solid var(--amber); padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; cursor: pointer; font-size: 11.5px; }
+  .wchip:hover { outline: 1px solid var(--cyan-line); }
+  .wchip.full { border-left-color: var(--green); }
+  .wchip.cancelled { border-left-color: var(--muted); opacity: .55; text-decoration: line-through; }
+  .wchip.ongoing { border-left-color: var(--cyan); }
+  .wchip .w { font-family: var(--font-mono); font-size: 10.5px; color: var(--text); display: flex; gap: 6px; align-items: center; }
+  .wchip .n { font-weight: 600; }
+  .wchip .m { color: var(--muted); font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wchip .f { margin-left: auto; font-family: var(--font-mono); font-size: 9.5px; padding: 0 5px; border: 1px solid rgba(245,184,61,.45); color: var(--amber); background: var(--amber-dim); }
+  .wchip.full .f { border-color: rgba(61,220,151,.4); color: var(--green); background: var(--green-dim); }
+  /* day view */
+  .dayrow { display: grid; grid-template-columns: 130px 1fr 220px 1fr 120px 110px; gap: 14px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; }
+  .dayrow + .dayrow { border-top: 0; }
+  .dayrow:hover { background: var(--panel-2); }
+  .dayrow.cancelled { opacity: .5; }
+  .dayrow .w { font-family: var(--font-mono); font-size: 13px; }
+  .dayrow .w .sub { display: block; font-size: 10px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Scheduling</span><span class="pill cyan">/events</span><span class="pill">§3.1 · §3.2 · §9.3</span>
+  <span class="spacer"></span>
+  <a href="shift-builder.html">Next: Shift Builder →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a class="active" href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a href="staff.html"><span class="ico">☷</span>Staff</a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Scheduling</h1>
+      <span class="crumbs">events · <b>Thu 18 Sep 2026</b> · 14:32 UK time</span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/London (UK)</span>
+      <a class="btn primary sm" href="shift-builder.html">+ New event</a>
+      <span class="annot">same place in every view — not in a sub-toolbar</span>
+    </header>
+
+    <div class="content">
+      <div class="wf-states" data-target="ev"><button data-state="list">List</button><button data-state="month">Calendar · Month</button><button data-state="week">Calendar · Week</button><button data-state="day">Calendar · Day</button></div>
+
+      <!-- ================= LIST ================= -->
+      <section data-state-of="ev" data-state="list" class="stack">
+        <div class="toolbar">
+          <div class="seg"><button class="on">List</button><button>Calendar</button></div>
+          <div class="datenav"><button title="previous period">‹</button><span class="lbl">September 2026</span><button title="next period">›</button></div>
+          <button class="btn sm">Today</button>
+          <span class="annot">same arrows in both views — past events are browsable in List too (§3.1)</span>
+          <div class="right">
+            <div class="search"><input class="input" style="height:32px;width:220px" placeholder="Search event, client, PO"></div>
+            <select class="input" style="height:32px;width:150px"><option>All clients</option><option>Leonardo Hotel St Pauls</option><option>Mandarin Oriental</option><option>The Dorchester</option><option>Private client (Hurst)</option><option>ExCeL London</option></select>
+            <select class="input" style="height:32px;width:130px"><option>Any status</option><option>Upcoming</option><option>Ongoing</option><option>Completed</option><option>Cancelled</option></select>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>Date</th><th>Event</th><th>Client · Venue</th><th>Window (UK time)</th><th>Roles · headcount (+buffer)</th><th>Fill</th><th>Status</th><th>PO</th></tr></thead>
+              <tbody>
+                <tr class="clickable" onclick="location.href='event-board.html#board=completed'">
+                  <td><b>Mon 15 Sep</b></td><td><b>Breakfast Briefing</b></td><td>Leonardo Hotel St Pauls<span class="sub">Leonardo Royal, EC4V</span></td><td class="mono sm">06:00 – 11:00</td>
+                  <td><div class="roles"><div class="r"><span class="chip">Waiting Staff</span><span class="mono">06:00–11:00</span><span class="mono">6 (+1)</span></div></div></td>
+                  <td><span class="pill green">6 of 6</span></td><td><span class="pill">Completed</span></td><td class="mono sm">4462</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='event-board.html#board=completed'">
+                  <td><b>Tue 16 Sep</b></td><td><b>Corporate Lunch</b></td><td>The Dorchester<span class="sub">Park Lane, W1K</span></td><td class="mono sm">11:00 – 16:00</td>
+                  <td><div class="roles"><div class="r"><span class="chip">Waiting Staff</span><span class="mono">11:00–16:00</span><span class="mono">8 (+1)</span></div><div class="r"><span class="chip">Host</span><span class="mono">11:00–15:00</span><span class="mono">1 (+0)</span></div></div></td>
+                  <td><span class="pill green">9 of 9</span></td><td><span class="pill">Completed</span></td><td class="mono sm">88190</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='event-board.html#board=completed'">
+                  <td><b>Wed 17 Sep</b></td><td><b>Press Night</b></td><td>Mandarin Oriental<span class="sub">Knightsbridge, SW1X</span></td><td class="mono sm">17:00 – 01:00<span class="sub">ends Thu 18</span></td>
+                  <td><div class="roles"><div class="r"><span class="chip">Waiting Staff</span><span class="mono">17:00–23:30</span><span class="mono">8 (+1)</span></div><div class="r"><span class="chip">Bar Staff</span><span class="mono">18:00–01:00</span><span class="mono">4 (+1)</span></div></div></td>
+                  <td><span class="pill green">12 of 12</span></td><td><span class="pill">Completed</span></td><td class="mono sm muted">—</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='event-board.html#board=ongoing'">
+                  <td><b class="cyan">Thu 18 Sep</b><span class="sub">today</span></td><td><b>Conference Day 2</b></td><td>ExCeL London<span class="sub">Royal Victoria Dock, E16</span></td><td class="mono sm">08:00 – 20:00</td>
+                  <td><div class="roles"><div class="r"><span class="chip">Host</span><span class="mono">08:00–16:00</span><span class="mono">4 (+0)</span></div><div class="r"><span class="chip">Bar Staff</span><span class="mono">12:00–20:00</span><span class="mono">6 (+1)</span></div></div></td>
+                  <td><span class="pill green">10 of 10</span></td><td><span class="pill green"><span class="dot"></span>Ongoing</span></td><td class="mono sm">EX-2026-311</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='event-board.html'">
+                  <td><b class="cyan">Thu 18 Sep</b></td><td><b>Afternoon Tea</b></td><td>Leonardo Hotel St Pauls<span class="sub">Leonardo Royal, EC4V</span></td><td class="mono sm">15:00 – 21:00</td>
+                  <td><div class="roles"><div class="r"><span class="chip">Waiting Staff</span><span class="mono">15:00–21:00</span><span class="mono">4 (+1)</span></div></div></td>
+                  <td><span class="pill green">4 of 4</span></td><td><span class="pill cyan">Upcoming</span></td><td class="mono sm">4470</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='event-board.html'">
+                  <td><b class="cyan">Thu 18 Sep</b></td><td><b>Board Dinner</b></td><td>The Dorchester<span class="sub">Park Lane, W1K</span></td><td class="mono sm">17:00 – 23:30</td>
+                  <td><div class="roles"><div class="r"><span class="chip">Waiting Staff</span><span class="mono">17:00–23:30</span><span class="mono">6 (+1)</span></div></div></td>
+                  <td><span class="pill green">6 of 6</span></td><td><span class="pill cyan">Upcoming</span></td><td class="mono sm">88201</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='event-board.html'">
+                  <td><b>Fri 19 Sep</b></td><td><b>Gala Dinner</b></td><td>Leonardo Hotel St Pauls<span class="sub">Leonardo Royal, EC4V</span></td><td class="mono sm">07:00 – 23:30</td>
+                  <td><div class="roles"><div class="r"><span class="chip">Chef</span><span class="mono">07:00–15:00</span><span class="mono">2 (+0)</span></div><div class="r"><span class="chip">Kitchen Porter</span><span class="mono">09:00–17:00</span><span class="mono">3 (+1)</span></div><div class="r"><span class="chip">Waiting Staff</span><span class="mono">17:00–23:30</span><span class="mono">12 (+2)</span></div></div></td>
+                  <td><span class="pill amber">13 of 17</span><span class="sub">4 open</span></td><td><span class="pill cyan">Upcoming</span></td><td class="mono sm">4471-A</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='event-board.html'">
+                  <td><b>Fri 19 Sep</b></td><td><b>Product Launch — Bar</b></td><td>Mandarin Oriental<span class="sub">Knightsbridge, SW1X</span></td><td class="mono sm">18:00 – 01:00<span class="sub">ends Sat 20</span></td>
+                  <td><div class="roles"><div class="r"><span class="chip">Bar Staff</span><span class="mono">18:00–01:00</span><span class="mono">6 (+1)</span></div></div></td>
+                  <td><span class="pill green">6 of 6</span><span class="sub">+1 buffer confirmed</span></td><td><span class="pill cyan">Upcoming</span></td><td class="mono sm muted">— <span class="annot">added later by the manager</span></td>
+                </tr>
+                <tr class="clickable" onclick="location.href='event-board.html'">
+                  <td><b>Sat 20 Sep</b></td><td><b>Wedding — Marquee</b></td><td>Private client (Hurst)<span class="sub">Hurst Manor, RH17</span></td><td class="mono sm">11:00 – 00:30<span class="sub">ends Sun 21</span></td>
+                  <td><div class="roles"><div class="r"><span class="chip">Waiting Staff</span><span class="mono">11:00–00:30</span><span class="mono">10 (+2)</span></div><div class="r"><span class="chip">Host</span><span class="mono">12:00–20:00</span><span class="mono">1 (+0)</span></div></div></td>
+                  <td><span class="pill amber">4 of 11</span><span class="sub">7 open</span></td><td><span class="pill cyan">Upcoming</span></td><td class="mono sm">WD/0912</td>
+                </tr>
+                <tr>
+                  <td><b>Sun 21 Sep</b></td><td class="muted"><s>Conference Lunch</s><span class="sub">cancelled by client 16 Sep — "event postponed to Q1"</span></td><td class="muted">ExCeL London<span class="sub">Royal Victoria Dock, E16</span></td><td class="mono sm muted">08:00 – 16:00</td>
+                  <td class="muted sm">Host 2 (+0) · Waiting Staff 10 (+1) · Bar Staff 4 (+1)</td>
+                  <td class="muted sm">excluded from financials</td><td><span class="pill">Cancelled</span></td><td class="mono sm muted">EX-2026-318</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='event-board.html'">
+                  <td><b>Tue 23 Sep</b></td><td><b>Awards Night</b></td><td>The Dorchester<span class="sub">Park Lane, W1K</span></td><td class="mono sm">16:00 – 02:00<span class="sub">ends Wed 24</span></td>
+                  <td><div class="roles"><div class="r"><span class="chip">Waiting Staff</span><span class="mono">16:00–02:00</span><span class="mono">24 (+4)</span></div><div class="r"><span class="chip">Bar Staff</span><span class="mono">17:00–02:00</span><span class="mono">8 (+1)</span></div></div></td>
+                  <td><span class="pill amber">14 of 32</span><span class="sub">18 open</span></td><td><span class="pill cyan">Upcoming</span></td><td class="mono sm">88213</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='event-board.html'">
+                  <td><b>Fri 25 Sep</b></td><td><b>Charity Ball</b></td><td>Mandarin Oriental<span class="sub">Knightsbridge, SW1X</span></td><td class="mono sm">18:00 – 01:00</td>
+                  <td><div class="roles"><div class="r"><span class="chip">Waiting Staff</span><span class="mono">18:00–01:00</span><span class="mono">16 (+2)</span></div><div class="r"><span class="chip">Bar Staff</span><span class="mono">18:00–01:00</span><span class="mono">6 (+1)</span></div></div></td>
+                  <td><span class="pill amber">5 of 22</span><span class="sub">17 open</span></td><td><span class="pill cyan">Upcoming</span></td><td class="mono sm muted">—</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='event-board.html'">
+                  <td><b>Tue 29 Sep</b></td><td><b>Trade Expo · Day 1</b></td><td>ExCeL London<span class="sub">Royal Victoria Dock, E16</span></td><td class="mono sm">07:00 – 19:00</td>
+                  <td><div class="roles"><div class="r"><span class="chip">Host</span><span class="mono">07:00–15:00</span><span class="mono">6 (+0)</span></div><div class="r"><span class="chip">Bar Staff</span><span class="mono">11:00–19:00</span><span class="mono">10 (+2)</span></div></div></td>
+                  <td><span class="pill amber">3 of 16</span><span class="sub">13 open</span></td><td><span class="pill cyan">Upcoming</span></td><td class="mono sm">EX-2026-340</td>
+                </tr>
+                <tr class="clickable" onclick="location.href='event-board.html'">
+                  <td><b>Wed 30 Sep</b></td><td><b>Trade Expo · Day 2</b><span class="sub">duplicated from Day 1 — roles copied, staff not</span></td><td>ExCeL London<span class="sub">Royal Victoria Dock, E16</span></td><td class="mono sm">07:00 – 19:00</td>
+                  <td><div class="roles"><div class="r"><span class="chip">Host</span><span class="mono">07:00–15:00</span><span class="mono">6 (+0)</span></div><div class="r"><span class="chip">Bar Staff</span><span class="mono">11:00–19:00</span><span class="mono">10 (+2)</span></div></div></td>
+                  <td><span class="pill amber">0 of 16</span><span class="sub">16 open</span></td><td><span class="pill cyan">Upcoming</span></td><td class="mono sm">EX-2026-340</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="panel-h" style="border-bottom:0;border-top:1px solid var(--line)"><span class="muted sm">13 events in September · 45 open positions</span><div class="right"><button class="btn sm ghost" disabled>‹ Prev</button><span class="mono sm">1 / 1</span><button class="btn sm ghost" disabled>Next ›</button></div></div>
+        </div>
+      </section>
+
+      <!-- ================= MONTH ================= -->
+      <section data-state-of="ev" data-state="month" class="stack hide">
+        <div class="toolbar">
+          <div class="seg"><button>List</button><button class="on">Calendar</button></div>
+          <div class="seg sm"><button class="on">Month</button><button>Week</button><button>Day</button></div>
+          <div class="datenav"><button>‹</button><span class="lbl">September 2026</span><button>›</button></div>
+          <button class="btn sm">Today</button>
+          <div class="right"><span class="evchip full" style="pointer-events:none"><span class="t">full</span>green</span><span class="evchip" style="pointer-events:none"><span class="t">N open</span>amber</span><span class="evchip cancelled" style="pointer-events:none">cancelled</span></div>
+        </div>
+        <div class="cal">
+          <div class="dh">Mon</div><div class="dh">Tue</div><div class="dh">Wed</div><div class="dh">Thu</div><div class="dh">Fri</div><div class="dh">Sat</div><div class="dh">Sun</div>
+
+          <!-- week Mon 1 – Sun 7 -->
+          <div class="day"><div class="d">1 <span class="cnt">2 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html"><span class="t">11:00</span>Lunch Service · Leonardo<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">18:00</span>Members' Night · Dorchester<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">2 <span class="cnt">1 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html"><span class="t">07:00</span>Breakfast · Leonardo<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">3 <span class="cnt">3 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html"><span class="t">08:00</span>Expo · ExCeL<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">12:00</span>Lunch · Mandarin<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">19:00</span>Dinner · Dorchester<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">4 <span class="cnt">2 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html"><span class="t">17:00</span>Reception · Mandarin<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">18:00</span>Gala · Dorchester<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">5 <span class="cnt">1 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html"><span class="t">16:00</span>Gala Dinner · Leonardo<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">6 <span class="cnt">0 ev</span></div></div>
+          <div class="day"><div class="d">7 <span class="cnt">2 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html"><span class="t">07:00</span>Breakfast · Leonardo<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">12:00</span>Lunch · ExCeL<span class="f">full</span></a></div></div>
+
+          <!-- week Mon 8 – Sun 14 -->
+          <div class="day"><div class="d">8 <span class="cnt">1 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html"><span class="t">18:00</span>Launch · Mandarin<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">9 <span class="cnt">2 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html"><span class="t">11:00</span>Lunch · Dorchester<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">19:00</span>Dinner · Leonardo<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">10 <span class="cnt">1 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html"><span class="t">08:00</span>Conference · ExCeL<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">11 <span class="cnt">3 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html"><span class="t">07:00</span>Breakfast · Leonardo<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">17:00</span>Drinks · Mandarin<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">18:30</span>Dinner · Dorchester<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">12 <span class="cnt">2 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html"><span class="t">12:00</span>Wedding · Hurst<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">18:00</span>Party · Mandarin<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">13 <span class="cnt">1 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html"><span class="t">11:00</span>Brunch · Leonardo<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">14 <span class="cnt">0 ev</span></div></div>
+
+          <!-- week Mon 15 – Sun 21 (this week) -->
+          <div class="day"><div class="d">15 <span class="cnt">1 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html#board=completed"><span class="t">06:00</span>Breakfast Briefing · Leonardo<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">16 <span class="cnt">1 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html#board=completed"><span class="t">11:00</span>Corporate Lunch · Dorchester<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">17 <span class="cnt">1 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html#board=completed"><span class="t">17:00</span>Press Night · Mandarin<span class="f">full</span></a></div></div>
+          <div class="day today"><div class="d">18 <span class="cnt">3 ev · 0 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html#board=ongoing"><span class="t">08:00</span>Conference Day 2 · ExCeL<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">15:00</span>Afternoon Tea · Leonardo<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">17:00</span>Board Dinner · Dorchester<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">19 <span class="cnt">11 ev · 9 open</span></div><div class="scroll"><a class="evchip full" href="event-board.html"><span class="t">06:00</span>Breakfast · Leonardo<span class="f">full</span></a><a class="evchip" href="event-board.html"><span class="t">07:00</span>Gala Dinner · Leonardo<span class="f">4 open</span></a><a class="evchip full" href="event-board.html"><span class="t">08:00</span>Conference Day 3 · ExCeL<span class="f">full</span></a><a class="evchip" href="event-board.html"><span class="t">11:00</span>Lunch · Dorchester<span class="f">2 open</span></a><a class="evchip full" href="event-board.html"><span class="t">12:00</span>Lunch · Mandarin<span class="f">full</span></a><a class="evchip" href="event-board.html"><span class="t">14:00</span>Tea · Leonardo<span class="f">1 open</span></a><a class="evchip full" href="event-board.html"><span class="t">17:00</span>Drinks · Dorchester<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">18:00</span>Product Launch — Bar · Mandarin<span class="f">full</span></a><a class="evchip" href="event-board.html"><span class="t">18:00</span>Dinner · Hurst<span class="f">2 open</span></a><a class="evchip full" href="event-board.html"><span class="t">19:00</span>Awards · ExCeL<span class="f">full</span></a><a class="evchip full" href="event-board.html"><span class="t">20:00</span>Late Bar · Mandarin<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">20 <span class="cnt">2 ev · 7 open</span></div><div class="scroll"><a class="evchip" href="event-board.html"><span class="t">11:00</span>Wedding — Marquee · Hurst<span class="f">7 open</span></a><a class="evchip full" href="event-board.html"><span class="t">19:00</span>Dinner · Dorchester<span class="f">full</span></a></div></div>
+          <div class="day"><div class="d">21 <span class="cnt">1 ev · cancelled</span></div><div class="scroll"><a class="evchip cancelled" href="event-board.html"><span class="t">08:00</span>Conference Lunch · ExCeL</a></div></div>
+
+          <!-- week Mon 22 – Sun 28 -->
+          <div class="day"><div class="d">22 <span class="cnt">0 ev</span></div></div>
+          <div class="day"><div class="d">23 <span class="cnt">1 ev · 18 open</span></div><div class="scroll"><a class="evchip" href="event-board.html"><span class="t">16:00</span>Awards Night · Dorchester<span class="f">18 open</span></a></div></div>
+          <div class="day"><div class="d">24 <span class="cnt">0 ev</span></div></div>
+          <div class="day"><div class="d">25 <span class="cnt">1 ev · 17 open</span></div><div class="scroll"><a class="evchip" href="event-board.html"><span class="t">18:00</span>Charity Ball · Mandarin<span class="f">17 open</span></a></div></div>
+          <div class="day"><div class="d">26 <span class="cnt">1 ev · 7 open</span></div><div class="scroll"><a class="evchip" href="event-board.html"><span class="t">14:00</span>Private Party · Hurst<span class="f">7 open</span></a></div></div>
+          <div class="day"><div class="d">27 <span class="cnt">0 ev</span></div></div>
+          <div class="day"><div class="d">28 <span class="cnt">0 ev</span></div></div>
+
+          <!-- week Mon 29 – Sun 5 Oct -->
+          <div class="day"><div class="d">29 <span class="cnt">1 ev · 13 open</span></div><div class="scroll"><a class="evchip" href="event-board.html"><span class="t">07:00</span>Trade Expo · Day 1 · ExCeL<span class="f">13 open</span></a></div></div>
+          <div class="day"><div class="d">30 <span class="cnt">1 ev · 16 open</span></div><div class="scroll"><a class="evchip" href="event-board.html"><span class="t">07:00</span>Trade Expo · Day 2 · ExCeL<span class="f">16 open</span></a></div></div>
+          <div class="day other"><div class="d">1 Oct</div></div>
+          <div class="day other"><div class="d">2</div></div>
+          <div class="day other"><div class="d">3</div></div>
+          <div class="day other"><div class="d">4</div></div>
+          <div class="day other"><div class="d">5</div></div>
+        </div>
+        <span class="annot">Fri 19 holds 11 events — the cell scrolls (10–15 events per day in season, §3.1). Chip = start time · event · client; pill full / N-open; "N ev · M open" per day</span>
+      </section>
+
+      <!-- ================= WEEK ================= -->
+      <section data-state-of="ev" data-state="week" class="stack hide">
+        <div class="toolbar">
+          <div class="seg"><button>List</button><button class="on">Calendar</button></div>
+          <div class="seg sm"><button>Month</button><button class="on">Week</button><button>Day</button></div>
+          <div class="datenav"><button>‹</button><span class="lbl">Mon 15 – Sun 21 Sep 2026</span><button>›</button></div>
+          <button class="btn sm">Today</button>
+          <span class="annot">vertical lists ordered by event-window start, not a time grid — overlapping windows collapse a grid at 10–15/day (§3.1)</span>
+        </div>
+        <div class="wk">
+          <div class="col">
+            <div class="ch"><span class="d">Mon 15</span><span class="c ok">1 ev · 0 open</span></div>
+            <div class="list"><a class="wchip full" href="event-board.html#board=completed"><span class="w">06:00 – 11:00<span class="f">6 of 6</span></span><span class="n">Breakfast Briefing</span><span class="m">Leonardo Hotel St Pauls · Leonardo Royal</span></a></div>
+          </div>
+          <div class="col">
+            <div class="ch"><span class="d">Tue 16</span><span class="c ok">1 ev · 0 open</span></div>
+            <div class="list"><a class="wchip full" href="event-board.html#board=completed"><span class="w">11:00 – 16:00<span class="f">9 of 9</span></span><span class="n">Corporate Lunch</span><span class="m">The Dorchester · Park Lane</span></a></div>
+          </div>
+          <div class="col">
+            <div class="ch"><span class="d">Wed 17</span><span class="c ok">1 ev · 0 open</span></div>
+            <div class="list"><a class="wchip full" href="event-board.html#board=completed"><span class="w">17:00 – 01:00<span class="f">12 of 12</span></span><span class="n">Press Night</span><span class="m">Mandarin Oriental · Knightsbridge</span></a></div>
+          </div>
+          <div class="col today">
+            <div class="ch"><span class="d">Thu 18 · today</span><span class="c ok">3 ev · 0 open</span></div>
+            <div class="list">
+              <a class="wchip ongoing" href="event-board.html#board=ongoing"><span class="w">08:00 – 20:00<span class="f" style="border-color:rgba(61,220,151,.4);color:var(--green);background:var(--green-dim)">10 of 10</span></span><span class="n">Conference Day 2 <span class="pill green" style="height:16px;font-size:9px">Ongoing</span></span><span class="m">ExCeL London · Royal Victoria Dock</span></a>
+              <a class="wchip full" href="event-board.html"><span class="w">15:00 – 21:00<span class="f">4 of 4</span></span><span class="n">Afternoon Tea</span><span class="m">Leonardo Hotel St Pauls · Leonardo Royal</span></a>
+              <a class="wchip full" href="event-board.html"><span class="w">17:00 – 23:30<span class="f">6 of 6</span></span><span class="n">Board Dinner</span><span class="m">The Dorchester · Park Lane</span></a>
+            </div>
+          </div>
+          <div class="col">
+            <div class="ch"><span class="d">Fri 19</span><span class="c">11 ev · 9 open</span></div>
+            <div class="list">
+              <a class="wchip full" href="event-board.html"><span class="w">06:00 – 11:00<span class="f">4 of 4</span></span><span class="n">Breakfast</span><span class="m">Leonardo Hotel St Pauls · Leonardo Royal</span></a>
+              <a class="wchip" href="event-board.html"><span class="w">07:00 – 23:30<span class="f">13 of 17</span></span><span class="n">Gala Dinner</span><span class="m">Leonardo Hotel St Pauls · Leonardo Royal</span></a>
+              <a class="wchip full" href="event-board.html"><span class="w">08:00 – 20:00<span class="f">10 of 10</span></span><span class="n">Conference Day 3</span><span class="m">ExCeL London · Royal Victoria Dock</span></a>
+              <a class="wchip" href="event-board.html"><span class="w">11:00 – 16:00<span class="f">6 of 8</span></span><span class="n">Lunch</span><span class="m">The Dorchester · Park Lane</span></a>
+              <a class="wchip full" href="event-board.html"><span class="w">12:00 – 17:00<span class="f">5 of 5</span></span><span class="n">Lunch</span><span class="m">Mandarin Oriental · Knightsbridge</span></a>
+              <a class="wchip" href="event-board.html"><span class="w">14:00 – 19:00<span class="f">3 of 4</span></span><span class="n">Tea</span><span class="m">Leonardo Hotel St Pauls · Leonardo Royal</span></a>
+              <a class="wchip full" href="event-board.html"><span class="w">17:00 – 22:00<span class="f">6 of 6</span></span><span class="n">Drinks</span><span class="m">The Dorchester · Park Lane</span></a>
+              <a class="wchip full" href="event-board.html"><span class="w">18:00 – 01:00<span class="f">6 of 6</span></span><span class="n">Product Launch — Bar</span><span class="m">Mandarin Oriental · Knightsbridge</span></a>
+              <a class="wchip" href="event-board.html"><span class="w">18:00 – 23:00<span class="f">4 of 6</span></span><span class="n">Dinner</span><span class="m">Private client (Hurst) · Hurst Manor</span></a>
+              <a class="wchip full" href="event-board.html"><span class="w">19:00 – 00:00<span class="f">8 of 8</span></span><span class="n">Awards</span><span class="m">ExCeL London · Royal Victoria Dock</span></a>
+              <a class="wchip full" href="event-board.html"><span class="w">20:00 – 02:00<span class="f">4 of 4</span></span><span class="n">Late Bar</span><span class="m">Mandarin Oriental · Knightsbridge</span></a>
+            </div>
+          </div>
+          <div class="col">
+            <div class="ch"><span class="d">Sat 20</span><span class="c">2 ev · 7 open</span></div>
+            <div class="list">
+              <a class="wchip" href="event-board.html"><span class="w">11:00 – 00:30<span class="f">4 of 11</span></span><span class="n">Wedding — Marquee</span><span class="m">Private client (Hurst) · Hurst Manor</span></a>
+              <a class="wchip full" href="event-board.html"><span class="w">19:00 – 23:30<span class="f">8 of 8</span></span><span class="n">Dinner</span><span class="m">The Dorchester · Park Lane</span></a>
+            </div>
+          </div>
+          <div class="col">
+            <div class="ch"><span class="d">Sun 21</span><span class="c">1 ev · cancelled</span></div>
+            <div class="list"><a class="wchip cancelled" href="event-board.html"><span class="w">08:00 – 16:00</span><span class="n">Conference Lunch</span><span class="m">ExCeL London · Royal Victoria Dock</span></a><div class="empty" style="padding:14px 8px;font-size:11px;text-decoration:none">Cancelled by client 16 Sep — stays visible, greyed (§3.3)</div></div>
+          </div>
+        </div>
+        <span class="annot">Sunday sits last — Monday to Sunday, the payroll week (RULE-06). Each column scrolls on its own; clicking a chip opens the event board</span>
+      </section>
+
+      <!-- ================= DAY ================= -->
+      <section data-state-of="ev" data-state="day" class="stack hide">
+        <div class="toolbar">
+          <div class="seg"><button>List</button><button class="on">Calendar</button></div>
+          <div class="seg sm"><button>Month</button><button>Week</button><button class="on">Day</button></div>
+          <div class="datenav"><button>‹</button><span class="lbl">Thu 18 Sep 2026 · today</span><button>›</button></div>
+          <button class="btn sm">Today</button>
+          <div class="right"><span class="pill cyan">3 ev · 0 open</span><span class="pill green">1 ongoing</span></div>
+        </div>
+        <div>
+          <div class="dayrow" style="background:transparent;border:0;padding:0 14px 6px"><span class="label">Window (UK time)</span><span class="label">Event</span><span class="label">Client · Venue</span><span class="label">Roles · headcount (+buffer)</span><span class="label">Fill</span><span class="label">Status</span></div>
+          <div class="dayrow" onclick="location.href='event-board.html#board=ongoing'">
+            <span class="w">08:00 – 20:00<span class="sub">12 h window</span></span>
+            <span><b>Conference Day 2</b><span class="sub muted sm" style="display:block">PO EX-2026-311 · on-site: Dana R. (ExCeL events desk)</span></span>
+            <span>ExCeL London<span class="sub muted sm" style="display:block">Royal Victoria Dock, E16 1XL · geofence 400 m</span></span>
+            <span class="stack tight"><span class="row sm"><span class="chip">Host</span><span class="mono">08:00–16:00</span><span class="mono">4 (+0)</span><span class="pill green">4 of 4</span></span><span class="row sm"><span class="chip">Bar Staff</span><span class="mono">12:00–20:00</span><span class="mono">6 (+1)</span><span class="pill green">6 of 6</span></span></span>
+            <span class="pill green">10 of 10</span><span class="pill green"><span class="dot"></span>Ongoing</span>
+          </div>
+          <div class="dayrow" onclick="location.href='event-board.html'">
+            <span class="w">15:00 – 21:00<span class="sub">starts in 28 min</span></span>
+            <span><b>Afternoon Tea</b><span class="sub muted sm" style="display:block">PO 4470 · on-site: Marco V. (F&amp;B manager)</span></span>
+            <span>Leonardo Hotel St Pauls<span class="sub muted sm" style="display:block">Leonardo Royal, 10 Godliman St, EC4V 5AJ · 150 m</span></span>
+            <span class="stack tight"><span class="row sm"><span class="chip">Waiting Staff</span><span class="mono">15:00–21:00</span><span class="mono">4 (+1)</span><span class="pill green">4 of 4</span></span></span>
+            <span class="pill green">4 of 4</span><span class="pill cyan">Upcoming</span>
+          </div>
+          <div class="dayrow" onclick="location.href='event-board.html'">
+            <span class="w">17:00 – 23:30</span>
+            <span><b>Board Dinner</b><span class="sub muted sm" style="display:block">PO 88201 · on-site: James H. (banqueting)</span></span>
+            <span>The Dorchester<span class="sub muted sm" style="display:block">53 Park Lane, W1K 1QA · 150 m</span></span>
+            <span class="stack tight"><span class="row sm"><span class="chip">Waiting Staff</span><span class="mono">17:00–23:30</span><span class="mono">6 (+1)</span><span class="pill green">6 of 6</span></span></span>
+            <span class="pill green">6 of 6</span><span class="pill cyan">Upcoming</span>
+          </div>
+        </div>
+        <div class="note">Status is computed from the event window: Upcoming before the earliest role start, Ongoing between, Completed after the latest role end; only Cancelled is set by hand (§1.5). A viewer outside the UK would see a second "your time" line under every window here (§1.8).</div>
+      </section>
+    </div>
+
+    <div class="wf-note note"><b>Behaviour notes.</b> Two views, one toggle reading "List" first, "Calendar" second, working both ways with no duplicate (§3.1). Back / forward arrows around the period label in both views, so past events are browsable in List too. "+ New event" lives in the top-right of the header in every view. Cells and week columns scroll to hold 10–15 events a day; fill indication = EventChip full / N-open plus a daily "N ev · M open" counter (§3.1). Week view: seven Monday–Sunday columns, current day highlighted, chips ordered by event-window start, each chip showing start–end, client, venue and an "N of M" pill — amber while short, green when every role is confirmed; column headers carry the date and the same counter. Headcount reads "N (+buffer)" everywhere, never the total (§3.2, RULE-07); fill counts ONLY confirmed. The event window is derived from the earliest role start to the latest role end (RULE-18) — individual role times are on the row and on the event board. A cancelled event stays visible, greyed, with a Cancelled label; it contributes nothing to financials (§3.3). Status pill Upcoming / Ongoing / Completed / Cancelled per §1.5 appears on every row and chip. Duplicate copies the roles, not the staff (§3.2).</div>
+  </div>
+</div>
+</body>
+</html>
