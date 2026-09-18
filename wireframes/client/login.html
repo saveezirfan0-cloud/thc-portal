@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client Portal · Login — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .pair { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; padding: 8px 24px 8px; }
+  /* desktop browser frame */
+  .desk { flex: 1 1 640px; max-width: 900px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 0 0 6px #0b1220, 0 0 0 7px var(--line); }
+  .desk .urlbar, .mob .urlbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+  .desk .urlbar .u, .mob .urlbar .u { flex: 1; background: var(--bg); border: 1px solid var(--line); padding: 4px 8px; text-align: center; color: var(--text); }
+  .desk .canvas { min-height: 560px; display: flex; align-items: center; justify-content: center; padding: 40px 24px; background: radial-gradient(circle at 20% 10%, rgba(62,220,236,.10), transparent 40%), radial-gradient(circle at 85% 90%, rgba(168,121,255,.10), transparent 40%); }
+  .auth-card { width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--line); padding: 26px 28px 24px; display: flex; flex-direction: column; gap: 14px; }
+  .auth-card .brand { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .auth-card h2 { font-size: 20px; }
+  .auth-card .lead { color: var(--muted); font-size: 13px; }
+  /* 390px phone-browser frame */
+  .mob { width: 390px; flex: 0 0 390px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 0 0 6px #0b1220, 0 0 0 7px var(--line); }
+  .mob .canvas { padding: 24px 0 8px; min-height: 560px; display: flex; flex-direction: column; justify-content: center; }
+  .mob .auth-card { max-width: none; border: 0; padding: 20px 16px 24px; background: transparent; }
+  .cap { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }
+  .cap b { color: var(--cyan); font-weight: 500; }
+  .route { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; font-size: 12.5px; align-items: center; }
+  .route .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .route .arrow { color: var(--cyan); font-family: var(--font-mono); }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Client Portal · Login</span><span class="pill cyan">/login</span><span class="pill">§1.4 · §10.2 · §9.12 · §11.1</span>
+  <span class="spacer"></span>
+  <a href="events.html">Next: Client events →</a>
+</div>
+
+<div class="wf-section" style="padding-bottom:8px">
+  <div class="row wrap">
+    <div class="wf-states" data-target="login">
+      <button data-state="login">Sign in</button>
+      <button data-state="error">Wrong credentials</button>
+      <button data-state="forgot">Forgot password (A1) · Link sent (A2)</button>
+    </div>
+    <span class="annot">email + password (§1.4) · one sign-in, role-based routing: the client never sees the back office and vice versa</span>
+  </div>
+</div>
+
+<!-- ============ State: sign in — desktop + 390px side by side ============ -->
+<section data-state-of="login" data-state="login">
+  <div class="pair">
+    <div style="flex:1 1 640px;max-width:900px">
+      <div class="cap">Desktop · <b>1280px</b></div>
+      <div class="desk">
+        <div class="urlbar"><span>‹ ›</span><span class="u">🔒 portal.thehospitalitycompany.co.uk/login</span><span>⋯</span></div>
+        <div class="canvas">
+          <div class="auth-card">
+            <div class="brand">
+              <span class="logo round" title="two glasses logo in a cyan circle">🥂</span>
+              <div><div class="name">The Hospitality Company</div><div class="sub">Client Portal</div></div>
+            </div>
+            <div><h2>Sign in</h2><p class="lead">Your events, confirmed line-ups and timesheets — read-only.</p></div>
+            <div class="field"><span class="label">Email</span><input class="input" type="email" value="hannah.brooks@leonardo-stpauls.co.uk"></div>
+            <div class="field"><div class="row"><span class="label">Password</span><a class="xs ml-auto" href="#login=forgot">Forgot password?</a></div><div class="input-row"><input class="input" type="password" value="••••••••••••"><span class="addon" style="cursor:pointer">Show</span></div></div>
+            <label class="check"><span class="box on"></span><span>Keep me signed in on this device</span></label>
+            <a class="btn primary block lg" href="events.html">Sign in</a>
+            <div class="xs muted" style="text-align:center">Access is set up by The Hospitality Company for your venue. Need an account? <a href="#">admin@thehospitalitycompany.co.uk</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="cap">Phone · <b>390px</b></div>
+      <div class="mob">
+        <div class="urlbar"><span>‹</span><span class="u">🔒 portal.thehospitalitycompany.co.uk</span><span>⋯</span></div>
+        <div class="canvas">
+          <div class="auth-card">
+            <div class="brand">
+              <span class="logo round">🥂</span>
+              <div><div class="name">The Hospitality Company</div><div class="sub">Client Portal</div></div>
+            </div>
+            <div><h2>Sign in</h2><p class="lead">Your events, confirmed line-ups and timesheets.</p></div>
+            <div class="field"><span class="label">Email</span><input class="input" type="email" placeholder="you@yourvenue.co.uk"></div>
+            <div class="field"><div class="row"><span class="label">Password</span><a class="xs ml-auto" href="#login=forgot">Forgot password?</a></div><div class="input-row"><input class="input" type="password" placeholder="••••••••"><span class="addon">Show</span></div></div>
+            <label class="check"><span class="box on"></span><span>Keep me signed in on this device</span></label>
+            <a class="btn primary block lg" href="events.html">Sign in</a>
+            <div class="xs muted" style="text-align:center">Need an account? <a href="#">admin@thehospitalitycompany.co.uk</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="pair" style="padding-top:0">
+    <div class="card accent" style="flex:1 1 420px;max-width:560px">
+      <b>Role-based routing after sign-in (§1.4)</b>
+      <div class="route mt-8">
+        <span class="k">Client account</span><span><span class="arrow">→</span> /client — only their own events; no money anywhere (§11.1)</span>
+        <span class="k">Admin account</span><span><span class="arrow">→</span> /dashboard — Back Office; the same email+password login, different app</span>
+        <span class="k">Staff account</span><span><span class="arrow">→</span> the staff app — not a web portal; the web login refuses with "Use the app" <span class="annot">assumption — spec is silent on staff-on-web</span></span>
+      </div>
+    </div>
+    <div class="card" style="flex:1 1 320px;max-width:460px">
+      <b>Who has a client login</b>
+      <div class="sm muted mt-8">The contact people on the client card (§9.7) — the 2–3 addresses the allocation sheet and the timesheet are sent to. The office creates the access; there is no self-registration and no "Create account" link on this page. One client user sees one client's events (Leonardo Hotel St Pauls), never another venue's.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ State: wrong credentials ============ -->
+<section data-state-of="login" data-state="error" class="hide">
+  <div class="pair">
+    <div style="flex:1 1 640px;max-width:900px">
+      <div class="cap">Desktop · <b>wrong email or password</b></div>
+      <div class="desk">
+        <div class="urlbar"><span>‹ ›</span><span class="u">🔒 portal.thehospitalitycompany.co.uk/login</span><span>⋯</span></div>
+        <div class="canvas">
+          <div class="auth-card">
+            <div class="brand">
+              <span class="logo round">🥂</span>
+              <div><div class="name">The Hospitality Company</div><div class="sub">Client Portal</div></div>
+            </div>
+            <div><h2>Sign in</h2><p class="lead">Your events, confirmed line-ups and timesheets — read-only.</p></div>
+            <div class="alert coral">The email or password is incorrect. Check both and try again, or reset your password.</div>
+            <div class="field"><span class="label">Email</span><input class="input err" type="email" value="hannah.brooks@leonardo-stpauls.co.uk"></div>
+            <div class="field"><div class="row"><span class="label">Password</span><a class="xs ml-auto" href="#login=forgot">Forgot password?</a></div><div class="input-row"><input class="input err" type="password" value="••••••••"><span class="addon">Show</span></div></div>
+            <label class="check"><span class="box on"></span><span>Keep me signed in on this device</span></label>
+            <button class="btn primary block lg">Sign in</button>
+            <div class="xs muted" style="text-align:center">Need an account? <a href="#">admin@thehospitalitycompany.co.uk</a></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="stack" style="width:390px">
+      <div class="card accent"><b>One generic message.</b><div class="sm muted mt-8">The page never says which of the two was wrong and never reveals whether an email exists — the same wording for an unknown email, a wrong password, or a disabled login (e.g. a GDPR-removed account, §1.7, cannot sign in at all).</div></div>
+      <div class="card"><b>Lock-out</b><div class="sm muted mt-8">After repeated failures the form throttles (cool-down + "Forgot password?" nudged). Exact thresholds are not in the spec — to agree in the build.</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ State: forgot password (A1) + reset link sent (A2) ============ -->
+<section data-state-of="login" data-state="forgot" class="hide">
+  <div class="pair">
+    <div style="flex:1 1 640px;max-width:900px">
+      <div class="cap">Desktop · <b>A1 Forgot password</b></div>
+      <div class="desk">
+        <div class="urlbar"><span>‹ ›</span><span class="u">🔒 portal.thehospitalitycompany.co.uk/forgot-password</span><span>⋯</span></div>
+        <div class="canvas">
+          <div class="auth-card">
+            <div class="brand">
+              <span class="logo round">🥂</span>
+              <div><div class="name">The Hospitality Company</div><div class="sub">Client Portal</div></div>
+            </div>
+            <div><h2>Reset your password</h2><p class="lead">Enter the email you sign in with. If it has an account, we'll send a reset link.</p></div>
+            <div class="field"><span class="label">Email</span><input class="input" type="email" value="hannah.brooks@leonardo-stpauls.co.uk"></div>
+            <button class="btn primary block lg">Send reset link</button>
+            <a class="xs" href="#login=login" style="text-align:center">← Back to sign in</a>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="cap">Phone · <b>A2 Reset link sent</b></div>
+      <div class="mob">
+        <div class="urlbar"><span>‹</span><span class="u">🔒 portal.thehospitalitycompany.co.uk</span><span>⋯</span></div>
+        <div class="canvas">
+          <div class="auth-card" style="align-items:center;text-align:center">
+            <div class="brand">
+              <span class="logo round">🥂</span>
+              <div><div class="name">The Hospitality Company</div><div class="sub">Client Portal</div></div>
+            </div>
+            <span class="logo" style="width:56px;height:56px;font-size:26px">✉</span>
+            <h2>Check your inbox</h2>
+            <p class="lead">If <b class="mono" style="color:var(--text);font-size:12px">hannah.brooks@leonardo-stpauls.co.uk</b> has an account, a reset link is on its way from admin@thehospitalitycompany.co.uk. The link works once.</p>
+            <a class="btn block" href="../public/activate.html#act=reset">Open the link → A3 Set new password</a>
+            <a class="xs" href="#login=login">← Back to sign in</a>
+            <span class="annot">A3 is the shared landing page on public/activate.html</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="wf-note note"><b>Behaviour notes.</b>
+<b>Login (§1.4):</b> back office and client both sign in with email + password on the web; a worker never does — they are activated through a personal link (public/activate.html) and live in the app. After sign-in the role decides the destination: Client → /client, Admin → /dashboard. A client URL typed by an admin (or the reverse) is refused, not redirected — the two apps never leak into each other. ·
+<b>Client users (§9.7, §11.4):</b> the 2–3 contact people on the client card — the same addresses the allocation sheet and timesheet are emailed to. Access is created by the office; no self-registration. Everything behind the login is read-only and shows no money (§11.1). ·
+<b>Auth screens (§10.2):</b> A0 Login · A1 Forgot password · A2 Reset link sent · A3 Set new password (shared landing, on public/activate.html). Reset emails come from admin@thehospitalitycompany.co.uk (§9.12); no no-reply address. ·
+<b>Responsive (§1.2):</b> the Client Portal must work on tablet and phone — the card is the same component at 390px, full-width inputs, the "Forgot password?" link stays on the label row. ·
+<b>Assumptions to confirm:</b> generic error wording; throttling after repeated failures; "Keep me signed in" duration.</div>
+</body>
+</html>

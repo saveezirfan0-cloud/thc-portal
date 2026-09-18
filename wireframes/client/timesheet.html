@@ -1,0 +1,272 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client Portal · Timesheet document — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  /* =============== the printed document: a white A4 sheet on the navy canvas =============== */
+  .docs { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 8px 24px 24px; }
+  .a4 { width: 794px; min-height: 1123px; background: #fff; color: #111; font-family: var(--font-body); font-size: 11px; padding: 34px 40px 30px; display: flex; flex-direction: column; box-shadow: 0 24px 70px rgba(0,0,0,.65); }
+  .a4 .logo.round { background: #111; color: #fff; width: 36px; height: 36px; font-size: 17px; }
+  .sh-head { display: flex; align-items: center; gap: 12px; border-bottom: 2px solid #111; padding-bottom: 10px; }
+  .sh-head .n { font-family: var(--font-head); font-weight: 700; font-size: 15px; line-height: 1.1; }
+  .sh-head .s { font-family: var(--font-mono); font-size: 8.5px; letter-spacing: .12em; text-transform: uppercase; color: #555; margin-top: 2px; }
+  .sh-head .title { margin-left: auto; text-align: right; }
+  .sh-head .title .t { font-family: var(--font-head); font-weight: 700; font-size: 21px; letter-spacing: .14em; line-height: 1; }
+  .sh-head .title .d { font-family: var(--font-mono); font-size: 10.5px; margin-top: 5px; }
+  .sh-ev { display: flex; align-items: baseline; gap: 14px; padding: 10px 0 4px; flex-wrap: wrap; }
+  .sh-ev .n { font-family: var(--font-head); font-weight: 600; font-size: 15px; }
+  .sh-ev .po { font-family: var(--font-mono); font-size: 10px; border: 1px solid #111; padding: 1px 6px; letter-spacing: .06em; }
+  .sh-ev .cont { font-size: 11px; color: #333; font-style: italic; }
+  .sh-ev .gen { margin-left: auto; font-family: var(--font-mono); font-size: 9px; color: #555; }
+  table.sh { width: 100%; border-collapse: collapse; margin-top: 8px; table-layout: fixed; }
+  .sh th { font-family: var(--font-mono); font-size: 8.5px; text-transform: uppercase; letter-spacing: .08em; border: 1px solid #111; padding: 5px 6px; background: #e9e9e9; text-align: left; font-weight: 600; color: #111; }
+  .sh td { border: 1px solid #111; padding: 4px 6px; height: 48px; vertical-align: middle; font-size: 10.5px; overflow: hidden; }
+  .sh td.c { text-align: center; font-family: var(--font-mono); }
+  .sh td.cm { font-size: 9.5px; color: #222; }
+  .sh tr.sec td { height: auto; padding: 3px 6px; background: #f3f3f3; font-family: var(--font-mono); font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
+  .sh .ph { width: 40px; height: 40px; background-color: #b9c2cc; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='12' r='6.5' fill='%23f2f4f6'/%3E%3Cpath d='M3 34c0-9 6-13 13-13s13 4 13 13z' fill='%23f2f4f6'/%3E%3C/svg%3E"); background-size: cover; background-position: center; display: block; margin: 0 auto; }
+  .sh .ph.b { background-color: #9aa9b8; } .sh .ph.c { background-color: #8b9aa3; } .sh .ph.d { background-color: #a7a3b8; }
+  .sh .ph.none { background: #f7f7f7; border: 1px dashed #999; }
+  .sh .nm { font-weight: 600; font-size: 11px; }
+  .sh .id { font-family: var(--font-mono); font-size: 9.5px; color: #333; }
+  .sh .rl { font-size: 9.5px; color: #444; }
+  .sh-foot { margin-top: auto; padding-top: 14px; }
+  .sh-sign { display: grid; grid-template-columns: 1fr 1.5fr 1.5fr .9fr; gap: 12px; }
+  .sh-sign .f { border-bottom: 1px solid #111; padding: 14px 4px 4px; font-size: 12px; min-height: 40px; font-family: var(--font-mono); }
+  .sh-sign .f .k { display: block; font-family: var(--font-mono); font-size: 8px; letter-spacing: .1em; text-transform: uppercase; color: #555; margin-bottom: 4px; font-weight: 600; }
+  .sh-co { margin-top: 12px; text-align: center; font-size: 9px; color: #333; border-top: 1px solid #999; padding-top: 6px; font-family: var(--font-mono); letter-spacing: .02em; }
+  .sh-page { text-align: right; font-family: var(--font-mono); font-size: 9px; color: #333; margin-top: 8px; }
+  .sh-page.only { margin-top: auto; padding-top: 10px; }
+  .cap { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); width: 794px; }
+  .cap b { color: var(--cyan); font-weight: 500; }
+  /* email preview */
+  .mail { display: grid; grid-template-columns: 90px 1fr; gap: 8px 12px; font-size: 12.5px; align-items: baseline; }
+  .mail .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .mail .body { grid-column: 1 / -1; border-top: 1px solid var(--line); padding-top: 12px; margin-top: 4px; white-space: pre-line; line-height: 1.55; color: var(--text); }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Client Portal · Timesheet document (PDF)</span><span class="pill cyan">Leonardo Hotel St Pauls – Gala Dinner.pdf</span><span class="pill">§11.3 · §11.4 · §1.7 · §5.2</span>
+  <span class="spacer"></span>
+  <a href="../index.html">Back to Hub →</a>
+</div>
+
+<div class="wf-section" style="padding-bottom:8px">
+  <div class="row wrap">
+    <div class="wf-states" data-target="ts">
+      <button data-state="allocation">Allocation sheet · blank form (before)</button>
+      <button data-state="signout">Sign-out timesheet · filled (after)</button>
+      <button data-state="page-2">Page 2 of 2 · continuation</button>
+    </div>
+    <span class="annot">ONE document per event, all roles together (§11.3) · white sheet = what prints · format 1:1 with THC's current PDF, not a new design</span>
+  </div>
+</div>
+
+<!-- ============ State 1: STAFF ALLOCATION — blank form, page 1 of 2 ============ -->
+<section data-state-of="ts" data-state="allocation">
+  <div class="docs">
+    <div class="cap">Allocation sheet · <b>page 1 of 2</b> · generated 18/09/2026 17:42, sent before the event · Finish · Signature · Comments · Hours left EMPTY for the client to fill in by hand on site</div>
+    <div class="a4">
+      <div class="sh-head">
+        <span class="logo round" title="THC logo">🥂</span>
+        <div><div class="n">The Hospitality Company</div><div class="s">Event staffing · London</div></div>
+        <div class="title"><div class="t">STAFF ALLOCATION</div><div class="d">Date: 19/09/2026</div></div>
+      </div>
+      <div class="sh-ev"><span class="n">Leonardo Hotel St Pauls – Gala Dinner</span><span class="po">PO Number: 4471-A</span></div>
+      <table class="sh">
+        <colgroup><col style="width:52px"><col style="width:196px"><col style="width:74px"><col style="width:70px"><col style="width:118px"><col style="width:130px"><col style="width:74px"></colgroup>
+        <thead><tr><th>Photo</th><th>Staff Name</th><th>Start Time</th><th>Finish Time</th><th>Signature</th><th>Comments</th><th>Hours Worked</th></tr></thead>
+        <tbody>
+          <tr class="sec"><td colspan="7">Chef · 07:00 – 15:00 · 2 staff</td></tr>
+          <tr><td><span class="ph"></span></td><td><span class="nm">Luca Moretti</span> <span class="id">(0412)</span><div class="rl">(Chef)</div></td><td class="c">07:00 (15:00)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+          <tr><td><span class="ph b"></span></td><td><span class="nm">Daniel Okafor</span> <span class="id">(0388)</span><div class="rl">(Chef)</div></td><td class="c">07:00 (15:00)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+          <tr class="sec"><td colspan="7">Kitchen Porter · 09:00 – 17:00 · 3 staff</td></tr>
+          <tr><td><span class="ph c"></span></td><td><span class="nm">Aisha Bello</span> <span class="id">(0467)</span><div class="rl">(Kitchen Porter)</div></td><td class="c">09:00 (17:00)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+          <tr><td><span class="ph d"></span></td><td><span class="nm">Mateusz Nowak</span> <span class="id">(0505)</span><div class="rl">(Kitchen Porter)</div></td><td class="c">09:00 (17:00)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+          <tr><td><span class="ph"></span></td><td><span class="nm">Tom Reid</span> <span class="id">(0231)</span><div class="rl">(Kitchen Porter)</div></td><td class="c">09:00 (17:00)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+          <tr class="sec"><td colspan="7">Waiting Staff · 17:00 – 23:30 · 12 staff (7 on this page, continued on page 2)</td></tr>
+          <tr><td><span class="ph b"></span></td><td><span class="nm">Ben Ashworth</span> <span class="id">(0521)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+          <tr><td><span class="ph c"></span></td><td><span class="nm">Chloe Baptiste</span> <span class="id">(0498)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+          <tr><td><span class="ph d"></span></td><td><span class="nm">Ravi Chandra</span> <span class="id">(0533)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+          <tr><td><span class="ph"></span></td><td><span class="nm">Emily Dawson</span> <span class="id">(0477)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+          <tr><td><span class="ph b"></span></td><td><span class="nm">Hugo Ferreira</span> <span class="id">(0540)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+          <tr><td><span class="ph c"></span></td><td><span class="nm">Nadia Haddad</span> <span class="id">(0556)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+          <tr><td><span class="ph d"></span></td><td><span class="nm">Amara Kalu</span> <span class="id">(0290)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+        </tbody>
+      </table>
+      <div class="sh-page only">Page 1 of 2</div>
+    </div>
+    <div class="row wrap sm" style="width:794px">
+      <span class="annot">12 staff rows max per page → page 1 carries Chef 2 + Kitchen Porter 3 + Waiting Staff 7; the remaining 5 continue on page 2 (§11.3 pagination)</span>
+      <span class="annot">footer block (Total Hours · Manager's Name (PRINT) · Manager's Signature · Date · company details) prints ONCE, on the final page only → see "Page 2 of 2"</span>
+      <span class="annot">Start Time = scheduled start + forecast finish in brackets · Staff Name = Name (Employee ID) + (Role) · ordered by role section, then surname</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ State 2: SIGN-OUT TIMESHEET — filled from check-in/out, both pages ============ -->
+<section data-state-of="ts" data-state="signout" class="hide">
+  <div class="docs">
+    <div class="cap">Sign-out timesheet · <b>page 1 of 2</b> · generated 20/09/2026 00:12 after the event · Finish, breaks and Hours populated from check-in / check-out; Signature still empty (the client signs by hand)</div>
+    <div class="a4">
+      <div class="sh-head">
+        <span class="logo round">🥂</span>
+        <div><div class="n">The Hospitality Company</div><div class="s">Event staffing · London</div></div>
+        <div class="title"><div class="t">STAFF ALLOCATION</div><div class="d">Date: 19/09/2026</div></div>
+      </div>
+      <div class="sh-ev"><span class="n">Leonardo Hotel St Pauls – Gala Dinner</span><span class="po">PO Number: 4471-A</span></div>
+      <table class="sh">
+        <colgroup><col style="width:52px"><col style="width:196px"><col style="width:74px"><col style="width:70px"><col style="width:118px"><col style="width:130px"><col style="width:74px"></colgroup>
+        <thead><tr><th>Photo</th><th>Staff Name</th><th>Start Time</th><th>Finish Time</th><th>Signature</th><th>Comments</th><th>Hours Worked</th></tr></thead>
+        <tbody>
+          <tr class="sec"><td colspan="7">Chef · 07:00 – 15:00 · 2 staff</td></tr>
+          <tr><td><span class="ph"></span></td><td><span class="nm">Luca Moretti</span> <span class="id">(0412)</span><div class="rl">(Chef)</div></td><td class="c">07:00 (15:00)</td><td class="c">15:05</td><td></td><td class="cm">Break 30 min</td><td class="c">7h 30m</td></tr>
+          <tr><td><span class="ph b"></span></td><td><span class="nm">Daniel Okafor</span> <span class="id">(0388)</span><div class="rl">(Chef)</div></td><td class="c">07:00 (15:00)</td><td class="c">14:40</td><td></td><td class="cm">Break 30 min</td><td class="c">7h 10m</td></tr>
+          <tr class="sec"><td colspan="7">Kitchen Porter · 09:00 – 17:00 · 3 staff</td></tr>
+          <tr><td><span class="ph c"></span></td><td><span class="nm">Aisha Bello</span> <span class="id">(0467)</span><div class="rl">(Kitchen Porter)</div></td><td class="c">09:00 (17:00)</td><td class="c">17:10</td><td></td><td class="cm">Break 20 min</td><td class="c">7h 40m</td></tr>
+          <tr><td><span class="ph d"></span></td><td><span class="nm">Mateusz Nowak</span> <span class="id">(0505)</span><div class="rl">(Kitchen Porter)</div></td><td class="c">09:00 (17:00)</td><td class="c">17:00</td><td></td><td class="cm">Break 20 min</td><td class="c">7h 40m</td></tr>
+          <tr><td><span class="ph"></span></td><td><span class="nm">Tom Reid</span> <span class="id">(0231)</span><div class="rl">(Kitchen Porter)</div></td><td class="c">09:00 (17:00)</td><td class="c" style="background:repeating-linear-gradient(135deg,#fff 0 6px,#fdf3f1 6px 8px)"></td><td></td><td class="cm">Break 20 min</td><td class="c" style="background:repeating-linear-gradient(135deg,#fff 0 6px,#fdf3f1 6px 8px)"></td></tr>
+          <tr class="sec"><td colspan="7">Waiting Staff · 17:00 – 23:30 · 12 staff (7 on this page, continued on page 2)</td></tr>
+          <tr><td><span class="ph b"></span></td><td><span class="nm">Ben Ashworth</span> <span class="id">(0521)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c">23:35</td><td></td><td class="cm">Break 20 min</td><td class="c">6h 10m</td></tr>
+          <tr><td><span class="ph c"></span></td><td><span class="nm">Chloe Baptiste</span> <span class="id">(0498)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c">23:30</td><td></td><td class="cm">Break 20 min</td><td class="c">6h 10m</td></tr>
+          <tr><td><span class="ph d"></span></td><td><span class="nm">Ravi Chandra</span> <span class="id">(0533)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c">23:42</td><td></td><td class="cm">Break 20 min</td><td class="c">6h 10m</td></tr>
+          <tr><td><span class="ph"></span></td><td><span class="nm">Emily Dawson</span> <span class="id">(0477)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c">23:30</td><td></td><td class="cm">Break 20 min</td><td class="c">6h 10m</td></tr>
+          <tr><td><span class="ph b"></span></td><td><span class="nm">Hugo Ferreira</span> <span class="id">(0540)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c">23:12</td><td></td><td class="cm">Break 20 min</td><td class="c">5h 52m</td></tr>
+          <tr><td><span class="ph c"></span></td><td><span class="nm">Nadia Haddad</span> <span class="id">(0556)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c">23:30</td><td></td><td class="cm">Break 20 min</td><td class="c">6h 10m</td></tr>
+          <tr><td><span class="ph d"></span></td><td><span class="nm">Amara Kalu</span> <span class="id">(0290)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c">23:30</td><td></td><td class="cm">Break 20 min</td><td class="c">6h 10m</td></tr>
+        </tbody>
+      </table>
+      <div class="sh-page only">Page 1 of 2</div>
+    </div>
+    <div class="row wrap sm" style="width:794px">
+      <span class="annot">Tom Reid (row 5): unresolved "No check-out" violation at generation time → his Finish Time and Hours Worked are left BLANK, not guessed; everyone else generates normally (§11.3, RULE-02). Regenerating after the manager resolves it fills both cells from the manager-entered time. (hatching = wireframe highlight only, not printed)</span>
+      <span class="annot">Finish Time = the actual check-out stamp · Hours Worked = RULE-01 payable window (capped at the scheduled end, e.g. 23:42 → paid to 23:30) minus unpaid breaks — Leonardo does not pay breaks (§3.2, §5.2, §5.2b) · breaks from the break log land in Comments</span>
+    </div>
+
+    <div class="cap" style="margin-top:8px">Sign-out timesheet · <b>page 2 of 2</b> · footer block with the event Total Hours appears here only</div>
+    <div class="a4">
+      <div class="sh-head">
+        <span class="logo round">🥂</span>
+        <div><div class="n">The Hospitality Company</div><div class="s">Event staffing · London</div></div>
+        <div class="title"><div class="t">STAFF ALLOCATION</div><div class="d">Date: 19/09/2026</div></div>
+      </div>
+      <div class="sh-ev"><span class="n">Leonardo Hotel St Pauls – Gala Dinner · 19/09/2026</span><span class="cont">(continued)</span><span class="po">PO Number: 4471-A</span></div>
+      <table class="sh">
+        <colgroup><col style="width:52px"><col style="width:196px"><col style="width:74px"><col style="width:70px"><col style="width:118px"><col style="width:130px"><col style="width:74px"></colgroup>
+        <thead><tr><th>Photo</th><th>Staff Name</th><th>Start Time</th><th>Finish Time</th><th>Signature</th><th>Comments</th><th>Hours Worked</th></tr></thead>
+        <tbody>
+          <tr class="sec"><td colspan="7">Waiting Staff · 17:00 – 23:30 · continued (5 of 12)</td></tr>
+          <tr><td><span class="ph"></span></td><td><span class="nm">Grace Lindqvist</span> <span class="id">(0463)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c">23:30</td><td></td><td class="cm">Break 20 min</td><td class="c">6h 10m</td></tr>
+          <tr><td><span class="ph b"></span></td><td><span class="nm">Olivia Nguyen</span> <span class="id">(0571)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c">23:38</td><td></td><td class="cm">Break 20 min</td><td class="c">6h 10m</td></tr>
+          <tr><td><span class="ph c"></span></td><td><span class="nm">Priya Sharma</span> <span class="id">(0318)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c">23:30</td><td></td><td class="cm">Break 20 min</td><td class="c">6h 10m</td></tr>
+          <tr><td><span class="ph d"></span></td><td><span class="nm">Isla Thornton</span> <span class="id">(0588)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c">23:30</td><td></td><td class="cm">Break 20 min</td><td class="c">6h 10m</td></tr>
+          <tr><td><span class="ph"></span></td><td><span class="nm">Yusuf Yilmaz</span> <span class="id">(0602)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c">23:45</td><td></td><td class="cm">Break 20 min</td><td class="c">6h 10m</td></tr>
+        </tbody>
+      </table>
+      <div class="sh-foot">
+        <div class="sh-sign">
+          <div class="f"><span class="k">Total Hours</span>103h 42m</div>
+          <div class="f"><span class="k">Manager's Name (PRINT)</span></div>
+          <div class="f"><span class="k">Manager's Signature</span></div>
+          <div class="f"><span class="k">Date</span></div>
+        </div>
+        <div class="sh-co">The Hospitality Company · Registered Company 12411407 · timesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk</div>
+        <div class="sh-page">Page 2 of 2</div>
+      </div>
+    </div>
+    <div class="row wrap sm" style="width:794px">
+      <span class="annot">Total Hours = the whole event (both pages), 16 of 17 workers — Tom Reid's blank row is excluded until his violation is resolved</span>
+      <span class="annot">this copy was issued 20/09 and keeps every real name and photo for ever (§1.7); if a manager re-downloads it after Grace Lindqvist's GDPR removal on 24/09, the NEW copy prints "Deleted account #1042" with no photo — see the row on the Page 2 state</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ State 3: PAGE 2 OF 2 — continuation of the allocation sheet, regenerated after a GDPR removal ============ -->
+<section data-state-of="ts" data-state="page-2" class="hide">
+  <div class="docs">
+    <div class="cap">Allocation sheet · <b>page 2 of 2</b> · header block + column headers repeat · event name and date again with "(continued)" · footer block on this final page only · this copy regenerated 25/09/2026, after a GDPR removal</div>
+    <div class="a4">
+      <div class="sh-head">
+        <span class="logo round">🥂</span>
+        <div><div class="n">The Hospitality Company</div><div class="s">Event staffing · London</div></div>
+        <div class="title"><div class="t">STAFF ALLOCATION</div><div class="d">Date: 19/09/2026</div></div>
+      </div>
+      <div class="sh-ev"><span class="n">Leonardo Hotel St Pauls – Gala Dinner · 19/09/2026</span><span class="cont">(continued)</span><span class="po">PO Number: 4471-A</span></div>
+      <table class="sh">
+        <colgroup><col style="width:52px"><col style="width:196px"><col style="width:74px"><col style="width:70px"><col style="width:118px"><col style="width:130px"><col style="width:74px"></colgroup>
+        <thead><tr><th>Photo</th><th>Staff Name</th><th>Start Time</th><th>Finish Time</th><th>Signature</th><th>Comments</th><th>Hours Worked</th></tr></thead>
+        <tbody>
+          <tr class="sec"><td colspan="7">Waiting Staff · 17:00 – 23:30 · continued (5 of 12)</td></tr>
+          <tr><td><span class="ph b"></span></td><td><span class="nm">Olivia Nguyen</span> <span class="id">(0571)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+          <tr><td><span class="ph c"></span></td><td><span class="nm">Priya Sharma</span> <span class="id">(0318)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+          <tr><td><span class="ph d"></span></td><td><span class="nm">Isla Thornton</span> <span class="id">(0588)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+          <tr><td><span class="ph"></span></td><td><span class="nm">Yusuf Yilmaz</span> <span class="id">(0602)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+          <tr><td><span class="ph none" title="no photo — wiped on removal"></span></td><td><span class="nm">Deleted account #1042</span> <span class="id">(0463)</span><div class="rl">(Waiting Staff)</div></td><td class="c">17:00 (23:30)</td><td class="c"></td><td></td><td></td><td class="c"></td></tr>
+        </tbody>
+      </table>
+      <div class="sh-foot">
+        <div class="sh-sign">
+          <div class="f"><span class="k">Total Hours</span></div>
+          <div class="f"><span class="k">Manager's Name (PRINT)</span></div>
+          <div class="f"><span class="k">Manager's Signature</span></div>
+          <div class="f"><span class="k">Date</span></div>
+        </div>
+        <div class="sh-co">The Hospitality Company · Registered Company 12411407 · timesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk</div>
+        <div class="sh-page">Page 2 of 2</div>
+      </div>
+    </div>
+    <div class="row wrap sm" style="width:794px">
+      <span class="annot">a staff row is never split across a page break (§11.3) · the header block, the column headers and the "(continued)" line repeat on every page after the first</span>
+      <span class="annot">GDPR (§1.7): the row for the removed worker stays (headcount not skewed), labelled "Deleted account #1042", Employee ID kept for payroll reconciliation, photo cell empty; sorted last in the role because the surname is gone. The copy emailed on 18/09 still reads "Grace Lindqvist" — historical record, never reissued</span>
+    </div>
+  </div>
+</section>
+
+<!-- ============ "Send allocation sheet" — email preview (§11.4) ============ -->
+<div class="wf-section" style="padding-top:8px">
+  <div class="row top wrap" style="gap:20px">
+    <div class="panel" style="flex:1 1 560px;max-width:794px">
+      <div class="panel-h"><h3>"Send allocation sheet" — email preview</h3><span class="pill">§11.4 · §9.12</span><div class="right"><span class="muted sm">sent from the Back Office event page by Gisela M. · Thu 18 Sep 2026, 17:42 UK time</span></div></div>
+      <div class="panel-b">
+        <div class="mail">
+          <span class="k">From</span><span>The Hospitality Company &lt;<span class="mono">timesheets@thehospitalitycompany.co.uk</span>&gt;</span>
+          <span class="k">To</span><span class="row wrap" style="gap:6px"><span class="chip">Hannah Brooks &lt;hannah.brooks@leonardo-stpauls.co.uk&gt;</span><span class="chip">Marco Vitale &lt;marco.vitale@leonardo-stpauls.co.uk&gt;</span><span class="chip">Events desk &lt;events@leonardo-stpauls.co.uk&gt;</span></span>
+          <span class="k">Subject</span><span><b>Staff allocation — Gala Dinner, Friday 19 September 2026 (PO 4471-A)</b></span>
+          <span class="k">Attached</span><span><div class="docrow" style="padding:8px 10px;display:inline-flex;gap:10px"><span class="ico">PDF</span><div><div class="t">Leonardo Hotel St Pauls – Gala Dinner.pdf</div><div class="m">2 pages · 17 staff · 186 KB</div></div></div></span>
+          <div class="body">Hello,
+
+Please find attached the staff allocation for the Gala Dinner on Friday 19 September 2026 at Leonardo Royal Hotel — 17 staff across Chef, Kitchen Porter and Waiting Staff. Your PO number 4471-A is on the sheet.
+
+On the day, please have your manager on site sign each person out, note any comments (breaks, early finishes) and sign the sheet at the bottom. The completed sign-out timesheet will follow by email after the event.
+
+Any questions, just reply to this email.
+
+Best regards,
+The Hospitality Company
+timesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk</div>
+        </div>
+      </div>
+    </div>
+    <div class="stack" style="flex:1 1 300px;max-width:420px">
+      <div class="card accent"><b>Where the action lives.</b><div class="sm muted mt-8">"Send allocation sheet" and "Download" sit on the Back Office event page (§11.4). The Client Portal only downloads the PDF (§11.1, §11.2) — no sending from the client side. No time restriction: the manager can send or download at any point, including mid-event (§11.3).</div></div>
+      <div class="card"><b>Recipients (§9.7, §11.4)</b><div class="sm muted mt-8">The 2–3 contact emails on the client card — several recipients per event (e.g. Dorchester → 3 people). Sender is always timesheets@thehospitalitycompany.co.uk; replies go to a monitored THC mailbox, never a no-reply (§9.12).</div></div>
+      <div class="card"><b>File name (§11.3)</b><div class="sm muted mt-8"><span class="mono">Client name – Event name.pdf</span> — pulled from the event build, e.g. "Leonardo Hotel St Pauls – Waiting M&amp;E.pdf". The same name is used for both states; the sign-out copy is a later email with the same attachment name.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b>
+<b>Format (§11.3):</b> 1:1 with THC's current PDF timesheet — not our own design. ONE document per EVENT with all roles together, never one per role. Name: Client name – Event name (from the event build). Header: THC logo + name · STAFF ALLOCATION · Date DD/MM/YYYY; the PO Number from the event (§3.2) carries into the document. Columns: Photo (so the person can be matched on site) · Staff Name = Name (Employee ID) + (Role) — the Employee ID is the payroll identifier auto-generated when the candidate became compliant (§2.7) · Start Time = scheduled start + forecast finish in brackets · Finish Time = actual finish · Signature (by hand) · Comments (breaks etc., clients also write by hand, so the column stays) · Hours Worked. Footer: Total Hours · Manager's Name (PRINT) · Manager's Signature · Date + the company details (Registered Company 12411407, timesheets@thehospitalitycompany.co.uk, www.thehospitalitycompany.co.uk). ·
+<b>Pagination (§11.3):</b> at most 12 staff rows per page; header block and column headers repeat on every page; every page is footed "Page X of Y"; every page after the first carries the event name and date again with "(continued)"; a staff row is never split; the footer block appears ONCE, on the final page, and Total Hours is the total for the whole event. Rows ordered by role section, then by surname within the role. ·
+<b>Two states (§11.3):</b> (1) Allocation report — the blank form sent BEFORE the event, typically a day ahead but with no time restriction: assigned workers and their allotted hours; Finish · Signature · Comments · Hours empty for the client to fill in by hand on site. (2) Sign-out timesheet — generated AFTER the event: actual finish, breaks from the break log, hours worked and the calculated Total Hours populated from check-in/check-out; Signature stays empty in both — it is the client's, by hand. A worker whose shift still carries an unresolved "No check-out" violation (§9.5, RULE-02) gets blank Finish Time and Hours Worked cells rather than a guess; regenerating after the manager resolves it fills them from the manager-entered time. ·
+<b>Hours (§5.2, §5.2b):</b> RULE-01 payable time = intersection of [check-in, check-out] with the scheduled window, so a 23:42 check-out on a 23:30 finish pays to 23:30; unpaid breaks are deducted where the client's break policy says "does not pay" (§3.2). Display as h m; the exact format is to be matched against THC's PDF. ·
+<b>Sending (§11.4, §9.12):</b> "Send allocation sheet" (action) + "Download" (PDF, WhatsApp-able) + email, from the Back Office event page; several recipients from the client card (§9.7); sender timesheets@thehospitalitycompany.co.uk. ·
+<b>GDPR (§1.7):</b> PDFs created and sent before a removal keep the worker's real name and photo exactly as issued — a historical record for billing/HMRC, never retroactively edited or reissued. Any copy regenerated or re-downloaded AFTER the removal uses "Deleted account #id" and no photo, the same as the live views. ·
+<b>Open points:</b> the sign-out copy keeps the "STAFF ALLOCATION" title because the format is fixed 1:1 — confirm with THC whether the after-event copy should read "TIMESHEET"; a "Generated" stamp is deliberately NOT printed (not on the original form). No money on the document (§11.1).</div>
+</body>
+</html>

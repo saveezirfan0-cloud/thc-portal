@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client Portal · Events — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  /* ---- Client Portal shell: top bar only, no sidebar (the client has one list and one page per event) ---- */
+  .ctop { height: 56px; border-bottom: 1px solid var(--line); background: var(--panel); display: flex; align-items: center; gap: 16px; padding: 0 24px; }
+  .ctop .client { display: flex; flex-direction: column; line-height: 1.15; border-left: 1px solid var(--line); padding-left: 16px; }
+  .ctop .client .n { font-family: var(--font-head); font-weight: 600; font-size: 14px; }
+  .ctop .client .l { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .ctop .tz { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); letter-spacing: .06em; }
+  .cwrap { max-width: 1280px; width: 100%; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
+  /* ---- photo avatars: real selfies in product (§11.1) — silhouette stand-in here ---- */
+  .avatar.pic { color: transparent; background-color: #35507a; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='12' r='6.5' fill='%23dfe6ef'/%3E%3Cpath d='M3 34c0-9 6-13 13-13s13 4 13 13z' fill='%23dfe6ef'/%3E%3C/svg%3E"); background-size: cover; background-position: center; }
+  .avatar.pic.b { background-color: #4d6b8f; } .avatar.pic.c { background-color: #2d5f6e; } .avatar.pic.d { background-color: #5b4d80; } .avatar.pic.e { background-color: #6b5a3e; }
+  .avatars .more { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 9.5px; color: var(--muted); background: var(--panel-2); border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--line); margin-right: -6px; }
+  .fill { display: flex; flex-direction: column; gap: 5px; min-width: 120px; }
+  .fill .progress { width: 100px; }
+  .tbl td.win { font-family: var(--font-mono); font-size: 12px; white-space: nowrap; }
+  .tbl td.win .sub { font-family: var(--font-mono); }
+  .tbl tr.cancelled td { color: var(--muted); }
+  .tbl td:nth-child(2) b, .tbl td:nth-child(2) { white-space: nowrap; }
+  .tbl td, .tbl th { padding: 10px 10px; }
+  .tbl td:first-child { min-width: 190px; }
+  .tbl td:last-child { white-space: nowrap; }
+  .tbl td:last-child .stack { align-items: flex-start; }
+  .fill > span { white-space: nowrap; }
+  .tbl tr.cancelled .avatar { filter: grayscale(1); opacity: .5; }
+  /* ---- 390px phone-browser frame ---- */
+  .mob { width: 390px; flex: 0 0 390px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 0 0 6px #0b1220, 0 0 0 7px var(--line); }
+  .mob .urlbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+  .mob .urlbar .u { flex: 1; background: var(--bg); border: 1px solid var(--line); padding: 4px 8px; text-align: center; color: var(--text); }
+  .mob .ctop { height: 52px; padding: 0 14px; gap: 10px; }
+  .mob .mbody { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .ecard { background: var(--panel); border: 1px solid var(--line); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+  .ecard .t { font-family: var(--font-head); font-size: 15px; font-weight: 600; }
+  .ecard .m { font-size: 12px; color: var(--muted); }
+  .ecard .win { font-family: var(--font-mono); font-size: 11.5px; white-space: nowrap; }
+  .mob .client .n { font-size: 13px; white-space: nowrap; }
+  .ecard.cancelled { opacity: .55; }
+  .ecard.cancelled .t { text-decoration: line-through; }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Client Portal · Events</span><span class="pill cyan">/client</span><span class="pill">§11.1 · §1.8 · §11.3 · §1.4</span>
+  <span class="spacer"></span>
+  <a href="event.html">Next: Client event page →</a>
+</div>
+
+<!-- ============ Client Portal / Topbar (no sidebar) ============ -->
+<header class="ctop">
+  <div class="brand">
+    <span class="logo round" title="two glasses logo in a cyan circle">🥂</span>
+    <div><div class="name">The Hospitality Company</div><div class="sub">Client Portal</div></div>
+  </div>
+  <div class="client"><span class="l">Signed in as</span><span class="n">Leonardo Hotel St Pauls</span></div>
+  <span class="spacer" style="flex:1"></span>
+  <span class="tz">Viewer: Europe/Berlin (UTC+2)</span>
+  <span class="avatar sm">HB</span><span class="sm">Hannah Brooks</span>
+  <a class="btn ghost sm" href="login.html">Sign out</a>
+</header>
+
+<div class="cwrap">
+  <div class="page-head">
+    <div>
+      <h1>Your events</h1>
+      <div class="desc">Confirmed line-ups and timesheets for Leonardo Hotel St Pauls · read-only · as of <b style="color:var(--text)">Thu 18 Sep 2026, 15:32 your time</b> (14:32 UK)</div>
+    </div>
+    <div class="actions">
+      <div class="seg"><button class="on">Upcoming &amp; ongoing <span class="n">3</span></button><button>Past <span class="n">2</span></button><button>All</button></div>
+      <div class="search" style="width:220px"><input class="input" placeholder="Search events"></div>
+    </div>
+  </div>
+
+  <div class="row wrap sm">
+    <span class="annot">NO money anywhere on this portal — no pay rates, no charge rates, no margin, no totals (§11.1, §1.4)</span>
+    <span class="annot">dual-zone window (§1.8, ADR 0058): "UK time" line always; "your time" line only when the viewer is outside the UK — this viewer is in Berlin</span>
+  </div>
+
+  <div class="panel">
+    <div class="panel-h"><h3>Events · Leonardo Hotel St Pauls</h3><span class="muted sm">only this client's events (§11.1) · newest first</span><div class="right"><span class="pill">5 events</span></div></div>
+    <div class="panel-b tight">
+      <table class="tbl">
+        <thead><tr><th>Event</th><th>Venue</th><th>Date &amp; time</th><th>Status</th><th>Confirmed</th><th>Line-up</th><th>Document</th></tr></thead>
+        <tbody>
+          <!-- ONGOING: happening now (14:32 UK) -->
+          <tr class="clickable" onclick="location.href='event.html#ev=started'">
+            <td><b>Board Lunch — Wren Suite</b><span class="sub">PO 4469</span></td>
+            <td>Leonardo Royal Hotel<span class="sub">10 Godliman St, EC4V 5AJ</span></td>
+            <td class="win"><b>Thu 18 Sep 2026</b><span class="sub">11:00 – 16:00 UK time</span><span class="sub">12:00 – 17:00 your time</span></td>
+            <td><span class="pill green"><span class="dot"></span>Ongoing</span></td>
+            <td><div class="fill"><span><b>8</b> of 8 confirmed</span><div class="progress"><div class="fill green" style="width:100%"></div></div></div></td>
+            <td><div class="avatars"><span class="avatar sm pic" title="Priya Sharma">PS</span><span class="avatar sm pic b" title="Hugo Ferreira">HF</span><span class="avatar sm pic c" title="Nadia Haddad">NH</span><span class="avatar sm pic d" title="Ravi Chandra">RC</span><span class="avatar sm pic e" title="Isla Thornton">IT</span><span class="more" title="3 more confirmed">+3</span></div></td>
+            <td><div class="stack tight"><a class="btn sm" href="timesheet.html#ts=allocation">↓ Allocation sheet</a><a class="sm" href="event.html#ev=started">Details →</a></div></td>
+          </tr>
+          <!-- UPCOMING: tomorrow -->
+          <tr class="clickable" onclick="location.href='event.html'">
+            <td><b>Gala Dinner</b><span class="sub">PO 4471-A</span></td>
+            <td>Leonardo Royal Hotel<span class="sub">10 Godliman St, EC4V 5AJ</span></td>
+            <td class="win"><b>Fri 19 Sep 2026</b><span class="sub">07:00 – 23:30 UK time</span><span class="sub">08:00 – 00:30 your time</span></td>
+            <td><span class="pill cyan">Upcoming</span></td>
+            <td><div class="fill"><span><b>13</b> of 17 confirmed</span><div class="progress"><div class="fill amber" style="width:76%"></div></div></div></td>
+            <td><div class="avatars"><span class="avatar sm pic" title="Luca Moretti">LM</span><span class="avatar sm pic b" title="Daniel Okafor">DO</span><span class="avatar sm pic c" title="Aisha Bello">AB</span><span class="avatar sm pic e" title="Tom Reid">TR</span><span class="avatar sm pic b" title="Ben Ashworth">BA</span><span class="avatar sm pic c" title="Chloe Baptiste">CB</span><span class="more" title="7 more confirmed">+7</span></div></td>
+            <td><div class="stack tight"><a class="btn sm" href="timesheet.html#ts=allocation">↓ Allocation sheet</a><a class="sm" href="event.html">Details →</a></div></td>
+          </tr>
+          <!-- CANCELLED: greyed, no document -->
+          <tr class="cancelled">
+            <td><s>Rooftop Reception</s><span class="sub">cancelled by you, 16 Sep</span></td>
+            <td>Leonardo Royal Hotel<span class="sub">Rooftop terrace</span></td>
+            <td class="win"><b>Sun 21 Sep 2026</b><span class="sub">18:00 – 22:00 UK time</span><span class="sub">19:00 – 23:00 your time</span></td>
+            <td><span class="pill">Cancelled</span></td>
+            <td class="muted sm">—</td>
+            <td class="muted sm">—</td>
+            <td><div class="stack tight"><span class="muted sm">No document</span><a class="muted sm" href="event.html">Details →</a></div></td>
+          </tr>
+          <!-- UPCOMING: still filling -->
+          <tr class="clickable" onclick="location.href='event.html'">
+            <td><b>Wedding Breakfast — Cathedral Suite</b><span class="sub">PO —</span></td>
+            <td>Leonardo Royal Hotel<span class="sub">10 Godliman St, EC4V 5AJ</span></td>
+            <td class="win"><b>Sat 26 Sep 2026</b><span class="sub">12:00 – 20:00 UK time</span><span class="sub">13:00 – 21:00 your time</span></td>
+            <td><span class="pill cyan">Upcoming</span></td>
+            <td><div class="fill"><span><b>4</b> of 10 confirmed</span><div class="progress"><div class="fill amber" style="width:40%"></div></div></div></td>
+            <td><div class="avatars"><span class="avatar sm pic d" title="Amara Kalu">AK</span><span class="avatar sm pic e" title="Olivia Nguyen">ON</span><span class="avatar sm pic b" title="Mateusz Nowak">MN</span><span class="avatar sm pic c" title="Chloe Baptiste">CB</span></div></td>
+            <td><div class="stack tight"><a class="btn sm" href="timesheet.html#ts=allocation">↓ Allocation sheet</a><a class="sm" href="event.html">Details →</a></div></td>
+          </tr>
+          <!-- COMPLETED: signed timesheet available -->
+          <tr class="clickable" onclick="location.href='event.html#ev=completed'">
+            <td><b>Waiting M&amp;E</b><span class="sub">PO 4402</span></td>
+            <td>Leonardo Royal Hotel<span class="sub">10 Godliman St, EC4V 5AJ</span></td>
+            <td class="win"><b>Sat 12 Sep 2026</b><span class="sub">08:00 – 17:00 UK time</span><span class="sub">09:00 – 18:00 your time</span></td>
+            <td><span class="pill">Completed</span></td>
+            <td><div class="fill"><span><b>6</b> of 6 confirmed</span><div class="progress"><div class="fill green" style="width:100%"></div></div></div></td>
+            <td><div class="avatars"><span class="avatar sm pic c" title="Amara Kalu">AK</span><span class="avatar sm pic" title="Priya Sharma">PS</span><span class="avatar sm pic e" title="Tom Reid">TR</span><span class="avatar sm pic b" title="Nadia Haddad">NH</span><span class="avatar sm pic d" title="Ravi Chandra">RC</span><span class="avatar sm deleted" title="Deleted account #1042 — no photo (§1.7)">—</span></div></td>
+            <td><div class="stack tight"><a class="btn sm" href="timesheet.html#ts=signout">↓ Signed timesheet</a><a class="sm" href="event.html#ev=completed">Details →</a></div></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="row wrap sm">
+    <span class="annot">photos, not initials (§11.1) — the client recognises people by face; the selfie from onboarding (§10.3 step 3) is used everywhere</span>
+    <span class="annot">"N of M": N = confirmed workers, M = headcount you booked · buffer slots are internal and never shown (§3.2)</span>
+    <span class="annot">Document: Allocation sheet before and during the event → Signed timesheet once Completed · Cancelled events have no document (§11.3)</span>
+  </div>
+
+  <!-- ============ Phone-width variant (390px) — a UK viewer, so no "your time" line ============ -->
+  <div class="wf-section" style="padding:8px 0 0">
+    <h2>Phone · 390px<small>The Client Portal must work on phone and tablet (§1.2). Rows become cards; this viewer is in London, so the window carries the single "UK time" line only (§1.8).</small></h2>
+    <div class="row top wrap" style="gap:28px">
+      <div class="mob">
+        <div class="urlbar"><span>‹</span><span class="u">🔒 portal.thehospitalitycompany.co.uk/client</span><span>⋯</span></div>
+        <header class="ctop">
+          <span class="logo round">🥂</span>
+          <div class="client" style="border:0;padding:0"><span class="l">Client Portal</span><span class="n">Leonardo Hotel St Pauls</span></div>
+          <span class="spacer" style="flex:1"></span>
+          <span class="avatar sm">HB</span>
+          <a class="btn ghost sm" href="login.html">Sign out</a>
+        </header>
+        <div class="mbody">
+          <div class="seg" style="display:flex"><button class="on" style="flex:1">Upcoming <span class="n">3</span></button><button style="flex:1">Past <span class="n">2</span></button><button style="flex:1">All</button></div>
+          <span class="tz muted xs mono">Viewer: Europe/London (UK) — times shown in UK time only</span>
+
+          <div class="ecard">
+            <div class="row"><span class="pill green"><span class="dot"></span>Ongoing</span><span class="ml-auto win">Thu 18 Sep · 11:00 – 16:00 UK time</span></div>
+            <div class="t">Board Lunch — Wren Suite</div>
+            <div class="m">Leonardo Royal Hotel, 10 Godliman St, EC4V 5AJ · PO 4469</div>
+            <div class="row"><div class="avatars"><span class="avatar sm pic">PS</span><span class="avatar sm pic b">HF</span><span class="avatar sm pic c">NH</span><span class="avatar sm pic d">RC</span><span class="avatar sm pic e">IT</span><span class="more">+3</span></div><span class="sm" style="margin-left:14px"><b>8</b> of 8 confirmed</span></div>
+            <div class="row"><a class="btn sm" href="timesheet.html#ts=allocation">↓ Allocation sheet</a><a class="ml-auto sm" href="event.html#ev=started">Details →</a></div>
+          </div>
+
+          <div class="ecard">
+            <div class="row"><span class="pill cyan">Upcoming</span><span class="ml-auto win">Fri 19 Sep · 07:00 – 23:30 UK time</span></div>
+            <div class="t">Gala Dinner</div>
+            <div class="m">Leonardo Royal Hotel, 10 Godliman St, EC4V 5AJ · PO 4471-A</div>
+            <div class="row"><div class="avatars"><span class="avatar sm pic">LM</span><span class="avatar sm pic b">DO</span><span class="avatar sm pic c">AB</span><span class="avatar sm pic e">TR</span><span class="avatar sm pic b">BA</span><span class="more">+8</span></div><span class="sm" style="margin-left:14px"><b>13</b> of 17 confirmed</span></div>
+            <div class="row"><a class="btn sm" href="timesheet.html#ts=allocation">↓ Allocation sheet</a><a class="ml-auto sm" href="event.html">Details →</a></div>
+          </div>
+
+          <div class="ecard cancelled">
+            <div class="row"><span class="pill">Cancelled</span><span class="ml-auto win">Sun 21 Sep · 18:00 – 22:00 UK time</span></div>
+            <div class="t">Rooftop Reception</div>
+            <div class="m">Leonardo Royal Hotel, Rooftop terrace · cancelled 16 Sep</div>
+            <div class="row"><span class="sm muted">No document</span><a class="ml-auto sm muted" href="event.html">Details →</a></div>
+          </div>
+
+          <div class="ecard">
+            <div class="row"><span class="pill">Completed</span><span class="ml-auto win">Sat 12 Sep · 08:00 – 17:00 UK time</span></div>
+            <div class="t">Waiting M&amp;E</div>
+            <div class="m">Leonardo Royal Hotel, 10 Godliman St, EC4V 5AJ · PO 4402</div>
+            <div class="row"><div class="avatars"><span class="avatar sm pic c">AK</span><span class="avatar sm pic">PS</span><span class="avatar sm pic e">TR</span><span class="avatar sm pic b">NH</span><span class="avatar sm pic d">RC</span><span class="avatar sm deleted">—</span></div><span class="sm" style="margin-left:14px"><b>6</b> of 6 confirmed</span></div>
+            <div class="row"><a class="btn sm" href="timesheet.html#ts=signout">↓ Signed timesheet</a><a class="ml-auto sm" href="event.html#ev=completed">Details →</a></div>
+          </div>
+        </div>
+      </div>
+      <div class="stack" style="max-width:420px">
+        <div class="card accent"><b>Same data, no table.</b><div class="sm muted mt-8">Each card carries exactly the list's fields (§11.1): name · venue · date/time · status · "N of M confirmed" · photos · document button · Details. Nothing is dropped on the phone; the Download button stays a real PDF so it can be forwarded from WhatsApp (§11.4).</div></div>
+        <div class="card"><b>Tablet (768–1024px)</b><div class="sm muted mt-8">The desktop table stays, with the Venue column folded under the event name.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="wf-note note"><b>Behaviour notes.</b>
+  <b>Scope (§11.1, §1.4):</b> client role only; the client sees ONLY their own events and only the confirmed line-up; everything is read-only — no editing anywhere. NO money: no pay rates, no charge rates, no margin, no totals, no invoice values. The client never sees the back office (§1.4). ·
+  <b>Columns (§11.1):</b> name · venue · date/time · status pill (Upcoming / Ongoing / Completed / Cancelled, §3.2) · "N of M confirmed" (N counts confirmed workers only, M is the booked headcount; buffer "+N" stays internal) · photos of the confirmed workers (real selfies, not initials — wireframe shows silhouettes) · a button to download the document · a link into the details. ·
+  <b>Dual time zone (§1.8, ADR 0058):</b> the scheduled window is shown as "07:00 – 23:30 UK time" plus a second "08:00 – 00:30 your time" line when the viewer's browser zone is not Europe/London; for a UK viewer the second line is not rendered at all (phone variant). Never a single unlabelled clock. The window is the event window — earliest role start → latest role end (RULE-18). ·
+  <b>Document button (§11.3, §11.4):</b> Allocation sheet (the blank form) is downloadable at any time before and during the event — no time restriction; once the event is Completed the button becomes Signed timesheet (the sign-out timesheet generated from check-in/out). Cancelled events keep their row, greyed, with no document. Download is a PDF so it can be dropped into WhatsApp; the "Send allocation sheet" email action lives in the Back Office, not here (§11.4). ·
+  <b>GDPR (§1.7):</b> a removed worker's row is not filtered out of a past event — it stays as "Deleted account #id" with no photo (see the dashed avatar on Waiting M&amp;E), so the headcount is not skewed. ·
+  <b>Status (§3.2):</b> Ongoing = now between the event window's start and end; Completed once the window has ended (and the sign-out timesheet exists).</div>
+</div>
+</body>
+</html>

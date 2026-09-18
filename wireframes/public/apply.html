@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Public · Apply — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  /* public page: no shell, no sidebar — one centred card on the navy background */
+  .pub { display: flex; flex-direction: column; align-items: center; padding: 32px 16px 8px; gap: 12px; }
+  .auth-card { width: 100%; max-width: 460px; background: var(--panel); border: 1px solid var(--line); padding: 26px 28px 24px; display: flex; flex-direction: column; gap: 14px; }
+  .auth-card .brand { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+  .auth-card h2 { font-size: 20px; }
+  .auth-card .lead { color: var(--muted); font-size: 13px; }
+  .check .txt { line-height: 1.4; }
+  .check .error { display: block; font-size: 11.5px; color: var(--coral); margin-top: 4px; }
+  .done { text-align: center; align-items: center; }
+  .done .ico { width: 56px; height: 56px; background: var(--cyan); color: var(--bg); display: inline-flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 700; }
+  .done .box { width: 100%; border: 1px solid var(--line); background: var(--bg); padding: 10px 12px; font-size: 12.5px; text-align: left; }
+  /* 390px phone-browser frame (candidates apply from a phone browser, not from the app) */
+  .mob { width: 390px; flex: 0 0 390px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 0 0 6px #0b1220, 0 0 0 7px var(--line); }
+  .mob .urlbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
+  .mob .urlbar .u { flex: 1; background: var(--bg); border: 1px solid var(--line); padding: 4px 8px; text-align: center; color: var(--text); }
+  .mob .auth-card { max-width: none; border: 0; padding: 20px 16px 24px; }
+  .caret { position: relative; }
+  .caret::after { content: '▾'; position: absolute; right: 12px; top: 9px; color: var(--muted); pointer-events: none; }
+  select.input { appearance: none; -webkit-appearance: none; padding-right: 28px; }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Public · Apply</span><span class="pill cyan">/apply</span><span class="pill">§2.1 · §2.7 · §2.12 · §1.7</span>
+  <span class="spacer"></span>
+  <a href="activate.html">Next: Activate →</a>
+</div>
+
+<div class="wf-section" style="padding-bottom:8px">
+  <div class="row wrap">
+    <div class="wf-states" data-target="apply">
+      <button data-state="form">Form</button>
+      <button data-state="validation">Validation · under 18 + no consent</button>
+      <button data-state="submitted">Submitted · check your inbox</button>
+    </div>
+    <span class="annot">public URL · no registration · no sidebar · no login (§2.1)</span>
+  </div>
+</div>
+
+<!-- ============ State: blank form ============ -->
+<section data-state-of="apply" data-state="form">
+  <div class="pub">
+    <div class="auth-card">
+      <div class="brand">
+        <span class="logo round" title="two glasses logo in a cyan circle">🥂</span>
+        <div><div class="name">The Hospitality Company</div><div class="sub">Join our team</div></div>
+      </div>
+      <div>
+        <h2>Apply to work with us</h2>
+        <p class="lead">Two minutes. Straight after you submit, you'll get an email with a link to a short video interview.</p>
+      </div>
+      <div class="grid c2">
+        <div class="field"><span class="label">First name</span><input class="input" placeholder="e.g. Amara"></div>
+        <div class="field"><span class="label">Surname</span><input class="input" placeholder="e.g. Kalu"></div>
+      </div>
+      <div class="field"><span class="label">Email</span><input class="input" type="email" placeholder="you@example.com"><span class="hint">Your interview link and everything else lands here.</span></div>
+      <div class="field">
+        <span class="label">Mobile</span>
+        <div class="input-row">
+          <div class="caret" style="flex:0 0 118px"><select class="input" title="international country-code picker"><option>🇬🇧 +44</option><option>🇮🇪 +353</option><option>🇵🇱 +48</option><option>🇮🇹 +39</option><option>🇪🇸 +34</option><option>🇷🇴 +40</option><option>🇮🇳 +91</option><option>🇳🇬 +234</option><option>🇧🇷 +55</option><option>… all countries</option></select></div>
+          <input class="input" type="tel" placeholder="7700 900123" style="border-left:0">
+        </div>
+        <span class="hint">International picker — number stored in E.164.</span>
+      </div>
+      <div class="field">
+        <span class="label">Age</span>
+        <div class="caret"><select class="input"><option>Select your age</option><option>Under 18</option><option>18</option><option>19</option><option>20</option><option>21</option><option>22</option><option>23</option><option>24</option><option>25</option><option>26</option><option>27</option><option>28</option><option>29</option><option>30</option><option>31 – 40</option><option>41 – 50</option><option>51 – 60</option><option>60+</option></select></div>
+        <span class="hint">You must be 18 or over to work with us.</span>
+      </div>
+      <label class="check"><span class="box"></span><span class="txt">I agree to The Hospitality Company storing and processing the details on this form to assess my application, as described in the <a href="#">Privacy notice</a>. <span class="muted">(GDPR consent — required)</span></span></label>
+      <button class="btn primary block lg">Submit application</button>
+      <div class="xs muted" style="text-align:center">Questions? <a href="#">admin@thehospitalitycompany.co.uk</a></div>
+    </div>
+    <span class="annot">submit = automatic Willo interview invitation (E1) · candidate created directly in "Interview requested" — there is no "Applied" stage (§2.1, §2.7)</span>
+  </div>
+</section>
+
+<!-- ============ State: validation errors ============ -->
+<section data-state-of="apply" data-state="validation" class="hide">
+  <div class="pub">
+    <div class="auth-card">
+      <div class="brand">
+        <span class="logo round">🥂</span>
+        <div><div class="name">The Hospitality Company</div><div class="sub">Join our team</div></div>
+      </div>
+      <div>
+        <h2>Apply to work with us</h2>
+        <p class="lead">Two minutes. Straight after you submit, you'll get an email with a link to a short video interview.</p>
+      </div>
+      <div class="alert coral">Please fix the 2 fields highlighted below.</div>
+      <div class="grid c2">
+        <div class="field"><span class="label">First name</span><input class="input" value="Amara"></div>
+        <div class="field"><span class="label">Surname</span><input class="input" value="Kalu"></div>
+      </div>
+      <div class="field"><span class="label">Email</span><input class="input" type="email" value="amara.kalu@example.com"></div>
+      <div class="field">
+        <span class="label">Mobile</span>
+        <div class="input-row">
+          <div class="caret" style="flex:0 0 118px"><select class="input"><option>🇬🇧 +44</option></select></div>
+          <input class="input" type="tel" value="7700 900123" style="border-left:0">
+        </div>
+      </div>
+      <div class="field">
+        <span class="label">Age</span>
+        <div class="caret"><select class="input err"><option>Under 18</option></select></div>
+        <span class="error">You must be 18 or over to apply</span>
+      </div>
+      <label class="check"><span class="box" style="border-color:var(--coral)"></span><span class="txt">I agree to The Hospitality Company storing and processing the details on this form to assess my application, as described in the <a href="#">Privacy notice</a>.<span class="error">Please tick the box to continue — we can't process your application without your consent</span></span></label>
+      <button class="btn primary block lg" disabled>Submit application</button>
+      <div class="xs muted" style="text-align:center">Questions? <a href="#">admin@thehospitalitycompany.co.uk</a></div>
+    </div>
+    <span class="annot">under-18 rejected on the form AND again on the server (§2.1, §1.7) · consent is mandatory (§1.7) · nothing is created until both pass</span>
+  </div>
+</section>
+
+<!-- ============ State: submitted ============ -->
+<section data-state-of="apply" data-state="submitted" class="hide">
+  <div class="pub">
+    <div class="auth-card done">
+      <div class="brand" style="align-self:stretch;justify-content:center">
+        <span class="logo round">🥂</span>
+        <div><div class="name">The Hospitality Company</div><div class="sub">Join our team</div></div>
+      </div>
+      <span class="ico">✓</span>
+      <h2>Check your inbox</h2>
+      <p class="lead">We've sent you an email from <b style="color:var(--text)">Willo</b> with a link to your video interview. Complete it whenever you're ready — it takes about ten minutes and you can record it on your phone.</p>
+      <div class="box">
+        <div class="row"><span class="label">Sent to</span><span class="mono sm">amara.kalu@example.com</span></div>
+        <div class="row mt-8"><span class="label">From</span><span class="mono sm">Willo (interview invitation)</span></div>
+      </div>
+      <p class="xs muted">Can't find it? Check your spam folder, or write to <a href="#">admin@thehospitalitycompany.co.uk</a>.</p>
+    </div>
+    <span class="annot">this is the ONLY confirmation screen — a returning / duplicate applicant sees exactly this, never the reason (§2.12)</span>
+  </div>
+</section>
+
+<!-- ============ Phone-width variant (390px) — candidates apply from their phone browser ============ -->
+<div class="wf-section">
+  <h2>Phone · 390px<small>The same form in a phone browser. Two-column name row collapses to one column; the country picker keeps its own width; the submit button is full-width and sticky-bottom in product.</small></h2>
+  <div class="row top wrap" style="gap:28px">
+    <div class="mob">
+      <div class="urlbar"><span>‹</span><span class="u">🔒 thehospitalitycompany.co.uk/apply</span><span>⋯</span></div>
+      <div class="auth-card">
+        <div class="brand">
+          <span class="logo round">🥂</span>
+          <div><div class="name">The Hospitality Company</div><div class="sub">Join our team</div></div>
+        </div>
+        <div>
+          <h2>Apply to work with us</h2>
+          <p class="lead">Two minutes. Straight after you submit, you'll get an email with a link to a short video interview.</p>
+        </div>
+        <div class="field"><span class="label">First name</span><input class="input" placeholder="e.g. Amara"></div>
+        <div class="field"><span class="label">Surname</span><input class="input" placeholder="e.g. Kalu"></div>
+        <div class="field"><span class="label">Email</span><input class="input" type="email" placeholder="you@example.com"></div>
+        <div class="field">
+          <span class="label">Mobile</span>
+          <div class="input-row">
+            <div class="caret" style="flex:0 0 112px"><select class="input"><option>🇬🇧 +44</option></select></div>
+            <input class="input" type="tel" placeholder="7700 900123" style="border-left:0">
+          </div>
+        </div>
+        <div class="field"><span class="label">Age</span><div class="caret"><select class="input"><option>Select your age</option></select></div><span class="hint">You must be 18 or over to work with us.</span></div>
+        <label class="check"><span class="box"></span><span class="txt">I agree to The Hospitality Company storing and processing the details on this form to assess my application, as described in the <a href="#">Privacy notice</a>.</span></label>
+        <button class="btn primary block lg">Submit application</button>
+        <div class="xs muted" style="text-align:center">Questions? <a href="#">admin@thehospitalitycompany.co.uk</a></div>
+      </div>
+    </div>
+    <div class="stack" style="max-width:420px">
+      <div class="card accent"><b>Native pickers on the phone.</b><div class="sm muted mt-8">Age and country code open the OS wheel picker; the mobile field uses <span class="mono">inputmode="tel"</span>. No app install is needed at this point — the app comes after the interview (Activate, next page).</div></div>
+      <div class="card"><b>What happens next for the candidate</b><div class="sm muted mt-8">Apply → Willo email (E1) → video interview → decision inside Willo → accepted: activation email (E3) → set password → install the app → 11-step onboarding (Appendix A).</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b>
+<b>Fields (§2.1):</b> First name · Surname · Email · Mobile (international country-code picker) · Age (select from 18) · GDPR consent. Public URL, no registration, no login. ·
+<b>Age gate (§2.1, §1.7, Appendix A step 1):</b> under 18 is rejected on the spot — coral error on the form, submit disabled — and the server repeats the check, so a tampered form still fails. The select lists 18 upward; a single "Under 18" option exists only so the form can reject honestly instead of hiding the case. ·
+<b>No "Applied" stage (§2.1, §2.7):</b> a valid submission creates the candidate directly in <i>Interview requested</i>; the system creates them in Willo and Willo sends the interview invitation (E1) itself. The kanban card then moves on its own when the interview is completed (§2.4). ·
+<b>Duplicate check (§2.12):</b> on submission the system matches <i>email</i>, and <i>mobile + date of birth</i>, against existing records. A match does not create a second candidate — it is routed to the office as a "returning applicant" entry on the Onboarding screen naming the existing record; the manager presses <i>Reset to candidate</i> or rejects. The applicant sees the ordinary "Check your inbox" screen either way and is never told why a previous record was blocked. A GDPR-removed worker (§1.7) cannot be matched and applies as a genuinely new candidate. ·
+<b>Open point:</b> §2.1 collects <i>Age</i> while §2.12 matches on <i>mobile + DOB</i> — the form has no DOB field, so either DOB is added to /apply or the mobile+DOB match relies on the DOB entered later in the app (§2.5). Flagged for THC. ·
+<b>Consent (§1.7):</b> the GDPR tick-box is mandatory; its timestamp is stored with the record. ·
+<b>Emails:</b> the interview invitation comes from Willo; everything else from admin@thehospitalitycompany.co.uk (§9.12).</div>
+</body>
+</html>
