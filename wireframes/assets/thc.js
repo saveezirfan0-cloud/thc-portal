@@ -7,8 +7,10 @@
   function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
   function apply() {
     var q = new URLSearchParams(location.search);
-    var theme = q.get('theme') || stored('thc-theme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
     var style = q.get('style') || stored('thc-style') || 'warm';
+    // Warm defaults to light (unless the device prefers dark); Scope §1.6 is dark by definition.
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    var theme = q.get('theme') || stored('thc-theme') || (style === 'scope' ? 'dark' : (prefersDark ? 'dark' : 'light'));
     root.setAttribute('data-theme', theme); root.setAttribute('data-style', style);
     document.querySelectorAll('.wf-theme button').forEach(function (b) {
       b.classList.toggle('on', root.getAttribute('data-' + b.dataset.axis) === b.dataset.value);
