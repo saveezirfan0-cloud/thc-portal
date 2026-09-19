@@ -1,6 +1,8 @@
 # ADR-0003 · "Warm" visual style and light mode
 
-**Status:** Proposed (product owner request, 19.09.2026) — needs THC sign-off because §1.6 is marked STRICT.
+**Status:** Proposed (product owner request, 19.09.2026; refined same day) — needs THC sign-off because §1.6 is marked STRICT.
+
+**Refinement (19.09.2026):** the product exposes ONE switch. **Light mode = the Warm look. Dark mode = the Scope §1.6 look** (navy, cyan, zero radius, mono labels). The four token combinations still exist in CSS, so the pairing can be changed later without touching screens.
 
 ## Context
 The scope fixes a deep-navy, cyan, zero-radius, mono-labelled system. Reviewing the wireframes, the product owner found it reads as "techy" for an 18–30 hospitality workforce and asked for dark and light modes and a current, friendlier feel.

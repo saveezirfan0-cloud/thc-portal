@@ -5,21 +5,20 @@
   var root = document.documentElement;
   function stored(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
   function store(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+  // ONE switch: light mode = Warm look, dark mode = Scope §1.6 look (product decision, ADR-0003 v3).
+  // ?style=&theme= query params still work for rendering any of the four combinations.
   function apply() {
     var q = new URLSearchParams(location.search);
-    var style = q.get('style') || stored('thc-style') || 'warm';
-    // Warm defaults to light (unless the device prefers dark); Scope §1.6 is dark by definition.
     var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    var theme = q.get('theme') || stored('thc-theme') || (style === 'scope' ? 'dark' : (prefersDark ? 'dark' : 'light'));
+    var mode = q.get('mode') || stored('thc-mode') || (prefersDark ? 'dark' : 'light');
+    var theme = q.get('theme') || mode;
+    var style = q.get('style') || (theme === 'dark' ? 'scope' : 'warm');
     root.setAttribute('data-theme', theme); root.setAttribute('data-style', style);
-    document.querySelectorAll('.wf-theme button').forEach(function (b) {
-      b.classList.toggle('on', root.getAttribute('data-' + b.dataset.axis) === b.dataset.value);
-    });
+    document.querySelectorAll('.wf-theme button').forEach(function (b) { b.classList.toggle('on', theme === b.dataset.value); });
   }
   apply();
   function switchUI() {
-    var html = '<span class="wf-theme" title="Theme"><button data-axis="theme" data-value="dark">Dark</button><button data-axis="theme" data-value="light">Light</button></span>' +
-               '<span class="wf-theme" title="Style: warm = proposed Gen-Z direction · scope = §1.6 literal"><button data-axis="style" data-value="warm">Warm</button><button data-axis="style" data-value="scope">Scope §1.6</button></span>';
+    var html = '<span class="wf-theme" title="Light = Warm look · Dark = Scope §1.6 look"><button data-axis="mode" data-value="light">Light · Warm</button><button data-axis="mode" data-value="dark">Dark · Scope</button></span>';
     var bar = document.querySelector('.wf-bar');
     var host;
     if (bar) { host = document.createElement('span'); host.className = 'row'; host.style.gap = '8px'; host.innerHTML = html; bar.insertBefore(host, bar.querySelector('.spacer') ? bar.querySelector('.spacer').nextSibling : null); }
@@ -35,7 +34,7 @@
   }
   document.addEventListener('click', function (e) {
     var th = e.target.closest('.wf-theme button');
-    if (th) { store('thc-' + th.dataset.axis, th.dataset.value); root.setAttribute('data-' + th.dataset.axis, th.dataset.value); apply(); return; }
+    if (th) { store('thc-mode', th.dataset.value); try { history.replaceState(null, '', location.pathname + location.hash); } catch (e) {} apply(); return; }
     var b = e.target.closest('.wf-states button');
     if (b) { setState(b.closest('.wf-states').getAttribute('data-target'), b.getAttribute('data-state')); return; }
     var t = e.target.closest('[data-tab]');

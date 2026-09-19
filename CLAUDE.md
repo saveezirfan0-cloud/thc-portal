@@ -13,7 +13,7 @@ Bespoke staffing platform for an event-staffing agency (~1,000 workers, 10–15 
 2. Backend is **Supabase** (Postgres + PostGIS, Auth, RLS, Storage, Edge Functions, pg_cron), not Django/DRF. "Django Admin" settings live in the `settings` table + a `/settings` page.
 
 ## Visual direction
-Two token axes (ADR-0003, `docs/09-visual-direction.md`): style `warm` (proposed default) / `scope` (§1.6 literal) and theme `dark` / `light`. Components read tokens only; never hard-code colours or radii.
+One user-facing switch (ADR-0003, `docs/09-visual-direction.md`): **Light mode = Warm look** (rounded, Plus Jakarta Sans, tinted surfaces), **Dark mode = Scope §1.6 look** (navy, cyan, zero radius, mono labels). Under the hood these are two token axes (`data-style` warm/scope, `data-theme` light/dark) so the pairing can change without touching screens. Components read tokens only; never hard-code colours or radii.
 
 ## Stack
 pnpm + Turborepo · Next.js (App Router, TypeScript) on Vercel · Supabase · Tailwind is **not** used: the design system is plain CSS tokens/classes in `packages/ui` mirroring `wireframes/assets/thc.css` · Vitest · Playwright · pgTAP.
