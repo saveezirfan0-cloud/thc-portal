@@ -15,7 +15,7 @@
   .ctop .tz { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); letter-spacing: .06em; }
   .cwrap { max-width: 1280px; width: 100%; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
   /* ---- photo avatars: real selfies in product (§11.1) — silhouette stand-in here ---- */
-  .avatar.pic { color: transparent; background-color: #35507a; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='12' r='6.5' fill='%23dfe6ef'/%3E%3Cpath d='M3 34c0-9 6-13 13-13s13 4 13 13z' fill='%23dfe6ef'/%3E%3C/svg%3E"); background-size: cover; background-position: center; }
+  .avatar.pic { color: transparent; background-color: var(--photo-b); background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='12' r='6.5' fill='%23dfe6ef'/%3E%3Cpath d='M3 34c0-9 6-13 13-13s13 4 13 13z' fill='%23dfe6ef'/%3E%3C/svg%3E"); background-size: cover; background-position: center; }
   .avatar.pic.b { background-color: #4d6b8f; } .avatar.pic.c { background-color: #2d5f6e; } .avatar.pic.d { background-color: #5b4d80; } .avatar.pic.e { background-color: #6b5a3e; }
   .avatars .more { width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 9.5px; color: var(--muted); background: var(--panel-2); border: 2px solid var(--panel); box-shadow: 0 0 0 1px var(--line); margin-right: -6px; }
   .fill { display: flex; flex-direction: column; gap: 5px; min-width: 120px; }
@@ -31,7 +31,7 @@
   .fill > span { white-space: nowrap; }
   .tbl tr.cancelled .avatar { filter: grayscale(1); opacity: .5; }
   /* ---- 390px phone-browser frame ---- */
-  .mob { width: 390px; flex: 0 0 390px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 0 0 6px #0b1220, 0 0 0 7px var(--line); }
+  .mob { width: 390px; flex: 0 0 390px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 0 0 6px var(--panel), 0 0 0 7px var(--line); }
   .mob .urlbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
   .mob .urlbar .u { flex: 1; background: var(--bg); border: 1px solid var(--line); padding: 4px 8px; text-align: center; color: var(--text); }
   .mob .ctop { height: 52px; padding: 0 14px; gap: 10px; }

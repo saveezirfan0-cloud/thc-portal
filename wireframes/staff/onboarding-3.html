@@ -9,14 +9,14 @@
 <style>
 /* page-local helpers (wireframe only) */
 .app-body>*{flex-shrink:0}
-.wiz-foot{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:12px 16px 26px;background:rgba(11,18,32,.6);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:6px}
+.wiz-foot{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:12px 16px 26px;background:var(--glass);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-top:1px solid var(--glass-line);display:flex;flex-direction:column;gap:6px}
 .wiz-foot .xs{text-align:center}
-.contract{height:300px;overflow:auto;border:1px solid var(--line);background:rgba(11,18,32,.85);padding:12px 14px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:8px;position:relative}
+.contract{height:300px;overflow:auto;border:1px solid var(--line);background:var(--panel-glass);padding:12px 14px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:8px;position:relative}
 .contract h4{color:var(--text);font-size:12.5px;margin-top:4px}
 .contract p b{color:var(--text)}
 .contract .fade{position:sticky;bottom:-12px;left:0;right:0;height:36px;background:linear-gradient(transparent,rgba(11,18,32,1));margin:-36px -14px -12px;pointer-events:none}
 .sig{border:1px solid var(--green);background:var(--green-dim);padding:10px 12px;font-family:var(--font-mono);font-size:11px;color:var(--green);letter-spacing:.02em}
-.tut{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border:1px solid var(--line);background:rgba(11,18,32,.85)}
+.tut{display:flex;flex-direction:column;gap:5px;padding:10px 12px;border:1px solid var(--line);background:var(--panel-glass)}
 .tut .ic{width:32px;height:32px;border:1px solid var(--cyan);color:var(--cyan);display:inline-flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:12px}
 .tut .t{font-family:var(--font-head);font-size:14.5px;font-weight:600}
 .tut .m{font-size:12px;color:var(--muted)}
@@ -79,7 +79,7 @@
             <p><b>8. Ending the agreement.</b> Either party may end this agreement at any time; you may do so from the app ("Request my P45").</p>
             <div class="fade"></div>
           </div>
-          <label class="check" style="border:1px solid var(--line);padding:10px 12px;background:rgba(11,18,32,.85)"><span class="box"></span><span><b>I agree</b> to the zero-hours agreement above. Ticking this box is my electronic signature.</span></label>
+          <label class="check" style="border:1px solid var(--line);padding:10px 12px;background:var(--panel-glass)"><span class="box"></span><span><b>I agree</b> to the zero-hours agreement above. Ticking this box is my electronic signature.</span></label>
         </div>
         <div class="wiz-foot"><button class="btn primary block lg disabled">Continue</button><div class="xs muted">Tick "I agree" to sign and continue</div></div>
       </div>

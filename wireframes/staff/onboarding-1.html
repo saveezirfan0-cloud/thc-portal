@@ -9,9 +9,9 @@
 <style>
 /* page-local helpers (wireframe only) */
 .app-body>*{flex-shrink:0}
-.wiz-foot{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:12px 16px 26px;background:rgba(11,18,32,.6);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:6px}
+.wiz-foot{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:12px 16px 26px;background:var(--glass);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-top:1px solid var(--glass-line);display:flex;flex-direction:column;gap:6px}
 .wiz-foot .xs{text-align:center}
-.optcard{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);background:rgba(11,18,32,.85)}
+.optcard{display:flex;gap:10px;align-items:flex-start;padding:11px 12px;border:1px solid var(--line);background:var(--panel-glass)}
 .optcard.sel{border-color:var(--cyan);background:var(--cyan-dim)}
 .optcard .rb{width:16px;height:16px;border:1px solid var(--muted);flex:0 0 16px;margin-top:2px}
 .optcard.sel .rb{border:5px solid var(--cyan)}
@@ -25,7 +25,7 @@
 .cam .corner{position:absolute;width:18px;height:18px;border:2px solid var(--cyan)}
 .shutter{width:62px;height:62px;border:3px solid var(--text);background:transparent;display:flex;align-items:center;justify-content:center;margin:0 auto}
 .shutter i{width:48px;height:48px;background:var(--text);display:block}
-.photo-preview{aspect-ratio:1/1;width:100%;background:linear-gradient(135deg,#223047,#35507a);display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:64px;font-weight:600;color:rgba(233,238,245,.55);border:1px solid var(--line)}
+.photo-preview{aspect-ratio:1/1;width:100%;background:linear-gradient(135deg,#223047,var(--photo-b));display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-size:64px;font-weight:600;color:rgba(233,238,245,.55);border:1px solid var(--line)}
 </style>
 </head>
 <body>
@@ -71,7 +71,7 @@
             <div class="seg" style="display:flex"><button class="on" style="flex:1">Passport</button><button style="flex:1">Birth cert. + NI evidence</button></div>
           </div>
           <div class="label">Required documents · uploaded at step 4</div>
-          <div class="mlist" style="border:1px solid var(--line);background:rgba(11,18,32,.85)">
+          <div class="mlist" style="border:1px solid var(--line);background:var(--panel-glass)">
             <div class="docrow" style="border:0;border-bottom:1px solid var(--line)"><span class="ico">PDF</span><div><div class="t">Passport — photo page</div><div class="m">Photo or scan · PDF, JPG, PNG or HEIC, up to 10 MB</div></div><span class="pill right">Step 4</span></div>
             <div class="docrow" style="border:0;opacity:.5"><span class="ico">—</span><div><div class="t">Birth certificate + NI evidence</div><div class="m">Only if you don't have a passport. NI evidence: NI card/letter, HMRC/DWP letter, P60 or a payslip showing the number (§2.5 pt 7).</div></div></div>
           </div>
@@ -93,7 +93,7 @@
           <div class="field"><span class="label">Date of birth <span class="coral">*</span></span><div class="input-row"><input class="input mono" value="30 / 09 / 1999"><span class="addon">📅</span></div></div>
           <div class="field"><span class="label">Share code <span class="coral">*</span></span><input class="input mono err" value="W12 3AB"><span class="error">Share code must be 9 letters and numbers starting with W — e.g. W123AB4CD. Spaces are fine, we'll remove them.</span><span class="hint">Get it at gov.uk/prove-right-to-work · valid for about 90 days.</span></div>
           <div class="label">Required documents · uploaded at step 4</div>
-          <div class="mlist" style="border:1px solid var(--line);background:rgba(11,18,32,.85)">
+          <div class="mlist" style="border:1px solid var(--line);background:var(--panel-glass)">
             <div class="docrow" style="border:0"><span class="ico">JPG</span><div><div class="t">Passport or national ID card</div><div class="m">PDF, JPG, PNG or HEIC, up to 10 MB</div></div><span class="pill right">Step 4</span></div>
           </div>
           <label class="check"><span class="box"></span><span>I opt out of the 48-hour weekly working limit (Working Time Regulations). <span class="xs muted">Optional (§4.4).</span></span></label>
@@ -116,7 +116,7 @@
           <div class="field"><span class="label">Visa type <span class="coral">*</span></span><select class="input"><option>Skilled Worker</option><option>Youth Mobility Scheme</option><option>Graduate</option><option>Other work visa</option></select></div>
           <div class="field"><span class="label">Visa expiry <span class="coral">*</span></span><div class="input-row"><input class="input mono" value="31 / 03 / 2028"><span class="addon">📅</span></div><span class="hint">Cross-checked by the office against the visa you upload and the gov.uk result.</span></div>
           <div class="label">Required documents · uploaded at step 4</div>
-          <div class="mlist" style="border:1px solid var(--line);background:rgba(11,18,32,.85)">
+          <div class="mlist" style="border:1px solid var(--line);background:var(--panel-glass)">
             <div class="docrow" style="border:0;border-bottom:1px solid var(--line)"><span class="ico">PDF</span><div><div class="t">Passport — photo page</div></div><span class="pill right">Step 4</span></div>
             <div class="docrow" style="border:0"><span class="ico">PDF</span><div><div class="t">Visa — photo or PDF (BRP / eVisa)</div><div class="m">PDF, JPG, PNG or HEIC, up to 10 MB</div></div><span class="pill right">Step 4</span></div>
           </div>
@@ -137,7 +137,7 @@
           <div class="field"><span class="label">Date of birth <span class="coral">*</span></span><div class="input-row"><input class="input mono" value="22 / 11 / 2003"><span class="addon">📅</span></div></div>
           <div class="field"><span class="label">Share code <span class="coral">*</span></span><div class="input-row"><input class="input mono" value="W12 3AB 4CD"><span class="addon green">✓</span></div><span class="hint">9 characters starting with W, e.g. W123AB4CD — pasted with spaces is fine.</span></div>
           <div class="label">Required documents · uploaded at step 4</div>
-          <div class="mlist" style="border:1px solid var(--line);background:rgba(11,18,32,.85)">
+          <div class="mlist" style="border:1px solid var(--line);background:var(--panel-glass)">
             <div class="docrow" style="border:0;border-bottom:1px solid var(--line)"><span class="ico">PDF</span><div><div class="t">Passport — photo page</div></div><span class="pill right">Step 4</span></div>
             <div class="docrow" style="border:0"><span class="ico">PDF</span><div><div class="t">University Term Dates Letter</div><div class="m">We read your term and holiday dates from it — they set your weekly limit automatically (RULE-20). Expires 31 December each year.</div></div><span class="pill right">Step 4</span></div>
           </div>
@@ -161,7 +161,7 @@
           <div class="field"><span class="label">Share code <span class="coral">*</span></span><input class="input mono" placeholder="W123AB4CD"><span class="hint">9 characters starting with W, e.g. W123AB4CD.</span></div>
           <div class="field"><span class="label">Visa / status expiry <span class="coral">*</span></span><div class="input-row"><input class="input mono" placeholder="DD / MM / YYYY"><span class="addon">📅</span></div></div>
           <div class="label">Required documents · uploaded at step 4</div>
-          <div class="mlist" style="border:1px solid var(--line);background:rgba(11,18,32,.85)">
+          <div class="mlist" style="border:1px solid var(--line);background:var(--panel-glass)">
             <div class="docrow" style="border:0;border-bottom:1px solid var(--line)"><span class="ico">PDF</span><div><div class="t">Passport — photo page</div></div><span class="pill right">Step 4</span></div>
             <div class="docrow" style="border:0"><span class="ico">PDF</span><div><div class="t">Visa or status document</div><div class="m">PDF, JPG, PNG or HEIC, up to 10 MB</div></div><span class="pill right">Step 4</span></div>
           </div>

@@ -1,5 +1,7 @@
 # 07 · Design system (§1.6 web · §10.1 mobile)
 
+> Two runtime axes exist since ADR-0003: **style** (`warm` proposed default · `scope` = §1.6 literal) and **theme** (`dark` · `light`). The rules below describe the Scope style; `docs/09-visual-direction.md` lists exactly what Warm and Light change. Everything is tokens; components never hard-code a colour or radius.
+
 Implemented as CSS custom properties and component classes in `wireframes/assets/thc.css`; `packages/ui` ports the same names to React. `wireframes/design-system.html` is the living reference sheet.
 
 ## Tokens

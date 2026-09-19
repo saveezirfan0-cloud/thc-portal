@@ -9,9 +9,9 @@
 <style>
 /* page-local helpers (wireframe only) */
 .app-body>*{flex-shrink:0}
-.wiz-foot{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:12px 16px 26px;background:rgba(11,18,32,.6);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:6px}
+.wiz-foot{position:absolute;left:0;right:0;bottom:0;z-index:3;padding:12px 16px 26px;background:var(--glass);backdrop-filter:blur(18px) saturate(140%);-webkit-backdrop-filter:blur(18px) saturate(140%);border-top:1px solid var(--glass-line);display:flex;flex-direction:column;gap:6px}
 .wiz-foot .xs{text-align:center}
-.slide{aspect-ratio:16/10;width:100%;background:#0f1828;border:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:8px;position:relative}
+.slide{aspect-ratio:16/10;width:100%;background:var(--panel-2);border:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:8px;position:relative}
 .slide .st{font-family:var(--font-head);font-size:16px;font-weight:600}
 .slide .ln{height:8px;background:var(--line);width:88%}
 .slide .ln.s{width:64%}.slide .ln.m{width:76%}
@@ -24,10 +24,10 @@
 .q{font-family:var(--font-head);font-size:16px;font-weight:600;line-height:1.35}
 .quiz-opt .k{border:1px solid var(--line);width:22px;height:22px;display:inline-flex;align-items:center;justify-content:center;flex:0 0 22px}
 .quiz-opt.sel .k{border-color:var(--cyan);color:var(--cyan)}
-.qblock{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--line);background:rgba(11,18,32,.85)}
+.qblock{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--line);background:var(--panel-glass)}
 .qblock .qt{font-size:13px;font-weight:500}
 .qblock.off{opacity:.4}
-.ref{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--line);background:rgba(11,18,32,.85)}
+.ref{display:flex;flex-direction:column;gap:8px;padding:12px 14px;border:1px solid var(--line);background:var(--panel-glass)}
 .ref .rh{display:flex;align-items:center;gap:8px;font-family:var(--font-head);font-weight:600;font-size:14px}
 </style>
 </head>
@@ -211,7 +211,7 @@
             <label class="check"><span class="box on"></span><span>I'm also repaying a <b>Postgraduate Loan</b></span></label>
           </div>
           <div class="field"><span class="label">National Insurance number · optional</span><input class="input mono" value="QQ 12 34 56 B"><span class="hint">Leave blank if you don't have one yet — you can still be onboarded and paid; add it in Profile details once HMRC issues it (§2.10). Once saved it's shown masked (●●●●●●●6B) and locked.</span></div>
-          <label class="check" style="border:1px solid var(--line);padding:10px 12px;background:rgba(11,18,32,.85)"><span class="box on"></span><span>I confirm that the information I've given on this form is correct.</span></label>
+          <label class="check" style="border:1px solid var(--line);padding:10px 12px;background:var(--panel-glass)"><span class="box on"></span><span>I confirm that the information I've given on this form is correct.</span></label>
         </div>
         <div class="wiz-foot"><button class="btn primary block lg">Submit checklist</button></div>
       </div>

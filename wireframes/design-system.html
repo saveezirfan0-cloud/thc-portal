@@ -19,8 +19,26 @@
 <body>
 <div class="wf-bar"><a href="index.html">← Hub</a><span class="t">Design system</span><span class="pill">§1.6 · §10.1</span><span class="spacer"></span><a href="backoffice/login.html">Next: Back Office →</a></div>
 
+
 <div class="wf-section">
-  <h2>1 · Palette<small>Tokens in assets/thc.css. Purple is reserved for Auto-Assign; coral is danger. Zero border-radius everywhere except the logo.</small></h2>
+  <h2>0 · Modes and styles<small>Use the switch in the top bar. Theme follows the device by default; both axes are tokens on the root element, so every screen supports all four combinations (docs/09-visual-direction.md, ADR-0003).</small></h2>
+  <div class="grid c2">
+    <div class="card accent"><span class="label cyan">Style · Warm (proposed default)</span><p class="mt-8">Rounded corners, Plus Jakarta Sans, bold body-face labels, thumb-sized buttons, rounded active nav. Built for an 18–30 hospitality workforce and a busy office. Same palette, same components, same rules.</p></div>
+    <div class="card"><span class="label">Style · Scope §1.6 (literal)</span><p class="mt-8">Deep navy, zero radius, Space Grotesk / Inter / IBM Plex Mono labels, cyan left-bar nav, square avatars — exactly as written in the Scope of Work and the approved design pack.</p></div>
+    <div class="card"><span class="label">Theme · Dark</span><p class="mt-8">Navy ground #04080F, panels #0B1220. The brand palette as specified.</p></div>
+    <div class="card"><span class="label">Theme · Light</span><p class="mt-8">Warm off-white #F6F4EF, white panels, navy ink #141A2C. Cyan stays for fills; text and borders use the deeper teal ink #0B8A99 for contrast.</p></div>
+  </div>
+  <div class="grid c5">
+    <div class="sw"><i style="background:#F6F4EF;border-bottom:1px solid var(--line)"></i><div><b>light · bg</b>#F6F4EF</div></div>
+    <div class="sw"><i style="background:#141A2C"></i><div><b>light · ink</b>#141A2C</div></div>
+    <div class="sw"><i style="background:#0B8A99"></i><div><b>cyan-ink</b>#0B8A99</div></div>
+    <div class="sw"><i style="background:#158A5C"></i><div><b>green-ink</b>#158A5C</div></div>
+    <div class="sw"><i style="background:#C93E33"></i><div><b>coral-ink</b>#C93E33</div></div>
+  </div>
+</div>
+
+<div class="wf-section">
+  <h2>1 · Palette<small>Ten brand tokens in assets/thc.css — identical in every mode. Purple is reserved for Auto-Assign; coral is danger. Light mode adds an "ink" variant of each tone for text on white.</small></h2>
   <div class="swatches">
     <div class="sw"><i style="background:#04080F;border-bottom:1px solid var(--line)"></i><div><b>bg</b>#04080F</div></div>
     <div class="sw"><i style="background:#0B1220"></i><div><b>panel</b>#0B1220</div></div>
@@ -36,7 +54,7 @@
 </div>
 
 <div class="wf-section">
-  <h2>2 · Type<small>Space Grotesk headings · Inter body · IBM Plex Mono labels (uppercase, letter-spaced)</small></h2>
+  <h2>2 · Type<small>Warm: Plus Jakarta Sans throughout, mono only for codes. Scope: Space Grotesk headings · Inter body · IBM Plex Mono labels.</small></h2>
   <div class="panel"><div class="panel-b type-sample stack">
     <h1>Gala Dinner · Leonardo Hotel St Pauls</h1>
     <h2>Waiting Staff · 17:00 – 23:30</h2>
@@ -66,7 +84,7 @@
 </div>
 
 <div class="wf-section">
-  <h2>5 · Web/Pill — the status vocabulary<small>Square, mono, uppercase. Tones are fixed per status (docs/07-design-system.md).</small></h2>
+  <h2>5 · Web/Pill — the status vocabulary<small>Uppercase; rounded in Warm, square and mono in Scope. Tones are fixed per status (docs/07-design-system.md).</small></h2>
   <div class="stack">
     <div class="demo"><span class="label" style="width:110px">Event</span><span class="pill cyan">Upcoming</span><span class="pill green">Ongoing</span><span class="pill">Completed</span><span class="pill">Cancelled</span></div>
     <div class="demo"><span class="label" style="width:110px">Booking</span><span class="pill">Invited</span><span class="pill green">Confirmed</span><span class="pill amber">Needs confirmation</span><span class="pill amber">Time changed</span><span class="pill">Awaiting</span><span class="pill coral">No show</span><span class="pill purple">Applied 2h ago</span><span class="pill solid green">9 of 12</span><span class="pill solid amber">4 of 10</span></div>

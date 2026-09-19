@@ -9,16 +9,16 @@
 <style>
   .pair { display: flex; flex-wrap: wrap; gap: 28px; align-items: flex-start; padding: 8px 24px 8px; }
   /* desktop browser frame */
-  .desk { flex: 1 1 640px; max-width: 900px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 0 0 6px #0b1220, 0 0 0 7px var(--line); }
+  .desk { flex: 1 1 640px; max-width: 900px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 0 0 6px var(--panel), 0 0 0 7px var(--line); }
   .desk .urlbar, .mob .urlbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); background: var(--panel); font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); }
   .desk .urlbar .u, .mob .urlbar .u { flex: 1; background: var(--bg); border: 1px solid var(--line); padding: 4px 8px; text-align: center; color: var(--text); }
-  .desk .canvas { min-height: 560px; display: flex; align-items: center; justify-content: center; padding: 40px 24px; background: radial-gradient(circle at 20% 10%, rgba(62,220,236,.10), transparent 40%), radial-gradient(circle at 85% 90%, rgba(168,121,255,.10), transparent 40%); }
+  .desk .canvas { min-height: 560px; display: flex; align-items: center; justify-content: center; padding: 40px 24px; background: radial-gradient(circle at 20% 10%, var(--cyan-dim), transparent 40%), radial-gradient(circle at 85% 90%, rgba(168,121,255,.10), transparent 40%); }
   .auth-card { width: 100%; max-width: 420px; background: var(--panel); border: 1px solid var(--line); padding: 26px 28px 24px; display: flex; flex-direction: column; gap: 14px; }
   .auth-card .brand { padding-bottom: 14px; border-bottom: 1px solid var(--line); }
   .auth-card h2 { font-size: 20px; }
   .auth-card .lead { color: var(--muted); font-size: 13px; }
   /* 390px phone-browser frame */
-  .mob { width: 390px; flex: 0 0 390px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 0 0 6px #0b1220, 0 0 0 7px var(--line); }
+  .mob { width: 390px; flex: 0 0 390px; background: var(--bg); border: 1px solid var(--line); box-shadow: 0 0 0 6px var(--panel), 0 0 0 7px var(--line); }
   .mob .canvas { padding: 24px 0 8px; min-height: 560px; display: flex; flex-direction: column; justify-content: center; }
   .mob .auth-card { max-width: none; border: 0; padding: 20px 16px 24px; background: transparent; }
   .cap { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 8px; }

@@ -12,6 +12,9 @@ Bespoke staffing platform for an event-staffing agency (~1,000 workers, 10–15 
 1. Staff App is a **PWA** (Next.js + Serwist), not Flutter. Background geofence is covered per `docs/06-pwa-vs-native.md` (ADR-0001).
 2. Backend is **Supabase** (Postgres + PostGIS, Auth, RLS, Storage, Edge Functions, pg_cron), not Django/DRF. "Django Admin" settings live in the `settings` table + a `/settings` page.
 
+## Visual direction
+Two token axes (ADR-0003, `docs/09-visual-direction.md`): style `warm` (proposed default) / `scope` (§1.6 literal) and theme `dark` / `light`. Components read tokens only; never hard-code colours or radii.
+
 ## Stack
 pnpm + Turborepo · Next.js (App Router, TypeScript) on Vercel · Supabase · Tailwind is **not** used: the design system is plain CSS tokens/classes in `packages/ui` mirroring `wireframes/assets/thc.css` · Vitest · Playwright · pgTAP.
 

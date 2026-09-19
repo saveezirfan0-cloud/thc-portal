@@ -33,8 +33,8 @@
   .wchip .w { font-family: var(--font-mono); font-size: 10.5px; color: var(--text); display: flex; gap: 6px; align-items: center; }
   .wchip .n { font-weight: 600; }
   .wchip .m { color: var(--muted); font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .wchip .f { margin-left: auto; font-family: var(--font-mono); font-size: 9.5px; padding: 0 5px; border: 1px solid rgba(245,184,61,.45); color: var(--amber); background: var(--amber-dim); }
-  .wchip.full .f { border-color: rgba(61,220,151,.4); color: var(--green); background: var(--green-dim); }
+  .wchip .f { margin-left: auto; font-family: var(--font-mono); font-size: 9.5px; padding: 0 5px; border: 1px solid var(--amber-line); color: var(--amber); background: var(--amber-dim); }
+  .wchip.full .f { border-color: var(--green-line); color: var(--green); background: var(--green-dim); }
   /* day view */
   .dayrow { display: grid; grid-template-columns: 130px 1fr 220px 1fr 120px 110px; gap: 14px; align-items: center; padding: 12px 14px; border: 1px solid var(--line); background: var(--panel); cursor: pointer; }
   .dayrow + .dayrow { border-top: 0; }
@@ -268,7 +268,7 @@
           <div class="col today">
             <div class="ch"><span class="d">Thu 18 · today</span><span class="c ok">3 ev · 0 open</span></div>
             <div class="list">
-              <a class="wchip ongoing" href="event-board.html#board=ongoing"><span class="w">08:00 – 20:00<span class="f" style="border-color:rgba(61,220,151,.4);color:var(--green);background:var(--green-dim)">10 of 10</span></span><span class="n">Conference Day 2 <span class="pill green" style="height:16px;font-size:9px">Ongoing</span></span><span class="m">ExCeL London · Royal Victoria Dock</span></a>
+              <a class="wchip ongoing" href="event-board.html#board=ongoing"><span class="w">08:00 – 20:00<span class="f" style="border-color:var(--green-line);color:var(--green);background:var(--green-dim)">10 of 10</span></span><span class="n">Conference Day 2 <span class="pill green" style="height:16px;font-size:9px">Ongoing</span></span><span class="m">ExCeL London · Royal Victoria Dock</span></a>
               <a class="wchip full" href="event-board.html"><span class="w">15:00 – 21:00<span class="f">4 of 4</span></span><span class="n">Afternoon Tea</span><span class="m">Leonardo Hotel St Pauls · Leonardo Royal</span></a>
               <a class="wchip full" href="event-board.html"><span class="w">17:00 – 23:30<span class="f">6 of 6</span></span><span class="n">Board Dinner</span><span class="m">The Dorchester · Park Lane</span></a>
             </div>

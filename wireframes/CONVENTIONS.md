@@ -11,8 +11,9 @@ contract for the build: the same tokens and component names are reused in `packa
   - Mobile: `wireframes/staff/shifts.html` (phone frames in a `.phones` gallery, one phone per screen/state)
 
 ## Hard rules (from the spec)
-1. Zero border-radius everywhere. The only round thing is the `.logo.round` circle.
-2. Palette tokens only (`var(--cyan)` etc). Purple is reserved for Auto-Assign. Coral = danger.
+0. Tokens only. Never write a hex colour, `rgba(...)` or a `border-radius` in a page: use `var(--panel)`, `var(--cyan-ink)`, `var(--r)` etc. Pages must look right in all four theme/style combinations (switch in the top bar).
+1. Zero border-radius in Scope style (tokens are 0 there). The only always-round thing is the `.logo.round` circle.
+2. Palette tokens only (`var(--cyan)` for fills, `var(--cyan-ink)` for text). Purple is reserved for Auto-Assign. Coral = danger.
 3. Fonts: headings Space Grotesk, body Inter, labels IBM Plex Mono uppercase + letter-spacing (`.label`, `.pill`).
 4. Square avatars (`.avatar`). Real selfie photos in product; wireframes show initials on a `.avatar.photo`.
 5. Sidebar active = cyan left bar + subtle cyan fill + cyan text (already in CSS).

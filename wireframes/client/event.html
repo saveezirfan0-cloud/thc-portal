@@ -13,7 +13,7 @@
   .ctop .client .l { font-family: var(--font-mono); font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
   .ctop .tz { font-family: var(--font-mono); font-size: 10.5px; color: var(--muted); letter-spacing: .06em; }
   .cwrap { max-width: 1280px; width: 100%; margin: 0 auto; padding: 24px; display: flex; flex-direction: column; gap: 20px; }
-  .avatar.pic { color: transparent; background-color: #35507a; background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='12' r='6.5' fill='%23dfe6ef'/%3E%3Cpath d='M3 34c0-9 6-13 13-13s13 4 13 13z' fill='%23dfe6ef'/%3E%3C/svg%3E"); background-size: cover; background-position: center; }
+  .avatar.pic { color: transparent; background-color: var(--photo-b); background-image: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='12' r='6.5' fill='%23dfe6ef'/%3E%3Cpath d='M3 34c0-9 6-13 13-13s13 4 13 13z' fill='%23dfe6ef'/%3E%3C/svg%3E"); background-size: cover; background-position: center; }
   .avatar.pic.b { background-color: #4d6b8f; } .avatar.pic.c { background-color: #2d5f6e; } .avatar.pic.d { background-color: #5b4d80; } .avatar.pic.e { background-color: #6b5a3e; }
   /* event header */
   .ehead { background: var(--panel); border: 1px solid var(--line); padding: 18px 20px; display: flex; flex-direction: column; gap: 12px; }
@@ -32,7 +32,7 @@
   .wrow .s { font-size: 11.5px; color: var(--muted); }
   .wrow > div { flex: 1; min-width: 0; }
   .wrow .btn { margin-left: auto; flex: 0 0 auto; }
-  .btn.sent { background: transparent; border-color: rgba(61,220,151,.4); color: var(--green); cursor: default; }
+  .btn.sent { background: transparent; border-color: var(--green-line); color: var(--green); cursor: default; }
   .btn.sent::after { display: none; }
   .stars-in { display: flex; gap: 4px; font-size: 26px; line-height: 1; cursor: pointer; }
   .stars-in span { color: var(--line); } .stars-in span.on { color: var(--amber); }
