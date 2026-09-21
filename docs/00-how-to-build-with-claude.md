@@ -12,7 +12,21 @@ is covered by tests.
 |---|---|---|
 | Unit | 522 | `pnpm test` |
 | Browser smoke | 50 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 696 | `supabase test db` |
+| Database, row-level security and rules | 696 over 18 files | `supabase test db` |
+
+The database figure is derived, not measured here: 544 over 14 files at `ad81538`,
+plus the declared plans of the four files merged since — 130 auto-assign (57),
+140 check-in write paths (45), 150 roles directory (25), 160 client portal (24) —
+and the one assertion 020 gained with the Client Portal's one-entry-per-event
+index. pgTAP fails a file whose plan does not match the assertions it runs, so a
+green `supabase test db` makes each of those counts exact. `supabase start` needs
+Docker, which some sandboxes block; when it is unavailable, take the number from
+the CI run rather than a local count.
+
+The browser figure is 50 tests, of which 44 run and 6 skip on a checkout with no
+`.env.local`: the gate tests need a configured project to have a gate to assert,
+and the Shift Builder and Client Portal suites need one to be absent. CI has a
+project, so a different six skip there.
 
 What exists:
 
