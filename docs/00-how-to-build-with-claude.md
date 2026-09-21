@@ -10,9 +10,9 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 67 | `pnpm test` |
-| Browser smoke | 14 | `pnpm turbo e2e:smoke` |
-| Database, row-level security | 278 | `supabase test db` |
+| Unit | 143 | `pnpm test` |
+| Browser smoke | 18 | `pnpm turbo e2e:smoke` |
+| Database, row-level security | 314 | `supabase test db` |
 
 What exists:
 
@@ -27,9 +27,20 @@ What exists:
   component against both token axes.
 - **Seed data**: 5 clients, 8 venues, 6 roles, 40 workers, mirroring
   `wireframes/CONVENTIONS.md`.
+- **The §8 notification register** in `packages/notifications`: every push N1–N15 and
+  every email E1–E9, copy verbatim from the scope.
+- **The public application form** at `/apply` (§2.1), the first screen of Phase 1, with
+  `submit_application()` behind it: the age gate on the form, in the server action and in
+  the database, and the §2.12 duplicate check.
 
-What does not exist yet: every screen in Phases 1 to 7, the Supabase project, and the
-Vercel projects. Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
+What does not exist yet: every other screen in Phases 1 to 7, the Supabase project, and
+the Vercel projects. Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
+
+**Open with THC.** §2.1 collects an *age band* on /apply while §2.12 matches duplicates on
+*mobile + date of birth*, and the form has no date-of-birth field. Until THC decides,
+`0006` matches on email and on mobile — the wider net of the two — and `staff.dob` stays
+null until Right to Work supplies one (§2.5). `wireframes/public/apply.html` carries the
+same flag.
 
 ## Security: one item closed, one open
 

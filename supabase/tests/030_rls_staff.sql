@@ -18,7 +18,7 @@
 -- §2.8 says the worker never sees the derived A/B/C statement.
 -- =====================================================================
 begin;
-select plan(77);
+select plan(78);
 \ir _shared/fixtures.psql
 
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
@@ -81,6 +81,8 @@ select is((select count(*)::int from client_qualifications where staff_id in (:'
   'worker cannot read client+role clearances — it would leak the client directory into the PWA (§9.6)');
 select is((select count(*)::int from audit_log where action = 'rls_fixture_probe'), 0, 'worker cannot read the audit log');
 select is((select count(*)::int from report_sends where error = 'rls_fixture_probe'), 0, 'worker cannot read the report send log');
+select is((select count(*)::int from applications where id = :'applic_a'), 0,
+  'worker cannot read applications, not even the one naming their own record — it is the office''s queue (§2.12)');
 select is((select count(*)::int from client_rate_cards where id = :'ratecard_a'), 0, 'worker cannot read charge rates');
 select is((select count(*)::int from clients where id = :'clienta'), 0, 'worker cannot read the client directory');
 select is((select count(*)::int from venues where id = :'venue_id'), 0, 'worker cannot read the venue directory');

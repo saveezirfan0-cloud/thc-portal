@@ -57,6 +57,7 @@
 \set qual_b       '4a4a4a4a-0000-4000-8000-000000000002'
 \set push_a       '5a5a5a5a-0000-4000-8000-000000000001'
 \set push_b       '5a5a5a5a-0000-4000-8000-000000000002'
+\set applic_a     '6a6a6a6a-0000-4000-8000-000000000001'
 \set new_id       '9f9f9f9f-0000-4000-8000-00000000000f'
 
 insert into auth.users (id, email) values
@@ -180,3 +181,9 @@ insert into report_sends (kind, period_start, period_end, sent_at, status, error
 
 insert into venue_types (key, label, default_radius_m) values
   ('rls_fixture_type', 'RLS Fixture venue type', 275);
+
+-- ---- the public application form (0006_public_application) ----------
+-- A returning-applicant entry (§2.12): the submission matched Staff Alpha,
+-- so no second candidate exists and the office acts on the named record.
+insert into applications (id, first_name, last_name, email, phone, age_band, outcome, staff_id, consented_at) values
+  (:'applic_a', 'Staff', 'Alpha', 'staffa@rls.test', '+447700900011', '25', 'returning_applicant', :'staffa', now());

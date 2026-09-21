@@ -4,7 +4,7 @@
 -- client-facing view must be empty for the `anon` PostgREST role.
 -- =====================================================================
 begin;
-select plan(39);
+select plan(40);
 \ir _shared/fixtures.psql
 
 select set_config('request.jwt.claims', '', true);
@@ -39,6 +39,8 @@ select is((select count(*)::int from push_subscriptions    where id in (:'push_a
 select is((select count(*)::int from location_pings        where booking_id in (:'booking_a', :'booking_b')), 0, 'anon reads no location pings');
 select is((select count(*)::int from audit_log             where action = 'rls_fixture_probe'),             0, 'anon reads no audit log');
 select is((select count(*)::int from report_sends          where error  = 'rls_fixture_probe'),             0, 'anon reads no report sends');
+-- anon WRITES here, through submit_application (§2.1), and reads nothing back.
+select is((select count(*)::int from applications          where id = :'applic_a'),                        0, 'anon reads no applications, though the public form writes them');
 select is((select count(*)::int from venue_types           where key = 'rls_fixture_type'),                 0, 'anon reads no venue types: venue_types_read needs a profile, and anon has none');
 
 select is((select count(*)::int from client_events_v       where id in (:'event_a', :'event_b')),            0, 'anon reads no client_events_v');

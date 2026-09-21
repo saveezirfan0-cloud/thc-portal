@@ -1,0 +1,130 @@
+/* Public application form (§2.1) — wireframes/public/apply.html.
+
+   Everything here is what that wireframe defines in its own <style> block
+   and `packages/ui` therefore does not carry: a public page has no shell, no
+   sidebar and no login, and it is the only card in the product whose brand
+   row is left-aligned. Scoped to .apply-page so none of it reaches the
+   sign-in card the same classes render elsewhere (§1.4). */
+
+.apply-page .auth-card {
+  max-width: 460px;
+  gap: 14px;
+}
+
+/* The wireframe's brand row sits left with a rule under it, where the
+   sign-in card centres it. */
+.apply-page .auth-card .brand {
+  flex-direction: row;
+  align-items: center;
+  text-align: left;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.apply-page .auth-card h2 {
+  text-align: left;
+  font-size: 20px;
+}
+
+.apply-page .lead {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+/* Native select with the wireframe's caret. Drawn as a background mark so it
+   needs no wrapper element and cannot drift out of position. */
+.apply-page select.input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 28px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' fill='none' stroke='%238aa0b8' stroke-width='1.5' stroke-linecap='round'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+}
+
+/* The consent tick (§1.7). The real checkbox stays in the page — it carries
+   the value, the keyboard focus and the accessible name — with the square
+   from the design system drawn next to it. */
+.apply-page .check {
+  position: relative;
+}
+
+.apply-page .check .check-input {
+  position: absolute;
+  top: 2px;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.apply-page .check .check-input:focus-visible + .box {
+  outline: 2px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+.apply-page .check .txt {
+  line-height: 1.4;
+}
+
+.apply-page .check .error {
+  display: block;
+  font-size: 11.5px;
+  color: var(--coral);
+  margin-top: 4px;
+}
+
+/* "Check your inbox" (§2.7) — the one confirmation screen, which a returning
+   applicant sees unchanged (§2.12). */
+.apply-page .auth-card.done {
+  text-align: center;
+  align-items: center;
+}
+
+.apply-page .auth-card.done .brand {
+  align-self: stretch;
+  justify-content: center;
+  flex-direction: row;
+}
+
+.apply-page .auth-card.done h2 {
+  text-align: center;
+}
+
+.apply-page .done .ico {
+  width: 56px;
+  height: 56px;
+  background: var(--cyan);
+  color: var(--bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+  border-radius: var(--r-xs);
+}
+
+.apply-page .done .box {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  text-align: left;
+}
+
+.apply-page .done .box .row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* Phone browsers are where most applications are typed (§1.2). */
+@media (max-width: 480px) {
+  .apply-page .grid.c2 {
+    grid-template-columns: 1fr;
+  }
+}

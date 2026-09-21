@@ -53,7 +53,7 @@ signed-in role as harmless reference data. Bank details and references took real
 policies rather than RPCs, which leaves the E5 notification on a bank change unwired;
 picking that up belongs with S2.
 
-## S2 · Notification register (§8)
+## S2 · Notification register (§8) — DONE
 
 > Use the `notifications` agent. Branch `feat/notifications-register`.
 >
@@ -76,14 +76,23 @@ picking that up belongs with S2.
 
 ## S3 · Phase 1 · Onboarding and applicant tracking
 
-> Use the `onboarding` agent. Branch `feat/onboarding-apply`.
+> **The public form is built** — `/apply`, `/apply/submitted`, `applications` and
+> `submit_application()` landed in `0006_public_application.sql`. What is left of Phase 1
+> is below; take one per session, each on its own branch.
 >
-> Build Phase 1 from `docs/02-build-plan.md`. Start with the public application form
-> only; the wizard and the kanban follow in later sessions on their own branches.
+> Use the `onboarding` agent. Branch `feat/onboarding-<thing>`.
 >
-> This session: `/apply` and `/apply/submitted` in `apps/staff` per §2.1 and §2.12,
-> matching `wireframes/public/apply.html`. Duplicate check leading to the returning
-> applicant entry. Age 18 or over enforced on the form and again on the server.
+> Next, in this order:
+> 1. **Willo** (§2.4) — create the candidate on submit and let Willo send E1 (the one
+>    email this system must never send itself), then the webhook that moves the kanban
+>    stage, E2 on reject and E3 on accept. Blocked on THC's keys (Appendix B1).
+> 2. **The kanban** `/onboarding` and the candidate profile (§2.2–2.3), including the
+>    returning-applicant entries `applications` already files and the Reset to candidate
+>    action they need (§9.6).
+> 3. **The 11-step wizard** in the Staff App (§10.3, §2.5–2.11).
+>
+> Carry forward: `staff.dob` is null until Right to Work supplies it, so the wizard is
+> what fills it; the `age_18` constraint then does the real check.
 >
 > What already exists: the monorepo, `packages/ui` components, role-routing middleware
 > with `/apply` already public, sign-in, seed data with 40 workers, and the RLS suite.

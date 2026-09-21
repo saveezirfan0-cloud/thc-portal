@@ -7,7 +7,7 @@
 -- Every money-bearing table is asserted unreachable, in both directions.
 -- =====================================================================
 begin;
-select plan(57);
+select plan(58);
 \ir _shared/fixtures.psql
 
 select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
@@ -65,6 +65,8 @@ select is((select count(*)::int from audit_log where action = 'rls_fixture_probe
   'client cannot read the audit log');
 select is((select count(*)::int from report_sends where error = 'rls_fixture_probe'), 0,
   'client cannot read the report send log (payroll periods)');
+select is((select count(*)::int from applications where id = :'applic_a'), 0,
+  'client cannot read applications — an applicant is a private individual, not this client''s business (§11.1)');
 
 -- venue_types is the one thing 0004 opened to every signed-in role: nine
 -- rows of label + default radius, no money and no personal data (§9.11).
