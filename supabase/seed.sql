@@ -446,6 +446,7 @@ declare
   required text[] := array['id','aud','role','email','encrypted_password','email_confirmed_at',
                            'raw_app_meta_data','raw_user_meta_data','created_at','updated_at'];
   missing text;
+  col text;
 begin
   if to_regclass('auth.users') is null then
     raise notice 'seed: auth.users not found, skipping dev logins';
@@ -486,6 +487,28 @@ begin
     email = excluded.email, encrypted_password = excluded.encrypted_password,
     email_confirmed_at = excluded.email_confirmed_at,
     raw_app_meta_data = excluded.raw_app_meta_data, updated_at = now();
+
+  -- GoTrue reads these token columns into non-nullable Go strings. A row
+  -- inserted by hand leaves them NULL, the scan fails with "converting NULL
+  -- to string is unsupported", and EVERY sign-in for that user returns a
+  -- server error. The client surfaces that as a generic auth failure, so it
+  -- looks exactly like a wrong password and sends you hunting for the wrong
+  -- thing.
+  --
+  -- Done dynamically because which of these columns exists varies by GoTrue
+  -- version, and a bare Postgres stub of auth.users has none of them.
+  for col in
+    select c.column_name
+    from information_schema.columns c
+    where c.table_schema = 'auth' and c.table_name = 'users'
+      and c.column_name in ('confirmation_token','recovery_token','email_change',
+                            'email_change_token_new','email_change_token_current',
+                            'phone_change','phone_change_token','reauthentication_token')
+      and c.data_type in ('text','character varying')
+  loop
+    execute format(
+      'update auth.users set %1$I = coalesce(%1$I, '''') where %1$I is null', col);
+  end loop;
 
   -- GoTrue >= 2.x needs an identity row before email/password login works.
   if to_regclass('auth.identities') is not null
