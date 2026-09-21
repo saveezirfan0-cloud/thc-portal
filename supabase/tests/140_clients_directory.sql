@@ -38,10 +38,10 @@ insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headc
    10, 0, 30.00, 20.00, 'Black tie', 10);
 
 -- ---- structure --------------------------------------------------------
-select ok((select 'security_invoker=true' = any(reloptions) from pg_class where relname = 'client_directory_v'),
-  'client_directory_v is security_invoker');
-select ok((select 'security_invoker=true' = any(reloptions) from pg_class where relname = 'client_margins_v'),
-  'client_margins_v is security_invoker');
+select ok((select 'security_invoker=true' = any(reloptions) from pg_class where relname = 'clients_directory_v'),
+  'clients_directory_v is security_invoker');
+select ok((select 'security_invoker=true' = any(reloptions) from pg_class where relname = 'clients_margins_v'),
+  'clients_margins_v is security_invoker');
 
 -- §9.7: "there is no Delete action; a client record cannot be removed from
 -- the system, only edited". The absence is the requirement, so it is asserted.
@@ -55,40 +55,40 @@ select is(
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 
-select is((select count(*)::int from client_directory_v where id = :'clienta'), 1,
-  'admin reads the client through client_directory_v');
-select is((select name from client_directory_v where id = :'clienta'), 'RLS Fixture Client A',
+select is((select count(*)::int from clients_directory_v where id = :'clienta'), 1,
+  'admin reads the client through clients_directory_v');
+select is((select name from clients_directory_v where id = :'clienta'), 'RLS Fixture Client A',
   'the row carries the client name');
-select is((select rate_card_roles from client_directory_v where id = :'clienta'),
+select is((select rate_card_roles from clients_directory_v where id = :'clienta'),
   array['RLS Fixture Role'],
   'the rate-card roles come back as names, which is what the directory prints as chips');
-select is((select rate_card_count from client_directory_v where id = :'clienta'), 1,
+select is((select rate_card_count from clients_directory_v where id = :'clienta'), 1,
   'and the count beside them');
-select is((select count(*)::int from client_directory_v where id = :'clientb' and rate_card_roles = '{}'), 1,
+select is((select count(*)::int from clients_directory_v where id = :'clientb' and rate_card_roles = '{}'), 1,
   'a client with an empty rate card gets an empty array, never null');
 
 -- ---- the margin -------------------------------------------------------
-select is((select completed_events from client_margins_v where client_id = :'clienta'), 1,
+select is((select completed_events from clients_margins_v where client_id = :'clienta'), 1,
   'only the delivered event counts towards the margin');
-select is((select charge_total from client_margins_v where client_id = :'clienta'), 1500.00::numeric,
+select is((select charge_total from clients_margins_v where client_id = :'clienta'), 1500.00::numeric,
   'charge is weighted by headcount and section hours: £30.00 x 10 x 5h');
-select is((select pay_total from client_margins_v where client_id = :'clienta'), 1120.50::numeric,
+select is((select pay_total from clients_margins_v where client_id = :'clienta'), 1120.50::numeric,
   'and pay is the FINAL rate — base plus the 12.07% holiday element (§9.8)');
-select is((select avg_margin_pct from client_directory_v where id = :'clienta'), 25.3::numeric,
+select is((select avg_margin_pct from clients_directory_v where id = :'clienta'), 25.3::numeric,
   'so the margin is 25.3%, not the 33.3% a base-rate calculation would show');
-select is((select avg_margin_pct from client_directory_v where id = :'clientb'), null,
+select is((select avg_margin_pct from clients_directory_v where id = :'clientb'), null,
   'a client with nothing delivered has no margin — null, never 0%');
 
 -- An event still to come is not a margin, and neither is a cancelled one.
 update events set event_date = current_date + 7 where id = :'past_event';
-select is((select avg_margin_pct from client_directory_v where id = :'clienta'), null,
+select is((select avg_margin_pct from clients_directory_v where id = :'clienta'), null,
   'an event that has not happened yet is not in the margin');
 update events set event_date = current_date - 14, cancelled_at = now() where id = :'past_event';
-select is((select avg_margin_pct from client_directory_v where id = :'clienta'), null,
+select is((select avg_margin_pct from clients_directory_v where id = :'clienta'), null,
   'nor is a cancelled one');
 update events set cancelled_at = null where id = :'past_event';
 
-select is((select event_count from client_directory_v where id = :'clienta'), 2,
+select is((select event_count from clients_directory_v where id = :'clienta'), 2,
   'the Events column counts every event that was not cancelled');
 
 -- ---- writes -----------------------------------------------------------
@@ -133,13 +133,13 @@ select is((select pays_breaks from clients where id = :'clienta'), false,
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select is((select count(*)::int from client_directory_v), 0,
-  'a client reads nothing through client_directory_v — not even their own row (§11.1)');
+select is((select count(*)::int from clients_directory_v), 0,
+  'a client reads nothing through clients_directory_v — not even their own row (§11.1)');
 
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select is((select count(*)::int from client_directory_v), 0,
+select is((select count(*)::int from clients_directory_v), 0,
   'a worker reads nothing through it either');
 
 reset role;

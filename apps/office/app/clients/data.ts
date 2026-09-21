@@ -7,7 +7,7 @@ import type { Client } from './types';
  *
  * `client_rate_cards` carries `charge_rate`, so this whole surface is
  * money: `clients` and the rate cards are admin-only, and
- * `client_directory_v` is security_invoker, so §11.1 holds without the
+ * `clients_directory_v` is security_invoker, so §11.1 holds without the
  * screen doing anything.
  */
 export function supabaseConfigured(): boolean {
@@ -30,7 +30,7 @@ export async function loadClients(): Promise<ClientsPageData> {
 
   const supabase = createClient(await cookies());
   const { data, error } = await supabase
-    .from('client_directory_v')
+    .from('clients_directory_v')
     .select(
       'id, name, contact_name, phone, staff_contact_point, contact_emails, pays_breaks, pays_buffer, rate_card_roles, rate_card_count, event_count, avg_margin_pct',
     )

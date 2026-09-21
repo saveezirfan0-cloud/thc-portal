@@ -19,13 +19,22 @@
 -- security invoker throughout: `clients` and `client_rate_cards` both
 -- carry admin_all and nothing else, and client_rate_cards carries
 -- charge_rate, which §11.1 keeps from the client absolutely.
+--
+-- A note on the names. Both views below are PLURAL — clients_directory_v,
+-- not client_directory_v — because the singular `client_` prefix is
+-- reserved in this schema for views the Client Portal reaches, and
+-- 050_client_views.sql enforces that no view carrying that prefix has a
+-- money column. These two are the opposite: Back Office views, built on
+-- charge rates and margins, that a client must never reach. Taking the
+-- reserved prefix for them would have made a true guard fail and invited
+-- the next reader to assume they were client-facing.
 -- =====================================================================
 
 create index if not exists client_rate_cards_client_id_idx on client_rate_cards (client_id);
 create index if not exists events_client_id_idx on events (client_id);
 
 -- ---------------------------------------------------------------------
--- client_margins_v — the average margin, per client
+-- clients_margins_v — the average margin, per client
 --
 -- §9.7: "(charge − final pay) ÷ charge across completed events, after
 -- holiday pay". Three decisions the one-line definition leaves open, taken
@@ -44,7 +53,7 @@ create index if not exists events_client_id_idx on events (client_id);
 -- Cancelled events and events still to come are both excluded: neither has
 -- been delivered, and a margin on an event that never ran is not a margin.
 -- ---------------------------------------------------------------------
-create or replace view client_margins_v with (security_invoker = true) as
+create or replace view clients_margins_v with (security_invoker = true) as
 select
   e.client_id,
   count(distinct e.id)::int as completed_events,
@@ -58,13 +67,13 @@ where e.cancelled_at is null
   and e.event_date < (now() at time zone 'Europe/London')::date
 group by e.client_id;
 
-comment on view client_margins_v is
+comment on view clients_margins_v is
   'Charge and final-pay totals per client across completed events (§9.7), weighted by headcount and section hours. The margin is 1 - pay_total/charge_total; the two totals are exposed rather than the ratio so a caller can aggregate further without averaging an average.';
 
 -- ---------------------------------------------------------------------
--- client_directory_v — one row per client, everything /clients renders
+-- clients_directory_v — one row per client, everything /clients renders
 -- ---------------------------------------------------------------------
-create or replace view client_directory_v with (security_invoker = true) as
+create or replace view clients_directory_v with (security_invoker = true) as
 select
   c.id,
   c.name,
@@ -87,10 +96,10 @@ select
   -- Null rather than zero where nothing has been delivered yet: a client
   -- with no completed event has no margin, which is not the same as 0%.
   (select case when m.charge_total > 0 then round((1 - m.pay_total / m.charge_total) * 100, 1) end
-     from client_margins_v m where m.client_id = c.id)                        as avg_margin_pct
+     from clients_margins_v m where m.client_id = c.id)                        as avg_margin_pct
 from clients c;
 
-comment on view client_directory_v is
+comment on view clients_directory_v is
   'The /clients directory (§9.7): the client, its two policies, its rate-card role names, how many events it has and its average margin. security_invoker — clients and client_rate_cards are admin-only, and charge_rate never leaves the database for a client (§11.1).';
 
 -- ---------------------------------------------------------------------
