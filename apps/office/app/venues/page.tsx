@@ -1,4 +1,5 @@
-import { Alert, Content, Topbar } from '@thc/ui';
+import { Alert } from '@thc/ui';
+import { OfficeShell } from '../_components/OfficeShell';
 import { loadVenuesPage } from './data';
 import { VenuesScreen } from './VenuesScreen';
 
@@ -16,21 +17,18 @@ export default async function Page() {
   const { venues, venueTypes, problem } = await loadVenuesPage();
 
   return (
-    <>
-      <Topbar
-        title="Venues"
-        crumbs={
-          <>
-            geofences · <b>{venues.length}</b> {venues.length === 1 ? 'venue' : 'venues'} · whether
-            a worker can check in at all depends on the radius
-          </>
-        }
-        timezone="All times UK (Europe/London)"
-      />
-      <Content>
-        {problem ? <Alert tone="coral">{problem}</Alert> : null}
-        <VenuesScreen venues={venues} venueTypes={venueTypes} />
-      </Content>
-    </>
+    <OfficeShell
+      activeHref="/venues"
+      title="Venues"
+      crumbs={
+        <>
+          geofences · <b>{venues.length}</b> {venues.length === 1 ? 'venue' : 'venues'} · whether a
+          worker can check in at all depends on the radius
+        </>
+      }
+    >
+      {problem ? <Alert tone="coral">{problem}</Alert> : null}
+      <VenuesScreen venues={venues} venueTypes={venueTypes} />
+    </OfficeShell>
   );
 }
