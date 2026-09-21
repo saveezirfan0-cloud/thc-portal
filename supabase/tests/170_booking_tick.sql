@@ -170,7 +170,7 @@ select is(
   '{"n13": 0, "n9b": 0, "no_show": 0, "n9_check_in": 0, "no_checkout": 0, "n9_check_out": 0}'::jsonb,
   'a second run at the same instant does nothing at all: every rule is idempotent');
 
-select is((select count(*)::int from violations where booking_id like 'b1000000%'), 2,
+select is((select count(*)::int from violations where booking_id::text like 'b1000000%'), 2,
   'and no second No-show or No check-out row appears, which would double-count against the show rate (§6)');
 
 -- A cancelled booking drops out entirely, whatever its clock says.
