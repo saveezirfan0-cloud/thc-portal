@@ -11,6 +11,7 @@ Staff-management platform for an event-staffing agency: Back Office Portal (web)
 5. `docs/10-working-with-agents.md` — running several domain bots in parallel.
 6. `docs/11-session-prompts.md` — a ready prompt for each of the next sessions.
 7. `docs/12-keys-and-assets.md` — every key, where to get it, where it goes, and the logo.
+8. `docs/13-remaining-work.md` — a prompt for every screen and system still to build.
 
 **Layout**
 
