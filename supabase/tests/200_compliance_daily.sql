@@ -22,9 +22,8 @@
 -- =====================================================================
 begin;
 select plan(50);
-\ir _shared/fixtures.psql
-
 \set now  '2026-09-21 05:02:00+01'
+\ir _shared/fixtures.psql
 \set s1   'd0000000-0000-4000-8000-000000000001'
 \set s2   'd0000000-0000-4000-8000-000000000002'
 \set s3   'd0000000-0000-4000-8000-000000000003'
@@ -37,7 +36,35 @@ select plan(50);
 \set stu  'd0000000-0000-4000-8000-00000000000a'
 \set opt  'd0000000-0000-4000-8000-00000000000b'
 
--- The fixtures' own people are pushed out of this file's way: their
+-- ---------------------------------------------------------------------
+-- Everything already in the database is pushed out of this file's way.
+--
+-- `supabase test db` runs against a database that supabase/seed.sql has
+-- already populated, and the seed is not inert here: it carries a
+-- deliberately EXPIRED verified passport (current_date - 19) on a blocked
+-- worker and a verified term letter on a student, both of which
+-- compliance_daily is entitled to act on. Any assertion below that counts
+-- rather than naming a row therefore sees them, and the file passes or
+-- fails on what somebody else put in the seed.
+--
+-- _shared/fixtures.psql says this in its own header — "all assertions
+-- address fixture rows by their fixed UUIDs, never by global counts" —
+-- and the sweep's return value is a set of counts, so the way to honour
+-- it is to make the counts true by emptying the world first. Every
+-- statement here is inside the test transaction and is rolled back.
+--
+--   expiry_date / right_to_work_until  null  → never due
+--   uploaded_at                        now   → a seeded term letter dies
+--                                              on 31 December, months out
+--   term_dates                         empty → no seeded student's cap
+--                                              band moves under the N14
+--                                              assertions
+-- ---------------------------------------------------------------------
+update compliance_docs set expiry_date = null, right_to_work_until = null,
+                           uploaded_at = :'now'::timestamptz;
+update staff set right_to_work_until = null, term_dates = '{}';
+
+-- The fixtures' own people are pushed out of this file's way too: their
 -- documents carry no expiry, so the ladder never sees them, but their
 -- bookings would be caught by a cascade if one ever reached them.
 insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_branch, term_dates) values
@@ -191,8 +218,10 @@ select is((select status::text || '/' || cancel_cause from bookings where id = '
   'cancelled/blocked', '§4.3 step 3: the open invitation is withdrawn and disappears from their app');
 select is((select status::text from bookings where id = '7f000000-0000-4000-8000-000000000003'),
   'worked', 'a shift already worked is a pay record and is never touched');
-select is((select count(*)::int from bookings where staff_id = :'staffa' and status = 'cancelled'), 0,
-  'and nobody else loses a booking');
+select is(
+  (select count(distinct staff_id)::int from bookings
+    where cancel_cause = 'blocked' and staff_id <> :'s4'), 0,
+  'and nobody else anywhere loses a booking to this sweep — not the fixtures'' people, not the seed''s');
 
 -- ---------------------------------------------------------------------
 -- The property the whole file exists for: this job runs every day.
