@@ -6,7 +6,7 @@ import type { VenueDraft } from '../types';
 /**
  * The form's half of the §9.11 rules. `assert_venue_input` and the `venues`
  * CHECK constraints reject exactly the same drafts in the database
- * (supabase/tests/070_venues_directory.sql), so these vectors and those
+ * (supabase/tests/080_venues_directory.sql), so these vectors and those
  * assertions are deliberately the same list.
  */
 const CLARIDGES: VenueDraft = {
