@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 0006 · the public application form (§2.1, §2.12, §1.7)
+-- Migration 0010 · the public application form (§2.1, §2.12, §1.7)
 --
 -- What this adds
 -- --------------
@@ -54,7 +54,7 @@
 -- it. Creating the candidate in Willo is a separate piece of work and needs
 -- THC's keys (Appendix B1).
 --
--- Forward-only: 0001, 0002, 0004 and 0005 are left untouched.
+-- Forward-only: every migration before this one is left untouched.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------

@@ -6,7 +6,7 @@ import { expect, test } from '@playwright/test';
  *
  * What is NOT here: a submission that reaches the database. That needs a
  * Supabase project, which does not exist yet (docs/04 step 2), so the round
- * trip beyond the server action is covered by `supabase/tests/070_apply.sql`
+ * trip beyond the server action is covered by `supabase/tests/110_apply.sql`
  * instead — including the duplicate check, which by design produces exactly
  * the same screen as a new application and so could not be told apart here.
  */

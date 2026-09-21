@@ -9,7 +9,8 @@
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "gen:vectors": "node scripts/gen-vectors-sql.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
