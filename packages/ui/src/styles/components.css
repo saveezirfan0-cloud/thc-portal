@@ -915,6 +915,10 @@ textarea.input {
   height: auto;
   min-height: 84px;
   padding: var(--sp-10) var(--sp-12);
+  /* Its own token, for the same reason as the checkbox: --r-control is a
+     pill in the fluid style, and a box holding several lines cannot be one.
+     Equal to --r-control in scope, where both are zero. */
+  border-radius: var(--r-field);
   resize: vertical;
   line-height: 1.5;
 }
@@ -947,8 +951,14 @@ textarea.input {
   display: flex;
   gap: 0;
 }
-.input-row .input {
+/* The flex child is whatever wraps the input — usually a `.field`, which is
+   itself a column flex container. Targeting `.input` here instead of the
+   direct child put `flex: 1 1 0%` on the input along `.field`'s *vertical*
+   axis, which collapsed it to its content height. */
+.input-row > .input,
+.input-row > .field {
   flex: 1;
+  min-width: 0;
 }
 .input-row .addon {
   display: inline-flex;
@@ -967,11 +977,17 @@ textarea.input {
   border-right: 0;
   border-radius: var(--r-control) 0 0 var(--r-control);
 }
-.input-row .input:not(:first-child) {
+/* The group has one outline, so the corners where it meets an addon are
+   flattened. The position that decides this is the *wrapper's* in the row:
+   `:first-child` on the input is true either way once a `.field` wraps it,
+   which left a rate field fully rounded in the middle of its own group. */
+.input-row > .input:not(:first-child),
+.input-row > .field:not(:first-child) > .input {
   border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
-.input-row .input:not(:last-child) {
+.input-row > .input:not(:last-child),
+.input-row > .field:not(:last-child) > .input {
   border-top-right-radius: 0;
   border-bottom-right-radius: 0;
 }
@@ -993,7 +1009,10 @@ textarea.input {
   justify-content: center;
   font-size: var(--fs-11);
   color: var(--on-cyan);
-  border-radius: var(--r-control);
+  /* Its own token: --r-control is a pill in the fluid style, and a checkbox
+     is the one control that must not be round (a round one reads as a
+     radio). Equal to --r-control in scope, where both are zero. */
+  border-radius: var(--r-check);
 }
 .check .box.on {
   background: var(--cyan-solid);
@@ -1133,7 +1152,10 @@ textarea.input {
   content: '⌕';
   position: absolute;
   left: var(--sp-10);
-  top: 50%;
+  /* Half the *input*, not half the wrapper: `.search` is a grid item on
+     several screens and stretches to its row, which dropped the glyph
+     below the field. */
+  top: calc(var(--input-h) / 2);
   transform: translateY(-50%);
   color: var(--muted);
   font-size: var(--fs-16);

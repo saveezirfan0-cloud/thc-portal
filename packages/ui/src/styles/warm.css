@@ -80,3 +80,62 @@
 :root[data-style='warm'] .sheet {
   border-radius: var(--r-tile) var(--r-tile) 0 0;
 }
+
+/* =====================================================================
+   ADR-0007 · Fluid deltas.
+
+   The v2 sheet above stays exactly as it was. What follows is the extra
+   step the ADR-0007 boards take beyond it: a pill-shaped control scale,
+   and depth from an accent glow rather than a border.
+
+   Nothing here casts a neutral shadow. Every box-shadow below is built
+   from --glow-soft / --glow-dot, which resolve to accent-tinted rgba in
+   the fluid style and to `none` in scope.
+   ===================================================================== */
+
+/* ---- room inside a pill --------------------------------------------
+   --r-control is 999px here, so the end caps of a grouped control are half
+   its height. At the default padding the text rides the curve. The two
+   boxes that cannot be pills at all — a textarea and a checkbox — do not
+   need a rule here: they read --r-field and --r-check in components.css,
+   which are equal to --r-control in scope and diverge only in this style. */
+:root[data-style='warm'] .input,
+:root[data-style='warm'] select.input {
+  padding-left: var(--sp-16);
+  padding-right: var(--sp-16);
+}
+:root[data-style='warm'] .input-row .addon {
+  padding: 0 var(--sp-14);
+}
+/* The search glyph has to clear the cap too, and this rule has to restate
+   the left padding because the one above outranks `.search .input`. */
+:root[data-style='warm'] .search .input {
+  padding-left: var(--sp-36);
+}
+:root[data-style='warm'] .search::before {
+  left: var(--sp-14);
+}
+
+/* ---- glow, not a border --------------------------------------------
+   The boards give the active nav item and the primary button a coloured
+   lift. On the light ground the same token resolves to a teal at 45%
+   alpha, which reads as a tint rather than a halo — that is intended. */
+:root[data-style='warm'] .sidebar nav a.active {
+  box-shadow: var(--glow-soft);
+}
+:root[data-style='warm'] .btn.primary {
+  box-shadow: var(--glow-soft);
+}
+:root[data-style='warm'] .btn.primary:disabled,
+:root[data-style='warm'] .btn.primary[aria-disabled='true'] {
+  box-shadow: none;
+}
+
+/* ---- live status dots ----------------------------------------------
+   Every board marks a live relay with a small haloed dot. Both dots draw
+   themselves in currentColor so an amber pill halos amber and a green one
+   halos green; --glow-dot follows suit rather than forcing the accent. */
+:root[data-style='warm'] .pill .dot,
+:root[data-style='warm'] .gps .dot {
+  box-shadow: var(--glow-dot);
+}

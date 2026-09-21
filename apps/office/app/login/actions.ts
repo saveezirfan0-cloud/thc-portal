@@ -30,7 +30,11 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
     // the server log, where an operator can see whether this was a genuine bad
     // password or a misconfiguration (wrong project, provider disabled, a key
     // that does not match the URL). Without this the two are indistinguishable.
-    console.error('[sign-in] rejected', { status: error.status, code: error.code, message: error.message });
+    console.error('[sign-in] rejected', {
+      status: error.status,
+      code: error.code,
+      message: error.message,
+    });
     return 'Email or password is incorrect. Try again or reset your password.';
   }
 
