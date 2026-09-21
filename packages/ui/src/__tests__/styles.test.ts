@@ -147,7 +147,9 @@ describe('typography', () => {
 
 describe('elevation', () => {
   it('uses no drop shadows anywhere — the handoff is explicit about it', () => {
-    const shadows = rules.split('\n').filter((line) => /box-shadow|text-shadow|drop-shadow/.test(line));
+    const shadows = rules
+      .split('\n')
+      .filter((line) => /box-shadow|text-shadow|drop-shadow/.test(line));
     expect(shadows).toEqual([]);
   });
 
@@ -161,11 +163,15 @@ describe('elevation', () => {
 
   it('keeps the gradient primary for v2 only', () => {
     expect(token(':root', '--grad-primary')).toBe('none');
+    // Dark is the handoff verbatim: its label clears 6:1 on both stops.
     expect(token(":root[data-style='warm'][data-theme='dark']", '--grad-primary')).toBe(
       'linear-gradient(135deg, #3edcec 0%, #8f7bff 100%)',
     );
+    // Light deepens both stops. The handoff's #0B7A88 → #7C5CD6 puts the
+    // cream label at 4.50:1 and 4.29:1; measured across the rendered sweep
+    // these stops never drop below 4.66:1.
     expect(token(":root[data-style='warm'][data-theme='light']", '--grad-primary')).toBe(
-      'linear-gradient(135deg, #0b7a88 0%, #7c5cd6 100%)',
+      'linear-gradient(135deg, #0a6d79 0%, #7758cd 100%)',
     );
   });
 });

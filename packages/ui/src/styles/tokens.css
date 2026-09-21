@@ -11,10 +11,12 @@
    All four combinations are independent and must keep working. Components read
    tokens only; never a hard-coded colour or radius.
 
-   Two deliberate deviations from the handoff's colour table, both for contrast
-   (see the notes inline): the light `*-ink` text tones are a few percent darker
-   than the light fills, and the light solid amber fill uses that darker tone.
-   Everything else is the table verbatim.
+   Three deliberate deviations from the handoff's colour table, all of them for
+   contrast on the light ground and all noted inline: the light `*-ink` text
+   tones are a few percent darker than the light fills; the light solid amber
+   and teal fills use those darker tones; and both stops of the light v2
+   gradient are deepened. Nothing changes hue. Every other value is the table
+   verbatim, and packages/ui's style tests assert it.
 
    Elevation: the handoff is explicit that NO drop shadows are used anywhere.
    Depth comes from frosted surfaces (backdrop-filter) and background radial
@@ -237,10 +239,11 @@
   --amber-ink: #8f5a06;
   --coral-ink: #ad392a;
 
-  /* Solid fills keep the handoff values — all clear 4.5:1 against the
-     background-coloured label — except amber, where #B5730A/#F6F1EA is
-     only 3.45:1. It uses the darker ink instead (5.1:1). */
-  --cyan-solid: var(--cyan);
+  /* Solid fills keep the handoff values where they clear 4.5:1 against the
+     background-coloured label. Two do not: amber #B5730A gives 3.45:1 and
+     teal #0B7A88 lands exactly on 4.50:1, which any antialiasing loses. Both
+     use their darker ink instead — 5.1:1 and 5.4:1. */
+  --cyan-solid: var(--cyan-ink);
   --purple-solid: var(--purple);
   --green-solid: var(--green);
   --amber-solid: var(--amber-ink);
@@ -348,6 +351,11 @@
 
 /* --- v2 light: same warm ground, teal→violet gradient --------------- */
 :root[data-style='warm'][data-theme='light'] {
-  --grad-primary: linear-gradient(135deg, #0b7a88 0%, #7c5cd6 100%);
-  --grad-primary-hover: linear-gradient(135deg, #0f9aab 0%, #9b86e8 100%);
+  /* The handoff's light gradient is #0B7A88 → #7C5CD6, which puts its label
+     at 4.50:1 and 4.29:1. Both stops are a few percent deeper here so the
+     whole sweep clears 4.5:1; the hue and the sweep are unchanged. Hover
+     deepens rather than lightens, which is also what the boards' own link
+     hover does on the warm ground. */
+  --grad-primary: linear-gradient(135deg, #0a6d79 0%, #7758cd 100%);
+  --grad-primary-hover: linear-gradient(135deg, #0c7885 0%, #7758cd 100%);
 }

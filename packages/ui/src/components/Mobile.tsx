@@ -34,7 +34,13 @@ export function PhoneFrame({
   );
 }
 
-export function StatusBar({ time = '09:41', right = '5G ▮▮▮ 84%' }: { time?: string; right?: string }) {
+export function StatusBar({
+  time = '09:41',
+  right = '5G ▮▮▮ 84%',
+}: {
+  time?: string;
+  right?: string;
+}) {
   return (
     <div className="statusbar" aria-hidden="true">
       <span>{time}</span>
@@ -119,8 +125,10 @@ export function BottomNav({
         const body = (
           <>
             {item.icon ? <span className="ico">{item.icon}</span> : null}
-            <span>{item.label}</span>
-            {item.count ? <span className="n">{item.count}</span> : null}
+            <span className="l">
+              {item.label}
+              {item.count ? <span className="n">{item.count}</span> : null}
+            </span>
           </>
         );
         return renderLink ? (

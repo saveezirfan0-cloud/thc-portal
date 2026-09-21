@@ -943,7 +943,7 @@ textarea.input {
   border: 1px solid var(--line);
   border-left: 0;
   background: var(--panel-2);
-  color: var(--muted);
+  color: var(--text);
   font-family: var(--font-num);
   font-size: var(--fs-11);
   border-radius: 0 var(--r-control) var(--r-control) 0;
@@ -1037,7 +1037,13 @@ textarea.input {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-8);
+  font-family: var(--font-body);
   font-size: var(--fs-12);
+  font-weight: 500;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  padding: 0;
   cursor: pointer;
 }
 .switch .track {
@@ -1129,7 +1135,7 @@ textarea.input {
   width: 34px;
   height: 34px;
   background: var(--line);
-  color: var(--cyan-ink);
+  color: var(--text);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -1262,6 +1268,9 @@ textarea.input {
 .docrow.review .ico {
   color: var(--amber-ink);
   border-color: var(--amber-line);
+}
+.docrow.review .m {
+  color: var(--amber-ink);
 }
 
 .stepper {
@@ -1468,22 +1477,27 @@ textarea.input {
 .note.cyan {
   border-color: var(--cyan-line);
   background: var(--cyan-dim);
+  color: var(--text);
 }
 .note.green {
   border-color: var(--green-line);
   background: var(--green-dim);
+  color: var(--text);
 }
 .note.amber {
   border-color: var(--amber-line);
   background: var(--amber-dim);
+  color: var(--text);
 }
 .note.coral {
   border-color: var(--coral-line);
   background: var(--coral-dim);
+  color: var(--text);
 }
 .note.purple {
   border-color: var(--purple-line);
   background: var(--purple-dim);
+  color: var(--text);
 }
 .alert {
   padding: var(--sp-12) var(--sp-14);
@@ -1834,10 +1848,12 @@ textarea.input {
 .bottom-nav a.locked {
   opacity: 0.35;
 }
+.bottom-nav a .l {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
 .bottom-nav a .n {
-  position: absolute;
-  top: -2px;
-  margin-left: 30px;
   background: var(--coral-solid);
   color: var(--on-coral);
   font-family: var(--font-num);
@@ -1926,13 +1942,14 @@ textarea.input {
 /* The stat strip between two rules on a shift card. */
 .mstats {
   display: flex;
-  gap: var(--sp-18);
+  flex-wrap: wrap;
+  gap: var(--sp-10) var(--sp-18);
   padding: var(--sp-12) 0;
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
 .mstats > div {
-  min-width: 0;
+  flex: 0 0 auto;
 }
 .mstats .k {
   font-family: var(--font-label);
@@ -1945,6 +1962,7 @@ textarea.input {
 .mstats .v {
   font-size: var(--fs-15);
   font-weight: 600;
+  white-space: nowrap;
 }
 .mlist {
   display: flex;
@@ -2042,8 +2060,13 @@ textarea.input {
 /* ---------------------------------------------------------------------
    11 · RESPONSIVE (§1.2)
    Both web apps work on phone and tablet, not desktop only. The sidebar
-   collapses to icons then to a bottom drawer; the KPI row wraps 4 → 2 →
-   1; wide tables scroll; the line-up grid steps 5 → 3 → 2.
+   narrows, then becomes a frosted bottom drawer; the KPI row wraps
+   4 → 2 → 1; wide tables scroll; the line-up grid steps 5 → 3 → 1.
+
+   The handoff suggests an icon-only rail between those two states. That
+   needs the icon set it calls for (Lucide) and the nav items to carry one;
+   until they do, a 64px rail of blank rows is worse than a narrow one, so
+   the rail is deliberately not built yet.
    --------------------------------------------------------------------- */
 @media (max-width: 1180px) {
   .grid.c5,
@@ -2053,34 +2076,22 @@ textarea.input {
 }
 @media (max-width: 1024px) {
   .shell {
-    grid-template-columns: 64px 1fr;
+    grid-template-columns: 188px 1fr;
   }
-  .sidebar .brand .name,
-  .sidebar .brand .sub {
-    display: none;
+  .sidebar .brand,
+  .sidebar nav a,
+  .sidebar .foot,
+  .sidebar nav .divider {
+    padding-left: var(--sp-12);
+    padding-right: var(--sp-12);
   }
-  .sidebar .brand {
-    justify-content: center;
+  .sidebar nav a {
+    padding-left: calc(var(--sp-12) - var(--nav-bar));
+  }
+  .sidebar nav .divider {
+    margin-left: var(--sp-12);
+    margin-right: var(--sp-12);
     padding: 0;
-  }
-  .sidebar nav a {
-    justify-content: center;
-    padding-left: 0;
-    padding-right: 0;
-    gap: 0;
-  }
-  .sidebar nav a > span:not(.ico):not(.count) {
-    display: none;
-  }
-  .sidebar nav a .count {
-    position: absolute;
-    margin: -18px 0 0 18px;
-  }
-  .sidebar nav a {
-    position: relative;
-  }
-  .sidebar .foot {
-    justify-content: center;
   }
   .grid.c4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2094,10 +2105,11 @@ textarea.input {
   }
 }
 @media (max-width: 760px) {
-  /* Below the tablet break the sidebar becomes a bottom drawer so the
-     content gets the full width. */
+  /* Below the tablet break the sidebar becomes a frosted bottom drawer so
+     the content gets the full width. Labels stay: they are the only thing
+     distinguishing the items until icons land. */
   .shell {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .sidebar {
     position: fixed;
@@ -2107,9 +2119,8 @@ textarea.input {
     top: auto;
     height: auto;
     flex-direction: row;
-    overflow-x: auto;
     border-right: 0;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--glass-line);
     z-index: 20;
     background: var(--glass-nav);
     backdrop-filter: blur(var(--blur)) saturate(140%);
@@ -2122,11 +2133,24 @@ textarea.input {
   }
   .sidebar nav {
     flex-direction: row;
-    padding: var(--sp-6);
+    padding: var(--sp-6) var(--sp-10);
+    gap: var(--sp-4);
     overflow-x: auto;
+    width: 100%;
+  }
+  .sidebar nav a {
+    border-left: 0;
+    border-bottom: var(--nav-bar) solid transparent;
+    white-space: nowrap;
+    padding: var(--sp-10) var(--sp-12);
+    margin: 0;
+  }
+  .sidebar nav a.active {
+    border-left-color: transparent;
+    border-bottom-color: var(--cyan-ink);
   }
   .main {
-    padding-bottom: 72px;
+    padding-bottom: 68px;
   }
   .grid.c2,
   .grid.c3,
@@ -2137,6 +2161,9 @@ textarea.input {
   }
   .content {
     padding: var(--sp-16) var(--gutter-mobile) var(--sp-26);
+  }
+  .topbar {
+    padding: 0 var(--gutter-mobile);
   }
   .table-scroll {
     overflow-x: auto;
@@ -2151,5 +2178,8 @@ textarea.input {
   .phone {
     width: 100%;
     max-width: 390px;
+  }
+  .modal-back {
+    padding: var(--sp-12);
   }
 }

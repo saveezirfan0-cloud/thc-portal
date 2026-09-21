@@ -20,7 +20,14 @@ export interface KpiTileProps {
  * description. The colour carries meaning — amber is "sold but not staffed",
  * danger is a compliance block — so the tone is never decorative.
  */
-export function KpiTile({ label, value, description, tone = 'default', flat, small }: KpiTileProps) {
+export function KpiTile({
+  label,
+  value,
+  description,
+  tone = 'default',
+  flat,
+  small,
+}: KpiTileProps) {
   return (
     <div className={clsx('kpi', tone !== 'default' && tone, flat && 'flat', small && 'sm')}>
       <span className="k">{label}</span>

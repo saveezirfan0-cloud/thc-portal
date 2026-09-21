@@ -1,3 +1,5 @@
+'use client';
+
 import { clsx } from 'clsx';
 import type { ReactNode } from 'react';
 
@@ -47,12 +49,16 @@ export function KanbanCard({
     <div
       className={clsx('kcard', returning && 'returning')}
       onClick={onOpen}
-      onKeyDown={(event) => {
-        if (onOpen && (event.key === 'Enter' || event.key === ' ')) {
-          event.preventDefault();
-          onOpen();
-        }
-      }}
+      onKeyDown={
+        onOpen
+          ? (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onOpen();
+              }
+            }
+          : undefined
+      }
       role={onOpen ? 'button' : undefined}
       tabIndex={onOpen ? 0 : undefined}
     >

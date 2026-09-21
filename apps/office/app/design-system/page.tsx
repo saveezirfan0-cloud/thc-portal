@@ -118,9 +118,7 @@ export default function Page() {
             ))}
           </div>
           <hr />
-          <span className="label">
-            Roles — purple is reserved for Auto-Assign, coral is danger
-          </span>
+          <span className="label">Roles — purple is reserved for Auto-Assign, coral is danger</span>
           <div className="ds-swatches mt-8">
             {ROLE.map((name) => (
               <div className="ds-swatch" key={name}>
@@ -151,9 +149,9 @@ export default function Page() {
           </div>
           <hr />
           <Note>
-            Light is <b>not</b> a mechanical inversion: raw cyan fails contrast on a light
-            ground, so deep teal carries the accent and the neutrals are warmed. Every ink tone
-            here clears 4.5:1 on the panel, on the page ground and on its own tinted fill.
+            Light is <b>not</b> a mechanical inversion: raw cyan fails contrast on a light ground,
+            so deep teal carries the accent and the neutrals are warmed. Every ink tone here clears
+            4.5:1 on the panel, on the page ground and on its own tinted fill.
           </Note>
         </Panel>
 
@@ -220,10 +218,10 @@ export default function Page() {
           </Button>
           <hr />
           <Note>
-            Every button animates on hover (§1.6): solid accent lightens, outlined takes the
-            accent border and text, outlined danger fills 12% danger. In the softened look the
-            primary carries the cyan→violet gradient. Nothing casts a drop shadow — the handoff
-            is explicit that there are none anywhere.
+            Every button animates on hover (§1.6): solid accent lightens, outlined takes the accent
+            border and text, outlined danger fills 12% danger. In the softened look the primary
+            carries the cyan→violet gradient. Nothing casts a drop shadow — the handoff is explicit
+            that there are none anywhere.
           </Note>
         </Panel>
 
@@ -556,8 +554,8 @@ export default function Page() {
         {/* ---------------- mobile ---------------- */}
         <Panel title="Staff App chrome">
           <Note>
-            Frosted top bar, frosted bottom navigation and frosted sheets over two background
-            glows — cyan and purple on the dark ground, clay and amber on the warm one. The header
+            Frosted top bar, frosted bottom navigation and frosted sheets over two background glows
+            — cyan and purple on the dark ground, clay and amber on the warm one. The header
             collapses on scroll: the logo stays left, the profile stays right.
           </Note>
           <hr />

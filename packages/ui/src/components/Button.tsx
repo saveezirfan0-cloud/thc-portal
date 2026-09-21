@@ -2,14 +2,7 @@ import { clsx } from 'clsx';
 import type { ButtonHTMLAttributes, ReactNode } from 'react';
 
 export type ButtonTone =
-  | 'default'
-  | 'primary'
-  | 'purple'
-  | 'green'
-  | 'amber'
-  | 'danger'
-  | 'ghost'
-  | 'outline';
+  'default' | 'primary' | 'purple' | 'green' | 'amber' | 'danger' | 'ghost' | 'outline';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {

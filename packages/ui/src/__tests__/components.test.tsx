@@ -395,11 +395,7 @@ describe('controls, people and pipeline', () => {
           <Person name="Joy Nwosu" sub="Waiting Staff · ★4.8" />
           <Stepper
             current={2}
-            steps={[
-              { label: 'Right to work' },
-              { label: 'Documents' },
-              { label: 'Quiz · locked' },
-            ]}
+            steps={[{ label: 'Right to work' }, { label: 'Documents' }, { label: 'Quiz · locked' }]}
           />
           <Kanban>
             <KanbanColumn title="Interview requested" count={6} accent>

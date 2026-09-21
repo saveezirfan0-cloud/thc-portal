@@ -51,7 +51,7 @@
   font-family: var(--font-label);
   font-size: var(--fs-10);
   letter-spacing: var(--label-track);
-  color: var(--muted);
+  color: var(--text);
 }
 
 .ds-type {
