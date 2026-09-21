@@ -1,0 +1,6 @@
+/* Layout helper for the gallery page only. Not part of packages/ui. */
+.grid-2 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}

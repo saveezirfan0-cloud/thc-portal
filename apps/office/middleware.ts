@@ -11,7 +11,7 @@ import { HOME_PATH, isRole } from '@thc/db';
  * which is what actually protects the data: a forged URL gets past nothing.
  */
 const ALLOWED_ROLE = 'admin' as const;
-const PUBLIC_PATHS = ['/login', '/auth'];
+const PUBLIC_PATHS = ['/login', '/auth', '/design-system'];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -20,9 +20,17 @@ function isPublic(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) {
+    // No Supabase configured yet: render the shell rather than redirect-looping.
+    // Copy .env.example to .env.local to turn the auth gate on.
+    return response;
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    anonKey,
     {
       cookies: {
         getAll: () => request.cookies.getAll(),
