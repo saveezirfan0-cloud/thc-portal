@@ -12,7 +12,7 @@ is covered by tests.
 |---|---|---|
 | Unit | 379 | `pnpm test` |
 | Browser smoke | 35 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 538 | `supabase test db` |
+| Database, row-level security and rules | 583 | `supabase test db` |
 
 What exists:
 
@@ -34,7 +34,13 @@ What exists:
   `packages/domain/pay.ts` repeats the same rules in TypeScript, and
   `packages/domain/src/pay.vectors.json` is the contract between them: Vitest reads it,
   pgTAP reads the file generated from it, and a drift test fails the build if the copy
-  goes stale. The Check-in monitor screen (§9.5) is still to come.
+  goes stale. Migration `20260921153000` adds the write paths that maths was waiting
+  on: `start_break` / `finish_break` (§5.2b) and `resolve_violation` (§9.5), which is
+  what finally lets an unresolved No check-out settle and RULE-14's floor come back.
+  The two screens on top — the Check-in monitor (§9.5) and the on-shift screen
+  (§10.4) — are still to come, as is the background-geolocation shell: nothing writes
+  `location_pings` yet, so every off-site check-out currently falls to the RULE-02
+  fallback by design.
 - **The public application form** at `/apply` (§2.1), the first screen of Phase 1, with
   `submit_application()` behind it: the age gate on the form, in the server action and in
   the database, and the §2.12 duplicate check.
@@ -105,6 +111,10 @@ Goal: <feature> (§x.y). Read the section and the wireframe first.
 Constraints: one domain; no shared-package changes without a separate PR first.
 Done when: <acceptance from the build plan>. Then run qa-reviewer on the diff.
 ```
+
+`docs/14-open-questions.md` carries the questions THC still has to answer — each one
+already implemented one way, with what changes if they pick the other — and the short
+list of things that need the repository owner rather than a bot.
 
 `docs/11-session-prompts.md` has this filled in for each of the next sessions.
 `docs/10-working-with-agents.md` explains how to run several at once without collisions:

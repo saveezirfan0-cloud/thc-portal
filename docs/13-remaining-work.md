@@ -21,8 +21,13 @@ Built: the monorepo, the design system, sign-in for all three apps, the venues d
 the domain rules (state machines, times, buffer, cap, scoring, pay), the §8 notification
 register, the full row-level-security suite, and the live database with seed data.
 
+Also built, server side only: the whole day of the shift (§5.1–5.2b, §9.5) — check-in,
+check-out, breaks and Resolve, with the pay window behind them. The screens that drive
+them (B7, S5) are not.
+
 Not built: every other screen, and the entire background-jobs layer. There are no Edge
-Functions yet.
+Functions yet. Nothing writes `location_pings`, so the off-site check-out path always
+takes its RULE-02 fallback until the geolocation shell lands.
 
 ---
 
@@ -138,10 +143,13 @@ Functions yet.
 > the dual-zone WINDOW column per §1.8, the Breaks column, and the violation log with
 > detail and Resolve.
 >
-> Resolving needs a mandatory note. Resolving a No check-out additionally needs an actual
-> finish time, labelled "(UK time)", validated server-side. Until then the booking's
-> payable time stays undetermined: `payableMinutes` in `@thc/domain` returns null rather
-> than a number, deliberately.
+> The server side is already built: call `resolve_violation(id, note, actual_finish)`
+> rather than writing to `violations` from the screen. It enforces the mandatory note,
+> validates the finish time against the check-in and against now, reclassifies a No-show
+> to Late exactly as "Get back" does, and returns `payrollExported` so you can show the
+> "please notify Finance" warning on an already-exported shift. Until a No check-out is
+> resolved the booking's payable time stays undetermined: `payableMinutes` in
+> `@thc/domain` returns null rather than a number, deliberately.
 >
 > Done when: it matches the wireframe, updates live, and the undetermined case never
 > renders a number.
@@ -313,6 +321,11 @@ Functions yet.
 > Check-in, breaks, check-out with the earnings confirmation. The 30-minute grace means
 > Late, not No-show. At start plus 30 the button locks, unless the booking was confirmed
 > after the shift had already started.
+>
+> Every button has its RPC already: `attempt_check_in`, `start_break`, `finish_break`,
+> `check_out`. Call them; do not write to `check_logs` or `breaks` from the app, because
+> a worker holds no insert policy on either. `start_break` is disabled before check-in
+> and absent entirely where the client pays for breaks (§3.2).
 >
 > Pay is computed by `payableMinutes` in `@thc/domain`. Note the asymmetry it encodes:
 > checking in inside the grace pays from the SCHEDULED start, checking in past it pays
