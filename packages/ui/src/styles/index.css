@@ -1,0 +1,6 @@
+/* The Hospitality Company design system.
+   Import once, in each app's root layout:  import '@thc/ui/styles.css'; */
+@import './tokens.css';
+@import './base.css';
+@import './components.css';
+@import './warm.css';

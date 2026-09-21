@@ -1,0 +1,81 @@
+/* Generated from wireframes/assets/thc.css §1 — the visual contract.
+   Two axes: data-style = warm | scope, data-theme = light | dark (ADR-0003).
+   Components read tokens only; never hard-code a colour or radius. */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* ---------------------------------------------------------------------
+   1 · TOKENS — dark + scope is the literal §1.6 palette
+   --------------------------------------------------------------------- */
+:root {
+  --bg: #04080F;  --panel: #0B1220;  --panel-2: #0F1828;  --line: #1C2839;
+  --cyan: #3EDCEC;  --purple: #A879FF;  --green: #3DDC97;  --amber: #F5B83D;  --coral: #FF6E61;
+  --text: #E9EEF5;  --muted: #8A97A3;
+  /* "ink" = the tone used for text/borders on the current ground; equals the fill tone on dark */
+  --cyan-ink: var(--cyan); --purple-ink: var(--purple); --green-ink: var(--green); --amber-ink: var(--amber); --coral-ink: var(--coral);
+  --on-cyan: #04080F; --on-purple: #04080F; --on-green: #04080F; --on-amber: #04080F; --on-coral: #04080F;
+  --cyan-dim: rgba(62,220,236,.10);  --cyan-line: rgba(62,220,236,.35);
+  --purple-dim: rgba(168,121,255,.12); --purple-line: rgba(168,121,255,.45);
+  --green-dim: rgba(61,220,151,.12);  --green-line: rgba(61,220,151,.4);
+  --amber-dim: rgba(245,184,61,.14);  --amber-line: rgba(245,184,61,.45);
+  --coral-dim: rgba(255,110,97,.14);  --coral-line: rgba(255,110,97,.45);
+  --hover: rgba(255,255,255,.03);  --row-hover: rgba(255,255,255,.025);  --tint: rgba(255,255,255,.015);
+  --panel-glass: rgba(11,18,32,.85);  --glass: rgba(11,18,32,.55);  --glass-strong: rgba(11,18,32,.82);  --glass-line: rgba(255,255,255,.06);
+  --scrim: rgba(4,8,15,.72);  --scrim-soft: rgba(4,8,15,.55);
+  --glow-a: rgba(62,220,236,.28);  --glow-b: rgba(168,121,255,.22);
+  --shadow: 0 30px 80px rgba(0,0,0,.6);  --shadow-card: none;
+  --map-a: #0b1220; --map-b: #0e1727;  --photo-a: #223047; --photo-b: #35507a;
+  --focus: rgba(62,220,236,.10);
+
+  /* type */
+  --font-head: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  --font-label: var(--font-mono);     /* uppercase labels, pills, table headers */
+  --font-num: var(--font-mono);       /* times, money, counts */
+  --label-size: 10.5px; --label-track: .12em; --label-weight: 500;
+  --pill-track: .08em;
+  --head-weight: 600; --head-track: -0.01em;
+
+  /* shape — zero everywhere in scope style; only the logo is round */
+  --r-xs: 0; --r-sm: 0; --r: 0; --r-lg: 0; --r-pill: 0; --r-phone: 0; --r-nav: 0;
+  --nav-bar: 3px;                      /* cyan left bar on the active sidebar item */
+
+  --sidebar-w: 232px; --topbar-h: 56px; --gap: 16px;
+  --btn-h: 36px; --input-h: 38px;
+}
+
+/* ---- warm style: the default look proposed for THC (ADR-0003) ---- */
+:root[data-style="warm"] {
+  --font-head: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-label: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --font-num: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
+  --label-size: 10.5px; --label-track: .08em; --label-weight: 700;
+  --pill-track: .04em;
+  --head-weight: 700; --head-track: -0.02em;
+  --r-xs: 6px; --r-sm: 10px; --r: 12px; --r-lg: 18px; --r-pill: 999px; --r-phone: 40px; --r-nav: 10px;
+  --nav-bar: 0px;
+  --btn-h: 40px; --input-h: 42px;
+  --shadow-card: 0 1px 0 rgba(255,255,255,.03) inset;
+}
+
+/* ---- light theme (warm off-white ground, navy ink; cyan kept for fills, deeper teal for text) ---- */
+:root[data-theme="light"] {
+  --bg: #F6F4EF;  --panel: #FFFFFF;  --panel-2: #F1EEE7;  --line: #E3DED4;
+  --text: #141A2C;  --muted: #66707E;
+  --cyan-ink: #0B8A99; --purple-ink: #6D3DE0; --green-ink: #158A5C; --amber-ink: #9A6600; --coral-ink: #C93E33;
+  --on-cyan: #04202A; --on-purple: #FFFFFF; --on-green: #05301E; --on-amber: #2E1F00; --on-coral: #FFFFFF;
+  --cyan-dim: rgba(11,138,153,.10);  --cyan-line: rgba(11,138,153,.35);
+  --purple-dim: rgba(109,61,224,.10); --purple-line: rgba(109,61,224,.4);
+  --green-dim: rgba(21,138,92,.10);   --green-line: rgba(21,138,92,.4);
+  --amber-dim: rgba(154,102,0,.12);   --amber-line: rgba(154,102,0,.45);
+  --coral-dim: rgba(201,62,51,.10);   --coral-line: rgba(201,62,51,.4);
+  --hover: rgba(20,26,44,.04);  --row-hover: rgba(20,26,44,.03);  --tint: rgba(20,26,44,.02);
+  --panel-glass: rgba(255,255,255,.88);  --glass: rgba(255,255,255,.62);  --glass-strong: rgba(255,255,255,.86);  --glass-line: rgba(20,26,44,.07);
+  --scrim: rgba(20,26,44,.45);  --scrim-soft: rgba(20,26,44,.3);
+  --glow-a: rgba(62,220,236,.35);  --glow-b: rgba(168,121,255,.25);
+  --shadow: 0 24px 60px rgba(20,26,44,.18);  --shadow-card: 0 1px 2px rgba(20,26,44,.05);
+  --map-a: #EFEBE3; --map-b: #E4DFD4;  --photo-a: #D9D2C5; --photo-b: #B8AE9C;
+  --focus: rgba(11,138,153,.15);
+}

@@ -1,0 +1,47 @@
+{
+  "$comment": [
+    "Shared test vectors for the weekly cap, RULE-20 (Scope §4.4–4.5).",
+    "These vectors are the contract between the TypeScript implementation in",
+    "packages/domain/cap.ts and the SQL function weekly_cap_hours(staff, date).",
+    "Both must produce the same band for every case here. Owned by the",
+    "`compliance` bot; Phase 4 completes the implementations.",
+    "A Mon-Sun week that straddles term and holiday takes the LOWER cap."
+  ],
+  "cases": [
+    {
+      "name": "British citizen, no visa limit, no opt-out",
+      "input": { "visaLimited": false, "termState": "none", "completionLetterVerified": false, "optOut48h": false },
+      "expect": { "capHours": 48, "band": "standard_48" }
+    },
+    {
+      "name": "British citizen with a signed 48-hour opt-out",
+      "input": { "visaLimited": false, "termState": "none", "completionLetterVerified": false, "optOut48h": true },
+      "expect": { "capHours": null, "band": "uncapped" }
+    },
+    {
+      "name": "Student visa, term time",
+      "input": { "visaLimited": true, "termState": "term", "completionLetterVerified": false, "optOut48h": false },
+      "expect": { "capHours": 20, "band": "student_term_20" }
+    },
+    {
+      "name": "Student visa, holiday",
+      "input": { "visaLimited": true, "termState": "holiday", "completionLetterVerified": false, "optOut48h": false },
+      "expect": { "capHours": 48, "band": "student_holiday_48" }
+    },
+    {
+      "name": "Week straddles term and holiday — the lower cap wins",
+      "input": { "visaLimited": true, "termState": "straddle", "completionLetterVerified": false, "optOut48h": false },
+      "expect": { "capHours": 20, "band": "student_term_20" }
+    },
+    {
+      "name": "Verified completion letter graduates the worker off the term cap",
+      "input": { "visaLimited": true, "termState": "term", "completionLetterVerified": true, "optOut48h": false },
+      "expect": { "capHours": 48, "band": "graduated_48" }
+    },
+    {
+      "name": "Opt-out does not lift a visa limit",
+      "input": { "visaLimited": true, "termState": "term", "completionLetterVerified": false, "optOut48h": true },
+      "expect": { "capHours": 20, "band": "student_term_20" }
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+import { clsx } from 'clsx';
+import type { ReactNode } from 'react';
+
+export interface NavItem {
+  href: string;
+  label: string;
+  /** Red count badge, e.g. the Needs-review queue. */
+  count?: number;
+  icon?: ReactNode;
+  /** Renders a rule above this item. */
+  dividerBefore?: boolean;
+}
+
+export interface SidebarProps {
+  items: NavItem[];
+  activeHref?: string;
+  brand?: ReactNode;
+  footer?: ReactNode;
+  /** Renders each item; apps pass their router's Link. */
+  renderLink?: (item: NavItem, className: string, children: ReactNode) => ReactNode;
+}
+
+export function Sidebar({ items, activeHref, brand, footer, renderLink }: SidebarProps) {
+  return (
+    <aside className="sidebar">
+      {brand ? <div className="brand">{brand}</div> : null}
+      <nav>
+        {items.map((item) => {
+          const className = clsx(item.href === activeHref && 'active');
+          const body = (
+            <>
+              {item.icon ? <span className="ico">{item.icon}</span> : null}
+              <span>{item.label}</span>
+              {item.count ? <span className="count">{item.count}</span> : null}
+            </>
+          );
+          return (
+            <span key={item.href}>
+              {item.dividerBefore ? <span className="divider" /> : null}
+              {renderLink ? (
+                renderLink(item, className, body)
+              ) : (
+                <a href={item.href} className={className}>
+                  {body}
+                </a>
+              )}
+            </span>
+          );
+        })}
+      </nav>
+      {footer ? <div className="foot">{footer}</div> : null}
+    </aside>
+  );
+}
+
+export interface TopbarProps {
+  title?: ReactNode;
+  crumbs?: ReactNode;
+  /** Right-hand time-zone note, e.g. "All times UK (Europe/London)". */
+  timezone?: ReactNode;
+  actions?: ReactNode;
+}
+
+export function Topbar({ title, crumbs, timezone, actions }: TopbarProps) {
+  return (
+    <header className="topbar">
+      {title ? <h1>{title}</h1> : null}
+      {crumbs ? <div className="crumbs">{crumbs}</div> : null}
+      <div className="spacer" />
+      {timezone ? <span className="tz">{timezone}</span> : null}
+      {actions}
+    </header>
+  );
+}
+
+export function Shell({ sidebar, children }: { sidebar: ReactNode; children: ReactNode }) {
+  return (
+    <div className="shell">
+      {sidebar}
+      <div className="main">{children}</div>
+    </div>
+  );
+}
+
+export function Content({ children, className }: { children: ReactNode; className?: string }) {
+  return <div className={clsx('content', className)}>{children}</div>;
+}
+
+export interface PageHeadProps {
+  title: ReactNode;
+  description?: ReactNode;
+  actions?: ReactNode;
+}
+
+export function PageHead({ title, description, actions }: PageHeadProps) {
+  return (
+    <div className="page-head">
+      <div>
+        <h1>{title}</h1>
+        {description ? <div className="desc">{description}</div> : null}
+      </div>
+      {actions ? <div className="actions">{actions}</div> : null}
+    </div>
+  );
+}
