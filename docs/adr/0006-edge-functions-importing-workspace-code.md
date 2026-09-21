@@ -68,3 +68,21 @@ Option 3, as its own pull request: try `allowImportingTsExtensions` in
 `tsconfig.base.json`, confirm `pnpm turbo lint typecheck test build` stays green across
 all three apps, and only fall back to option 2 if webpack objects. It is the only option
 that leaves one implementation of the §8 rules.
+
+## Update, 21.09.2026 — webpack does not object
+
+The experiment above was run while building the auto-assign engine, which needs the same
+import and was blocked behind the same question. `allowImportingTsExtensions: true` in
+`tsconfig.base.json`, plus `.ts` on the two internal imports in
+`packages/notifications/src/index.ts`, leaves `pnpm turbo lint typecheck test build` green
+across all 29 tasks — including `next build` for all three apps through
+`transpilePackages`, which was the specific risk.
+
+So the one claim this ADR called unfalsifiable is now falsified in the cheap direction:
+option 3 builds. That is not the same as the Edge Function running — there is still no
+Deno in the workspace and no Supabase project — but the objection that made option 3
+expensive has gone, and options 1 and 2 no longer need to be considered on its account.
+
+The change was reverted rather than carried, because this ADR asks for it in its own pull
+request and it touches the base config for three applications. It should be picked up
+there, unblocking `notify-drain` (§8) and `auto-staffing` (§3.4) together.

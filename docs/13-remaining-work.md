@@ -94,6 +94,23 @@ Functions yet.
 >
 > Done when: a 15-event day fills from seed data and the scoring order is provable from
 > `job_runs`.
+>
+> **Half done, 21.09.2026.** The engine is built and tested in SQL — migration
+> `20260921141500_auto_assign.sql`, 57 assertions in `supabase/tests/120_auto_assign.sql`.
+> `auto_assign_candidates` gives the pool with its gate and the five §6 factor inputs,
+> `invite_worker` adds additively, `accept_invite` is first-to-confirm with the automatic
+> withdrawal of overlapping invitations, `release_unready_bookings` is the 12:00 cutoff
+> with N6b, `self_cancel_booking` is RULE-04, and `auto_assign_due_shifts` splits hourly
+> from escalation exclusively at the shift's start.
+>
+> What is left is only the Deno process that calls them, and it is blocked on ADR-0006
+> exactly as `notify-drain` is: the function must import `packages/domain/scoring.ts`,
+> because the scoring stays in TypeScript so it has one implementation. The ADR's
+> option 3 has now been shown to build (see its 21.09.2026 update); take that first and
+> both Edge Functions unblock together. The Edge Function is then thin: for each due
+> section, read the candidates, `rankPool()` them, and call `invite_worker` for the top
+> `allocation` — plus a distance filter of 3 miles and `p_ignore_target` in escalation
+> mode.
 
 ## B5 · Onboarding kanban and candidate profile (§2.2–2.3)
 

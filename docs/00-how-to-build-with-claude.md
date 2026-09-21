@@ -42,8 +42,14 @@ What does not exist yet: every screen in Phases 1 to 7 apart from the Shift Buil
 Supabase project, and the Vercel projects. Two pieces the Shift Builder leans on are also
 outstanding and belong to later sessions:
 
-- **Auto-assign itself** (§3.4). The switches and the per-role allocation are stored; no
-  hourly round runs yet, so a saved event fills nobody.
+- **Auto-assign's Deno half** (§3.4). The engine itself is built and tested in SQL —
+  the candidate pool with its hard gates, additive invitations, first-to-confirm with
+  automatic withdrawal of overlapping invitations, the 12:00 cutoff, self-cancel, and the
+  exclusive handover from the hourly round to escalation. The §6 scoring deliberately
+  stays in `packages/domain/scoring.ts` so it has one implementation, which is why the
+  last piece is an Edge Function that ranks between two RPCs — and why it waits on
+  ADR-0006 alongside `notify-drain`. Until it exists no round fires on a schedule, so a
+  saved event still fills nobody without someone calling the RPCs.
 - **The sender behind the outbox** (§8). Saving a time, dress-code or venue change sets
   `reconfirm_required` on that section's confirmed bookings and queues N11 in
   `notification_outbox` with its idempotency key — but no job drains the outbox to Web
