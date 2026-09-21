@@ -7,10 +7,18 @@ export type { ChipProps, PillProps, Tone } from './components/Pill';
 export { Input, Select, Textarea } from './components/Input';
 export type { InputProps, SelectProps, TextareaProps } from './components/Input';
 
-export { Avatar, initials } from './components/Avatar';
+export { Avatar, AvatarGroup, Person, initials } from './components/Avatar';
 export type { AvatarProps } from './components/Avatar';
 
-export { Content, PageHead, Shell, Sidebar, Topbar } from './components/Shell';
+export {
+  Content,
+  PageHead,
+  Shell,
+  Sidebar,
+  TableScroll,
+  Topbar,
+  UserChip,
+} from './components/Shell';
 export type { NavItem, PageHeadProps, SidebarProps, TopbarProps } from './components/Shell';
 
 export { Alert, EmptyState, Note, Panel } from './components/Panel';
@@ -22,6 +30,12 @@ export type { SegOption, SegToggleProps } from './components/SegToggle';
 export { Progress, Stepper } from './components/Stepper';
 export type { Step, StepperProps } from './components/Stepper';
 
+export { KpiTile, Rating, Score, SegBar, StatStrip, ratingTone } from './components/Data';
+export type { KpiTileProps, MetricTone, SegState, Stat } from './components/Data';
+
+export { Checkbox, OptionRow, Radio, Switch } from './components/Controls';
+export type { CheckProps, OptionRowProps, SwitchProps } from './components/Controls';
+
 export { DocRow } from './components/DocRow';
 export type { DocRowProps, DocState } from './components/DocRow';
 
@@ -29,10 +43,29 @@ export { AuthCard } from './components/AuthCard';
 export type { AuthCardProps } from './components/AuthCard';
 
 export { Modal, Toast } from './components/Modal';
-export type { ModalProps } from './components/Modal';
+export type { ModalProps, ToastTone } from './components/Modal';
 
-export { AppBody, AppHeader, BottomNav, MobileCard, Sheet } from './components/Mobile';
-export type { AppHeaderProps, BottomNavItem, MobileCardProps } from './components/Mobile';
+export {
+  AppBody,
+  AppFrame,
+  AppHeader,
+  BottomNav,
+  GpsChip,
+  MobileCard,
+  MobileList,
+  MobileRow,
+  PhoneFrame,
+  Sheet,
+  StatusBar,
+  Timer,
+  useCollapsedHeader,
+} from './components/Mobile';
+export type {
+  AppHeaderProps,
+  BottomNavItem,
+  MobileCardProps,
+  MobileCardTone,
+} from './components/Mobile';
 
 export {
   AppearanceScript,

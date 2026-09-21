@@ -1,7 +1,7 @@
 'use client';
 
 import { clsx } from 'clsx';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 
 /** Staff App chrome (§10.1). These components are only used by apps/staff. */
@@ -69,7 +69,7 @@ export function AppHeader({ title, sub, brand, actions, below, collapsed }: AppH
         {sub ? <div className="sub">{sub}</div> : null}
       </div>
       {actions ? <div className="actions">{actions}</div> : null}
-      {below}
+      {below ? <div className="below">{below}</div> : null}
     </header>
   );
 }
@@ -124,7 +124,7 @@ export function BottomNav({
           </>
         );
         return renderLink ? (
-          renderLink(item, className, body)
+          <Fragment key={item.href}>{renderLink(item, className, body)}</Fragment>
         ) : (
           <a key={item.href} href={item.href} className={className}>
             {body}

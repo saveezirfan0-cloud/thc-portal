@@ -1419,12 +1419,6 @@ textarea.input {
   gap: var(--sp-8);
   justify-content: flex-end;
 }
-.modal-inline {
-  position: relative;
-}
-.modal-inline .modal-back {
-  position: absolute;
-}
 
 .toast {
   background: var(--panel);
@@ -1621,146 +1615,6 @@ textarea.input {
 .score.wave2 .bar i {
   background: var(--muted);
 }
-.tip {
-  position: relative;
-  cursor: help;
-  border-bottom: 1px dotted var(--muted);
-}
-
-.map {
-  background:
-    repeating-linear-gradient(0deg, var(--map-a) 0 22px, var(--map-b) 22px 23px),
-    repeating-linear-gradient(90deg, transparent 0 22px, var(--map-b) 22px 23px);
-  position: relative;
-  border: 1px solid var(--line);
-  overflow: hidden;
-  border-radius: var(--r-card);
-}
-.map .pin {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  background: var(--cyan-ink);
-  transform: translate(-50%, -50%);
-  border-radius: var(--r-avatar);
-}
-.map .circle {
-  position: absolute;
-  border: 1.5px solid var(--cyan-ink);
-  background: var(--cyan-dim);
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-}
-.map .me {
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  background: var(--purple-ink);
-  transform: translate(-50%, -50%);
-  border-radius: var(--r-avatar);
-}
-.map .lbl {
-  position: absolute;
-  font-family: var(--font-label);
-  font-size: var(--fs-10);
-  color: var(--muted);
-  background: var(--glass-strong);
-  padding: 2px var(--sp-6);
-  border-radius: var(--r-pill);
-}
-
-.cal {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  border: 1px solid var(--line);
-  background: var(--line);
-  gap: 1px;
-  border-radius: var(--r-card);
-  overflow: hidden;
-}
-.cal .dh {
-  background: var(--panel);
-  padding: var(--sp-8) var(--sp-10);
-  font-family: var(--font-label);
-  font-size: var(--label-size);
-  letter-spacing: var(--label-track);
-  text-transform: var(--label-case);
-  color: var(--muted);
-  font-weight: var(--label-weight);
-}
-.cal .day {
-  background: var(--panel);
-  min-height: 118px;
-  padding: var(--sp-8);
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-}
-.cal .day .d {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-6);
-  font-family: var(--font-num);
-  font-size: var(--fs-11);
-  color: var(--muted);
-}
-.cal .day .d .cnt {
-  margin-left: auto;
-  font-size: var(--fs-9);
-  letter-spacing: 0.05em;
-}
-.cal .day.today {
-  outline: 2px solid var(--cyan-ink);
-  outline-offset: -2px;
-}
-.cal .day.today .d {
-  color: var(--cyan-ink);
-}
-.cal .day.other {
-  opacity: 0.35;
-}
-.cal .day .scroll {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  overflow: auto;
-  max-height: 96px;
-}
-.evchip {
-  font-size: var(--fs-11);
-  padding: 3px var(--sp-6);
-  background: var(--panel-2);
-  border-left: 3px solid var(--amber-ink);
-  display: flex;
-  gap: var(--sp-6);
-  align-items: center;
-  white-space: nowrap;
-  overflow: hidden;
-  border-radius: var(--r-control);
-}
-.evchip.full {
-  border-left-color: var(--green-ink);
-}
-.evchip.cancelled {
-  border-left-color: var(--muted);
-  color: var(--muted);
-  text-decoration: line-through;
-}
-.evchip .t {
-  font-family: var(--font-num);
-  font-size: var(--fs-10);
-  color: var(--muted);
-}
-.evchip .f {
-  margin-left: auto;
-  font-family: var(--font-num);
-  font-size: var(--fs-9);
-  color: var(--amber-ink);
-  font-weight: 700;
-}
-.evchip.full .f {
-  color: var(--green-ink);
-}
 
 /* ---------------------------------------------------------------------
    10 · MOBILE (Staff App PWA)
@@ -1860,6 +1714,7 @@ textarea.input {
    stays right, only the title shrinks (§10.1). */
 .app-header {
   position: sticky;
+  flex-wrap: wrap;
   top: 0;
   z-index: 3;
   display: flex;
@@ -1890,6 +1745,10 @@ textarea.input {
 .app-header .avatar,
 .app-header .actions {
   margin-left: auto;
+}
+.app-header .below {
+  flex: 1 0 100%;
+  margin-top: var(--sp-4);
 }
 .app-header.collapsed {
   padding-top: var(--sp-6);
@@ -2170,77 +2029,6 @@ textarea.input {
   color: var(--muted);
   font-size: var(--fs-14);
 }
-.quiz-opt {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-10);
-  padding: var(--sp-12);
-  border: 1px solid var(--line);
-  background: var(--card-glass);
-  border-radius: var(--r-tile);
-}
-.quiz-opt.sel {
-  border-color: var(--cyan-ink);
-  background: var(--cyan-dim);
-}
-.quiz-opt .k {
-  font-family: var(--font-num);
-  font-size: var(--fs-11);
-  color: var(--muted);
-  width: 18px;
-  font-weight: 700;
-}
-.mtabs {
-  display: flex;
-  gap: var(--sp-20);
-  border-bottom: 1px solid var(--line);
-}
-.mtabs a {
-  padding: var(--sp-8) 0;
-  color: var(--muted);
-  font-weight: 600;
-  font-size: var(--fs-13);
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  display: inline-flex;
-  gap: var(--sp-6);
-  align-items: center;
-}
-.mtabs a.active {
-  color: var(--cyan-ink);
-  border-bottom-color: var(--cyan-ink);
-}
-.mtabs .n {
-  font-family: var(--font-num);
-  font-size: var(--fs-9);
-  padding: 0 5px;
-  background: var(--coral-solid);
-  color: var(--on-coral);
-  font-weight: 700;
-  border-radius: var(--r-pill);
-}
-.push {
-  display: flex;
-  gap: var(--sp-10);
-  padding: var(--sp-12);
-  background: var(--glass-strong);
-  border: 1px solid var(--glass-line);
-  backdrop-filter: blur(var(--blur));
-  -webkit-backdrop-filter: blur(var(--blur));
-  border-radius: var(--r-tile);
-}
-.push .app {
-  font-family: var(--font-label);
-  font-size: var(--fs-9);
-  letter-spacing: var(--label-track);
-  text-transform: var(--label-case);
-  color: var(--muted);
-  font-weight: var(--label-weight);
-}
-.push .b {
-  font-size: var(--fs-13);
-}
-
 /* ---------------------------------------------------------------------
    11 · RESPONSIVE (§1.2)
    Both web apps work on phone and tablet, not desktop only. The sidebar
