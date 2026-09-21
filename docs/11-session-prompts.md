@@ -77,7 +77,7 @@ picking that up belongs with S2.
 ## S3 · Phase 1 · Onboarding and applicant tracking
 
 > **The public form is built** — `/apply`, `/apply/submitted`, `applications` and
-> `submit_application()` landed in `0010_public_application.sql`. What is left of Phase 1
+> `submit_application()` landed in `20260921150000_public_application.sql`. What is left of Phase 1
 > is below; take one per session, each on its own branch.
 >
 > Use the `onboarding` agent. Branch `feat/onboarding-<thing>`.

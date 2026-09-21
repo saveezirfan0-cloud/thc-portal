@@ -12,6 +12,8 @@
 -- 20260921123503_db_hardening turned assertion 8 inside out (the outbox is
 -- admin-read on purpose now, not deny-all by omission) and added 9 for
 -- spatial_ref_sys, the last table in public that had no RLS at all.
+-- 20260921130927_jobs_and_outbox_drain added job_runs and job_schedules to
+-- assertions 1 and 3; both are admin-read, written by the service role.
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
@@ -31,11 +33,12 @@ select bag_eq(
   $$ values ('applications'::text),('audit_log'),('bank_details'),('bookings'),('breaks'),('check_logs'),
             ('client_qualifications'),('client_rate_cards'),('clients'),
             ('compliance_docs'),('criminal_declarations'),('events'),('feedback'),
-            ('hmrc_checklists'),('location_pings'),('notification_outbox'),('profiles'),
+            ('hmrc_checklists'),('job_runs'),('job_schedules'),('location_pings'),
+            ('notification_outbox'),('profiles'),
             ('push_subscriptions'),('quiz_attempts'),('report_sends'),('roles'),('settings'),
             ('shift_requirements'),('staff'),('staff_references'),('staff_roles'),
             ('venue_types'),('venues'),('violations') $$,
-  'RLS is enabled on all 29 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps and applications from 0010'
+  'RLS is enabled on all 31 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, and applications from the public form'
 );
 
 -- ---------------------------------------------------------------------
@@ -62,9 +65,10 @@ select is_empty(
 
 -- ---------------------------------------------------------------------
 -- 3. Which tables an admin has a policy on.
---    admin_all everywhere except audit_log, report_sends, location_pings
---    and notification_outbox, which are admin_read: all four are written
---    only by definer functions and the service role (§1.7, §9.9, §5.2b, §8).
+--    admin_all everywhere except audit_log, report_sends, location_pings,
+--    notification_outbox, job_runs and job_schedules, which are admin_read:
+--    all six are written only by definer functions and the service role
+--    (§1.7, §9.9, §5.2b, §8, §7).
 -- ---------------------------------------------------------------------
 select bag_eq(
   $$ select distinct c.relname::text from pg_policy p join pg_class c on c.oid = p.polrelid
@@ -72,7 +76,8 @@ select bag_eq(
   $$ values ('applications'::text),('audit_log'),('bank_details'),('bookings'),('breaks'),('check_logs'),
             ('client_qualifications'),('client_rate_cards'),('clients'),
             ('compliance_docs'),('criminal_declarations'),('events'),('feedback'),
-            ('hmrc_checklists'),('location_pings'),('notification_outbox'),
+            ('hmrc_checklists'),('job_runs'),('job_schedules'),('location_pings'),
+            ('notification_outbox'),
             ('push_subscriptions'),('quiz_attempts'),
             ('report_sends'),('roles'),('settings'),('shift_requirements'),('staff'),
             ('staff_references'),('staff_roles'),('venue_types'),('venues'),('violations') $$,

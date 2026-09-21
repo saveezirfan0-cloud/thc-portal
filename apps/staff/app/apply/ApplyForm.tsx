@@ -122,12 +122,12 @@ export function ApplyForm() {
       </div>
 
       <Select
-          label="Age"
-          name="ageBand"
-          hint="You must be 18 or over to work with us."
-          value={values.ageBand}
-          onChange={(e) => set('ageBand', e.target.value)}
-          error={errors.ageBand}
+        label="Age"
+        name="ageBand"
+        hint="You must be 18 or over to work with us."
+        value={values.ageBand}
+        onChange={(e) => set('ageBand', e.target.value)}
+        error={errors.ageBand}
       >
         <option value="">Select your age</option>
         {AGE_OPTIONS.map((a) => (
@@ -173,7 +173,8 @@ export function ApplyForm() {
       </Button>
 
       <div className="xs muted" style={{ textAlign: 'center' }}>
-        Questions? <a href="mailto:admin@thehospitalitycompany.co.uk">admin@thehospitalitycompany.co.uk</a>
+        Questions?{' '}
+        <a href="mailto:admin@thehospitalitycompany.co.uk">admin@thehospitalitycompany.co.uk</a>
       </div>
     </form>
   );

@@ -1,5 +1,5 @@
 -- =====================================================================
--- 110 · The public application form (§2.1, §2.12, §1.7)
+-- 120 · The public application form (§2.1, §2.12, §1.7)
 --
 -- submit_application() is the only public write in the system: `anon` calls
 -- it from an unauthenticated page on the open internet. Three things are

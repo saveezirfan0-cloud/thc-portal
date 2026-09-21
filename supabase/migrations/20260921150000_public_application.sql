@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 0010 · the public application form (§2.1, §2.12, §1.7)
+-- Migration 20260921150000 · the public application form (§2.1, §2.12, §1.7)
 --
 -- What this adds
 -- --------------
@@ -163,7 +163,7 @@ begin
   -- submission against the stored string directly would mean the mobile half
   -- of §2.12 silently never matched anybody. Normalising the column at write
   -- time would be the better fix and is a change to data this migration does
-  -- not own; 110_apply pins the behaviour either way.
+  -- not own; 120_apply pins the behaviour either way.
   select s.id into v_match
     from staff s
    where s.removed_at is null

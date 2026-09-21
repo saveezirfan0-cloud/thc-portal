@@ -25,7 +25,18 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
 
   const supabase = createClient(await cookies());
   const { error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) return 'Email or password is incorrect. Try again or reset your password.';
+  if (error) {
+    // The visitor gets a message that reveals nothing; the real reason goes to
+    // the server log, where an operator can see whether this was a genuine bad
+    // password or a misconfiguration (wrong project, provider disabled, a key
+    // that does not match the URL). Without this the two are indistinguishable.
+    console.error('[sign-in] rejected', {
+      status: error.status,
+      code: error.code,
+      message: error.message,
+    });
+    return 'Email or password is incorrect. Try again or reset your password.';
+  }
 
   redirect(next.startsWith('/') ? next : '/shifts');
 }

@@ -58,9 +58,7 @@ export default async function Page() {
 
           <p className="xs muted">
             Can&apos;t find it? Check your spam folder, or write to{' '}
-            <a href="mailto:admin@thehospitalitycompany.co.uk">
-              admin@thehospitalitycompany.co.uk
-            </a>
+            <a href="mailto:admin@thehospitalitycompany.co.uk">admin@thehospitalitycompany.co.uk</a>
             .
           </p>
         </section>

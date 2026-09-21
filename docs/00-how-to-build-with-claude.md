@@ -10,9 +10,9 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 351 | `pnpm test` |
+| Unit | 379 | `pnpm test` |
 | Browser smoke | 35 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 496 | `supabase test db` |
+| Database, row-level security and rules | 538 | `supabase test db` |
 
 What exists:
 
@@ -58,7 +58,7 @@ Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
 
 **Open with THC.** §2.1 collects an *age band* on /apply while §2.12 matches duplicates on
 *mobile + date of birth*, and the form has no date-of-birth field. Until THC decides,
-`0010` matches on email and on mobile — the wider net of the two — and `staff.dob` stays
+the public-form migration matches on email and on mobile — the wider net of the two — and `staff.dob` stays
 null until Right to Work supplies one (§2.5). `wireframes/public/apply.html` carries the
 same flag.
 
