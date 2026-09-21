@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet data-dc-atomics>
+<meta name="design_doc_mode" content="canvas">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#EDE6DC;font-family:Inter,system-ui,sans-serif}
+a{color:#0B7A88;text-decoration:none}
+a:hover{color:#0a5f6a}
+*{box-sizing:border-box}
+</style>
+</helmet>
+
+<section style="padding:48px 56px 40px;border-bottom:1px solid #E2D6C7;display:flex;flex-direction:column;gap:14px">
+<div style="display:flex;align-items:center;gap:14px">
+<div style="width:46px;height:46px;background:#0B7A88;display:grid;place-items:center;flex:none"><img src="assets/thc-mark-cream.png" alt="The Hospitality Company" style="width:27px;height:31px;object-fit:contain"></div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:26px;color:#241D16;letter-spacing:-.01em">The Hospitality Company · Staffing platform <span style="color:#7A6B5C;font-weight:500">— light mode</span></div>
+</div>
+<div style="font:400 14px/1.6 Inter,sans-serif;color:#7A6B5C;max-width:860px">Light mode. The same eleven screens on a warm paper ground — bone #F6F1EA, warm grey rules, deep teal carrying the cyan brand role at legible contrast on light, and a clay glow in place of the cold one. Space Grotesk / Inter / IBM Plex Mono, zero radius, square avatars.</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:4px">
+<a href="#BO1" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;padding:5px 9px;background:#FFFCF7;border:1px solid #E2D6C7;color:#0B7A88">BO1 DASHBOARD</a>
+<a href="#BO2" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;padding:5px 9px;background:#FFFCF7;border:1px solid #E2D6C7;color:#0B7A88">BO2 EVENT BOARD</a>
+<a href="#BO3" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;padding:5px 9px;background:#FFFCF7;border:1px solid #E2D6C7;color:#0B7A88">BO3 ONBOARDING</a>
+<a href="#BO4" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;padding:5px 9px;background:#FFFCF7;border:1px solid #E2D6C7;color:#0B7A88">BO4 CANDIDATE</a>
+<a href="#BO5" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;padding:5px 9px;background:#FFFCF7;border:1px solid #E2D6C7;color:#0B7A88">BO5 VENUES</a>
+<a href="#APP" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;padding:5px 9px;background:#FFFCF7;border:1px solid #E2D6C7;color:#0B7A88">M1–M5 STAFF APP</a>
+<a href="#CP1" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;padding:5px 9px;background:#FFFCF7;border:1px solid #E2D6C7;color:#0B7A88">CP1 CLIENT PORTAL</a>
+</div>
+</section>
+
+<section style="padding:44px 56px 8px">
+<div style="display:flex;align-items:baseline;gap:12px;margin-bottom:26px">
+<span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;padding:5px 9px;background:#0B7A88;color:#F6F1EA">PART II</span>
+<span style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:18px;color:#241D16">Back Office Portal · web, 1440px</span>
+</div>
+
+<div id="BO1" style="display:flex;flex-direction:column;gap:10px;margin-bottom:56px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;padding:4px 8px;background:#E2D6C7;color:#0B7A88">BO1</span><span style="font:400 12px Inter,sans-serif;color:#7A6B5C">Dashboard /dashboard · §9.1 — "what is on fire right now"</span></div>
+<div data-screen-label="BO1 Dashboard" style="width:1440px;background:#F6F1EA;border:1px solid #E2D6C7;display:flex;color:#241D16">
+
+<div style="width:236px;flex:none;background:#FFFCF7;border-right:1px solid #E2D6C7;padding:0 0 24px">
+<div style="height:64px;display:flex;align-items:center;gap:10px;padding:0 18px;border-bottom:1px solid #E2D6C7">
+<div style="width:34px;height:34px;background:#0B7A88;display:grid;place-items:center;flex:none"><img src="assets/thc-mark-cream.png" alt="The Hospitality Company" style="width:20px;height:23px;object-fit:contain"></div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;line-height:1.15">The Hospitality<br>Company</div>
+</div>
+<div style="padding:16px 0 0;display:flex;flex-direction:column">
+<div style="display:flex;align-items:center;gap:10px;padding:11px 18px;border-left:3px solid #0B7A88;background:rgba(11,122,136,.08);color:#0B7A88;font:600 13px Inter,sans-serif">Dashboard</div>
+<div style="display:flex;align-items:center;gap:10px;padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Onboarding<span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10px;background:#E2D6C7;color:#241D16;padding:2px 5px">14</span></div>
+<div style="display:flex;align-items:center;gap:10px;padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Scheduling</div>
+<div style="display:flex;align-items:center;gap:10px;padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Compliance<span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10px;background:#C2402F;color:#F6F1EA;padding:2px 5px">9</span></div>
+<div style="display:flex;align-items:center;gap:10px;padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Check In / Out</div>
+<div style="height:1px;background:#E2D6C7;margin:12px 18px"></div>
+<div style="display:flex;align-items:center;gap:10px;padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Staff</div>
+<div style="display:flex;align-items:center;gap:10px;padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Clients</div>
+<div style="display:flex;align-items:center;gap:10px;padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Roles</div>
+<div style="display:flex;align-items:center;gap:10px;padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Reports</div>
+<div style="display:flex;align-items:center;gap:10px;padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Feedback</div>
+<div style="display:flex;align-items:center;gap:10px;padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Venues</div>
+</div>
+</div>
+
+<div style="flex:1;min-width:0">
+<div style="height:64px;border-bottom:1px solid #E2D6C7;display:flex;align-items:center;gap:16px;padding:0 28px">
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px">Dashboard</div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.1em;color:#7A6B5C">MON 21 SEP 2026 · 09:41 UK TIME</div>
+<div style="margin-left:auto;display:flex;align-items:center;gap:12px">
+<div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">GS</div>
+<div style="font:500 13px Inter,sans-serif">Gisela S.</div>
+</div>
+</div>
+
+<div style="padding:26px 28px 32px;display:flex;flex-direction:column;gap:26px">
+<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:#E2D6C7;border:1px solid #E2D6C7">
+<div style="background:#FFFCF7;padding:20px 20px 18px;display:flex;flex-direction:column;gap:8px">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#7A6B5C">OPEN POSITIONS</div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:40px;line-height:1;color:#B5730A">47</div>
+<div style="font:400 12px Inter,sans-serif;color:#7A6B5C">Across all events · sold, not staffed</div>
+</div>
+<div style="background:#FFFCF7;padding:20px 20px 18px;display:flex;flex-direction:column;gap:8px">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#7A6B5C">ON SHIFT NOW</div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:40px;line-height:1;color:#1F7A4D">128</div>
+<div style="font:400 12px Inter,sans-serif;color:#7A6B5C">Checked in and on site</div>
+</div>
+<div style="background:#FFFCF7;padding:20px 20px 18px;display:flex;flex-direction:column;gap:8px">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#7A6B5C">STAFF AVAILABLE</div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:40px;line-height:1;color:#241D16">612</div>
+<div style="font:400 12px Inter,sans-serif;color:#7A6B5C">Compliant and unbooked today</div>
+</div>
+<div style="background:#FFFCF7;padding:20px 20px 18px;display:flex;flex-direction:column;gap:8px">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#7A6B5C">COMPLIANCE BLOCKS</div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:40px;line-height:1;color:#C2402F">9</div>
+<div style="font:400 12px Inter,sans-serif;color:#7A6B5C">Blocked on an expired document</div>
+</div>
+</div>
+
+<div style="border:1px solid #E2D6C7;background:#FFFCF7">
+<div style="padding:16px 20px;border-bottom:1px solid #E2D6C7;display:flex;align-items:baseline;gap:12px">
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px">This week</div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:#7A6B5C">MON 21 – SUN 27 SEP</div>
+</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#E2D6C7">
+<div style="background:#FFFCF7;padding:18px 20px;display:flex;flex-direction:column;gap:6px">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#7A6B5C">CHARGEABLE</div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:28px">£84,210</div>
+</div>
+<div style="background:#FFFCF7;padding:18px 20px;display:flex;flex-direction:column;gap:6px">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#7A6B5C">PAYABLE</div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:28px">£51,940</div>
+<div style="font:400 12px Inter,sans-serif;color:#7A6B5C">Base £46,350 · holiday +12.07% £5,590</div>
+</div>
+<div style="background:#FFFCF7;padding:18px 20px;display:flex;flex-direction:column;gap:6px">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#7A6B5C">MARGIN</div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:28px;color:#1F7A4D">£32,270</div>
+<div style="font:400 12px Inter,sans-serif;color:#7A6B5C">38.3% · includes holiday pay</div>
+</div>
+</div>
+</div>
+
+<div style="border:1px solid #E2D6C7;background:#FFFCF7">
+<div style="padding:16px 20px;border-bottom:1px solid #E2D6C7;display:flex;align-items:baseline;gap:12px">
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px">Upcoming events</div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:#7A6B5C">NEXT 10 DAYS</div>
+<a href="#BO2" style="margin-left:auto;font:500 12px Inter,sans-serif">Open scheduling</a>
+</div>
+<div style="display:grid;grid-template-columns:150px 1fr 1fr 190px 120px 130px;gap:0;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:#7A6B5C;padding:11px 20px;border-bottom:1px solid #E2D6C7">
+<div>DATE · WINDOW</div><div>CLIENT</div><div>VENUE</div><div>ROLE</div><div>FILL</div><div style="text-align:right">MARGIN</div>
+</div>
+<div style="display:grid;grid-template-columns:150px 1fr 1fr 190px 120px 130px;align-items:center;padding:13px 20px;border-bottom:1px solid #E2D6C7;font:400 13px Inter,sans-serif">
+<div><div style="font-weight:600">Tue 22 Sep</div><div style="color:#7A6B5C;font-size:12px">17:00 – 23:30</div></div>
+<div>Mandarin Oriental</div><div style="color:#7A6B5C">Hyde Park Ballroom</div><div>Waiting Staff</div>
+<div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;padding:3px 7px;background:rgba(31,122,77,.12);color:#1F7A4D;border:1px solid rgba(31,122,77,.4)">12 of 12 (+2)</span></div>
+<div style="text-align:right;color:#1F7A4D;font-weight:600">+£9.40/h</div>
+</div>
+<div style="display:grid;grid-template-columns:150px 1fr 1fr 190px 120px 130px;align-items:center;padding:13px 20px;border-bottom:1px solid #E2D6C7;font:400 13px Inter,sans-serif">
+<div><div style="font-weight:600">Wed 23 Sep</div><div style="color:#7A6B5C;font-size:12px">07:00 – 15:00</div></div>
+<div>The Dorchester</div><div style="color:#7A6B5C">Orchid Room</div><div>Chef de Partie</div>
+<div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;padding:3px 7px;background:rgba(181,115,10,.12);color:#B5730A;border:1px solid rgba(181,115,10,.4)">3 of 5 (+1)</span></div>
+<div style="text-align:right;color:#1F7A4D;font-weight:600">+£12.10/h</div>
+</div>
+<div style="display:grid;grid-template-columns:150px 1fr 1fr 190px 120px 130px;align-items:center;padding:13px 20px;border-bottom:1px solid #E2D6C7;font:400 13px Inter,sans-serif">
+<div><div style="font-weight:600">Fri 25 Sep</div><div style="color:#7A6B5C;font-size:12px">07:00 – 23:30</div></div>
+<div>Claridge's</div><div style="color:#7A6B5C">The Ballroom</div><div>3 roles</div>
+<div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;padding:3px 7px;background:rgba(181,115,10,.12);color:#B5730A;border:1px solid rgba(181,115,10,.4)">21 of 26 (+4)</span></div>
+<div style="text-align:right;color:#1F7A4D;font-weight:600">+£10.75/h</div>
+</div>
+<div style="display:grid;grid-template-columns:150px 1fr 1fr 190px 120px 130px;align-items:center;padding:13px 20px;font:400 13px Inter,sans-serif">
+<div><div style="font-weight:600">Sat 26 Sep</div><div style="color:#7A6B5C;font-size:12px">11:00 – 19:00</div></div>
+<div>Ascot Racecourse</div><div style="color:#7A6B5C">Grandstand · Level 4</div><div>Bar Staff</div>
+<div><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;padding:3px 7px;background:rgba(194,64,47,.12);color:#C2402F;border:1px solid rgba(194,64,47,.4)">9 of 18 (+3)</span></div>
+<div style="text-align:right;color:#1F7A4D;font-weight:600">+£8.20/h</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+
+</section>
+
+<section style="padding:8px 56px">
+<div id="BO2" style="display:flex;flex-direction:column;gap:10px;margin-bottom:56px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;padding:4px 8px;background:#E2D6C7;color:#0B7A88">BO2</span><span style="font:400 12px Inter,sans-serif;color:#7A6B5C">Event board /events/:id · §3.3–3.4 — role sections, the two auto-assign waves, match scores</span></div>
+<div data-screen-label="BO2 Event board" style="width:1440px;background:#F6F1EA;border:1px solid #E2D6C7;display:flex;color:#241D16">
+
+<div style="width:236px;flex:none;background:#FFFCF7;border-right:1px solid #E2D6C7">
+<div style="height:64px;display:flex;align-items:center;gap:10px;padding:0 18px;border-bottom:1px solid #E2D6C7">
+<div style="width:34px;height:34px;background:#0B7A88;display:grid;place-items:center;flex:none"><img src="assets/thc-mark-cream.png" alt="The Hospitality Company" style="width:20px;height:23px;object-fit:contain"></div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;line-height:1.15">The Hospitality<br>Company</div>
+</div>
+<div style="padding:16px 0 0;display:flex;flex-direction:column">
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Dashboard</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Onboarding</div>
+<div style="padding:11px 18px;border-left:3px solid #0B7A88;background:rgba(11,122,136,.08);color:#0B7A88;font:600 13px Inter,sans-serif">Scheduling</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Compliance</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Check In / Out</div>
+<div style="height:1px;background:#E2D6C7;margin:12px 18px"></div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Staff</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Clients</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Roles</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Reports</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Feedback</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Venues</div>
+</div>
+</div>
+
+<div style="flex:1;min-width:0">
+<div style="padding:20px 28px;border-bottom:1px solid #E2D6C7;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:12px">
+<a href="#BO1" style="font:400 12px Inter,sans-serif;color:#7A6B5C">Scheduling</a>
+<span style="color:#E2D6C7">/</span>
+<span style="font:400 12px Inter,sans-serif;color:#7A6B5C">Fri 25 Sep 2026</span>
+</div>
+<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:24px">Autumn Partners Dinner</div>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;padding:4px 8px;border:1px solid #0B7A88;color:#0B7A88">UPCOMING</span>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;padding:4px 8px;background:#E2D6C7;color:#241D16">PO NUMBER · CLA-44192</span>
+<div style="margin-left:auto;display:flex;gap:10px">
+<button style="font:600 13px Inter,sans-serif;padding:9px 16px;background:transparent;border:1px solid #E2D6C7;color:#241D16;text-align:left;cursor:pointer" style-hover="border-color:#0B7A88;color:#0B7A88">Duplicate</button>
+<button style="font:600 13px Inter,sans-serif;padding:9px 16px;background:transparent;border:1px solid rgba(194,64,47,.5);color:#C2402F;text-align:left;cursor:pointer" style-hover="background:rgba(194,64,47,.12)">Cancel event</button>
+<button style="font:600 13px Inter,sans-serif;padding:9px 16px;background:#0B7A88;border:none;color:#F6F1EA;text-align:left;cursor:pointer" style-hover="background:#0f9aab">Edit event</button>
+</div>
+</div>
+<div style="display:flex;gap:26px;flex-wrap:wrap;font:400 13px Inter,sans-serif;color:#7A6B5C">
+<div><span style="color:#7A6B5C">Client</span> <span style="color:#241D16;font-weight:500">Claridge's</span></div>
+<div><span style="color:#7A6B5C">Venue</span> <span style="color:#241D16;font-weight:500">The Ballroom, Brook St W1K</span> <span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7A6B5C">· GEOFENCE 250 M</span></div>
+<div><span style="color:#7A6B5C">Window</span> <span style="color:#241D16;font-weight:500">07:00 – 23:30 UK time</span></div>
+<div style="color:#1F7A4D">✓ Client pays for breaks</div>
+<div style="color:#B5730A">✕ Client does not pay for buffer <span style="color:#7A6B5C">(strict)</span></div>
+</div>
+</div>
+
+<div style="padding:22px 28px 34px;display:flex;flex-direction:column;gap:20px">
+
+<div style="border:1px solid #E2D6C7;background:#FFFCF7">
+<div style="padding:16px 20px;display:flex;align-items:center;gap:14px;border-bottom:1px solid #E2D6C7;background:rgba(11,122,136,.03)">
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px">Chef de Partie</div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;color:#241D16">07:00 – 15:00 UK TIME</div>
+<div style="font:400 13px Inter,sans-serif;color:#7A6B5C">Dress code: Chef whites, black shoes · £16.50/h pay · £27.00/h charge</div>
+<div style="margin-left:auto;display:flex;align-items:center;gap:14px">
+<span style="font:500 13px Inter,sans-serif;color:#1F7A4D">4 confirmed</span>
+<span style="font:500 13px Inter,sans-serif;color:#B5730A">1 invited</span>
+<span style="font:500 13px Inter,sans-serif;color:#C2402F">1 open of 5 (+1)</span>
+<div style="display:flex;align-items:center;gap:8px;padding:5px 10px;border:1px solid rgba(110,69,196,.5);background:rgba(110,69,196,.1)">
+<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:#6E45C4">AUTO-ASSIGN</span>
+<span style="width:30px;height:16px;background:#6E45C4;display:inline-flex;align-items:center;justify-content:flex-end;padding:2px"><span style="width:12px;height:12px;background:#F6F1EA;display:block"></span></span>
+</div>
+</div>
+</div>
+
+<div style="padding:14px 20px 6px;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#1F7A4D">CONFIRMED · 4</div>
+<div style="padding:0 20px 14px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+<div style="border:1px solid #E2D6C7;padding:11px 12px;display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#E2D6C7;display:grid;place-items:center;font:600 12px 'IBM Plex Mono',monospace;color:#0B7A88">AO</div><div><div style="font:600 13px Inter,sans-serif">Adaeze Okafor</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">Confirmed · day-before ✓</div></div></div>
+<div style="border:1px solid #E2D6C7;padding:11px 12px;display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#E2D6C7;display:grid;place-items:center;font:600 12px 'IBM Plex Mono',monospace;color:#0B7A88">MR</div><div><div style="font:600 13px Inter,sans-serif">Marek Rusnák</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">Confirmed · day-before ✓</div></div></div>
+<div style="border:1px solid #E2D6C7;padding:11px 12px;display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#E2D6C7;display:grid;place-items:center;font:600 12px 'IBM Plex Mono',monospace;color:#0B7A88">SB</div><div><div style="font:600 13px Inter,sans-serif">Sana Bhatt</div><div style="font:400 11px Inter,sans-serif;color:#B5730A">Awaiting day-before confirm</div></div></div>
+<div style="border:1px solid rgba(194,64,47,.45);padding:11px 12px;display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#E2D6C7;display:grid;place-items:center;font:600 12px 'IBM Plex Mono',monospace;color:#7A6B5C">TW</div><div style="min-width:0"><div style="font:600 13px Inter,sans-serif;display:flex;align-items:center;gap:6px">Tom Whitfield <span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;padding:2px 5px;background:#C2402F;color:#F6F1EA">NO SHOW</span></div><a href="#BO2" style="font:600 11px Inter,sans-serif">Get back</a></div></div>
+</div>
+
+<div style="padding:12px 20px 6px;border-top:1px solid #E2D6C7;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#B5730A">INVITED · AWAITING RESPONSE · 1</div>
+<div style="padding:0 20px 14px;display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+<div style="border:1px solid #E2D6C7;padding:11px 12px;display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#E2D6C7;display:grid;place-items:center;font:600 12px 'IBM Plex Mono',monospace;color:#0B7A88">LP</div><div><div style="font:600 13px Inter,sans-serif">Luis Peralta</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">Invited 09:17 · wave 1</div></div></div>
+</div>
+
+<div style="padding:12px 20px 10px;border-top:1px solid #E2D6C7;display:flex;align-items:center;gap:14px">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#7A6B5C">POTENTIAL POOL · RANKED BY MATCH SCORE</div>
+<div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+<input placeholder="Search staff" style="background:#F6F1EA;border:1px solid #E2D6C7;color:#241D16;font:400 12px Inter,sans-serif;padding:7px 10px;width:180px">
+<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;padding:6px 9px;border:1px solid #E2D6C7;color:#7A6B5C">SORT: APPLIED FIRST</span>
+</div>
+</div>
+<div style="padding:0 20px 8px">
+<div style="display:grid;grid-template-columns:36px 1fr 200px 250px 96px 110px;gap:12px;align-items:center;padding:8px 0;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:#7A6B5C;border-bottom:1px solid #E2D6C7">
+<div></div><div>STAFF</div><div>WAVE</div><div>MATCH SCORE · §6</div><div>DISTANCE</div><div></div>
+</div>
+<div style="display:grid;grid-template-columns:36px 1fr 200px 250px 96px 110px;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #E2D6C7">
+<div style="width:32px;height:32px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">JN</div>
+<div><div style="font:600 13px Inter,sans-serif">Joy Nwosu</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">★ 4.8 · show-rate 98%</div></div>
+<div style="display:flex;flex-direction:column;gap:4px"><span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;padding:3px 6px;background:rgba(11,122,136,.12);color:#0B7A88;border:1px solid rgba(11,122,136,.4);width:fit-content">QUALIFIED — CLARIDGE'S · CHEF</span><span style="font:400 11px Inter,sans-serif;color:#6E45C4">Applied 2h ago · Radar</span></div>
+<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;height:6px;background:#E2D6C7"><div style="width:91%;height:6px;background:#0B7A88"></div></div><div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:#0B7A88">91</div></div>
+<div style="font:400 12px Inter,sans-serif;color:#7A6B5C">2.4 km</div>
+<div><button style="font:600 12px Inter,sans-serif;padding:7px 12px;background:#0B7A88;border:none;color:#F6F1EA;cursor:pointer;width:100%;text-align:left" style-hover="background:#0f9aab">Invite</button></div>
+</div>
+<div style="display:grid;grid-template-columns:36px 1fr 200px 250px 96px 110px;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #E2D6C7">
+<div style="width:32px;height:32px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">DK</div>
+<div><div style="font:600 13px Inter,sans-serif">Dmytro Kovalenko</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">★ 4.4 · show-rate 95%</div></div>
+<div><span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;padding:3px 6px;background:rgba(11,122,136,.12);color:#0B7A88;border:1px solid rgba(11,122,136,.4)">QUALIFIED — CLARIDGE'S · CHEF</span></div>
+<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;height:6px;background:#E2D6C7"><div style="width:71%;height:6px;background:#0B7A88"></div></div><div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:#0B7A88">71</div></div>
+<div style="font:400 12px Inter,sans-serif;color:#7A6B5C">7.9 km</div>
+<div><button style="font:600 12px Inter,sans-serif;padding:7px 12px;background:transparent;border:1px solid #E2D6C7;color:#241D16;cursor:pointer;width:100%;text-align:left" style-hover="border-color:#0B7A88;color:#0B7A88">Invite</button></div>
+</div>
+<div style="display:grid;grid-template-columns:36px 1fr 200px 250px 96px 110px;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid #E2D6C7;opacity:.75">
+<div style="width:32px;height:32px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#7A6B5C">RA</div>
+<div><div style="font:600 13px Inter,sans-serif">Rhea Abraham</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">★ 4.9 · show-rate 99%</div></div>
+<div><span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;padding:3px 6px;border:1px solid #E2D6C7;color:#7A6B5C">WAVE 2 — NOT QUALIFIED HERE</span></div>
+<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;height:6px;background:#E2D6C7"><div style="width:94%;height:6px;background:#7A6B5C"></div></div><div style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:#7A6B5C">94</div></div>
+<div style="font:400 12px Inter,sans-serif;color:#7A6B5C">1.1 km</div>
+<div><button style="font:600 12px Inter,sans-serif;padding:7px 12px;background:transparent;border:1px solid #E2D6C7;color:#241D16;cursor:pointer;width:100%;text-align:left" style-hover="border-color:#0B7A88;color:#0B7A88">Invite</button></div>
+</div>
+<div style="padding:10px 0 14px;font:400 11px Inter,sans-serif;color:#7A6B5C">RULE-17 — qualified first. A wave-2 worker scoring 94 is invited only after every eligible wave-1 worker; a manager can always override by inviting manually.</div>
+</div>
+
+<div style="padding:12px 20px 18px;border-top:1px solid #E2D6C7">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#7A6B5C;margin-bottom:10px">UNAVAILABLE · 3</div>
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+<div style="border:1px solid #E2D6C7;padding:10px 12px;display:flex;align-items:center;gap:10px;opacity:.72"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#7A6B5C">PC</div><div><div style="font:600 12px Inter,sans-serif">Priya Chandra</div><div style="font:400 11px Inter,sans-serif;color:#C2402F">Blocked — compliance</div></div></div>
+<div style="border:1px solid #E2D6C7;padding:10px 12px;display:flex;align-items:center;gap:10px;opacity:.72"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#7A6B5C">EF</div><div><div style="font:600 12px Inter,sans-serif">Eli Forsberg</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">Booked elsewhere · Dorchester</div></div></div>
+<div style="border:1px solid #E2D6C7;padding:10px 12px;display:flex;align-items:center;gap:10px;opacity:.72"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#7A6B5C">HM</div><div><div style="font:600 12px Inter,sans-serif">Hana Mori</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">Rejected — self-cancelled (RULE-04)</div></div></div>
+</div>
+</div>
+</div>
+
+<div style="border:1px solid #E2D6C7;background:#FFFCF7">
+<div style="padding:16px 20px;display:flex;align-items:center;gap:14px;border-bottom:1px solid #E2D6C7">
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;color:#7A6B5C">Waiting Staff</div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;color:#7A6B5C">17:00 – 23:30 UK TIME</div>
+<div style="font:400 13px Inter,sans-serif;color:#7A6B5C">Dress code: Black tie · £13.20/h pay · £24.00/h charge</div>
+<div style="margin-left:auto;display:flex;align-items:center;gap:14px">
+<span style="font:500 13px Inter,sans-serif;color:#1F7A4D">14 confirmed</span>
+<span style="font:500 13px Inter,sans-serif;color:#B5730A">3 invited</span>
+<span style="font:500 13px Inter,sans-serif;color:#C2402F">2 open of 16 (+2)</span>
+<span style="font:400 12px Inter,sans-serif;color:#7A6B5C">▾ collapsed</span>
+</div>
+</div>
+</div>
+
+<div style="border:1px solid #E2D6C7;background:#FFFCF7">
+<div style="padding:16px 20px;display:flex;align-items:center;gap:14px">
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px;color:#7A6B5C">Bar Staff</div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;color:#7A6B5C">18:00 – 23:30 UK TIME</div>
+<div style="font:400 13px Inter,sans-serif;color:#7A6B5C">Dress code: Black tie · £13.80/h pay · £25.50/h charge</div>
+<div style="margin-left:auto;display:flex;align-items:center;gap:14px">
+<span style="font:500 13px Inter,sans-serif;color:#1F7A4D">3 confirmed</span>
+<span style="font:500 13px Inter,sans-serif;color:#C2402F">2 open of 5 (+1)</span>
+<span style="font:400 12px Inter,sans-serif;color:#7A6B5C">▾ collapsed</span>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section style="padding:8px 56px">
+<div id="BO3" style="display:flex;flex-direction:column;gap:10px;margin-bottom:56px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;padding:4px 8px;background:#E2D6C7;color:#0B7A88">BO3</span><span style="font:400 12px Inter,sans-serif;color:#7A6B5C">Onboarding kanban /onboarding · §2.2 — six stages, Active/Rejected filter</span></div>
+<div data-screen-label="BO3 Onboarding kanban" style="width:1440px;background:#F6F1EA;border:1px solid #E2D6C7;display:flex;color:#241D16">
+
+<div style="width:236px;flex:none;background:#FFFCF7;border-right:1px solid #E2D6C7">
+<div style="height:64px;display:flex;align-items:center;gap:10px;padding:0 18px;border-bottom:1px solid #E2D6C7">
+<div style="width:34px;height:34px;background:#0B7A88;display:grid;place-items:center;flex:none"><img src="assets/thc-mark-cream.png" alt="The Hospitality Company" style="width:20px;height:23px;object-fit:contain"></div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;line-height:1.15">The Hospitality<br>Company</div>
+</div>
+<div style="padding:16px 0 0;display:flex;flex-direction:column">
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Dashboard</div>
+<div style="padding:11px 18px;border-left:3px solid #0B7A88;background:rgba(11,122,136,.08);color:#0B7A88;font:600 13px Inter,sans-serif;display:flex">Onboarding<span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:10px;background:#0B7A88;color:#F6F1EA;padding:2px 5px">14</span></div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Scheduling</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Compliance</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Check In / Out</div>
+<div style="height:1px;background:#E2D6C7;margin:12px 18px"></div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Staff</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Clients</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Roles</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Reports</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Feedback</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Venues</div>
+</div>
+</div>
+
+<div style="flex:1;min-width:0">
+<div style="height:64px;border-bottom:1px solid #E2D6C7;display:flex;align-items:center;gap:16px;padding:0 28px">
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px">Onboarding</div>
+<div style="display:flex;border:1px solid #E2D6C7;margin-left:8px">
+<span style="font:600 12px Inter,sans-serif;padding:7px 14px;background:#0B7A88;color:#F6F1EA">Active · 14</span>
+<span style="font:500 12px Inter,sans-serif;padding:7px 14px;color:#7A6B5C">Rejected · 6</span>
+</div>
+<input placeholder="Search candidates" style="margin-left:auto;background:#FFFCF7;border:1px solid #E2D6C7;color:#241D16;font:400 12px Inter,sans-serif;padding:8px 12px;width:220px">
+<div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">GS</div>
+</div>
+
+<div style="padding:22px 28px 34px;display:grid;grid-template-columns:repeat(6,1fr);gap:12px;align-items:start">
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:2px solid #0B7A88"><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:#241D16">INTERVIEW REQUESTED</span><span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7A6B5C">4</span></div>
+<div style="background:#FFFCF7;border:1px solid #E2D6C7;padding:12px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:9px;align-items:center"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#7A6B5C">AR</div><div style="min-width:0"><div style="font:600 13px Inter,sans-serif">Amara Reid</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">Applied 2h ago</div></div></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;padding:3px 6px;background:rgba(181,115,10,.12);color:#B5730A;width:fit-content">WILLO SENT</div>
+</div>
+<div style="background:#FFFCF7;border:1px solid #E2D6C7;padding:12px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:9px;align-items:center"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#7A6B5C">JB</div><div><div style="font:600 13px Inter,sans-serif">Jakub Bąk</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">Applied yesterday</div></div></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;padding:3px 6px;background:rgba(181,115,10,.12);color:#B5730A;width:fit-content">WILLO SENT</div>
+</div>
+<div style="background:#FFFCF7;border:1px solid #6E45C4;padding:12px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:9px;align-items:center"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#6E45C4">TW</div><div><div style="font:600 13px Inter,sans-serif">Tom Whitfield</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">Applied 4h ago</div></div></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;padding:3px 6px;background:rgba(110,69,196,.15);color:#6E45C4;width:fit-content">RETURNING APPLICANT</div>
+<div style="font:400 11px/1.45 Inter,sans-serif;color:#7A6B5C">Matches an existing record — Employee ID 10442. Reset to candidate, or reject.</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:2px solid #E2D6C7"><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:#7A6B5C">INTERVIEW COMPLETED</span><span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7A6B5C">2</span></div>
+<div style="background:#FFFCF7;border:1px solid #E2D6C7;padding:12px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:9px;align-items:center"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#7A6B5C">FN</div><div><div style="font:600 13px Inter,sans-serif">Femi Nwachukwu</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">Completed 08:12</div></div></div>
+<a href="#BO4" style="font:600 11px Inter,sans-serif">Review interview on Willo ↗</a>
+</div>
+<div style="background:#FFFCF7;border:1px solid #E2D6C7;padding:12px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:9px;align-items:center"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#7A6B5C">LS</div><div><div style="font:600 13px Inter,sans-serif">Lucia Sanz</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">Completed yesterday</div></div></div>
+<a href="#BO4" style="font:600 11px Inter,sans-serif">Review interview on Willo ↗</a>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:2px solid #E2D6C7"><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:#7A6B5C">DOCUMENTS</span><span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7A6B5C">4</span></div>
+<div style="background:#FFFCF7;border:1px solid #0B7A88;padding:12px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:9px;align-items:center"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">NB</div><div><div style="font:600 13px Inter,sans-serif">Nadia Belhaj</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">Intl. student · 5 docs</div></div></div>
+<div style="display:flex;gap:4px"><span style="flex:1;height:4px;background:#1F7A4D"></span><span style="flex:1;height:4px;background:#1F7A4D"></span><span style="flex:1;height:4px;background:#1F7A4D"></span><span style="flex:1;height:4px;background:#B5730A"></span><span style="flex:1;height:4px;background:#E2D6C7"></span></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:#B5730A">2 AWAITING REVIEW</div>
+</div>
+<div style="background:#FFFCF7;border:1px solid #E2D6C7;padding:12px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:9px;align-items:center"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#7A6B5C">OA</div><div><div style="font:600 13px Inter,sans-serif">Omar Ahmadi</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">Work visa · 4 docs</div></div></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;padding:3px 6px;background:rgba(194,64,47,.12);color:#C2402F;width:fit-content">1 REJECTED — RE-UPLOAD SENT</div>
+</div>
+<div style="background:#FFFCF7;border:1px solid #E2D6C7;padding:12px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:9px;align-items:center"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#7A6B5C">CI</div><div><div style="font:600 13px Inter,sans-serif">Ciara Ivory</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">UK / Irish · 3 docs</div></div></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;padding:3px 6px;background:rgba(110,69,196,.15);color:#6E45C4;width:fit-content">AI · NEEDS MANUAL REVIEW</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:2px solid #E2D6C7"><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:#7A6B5C">QUIZ</span><span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7A6B5C">2</span></div>
+<div style="background:#FFFCF7;border:1px solid #E2D6C7;padding:12px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:9px;align-items:center"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#7A6B5C">HP</div><div><div style="font:600 13px Inter,sans-serif">Harri Pohjola</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">Attempt 2 of 3 · 65%</div></div></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:#B5730A">PASS MARK 80%</div>
+</div>
+<div style="background:#FFFCF7;border:1px solid #E2D6C7;padding:12px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:9px;align-items:center"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#7A6B5C">ZM</div><div><div style="font:600 13px Inter,sans-serif">Zainab Malik</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">Not started</div></div></div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:2px solid #E2D6C7"><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:#7A6B5C">ADDITIONAL INFO</span><span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7A6B5C">1</span></div>
+<div style="background:#FFFCF7;border:1px solid #E2D6C7;padding:12px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:9px;align-items:center"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#7A6B5C">GT</div><div><div style="font:600 13px Inter,sans-serif">Grace Thornton</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">HMRC · refs · bank</div></div></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:#7A6B5C">NI NUMBER PENDING</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:center;gap:8px;padding-bottom:10px;border-bottom:2px solid #E2D6C7"><span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:#7A6B5C">CONTRACT</span><span style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7A6B5C">1</span></div>
+<div style="background:#FFFCF7;border:1px solid #E2D6C7;padding:12px;display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;gap:9px;align-items:center"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#7A6B5C">SO</div><div><div style="font:600 13px Inter,sans-serif">Sam Odeyemi</div><div style="font:400 11px Inter,sans-serif;color:#7A6B5C">Awaiting signature</div></div></div>
+<div style="font:400 11px/1.45 Inter,sans-serif;color:#7A6B5C">On signing: becomes Staff, leaves the kanban, Employee ID generated.</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section style="padding:8px 56px">
+<div id="BO4" style="display:flex;flex-direction:column;gap:10px;margin-bottom:56px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;padding:4px 8px;background:#E2D6C7;color:#0B7A88">BO4</span><span style="font:400 12px Inter,sans-serif;color:#7A6B5C">Candidate profile /onboarding/:id · §2.3 — Documents phase, AI confidence, calculated weekly cap</span></div>
+<div data-screen-label="BO4 Candidate profile" style="width:1440px;background:#F6F1EA;border:1px solid #E2D6C7;display:flex;color:#241D16">
+
+<div style="width:236px;flex:none;background:#FFFCF7;border-right:1px solid #E2D6C7">
+<div style="height:64px;display:flex;align-items:center;gap:10px;padding:0 18px;border-bottom:1px solid #E2D6C7">
+<div style="width:34px;height:34px;background:#0B7A88;display:grid;place-items:center;flex:none"><img src="assets/thc-mark-cream.png" alt="The Hospitality Company" style="width:20px;height:23px;object-fit:contain"></div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;line-height:1.15">The Hospitality<br>Company</div>
+</div>
+<div style="padding:16px 0 0;display:flex;flex-direction:column">
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Dashboard</div>
+<div style="padding:11px 18px;border-left:3px solid #0B7A88;background:rgba(11,122,136,.08);color:#0B7A88;font:600 13px Inter,sans-serif">Onboarding</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Scheduling</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Compliance</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Check In / Out</div>
+<div style="height:1px;background:#E2D6C7;margin:12px 18px"></div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Staff</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Clients</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Roles</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Reports</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Feedback</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Venues</div>
+</div>
+</div>
+
+<div style="flex:1;min-width:0">
+<div style="padding:20px 28px 0;display:flex;align-items:center;gap:12px">
+<a href="#BO3" style="font:400 12px Inter,sans-serif;color:#7A6B5C">Onboarding</a><span style="color:#E2D6C7">/</span><span style="font:400 12px Inter,sans-serif;color:#7A6B5C">Nadia Belhaj</span>
+</div>
+
+<div style="padding:16px 28px 20px;display:flex;align-items:flex-start;gap:20px;border-bottom:1px solid #E2D6C7">
+<div style="width:72px;height:72px;background:#E2D6C7;display:grid;place-items:center;font-family:'IBM Plex Mono',monospace;font-size:20px;font-weight:600;color:#0B7A88">NB</div>
+<div style="display:flex;flex-direction:column;gap:7px">
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:24px">Nadia Belhaj</div>
+<div style="font:400 13px Inter,sans-serif;color:#7A6B5C">nadia.belhaj@example.com · +44 7700 900412 · DOB 04.03.2004 (22)</div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;padding:4px 8px;border:1px solid #0B7A88;color:#0B7A88">RTW · INTERNATIONAL STUDENT</span>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;padding:4px 8px;background:#E2D6C7;color:#241D16">ROLE · WAITING STAFF</span>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;padding:4px 8px;background:#E2D6C7;color:#241D16">ROLE · BAR STAFF</span>
+</div>
+</div>
+<button style="margin-left:auto;font:600 13px Inter,sans-serif;padding:10px 16px;background:transparent;border:1px solid rgba(194,64,47,.5);color:#C2402F;text-align:left;cursor:pointer" style-hover="background:rgba(194,64,47,.12)">Reject candidate</button>
+</div>
+
+<div style="padding:18px 28px;border-bottom:1px solid #E2D6C7;display:flex;align-items:center;gap:0">
+<div style="display:flex;align-items:center;gap:10px;flex:1"><div style="width:24px;height:24px;background:#1F7A4D;color:#F6F1EA;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace">✓</div><div style="font:500 12px Inter,sans-serif;color:#7A6B5C">Interview requested</div><div style="flex:1;height:2px;background:#1F7A4D"></div></div>
+<div style="display:flex;align-items:center;gap:10px;flex:1"><div style="width:24px;height:24px;background:#1F7A4D;color:#F6F1EA;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace">✓</div><div style="font:500 12px Inter,sans-serif;color:#7A6B5C">Interview completed</div><div style="flex:1;height:2px;background:#0B7A88"></div></div>
+<div style="display:flex;align-items:center;gap:10px;flex:1"><div style="width:24px;height:24px;background:#0B7A88;color:#F6F1EA;display:grid;place-items:center;font:700 11px 'IBM Plex Mono',monospace">3</div><div style="font:600 12px Inter,sans-serif;color:#0B7A88">Documents</div><div style="flex:1;height:2px;background:#E2D6C7"></div></div>
+<div style="display:flex;align-items:center;gap:10px;flex:1"><div style="width:24px;height:24px;border:1px solid #E2D6C7;color:#7A6B5C;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace">4</div><div style="font:400 12px Inter,sans-serif;color:#7A6B5C">Quiz <span style="color:#B5730A">· locked</span></div><div style="flex:1;height:2px;background:#E2D6C7"></div></div>
+<div style="display:flex;align-items:center;gap:10px;flex:1"><div style="width:24px;height:24px;border:1px solid #E2D6C7;color:#7A6B5C;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace">5</div><div style="font:400 12px Inter,sans-serif;color:#7A6B5C">Additional info</div><div style="flex:1;height:2px;background:#E2D6C7"></div></div>
+<div style="display:flex;align-items:center;gap:10px"><div style="width:24px;height:24px;border:1px solid #E2D6C7;color:#7A6B5C;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace">6</div><div style="font:400 12px Inter,sans-serif;color:#7A6B5C">Contract</div></div>
+</div>
+
+<div style="padding:24px 28px 34px;display:grid;grid-template-columns:1fr 420px;gap:20px;align-items:start">
+
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="border:1px solid #E2D6C7;background:#FFFCF7">
+<div style="padding:15px 20px;border-bottom:1px solid #E2D6C7;display:flex;align-items:center;gap:12px">
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px">Documents</div>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:#B5730A">2 AWAITING REVIEW · QUIZ LOCKED UNTIL ALL VERIFIED</span>
+</div>
+
+<div style="padding:15px 20px;border-bottom:1px solid #E2D6C7;display:flex;align-items:center;gap:14px">
+<div style="width:38px;height:38px;border:1px solid #E2D6C7;display:grid;place-items:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7A6B5C">PDF</div>
+<div style="flex:1;min-width:0"><div style="font:600 13px Inter,sans-serif">Passport — Tunisia</div><div style="font:400 12px Inter,sans-serif;color:#7A6B5C">Expiry 11.08.2029 · read by AI <span style="color:#1F7A4D">confidence 97%</span></div></div>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;padding:4px 8px;background:rgba(31,122,77,.12);color:#1F7A4D;border:1px solid rgba(31,122,77,.4)">VERIFIED</span>
+<a href="#BO4" style="font:500 12px Inter,sans-serif;color:#7A6B5C">Download</a>
+</div>
+
+<div style="padding:15px 20px;border-bottom:1px solid #E2D6C7;display:flex;align-items:center;gap:14px">
+<div style="width:38px;height:38px;border:1px solid #E2D6C7;display:grid;place-items:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7A6B5C">GOV</div>
+<div style="flex:1;min-width:0"><div style="font:600 13px Inter,sans-serif">Right to Work — gov.uk share code check</div><div style="font:400 12px Inter,sans-serif;color:#7A6B5C">Code W12 3AB 4CD + DOB · right to work until <span style="color:#241D16">30.06.2028</span> · report stored</div></div>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;padding:4px 8px;background:rgba(31,122,77,.12);color:#1F7A4D;border:1px solid rgba(31,122,77,.4)">VERIFIED</span>
+<a href="#BO4" style="font:500 12px Inter,sans-serif;color:#7A6B5C">Open report</a>
+</div>
+
+<div style="padding:15px 20px;border-bottom:1px solid #E2D6C7;display:flex;align-items:center;gap:14px;background:rgba(181,115,10,.04)">
+<div style="width:38px;height:38px;border:1px solid #E2D6C7;display:grid;place-items:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7A6B5C">PDF</div>
+<div style="flex:1;min-width:0"><div style="font:600 13px Inter,sans-serif">University Term Dates Letter</div><div style="font:400 12px Inter,sans-serif;color:#7A6B5C">Kingston University · 4 holiday periods extracted · <span style="color:#B5730A">AI confidence 62% — needs manual review</span></div></div>
+<button style="font:600 12px Inter,sans-serif;padding:8px 14px;background:#0B7A88;border:none;color:#F6F1EA;cursor:pointer;text-align:left" style-hover="background:#0f9aab">Verify</button>
+<button style="font:600 12px Inter,sans-serif;padding:8px 14px;background:transparent;border:1px solid rgba(194,64,47,.5);color:#C2402F;cursor:pointer;text-align:left" style-hover="background:rgba(194,64,47,.12)">Reject</button>
+</div>
+
+<div style="padding:15px 20px;border-bottom:1px solid #E2D6C7;display:flex;align-items:center;gap:14px;background:rgba(181,115,10,.04)">
+<div style="width:38px;height:38px;border:1px solid #E2D6C7;display:grid;place-items:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7A6B5C">DEC</div>
+<div style="flex:1;min-width:0"><div style="font:600 13px Inter,sans-serif">Criminal convictions declaration</div><div style="font:400 12px Inter,sans-serif;color:#7A6B5C">Answered <span style="color:#B5730A">Yes</span> · details supplied · conviction date 12.02.2024 — read before verifying</div></div>
+<button style="font:600 12px Inter,sans-serif;padding:8px 14px;background:#0B7A88;border:none;color:#F6F1EA;cursor:pointer;text-align:left" style-hover="background:#0f9aab">Verify</button>
+<button style="font:600 12px Inter,sans-serif;padding:8px 14px;background:transparent;border:1px solid rgba(194,64,47,.5);color:#C2402F;cursor:pointer;text-align:left" style-hover="background:rgba(194,64,47,.12)">Reject</button>
+</div>
+
+<div style="padding:15px 20px;display:flex;align-items:center;gap:14px">
+<div style="width:38px;height:38px;border:1px solid #E2D6C7;display:grid;place-items:center;font-family:'IBM Plex Mono',monospace;font-size:9px;color:#7A6B5C">JPG</div>
+<div style="flex:1;min-width:0"><div style="font:600 13px Inter,sans-serif">Proof of address — bank statement</div><div style="font:400 12px Inter,sans-serif;color:#7A6B5C">Rejected 19.09 — "Statement is more than 3 months old" · re-upload requested</div></div>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;padding:4px 8px;background:rgba(194,64,47,.12);color:#C2402F;border:1px solid rgba(194,64,47,.4)">REJECTED</span>
+</div>
+</div>
+
+<div style="border:1px solid #E2D6C7;background:#FFFCF7">
+<div style="padding:15px 20px;border-bottom:1px solid #E2D6C7;display:flex;align-items:center;gap:12px">
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px">Term dates</div>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;color:#7A6B5C">READ FROM THE LETTER BY AI · CONFIRM THE DATES, NOT THE HOURS</span>
+<a href="#BO4" style="margin-left:auto;font:600 12px Inter,sans-serif">+ Add period</a>
+</div>
+<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:1px;background:#E2D6C7">
+<div style="background:#FFFCF7;padding:13px 20px;display:flex;align-items:center;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#241D16">14.12.2026 – 05.01.2027</span><span style="font:400 12px Inter,sans-serif;color:#7A6B5C">Winter vacation</span></div>
+<div style="background:#FFFCF7;padding:13px 20px;display:flex;align-items:center;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#241D16">22.03.2027 – 12.04.2027</span><span style="font:400 12px Inter,sans-serif;color:#7A6B5C">Spring vacation</span></div>
+<div style="background:#FFFCF7;padding:13px 20px;display:flex;align-items:center;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#241D16">14.06.2027 – 20.09.2027</span><span style="font:400 12px Inter,sans-serif;color:#7A6B5C">Summer vacation</span></div>
+<div style="background:#FFFCF7;padding:13px 20px;display:flex;align-items:center;gap:12px"><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#B5730A">01.11.2026 – 08.11.2026</span><span style="font:400 12px Inter,sans-serif;color:#B5730A">Reading week — check against p.2</span></div>
+</div>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:20px">
+<div style="border:1px solid #E2D6C7;background:#FFFCF7;padding:20px;display:flex;flex-direction:column;gap:10px">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#7A6B5C">WEEKLY HOURS LIMIT · RULE-20</div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:34px;line-height:1">20 h/week</div>
+<div style="font:400 13px Inter,sans-serif;color:#241D16">Term time until 13.12.2026</div>
+<div style="font:400 12px/1.5 Inter,sans-serif;color:#7A6B5C;border-top:1px solid #E2D6C7;padding-top:10px">Calculated, never typed. It follows from the verified term dates on the left — correct a date there and the cap updates on its own. There is no field to edit.</div>
+</div>
+
+<div style="border:1px solid #E2D6C7;background:#FFFCF7">
+<div style="padding:15px 20px;border-bottom:1px solid #E2D6C7;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px">Interview</div>
+<div style="padding:15px 20px;display:flex;flex-direction:column;gap:10px">
+<div style="font:400 13px Inter,sans-serif;color:#7A6B5C">Completed 18.09.2026 · status arrived from Willo automatically</div>
+<a href="#BO4" style="font:600 13px Inter,sans-serif">Review interview on Willo ↗</a>
+</div>
+</div>
+
+<div style="border:1px solid #E2D6C7;background:#FFFCF7">
+<div style="padding:15px 20px;border-bottom:1px solid #E2D6C7;font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px">Application</div>
+<div style="padding:4px 20px 14px">
+<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E2D6C7;font:400 13px Inter,sans-serif"><span style="color:#7A6B5C">Home address</span><span>SW9 8PB, Brixton</span></div>
+<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E2D6C7;font:400 13px Inter,sans-serif"><span style="color:#7A6B5C">Applied</span><span>15.09.2026</span></div>
+<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #E2D6C7;font:400 13px Inter,sans-serif"><span style="color:#7A6B5C">GDPR consent</span><span style="color:#1F7A4D">Given</span></div>
+<div style="display:flex;justify-content:space-between;padding:10px 0;font:400 13px Inter,sans-serif"><span style="color:#7A6B5C">Employee ID</span><span style="color:#7A6B5C">Generated on contract</span></div>
+</div>
+</div>
+</div>
+
+</div>
+</div>
+</div>
+</div>
+
+<div id="BO5" style="display:flex;flex-direction:column;gap:10px;margin-bottom:56px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;padding:4px 8px;background:#E2D6C7;color:#0B7A88">BO5</span><span style="font:400 12px Inter,sans-serif;color:#7A6B5C">Venues /venues · §9.11 — List / On map, geofence radius per site</span></div>
+<div data-screen-label="BO5 Venues" style="width:1440px;background:#F6F1EA;border:1px solid #E2D6C7;display:flex;color:#241D16">
+
+<div style="width:236px;flex:none;background:#FFFCF7;border-right:1px solid #E2D6C7">
+<div style="height:64px;display:flex;align-items:center;gap:10px;padding:0 18px;border-bottom:1px solid #E2D6C7">
+<div style="width:34px;height:34px;background:#0B7A88;display:grid;place-items:center;flex:none"><img src="assets/thc-mark-cream.png" alt="The Hospitality Company" style="width:20px;height:23px;object-fit:contain"></div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:13px;line-height:1.15">The Hospitality<br>Company</div>
+</div>
+<div style="padding:16px 0 0;display:flex;flex-direction:column">
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Dashboard</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Onboarding</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Scheduling</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Compliance</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Check In / Out</div>
+<div style="height:1px;background:#E2D6C7;margin:12px 18px"></div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Staff</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Clients</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Roles</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Reports</div>
+<div style="padding:11px 18px;border-left:3px solid transparent;color:#7A6B5C;font:400 13px Inter,sans-serif">Feedback</div>
+<div style="padding:11px 18px;border-left:3px solid #0B7A88;background:rgba(11,122,136,.08);color:#0B7A88;font:600 13px Inter,sans-serif">Venues</div>
+</div>
+</div>
+
+<div style="flex:1;min-width:0">
+<div style="height:64px;border-bottom:1px solid #E2D6C7;display:flex;align-items:center;padding:0 28px">
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:20px">Venues</div>
+<div style="margin-left:auto;width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">GS</div>
+</div>
+<div style="padding:18px 28px;display:flex;align-items:center;gap:12px;border-bottom:1px solid #E2D6C7">
+<div style="display:flex;border:1px solid #E2D6C7">
+<span style="font:600 12px Inter,sans-serif;padding:8px 16px;background:#0B7A88;color:#F6F1EA">List</span>
+<span style="font:500 12px Inter,sans-serif;padding:8px 16px;color:#7A6B5C">On map</span>
+</div>
+<button style="font:600 13px Inter,sans-serif;padding:9px 16px;background:transparent;border:1px solid #0B7A88;color:#0B7A88;text-align:left;cursor:pointer" style-hover="background:rgba(11,122,136,.12)">+ New venue</button>
+<input placeholder="Search by name or address" style="margin-left:auto;background:#FFFCF7;border:1px solid #E2D6C7;color:#241D16;font:400 12px Inter,sans-serif;padding:9px 12px;width:280px">
+</div>
+
+<div style="padding:22px 28px 34px">
+<div style="border:1px solid #E2D6C7;background:#FFFCF7">
+<div style="display:grid;grid-template-columns:1.1fr 1.7fr 190px 110px 170px;gap:16px;padding:12px 20px;border-bottom:1px solid #E2D6C7;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:#7A6B5C">
+<div>VENUE</div><div>ADDRESS</div><div>GEOFENCE</div><div>EVENTS</div><div></div>
+</div>
+<div style="display:grid;grid-template-columns:1.1fr 1.7fr 190px 110px 170px;gap:16px;align-items:center;padding:14px 20px;border-bottom:1px solid #E2D6C7;font:400 13px Inter,sans-serif">
+<div><div style="font-weight:600">The Ballroom, Claridge's</div><div style="font-size:12px;color:#7A6B5C">Conference or banqueting</div></div>
+<div style="color:#7A6B5C">Brook Street, Mayfair, London W1K 4HR</div>
+<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;height:5px;background:#E2D6C7"><div style="width:8%;height:5px;background:#0B7A88"></div></div><span style="font-family:'IBM Plex Mono',monospace;font-size:12px">250 m</span></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:13px">64</div>
+<div style="display:flex;gap:8px"><button style="font:600 12px Inter,sans-serif;padding:7px 14px;background:transparent;border:1px solid #E2D6C7;color:#241D16;cursor:pointer;text-align:left" style-hover="border-color:#0B7A88;color:#0B7A88">Edit</button><button style="font:600 12px Inter,sans-serif;padding:7px 14px;background:transparent;border:1px solid #E2D6C7;color:#C2402F;cursor:pointer;text-align:left" style-hover="border-color:#C2402F">Delete</button></div>
+</div>
+<div style="display:grid;grid-template-columns:1.1fr 1.7fr 190px 110px 170px;gap:16px;align-items:center;padding:14px 20px;border-bottom:1px solid #E2D6C7;font:400 13px Inter,sans-serif">
+<div><div style="font-weight:600">Ascot Racecourse</div><div style="font-size:12px;color:#7A6B5C">Racecourse or showground</div></div>
+<div style="color:#7A6B5C">High Street, Ascot, Berkshire SL5 7JX</div>
+<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;height:5px;background:#E2D6C7"><div style="width:48%;height:5px;background:#0B7A88"></div></div><span style="font-family:'IBM Plex Mono',monospace;font-size:12px">1500 m</span></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:13px">22</div>
+<div style="display:flex;gap:8px"><button style="font:600 12px Inter,sans-serif;padding:7px 14px;background:transparent;border:1px solid #E2D6C7;color:#241D16;cursor:pointer;text-align:left" style-hover="border-color:#0B7A88;color:#0B7A88">Edit</button><button style="font:600 12px Inter,sans-serif;padding:7px 14px;background:transparent;border:1px solid #E2D6C7;color:#C2402F;cursor:pointer;text-align:left" style-hover="border-color:#C2402F">Delete</button></div>
+</div>
+<div style="display:grid;grid-template-columns:1.1fr 1.7fr 190px 110px 170px;gap:16px;align-items:center;padding:14px 20px;border-bottom:1px solid #E2D6C7;font:400 13px Inter,sans-serif">
+<div><div style="font-weight:600">ExCeL London · Hall S2</div><div style="font-size:12px;color:#7A6B5C">Exhibition centre</div></div>
+<div style="color:#7A6B5C">Royal Victoria Dock, London E16 1XL</div>
+<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;height:5px;background:#E2D6C7"><div style="width:13%;height:5px;background:#0B7A88"></div></div><span style="font-family:'IBM Plex Mono',monospace;font-size:12px">400 m</span></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:13px">38</div>
+<div style="display:flex;gap:8px"><button style="font:600 12px Inter,sans-serif;padding:7px 14px;background:transparent;border:1px solid #E2D6C7;color:#241D16;cursor:pointer;text-align:left" style-hover="border-color:#0B7A88;color:#0B7A88">Edit</button><button style="font:600 12px Inter,sans-serif;padding:7px 14px;background:transparent;border:1px solid #E2D6C7;color:#C2402F;cursor:pointer;text-align:left" style-hover="border-color:#C2402F">Delete</button></div>
+</div>
+<div style="display:grid;grid-template-columns:1.1fr 1.7fr 190px 110px 170px;gap:16px;align-items:center;padding:14px 20px;font:400 13px Inter,sans-serif">
+<div><div style="font-weight:600">Mandarin Oriental Hyde Park</div><div style="font-size:12px;color:#7A6B5C">Hotel</div></div>
+<div style="color:#7A6B5C">66 Knightsbridge, London SW1X 7LA</div>
+<div style="display:flex;align-items:center;gap:10px"><div style="flex:1;height:5px;background:#E2D6C7"><div style="width:5%;height:5px;background:#0B7A88"></div></div><span style="font-family:'IBM Plex Mono',monospace;font-size:12px">150 m</span></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:13px">51</div>
+<div style="display:flex;gap:8px"><button style="font:600 12px Inter,sans-serif;padding:7px 14px;background:transparent;border:1px solid #E2D6C7;color:#241D16;cursor:pointer;text-align:left" style-hover="border-color:#0B7A88;color:#0B7A88">Edit</button><button style="font:600 12px Inter,sans-serif;padding:7px 14px;background:transparent;border:1px solid #E2D6C7;color:#C2402F;cursor:pointer;text-align:left" style-hover="border-color:#C2402F">Delete</button></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+
+<section id="APP" style="padding:44px 56px 8px;border-top:1px solid #E2D6C7;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px">
+<span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;padding:5px 9px;background:#0B7A88;color:#F6F1EA">PART III</span>
+<span style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:18px;color:#241D16">Staff App · Flutter iOS / Android, 390×844</span>
+</div>
+<div style="font:400 13px/1.6 Inter,sans-serif;color:#7A6B5C;max-width:880px;margin-bottom:26px">Frosted top bar and bottom navigation over a cyan/purple glow (§10.1). Bottom nav is Documents · Shifts · Invites · Radar. Every time shown is the worker's own role window, never the event window (RULE-18).</div>
+
+<div style="display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start;margin-bottom:56px">
+
+<div id="M1" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:9px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;padding:4px 8px;background:#E2D6C7;color:#0B7A88">M1</span><span style="font:400 12px Inter,sans-serif;color:#7A6B5C">Shifts · §10.4</span></div>
+<div data-screen-label="M1 Shifts" style="width:390px;height:844px;background:#F6F1EA;border:1px solid #E2D6C7;position:relative;overflow:hidden;color:#241D16;display:flex;flex-direction:column">
+<div style="position:absolute;top:-120px;left:-80px;width:340px;height:340px;background:radial-gradient(circle,rgba(214,132,66,.22),transparent 68%);pointer-events:none"></div>
+<div style="position:absolute;top:180px;right:-120px;width:320px;height:320px;background:radial-gradient(circle,rgba(196,96,74,.16),transparent 68%);pointer-events:none"></div>
+
+<div style="position:relative;background:rgba(255,252,247,.6);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid rgba(226,214,199,.9)">
+<div style="display:flex;justify-content:space-between;padding:14px 20px 4px;font:600 13px Inter,sans-serif"><span>09:41</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7A6B5C">5G ▮▮▮ 84%</span></div>
+<div style="display:flex;align-items:center;gap:10px;padding:8px 20px 14px">
+<div style="width:30px;height:30px;background:#0B7A88;display:grid;place-items:center;flex:none"><img src="assets/thc-mark-cream.png" alt="The Hospitality Company" style="width:18px;height:20px;object-fit:contain"></div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px">Shifts</div>
+<div style="margin-left:auto;width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">JN</div>
+</div>
+<div style="display:flex;padding:0 20px 14px;gap:0">
+<span style="flex:1;text-align:center;font:600 13px Inter,sans-serif;padding:9px 0;background:#0B7A88;color:#F6F1EA">My shifts · 2</span>
+<span style="flex:1;text-align:center;font:500 13px Inter,sans-serif;padding:9px 0;border:1px solid #E2D6C7;border-left:none;color:#7A6B5C">Open shifts</span>
+</div>
+</div>
+
+<div style="position:relative;flex:1;overflow:hidden;padding:18px 20px;display:flex;flex-direction:column;gap:14px">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#1F7A4D">TODAY</div>
+<div style="background:rgba(255,252,247,.78);border:1px solid #0B7A88;padding:16px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+<div><div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px">Autumn Partners Dinner</div><div style="font:400 13px/1.45 Inter,sans-serif;color:#7A6B5C">Claridge's · The Ballroom<br>Brook Street, W1K 4HR</div></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;padding:4px 7px;background:rgba(11,122,136,.14);color:#0B7A88;border:1px solid rgba(11,122,136,.45);flex:none">TODAY</div>
+</div>
+<div style="display:flex;gap:18px;padding:12px 0;border-top:1px solid #E2D6C7;border-bottom:1px solid #E2D6C7">
+<div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;color:#7A6B5C">YOUR HOURS</div><div style="font:600 15px Inter,sans-serif">17:00 – 23:30</div></div>
+<div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;color:#7A6B5C">ROLE</div><div style="font:600 15px Inter,sans-serif">Waiting Staff</div></div>
+<div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;color:#7A6B5C">RATE</div><div style="font:600 15px Inter,sans-serif">£13.20/h</div></div>
+</div>
+<div style="font:400 12px/1.5 Inter,sans-serif;color:#7A6B5C">Dress code: Black tie · On-site contact: Marcus Bell, 07700 900188</div>
+<button style="font:700 15px Inter,sans-serif;padding:15px 18px;background:#0B7A88;border:none;color:#F6F1EA;width:100%;text-align:left;cursor:pointer" style-hover="background:#0f9aab">Check in — opens 16:30</button>
+</div>
+
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#7A6B5C;margin-top:4px">UPCOMING</div>
+<div style="background:rgba(255,252,247,.78);border:1px solid #B5730A;padding:16px;display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+<div><div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px">Harvest Gala</div><div style="font:400 13px Inter,sans-serif;color:#7A6B5C">Mandarin Oriental · Sat 26 Sep</div></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;padding:4px 7px;background:#B5730A;color:#F6F1EA;flex:none">NEEDS CONFIRMATION</div>
+</div>
+<div style="font:600 14px Inter,sans-serif">11:00 – 19:00 · Bar Staff</div>
+<div style="font:400 12px/1.5 Inter,sans-serif;color:#B5730A">Confirm by 12:00 today or you'll be removed from this shift.</div>
+<button style="font:700 14px Inter,sans-serif;padding:13px 16px;background:#B5730A;border:none;color:#F6F1EA;width:100%;text-align:left;cursor:pointer" style-hover="background:#8f5a06">I'm ready — confirm</button>
+</div>
+
+</div>
+
+<div style="position:relative;background:rgba(255,252,247,.72);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid rgba(226,214,199,.9);display:grid;grid-template-columns:repeat(4,1fr);padding:14px 0 28px">
+<div style="text-align:center;font:500 11px Inter,sans-serif;color:#7A6B5C">Documents</div>
+<div style="text-align:center;font:600 11px Inter,sans-serif;color:#0B7A88">Shifts</div>
+<div style="text-align:center;font:500 11px Inter,sans-serif;color:#7A6B5C">Invites</div>
+<div style="text-align:center;font:500 11px Inter,sans-serif;color:#7A6B5C">Radar</div>
+</div>
+</div>
+</div>
+
+<div id="M2" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:9px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;padding:4px 8px;background:#E2D6C7;color:#0B7A88">M2</span><span style="font:400 12px Inter,sans-serif;color:#7A6B5C">Invites · §10.4</span></div>
+<div data-screen-label="M2 Invites" style="width:390px;height:844px;background:#F6F1EA;border:1px solid #E2D6C7;position:relative;overflow:hidden;color:#241D16;display:flex;flex-direction:column">
+<div style="position:absolute;top:-110px;right:-80px;width:340px;height:340px;background:radial-gradient(circle,rgba(196,96,74,.18),transparent 68%);pointer-events:none"></div>
+<div style="position:relative;background:rgba(255,252,247,.6);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid rgba(226,214,199,.9)">
+<div style="display:flex;justify-content:space-between;padding:14px 20px 4px;font:600 13px Inter,sans-serif"><span>09:41</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7A6B5C">5G ▮▮▮ 84%</span></div>
+<div style="display:flex;align-items:center;gap:10px;padding:8px 20px 16px">
+<div style="width:30px;height:30px;background:#0B7A88;display:grid;place-items:center;flex:none"><img src="assets/thc-mark-cream.png" alt="The Hospitality Company" style="width:18px;height:20px;object-fit:contain"></div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px">Invites</div>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;padding:3px 6px;background:#0B7A88;color:#F6F1EA">2</span>
+<div style="margin-left:auto;width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">JN</div>
+</div>
+</div>
+
+<div style="position:relative;flex:1;padding:18px 20px;display:flex;flex-direction:column;gap:14px;overflow:hidden">
+<div style="background:rgba(255,252,247,.78);border:1px solid #E2D6C7;padding:16px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+<div><div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px">Waiting Staff</div><div style="font:400 13px/1.45 Inter,sans-serif;color:#7A6B5C">Autumn Partners Dinner<br>Claridge's · The Ballroom</div></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;padding:4px 7px;background:rgba(11,122,136,.14);color:#0B7A88;border:1px solid rgba(11,122,136,.45);flex:none">2.4 KM</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 0;border-top:1px solid #E2D6C7;border-bottom:1px solid #E2D6C7">
+<div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;color:#7A6B5C">FRI 25 SEP</div><div style="font:600 15px Inter,sans-serif">17:00 – 23:30</div></div>
+<div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;color:#7A6B5C">RATE</div><div style="font:600 15px Inter,sans-serif">£13.20/h</div></div>
+<div style="grid-column:1/-1"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;color:#7A6B5C">DRESS CODE</div><div style="font:500 14px Inter,sans-serif">Black tie · white shirt, black shoes</div></div>
+</div>
+<div style="display:flex;gap:10px">
+<button style="flex:1;font:700 14px Inter,sans-serif;padding:14px 16px;background:#0B7A88;border:none;color:#F6F1EA;text-align:left;cursor:pointer" style-hover="background:#0f9aab">Accept</button>
+<button style="flex:1;font:600 14px Inter,sans-serif;padding:14px 16px;background:transparent;border:1px solid #E2D6C7;color:#7A6B5C;text-align:left;cursor:pointer" style-hover="border-color:#C2402F;color:#C2402F">Decline</button>
+</div>
+</div>
+
+<div style="background:rgba(255,252,247,.6);border:1px solid #E2D6C7;padding:16px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px">
+<div><div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px">Bar Staff</div><div style="font:400 13px/1.45 Inter,sans-serif;color:#7A6B5C">Harvest Gala<br>Mandarin Oriental Hyde Park</div></div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.1em;padding:4px 7px;border:1px solid #E2D6C7;color:#7A6B5C;flex:none">6.1 KM</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:12px 0;border-top:1px solid #E2D6C7;border-bottom:1px solid #E2D6C7">
+<div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;color:#7A6B5C">SAT 26 SEP</div><div style="font:600 15px Inter,sans-serif">11:00 – 19:00</div></div>
+<div><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;color:#7A6B5C">RATE</div><div style="font:600 15px Inter,sans-serif">£13.80/h</div></div>
+<div style="grid-column:1/-1"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.12em;color:#7A6B5C">DRESS CODE</div><div style="font:500 14px Inter,sans-serif">Black polo, black trousers</div></div>
+</div>
+<div style="background:rgba(181,115,10,.1);border:1px solid rgba(181,115,10,.45);padding:12px;display:flex;flex-direction:column;gap:5px">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:#B5730A">LIMIT REACHED</div>
+<div style="font:400 12px/1.5 Inter,sans-serif;color:#241D16">You've worked 18 h of your 20 h this week. Accepting an 8 h shift would take you over — your limit resets Monday.</div>
+</div>
+<div style="display:flex;gap:10px">
+<button disabled style="flex:1;font:700 14px Inter,sans-serif;padding:14px 16px;background:#E2D6C7;border:none;color:#7A6B5C;text-align:left;opacity:.55">Accept</button>
+<button style="flex:1;font:600 14px Inter,sans-serif;padding:14px 16px;background:transparent;border:1px solid #E2D6C7;color:#7A6B5C;text-align:left;cursor:pointer" style-hover="border-color:#C2402F;color:#C2402F">Decline</button>
+</div>
+</div>
+
+</div>
+
+<div style="position:relative;background:rgba(255,252,247,.72);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid rgba(226,214,199,.9);display:grid;grid-template-columns:repeat(4,1fr);padding:14px 0 28px">
+<div style="text-align:center;font:500 11px Inter,sans-serif;color:#7A6B5C">Documents</div>
+<div style="text-align:center;font:500 11px Inter,sans-serif;color:#7A6B5C">Shifts</div>
+<div style="text-align:center;font:600 11px Inter,sans-serif;color:#0B7A88">Invites</div>
+<div style="text-align:center;font:500 11px Inter,sans-serif;color:#7A6B5C">Radar</div>
+</div>
+</div>
+</div>
+
+<div id="M3" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:9px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;padding:4px 8px;background:#E2D6C7;color:#0B7A88">M3</span><span style="font:400 12px Inter,sans-serif;color:#7A6B5C">Onboarding 1/11 · §10.3</span></div>
+<div data-screen-label="M3 Onboarding wizard" style="width:390px;height:844px;background:#F6F1EA;border:1px solid #E2D6C7;position:relative;overflow:hidden;color:#241D16;display:flex;flex-direction:column">
+<div style="position:absolute;top:-120px;left:-70px;width:320px;height:320px;background:radial-gradient(circle,rgba(214,132,66,.2),transparent 68%);pointer-events:none"></div>
+<div style="position:relative;background:rgba(255,252,247,.6);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid rgba(226,214,199,.9)">
+<div style="display:flex;justify-content:space-between;padding:14px 20px 4px;font:600 13px Inter,sans-serif"><span>09:41</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7A6B5C">5G ▮▮▮ 84%</span></div>
+<div style="display:flex;align-items:center;gap:10px;padding:8px 20px 12px">
+<div style="width:30px;height:30px;background:#0B7A88;display:grid;place-items:center;flex:none"><img src="assets/thc-mark-cream.png" alt="The Hospitality Company" style="width:18px;height:20px;object-fit:contain"></div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px">Get set up</div>
+<div style="margin-left:auto;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#0B7A88">1 / 11</div>
+</div>
+<div style="height:3px;background:#E2D6C7"><div style="width:9%;height:3px;background:#0B7A88"></div></div>
+</div>
+
+<div style="position:relative;flex:1;padding:18px 20px 16px;display:flex;flex-direction:column;gap:12px;overflow:hidden">
+<div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:24px;line-height:1.2">Your right to work</div>
+<div style="font:400 14px/1.55 Inter,sans-serif;color:#7A6B5C;margin-top:8px">Pick the one that describes you. We'll only ask for the documents that apply — nothing else.</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="border:1px solid #E2D6C7;background:rgba(255,252,247,.7);padding:15px 16px;display:flex;align-items:flex-start;gap:12px">
+<div style="width:18px;height:18px;border:1px solid #E2D6C7;flex:none;margin-top:2px"></div>
+<div><div style="font:600 15px Inter,sans-serif">UK or Irish citizen</div><div style="font:400 12px/1.5 Inter,sans-serif;color:#7A6B5C">Passport or birth certificate, plus proof of your NI number</div></div>
+</div>
+<div style="border:1px solid #E2D6C7;background:rgba(255,252,247,.7);padding:15px 16px;display:flex;align-items:flex-start;gap:12px">
+<div style="width:18px;height:18px;border:1px solid #E2D6C7;flex:none;margin-top:2px"></div>
+<div><div style="font:600 15px Inter,sans-serif">EU / EEA settled or pre-settled</div><div style="font:400 12px/1.5 Inter,sans-serif;color:#7A6B5C">Passport or ID, plus your share code</div></div>
+</div>
+<div style="border:1px solid #E2D6C7;background:rgba(255,252,247,.7);padding:15px 16px;display:flex;align-items:flex-start;gap:12px">
+<div style="width:18px;height:18px;border:1px solid #E2D6C7;flex:none;margin-top:2px"></div>
+<div><div style="font:600 15px Inter,sans-serif">Work visa</div><div style="font:400 12px/1.5 Inter,sans-serif;color:#7A6B5C">Passport, share code, visa type and expiry</div></div>
+</div>
+<div style="border:1px solid #0B7A88;background:rgba(11,122,136,.07);padding:15px 16px;display:flex;align-items:flex-start;gap:12px">
+<div style="width:18px;height:18px;background:#0B7A88;flex:none;margin-top:2px;display:grid;place-items:center;font:700 11px 'IBM Plex Mono',monospace;color:#F6F1EA">✓</div>
+<div><div style="font:600 15px Inter,sans-serif;color:#0B7A88">International student</div><div style="font:400 12px/1.5 Inter,sans-serif;color:#241D16">Passport, share code and your university term dates letter. Your weekly hours follow from those dates.</div></div>
+</div>
+<div style="border:1px solid #E2D6C7;background:rgba(255,252,247,.7);padding:15px 16px;display:flex;align-items:flex-start;gap:12px">
+<div style="width:18px;height:18px;border:1px solid #E2D6C7;flex:none;margin-top:2px"></div>
+<div><div style="font:600 15px Inter,sans-serif">Dependant or other visa</div><div style="font:400 12px/1.5 Inter,sans-serif;color:#7A6B5C">Passport, share code and your status document</div></div>
+</div>
+</div>
+
+<div style="margin-top:2px;display:flex;flex-direction:column;gap:7px">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:#7A6B5C">SHARE CODE</div>
+<input value="W12 3AB 4CD" style="background:rgba(255,252,247,.8);border:1px solid #0B7A88;color:#241D16;font:500 16px 'IBM Plex Mono',monospace;letter-spacing:.08em;padding:14px 14px;width:100%">
+<div style="font:400 11px/1.5 Inter,sans-serif;color:#7A6B5C">9 characters beginning with W. We check it with gov.uk using your date of birth — you don't upload anything.</div>
+</div>
+
+<button style="margin-top:auto;font:700 15px Inter,sans-serif;padding:16px 18px;background:#0B7A88;border:none;color:#F6F1EA;width:100%;text-align:left;cursor:pointer" style-hover="background:#0f9aab">Continue</button>
+</div>
+</div>
+</div>
+
+<div id="M4" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:9px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;padding:4px 8px;background:#E2D6C7;color:#0B7A88">M4</span><span style="font:400 12px Inter,sans-serif;color:#7A6B5C">On shift — check-out + breaks · §5</span></div>
+<div data-screen-label="M4 On shift" style="width:390px;height:844px;background:#F6F1EA;border:1px solid #E2D6C7;position:relative;overflow:hidden;color:#241D16;display:flex;flex-direction:column">
+<div style="position:absolute;bottom:60px;left:-90px;width:340px;height:340px;background:radial-gradient(circle,rgba(201,154,60,.2),transparent 68%);pointer-events:none"></div>
+<div style="position:relative;background:rgba(255,252,247,.6);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-bottom:1px solid rgba(226,214,199,.9)">
+<div style="display:flex;justify-content:space-between;padding:14px 20px 4px;font:600 13px Inter,sans-serif"><span>19:12</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7A6B5C">5G ▮▮▮ 71%</span></div>
+<div style="display:flex;align-items:center;gap:10px;padding:8px 20px 14px">
+<div style="width:30px;height:30px;background:#0B7A88;display:grid;place-items:center;flex:none"><img src="assets/thc-mark-cream.png" alt="The Hospitality Company" style="width:18px;height:20px;object-fit:contain"></div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px">On shift</div>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;padding:3px 7px;background:rgba(31,122,77,.15);color:#1F7A4D;border:1px solid rgba(31,122,77,.5)">GPS ON SITE</span>
+<div style="margin-left:auto;width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">JN</div>
+</div>
+</div>
+
+<div style="position:relative;flex:1;padding:18px 20px;display:flex;flex-direction:column;gap:14px;overflow:hidden">
+<div style="background:rgba(255,252,247,.78);border:1px solid #E2D6C7;padding:16px;display:flex;flex-direction:column;gap:6px">
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:17px">Autumn Partners Dinner</div>
+<div style="font:400 13px Inter,sans-serif;color:#7A6B5C">Claridge's · The Ballroom · Waiting Staff</div>
+<div style="font:600 14px Inter,sans-serif;margin-top:4px">17:00 – 23:30</div>
+</div>
+
+<div style="background:rgba(255,252,247,.78);border:1px solid #1F7A4D;padding:20px 16px;display:flex;flex-direction:column;gap:14px">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#1F7A4D">CHECKED IN 16:58 · ON SITE</div>
+<div style="display:flex;align-items:baseline;gap:10px">
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:44px;line-height:1">2:14</div>
+<div style="font:400 13px Inter,sans-serif;color:#7A6B5C">chargeable so far</div>
+</div>
+<div style="height:6px;background:#E2D6C7"><div style="width:34%;height:6px;background:#1F7A4D"></div></div>
+<div style="font:400 12px/1.5 Inter,sans-serif;color:#7A6B5C">Paid from 17:00, your scheduled start — arriving early isn't paid. Stay inside the venue area or the office is alerted.</div>
+</div>
+
+<div style="background:rgba(255,252,247,.78);border:1px solid #E2D6C7;padding:16px;display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;align-items:center;gap:10px">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#7A6B5C">BREAKS</div>
+<span style="margin-left:auto;font:500 12px Inter,sans-serif;color:#7A6B5C">1 taken · last 18:05 · 22 min total</span>
+</div>
+<div style="background:rgba(181,115,10,.1);border:1px solid rgba(181,115,10,.4);padding:11px 12px;font:400 12px/1.5 Inter,sans-serif;color:#B5730A">A break will be applied to all shifts over 6 hours — please check with your Manager on site.</div>
+<button style="font:700 14px Inter,sans-serif;padding:14px 16px;background:transparent;border:1px solid #0B7A88;color:#0B7A88;width:100%;text-align:left;cursor:pointer" style-hover="background:rgba(11,122,136,.12)">Start break</button>
+<div style="font:400 11px/1.5 Inter,sans-serif;color:#7A6B5C">This client doesn't pay for breaks, so break time comes off your hours. You can take more than one.</div>
+</div>
+
+
+<button style="margin-top:auto;font:700 15px Inter,sans-serif;padding:16px 18px;background:transparent;border:1px solid #E2D6C7;color:#7A6B5C;width:100%;text-align:left;cursor:pointer" style-hover="border-color:#0B7A88;color:#0B7A88">Check out — available from 23:15</button>
+</div>
+
+<div style="position:relative;background:rgba(255,252,247,.72);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid rgba(226,214,199,.9);display:grid;grid-template-columns:repeat(4,1fr);padding:14px 0 28px">
+<div style="text-align:center;font:500 11px Inter,sans-serif;color:#7A6B5C">Documents</div>
+<div style="text-align:center;font:600 11px Inter,sans-serif;color:#0B7A88">Shifts</div>
+<div style="text-align:center;font:500 11px Inter,sans-serif;color:#7A6B5C">Invites</div>
+<div style="text-align:center;font:500 11px Inter,sans-serif;color:#7A6B5C">Radar</div>
+</div>
+</div>
+</div>
+
+<div id="M5" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:9px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;padding:4px 8px;background:#E2D6C7;color:#0B7A88">M5</span><span style="font:400 12px Inter,sans-serif;color:#7A6B5C">Profile sheet + Request my P45 · §10.1, §10.6</span></div>
+<div data-screen-label="M5 Profile sheet" style="width:390px;height:844px;background:#F6F1EA;border:1px solid #E2D6C7;position:relative;overflow:hidden;color:#241D16;display:flex;flex-direction:column">
+<div style="position:absolute;top:-110px;left:-70px;width:320px;height:320px;background:radial-gradient(circle,rgba(214,132,66,.18),transparent 68%);pointer-events:none"></div>
+
+<div style="position:relative;flex:1;padding:18px 20px;display:flex;flex-direction:column;gap:14px;opacity:.28;filter:blur(1px)">
+<div style="display:flex;justify-content:space-between;font:600 13px Inter,sans-serif"><span>09:41</span><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#7A6B5C">5G ▮▮▮ 84%</span></div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:16px">Shifts</div>
+<div style="border:1px solid #E2D6C7;height:150px"></div>
+<div style="border:1px solid #E2D6C7;height:130px"></div>
+</div>
+
+<div style="position:absolute;left:0;right:0;bottom:0;background:rgba(255,252,247,.88);backdrop-filter:blur(26px);-webkit-backdrop-filter:blur(26px);border-top:1px solid #0B7A88;padding:20px 20px 30px;display:flex;flex-direction:column;gap:16px">
+<div style="width:44px;height:4px;background:#E2D6C7;align-self:center"></div>
+<div style="display:flex;align-items:center;gap:14px">
+<div style="width:52px;height:52px;background:#E2D6C7;display:grid;place-items:center;font:600 16px 'IBM Plex Mono',monospace;color:#0B7A88">JN</div>
+<div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:19px">Joy Nwosu</div>
+<div style="font:400 12px Inter,sans-serif;color:#7A6B5C">Employee ID 10318 · Waiting Staff, Bar Staff</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#E2D6C7;border:1px solid #E2D6C7">
+<div style="background:#FFFCF7;padding:12px 10px"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:#7A6B5C">RATING</div><div style="font:700 17px Inter,sans-serif;color:#1F7A4D">4.8</div></div>
+<div style="background:#FFFCF7;padding:12px 10px"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:#7A6B5C">SHOW-RATE</div><div style="font:700 17px Inter,sans-serif">98%</div></div>
+<div style="background:#FFFCF7;padding:12px 10px"><div style="font-family:'IBM Plex Mono',monospace;font-size:9px;letter-spacing:.1em;color:#7A6B5C">THIS WEEK</div><div style="font:700 17px Inter,sans-serif">18 / 20 h</div></div>
+</div>
+
+<div style="display:flex;flex-direction:column">
+<div style="padding:15px 2px;border-bottom:1px solid #E2D6C7;font:500 15px Inter,sans-serif;display:flex">Profile details<span style="margin-left:auto;color:#7A6B5C">›</span></div>
+<div style="padding:15px 2px;border-bottom:1px solid #E2D6C7;font:500 15px Inter,sans-serif;display:flex">Security settings<span style="margin-left:auto;color:#7A6B5C">›</span></div>
+<div style="padding:15px 2px;border-bottom:1px solid #E2D6C7;font:500 15px Inter,sans-serif;display:flex">Payment information<span style="margin-left:auto;color:#7A6B5C">›</span></div>
+<div style="padding:15px 2px;border-bottom:1px solid #E2D6C7;font:500 15px Inter,sans-serif;color:#7A6B5C;display:flex">Sign out<span style="margin-left:auto">›</span></div>
+</div>
+
+<div style="font:400 12px/1.5 Inter,sans-serif;color:#7A6B5C">Need help? Please contact us at: admin@thehospitalitycompany.co.uk</div>
+
+<div style="border-top:1px solid #E2D6C7;padding-top:16px;display:flex;flex-direction:column;gap:8px">
+<button style="font:500 14px Inter,sans-serif;padding:13px 14px;background:transparent;border:1px solid rgba(194,64,47,.4);color:#C2402F;width:100%;text-align:left;cursor:pointer" style-hover="background:rgba(194,64,47,.1)">Request my P45</button>
+<div style="font:400 11px/1.5 Inter,sans-serif;color:#7A6B5C">You'll be taken off every shift you're booked on and won't be invited again unless you re-apply.</div>
+</div>
+</div>
+</div>
+</div>
+
+</div>
+</section>
+
+<section style="padding:44px 56px 64px;border-top:1px solid #E2D6C7">
+<div style="display:flex;align-items:baseline;gap:12px;margin-bottom:8px">
+<span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.14em;padding:5px 9px;background:#0B7A88;color:#F6F1EA">PART IV</span>
+<span style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:18px;color:#241D16">Client Portal · web, responsive</span>
+</div>
+<div style="font:400 13px/1.6 Inter,sans-serif;color:#7A6B5C;max-width:880px;margin-bottom:26px">The customer sees their own events and the line-up only. No pay rates, no charge rates, no totals, no margin — §1.4.</div>
+
+<div id="CP1" style="display:flex;flex-direction:column;gap:10px;scroll-margin-top:16px">
+<div style="display:flex;align-items:baseline;gap:10px"><span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.12em;padding:4px 8px;background:#E2D6C7;color:#0B7A88">CP1</span><span style="font:400 12px Inter,sans-serif;color:#7A6B5C">Event + line-up · §11.1</span></div>
+<div data-screen-label="CP1 Client Portal event" style="width:1180px;background:#F6F1EA;border:1px solid #E2D6C7;color:#241D16">
+<div style="height:66px;border-bottom:1px solid #E2D6C7;display:flex;align-items:center;gap:14px;padding:0 32px;background:#FFFCF7">
+<div style="width:34px;height:34px;background:#0B7A88;display:grid;place-items:center;flex:none"><img src="assets/thc-mark-cream.png" alt="The Hospitality Company" style="width:20px;height:23px;object-fit:contain"></div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:14px">The Hospitality Company</div>
+<div style="display:flex;gap:22px;margin-left:32px">
+<span style="font:600 13px Inter,sans-serif;color:#0B7A88;border-bottom:2px solid #0B7A88;padding:22px 0">My events</span>
+<span style="font:500 13px Inter,sans-serif;color:#7A6B5C;padding:22px 0">Timesheets</span>
+<span style="font:500 13px Inter,sans-serif;color:#7A6B5C;padding:22px 0">Feedback</span>
+</div>
+<div style="margin-left:auto;display:flex;align-items:center;gap:10px"><div style="width:30px;height:30px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">CL</div><div style="font:500 13px Inter,sans-serif">Claridge's</div></div>
+</div>
+
+<div style="padding:26px 32px 34px;display:flex;flex-direction:column;gap:22px">
+<div style="display:flex;align-items:flex-start;gap:16px;flex-wrap:wrap">
+<div>
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:26px">Autumn Partners Dinner</div>
+<div style="font:400 14px Inter,sans-serif;color:#7A6B5C;margin-top:6px">Friday 25 September 2026 · The Ballroom, Brook Street W1K 4HR</div>
+</div>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;padding:5px 9px;border:1px solid #0B7A88;color:#0B7A88;margin-top:6px">UPCOMING</span>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;padding:5px 9px;background:#E2D6C7;margin-top:6px">PO · CLA-44192</span>
+<div style="margin-left:auto;text-align:right">
+<div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:#7A6B5C">EVENT WINDOW</div>
+<div style="font:600 15px Inter,sans-serif">07:00 – 23:30 UK time</div>
+<div style="font:400 13px Inter,sans-serif;color:#7A6B5C">09:00 – 01:30 your time</div>
+</div>
+</div>
+
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:#E2D6C7;border:1px solid #E2D6C7">
+<div style="background:#FFFCF7;padding:18px 20px"><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#7A6B5C">STAFF BOOKED</div><div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:30px;margin-top:6px">21 of 26</div></div>
+<div style="background:#FFFCF7;padding:18px 20px"><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#7A6B5C">ROLES</div><div style="font-family:'Space Grotesk',sans-serif;font-weight:700;font-size:30px;margin-top:6px">3</div></div>
+<div style="background:#FFFCF7;padding:18px 20px"><div style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.14em;color:#7A6B5C">ON-SITE CONTACT</div><div style="font:600 16px Inter,sans-serif;margin-top:10px">Marcus Bell · 07700 900188</div></div>
+</div>
+
+<div style="border:1px solid #E2D6C7;background:#FFFCF7">
+<div style="padding:16px 20px;border-bottom:1px solid #E2D6C7;display:flex;align-items:center;gap:12px">
+<div style="font-family:'Space Grotesk',sans-serif;font-weight:600;font-size:15px">Line-up</div>
+<span style="font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.12em;color:#7A6B5C">CONFIRMED STAFF, BY ROLE</span>
+</div>
+
+<div style="padding:15px 20px;border-bottom:1px solid #E2D6C7;display:flex;align-items:center;gap:14px;background:rgba(11,122,136,.03)">
+<div style="font:600 14px Inter,sans-serif">Chef de Partie</div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;color:#7A6B5C">07:00 – 15:00 UK TIME · 09:00 – 17:00 YOUR TIME</div>
+<div style="margin-left:auto;font:500 13px Inter,sans-serif;color:#1F7A4D">4 of 5 confirmed</div>
+</div>
+<div style="padding:14px 20px;border-bottom:1px solid #E2D6C7;display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
+<div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">AO</div><div style="font:500 13px Inter,sans-serif">Adaeze Okafor</div></div>
+<div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">MR</div><div style="font:500 13px Inter,sans-serif">Marek Rusnák</div></div>
+<div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">SB</div><div style="font:500 13px Inter,sans-serif">Sana Bhatt</div></div>
+<div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">LP</div><div style="font:500 13px Inter,sans-serif">Luis Peralta</div></div>
+<div style="display:flex;align-items:center;gap:10px;opacity:.5"><div style="width:34px;height:34px;border:1px dashed #E2D6C7"></div><div style="font:400 13px Inter,sans-serif;color:#7A6B5C">Being filled</div></div>
+</div>
+
+<div style="padding:15px 20px;border-bottom:1px solid #E2D6C7;display:flex;align-items:center;gap:14px;background:rgba(11,122,136,.03)">
+<div style="font:600 14px Inter,sans-serif">Waiting Staff</div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;color:#7A6B5C">17:00 – 23:30 UK TIME · 19:00 – 01:30 YOUR TIME</div>
+<div style="margin-left:auto;font:500 13px Inter,sans-serif;color:#1F7A4D">14 of 16 confirmed</div>
+</div>
+<div style="padding:14px 20px;border-bottom:1px solid #E2D6C7;display:grid;grid-template-columns:repeat(5,1fr);gap:12px">
+<div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">JN</div><div style="font:500 13px Inter,sans-serif">Joy Nwosu</div></div>
+<div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">RA</div><div style="font:500 13px Inter,sans-serif">Rhea Abraham</div></div>
+<div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#0B7A88">EF</div><div style="font:500 13px Inter,sans-serif">Eli Forsberg</div></div>
+<div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;background:#E2D6C7;display:grid;place-items:center;font:600 11px 'IBM Plex Mono',monospace;color:#7A6B5C">—</div><div style="font:500 13px Inter,sans-serif;color:#7A6B5C">Deleted account #8841</div></div>
+<div style="display:flex;align-items:center;gap:10px;font:400 13px Inter,sans-serif;color:#7A6B5C">+ 10 more</div>
+</div>
+
+<div style="padding:15px 20px;display:flex;align-items:center;gap:14px;background:rgba(11,122,136,.03)">
+<div style="font:600 14px Inter,sans-serif">Bar Staff</div>
+<div style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.08em;color:#7A6B5C">18:00 – 23:30 UK TIME · 20:00 – 01:30 YOUR TIME</div>
+<div style="margin-left:auto;font:500 13px Inter,sans-serif;color:#B5730A">3 of 5 confirmed</div>
+</div>
+</div>
+
+<div style="display:flex;gap:12px;align-items:center">
+<button style="font:600 13px Inter,sans-serif;padding:11px 18px;background:#0B7A88;border:none;color:#F6F1EA;text-align:left;cursor:pointer" style-hover="background:#0f9aab">Download allocation sheet</button>
+<div style="font:400 12px Inter,sans-serif;color:#7A6B5C">Sent from timesheets@thehospitalitycompany.co.uk the day before the event.</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1560,&quot;height&quot;:1000}}"></script>
+</body>
+</html>

@@ -12,7 +12,7 @@ You are the platform bot for The Hospitality Company platform. Read `CLAUDE.md`,
 
 ## Rules
 
-- Every table has RLS enabled and policies for admin / client / staff, with a pgTAP test per role in `supabase/tests/`. Client access goes only through `security_invoker` views that expose no charge/pay/margin columns.
+- Every table has RLS enabled and policies for admin / client / staff, with a pgTAP test per role in `supabase/tests/`. The client role gets a policy only on a table with no money and no worker personal data; everything else it reads is a `client_*` view that filters by `client_portal_visible()` and names its columns (ADR-0004). Never add a client policy to `roles`, `shift_requirements`, `bookings` or `staff`.
 - Migrations are forward-only, numbered `NNNN_name.sql`, and never edit an applied file.
 - All scheduled jobs (§7) are defined in `0002_cron.sql` as `cron.schedule` → `net.http_post` to an Edge Function; every job writes a `job_runs` row and is idempotent (outbox keys, `for update skip locked`). Times are Europe/London; convert to UTC in the cron expression and leave a comment about DST.
 - Auth: email+password for admin/client; workers are invited (`generateLink` type `invite`) and land on `/activate`. Role is `profiles.role`; each app's middleware redirects a wrong role to its own app's login (§1.4).
