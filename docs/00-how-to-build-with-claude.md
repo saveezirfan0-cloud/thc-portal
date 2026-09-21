@@ -10,9 +10,9 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 379 | `pnpm test` |
-| Browser smoke | 35 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 538 | `supabase test db` |
+| Unit | 407 | `pnpm test` |
+| Browser smoke | 41 | `pnpm turbo e2e:smoke` |
+| Database, row-level security and rules | 562 | `supabase test db` |
 
 What exists:
 
@@ -43,8 +43,16 @@ What exists:
   the four-hour minimum per role section, the derived event window (RULE-18), the
   allocation default of headcount + buffer, and the edit lock at the event's start.
 
-What does not exist yet: every screen in Phases 1 to 7 apart from the application form
-and the Shift Builder, the Supabase project, and the Vercel projects. Two pieces the
+- **The Client Portal** at `/client` and `/client/events/:id` (§11.1, §11.2), the whole
+  customer-facing app: the event list with "N of M confirmed" and the confirmed workers'
+  faces, the event page grouped by role, and the feedback popup. Its reads go through the
+  three owner-rights `client_*` views (ADR-0004) and its one write goes through
+  `submit_client_feedback()`, which re-checks tenancy, confirmed status, the event having
+  started and one-entry-per-worker-per-event — a disabled button stops nobody. §11.3's
+  PDFs are not built, so the document buttons say so rather than linking nowhere.
+
+What does not exist yet: every screen in Phases 1 to 7 apart from the application form,
+the Shift Builder and the Client Portal, the Supabase project, and the Vercel projects. Two pieces the
 Shift Builder leans on are also outstanding and belong to later sessions:
 
 - **Auto-assign itself** (§3.4). The switches and the per-role allocation are stored; no
