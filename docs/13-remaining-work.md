@@ -30,6 +30,10 @@ Also built, server side only, with no screen in front of any of it:
   and four of the ten background rules — `booking-tick` (BG-01/02/02b/03/09/10),
   `auto-staffing` (the hourly, 12:05 cutoff and escalation rounds) and `compliance-daily`
   (BG-04/05, plus the §4.3 block cascade and the §4.4 cap-band change)
+- leaving (§10.6, `request_p45`) and the in-employment conviction declaration (§10.7,
+  `declare_conviction`), both of which reuse the §4.3 cascade, plus the §2.12 staff state
+  machine in SQL — which nothing had, though CLAUDE.md asks for every state change to be
+  rejected in the database too. A Vitest holds it to `STAFF_TRANSITIONS` edge for edge.
 
 Not built: every screen bar sign-in, the venues directory and the roles directory. Of the
 background rules, BG-06/07 (geofence) wait on the geolocation shell and BG-08 on the
@@ -329,6 +333,11 @@ is built — see `docs/14` O10.
 
 ## S4 · Documents hub and conviction declaration (§10.4, §10.7)
 
+> **The server side of §10.7 is built.** `declare_conviction()` adds the declaration to the
+> history, suspends the worker exactly as an expired document does, and queues E9 without
+> the declaration text. Verify and Reject on the row already do what §10.7 says. What is
+> left here is the screen and the grant (docs/14 O10).
+
 > Use the `compliance` agent. Branch `feat/compliance-staff-documents`.
 >
 > Build the worker's Documents tab with every state, re-upload after rejection, and the
@@ -373,6 +382,11 @@ is built — see `docs/14` O10.
 > Requesting a P45 makes the worker inactive with a leaving date and fires E8 immediately
 > rather than in a batch. Inactive is the leaver state: entered only this way, and left
 > only by a manager pressing Reset to candidate. There is no reactivate.
+>
+> **The server side of this is built.** `request_p45()` does the whole §10.6 cascade and
+> queues E8 with the released-shift list; it refuses while the worker is checked in, so
+> the greyed-out button has a rule behind it. What is left here is the screen, and the
+> grant: the function is service-role only until there is a caller (docs/14 O10).
 >
 > Profile edits fire E5, E6 and E7. An email change needs verification.
 >

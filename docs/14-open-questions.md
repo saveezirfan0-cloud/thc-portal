@@ -482,5 +482,14 @@ that is not mine to do here:
    cannot occur and the N14 it promises cannot fire. The rules are in place and will act
    the morning after that write lands.
 
-None of the three blocks the other work. They are recorded so that "compliance is built"
-is not read as "workers are being told".
+4. **`request_p45()` and `declare_conviction()` are service-role only too, and for a
+   sharper reason.** Both take a staff id and neither checks that it is the *caller's* —
+   they are written for a server action holding the service key, which is how the Staff
+   App reaches every other write path. Granting either to `authenticated` as they stand
+   would let any signed-in worker retire a colleague or suspend them on a fabricated
+   declaration. Whoever builds S4 and S6 either keeps the server-action shape or adds the
+   self-check and the grant in the same commit — never the grant alone.
+
+None of these blocks the other work. They are recorded so that "compliance is built" is
+not read as "workers are being told", and so that the missing grants read as deliberate
+rather than forgotten.

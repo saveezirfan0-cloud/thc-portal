@@ -38,7 +38,12 @@ select is_empty(
           -- one that matters most here: a revoke that takes the service
           -- role's grant with it means an expired document never blocks
           -- anybody, and the only symptom is a job 500ing at 05:00.
-          'compliance_daily', 'block_worker', 'unblock_if_compliant'
+          'compliance_daily', 'block_worker', 'unblock_if_compliant',
+          -- §10.6 / §10.7 (20260921180312). Both are worker-initiated and
+          -- reach the database through a server action holding the service
+          -- key, so a revoke that took this grant with it would make
+          -- "Request my P45" fail silently for every leaver.
+          'request_p45', 'declare_conviction', 'released_shift_lines'
         )
         and not has_function_privilege('service_role', p.oid, 'execute') $$,
   'the service role can execute every function the §7 jobs call'
