@@ -2234,7 +2234,7 @@ textarea.input {
   border: 1px solid var(--line);
   background: var(--line);
   gap: 1px;
-  border-radius: var(--r);
+  border-radius: var(--r-card);
   overflow: hidden;
 }
 .cal .dh {
@@ -2299,7 +2299,7 @@ textarea.input {
   align-items: center;
   white-space: nowrap;
   overflow: hidden;
-  border-radius: var(--r-xs);
+  border-radius: var(--r-pill);
 }
 :root[data-theme='light'] .evchip {
   background: var(--panel-2);
@@ -2339,7 +2339,7 @@ textarea.input {
   align-items: center;
   border: 1px solid var(--line);
   background: var(--panel);
-  border-radius: var(--r-sm);
+  border-radius: var(--r-control);
   overflow: hidden;
 }
 .datenav button,

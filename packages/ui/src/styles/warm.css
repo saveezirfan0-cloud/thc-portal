@@ -142,7 +142,10 @@
 
 /* ---- calendar -------------------------------------------------------
    Warm drops the hairline grid for spaced cards, the way every other
-   warm surface reads, and thickens the chip's fill border to match. */
+   warm surface reads, and thickens the chip's fill border to match.
+   thc.css gives the day cell a drop shadow here; the design system does
+   not cast one anywhere (ADR-0007), so the gap and the panel fill carry
+   the separation instead. */
 :root[data-style='warm'] .cal {
   border: 0;
   gap: 6px;
@@ -152,8 +155,7 @@
   background: transparent;
 }
 :root[data-style='warm'] .cal .day {
-  border-radius: var(--r-sm);
-  box-shadow: var(--shadow-card);
+  border-radius: var(--r-card);
 }
 :root[data-style='warm'] .evchip {
   border-left-width: 4px;
