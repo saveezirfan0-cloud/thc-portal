@@ -1,29 +1,30 @@
 'use server';
 
-import { cookies, headers } from 'next/headers';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@thc/db/server';
-import {
-  APPLY_EMAIL_COOKIE,
-  errorForDatabaseCode,
-  MESSAGES,
-  summaryMessage,
-  validateApplication,
-  type ApplicationDraft,
-  type ApplyState,
-} from './application';
-import { DEFAULT_ISO } from './countries';
+import { SENT_TO_COOKIE, toE164, validate } from './form';
+import type { ApplicationValues, ApplyState } from './form';
+
+function read(formData: FormData): ApplicationValues {
+  return {
+    firstName: String(formData.get('firstName') ?? ''),
+    lastName: String(formData.get('lastName') ?? ''),
+    email: String(formData.get('email') ?? ''),
+    dialCode: String(formData.get('dialCode') ?? '+44'),
+    mobile: String(formData.get('mobile') ?? ''),
+    ageBand: String(formData.get('ageBand') ?? ''),
+    consent: formData.get('consent') === 'on',
+  };
+}
 
 /**
- * The shape of `submit_application` (the public application migration).
- *
- * `packages/db`'s generated types are still the Phase 0 placeholder
- * (`Functions: Record<string, never>`), so the typed client cannot name an
- * RPC yet. Rather than widen the client to `any`, the one call this page
- * makes is described here. Delete this the moment
- * `pnpm --filter @thc/db gen:types` has been run against a real project.
+ * `packages/db` ships a placeholder `Database` type until the project exists
+ * and `pnpm --filter @thc/db gen:types` can run (docs/04), so it declares no
+ * functions and `.rpc()` cannot be typed from the schema yet. The one call
+ * this page makes is typed by hand here instead of loosening the shared type.
  */
-interface ApplicationRpc {
+interface RpcClient {
   rpc(
     fn: 'submit_application',
     args: {
@@ -34,104 +35,65 @@ interface ApplicationRpc {
       p_age_band: string;
       p_consent: boolean;
     },
-  ): Promise<{ error: { message: string } | null }>;
+  ): Promise<{ error: { message: string; code?: string } | null }>;
 }
 
 /**
- * Carries the address to the confirmation screen, which echoes it back so
- * the applicant can spot their own typo (§2.7).
+ * Submit an application (§2.1).
  *
- * It is a cookie rather than a query parameter because a live email
- * address in a URL ends up in browser history, in access logs and in any
- * future Referer header, which is not how §1.7 asks personal data to be
- * handled. Scoped to the one path that reads it and short-lived: a
- * Server Component cannot clear a cookie during render, so the expiry is
- * what removes it.
+ * The validation here is not the form's validation repeated for politeness:
+ * it is the second of the three gates §2.1 asks for, and it runs on input
+ * that never touched the form. The third is `submit_application()`, which is
+ * also where the §2.12 duplicate check lives — deliberately not here, because
+ * a returning applicant must be indistinguishable from a new one to anyone
+ * holding this page.
  */
-const EMAIL_COOKIE_MAX_AGE_SECONDS = 600;
+export async function apply(_prev: ApplyState, formData: FormData): Promise<ApplyState> {
+  const values = read(formData);
+  const errors = validate(values);
+  if (Object.keys(errors).length > 0) return { errors, values };
 
-function draftFrom(formData: FormData): ApplicationDraft {
-  return {
-    firstName: String(formData.get('firstName') ?? ''),
-    lastName: String(formData.get('lastName') ?? ''),
-    email: String(formData.get('email') ?? ''),
-    country: String(formData.get('country') ?? '') || DEFAULT_ISO,
-    mobile: String(formData.get('mobile') ?? ''),
-    ageBand: String(formData.get('ageBand') ?? ''),
-    consent: formData.get('consent') === 'on',
-  };
-}
-
-/**
- * Public application submission (§2.1).
- *
- * Nothing here tells the applicant what happened to their submission
- * beyond "we got it": a returning applicant (§2.12) and a brand-new
- * candidate both land on /apply/submitted, because the applicant is never
- * told why a previous record was blocked. The office sees the difference
- * on the Onboarding screen; the browser cannot.
- */
-export async function submitApplication(
-  _prev: ApplyState,
-  formData: FormData,
-): Promise<ApplyState> {
-  const draft = draftFrom(formData);
-
-  const checked = validateApplication(draft);
-  if (!checked.ok) {
-    return { errors: checked.errors, summary: summaryMessage(checked.errors) };
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    // Not wired to a project yet (docs/04). Say so rather than throwing a 500.
+    return {
+      errors: {},
+      values,
+      failure: 'Applications are not open yet — this environment has no Supabase project.',
+    };
   }
 
-  // The anon key is the point: /apply is public, and `submit_application`
-  // is `security definer`, so this is the only door into `staff` a
-  // logged-out caller has (see 040_rls_anon.sql).
-  //
-  // `createClient` throws when the environment has no Supabase project
-  // (docs/04). Reading the environment through it rather than here is
-  // deliberate: `packages/db` looks the variables up dynamically, so the
-  // answer is the one the running server has, not the one the machine
-  // that built it had.
-  const cookieStore = await cookies();
-
-  let supabase: ApplicationRpc;
-  try {
-    supabase = createClient(cookieStore) as unknown as ApplicationRpc;
-  } catch {
-    // Say so rather than pretend the application was filed: a silently
-    // swallowed application is worse than an honest failure.
-    return { errors: {}, summary: MESSAGES.unavailable };
-  }
+  const email = values.email.trim().toLowerCase();
+  const jar = await cookies();
+  const supabase = createClient(jar) as unknown as RpcClient;
 
   const { error } = await supabase.rpc('submit_application', {
-    p_first_name: checked.value.firstName,
-    p_last_name: checked.value.lastName,
-    p_email: checked.value.email,
-    p_phone: checked.value.phone,
-    p_age_band: checked.value.ageBand,
-    // Passed through rather than hard-coded, so the SQL consent gate is
-    // exercised by the real client and not only by a direct RPC caller.
-    p_consent: checked.value.consent,
+    p_first_name: values.firstName.trim(),
+    p_last_name: values.lastName.trim(),
+    p_email: email,
+    p_phone: toE164(values.dialCode, values.mobile),
+    p_age_band: values.ageBand,
+    p_consent: values.consent,
   });
 
   if (error) {
-    const fieldErrors = errorForDatabaseCode(error.message);
-    if (Object.keys(fieldErrors).length > 0) {
-      return { errors: fieldErrors, summary: summaryMessage(fieldErrors) };
-    }
-    console.error('submit_application failed', error.message);
-    return { errors: {}, summary: MESSAGES.unavailable };
+    // 22023 is the function's own validation, so its message is copy written
+    // for the applicant. Anything else is ours to own, not theirs to read.
+    const message =
+      error.code === '22023'
+        ? error.message
+        : 'Something went wrong sending your application. Please try again.';
+    return { errors: {}, values, failure: message };
   }
 
-  cookieStore.set(APPLY_EMAIL_COOKIE, checked.value.email, {
+  // The address is shown back on the next screen. It goes in a short-lived
+  // cookie rather than the URL so it stays out of browser history, server
+  // logs and the referrer sent to the privacy-notice link.
+  jar.set(SENT_TO_COOKIE, email, {
     httpOnly: true,
     sameSite: 'lax',
-    // Behind Vercel this is https; over plain http (local, CI) a secure
-    // cookie would simply never be stored.
-    secure: (await headers()).get('x-forwarded-proto') === 'https',
-    path: '/apply/submitted',
-    maxAge: EMAIL_COOKIE_MAX_AGE_SECONDS,
+    maxAge: 600,
+    path: '/apply',
   });
 
-  // `redirect` throws, so it has to sit outside any try/catch.
   redirect('/apply/submitted');
 }

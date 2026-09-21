@@ -38,7 +38,7 @@ select bag_eq(
             ('push_subscriptions'),('quiz_attempts'),('report_sends'),('roles'),('settings'),
             ('shift_requirements'),('staff'),('staff_references'),('staff_roles'),
             ('venue_types'),('venues'),('violations') $$,
-  'RLS is enabled on all 31 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, and applications from the public form migration'
+  'RLS is enabled on all 31 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, and applications from the public form'
 );
 
 -- ---------------------------------------------------------------------
