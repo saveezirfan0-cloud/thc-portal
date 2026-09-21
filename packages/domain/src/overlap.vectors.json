@@ -1,0 +1,246 @@
+{
+  "$comment": [
+    "Shared test vectors for booked-elsewhere, Scope §3.4 (the 14.07.2026 decision).",
+    "The contract between packages/domain/src/overlap.ts and the SQL",
+    "booked_elsewhere_conflict(). Both must return the same verdict for every",
+    "case here. Owned by the `scheduling` bot.",
+    "",
+    "Only the worker's other CONFIRMED bookings are ever fed in; an invitation",
+    "they have not accepted never excludes them, so there are no invited cases.",
+    "",
+    "Times are UTC ISO-8601 without a zone suffix, read as instants. The rule is",
+    "pure arithmetic on two windows, so the zone only has to be consistent.",
+    "",
+    "supabase/tests/_shared/overlap_vectors.psql is GENERATED from this file by",
+    "supabase/tests/_shared/overlap-vectors.mjs. Re-run it after any edit:",
+    "  node supabase/tests/_shared/overlap-vectors.mjs",
+    "The Vitest suite fails if the generated file has drifted."
+  ],
+  "cases": [
+    {
+      "name": "Different venues, a clear four-hour gap",
+      "candidate": {
+        "startsAt": "2026-11-02T18:00",
+        "endsAt": "2026-11-02T23:00",
+        "venueId": "v2"
+      },
+      "held": {
+        "startsAt": "2026-11-02T09:00",
+        "endsAt": "2026-11-02T14:00",
+        "venueId": "v1"
+      },
+      "gapMinutes": 120,
+      "expect": "clear"
+    },
+    {
+      "name": "Different venues, exactly two hours — the minimum is inclusive",
+      "candidate": {
+        "startsAt": "2026-11-02T16:00",
+        "endsAt": "2026-11-02T21:00",
+        "venueId": "v2"
+      },
+      "held": {
+        "startsAt": "2026-11-02T09:00",
+        "endsAt": "2026-11-02T14:00",
+        "venueId": "v1"
+      },
+      "gapMinutes": 120,
+      "expect": "clear"
+    },
+    {
+      "name": "Different venues, one minute under two hours",
+      "candidate": {
+        "startsAt": "2026-11-02T15:59",
+        "endsAt": "2026-11-02T21:00",
+        "venueId": "v2"
+      },
+      "held": {
+        "startsAt": "2026-11-02T09:00",
+        "endsAt": "2026-11-02T14:00",
+        "venueId": "v1"
+      },
+      "gapMinutes": 120,
+      "expect": "gap_too_short"
+    },
+    {
+      "name": "Different venues, back-to-back with no gap at all",
+      "candidate": {
+        "startsAt": "2026-11-02T14:00",
+        "endsAt": "2026-11-02T19:00",
+        "venueId": "v2"
+      },
+      "held": {
+        "startsAt": "2026-11-02T09:00",
+        "endsAt": "2026-11-02T14:00",
+        "venueId": "v1"
+      },
+      "gapMinutes": 120,
+      "expect": "gap_too_short"
+    },
+    {
+      "name": "Same venue, back-to-back with no gap — always fine",
+      "candidate": {
+        "startsAt": "2026-11-02T14:00",
+        "endsAt": "2026-11-02T19:00",
+        "venueId": "v1"
+      },
+      "held": {
+        "startsAt": "2026-11-02T09:00",
+        "endsAt": "2026-11-02T14:00",
+        "venueId": "v1"
+      },
+      "gapMinutes": 120,
+      "expect": "clear"
+    },
+    {
+      "name": "Same venue, a ten-minute gap — still fine, no gap is required",
+      "candidate": {
+        "startsAt": "2026-11-02T14:10",
+        "endsAt": "2026-11-02T19:00",
+        "venueId": "v1"
+      },
+      "held": {
+        "startsAt": "2026-11-02T09:00",
+        "endsAt": "2026-11-02T14:00",
+        "venueId": "v1"
+      },
+      "gapMinutes": 120,
+      "expect": "clear"
+    },
+    {
+      "name": "Same venue but the windows genuinely intersect — nobody can work both",
+      "candidate": {
+        "startsAt": "2026-11-02T13:00",
+        "endsAt": "2026-11-02T19:00",
+        "venueId": "v1"
+      },
+      "held": {
+        "startsAt": "2026-11-02T09:00",
+        "endsAt": "2026-11-02T14:00",
+        "venueId": "v1"
+      },
+      "gapMinutes": 120,
+      "expect": "intersects"
+    },
+    {
+      "name": "Different venues and the windows intersect",
+      "candidate": {
+        "startsAt": "2026-11-02T13:00",
+        "endsAt": "2026-11-02T19:00",
+        "venueId": "v2"
+      },
+      "held": {
+        "startsAt": "2026-11-02T09:00",
+        "endsAt": "2026-11-02T14:00",
+        "venueId": "v1"
+      },
+      "gapMinutes": 120,
+      "expect": "intersects"
+    },
+    {
+      "name": "The candidate is the EARLIER of the two — order must not matter",
+      "candidate": {
+        "startsAt": "2026-11-02T09:00",
+        "endsAt": "2026-11-02T14:00",
+        "venueId": "v1"
+      },
+      "held": {
+        "startsAt": "2026-11-02T18:00",
+        "endsAt": "2026-11-02T23:00",
+        "venueId": "v2"
+      },
+      "gapMinutes": 120,
+      "expect": "clear"
+    },
+    {
+      "name": "The candidate is earlier and the gap is short",
+      "candidate": {
+        "startsAt": "2026-11-02T09:00",
+        "endsAt": "2026-11-02T14:00",
+        "venueId": "v1"
+      },
+      "held": {
+        "startsAt": "2026-11-02T15:00",
+        "endsAt": "2026-11-02T23:00",
+        "venueId": "v2"
+      },
+      "gapMinutes": 120,
+      "expect": "gap_too_short"
+    },
+    {
+      "name": "An identical window at the same venue is an intersection, not a back-to-back",
+      "candidate": {
+        "startsAt": "2026-11-02T09:00",
+        "endsAt": "2026-11-02T14:00",
+        "venueId": "v1"
+      },
+      "held": {
+        "startsAt": "2026-11-02T09:00",
+        "endsAt": "2026-11-02T14:00",
+        "venueId": "v1"
+      },
+      "gapMinutes": 120,
+      "expect": "intersects"
+    },
+    {
+      "name": "A null venue never earns the same-venue exemption",
+      "candidate": {
+        "startsAt": "2026-11-02T14:00",
+        "endsAt": "2026-11-02T19:00",
+        "venueId": null
+      },
+      "held": {
+        "startsAt": "2026-11-02T09:00",
+        "endsAt": "2026-11-02T14:00",
+        "venueId": null
+      },
+      "gapMinutes": 120,
+      "expect": "gap_too_short"
+    },
+    {
+      "name": "The gap is configurable: 60 minutes lets a 90-minute gap through",
+      "candidate": {
+        "startsAt": "2026-11-02T15:30",
+        "endsAt": "2026-11-02T21:00",
+        "venueId": "v2"
+      },
+      "held": {
+        "startsAt": "2026-11-02T09:00",
+        "endsAt": "2026-11-02T14:00",
+        "venueId": "v1"
+      },
+      "gapMinutes": 60,
+      "expect": "clear"
+    },
+    {
+      "name": "A zero gap setting still blocks a genuine intersection",
+      "candidate": {
+        "startsAt": "2026-11-02T13:00",
+        "endsAt": "2026-11-02T19:00",
+        "venueId": "v2"
+      },
+      "held": {
+        "startsAt": "2026-11-02T09:00",
+        "endsAt": "2026-11-02T14:00",
+        "venueId": "v1"
+      },
+      "gapMinutes": 0,
+      "expect": "intersects"
+    },
+    {
+      "name": "Overnight into the next morning at a different venue, eight hours apart",
+      "candidate": {
+        "startsAt": "2026-11-03T08:00",
+        "endsAt": "2026-11-03T16:00",
+        "venueId": "v2"
+      },
+      "held": {
+        "startsAt": "2026-11-02T18:00",
+        "endsAt": "2026-11-03T00:00",
+        "venueId": "v1"
+      },
+      "gapMinutes": 120,
+      "expect": "clear"
+    }
+  ]
+}
