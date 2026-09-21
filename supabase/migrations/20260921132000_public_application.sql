@@ -135,6 +135,11 @@ create table applications (
 );
 
 create index applications_staff_idx on applications (staff_id);
+-- Both foreign keys carry a covering index. Postgres indexes the
+-- referenced side automatically and the referencing side never, so
+-- without these a delete on staff or auth.users sequentially scans this
+-- table to prove the constraint. 002_schema_hardening asserts it.
+create index applications_reviewed_by_idx on applications (reviewed_by);
 create index applications_open_returning_idx on applications (created_at)
   where outcome = 'returning_applicant' and reviewed_at is null;
 
