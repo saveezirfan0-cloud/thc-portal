@@ -5,7 +5,11 @@
     "packages/domain/cap.ts and the SQL function weekly_cap_hours(staff, date).",
     "Both must produce the same band for every case here. Owned by the",
     "`compliance` bot; Phase 4 completes the implementations.",
-    "A Mon-Sun week that straddles term and holiday takes the LOWER cap."
+    "A Mon-Sun week that straddles term and holiday takes the LOWER cap.",
+    "The 48-hour opt-out is Working Time Regulations, not a visa condition:",
+    "it lifts the ceiling everywhere EXCEPT a student visa in term time.",
+    "The cases combining visaLimited with optOut48h are the ones that caught",
+    "cap.ts and weekly_cap_hours() disagreeing, so do not drop them."
   ],
   "cases": [
     {
@@ -73,6 +77,46 @@
       "input": {
         "visaLimited": true,
         "termState": "term",
+        "completionLetterVerified": false,
+        "optOut48h": true
+      },
+      "expect": { "capHours": 20, "band": "student_term_20" }
+    },
+    {
+      "name": "Student visa in a holiday range, with a signed opt-out — no ceiling",
+      "input": {
+        "visaLimited": true,
+        "termState": "holiday",
+        "completionLetterVerified": false,
+        "optOut48h": true
+      },
+      "expect": { "capHours": null, "band": "uncapped" }
+    },
+    {
+      "name": "Graduated student with a signed opt-out — no ceiling",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": true
+      },
+      "expect": { "capHours": null, "band": "uncapped" }
+    },
+    {
+      "name": "Student visa with no verified term letter — the safe reading is term time",
+      "input": {
+        "visaLimited": true,
+        "termState": "none",
+        "completionLetterVerified": false,
+        "optOut48h": false
+      },
+      "expect": { "capHours": 20, "band": "student_term_20" }
+    },
+    {
+      "name": "Student visa with no verified term letter, opt-out signed — still 20",
+      "input": {
+        "visaLimited": true,
+        "termState": "none",
         "completionLetterVerified": false,
         "optOut48h": true
       },

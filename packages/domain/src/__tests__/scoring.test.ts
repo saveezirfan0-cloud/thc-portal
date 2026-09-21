@@ -3,6 +3,7 @@ import {
   DEFAULT_WEIGHTS,
   HARD_GATES,
   fairFactor,
+  parseWeights,
   proximityFactor,
   rankPool,
   ratingFactor,
@@ -107,17 +108,42 @@ describe('weighted score (§6)', () => {
 });
 
 describe('hard gates (§6, §3.3)', () => {
-  it('has exactly the five the scope names', () => {
+  it('has exactly the six the scope names', () => {
     expect([...HARD_GATES]).toEqual([
       'wrong_role',
       'blocked',
       'booked_elsewhere',
       'hours_limit',
       'self_cancelled',
+      'do_not_return',
     ]);
   });
 
-  it('wrong role produces no row at all; the other four show under Unavailable', () => {
+  // §9.6: "they are not invited in either wave, the shift never appears on
+  // their Radar, they cannot be invited manually". A do-not-return worker
+  // who still scored would be invited to the client that barred them.
+  it('bars a do-not-return worker from the pool outright (§9.6)', () => {
+    const pool: Candidate<string>[] = [
+      {
+        subject: 'barred-star',
+        input: { reliability: 100, rating: 5, distanceKm: 0, futureShifts: 0, venueTimes: 10 },
+        qualifiedAtClientAndRole: true,
+        gate: 'do_not_return',
+      },
+      {
+        subject: 'ordinary',
+        input: { reliability: 95, rating: 4.5, distanceKm: 5, futureShifts: 2, venueTimes: 2 },
+        qualifiedAtClientAndRole: true,
+      },
+    ];
+    expect(rankPool(pool).map((r) => r.subject)).toEqual(['ordinary']);
+  });
+
+  it('shows do-not-return under Unavailable with its reason (§9.6)', () => {
+    expect(showsUnderUnavailable('do_not_return')).toBe(true);
+  });
+
+  it('wrong role produces no row at all; the other five show under Unavailable', () => {
     expect(showsUnderUnavailable('wrong_role')).toBe(false);
     for (const gate of HARD_GATES.filter((g) => g !== 'wrong_role')) {
       expect(showsUnderUnavailable(gate)).toBe(true);
@@ -174,5 +200,35 @@ describe('waves (RULE-17, §3.4)', () => {
       },
     ];
     expect(rankPool(pool)).toHaveLength(0);
+  });
+});
+
+describe('weights from the settings row (§6)', () => {
+  // Copied verbatim from 0001_init.sql's `scoring_weights` seed. If the
+  // migration changes a key, this test is what notices.
+  const SETTINGS_ROW = JSON.parse(
+    '{"show_rate":0.30,"rating":0.25,"proximity":0.25,"fair_rotation":0.10,"venue_history":0.10}',
+  );
+
+  it('maps the shipped settings row onto the defaults', () => {
+    expect(parseWeights(SETTINGS_ROW)).toEqual(DEFAULT_WEIGHTS);
+  });
+
+  it('produces a real score, never NaN, from the settings row', () => {
+    const input = { reliability: 95, rating: 4.5, distanceKm: 5, futureShifts: 2, venueTimes: 4 };
+    const total = score(input, parseWeights(SETTINGS_ROW)).total;
+
+    expect(Number.isNaN(total)).toBe(false);
+    expect(total).toBeCloseTo(score(input, DEFAULT_WEIGHTS).total);
+  });
+
+  it('falls back per factor rather than zeroing a cleared field', () => {
+    expect(parseWeights({ show_rate: 0.5 })).toEqual({ ...DEFAULT_WEIGHTS, show: 0.5 });
+    expect(parseWeights({ fair_rotation: 'nonsense' })).toEqual(DEFAULT_WEIGHTS);
+    expect(parseWeights(null)).toEqual(DEFAULT_WEIGHTS);
+  });
+
+  it('a weight of zero is honoured, not treated as missing', () => {
+    expect(parseWeights({ venue_history: 0 }).venue).toBe(0);
   });
 });

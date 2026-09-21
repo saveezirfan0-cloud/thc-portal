@@ -132,8 +132,27 @@ export function payableMinutes(input: PayInput): PayResult {
 
   const from = effectiveStart(shift, checkInAt);
   const to = effectiveEnd(shift, checkOutAt);
+  const gross = minutesBetween(from, to);
 
-  const gross = Math.max(0, minutesBetween(from, to));
+  // RULE-02 from the other direction. A check-out that is not after the
+  // check-in, or a check-in past the end of the role section, leaves
+  // [check-in, check-out] ∩ [start, end] empty: there is no shift here to
+  // pay. Clamping that to zero and then applying the 4-hour floor would
+  // invent four hours out of nothing, so it is the same undetermined state
+  // as a missing check-out — §9.9 shows "Pending" in place of the payable
+  // hours and the CSV export leaves the row out until a manager resolves
+  // it. RULE-14's floor is for "a worker who actually checked in and worked
+  // the shift"; this worker did not.
+  if (gross <= 0) {
+    return {
+      status: 'undetermined',
+      payableMin: null,
+      workedMin: null,
+      floorApplied: false,
+      lateCheckOutFlag: false,
+    };
+  }
+
   const worked = Math.max(0, gross - unpaidBreakMin);
 
   // RULE-14. The floor is removed by a Left-early violation.

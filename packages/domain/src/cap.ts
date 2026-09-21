@@ -34,19 +34,32 @@ export interface CapResult {
 }
 
 export function weeklyCap(input: CapInput): CapResult {
-  if (input.visaLimited) {
-    // A verified completion letter graduates the worker off the term cap.
-    if (input.completionLetterVerified) return { capHours: 48, band: 'graduated_48' };
-    // A week straddling term and holiday takes the lower cap.
-    if (input.termState === 'term' || input.termState === 'straddle') {
-      return { capHours: 20, band: 'student_term_20' };
-    }
-    return { capHours: 48, band: 'student_holiday_48' };
-  }
+  const { visaLimited, termState, completionLetterVerified, optOut48h } = input;
 
-  // No ceiling only with the opt-out AND no visa limit.
-  if (input.optOut48h) return { capHours: null, band: 'uncapped' };
-  return { capHours: 48, band: 'standard_48' };
+  // The 20-hour visa condition, and the ONLY place the opt-out cannot reach.
+  // §4.4: "the opt-out cannot lift this, because it is a visa condition".
+  // A verified completion letter graduates the worker off it entirely (§4.5),
+  // and a week straddling term and holiday takes the lower cap. `none` means
+  // no verified term letter, so no holiday range can be proved: the SQL
+  // reaches 20 the same way, by finding no day inside a holiday range, and
+  // the safe reading is the one the scope applies automatically.
+  const studentTermCapped = visaLimited && !completionLetterVerified && termState !== 'holiday';
+  if (studentTermCapped) return { capHours: 20, band: 'student_term_20' };
+
+  // Everywhere else the 48-hour week is Working Time Regulations, not a visa
+  // condition, so a signed opt-out lifts it — including for a student in a
+  // holiday range and for a graduated student. §4.4 gives "48 h — or no
+  // ceiling with a signed opt-out" for both of those rows, and the opt-out
+  // table reads "International student … Out of term — yes".
+  if (optOut48h) return { capHours: null, band: 'uncapped' };
+
+  const band: CapBand = !visaLimited
+    ? 'standard_48'
+    : completionLetterVerified
+      ? 'graduated_48'
+      : 'student_holiday_48';
+
+  return { capHours: 48, band };
 }
 
 /** Hours still available this week, or null when the worker is uncapped. */

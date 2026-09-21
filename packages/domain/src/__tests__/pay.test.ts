@@ -92,6 +92,40 @@ describe('RULE-02 no check-out', () => {
   });
 });
 
+// The 4-hour floor must never manufacture money out of a window nobody
+// worked. Each of these used to come back `settled` with payableMin 240.
+describe('RULE-02 / RULE-14 an empty window is undetermined, never floored', () => {
+  it('a check-out on the check-in timestamp is a No check-out, not a zero-length shift', () => {
+    const result = payableMinutes({ shift, checkInAt: at('13:00'), checkOutAt: at('13:00') });
+    expect(result.status).toBe('undetermined');
+    expect(result.payableMin).toBeNull();
+    expect(result.floorApplied).toBe(false);
+  });
+
+  it('a check-out before the check-in pays nothing rather than four hours', () => {
+    const result = payableMinutes({ shift, checkInAt: at('17:00'), checkOutAt: at('16:00') });
+    expect(result.status).toBe('undetermined');
+    expect(result.payableMin).toBeNull();
+  });
+
+  it('a check-in after the scheduled end intersects nothing', () => {
+    // 22:30 UK on a section that ended at 22:00: RULE-14's floor is for
+    // "a worker who actually checked in and worked the shift".
+    const result = payableMinutes({ shift, checkInAt: at('21:30'), checkOutAt: at('22:00') });
+    expect(result.status).toBe('undetermined');
+    expect(result.payableMin).toBeNull();
+  });
+
+  it('still floors a genuinely short shift', () => {
+    // The guard must not swallow RULE-14: five worked minutes is four paid hours.
+    const result = payableMinutes({ shift, checkInAt: at('13:00'), checkOutAt: at('13:05') });
+    expect(result.status).toBe('settled');
+    expect(result.workedMin).toBe(5);
+    expect(result.payableMin).toBe(240);
+    expect(result.floorApplied).toBe(true);
+  });
+});
+
 describe('RULE-14 four-hour minimum', () => {
   it('lifts a short shift to four hours', () => {
     const short = {
