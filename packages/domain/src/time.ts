@@ -91,3 +91,76 @@ export const UK_INPUT_SUFFIX = '(UK time)';
 export function ukInputLabel(label: string): string {
   return `${label} ${UK_INPUT_SUFFIX}`;
 }
+
+/**
+ * A Europe/London wall-clock time, as the instant it names.
+ *
+ * Managers type "17:00" and mean 17:00 in London, whatever the server's or
+ * the browser's zone is (§1.8). This is the inverse of `formatTimeIn`: it
+ * turns the typed date + time back into the `timestamptz` that gets stored.
+ *
+ * The offset is read from the zone itself rather than assumed, so the two
+ * BST changeovers are handled: the guess is corrected once, which is enough
+ * for a one-hour shift in either direction.
+ */
+export function ukInstant(isoDate: string, time: string): Date {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  const [hour, minute] = time.split(':').map(Number);
+  if ([year, month, day, hour, minute].some((n) => !Number.isFinite(n))) {
+    throw new RangeError(`Not a UK date and time: ${isoDate} ${time}`);
+  }
+  const wallClock = Date.UTC(year!, month! - 1, day!, hour!, minute!);
+  const firstPass = wallClock - ukOffsetMs(new Date(wallClock));
+  const offset = ukOffsetMs(new Date(firstPass));
+  return new Date(wallClock - offset);
+}
+
+/** How far ahead of UTC Europe/London is at `instant`, in milliseconds. */
+function ukOffsetMs(instant: Date): number {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: UK_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(instant);
+  const at = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((p) => p.type === type)?.value);
+  const asUtc = Date.UTC(
+    at('year'),
+    at('month') - 1,
+    at('day'),
+    at('hour'),
+    at('minute'),
+    at('second'),
+  );
+  return asUtc - Math.floor(instant.getTime() / 1000) * 1000;
+}
+
+/**
+ * The instants a role section's typed start and end resolve to (§3.2).
+ *
+ * A role may end after midnight — 17:00–01:30 runs into the next day — so an
+ * end that is not after the start on the event's own date rolls forward one
+ * day. An end equal to the start does not roll: a zero-length section is a
+ * validation error, not a 24-hour shift.
+ */
+export function ukRoleWindow(
+  isoDate: string,
+  start: string,
+  end: string,
+): { startsAt: Date; endsAt: Date } {
+  const startsAt = ukInstant(isoDate, start);
+  const sameDayEnd = ukInstant(isoDate, end);
+  if (sameDayEnd > startsAt || end === start) return { startsAt, endsAt: sameDayEnd };
+  return { startsAt, endsAt: ukInstant(nextDay(isoDate), end) };
+}
+
+function nextDay(isoDate: string): string {
+  const [year, month, day] = isoDate.split('-').map(Number);
+  const next = new Date(Date.UTC(year!, month! - 1, day! + 1));
+  return next.toISOString().slice(0, 10);
+}

@@ -4,7 +4,7 @@
  *
  * The vectors are the contract between the TypeScript `weeklyCap()` and the
  * SQL `weekly_cap()`. pgTAP cannot read JSON, so the cases are rendered into a
- * temp table that supabase/tests/070_weekly_cap.sql loads with \ir. The Vitest
+ * temp table that supabase/tests/090_weekly_cap.sql loads with \ir. The Vitest
  * suite in packages/domain re-renders and compares, so the generated file
  * cannot silently drift from the JSON.
  *
