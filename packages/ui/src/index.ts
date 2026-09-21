@@ -32,7 +32,7 @@ export type { SegOption, SegToggleProps } from './components/SegToggle';
 export { Progress, Stepper } from './components/Stepper';
 export type { Step, StepperProps } from './components/Stepper';
 
-export { KpiTile, Rating, Score, SegBar, StatStrip, ratingTone } from './components/Data';
+export { KpiTile, Rating, Score, SegBar, StatStrip, TileGrid, ratingTone } from './components/Data';
 export type { KpiTileProps, MetricTone, SegState, Stat } from './components/Data';
 
 export { Checkbox, OptionRow, Radio, Switch } from './components/Controls';

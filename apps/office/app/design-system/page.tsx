@@ -39,6 +39,7 @@ import {
   StatusBar,
   Stepper,
   TableScroll,
+  TileGrid,
   Textarea,
   Timer,
   Toast,
@@ -324,7 +325,7 @@ export default function Page() {
 
         {/* ---------------- surfaces ---------------- */}
         <Panel title="Tiles and tables">
-          <div className="grid c4">
+          <TileGrid columns={4}>
             <KpiTile
               label="Open positions"
               value="47"
@@ -348,7 +349,7 @@ export default function Page() {
               description="Blocked on an expired document"
               tone="danger"
             />
-          </div>
+          </TileGrid>
           <hr />
           <TableScroll>
             <table className="tbl">

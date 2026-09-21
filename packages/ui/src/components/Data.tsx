@@ -3,6 +3,21 @@ import type { ReactNode } from 'react';
 
 export type MetricTone = 'default' | 'accent' | 'ok' | 'warn' | 'danger';
 
+/**
+ * A row of tiles. The handoff draws these two ways and the style axis picks:
+ * hairline separators on the divider colour in the scope look, separated
+ * cards with a 12px gap in the warm one. Screens just say how many columns.
+ */
+export function TileGrid({
+  columns,
+  children,
+}: {
+  columns: 2 | 3 | 4 | 5 | 6;
+  children: ReactNode;
+}) {
+  return <div className={clsx('grid', 'tilegrid', `c${columns}`)}>{children}</div>;
+}
+
 export interface KpiTileProps {
   label: ReactNode;
   value: ReactNode;

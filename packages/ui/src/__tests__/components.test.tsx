@@ -6,7 +6,15 @@ import { Avatar, AvatarGroup, Person, initials } from '../components/Avatar';
 import { AuthCard } from '../components/AuthCard';
 import { Button } from '../components/Button';
 import { Checkbox, OptionRow, Radio, Switch } from '../components/Controls';
-import { KpiTile, Rating, Score, SegBar, StatStrip, ratingTone } from '../components/Data';
+import {
+  KpiTile,
+  Rating,
+  Score,
+  SegBar,
+  StatStrip,
+  TileGrid,
+  ratingTone,
+} from '../components/Data';
 import { DocRow } from '../components/DocRow';
 import { Addon, Input, InputRow, SearchInput, Select, Slider, Textarea } from '../components/Input';
 import { Kanban, KanbanCard, KanbanColumn } from '../components/Kanban';
@@ -351,8 +359,15 @@ describe('panels, status and metrics', () => {
               </tbody>
             </table>
           </TableScroll>
-          <KpiTile label="Open positions" value="47" description="Sold, not staffed" tone="warn" />
-          <KpiTile label="Compliance blocks" value="9" tone="danger" flat small />
+          <TileGrid columns={4}>
+            <KpiTile
+              label="Open positions"
+              value="47"
+              description="Sold, not staffed"
+              tone="warn"
+            />
+            <KpiTile label="Compliance blocks" value="9" tone="danger" flat small />
+          </TileGrid>
           <Score value={94} />
           <Score value={94} wave2 />
           <Rating value={4.8} />

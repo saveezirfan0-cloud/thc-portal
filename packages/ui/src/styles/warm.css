@@ -48,6 +48,17 @@
   padding: var(--sp-16) var(--sp-18);
 }
 
+:root[data-style='warm'] .tilegrid {
+  gap: var(--sp-12);
+  background: transparent;
+  border: 0;
+}
+:root[data-style='warm'] .tilegrid > .kpi,
+:root[data-style='warm'] .tilegrid > .card {
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+}
+
 /* ---- segmented control ---------------------------------------------
    The v2 track is a pill with pill-shaped segments and no internal rules. */
 :root[data-style='warm'] .seg button,
