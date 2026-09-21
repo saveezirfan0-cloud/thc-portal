@@ -358,7 +358,9 @@
     "$comment": [
       "payable_minutes, RULE-01 / 02 / 14. checkOutMinFromStart null = no check-out",
       "and no manager-entered finish: the payable time is UNDETERMINED, never a",
-      "silent default to the scheduled finish."
+      "silent default to the scheduled finish. An EMPTY intersection is undetermined",
+      "for the same reason: RULE-14's floor is for a worker who actually checked in",
+      "and worked the shift, and RULE-02 makes the zero-length case a violation."
     ],
     "defaults": {
       "shiftMin": 480,
@@ -540,6 +542,50 @@
           "status": "settled",
           "payableMin": 240,
           "workedMin": 210,
+          "floorApplied": true,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "a check-out on the check-in timestamp is undetermined, not a zero-length shift",
+        "input": { "checkInMinFromStart": 60, "checkOutMinFromStart": 60 },
+        "expect": {
+          "status": "undetermined",
+          "payableMin": null,
+          "workedMin": null,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "a check-out before the check-in is undetermined, never the four-hour floor",
+        "input": { "checkInMinFromStart": 180, "checkOutMinFromStart": 120 },
+        "expect": {
+          "status": "undetermined",
+          "payableMin": null,
+          "workedMin": null,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "a check-in past the end of the role section intersects nothing",
+        "input": { "checkInMinFromStart": 510, "checkOutMinFromStart": 540 },
+        "expect": {
+          "status": "undetermined",
+          "payableMin": null,
+          "workedMin": null,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "one worked minute still floors: the empty-window guard must not swallow RULE-14",
+        "input": { "checkOutMinFromStart": 1 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 240,
+          "workedMin": 1,
           "floorApplied": true,
           "lateCheckOutFlag": false
         }
