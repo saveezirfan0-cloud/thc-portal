@@ -10,7 +10,7 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 67 | `pnpm test` |
+| Unit | 130 | `pnpm test` |
 | Browser smoke | 14 | `pnpm turbo e2e:smoke` |
 | Database, row-level security | 252 | `supabase test db` |
 
@@ -27,9 +27,14 @@ What exists:
   component against both token axes.
 - **Seed data**: 5 clients, 8 venues, 6 roles, 40 workers, mirroring
   `wireframes/CONVENTIONS.md`.
+- **The Shift Builder** at `/events/new` and `/events/:id/edit` (§3.2), the first screen
+  of Phase 3. Its rules live in `packages/domain/shift.ts` with `shift.vectors.json`:
+  the four-hour minimum per role section, the derived event window (RULE-18), the
+  allocation default of headcount + buffer, and the edit lock at the event's start.
 
-What does not exist yet: every screen in Phases 1 to 7, the Supabase project, and the
-Vercel projects. Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
+What does not exist yet: every screen in Phases 1 to 7 apart from the Shift Builder, the
+auto-assign engine itself (§3.4) and the N11 send behind the re-confirmation flag (§3.5),
+the Supabase project, and the Vercel projects. Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
 
 ## Security: one item closed, one open
 

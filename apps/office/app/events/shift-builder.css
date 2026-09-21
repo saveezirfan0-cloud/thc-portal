@@ -1,0 +1,182 @@
+/*
+ * Shift Builder layout — mirrors the page-local styles in
+ * `wireframes/backoffice/shift-builder.html`.
+ *
+ * Only layout lives here. Every colour, radius, font and spacing value is a
+ * token from `packages/ui`; nothing below hard-codes one (ADR-0003).
+ */
+
+.builder {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+.builder .side {
+  position: sticky;
+  top: calc(var(--topbar-h) + 16px);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.f4,
+.f3,
+.f2 {
+  display: grid;
+  gap: 12px;
+}
+.f4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.f3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.f2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.rolesec {
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+.rolesec .rh {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel-2);
+  flex-wrap: wrap;
+}
+.rolesec .rh .n {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rolesec .rh .right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.rolesec .rb {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.rolesec.err {
+  border-color: var(--coral);
+}
+.rolesec.changed {
+  border-color: var(--amber);
+}
+.rolesec.collapsed .rh {
+  border-bottom: 0;
+}
+.rolesec .grid6 {
+  display: grid;
+  /* Seven across only where a native time picker and a £ addon both fit;
+     below that the row wraps rather than clipping a value. */
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.rolesec .grid6 .input,
+.rolesec .grid6 .input-row {
+  min-width: 0;
+}
+@media (min-width: 1560px) {
+  .rolesec .grid6 {
+    grid-template-columns: 1.4fr 1fr 1fr 0.8fr 0.8fr 1fr 1fr;
+  }
+}
+
+/* Editing is locked once the event has started (§3.2): everything stays
+   readable, nothing is reachable. `.keep` opts a control back in. */
+.locked .input,
+.locked select,
+.locked textarea {
+  opacity: 0.55;
+  pointer-events: none;
+}
+.locked .btn:not(.keep) {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+.sumrow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12.5px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--line);
+}
+.sumrow:last-child {
+  border-bottom: 0;
+}
+.sumrow .v {
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.policy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12.5px;
+}
+.policy .check {
+  cursor: default;
+}
+.policy .box.off {
+  border-color: var(--line);
+  background: var(--panel-2);
+}
+
+@media (max-width: 1024px) {
+  .builder {
+    grid-template-columns: 1fr;
+  }
+  .builder .side {
+    position: static;
+  }
+  .rolesec .grid6 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .f4,
+  .f3 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 640px) {
+  .rolesec .grid6,
+  .f4,
+  .f3,
+  .f2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Visually hidden, still reachable by keyboard and screen reader. Local to
+   this screen; a shared utility belongs in packages/ui, in its own change. */
+.sb-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+.switch:focus-within .track {
+  outline: 2px solid var(--cyan-ink);
+  outline-offset: 2px;
+}
