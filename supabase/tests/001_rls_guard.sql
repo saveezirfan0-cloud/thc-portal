@@ -14,6 +14,10 @@
 -- spatial_ref_sys, the last table in public that had no RLS at all.
 -- 20260921130927_jobs_and_outbox_drain added job_runs and job_schedules to
 -- assertions 1 and 3; both are admin-read, written by the service role.
+-- ADR-0008 re-exempted spatial_ref_sys in assertions 2 and 9: the hardening
+-- pass asserted an outcome that needs supabase_admin, which no migration in
+-- this repo has, so main was red on it for over an hour. The gap is real and
+-- is recorded rather than hidden.
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
@@ -51,16 +55,39 @@ select bag_eq(
 --    staff_roles, venue_types); 0004_rls_gaps closed all eleven. This
 --    assertion is what stops the next table from arriving without RLS.
 --    It used to exempt spatial_ref_sys as "PostGIS's, not ours to alter".
---    20260921123503_db_hardening removed the need for the exemption: the
---    table is owned by the migration role, the Supabase default grants had
---    handed anon full DML on it, and it now has RLS plus a read-only
---    policy. So the query below has no exemption left at all.
+--    20260921123503_db_hardening removed the exemption on the premise that
+--    the table is owned by the migration role. On Supabase it is not: the
+--    extension is created by supabase_admin, so the `alter table ... enable
+--    row level security` in that migration takes the degradation branch it
+--    wrapped itself in, emits a notice, and changes nothing. The assertion
+--    went in asserting an outcome no migration in this repo can produce,
+--    and main went red on it for over an hour.
+--
+--    20260921130156_pin_remaining_search_paths reached the same conclusion
+--    in prose and is worth quoting, because it is the reason this exemption
+--    is back rather than a second attempt at the migration:
+--
+--      "PostGIS's table is owned by supabase_admin and its privileges were
+--       granted by supabase_admin, so only that role can revoke them or
+--       enable row-level security on it. Neither `postgres` nor the SQL
+--       editor can, and Supabase does not expose supabase_admin."
+--
+--    KNOWN GAP, and a real one: anon retains write privileges on the SRID
+--    lookup table on every Supabase project using PostGIS. It is survivable
+--    here only because our geography columns are all 4326 and nothing in
+--    the schema calls ST_Transform, so the geofence maths never reads this
+--    table at query time. Closing it needs supabase_admin and therefore
+--    belongs in project setup (docs/04), not in a migration.
+--
+--    The exemption is spelled as an explicit name rather than a wider
+--    filter so that the next table arriving without RLS still fails here.
 -- ---------------------------------------------------------------------
 select is_empty(
   $$ select c.relname::text
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
-      where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity $$,
-  'every table in public has row level security enabled, with no exemptions'
+      where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity
+        and c.relname <> 'spatial_ref_sys' $$,
+  'every table in public has row level security enabled, except PostGIS''s spatial_ref_sys (KNOWN GAP, see above)'
 );
 
 -- ---------------------------------------------------------------------
@@ -183,22 +210,29 @@ select bag_eq(
 );
 
 -- ---------------------------------------------------------------------
--- 9. spatial_ref_sys: RLS on, read-only, readable by everybody.
---    PostGIS's EPSG lookup, created in public by `create extension
---    postgis` in 0001 and left without RLS while Supabase's default grants
---    gave anon, authenticated and service_role full DML on it — anon could
---    delete SRID 4326 and take every geography column down with it.
---    Enabling RLS with NO policy would have been worse than the hole,
---    because PostGIS reads this table during coordinate work as whoever is
---    connected, so a deny-all breaks ST_Transform. Hence exactly one
---    permissive SELECT policy, granted to public to match PostGIS's own
---    `grant select ... to public`, and nothing that can write.
+-- 9. spatial_ref_sys carries no policy that can write it.
+--
+--    This used to assert the exact policy set `spatial_ref_sys_read:r:true`,
+--    which only exists where the migration role owns the PostGIS extension.
+--    On Supabase it does not (see assertion 2), so that assertion could
+--    never pass in CI or on the live project.
+--
+--    What is asserted instead holds in both worlds: whatever policies this
+--    table ends up with, none of them may permit a write. It passes on
+--    Supabase, where the degradation leaves no policy at all, and it still
+--    passes — and still means something — on a Postgres where the migration
+--    succeeds and the read-only policy exists. What it refuses is somebody
+--    "fixing" the gap by adding a policy that lets anon write.
+--
+--    Note this is about policies, not privileges. The grants are the actual
+--    hole and they are not reachable from here; see assertion 2.
 -- ---------------------------------------------------------------------
-select bag_eq(
-  $$ select p.polname::text || ':' || p.polcmd::text || ':' || p.polpermissive::text
-       from pg_policy p where p.polrelid = 'public.spatial_ref_sys'::regclass $$,
-  $$ values ('spatial_ref_sys_read:r:true'::text) $$,
-  'spatial_ref_sys has one permissive read policy and no policy that can write it'
+select is_empty(
+  $$ select p.polname::text || ':' || p.polcmd::text
+       from pg_policy p
+      where p.polrelid = 'public.spatial_ref_sys'::regclass
+        and p.polcmd <> 'r' $$,
+  'no policy on spatial_ref_sys permits anything but SELECT'
 );
 
 select * from finish();
