@@ -7,10 +7,12 @@
 -- must be updated in the same PR).
 -- 0004_rls_gaps closed the eleven tables 0001_init.sql left with no RLS at
 -- all, so assertion 2 is now an emptiness check rather than a gap list.
+-- 0009 added assertions 6 and 7: RLS is not the only way into `public`,
+-- and "RLS is on" is not the same claim as "a policy exists".
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
-select plan(6);
+select plan(8);
 
 -- ---------------------------------------------------------------------
 -- 1. Tables with RLS enabled (0001_init.sql)
@@ -102,7 +104,50 @@ select bag_eq(
 );
 
 -- ---------------------------------------------------------------------
--- 6. notification_outbox is deny-all
+-- 6. Nothing in public escapes RLS by not being an ordinary table.
+--    Assertion 2 inspects relkind = 'r'. A MATERIALISED view (relkind 'm')
+--    cannot carry row level security at all, and a foreign table ('f')
+--    does not carry ours — and both get Supabase's default world grants
+--    when they are created. So the cheapest way to leak pay_rate is to
+--    add one and watch assertion 2 stay green. docs/03-data-model.md
+--    reserves 0003 for payable_shifts_v, which is pay by definition:
+--    this is the assertion that makes somebody think about the grants.
+--    Existence is fine; being reachable by a PostgREST role is not.
+-- ---------------------------------------------------------------------
+select is_empty(
+  $$ select c.relname::text
+       from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind in ('m', 'f')
+        and (has_table_privilege('anon', c.oid, 'select')
+          or has_table_privilege('authenticated', c.oid, 'select')) $$,
+  'no materialised view or foreign table in public is granted to anon or authenticated: neither can be policed by RLS'
+);
+
+-- ---------------------------------------------------------------------
+-- 7. RLS on with no policy at all is deny-all, which is safe — but it is
+--    only ever deliberate once. Assertions 3 to 5 list tables, so
+--    dropping one of a table's several policies leaves every list intact
+--    and passes. This catches the case where the last one goes.
+--    notification_outbox is the one intended deny-all (assertion 8).
+--
+--    NOT asserted here, and it should be: relforcerowsecurity. No table
+--    forces RLS, so any connection as the table owner reads bank_details
+--    and hmrc_checklists in full. That is currently load-bearing — the
+--    pgTAP fixtures rely on the owner bypass (_shared/fixtures.psql) and
+--    so would the definer RPCs 0004 names — so flipping it is an ADR,
+--    not a line in a test. Recorded here so it is not forgotten.
+-- ---------------------------------------------------------------------
+select is_empty(
+  $$ select c.relname::text
+       from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
+        and c.relname <> 'notification_outbox'
+        and not exists (select 1 from pg_policy p where p.polrelid = c.oid) $$,
+  'every RLS table in public carries at least one policy; only notification_outbox is deliberately deny-all'
+);
+
+-- ---------------------------------------------------------------------
+-- 8. notification_outbox is deny-all
 -- ---------------------------------------------------------------------
 select is(
   (select count(*)::int from pg_policy where polrelid = 'notification_outbox'::regclass),

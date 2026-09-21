@@ -11,17 +11,24 @@
 -- security_invoker views"). After 0002 closed the client's reach into
 -- shift_requirements and roles, an invoker view is the one thing that
 -- cannot deliver §11.2: it resolved to zero rows for the only role it
--- exists to serve. client_events_v stays an invoker view because the client
--- does hold a policy on `events`; client_lineup_v and
--- client_role_sections_v run with owner rights and filter themselves.
+-- exists to serve.
+--
+-- 0009 finished the job. client_events_v was still an invoker view, which
+-- meant its caller needed select on `event_windows` — and event_windows
+-- runs with owner rights over the money-bearing shift_requirements table
+-- with Supabase's default world grants still on it. All three client views
+-- now run with owner rights and carry client_portal_visible() themselves,
+-- and event_windows is reachable only by its owner.
 -- =====================================================================
 begin;
-select plan(26);
+select plan(30);
 \ir _shared/fixtures.psql
 
 -- ---- how each view resolves -------------------------------------------
-select ok((select 'security_invoker=true' = any(reloptions) from pg_class where relname = 'client_events_v'),
-  'client_events_v is security_invoker: `events` carries a client policy, so nothing is gained by owner rights');
+select ok(not (coalesce((select reloptions from pg_class where relname = 'client_events_v'), '{}') @> '{security_invoker=true}'),
+  'client_events_v runs with owner rights (ADR-0004, 0009), so event_windows need not be granted to the caller');
+select ok((coalesce((select reloptions from pg_class where relname = 'client_events_v'), '{}') @> '{security_barrier=true}'),
+  'client_events_v is a security barrier, so no user-supplied qual runs ahead of the tenancy predicate');
 
 select ok(not (coalesce((select reloptions from pg_class where relname = 'client_lineup_v'), '{}') @> '{security_invoker=true}'),
   'client_lineup_v runs with owner rights (ADR-0004)');
@@ -32,11 +39,16 @@ select ok(not (coalesce((select reloptions from pg_class where relname = 'client
 select ok((coalesce((select reloptions from pg_class where relname = 'client_role_sections_v'), '{}') @> '{security_barrier=true}'),
   'client_role_sections_v is a security barrier');
 
--- event_windows has run this way since 0001 and 0002 depends on it: it is
--- how the client gets its min-start/max-end window without a policy on the
--- money-bearing shift_requirements table.
-select ok(coalesce((select reloptions from pg_class where relname = 'event_windows'), '{}') = '{}',
-  'event_windows runs with owner rights and exposes no rate column');
+-- event_windows has run with owner rights since 0001: it is how the client
+-- gets its min-start/max-end window without a policy on the money-bearing
+-- shift_requirements table. Running that way is fine; being GRANTED to the
+-- PostgREST roles while doing so is not, and it was until 0009. The guard
+-- is the privilege, because the reloption alone says nothing about who can
+-- call it.
+select ok(not has_table_privilege('anon', 'event_windows', 'select'),
+  'anon holds no privilege on event_windows (0009): owner rights over shift_requirements must not be world-granted');
+select ok(not has_table_privilege('authenticated', 'event_windows', 'select'),
+  'no signed-in role reaches event_windows directly either; the client goes through client_events_v');
 
 -- ---- exactly the columns the scope names -------------------------------
 select bag_eq(
@@ -71,6 +83,10 @@ select is(
   '§11.1 no client-facing view has a money column');
 
 -- ---- who may even reach them (§11.1 read-only, signed in) --------------
+select ok(not has_table_privilege('anon', 'client_events_v', 'select'),
+  'anon has no privilege on client_events_v: an owner-rights view must not rely on auth.uid() being null');
+select ok(has_table_privilege('authenticated', 'client_events_v', 'select'),
+  'a signed-in caller may select client_events_v; client_portal_visible() decides what comes back');
 select ok(not has_table_privilege('anon', 'client_lineup_v', 'select'),
   'anon has no privilege on client_lineup_v: an owner-rights view must not rely on auth.uid() being null');
 select ok(not has_table_privilege('anon', 'client_role_sections_v', 'select'),
