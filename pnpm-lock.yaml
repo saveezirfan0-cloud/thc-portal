@@ -185,6 +185,15 @@ importers:
       '@playwright/test':
         specifier: ^1.56.0
         version: 1.63.0
+      '@thc/client':
+        specifier: workspace:*
+        version: link:../apps/client
+      '@thc/office':
+        specifier: workspace:*
+        version: link:../apps/office
+      '@thc/staff':
+        specifier: workspace:*
+        version: link:../apps/staff
       '@types/node':
         specifier: ^26.6.2
         version: 26.6.2

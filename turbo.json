@@ -8,7 +8,8 @@
     "SUPABASE_SERVICE_ROLE_KEY",
     "NEXT_PUBLIC_MAPBOX_TOKEN",
     "NEXT_PUBLIC_VAPID_PUBLIC_KEY",
-    "RESEND_API_KEY"
+    "RESEND_API_KEY",
+    "PLAYWRIGHT_CHROMIUM_PATH"
   ],
   "tasks": {
     "build": { "dependsOn": ["^build"], "outputs": [".next/**", "!.next/cache/**", "dist/**"] },
@@ -16,6 +17,6 @@
     "lint": { "dependsOn": ["^build"] },
     "typecheck": { "dependsOn": ["^build"] },
     "test": { "dependsOn": ["^build"] },
-    "e2e:smoke": { "dependsOn": ["build"], "cache": false }
+    "e2e:smoke": { "dependsOn": ["^build"], "cache": false }
   }
 }
