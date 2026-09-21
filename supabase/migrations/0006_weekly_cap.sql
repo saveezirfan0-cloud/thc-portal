@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 0005 · the calculated weekly cap, RULE-20 (Scope §4.4–4.5)
+-- Migration 0006 · the calculated weekly cap, RULE-20 (Scope §4.4–4.5)
 --
 -- Why this exists
 -- ---------------
