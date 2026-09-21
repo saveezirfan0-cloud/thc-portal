@@ -10,8 +10,8 @@
  * can be tested with nothing.
  */
 
-import type { Channel, Sender, Template, TemplateCode } from './templates';
-import { TEMPLATES, body, render } from './templates';
+import type { Channel, Sender, Template, TemplateCode } from './templates.ts';
+import { TEMPLATES, body, render } from './templates.ts';
 
 /** A claimed row, as `claim_outbox_batch` returns it. */
 export interface OutboxRow {

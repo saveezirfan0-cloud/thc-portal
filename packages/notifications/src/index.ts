@@ -1,2 +1,2 @@
-export * from './templates';
-export * from './outbox';
+export * from './templates.ts';
+export * from './outbox.ts';
