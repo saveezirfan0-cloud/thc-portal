@@ -1,163 +1,361 @@
-/* Generated from wireframes/assets/thc.css §1 — the visual contract.
-   Two axes: data-style = warm | scope, data-theme = light | dark (ADR-0003).
-   Components read tokens only; never hard-code a colour or radius. */
+/* The Hospitality Company — design tokens.
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+   Derived from design-handoff/README.md § "Design Tokens" (colour, typography,
+   spacing, radius, elevation). The handoff ships four boards; this repo keeps
+   two independent axes (ADR-0003) and the boards map onto them exactly:
 
-/* ---------------------------------------------------------------------
-   1 · TOKENS — dark + scope is the literal §1.6 palette
-   --------------------------------------------------------------------- */
+     handoff v1  (scope §1.6: square, mono uppercase labels)  → data-style="scope"
+     handoff v2  (softened: rounded, sentence case, gradient) → data-style="warm"
+     handoff dark / light                                     → data-theme="dark" / "light"
+
+   All four combinations are independent and must keep working. Components read
+   tokens only; never a hard-coded colour or radius.
+
+   Three deliberate deviations from the handoff's colour table, all of them for
+   contrast on the light ground and all noted inline: the light `*-ink` text
+   tones are a few percent darker than the light fills; the light solid amber
+   and teal fills use those darker tones; and both stops of the light v2
+   gradient are deepened. Nothing changes hue. Every other value is the table
+   verbatim, and packages/ui's style tests assert it.
+
+   Elevation: the handoff is explicit that NO drop shadows are used anywhere.
+   Depth comes from frosted surfaces (backdrop-filter) and background radial
+   glows. There is no --shadow token on purpose. */
+
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+
+/* =====================================================================
+   1 · BASE = handoff v1 dark (scope §1.6). Every other combination is a
+   delta on top of this block.
+   ===================================================================== */
 :root {
+  /* --- ground ------------------------------------------------------- */
+  --canvas: #0a0c10; /* outside the app frame */
   --bg: #04080f;
   --panel: #0b1220;
-  --panel-2: #0f1828;
+  --panel-2: #131c2b; /* line mixed into panel: table stripes, readonly fields */
   --line: #1c2839;
-  --cyan: #3edcec;
-  --purple: #a879ff;
-  --green: #3ddc97;
-  --amber: #f5b83d;
-  --coral: #ff6e61;
+
+  /* --- ink ---------------------------------------------------------- */
   --text: #e9eef5;
   --muted: #8a97a3;
-  /* "ink" = the tone used for text/borders on the current ground; equals the fill tone on dark */
+
+  /* --- roles (fills) ------------------------------------------------ */
+  --cyan: #3edcec; /* accent / primary */
+  --purple: #a879ff; /* Auto-Assign only */
+  --green: #3ddc97;
+  --amber: #f5b83d;
+  --coral: #ff6e61; /* danger */
+
+  /* --- roles (text on the current ground) ---------------------------
+     On dark the fill reads fine as text, so ink == fill. */
   --cyan-ink: var(--cyan);
   --purple-ink: var(--purple);
   --green-ink: var(--green);
   --amber-ink: var(--amber);
   --coral-ink: var(--coral);
-  --on-cyan: #04080f;
-  --on-purple: #04080f;
-  --on-green: #04080f;
-  --on-amber: #04080f;
-  --on-coral: #04080f;
-  --cyan-dim: rgba(62, 220, 236, 0.1);
-  --cyan-line: rgba(62, 220, 236, 0.35);
-  --purple-dim: rgba(168, 121, 255, 0.12);
-  --purple-line: rgba(168, 121, 255, 0.45);
+
+  /* --- roles (solid fill behind a label) ---------------------------- */
+  --cyan-solid: var(--cyan);
+  --purple-solid: var(--purple);
+  --green-solid: var(--green);
+  --amber-solid: var(--amber);
+  --coral-solid: var(--coral);
+
+  /* --- label on a solid fill = the background colour (handoff) ------ */
+  --on-cyan: var(--bg);
+  --on-purple: var(--bg);
+  --on-green: var(--bg);
+  --on-amber: var(--bg);
+  --on-coral: var(--bg);
+
+  /* --- hover shades (read off the boards' style-hover attributes) --- */
+  --cyan-hot: #7de9f4;
+  --amber-hot: #ffcd63;
+  --link-hover: #8ceef8;
+
+  /* --- tinted fills 3–15% and tinted borders 40–50% (handoff) ------- */
+  --cyan-dim: rgba(62, 220, 236, 0.12);
+  --cyan-dim-soft: rgba(62, 220, 236, 0.08);
+  --cyan-line: rgba(62, 220, 236, 0.45);
+  --purple-dim: rgba(168, 121, 255, 0.15);
+  --purple-line: rgba(168, 121, 255, 0.5);
   --green-dim: rgba(61, 220, 151, 0.12);
   --green-line: rgba(61, 220, 151, 0.4);
-  --amber-dim: rgba(245, 184, 61, 0.14);
-  --amber-line: rgba(245, 184, 61, 0.45);
-  --coral-dim: rgba(255, 110, 97, 0.14);
-  --coral-line: rgba(255, 110, 97, 0.45);
-  --hover: rgba(255, 255, 255, 0.03);
-  --row-hover: rgba(255, 255, 255, 0.025);
-  --tint: rgba(255, 255, 255, 0.015);
-  --panel-glass: rgba(11, 18, 32, 0.85);
-  --glass: rgba(11, 18, 32, 0.55);
-  --glass-strong: rgba(11, 18, 32, 0.82);
-  --glass-line: rgba(255, 255, 255, 0.06);
+  --amber-dim: rgba(245, 184, 61, 0.12);
+  --amber-line: rgba(245, 184, 61, 0.4);
+  --coral-dim: rgba(255, 110, 97, 0.12);
+  --coral-line: rgba(255, 110, 97, 0.5);
+
+  --hover: rgba(255, 255, 255, 0.04);
+  --row-hover: rgba(255, 255, 255, 0.03);
+  --tint: rgba(255, 255, 255, 0.02);
+
+  /* --- elevation: frosted surfaces, never a drop shadow ------------- */
+  --glass: rgba(11, 18, 32, 0.6); /* top bar */
+  --glass-nav: rgba(11, 18, 32, 0.72); /* bottom nav */
+  --glass-strong: rgba(11, 18, 32, 0.88); /* sheets */
+  --card-glass: rgba(11, 18, 32, 0.78); /* cards over a glow */
+  --glass-line: rgba(28, 40, 57, 0.9);
+  --blur: 18px;
+  --blur-strong: 26px;
   --scrim: rgba(4, 8, 15, 0.72);
   --scrim-soft: rgba(4, 8, 15, 0.55);
-  --glow-a: rgba(62, 220, 236, 0.28);
-  --glow-b: rgba(168, 121, 255, 0.22);
-  --shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
-  --shadow-card: none;
+
+  /* --- background radial glows (cyan + purple on dark) -------------- */
+  --glow-a: rgba(62, 220, 236, 0.22);
+  --glow-b: rgba(168, 121, 255, 0.18);
+
+  /* --- keyboard focus: always visible, always the accent ------------ */
+  --focus-line: var(--cyan-ink);
+  --focus-halo: rgba(62, 220, 236, 0.28);
+
+  /* --- illustrative surfaces (map placeholder, photo fallback) ------ */
   --map-a: #0b1220;
   --map-b: #0e1727;
   --photo-a: #223047;
   --photo-b: #35507a;
-  --focus: rgba(62, 220, 236, 0.1);
 
-  /* type */
+  /* --- gradient primary: v2 only; flat accent in v1 ----------------- */
+  --grad-primary: none;
+  --grad-primary-hover: none;
+
+  /* =================================================================
+     Typography — v1: Space Grotesk / Inter / IBM Plex Mono,
+     labels UPPERCASE with .08–.14em tracking.
+     ================================================================= */
   --font-head: 'Space Grotesk', system-ui, sans-serif;
   --font-body: 'Inter', system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
-  --font-label: var(--font-mono); /* uppercase labels, pills, table headers */
-  --font-num: var(--font-mono); /* times, money, counts */
-  --label-size: 10.5px;
+  --font-label: var(--font-mono);
+  --font-num: var(--font-mono);
+
+  --label-case: uppercase;
+  --label-size: 10px;
   --label-track: 0.12em;
   --label-weight: 500;
-  --pill-track: 0.08em;
-  --head-weight: 600;
+  --pill-size: 10px;
+  --pill-track: 0.1em;
+  --head-weight: 700;
   --head-track: -0.01em;
+  --body-size: 13px;
+  --body-line: 1.5;
 
-  /* shape — zero everywhere in scope style; only the logo is round */
-  --r-xs: 0;
-  --r-sm: 0;
-  --r: 0;
-  --r-lg: 0;
-  --r-pill: 0;
-  --r-phone: 0;
-  --r-nav: 0;
-  --nav-bar: 3px; /* cyan left bar on the active sidebar item */
+  /* Scale in use (handoff): nothing below 9px, nothing below 12px for
+     anything a user must read. */
+  --fs-9: 9px;
+  --fs-10: 10px;
+  --fs-11: 11px;
+  --fs-12: 12px;
+  --fs-13: 13px;
+  --fs-14: 14px;
+  --fs-15: 15px;
+  --fs-16: 16px;
+  --fs-17: 17px;
+  --fs-19: 19px;
+  --fs-20: 20px;
+  --fs-24: 24px;
+  --fs-26: 26px;
+  --fs-30: 30px;
+  --fs-34: 34px;
+  --fs-40: 40px;
 
-  --sidebar-w: 232px;
-  --topbar-h: 56px;
+  /* =================================================================
+     Spacing — 4 · 6 · 8 · 10 · 12 · 14 · 16 · 18 · 20 · 22 · 26 · 28 ·
+     32 · 44 · 56. Page gutters 28 web / 20 mobile.
+     ================================================================= */
+  --sp-4: 4px;
+  --sp-6: 6px;
+  --sp-8: 8px;
+  --sp-10: 10px;
+  --sp-12: 12px;
+  --sp-14: 14px;
+  --sp-16: 16px;
+  --sp-18: 18px;
+  --sp-20: 20px;
+  --sp-22: 22px;
+  --sp-26: 26px;
+  --sp-28: 28px;
+  --sp-32: 32px;
+  --sp-44: 44px;
+  --sp-56: 56px;
+  --gutter: 28px;
+  --gutter-mobile: 20px;
   --gap: 16px;
+
+  /* =================================================================
+     Radius — v1 is 0 everywhere. The logo is the only exception (§1.6).
+     ================================================================= */
+  --r-card: 0; /* panels, cards, modals, kanban columns */
+  --r-tile: 0; /* KPI and stat tiles, doc icons, mobile cards */
+  --r-control: 0; /* buttons, inputs, nav items */
+  --r-pill: 0; /* pills, chips, segmented controls */
+  --r-track: 0; /* progress / score tracks */
+  --r-avatar: 0; /* square avatars in v1 */
+  --r-phone: 0;
+  --r-frame: 0;
+  --r-logo: 50%; /* the one exception, both styles */
+  --nav-bar: 3px; /* accent left bar on the active sidebar item */
+
+  /* --- metrics ------------------------------------------------------ */
+  --sidebar-w: 236px;
+  --topbar-h: 64px;
   --btn-h: 36px;
-  --input-h: 38px;
+  --btn-h-sm: 28px;
+  --btn-h-lg: 50px;
+  --input-h: 40px;
 }
 
-/* ---- warm style: the default look proposed for THC (ADR-0003) ---- */
+/* =====================================================================
+   2 · LIGHT THEME — warm ground, deep teal accent.
+   Not a mechanical inversion: raw cyan fails contrast on a light ground,
+   so #0B7A88 carries the accent and the neutrals are warmed (bone, clay).
+   Shared by handoff v1 light and v2 light — their colour columns are
+   identical; only geometry and type differ.
+   ===================================================================== */
+:root[data-theme='light'] {
+  --canvas: #ede6dc;
+  --bg: #f6f1ea;
+  --panel: #fffcf7;
+  --panel-2: #f2ebe1;
+  --line: #e2d6c7;
+
+  --text: #241d16;
+  --muted: #7a6b5c;
+
+  --cyan: #0b7a88;
+  --purple: #6e45c4;
+  --green: #1f7a4d;
+  --amber: #b5730a;
+  --coral: #c2402f;
+
+  /* Text tones. The handoff fills sit at 3.8–4.4:1 once they are drawn on
+     their own 12% tint, which is under the 4.5:1 floor, so the ink tones
+     are the same hue a few percent darker. Verified ≥4.6:1 on panel, on
+     bg and on the tinted fills. */
+  --cyan-ink: #0a6d79;
+  --purple-ink: #6e45c4;
+  --green-ink: #1d7047;
+  --amber-ink: #8f5a06;
+  --coral-ink: #ad392a;
+
+  /* Solid fills keep the handoff values where they clear 4.5:1 against the
+     background-coloured label. Two do not: amber #B5730A gives 3.45:1 and
+     teal #0B7A88 lands exactly on 4.50:1, which any antialiasing loses. Both
+     use their darker ink instead — 5.1:1 and 5.4:1. */
+  --cyan-solid: var(--cyan-ink);
+  --purple-solid: var(--purple);
+  --green-solid: var(--green);
+  --amber-solid: var(--amber-ink);
+  --coral-solid: var(--coral);
+
+  --cyan-hot: #0f9aab;
+  --amber-hot: #8f5a06;
+  --link-hover: #0a5f6a;
+
+  --cyan-dim: rgba(11, 122, 136, 0.12);
+  --cyan-dim-soft: rgba(11, 122, 136, 0.08);
+  --cyan-line: rgba(11, 122, 136, 0.45);
+  --purple-dim: rgba(110, 69, 196, 0.15);
+  --purple-line: rgba(110, 69, 196, 0.5);
+  --green-dim: rgba(31, 122, 77, 0.12);
+  --green-line: rgba(31, 122, 77, 0.4);
+  --amber-dim: rgba(181, 115, 10, 0.12);
+  --amber-line: rgba(181, 115, 10, 0.4);
+  --coral-dim: rgba(194, 64, 47, 0.12);
+  --coral-line: rgba(194, 64, 47, 0.5);
+
+  --hover: rgba(36, 29, 22, 0.05);
+  --row-hover: rgba(36, 29, 22, 0.035);
+  --tint: rgba(36, 29, 22, 0.02);
+
+  --glass: rgba(255, 252, 247, 0.6);
+  --glass-nav: rgba(255, 252, 247, 0.72);
+  --glass-strong: rgba(255, 252, 247, 0.88);
+  --card-glass: rgba(255, 252, 247, 0.78);
+  --glass-line: rgba(226, 214, 199, 0.9);
+  --scrim: rgba(36, 29, 22, 0.45);
+  --scrim-soft: rgba(36, 29, 22, 0.28);
+
+  /* Clay and amber glows on the warm ground, not cyan and purple. */
+  --glow-a: rgba(214, 132, 66, 0.22);
+  --glow-b: rgba(201, 154, 60, 0.2);
+
+  --focus-line: var(--cyan-ink);
+  --focus-halo: rgba(11, 122, 136, 0.3);
+
+  --map-a: #f1ebe2;
+  --map-b: #e6ddd0;
+  --photo-a: #ddd2c2;
+  --photo-b: #b9a68f;
+}
+
+/* =====================================================================
+   3 · WARM STYLE (handoff v2) — geometry and type only. Colours are
+   theme-driven, so this block sets no neutrals.
+   ===================================================================== */
 :root[data-style='warm'] {
-  --font-head: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
-  --font-body: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
-  --font-label: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
-  --font-num: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
-  --label-size: 10.5px;
-  --label-track: 0.08em;
-  --label-weight: 700;
-  --pill-track: 0.04em;
+  --font-head: 'Outfit', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-label: var(--font-body);
+  --font-num: var(--font-body);
+
+  --label-case: none; /* sentence case */
+  --label-size: 10px;
+  --label-track: 0.01em;
+  --label-weight: 600;
+  --pill-size: 11px;
+  --pill-track: 0.01em;
   --head-weight: 700;
   --head-track: -0.02em;
-  --r-xs: 6px;
-  --r-sm: 10px;
-  --r: 12px;
-  --r-lg: 18px;
+  --body-size: 13px;
+
+  /* cards/panels 20 · tiles 18 · buttons and inputs 14 · nav pills 14 ·
+     chips, pills, segmented controls, tracks 999 · avatars and the logo
+     50% · phone frames 44 · desktop frames 24. */
+  --r-card: 20px;
+  --r-tile: 18px;
+  --r-control: 14px;
   --r-pill: 999px;
-  --r-phone: 40px;
-  --r-nav: 10px;
+  --r-track: 999px;
+  --r-avatar: 50%;
+  --r-phone: 44px;
+  --r-frame: 24px;
   --nav-bar: 0px;
-  --btn-h: 40px;
+
+  --btn-h: 38px;
   --input-h: 42px;
-  --shadow-card: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
 }
 
-/* ---- light theme (warm off-white ground, navy ink; cyan kept for fills, deeper teal for text) ---- */
-:root[data-theme='light'] {
-  --bg: #f6f4ef;
-  --panel: #ffffff;
-  --panel-2: #f1eee7;
-  --line: #e3ded4;
-  --text: #141a2c;
-  --muted: #66707e;
-  --cyan-ink: #0b8a99;
-  --purple-ink: #6d3de0;
-  --green-ink: #158a5c;
-  --amber-ink: #9a6600;
-  --coral-ink: #c93e33;
-  --on-cyan: #04202a;
-  --on-purple: #ffffff;
-  --on-green: #05301e;
-  --on-amber: #2e1f00;
-  --on-coral: #ffffff;
-  --cyan-dim: rgba(11, 138, 153, 0.1);
-  --cyan-line: rgba(11, 138, 153, 0.35);
-  --purple-dim: rgba(109, 61, 224, 0.1);
-  --purple-line: rgba(109, 61, 224, 0.4);
-  --green-dim: rgba(21, 138, 92, 0.1);
-  --green-line: rgba(21, 138, 92, 0.4);
-  --amber-dim: rgba(154, 102, 0, 0.12);
-  --amber-line: rgba(154, 102, 0, 0.45);
-  --coral-dim: rgba(201, 62, 51, 0.1);
-  --coral-line: rgba(201, 62, 51, 0.4);
-  --hover: rgba(20, 26, 44, 0.04);
-  --row-hover: rgba(20, 26, 44, 0.03);
-  --tint: rgba(20, 26, 44, 0.02);
-  --panel-glass: rgba(255, 255, 255, 0.88);
-  --glass: rgba(255, 255, 255, 0.62);
-  --glass-strong: rgba(255, 255, 255, 0.86);
-  --glass-line: rgba(20, 26, 44, 0.07);
-  --scrim: rgba(20, 26, 44, 0.45);
-  --scrim-soft: rgba(20, 26, 44, 0.3);
-  --glow-a: rgba(62, 220, 236, 0.35);
-  --glow-b: rgba(168, 121, 255, 0.25);
-  --shadow: 0 24px 60px rgba(20, 26, 44, 0.18);
-  --shadow-card: 0 1px 2px rgba(20, 26, 44, 0.05);
-  --map-a: #efebe3;
-  --map-b: #e4dfd4;
-  --photo-a: #d9d2c5;
-  --photo-b: #b8ae9c;
-  --focus: rgba(11, 138, 153, 0.15);
+/* --- v2 dark: its own, slightly lifted navy ------------------------- */
+:root[data-style='warm'][data-theme='dark'] {
+  --bg: #070c16;
+  --panel: #111a2b;
+  --panel-2: #1b263a;
+  --line: #28354c;
+
+  --glass: rgba(17, 26, 43, 0.6);
+  --glass-nav: rgba(17, 26, 43, 0.72);
+  --glass-strong: rgba(17, 26, 43, 0.88);
+  --card-glass: rgba(17, 26, 43, 0.78);
+  --glass-line: rgba(40, 53, 76, 0.9);
+  --scrim: rgba(7, 12, 22, 0.72);
+  --scrim-soft: rgba(7, 12, 22, 0.55);
+
+  --map-a: #111a2b;
+  --map-b: #162034;
+
+  --grad-primary: linear-gradient(135deg, #3edcec 0%, #8f7bff 100%);
+  --grad-primary-hover: linear-gradient(135deg, #7de9f4 0%, #a99bff 100%);
+}
+
+/* --- v2 light: same warm ground, teal→violet gradient --------------- */
+:root[data-style='warm'][data-theme='light'] {
+  /* The handoff's light gradient is #0B7A88 → #7C5CD6, which puts its label
+     at 4.50:1 and 4.29:1. Both stops are a few percent deeper here so the
+     whole sweep clears 4.5:1; the hue and the sweep are unchanged. Hover
+     deepens rather than lightens, which is also what the boards' own link
+     hover does on the warm ground. */
+  --grad-primary: linear-gradient(135deg, #0a6d79 0%, #7758cd 100%);
+  --grad-primary-hover: linear-gradient(135deg, #0c7885 0%, #7758cd 100%);
 }

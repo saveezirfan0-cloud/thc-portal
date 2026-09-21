@@ -43,9 +43,11 @@
   background-position: right 11px center;
 }
 
-/* The consent tick (§1.7). The real checkbox stays in the page — it carries
-   the value, the keyboard focus and the accessible name — with the square
-   from the design system drawn next to it. */
+/* The consent tick (§1.7). The real checkbox stays in the page and stays
+   focusable — it carries the value, the keyboard path and the accessible
+   name — with the design system's square drawn next to it. @thc/ui's
+   Checkbox hides its input with `display: none`, which loses all three;
+   see the note in ApplyForm.tsx. */
 .apply-page .check {
   position: relative;
 }

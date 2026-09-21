@@ -15,7 +15,7 @@
     "build": { "dependsOn": ["^build"], "outputs": [".next/**", "!.next/cache/**", "dist/**"] },
     "dev": { "cache": false, "persistent": true },
     "lint": { "dependsOn": ["^build"] },
-    "typecheck": { "dependsOn": ["^build"] },
+    "typecheck": { "dependsOn": ["^build", "build"] },
     "test": { "dependsOn": ["^build"] },
     "e2e:smoke": { "dependsOn": ["^build"], "cache": false }
   }

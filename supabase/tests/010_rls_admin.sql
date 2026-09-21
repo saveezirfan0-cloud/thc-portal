@@ -48,6 +48,7 @@ select is((select count(*)::int from applications           where id = :'applic_
 with u as (update applications set outcome = 'candidate_created' where id = :'applic_a' returning 1)
   select is((select count(*)::int from u), 0, 'not even an admin edits an application: it is what the applicant submitted, written only by submit_application()');
 select is((select count(*)::int from venue_types           where key = 'rls_fixture_type'),           1, 'admin reads venue type defaults (§9.11)');
+select is((select count(*)::int from notification_outbox   where key = 'RLS:fixture:outbox'),         1, 'admin reads the notification send queue (§8) — admin_read, added by 20260921123503_db_hardening');
 
 -- admin sees the derived HMRC statement the worker is never shown (§2.8)
 select is((select statement::text from hmrc_checklists where staff_id = :'staffa'), 'A',
@@ -58,8 +59,6 @@ select is((select count(*)::int from profiles where id in (:'staffa_uid', :'clie
   'KNOWN GAP: profiles has only profiles_self, so admin cannot read other users'' profiles');
 select is((select count(*)::int from profiles where id = :'admin_uid'), 1,
   'admin still reads its own profile row');
-select is((select count(*)::int from notification_outbox where key = 'RLS:fixture:outbox'), 0,
-  'KNOWN GAP: notification_outbox is deny-all, admin cannot read the send queue');
 
 -- ---- writes ----------------------------------------------------------
 with u as (update staff set rating = 4.50 where id = :'staffa' returning 1)
@@ -137,7 +136,7 @@ select throws_ok(
 select throws_ok(
   $$ insert into notification_outbox (key, channel, template) values ('RLS:denied:outbox','push','N1') $$,
   '42501', null,
-  'KNOWN GAP: admin cannot enqueue a notification directly (deny-all); only service_role can'
+  'admin cannot enqueue a notification directly; the outbox is admin-READ and the jobs write it on the service key (§8)'
 );
 
 reset role;

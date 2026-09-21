@@ -1,4 +1,4 @@
-/* Generated from wireframes/assets/thc.css §2 · BASE */
+/* Element defaults and the primitives every component leans on. */
 
 *,
 *::before,
@@ -14,8 +14,8 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: var(--body-size);
+  line-height: var(--body-line);
   -webkit-font-smoothing: antialiased;
   transition:
     background 0.2s,
@@ -26,6 +26,7 @@ a {
   text-decoration: none;
 }
 a:hover {
+  color: var(--link-hover);
   text-decoration: underline;
 }
 h1,
@@ -36,34 +37,44 @@ h4 {
   margin: 0;
   font-weight: var(--head-weight);
   letter-spacing: var(--head-track);
+  line-height: 1.15;
 }
 h1 {
-  font-size: 24px;
+  font-size: var(--fs-24);
 }
 h2 {
-  font-size: 18px;
+  font-size: var(--fs-20);
 }
 h3 {
-  font-size: 15px;
+  font-size: var(--fs-16);
 }
 h4 {
-  font-size: 13px;
+  font-size: var(--fs-13);
 }
 p {
   margin: 0;
 }
 small {
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--muted);
 }
 hr {
   border: 0;
   border-top: 1px solid var(--line);
-  margin: 16px 0;
+  margin: var(--sp-16) 0;
 }
 code {
   font-family: var(--font-mono);
 }
+
+/* The keyboard path is never invisible: one accent ring, everywhere.
+   :focus-visible only, so a mouse press does not light it up. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--focus-line);
+  outline-offset: 2px;
+  border-radius: inherit;
+}
+
 .mono {
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
@@ -73,11 +84,13 @@ code {
   letter-spacing: 0.06em;
 }
 
+/* Labels: mono + UPPERCASE + wide tracking in scope, sentence case in warm.
+   Both read from --label-* so no component decides casing itself. */
 .label,
 .mono-label {
   font-family: var(--font-label);
   font-size: var(--label-size);
-  text-transform: uppercase;
+  text-transform: var(--label-case);
   letter-spacing: var(--label-track);
   color: var(--muted);
   font-weight: var(--label-weight);
@@ -85,48 +98,72 @@ code {
 .label.cyan {
   color: var(--cyan-ink);
 }
+.label.green {
+  color: var(--green-ink);
+}
+.label.amber {
+  color: var(--amber-ink);
+}
+.label.coral {
+  color: var(--coral-ink);
+}
+.label.purple {
+  color: var(--purple-ink);
+}
 .label.text {
   color: var(--text);
 }
 
-/* logo: the only round element in scope style */
+/* Logo: a circular accent tile holding the two-glasses mark. The only
+   round thing in the scope style (§1.6). */
 .logo {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: var(--cyan);
+  width: 34px;
+  height: 34px;
+  background: var(--cyan-solid);
   color: var(--on-cyan);
   font-family: var(--font-head);
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--fs-13);
   flex: 0 0 auto;
-  border-radius: var(--r-sm);
+  border-radius: var(--r-logo);
+  overflow: hidden;
 }
-.logo.round {
-  border-radius: 50%;
+.logo.sm {
+  width: 30px;
+  height: 30px;
+  font-size: var(--fs-11);
 }
-.logo svg {
-  width: 20px;
-  height: 20px;
+.logo.lg {
+  width: 46px;
+  height: 46px;
+  font-size: var(--fs-17);
+}
+.logo img {
+  width: 58%;
+  height: 58%;
+  object-fit: contain;
 }
 .brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-10);
 }
 .brand .name {
+  display: block;
   font-family: var(--font-head);
-  font-weight: var(--head-weight);
-  font-size: 14px;
-  line-height: 1.1;
+  font-weight: 600;
+  font-size: var(--fs-13);
+  line-height: 1.15;
 }
 .brand .sub {
+  display: block;
   font-family: var(--font-label);
-  font-size: 9.5px;
+  font-size: var(--fs-9);
   letter-spacing: var(--label-track);
-  text-transform: uppercase;
+  text-transform: var(--label-case);
   color: var(--muted);
   font-weight: var(--label-weight);
 }

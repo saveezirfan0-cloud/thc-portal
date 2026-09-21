@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { Alert, Button, Input, Select } from '@thc/ui';
+import { Alert, Button, Input, InputRow, Select } from '@thc/ui';
 import { apply } from './actions';
 import { AGE_OPTIONS, DIAL_CODES, INITIAL_STATE, errorBanner, validate } from './form';
 import type { ApplicationValues, FieldErrors } from './form';
@@ -82,7 +82,7 @@ export function ApplyForm() {
         <span className="label" id="mobile-label">
           Mobile
         </span>
-        <div className="input-row">
+        <InputRow>
           <div style={{ flex: '0 0 118px' }}>
             <select
               className="input"
@@ -111,7 +111,7 @@ export function ApplyForm() {
             value={values.mobile}
             onChange={(e) => set('mobile', e.target.value)}
           />
-        </div>
+        </InputRow>
         {errors.mobile ? (
           <span className="error" role="alert">
             {errors.mobile}
@@ -137,6 +137,16 @@ export function ApplyForm() {
         ))}
       </Select>
 
+      {/*
+        Deliberately not `Checkbox` from @thc/ui: that component hides its
+        input with `.hide`, which is `display: none !important`, so the
+        control cannot be tabbed to and is absent from the accessibility
+        tree. For a GDPR consent tick that has to be given deliberately
+        (§1.7) a mouse-only control is not good enough. The shared component
+        needs the visually-hidden pattern used here instead, and that is a
+        change to packages/ui, which the conventions say ships in its own
+        pull request before the screens that need it.
+      */}
       <label className="check">
         <input
           type="checkbox"

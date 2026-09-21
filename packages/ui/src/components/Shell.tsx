@@ -4,8 +4,10 @@ import type { ReactNode } from 'react';
 export interface NavItem {
   href: string;
   label: string;
-  /** Red count badge, e.g. the Needs-review queue. */
+  /** Right-aligned count badge, e.g. Onboarding's active candidates. */
   count?: number;
+  /** Paints the count badge danger, as Compliance's blocked-worker count is. */
+  alert?: boolean;
   icon?: ReactNode;
   /** Renders a rule above this item. */
   dividerBefore?: boolean;
@@ -31,7 +33,9 @@ export function Sidebar({ items, activeHref, brand, footer, renderLink }: Sideba
             <>
               {item.icon ? <span className="ico">{item.icon}</span> : null}
               <span>{item.label}</span>
-              {item.count ? <span className="count">{item.count}</span> : null}
+              {item.count ? (
+                <span className={clsx('count', item.alert && 'alert')}>{item.count}</span>
+              ) : null}
             </>
           );
           return (
@@ -84,6 +88,16 @@ export function Shell({ sidebar, children }: { sidebar: ReactNode; children: Rea
 
 export function Content({ children, className }: { children: ReactNode; className?: string }) {
   return <div className={clsx('content', className)}>{children}</div>;
+}
+
+/** The signed-in user, right-aligned in the top bar: avatar + name. */
+export function UserChip({ children }: { children: ReactNode }) {
+  return <span className="userchip">{children}</span>;
+}
+
+/** Wraps a wide table so it scrolls rather than squashing on a phone (§1.2). */
+export function TableScroll({ children }: { children: ReactNode }) {
+  return <div className="table-scroll">{children}</div>;
 }
 
 export interface PageHeadProps {
