@@ -22,7 +22,16 @@ const NAV = [
   { href: '/venues', label: 'Venues' },
 ];
 
-export function OfficeShell({ title, children }: { title: string; children: ReactNode }) {
+export interface OfficeShellProps {
+  title: string;
+  /** Defaults to the Shift Builder trail; pass null on /events itself. */
+  crumbs?: ReactNode;
+  /** Right of the time-zone note, e.g. "+ New event" (§3.1). */
+  actions?: ReactNode;
+  children: ReactNode;
+}
+
+export function OfficeShell({ title, crumbs, actions, children }: OfficeShellProps) {
   return (
     <Shell
       sidebar={
@@ -49,11 +58,16 @@ export function OfficeShell({ title, children }: { title: string; children: Reac
       <Topbar
         title={title}
         crumbs={
-          <>
-            <Link href="/events">Scheduling</Link> / <b>Shift Builder</b>
-          </>
+          crumbs === undefined ? (
+            <>
+              <Link href="/events">Scheduling</Link> / <b>Shift Builder</b>
+            </>
+          ) : (
+            crumbs
+          )
         }
         timezone={<ViewerZone />}
+        actions={actions}
       />
       <Content>{children}</Content>
     </Shell>
