@@ -10,9 +10,9 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 230 | `pnpm test` |
-| Browser smoke | 18 | `pnpm turbo e2e:smoke` |
-| Database, row-level security | 477 | `supabase test db` |
+| Unit | 301 | `pnpm test` |
+| Browser smoke | 28 | `pnpm turbo e2e:smoke` |
+| Database, row-level security and rules | 488 | `supabase test db` |
 
 What exists:
 
@@ -38,9 +38,23 @@ What exists:
 - **The public application form** at `/apply` (§2.1), the first screen of Phase 1, with
   `submit_application()` behind it: the age gate on the form, in the server action and in
   the database, and the §2.12 duplicate check.
+- **The Shift Builder** at `/events/new` and `/events/:id/edit` (§3.2), the first screen
+  of Phase 3. Its rules live in `packages/domain/shift.ts` with `shift.vectors.json`:
+  the four-hour minimum per role section, the derived event window (RULE-18), the
+  allocation default of headcount + buffer, and the edit lock at the event's start.
 
-What does not exist yet: every other screen in Phases 1 to 7, the Supabase project, and
-the Vercel projects. Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
+What does not exist yet: every screen in Phases 1 to 7 apart from the application form
+and the Shift Builder, the Supabase project, and the Vercel projects. Two pieces the
+Shift Builder leans on are also outstanding and belong to later sessions:
+
+- **Auto-assign itself** (§3.4). The switches and the per-role allocation are stored; no
+  hourly round runs yet, so a saved event fills nobody.
+- **The sender behind the outbox** (§8). Saving a time, dress-code or venue change sets
+  `reconfirm_required` on that section's confirmed bookings and queues N11 in
+  `notification_outbox` with its idempotency key — but no job drains the outbox to Web
+  Push yet, so the row waits there.
+
+Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
 
 **Open with THC.** §2.1 collects an *age band* on /apply while §2.12 matches duplicates on
 *mobile + date of birth*, and the form has no date-of-birth field. Until THC decides,

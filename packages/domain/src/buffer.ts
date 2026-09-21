@@ -20,6 +20,23 @@ export function formatAllocation(headcount: number, buffer: number): string {
   return buffer > 0 ? `${headcount} (+${buffer})` : String(headcount);
 }
 
+/**
+ * The same pair with the buffer always spelled out, even at zero: "2 (+0)".
+ *
+ * The Shift Builder shows this form (§3.2, `shift-builder.html`) because the
+ * manager is editing headcount and buffer side by side and needs to see which
+ * number is which. Lists and the calendar use `formatAllocation`, which drops
+ * a zero buffer. Neither ever renders the total.
+ */
+export function formatAllocationPair(headcount: number, buffer: number): string {
+  return `${headcount} (+${buffer})`;
+}
+
+/** "3 (+1) = 4" — what auto-assign fills up to, with the sum kept visible. */
+export function formatConfirmationTarget(headcount: number, buffer: number): string {
+  return `${formatAllocationPair(headcount, buffer)} = ${allocationTarget(headcount, buffer)}`;
+}
+
 /** How many people auto-assign may seat in total: headcount plus buffer. */
 export function allocationTarget(headcount: number, buffer: number): number {
   return headcount + buffer;
