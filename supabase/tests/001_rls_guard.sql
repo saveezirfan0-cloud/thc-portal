@@ -14,7 +14,7 @@
 -- spatial_ref_sys, the last table in public that had no RLS at all.
 -- 20260921130927_jobs_and_outbox_drain added job_runs and job_schedules to
 -- assertions 1 and 3; both are admin-read, written by the service role.
--- ADR-0008 re-exempted spatial_ref_sys in assertions 2 and 9: the hardening
+-- ADR-0010 re-exempted spatial_ref_sys in assertions 2 and 9: the hardening
 -- pass asserted an outcome that needs supabase_admin, which no migration in
 -- this repo has, so main was red on it for over an hour. The gap is real and
 -- is recorded rather than hidden.

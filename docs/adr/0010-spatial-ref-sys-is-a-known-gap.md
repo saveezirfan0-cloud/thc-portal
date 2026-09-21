@@ -1,4 +1,4 @@
-# ADR-0008 · `spatial_ref_sys` is a known gap, not a passing test
+# ADR-0010 · `spatial_ref_sys` is a known gap, not a passing test
 
 **Status:** Accepted, 21.09.2026. Reverses the premise of the `spatial_ref_sys` work in
 `20260921123503_db_hardening.sql` and the four assertions it added to

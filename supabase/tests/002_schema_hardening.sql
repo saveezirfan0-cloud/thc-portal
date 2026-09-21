@@ -131,7 +131,7 @@ select is_empty(
 --
 --    Assertions 6 and 7 were written to prove the write had been taken
 --    away. It had not, and it cannot be from here — see the block above
---    them and ADR-0008. They now record the gap instead, which is why they
+--    them and ADR-0010. They now record the gap instead, which is why they
 --    read as lives_ok and "can still delete" rather than as protections.
 -- ---------------------------------------------------------------------
 select set_config('request.jwt.claims', '', true);
