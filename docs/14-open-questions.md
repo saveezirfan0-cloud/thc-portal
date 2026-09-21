@@ -104,6 +104,87 @@ job is written rather than after.
 > against that worker's reliability score completely, or still count — and if so, by how
 > much?
 
+## Q5 · A term letter that arrives for next year, in December
+
+§4.2 is explicit that the University Term Dates Letter expires on **31 December**,
+whatever dates are printed inside it, and that the reminder ladder opens on 1 December.
+That is a calendar year, which leaves one case the scope does not name: the student who
+uploads next year's letter **in December**, before the current one has died.
+
+Read literally, that letter expires on the 31 December of the year it was uploaded — so a
+letter uploaded on 5 December, in answer to the reminder sent on the 1st, is dead on the
+31st. On 1 January the student is auto-blocked under §4.3 and loses every future shift
+they hold, for doing exactly what the reminder asked.
+
+**What it does today** (ADR-0011): a letter uploaded in **November or December** runs to
+the following 31 December. Every other letter expires on the 31 December of the year it
+was uploaded. The letter's own printed dates are never read — not the graduation date, not
+the vacation ranges — which is the part of §4.2 the scope argues hardest for.
+
+**The alternative** is the literal reading, which blocks the early student. §4.2 does
+accept blocking at the year boundary, but only for the student who is *late* ("e.g. it
+arrives mid-January"), and the December uploader is the opposite of late.
+
+> **Ask:** if a student uploads next year's term dates letter in December, in answer to
+> the reminder you just sent them, should it cover the year ahead (what we do), or expire
+> on the 31st a few weeks later?
+
+---
+
+## Q6 · N14 says "until [date]", and two of the five bands have no date
+
+§4.4 gives N14's copy as: *"Your weekly limit is now [20 / 48] hours — [term time /
+university holiday] until [date]."* For a student that reads perfectly — the date comes
+off the verified term letter.
+
+Two of RULE-20's five bands have no such date, and one has no number either:
+
+- **`graduated_48`** — the completion letter is permanent and §4.5 says term dates no
+  longer apply.
+- **`uncapped`** — the worker signed the 48-hour opt-out. Nothing ends that until they
+  revoke it, and "[20 / 48] hours" has no value to offer.
+
+**What it does today.** The register holds N14 as three halves, the way it already holds
+N9 as two:
+
+| variant | copy |
+| --- | --- |
+| `dated` | Your weekly limit is now {limit} hours — {band} until {date}. |
+| `open` | Your weekly limit is now {limit} hours — {band}. |
+| `uncapped` | You no longer have a weekly hours limit — {band}. |
+
+The third exists because the alternative sends *"Your weekly limit is now no hours"* to
+somebody who just removed their ceiling — the opposite of what happened. The band reaches
+the worker as words ("term time", "university holiday") rather than as the enum label.
+
+> **Ask:** for a worker with no end date — graduated, or opted out — is dropping the
+> "until …" clause right, or should it read something like "until further notice"? And is
+> "You no longer have a weekly hours limit" the wording you want for the opt-out?
+
+---
+
+## Q7 · Which documents each right-to-work branch must actually have
+
+§4.3's unblock rule is "every document … must be verified and not expired", and §4.4 says
+a student whose term letter "has expired **or is missing**" is already blocked. Both
+presuppose an expected set of documents per worker, which §2.5 lists in prose per branch.
+
+**What it does today.** `compliance_blockers()` reports documents that are expired,
+documents that are uploaded but unverified, and an unreviewed Yes on the conviction
+declaration. It does **not** report a document that was never uploaded at all, because
+nothing in the database says which documents a given branch owes. A worker with zero
+document rows therefore reads as compliant.
+
+This is not currently reachable — onboarding (§2) will not release anyone to `compliant`
+without their documents — so it is a latent hole rather than a live one. Closing it means
+turning §2.5's prose into a `required_docs(rtw_branch)` table, which is onboarding's
+piece of work (B5/S2) rather than the compliance sweep's.
+
+> **Ask:** nothing for THC here — this is a note for whoever builds §2.5's document sets,
+> so that `compliance_blockers()` gains a `document_missing:` arm at the same time.
+
+---
+
 ---
 
 # For the owner
@@ -281,3 +362,125 @@ side-quest inside a jobs pull request.
 Two things make it urgent enough to name: the rule is invisible (a revoke that looks
 right does nothing), and it is easy to repeat (every new `security definer` function in
 `public` starts life anon-callable).
+
+## O8 · The PR review bot — two faults, and the second one needs you today
+
+### The one blocking it now: there is no API key
+
+Since roughly 17:09 on 21.09 the `claude` check fails after **twelve seconds**, before it
+reads a line of the diff:
+
+```
+##[error]Action failed with error: Environment variable validation failed:
+  - Either ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN, or workload identity federation
+    (ANTHROPIC_FEDERATION_RULE_ID and ANTHROPIC_ORGANIZATION_ID) is required when using
+    the direct Anthropic API.
+```
+
+and the step's own environment dump shows `ANTHROPIC_API_KEY:` with nothing after it.
+`.github/workflows/claude.yml` passes `${{ secrets.ANTHROPIC_API_KEY }}`, so the
+repository secret is empty, deleted, or not reaching the workflow.
+
+It worked earlier the same day — a run at 16:29 took 9m 40s and billed $3.44 — so
+something changed between the two. Whether the secret was removed or the account behind it
+ran out is not visible from the log, and both look identical from here.
+
+**This one is yours and nothing in the repo can substitute for it.** A bot cannot hold or
+set a repository secret, and CLAUDE.md rightly forbids putting one in code. Set it at
+Settings → Secrets and variables → Actions → `ANTHROPIC_API_KEY`.
+
+Re-running the check is pointless until then, which is why I have not spent a re-run on
+it. Note that `build-test` is the gate and is unaffected: the `claude` check is advisory,
+so this does not block merging.
+
+### The one underneath it: the review is thrown away after it succeeds
+
+This is the fault that will come back the moment the key is restored, so it is recorded
+rather than closed. Before the key went, the check was failing like this:
+
+```
+"subtype": "success", "is_error": false, "num_turns": 61
+##[error]Claude reported a successful result after 61 turns, exceeding the configured
+maximum of 60
+```
+
+`claude.yml` sets `--max-turns 60`. That run completed its review, cost $3.44, and the
+action discarded the result and failed the check. Nothing was posted to the pull request.
+
+Two things to weigh, and both cost money, which is why this is yours too:
+
+1. **Raise the limit.** The obvious fix and the one with a recurring bill attached. These
+   PRs are large — five or six commits across SQL, tests and docs — so the reviewer needs
+   the turns. Roughly $3.50 a review at 60 turns; a higher ceiling raises the worst case,
+   not the average, since a short PR still finishes early.
+2. **Spend fewer turns.** The same run logged `permission_denials_count: 17`. Seventeen
+   tool calls were refused, and every refusal costs a turn that did no work. Pre-approving
+   the read-only tools a reviewer needs — `Read`, `Grep`, `Glob`, `git diff`, `git log` —
+   would likely bring it under the existing limit for free. Cheaper than (1) and worth
+   trying first.
+
+Neither is changed here, because both are standing costs on every pull request in the repo
+rather than a bug in one.
+
+### Meanwhile
+
+The review still happens — I run the `qa-reviewer` agent in-session before pushing, which
+is what CLAUDE.md asks for anyway ("Ask `qa-reviewer` before opening a PR"). On PR #24 that
+found four blockers the CI bot never got the chance to. So the gap is a missing second
+opinion, not a missing review.
+
+## O9 · Prettier is run by hand, so `main` carries unformatted files
+
+`pnpm format` on a clean checkout of `main` today rewrites four files nobody touched in
+this branch:
+
+```
+apps/client/app/client/EventsScreen.tsx
+apps/client/app/client/__tests__/rules.test.ts
+apps/client/app/client/events/[id]/EventScreen.tsx
+e2e/tests/client.portal.spec.ts
+```
+
+They are not broken — prettier is a formatter, not a linter — but `.github/workflows/ci.yml`
+runs `lint`, `typecheck`, `test`, pgTAP and Playwright, and **nothing runs
+`prettier --check`**. So formatting drifts silently, and the next person who runs
+`pnpm format` before committing sweeps up four files from someone else's pull request
+along with their own. I reverted them here rather than widen this branch past its domain.
+
+The fix is one line in `ci.yml` and a `format:check` script, and it wants doing in a pass
+of its own: the first run will fail until the existing drift is committed, which is a
+diff touching other people's files and should be its own pull request with nothing else
+in it.
+
+Not done here, because a formatting sweep across the repository collides with every
+branch currently open (see O2).
+
+---
+
+## O10 · Nobody can be manually blocked yet, and nothing sends a push
+
+Two things this branch built stop one step short of being usable, both waiting on work
+that is not mine to do here:
+
+1. **`block_worker()` is service-role only.** §9.6's manual block is a button on the
+   staff profile, and the function that button needs now exists with the whole §4.3
+   cascade in it. It is not granted to `authenticated`, because the screen does not exist
+   and a grant with no caller is an open door. Whoever builds §9.6 grants it and adds the
+   admin check inside, the way `invite_worker` does.
+2. **N1–N4 and N14 reach `notification_outbox` and stop there.** The drain
+   (`notify-drain`) is still disabled and has no Edge Function, because Web Push needs
+   VAPID keys and email needs Resend — both are in O3, both are yours. Until then the
+   expiry ladder is a table of rows nobody receives, and a worker blocked on the expiry
+   day finds out by opening the app.
+
+3. **Nothing sets `staff.graduated_at`, so §4.5 cannot happen yet.** The compliance sweep
+   reads it — a graduate is excluded from the term-letter ladder, and `weekly_cap_for()`
+   puts them on the permanent 48 h band — but no code anywhere writes it, and nothing
+   copies a verified letter's `term_dates` onto the worker either. Both are the *verify*
+   action in Compliance → Needs review (§4.1) and on the profile (§9.6), neither of which
+   is built. Until one of them writes those two columns, §4.5's graduation band change
+   cannot occur and the N14 it promises cannot fire. The rules are in place and will act
+   the morning after that write lands.
+
+None of the three blocks the other work. They are recorded so that "compliance is built"
+is not read as "workers are being told".
