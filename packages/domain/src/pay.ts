@@ -3,7 +3,7 @@
  *
  * Pure functions over instants and minutes. Postgres repeats every one of them
  * (`check_in_decision`, `check_out_decision`, `payable_minutes`,
- * `turned_away_minutes` in migration 0005) because the rules have to hold for a
+ * `turned_away_minutes` in migration 0006) because the rules have to hold for a
  * worker pressing a button, for the payroll view and for a background job
  * alike. `pay.vectors.json` is the contract between the two: Vitest reads it
  * directly, pgTAP reads the file generated from it. Neither implementation is

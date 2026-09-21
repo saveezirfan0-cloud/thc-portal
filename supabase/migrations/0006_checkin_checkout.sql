@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 0005 · the day of the shift (Scope of Work v1.6 §5.1–5.2b)
+-- Migration 0006 · the day of the shift (Scope of Work v1.6 §5.1–5.2b)
 --
 -- What this adds
 -- --------------

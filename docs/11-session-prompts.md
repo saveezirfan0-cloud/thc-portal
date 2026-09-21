@@ -168,7 +168,7 @@ picking that up belongs with S2.
 
 ## S7 · Phase 5 · Check-in, check-out and pay — **done**
 
-Migration `0005_checkin_checkout.sql` adds `attempt_check_in`, `check_out`, the four pure
+Migration `0006_checkin_checkout.sql` adds `attempt_check_in`, `check_out`, the four pure
 rule functions behind them (`check_in_decision`, `check_out_decision`, `payable_minutes`,
 `turned_away_minutes`) and `payable_shifts_v`. `packages/domain/pay.ts` repeats the same
 rules in TypeScript. `packages/domain/src/pay.vectors.json` is the contract: Vitest reads

@@ -27,7 +27,7 @@ What exists:
   component against both token axes.
 - **Seed data**: 5 clients, 8 venues, 6 roles, 40 workers, mirroring
   `wireframes/CONVENTIONS.md`.
-- **The day of the shift** (§5.1–5.2b): migration `0005` adds `attempt_check_in`,
+- **The day of the shift** (§5.1–5.2b): migration `0006` adds `attempt_check_in`,
   `check_out`, the four pure rule functions behind them and `payable_shifts_v`.
   `packages/domain/pay.ts` repeats the same rules in TypeScript, and
   `packages/domain/src/pay.vectors.json` is the contract between them: Vitest reads it,
@@ -107,8 +107,10 @@ say so rather than reporting the suite as passing.
   storing the weekly cap instead of calculating it, blending holiday pay instead of
   breaking out the 12.07%, showing the event window where a role-section window belongs,
   and letting any money reach the client.
-- Never edit an applied migration. Add the next numbered one. `0001`, `0002`, `0004` and
-  `0005` exist, and `0003` is reserved for the cron schedules in `docs/01` §4.
+- Never edit an applied migration. Add the next numbered one. `0001`, `0002`, `0004`,
+  `0005` and `0006` exist, and `0003` is reserved for the cron schedules in `docs/01` §4.
+  Check `supabase/migrations/` before you pick a number: two branches both reaching for
+  `0005` is how a silent ordering bug gets in.
 - Seed data mirrors `wireframes/CONVENTIONS.md`, so a screenshot and a test read the same.
 - Keep THC's Appendix B inputs in an issue with due dates. Several phases block on them:
   Willo keys, contract text, sample letters, the logo, and DNS.
