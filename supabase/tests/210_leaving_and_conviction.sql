@@ -20,7 +20,7 @@
 -- Every case pins a fixed instant so the arithmetic is readable.
 -- =====================================================================
 begin;
-select plan(31);
+select plan(37);
 \set now '2026-09-21 12:00:00+01'
 \ir _shared/fixtures.psql
 
@@ -92,6 +92,8 @@ select is((select status::text from bookings where id = '8f000000-0000-4000-8000
   'nor is a shift already worked, which is a pay record');
 select is((select cancel_cause from bookings where id = '8f000000-0000-4000-8000-000000000001'), 'left',
   'the cause distinguishes leaving from a block, which 0001_init reserved the word for');
+select is((select cancel_cause from bookings where id = '8f000000-0000-4000-8000-000000000002'), 'left_invite',
+  'and a WITHDRAWN invitation is marked apart from a RELEASED allocation — they are the same statement but not the same fact, and §10.6 step 6 only wants the second in E8');
 
 -- §10.6: leaving is not erasure. "The profile, its documents and its
 -- history remain intact and visible to the office, because they are
@@ -107,22 +109,30 @@ select is((select count(*)::int from bookings where staff_id = :'leaver'), 4,
 -- E8, and the operational hole §10.6 wants the office to see at once.
 -- ---------------------------------------------------------------------
 select is(
-  (select payload->>'employeeId' from notification_outbox where key = 'E8:staff:' || :'leaver'),
+  (select payload->>'employeeId' from notification_outbox where key like 'E8:staff:' || :'leaver' || ':%'),
   '90101', 'E8 names the Employee ID §8 puts in its subject line');
 select is(
-  (select payload->>'niNumber' from notification_outbox where key = 'E8:staff:' || :'leaver'),
+  (select payload->>'niNumber' from notification_outbox where key like 'E8:staff:' || :'leaver' || ':%'),
   'QQ123456C', 'and the NI number, so payroll can action the P45 without opening the profile');
 select is(
-  (select payload->>'lastShiftDate' from notification_outbox where key = 'E8:staff:' || :'leaver'),
+  (select payload->>'lastShiftDate' from notification_outbox where key like 'E8:staff:' || :'leaver' || ':%'),
   '01 Sep 2026', 'and the date of their last completed shift');
 select is(
-  (select payload->>'releasedShifts' from notification_outbox where key = 'E8:staff:' || :'leaver'),
-  E'Autumn Gala · RLS Fixture Client A · The Savoy · RLS Fixture Role · 05 Oct 2026 19:00\nAutumn Gala · RLS Fixture Client A · The Savoy · RLS Fixture Role · 07 Oct 2026 19:00',
-  '§10.6 step 6: every released shift with its event, client, venue, role and date — so whoever picks it up sees instantly whether a big event has just lost someone');
+  (select payload->>'releasedShifts' from notification_outbox where key like 'E8:staff:' || :'leaver' || ':%'),
+  'Autumn Gala · RLS Fixture Client A · The Savoy · RLS Fixture Role · 05 Oct 2026 19:00',
+  '§10.6 step 6: the shifts the event actually LOST, with event, client, venue, role and date. The 07 Oct invitation was withdrawn in the same sweep and is deliberately absent — nobody had accepted it, so no slot opened up');
 select is(
   (select channel::text || '/' || array_to_string(recipient_emails, ',')
-     from notification_outbox where key = 'E8:staff:' || :'leaver'),
+     from notification_outbox where key like 'E8:staff:' || :'leaver' || ':%'),
   'email/admin@thehospitalitycompany.co.uk', 'sent to the office immediately, not batched (§8)');
+-- The key carries the instant, not just the worker. §2.12 supports leaving
+-- twice on one record (that is what Reset to candidate is for), and a key
+-- of 'E8:staff:<id>' meant the second request hit the unique index and the
+-- "immediately, not batched" email silently never left the queue.
+select ok(
+  (select key ~ ('^E8:staff:' || :'leaver' || ':[0-9]+$')
+     from notification_outbox where template = 'E8'),
+  'and its key is per LEAVING, not per worker, so a returning worker who leaves again is not silently dropped');
 
 -- "A worker who is checked in cannot submit the request at all: the
 -- action is disabled for the duration of that shift." A greyed-out button
@@ -155,10 +165,14 @@ select is((select review_status::text from criminal_declarations where staff_id 
 -- The one thing about E9 that matters more than the rest of it.
 select ok(
   (select payload::text not like '%Caution received%'
-     from notification_outbox where template = 'E9'),
+     from notification_outbox
+      where key = 'E9:declaration:' || (select id from criminal_declarations
+                                         where staff_id = :'declar' and source = 'in_employment')),
   '§10.7 step 6: E9 does NOT carry the declaration text — those details are read in the Back Office, where access is role-controlled');
 select is(
-  (select payload->>'releasedShifts' from notification_outbox where template = 'E9'),
+  (select payload->>'releasedShifts' from notification_outbox
+     where key = 'E9:declaration:' || (select id from criminal_declarations
+                                        where staff_id = :'declar' and source = 'in_employment')),
   'Autumn Gala · RLS Fixture Client A · The Savoy · RLS Fixture Role · 05 Oct 2026 19:00',
   'it carries the operational hole instead, so the office sees it the moment it learns of the declaration');
 
@@ -168,7 +182,10 @@ update criminal_declarations set review_status = 'verified', reviewed_at = :'now
 select is((select status::text || '/' || coalesce(block_kind::text, 'none') from staff where id = :'declar'),
   'compliant/none',
   '§10.7 Verify: the block lifts through the ordinary full compliance re-check (§4.3), not by a separate unblock');
-select is((select count(*)::int from notification_outbox where key like 'N15:declaration:%'), 1,
+select is(
+  (select count(*)::int from notification_outbox
+    where key = 'N15:declaration:' || (select id from criminal_declarations
+                                        where staff_id = :'declar' and source = 'in_employment')), 1,
   'and the worker gets N15 — their shifts are open again');
 select is((select status::text from bookings where id = '8f000000-0000-4000-8000-000000000006'), 'cancelled',
   'bookings released in the meantime are not restored — they may already have gone to someone else');
@@ -181,10 +198,33 @@ update criminal_declarations set review_status = 'rejected', reviewed_at = :'now
 select is((select status::text || '/' || block_kind::text || '/' || block_reason from staff where id = :'rejectd'),
   'blocked/manual/Not accepted — see file',
   '§10.7 Reject: the block STANDS and converts to a manual block with the manager''s reason, so only a manager can ever lift it');
-select is((select count(*)::int from notification_outbox where key like 'N15:declaration:%'), 1,
+select is(
+  (select count(*)::int from notification_outbox
+    where key = 'N15:declaration:' || (select id from criminal_declarations
+                                        where staff_id = :'rejectd'))::int, 0,
   'and the worker is not told the reason through the app — the office contacts them, because this is a conversation rather than a push notification');
 select is(unblock_if_compliant(:'rejectd', date '2026-09-21'), false,
   'the converted manual block is not the automatic path''s to lift, even though the profile is otherwise clean');
+
+-- The half of that sentence the first version of this file never tested,
+-- and the half that was broken: §10.7 says the manual block is lifted
+-- "only by a manager" — which means a manager CAN. compliance_blockers
+-- used to emit conviction_unreviewed for any Yes not `verified`, which is
+-- permanently true of a REJECTED one, so unblock_worker refused for ever
+-- and the only exits were re-onboarding or GDPR removal.
+select is((unblock_worker(:'rejectd', date '2026-09-21'))->>'unblocked', 'true',
+  '§10.7/§9.6: a manager CAN lift the converted block — a rejected declaration has been decided, and the manual block is what carries it');
+select is((select status::text from staff where id = :'rejectd'), 'compliant',
+  'and the worker comes back, which is the whole point of the block being a manager''s to lift');
+
+-- While a declaration still awaiting a decision must keep blocking, which
+-- is what §4.3 actually asks for.
+select is(
+  (declare_conviction(:'declar', 'A second, still pending', null,
+                      :'now'::timestamptz + interval '1 hour'))->>'status',
+  'blocked', 'a fresh declaration blocks again');
+select is((unblock_worker(:'declar', date '2026-09-21'))->>'blockers', '["conviction_unreviewed"]',
+  'and a PENDING declaration still refuses the unblock — §4.3''s rule is about a declaration nobody has decided yet');
 
 select * from finish();
 rollback;

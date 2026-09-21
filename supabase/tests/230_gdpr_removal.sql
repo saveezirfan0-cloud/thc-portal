@@ -22,12 +22,18 @@
 -- anonymised row and prints the new label with no code of its own.
 -- =====================================================================
 begin;
-select plan(25);
+select plan(28);
 \set now '2026-09-21 12:00:00+01'
 \ir _shared/fixtures.psql
 
 \set gdpr 'd3000000-0000-4000-8000-000000000001'
 \set keep 'd3000000-0000-4000-8000-000000000002'
+\set gdpr_uid '66666666-6666-6666-6666-666666666666'
+
+-- A real auth user to unlink. Without one the worker starts with a null
+-- user_id and the "login is disabled" assertion below passes whether or
+-- not remove_worker touches the column.
+insert into auth.users (id, email) values (:'gdpr_uid', 'grace@rls.test');
 
 insert into staff (id, user_id, employee_id, first_name, last_name, email, phone, dob, status,
                    rtw_branch, home_address, photo_path, ni_number, share_code,
@@ -37,7 +43,7 @@ insert into staff (id, user_id, employee_id, first_name, last_name, email, phone
   -- Reusing the number to make the label read familiarly collides with
   -- the seed's own removed worker; the label format is pinned below as a
   -- pure function call instead, where no row is involved.
-  (:'gdpr', null, 91042, 'Grace','Lindqvist','grace@example.com','+447700900105', date '1997-03-30',
+  (:'gdpr', :'gdpr_uid', 91042, 'Grace','Lindqvist','grace@example.com','+447700900105', date '1997-03-30',
    'compliant','international_student','Roman Rd, London E3','photos/grace.jpg','QQ999999C',
    'W123456AB', date '2027-01-01', date '2026-06-30', '{"[2026-06-15,2026-09-28)"}', true),
   (:'keep', null, 91043, 'Stays','Here','stays@example.com','+447700900106', date '1996-01-01',
@@ -97,10 +103,22 @@ select is(
           coalesce(ni_number,'-') || '/' || coalesce(share_code,'-')
      from staff where id = :'gdpr'),
   '-/-/-/-', 'contacts, photo, NI number and share code are wiped');
+select is((select user_id from staff where id = :'keep'), null,
+  'the control worker never had a login, which is what makes the next assertion mean something');
 select is((select user_id from staff where id = :'gdpr'), null,
   'login is disabled by unlinking the auth user — the GoTrue row itself is deleted through the admin API, which SQL cannot reach');
 select is((select removed_at from staff where id = :'gdpr'), :'now'::timestamptz,
   'and the removal is stamped');
+select is(
+  (select dob::text || '/' || phone from staff where id = :'gdpr'),
+  '1900-01-01/+440000000000',
+  'dob and phone are `not null` — dob carries §1.7''s own age check — so they take sentinels that identify nobody rather than nulls');
+select is(
+  (select coalesce(right_to_work_until::text,'-') || '/' || coalesce(graduated_at::text,'-') || '/' ||
+          coalesce(array_length(term_dates,1)::text,'0') || '/' || wtr_optout::text
+     from staff where id = :'gdpr'),
+  '-/-/0/false',
+  'and every cap input goes with the evidence behind it — RULE-20 reads the profile live, so a removed worker must not keep a calculated cap off documents that no longer exist');
 
 -- ---------------------------------------------------------------------
 -- Documents and the evidence sets that are nothing but personal data.

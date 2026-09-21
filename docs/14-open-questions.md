@@ -498,3 +498,40 @@ that is not mine to do here:
 None of these blocks the other work. They are recorded so that "compliance is built" is
 not read as "workers are being told", and so that the missing grants read as deliberate
 rather than forgotten.
+
+---
+
+## O11 · GDPR removal cannot reach everything §1.7 asks it to
+
+`remove_worker()` (§1.7) anonymises the profile, deletes the documents, bank details,
+referees, HMRC checklist and push subscriptions, and releases future bookings. Four places
+hold personal data it does **not** reach, three of which need a decision from you.
+
+**1. The files themselves.** The `compliance_docs` rows go; the objects they pointed at —
+a passport scan in the `documents` bucket, a selfie in `photos` — do not. §1.7 says
+"contacts / documents / photo wiped", and today the row is wiped while the file survives.
+SQL cannot call the Storage API, so this needs either an Edge Function called after
+removal, or a queue the drain picks up. **This is the one that matters most**: it is the
+actual document, not a reference to it.
+
+**2. `applications`.** The public form (§2.1) stores `first_name`, `last_name`, `email`,
+`phone` and `age_band` per submission, keyed to the staff record. `remove_worker` never
+touches it, so the worker's name and contact details survive an irreversible
+anonymisation. Fixable in SQL; not done here because the application row is also the
+duplicate-check §2.12 relies on for a returning applicant, and blanking it changes that
+behaviour. **Ask:** should removal anonymise the application rows too, accepting that the
+person can then re-apply as a genuinely new candidate — which is what §2.12 says happens
+to a removed worker anyway?
+
+**3. `staff.willo_candidate_id`.** A live identifier for the interview video held by a
+third party. Nulling it is one line; deleting the video is a Willo API call we cannot make
+until P3's account exists. Left as-is so the two go together rather than leaving an
+orphaned video nobody can find.
+
+**4. Lower risk, same decision.** `notification_outbox` payloads keep the name, and E8's
+keeps the NI number, until the row is drained and pruned; `location_pings` keep the GPS
+trace of shifts worked. Both are arguably operational records rather than profile data,
+but they are personal data and they are not mentioned in §1.7 either way.
+
+Recorded rather than guessed at, because each one trades a GDPR obligation against a
+behaviour the scope defines elsewhere, and that is your call rather than a bot's.

@@ -124,10 +124,15 @@ select is((select data->>'reason' from audit_log where action = 'reset_to_candid
 -- §9.6: "available on a blocked, rejected or inactive profile".
 select is((reset_to_candidate(:'gone', 'Came back to us', :'now'::timestamptz))->>'fromStatus', 'inactive',
   'a leaver can be reset — §2.12 makes this the ONLY way out of inactive, since right to work, tax and contract must all be re-established');
+-- §9.6 is narrower than the transition table here. The table allows
+-- `p_from = p_to`, an escape hatch so block_worker can re-block an
+-- already-blocked worker without raising — which also let a second press
+-- of Reset succeed on a candidate, clearing their contract and share code
+-- and writing a second audit row. So the function states §9.6's own list.
 select throws_ok(
   format('select reset_to_candidate(%L, %L, %L::timestamptz)', :'staffa', 'no', :'now'),
-  'illegal_staff_transition: compliant -> interview_requested',
-  'a compliant worker cannot be reset — the transition table refuses it, rather than each caller remembering to');
+  'not_resettable: compliant',
+  '§9.6: Reset is "available on a blocked, rejected or inactive profile" — a compliant worker is refused by name, not left to the transition table which would allow a candidate to be reset twice');
 
 select * from finish();
 rollback;

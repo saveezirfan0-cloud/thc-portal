@@ -19,7 +19,7 @@
 -- gap. This is the half of the contract that SQL can hold.
 -- =====================================================================
 begin;
-select plan(6);
+select plan(7);
 
 -- ---------------------------------------------------------------------
 -- 1. Everything the jobs call is callable by the service role.
@@ -72,10 +72,47 @@ select is_empty(
         and p.proname in (
           'booking_tick', 'job_run_start', 'job_run_finish',
           'claim_outbox_batch', 'complete_outbox_send',
-          'release_unready_bookings', 'invite_worker', 'install_job_schedules'
+          'release_unready_bookings', 'invite_worker', 'install_job_schedules',
+          -- The compliance, lifecycle and directory write paths. Every one
+          -- of them is destructive: block_worker cancels every future
+          -- booking a worker holds, reset_to_candidate supersedes their
+          -- whole evidence set, and remove_worker is irreversible.
+          'compliance_daily', 'block_worker', 'unblock_if_compliant',
+          'request_p45', 'declare_conviction', 'released_shift_lines',
+          'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
+          'remove_worker'
         )
         and has_function_privilege('anon', p.oid, 'execute') $$,
-  'anon can execute none of the job or engine write paths'
+  'anon can execute none of the job, engine, compliance or lifecycle write paths'
+);
+
+-- ---------------------------------------------------------------------
+-- 2c. And neither can a signed-in worker.
+--
+--     This is the half the grants' own comments promise and nothing was
+--     holding. `invite_worker` and the three worker-facing RPCs ARE
+--     granted to `authenticated` on purpose and each checks its caller;
+--     everything below is a Back Office or job path with no self-check,
+--     reached through a server action holding the service key. A grant
+--     here would let any signed-in worker retire a colleague, suspend
+--     them on a fabricated declaration, or wipe their evidence.
+--
+--     docs/14 O7 is the reason this is asserted rather than assumed: a
+--     `revoke ... from public` does NOT take back Supabase's
+--     default-privilege grants to `authenticated` by name.
+-- ---------------------------------------------------------------------
+select is_empty(
+  $$ select p.proname::text
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in (
+          'compliance_daily', 'block_worker', 'unblock_if_compliant',
+          'request_p45', 'declare_conviction', 'released_shift_lines',
+          'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
+          'remove_worker'
+        )
+        and has_function_privilege('authenticated', p.oid, 'execute') $$,
+  'nor can a signed-in worker block, retire, reset or remove anybody'
 );
 
 -- ---------------------------------------------------------------------
