@@ -1,5 +1,5 @@
 -- =====================================================================
--- 070 · the calculated weekly cap, RULE-20 (Scope §4.4–4.5)
+-- 090 · the calculated weekly cap, RULE-20 (Scope §4.4–4.5)
 --
 -- Two halves, matching the two halves of the rule:
 --
