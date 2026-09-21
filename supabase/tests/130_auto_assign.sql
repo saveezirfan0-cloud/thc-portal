@@ -1,5 +1,5 @@
 -- =====================================================================
--- 080 · Auto-assign (§3.4), three-stage confirmation (§3.5), booking
+-- 130 · Auto-assign (§3.4), three-stage confirmation (§3.5), booking
 --       state machine (§3.6).
 --
 -- Four parts:

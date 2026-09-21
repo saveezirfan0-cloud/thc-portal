@@ -9,7 +9,7 @@ import {
   weekDays,
 } from './calendar';
 import { loadEventsInRange, loadReferenceData } from './data';
-import { OfficeShell } from './_components/OfficeShell';
+import { OfficeShell } from '../_components/OfficeShell';
 import { EventToolbar, type ToolbarQuery } from './_components/EventToolbar';
 import { DayView, ListView, MonthView, WeekView } from './_components/EventViews';
 import { bucketByDay, periodTotals, toEventRows } from './view-model';
@@ -79,6 +79,7 @@ export default async function Page({
 
   return (
     <OfficeShell
+      activeHref="/events"
       title="Scheduling"
       crumbs={null}
       actions={

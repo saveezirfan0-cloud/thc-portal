@@ -1,6 +1,8 @@
+import Link from 'next/link';
 import { createEvent } from '../actions';
 import { loadReferenceData } from '../data';
-import { OfficeShell } from '../_components/OfficeShell';
+import { OfficeShell } from '../../_components/OfficeShell';
+import { ViewerZone } from '../_components/ViewerZone';
 import { ShiftBuilder } from '../_components/ShiftBuilder';
 import type { EventDraft } from '../draft';
 import '../shift-builder.css';
@@ -36,7 +38,16 @@ export default async function Page() {
   };
 
   return (
-    <OfficeShell title="New event">
+    <OfficeShell
+      activeHref="/events"
+      title="New event"
+      crumbs={
+        <>
+          <Link href="/events">Scheduling</Link> / <b>Shift Builder</b>
+        </>
+      }
+      timezone={<ViewerZone />}
+    >
       <ShiftBuilder
         mode="new"
         reference={reference}
