@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 0006 · the Venues directory (§9.11)
+-- Migration 0007 · the Venues directory (§9.11)
 --
 -- Why this exists
 -- ---------------
@@ -24,7 +24,7 @@
 -- admin_all (0001), and staff and client have no policy on venues at all.
 -- Nothing here grants anybody anything they did not already have.
 --
--- Forward-only: 0001, 0002, 0004 and 0005 are left untouched.
+-- Forward-only: 0001, 0002, 0004, 0005 and 0006 are left untouched.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------

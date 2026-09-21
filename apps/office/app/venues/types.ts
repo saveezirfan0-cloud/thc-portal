@@ -1,6 +1,6 @@
 /**
  * The row shapes /venues reads. They mirror `venue_directory_v` and
- * `venue_types` from 0006_venues_directory.sql.
+ * `venue_types` from 0007_venues_directory.sql.
  *
  * `packages/db`'s generated types are still the Phase 0 placeholder, so the
  * queries below name their own return shape with `.returns<T>()` rather than
