@@ -1,16 +1,16 @@
 'use client';
 
 import { useActionState, useId, useState } from 'react';
-import { Alert, Button, Input, Select } from '@thc/ui';
+import { Alert, Button, Input } from '@thc/ui';
 import { submitApplication } from './actions';
 import {
-  AGE_BANDS,
+  ageOn,
   emptyDraft,
   EMPTY_APPLY_STATE,
+  parseDob,
   PRIVACY_NOTICE_URL,
   MESSAGES,
   summaryMessage,
-  UNDER_18,
   validateApplication,
   type ApplicationDraft,
   type ApplicationErrors,
@@ -41,7 +41,10 @@ export function ApplyForm() {
 
   const checked = validateApplication(draft);
   const liveErrors: ApplicationErrors = checked.ok ? {} : checked.errors;
-  const underAge = draft.ageBand === UNDER_18;
+  // "On the spot" now means: a complete date that puts them under 18.
+  // A half-typed year is not a rejection, it is an unfinished field.
+  const parsed = parseDob(draft.dob);
+  const underAge = parsed !== null && ageOn(parsed) < 18;
 
   // Before the first attempt only the age gate speaks. After it, the
   // form's own errors sit on top of whatever the server sent back — the
@@ -51,7 +54,7 @@ export function ApplyForm() {
   const shown: ApplicationErrors = attempted
     ? { ...state.errors, ...liveErrors }
     : underAge
-      ? { ageBand: MESSAGES.ageUnder18 }
+      ? { dob: MESSAGES.dobUnder18 }
       : {};
 
   // The banner appears with the age error too, not only after a click:
@@ -170,21 +173,20 @@ export function ApplyForm() {
         )}
       </div>
 
-      <Select
-        label="Age"
-        name="ageBand"
-        value={draft.ageBand}
-        onChange={(e) => set('ageBand', e.target.value)}
+      {/* A native date input opens the OS wheel picker on a phone, which is
+          where §2.1 says applicants are. No `max`: capping it at today
+          minus eighteen years would hide the under-18 case rather than
+          refuse it, and the wireframe refuses it out loud. */}
+      <Input
+        label="Date of birth"
+        name="dob"
+        type="date"
+        autoComplete="bday"
+        value={draft.dob}
+        onChange={(e) => set('dob', e.target.value)}
         hint="You must be 18 or over to work with us."
-        error={shown.ageBand}
-      >
-        <option value="">Select your age</option>
-        {AGE_BANDS.map((band) => (
-          <option key={band.value} value={band.value}>
-            {band.label}
-          </option>
-        ))}
-      </Select>
+        error={shown.dob}
+      />
 
       {/* §1.7: the GDPR tick is mandatory and its timestamp is stored with
           the record. The styled square is the wireframe's; the real

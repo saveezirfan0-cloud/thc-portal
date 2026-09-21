@@ -31,7 +31,7 @@ interface ApplicationRpc {
       p_last_name: string;
       p_email: string;
       p_phone: string;
-      p_age_band: string;
+      p_dob: string;
       p_consent: boolean;
     },
   ): Promise<{ error: { message: string } | null }>;
@@ -57,7 +57,7 @@ function draftFrom(formData: FormData): ApplicationDraft {
     email: String(formData.get('email') ?? ''),
     country: String(formData.get('country') ?? '') || DEFAULT_ISO,
     mobile: String(formData.get('mobile') ?? ''),
-    ageBand: String(formData.get('ageBand') ?? ''),
+    dob: String(formData.get('dob') ?? ''),
     consent: formData.get('consent') === 'on',
   };
 }
@@ -107,7 +107,7 @@ export async function submitApplication(
     p_last_name: checked.value.lastName,
     p_email: checked.value.email,
     p_phone: checked.value.phone,
-    p_age_band: checked.value.ageBand,
+    p_dob: checked.value.dob,
     // Passed through rather than hard-coded, so the SQL consent gate is
     // exercised by the real client and not only by a direct RPC caller.
     p_consent: checked.value.consent,

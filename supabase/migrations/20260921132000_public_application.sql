@@ -1,14 +1,17 @@
 -- =====================================================================
--- Migration 0005 · the public application form (§2.1) and the duplicate
+-- The public application form (§2.1) and the duplicate
 --                   check that routes a returning applicant (§2.12)
 --
 -- What /apply has to do
 -- ---------------------
 -- §2.1  Public URL, no registration. First name · Surname · Email ·
---       Mobile (international picker) · Age (select from 18) + GDPR
---       consent. Under 18 is rejected on the form AND on the server
---       (§1.7). There is no "Applied" stage: a valid submission creates
---       the candidate directly in `interview_requested`.
+--       Mobile (international picker) · Date of birth + GDPR consent.
+--       §2.1 asks for an age band; THC confirmed the form collects a date
+--       of birth instead, because §2.12 needs one (docs/adr/0006). The
+--       band is derived from the date and still recorded. Under 18 is
+--       rejected on the form AND on the server (§1.7). There is no
+--       "Applied" stage: a valid submission creates the candidate
+--       directly in `interview_requested`.
 -- §2.12 On submission the system matches email, and mobile + date of
 --       birth, against existing records. A match does NOT create a second
 --       candidate — the application is routed to the office as a
@@ -59,28 +62,21 @@ create index staff_email_normalised_idx on staff (lower(btrim(email)));
 create index staff_msisdn_idx           on staff (normalise_msisdn(phone));
 
 -- ---------------------------------------------------------------------
--- staff.dob becomes nullable — see docs/adr/0006
+-- staff.dob stays NOT NULL in spirit — see docs/adr/0006
 --
--- §2.1 collects Age, not date of birth; the DOB is asked for in the Staff
--- App wizard (§2.5), which the candidate works through during the
--- `documents` stage. 0001_init.sql made `dob` NOT NULL, which makes the
--- candidate row §2.1 requires ("lands straight in Interview requested")
--- impossible to write. Rather than invent a date, the column is nullable
--- for the three pipeline stages that genuinely do not have one yet, and
--- the constraint below makes it impossible to get any further without it:
--- the quiz only unlocks once every document is verified (§2.3), and the
--- gov.uk share-code check (§2.6) needs the DOB before that.
--- `removed` is allowed because a GDPR removal wipes personal data (§1.7),
--- and `rejected` because a candidate can be rejected out of any stage.
--- The existing age_18 check is unaffected: a NULL dob makes it unknown,
--- which passes, and it is submit_application's age band — plus this
--- constraint — that covers the gap until a real date arrives.
+-- 0001_init.sql declared `dob` NOT NULL. The form now collects a date of
+-- birth, so every candidate this migration creates has one from the
+-- moment the row exists and the column could simply stay as it was.
+-- It is relaxed for exactly one case: a GDPR removal (§1.7) wipes
+-- personal data, and a date of birth is personal data, so `removed` has
+-- to be able to hold NULL. The constraint below allows that and nothing
+-- else, which is a stronger guarantee than the NOT NULL it replaces —
+-- NOT NULL could not have expressed "except once anonymised".
 -- ---------------------------------------------------------------------
 alter table staff alter column dob drop not null;
 
-alter table staff add constraint dob_required_from_quiz check (
-  dob is not null
-  or status in ('interview_requested', 'interview_completed', 'documents', 'rejected', 'removed')
+alter table staff add constraint dob_present_unless_removed check (
+  dob is not null or status = 'removed'
 );
 
 -- The Willo integration (Phase 1, later session) sends the interview
@@ -122,7 +118,10 @@ create table applications (
   last_name  text not null,
   email      text not null,
   phone      text not null,                      -- E.164, as typed into the form
-  age_band   text not null,                      -- the §2.1 select's value, e.g. '18', '31_40'
+  dob        date not null,                      -- §2.12 matches mobile + DOB (docs/adr/0006)
+  -- Derived from dob, never asked: §2.1 wanted an age band, and a band the
+  -- applicant picks separately can contradict the date they typed.
+  age_band   text not null,
   gdpr_consent_at timestamptz not null default now(),   -- §1.7: the tick's timestamp is stored
   outcome    application_outcome not null,
   -- the candidate this created, or the existing record it matched (§2.12)
@@ -162,15 +161,11 @@ create or replace function public.submit_application(
   p_last_name  text,
   p_email      text,
   p_phone      text,
-  p_age_band   text,
-  p_consent    boolean,
-  -- §2.12 matches mobile + DOB, but §2.1's form has no DOB field (the open
-  -- point recorded in docs/adr/0006). The parameter exists so that the day
-  -- the form collects one, the mobile arm of the match tightens without a
-  -- signature change. Left null, the mobile arm matches on mobile alone,
-  -- which errs towards routing to the office rather than towards a second
-  -- record — the outcome §2.12 is trying to prevent.
-  p_dob        date default null
+  -- §2.12 matches mobile + DOB. THC confirmed the form collects the date
+  -- (docs/adr/0006), so this is required and the match is exact — there is
+  -- no mobile-only fallback any more.
+  p_dob        date,
+  p_consent    boolean
 ) returns void
 language plpgsql
 security definer
@@ -181,7 +176,8 @@ declare
   v_phone   text := normalise_msisdn(coalesce(p_phone, ''));
   v_first   text := btrim(coalesce(p_first_name, ''));
   v_last    text := btrim(coalesce(p_last_name, ''));
-  v_band    text := btrim(coalesce(p_age_band, ''));
+  v_band    text;
+  v_age     int;
   v_match   uuid;
   v_match_status staff_status;
   v_staff   uuid;
@@ -203,24 +199,33 @@ begin
     raise exception 'apply_phone_invalid' using errcode = 'check_violation';
   end if;
 
-  if v_band = '' then
-    raise exception 'apply_age_required' using errcode = 'check_violation';
+  if p_dob is null then
+    raise exception 'apply_dob_required' using errcode = 'check_violation';
+  end if;
+
+  -- A date in the future, or one implying an improbable age, is a typo or
+  -- a tampered field rather than an applicant.
+  if p_dob > current_date or p_dob < (current_date - interval '100 years') then
+    raise exception 'apply_dob_invalid' using errcode = 'check_violation';
   end if;
 
   -- §2.1 / §1.7: age >= 18, checked again here so a tampered form still
-  -- fails. 'under_18' is the only band the select offers below 18; any
-  -- band the server does not recognise is refused for the same reason.
-  if v_band = 'under_18' then
+  -- fails. Completed years in UK time, which is where every rule in this
+  -- system is evaluated (§1.8).
+  v_age := extract(year from age(current_date, p_dob))::int;
+  if v_age < 18 then
     raise exception 'apply_under_18' using errcode = 'check_violation';
-  end if;
-  if v_band not in ('18','19','20','21','22','23','24','25','26','27','28','29','30',
-                    '31_40','41_50','51_60','60_plus') then
-    raise exception 'apply_age_required' using errcode = 'check_violation';
   end if;
 
-  if p_dob is not null and p_dob > (current_date - interval '18 years') then
-    raise exception 'apply_under_18' using errcode = 'check_violation';
-  end if;
+  -- The §2.1 band, derived rather than asked, so it can never disagree
+  -- with the date the applicant actually gave.
+  v_band := case
+    when v_age <= 30 then v_age::text
+    when v_age <= 40 then '31_40'
+    when v_age <= 50 then '41_50'
+    when v_age <= 60 then '51_60'
+    else '60_plus'
+  end;
 
   -- §1.7: the GDPR tick is mandatory; nothing is created without it.
   if p_consent is not true then
@@ -243,10 +248,7 @@ begin
      and s.status <> 'removed'
      and (
        lower(btrim(s.email)) = v_email
-       or (
-         normalise_msisdn(s.phone) = v_phone
-         and (p_dob is null or s.dob is null or s.dob = p_dob)
-       )
+       or (normalise_msisdn(s.phone) = v_phone and s.dob = p_dob)
      )
    order by s.created_at
    limit 1;
@@ -266,15 +268,15 @@ begin
       else 'returning_applicant'
     end;
   else
-    insert into staff (first_name, last_name, email, phone, status, gdpr_consent_at)
-    values (v_first, v_last, btrim(p_email), v_phone, 'interview_requested', now())
+    insert into staff (first_name, last_name, email, phone, dob, status, gdpr_consent_at)
+    values (v_first, v_last, btrim(p_email), v_phone, p_dob, 'interview_requested', now())
     returning id into v_staff;
 
     v_outcome := 'candidate_created';
   end if;
 
-  insert into applications (first_name, last_name, email, phone, age_band, outcome, staff_id)
-  values (v_first, v_last, btrim(p_email), v_phone, v_band, v_outcome, v_staff)
+  insert into applications (first_name, last_name, email, phone, dob, age_band, outcome, staff_id)
+  values (v_first, v_last, btrim(p_email), v_phone, p_dob, v_band, v_outcome, v_staff)
   returning id into v_app;
 
   insert into audit_log (actor, action, entity, entity_id, data)
@@ -282,10 +284,10 @@ begin
           jsonb_build_object('outcome', v_outcome, 'staff_id', v_staff));
 end $$;
 
-comment on function public.submit_application(text, text, text, text, text, boolean, date) is
-  'Public /apply submission (§2.1). Enforces age >= 18 and GDPR consent, runs the §2.12 duplicate check, and returns void so the applicant cannot tell a new candidate from a returning one.';
+comment on function public.submit_application(text, text, text, text, date, boolean) is
+  'Public /apply submission (§2.1). Enforces age >= 18 from the date of birth, and GDPR consent, runs the §2.12 duplicate check, and returns void so the applicant cannot tell a new candidate from a returning one.';
 
 -- anon is the point: /apply is a public URL with no registration (§2.1).
-revoke all on function public.submit_application(text, text, text, text, text, boolean, date) from public;
-grant execute on function public.submit_application(text, text, text, text, text, boolean, date)
+revoke all on function public.submit_application(text, text, text, text, date, boolean) from public;
+grant execute on function public.submit_application(text, text, text, text, date, boolean)
   to anon, authenticated, service_role;

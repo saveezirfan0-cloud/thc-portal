@@ -30,12 +30,20 @@ function freshMobile(): string {
   return `7700 9${String(Date.now()).slice(-3)}${tail}`;
 }
 
-async function fill(page: Page, over: { email: string; mobile?: string; age?: string }) {
+/** `yyyy-mm-dd` for someone who turns `age` today, offset by whole days. */
+function dobForAge(age: number, offsetDays = 0): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - age);
+  d.setDate(d.getDate() + offsetDays);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+async function fill(page: Page, over: { email: string; mobile?: string; dob?: string }) {
   await page.getByLabel('First name').fill('Amara');
   await page.getByLabel('Surname').fill('Kalu');
   await page.getByLabel('Email', { exact: true }).fill(over.email);
   await page.getByLabel('Mobile', { exact: true }).fill(over.mobile ?? freshMobile());
-  await page.getByLabel('Age').selectOption(over.age ?? '22');
+  await page.getByLabel('Date of birth').fill(over.dob ?? '1994-06-15');
   await page.getByRole('checkbox').check();
 }
 
@@ -44,7 +52,7 @@ test.describe('public /apply', () => {
     await page.goto('/apply');
 
     await expect(page.getByRole('heading', { name: 'Apply to work with us' })).toBeVisible();
-    for (const field of ['First name', 'Surname', 'Email', 'Mobile', 'Age']) {
+    for (const field of ['First name', 'Surname', 'Email', 'Mobile', 'Date of birth']) {
       await expect(page.getByLabel(field, { exact: true })).toBeVisible();
     }
     await expect(page.getByRole('checkbox')).not.toBeChecked();
@@ -56,7 +64,7 @@ test.describe('public /apply', () => {
 
   test('refuses an under-18 on the form, before anything is submitted', async ({ page }) => {
     await page.goto('/apply');
-    await fill(page, { email: freshEmail('under18'), age: 'under_18' });
+    await fill(page, { email: freshEmail('under18'), dob: dobForAge(18, 1) });
 
     // "On the spot": the error and the disabled button appear on selection.
     await expect(page.getByText('You must be 18 or over to apply')).toBeVisible();
@@ -75,17 +83,15 @@ test.describe('public /apply', () => {
     const email = freshEmail('tampered');
     await fill(page, { email });
 
-    // Change the select in the DOM without telling React, so the form
-    // believes it is valid and posts 'under_18' anyway. This is the §1.7
-    // "and on the backend" half of the age gate.
-    await page.evaluate(() => {
-      const select = document.querySelector<HTMLSelectElement>('select[name="ageBand"]');
-      if (!select) throw new Error('no age select on the page');
-      const option = document.createElement('option');
-      option.value = 'under_18';
-      select.appendChild(option);
-      select.value = 'under_18';
-    });
+    // Change the input in the DOM without telling React, so the form
+    // believes it is valid and posts an under-18 date anyway. This is the
+    // §1.7 "and on the backend" half of the age gate.
+    const underAge = dobForAge(18, 1);
+    await page.evaluate((value) => {
+      const input = document.querySelector<HTMLInputElement>('input[name="dob"]');
+      if (!input) throw new Error('no date of birth input on the page');
+      input.value = value;
+    }, underAge);
 
     await page.getByRole('button', { name: 'Submit application' }).click();
 

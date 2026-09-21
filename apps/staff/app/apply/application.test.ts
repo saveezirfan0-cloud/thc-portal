@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AGE_BANDS,
+  ageBandFor,
+  ageOn,
   errorForDatabaseCode,
   emptyDraft,
-  isAdultBand,
   MESSAGES,
+  parseDob,
   summaryMessage,
   toE164,
-  UNDER_18,
   validateApplication,
   type ApplicationDraft,
 } from './application';
@@ -28,58 +28,90 @@ function draft(over: Partial<ApplicationDraft> = {}): ApplicationDraft {
     email: 'amara.kalu@example.com',
     country: 'GB',
     mobile: '7700 900123',
-    ageBand: '22',
+    dob: '1994-06-15',
     consent: true,
     ...over,
   };
 }
 
 // ---------------------------------------------------------------------
-// §2.1 / §1.7 — age >= 18, on the form. The server half of the same gate
-// lives in submit_application (20260921132000_public_application.sql) and is
-// covered by supabase/tests/070_applications.sql.
+// §2.1 / §1.7 — age >= 18, from the date of birth THC confirmed the form
+// collects (docs/adr/0006). The server half of the same gate lives in
+// submit_application and is covered by supabase/tests/120_applications.sql.
 // ---------------------------------------------------------------------
+
+/** `yyyy-mm-dd` for someone who turns `age` today. */
+function dobForAge(age: number, offsetDays = 0): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - age);
+  d.setDate(d.getDate() + offsetDays);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 describe('the age gate (§2.1, §1.7)', () => {
-  it('rejects Under 18 with the wireframe copy and creates nothing', () => {
-    const result = validateApplication(draft({ ageBand: UNDER_18 }));
+  it('rejects someone a day short of 18, with the wireframe copy', () => {
+    const result = validateApplication(draft({ dob: dobForAge(18, 1) }));
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.errors.ageBand).toBe('You must be 18 or over to apply');
+    expect(result.errors.dob).toBe('You must be 18 or over to apply');
   });
 
-  it('rejects a band the select never offered, the same as Under 18', () => {
-    // A tampered <select> is the only way to get here; it must not slip
-    // through just because it is not the literal string 'under_18'.
-    const result = validateApplication(draft({ ageBand: '16' }));
+  it('accepts someone on their eighteenth birthday', () => {
+    expect(validateApplication(draft({ dob: dobForAge(18) })).ok).toBe(true);
+  });
+
+  it('counts completed years, not calendar-year differences', () => {
+    const on = new Date(2026, 8, 21); // 21 September 2026
+    expect(ageOn(new Date(2008, 8, 21), on)).toBe(18); // birthday today
+    expect(ageOn(new Date(2008, 8, 22), on)).toBe(17); // birthday tomorrow
+    expect(ageOn(new Date(2008, 0, 1), on)).toBe(18);
+    expect(ageOn(new Date(2008, 11, 31), on)).toBe(17);
+  });
+
+  it('asks for a date when none was given', () => {
+    const result = validateApplication(draft({ dob: '' }));
     expect(result.ok).toBe(false);
     if (result.ok) return;
-    expect(result.errors.ageBand).toBe(MESSAGES.ageUnder18);
+    expect(result.errors.dob).toBe(MESSAGES.dobMissing);
   });
 
-  it('asks for an age when none was chosen', () => {
-    const result = validateApplication(draft({ ageBand: '' }));
-    expect(result.ok).toBe(false);
-    if (result.ok) return;
-    expect(result.errors.ageBand).toBe(MESSAGES.ageMissing);
-  });
-
-  it('accepts every band the select offers from 18 upwards', () => {
-    for (const band of AGE_BANDS) {
-      const expected = band.value !== UNDER_18;
-      expect(isAdultBand(band.value), band.value).toBe(expected);
-      expect(validateApplication(draft({ ageBand: band.value })).ok, band.value).toBe(expected);
+  it('refuses a date that is not a real day', () => {
+    for (const bad of ['1994-02-31', '1994-13-01', '94-06-15', 'yesterday', '1994-06-0']) {
+      const result = validateApplication(draft({ dob: bad }));
+      expect(result.ok, bad).toBe(false);
+      if (result.ok) continue;
+      expect(result.errors.dob, bad).toBe(MESSAGES.dobInvalid);
     }
   });
 
-  it('offers Under 18 exactly once, and only so the form can refuse it', () => {
-    expect(AGE_BANDS.filter((b) => b.value === UNDER_18)).toHaveLength(1);
-    expect(AGE_BANDS[0]?.value).toBe(UNDER_18);
-    expect(AGE_BANDS[1]?.label).toBe('18');
+  it('refuses a future date and an improbable age', () => {
+    expect(validateApplication(draft({ dob: dobForAge(-1) })).ok).toBe(false);
+    expect(validateApplication(draft({ dob: '1890-01-01' })).ok).toBe(false);
+  });
+
+  it('parses the yyyy-mm-dd an <input type="date"> produces, in local time', () => {
+    const d = parseDob('1994-06-15');
+    expect(d).not.toBeNull();
+    // Not shifted a day by a UTC parse, which is what `new Date(string)` does.
+    expect(d?.getFullYear()).toBe(1994);
+    expect(d?.getMonth()).toBe(5);
+    expect(d?.getDate()).toBe(15);
+  });
+
+  it('derives the §2.1 band rather than asking for it', () => {
+    expect(ageBandFor(18)).toBe('18');
+    expect(ageBandFor(30)).toBe('30');
+    expect(ageBandFor(31)).toBe('31_40');
+    expect(ageBandFor(40)).toBe('31_40');
+    expect(ageBandFor(41)).toBe('41_50');
+    expect(ageBandFor(51)).toBe('51_60');
+    expect(ageBandFor(61)).toBe('60_plus');
   });
 
   it('repeats the same message when the database refuses a tampered form', () => {
-    expect(errorForDatabaseCode('apply_under_18').ageBand).toBe(MESSAGES.ageUnder18);
-    expect(errorForDatabaseCode('apply_age_required').ageBand).toBe(MESSAGES.ageMissing);
+    expect(errorForDatabaseCode('apply_under_18').dob).toBe(MESSAGES.dobUnder18);
+    expect(errorForDatabaseCode('apply_dob_required').dob).toBe(MESSAGES.dobMissing);
+    expect(errorForDatabaseCode('apply_dob_invalid').dob).toBe(MESSAGES.dobInvalid);
   });
 });
 
@@ -224,7 +256,8 @@ describe('the form as a whole', () => {
       lastName: 'Kalu',
       email: 'amara.kalu@example.com',
       phone: '+447700900123',
-      ageBand: '22',
+      dob: '1994-06-15',
+      ageBand: ageBandFor(ageOn(new Date(1994, 5, 15))),
       // Carried so the action sends what it checked, rather than a
       // literal `true` the SQL consent gate would never disagree with.
       consent: true,
@@ -243,7 +276,7 @@ describe('the form as a whole', () => {
   });
 
   it('counts the highlighted fields in the banner, as the wireframe does', () => {
-    const result = validateApplication(draft({ ageBand: UNDER_18, consent: false }));
+    const result = validateApplication(draft({ dob: dobForAge(17), consent: false }));
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(summaryMessage(result.errors)).toBe('Please fix the 2 fields highlighted below.');
@@ -257,7 +290,7 @@ describe('the form as a whole', () => {
     const blank = emptyDraft();
     expect(blank.country).toBe('GB');
     expect(blank.consent).toBe(false);
-    expect(blank.ageBand).toBe('');
+    expect(blank.dob).toBe('');
     expect(validateApplication(blank).ok).toBe(false);
   });
 

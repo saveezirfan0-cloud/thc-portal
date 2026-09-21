@@ -14,40 +14,62 @@
 import { country, DEFAULT_ISO } from './countries';
 
 // ---------------------------------------------------------------------
-// Age (§2.1 "Age (select from 18)")
+// Date of birth (§2.1 as amended, §2.12) — see docs/adr/0006
+//
+// §2.1 asks for an age band. §2.12 matches returning applicants on mobile
+// + date of birth, which a band cannot satisfy. THC settled it: the form
+// collects the date, and the band is derived from it rather than asked
+// separately, so the two can never disagree.
 // ---------------------------------------------------------------------
 
-export interface AgeBand {
-  /** Stored on the application row; also the value the RPC validates. */
-  value: string;
-  label: string;
+/** The §2.1 band, kept on the application row, computed never typed. */
+export function ageBandFor(age: number): string {
+  if (age <= 30) return String(age);
+  if (age <= 40) return '31_40';
+  if (age <= 50) return '41_50';
+  if (age <= 60) return '51_60';
+  return '60_plus';
 }
 
 /**
- * The single sub-18 option exists only so the form can reject honestly
- * instead of hiding the case — see the wireframe's behaviour note. It is
- * never a valid submission, here or in the database.
+ * Completed years on `on`, which defaults to today.
+ *
+ * Every rule in this system is evaluated in UK time (§1.8). A date of
+ * birth carries no zone, so this is plain calendar arithmetic: the
+ * birthday has happened this year only if the month and day have passed.
  */
-export const UNDER_18 = 'under_18';
-
-export const AGE_BANDS: AgeBand[] = [
-  { value: UNDER_18, label: 'Under 18' },
-  ...Array.from({ length: 13 }, (_, i) => {
-    const age = String(18 + i);
-    return { value: age, label: age };
-  }),
-  { value: '31_40', label: '31 – 40' },
-  { value: '41_50', label: '41 – 50' },
-  { value: '51_60', label: '51 – 60' },
-  { value: '60_plus', label: '60+' },
-];
-
-const ADULT_BANDS = new Set(AGE_BANDS.filter((b) => b.value !== UNDER_18).map((b) => b.value));
-
-/** §2.1 / §1.7. An unrecognised band is not an adult either. */
-export function isAdultBand(value: string): boolean {
-  return ADULT_BANDS.has(value);
+export function ageOn(dob: Date, on: Date = new Date()): number {
+  let age = on.getFullYear() - dob.getFullYear();
+  const monthDelta = on.getMonth() - dob.getMonth();
+  if (monthDelta < 0 || (monthDelta === 0 && on.getDate() < dob.getDate())) age -= 1;
+  return age;
 }
+
+/**
+ * Parses the `yyyy-mm-dd` an <input type="date"> produces.
+ *
+ * Built from the parts rather than `new Date(string)`, which parses a
+ * bare date as UTC and would shift it a day for anyone west of Greenwich,
+ * and which happily accepts 2007-02-31 by rolling into March. The
+ * round-trip check below is what rejects a day that does not exist.
+ */
+export function parseDob(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const [, y, m, d] = match;
+  const year = Number(y);
+  const month = Number(m);
+  const day = Number(d);
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const date = new Date(year, month - 1, day);
+  if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+    return null;
+  }
+  return date;
+}
+
+/** The oldest date the form will treat as a real applicant rather than a typo. */
+export const MAX_AGE = 100;
 
 // ---------------------------------------------------------------------
 // Mobile (§2.1 "Mobile (international picker)", stored in E.164)
@@ -100,12 +122,12 @@ export interface ApplicationDraft {
   country: string;
   /** The mobile number as typed, national or international. */
   mobile: string;
-  ageBand: string;
+  /** `yyyy-mm-dd`, straight from <input type="date">. */
+  dob: string;
   consent: boolean;
 }
 
-export type ApplicationField =
-  'firstName' | 'lastName' | 'email' | 'mobile' | 'ageBand' | 'consent';
+export type ApplicationField = 'firstName' | 'lastName' | 'email' | 'mobile' | 'dob' | 'consent';
 
 export type ApplicationErrors = Partial<Record<ApplicationField, string>>;
 
@@ -147,6 +169,9 @@ export interface ValidApplication {
   email: string;
   /** E.164. */
   phone: string;
+  /** `yyyy-mm-dd`, what the RPC matches on (§2.12). */
+  dob: string;
+  /** Derived from `dob`, stored on the application row (§2.1). */
   ageBand: string;
   /** Always true — carried so the server passes what it checked, not a literal. */
   consent: true;
@@ -163,8 +188,9 @@ export const MESSAGES = {
   emailInvalid: 'Enter a valid email address — this is where your interview link goes',
   mobileMissing: 'Enter your mobile number',
   mobileInvalid: 'Enter a valid mobile number, including the area code',
-  ageMissing: 'Select your age',
-  ageUnder18: 'You must be 18 or over to apply',
+  dobMissing: 'Enter your date of birth',
+  dobInvalid: 'Enter a real date, as day, month and year',
+  dobUnder18: 'You must be 18 or over to apply',
   consent:
     "Please tick the box to continue — we can't process your application without your consent",
   unavailable:
@@ -181,7 +207,7 @@ export function emptyDraft(): ApplicationDraft {
     email: '',
     country: DEFAULT_ISO,
     mobile: '',
-    ageBand: '',
+    dob: '',
     consent: false,
   };
 }
@@ -204,18 +230,37 @@ export function validateApplication(
   if (draft.mobile.trim() === '') errors.mobile = MESSAGES.mobileMissing;
   else if (phone === null) errors.mobile = MESSAGES.mobileInvalid;
 
-  if (draft.ageBand === '') errors.ageBand = MESSAGES.ageMissing;
-  else if (!isAdultBand(draft.ageBand)) errors.ageBand = MESSAGES.ageUnder18;
+  const dob = draft.dob.trim() === '' ? null : parseDob(draft.dob);
+  let age = -1;
+  if (draft.dob.trim() === '') {
+    errors.dob = MESSAGES.dobMissing;
+  } else if (dob === null) {
+    errors.dob = MESSAGES.dobInvalid;
+  } else {
+    age = ageOn(dob);
+    if (age > MAX_AGE || dob.getTime() > Date.now()) errors.dob = MESSAGES.dobInvalid;
+    else if (age < 18) errors.dob = MESSAGES.dobUnder18;
+  }
 
   if (!draft.consent) errors.consent = MESSAGES.consent;
 
   // `phone === null` always sets errors.mobile above; naming it here is
   // what lets the compiler see that the returned number is a string.
-  if (phone === null || Object.keys(errors).length > 0) return { ok: false, errors };
+  if (phone === null || dob === null || Object.keys(errors).length > 0) {
+    return { ok: false, errors };
+  }
 
   return {
     ok: true,
-    value: { firstName, lastName, email, phone, ageBand: draft.ageBand, consent: true },
+    value: {
+      firstName,
+      lastName,
+      email,
+      phone,
+      dob: draft.dob.trim(),
+      ageBand: ageBandFor(age),
+      consent: true,
+    },
   };
 }
 
@@ -234,8 +279,9 @@ export function summaryMessage(errors: ApplicationErrors): string | null {
  * direct POST, lands on exactly the same messages as the form's own.
  */
 export function errorForDatabaseCode(message: string): ApplicationErrors {
-  if (message.includes('apply_under_18')) return { ageBand: MESSAGES.ageUnder18 };
-  if (message.includes('apply_age_required')) return { ageBand: MESSAGES.ageMissing };
+  if (message.includes('apply_under_18')) return { dob: MESSAGES.dobUnder18 };
+  if (message.includes('apply_dob_required')) return { dob: MESSAGES.dobMissing };
+  if (message.includes('apply_dob_invalid')) return { dob: MESSAGES.dobInvalid };
   if (message.includes('apply_consent_required')) return { consent: MESSAGES.consent };
   if (message.includes('apply_email_invalid')) return { email: MESSAGES.emailInvalid };
   if (message.includes('apply_phone_invalid')) return { mobile: MESSAGES.mobileInvalid };
