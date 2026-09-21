@@ -12,7 +12,7 @@ is covered by tests.
 |---|---|---|
 | Unit | 301 | `pnpm test` |
 | Browser smoke | 24 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 365 | `supabase test db` |
+| Database, row-level security and rules | 545 | `supabase test db` |
 
 What exists:
 
@@ -32,7 +32,13 @@ What exists:
   `packages/domain/pay.ts` repeats the same rules in TypeScript, and
   `packages/domain/src/pay.vectors.json` is the contract between them: Vitest reads it,
   pgTAP reads the file generated from it, and a drift test fails the build if the copy
-  goes stale. The Check-in monitor screen (§9.5) is still to come.
+  goes stale. Migration `20260921150000` adds the write paths that maths was waiting
+  on: `start_break` / `finish_break` (§5.2b) and `resolve_violation` (§9.5), which is
+  what finally lets an unresolved No check-out settle and RULE-14's floor come back.
+  The two screens on top — the Check-in monitor (§9.5) and the on-shift screen
+  (§10.4) — are still to come, as is the background-geolocation shell: nothing writes
+  `location_pings` yet, so every off-site check-out currently falls to the RULE-02
+  fallback by design.
 - **The Shift Builder** at `/events/new` and `/events/:id/edit` (§3.2), the first screen
   of Phase 3. Its rules live in `packages/domain/shift.ts` with `shift.vectors.json`:
   the four-hour minimum per role section, the derived event window (RULE-18), the
@@ -94,6 +100,10 @@ Goal: <feature> (§x.y). Read the section and the wireframe first.
 Constraints: one domain; no shared-package changes without a separate PR first.
 Done when: <acceptance from the build plan>. Then run qa-reviewer on the diff.
 ```
+
+`docs/14-open-questions.md` carries the questions THC still has to answer — each one
+already implemented one way, with what changes if they pick the other — and the short
+list of things that need the repository owner rather than a bot.
 
 `docs/11-session-prompts.md` has this filled in for each of the next sessions.
 `docs/10-working-with-agents.md` explains how to run several at once without collisions:
