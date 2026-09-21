@@ -109,7 +109,7 @@ with u as (update venue_types set default_radius_m = 300 where key = 'rls_fixtur
   select is((select count(*)::int from u), 1, 'admin writes venue type defaults');
 
 -- ---- the three evidence tables are admin-READ, service-role-write ------
--- location_pings joined these in 0006: inside_geofence decides the last
+-- location_pings joined these in 0008: inside_geofence decides the last
 -- on-site fix behind RULE-01 pay, so an admin who could edit it could move
 -- a worker's money with no record (§5.2b, §1.7).
 with u as (update location_pings set inside_geofence = false where booking_id = :'booking_a' returning 1)

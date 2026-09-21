@@ -7,7 +7,7 @@
 -- must be updated in the same PR).
 -- 0004_rls_gaps closed the eleven tables 0001_init.sql left with no RLS at
 -- all, so assertion 2 is now an emptiness check rather than a gap list.
--- 0006 added assertions 6 and 7: RLS is not the only way into `public`,
+-- 0008 added assertions 6 and 7: RLS is not the only way into `public`,
 -- and "RLS is on" is not the same claim as "a policy exists".
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================

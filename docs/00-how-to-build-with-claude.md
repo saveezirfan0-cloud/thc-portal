@@ -10,9 +10,9 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 157 | `pnpm test` |
+| Unit | 213 | `pnpm test` |
 | Browser smoke | 14 | `pnpm turbo e2e:smoke` |
-| Database, row-level security | 286 | `supabase test db` |
+| Database, row-level security | 411 | `supabase test db` |
 
 What exists:
 
@@ -27,6 +27,12 @@ What exists:
   component against both token axes.
 - **Seed data**: 5 clients, 8 venues, 6 roles, 40 workers, mirroring
   `wireframes/CONVENTIONS.md`.
+- **The day of the shift** (§5.1–5.2b): migration `0006` adds `attempt_check_in`,
+  `check_out`, the four pure rule functions behind them and `payable_shifts_v`.
+  `packages/domain/pay.ts` repeats the same rules in TypeScript, and
+  `packages/domain/src/pay.vectors.json` is the contract between them: Vitest reads it,
+  pgTAP reads the file generated from it, and a drift test fails the build if the copy
+  goes stale. The Check-in monitor screen (§9.5) is still to come.
 
 What does not exist yet: every screen in Phases 1 to 7, the Supabase project, and the
 Vercel projects. Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
@@ -52,13 +58,13 @@ Vercel projects. Steps 2 and 3 of `docs/04` are still to do and need THC's accou
    Supabase's default world grants, so `GET /rest/v1/event_windows` returned every
    event's timings to any caller, signed in or not. No rate ever left through it, but
    `0005` cites it as the precedent for owner-rights views and `0003` is reserved for
-   `payable_shifts_v`, which is pay by definition. Migration `0006` takes the grants
+   `payable_shifts_v`, which is pay by definition. Migration `0008` takes the grants
    back and moves its one caller, `client_events_v`, onto the ADR-0004 shape. The guard
    test now also covers materialised views and foreign tables, which cannot carry RLS
    at all and were the cheapest way past it.
 5. **Closed.** `location_pings` carried `admin_all ... for all` under a comment
    promising the rows were append-only. `inside_geofence` is the last on-site fix behind
-   RULE-01 pay, so an admin could move a worker's money with no record. `0006` makes it
+   RULE-01 pay, so an admin could move a worker's money with no record. `0008` makes it
    `admin_read`, alongside `audit_log` and `report_sends`.
 6. **Open, and an ADR rather than a patch.** No table sets `FORCE ROW LEVEL SECURITY`,
    so any connection as the table owner reads `bank_details` and `hmrc_checklists` in
@@ -118,8 +124,13 @@ say so rather than reporting the suite as passing.
   storing the weekly cap instead of calculating it, blending holiday pay instead of
   breaking out the 12.07%, showing the event window where a role-section window belongs,
   and letting any money reach the client.
-- Never edit an applied migration. Add the next numbered one. `0001`, `0002` and
-  `0004` exist, and `0003` is reserved for the cron schedules in `docs/01` §4.
+- Never edit an applied migration. Add the next numbered one. `0001`, `0002`, `0004`,
+  `0005`, `0006`, `0007` and `0008` exist, and `0003` is reserved for the cron schedules
+  in `docs/01` §4. Check `supabase/migrations/` before you pick a number, and check it
+  again after merging `main`: git does not conflict on two files with different names,
+  so two branches both reaching for `0006` merged quietly and turned `main` red at
+  `d89e8ba` — Supabase keys `schema_migrations` on the digits before the first
+  underscore, so the second file to apply is rejected and every step after it is skipped.
 - Seed data mirrors `wireframes/CONVENTIONS.md`, so a screenshot and a test read the same.
 - Keep THC's Appendix B inputs in an issue with due dates. Several phases block on them:
   Willo keys, contract text, sample letters, the logo, and DNS.

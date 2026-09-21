@@ -41,14 +41,14 @@ select is((select count(*)::int from audit_log             where action = 'rls_f
 select is((select count(*)::int from report_sends          where error  = 'rls_fixture_probe'),             0, 'anon reads no report sends');
 select is((select count(*)::int from venue_types           where key = 'rls_fixture_type'),                 0, 'anon reads no venue types: venue_types_read needs a profile, and anon has none');
 
--- 0006 took back the default grants on event_windows. It runs with owner
+-- 0008 took back the default grants on event_windows. It runs with owner
 -- rights over the money-bearing shift_requirements table, so a world grant
 -- on it handed every event's timings to a logged-out caller (§11.1).
 select throws_ok(
   $$ select count(*) from event_windows $$,
   '42501', null, 'anon holds no privilege on event_windows: it reads shift_requirements with owner rights');
 
--- All three client views run with the owner's rights (ADR-0004; 0006 brought
+-- All three client views run with the owner's rights (ADR-0004; 0008 brought
 -- client_events_v into line), so they are not merely empty for anon: the
 -- privilege itself is revoked and the attempt fails rather than returning
 -- nothing. Anything that runs with the owner's rights must not depend on

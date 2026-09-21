@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 0006 · close the event_windows privilege gap; make the
+-- Migration 0008 · close the event_windows privilege gap; make the
 -- location trail append-only for everybody (§11.1, §5.2b, RULE-01)
 --
 -- Two findings from the review of 0004/0005, neither of them created by
@@ -44,8 +44,9 @@
 --    REST API. audit_log and report_sends were already admin_read for
 --    exactly this reason (§1.7, §9.9); the trail joins them.
 --
--- Forward-only: 0001, 0002, 0004 and 0005 are left untouched. 0003 stays
--- reserved for the cron schedules (docs/01 §4).
+-- Forward-only: every earlier migration is left untouched. 0003 stays
+-- reserved for the cron schedules (docs/01 §4). This is 0008 because main
+-- already carries 0006_checkin_checkout and 0007_venues_directory.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -110,3 +111,80 @@ create policy admin_read on location_pings for select
 
 comment on table location_pings is
   'During-shift tracking (§5.2b). The worker may read their own trail and the admin may read all of it; nobody writes through the API. inside_geofence decides the last on-site fix behind RULE-01 pay, so the rows are append-only evidence like audit_log (§1.7) and report_sends (§9.9): a security definer RPC writes them, and no role holds an update or delete policy.';
+
+-- ---------------------------------------------------------------------
+-- 3 · an empty pay window is undetermined, not four paid hours
+--     (RULE-01/02/14, §9.9)
+--
+-- The same defect existed on both sides of the pay contract. 0006's
+-- payable_minutes() clamps the intersection to zero and then applies the
+-- floor, so a check-out on the check-in timestamp, a check-out before the
+-- check-in, and a check-in past the end of the role section all returned
+-- `settled` with payableMin 240 — four hours invented out of a window
+-- nobody worked.
+--
+-- RULE-02 already says what the first of those is: "the only available
+-- finish time would be the check-in timestamp itself ... the violation is
+-- raised immediately on that press, rather than recording a zero-length
+-- shift". RULE-14's floor is for "a worker who actually checked in and
+-- worked the shift". So the answer is the undetermined state the function
+-- already returns for a missing check-out: §9.9 shows "Pending" in place
+-- of the payable hours and leaves the row out of the CSV export until a
+-- manager resolves it.
+--
+-- The body is 0006's, unchanged apart from the guard. packages/domain's
+-- payableMinutes() carries the same guard, and the new cases in
+-- pay.vectors.json hold both to it — which is the point of that file.
+-- ---------------------------------------------------------------------
+create or replace function payable_minutes(
+  p_starts_at         timestamptz,
+  p_ends_at           timestamptz,
+  p_check_in_at       timestamptz,
+  p_check_out_at      timestamptz,
+  p_unpaid_break_min  int     default 0,
+  p_left_early        boolean default false,
+  p_no_check_out      text    default 'none'      -- none | unresolved | resolved
+) returns jsonb language plpgsql immutable as $$
+declare
+  v_from    timestamptz;
+  v_to      timestamptz;
+  v_worked  int;
+  v_floor   boolean;
+  v_payable int;
+begin
+  if p_check_out_at is null then
+    return jsonb_build_object('status','undetermined','payableMin',null,'workedMin',null,
+      'floorApplied',false,'lateCheckOutFlag',false);
+  end if;
+
+  v_from := case
+    when p_check_in_at <= p_starts_at then p_starts_at                       -- early is not paid
+    when p_check_in_at <  p_starts_at + interval '30 minutes' then p_starts_at -- grace pays from the start
+    else p_check_in_at end;                                                  -- past it, the actual arrival
+  v_to := least(p_check_out_at, p_ends_at);                                  -- never past the scheduled end
+
+  -- [check-in, check-out] ∩ [start, end] is empty: there is no shift to pay,
+  -- and the floor must not manufacture one (RULE-02, RULE-14).
+  if v_to <= v_from then
+    return jsonb_build_object('status','undetermined','payableMin',null,'workedMin',null,
+      'floorApplied',false,'lateCheckOutFlag',false);
+  end if;
+
+  -- Whole minutes, so a timesheet, the app and the payroll export cannot
+  -- disagree in the seconds (and so SQL and TypeScript round identically).
+  v_worked := round(greatest(0, greatest(0, extract(epoch from (v_to - v_from)) / 60)
+                                - coalesce(p_unpaid_break_min, 0)))::int;
+
+  v_floor   := not p_left_early and coalesce(p_no_check_out,'none') <> 'unresolved';
+  v_payable := case when v_floor then greatest(v_worked, 240) else v_worked end;
+
+  return jsonb_build_object(
+    'status','settled',
+    'payableMin', v_payable,
+    'workedMin',  v_worked,
+    'floorApplied', v_floor and v_payable > v_worked,
+    'lateCheckOutFlag', extract(epoch from (p_check_out_at - p_ends_at)) / 60 > 15);
+end $$;
+
+comment on function payable_minutes is
+  'RULE-01/02/14 pay window. Mirrored by payableMinutes() in packages/domain/pay.ts; both are held to pay.vectors.json. An empty intersection is undetermined, never the 4-hour floor (0008).';
