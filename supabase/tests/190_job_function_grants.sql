@@ -33,7 +33,12 @@ select is_empty(
           'claim_outbox_batch', 'complete_outbox_send',
           'release_unready_bookings', 'invite_worker',
           'auto_assign_due_shifts', 'auto_assign_candidates',
-          'is_uk_time', 'uk_local', 'install_job_schedules'
+          'is_uk_time', 'uk_local', 'install_job_schedules',
+          -- the compliance sweep (20260921170411). block_worker is the
+          -- one that matters most here: a revoke that takes the service
+          -- role's grant with it means an expired document never blocks
+          -- anybody, and the only symptom is a job 500ing at 05:00.
+          'compliance_daily', 'block_worker', 'unblock_if_compliant'
         )
         and not has_function_privilege('service_role', p.oid, 'execute') $$,
   'the service role can execute every function the §7 jobs call'

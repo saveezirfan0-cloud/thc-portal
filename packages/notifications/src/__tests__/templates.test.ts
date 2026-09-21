@@ -201,7 +201,6 @@ const SCOPE_BODIES: [string, string][] = [
     'N13',
     "You've been on shift 6 hours — please ask your manager on site about taking your break.",
   ],
-  ['N14', 'Your weekly limit is now {limit} hours — {band} until {date}.'],
   ['N15', "Thanks for your patience — your shifts are open again. Tap to see what's available."],
   [
     'E2',
@@ -219,14 +218,15 @@ describe('§8 copy is verbatim', () => {
   });
 
   it('covers every code whose copy §8 quotes', () => {
-    // The register has 28 entries. The 10 not pinned above are the ones §8
+    // The register has 28 entries. The 11 not pinned above are the ones §8
     // states in prose rather than quoting: N1 and N8 (summarised triggers),
-    // N9 (two halves, pinned in its own suite), and the seven emails whose
-    // wording the scope never gives — E1 (Willo's), E3, E5, E6, E7, E8, E9.
+    // N9 and N14 (two halves each, pinned in their own suite), and the
+    // seven emails whose wording the scope never gives — E1 (Willo's), E3,
+    // E5, E6, E7, E8, E9.
     const pinned = new Set(SCOPE_BODIES.map(([code]) => code));
     const unpinned = Object.keys(TEMPLATES).filter((code) => !pinned.has(code));
     expect(unpinned.sort()).toEqual(
-      ['N1', 'N8', 'N9', 'E1', 'E3', 'E5', 'E6', 'E7', 'E8', 'E9'].sort(),
+      ['N1', 'N8', 'N9', 'N14', 'E1', 'E3', 'E5', 'E6', 'E7', 'E8', 'E9'].sort(),
     );
   });
 
@@ -289,9 +289,54 @@ describe('a variant-only code has nothing to send by accident', () => {
     expect(TEMPLATES.N9.scopeCopy).toContain('Time to check in');
   });
 
-  it('is the only code without a body', () => {
+  it('gives N14 no body either: one of its two halves asks for a date', () => {
+    expect((TEMPLATES.N14 as Template).body).toBeUndefined();
+    expect(body('N14', 'dated')).toBe(
+      'Your weekly limit is now {limit} hours — {band} until {date}.',
+    );
+    expect(body('N14', 'open')).toBe('Your weekly limit is now {limit} hours — {band}.');
+    expect(body('N14', 'uncapped')).toBe('You no longer have a weekly hours limit — {band}.');
+  });
+
+  it('are the only two codes without a body', () => {
     const bodyless = entries.filter(([, v]) => v.body === undefined).map(([k]) => k);
-    expect(bodyless).toEqual(['N9']);
+    expect(bodyless).toEqual(['N9', 'N14']);
+  });
+
+  // The bug these halves exist for. `render` leaves an unmatched
+  // placeholder in the string, so a single body carrying an optional
+  // "until {date}" sends the literal "{date}" to anyone whose band has no
+  // end date — a graduate, or a worker who signed the 48-hour opt-out.
+  it('never sends an unfilled placeholder to a worker whose band has no end date', () => {
+    const sent = render(body('N14', 'open'), {
+      limit: '48',
+      band: 'your completion letter is verified',
+    });
+    expect(sent).toBe('Your weekly limit is now 48 hours — your completion letter is verified.');
+    expect(sent).not.toContain('{');
+  });
+
+  // §8 offers "[20 / 48] hours", which RULE-20's fifth band has no number
+  // for. Reusing that sentence sends "now no hours", which reads as zero.
+  it('does not tell a worker who lifted their ceiling that they have no hours', () => {
+    const sent = render(body('N14', 'uncapped'), {
+      band: 'you have signed the 48-hour opt-out',
+    });
+    expect(sent).toBe(
+      'You no longer have a weekly hours limit — you have signed the 48-hour opt-out.',
+    );
+    expect(sent).not.toContain('{');
+    expect(sent).not.toMatch(/\bno hours\b/);
+  });
+
+  it('fills every placeholder for a band that does have one', () => {
+    const sent = render(body('N14', 'dated'), {
+      limit: '20',
+      band: 'term time',
+      date: '11 Dec 2026',
+    });
+    expect(sent).toBe('Your weekly limit is now 20 hours — term time until 11 Dec 2026.');
+    expect(sent).not.toContain('{');
   });
 });
 

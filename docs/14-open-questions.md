@@ -112,49 +112,76 @@ That is a calendar year, which leaves one case the scope does not name: the stud
 uploads next year's letter **in December**, before the current one has died.
 
 Read literally, that letter expires on the 31 December of the year it was uploaded — so a
-letter uploaded on 5 December is dead on the 31st, twenty-six days later, and the student
-is blocked in January holding a letter that covers the whole academic year.
+letter uploaded on 5 December, in answer to the reminder sent on the 1st, is dead on the
+31st. On 1 January the student is auto-blocked under §4.3 and loses every future shift
+they hold, for doing exactly what the reminder asked.
 
-**What it does today.** `doc_expires_on()` takes the later of two dates: 31 December of
-the year the letter was uploaded, and 31 December of the year its own last printed range
-ends. A letter uploaded in December 2026 whose ranges run into 2027 therefore expires on
-31 December 2027, and the December student is fine. A letter with no ranges, or ranges
-inside the upload year, behaves exactly as §4.2 describes.
+**What it does today** (ADR-0011): a letter uploaded in **November or December** runs to
+the following 31 December. Every other letter expires on the 31 December of the year it
+was uploaded. The letter's own printed dates are never read — not the graduation date, not
+the vacation ranges — which is the part of §4.2 the scope argues hardest for.
 
-**The alternative** is the literal reading — always the 31 December of the upload year —
-which is simpler to explain and blocks the early student. We did not take it, because
-§4.2's stated reason for the 31 December rule is to avoid blocking someone who did
-nothing wrong, and the early student is precisely that person.
+**The alternative** is the literal reading, which blocks the early student. §4.2 does
+accept blocking at the year boundary, but only for the student who is *late* ("e.g. it
+arrives mid-January"), and the December uploader is the opposite of late.
 
-> **Ask:** if a student uploads next year's term dates letter in December, should it run
-> to the end of the year it covers (what we do), or expire on the 31st of the month it
-> was uploaded in?
+> **Ask:** if a student uploads next year's term dates letter in December, in answer to
+> the reminder you just sent them, should it cover the year ahead (what we do), or expire
+> on the 31st a few weeks later?
 
 ---
 
-## Q6 · N14 says "until [date]", and some bands have no date
+## Q6 · N14 says "until [date]", and two of the five bands have no date
 
 §4.4 gives N14's copy as: *"Your weekly limit is now [20 / 48] hours — [term time /
-university holiday] until [date]."* For a student that reads perfectly — the date is the
-day before the next holiday opens, or the day before term restarts, both of which come
+university holiday] until [date]."* For a student that reads perfectly — the date comes
 off the verified term letter.
 
-Two of the five bands have no such date:
+Two of RULE-20's five bands have no such date, and one has no number either:
 
-- **`uncapped`** — the worker signed the 48-hour opt-out (§4.4). Nothing on any calendar
-  ends that; it lasts until they revoke it.
 - **`graduated_48`** — the completion letter is permanent and §4.5 says term dates no
   longer apply.
+- **`uncapped`** — the worker signed the 48-hour opt-out. Nothing ends that until they
+  revoke it, and "[20 / 48] hours" has no value to offer.
 
-**What it does today.** The push carries `date: null` and the sender drops the clause, so
-a graduate reads "Your weekly limit is now 48 hours" with no trailing "until". The
-uncapped band substitutes the word `unlimited` for the number, because "your weekly limit
-is now null hours" is the alternative.
+**What it does today.** The register holds N14 as three halves, the way it already holds
+N9 as two:
 
-> **Ask:** for a worker with no end date — someone who has graduated, or signed the
-> opt-out — is dropping the "until …" clause right, or should it read something explicit
-> like "until further notice"? And for the opt-out band, is "no weekly limit" better copy
-> than "unlimited"?
+| variant | copy |
+| --- | --- |
+| `dated` | Your weekly limit is now {limit} hours — {band} until {date}. |
+| `open` | Your weekly limit is now {limit} hours — {band}. |
+| `uncapped` | You no longer have a weekly hours limit — {band}. |
+
+The third exists because the alternative sends *"Your weekly limit is now no hours"* to
+somebody who just removed their ceiling — the opposite of what happened. The band reaches
+the worker as words ("term time", "university holiday") rather than as the enum label.
+
+> **Ask:** for a worker with no end date — graduated, or opted out — is dropping the
+> "until …" clause right, or should it read something like "until further notice"? And is
+> "You no longer have a weekly hours limit" the wording you want for the opt-out?
+
+---
+
+## Q7 · Which documents each right-to-work branch must actually have
+
+§4.3's unblock rule is "every document … must be verified and not expired", and §4.4 says
+a student whose term letter "has expired **or is missing**" is already blocked. Both
+presuppose an expected set of documents per worker, which §2.5 lists in prose per branch.
+
+**What it does today.** `compliance_blockers()` reports documents that are expired,
+documents that are uploaded but unverified, and an unreviewed Yes on the conviction
+declaration. It does **not** report a document that was never uploaded at all, because
+nothing in the database says which documents a given branch owes. A worker with zero
+document rows therefore reads as compliant.
+
+This is not currently reachable — onboarding (§2) will not release anyone to `compliant`
+without their documents — so it is a latent hole rather than a live one. Closing it means
+turning §2.5's prose into a `required_docs(rtw_branch)` table, which is onboarding's
+piece of work (B5/S2) rather than the compliance sweep's.
+
+> **Ask:** nothing for THC here — this is a note for whoever builds §2.5's document sets,
+> so that `compliance_blockers()` gains a `document_missing:` arm at the same time.
 
 ---
 
@@ -415,5 +442,14 @@ that is not mine to do here:
    expiry ladder is a table of rows nobody receives, and a worker blocked on the expiry
    day finds out by opening the app.
 
-Neither blocks the other work. They are recorded so that "compliance is built" is not
-read as "workers are being told".
+3. **Nothing sets `staff.graduated_at`, so §4.5 cannot happen yet.** The compliance sweep
+   reads it — a graduate is excluded from the term-letter ladder, and `weekly_cap_for()`
+   puts them on the permanent 48 h band — but no code anywhere writes it, and nothing
+   copies a verified letter's `term_dates` onto the worker either. Both are the *verify*
+   action in Compliance → Needs review (§4.1) and on the profile (§9.6), neither of which
+   is built. Until one of them writes those two columns, §4.5's graduation band change
+   cannot occur and the N14 it promises cannot fire. The rules are in place and will act
+   the morning after that write lands.
+
+None of the three blocks the other work. They are recorded so that "compliance is built"
+is not read as "workers are being told".

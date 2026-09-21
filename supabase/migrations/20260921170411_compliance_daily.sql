@@ -18,8 +18,17 @@
 -- this schema gives: pgTAP reaches them here and nothing in this repo
 -- checks the Deno (docs/14 O5).
 --
--- Timing: 05:00 UK, gated by is_uk_time() so the pg_cron entry can stay
--- on UTC and the hour survives the DST boundaries (20260921160624).
+-- Timing: 05:00 UK, gated by compliance_daily_due() so the pg_cron entry
+-- can stay on UTC, the hour survives the DST boundaries (20260921160624),
+-- and a missed 05:00 does not defer a block by a day.
+--
+-- NOT here, and not a gap this migration can close: nothing yet SETS
+-- staff.graduated_at or copies a verified letter's term_dates onto the
+-- worker. That is the verify action in Compliance → Needs review (§4.1)
+-- and the profile (§9.6), neither of which is built. Until one of them
+-- writes those two columns, §4.5's graduation band change cannot happen
+-- and the N14 it promises cannot fire — the rules here are ready for it
+-- and will act the morning after it is written. docs/14 O10.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -27,16 +36,28 @@
 -- date in its `expiry_date` column.
 --
 --   * University term dates letter (§4.2): the printed graduation date is
---     explicitly NOT the expiry. The letter expires 31 December, so the
---     ladder starts on 1 December — one month out, exactly as for every
---     other document. The scope rejects reminding a month before the last
---     printed vacation date by name: the student does not physically have
---     next year's letter yet, and we would block someone who did nothing
---     wrong. A letter whose own ranges run past that 31 December keeps
---     its later year, so a letter uploaded in the autumn for the academic
---     year ahead is not dead three weeks after it arrives.
+--     explicitly NOT the expiry, and neither is anything else printed on
+--     it. The letter expires 31 December, so the ladder starts on
+--     1 December — one month out, exactly as for every other document.
+--     §4.2 rejects deriving the reminder from the printed dates by name:
+--     the student does not physically have next year's letter yet, and we
+--     would block someone who did nothing wrong.
+--
+--     One narrow exception, and it is an exception to the calendar and not
+--     to that rule (ADR-0011): a letter uploaded in November or December
+--     runs to the FOLLOWING 31 December. Without it the ladder is
+--     self-defeating — it opens on 1 December precisely to make the
+--     student upload next year's letter, and a letter uploaded on the 5th
+--     in answer to that reminder would be dead on the 31st. The window is
+--     the two months of the ladder, so nothing outside it is widened, and
+--     the letter's own contents are never consulted.
 --   * Share code report (§4.4): "Right-to-work-until from gov.uk = the
---     expiry date used for reminders", which is a different column.
+--     expiry date used for reminders" — a different column, and one that
+--     lives on the WORKER (staff.right_to_work_until, §2.5), which is
+--     where the gov.uk check writes it and where supabase/seed.sql puts
+--     it. The document's own copy of it is read first where it is set,
+--     because a superseded share code should not be judged by the worker's
+--     current date.
 --   * Everything else: the confirmed expiry date.
 --
 -- Null means no expiry — a birth certificate does not run out — and every
@@ -45,32 +66,30 @@
 create or replace function public.doc_expires_on(
   p_doc_type    doc_type,
   p_expiry      date,
-  p_rtw_until   date,
-  p_term_dates  daterange[],
+  p_doc_rtw     date,
+  p_staff_rtw   date,
   p_uploaded_at timestamptz
 ) returns date
 language sql
 immutable
 set search_path = public, extensions
 as $$
+  with up as (
+    select (p_uploaded_at at time zone 'Europe/London')::date as d
+  )
   select case p_doc_type
     when 'university_term_dates_letter' then
-      make_date(
-        greatest(
-          extract(year from (p_uploaded_at at time zone 'Europe/London'))::int,
-          coalesce(
-            (select max(extract(year from (upper(r) - 1))::int)
-               from unnest(coalesce(p_term_dates, '{}'::daterange[])) r
-              where not upper_inf(r)),
-            0)
-        ), 12, 31)
-    when 'share_code_report' then coalesce(p_rtw_until, p_expiry)
+      (select make_date(
+         extract(year from d)::int + case when extract(month from d) >= 11 then 1 else 0 end,
+         12, 31)
+         from up)
+    when 'share_code_report' then coalesce(p_doc_rtw, p_staff_rtw, p_expiry)
     else p_expiry
   end
 $$;
 
-comment on function public.doc_expires_on(doc_type, date, date, daterange[], timestamptz) is
-  '§4.2 effective expiry: the term letter dies 31 December whatever it prints, the share code report uses right_to_work_until, everything else uses expiry_date.';
+comment on function public.doc_expires_on(doc_type, date, date, date, timestamptz) is
+  '§4.2 effective expiry: the term letter dies 31 December whatever it prints (the following one if uploaded in the ladder window, ADR-0011), the share code report uses right_to_work_until from the doc or the worker, everything else uses expiry_date.';
 
 -- ---------------------------------------------------------------------
 -- What the worker calls the document. N1-N3 substitute it into copy the
@@ -97,19 +116,59 @@ as $$
     when 'university_term_dates_letter' then 'University Term Dates Letter'
     when 'university_completion_letter' then 'Official University Completion Letter'
     when 'share_code_report'            then 'Right to work · share code'
+    -- Never null: render() in packages/notifications leaves an unmatched
+    -- placeholder in the copy, so a doc_type added later without a label
+    -- here would be sent to a worker as the literal "{document}".
+    else replace(initcap(replace(p_doc_type::text, '_', ' ')), ' Id', ' ID')
   end
 $$;
 
 -- ---------------------------------------------------------------------
--- The document set that decides compliance: the latest non-superseded
--- row per document type. A rejected passport followed by an accepted one
--- is one document with a history, not two documents one of which is bad.
+-- Two document sets, and the difference between them is a real hole if
+-- you only build one.
+--
+--   current_compliance_docs   the latest non-superseded row per type,
+--                             whatever its status. This answers "is
+--                             anything waiting on the office?"
+--   current_verified_docs     the latest VERIFIED row per type, with the
+--                             date it stops counting. This answers "has
+--                             anything run out?"
+--
+-- A rejected passport followed by an accepted one is one document with a
+-- history, not two documents one of which is bad — hence the latest row
+-- rather than all of them.
+--
+-- The reason for two: a worker whose passport expires on the 30th and who
+-- uploads ANYTHING on the 1st — a blank page — has a pending row that is
+-- now the latest of its type. Judge expiry off that set and their expired
+-- passport is no longer in it, so no rung of the ladder fires and, worse,
+-- BG-05 never blocks them. They keep taking shifts on a dead passport
+-- until a manager happens to look at the upload. §4.3 is explicit that
+-- the block happens "by itself, with no manager involved", so expiry is
+-- measured off the last thing the office actually verified, and the
+-- pending upload is caught by the other set instead.
 -- ---------------------------------------------------------------------
 create or replace function public.current_compliance_docs(p_staff uuid)
 returns table (
+  doc_id   uuid,
+  doc_type doc_type,
+  status   review_status
+)
+language sql
+stable
+set search_path = public, extensions
+as $$
+  select distinct on (d.doc_type) d.id, d.doc_type, d.review_status
+    from compliance_docs d
+   where d.staff_id = p_staff
+     and d.review_status <> 'superseded'
+   order by d.doc_type, d.uploaded_at desc, d.id
+$$;
+
+create or replace function public.current_verified_docs(p_staff uuid)
+returns table (
   doc_id     uuid,
   doc_type   doc_type,
-  status     review_status,
   expires_on date
 )
 language sql
@@ -119,13 +178,45 @@ as $$
   select distinct on (d.doc_type)
          d.id,
          d.doc_type,
-         d.review_status,
          doc_expires_on(d.doc_type, d.expiry_date, d.right_to_work_until,
-                        d.term_dates, d.uploaded_at)
+                        s.right_to_work_until, d.uploaded_at)
     from compliance_docs d
+    join staff s on s.id = d.staff_id
    where d.staff_id = p_staff
-     and d.review_status <> 'superseded'
+     and d.review_status = 'verified'
    order by d.doc_type, d.uploaded_at desc, d.id
+$$;
+
+-- ---------------------------------------------------------------------
+-- Does the term letter still apply to this worker at all?
+--
+-- §4.2: "A student who has finished their course should not be chased for
+-- next year's term letter at all — that is what the Official University
+-- Completion Letter is for (§4.5). Once a completion letter is verified,
+-- the term-letter reminder ladder for that worker stops." §4.5 repeats it
+-- from the other side: the letter "stops driving that worker's cap and
+-- stops generating expiry reminders".
+--
+-- This is not cosmetic. Without it a graduate is sent N1, N2 and N3 every
+-- December and then AUTOMATICALLY BLOCKED on 31 December — losing every
+-- future confirmed shift they hold — over a document the scope says no
+-- longer applies to them.
+--
+-- §4.5's own caveat still stands and is not affected: the completion
+-- letter changes the study limit, not the visa. A graduate whose share
+-- code has run out is still blocked on the share code.
+-- ---------------------------------------------------------------------
+create or replace function public.term_letter_applies(p_staff uuid, p_on date default current_date)
+returns boolean
+language sql
+stable
+set search_path = public, extensions
+as $$
+  select not exists (
+    select 1 from staff s
+     where s.id = p_staff
+       and s.graduated_at is not null
+       and s.graduated_at <= p_on)
 $$;
 
 -- ---------------------------------------------------------------------
@@ -148,10 +239,11 @@ stable
 set search_path = public, extensions
 as $$
   select 'document_expired:' || d.doc_type::text
-    from current_compliance_docs(p_staff) d
-   where d.status = 'verified'
-     and d.expires_on is not null
+    from current_verified_docs(p_staff) d
+   where d.expires_on is not null
      and d.expires_on <= p_on
+     and (d.doc_type <> 'university_term_dates_letter'
+          or term_letter_applies(p_staff, p_on))
   union all
   select 'document_unverified:' || d.doc_type::text
     from current_compliance_docs(p_staff) d
@@ -199,7 +291,13 @@ create or replace function public.block_worker(
   p_staff  uuid,
   p_kind   block_kind,
   p_reason text,
-  p_now    timestamptz default now()
+  p_now    timestamptz default now(),
+  -- §10.6 ends in `inactive`, not `blocked`, and 0001_init reserves
+  -- cancel_cause = 'left' for it. The cascade is identical; only where the
+  -- worker lands differs, so only that is an argument. Defaulted so the
+  -- §4.3 and §10.7 callers say nothing.
+  p_status staff_status default 'blocked',
+  p_cause  text          default 'blocked'
 ) returns jsonb
 language plpgsql
 security definer
@@ -215,17 +313,24 @@ begin
     raise exception 'unknown_staff' using errcode = 'P0001';
   end if;
 
-  -- 1 · blocked.
+  if p_status not in ('blocked', 'inactive') then
+    raise exception 'block_worker: p_status must be blocked or inactive, got %', p_status
+      using errcode = 'P0001';
+  end if;
+
+  -- 1 · blocked (or inactive, for the worker who leaves).
   update staff
-     set status = 'blocked',
-         block_kind = p_kind,
-         block_reason = p_reason
+     set status = p_status,
+         block_kind = case when p_status = 'blocked' then p_kind else null end,
+         block_reason = case when p_status = 'blocked' then p_reason else null end,
+         leave_reason = case when p_status = 'inactive' then p_reason else leave_reason end,
+         left_at      = case when p_status = 'inactive' then p_now   else left_at end
    where id = p_staff;
 
   -- 2 · every future confirmed allocation is released.
   with released as (
     update bookings b
-       set status = 'cancelled', cancelled_at = p_now, cancel_cause = 'blocked'
+       set status = 'cancelled', cancelled_at = p_now, cancel_cause = p_cause
       from shift_requirements s
      where s.id = b.shift_id
        and b.staff_id = p_staff
@@ -238,7 +343,7 @@ begin
   -- 3 · every open invitation disappears from their app.
   with withdrawn as (
     update bookings b
-       set status = 'cancelled', cancelled_at = p_now, cancel_cause = 'blocked'
+       set status = 'cancelled', cancelled_at = p_now, cancel_cause = p_cause
       from shift_requirements s
      where s.id = b.shift_id
        and b.staff_id = p_staff
@@ -251,13 +356,14 @@ begin
   return jsonb_build_object(
     'staffId', p_staff::text,
     'wasStatus', v_was::text,
+    'status', p_status::text,
     'kind', p_kind::text,
     'released', v_released,
     'withdrawn', v_withdrawn);
 end $$;
 
-comment on function public.block_worker(uuid, block_kind, text, timestamptz) is
-  'The §4.3 cascade: blocked, future allocations released, open invitations withdrawn. Shared by document expiry (§4.3), the worker who leaves (§10.6) and the in-employment conviction (§10.7).';
+comment on function public.block_worker(uuid, block_kind, text, timestamptz, staff_status, text) is
+  'The §4.3 cascade: the worker is stopped, future allocations released, open invitations withdrawn. Shared by document expiry (§4.3), the worker who leaves (§10.6, p_status = inactive, p_cause = left) and the in-employment conviction (§10.7, p_kind = conviction_review).';
 
 -- ---------------------------------------------------------------------
 -- §4.3 unblocking, for a block the system applied by itself.
@@ -350,10 +456,34 @@ create policy admin_all on cap_band_notices for all using (current_app_role() = 
 
 -- ---------------------------------------------------------------------
 -- The "until [date]" N14 substitutes: the last day the current band
--- holds. Ranges are half-open, so the last day inside one is upper() - 1.
--- Null where nothing on the calendar ends the band — a worker who is not
--- on a term letter stays where they are until they sign something, and
--- the sender drops the clause.
+-- holds.
+--
+-- The answer is ALWAYS a Sunday, and that is the part worth being careful
+-- about. §4.4 gives the whole Mon-Sun week the lowest cap in force on any
+-- day of it, so a band cannot change mid-week: "A week in which term
+-- restarts on the Thursday is a 20-hour week, not a 48-hour one."
+--
+-- Naming the raw range endpoint instead gets it wrong on both sides. If
+-- term restarts on a Thursday, the 48 h band actually ended on the Monday
+-- and a push promising it "until Wednesday" is promising hours the worker
+-- may not work. If a holiday opens on a Saturday, that week straddles and
+-- stays at 20 h, so the 20 h band runs two days longer than the range
+-- suggests.
+--
+-- So: walk forward week by week from this one and return the Sunday
+-- before the first week whose BAND differs. The band, not the term state:
+-- `term` and `straddle` both give 20 h (§4.4 gives a straddling week the
+-- lower cap), so a week that merely starts straddling changes nothing the
+-- worker can feel and must not be announced as the end of anything.
+--
+-- The band is evaluated as a visa-limited, non-graduated student without
+-- an opt-out, because that is the only worker whose cap the calendar
+-- moves at all. compliance_daily only asks the question for the two
+-- calendar-driven bands; everyone else has no end date by construction.
+--
+-- The horizon is a year, further ahead than any term letter reaches; null
+-- out there means nothing on the calendar ends this band, and the sender
+-- picks N14's dateless half.
 -- ---------------------------------------------------------------------
 create or replace function public.cap_band_until(p_holidays daterange[], p_date date)
 returns date
@@ -361,24 +491,76 @@ language sql
 immutable
 set search_path = public, extensions
 as $$
-  with weeks as (select cap_week_start(p_date) as w),
-       r as (select unnest(coalesce(p_holidays, '{}'::daterange[])) as rng)
-  select case cap_term_state(p_holidays, p_date)
-    -- inside a holiday: the day before term restarts
-    when 'holiday'  then (select min(upper(rng)) - 1 from r, weeks
-                           where upper(rng) > weeks.w and not upper_inf(rng))
-    -- in term: the day before the next holiday opens
-    when 'term'     then (select min(lower(rng)) - 1 from r, weeks
-                           where lower(rng) > weeks.w and not lower_inf(rng))
-    -- a week with term on one side of it and holiday on the other takes
-    -- the lower cap for the WHOLE week (§4.4), so what holds until is the
-    -- Sunday. Naming the day term restarts would be wrong here twice over:
-    -- the restart is inside this week, and the cap does not move when it
-    -- arrives.
-    when 'straddle' then (select w + 6 from weeks)
-    else null
+  with this_week as (select cap_week_start(p_date) as w),
+       weeks as (
+         select t.w + (n * 7) as w
+           from this_week t, generate_series(1, 53) as n
+       ),
+       changed as (
+         select min(weeks.w) as w
+           from weeks, this_week
+          where (weekly_cap(true, cap_term_state(p_holidays, weeks.w), false, false)).band
+                is distinct from
+                (weekly_cap(true, cap_term_state(p_holidays, this_week.w), false, false)).band
+       )
+  select w - 1 from changed
+$$;
+
+comment on function public.cap_band_until(daterange[], date) is
+  'The Sunday the current cap band holds until (§4.4). Always a Sunday: the Mon-Sun week is the unit, so a band never changes mid-week. Null = nothing on the calendar ends it.';
+
+-- ---------------------------------------------------------------------
+-- What N14 calls the band. §8 gives the copy as "... — [term time /
+-- university holiday] until [date]", so the enum label cannot go through
+-- any more than `university_term_dates_letter` could: nobody reads
+-- "your weekly limit is now 20 hours — student_term_20".
+-- ---------------------------------------------------------------------
+create or replace function public.cap_band_label(p_band cap_band)
+returns text
+language sql
+immutable
+set search_path = public, extensions
+as $$
+  select case p_band
+    when 'student_term_20'    then 'term time'
+    when 'student_holiday_48' then 'university holiday'
+    when 'graduated_48'       then 'your completion letter is verified'
+    when 'standard_48'        then 'the standard weekly limit'
+    when 'uncapped'           then 'you have signed the 48-hour opt-out'
+    else p_band::text
   end
 $$;
+
+-- ---------------------------------------------------------------------
+-- Has today's sweep already run?
+--
+-- The gate in the Edge Function is a 5-minute UK window, so a deploy, an
+-- outage or a cold start that straddles 05:00 skips the whole day. The
+-- ladder survives that — the rungs are bands and heal on the next run —
+-- but §4.3's block does not: it would not fire until 05:00 tomorrow, and
+-- the worker spends a day checking in on an expired right to work.
+--
+-- So the job asks this as well as the clock: run at 05:00, or run because
+-- no run finished successfully today. Two conditions, one of which is
+-- always true by 05:05, which makes the ordinary day unchanged and the
+-- missed day self-correcting.
+-- ---------------------------------------------------------------------
+create or replace function public.compliance_daily_due(p_now timestamptz default now())
+returns boolean
+language sql
+stable
+set search_path = public, extensions
+as $$
+  select is_uk_time(p_now, '05:00')
+      or not exists (
+           select 1 from job_runs r
+            where r.job = 'compliance-daily'
+              and r.ok
+              and uk_local(r.finished_at)::date = uk_local(p_now)::date)
+$$;
+
+comment on function public.compliance_daily_due(timestamptz) is
+  'The 05:00 UK window, or any time after it on a day whose sweep has not yet succeeded (§7). A missed 05:00 must not defer a §4.3 block by 24 hours.';
 
 -- ---------------------------------------------------------------------
 -- BG-04 / BG-05 / N14 · the daily sweep.
@@ -418,19 +600,24 @@ begin
          d.expires_on,
          (d.expires_on - v_today) as days_left
     from staff s
-    cross join lateral current_compliance_docs(s.id) d
+    cross join lateral current_verified_docs(s.id) d
    where s.status in ('compliant', 'blocked')
      and s.left_at is null
      and s.removed_at is null
-     and d.status = 'verified'
-     and d.expires_on is not null;
+     and d.expires_on is not null
+     -- §4.2: a student who has finished their course is not chased for
+     -- next year's term letter at all. Without this the graduate is sent
+     -- the whole ladder in December and blocked on the 31st.
+     and (d.doc_type <> 'university_term_dates_letter'
+          or term_letter_applies(s.id, v_today));
 
   -- BG-04 · the three rungs. One key per document per rung, so a document
   -- renewed and re-expiring later is a new row and rings again.
   with q as (
     insert into notification_outbox (key, channel, template, recipient_staff_id, payload)
     select 'N1:doc:' || doc_id, 'push', 'N1', staff_id,
-           jsonb_build_object('document', doc_label(doc_type), 'date', expires_on::text)
+           jsonb_build_object('document', doc_label(doc_type),
+                              'date', to_char(expires_on, 'DD Mon YYYY'))
       from _due where days_left between 15 and 30
     on conflict (key) do nothing returning 1
   ) select count(*)::int into v_n1 from q;
@@ -438,7 +625,8 @@ begin
   with q as (
     insert into notification_outbox (key, channel, template, recipient_staff_id, payload)
     select 'N2:doc:' || doc_id, 'push', 'N2', staff_id,
-           jsonb_build_object('document', doc_label(doc_type), 'date', expires_on::text)
+           jsonb_build_object('document', doc_label(doc_type),
+                              'date', to_char(expires_on, 'DD Mon YYYY'))
       from _due where days_left between 8 and 14
     on conflict (key) do nothing returning 1
   ) select count(*)::int into v_n2 from q;
@@ -446,7 +634,8 @@ begin
   with q as (
     insert into notification_outbox (key, channel, template, recipient_staff_id, payload)
     select 'N3:doc:' || doc_id, 'push', 'N3', staff_id,
-           jsonb_build_object('document', doc_label(doc_type), 'date', expires_on::text)
+           jsonb_build_object('document', doc_label(doc_type),
+                              'date', to_char(expires_on, 'DD Mon YYYY'))
       from _due where days_left between 1 and 7
     on conflict (key) do nothing returning 1
   ) select count(*)::int into v_n3 from q;
@@ -458,7 +647,8 @@ begin
   with q as (
     insert into notification_outbox (key, channel, template, recipient_staff_id, payload)
     select 'N4:doc:' || doc_id, 'push', 'N4', staff_id,
-           jsonb_build_object('document', doc_label(doc_type), 'date', expires_on::text)
+           jsonb_build_object('document', doc_label(doc_type),
+                              'date', to_char(expires_on, 'DD Mon YYYY'))
       from _due where days_left <= 0
     on conflict (key) do nothing returning 1
   ) select count(*)::int into v_n4 from q;
@@ -483,11 +673,13 @@ begin
   -- blocked"), so they are excluded by status rather than by timing.
   for r in
     select s.id as staff_id,
-           (weekly_cap_for(s.id, v_today)).cap_hours as cap_hours,
-           (weekly_cap_for(s.id, v_today)).band      as band,
-           cap_band_until(s.term_dates, v_today)     as until,
-           n.band                                    as last_band
+           c.cap_hours,
+           c.band,
+           case when c.band in ('student_term_20', 'student_holiday_48')
+                then cap_band_until(s.term_dates, v_today) end as until,
+           n.band                                as last_band
       from staff s
+      cross join lateral weekly_cap_for(s.id, v_today) c
       left join cap_band_notices n on n.staff_id = s.id
      where s.status = 'compliant'
        and s.left_at is null
@@ -501,13 +693,22 @@ begin
       values (r.staff_id, r.band, r.cap_hours, v_today)
       on conflict (staff_id) do nothing;
     elsif r.last_band is distinct from r.band then
+      -- Two halves, like N9's: §8's copy ends "until [date]", and two of
+      -- the five bands have no date to put there — a graduate's letter is
+      -- permanent and an opt-out lasts until it is revoked. render() in
+      -- packages/notifications leaves an unmatched placeholder in the
+      -- string as-is, so a null date would be SENT as the literal
+      -- "{date}". The variant picks copy that does not ask for one.
       insert into notification_outbox (key, channel, template, recipient_staff_id, payload)
       values ('N14:staff:' || r.staff_id || ':' || r.band || ':' || v_today,
               'push', 'N14', r.staff_id,
-              jsonb_build_object(
-                'limit', coalesce(r.cap_hours::text, 'unlimited'),
-                'band',  r.band::text,
-                'date',  r.until::text))
+              jsonb_strip_nulls(jsonb_build_object(
+                'variant', case when r.band = 'uncapped' then 'uncapped'
+                                when r.until is null    then 'open'
+                                else 'dated' end,
+                'limit',   r.cap_hours::text,
+                'band',    cap_band_label(r.band),
+                'date',    to_char(r.until, 'DD Mon YYYY'))))
       on conflict (key) do nothing;
       update cap_band_notices
          set band = r.band, cap_hours = r.cap_hours, notified_on = v_today
@@ -537,18 +738,21 @@ comment on function public.compliance_daily(timestamptz) is
 -- revoke from PUBLIC does not take back. block_worker() alone can strip
 -- a worker of every future shift they hold.
 -- ---------------------------------------------------------------------
-revoke execute on function public.block_worker(uuid, block_kind, text, timestamptz)
+revoke execute on function public.block_worker(uuid, block_kind, text, timestamptz, staff_status, text)
   from public, anon, authenticated;
 revoke execute on function public.unblock_if_compliant(uuid, date)
   from public, anon, authenticated;
 revoke execute on function public.compliance_daily(timestamptz)
   from public, anon, authenticated;
+revoke execute on function public.compliance_daily_due(timestamptz)
+  from public, anon, authenticated;
 revoke execute on function public.compliance_docs_verified()
   from public, anon, authenticated;
 
-grant execute on function public.block_worker(uuid, block_kind, text, timestamptz) to service_role;
+grant execute on function public.block_worker(uuid, block_kind, text, timestamptz, staff_status, text) to service_role;
 grant execute on function public.unblock_if_compliant(uuid, date)                  to service_role;
 grant execute on function public.compliance_daily(timestamptz)                     to service_role;
+grant execute on function public.compliance_daily_due(timestamptz)                 to service_role;
 
 -- The read-only helpers are `stable`/`immutable` and leak nothing the
 -- caller's RLS does not already permit, so they keep the default. The

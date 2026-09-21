@@ -12,25 +12,26 @@
  * supabase/tests/200_compliance_daily.sql, so there is deliberately
  * nothing to decide here.
  *
- * The 05:00 gate is the one thing this file would get wrong if it tried.
+ * The 05:00 gate is the one thing this file would get wrong if it tried,
+ * so it does not: `compliance_daily_due()` decides, and pgTAP holds it.
  * pg_cron runs on UTC and 05:00 UK is 04:00 UTC for half the year and
- * 05:00 UTC for the other half, so the schedule is registered as an
- * every-5-minute entry and `is_uk_time` decides. Without the gate this
- * would run 288 times a day; the SQL is idempotent, so the cost would be
- * 288 sweeps rather than 288 blocks — but a block is not something to
- * leave resting on an idempotency key alone.
+ * 05:00 UTC for the other half, so the schedule is an every-5-minute
+ * entry. Without a gate this would run 288 times a day; the SQL is
+ * idempotent, so the cost would be 288 sweeps rather than 288 blocks —
+ * but a block is not something to leave resting on an idempotency key
+ * alone. The gate also lets a MISSED 05:00 run later the same day, so a
+ * deploy across the window does not defer a §4.3 block by 24 hours.
  */
 
 import { runJob } from '../_shared/job.ts';
 
 Deno.serve((request) =>
   runJob('compliance-daily', request, async (db) => {
-    const { data: open, error: gateError } = await db.rpc('is_uk_time', {
+    const { data: due, error: gateError } = await db.rpc('compliance_daily_due', {
       p_now: new Date().toISOString(),
-      p_hhmm: '05:00',
     });
-    if (gateError) throw new Error(`is_uk_time: ${gateError.message}`);
-    if (!open) return { skipped: 'not the 05:00 UK window' };
+    if (gateError) throw new Error(`compliance_daily_due: ${gateError.message}`);
+    if (!due) return { skipped: "not the 05:00 UK window, and today's sweep has already run" };
 
     const { data, error } = await db.rpc('compliance_daily');
     if (error) throw new Error(`compliance_daily: ${error.message}`);
