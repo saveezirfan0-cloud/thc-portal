@@ -29,7 +29,7 @@ Shared packages:
 | Scope concept | Supabase implementation |
 |---|---|
 | PostgreSQL + PostGIS | Postgres with the `postgis` extension. Venues/homes stored as `geography(point)`. Haversine → `ST_Distance`. Geofence → `ST_DWithin(venue, fix, radius_m)`. |
-| DRF Token auth, RBAC (§1.4) | Supabase Auth (email + password). `profiles.role` ∈ admin/client/staff. **RLS on every table.** Client money-free access goes through `security_invoker` views only (`client_events_v`, `client_lineup_v`). Role-based routing is enforced in each app's middleware AND by RLS, so the client can never read office data even with a forged URL. |
+| DRF Token auth, RBAC (§1.4) | Supabase Auth (email + password). `profiles.role` ∈ admin/client/staff. **RLS on every table.** The client role holds a policy only on tables with no money and no worker personal data (`events`, `feedback`); everything else it sees comes from a `client_*` view that scopes itself with `client_portal_visible()` and selects no rate column (ADR-0004). Role-based routing is enforced in each app's middleware AND by RLS, so the client can never read office data even with a forged URL. |
 | Worker activation link (§2.7) | `auth.admin.generateLink({type:'invite'})` sent in E3 from `admin@`; the worker sets a password on `/activate`. |
 | Django Admin config (§6 weights, Willo stage map, venue radii §9.11, senders §9.12) | `settings` table (jsonb) + `venue_types` table, edited from a small "System settings" page in the Back Office restricted to admins. No release needed to change them. |
 | Background jobs (§7) | `pg_cron` schedules → `pg_net` HTTP call → Edge Function. See §4 below. |

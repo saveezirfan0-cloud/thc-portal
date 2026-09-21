@@ -13,7 +13,8 @@
     "test": "turbo test",
     "e2e:smoke": "turbo e2e:smoke",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "design": "python3 -m http.server 8099 --bind 127.0.0.1 --directory design-handoff"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.0",

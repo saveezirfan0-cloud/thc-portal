@@ -45,5 +45,5 @@ Implemented in `supabase/migrations/0001_init.sql`. This page explains the choic
 ## RLS summary
 - `admin`: all rows, all tables.
 - `staff`: own `staff` row, own bookings/docs/declarations/check logs/breaks/feedback-about-them (rating only), open shifts for their roles via `radar_v` (respects Wave 1/Wave 2 visibility and do-not-return), the `roles.pay_rate` of their own roles only.
-- `client`: `client_events_v`, `client_lineup_v`, insert into `feedback`. No table exposes `charge_rate`, `pay_rate` or margin to a client, and the views are `security_invoker` so the policies apply.
+- `client`: `client_events_v`, `client_lineup_v`, `client_role_sections_v`, insert into `feedback`. No table exposes `charge_rate`, `pay_rate` or margin to a client. `client_events_v` is `security_invoker` and rides the `events` policy; the other two run with owner rights and carry the tenancy rule (`client_portal_visible()`) in their own body, because the tables beneath them are money-bearing and hold no client policy at all (ADR-0004, `0005_client_lineup.sql`).
 - Service role: Edge Functions and Next.js server actions only.
