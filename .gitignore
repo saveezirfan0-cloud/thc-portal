@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# build output
+.next/
+out/
+dist/
+.turbo/
+coverage/
+playwright-report/
+test-results/
+
+# environment
+.env
+.env.*
+!.env.example
+
+# supabase local
+supabase/.branches/
+supabase/.temp/
+
+# vercel
+.vercel/
+
+# os / editor
+.DS_Store
+*.log

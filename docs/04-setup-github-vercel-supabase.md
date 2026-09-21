@@ -2,7 +2,7 @@
 
 Vercel and Supabase are not connected to this project yet. This is the order to connect them, with the exact commands, so the first Claude Code session on the code can start from a working pipeline.
 
-## 1. GitHub (already: `sambarrington123/Portal`)
+## 1. GitHub (already: `saveezirfan0-cloud/thc-portal`)
 1. Protect `main`: require PR, require status checks `ci`, `claude-review` (added in §5 below).
 2. Add repository secrets (Settings → Secrets → Actions): `ANTHROPIC_API_KEY`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, `SUPABASE_DB_PASSWORD`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID_OFFICE|STAFF|CLIENT`.
 3. Labels for bot routing: `domain:onboarding`, `domain:scheduling`, `domain:compliance`, `domain:checkin`, `domain:reports`, `domain:client-portal`, `domain:staff-pwa`, `domain:platform`, `domain:design-system`.
