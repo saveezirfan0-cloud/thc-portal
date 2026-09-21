@@ -280,3 +280,137 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
     })),
   };
 }
+
+// ---------------------------------------------------------------------
+// The events list and calendar (§3.1)
+// ---------------------------------------------------------------------
+
+export interface ListedRole {
+  roleName: string;
+  start: string;
+  end: string;
+  headcount: number;
+  buffer: number;
+  confirmed: number;
+}
+
+export interface ListedEvent {
+  id: string;
+  title: string;
+  /** The event's own date. Which calendar cell it sits in. */
+  date: string;
+  clientName: string;
+  venueName: string;
+  venueAddress: string;
+  poNumber: string;
+  cancelledAt: string | null;
+  cancelReason: string;
+  roles: ListedRole[];
+}
+
+interface ListedEventRow {
+  id: string;
+  title: string;
+  event_date: string;
+  venue_name: string;
+  venue_address: string;
+  po_number: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  client_id: string;
+}
+
+/**
+ * Every event whose date falls in the period, with the role sections and the
+ * confirmed counts the fill chips need (§3.1).
+ *
+ * Filtered on `event_date`, not on the derived window: an event that runs to
+ * 01:00 belongs in the cell of the day it started, which is what the manager
+ * looks for it under.
+ */
+export async function loadEventsInRange(from: string, to: string): Promise<ListedEvent[]> {
+  if (!supabaseConfigured()) return [];
+
+  const supabase = eventsDb(await cookies());
+
+  const { data: eventData } = await supabase
+    .from('events')
+    .select(
+      'id, title, event_date, venue_name, venue_address, po_number, cancelled_at, cancel_reason, client_id',
+    )
+    .gte('event_date', from)
+    .lte('event_date', to)
+    .order('event_date');
+  const events = (eventData ?? []) as ListedEventRow[];
+  if (events.length === 0) return [];
+
+  const eventIds = events.map((e) => e.id);
+  const [{ data: sectionData }, { data: clientData }, { data: roleData }] = await Promise.all([
+    supabase
+      .from('shift_requirements')
+      .select('id, event_id, role_id, starts_at, ends_at, headcount, buffer')
+      .in('event_id', eventIds)
+      .order('starts_at'),
+    supabase.from('clients').select('id, name'),
+    supabase.from('roles').select('id, name'),
+  ]);
+
+  const sections = (sectionData ?? []) as {
+    id: string;
+    event_id: string;
+    role_id: string;
+    starts_at: string;
+    ends_at: string;
+    headcount: number;
+    buffer: number;
+  }[];
+
+  const confirmed = new Map<string, number>();
+  if (sections.length > 0) {
+    const { data: bookings } = await supabase
+      .from('bookings')
+      .select('shift_id')
+      .eq('status', 'confirmed')
+      .in(
+        'shift_id',
+        sections.map((s) => s.id),
+      );
+    for (const booking of (bookings ?? []) as { shift_id: string }[]) {
+      confirmed.set(booking.shift_id, (confirmed.get(booking.shift_id) ?? 0) + 1);
+    }
+  }
+
+  const clientNames = new Map(
+    ((clientData ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]),
+  );
+  const roleNames = new Map(
+    ((roleData ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]),
+  );
+
+  const byEvent = new Map<string, ListedRole[]>();
+  for (const section of sections) {
+    const list = byEvent.get(section.event_id) ?? [];
+    list.push({
+      roleName: roleNames.get(section.role_id) ?? 'Role',
+      start: ukTime(section.starts_at),
+      end: ukTime(section.ends_at),
+      headcount: section.headcount,
+      buffer: section.buffer,
+      confirmed: confirmed.get(section.id) ?? 0,
+    });
+    byEvent.set(section.event_id, list);
+  }
+
+  return events.map((event) => ({
+    id: event.id,
+    title: event.title,
+    date: event.event_date,
+    clientName: clientNames.get(event.client_id) ?? 'Client',
+    venueName: event.venue_name,
+    venueAddress: event.venue_address,
+    poNumber: event.po_number ?? '',
+    cancelledAt: event.cancelled_at,
+    cancelReason: event.cancel_reason ?? '',
+    roles: byEvent.get(event.id) ?? [],
+  }));
+}

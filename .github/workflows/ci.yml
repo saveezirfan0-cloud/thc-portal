@@ -55,8 +55,30 @@ jobs:
       # session, so the browser suite needs the local stack `supabase start`
       # brought up above. Without these the servers boot and then throw on the
       # first request.
+      # `supabase status -o env` prints shell-sourceable lines, so every value
+      # arrives wrapped in double quotes: API_URL="http://127.0.0.1:54321".
+      # $GITHUB_ENV takes everything after the first = literally, quotes and
+      # all, so the apps received a URL beginning with a quote character and
+      # every request died on `Invalid supabaseUrl: Must be a valid HTTP or
+      # HTTPS URL`. Playwright then waited the full 120 s for a server that
+      # was never going to come up. The sed strips the wrapping quotes and
+      # leaves an unquoted line untouched.
       - name: point the apps at the local Supabase stack
-        run: supabase status -o env >> "$GITHUB_ENV"
+        run: supabase status -o env | sed 's/="/=/; s/"$//' >> "$GITHUB_ENV"
+      # Fail here, loudly, rather than in a two-minute webServer timeout whose
+      # log says nothing about the cause.
+      - name: check the stack variables resolved
+        run: |
+          for v in API_URL ANON_KEY SERVICE_ROLE_KEY; do
+            if [ -z "${!v}" ]; then
+              echo "::error::$v is empty after 'supabase status -o env'. The browser suite cannot boot the apps."
+              exit 1
+            fi
+          done
+          case "$API_URL" in
+            http://*|https://*) echo "API_URL resolved to ${API_URL}" ;;
+            *) echo "::error::API_URL is not an http(s) URL: [$API_URL]"; exit 1 ;;
+          esac
       - run: pnpm turbo e2e:smoke
         env:
           NEXT_PUBLIC_SUPABASE_URL: ${{ env.API_URL }}

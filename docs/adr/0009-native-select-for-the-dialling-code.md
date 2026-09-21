@@ -1,4 +1,4 @@
-# ADR-0007 · /apply's dialling-code picker is a native `<select>`
+# ADR-0009 · /apply's dialling-code picker is a native `<select>`
 
 **Status:** Accepted for v1 — revisit when `packages/ui` has a combobox
 

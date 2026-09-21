@@ -80,3 +80,112 @@
 :root[data-style='warm'] .sheet {
   border-radius: var(--r-tile) var(--r-tile) 0 0;
 }
+
+/* =====================================================================
+   ADR-0007 · Fluid deltas.
+
+   The v2 sheet above stays exactly as it was. What follows is the extra
+   step the ADR-0007 boards take beyond it: a pill-shaped control scale,
+   and depth from an accent glow rather than a border.
+
+   Nothing here casts a neutral shadow. Every box-shadow below is built
+   from --glow-soft / --glow-dot, which resolve to accent-tinted rgba in
+   the fluid style and to `none` in scope.
+   ===================================================================== */
+
+/* ---- room inside a pill --------------------------------------------
+   --r-control is 999px here, so the end caps of a grouped control are half
+   its height. At the default padding the text rides the curve. The two
+   boxes that cannot be pills at all — a textarea and a checkbox — do not
+   need a rule here: they read --r-field and --r-check in components.css,
+   which are equal to --r-control in scope and diverge only in this style. */
+:root[data-style='warm'] .input,
+:root[data-style='warm'] select.input {
+  padding-left: var(--sp-16);
+  padding-right: var(--sp-16);
+}
+:root[data-style='warm'] .input-row .addon {
+  padding: 0 var(--sp-14);
+}
+/* The search glyph has to clear the cap too, and this rule has to restate
+   the left padding because the one above outranks `.search .input`. */
+:root[data-style='warm'] .search .input {
+  padding-left: var(--sp-36);
+}
+:root[data-style='warm'] .search::before {
+  left: var(--sp-14);
+}
+
+/* ---- glow, not a border --------------------------------------------
+   The boards give the active nav item and the primary button a coloured
+   lift. On the light ground the same token resolves to a teal at 45%
+   alpha, which reads as a tint rather than a halo — that is intended. */
+:root[data-style='warm'] .sidebar nav a.active {
+  box-shadow: var(--glow-soft);
+}
+:root[data-style='warm'] .btn.primary {
+  box-shadow: var(--glow-soft);
+}
+:root[data-style='warm'] .btn.primary:disabled,
+:root[data-style='warm'] .btn.primary[aria-disabled='true'] {
+  box-shadow: none;
+}
+
+/* ---- live status dots ----------------------------------------------
+   Every board marks a live relay with a small haloed dot. Both dots draw
+   themselves in currentColor so an amber pill halos amber and a green one
+   halos green; --glow-dot follows suit rather than forcing the accent. */
+:root[data-style='warm'] .pill .dot,
+:root[data-style='warm'] .gps .dot {
+  box-shadow: var(--glow-dot);
+}
+
+/* ---- calendar -------------------------------------------------------
+   Warm drops the hairline grid for spaced cards, the way every other
+   warm surface reads, and thickens the chip's fill border to match.
+   The day cell takes --shadow-card with the other warm card surfaces
+   below, so a calendar cell lifts exactly like a panel or a tile. */
+:root[data-style='warm'] .cal {
+  border: 0;
+  gap: 6px;
+  background: transparent;
+}
+:root[data-style='warm'] .cal .dh {
+  background: transparent;
+}
+:root[data-style='warm'] .cal .day {
+  border-radius: var(--r-card);
+}
+:root[data-style='warm'] .evchip {
+  border-left-width: 4px;
+}
+
+/* ---- the card shadow, light only -------------------------------------
+   --shadow-card resolves to `none` everywhere except the warm light
+   ground, so these rules are inert in dark and in scope. The boards give
+   every panel, card and tile the same lift; the border stays for the
+   contact edge rather than being traded away for it. */
+:root[data-style='warm'] .panel,
+:root[data-style='warm'] .card,
+:root[data-style='warm'] .kpi,
+:root[data-style='warm'] .tile,
+:root[data-style='warm'] .mcard,
+:root[data-style='warm'] .cal .day {
+  box-shadow: var(--shadow-card);
+}
+
+/* ---- auto-assign: the violet action ---------------------------------
+   Purple is reserved for Auto-Assign across the whole system, so the tone
+   is the trigger and no screen changes: <Button tone="purple"> already
+   renders every Auto-Assign action. The boards give that one action its
+   own gradient next to the teal primary. */
+:root[data-style='warm'] .btn.purple {
+  background: var(--grad-auto);
+  border-color: transparent;
+  color: var(--on-purple);
+  box-shadow: var(--glow-soft);
+}
+:root[data-style='warm'] .btn.purple:hover {
+  background: var(--grad-auto-hover);
+  color: var(--on-purple);
+}

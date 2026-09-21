@@ -4,11 +4,12 @@ import { SegToggle, useAppearance } from '@thc/ui';
 import type { Mode } from '@thc/ui';
 
 const OPTIONS = [
-  { value: 'light' as const, label: 'Light · Warm' },
-  { value: 'dark' as const, label: 'Dark · Scope §1.6' },
+  { value: 'light' as const, label: 'Light' },
+  { value: 'dark' as const, label: 'Dark' },
 ];
 
-/** ADR-0003: one switch. Light renders Warm, dark renders the Scope §1.6 look. */
+/** ADR-0007: one switch, and it changes the ground only — both grounds
+ *  render the same rounded look. */
 export function ModeSwitch() {
   const { mode, setMode } = useAppearance();
   return (

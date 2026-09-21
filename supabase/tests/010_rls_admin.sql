@@ -6,7 +6,7 @@
 -- that are admin-READ and service-role-write (audit_log, report_sends).
 -- =====================================================================
 begin;
-select plan(62);
+select plan(64);
 \ir _shared/fixtures.psql
 
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
@@ -44,6 +44,9 @@ select is((select count(*)::int from push_subscriptions    where id in (:'push_a
 select is((select count(*)::int from location_pings        where booking_id in (:'booking_a', :'booking_b')), 2, 'admin reads location pings');
 select is((select count(*)::int from audit_log             where action = 'rls_fixture_probe'),       1, 'admin reads the audit log (§1.7)');
 select is((select count(*)::int from report_sends          where error  = 'rls_fixture_probe'),       1, 'admin reads the report send log (§9.9)');
+select is((select count(*)::int from applications           where id = :'applic_a'),                  1, 'admin reads applications — the returning-applicant entry is a back-office queue (§2.12)');
+with u as (update applications set outcome = 'candidate_created' where id = :'applic_a' returning 1)
+  select is((select count(*)::int from u), 0, 'not even an admin edits an application: it is what the applicant submitted, written only by submit_application()');
 select is((select count(*)::int from venue_types           where key = 'rls_fixture_type'),           1, 'admin reads venue type defaults (§9.11)');
 select is((select count(*)::int from notification_outbox   where key = 'RLS:fixture:outbox'),         1, 'admin reads the notification send queue (§8) — admin_read, added by 20260921123503_db_hardening');
 

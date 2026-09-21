@@ -45,22 +45,22 @@ describe('the handoff colour table is what ships', () => {
     [
       ":root[data-theme='light']",
       {
-        '--bg': '#f6f1ea',
-        '--panel': '#fffcf7',
-        '--line': '#e2d6c7',
+        '--bg': '#faf7f4',
+        '--panel': '#ffffff',
+        '--line': '#ebe4da',
         '--text': '#241d16',
         '--muted': '#7a6b5c',
-        '--cyan': '#0b7a88',
+        '--cyan': '#0e7688',
         '--purple': '#6e45c4',
         '--green': '#1f7a4d',
         '--amber': '#b5730a',
         '--coral': '#c2402f',
-        '--canvas': '#ede6dc',
+        '--canvas': '#f0ebe4',
       },
     ],
     [
       ":root[data-style='warm'][data-theme='dark']",
-      { '--bg': '#070c16', '--panel': '#111a2b', '--line': '#28354c' },
+      { '--bg': '#0a0e18', '--panel': '#171b26', '--line': '#252a36' },
     ],
   ];
 
@@ -83,6 +83,8 @@ describe('radius', () => {
       '--r-pill',
       '--r-track',
       '--r-avatar',
+      '--r-field',
+      '--r-check',
       '--r-phone',
       '--r-frame',
     ]) {
@@ -92,15 +94,31 @@ describe('radius', () => {
     expect(/--r-logo:\s*50%/.test(scope)).toBe(true);
   });
 
-  it('follows the v2 scale in the warm style', () => {
+  it('follows the fluid scale in the warm style (ADR-0007)', () => {
     const warm = ":root[data-style='warm']";
-    expect(token(warm, '--r-card')).toBe('20px');
-    expect(token(warm, '--r-tile')).toBe('18px');
-    expect(token(warm, '--r-control')).toBe('14px');
+    expect(token(warm, '--r-card')).toBe('28px');
+    expect(token(warm, '--r-tile')).toBe('22px');
     expect(token(warm, '--r-pill')).toBe('999px');
     expect(token(warm, '--r-avatar')).toBe('50%');
     expect(token(warm, '--r-phone')).toBe('44px');
-    expect(token(warm, '--r-frame')).toBe('24px');
+    expect(token(warm, '--r-frame')).toBe('32px');
+  });
+
+  it('pills every single-line control, and nothing that has to hold a box', () => {
+    const warm = ":root[data-style='warm']";
+    // Buttons, inputs, nav items and chips are all `rounded-full` on the
+    // boards. A textarea and a checkbox are the two that cannot be.
+    expect(token(warm, '--r-control')).toBe('999px');
+    expect(token(warm, '--r-field')).toBe('20px');
+    expect(token(warm, '--r-check')).toBe('8px');
+
+    // Both exceptions are named where the component is defined, not patched
+    // on in the style sheet — so scope and fluid read one rule, and the
+    // difference between them stays in the token table.
+    for (const name of ['--r-field', '--r-check']) {
+      expect(sheets['components.css'], name).toContain(`border-radius: var(${name})`);
+      expect(sheets['warm.css'], name).not.toContain(`var(${name})`);
+    }
   });
 
   it('is never hard-coded in a component rule', () => {
@@ -145,12 +163,79 @@ describe('typography', () => {
   });
 });
 
+describe('grouped and decorated inputs', () => {
+  // Both of these were wrong at zero radius too; the pill scale is what made
+  // them visible. They are geometry bugs, so they belong with the geometry.
+  it('sizes the group from the direct child, not from the input', () => {
+    // `.field` is a column flex container. `flex: 1` on a descendant input
+    // applies along ITS parent's axis, which is vertical — the input
+    // collapsed to its content height inside a rate field.
+    expect(sheets['components.css']).toContain('.input-row > .field');
+    expect(sheets['components.css']).not.toMatch(/\.input-row \.input \{\n\s*flex: 1;/);
+  });
+
+  it('anchors the search glyph to the input, not to the wrapper', () => {
+    // `.search` stretches when it is a grid item, so `top: 50%` put the
+    // glyph below the field.
+    const start = sheets['components.css']!.indexOf('.search::before {');
+    const rule = sheets['components.css']!.slice(
+      start,
+      sheets['components.css']!.indexOf('}', start),
+    );
+    expect(rule).toContain('calc(var(--input-h) / 2)');
+    expect(rule).not.toMatch(/top:\s*50%/);
+  });
+});
+
 describe('elevation', () => {
-  it('uses no drop shadows anywhere — the handoff is explicit about it', () => {
+  it('casts no drop shadow — depth is frosted glass and accent glow', () => {
+    // The handoff is explicit that nothing drops a shadow. ADR-0007 adds the
+    // fluid style's glow, which is a box-shadow by mechanism but never by
+    // intent: it is always the accent or the element's own colour, and never
+    // a neutral cast downward. Both halves of that are worth holding.
     const shadows = rules
       .split('\n')
       .filter((line) => /box-shadow|text-shadow|drop-shadow/.test(line));
-    expect(shadows).toEqual([]);
+
+    for (const line of shadows) {
+      expect(line, `neutral shadow: ${line.trim()}`).not.toMatch(
+        /rgba?\(\s*0\s*,\s*0\s*,\s*0|black|#000/i,
+      );
+      expect(line, `untokenised shadow: ${line.trim()}`).toMatch(
+        /var\(--glow-(soft|dot)\)|var\(--shadow-card\)|box-shadow:\s*none/,
+      );
+    }
+  });
+
+  it('casts its one shadow on the warm light ground only, and warm not black', () => {
+    // A shadow is invisible on a dark ground, so dark gets glow instead and
+    // this stays `none` — which is what makes the rules in warm.css inert
+    // there rather than needing a second selector.
+    expect(token(':root', '--shadow-card')).toBe('none');
+    expect(token(":root[data-style='warm'][data-theme='dark']", '--shadow-card')).toBe('none');
+
+    const light = token(":root[data-style='warm'][data-theme='light']", '--shadow-card');
+    expect(light).not.toBe('none');
+    // Warm, not neutral: a black cast on cream reads as grey dirt.
+    expect(light).not.toMatch(/rgba?\(\s*0\s*,\s*0\s*,\s*0/);
+    expect(light).toMatch(/rgba\(36, 29, 22/);
+  });
+
+  it('confines the glow to the fluid style, and leaves scope flat', () => {
+    expect(token(':root', '--glow-soft')).toBe('none');
+    expect(token(':root', '--glow-dot')).toBe('none');
+    expect(token(":root[data-style='warm']", '--glow-soft')).toContain('--cyan-line');
+    expect(token(":root[data-style='warm']", '--glow-dot')).toContain('currentColor');
+
+    // Every rule that casts one lives in warm.css behind the style
+    // attribute, so no screen picks up a glow just by being rendered.
+    expect(
+      ((sheets['warm.css'] ?? '').match(/box-shadow:\s*var\(--glow/g) ?? []).length,
+    ).toBeGreaterThan(0);
+    for (const other of ['components.css', 'base.css', 'auth.css', 'tokens.css']) {
+      expect(sheets[other], other).not.toMatch(/box-shadow:\s*var\(--glow/);
+      expect(sheets[other], other).not.toMatch(/box-shadow:\s*var\(--shadow-card/);
+    }
   });
 
   it('frosts the mobile chrome with backdrop-filter', () => {

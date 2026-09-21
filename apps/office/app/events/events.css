@@ -1,0 +1,195 @@
+/*
+ * /events — week and day views, mirroring the page-local styles in
+ * `wireframes/backoffice/events.html`. The month grid and the chip live in
+ * `packages/ui` because the dashboard uses them too.
+ *
+ * Layout only. Every colour and radius is a token (ADR-0003).
+ */
+
+/* ---- week: seven columns of vertical lists, not a time grid ----------
+   §3.1 is explicit that a day carries 10-15 events with overlapping
+   windows, which collapses a time-gridded diary — so each column is an
+   ordered list and scrolls on its own. */
+.wk {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  overflow: hidden;
+}
+.wk .col {
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  min-height: 520px;
+}
+.wk .col.today {
+  outline: 1px solid var(--cyan-ink);
+  outline-offset: -1px;
+}
+.wk .ch {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wk .ch .d {
+  font-family: var(--font-label);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.wk .col.today .ch .d {
+  color: var(--cyan-ink);
+}
+.wk .ch .c {
+  font-family: var(--font-num);
+  font-size: 10px;
+  color: var(--amber-ink);
+}
+.wk .ch .c.ok {
+  color: var(--green-ink);
+}
+.wk .list {
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow: auto;
+  max-height: 480px;
+}
+.wk .list > * {
+  flex: 0 0 auto;
+}
+
+.wchip {
+  background: var(--bg);
+  border-left: 3px solid var(--amber);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  cursor: pointer;
+  font-size: 11.5px;
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--r-tile);
+}
+:root[data-theme='light'] .wchip {
+  background: var(--panel-2);
+}
+.wchip:hover {
+  outline: 1px solid var(--cyan-line);
+}
+.wchip.full {
+  border-left-color: var(--green);
+}
+.wchip.ongoing {
+  border-left-color: var(--cyan);
+}
+.wchip.cancelled {
+  border-left-color: var(--muted);
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+.wchip .w {
+  font-family: var(--font-num);
+  font-size: 10.5px;
+  color: var(--text);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.wchip .n {
+  font-weight: 600;
+}
+.wchip .m {
+  color: var(--muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wchip .f {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-size: 9.5px;
+  padding: 0 5px;
+  border: 1px solid var(--amber-line);
+  color: var(--amber-ink);
+  background: var(--amber-dim);
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+.wchip.full .f,
+.wchip.ongoing .f {
+  border-color: var(--green-line);
+  color: var(--green-ink);
+  background: var(--green-dim);
+}
+
+/* ---- day: one wide row per event ------------------------------------ */
+.dayrow {
+  display: grid;
+  grid-template-columns: 130px 1fr 220px 1fr 120px 110px;
+  gap: 14px;
+  align-items: center;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  text-decoration: none;
+  color: inherit;
+}
+.dayrow + .dayrow {
+  border-top: 0;
+}
+.dayrow:hover {
+  background: var(--panel-2);
+}
+.dayrow.cancelled {
+  opacity: 0.5;
+}
+.dayrow .w {
+  font-family: var(--font-num);
+  font-size: 13px;
+}
+.dayrow .w .sub {
+  display: block;
+  font-size: 10px;
+  color: var(--muted);
+}
+
+/* ---- list: the roles cell stacks one line per role section ---------- */
+.tbl .roles {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tbl .roles .r {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 12px;
+}
+
+@media (max-width: 1200px) {
+  .dayrow {
+    grid-template-columns: 120px 1fr 1fr;
+    row-gap: 6px;
+  }
+}
+@media (max-width: 900px) {
+  .wk {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .wk .col {
+    min-height: 0;
+  }
+  .dayrow {
+    grid-template-columns: 1fr;
+  }
+}

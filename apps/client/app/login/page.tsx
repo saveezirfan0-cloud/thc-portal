@@ -3,11 +3,7 @@ import { LoginForm } from './LoginForm';
 
 export const metadata = { title: 'Sign in · THC Client Portal' };
 
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: Promise<{ next?: string }>;
-}) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams;
   return (
     <AuthCard

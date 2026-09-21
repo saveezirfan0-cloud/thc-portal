@@ -57,7 +57,7 @@ import './design-system.css';
  *
  * It is derived from the four boards in `design-handoff/`. Light renders the
  * softened v2 look on the warm ground; dark renders the scope §1.6 look
- * (ADR-0003). Every element below reads tokens only — no page in this repo may
+ * (ADR-0003, settled by ADR-0007). Every element below reads tokens only — no page in this repo may
  * hard-code a colour or a radius.
  */
 const TONES = ['cyan', 'green', 'amber', 'coral', 'purple'] as const;
@@ -104,7 +104,7 @@ export default function Page() {
       <Content>
         <PageHead
           title="Components"
-          description="Derived from design-handoff/. Two token axes, one switch (ADR-0003): light renders the softened v2 look, dark renders the scope §1.6 look."
+          description="Derived from design-handoff/ and the ADR-0007 boards. Two token axes; the switch moves the theme only, because every supplied board is the same rounded language on a different ground."
         />
 
         {/* ---------------- tokens ---------------- */}
@@ -157,7 +157,9 @@ export default function Page() {
         </Panel>
 
         <Panel title="Shape and type">
-          <span className="label">Radius — zero everywhere in the scope look</span>
+          <span className="label">
+            Radius — the fluid scale in both themes; zero only in the §1.6 rendering
+          </span>
           <div className="ds-shapes mt-8">
             {SHAPES.map(([token, label]) => (
               <div className="ds-shape" key={token} style={{ borderRadius: `var(${token})` }}>
@@ -220,9 +222,10 @@ export default function Page() {
           <hr />
           <Note>
             Every button animates on hover (§1.6): solid accent lightens, outlined takes the accent
-            border and text, outlined danger fills 12% danger. In the softened look the primary
-            carries the cyan→violet gradient. Nothing casts a drop shadow — the handoff is explicit
-            that there are none anywhere.
+            border and text, outlined danger fills 12% danger. In the fluid look the primary carries
+            the cyan→violet gradient, and Auto-assign carries the violet one. Depth follows the
+            ground: a soft warm card shadow in light, frosted glass and coloured glow in dark. Never
+            a neutral black cast (ADR-0007).
           </Note>
         </Panel>
 

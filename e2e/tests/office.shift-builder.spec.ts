@@ -1,19 +1,23 @@
 import { expect, test } from '@playwright/test';
 import type { Locator, Page } from '@playwright/test';
+import { openAsAdmin } from './_support/session';
 
 /**
  * Shift Builder — Scope §3.2, §3.4, wireframes/backoffice/shift-builder.html.
  *
- * These run against a Back Office with no Supabase project, which is what CI
- * builds. That leaves the directories empty, so the checks below are the ones
- * that do not need seeded data: the panel order the scope prescribes, the
- * four-hour floor, the buffer display, the allocation default, and the fact
- * that Save stays disabled until every section is valid. Journeys that need a
- * client and a venue belong with the seeded suite.
+ * The assertions below are the ones that hold whether or not the client and
+ * venue directories have anything in them: the panel order the scope
+ * prescribes, the four-hour floor, the buffer display, the allocation default,
+ * and the fact that Save stays disabled until every section is valid.
+ * Journeys that depend on a particular seeded client belong with the data.
  */
 
 test.beforeEach(async ({ page }) => {
-  await page.goto('/events/new');
+  // Signs in when the gate is live and walks straight in when it is not, so
+  // these run in CI against a real Supabase as well as on a machine with no
+  // project. They used to be skipped outright once the gate came up, which
+  // quietly turned ten assertions into none.
+  await openAsAdmin(page, '/events/new');
 });
 
 /** One role section, by position. Its labels repeat, so scope before asking. */
