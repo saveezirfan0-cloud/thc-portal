@@ -117,13 +117,24 @@ test.describe('public /apply', () => {
     await fill(page, { email });
     await page.getByRole('button', { name: 'Submit application' }).click();
 
-    await expect(page).toHaveURL(/\/apply\/submitted/);
+    await expect(page).toHaveURL(/\/apply\/submitted$/);
     await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
     await expect(page.getByText(email)).toBeVisible();
     await expect(page.getByText('Willo (interview invitation)')).toBeVisible();
+
+    // The card echoes the address; the URL must not (§1.7). A live email
+    // in a GET lands in browser history, access logs and Referer.
+    expect(page.url()).not.toContain(email.split('@')[0]);
   });
 
-  test('a returning applicant sees exactly the same screen, never the reason (§2.12)', async ({
+  // This drives the "applied twice" case, because a browser cannot set a
+  // worker to blocked or inactive first. What it proves is the part
+  // §2.12 cares about on this side of the screen: a matched applicant is
+  // shown the ordinary confirmation and nothing else. Which queue the
+  // office sees them in — returning applicant vs duplicate submission —
+  // is asserted in supabase/tests/070_applications.sql, where the
+  // lifecycle states can actually be set up.
+  test('a matched applicant sees exactly the same screen, never the reason (§2.12)', async ({
     page,
   }) => {
     test.skip(!configured, 'needs a Supabase project — run `supabase start` and export its env');

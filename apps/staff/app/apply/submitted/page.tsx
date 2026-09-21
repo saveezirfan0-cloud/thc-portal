@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { AuthCard } from '@thc/ui';
+import { APPLY_EMAIL_COOKIE } from '../application';
 import '../apply.css';
 
 export const metadata: Metadata = {
@@ -17,15 +19,11 @@ const LOOKS_LIKE_EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
  * §2.12 is explicit: a returning or duplicate applicant sees exactly this
  * screen and never the reason a previous record was blocked. So this page
  * reads nothing back from the database and takes no id; the address it
- * shows is the one the applicant just typed, echoed from the query string
- * purely so they can spot their own typo.
+ * shows is the one the applicant just typed, carried here in a
+ * short-lived httpOnly cookie purely so they can spot their own typo.
  */
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: Promise<{ email?: string }>;
-}) {
-  const { email } = await searchParams;
+export default async function Page() {
+  const email = (await cookies()).get(APPLY_EMAIL_COOKIE)?.value;
   const sentTo = email && LOOKS_LIKE_EMAIL.test(email) ? email : null;
 
   return (

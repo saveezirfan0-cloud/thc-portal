@@ -1,9 +1,10 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@thc/db/server';
 import {
+  APPLY_EMAIL_COOKIE,
   errorForDatabaseCode,
   MESSAGES,
   summaryMessage,
@@ -35,6 +36,19 @@ interface ApplicationRpc {
     },
   ): Promise<{ error: { message: string } | null }>;
 }
+
+/**
+ * Carries the address to the confirmation screen, which echoes it back so
+ * the applicant can spot their own typo (§2.7).
+ *
+ * It is a cookie rather than a query parameter because a live email
+ * address in a URL ends up in browser history, in access logs and in any
+ * future Referer header, which is not how §1.7 asks personal data to be
+ * handled. Scoped to the one path that reads it and short-lived: a
+ * Server Component cannot clear a cookie during render, so the expiry is
+ * what removes it.
+ */
+const EMAIL_COOKIE_MAX_AGE_SECONDS = 600;
 
 function draftFrom(formData: FormData): ApplicationDraft {
   return {
@@ -77,9 +91,11 @@ export async function submitApplication(
   // deliberate: `packages/db` looks the variables up dynamically, so the
   // answer is the one the running server has, not the one the machine
   // that built it had.
+  const cookieStore = await cookies();
+
   let supabase: ApplicationRpc;
   try {
-    supabase = createClient(await cookies()) as unknown as ApplicationRpc;
+    supabase = createClient(cookieStore) as unknown as ApplicationRpc;
   } catch {
     // Say so rather than pretend the application was filed: a silently
     // swallowed application is worse than an honest failure.
@@ -92,7 +108,9 @@ export async function submitApplication(
     p_email: checked.value.email,
     p_phone: checked.value.phone,
     p_age_band: checked.value.ageBand,
-    p_consent: true,
+    // Passed through rather than hard-coded, so the SQL consent gate is
+    // exercised by the real client and not only by a direct RPC caller.
+    p_consent: checked.value.consent,
   });
 
   if (error) {
@@ -104,6 +122,16 @@ export async function submitApplication(
     return { errors: {}, summary: MESSAGES.unavailable };
   }
 
+  cookieStore.set(APPLY_EMAIL_COOKIE, checked.value.email, {
+    httpOnly: true,
+    sameSite: 'lax',
+    // Behind Vercel this is https; over plain http (local, CI) a secure
+    // cookie would simply never be stored.
+    secure: (await headers()).get('x-forwarded-proto') === 'https',
+    path: '/apply/submitted',
+    maxAge: EMAIL_COOKIE_MAX_AGE_SECONDS,
+  });
+
   // `redirect` throws, so it has to sit outside any try/catch.
-  redirect(`/apply/submitted?email=${encodeURIComponent(checked.value.email)}`);
+  redirect('/apply/submitted');
 }

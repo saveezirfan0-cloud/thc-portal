@@ -283,13 +283,13 @@ export const OTHER_COUNTRIES: Country[] = COUNTRIES.filter(
 ).sort((a, b) => a.name.localeCompare(b.name, 'en'));
 
 /**
- * The dialling code comes first on purpose.
+ * The dialling code comes first on purpose — see docs/adr/0005.
  *
  * A native `<select>` shows the selected option's own text in a fixed-width
  * control, and no amount of CSS gives the collapsed state a shorter label
  * than the list. The wireframe's ideal — "🇬🇧 +44" collapsed, full country
- * names in the list — needs a real combobox, which `packages/ui` does not
- * have yet. Until it does, putting "+44" first means the one piece of
+ * names in the list — needs a combobox, which `packages/ui` does not have
+ * yet. Until it does, putting "+44" first means the one piece of
  * information the field exists to carry survives being clipped, while the
  * list still reads by country name.
  */

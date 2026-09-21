@@ -97,7 +97,24 @@ create index staff_awaiting_willo_idx on staff (created_at)
 -- kept for both outcomes so a manager can see what a candidate actually
 -- typed, and so a rejected duplicate leaves a trail.
 -- ---------------------------------------------------------------------
-create type application_outcome as enum ('candidate_created', 'returning_applicant');
+-- Three outcomes, because a match is not always a returning applicant.
+--   candidate_created   — nothing matched; a new candidate exists.
+--   returning_applicant — matched a record that has LEFT the pipeline
+--                         (compliant, blocked, inactive, rejected). This
+--                         is §2.12's case: the office presses Reset to
+--                         candidate or rejects.
+--   duplicate_submission— matched a record still IN the pipeline
+--                         (interview_requested … contract). Somebody
+--                         applied twice, or applied again while their
+--                         first application is still running. §2.12's
+--                         Reset to candidate is "available on a blocked
+--                         or rejected profile", so there is nothing for
+--                         the office to decide here; filing these as
+--                         returning applicants would bury the real ones.
+--                         The applicant sees the same screen regardless.
+create type application_outcome as enum (
+  'candidate_created', 'returning_applicant', 'duplicate_submission'
+);
 
 create table applications (
   id uuid primary key default gen_random_uuid(),
@@ -113,8 +130,8 @@ create table applications (
   reviewed_at timestamptz,                       -- office cleared the returning-applicant entry
   reviewed_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
-  constraint returning_applicant_names_a_record
-    check (outcome <> 'returning_applicant' or staff_id is not null)
+  constraint match_names_a_record
+    check (outcome = 'candidate_created' or staff_id is not null)
 );
 
 create index applications_staff_idx on applications (staff_id);
@@ -161,6 +178,7 @@ declare
   v_last    text := btrim(coalesce(p_last_name, ''));
   v_band    text := btrim(coalesce(p_age_band, ''));
   v_match   uuid;
+  v_match_status staff_status;
   v_staff   uuid;
   v_outcome application_outcome;
   v_app     uuid;
@@ -204,10 +222,17 @@ begin
     raise exception 'apply_consent_required' using errcode = 'check_violation';
   end if;
 
+  -- Two browser tabs, or a double tap on a slow phone, would otherwise
+  -- both find no match and both insert a candidate. The lock is held to
+  -- the end of this transaction and is keyed on the two things the match
+  -- below looks at, so honest concurrent submissions queue instead of
+  -- racing. It costs nothing in the normal case.
+  perform pg_advisory_xact_lock(hashtext(v_email), hashtext(v_phone));
+
   -- ---- duplicate check (§2.12) ----
   -- A GDPR-removed worker is excluded: their personal data is gone, so
   -- there is nothing to match and they apply as a new candidate (§1.7).
-  select s.id into v_match
+  select s.id, s.status into v_match, v_match_status
     from staff s
    where s.removed_at is null
      and s.status <> 'removed'
@@ -222,10 +247,19 @@ begin
    limit 1;
 
   if v_match is not null then
-    -- No second candidate. The office decides between Reset to candidate
-    -- and rejecting (§2.12, §9.6).
+    -- No second candidate either way. What differs is whether the office
+    -- is asked to decide anything: only a record that has left the
+    -- pipeline is §2.12's returning applicant (Reset to candidate is
+    -- offered "on a blocked or rejected profile"). Somebody who is still
+    -- mid-onboarding and submits the form again has not come back from
+    -- anywhere, and must not land in the same queue.
     v_staff   := v_match;
-    v_outcome := 'returning_applicant';
+    v_outcome := case
+      when v_match_status in ('interview_requested', 'interview_completed', 'documents',
+                              'quiz', 'additional_info', 'contract')
+        then 'duplicate_submission'
+      else 'returning_applicant'
+    end;
   else
     insert into staff (first_name, last_name, email, phone, status, gdpr_consent_at)
     values (v_first, v_last, btrim(p_email), v_phone, 'interview_requested', now())

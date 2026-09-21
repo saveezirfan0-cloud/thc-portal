@@ -50,6 +50,13 @@
   text-overflow: ellipsis;
 }
 
+/* The picker and the number are one control: `packages/ui`'s .input-row
+   strips the shared radius but not the shared border, so without this the
+   seam is 2px. The wireframe puts border-left:0 on the number input. */
+.apply-page .input-row .input + .input {
+  border-left: 0;
+}
+
 .apply-consent {
   position: relative;
 }

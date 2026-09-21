@@ -225,6 +225,9 @@ describe('the form as a whole', () => {
       email: 'amara.kalu@example.com',
       phone: '+447700900123',
       ageBand: '22',
+      // Carried so the action sends what it checked, rather than a
+      // literal `true` the SQL consent gate would never disagree with.
+      consent: true,
     });
   });
 

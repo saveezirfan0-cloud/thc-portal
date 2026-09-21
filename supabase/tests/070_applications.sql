@@ -8,25 +8,39 @@
 --   §2.1  a valid submission creates the candidate directly in
 --         `interview_requested` (there is no "Applied" stage),
 --   §2.12 email, and mobile (+ DOB when there is one), route a returning
---         applicant to the office instead of creating a second record,
+--         applicant to the office instead of creating a second record —
+--         but only when the matched record has LEFT the pipeline, since
+--         Reset to candidate is offered "on a blocked or rejected
+--         profile" and somebody still mid-onboarding has not come back
+--         from anywhere,
 --   §1.7  a GDPR-removed worker cannot be matched and applies as new.
 --
 -- The one thing the applicant must NOT be able to learn is which of those
--- two things happened (§2.12), which is why the function returns void.
+-- things happened (§2.12), which is why the function returns void.
 -- =====================================================================
 begin;
-select plan(30);
+select plan(46);
 \ir _shared/fixtures.psql
 
 -- ---- fixture rows this test owns -----------------------------------
 \set formatted  '7a7a7a7a-0000-4000-8000-000000000001'
 \set removed    '7a7a7a7a-0000-4000-8000-000000000002'
+\set blocked    '7a7a7a7a-0000-4000-8000-000000000003'
+\set rejected   '7a7a7a7a-0000-4000-8000-000000000004'
+\set inactive   '7a7a7a7a-0000-4000-8000-000000000005'
 
 -- A worker whose mobile is stored formatted, the way supabase/seed.sql
 -- and the Appendix B5 import hold it. The duplicate check has to see
 -- through that.
 insert into staff (id, employee_id, first_name, last_name, email, phone, dob, status) values
   (:'formatted', 90071, 'Formatted', 'Number', 'formatted@rls.test', '+44 7700 900071', date '1990-03-03', 'compliant');
+
+-- The three records §2.12's returning applicant is actually about: the
+-- ones a manager can press Reset to candidate on, or reject.
+insert into staff (id, employee_id, first_name, last_name, email, phone, dob, status) values
+  (:'blocked',  90073, 'Blocked',  'Worker', 'blocked@rls.test',  '+447700900073', date '1990-04-04', 'blocked'),
+  (:'rejected', 90074, 'Rejected', 'Cand',   'rejected@rls.test', '+447700900074', date '1990-05-05', 'rejected'),
+  (:'inactive', 90075, 'Inactive', 'Leaver', 'inactive@rls.test', '+447700900075', date '1990-06-06', 'inactive');
 
 -- A GDPR-removed worker (§1.7): personal data gone, record retained.
 insert into staff (id, employee_id, first_name, last_name, email, phone, dob, status, removed_at) values
@@ -110,6 +124,11 @@ select is(
   '+447700900090',
   'the mobile is stored in E.164');
 
+select is(
+  (select age_band from applications where lower(email) = 'nia.okafor@rls.test'),
+  '22',
+  'the age band is kept — it is the only record of what the applicant said (docs/adr/0004)');
+
 select ok(
   (select s.dob is null and s.willo_candidate_id is null
      from applications a join staff s on s.id = a.staff_id
@@ -138,6 +157,18 @@ select lives_ok(
   $$ select submit_application('Different','Person','different@rls.test','+447700900071','30',true) $$,
   'a returning applicant matched on a formatted mobile submits without error');
 select lives_ok(
+  $$ select submit_application('Blocked','Worker','blocked-again@rls.test','+447700900073','30',true) $$,
+  'a blocked worker can apply again');
+select lives_ok(
+  $$ select submit_application('Rejected','Cand','rejected@rls.test','+447700900082','30',true) $$,
+  'a rejected candidate can apply again');
+select lives_ok(
+  $$ select submit_application('Inactive','Leaver','inactive@rls.test','+447700900083','30',true) $$,
+  'a leaver can apply again');
+select lives_ok(
+  $$ select submit_application('Nia','Okafor','nia.okafor@rls.test','+447700900090','22',true) $$,
+  'and so can somebody who simply submitted the form twice');
+select lives_ok(
   $$ select submit_application('Deleted','Account','removed@rls.test','+447700900072','30',true) $$,
   'a GDPR-removed worker can apply again');
 reset role;
@@ -160,23 +191,73 @@ select is(
   'a mobile match sees through the stored formatting');
 
 select is(
+  (select outcome::text from applications where email = 'blocked-again@rls.test'),
+  'returning_applicant',
+  'a blocked worker is the case §2.12 is about — Reset to candidate or reject');
+
+select is(
+  (select outcome::text from applications where email = 'rejected@rls.test'),
+  'returning_applicant',
+  'so is a rejected candidate (§2.3: the only way back is applying again)');
+
+select is(
+  (select outcome::text from applications where email = 'inactive@rls.test'),
+  'returning_applicant',
+  'so is a leaver (§10.6, §2.12)');
+
+select is(
+  (select count(*)::int from applications
+    where outcome = 'returning_applicant' and lower(email) = 'nia.okafor@rls.test'),
+  0,
+  'a candidate still in the pipeline who submits again is NOT a returning applicant');
+
+select is(
+  (select outcome::text from applications
+    where outcome = 'duplicate_submission' and lower(email) = 'nia.okafor@rls.test'),
+  'duplicate_submission',
+  'they are filed as a duplicate submission, so the office queue keeps meaning something');
+
+select is(
+  (select count(*)::int from staff where lower(email) = 'nia.okafor@rls.test'),
+  1,
+  'and, either way, no second candidate exists');
+
+select ok(
+  (select bool_and(gdpr_consent_at is not null) from applications
+    where outcome <> 'candidate_created'),
+  'a matched applicant has no new staff row, so the application row is where §1.7 keeps their consent timestamp');
+
+select is(
   (select outcome::text from applications where email = 'removed@rls.test'),
   'candidate_created',
   'a GDPR-removed worker cannot be matched and applies as a genuinely new candidate (§1.7)');
 
 select is(
   (select count(*)::int from audit_log where action = 'application_submitted'),
-  4,
+  8,
   'every submission that survived validation is on the audit trail');
 
 -- ---------------------------------------------------------------------
--- The date of birth cannot stay missing (0005, docs/adr/0004)
+-- The date of birth (0005, docs/adr/0004)
 -- ---------------------------------------------------------------------
+\set nia_id '(select staff_id from applications where lower(email) = ''nia.okafor@rls.test'' and outcome = ''candidate_created'')'
+
+select lives_ok(
+  format($$ update staff set status = 'documents' where id = %L $$, :nia_id),
+  'a candidate reaches Documents without a date of birth — the wizard collects it there (§2.5)');
+
+select lives_ok(
+  format($$ update staff set status = 'rejected' where id = %L $$, :nia_id),
+  'and can be rejected out of any stage without one');
+
+select lives_ok(
+  format($$ update staff set status = 'removed' where id = %L $$, :nia_id),
+  'and a GDPR removal, which wipes personal data, does not need one either (§1.7)');
+
 select throws_ok(
-  format($$ update staff set status = 'quiz' where id = %L $$,
-         (select staff_id from applications where lower(email) = 'nia.okafor@rls.test')),
+  format($$ update staff set status = 'quiz' where id = %L $$, :nia_id),
   '23514', null,
-  'a candidate cannot reach the quiz without a date of birth');
+  'but a candidate cannot reach the quiz without a date of birth');
 
 -- ---------------------------------------------------------------------
 -- Everyone else. The office reads the queue; nobody else sees it at all.
@@ -193,8 +274,10 @@ reset role;
 
 select set_config('request.jwt.claims', format('{"sub":"%s","role":"authenticated"}', :'admin_uid'), true);
 set local role authenticated;
-select is((select count(*)::int from applications), 4,
+select is((select count(*)::int from applications), 8,
   'the office reads every application, which is what the returning-applicant entry is built on');
+select is((select count(*)::int from applications where outcome = 'returning_applicant'), 5,
+  'five of them are the returning applicants a manager actually has to decide about');
 reset role;
 
 select * from finish();

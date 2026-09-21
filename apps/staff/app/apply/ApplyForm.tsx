@@ -7,6 +7,7 @@ import {
   AGE_BANDS,
   emptyDraft,
   EMPTY_APPLY_STATE,
+  PRIVACY_NOTICE_URL,
   MESSAGES,
   summaryMessage,
   UNDER_18,
@@ -53,8 +54,14 @@ export function ApplyForm() {
       ? { ageBand: MESSAGES.ageUnder18 }
       : {};
 
+  // The banner appears with the age error too, not only after a click:
+  // the wireframe's validation state draws the coral banner, the coral
+  // age error and a disabled button together, and disabling the button
+  // "on the spot" is otherwise what stops that state being reachable.
   const summary =
-    attempted && Object.keys(shown).length > 0 ? summaryMessage(shown) : state.summary;
+    (attempted || underAge) && Object.keys(shown).length > 0
+      ? summaryMessage(shown)
+      : state.summary;
   const blocked = underAge || (attempted && !checked.ok);
 
   function set<K extends keyof ApplicationDraft>(key: K, value: ApplicationDraft[K]) {
@@ -193,19 +200,20 @@ export function ApplyForm() {
             checked={draft.consent}
             onChange={(e) => set('consent', e.target.checked)}
             aria-invalid={shown.consent ? true : undefined}
+            aria-describedby={shown.consent ? `${consentId}-error` : undefined}
           />
           <span className={`box${draft.consent ? ' on' : ''}`} aria-hidden="true" />
           <span className="txt">
             I agree to The Hospitality Company storing and processing the details on this form to
             assess my application, as described in the{' '}
-            <a href="https://thehospitalitycompany.co.uk/privacy" target="_blank" rel="noreferrer">
+            <a href={PRIVACY_NOTICE_URL} target="_blank" rel="noreferrer">
               Privacy notice
             </a>
             . <span className="muted">(GDPR consent — required)</span>
           </span>
         </label>
         {shown.consent ? (
-          <span className="error" role="alert">
+          <span className="error" id={`${consentId}-error`} role="alert">
             {shown.consent}
           </span>
         ) : null}

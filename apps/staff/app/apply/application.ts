@@ -123,6 +123,23 @@ export interface ApplyState {
 
 export const EMPTY_APPLY_STATE: ApplyState = { errors: {}, summary: null };
 
+/**
+ * Where the confirmation screen reads the address it echoes back. The
+ * action sets it; see the note there for why it is not a query parameter.
+ */
+export const APPLY_EMAIL_COOKIE = 'thc_apply_email';
+
+/**
+ * The privacy notice the GDPR consent statement points at (§1.7).
+ *
+ * The wireframe leaves it as `href="#"`. The domain is THC's own (it is
+ * the one in the wireframe's phone URL bar); the path is this repo's
+ * assumption and needs confirming with THC alongside the other Appendix B
+ * content. When `/settings` lands (§9.12) this belongs in the `settings`
+ * table with the sender addresses, not in the bundle.
+ */
+export const PRIVACY_NOTICE_URL = 'https://thehospitalitycompany.co.uk/privacy';
+
 /** What the server sends to the database once every rule above passes. */
 export interface ValidApplication {
   firstName: string;
@@ -131,6 +148,8 @@ export interface ValidApplication {
   /** E.164. */
   phone: string;
   ageBand: string;
+  /** Always true — carried so the server passes what it checked, not a literal. */
+  consent: true;
 }
 
 /**
@@ -194,7 +213,10 @@ export function validateApplication(
   // what lets the compiler see that the returned number is a string.
   if (phone === null || Object.keys(errors).length > 0) return { ok: false, errors };
 
-  return { ok: true, value: { firstName, lastName, email, phone, ageBand: draft.ageBand } };
+  return {
+    ok: true,
+    value: { firstName, lastName, email, phone, ageBand: draft.ageBand, consent: true },
+  };
 }
 
 /** The coral banner above the fields, e.g. "Please fix the 2 fields highlighted below." */
