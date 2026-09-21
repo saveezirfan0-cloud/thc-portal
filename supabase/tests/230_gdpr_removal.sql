@@ -22,7 +22,7 @@
 -- anonymised row and prints the new label with no code of its own.
 -- =====================================================================
 begin;
-select plan(23);
+select plan(25);
 \set now '2026-09-21 12:00:00+01'
 \ir _shared/fixtures.psql
 
@@ -32,10 +32,15 @@ select plan(23);
 insert into staff (id, user_id, employee_id, first_name, last_name, email, phone, dob, status,
                    rtw_branch, home_address, photo_path, ni_number, share_code,
                    right_to_work_until, graduated_at, term_dates, wtr_optout) values
-  (:'gdpr', null, 1042, 'Grace','Lindqvist','grace@example.com','+447700900105', date '1997-03-30',
+  -- Employee IDs are UNIQUE and supabase/seed.sql already holds 1042 —
+  -- the canonical "Deleted account #1042" from wireframes/CONVENTIONS.md.
+  -- Reusing the number to make the label read familiarly collides with
+  -- the seed's own removed worker; the label format is pinned below as a
+  -- pure function call instead, where no row is involved.
+  (:'gdpr', null, 91042, 'Grace','Lindqvist','grace@example.com','+447700900105', date '1997-03-30',
    'compliant','international_student','Roman Rd, London E3','photos/grace.jpg','QQ999999C',
    'W123456AB', date '2027-01-01', date '2026-06-30', '{"[2026-06-15,2026-09-28)"}', true),
-  (:'keep', null, 1043, 'Stays','Here','stays@example.com','+447700900106', date '1996-01-01',
+  (:'keep', null, 91043, 'Stays','Here','stays@example.com','+447700900106', date '1996-01-01',
    'compliant','uk_irish', 'Somewhere', 'photos/stays.jpg','QQ888888C', null, null, null, '{}', false);
 
 insert into bank_details (staff_id, account_holder, sort_code, account_number)
@@ -79,9 +84,13 @@ select is((select status::text from staff where id = :'gdpr'), 'removed',
   '§1.7: status Removed');
 select is((select first_name || ' ' || last_name from staff where id = :'gdpr'), 'Deleted account',
   'the name is replaced, in the shape supabase/seed.sql and the wireframes already use');
-select is((select r->>'label' from t_rm), 'Deleted account #1042',
+select is((select r->>'label' from t_rm), 'Deleted account #91042',
   'and the label the Removed tab, the event board and a regenerated timesheet all print');
-select is((select email from staff where id = :'gdpr'), 'removed-1042@invalid.example',
+select is(deleted_account_label(1042), 'Deleted account #1042',
+  'in the exact form wireframes/CONVENTIONS.md and supabase/seed.sql already use — asserted as a pure function, because the seed holds employee_id 1042 and the column is unique');
+select is(deleted_account_label(null), 'Deleted account #unknown',
+  'and a worker removed before §2.7 ever issued them an ID gets a label rather than "#null" on a client''s timesheet');
+select is((select email from staff where id = :'gdpr'), 'removed-91042@invalid.example',
   'the address is replaced with one that cannot receive anything');
 select is(
   (select coalesce(home_address,'-') || '/' || coalesce(photo_path,'-') || '/' ||
@@ -108,7 +117,7 @@ select is((select count(*)::int from bank_details where staff_id = :'keep'), 1,
 -- ---------------------------------------------------------------------
 -- What survives, which is most of §1.7.
 -- ---------------------------------------------------------------------
-select is((select employee_id from staff where id = :'gdpr'), 1042,
+select is((select employee_id from staff where id = :'gdpr'), 91042,
   '§2.7/§9.9: the Employee ID is retained, because every historical timesheet and payroll line reconciles through it — and it is the #id in the label');
 select is((select status::text || '/' || cancel_cause from bookings where id = 'c3000000-0000-4000-8000-000000000001'),
   'cancelled/gdpr', 'future bookings are released, with the cause 0001_init reserved for this');
@@ -133,7 +142,7 @@ select is((select answer::text || '/' || review_status::text from criminal_decla
 -- ---------------------------------------------------------------------
 select is((remove_worker(:'gdpr', :'now'::timestamptz))->>'alreadyRemoved', 'true',
   'a second removal is a no-op rather than an error or a second pass');
-select is((select employee_id from staff where id = :'gdpr'), 1042,
+select is((select employee_id from staff where id = :'gdpr'), 91042,
   'and does not re-derive the label from an Employee ID it has just wiped');
 
 select * from finish();
