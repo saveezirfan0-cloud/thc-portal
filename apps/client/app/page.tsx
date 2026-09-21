@@ -2,8 +2,8 @@ import { Content, PageHead, Panel, Shell, Sidebar, Topbar } from '@thc/ui';
 
 /** The Client Portal is read-only and shows no money at all (§11.1–11.2). */
 const NAV = [
-  { href: '/events', label: 'Events' },
-  { href: '/feedback', label: 'Feedback' },
+  { href: '/', label: 'Events' },
+  { href: '/feedback', label: 'Feedback', pending: true },
 ];
 
 export default function Page() {
@@ -12,7 +12,7 @@ export default function Page() {
       sidebar={
         <Sidebar
           items={NAV}
-          activeHref="/events"
+          activeHref="/"
           brand={
             <>
               <span className="logo">THC</span>

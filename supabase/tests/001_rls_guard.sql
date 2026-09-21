@@ -34,7 +34,7 @@ select bag_eq(
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
         and c.relname <> 'spatial_ref_sys' $$,
-  $$ values ('audit_log'::text),('bank_details'),('bookings'),('breaks'),('check_logs'),
+  $$ values ('applications'::text),('audit_log'),('bank_details'),('bookings'),('breaks'),('check_logs'),
             ('client_qualifications'),('client_rate_cards'),('clients'),
             ('compliance_docs'),('criminal_declarations'),('events'),('feedback'),
             ('hmrc_checklists'),('job_runs'),('job_schedules'),('location_pings'),
@@ -42,7 +42,7 @@ select bag_eq(
             ('push_subscriptions'),('quiz_attempts'),('report_sends'),('roles'),('settings'),
             ('shift_requirements'),('staff'),('staff_references'),('staff_roles'),
             ('venue_types'),('venues'),('violations') $$,
-  'RLS is enabled on all 30 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, and job_runs + job_schedules from the jobs layer'
+  'RLS is enabled on all 31 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, and applications from the public form'
 );
 
 -- ---------------------------------------------------------------------
@@ -100,7 +100,7 @@ select is_empty(
 select bag_eq(
   $$ select distinct c.relname::text from pg_policy p join pg_class c on c.oid = p.polrelid
       where p.polname like 'admin\_%' $$,
-  $$ values ('audit_log'::text),('bank_details'),('bookings'),('breaks'),('check_logs'),
+  $$ values ('applications'::text),('audit_log'),('bank_details'),('bookings'),('breaks'),('check_logs'),
             ('client_qualifications'),('client_rate_cards'),('clients'),
             ('compliance_docs'),('criminal_declarations'),('events'),('feedback'),
             ('hmrc_checklists'),('job_runs'),('job_schedules'),('location_pings'),
@@ -138,6 +138,8 @@ select bag_eq(
 --    views that scope themselves instead of policies on the tables under
 --    them, so this list staying at two IS the money isolation. A new name
 --    here means somebody re-opened what 0002 closed.
+--    The public application migration added none either: `applications` is admin-only, and a customer
+--    has no business in the onboarding pipeline at all.
 -- ---------------------------------------------------------------------
 select bag_eq(
   $$ select c.relname::text from pg_policy p join pg_class c on c.oid = p.polrelid

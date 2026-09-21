@@ -8,18 +8,20 @@ import { appearanceScript, MODE_STORAGE_KEY, styleForMode } from '../components/
  * set out to buy — so both are worth pinning.
  */
 describe('the appearance pairing (ADR-0007)', () => {
-  it('renders the scope §1.6 geometry in light mode', () => {
-    expect(styleForMode('light')).toBe('scope');
+  // Every supplied board, warm light and dark alike, is the same rounded
+  // language. So the switch changes the ground and nothing else.
+  it('renders the rounded look in light mode', () => {
+    expect(styleForMode('light')).toBe('warm');
   });
 
-  it('renders the fluid look in dark mode', () => {
+  it('renders the rounded look in dark mode too', () => {
     expect(styleForMode('dark')).toBe('warm');
   });
 
-  it('applies the same pairing before first paint', () => {
+  it('applies the same style before first paint', () => {
     // The inline script runs ahead of React, so a mismatch here shows up as
     // a flash of the wrong geometry rather than as a failing render.
-    expect(appearanceScript).toContain("m==='dark'?'warm':'scope'");
+    expect(appearanceScript).toContain("setAttribute('data-style','warm')");
     expect(appearanceScript).toContain(MODE_STORAGE_KEY);
   });
 

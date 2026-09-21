@@ -60,6 +60,28 @@
     background 0.15s,
     color 0.15s;
 }
+/* Phase 0: a route nobody has built yet reads as text, not a dead link.
+   It keeps its place so the sidebar still shows the shape of the product. */
+.sidebar nav .pending {
+  cursor: default;
+  opacity: 0.55;
+}
+.sidebar nav .pending:hover {
+  background: transparent;
+  color: var(--muted);
+}
+.sidebar nav .soon {
+  margin-left: auto;
+  font-family: var(--font-label);
+  font-size: var(--fs-10);
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  padding: 1px var(--sp-6);
+}
+
 .sidebar nav a:hover {
   color: var(--text);
   background: var(--hover);
@@ -1854,6 +1876,12 @@ textarea.input {
 .app-frame > .bottom-nav {
   position: fixed;
 }
+/* Phase 0, as in the sidebar: an unbuilt route is text, not a dead link. */
+.bottom-nav .pending {
+  opacity: 0.45;
+  cursor: default;
+}
+
 .bottom-nav a {
   display: flex;
   flex-direction: column;
