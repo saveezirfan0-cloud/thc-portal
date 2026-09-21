@@ -26,7 +26,7 @@ select bag_eq(
             ('push_subscriptions'),('quiz_attempts'),('report_sends'),('roles'),('settings'),
             ('shift_requirements'),('staff'),('staff_references'),('staff_roles'),
             ('venue_types'),('venues'),('violations') $$,
-  'RLS is enabled on all 29 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, and applications from 0005'
+  'RLS is enabled on all 29 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, and applications from 0006'
 );
 
 -- ---------------------------------------------------------------------
@@ -93,6 +93,8 @@ select bag_eq(
 --    views that scope themselves instead of policies on the tables under
 --    them, so this list staying at two IS the money isolation. A new name
 --    here means somebody re-opened what 0002 closed.
+--    0006 added none either: `applications` is admin-only, and a customer
+--    has no business in the onboarding pipeline at all.
 -- ---------------------------------------------------------------------
 select bag_eq(
   $$ select c.relname::text from pg_policy p join pg_class c on c.oid = p.polrelid
