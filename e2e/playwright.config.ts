@@ -42,19 +42,25 @@ export default defineConfig({
     {
       command: 'pnpm --filter @thc/office start',
       url: `http://127.0.0.1:${PORTS.office}`,
-      reuseExistingServer: !process.env.CI,
+      // Never reuse: a server left over from an earlier build serves stale
+      // chunks, which breaks hydration and produces baffling failures.
+      reuseExistingServer: false,
       timeout: 120_000,
     },
     {
       command: 'pnpm --filter @thc/staff start',
       url: `http://127.0.0.1:${PORTS.staff}`,
-      reuseExistingServer: !process.env.CI,
+      // Never reuse: a server left over from an earlier build serves stale
+      // chunks, which breaks hydration and produces baffling failures.
+      reuseExistingServer: false,
       timeout: 120_000,
     },
     {
       command: 'pnpm --filter @thc/client start',
       url: `http://127.0.0.1:${PORTS.client}`,
-      reuseExistingServer: !process.env.CI,
+      // Never reuse: a server left over from an earlier build serves stale
+      // chunks, which breaks hydration and produces baffling failures.
+      reuseExistingServer: false,
       timeout: 120_000,
     },
   ],

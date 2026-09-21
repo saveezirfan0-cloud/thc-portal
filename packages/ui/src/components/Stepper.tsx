@@ -1,6 +1,8 @@
 import { clsx } from 'clsx';
 
 export interface Step {
+  /** Short label above the title, e.g. "Step 3" or "3/11". */
+  key?: string;
   label: string;
 }
 
@@ -10,16 +12,22 @@ export interface StepperProps {
   current: number;
 }
 
+/**
+ * Wizard progress (§10.3). Matches `.stepper` in the design system: each step
+ * is a `.st` carrying a `.k` key line and a `.t` title, with `.done` behind and
+ * `.now` for the step in progress.
+ */
 export function Stepper({ steps, current }: StepperProps) {
   return (
     <ol className="stepper">
       {steps.map((step, index) => (
         <li
           key={step.label}
-          className={clsx('st', index < current && 'done', index === current && 'on')}
+          className={clsx('st', index < current && 'done', index === current && 'now')}
           aria-current={index === current ? 'step' : undefined}
         >
-          {step.label}
+          <span className="k">{step.key ?? `Step ${index + 1}`}</span>
+          <span className="t">{step.label}</span>
         </li>
       ))}
     </ol>

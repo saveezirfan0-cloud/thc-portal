@@ -1,0 +1,21 @@
+/* Corrections layered on top of the generated stylesheets.
+   Kept separate so tokens/base/components/warm stay a faithful, re-generatable
+   copy of wireframes/assets/thc.css.
+
+   Each fix records what it repairs and why. When a fix is folded back into the
+   wireframe CSS, delete it from here in the same commit. */
+
+/* The warm style sets a generic `.btn` background whose specificity
+   (:root[data-style] .btn) beats the base tone rules (.btn.green,
+   .btn.danger.solid), so those two variants rendered as plain panels in light
+   mode. The wireframes never used them in warm, so it went unseen. Intent is
+   unambiguous: a green button is green, a solid danger button is filled. */
+:root[data-style='warm'] .btn.green {
+  background: var(--green);
+  color: var(--on-green);
+}
+:root[data-style='warm'] .btn.danger.solid {
+  background: var(--coral);
+  color: var(--on-coral);
+  border-color: var(--coral);
+}

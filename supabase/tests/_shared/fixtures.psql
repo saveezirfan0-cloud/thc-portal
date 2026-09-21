@@ -1,0 +1,129 @@
+-- =====================================================================
+-- Shared RLS fixtures for the pgTAP suite.
+--
+-- Included with \ir from every test file. The file deliberately uses the
+-- .psql extension so that `supabase test db` (pg_prove --ext .pg --ext .sql)
+-- does not try to run it as a test of its own.
+--
+-- Every row it creates is inside the caller's transaction and is rolled back
+-- when the test finishes, so it can coexist with supabase/seed.sql. All
+-- assertions address fixture rows by their fixed UUIDs, never by global
+-- counts, for the same reason.
+--
+-- Roles are switched with the Supabase convention: set `request.jwt.claims`
+-- so that auth.uid() resolves, then `set local role authenticated` (or anon)
+-- so that RLS is actually enforced. `reset role` returns to the migration
+-- role, which owns the tables and therefore bypasses RLS.
+-- =====================================================================
+
+-- ---- identities ----------------------------------------------------
+\set admin_uid    '11111111-1111-1111-1111-111111111111'
+\set clienta_uid  '22222222-2222-2222-2222-222222222222'
+\set clientb_uid  '33333333-3333-3333-3333-333333333333'
+\set staffa_uid   '44444444-4444-4444-4444-444444444444'
+\set staffb_uid   '55555555-5555-5555-5555-555555555555'
+
+-- ---- domain rows ---------------------------------------------------
+\set clienta      'aaaaaaaa-0000-4000-8000-000000000001'
+\set clientb      'aaaaaaaa-0000-4000-8000-000000000002'
+\set role_id      'bbbbbbbb-0000-4000-8000-000000000001'
+\set venue_id     'cccccccc-0000-4000-8000-000000000001'
+\set ratecard_a   'cccccccc-0000-4000-8000-000000000002'
+\set staffa       'dddddddd-0000-4000-8000-000000000001'
+\set staffb       'dddddddd-0000-4000-8000-000000000002'
+\set event_a      'eeeeeeee-0000-4000-8000-000000000001'
+\set event_b      'eeeeeeee-0000-4000-8000-000000000002'
+\set shift_a      'ffffffff-0000-4000-8000-000000000001'
+\set shift_b      'ffffffff-0000-4000-8000-000000000002'
+\set booking_a    '0a0a0a0a-0000-4000-8000-000000000001'
+\set booking_b    '0a0a0a0a-0000-4000-8000-000000000002'
+\set checklog_a   '0b0b0b0b-0000-4000-8000-000000000001'
+\set checklog_b   '0b0b0b0b-0000-4000-8000-000000000002'
+\set break_a      '0c0c0c0c-0000-4000-8000-000000000001'
+\set break_b      '0c0c0c0c-0000-4000-8000-000000000002'
+\set violation_a  '0d0d0d0d-0000-4000-8000-000000000001'
+\set violation_b  '0d0d0d0d-0000-4000-8000-000000000002'
+\set doc_a        '0e0e0e0e-0000-4000-8000-000000000001'
+\set doc_b        '0e0e0e0e-0000-4000-8000-000000000002'
+\set decl_a       '0f0f0f0f-0000-4000-8000-000000000001'
+\set decl_b       '0f0f0f0f-0000-4000-8000-000000000002'
+\set feedback_a   '1a1a1a1a-0000-4000-8000-000000000001'
+\set feedback_b   '1a1a1a1a-0000-4000-8000-000000000002'
+\set new_id       '9f9f9f9f-0000-4000-8000-00000000000f'
+
+insert into auth.users (id, email) values
+  (:'admin_uid',   'gisela@rls.test'),
+  (:'clienta_uid', 'clienta@rls.test'),
+  (:'clientb_uid', 'clientb@rls.test'),
+  (:'staffa_uid',  'staffa@rls.test'),
+  (:'staffb_uid',  'staffb@rls.test');
+
+insert into clients (id, name, contact_name, phone, staff_contact_point, contact_emails, pays_breaks, pays_buffer) values
+  (:'clienta', 'RLS Fixture Client A', 'Ada A', '+447700900001', 'Front desk', array['clienta@rls.test'], true,  true),
+  (:'clientb', 'RLS Fixture Client B', 'Bob B', '+447700900002', 'Stage door', array['clientb@rls.test'], false, false);
+
+insert into profiles (id, role, full_name, client_id) values
+  (:'admin_uid',   'admin',  'Gisela M.',       null),
+  (:'clienta_uid', 'client', 'Client A user',   :'clienta'),
+  (:'clientb_uid', 'client', 'Client B user',   :'clientb'),
+  (:'staffa_uid',  'staff',  'Staff A worker',  null),
+  (:'staffb_uid',  'staff',  'Staff B worker',  null);
+
+insert into roles (id, name, description, pay_rate) values
+  (:'role_id', 'RLS Fixture Role', 'internal only', 14.00);
+
+insert into client_rate_cards (id, client_id, role_id, charge_rate, dress_codes) values
+  (:'ratecard_a', :'clienta', :'role_id', 22.97, array['Black tie']);
+
+insert into venues (id, name, address, location, venue_type, geofence_radius_m) values
+  (:'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+   st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 'hotel', 150);
+
+insert into staff (id, user_id, employee_id, first_name, last_name, email, phone, dob, status) values
+  (:'staffa', :'staffa_uid', 90001, 'Staff', 'Alpha', 'staffa@rls.test', '+447700900011', date '1995-01-01', 'compliant'),
+  (:'staffb', :'staffb_uid', 90002, 'Staff', 'Bravo', 'staffb@rls.test', '+447700900012', date '1994-02-02', 'compliant');
+
+insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location, geofence_radius_m,
+                    title, event_date, pays_breaks, pays_buffer, po_number) values
+  (:'event_a', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+   st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Fixture Event A', current_date + 7, true, true, '4471-A'),
+  (:'event_b', :'clientb', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+   st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Fixture Event B', current_date + 8, false, false, '4471-B');
+
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                charge_rate, pay_rate, dress_code, allocation_per_hour) values
+  (:'shift_a', :'event_a', :'role_id', now() + interval '7 days',  now() + interval '7 days 8 hours',  6, 1, 22.97, 14.00, 'Black tie', 7),
+  (:'shift_b', :'event_b', :'role_id', now() + interval '8 days',  now() + interval '8 days 8 hours',  2, 0, 19.50, 13.50, 'Smart black', 2);
+
+insert into bookings (id, shift_id, staff_id, status, source, confirmed_at) values
+  (:'booking_a', :'shift_a', :'staffa', 'confirmed', 'auto',   now()),
+  (:'booking_b', :'shift_b', :'staffb', 'confirmed', 'manual', now());
+
+insert into check_logs (id, booking_id, outcome, check_in_at) values
+  (:'checklog_a', :'booking_a', 'checked_in', now()),
+  (:'checklog_b', :'booking_b', 'checked_in', now());
+
+insert into breaks (id, booking_id, started_at, ended_at) values
+  (:'break_a', :'booking_a', now(), now() + interval '30 minutes'),
+  (:'break_b', :'booking_b', now(), now() + interval '30 minutes');
+
+insert into violations (id, staff_id, booking_id, type, minutes_late) values
+  (:'violation_a', :'staffa', :'booking_a', 'late', 12),
+  (:'violation_b', :'staffb', :'booking_b', 'late', 9);
+
+insert into compliance_docs (id, staff_id, doc_type, file_path, review_status) values
+  (:'doc_a', :'staffa', 'passport', 'documents/a/passport.pdf', 'verified'),
+  (:'doc_b', :'staffb', 'passport', 'documents/b/passport.pdf', 'verified');
+
+insert into criminal_declarations (id, staff_id, source, answer) values
+  (:'decl_a', :'staffa', 'onboarding', false),
+  (:'decl_b', :'staffb', 'onboarding', false);
+
+insert into feedback (id, author_kind, author_id, staff_id, event_id, rating, text) values
+  (:'feedback_a', 'client', :'clienta_uid', :'staffa', :'event_a', 5, 'Fixture feedback A'),
+  (:'feedback_b', 'client', :'clientb_uid', :'staffb', :'event_b', 4, 'Fixture feedback B');
+
+insert into notification_outbox (key, channel, template, recipient_staff_id) values
+  ('RLS:fixture:outbox', 'push', 'N6', :'staffa');
+
+insert into settings (key, value) values ('rls_fixture_probe', '{"secret":true}');
