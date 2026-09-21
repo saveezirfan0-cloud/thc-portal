@@ -28,15 +28,16 @@ Implemented in `supabase/migrations/0001_init.sql`. This page explains the choic
 - **Weekly cap** — `weekly_cap_hours(staff, date)` returns 20 / 48 / `null` (no ceiling with opt-out). A Mon–Sun week takes the lowest cap of any day. Graduated workers return 48. Same vectors tested in `packages/domain/cap.test.ts`.
 - **Event window and status** — from the role sections.
 - **Final pay rate, margin** — from base × 1.1207 and the client's charge rate.
-- **Payable time** — view `payable_shifts_v` (0003): intersection of [check-in, check-out] with the role window, 30-min check-in grace, 15-min check-out grace, breaks deducted when unpaid, 4-hour floor unless a Left-early violation or an unresolved No check-out, RULE-15 fixed 4 h for turn-aways on time, nothing for late turn-aways or no-shows.
+- **Payable time** — view `payable_shifts_v` (0005): intersection of [check-in, check-out] with the role window, 30-min check-in grace, 15-min check-out grace, breaks deducted when unpaid, 4-hour floor unless a Left-early violation or an unresolved No check-out, RULE-15 fixed 4 h for turn-aways on time, nothing for late turn-aways or no-shows. The `pay` column reads `status = undetermined` — never a figure — while a No check-out is open (RULE-02). Same vectors as `packages/domain/pay.ts`.
 - **Show-rate, rating** — materialised nightly into `staff.reliability` / `staff.rating` by `compliance-daily` for scoring speed; the source of truth is bookings + violations + feedback.
 
-## Key Postgres functions (0002–0004)
+## Key Postgres functions (0002–0005)
 | Function | Purpose |
 |---|---|
 | `accept_invite(booking_id)` | Row-locks the shift, checks slots (headcount + buffer), overlap with the worker's other confirmed bookings (same venue back-to-back OK; different venues need 2 h gap), weekly cap; sets confirmed; withdraws overlapping open invites (→ cancelled, cause `overlap`); returns `taken` if slot gone (RULE-03). |
-| `attempt_check_in(booking_id, lat, lng)` | Logs the attempt; geofence check; grace/lock rules; strict-buffer turn-away with RULE-15 outcome; returns the message key to show. |
-| `check_out(booking_id, lat, lng)` | In/out of radius; last on-site fix fallback; raises `no_checkout` when the only fix is the check-in itself. |
+| `attempt_check_in(booking_id, lat, lng)` | (0005) Row-locks the role section; logs the attempt; geofence check; grace/lock rules; strict-buffer turn-away with RULE-15 outcome; returns the message key to show. `security definer`: a worker holds no insert policy on `check_logs`. |
+| `check_out(booking_id, lat, lng)` | (0005) In/out of radius; last on-site fix fallback; raises `no_checkout` when the only fix is the check-in itself, and when the press is 4 h past the end; returns the confirmation screen's worked/payable minutes and the base rate. |
+| `check_in_decision`, `check_out_decision`, `payable_minutes`, `turned_away_minutes` | (0005) The pure halves of §5.1–5.2, mirrored by `packages/domain/pay.ts` and held to the same `pay.vectors.json` in both suites. |
 | `resolve_violation(id, note, actual_finish_at)` | Validates finish ≥ check-in and ≤ now; reclassifies No-show → Late; restores the 4-hour floor for No check-out. |
 | `cancel_event(id, reason)` | Marks cancelled, cancels bookings, withdraws invites/applications, queues N12 to all three groups, stops auto-assign. |
 | `withdraw_booking`, `self_cancel_booking`, `request_p45`, `declare_conviction`, `gdpr_remove`, `reset_to_candidate`, `block_staff`, `unblock_staff`, `recheck_compliance` | Each implements exactly the list of consequences in its scope section and writes `audit_log`. |
