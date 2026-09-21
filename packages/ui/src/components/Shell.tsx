@@ -11,6 +11,12 @@ export interface NavItem {
   icon?: ReactNode;
   /** Renders a rule above this item. */
   dividerBefore?: boolean;
+  /**
+   * The route does not exist yet. Renders as text rather than a link, so a
+   * Phase 0 shell shows the shape of the product without handing anyone a
+   * 404 from its own sidebar.
+   */
+  pending?: boolean;
 }
 
 export interface SidebarProps {
@@ -28,7 +34,7 @@ export function Sidebar({ items, activeHref, brand, footer, renderLink }: Sideba
       {brand ? <div className="brand">{brand}</div> : null}
       <nav>
         {items.map((item) => {
-          const className = clsx(item.href === activeHref && 'active');
+          const className = clsx(item.href === activeHref && 'active', item.pending && 'pending');
           const body = (
             <>
               {item.icon ? <span className="ico">{item.icon}</span> : null}
@@ -36,12 +42,17 @@ export function Sidebar({ items, activeHref, brand, footer, renderLink }: Sideba
               {item.count ? (
                 <span className={clsx('count', item.alert && 'alert')}>{item.count}</span>
               ) : null}
+              {item.pending ? <span className="soon">soon</span> : null}
             </>
           );
           return (
             <span key={item.href}>
               {item.dividerBefore ? <span className="divider" /> : null}
-              {renderLink ? (
+              {item.pending ? (
+                <span className={className} aria-disabled="true">
+                  {body}
+                </span>
+              ) : renderLink ? (
                 renderLink(item, className, body)
               ) : (
                 <a href={item.href} className={className}>

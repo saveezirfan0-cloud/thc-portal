@@ -1,22 +1,24 @@
 import { Content, PageHead, Panel, Shell, Sidebar, Topbar } from '@thc/ui';
 
 /**
- * Phase 0 shell. Every route below is a placeholder the owning bot fills in:
- * see docs/08-screen-inventory.md for route → wireframe → § → owner.
+ * Phase 0 shell. `pending` marks a route the owning bot has not built yet:
+ * it renders as text rather than a link, because a sidebar that 404s reads
+ * as broken rather than unfinished. Drop the flag when the route lands.
+ * See docs/08-screen-inventory.md for route → wireframe → § → owner.
  */
 const NAV = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/events', label: 'Events' },
-  { href: '/checkin', label: 'Check-in monitor' },
-  { href: '/onboarding', label: 'Onboarding' },
-  { href: '/compliance', label: 'Compliance' },
-  { href: '/staff', label: 'Staff' },
-  { href: '/clients', label: 'Clients', dividerBefore: true },
+  { href: '/', label: 'Dashboard' },
+  { href: '/events', label: 'Events', pending: true },
+  { href: '/checkin', label: 'Check-in monitor', pending: true },
+  { href: '/onboarding', label: 'Onboarding', pending: true },
+  { href: '/compliance', label: 'Compliance', pending: true },
+  { href: '/staff', label: 'Staff', pending: true },
+  { href: '/clients', label: 'Clients', dividerBefore: true, pending: true },
   { href: '/venues', label: 'Venues' },
-  { href: '/roles', label: 'Roles & rates' },
-  { href: '/reports', label: 'Reports', dividerBefore: true },
-  { href: '/feedback', label: 'Feedback' },
-  { href: '/settings', label: 'Settings' },
+  { href: '/roles', label: 'Roles & rates', pending: true },
+  { href: '/reports', label: 'Reports', dividerBefore: true, pending: true },
+  { href: '/feedback', label: 'Feedback', pending: true },
+  { href: '/settings', label: 'Settings', pending: true },
 ];
 
 export default function Page() {
@@ -25,7 +27,7 @@ export default function Page() {
       sidebar={
         <Sidebar
           items={NAV}
-          activeHref="/dashboard"
+          activeHref="/"
           brand={
             <>
               <span className="logo">THC</span>
