@@ -139,3 +139,22 @@
 :root[data-style='warm'] .gps .dot {
   box-shadow: var(--glow-dot);
 }
+
+/* ---- calendar -------------------------------------------------------
+   Warm drops the hairline grid for spaced cards, the way every other
+   warm surface reads, and thickens the chip's fill border to match. */
+:root[data-style='warm'] .cal {
+  border: 0;
+  gap: 6px;
+  background: transparent;
+}
+:root[data-style='warm'] .cal .dh {
+  background: transparent;
+}
+:root[data-style='warm'] .cal .day {
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-card);
+}
+:root[data-style='warm'] .evchip {
+  border-left-width: 4px;
+}

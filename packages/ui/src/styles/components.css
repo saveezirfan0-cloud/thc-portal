@@ -2219,3 +2219,158 @@ textarea.input {
     padding: var(--sp-12);
   }
 }
+
+/* ---------------------------------------------------------------------
+   CALENDAR (§3.1 events, §9.1 dashboard)
+
+   A month grid of seven columns and the chip that sits in a day cell.
+   Mirrors `wireframes/assets/thc.css`. The chip's left border carries the
+   fill: amber while a role is short, green once every role is confirmed,
+   muted and struck through when the event is cancelled (§3.1).
+   --------------------------------------------------------------------- */
+.cal {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  border: 1px solid var(--line);
+  background: var(--line);
+  gap: 1px;
+  border-radius: var(--r);
+  overflow: hidden;
+}
+.cal .dh {
+  background: var(--panel);
+  padding: 8px 10px;
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: var(--label-weight);
+}
+.cal .day {
+  background: var(--panel);
+  min-height: 118px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cal .day .d {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-num);
+  font-size: 11px;
+  color: var(--muted);
+}
+.cal .day .d .cnt {
+  margin-left: auto;
+  font-size: 9.5px;
+  letter-spacing: 0.05em;
+}
+.cal .day.today {
+  outline: 2px solid var(--cyan-ink);
+  outline-offset: -2px;
+}
+.cal .day.today .d {
+  color: var(--cyan-ink);
+}
+.cal .day.other {
+  opacity: 0.35;
+}
+.cal .day .scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow: auto;
+  max-height: 96px;
+}
+.cal .day .scroll > * {
+  flex: 0 0 auto;
+}
+
+.evchip {
+  font-size: 11px;
+  padding: 3px 6px;
+  background: var(--bg);
+  border-left: 3px solid var(--amber);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
+  border-radius: var(--r-xs);
+}
+:root[data-theme='light'] .evchip {
+  background: var(--panel-2);
+}
+.evchip.full {
+  border-left-color: var(--green);
+}
+.evchip.ongoing {
+  border-left-color: var(--cyan);
+}
+.evchip.cancelled {
+  border-left-color: var(--muted);
+  color: var(--muted);
+  text-decoration: line-through;
+}
+.evchip .t {
+  font-family: var(--font-num);
+  font-size: 10px;
+  color: var(--muted);
+}
+.evchip .f {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-size: 9.5px;
+  color: var(--amber-ink);
+  font-weight: 700;
+}
+.evchip.full .f {
+  color: var(--green-ink);
+}
+
+/* ---- date navigation ------------------------------------------------
+   Back / label / forward around the current period. The same control
+   serves List and Calendar, so past events are browsable in both (§3.1). */
+.datenav {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+.datenav button,
+.datenav a {
+  height: 32px;
+  width: 34px;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-size: 16px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+.datenav button:hover,
+.datenav a:hover {
+  color: var(--text);
+}
+.datenav .lbl {
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: 14px;
+  padding: 0 14px;
+  min-width: 200px;
+  text-align: center;
+  border-left: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
