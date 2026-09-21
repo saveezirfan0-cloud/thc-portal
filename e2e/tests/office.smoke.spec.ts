@@ -31,7 +31,7 @@ test('no screen hard-codes a colour or a radius', async ({ page }) => {
   // Components read tokens only (CLAUDE.md). A literal hex in an inline style
   // on a rendered page means a component decided a colour for itself.
   const inlineHex = await page.evaluate(() =>
-    [...document.querySelectorAll('[style]')].filter((el) =>
+    Array.from(document.querySelectorAll('[style]')).filter((el) =>
       /#[0-9a-f]{3,8}\b/i.test(el.getAttribute('style') ?? ''),
     ).length,
   );

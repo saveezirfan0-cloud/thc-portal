@@ -9,18 +9,25 @@
 -- all, so assertion 2 is now an emptiness check rather than a gap list.
 -- 0009 added assertions 6 and 7: RLS is not the only way into `public`,
 -- and "RLS is on" is not the same claim as "a policy exists".
+-- 20260921123503_db_hardening turned assertion 8 inside out (the outbox is
+-- admin-read on purpose now, not deny-all by omission) and added 9 for
+-- spatial_ref_sys, the last table in public that had no RLS at all.
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
-select plan(8);
+select plan(9);
 
 -- ---------------------------------------------------------------------
 -- 1. Tables with RLS enabled (0001_init.sql)
+--    spatial_ref_sys is filtered out: it is PostGIS's table, not part of
+--    the data model this list inventories. 20260921123503_db_hardening
+--    gave it RLS too, and assertion 9 is where that is asserted.
 -- ---------------------------------------------------------------------
 select bag_eq(
   $$ select c.relname::text
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
-      where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity $$,
+      where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
+        and c.relname <> 'spatial_ref_sys' $$,
   $$ values ('audit_log'::text),('bank_details'),('bookings'),('breaks'),('check_logs'),
             ('client_qualifications'),('client_rate_cards'),('clients'),
             ('compliance_docs'),('criminal_declarations'),('events'),('feedback'),
@@ -40,21 +47,24 @@ select bag_eq(
 --    push_subscriptions, quiz_attempts, report_sends, staff_references,
 --    staff_roles, venue_types); 0004_rls_gaps closed all eleven. This
 --    assertion is what stops the next table from arriving without RLS.
---    spatial_ref_sys belongs to PostGIS and is not ours to alter.
+--    It used to exempt spatial_ref_sys as "PostGIS's, not ours to alter".
+--    20260921123503_db_hardening removed the need for the exemption: the
+--    table is owned by the migration role, the Supabase default grants had
+--    handed anon full DML on it, and it now has RLS plus a read-only
+--    policy. So the query below has no exemption left at all.
 -- ---------------------------------------------------------------------
 select is_empty(
   $$ select c.relname::text
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
-      where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity
-        and c.relname <> 'spatial_ref_sys' $$,
-  'every table in public has row level security enabled'
+      where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity $$,
+  'every table in public has row level security enabled, with no exemptions'
 );
 
 -- ---------------------------------------------------------------------
 -- 3. Which tables an admin has a policy on.
---    admin_all everywhere except audit_log and report_sends, which are
---    admin_read: both are evidence, written only by definer functions and
---    the service role (§1.7, §9.9).
+--    admin_all everywhere except audit_log, report_sends, location_pings
+--    and notification_outbox, which are admin_read: all four are written
+--    only by definer functions and the service role (§1.7, §9.9, §5.2b, §8).
 -- ---------------------------------------------------------------------
 select bag_eq(
   $$ select distinct c.relname::text from pg_policy p join pg_class c on c.oid = p.polrelid
@@ -62,10 +72,11 @@ select bag_eq(
   $$ values ('audit_log'::text),('bank_details'),('bookings'),('breaks'),('check_logs'),
             ('client_qualifications'),('client_rate_cards'),('clients'),
             ('compliance_docs'),('criminal_declarations'),('events'),('feedback'),
-            ('hmrc_checklists'),('location_pings'),('push_subscriptions'),('quiz_attempts'),
+            ('hmrc_checklists'),('location_pings'),('notification_outbox'),
+            ('push_subscriptions'),('quiz_attempts'),
             ('report_sends'),('roles'),('settings'),('shift_requirements'),('staff'),
             ('staff_references'),('staff_roles'),('venue_types'),('venues'),('violations') $$,
-  'admin holds a policy on every RLS table except profiles and notification_outbox (known gaps)'
+  'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );
 
 -- ---------------------------------------------------------------------
@@ -128,7 +139,9 @@ select is_empty(
 --    only ever deliberate once. Assertions 3 to 5 list tables, so
 --    dropping one of a table's several policies leaves every list intact
 --    and passes. This catches the case where the last one goes.
---    notification_outbox is the one intended deny-all (assertion 8).
+--    There is no longer any intended deny-all table to exempt:
+--    20260921123503_db_hardening gave notification_outbox its admin_read,
+--    so "RLS on, no policy" now always means somebody dropped the last one.
 --
 --    NOT asserted here, and it should be: relforcerowsecurity. No table
 --    forces RLS, so any connection as the table owner reads bank_details
@@ -141,18 +154,44 @@ select is_empty(
   $$ select c.relname::text
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
-        and c.relname <> 'notification_outbox'
         and not exists (select 1 from pg_policy p where p.polrelid = c.oid) $$,
-  'every RLS table in public carries at least one policy; only notification_outbox is deliberately deny-all'
+  'every RLS table in public carries at least one policy; no table is deny-all by omission'
 );
 
 -- ---------------------------------------------------------------------
--- 8. notification_outbox is deny-all
+-- 8. notification_outbox is admin-read and service-role-write (§8).
+--    It was deny-all by omission until 20260921123503_db_hardening: RLS on
+--    since 0001 and not one policy, so the correct behaviour was an
+--    accident and the Back Office could not read its own send queue. The
+--    write side is unchanged and must stay that way — a row anybody can
+--    insert is a notification anybody can send, and an updatable sent_at
+--    is a send anybody can suppress — so this asserts the exact policy
+--    set, not merely that one exists. polcmd 'r' = SELECT.
 -- ---------------------------------------------------------------------
-select is(
-  (select count(*)::int from pg_policy where polrelid = 'notification_outbox'::regclass),
-  0,
-  'KNOWN GAP: notification_outbox has RLS on and no policy, so it is deny-all for every role'
+select bag_eq(
+  $$ select p.polname::text || ':' || p.polcmd::text
+       from pg_policy p where p.polrelid = 'notification_outbox'::regclass $$,
+  $$ values ('admin_read:r'::text) $$,
+  'notification_outbox carries exactly one policy: admin_read, select only, matching audit_log and report_sends'
+);
+
+-- ---------------------------------------------------------------------
+-- 9. spatial_ref_sys: RLS on, read-only, readable by everybody.
+--    PostGIS's EPSG lookup, created in public by `create extension
+--    postgis` in 0001 and left without RLS while Supabase's default grants
+--    gave anon, authenticated and service_role full DML on it — anon could
+--    delete SRID 4326 and take every geography column down with it.
+--    Enabling RLS with NO policy would have been worse than the hole,
+--    because PostGIS reads this table during coordinate work as whoever is
+--    connected, so a deny-all breaks ST_Transform. Hence exactly one
+--    permissive SELECT policy, granted to public to match PostGIS's own
+--    `grant select ... to public`, and nothing that can write.
+-- ---------------------------------------------------------------------
+select bag_eq(
+  $$ select p.polname::text || ':' || p.polcmd::text || ':' || p.polpermissive::text
+       from pg_policy p where p.polrelid = 'public.spatial_ref_sys'::regclass $$,
+  $$ values ('spatial_ref_sys_read:r:true'::text) $$,
+  'spatial_ref_sys has one permissive read policy and no policy that can write it'
 );
 
 select * from finish();

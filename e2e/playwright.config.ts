@@ -11,6 +11,14 @@ const PORTS = { office: 3000, staff: 3001, client: 3002 } as const;
  * Machines that pin a Chromium build (sandboxes, locked-down CI images) can
  * point at it instead of downloading one. Left unset, Playwright uses its own.
  */
+/**
+ * The apps need a reachable Supabase to render: screens query it server-side,
+ * and the middleware gates every route behind a session. The servers inherit
+ * the ambient environment, so point it at a database before running this.
+ *
+ * CI runs `supabase start` and exports that stack's URL and anon key. Locally,
+ * either do the same or use a .env.local pointed at a project you can reach.
+ */
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined;
 const launchOptions = executablePath ? { executablePath } : {};
 

@@ -30,4 +30,15 @@ jobs:
       # never picked up as a test of its own.
       - run: supabase test db
       - run: pnpm dlx playwright install --with-deps chromium
+      # The apps query Supabase server-side and gate every route behind a
+      # session, so the browser suite needs the local stack `supabase start`
+      # brought up above. Without these the servers boot and then throw on the
+      # first request.
+      - name: point the apps at the local Supabase stack
+        run: supabase status -o env >> "$GITHUB_ENV"
       - run: pnpm turbo e2e:smoke
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.API_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
+          APP_TZ: Europe/London
