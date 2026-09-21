@@ -1,5 +1,5 @@
 -- =====================================================================
--- 070 · Shift Builder rules (Scope §3.2, RULE-18)
+-- 080 · Shift Builder rules (Scope §3.2, RULE-18)
 --
 -- packages/domain/src/shift.vectors.json calls itself the contract between
 -- the TypeScript rules and this database. This file is the database half of
