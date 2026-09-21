@@ -166,6 +166,9 @@ where it would need one. Ticked when the key exists and the work can resume.
       project** — blocks running `select install_job_schedules()`. Until then every §7
       cron entry is registered as data and none is scheduled. `install_job_schedules()`
       raises rather than scheduling a broken job if the URL is missing, deliberately.
+      **Ordering:** `supabase functions deploy` first, `install_job_schedules()` second.
+      Installing first schedules a per-minute call to a function that is not there yet.
+      `booking-tick` is the first entry marked enabled, because its function now exists.
 - [ ] **Gemini API key** — blocks P3, the `extract-document` Edge Function (§2.6).
 - [ ] **Willo account + webhook signing secret** — blocks P3's `willo-webhook`, and with
       it E1/E2/E3 end to end (§2.4).
@@ -202,3 +205,26 @@ your radar: whether Supabase's bundler follows a relative import reaching out of
 so it will be answered the first time `supabase functions deploy` runs. If it says no, the
 fallback is publishing the package for an `npm:` specifier, not vendoring a second copy —
 and the flag that landed makes that cheap too.
+
+## O5 · The Edge Functions are the one thing here no tool has checked
+
+`supabase/functions/` now exists — `booking-tick` and the `_shared/job.ts` wrapper the
+other §7 jobs will reuse. Their *rules* are in SQL and covered by pgTAP
+(`170_booking_tick.sql`, 24 assertions), which is deliberate and is why the functions
+themselves are thin.
+
+But the TypeScript in them is checked by nothing in this repo. `eslint.config` ignores
+`supabase/**`, there is no Deno in the build environment, and `tsc` only covers the pnpm
+workspaces. So the SQL is proven and the twenty-odd lines of Deno around it are read but
+not run.
+
+Two things would close it, neither urgent and both cheap, listed so the gap is a decision
+rather than an oversight:
+
+1. `deno check supabase/functions/**/*.ts` as a CI step, which needs the Deno runtime in
+   the workflow — a few lines of `denoland/setup-deno`.
+2. `supabase functions serve` in CI against the local stack, which would also settle the
+   open question in ADR-0006 about whether the bundler follows imports into `packages/`.
+
+The first is worth doing the moment a second Edge Function lands. The second is worth
+doing before anything depends on a job actually running.
