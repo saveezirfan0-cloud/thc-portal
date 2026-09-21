@@ -61,7 +61,7 @@ describe('notification register (§8)', () => {
       expect(value.trigger, `${key} trigger`).toBeTruthy();
       expect(value.timing, `${key} timing`).toBeTruthy();
       expect(value.title, `${key} title`).toBeTruthy();
-      expect(value.body, `${key} body`).toBeTruthy();
+      expect(value.body ?? value.variants, `${key} needs a body or variants`).toBeTruthy();
     }
   });
 
@@ -151,7 +151,7 @@ describe('outbox keys', () => {
 
 describe('rendering', () => {
   it('renders placeholders and leaves unknown ones alone', () => {
-    expect(render(template('N8').body, { reason: 'Expired' })).toBe(
+    expect(render(body('N8'), { reason: 'Expired' })).toBe(
       'Document rejected — Expired. Re-upload.',
     );
     expect(render('Hi {who}', {})).toBe('Hi {who}');
@@ -159,12 +159,147 @@ describe('rendering', () => {
 
   it('substitutes every placeholder N5 names (§8)', () => {
     expect(
-      render(template('N5').body, {
+      render(body('N5'), {
         role: 'Bar Staff',
         event: 'Product Launch — Bar',
         dateTime: 'Fri 19 Sep 18:00–01:00',
         rate: '£15.50',
       }),
     ).toBe('Bar Staff · Product Launch — Bar · Fri 19 Sep 18:00–01:00 · £15.50/h');
+  });
+});
+
+/**
+ * §8 copy, verbatim. Written out again from the scope tables (and, for the
+ * codes §8 states in prose, from the screen that carries the same wording —
+ * see REGISTER-NOTES.md) so that a future edit cannot silently reword a push.
+ */
+const SCOPE_BODIES: [string, string][] = [
+  ['N2', 'Update your {document} — 2 weeks left'],
+  ['N3', 'Final reminder: update your {document}'],
+  ['N4', 'You have been blocked — please update'],
+  ['N5', '{role} · {event} · {dateTime} · {rate}/h'],
+  ['N6', "Confirm tomorrow's shift by 12:00 today — or you'll be removed from it"],
+  [
+    'N6b',
+    'You have been removed from your shift tomorrow as we have not received your re-confirmation by the 12:00 deadline',
+  ],
+  ['N7', "Confirm today's shift"],
+  ['N9b', "You haven't checked out of {event} yet — tap to check out."],
+  [
+    'N10',
+    "You're booked! Your application for {event} on {date} has been accepted. Tap to view your shift details.",
+  ],
+  ['N10b', "You've been removed from {event} · {dateTime}"],
+  [
+    'N10c',
+    'Shift update: the {event} shift on {date} has now been filled. Keep an eye on Radar — new shifts are added regularly.',
+  ],
+  ['N11', 'Shift time changed — now {window}'],
+  ['N12', 'This event has been cancelled'],
+  [
+    'N13',
+    "You've been on shift 6 hours — please ask your manager on site about taking your break.",
+  ],
+  ['N14', 'Your weekly limit is now {limit} hours — {band} until {date}.'],
+  ['N15', "Thanks for your patience — your shifts are open again. Tap to see what's available."],
+  [
+    'E2',
+    'Thank you for taking the time to complete your interview with The Hospitality Company. On this occasion we will not be taking your application further. We wish you the very best.',
+  ],
+  [
+    'E4',
+    "Unfortunately, you haven't passed the Health & Safety assessment after three attempts, which is the maximum number permitted at this stage. As passing this assessment is a required part of onboarding, we're unable to progress your application any further at this time.",
+  ],
+];
+
+describe('§8 copy is verbatim', () => {
+  it.each(SCOPE_BODIES)('%s body matches the scope word for word', (code, expected) => {
+    expect(body(code as TemplateCode)).toBe(expected);
+  });
+
+  it('covers every code whose copy §8 quotes', () => {
+    // The register has 28 entries. The 10 not pinned above are the ones §8
+    // states in prose rather than quoting: N1 and N8 (summarised triggers),
+    // N9 (two halves, pinned in its own suite), and the seven emails whose
+    // wording the scope never gives — E1 (Willo's), E3, E5, E6, E7, E8, E9.
+    const pinned = new Set(SCOPE_BODIES.map(([code]) => code));
+    const unpinned = Object.keys(TEMPLATES).filter((code) => !pinned.has(code));
+    expect(unpinned.sort()).toEqual(
+      ['N1', 'N8', 'N9', 'E1', 'E3', 'E5', 'E6', 'E7', 'E8', 'E9'].sort(),
+    );
+  });
+
+  it('keeps the §8 timing for the codes with a hard deadline', () => {
+    expect(template('N6').timing).toBe('the day before (cutoff 12:00)');
+    expect(template('N6b').timing).toBe(
+      'at the moment of the automatic 12:05 cutoff (confirmed 01.09.2026)',
+    );
+    expect(template('N9').timing).toBe('−30 min');
+    expect(template('N1').timing).toBe('1 month before');
+    expect(template('N2').timing).toBe('2 weeks before');
+    expect(template('N3').timing).toBe('1 week before');
+  });
+});
+
+describe('nothing worker-facing leaks office or client language', () => {
+  /**
+   * §8's Trigger column is written for the office: "manager presses Withdraw",
+   * "unpaid-break clients only". It belongs in `trigger`, never in a title or
+   * a body — a worker sees the base rate only and no client commercial detail.
+   */
+  const OFFICE_LANGUAGE = [
+    'unpaid-break',
+    'manager presses',
+    'auto-assign',
+    'first-to-confirm',
+    'Booking.source',
+    'by the office',
+    'headcount',
+    'buffer',
+    'confirmed 0',
+    'mandatory',
+  ];
+
+  it.each(Object.keys(TEMPLATES))('%s title and body are worker-safe', (code) => {
+    const entry: Template = TEMPLATES[code as TemplateCode];
+    if (entry.channel !== 'push') return;
+    for (const phrase of OFFICE_LANGUAGE) {
+      expect(entry.title.toLowerCase(), `${code} title`).not.toContain(phrase.toLowerCase());
+      expect((entry.body ?? '').toLowerCase(), `${code} body`).not.toContain(phrase.toLowerCase());
+    }
+  });
+
+  it('keeps every push title short enough for a lock screen', () => {
+    for (const [key, value] of entries) {
+      if (value.channel === 'push')
+        expect(value.title.length, `${key} title`).toBeLessThanOrEqual(35);
+    }
+  });
+
+  it('keeps the §8 trigger text verbatim, where that language belongs', () => {
+    expect(template('N10b').trigger).toContain('manager presses Withdraw');
+    expect(template('N13').trigger).toContain('unpaid-break clients only');
+  });
+});
+
+describe('a variant-only code has nothing to send by accident', () => {
+  it('gives N9 no body at all, so a sender cannot reach the joined line', () => {
+    expect((TEMPLATES.N9 as Template).body).toBeUndefined();
+    expect(TEMPLATES.N9.scopeCopy).toContain('Time to check in');
+  });
+
+  it('is the only code without a body', () => {
+    const bodyless = entries.filter(([, v]) => v.body === undefined).map(([k]) => k);
+    expect(bodyless).toEqual(['N9']);
+  });
+});
+
+describe('E3 carries everything §8 names', () => {
+  it('has activation, password and the download-the-app CTA', () => {
+    const copy = body('E3');
+    expect(copy).toContain('{link}');
+    expect(copy).toContain('password');
+    expect(copy.toLowerCase()).toContain('download the app');
   });
 });

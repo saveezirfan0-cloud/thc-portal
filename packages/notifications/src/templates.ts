@@ -29,10 +29,24 @@ export interface Template {
   /** The register code, e.g. "N6b" or "E3". */
   code: string;
   channel: Channel;
-  /** Push: the notification title. Email: the subject line. */
+  /**
+   * Push: the heading the worker sees above the body — short, and worker-safe.
+   * §8 gives no push titles (its galleries render a push as the app name plus
+   * the body), so these are ours; the §8 Trigger text stays in `trigger`,
+   * because some of it is office language that must never reach a worker.
+   * Email: the subject line.
+   */
   title: string;
-  /** Verbatim from §8. Placeholders are `{name}` style. */
-  body: string;
+  /**
+   * Verbatim from §8. Placeholders are `{name}` style. Absent on a code whose
+   * copy only exists per variant (N9) — read it through `body()`, never here.
+   */
+  body?: string;
+  /**
+   * The §8 Content cell as written, where it is not itself sendable.
+   * Reference only: never send this.
+   */
+  scopeCopy?: string;
   /** §8 "Trigger" column — what makes this fire. */
   trigger: string;
   /** §8 "Timing" column — when it fires relative to the trigger. */
@@ -110,7 +124,7 @@ export const TEMPLATES = {
   N5: {
     code: 'N5',
     channel: 'push',
-    title: 'Shift invitation',
+    title: 'New shift invitation',
     body: '{role} · {event} · {dateTime} · {rate}/h',
     trigger: 'Shift invitation',
     timing: 'on invite',
@@ -119,7 +133,7 @@ export const TEMPLATES = {
   N6: {
     code: 'N6',
     channel: 'push',
-    title: 'Day-before',
+    title: "Confirm tomorrow's shift",
     body: "Confirm tomorrow's shift by 12:00 today — or you'll be removed from it",
     trigger: 'Day-before',
     timing: 'the day before (cutoff 12:00)',
@@ -128,7 +142,7 @@ export const TEMPLATES = {
   N6b: {
     code: 'N6b',
     channel: 'push',
-    title: 'Automatically dropped for missing the day-before deadline',
+    title: "Removed from tomorrow's shift",
     body: 'You have been removed from your shift tomorrow as we have not received your re-confirmation by the 12:00 deadline',
     trigger: 'Automatically dropped for missing the day-before deadline',
     timing: 'at the moment of the automatic 12:05 cutoff (confirmed 01.09.2026)',
@@ -137,7 +151,7 @@ export const TEMPLATES = {
   N7: {
     code: 'N7',
     channel: 'push',
-    title: 'On-the-day',
+    title: "Confirm today's shift",
     body: "Confirm today's shift",
     trigger: 'On-the-day',
     timing: 'on the day of the shift',
@@ -159,11 +173,13 @@ export const TEMPLATES = {
   N9: {
     code: 'N9',
     channel: 'push',
-    title: '30 min before start / end',
-    body: "Time to check in / Don't forget to check out",
+    title: 'Your shift today',
+    // No `body`: §8 gives N9 as two sends, so there is nothing sendable here.
+    // A sender reads a half through `body('N9', 'check-in' | 'check-out')`.
+    scopeCopy:
+      '"Time to check in" / "Don\'t forget to check out" — each half is skipped if the worker has already signed in / signed out respectively',
     trigger: '30 min before start / end',
-    timing:
-      '−30 min — each half is skipped if the worker has already signed in / signed out respectively',
+    timing: '−30 min',
     deepLink: '/shifts/{bookingId}',
     variants: {
       'check-in': { body: 'Time to check in' },
@@ -173,7 +189,7 @@ export const TEMPLATES = {
   N9b: {
     code: 'N9b',
     channel: 'push',
-    title: "Still not checked out 30 minutes after the shift's scheduled end",
+    title: "You haven't checked out",
     body: "You haven't checked out of {event} yet — tap to check out.",
     trigger: "Still not checked out 30 minutes after the shift's scheduled end",
     timing:
@@ -183,7 +199,7 @@ export const TEMPLATES = {
   N13: {
     code: 'N13',
     channel: 'push',
-    title: '6 hours on shift with no break logged (unpaid-break clients only)',
+    title: 'Break reminder',
     body: "You've been on shift 6 hours — please ask your manager on site about taking your break.",
     trigger: '6 hours on shift with no break logged (unpaid-break clients only)',
     timing:
@@ -195,7 +211,7 @@ export const TEMPLATES = {
   N10: {
     code: 'N10',
     channel: 'push',
-    title: 'Radar application accepted',
+    title: "You're booked!",
     body: "You're booked! Your application for {event} on {date} has been accepted. Tap to view your shift details.",
     trigger: 'Radar application accepted',
     timing:
@@ -206,7 +222,7 @@ export const TEMPLATES = {
   N10b: {
     code: 'N10b',
     channel: 'push',
-    title: 'Shift cancelled by the office (manager presses Withdraw)',
+    title: 'Shift cancelled',
     body: "You've been removed from {event} · {dateTime}",
     trigger: 'Shift cancelled by the office (manager presses Withdraw)',
     timing: 'on change (confirmed 14.07.2026)',
@@ -216,7 +232,7 @@ export const TEMPLATES = {
   N10c: {
     code: 'N10c',
     channel: 'push',
-    title: 'Radar application not taken forward',
+    title: 'Shift filled',
     body: 'Shift update: the {event} shift on {date} has now been filled. Keep an eye on Radar — new shifts are added regularly.',
     trigger:
       'Radar application not taken forward (the role fills before or without the office reviewing this specific application)',
@@ -228,7 +244,7 @@ export const TEMPLATES = {
   N11: {
     code: 'N11',
     channel: 'push',
-    title: 'Event time / date changed',
+    title: 'Shift time changed',
     body: 'Shift time changed — now {window}',
     trigger: 'Event time / date changed (start time OR end time — either one triggers this push)',
     timing:
@@ -238,7 +254,7 @@ export const TEMPLATES = {
   N12: {
     code: 'N12',
     channel: 'push',
-    title: 'Event cancelled by the office',
+    title: 'Event cancelled',
     body: 'This event has been cancelled',
     trigger:
       'Event cancelled by the office (client cancelled the booking) — reaches every Confirmed and Invited worker, plus anyone with an open Radar application for this event (Booking.source = self, still pending), not just Confirmed/Invited (confirmed 08.09.2026)',
@@ -251,7 +267,7 @@ export const TEMPLATES = {
   N14: {
     code: 'N14',
     channel: 'push',
-    title: 'Weekly hours cap changes band',
+    title: 'Your weekly limit has changed',
     body: 'Your weekly limit is now {limit} hours — {band} until {date}.',
     trigger:
       'Weekly hours cap changes band — term time starts or ends, or a completion letter is verified (§4.4, §4.5)',
@@ -262,7 +278,7 @@ export const TEMPLATES = {
   N15: {
     code: 'N15',
     channel: 'push',
-    title: 'Declared conviction accepted — unblocked',
+    title: 'Your shifts are open again',
     body: "Thanks for your patience — your shifts are open again. Tap to see what's available.",
     trigger:
       'A declared conviction has been reviewed and accepted, and the worker is unblocked (§10.7)',
@@ -301,7 +317,7 @@ export const TEMPLATES = {
     channel: 'email',
     sender: 'admin',
     title: 'Activate your account',
-    body: 'Your application was accepted. Set your password to start onboarding: {link}',
+    body: 'Your application was accepted. Set your password to start onboarding: {link}\n\nThen download the app and add it to your home screen: {installLink}',
     trigger: 'Accepted after the interview — activation + password + "download the app"',
     timing: 'on acceptance. The only mandatory system email (§8)',
     mandatory: true,
@@ -419,6 +435,7 @@ export function body(code: TemplateCode, variant?: string): string {
   const entry: Template = TEMPLATES[code];
   if (!entry.variants) {
     if (variant !== undefined) throw new Error(`${code} has no variants`);
+    if (entry.body === undefined) throw new Error(`${code} has no body`);
     return entry.body;
   }
   if (variant === undefined)
@@ -434,7 +451,7 @@ export function body(code: TemplateCode, variant?: string): string {
  * A variant (N9's two halves) is part of the key, so the pair cannot collide.
  */
 export function outboxKey(
-  code: string,
+  code: TemplateCode,
   subject: string,
   id: string | number,
   variant?: string,
