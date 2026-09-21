@@ -10,9 +10,15 @@
 -- those assertions are marked KNOWN GAP and are listed in the Phase 0
 -- report. They are expected to be replaced by `security definer` RPCs
 -- (attempt_check_in, accept_invite, …) rather than by direct table policies.
+--
+-- 0004_rls_gaps added the worker's own bank details, referees, push
+-- subscriptions (read and write) and their own role qualifications, quiz
+-- attempts and location pings (read only — see 0004 for which RPC owes the
+-- write). hmrc_checklists is deliberately unreachable in BOTH directions:
+-- §2.8 says the worker never sees the derived A/B/C statement.
 -- =====================================================================
 begin;
-select plan(40);
+select plan(77);
 \ir _shared/fixtures.psql
 
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
@@ -118,6 +124,73 @@ select throws_ok(
 select throws_ok(
   format($$ insert into feedback (author_kind, staff_id, event_id, rating) values ('office', %L, %L, 5) $$, :'staffa', :'event_a'),
   '42501', null, 'worker cannot write feedback about themselves');
+
+-- ---- writes on the tables 0004_rls_gaps policed ------------------------
+-- Bank & payroll: §2.10 and §10.1 both give the worker the write.
+with u as (update bank_details set sort_code = '12-34-56' where staff_id = :'staffa' returning 1)
+  select is((select count(*)::int from u), 1, 'worker updates their own bank details (§10.1 "Save changes")');
+with u as (update bank_details set sort_code = '00-00-00' where staff_id = :'staffb' returning 1)
+  select is((select count(*)::int from u), 0, 'worker cannot change another worker''s bank details');
+with u as (delete from bank_details where staff_id = :'staffa' returning 1)
+  select is((select count(*)::int from u), 0, 'worker cannot delete their bank details — removal is GDPR, through a definer routine (§1.7)');
+
+-- Two references: collected, never reviewed, so the wizard writes directly.
+with u as (update staff_references set phone = '+447700900041' where id = :'ref_a' returning 1)
+  select is((select count(*)::int from u), 1, 'worker corrects their own referee');
+select lives_ok(
+  format($$ insert into staff_references (staff_id, name, relationship, phone, email)
+            values (%L, 'Referee Charlie', 'Lecturer', '+447700900042', 'ref-c@rls.test') $$, :'staffa'),
+  'worker adds their own referee (§2.10 step 8/11)');
+select throws_ok(
+  format($$ insert into staff_references (staff_id, name, relationship, phone, email)
+            values (%L, 'Planted', 'Tutor', '+447700900043', 'planted@rls.test') $$, :'staffb'),
+  '42501', null, 'worker cannot add a referee to another worker');
+with u as (delete from staff_references where id = :'ref_a' returning 1)
+  select is((select count(*)::int from u), 0, 'worker cannot delete a referee — two are always required (§2.10)');
+
+-- Push subscriptions: the device registers and deregisters itself (§8).
+select lives_ok(
+  format($$ insert into push_subscriptions (staff_id, endpoint, p256dh, auth)
+            values (%L, 'https://push.rls.test/fixture-a2', 'p256dh-a2', 'auth-a2') $$, :'staffa'),
+  'worker registers their own push endpoint');
+with u as (delete from push_subscriptions where id = :'push_a' returning 1)
+  select is((select count(*)::int from u), 1, 'worker deregisters their own push endpoint');
+select throws_ok(
+  format($$ insert into push_subscriptions (staff_id, endpoint, p256dh, auth)
+            values (%L, 'https://push.rls.test/stolen', 'p256dh-x', 'auth-x') $$, :'staffb'),
+  '42501', null, 'worker cannot register a push endpoint against another worker');
+
+-- Everything below is read-only for the worker on purpose: the write side
+-- is owed to a security definer RPC, or is not the worker's to make at all.
+select throws_ok(
+  format($$ insert into quiz_attempts (staff_id, attempt_no, score, passed, answers)
+            values (%L, 2, 100.00, true, '{}') $$, :'staffa'),
+  '42501', null, 'worker cannot write their own quiz result — marking is a definer RPC (§2.6)');
+select throws_ok(
+  format($$ insert into location_pings (booking_id, location, inside_geofence)
+            values (%L, st_setsrid(st_makepoint(-0.1,51.5),4326)::geography, true) $$, :'booking_a'),
+  '42501', null, 'worker cannot claim an on-site fix — inside_geofence is derived server-side (§5.2b)');
+select throws_ok(
+  format($$ insert into staff_roles (staff_id, role_id) values (%L, %L) $$, :'staffa', :'role_id'),
+  '42501', null, 'worker cannot qualify themselves for a role');
+with u as (delete from staff_roles where staff_id = :'staffa' returning 1)
+  select is((select count(*)::int from u), 0, 'worker cannot drop their own role qualification');
+select throws_ok(
+  format($$ insert into hmrc_checklists (staff_id, q1_other_job, statement, declared)
+            values (%L, false, 'A', true) $$, :'staffa'),
+  '42501', null, 'worker cannot write an HMRC checklist directly — the statement is derived by a definer RPC (§2.8)');
+select throws_ok(
+  format($$ insert into client_qualifications (client_id, role_id, staff_id)
+            values (%L, %L, %L) $$, :'clienta', :'role_id', :'staffa'),
+  '42501', null, 'worker cannot clear themselves at a client (§9.6, RULE-17)');
+select throws_ok(
+  $$ insert into audit_log (action, entity) values ('forged','staff') $$,
+  '42501', null, 'worker cannot write the audit log');
+with u as (update venue_types set default_radius_m = 999 where key = 'rls_fixture_type' returning 1)
+  select is((select count(*)::int from u), 0, 'worker cannot edit venue type defaults');
+select throws_ok(
+  $$ insert into venue_types (key, label, default_radius_m) values ('forged','Forged',200) $$,
+  '42501', null, 'worker cannot add a venue type');
 
 -- ---- symmetry: the second worker sees only their own rows ---------------
 reset role;
