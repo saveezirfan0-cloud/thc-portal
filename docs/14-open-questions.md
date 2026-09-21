@@ -104,6 +104,60 @@ job is written rather than after.
 > against that worker's reliability score completely, or still count — and if so, by how
 > much?
 
+## Q5 · A term letter that arrives for next year, in December
+
+§4.2 is explicit that the University Term Dates Letter expires on **31 December**,
+whatever dates are printed inside it, and that the reminder ladder opens on 1 December.
+That is a calendar year, which leaves one case the scope does not name: the student who
+uploads next year's letter **in December**, before the current one has died.
+
+Read literally, that letter expires on the 31 December of the year it was uploaded — so a
+letter uploaded on 5 December is dead on the 31st, twenty-six days later, and the student
+is blocked in January holding a letter that covers the whole academic year.
+
+**What it does today.** `doc_expires_on()` takes the later of two dates: 31 December of
+the year the letter was uploaded, and 31 December of the year its own last printed range
+ends. A letter uploaded in December 2026 whose ranges run into 2027 therefore expires on
+31 December 2027, and the December student is fine. A letter with no ranges, or ranges
+inside the upload year, behaves exactly as §4.2 describes.
+
+**The alternative** is the literal reading — always the 31 December of the upload year —
+which is simpler to explain and blocks the early student. We did not take it, because
+§4.2's stated reason for the 31 December rule is to avoid blocking someone who did
+nothing wrong, and the early student is precisely that person.
+
+> **Ask:** if a student uploads next year's term dates letter in December, should it run
+> to the end of the year it covers (what we do), or expire on the 31st of the month it
+> was uploaded in?
+
+---
+
+## Q6 · N14 says "until [date]", and some bands have no date
+
+§4.4 gives N14's copy as: *"Your weekly limit is now [20 / 48] hours — [term time /
+university holiday] until [date]."* For a student that reads perfectly — the date is the
+day before the next holiday opens, or the day before term restarts, both of which come
+off the verified term letter.
+
+Two of the five bands have no such date:
+
+- **`uncapped`** — the worker signed the 48-hour opt-out (§4.4). Nothing on any calendar
+  ends that; it lasts until they revoke it.
+- **`graduated_48`** — the completion letter is permanent and §4.5 says term dates no
+  longer apply.
+
+**What it does today.** The push carries `date: null` and the sender drops the clause, so
+a graduate reads "Your weekly limit is now 48 hours" with no trailing "until". The
+uncapped band substitutes the word `unlimited` for the number, because "your weekly limit
+is now null hours" is the alternative.
+
+> **Ask:** for a worker with no end date — someone who has graduated, or signed the
+> opt-out — is dropping the "until …" clause right, or should it read something explicit
+> like "until further notice"? And for the opt-out band, is "no weekly limit" better copy
+> than "unlimited"?
+
+---
+
 ---
 
 # For the owner
@@ -281,3 +335,85 @@ side-quest inside a jobs pull request.
 Two things make it urgent enough to name: the rule is invisible (a revoke that looks
 right does nothing), and it is easy to repeat (every new `security definer` function in
 `public` starts life anon-callable).
+
+## O8 · The PR review bot does its work and then throws it away
+
+The `claude` check has gone red on several PRs today. It is not finding problems and it
+is not broken — it is running out of turns by one, after succeeding:
+
+```
+"subtype": "success", "is_error": false, "num_turns": 61
+##[error]Claude reported a successful result after 61 turns, exceeding the configured maximum of 60
+```
+
+`.github/workflows/claude.yml` sets `--max-turns 60`. That run took 9m 40s and cost
+$3.44, completed its review, and the action then discarded the result and failed the
+check. Nothing was posted to the pull request.
+
+It does not block anything — `build-test` is the gate, and a red `claude` check has been
+ignorable all day — which is the problem: a check that is red for a reason nobody acts on
+stops being read, and the next time it goes red for a real finding it will look the same.
+
+Two things to weigh, and both cost money, which is why this is yours:
+
+1. **Raise the limit.** The obvious fix and the one with a recurring bill attached. These
+   PRs are large — five or six commits across SQL, tests and docs — so the reviewer needs
+   the turns. Roughly $3.50 a review at 60 turns; a higher ceiling raises the worst case,
+   not the average, since a short PR still finishes early.
+2. **Spend fewer turns.** The same run logged `permission_denials_count: 17`. Seventeen
+   tool calls were refused, and every refusal costs a turn that did no work. Pre-approving
+   the read-only tools a reviewer needs — `Read`, `Grep`, `Glob`, `git diff`, `git log` —
+   would likely bring it under the existing limit for free. Cheaper than (1) and worth
+   trying first.
+
+Not changed here, because it is a standing cost on every pull request in the repo rather
+than a bug in one.
+
+---
+
+## O9 · Prettier is run by hand, so `main` carries unformatted files
+
+`pnpm format` on a clean checkout of `main` today rewrites four files nobody touched in
+this branch:
+
+```
+apps/client/app/client/EventsScreen.tsx
+apps/client/app/client/__tests__/rules.test.ts
+apps/client/app/client/events/[id]/EventScreen.tsx
+e2e/tests/client.portal.spec.ts
+```
+
+They are not broken — prettier is a formatter, not a linter — but `.github/workflows/ci.yml`
+runs `lint`, `typecheck`, `test`, pgTAP and Playwright, and **nothing runs
+`prettier --check`**. So formatting drifts silently, and the next person who runs
+`pnpm format` before committing sweeps up four files from someone else's pull request
+along with their own. I reverted them here rather than widen this branch past its domain.
+
+The fix is one line in `ci.yml` and a `format:check` script, and it wants doing in a pass
+of its own: the first run will fail until the existing drift is committed, which is a
+diff touching other people's files and should be its own pull request with nothing else
+in it.
+
+Not done here, because a formatting sweep across the repository collides with every
+branch currently open (see O2).
+
+---
+
+## O10 · Nobody can be manually blocked yet, and nothing sends a push
+
+Two things this branch built stop one step short of being usable, both waiting on work
+that is not mine to do here:
+
+1. **`block_worker()` is service-role only.** §9.6's manual block is a button on the
+   staff profile, and the function that button needs now exists with the whole §4.3
+   cascade in it. It is not granted to `authenticated`, because the screen does not exist
+   and a grant with no caller is an open door. Whoever builds §9.6 grants it and adds the
+   admin check inside, the way `invite_worker` does.
+2. **N1–N4 and N14 reach `notification_outbox` and stop there.** The drain
+   (`notify-drain`) is still disabled and has no Edge Function, because Web Push needs
+   VAPID keys and email needs Resend — both are in O3, both are yours. Until then the
+   expiry ladder is a table of rows nobody receives, and a worker blocked on the expiry
+   day finds out by opening the app.
+
+Neither blocks the other work. They are recorded so that "compliance is built" is not
+read as "workers are being told".

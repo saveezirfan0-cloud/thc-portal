@@ -21,13 +21,25 @@ Built: the monorepo, the design system, sign-in for all three apps, the venues d
 the domain rules (state machines, times, buffer, cap, scoring, pay), the §8 notification
 register, the full row-level-security suite, and the live database with seed data.
 
-Also built, server side only: the whole day of the shift (§5.1–5.2b, §9.5) — check-in,
-check-out, breaks and Resolve, with the pay window behind them. The screens that drive
-them (B7, S5) are not.
+Also built, server side only, with no screen in front of any of it:
 
-Not built: every other screen, and the entire background-jobs layer. There are no Edge
-Functions yet. Nothing writes `location_pings`, so the off-site check-out path always
-takes its RULE-02 fallback until the geolocation shell lands.
+- the whole day of the shift (§5.1–5.2b, §9.5) — check-in, check-out, breaks and Resolve,
+  with the pay window behind them (screens B7, S5 are not built)
+- the auto-assign engine (§3.4–3.6, §6) and the three rounds that run it (screen B3)
+- the jobs layer (§7): `job_runs`, the outbox claim/complete pair, the UK wall-clock gate,
+  and four of the ten background rules — `booking-tick` (BG-01/02/02b/03/09/10),
+  `auto-staffing` (the hourly, 12:05 cutoff and escalation rounds) and `compliance-daily`
+  (BG-04/05, plus the §4.3 block cascade and the §4.4 cap-band change)
+
+Not built: every screen bar sign-in, the venues directory and the roles directory. Of the
+background rules, BG-06/07 (geofence) wait on the geolocation shell and BG-08 on the
+reports layer. Nothing writes `location_pings`, so the off-site check-out path always
+takes its RULE-02 fallback until that shell lands.
+
+**Nothing is sent.** N1–N15 and E1–E9 reach `notification_outbox` and stop: the drain is
+registered but disabled, because Web Push needs VAPID keys and email needs Resend, and
+both are in `docs/14` O3. The §4.3 cascade likewise has no manual entry point until §9.6
+is built — see `docs/14` O10.
 
 ---
 
@@ -406,6 +418,16 @@ takes its RULE-02 fallback until the geolocation shell lands.
 >
 > Done when: each job runs, is idempotent under a forced double-run, and writes a
 > `job_runs` row.
+
+**Mostly done.** The plumbing, the UK gate and three of the five Edge Functions exist and
+are covered by pgTAP (110, 170, 180, 190, 200). What is left under P1: `finance-reports`
+(BG-08, which needs the reports layer — see B11) and `notify-drain` (P2, which needs the
+keys). The registry row for the drain is deliberately `enabled = false` so
+`install_job_schedules()` does not schedule a post at a function that is not deployed.
+
+One deploy-order rule, stated in each migration and repeated here because it is easy to
+get wrong: `supabase functions deploy` runs **before** `install_job_schedules()`. The
+other way round, pg_cron spends the gap posting at a 404.
 
 ## P2 · Notification senders (§8, §10.5)
 
