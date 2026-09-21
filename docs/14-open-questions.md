@@ -134,7 +134,38 @@ Nothing here needs undoing; it is a process note. The cheapest guard is the one 
 written at the top of `docs/13`: `git fetch origin && git branch -r` before naming a
 migration, and prefer a timestamp with real minutes in it over a round number.
 
-## O3 · The accounts the build is waiting on
+## O3 · PostGIS's SRID table is writable by `anon` on Supabase, and cannot be fixed by us
+
+`public.spatial_ref_sys` arrived with `create extension postgis` in `0001`, and
+Supabase's default grants give `anon` full DML on it — so an anon key can delete SRID
+4326 and take every geography column in the schema with it.
+`20260921123503_db_hardening` tries to close it and is refused: on Supabase the table is
+owned by `supabase_admin`, which is not a role the project can connect as.
+`20260921130156` records the conclusion that it is unreachable from a migration.
+
+It is genuinely low-risk here — this schema stores `geography(Point,4326)` and never
+calls `ST_Transform`, so nothing reads that table at query time — but it is real, and it
+is the kind of thing worth raising with Supabase support rather than re-attempting.
+
+The tests now say so honestly rather than asserting a protection that only exists on a
+local Postgres; see the note below.
+
+## O4 · CI had been red for hours, and three sessions merged through it
+
+The assertions covering O3 were written against a local Postgres, where the migration
+role owns `spatial_ref_sys` and the hardening succeeds. On Supabase it does not, so four
+assertions failed on **every** CI run from 9640d72 onward. Three pull requests merged
+anyway, each explaining in its commit message that the failures were "unrelated to this
+diff" — which was true, and is exactly how a real regression gets through next time.
+
+They now assert the protection where it is achievable and skip, with the reason, where
+the platform forbids it. Both branches are exercised: the skip path was verified locally
+by re-owning the table to a stand-in for `supabase_admin` and re-running the suite.
+
+Worth a platform or qa-reviewer eye, since it touches security assertions in another
+bot's files.
+
+## O5 · The accounts the build is waiting on
 
 Steps 2 and 3 of `docs/04` still need THC's own accounts, and `docs/12` lists the keys.
 Nothing in Phases 1–5 is blocked on them yet; Phase 6 onwards is.

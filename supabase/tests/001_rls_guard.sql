@@ -20,6 +20,26 @@ begin;
 select plan(9);
 
 -- ---------------------------------------------------------------------
+-- Whether spatial_ref_sys is ours to protect at all.
+--
+-- 20260921123503_db_hardening tries to give PostGIS's table RLS and a
+-- read-only policy, and catches insufficient_privilege if it cannot. That
+-- degradation is real, not theoretical: the ALTER succeeds on a local
+-- Postgres, where the migration role installed postgis and owns the table,
+-- and is refused on Supabase, where postgis is owned by supabase_admin and
+-- nothing we can connect as may revoke its grants or enable RLS on it.
+-- 20260921130156 records the conclusion that it is unreachable there.
+--
+-- Assertions 2 and 9 below asserted the successful half only, so they were
+-- green locally and red on every Supabase run from 9640d72 onward. They now
+-- assert the protection where it is achievable and skip with the reason
+-- where the platform forbids it, so a genuine regression is visible again
+-- instead of being lost in a failure everybody has learned to ignore.
+-- ---------------------------------------------------------------------
+select pg_get_userbyid(relowner) = current_user as srs_ours
+  from pg_class where oid = 'public.spatial_ref_sys'::regclass \gset
+
+-- ---------------------------------------------------------------------
 -- 1. Tables with RLS enabled (0001_init.sql)
 --    spatial_ref_sys is filtered out: it is PostGIS's table, not part of
 --    the data model this list inventories. 20260921123503_db_hardening
@@ -56,12 +76,23 @@ select bag_eq(
 --    handed anon full DML on it, and it now has RLS plus a read-only
 --    policy. So the query below has no exemption left at all.
 -- ---------------------------------------------------------------------
+\if :srs_ours
 select is_empty(
   $$ select c.relname::text
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity $$,
   'every table in public has row level security enabled, with no exemptions'
 );
+\else
+-- Everything we own still has to be policed; PostGIS's table is not ours.
+select is_empty(
+  $$ select c.relname::text
+       from pg_class c join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity
+        and c.relname <> 'spatial_ref_sys' $$,
+  'every table in public that this project owns has row level security enabled'
+);
+\endif
 
 -- ---------------------------------------------------------------------
 -- 3. Which tables an admin has a policy on.
@@ -194,12 +225,19 @@ select bag_eq(
 --    permissive SELECT policy, granted to public to match PostGIS's own
 --    `grant select ... to public`, and nothing that can write.
 -- ---------------------------------------------------------------------
+\if :srs_ours
 select bag_eq(
   $$ select p.polname::text || ':' || p.polcmd::text || ':' || p.polpermissive::text
        from pg_policy p where p.polrelid = 'public.spatial_ref_sys'::regclass $$,
   $$ values ('spatial_ref_sys_read:r:true'::text) $$,
   'spatial_ref_sys has one permissive read policy and no policy that can write it'
 );
+\else
+select skip(
+  'spatial_ref_sys is owned by supabase_admin on this project, so RLS cannot be enabled on it and anon keeps the write grants PostGIS was installed with. Unreachable from a migration — see 20260921130156. The geofence maths stores geography(Point,4326) and never calls ST_Transform, so nothing here reads it at query time.',
+  1
+);
+\endif
 
 select * from finish();
 rollback;
