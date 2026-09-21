@@ -2,10 +2,29 @@
   "$comment": [
     "Shared test vectors for the weekly cap, RULE-20 (Scope §4.4–4.5).",
     "These vectors are the contract between the TypeScript implementation in",
-    "packages/domain/cap.ts and the SQL function weekly_cap_hours(staff, date).",
-    "Both must produce the same band for every case here. Owned by the",
-    "`compliance` bot; Phase 4 completes the implementations.",
-    "A Mon-Sun week that straddles term and holiday takes the LOWER cap."
+    "packages/domain/cap.ts and the SQL function weekly_cap(...) that",
+    "weekly_cap_hours(staff, date) is built on. Both must produce the same",
+    "cap AND the same band for every case here. Owned by the `compliance` bot.",
+    "",
+    "The four dimensions come straight off the §4.4 table:",
+    "  visaLimited                — the worker is on the International student branch",
+    "  termState                  — where the Mon-Sun week sits against the HOLIDAY",
+    "                               ranges read off the University Term Dates Letter",
+    "                               ('none' = no ranges on file at all, which reads as",
+    "                               term time because every day falls outside every",
+    "                               holiday range)",
+    "  completionLetterVerified   — §4.5 graduation, effective-dated from verification",
+    "  optOut48h                  — the Working Time Regulations tick box",
+    "",
+    "Two rules decide every row below:",
+    "  A Mon-Sun week that straddles term and holiday takes the LOWER cap.",
+    "  The opt-out lifts the 48 h ceiling everywhere EXCEPT where a visa condition",
+    "  sets the limit (student, in term, not yet graduated) - §4.4 opt-out table.",
+    "",
+    "supabase/tests/_shared/cap_vectors.psql is GENERATED from this file by",
+    "supabase/tests/_shared/cap-vectors.mjs. Re-run it after any edit here:",
+    "  node supabase/tests/_shared/cap-vectors.mjs",
+    "The Vitest suite fails if the generated file has drifted."
   ],
   "cases": [
     {
@@ -73,6 +92,86 @@
       "input": {
         "visaLimited": true,
         "termState": "term",
+        "completionLetterVerified": false,
+        "optOut48h": true
+      },
+      "expect": { "capHours": 20, "band": "student_term_20" }
+    },
+    {
+      "name": "Student visa, holiday, opt-out signed — no ceiling",
+      "input": {
+        "visaLimited": true,
+        "termState": "holiday",
+        "completionLetterVerified": false,
+        "optOut48h": true
+      },
+      "expect": { "capHours": null, "band": "uncapped" }
+    },
+    {
+      "name": "Straddling week, opt-out signed — still 20, the visa condition stands",
+      "input": {
+        "visaLimited": true,
+        "termState": "straddle",
+        "completionLetterVerified": false,
+        "optOut48h": true
+      },
+      "expect": { "capHours": 20, "band": "student_term_20" }
+    },
+    {
+      "name": "Graduated in holiday, no opt-out — 48, term dates no longer apply",
+      "input": {
+        "visaLimited": true,
+        "termState": "holiday",
+        "completionLetterVerified": true,
+        "optOut48h": false
+      },
+      "expect": { "capHours": 48, "band": "graduated_48" }
+    },
+    {
+      "name": "Graduated in a straddling week, no opt-out — 48, term dates no longer apply",
+      "input": {
+        "visaLimited": true,
+        "termState": "straddle",
+        "completionLetterVerified": true,
+        "optOut48h": false
+      },
+      "expect": { "capHours": 48, "band": "graduated_48" }
+    },
+    {
+      "name": "Completion letter plus opt-out removes the ceiling, even in term time",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": true
+      },
+      "expect": { "capHours": null, "band": "uncapped" }
+    },
+    {
+      "name": "Graduated in holiday with an opt-out — no ceiling",
+      "input": {
+        "visaLimited": true,
+        "termState": "holiday",
+        "completionLetterVerified": true,
+        "optOut48h": true
+      },
+      "expect": { "capHours": null, "band": "uncapped" }
+    },
+    {
+      "name": "Student visa with no holiday ranges on file reads as term time",
+      "input": {
+        "visaLimited": true,
+        "termState": "none",
+        "completionLetterVerified": false,
+        "optOut48h": false
+      },
+      "expect": { "capHours": 20, "band": "student_term_20" }
+    },
+    {
+      "name": "Student visa, no holiday ranges, opt-out signed — the visa still wins",
+      "input": {
+        "visaLimited": true,
+        "termState": "none",
         "completionLetterVerified": false,
         "optOut48h": true
       },
