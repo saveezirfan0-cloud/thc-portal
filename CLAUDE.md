@@ -58,6 +58,7 @@ mirroring `wireframes/assets/thc.css`) `packages/domain` (pure rules + vectors)
 - Check-in: 30-min grace = Late; start+30 → automatic No-show and button lock (exempt if the booking was confirmed after the shift started). Check-out open from start until end+4 h from anywhere; off-site uses last on-site fix; end+4 h → "No check-out" violation, never a silent default. Strict buffer policy: first `headcount` check-ins work; later ones are turned away (RULE-15: fixed 4 h if on time, nothing if late).
 - Pay (RULE-01/02/14): payable = [check-in, check-out] ∩ [start, end]; 15-min check-out grace; unpaid breaks deducted; 4-hour floor unless Left-early violation or unresolved No check-out; payroll exports never corrected retroactively (show warnings instead).
 - Worker sees base rate only; client sees no money at all; holiday +12.07% is always broken out, never blended.
+- Client data path (ADR-0004): the client role gets a policy only on a table carrying no money and no worker personal data (today `events` and `feedback`). Everything else the portal shows comes from a `client_*` view that runs with owner rights, filters by `client_portal_visible()` in its own body and names its columns. Never add a client policy to `roles`, `shift_requirements`, `bookings` or `staff` — a view cannot take back a privilege the base table grants.
 - Notifications: copy and timing come from the §8 register in `packages/notifications`; every send goes through `notification_outbox` with a unique key.
 - Every state change = one function in `packages/domain/state.ts` + a DB function; illegal transitions are rejected in the DB too.
 - GDPR removal anonymises to "Deleted account #id", keeps history rows and already-issued PDFs.
@@ -72,3 +73,4 @@ mirroring `wireframes/assets/thc.css`) `packages/domain` (pure rules + vectors)
 - Use the domain bots in `.claude/agents/` (see `docs/05-domain-bots.md`). Ask `qa-reviewer` before opening a PR.
 - Running more than one bot at once: `docs/10-working-with-agents.md` (ownership map, the three shared hot spots, which phases overlap).
 - Starting a session: `docs/11-session-prompts.md` has a self-contained prompt per phase; `docs/00-how-to-build-with-claude.md` is the operating manual and current status.
+- Keys, connections and brand assets: `docs/12-keys-and-assets.md`. Source logos go in `brand/`; the generated icons are named in `apps/staff/app/manifest.ts`.
