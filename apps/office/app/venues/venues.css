@@ -1,0 +1,265 @@
+/*
+ * Page-local styles for /venues, mirroring the inline <style> block in
+ * wireframes/backoffice/venues.html. Everything here reads design-system
+ * tokens: no colour and no radius is hard-coded (CLAUDE.md).
+ *
+ * The general `.map`, `.pin`, `.circle`, `.lbl`, `.slider`, `.tbl` and
+ * `.modal` rules live in packages/ui — only what is specific to this screen
+ * is below.
+ */
+
+/* ---- list ---------------------------------------------------------- */
+.tbl td.name .venue-name {
+  color: var(--text);
+  font-weight: 600;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.tbl td.name .venue-name:hover {
+  color: var(--cyan-ink);
+}
+/* Edit and Delete stay on one line, as in the wireframe. */
+.tbl th.actions {
+  text-align: right;
+}
+.tbl td.actions {
+  text-align: right;
+  white-space: nowrap;
+}
+.tbl td.actions .btn + .btn {
+  margin-left: 6px;
+}
+/* Venue type, printed under the name in the list. */
+.vt {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.tbl td .radius-note {
+  display: block;
+  color: var(--muted);
+  font-size: 11.5px;
+  font-family: var(--font-body);
+  white-space: nowrap;
+}
+
+/* ---- map ------------------------------------------------------------ */
+.map.big {
+  height: 620px;
+}
+.venue-map.compact {
+  height: 300px;
+}
+.venue-map {
+  touch-action: none; /* the surface pans; the browser must not also scroll it */
+  cursor: grab;
+  user-select: none;
+}
+.venue-map:active {
+  cursor: grabbing;
+}
+.venue-map[data-editable='true'] {
+  cursor: crosshair;
+}
+.venue-map:focus-visible {
+  outline: 2px solid var(--cyan-ink);
+  outline-offset: 2px;
+}
+.venue-map .tile {
+  position: absolute;
+  pointer-events: none;
+  /* Tiles are decorative: the projection, not the image, places the pins. */
+  user-select: none;
+}
+.venue-map .pin-button {
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+}
+.map .lbl.name {
+  color: var(--text);
+  font-size: 11px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.map .scale {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: flex-end;
+  font-family: var(--font-num);
+  font-size: 9.5px;
+  color: var(--muted);
+}
+.map .scale i {
+  display: block;
+  height: 0;
+  border-top: 2px solid var(--text);
+}
+.map .legend {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 12px;
+  font-family: var(--font-label);
+  font-size: 9.5px;
+  color: var(--muted);
+  background: var(--panel-glass);
+  padding: 4px 8px;
+}
+.map .legend b {
+  color: var(--cyan-ink);
+}
+.map .ctrl {
+  position: absolute;
+  right: 12px;
+  top: 12px;
+  display: flex;
+  flex-direction: column;
+}
+.map .ctrl button {
+  width: 28px;
+  height: 28px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text);
+  cursor: pointer;
+}
+.map .ctrl button:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+/* ---- the radius slider (§9.11: 100–3000 m, never typed) -------------- */
+.radius-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.radius-row .val {
+  font-family: var(--font-num);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--cyan-ink);
+  min-width: 70px;
+  text-align: right;
+}
+/*
+ * A native range input carries the keyboard behaviour and the announced
+ * value for free; the design system's `.slider` track and knob are painted
+ * over it so it still looks like the wireframe.
+ */
+.radius-input {
+  flex: 1;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  height: 18px;
+  margin: 14px 0;
+  cursor: pointer;
+}
+.radius-input:focus-visible {
+  outline: 2px solid var(--cyan-ink);
+  outline-offset: 4px;
+}
+.radius-input::-webkit-slider-runnable-track {
+  height: 4px;
+  background: var(--line);
+  border-radius: var(--r-pill);
+}
+.radius-input::-moz-range-track {
+  height: 4px;
+  background: var(--line);
+  border-radius: var(--r-pill);
+}
+.radius-input::-moz-range-progress {
+  height: 4px;
+  background: var(--cyan-ink);
+  border-radius: var(--r-pill);
+}
+.radius-input::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -7px;
+  background: var(--cyan-ink);
+  border: 0;
+  border-radius: var(--r-pill);
+  box-shadow: 0 0 0 3px var(--cyan-dim);
+}
+.radius-input::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  background: var(--cyan-ink);
+  border: 0;
+  border-radius: var(--r-pill);
+  box-shadow: 0 0 0 3px var(--cyan-dim);
+}
+.ticks {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-num);
+  font-size: 9.5px;
+  color: var(--muted);
+  margin-top: -8px;
+}
+
+/* ---- the standard-radius table, printed under the modal's fields ----- */
+.types {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px 14px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.types b {
+  color: var(--text);
+  font-family: var(--font-num);
+  font-weight: 500;
+}
+
+/* The coordinates line: read-only text, not an input (§9.11). */
+.coords {
+  display: flex;
+  align-items: center;
+  min-height: 38px;
+}
+
+@media (max-width: 720px) {
+  .map.big {
+    height: 420px;
+  }
+  .venue-map.compact {
+    height: 240px;
+  }
+  .types {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* ---- the create / edit modal ---------------------------------------- */
+/*
+ * The modal is tall: a full-width map, two field rows, the slider and the
+ * standard-radius table. Without these it would be clipped by `.modal`'s
+ * overflow on a laptop screen.
+ */
+.venue-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.modal:has(.venue-form) {
+  max-height: calc(100vh - 48px);
+}
+.modal:has(.venue-form) .mb {
+  overflow-y: auto;
+}

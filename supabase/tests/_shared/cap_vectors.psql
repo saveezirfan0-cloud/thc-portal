@@ -1,0 +1,44 @@
+-- =====================================================================
+-- GENERATED FILE — DO NOT EDIT.
+--
+-- Source:    packages/domain/src/cap.vectors.json
+-- Generator: node supabase/tests/_shared/cap-vectors.mjs
+--
+-- The shared RULE-20 cap vectors (§4.4–4.5) as a table pgTAP can join
+-- against. The Vitest suite in packages/domain fails if this file has
+-- drifted from the JSON, so the TypeScript and SQL implementations can
+-- never be held to different cases.
+--
+-- .psql, not .sql, so that `supabase test db` (pg_prove --ext .pg
+-- --ext .sql) does not try to run it as a test of its own.
+-- =====================================================================
+
+create temporary table cap_vectors (
+  name                       text primary key,
+  visa_limited               boolean not null,
+  term_state                 text    not null,
+  completion_letter_verified boolean not null,
+  optout_48h                 boolean not null,
+  expect_cap_hours           int,               -- null = no ceiling
+  expect_band                text    not null
+) on commit drop;
+
+insert into cap_vectors values
+  ('British citizen, no visa limit, no opt-out', false, 'none', false, false, 48, 'standard_48'),
+  ('British citizen with a signed 48-hour opt-out', false, 'none', false, true, null, 'uncapped'),
+  ('Student visa, term time', true, 'term', false, false, 20, 'student_term_20'),
+  ('Student visa, holiday', true, 'holiday', false, false, 48, 'student_holiday_48'),
+  ('Week straddles term and holiday — the lower cap wins', true, 'straddle', false, false, 20, 'student_term_20'),
+  ('Verified completion letter graduates the worker off the term cap', true, 'term', true, false, 48, 'graduated_48'),
+  ('Opt-out does not lift a visa limit', true, 'term', false, true, 20, 'student_term_20'),
+  ('Student visa, holiday, opt-out signed — no ceiling', true, 'holiday', false, true, null, 'uncapped'),
+  ('Straddling week, opt-out signed — still 20, the visa condition stands', true, 'straddle', false, true, 20, 'student_term_20'),
+  ('Graduated in holiday, no opt-out — 48, term dates no longer apply', true, 'holiday', true, false, 48, 'graduated_48'),
+  ('Graduated in a straddling week, no opt-out — 48, term dates no longer apply', true, 'straddle', true, false, 48, 'graduated_48'),
+  ('Completion letter plus opt-out removes the ceiling, even in term time', true, 'term', true, true, null, 'uncapped'),
+  ('Graduated in holiday with an opt-out — no ceiling', true, 'holiday', true, true, null, 'uncapped'),
+  ('Student visa with no holiday ranges on file reads as term time', true, 'none', false, false, 20, 'student_term_20'),
+  ('Student visa, no holiday ranges, opt-out signed — the visa still wins', true, 'none', false, true, 20, 'student_term_20');
+
+-- The count is generated too, so an empty or half-loaded table cannot pass.
+\set cap_vector_count 15

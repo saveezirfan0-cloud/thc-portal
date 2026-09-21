@@ -108,7 +108,7 @@ select throws_ok(
   '42501', null, 'worker cannot create a staff row');
 select throws_ok(
   format($$ insert into check_logs (booking_id, outcome) values (%L, 'checked_in') $$, :'booking_a'),
-  '42501', null, 'KNOWN GAP: worker cannot insert their own check-in (needs attempt_check_in RPC)');
+  '42501', null, 'BY DESIGN: a worker writes no check-in directly — attempt_check_in() is the only way in (§5.1)');
 select throws_ok(
   format($$ insert into breaks (booking_id, started_at) values (%L, now()) $$, :'booking_a'),
   '42501', null, 'KNOWN GAP: worker cannot start their own break directly');
