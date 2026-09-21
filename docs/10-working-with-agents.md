@@ -46,9 +46,18 @@ Three rules follow from the map:
    function in `packages/domain`, that is one small PR ("domain: add booked-elsewhere gap
    helper + vectors"), merged, and then the feature PR builds on it. Bundling them is what
    turns two parallel sessions into one serialised one.
-3. **Migrations are append-only.** Never edit a migration that exists; add
-   `000N_<thing>.sql`. Two bots that both add a migration get sequential numbers, not a
-   conflict — but they must both pull `main` before numbering.
+3. **Migrations are append-only, and named by timestamp.** Never edit a migration that
+   exists. Name a new one `YYYYMMDDHHMMSS_<thing>.sql`, from the clock, not the next
+   number in the folder.
+
+   Sequential numbering does not survive parallel sessions. It was tried here and failed
+   inside a day: five branches claimed `0008` at once, `main` ended up with two files
+   numbered `0006`, and two sessions produced byte-identical weekly-cap migrations
+   because each renumbered rather than noticing the other. Every session that pulls
+   `main` has to renumber, which changes its file, which makes the next session
+   renumber. Timestamps end that: two sessions never generate the same one, so a
+   migration is written once and never renamed. It is also what the Supabase CLI does
+   natively.
 
 ## 3. The hot spots, and what to do about them
 
@@ -67,6 +76,11 @@ vector first, in its own PR, and both implementations get held to it.
 **`supabase/migrations`.** Append-only, and schema changes ripple. A bot needing a column
 opens the migration PR alone, `platform` reviews it, it merges, and everyone regenerates
 types with `pnpm --filter @thc/db gen:types`.
+
+Before starting any migration, check what is already in flight: `git fetch origin` then
+`git branch -r`, and look at what each branch touches. Two sessions writing the same
+migration is the most expensive collision in this repo, because both are long and both
+look correct in isolation.
 
 ## 4. What can actually run in parallel
 
