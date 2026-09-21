@@ -31,7 +31,7 @@
 -- The one piece of §3.4 arithmetic that IS repeated here is
 -- booked_elsewhere_conflict, because the gate has to be applied inside the
 -- candidate query. It is held to packages/domain/src/overlap.vectors.json
--- by supabase/tests/120_auto_assign.sql, in the same shape as the cap and
+-- by supabase/tests/130_auto_assign.sql, in the same shape as the cap and
 -- pay vectors.
 --
 -- Security

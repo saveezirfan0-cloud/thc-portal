@@ -6,7 +6,7 @@
 --
 -- The shared booked-elsewhere vectors (§3.4) as a temporary table, for
 -- the pgTAP half of the contract. Included with \ir from
--- supabase/tests/120_auto_assign.sql; the .psql extension keeps pg_prove
+-- supabase/tests/130_auto_assign.sql; the .psql extension keeps pg_prove
 -- from running it as a test of its own.
 --
 -- Windows are ISO instants inside the jsonb; the SQL side casts them.

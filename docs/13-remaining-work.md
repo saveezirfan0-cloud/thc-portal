@@ -96,7 +96,7 @@ Functions yet.
 > `job_runs`.
 >
 > **Half done, 21.09.2026.** The engine is built and tested in SQL — migration
-> `20260921141500_auto_assign.sql`, 57 assertions in `supabase/tests/120_auto_assign.sql`.
+> `20260921141500_auto_assign.sql`, 57 assertions in `supabase/tests/130_auto_assign.sql`.
 > `auto_assign_candidates` gives the pool with its gate and the five §6 factor inputs,
 > `invite_worker` adds additively, `accept_invite` is first-to-confirm with the automatic
 > withdrawal of overlapping invitations, `release_unready_bookings` is the 12:00 cutoff

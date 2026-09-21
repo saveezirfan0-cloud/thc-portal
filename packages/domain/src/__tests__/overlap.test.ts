@@ -32,7 +32,7 @@ describe('booked elsewhere (§3.4)', () => {
 });
 
 // The vectors are only a contract while both sides run the same ones.
-// supabase/tests/120_auto_assign.sql loads a generated copy of this JSON, so
+// supabase/tests/130_auto_assign.sql loads a generated copy of this JSON, so
 // a case added here without regenerating would quietly leave the SQL
 // implementation untested. Same guard as pay.vectors.test.ts.
 const here = dirname(fileURLToPath(import.meta.url));
