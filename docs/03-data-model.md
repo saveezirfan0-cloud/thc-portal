@@ -22,7 +22,7 @@ Implemented in `supabase/migrations/0001_init.sql`. This page explains the choic
 | Feedback | `feedback` | Client rows count toward rating only once `read_at` is set. |
 | Notifications | `push_subscriptions`, `notification_outbox` | Outbox `key` is unique → idempotent sends. |
 | Config | `settings`, `venue_types` | Replaces Django Admin. |
-| Audit | `audit_log`, `report_sends`, `job_runs` (0002) | Who verified/blocked/resolved, and what the Monday job sent. |
+| Audit | `audit_log`, `report_sends`, `job_runs` + `job_schedules` (`20260921130927`) | Who verified/blocked/resolved, what the Monday job sent, and every background-job execution with its counts and error (§7). |
 
 ## Calculated values (never stored)
 - **Weekly cap** — `weekly_cap_hours(staff, date)` returns 20 / 48 / `null` (no ceiling), `weekly_cap_band` the band that produced it (0008). A Mon–Sun week takes the lowest cap of any day; `staff.term_dates` holds the letter's HOLIDAY ranges, so a date outside every range is term time. The opt-out lifts the ceiling everywhere except where the visa condition sets it (student, in term, not graduated). Graduated workers are a flat 48, or `null` with the opt-out. The hours side is `weekly_booked_hours` / `weekly_hours_remaining` (confirmed, worked and closed bookings only, bucketed by the role section's start in Europe/London) and the §3.4 gate `weekly_cap_would_breach(staff, shift)`. Same vectors in Vitest and in `supabase/tests/090_weekly_cap.sql`.

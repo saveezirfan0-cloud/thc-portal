@@ -14,7 +14,7 @@
 -- them is wrong and the drain retries on a schedule nobody chose.
 -- =====================================================================
 begin;
-select plan(38);
+select plan(42);
 \ir _shared/fixtures.psql
 
 -- ---------------------------------------------------------------------
@@ -33,6 +33,14 @@ select is(outbox_backoff(0), interval '1 minute',
 -- ---------------------------------------------------------------------
 -- Fixtures: three rows due now, one due in an hour.
 -- ---------------------------------------------------------------------
+-- _shared/fixtures.psql inserts RLS:fixture:outbox with no send_after, which
+-- defaults to now() (0001_init.sql). Inside one transaction now() is the
+-- transaction timestamp, so that row satisfies `send_after <= now()` and is
+-- claimable — it would land in the second drain below and make the counts
+-- wrong. Push it out of reach so the claim assertions only see TEST- rows.
+update notification_outbox set send_after = now() + interval '1 day'
+ where key = 'RLS:fixture:outbox';
+
 insert into notification_outbox (key, channel, template, send_after) values
   ('TEST-N9:booking:1',  'push', 'N9',  now() - interval '1 minute'),
   ('TEST-N9:booking:2',  'push', 'N9',  now() - interval '1 minute'),
@@ -105,6 +113,15 @@ update notification_outbox set send_after = now() - interval '1 minute'
 select is((select count(*)::int from claim_outbox_batch(10)), 0,
   'neither a sent row nor a failed row is ever claimed again, even once due');
 
+-- A send that reports success after the row has already failed terminally
+-- must not leave both stamps set: every §9.9 send count would read it twice.
+select lives_ok(
+  $$ select complete_outbox_send(
+       (select id from notification_outbox where key = 'TEST-N12:booking:3'), true) $$,
+  'a late success on a failed row is accepted without error');
+select is((select sent_at from notification_outbox where key = 'TEST-N12:booking:3'), null,
+  'a late success cannot resurrect a row that already exhausted its attempts');
+
 -- ---------------------------------------------------------------------
 -- job_runs
 -- ---------------------------------------------------------------------
@@ -144,6 +161,36 @@ select throws_ok(
   '23514',
   null,
   'a run cannot be finished without a verdict');
+
+-- ---------------------------------------------------------------------
+-- Who may CALL any of this (§1.7).
+--
+-- Every function here is `security definer` in `public`, so PostgREST
+-- publishes it as an RPC and Postgres grants EXECUTE to PUBLIC by default.
+-- Unrevoked, the anon key reads the whole send queue through
+-- claim_outbox_batch() and suppresses any notification through
+-- complete_outbox_send(id, true). RLS does not help: a definer function
+-- runs as its owner. These two assertions are the regression guard.
+-- ---------------------------------------------------------------------
+select is_empty(
+  $$ select p.proname::text || ' is callable by ' || r.rolname
+       from pg_proc p
+       join pg_namespace n on n.oid = p.pronamespace
+       cross join (values ('anon'), ('authenticated')) as r(rolname)
+      where n.nspname = 'public'
+        and p.proname in ('claim_outbox_batch', 'complete_outbox_send',
+                          'job_run_start', 'job_run_finish', 'install_job_schedules')
+        and has_function_privilege(r.rolname, p.oid, 'execute') $$,
+  'neither anon nor authenticated can execute any of the five jobs functions'
+);
+
+select is(
+  (select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in ('claim_outbox_batch', 'complete_outbox_send',
+                        'job_run_start', 'job_run_finish', 'install_job_schedules')
+      and has_function_privilege('service_role', p.oid, 'execute')),
+  5, 'the service role, which is what an Edge Function holds, can execute all five');
 
 -- ---------------------------------------------------------------------
 -- Who can read the two new tables (§1.4). Both are admin-read and

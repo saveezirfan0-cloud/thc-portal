@@ -103,10 +103,16 @@ comment on column notification_outbox.attempts is
 
 -- 1m, 2m, 4m, 8m, 16m, capped at 30m. Deterministic so the pgTAP test and
 -- the TypeScript in packages/notifications can assert the same numbers.
+-- On the shipped default of six attempts only the first five are reachable
+-- (the sixth failure is terminal); the cap matters if a caller raises
+-- p_max_attempts, and both sides define the same curve either way.
+-- The exponent is clamped, not just the result: `least` evaluates both of
+-- its arguments, so an unclamped power(2, n) raises "interval out of range"
+-- long before the cap can apply. 2^15 minutes is already three weeks.
 create or replace function public.outbox_backoff(p_attempt integer) returns interval
 language sql immutable set search_path = public, extensions as $$
   select least(interval '30 minutes',
-               interval '1 minute' * power(2, greatest(p_attempt, 1) - 1));
+               interval '1 minute' * power(2, least(greatest(p_attempt, 1), 16) - 1));
 $$;
 
 -- Claim a batch. `for update skip locked` so concurrent drains take
@@ -141,9 +147,12 @@ create or replace function public.complete_outbox_send(
 language plpgsql security definer set search_path = public, extensions as $$
 begin
   if p_ok then
+    -- `failed_at is null` matters as much as `sent_at is null`: without it a
+    -- late success on a row that already exhausted its attempts leaves both
+    -- stamps set, and every §9.9 send count reads it twice.
     update notification_outbox
        set sent_at = now(), error = null, send_after = least(send_after, now())
-     where id = p_id and sent_at is null;
+     where id = p_id and sent_at is null and failed_at is null;
   else
     update notification_outbox
        set error = p_error,
@@ -181,8 +190,8 @@ alter table job_schedules enable row level security;
 create policy admin_read on job_schedules for select using (current_app_role() = 'admin');
 
 insert into job_schedules (job, cron_expression, edge_path, enabled, note) values
-  ('notify-drain', '* * * * *', 'notify-drain', true,
-   'Outbox drain (§8): Web Push + email, retries with backoff. The one job whose Edge Function exists.'),
+  ('notify-drain', '* * * * *', 'notify-drain', false,
+   'Outbox drain (§8): Web Push + email, retries with backoff. Disabled until the Edge Function exists — see ADR-0006. Enabling it now would schedule a per-minute 404.'),
   ('booking-tick', '* * * * *', 'booking-tick', false,
    'BG-01/02/02b/03/09/10 per-booking timers (§7). Edge Function not built yet.'),
   ('auto-staffing-hourly', '17 * * * *', 'auto-staffing?mode=hourly', false,
@@ -201,18 +210,27 @@ insert into job_schedules (job, cron_expression, edge_path, enabled, note) value
 create or replace function public.install_job_schedules() returns integer
 language plpgsql security definer set search_path = public, extensions as $$
 declare
-  r        record;
-  n        integer := 0;
+  r         record;
+  n         integer := 0;
   v_command text;
+  v_base    text;
 begin
+  -- The preconditions, checked once and loudly. Without the base URL every
+  -- command below builds `url := null` and fails at cron time with nothing
+  -- pointing at the cause.
+  select value #>> '{}' into v_base from public.settings where key = 'edge_base_url';
+  if v_base is null or v_base = '' then
+    raise exception 'settings.edge_base_url is not set; nothing can be scheduled'
+      using errcode = '23502';
+  end if;
+
   for r in select * from job_schedules loop
     -- cron.unschedule throws if the job is absent, which is the normal
-    -- first-install case, so it is not an error here.
-    begin
+    -- first-install case. Checking the catalogue instead of swallowing every
+    -- error keeps a permission failure visible.
+    if exists (select 1 from cron.job j where j.jobname = r.job) then
       perform cron.unschedule(r.job);
-    exception when others then
-      null;
-    end;
+    end if;
 
     continue when not r.enabled;
 
@@ -220,13 +238,13 @@ begin
     -- sensitive is stored in the pg_cron command string.
     v_command := format(
       $cmd$select net.http_post(
-              url := (select value #>> '{}' from public.settings where key = 'edge_base_url') || '/%s',
+              url := (select value #>> '{}' from public.settings where key = 'edge_base_url') || %s,
               headers := jsonb_build_object(
                 'Content-Type', 'application/json',
                 'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'service_role_key')
               ),
               body := jsonb_build_object('job', %L)
-            );$cmd$, r.edge_path, r.job);
+            );$cmd$, quote_literal('/' || r.edge_path), r.job);
 
     perform cron.schedule(r.job, r.cron_expression, v_command);
     n := n + 1;
@@ -237,3 +255,40 @@ $$;
 
 comment on function public.install_job_schedules() is
   'Applies job_schedules to pg_cron. Run once per deploy; needs settings.edge_base_url and vault secret service_role_key.';
+
+-- ---------------------------------------------------------------------
+-- 4 · Who may call any of this
+--
+-- Every function above is `security definer` and lives in `public`, which
+-- means PostgREST publishes it as an RPC endpoint and Postgres grants
+-- EXECUTE to PUBLIC by default. Left alone, anyone holding the anon key
+-- could call claim_outbox_batch() and read the whole send queue — worker
+-- ids, the office and payroll addresses, the rendered payload — then call
+-- complete_outbox_send(id, true) to mark an unsent N6b or N12 as sent and
+-- suppress it silently.
+--
+-- 001_rls_guard.sql already wrote down the principle for the table: "a row
+-- anybody can insert is a notification anybody can send, and an updatable
+-- sent_at is a send anybody can suppress". A definer function that updates
+-- sent_at is the same hole with a different door, and RLS does not close it
+-- because a definer function runs as its owner.
+--
+-- These are called by Edge Functions on the service key and by nothing
+-- else, so the grant is exactly that. 110_jobs_and_outbox.sql asserts it,
+-- because this is the kind of thing that comes back.
+-- ---------------------------------------------------------------------
+revoke execute on function
+  public.claim_outbox_batch(integer, interval),
+  public.complete_outbox_send(bigint, boolean, text, integer),
+  public.job_run_start(text),
+  public.job_run_finish(bigint, boolean, jsonb, text),
+  public.install_job_schedules()
+from public, anon, authenticated;
+
+grant execute on function
+  public.claim_outbox_batch(integer, interval),
+  public.complete_outbox_send(bigint, boolean, text, integer),
+  public.job_run_start(text),
+  public.job_run_finish(bigint, boolean, jsonb, text),
+  public.install_job_schedules()
+to service_role;
