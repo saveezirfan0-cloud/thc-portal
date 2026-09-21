@@ -53,7 +53,6 @@ https://github.com/saveezirfan0-cloud/thc-portal/settings/secrets/actions
 
 | Secret | Where to get it | Needed for |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | https://console.anthropic.com/settings/keys | The `@claude` workflow and the automatic pull-request review. **This is the only secret any workflow reads today.** |
 | `SUPABASE_ACCESS_TOKEN` | https://supabase.com/dashboard/account/tokens | Later, for running migrations from CI |
 | `SUPABASE_PROJECT_ID` | The project reference in your Supabase URL | Later |
 | `SUPABASE_DB_PASSWORD` | Set when you create the project. Save it then; it is not shown again | Later |
