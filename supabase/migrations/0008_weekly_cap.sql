@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 0006 · the calculated weekly cap, RULE-20 (Scope §4.4–4.5)
+-- Migration 0008 · the calculated weekly cap, RULE-20 (Scope §4.4–4.5)
 --
 -- Why this exists
 -- ---------------
@@ -50,7 +50,7 @@
 -- all (§4.2, §4.3), so the cap question does not arise for them.
 --
 -- Held to the same vectors as packages/domain/src/cap.ts:
--- supabase/tests/070_weekly_cap.sql runs cap.vectors.json against
+-- supabase/tests/090_weekly_cap.sql runs cap.vectors.json against
 -- `weekly_cap()`, Vitest runs it against `weeklyCap()`.
 -- =====================================================================
 
