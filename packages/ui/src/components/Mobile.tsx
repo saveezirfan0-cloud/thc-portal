@@ -215,3 +215,54 @@ export function GpsChip({ inside, children }: { inside: boolean; children: React
 export function Timer({ children }: { children: ReactNode }) {
   return <span className="timer mono">{children}</span>;
 }
+
+/** A row of phone mocks in the gallery. */
+export function PhoneRow({ children }: { children: ReactNode }) {
+  return <div className="phones">{children}</div>;
+}
+
+/**
+ * A terminal, centred screen with no way forward. Three of the four app-lock
+ * cases use it (§10.1): manual block, quiz failed three times, and the P45
+ * leaver screen.
+ */
+export function StaticScreen({
+  title,
+  children,
+  actions,
+}: {
+  title: ReactNode;
+  children?: ReactNode;
+  actions?: ReactNode;
+}) {
+  return (
+    <div className="static-screen">
+      <h2>{title}</h2>
+      {children ? <p>{children}</p> : null}
+      {actions}
+    </div>
+  );
+}
+
+/** Wizard step header: "1 / 11", the step title and the progress track. */
+export function WizardHeader({
+  step,
+  total,
+  title,
+  sub,
+}: {
+  step: number;
+  total: number;
+  title: ReactNode;
+  sub?: ReactNode;
+}) {
+  return (
+    <div className="wizard-top">
+      <span className="n">
+        {step} / {total}
+      </span>
+      <h2>{title}</h2>
+      {sub ? <p className="muted">{sub}</p> : null}
+    </div>
+  );
+}

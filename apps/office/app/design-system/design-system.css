@@ -1,6 +1,76 @@
-/* Layout helper for the gallery page only. Not part of packages/ui. */
-.grid-2 {
+/* Layout helpers for the gallery page only. Not part of packages/ui.
+   Everything here is geometry: no colour, no radius of its own. */
+
+.ds-grid-2 {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
+  gap: var(--sp-16);
+}
+
+.ds-swatches {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: var(--sp-12);
+}
+
+.ds-swatch {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.ds-swatch .chipbox {
+  height: 52px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+}
+
+.ds-swatch .n {
+  font-family: var(--font-label);
+  font-size: var(--fs-10);
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
+  color: var(--muted);
+  font-weight: var(--label-weight);
+}
+
+.ds-shapes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-16);
+  align-items: flex-end;
+}
+
+.ds-shape {
+  width: 76px;
+  height: 76px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-label);
+  font-size: var(--fs-10);
+  letter-spacing: var(--label-track);
+  color: var(--muted);
+}
+
+.ds-type {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+.ds-type > div {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-12);
+}
+
+.ds-type .k {
+  width: 56px;
+  flex: 0 0 56px;
+  font-family: var(--font-label);
+  font-size: var(--fs-10);
+  letter-spacing: var(--label-track);
+  color: var(--muted);
 }

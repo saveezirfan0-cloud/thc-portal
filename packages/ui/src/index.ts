@@ -4,8 +4,18 @@ export type { ButtonProps, ButtonSize, ButtonTone } from './components/Button';
 export { Chip, Pill } from './components/Pill';
 export type { ChipProps, PillProps, Tone } from './components/Pill';
 
-export { Input, Select, Textarea } from './components/Input';
-export type { InputProps, SelectProps, TextareaProps } from './components/Input';
+export {
+  Addon,
+  Input,
+  InputRow,
+  SearchInput,
+  Select,
+  Slider,
+  Textarea,
+} from './components/Input';
+export type { InputProps, SelectProps, SliderProps, TextareaProps } from './components/Input';
+
+export { Kanban, KanbanCard, KanbanColumn } from './components/Kanban';
 
 export { Avatar, AvatarGroup, Person, initials } from './components/Avatar';
 export type { AvatarProps } from './components/Avatar';
@@ -55,9 +65,12 @@ export {
   MobileList,
   MobileRow,
   PhoneFrame,
+  PhoneRow,
   Sheet,
+  StaticScreen,
   StatusBar,
   Timer,
+  WizardHeader,
   useCollapsedHeader,
 } from './components/Mobile';
 export type {

@@ -1,7 +1,17 @@
 /* Components. The plain rules below are the handoff v1 (scope §1.6) geometry;
    `warm.css` layers the v2 deltas on top. Measurements come from the boards in
    design-handoff/ — sidebar 236px, top bar 64px, content 26px 28px 32px, and
-   so on. No rule here may contain a literal colour or radius. */
+   so on. No rule here may contain a literal colour or radius.
+
+   Class contract: every class a React component emits is defined here, and
+   every component-shaped class here has a component in ../components. What is
+   left over on purpose is the layout and typography vocabulary screens compose
+   with directly — `.grid.c2…c6`, `.row`, `.stack`, `.toolbar`, `.ml-auto`,
+   `.mt-8/16`, `.strong`, `.xs`, `.right-align`, `.mono-label`, `.code` — and
+   the table classes `.tbl`, `.num`, `.clickable`, `.expand`, `.violation`,
+   which stay classes because every screen's table has a different shape.
+   Adding a class here without either a component or a line in this paragraph
+   is drift. */
 
 /* ---------------------------------------------------------------------
    3 · WEB SHELL
@@ -880,7 +890,7 @@ textarea.input {
   border-radius: var(--r-control);
   transition:
     border-color 0.15s,
-    box-shadow 0.15s;
+    background 0.15s;
 }
 :root[data-theme='light'] .input,
 :root[data-theme='light'] select.input,
