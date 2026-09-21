@@ -7,7 +7,7 @@ import type { Venue, VenueType } from './types';
  *
  * Everything goes through the anon-key server client, so RLS is what
  * decides what comes back: `venues` carries admin_all and nothing else, and
- * both views are security_invoker (0005_venues_directory.sql).
+ * both views are security_invoker (0006_venues_directory.sql).
  */
 
 /** True once the app is pointed at a Supabase project (docs/04). */
@@ -41,11 +41,11 @@ export async function loadVenuesPage(): Promise<VenuesPageData> {
         'id, name, address, venue_type, venue_type_label, default_radius_m, geofence_radius_m, lat, lng, events_past, events_upcoming',
       )
       // No deleted-venue filter here: venue_directory_v is the live
-      // directory (0005_venues_directory.sql), so soft delete is one rule
+      // directory (0006_venues_directory.sql), so soft delete is one rule
       // in one place rather than a condition every caller has to repeat.
       .order('name')
       .returns<Venue[]>(),
-    // sort_order is the §9.11 table's own order (0005_venues_directory.sql),
+    // sort_order is the §9.11 table's own order (0006_venues_directory.sql),
     // so the type picker and the standard-radius grid read like the scope.
     supabase
       .from('venue_types')

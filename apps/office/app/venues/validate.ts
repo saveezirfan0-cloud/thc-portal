@@ -2,7 +2,7 @@ import { MAX_RADIUS_M, MIN_RADIUS_M } from './geo';
 import type { VenueDraft } from './types';
 
 /**
- * The browser-side half of the rules 0005_venues_directory.sql enforces in
+ * The browser-side half of the rules 0006_venues_directory.sql enforces in
  * `assert_venue_input` and in the `venues` CHECK constraints.
  *
  * It lives in its own module, not inside `actions.ts`, because a `'use

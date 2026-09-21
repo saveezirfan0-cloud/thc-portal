@@ -1,5 +1,5 @@
 -- =====================================================================
--- 070 · The Venues directory (§9.11) — 0005_venues_directory.sql
+-- 070 · The Venues directory (§9.11) — 0006_venues_directory.sql
 --
 -- Two things to prove. First, that the view really does answer what the
 -- screen asks: the type label and default radius from venue_types, the pin

@@ -1,4 +1,4 @@
-# ADR-0004 · The venue map draws its own tiles instead of loading Mapbox GL
+# ADR-0005 · The venue map draws its own tiles instead of loading Mapbox GL
 
 **Status:** Accepted (directory bot, §9.11 Venues) · **Refines:** `docs/01-architecture.md` "Maps / geocoding — Mapbox GL + Mapbox Geocoding"
 
