@@ -31,7 +31,7 @@ test.describe('/apply', () => {
     await page.getByLabel('First name', { exact: true }).fill('Amara');
     await page.getByLabel('Surname', { exact: true }).fill('Kalu');
     await page.getByLabel('Email', { exact: true }).fill('amara.kalu@example.com');
-    await page.getByLabel('Mobile', { exact: true }).fill('7700 900123');
+    await page.getByLabel('Mobile', { exact: true }).fill('7010 000123');
     await page.getByLabel('Age', { exact: true }).selectOption('24');
     await expect(submit).toBeDisabled();
 
@@ -46,7 +46,7 @@ test.describe('/apply', () => {
     await page.getByLabel('First name', { exact: true }).fill('Too');
     await page.getByLabel('Surname', { exact: true }).fill('Young');
     await page.getByLabel('Email', { exact: true }).fill('too.young@example.com');
-    await page.getByLabel('Mobile', { exact: true }).fill('7700 900124');
+    await page.getByLabel('Mobile', { exact: true }).fill('7010 000124');
     await page.getByRole('checkbox').check();
 
     await page.getByLabel('Age', { exact: true }).selectOption('under_18');

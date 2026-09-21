@@ -13,34 +13,40 @@
 --      address anyone cares to type.
 -- =====================================================================
 begin;
-select plan(31);
+select plan(33);
 \ir _shared/fixtures.psql
 
 -- ---------------------------------------------------------------------
 -- A valid application, submitted the way a real one is: logged out.
+--
+-- The name, email and mobile must be absent from BOTH the fixtures and
+-- supabase/seed.sql, which carries the wireframes' sample people (§2.12
+-- would otherwise, correctly, file this as a returning applicant). The seed
+-- uses @example.com and +44 7700 9001xx; this file uses @rls.test and the
+-- 7010 range.
 -- ---------------------------------------------------------------------
 select set_config('request.jwt.claims', '', true);
 set local role anon;
 -- Untrimmed, mixed case and spaced out on purpose: this is what a phone
 -- keyboard produces.
-select submit_application('Chloe', 'Baptiste', '  Chloe.Baptiste@Example.com ', '+44 7700 900456', '24', true);
+select submit_application('Nadia', 'Testwood', '  Nadia.Testwood@RLS.test ', '+44 7010 000456', '24', true);
 reset role;
 
-select is((select count(*)::int from staff where email = 'chloe.baptiste@example.com'), 1,
+select is((select count(*)::int from staff where email = 'nadia.testwood@rls.test'), 1,
   '§2.1 a valid application creates one candidate');
-select is((select status::text from staff where email = 'chloe.baptiste@example.com'), 'interview_requested',
+select is((select status::text from staff where email = 'nadia.testwood@rls.test'), 'interview_requested',
   '§2.1 there is no "Applied" stage: the candidate lands straight in Interview requested');
-select is((select phone from staff where last_name = 'Baptiste'), '+447700900456',
+select is((select phone from staff where last_name = 'Testwood'), '+447010000456',
   'the mobile is stored in E.164, as the form promises');
-select is((select dob from staff where last_name = 'Baptiste'), null::date,
+select is((select dob from staff where last_name = 'Testwood'), null::date,
   'the candidate has no date of birth yet: /apply collects an age band, and a date of birth arrives with Right to Work (§2.5)');
-select is((select applied_age_band from staff where last_name = 'Baptiste'), '24',
+select is((select applied_age_band from staff where last_name = 'Testwood'), '24',
   'the age band is kept as the evidence behind the server-side 18+ gate');
-select is((select employee_id from staff where last_name = 'Baptiste'), null::int,
+select is((select employee_id from staff where last_name = 'Testwood'), null::int,
   '§2.7 the Employee ID is generated at contract signature, not here');
-select is((select outcome::text from applications where last_name = 'Baptiste'), 'candidate_created',
+select is((select outcome::text from applications where last_name = 'Testwood'), 'candidate_created',
   'the submission is logged');
-select isnt((select consented_at from applications where last_name = 'Baptiste'), null::timestamptz,
+select isnt((select consented_at from applications where last_name = 'Testwood'), null::timestamptz,
   '§1.7 the consent tick is stored with its timestamp');
 select is((select count(*)::int from audit_log where action = 'application_submitted'), 1,
   'the submission is audited (§1.7)');
@@ -109,6 +115,18 @@ reset role;
 select is((select outcome::text from applications where email = 'brand.new@rls.test'), 'returning_applicant',
   '§2.12 a mobile match routes to the office too, even with an unknown email');
 select is((select count(*)::int from staff where email = 'brand.new@rls.test'), 0,
+  'and still creates no candidate');
+
+-- The seed stores mobiles with spaces ("+44 7700 900108"), so a normalised
+-- submission only matches if the COLUMN is normalised too. Without that this
+-- whole half of §2.12 passes its own tests against tidy fixture data and
+-- matches nobody in the real table.
+set local role anon;
+select submit_application('Someone','Newagain','someone.newagain@rls.test','+447700900108','27', true);
+reset role;
+select is((select outcome::text from applications where email = 'someone.newagain@rls.test'), 'returning_applicant',
+  '§2.12 a mobile matches a worker whose stored number is formatted differently');
+select is((select count(*)::int from staff where email = 'someone.newagain@rls.test'), 0,
   'and still creates no candidate');
 
 -- A GDPR-removed worker (§1.7) is deliberately unmatchable: their record no

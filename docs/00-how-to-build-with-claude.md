@@ -12,7 +12,7 @@ is covered by tests.
 |---|---|---|
 | Unit | 230 | `pnpm test` |
 | Browser smoke | 18 | `pnpm turbo e2e:smoke` |
-| Database, row-level security | 475 | `supabase test db` |
+| Database, row-level security | 477 | `supabase test db` |
 
 What exists:
 

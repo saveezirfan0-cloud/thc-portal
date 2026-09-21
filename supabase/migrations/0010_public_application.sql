@@ -126,7 +126,7 @@ declare
   v_first   text := nullif(btrim(coalesce(p_first_name, '')), '');
   v_last    text := nullif(btrim(coalesce(p_last_name, '')), '');
   v_email   text := nullif(lower(btrim(coalesce(p_email, ''))), '');
-  v_phone   text := nullif(regexp_replace(coalesce(p_phone, ''), '[\s\-()]', '', 'g'), '');
+  v_phone   text := nullif(regexp_replace(coalesce(p_phone, ''), '[^0-9+]', '', 'g'), '');
   v_match   uuid;
   v_staff   uuid;
   v_outcome application_outcome;
@@ -156,10 +156,19 @@ begin
   -- ---- duplicate check (§2.12) ------------------------------------------
   -- Email, or mobile. See the header for the date-of-birth half. A removed
   -- worker (§1.7) is deliberately unmatchable.
+  --
+  -- Both sides of the mobile comparison are normalised, not just the one
+  -- coming in. `staff.phone` is free text and every worker in supabase/seed.sql
+  -- holds a spaced number ("+44 7700 900108"), so comparing a normalised
+  -- submission against the stored string directly would mean the mobile half
+  -- of §2.12 silently never matched anybody. Normalising the column at write
+  -- time would be the better fix and is a change to data this migration does
+  -- not own; 110_apply pins the behaviour either way.
   select s.id into v_match
     from staff s
    where s.removed_at is null
-     and (lower(s.email) = v_email or s.phone = v_phone)
+     and (lower(s.email) = v_email
+          or regexp_replace(s.phone, '[^0-9+]', '', 'g') = v_phone)
    order by s.created_at
    limit 1;
 
