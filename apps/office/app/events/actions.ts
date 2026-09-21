@@ -8,11 +8,14 @@ import { eventsDb, supabaseConfigured } from './db';
 import {
   type EditableField,
   ROLE_SECTION_MESSAGE,
+  UK_ZONE,
+  formatTimeIn,
   isEditLocked,
   reconfirmingChanges,
   ukRoleWindow,
   validateRoleSection,
 } from '@thc/domain';
+import { TEMPLATES, outboxKey, render } from '@thc/notifications';
 import { LIVE_BOOKING_STATUSES } from './data';
 
 /**
@@ -259,11 +262,11 @@ interface ExistingSection {
  * and nobody is auto-removed when headcount drops below the confirmed count
  * (§3.2, §3.3) — the manager withdraws people by hand on the event board.
  *
- * This sets the flag only. The N11 push that §3.5 pairs with it is NOT built
- * yet: `packages/notifications` has no N11 template and nothing writes the
- * `notification_outbox` row, so a worker currently sees the Awaiting state in
- * the app without being pushed about it. That send belongs to the §8 register
- * and is listed as outstanding in docs/00-how-to-build-with-claude.md.
+ * The flag is what the app reads for the Awaiting state; the push §3.5 pairs
+ * with it is N11, queued here in `notification_outbox` with the §8 register's
+ * own copy and idempotency key. The key carries the new start, so a second
+ * change queues a second push while a re-save of the same times does not.
+ * Draining the outbox to Web Push is the sender's job, not this screen's.
  */
 async function flagReconfirmations(
   supabase: SupabaseClient,
@@ -272,7 +275,7 @@ async function flagReconfirmations(
   changed: { dateChanged: boolean; venueChanged: boolean },
 ): Promise<void> {
   const previous = new Map(before.map((s) => [s.id, s]));
-  const affected: { id: string; reason: string }[] = [];
+  const affected: { id: string; reason: string; startsAt: Date; window: string }[] = [];
 
   for (const role of input.roles) {
     if (!role.id) continue; // A section added now has nobody booked on it.
@@ -288,14 +291,44 @@ async function flagReconfirmations(
     if (changed.venueChanged) fields.push('venue_address');
 
     const triggers = reconfirmingChanges(fields);
-    if (triggers.length > 0) affected.push({ id: role.id, reason: triggers.join(',') });
+    if (triggers.length > 0) {
+      affected.push({
+        id: role.id,
+        reason: triggers.join(','),
+        startsAt,
+        // The worker is told their ROLE's new hours, never the event window
+        // (RULE-18), in UK time as §1.8 has it for a scheduled time.
+        window: `${formatTimeIn(startsAt, UK_ZONE)} – ${formatTimeIn(endsAt, UK_ZONE)} (UK)`,
+      });
+    }
   }
 
   for (const section of affected) {
-    await supabase
+    const { data: rows } = await supabase
       .from('bookings')
       .update({ reconfirm_required: true, reconfirm_reason: section.reason })
       .eq('shift_id', section.id)
-      .eq('status', 'confirmed');
+      .eq('status', 'confirmed')
+      .select('id, staff_id');
+
+    const bookings = (rows ?? []) as { id: string; staff_id: string }[];
+    if (bookings.length === 0) continue;
+
+    // One outbox row per worker, keyed so a re-save of the same times is a
+    // no-op against the unique index (§8).
+    await supabase.from('notification_outbox').insert(
+      bookings.map((booking) => ({
+        key: outboxKey('N11', 'booking', `${booking.id}:${section.startsAt.toISOString()}`),
+        channel: TEMPLATES.N11.channel,
+        template: 'N11',
+        recipient_staff_id: booking.staff_id,
+        payload: {
+          title: TEMPLATES.N11.title,
+          body: render(TEMPLATES.N11.body, { window: section.window }),
+          deepLink: render(TEMPLATES.N11.deepLink ?? '', { bookingId: booking.id }),
+          reason: section.reason,
+        },
+      })),
+    );
   }
 }

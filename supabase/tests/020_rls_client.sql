@@ -7,7 +7,7 @@
 -- Every money-bearing table is asserted unreachable, in both directions.
 -- =====================================================================
 begin;
-select plan(49);
+select plan(57);
 \ir _shared/fixtures.psql
 
 select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
@@ -85,8 +85,35 @@ select is((select count(*)::int from feedback where id = :'feedback_a'), 0,
 -- ---- client-safe views -------------------------------------------------
 select is((select count(*)::int from client_events_v where id = :'event_a'), 1, 'client_events_v returns the client''s own event');
 select is((select count(*)::int from client_events_v where id = :'event_b'), 0, 'client_events_v hides other clients'' events');
-select is((select count(*)::int from client_lineup_v where booking_id = :'booking_a'), 0,
-  'KNOWN GAP: client_lineup_v is security_invoker over bookings/staff/roles, where the client has no policy, so §11.2 line-up is empty');
+
+-- §11.2 · the confirmed line-up. Until 0005 this returned nothing: the view
+-- was security_invoker over bookings / shift_requirements / roles / staff,
+-- and the assertions above are the reason the client holds no policy on any
+-- of them. ADR-0004 keeps those tables closed and gives the view owner
+-- rights plus its own tenancy predicate instead, so the two halves of this
+-- file have to stay true together — the line-up resolves AND the money
+-- underneath it is still out of reach.
+select is((select count(*)::int from client_lineup_v where booking_id = :'booking_a'), 1,
+  '§11.2 client reads the confirmed line-up for its own event');
+select is((select name from client_lineup_v where booking_id = :'booking_a'), 'Staff Alpha',
+  '§11.2 the line-up names the worker');
+select is((select role from client_lineup_v where booking_id = :'booking_a'), 'RLS Fixture Role',
+  '§11.2 the line-up carries the role name, and the role''s pay_rate stays unreadable above');
+select is((select count(*)::int from client_lineup_v where booking_id = :'booking_b'), 0,
+  '§11.1 client cannot read another client''s line-up');
+select is((select count(*)::int from client_lineup_v), 1,
+  '§11.1 unfiltered, the line-up is still only this client''s own — the view body does the scoping, not RLS');
+
+-- §11.1 "N of M confirmed". M is the headcount on the money-bearing
+-- shift_requirements row, which the client must never read directly.
+select is((select count(*)::int from client_role_sections_v where event_id = :'event_a'), 1,
+  'client reads its own event''s role sections');
+select is((select headcount from client_role_sections_v where shift_id = :'shift_a'), 6,
+  '§11.1 "N of M confirmed": M is the headcount the client ordered, without the rates beside it');
+select is((select confirmed from client_role_sections_v where shift_id = :'shift_a'), 1,
+  '§11.1 "N of M confirmed": N counts only confirmed bookings');
+select is((select count(*)::int from client_role_sections_v where event_id = :'event_b'), 0,
+  'client cannot read another client''s role sections');
 
 -- ---- read-only (§11.1 "no editing whatsoever") -------------------------
 with u as (update events set notes = 'client edit' where id = :'event_a' returning 1)

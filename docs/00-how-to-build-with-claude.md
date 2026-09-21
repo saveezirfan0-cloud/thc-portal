@@ -10,9 +10,9 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 145 | `pnpm test` |
+| Unit | 214 | `pnpm test` |
 | Browser smoke | 24 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 263 | `supabase test db` |
+| Database, row-level security and rules | 289 | `supabase test db` |
 
 What exists:
 
@@ -38,10 +38,10 @@ outstanding and belong to later sessions:
 
 - **Auto-assign itself** (§3.4). The switches and the per-role allocation are stored; no
   hourly round runs yet, so a saved event fills nobody.
-- **N11** (§3.5, §8). Saving a time, dress-code or venue change sets `reconfirm_required`
-  on that section's confirmed bookings, so they show as Awaiting — but
-  `packages/notifications` has no N11 template and nothing writes the
-  `notification_outbox` row, so the worker is not pushed about it yet.
+- **The sender behind the outbox** (§8). Saving a time, dress-code or venue change sets
+  `reconfirm_required` on that section's confirmed bookings and queues N11 in
+  `notification_outbox` with its idempotency key — but no job drains the outbox to Web
+  Push yet, so the row waits there.
 
 Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
 
@@ -55,9 +55,13 @@ Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
    could read and write them through the API, bank details and tax checklists included.
    Migration `0004` policed all eleven. The guard test now asserts that no table in
    `public` is unpoliced, so the next one to arrive without it fails the build.
-3. **Open, and needs a decision rather than a patch.** The Client Portal line-up returns
-   nothing for a client. §11.2 promises the customer sees the confirmed line-up, but the
-   tables beneath the view hold no client policy. See S8 in the prompts doc.
+3. **Closed, by decision rather than by patch.** The Client Portal line-up returned
+   nothing for a client: the view was `security_invoker` over four tables the client role
+   cannot read, and after item 1 it never could. ADR-0004 chose owner-rights views that
+   carry the tenancy rule themselves over client policies on money-bearing tables, and
+   migration `0005` implements it. The lesson from item 1 still stands — the base tables
+   did not move — but the shorthand "client access goes only through `security_invoker`
+   views" was wrong and is corrected everywhere it appeared.
 
 ## How to run a session
 

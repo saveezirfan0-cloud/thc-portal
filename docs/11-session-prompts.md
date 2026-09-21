@@ -190,22 +190,31 @@ picking that up belongs with S2.
 
 ---
 
-## S8 · Phase 6 · Client Portal line-up (needs a decision first)
+## S8 · Phase 6 · Client Portal
 
-> Read this one before pasting. It carries an open design question.
+> The design question this prompt used to carry is **decided and built**. ADR-0004 chose
+> owner-rights views that carry the tenancy rule in their own body over client policies on
+> the money-bearing tables, and `0005_client_lineup.sql` implements it: `client_lineup_v`
+> resolves for a client again and `client_role_sections_v` supplies "N of M confirmed".
+> The base tables did not move — `roles`, `shift_requirements`, `bookings` and `staff` stay
+> closed to the client role, and `020_rls_client.sql` asserts both halves together.
 >
-> `client_lineup_v` returns nothing for a client today. It is a `security_invoker` view
-> over `bookings`, `staff` and `roles`, and the client role holds no policy on any of
-> them, so §11.2's confirmed line-up has no data path. The view body is sound; the
-> problem is underneath it.
+> Use the `client-portal` agent. Branch `feat/client-portal-screens`.
 >
-> The two honest fixes pull against each other. A `security definer` view or RPC
-> contradicts the rule in `CLAUDE.md` that client access goes only through
-> `security_invoker` views. Adding client policies to the underlying tables re-opens the
-> money hole that `0002` just closed, because `roles` carries `pay_rate`.
+> This session: build `/client` and `/client/events/:id` against `wireframes/client/*.html`
+> — event list with photos and dual-zone times (§1.8), event page grouped by role with the
+> role-section window (RULE-18, never the event window), feedback that unlocks only once
+> the event has started and then reads "✓ Feedback sent". Read only from
+> `client_events_v`, `client_lineup_v` and `client_role_sections_v`; a base-table query
+> from this app returns nothing by design, and the fix for that is never a new policy.
 >
-> Decide which way to go, record it as an ADR, then build. Do not let a session pick
-> silently.
+> Constraints: `apps/client/**`, `apps/office/app/feedback/**`. A new client-facing view
+> is a `supabase/` change and goes in its own pull request first, following ADR-0004 to
+> the letter: owner rights, `client_portal_visible()` in the body, named columns,
+> `security_barrier`, granted to `authenticated` only.
+>
+> Done when: the screens match their wireframes, a client can see its own line-up and no
+> other client's, and Playwright proves the feedback button's three states.
 
 ---
 
