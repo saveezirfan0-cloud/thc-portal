@@ -1,32 +1,52 @@
 # Brand assets
 
-Drop the source files here and tell Claude. It generates every size and wires them into
-the three apps and `packages/ui`.
+## What is here
 
-## What to put here
-
-| File | Notes |
+| File | Use |
 |---|---|
-| `logo.svg` | Preferred. Vector scales to every size without going fuzzy. |
-| `logo.png` | Only if there is no SVG. At least 1024 by 1024, transparent background. |
-| `logo-square.svg` or `.png` | Only if the main logo is wide. App icons are square and end up around 20 pixels in a browser tab, so a wide logo becomes unreadable. |
-| `colours.md` or a brand guide | Any colour references you want honoured against `docs/09-visual-direction.md`. |
+| `thc-mark.svg` | **The mark alone**, two glasses and the cork. Use for app icons, the favicon, the sidebar badge, anywhere small. Legible down to 20px. |
+| `thc-lockup.svg` | **The stacked lockup**, mark above the wordmark. Use on the sign-in card, headers, documents, anywhere with room. |
+| `THC-Stacked-logo.svg` | The original supplied by THC. Kept as the source of record. Do not edit; regenerate the two files above from it. |
+| `thc-mark.png`, `thc-mark-cream.png` | Raster marks from the design handoff, 504×576 and visibly soft. Superseded by the SVG. Kept only until nothing references them. |
+| `thc logo.png` | A crop from an invoice, including the strapline and fragments of surrounding text. Not a usable asset; kept only as a reference for the full lockup with strapline. |
 
-## What gets generated from them
+## Both SVGs use `currentColor`
+
+Neither file bakes in a colour. They inherit from CSS `color`, so one file works on
+every ground and in both themes:
+
+```css
+.brand-mark { color: var(--text); }        /* follows light and dark automatically */
+.brand-mark.accent { color: var(--cyan); }
+```
+
+The original had `fill: #fff` hard-coded in a `<style>` block, which only worked on a
+dark ground. That is why these derived files exist rather than the original being used
+directly.
+
+## How the mark was separated
+
+The supplied file is one artwork: the glasses and most of the wordmark sit in a single
+compound path, so the mark cannot be isolated by deleting elements. It was extracted by
+taking the two paths that carry the glasses and cork and computing a tight viewBox around
+their union, `273.6 26.4 326.7 522`, with four units of padding.
+
+If THC ever supplies a new logo, redo that rather than hand-editing path data.
+
+## Generated icons
+
+These are produced from `thc-mark.svg`, not hand-placed:
 
 - `apps/staff/public/icon-192.png`, `icon-512.png`, `icon-maskable-512.png` — named in
-  the web app manifest already. Until these exist the staff app cannot be installed to a
-  home screen, which is also what gates push notifications on iOS.
-- `favicon.ico` and `apple-icon.png` for all three apps.
-- The brand mark in `packages/ui`, replacing the placeholder that currently renders the
-  letters "THC" in a box on the sign-in card and the sidebar.
+  the staff app's web manifest. Without them the app cannot be installed to a home
+  screen, which is also what gates push notifications on iOS.
+- A favicon for each of the three apps.
 
 The maskable icon needs roughly 20% clear space around the mark, because Android crops it
-to whatever shape the phone uses. That padding is added during generation, so supply the
-logo without it.
+to whatever shape the phone uses. That padding is added during generation, so the source
+SVG stays tight.
 
-## Why here rather than straight into `public/`
+## Still worth asking THC for
 
-Several of the generated files have exact names the code already expects, and the
-maskable one has padding rules. Keeping the sources in one place means the icons can be
-regenerated when the brand changes, instead of being hand-replaced in five folders.
+A **mark-only** original, if one exists. The mark here was cut out of the stacked lockup,
+which is sound but means any future change to the lockup has to be traced through again.

@@ -12,7 +12,7 @@ is covered by tests.
 |---|---|---|
 | Unit | 67 | `pnpm test` |
 | Browser smoke | 14 | `pnpm turbo e2e:smoke` |
-| Database, row-level security | 252 | `supabase test db` |
+| Database, row-level security | 278 | `supabase test db` |
 
 What exists:
 
@@ -27,6 +27,12 @@ What exists:
   component against both token axes.
 - **Seed data**: 5 clients, 8 venues, 6 roles, 40 workers, mirroring
   `wireframes/CONVENTIONS.md`.
+- **The day of the shift** (§5.1–5.2b): migration `0006` adds `attempt_check_in`,
+  `check_out`, the four pure rule functions behind them and `payable_shifts_v`.
+  `packages/domain/pay.ts` repeats the same rules in TypeScript, and
+  `packages/domain/src/pay.vectors.json` is the contract between them: Vitest reads it,
+  pgTAP reads the file generated from it, and a drift test fails the build if the copy
+  goes stale. The Check-in monitor screen (§9.5) is still to come.
 
 What does not exist yet: every screen in Phases 1 to 7, the Supabase project, and the
 Vercel projects. Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
@@ -41,9 +47,13 @@ Vercel projects. Steps 2 and 3 of `docs/04` are still to do and need THC's accou
    could read and write them through the API, bank details and tax checklists included.
    Migration `0004` policed all eleven. The guard test now asserts that no table in
    `public` is unpoliced, so the next one to arrive without it fails the build.
-3. **Open, and needs a decision rather than a patch.** The Client Portal line-up returns
-   nothing for a client. §11.2 promises the customer sees the confirmed line-up, but the
-   tables beneath the view hold no client policy. See S8 in the prompts doc.
+3. **Closed, by decision rather than by patch.** The Client Portal line-up returned
+   nothing for a client: the view was `security_invoker` over four tables the client role
+   cannot read, and after item 1 it never could. ADR-0004 chose owner-rights views that
+   carry the tenancy rule themselves over client policies on money-bearing tables, and
+   migration `0005` implements it. The lesson from item 1 still stands — the base tables
+   did not move — but the shorthand "client access goes only through `security_invoker`
+   views" was wrong and is corrected everywhere it appeared.
 
 ## How to run a session
 
@@ -97,8 +107,10 @@ say so rather than reporting the suite as passing.
   storing the weekly cap instead of calculating it, blending holiday pay instead of
   breaking out the 12.07%, showing the event window where a role-section window belongs,
   and letting any money reach the client.
-- Never edit an applied migration. Add the next numbered one. `0001`, `0002` and
-  `0004` exist, and `0003` is reserved for the cron schedules in `docs/01` §4.
+- Never edit an applied migration. Add the next numbered one. `0001`, `0002`, `0004`,
+  `0005` and `0006` exist, and `0003` is reserved for the cron schedules in `docs/01` §4.
+  Check `supabase/migrations/` before you pick a number: two branches both reaching for
+  `0005` is how a silent ordering bug gets in.
 - Seed data mirrors `wireframes/CONVENTIONS.md`, so a screenshot and a test read the same.
 - Keep THC's Appendix B inputs in an issue with due dates. Several phases block on them:
   Willo keys, contract text, sample letters, the logo, and DNS.

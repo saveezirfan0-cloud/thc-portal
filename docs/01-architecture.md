@@ -29,7 +29,7 @@ Shared packages:
 | Scope concept | Supabase implementation |
 |---|---|
 | PostgreSQL + PostGIS | Postgres with the `postgis` extension. Venues/homes stored as `geography(point)`. Haversine → `ST_Distance`. Geofence → `ST_DWithin(venue, fix, radius_m)`. |
-| DRF Token auth, RBAC (§1.4) | Supabase Auth (email + password). `profiles.role` ∈ admin/client/staff. **RLS on every table.** Client money-free access goes through `security_invoker` views only (`client_events_v`, `client_lineup_v`). Role-based routing is enforced in each app's middleware AND by RLS, so the client can never read office data even with a forged URL. |
+| DRF Token auth, RBAC (§1.4) | Supabase Auth (email + password). `profiles.role` ∈ admin/client/staff. **RLS on every table.** The client role holds a policy only on tables with no money and no worker personal data (`events`, `feedback`); everything else it sees comes from a `client_*` view that scopes itself with `client_portal_visible()` and selects no rate column (ADR-0004). Role-based routing is enforced in each app's middleware AND by RLS, so the client can never read office data even with a forged URL. |
 | Worker activation link (§2.7) | `auth.admin.generateLink({type:'invite'})` sent in E3 from `admin@`; the worker sets a password on `/activate`. |
 | Django Admin config (§6 weights, Willo stage map, venue radii §9.11, senders §9.12) | `settings` table (jsonb) + `venue_types` table, edited from a small "System settings" page in the Back Office restricted to admins. No release needed to change them. |
 | Background jobs (§7) | `pg_cron` schedules → `pg_net` HTTP call → Edge Function. See §4 below. |
@@ -55,7 +55,7 @@ The scope is rule-heavy. Every rule is implemented **once**, in the layer that m
 | Weekly cap RULE-20 | SQL function `weekly_cap_hours(staff, date)` (needed inside auto-assign queries) **and** `packages/domain/cap.ts` (for the profile explanation string). Both covered by the same test vectors in `packages/domain/__tests__/cap.vectors.json` and pgTAP. | auto-assign, Radar, Invites, profile |
 | Auto-assign engine (§3.4, §6, RULE-17) | Edge Function `auto-staffing` (TypeScript, imports `packages/domain/scoring.ts`), runs per role section; hard gates first, then Wave 1 (qualified) → Wave 2. Uses PostGIS for proximity. | hourly cron, 12:05 cutoff, 10-minute escalation, "Potential pool" ranking on the event board (same function called synchronously with `dryRun:true`) |
 | Atomic transitions (first-to-confirm RULE-03, accept with overlap block, strict-buffer check-in RULE-15, No-show lock at start+30) | Postgres functions with `select … for update` (`accept_invite()`, `attempt_check_in()`, `check_out()`) | Staff app via RPC; jobs |
-| Pay window RULE-01/02/14/15, breaks §5.2b | `packages/domain/pay.ts` (pure) + SQL view `payable_shifts_v` implementing the same maths for reports | check-out screen, payroll report, CSV, timesheet |
+| Pay window RULE-01/02/14/15, breaks §5.2b | `packages/domain/pay.ts` (pure) + SQL `payable_minutes()` / `turned_away_minutes()` and the view `payable_shifts_v` implementing the same maths for reports. Both held to `packages/domain/src/pay.vectors.json` (0006) | check-out screen, payroll report, CSV, timesheet |
 | State machines (§2.12 staff, §3.6 booking) | `packages/domain/state.ts` (transition table) + DB triggers that reject illegal transitions | everywhere |
 | Notification register (§8) | `packages/notifications/templates.ts` (copy is data, not code) + `notification_outbox` (unique `key` → idempotent) | jobs, RPCs |
 
