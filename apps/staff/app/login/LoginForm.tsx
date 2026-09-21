@@ -1,11 +1,12 @@
 'use client';
 
-import { useActionState } from 'react';
+import { useActionState, useState } from 'react';
 import { Alert, Button, Input } from '@thc/ui';
 import { signIn } from './actions';
 
 export function LoginForm({ next }: { next?: string }) {
   const [error, formAction, pending] = useActionState(signIn, null);
+  const [email, setEmail] = useState('');
 
   return (
     <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -17,6 +18,10 @@ export function LoginForm({ next }: { next?: string }) {
         type="email"
         autoComplete="username"
         required
+        // Keep what they typed. Clearing the field on a failed attempt makes a
+        // typo indistinguishable from a wrong password, and means retyping.
+        defaultValue={email}
+        onChange={(event) => setEmail(event.target.value)}
         error={error ? ' ' : undefined}
       />
       <Input
