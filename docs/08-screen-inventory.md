@@ -30,6 +30,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/feedback` | Client · Office | `backoffice/feedback.html` | 9.10 | client-portal |
 | `/venues` | List · On map · modal | `backoffice/venues.html` | 9.11 | directory |
 | `/settings` | Scoring weights, Willo map, venue radii, senders (Django-Admin replacement) | — (simple form) | 6, 2.4, 9.11, 9.12 | platform |
+| `/design-system` | Live component gallery (both token axes) | `design-system.html` | 1.6, 10.1 | design-system |
 
 ## Staff App PWA (`apps/staff`)
 | Route | Screen | Wireframe | § | Bot |
