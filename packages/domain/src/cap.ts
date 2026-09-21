@@ -9,7 +9,7 @@
  * This module owns the band resolution. Summing the worker's hours for the
  * week lives in SQL, because auto-assign has to filter on it inside a query:
  * see `weekly_booked_hours(staff, date)` and `weekly_cap_would_breach(staff,
- * shift)` in supabase/migrations/0006_weekly_cap.sql. Both implementations
+ * shift)` in supabase/migrations/0009_weekly_cap.sql. Both implementations
  * are held to `cap.vectors.json` — Vitest runs the vectors against
  * `weeklyCap()` below, pgTAP runs the same generated table against the SQL
  * `weekly_cap()`.

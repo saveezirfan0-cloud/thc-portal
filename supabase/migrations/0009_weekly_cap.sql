@@ -50,7 +50,7 @@
 -- all (§4.2, §4.3), so the cap question does not arise for them.
 --
 -- Held to the same vectors as packages/domain/src/cap.ts:
--- supabase/tests/070_weekly_cap.sql runs cap.vectors.json against
+-- supabase/tests/100_weekly_cap.sql runs cap.vectors.json against
 -- `weekly_cap()`, Vitest runs it against `weeklyCap()`.
 -- =====================================================================
 

@@ -32,7 +32,7 @@ describe('weekly cap (RULE-20)', () => {
 });
 
 // The vectors are only a contract while both sides run the same ones.
-// supabase/tests/070_weekly_cap.sql loads a generated copy of this JSON,
+// supabase/tests/100_weekly_cap.sql loads a generated copy of this JSON,
 // so a case added here without regenerating would quietly leave the SQL
 // implementation untested. That is what this catches.
 describe('cap vectors are the same on both sides', () => {
