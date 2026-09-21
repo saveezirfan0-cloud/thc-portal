@@ -1,4 +1,4 @@
-# ADR-0006 · /apply collects Age, not date of birth
+# ADR-0008 · /apply collects Age, not date of birth
 
 **Status:** Accepted for v1 — the open point below is flagged for THC
 
