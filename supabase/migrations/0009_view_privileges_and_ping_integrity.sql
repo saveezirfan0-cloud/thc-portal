@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 0008 · close the event_windows privilege gap; make the
+-- Migration 0009 · close the event_windows privilege gap; make the
 -- location trail append-only for everybody (§11.1, §5.2b, RULE-01)
 --
 -- Two findings from the review of 0004/0005, neither of them created by
@@ -45,8 +45,9 @@
 --    exactly this reason (§1.7, §9.9); the trail joins them.
 --
 -- Forward-only: every earlier migration is left untouched. 0003 stays
--- reserved for the cron schedules (docs/01 §4). This is 0008 because main
--- already carries 0006_checkin_checkout and 0007_venues_directory.
+-- reserved for the cron schedules (docs/01 §4). This is 0009 because main
+-- already carries 0006_checkin_checkout, 0007_venues_directory and
+-- 0008_weekly_cap.
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
@@ -116,12 +117,12 @@ comment on table location_pings is
 -- 3 · an empty pay window is undetermined, not four paid hours
 --     (RULE-01/02/14, §9.9)
 --
--- The same defect existed on both sides of the pay contract. 0006's
--- payable_minutes() clamps the intersection to zero and then applies the
--- floor, so a check-out on the check-in timestamp, a check-out before the
--- check-in, and a check-in past the end of the role section all returned
--- `settled` with payableMin 240 — four hours invented out of a window
--- nobody worked.
+-- The same defect existed on both sides of the pay contract. The
+-- payable_minutes() added by 0006_checkin_checkout clamps the
+-- intersection to zero and then applies the floor, so a check-out on the
+-- check-in timestamp, a check-out before the check-in, and a check-in
+-- past the end of the role section all returned `settled` with
+-- payableMin 240 — four hours invented out of a window nobody worked.
 --
 -- RULE-02 already says what the first of those is: "the only available
 -- finish time would be the check-in timestamp itself ... the violation is
@@ -132,7 +133,7 @@ comment on table location_pings is
 -- of the payable hours and leaves the row out of the CSV export until a
 -- manager resolves it.
 --
--- The body is 0006's, unchanged apart from the guard. packages/domain's
+-- The body is unchanged apart from the guard. packages/domain's
 -- payableMinutes() carries the same guard, and the new cases in
 -- pay.vectors.json hold both to it — which is the point of that file.
 -- ---------------------------------------------------------------------
@@ -187,4 +188,4 @@ begin
 end $$;
 
 comment on function payable_minutes is
-  'RULE-01/02/14 pay window. Mirrored by payableMinutes() in packages/domain/pay.ts; both are held to pay.vectors.json. An empty intersection is undetermined, never the 4-hour floor (0008).';
+  'RULE-01/02/14 pay window. Mirrored by payableMinutes() in packages/domain/pay.ts; both are held to pay.vectors.json. An empty intersection is undetermined, never the 4-hour floor (0009).';

@@ -13,7 +13,7 @@
 -- cannot deliver §11.2: it resolved to zero rows for the only role it
 -- exists to serve.
 --
--- 0008 finished the job. client_events_v was still an invoker view, which
+-- 0009 finished the job. client_events_v was still an invoker view, which
 -- meant its caller needed select on `event_windows` — and event_windows
 -- runs with owner rights over the money-bearing shift_requirements table
 -- with Supabase's default world grants still on it. All three client views
@@ -26,7 +26,7 @@ select plan(30);
 
 -- ---- how each view resolves -------------------------------------------
 select ok(not (coalesce((select reloptions from pg_class where relname = 'client_events_v'), '{}') @> '{security_invoker=true}'),
-  'client_events_v runs with owner rights (ADR-0004, 0008), so event_windows need not be granted to the caller');
+  'client_events_v runs with owner rights (ADR-0004, 0009), so event_windows need not be granted to the caller');
 select ok((coalesce((select reloptions from pg_class where relname = 'client_events_v'), '{}') @> '{security_barrier=true}'),
   'client_events_v is a security barrier, so no user-supplied qual runs ahead of the tenancy predicate');
 
@@ -42,11 +42,11 @@ select ok((coalesce((select reloptions from pg_class where relname = 'client_rol
 -- event_windows has run with owner rights since 0001: it is how the client
 -- gets its min-start/max-end window without a policy on the money-bearing
 -- shift_requirements table. Running that way is fine; being GRANTED to the
--- PostgREST roles while doing so is not, and it was until 0008. The guard
+-- PostgREST roles while doing so is not, and it was until 0009. The guard
 -- is the privilege, because the reloption alone says nothing about who can
 -- call it.
 select ok(not has_table_privilege('anon', 'event_windows', 'select'),
-  'anon holds no privilege on event_windows (0008): owner rights over shift_requirements must not be world-granted');
+  'anon holds no privilege on event_windows (0009): owner rights over shift_requirements must not be world-granted');
 select ok(not has_table_privilege('authenticated', 'event_windows', 'select'),
   'no signed-in role reaches event_windows directly either; the client goes through client_events_v');
 

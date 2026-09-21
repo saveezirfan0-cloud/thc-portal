@@ -10,9 +10,9 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 213 | `pnpm test` |
+| Unit | 230 | `pnpm test` |
 | Browser smoke | 14 | `pnpm turbo e2e:smoke` |
-| Database, row-level security | 411 | `supabase test db` |
+| Database, row-level security | 439 | `supabase test db` |
 
 What exists:
 
@@ -58,13 +58,13 @@ Vercel projects. Steps 2 and 3 of `docs/04` are still to do and need THC's accou
    Supabase's default world grants, so `GET /rest/v1/event_windows` returned every
    event's timings to any caller, signed in or not. No rate ever left through it, but
    `0005` cites it as the precedent for owner-rights views and `0003` is reserved for
-   `payable_shifts_v`, which is pay by definition. Migration `0008` takes the grants
+   `payable_shifts_v`, which is pay by definition. Migration `0009` takes the grants
    back and moves its one caller, `client_events_v`, onto the ADR-0004 shape. The guard
    test now also covers materialised views and foreign tables, which cannot carry RLS
    at all and were the cheapest way past it.
 5. **Closed.** `location_pings` carried `admin_all ... for all` under a comment
    promising the rows were append-only. `inside_geofence` is the last on-site fix behind
-   RULE-01 pay, so an admin could move a worker's money with no record. `0008` makes it
+   RULE-01 pay, so an admin could move a worker's money with no record. `0009` makes it
    `admin_read`, alongside `audit_log` and `report_sends`.
 6. **Open, and an ADR rather than a patch.** No table sets `FORCE ROW LEVEL SECURITY`,
    so any connection as the table owner reads `bank_details` and `hmrc_checklists` in
@@ -125,7 +125,7 @@ say so rather than reporting the suite as passing.
   breaking out the 12.07%, showing the event window where a role-section window belongs,
   and letting any money reach the client.
 - Never edit an applied migration. Add the next numbered one. `0001`, `0002`, `0004`,
-  `0005`, `0006`, `0007` and `0008` exist, and `0003` is reserved for the cron schedules
+  `0005`, `0006`, `0007`, `0008` and `0009` exist, and `0003` is reserved for the cron schedules
   in `docs/01` §4. Check `supabase/migrations/` before you pick a number, and check it
   again after merging `main`: git does not conflict on two files with different names,
   so two branches both reaching for `0006` merged quietly and turned `main` red at
