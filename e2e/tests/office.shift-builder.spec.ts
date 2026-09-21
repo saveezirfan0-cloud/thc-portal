@@ -14,6 +14,14 @@ import type { Locator, Page } from '@playwright/test';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/events/new');
+  // With no Supabase project the middleware degrades open and the builder
+  // renders, which is the CI build these assertions describe. Point the same
+  // build at a real project and every route is gated, so the suite would
+  // otherwise report ten "heading not found" failures for one missing session.
+  test.skip(
+    page.url().includes('/login'),
+    'Back Office is gated: run against the ungated CI build, or sign in first.',
+  );
 });
 
 /** One role section, by position. Its labels repeat, so scope before asking. */
