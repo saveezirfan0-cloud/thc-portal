@@ -166,7 +166,21 @@ picking that up belongs with S2.
 
 ---
 
-## S7 · Phase 5 · Check-in, check-out and pay
+## S7 · Phase 5 · Check-in, check-out and pay — **done**
+
+Migration `0006_checkin_checkout.sql` adds `attempt_check_in`, `check_out`, the four pure
+rule functions behind them (`check_in_decision`, `check_out_decision`, `payable_minutes`,
+`turned_away_minutes`) and `payable_shifts_v`. `packages/domain/pay.ts` repeats the same
+rules in TypeScript. `packages/domain/src/pay.vectors.json` is the contract: Vitest reads
+it directly, pgTAP reads `supabase/tests/_shared/pay_vectors.psql` generated from it
+(`pnpm --filter @thc/domain gen:vectors`), and `pay.vectors.test.ts` fails the build if
+that copy goes stale. Still open in Phase 5: breaks start/finish, BG-10's 6-hour alert,
+`resolve_violation`, and the Check-in monitor screen (§9.5).
+
+One question for THC, recorded rather than decided: a replacement confirmed after the
+shift started is exempt from the No-show lock (§5.1), but RULE-15 still prices their
+turn-away by the original start — so arriving "late" to a full shift pays them nothing.
+Implemented as the scope reads; flagged because the two rules were written apart.
 
 > Use the `checkin` agent. Branch `feat/checkin-rpcs`.
 >
