@@ -1,8 +1,5 @@
-/* Sign-in card (§1.4, §10.2).
-
-   The wireframes define this card inline on each login page
-   (backoffice/login.html, client/login.html, staff/auth.html). It is the same
-   card in all three, so it lives here once rather than three times. */
+/* Sign-in card (§1.4, §10.2). One card shared by all three apps, so it lives
+   here once rather than three times. Sits on the glowing ground. */
 
 .auth-wrap {
   min-height: 100vh;
@@ -10,39 +7,61 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 40px 16px;
-  gap: 18px;
+  padding: var(--sp-44) var(--sp-16);
+  gap: var(--sp-18);
   background: var(--bg);
+  position: relative;
+  overflow: hidden;
+}
+.auth-wrap::before,
+.auth-wrap::after {
+  content: '';
+  position: absolute;
+  width: 340px;
+  height: 340px;
+  pointer-events: none;
+}
+.auth-wrap::before {
+  top: -110px;
+  left: -70px;
+  background: radial-gradient(circle, var(--glow-a), transparent 68%);
+}
+.auth-wrap::after {
+  bottom: -110px;
+  right: -90px;
+  background: radial-gradient(circle, var(--glow-b), transparent 68%);
 }
 
 .auth-card {
+  position: relative;
   width: 100%;
   max-width: 420px;
-  background: var(--panel);
+  background: var(--card-glass);
+  backdrop-filter: blur(var(--blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
   border: 1px solid var(--line);
-  border-radius: var(--r);
-  box-shadow: var(--shadow-card);
-  padding: 28px;
+  border-radius: var(--r-card);
+  padding: var(--sp-28);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--sp-16);
 }
 
 .auth-card .brand {
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 10px;
+  gap: var(--sp-10);
 }
 
 .auth-card .brand .name {
-  font-size: 18px;
+  font-size: var(--fs-17);
 }
 
-.auth-card .logo.round {
-  width: 48px;
-  height: 48px;
-  font-size: 22px;
+.auth-card .logo {
+  width: 46px;
+  height: 46px;
+  font-size: var(--fs-17);
 }
 
 .auth-card h2 {
@@ -51,6 +70,6 @@
 
 .auth-card .foot {
   text-align: center;
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--muted);
 }

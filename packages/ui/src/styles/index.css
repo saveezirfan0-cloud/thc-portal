@@ -1,8 +1,11 @@
 /* The Hospitality Company design system.
-   Import once, in each app's root layout:  import '@thc/ui/styles.css'; */
+   Import once, in each app's root layout:  import '@thc/ui/styles.css';
+
+   Order matters: tokens define the four theme combinations, base sets element
+   defaults, components carry the handoff v1 (scope §1.6) geometry, and warm
+   layers the v2 deltas on top. */
 @import './tokens.css';
 @import './base.css';
 @import './components.css';
 @import './warm.css';
 @import './auth.css';
-@import './fixes.css';

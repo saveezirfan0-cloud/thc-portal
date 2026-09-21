@@ -22,7 +22,7 @@ export function AuthCard({ product, heading = 'Sign in', banner, footer, childre
     <div className="auth-wrap">
       <section className="auth-card">
         <div className="brand">
-          <span className="logo round" aria-hidden="true">
+          <span className="logo" aria-hidden="true">
             THC
           </span>
           <div>

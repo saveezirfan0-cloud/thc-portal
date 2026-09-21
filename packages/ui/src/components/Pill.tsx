@@ -41,13 +41,25 @@ export function Pill({
 
 export interface ChipProps extends HTMLAttributes<HTMLSpanElement> {
   tone?: Extract<Tone, 'neutral' | 'cyan' | 'purple'>;
+  /** Hairline chip on the page ground, e.g. "Wave 2 — not qualified here". */
+  outline?: boolean;
   onRemove?: () => void;
   children?: ReactNode;
 }
 
-export function Chip({ tone = 'neutral', onRemove, className, children, ...rest }: ChipProps) {
+export function Chip({
+  tone = 'neutral',
+  outline,
+  onRemove,
+  className,
+  children,
+  ...rest
+}: ChipProps) {
   return (
-    <span className={clsx('chip', tone !== 'neutral' && tone, className)} {...rest}>
+    <span
+      className={clsx('chip', tone !== 'neutral' && tone, outline && 'outline', className)}
+      {...rest}
+    >
       {children}
       {onRemove ? (
         <button type="button" className="x" aria-label="Remove" onClick={onRemove}>
