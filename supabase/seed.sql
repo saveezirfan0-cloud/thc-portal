@@ -467,19 +467,25 @@ begin
                           raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
   select '00000000-0000-0000-0000-000000000000', u.id::uuid, 'authenticated', 'authenticated', u.email,
          crypt('password123', gen_salt('bf')), now(),
-         '{"provider":"email","providers":["email"]}'::jsonb,
+         -- The role must be in app_metadata, not just on profiles: each app's
+         -- middleware reads it off the session to decide whether this person
+         -- belongs in this app at all (§1.4). Without it the role gate is
+         -- inert and an admin can open the Client Portal. app_metadata rather
+         -- than user_metadata because the user cannot edit it.
+         '{"provider":"email","providers":["email"]}'::jsonb || jsonb_build_object('role', u.role),
          jsonb_build_object('full_name', u.full_name), now(), now()
   from (values
-    ('10000000-0000-4000-8000-000000000001','gisela@thehospitalitycompany.example','Gisela M.'),
-    ('10000000-0000-4000-8000-000000000002','ops@thehospitalitycompany.example','Operations'),
-    ('10000000-0000-4000-8000-000000000003','marco@leonardo-stpauls.example','Marco V.'),
-    ('10000000-0000-4000-8000-000000000004','sophie@mo-hydepark.example','Sophie L.'),
-    ('10000000-0000-4000-8000-000000000005','tom.reid@example.com','Tom Reid'),
-    ('10000000-0000-4000-8000-000000000006','amara.kalu@example.com','Amara Kalu')
-  ) as u(id, email, full_name)
+    ('10000000-0000-4000-8000-000000000001','gisela@thehospitalitycompany.example','Gisela M.','admin'),
+    ('10000000-0000-4000-8000-000000000002','ops@thehospitalitycompany.example','Operations','admin'),
+    ('10000000-0000-4000-8000-000000000003','marco@leonardo-stpauls.example','Marco V.','client'),
+    ('10000000-0000-4000-8000-000000000004','sophie@mo-hydepark.example','Sophie L.','client'),
+    ('10000000-0000-4000-8000-000000000005','tom.reid@example.com','Tom Reid','staff'),
+    ('10000000-0000-4000-8000-000000000006','amara.kalu@example.com','Amara Kalu','staff')
+  ) as u(id, email, full_name, role)
   on conflict (id) do update set
     email = excluded.email, encrypted_password = excluded.encrypted_password,
-    email_confirmed_at = excluded.email_confirmed_at, updated_at = now();
+    email_confirmed_at = excluded.email_confirmed_at,
+    raw_app_meta_data = excluded.raw_app_meta_data, updated_at = now();
 
   -- GoTrue >= 2.x needs an identity row before email/password login works.
   if to_regclass('auth.identities') is not null

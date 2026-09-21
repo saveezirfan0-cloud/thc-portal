@@ -1,0 +1,221 @@
+{
+  "$comment": [
+    "Shared test vectors for the Shift Builder, Scope §3.2 / §3.4 / RULE-18.",
+    "These vectors are the contract between packages/domain/shift.ts and the",
+    "database: the `min_4h` constraint on shift_requirements and the",
+    "`event_windows` view must accept and reject exactly the same cases.",
+    "Times are written as Europe/London wall-clock values on the event's own",
+    "date; `ukRoleWindow` resolves them, rolling an after-midnight end forward",
+    "one day. Owned by the `scheduling` bot.",
+    "Both BST changeovers are covered: a section is measured in REAL hours, so",
+    "a spring-forward night that reads four hours on the clock is three and is",
+    "rejected — which is what `ends_at >= starts_at + interval '4 hours'` does."
+  ],
+  "roleSections": [
+    {
+      "name": "Chef 07:00-15:00 — the ordinary eight-hour section",
+      "input": {
+        "date": "2026-09-18",
+        "start": "07:00",
+        "end": "15:00",
+        "headcount": 2,
+        "buffer": 0,
+        "allocationPerHour": 2
+      },
+      "expect": { "hours": 8, "issues": [], "allocation": "2 (+0)", "target": 2 }
+    },
+    {
+      "name": "Kitchen Porter 09:00-17:00 with a buffer of one",
+      "input": {
+        "date": "2026-09-18",
+        "start": "09:00",
+        "end": "17:00",
+        "headcount": 3,
+        "buffer": 1,
+        "allocationPerHour": 4
+      },
+      "expect": { "hours": 8, "issues": [], "allocation": "3 (+1)", "target": 4 }
+    },
+    {
+      "name": "Waiting Staff 17:00-23:30 — a half hour is allowed",
+      "input": {
+        "date": "2026-09-18",
+        "start": "17:00",
+        "end": "23:30",
+        "headcount": 12,
+        "buffer": 2,
+        "allocationPerHour": 14
+      },
+      "expect": { "hours": 6.5, "issues": [], "allocation": "12 (+2)", "target": 14 }
+    },
+    {
+      "name": "Bar Staff 18:00-01:00 — a role may end after midnight",
+      "input": {
+        "date": "2026-09-18",
+        "start": "18:00",
+        "end": "01:00",
+        "headcount": 6,
+        "buffer": 1,
+        "allocationPerHour": 7
+      },
+      "expect": { "hours": 7, "issues": [], "allocation": "6 (+1)", "target": 7 }
+    },
+    {
+      "name": "Host 18:00-21:00 — three hours, the wireframe's error case",
+      "input": {
+        "date": "2026-09-18",
+        "start": "18:00",
+        "end": "21:00",
+        "headcount": 1,
+        "buffer": 0,
+        "allocationPerHour": 1
+      },
+      "expect": {
+        "hours": 3,
+        "issues": ["below_minimum_hours"],
+        "allocation": "1 (+0)",
+        "target": 1
+      }
+    },
+    {
+      "name": "22:00-01:00 — after midnight does not excuse the four-hour floor",
+      "input": {
+        "date": "2026-09-18",
+        "start": "22:00",
+        "end": "01:00",
+        "headcount": 2,
+        "buffer": 0,
+        "allocationPerHour": 2
+      },
+      "expect": {
+        "hours": 3,
+        "issues": ["below_minimum_hours"],
+        "allocation": "2 (+0)",
+        "target": 2
+      }
+    },
+    {
+      "name": "Exactly four hours is allowed",
+      "input": {
+        "date": "2026-09-18",
+        "start": "10:00",
+        "end": "14:00",
+        "headcount": 4,
+        "buffer": 0,
+        "allocationPerHour": 4
+      },
+      "expect": { "hours": 4, "issues": [], "allocation": "4 (+0)", "target": 4 }
+    },
+    {
+      "name": "A zero-length section is an error, never a 24-hour shift",
+      "input": {
+        "date": "2026-09-18",
+        "start": "12:00",
+        "end": "12:00",
+        "headcount": 2,
+        "buffer": 0,
+        "allocationPerHour": 2
+      },
+      "expect": {
+        "hours": 0,
+        "issues": ["below_minimum_hours"],
+        "allocation": "2 (+0)",
+        "target": 2
+      }
+    },
+    {
+      "name": "Headcount below one is rejected alongside the length",
+      "input": {
+        "date": "2026-09-18",
+        "start": "09:00",
+        "end": "11:00",
+        "headcount": 0,
+        "buffer": 0,
+        "allocationPerHour": 1
+      },
+      "expect": {
+        "hours": 2,
+        "issues": ["below_minimum_hours", "headcount_below_one"],
+        "allocation": "0 (+0)",
+        "target": 0
+      }
+    },
+    {
+      "name": "BST starts overnight: 23:00-03:00 reads four hours but is three, so it is rejected",
+      "input": {
+        "date": "2026-03-28",
+        "start": "23:00",
+        "end": "03:00",
+        "headcount": 2,
+        "buffer": 0,
+        "allocationPerHour": 2
+      },
+      "expect": {
+        "hours": 3,
+        "issues": ["below_minimum_hours"],
+        "allocation": "2 (+0)",
+        "target": 2
+      }
+    },
+    {
+      "name": "BST starts overnight: 23:00-04:00 is exactly four real hours, so it is allowed",
+      "input": {
+        "date": "2026-03-28",
+        "start": "23:00",
+        "end": "04:00",
+        "headcount": 2,
+        "buffer": 0,
+        "allocationPerHour": 2
+      },
+      "expect": { "hours": 4, "issues": [], "allocation": "2 (+0)", "target": 2 }
+    },
+    {
+      "name": "BST ends overnight: 22:00 BST to 06:00 GMT is nine real hours, not eight",
+      "input": {
+        "date": "2026-10-24",
+        "start": "22:00",
+        "end": "06:00",
+        "headcount": 2,
+        "buffer": 0,
+        "allocationPerHour": 2
+      },
+      "expect": { "hours": 9, "issues": [], "allocation": "2 (+0)", "target": 2 }
+    }
+  ],
+  "eventWindows": [
+    {
+      "name": "Gala Dinner — earliest start to latest end, RULE-18",
+      "date": "2026-09-18",
+      "sections": [
+        { "start": "07:00", "end": "15:00" },
+        { "start": "09:00", "end": "17:00" },
+        { "start": "17:00", "end": "23:30" }
+      ],
+      "expect": { "start": "07:00", "end": "23:30", "endsNextDay": false }
+    },
+    {
+      "name": "The latest end wins even when it belongs to the earliest-starting role",
+      "date": "2026-09-18",
+      "sections": [
+        { "start": "08:00", "end": "23:00" },
+        { "start": "12:00", "end": "20:00" }
+      ],
+      "expect": { "start": "08:00", "end": "23:00", "endsNextDay": false }
+    },
+    {
+      "name": "An after-midnight section carries the window past the date",
+      "date": "2026-09-18",
+      "sections": [
+        { "start": "12:00", "end": "20:00" },
+        { "start": "18:00", "end": "01:00" }
+      ],
+      "expect": { "start": "12:00", "end": "01:00", "endsNextDay": true }
+    },
+    {
+      "name": "One section is its own window",
+      "date": "2026-09-18",
+      "sections": [{ "start": "11:00", "end": "16:00" }],
+      "expect": { "start": "11:00", "end": "16:00", "endsNextDay": false }
+    }
+  ]
+}

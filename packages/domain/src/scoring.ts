@@ -31,6 +31,35 @@ export const DEFAULT_WEIGHTS: ScoreWeights = {
   venue: 0.1,
 };
 
+/**
+ * The `settings` row spells these five keys differently from the interface
+ * above: `scoring_weights` ships as
+ * `{"show_rate":…,"rating":…,"proximity":…,"fair_rotation":…,"venue_history":…}`
+ * (0001_init.sql). Reading that JSON straight into a `ScoreWeights` leaves
+ * `show`, `fair` and `venue` undefined, so every total comes back NaN — and
+ * NaN does not throw, it sorts arbitrarily, which would show up as a pool
+ * ranked at random rather than as an error. The mapping therefore lives here,
+ * once, and is the only sanctioned way to turn the settings row into weights.
+ *
+ * A missing or non-finite value falls back to the shipped default for that
+ * factor: an operator who clears one field must not silently zero it.
+ */
+export function parseWeights(row: unknown): ScoreWeights {
+  const json = (row ?? {}) as Record<string, unknown>;
+  const pick = (key: string, fallback: number): number => {
+    const value = json[key];
+    return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  };
+
+  return {
+    show: pick('show_rate', DEFAULT_WEIGHTS.show),
+    rating: pick('rating', DEFAULT_WEIGHTS.rating),
+    proximity: pick('proximity', DEFAULT_WEIGHTS.proximity),
+    fair: pick('fair_rotation', DEFAULT_WEIGHTS.fair),
+    venue: pick('venue_history', DEFAULT_WEIGHTS.venue),
+  };
+}
+
 export interface ScoreInput {
   /** Show-rate as a percentage, 0–100. */
   reliability: number;
@@ -105,14 +134,20 @@ export function score(input: ScoreInput, weights: ScoreWeights = DEFAULT_WEIGHTS
 }
 
 /**
- * Hard gates (§6, §3.3). A gated worker is never scored.
+ * Hard gates (§6, §3.3, §9.6). A gated worker is never scored.
  *
- * `wrong_role` behaves differently on screen from the other four: it produces
+ * `wrong_role` behaves differently on screen from the other five: it produces
  * no row on the event board at all, not even under Unavailable, because
- * listing every unqualified worker would bury the section. The other four do
+ * listing every unqualified worker would bury the section. The other five do
  * appear under Unavailable with the reason shown, since those people would
  * otherwise be genuine candidates and the manager needs to see why they are
  * not in the pool.
+ *
+ * `do_not_return` is the client-level bar from §9.6: "they are not invited in
+ * either wave, the shift never appears on their Radar, they cannot be invited
+ * manually, and they show under Unavailable → Do not return". It is the one
+ * thing on the qualification screen that acts as a gate rather than an
+ * ordering, which is exactly why it belongs here and not in `waveFor`.
  */
 export const HARD_GATES = [
   'wrong_role',
@@ -120,6 +155,7 @@ export const HARD_GATES = [
   'booked_elsewhere',
   'hours_limit',
   'self_cancelled',
+  'do_not_return',
 ] as const;
 
 export type HardGate = (typeof HARD_GATES)[number];

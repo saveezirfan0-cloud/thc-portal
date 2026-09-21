@@ -11,6 +11,14 @@ const PORTS = { office: 3000, staff: 3001, client: 3002 } as const;
  * Machines that pin a Chromium build (sandboxes, locked-down CI images) can
  * point at it instead of downloading one. Left unset, Playwright uses its own.
  */
+/**
+ * The apps need a reachable Supabase to render: screens query it server-side,
+ * and the middleware gates every route behind a session. The servers inherit
+ * the ambient environment, so point it at a database before running this.
+ *
+ * CI runs `supabase start` and exports that stack's URL and anon key. Locally,
+ * either do the same or use a .env.local pointed at a project you can reach.
+ */
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_PATH || undefined;
 const launchOptions = executablePath ? { executablePath } : {};
 
@@ -25,17 +33,17 @@ export default defineConfig({
     {
       name: 'office',
       use: { ...devices['Desktop Chrome'], baseURL: `http://127.0.0.1:${PORTS.office}` },
-      testMatch: [/office\..*\.spec\.ts/, new RegExp(`auth\\.smoke\\.spec\\.ts`)],
+      testMatch: [/office\..*\.spec\.ts/, /auth\.smoke\.spec\.ts/, /gate\.smoke\.spec\.ts/],
     },
     {
       name: 'staff',
       use: { ...devices['Pixel 7'], baseURL: `http://127.0.0.1:${PORTS.staff}` },
-      testMatch: [/staff\..*\.spec\.ts/, new RegExp(`auth\\.smoke\\.spec\\.ts`)],
+      testMatch: [/staff\..*\.spec\.ts/, /auth\.smoke\.spec\.ts/, /gate\.smoke\.spec\.ts/],
     },
     {
       name: 'client',
       use: { ...devices['Desktop Chrome'], baseURL: `http://127.0.0.1:${PORTS.client}` },
-      testMatch: [/client\..*\.spec\.ts/, new RegExp(`auth\\.smoke\\.spec\\.ts`)],
+      testMatch: [/client\..*\.spec\.ts/, /auth\.smoke\.spec\.ts/, /gate\.smoke\.spec\.ts/],
     },
   ],
   webServer: [
