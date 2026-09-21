@@ -1,10 +1,10 @@
 # ADR-0003 · "Warm" visual style and light mode
 
-**Status:** Accepted, with the pairing superseded by [ADR-0007](0007-fluid-pairing.md) (21.09.2026). The two axes, the colour system and the contrast work below all stand; only *which style goes with which theme* changed. Still needs THC sign-off because §1.6 is marked STRICT.
+**Status:** Accepted, with the pairing settled by [ADR-0007](0007-fluid-pairing.md) (21.09.2026). The two axes, the colour system and the contrast work below all stand; what changed is that the switch no longer picks a style at all. Still needs THC sign-off because §1.6 is marked STRICT.
 
 **Refinement (19.09.2026):** the product exposes ONE switch. **Light mode = the Warm look. Dark mode = the Scope §1.6 look** (navy, cyan, zero radius, mono labels). The four token combinations still exist in CSS, so the pairing can be changed later without touching screens.
 
-**Superseded (21.09.2026):** ADR-0007 inverted that pairing — light now renders the Scope §1.6 geometry and dark renders the grown-up warm style, "Fluid". The claim in the paragraph above was tested by that change and held: it cost one function.
+**Settled (21.09.2026):** ADR-0007 made the switch a theme switch. Both modes render the warm style, grown to the boards' radius scale; the scope style stays reachable but is paired with neither. The claim in the paragraph above was tested twice by that work and held both times: it cost one function each.
 
 ## Context
 The scope fixes a deep-navy, cyan, zero-radius, mono-labelled system. Reviewing the wireframes, the product owner found it reads as "techy" for an 18–30 hospitality workforce and asked for dark and light modes and a current, friendlier feel.
