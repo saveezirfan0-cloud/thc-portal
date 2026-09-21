@@ -1,0 +1,589 @@
+{
+  "$comment": [
+    "Shared test vectors for the day of the shift — Scope §5.1, §5.2, §5.2b and",
+    "RULE-01 / 02 / 14 / 15. These vectors are the contract between the TypeScript",
+    "implementation in packages/domain/pay.ts and the Postgres functions",
+    "check_in_decision / check_out_decision / payable_minutes / turned_away_minutes",
+    "in supabase/migrations/0005_checkin_checkout.sql. Both must agree case for case:",
+    "Vitest reads this file directly, pgTAP reads the generated",
+    "supabase/tests/_shared/pay_vectors.psql (pnpm --filter @thc/domain gen:vectors).",
+    "",
+    "Times are minute offsets so neither side has to agree on a calendar:",
+    "  shiftMin              length of the ROLE SECTION (RULE-18), never the event window",
+    "  ...MinFromStart       minutes from the scheduled start; negative = before it",
+    "The 30-minute check-in grace is [start, start+30): at exactly start+30 the grace",
+    "has elapsed, so check-in locks (wireframes/staff/shift-detail.html state (l):",
+    "'Check-in window 16:30 - 17:30') and a turn-away at that instant is late.",
+    "Owned by the `checkin` bot."
+  ],
+
+  "checkIn": {
+    "$comment": [
+      "check_in_decision, §5.1. Gate order, and it is load-bearing:",
+      "  1 too early   check-in opens 30 minutes before the start",
+      "  2 out of radius  you cannot check in from off site",
+      "  3 turned away    strict buffer, headcount already met (RULE-15). This sits",
+      "                   ABOVE the No-show lock because RULE-15 itself describes a",
+      "                   turned-away worker 'who was themselves late', which is",
+      "                   unreachable if the lock fires first.",
+      "  4 locked         start+30 with no check-in = automatic No-show, button locks",
+      "                   (exempt: a booking confirmed after the shift had started)",
+      "  5 checked in, Late if the press is after the scheduled start",
+      "turnAwayPayMin is RULE-15 money and is null for every decision but turned_away."
+    ],
+    "defaults": {
+      "shiftMin": 480,
+      "insideGeofence": true,
+      "confirmedMinFromStart": -1440,
+      "slotsFilled": 0,
+      "headcount": 6,
+      "strictBuffer": true
+    },
+    "cases": [
+      {
+        "name": "check-in opens 30 minutes before the scheduled start",
+        "input": { "atMinFromStart": -30 },
+        "expect": {
+          "decision": "checked_in",
+          "accepted": true,
+          "logOutcome": "checked_in",
+          "late": false,
+          "minutesLate": 0,
+          "turnAwayPayMin": null,
+          "messageKey": "checked_in"
+        }
+      },
+      {
+        "name": "a press before the window opens is refused and not logged",
+        "input": { "atMinFromStart": -31 },
+        "expect": {
+          "decision": "too_early",
+          "accepted": false,
+          "logOutcome": null,
+          "late": false,
+          "minutesLate": 0,
+          "turnAwayPayMin": null,
+          "messageKey": "check_in_not_open"
+        }
+      },
+      {
+        "name": "out of radius disables check-in, and the attempt is still logged",
+        "input": { "atMinFromStart": -5, "insideGeofence": false },
+        "expect": {
+          "decision": "out_of_radius",
+          "accepted": false,
+          "logOutcome": "out_of_radius",
+          "late": false,
+          "minutesLate": 0,
+          "turnAwayPayMin": null,
+          "messageKey": "out_of_radius"
+        }
+      },
+      {
+        "name": "on the stroke of the start is on time, not Late",
+        "input": { "atMinFromStart": 0 },
+        "expect": {
+          "decision": "checked_in",
+          "accepted": true,
+          "logOutcome": "checked_in",
+          "late": false,
+          "minutesLate": 0,
+          "turnAwayPayMin": null,
+          "messageKey": "checked_in"
+        }
+      },
+      {
+        "name": "30 minutes of grace counts as Late, with the minutes from the actual press",
+        "input": { "atMinFromStart": 20 },
+        "expect": {
+          "decision": "checked_in_late",
+          "accepted": true,
+          "logOutcome": "checked_in",
+          "late": true,
+          "minutesLate": 20,
+          "turnAwayPayMin": null,
+          "messageKey": "checked_in_late"
+        }
+      },
+      {
+        "name": "the last minute of the grace is still Late, not a No-show",
+        "input": { "atMinFromStart": 29 },
+        "expect": {
+          "decision": "checked_in_late",
+          "accepted": true,
+          "logOutcome": "checked_in",
+          "late": true,
+          "minutesLate": 29,
+          "turnAwayPayMin": null,
+          "messageKey": "checked_in_late"
+        }
+      },
+      {
+        "name": "at start+30 the grace has elapsed: automatic No-show and the button locks",
+        "input": { "atMinFromStart": 30 },
+        "expect": {
+          "decision": "locked",
+          "accepted": false,
+          "logOutcome": null,
+          "late": true,
+          "minutesLate": 30,
+          "turnAwayPayMin": null,
+          "messageKey": "no_show_locked"
+        }
+      },
+      {
+        "name": "well past the grace the button is still locked",
+        "input": { "atMinFromStart": 75 },
+        "expect": {
+          "decision": "locked",
+          "accepted": false,
+          "logOutcome": null,
+          "late": true,
+          "minutesLate": 75,
+          "turnAwayPayMin": null,
+          "messageKey": "no_show_locked"
+        }
+      },
+      {
+        "name": "a booking confirmed after the shift started is exempt from the lock",
+        "input": { "atMinFromStart": 120, "confirmedMinFromStart": 60 },
+        "expect": {
+          "decision": "checked_in_late",
+          "accepted": true,
+          "logOutcome": "checked_in",
+          "late": true,
+          "minutesLate": 120,
+          "turnAwayPayMin": null,
+          "messageKey": "checked_in_late"
+        }
+      },
+      {
+        "name": "a booking confirmed exactly at the start is not exempt",
+        "input": { "atMinFromStart": 40, "confirmedMinFromStart": 0 },
+        "expect": {
+          "decision": "locked",
+          "accepted": false,
+          "logOutcome": null,
+          "late": true,
+          "minutesLate": 40,
+          "turnAwayPayMin": null,
+          "messageKey": "no_show_locked"
+        }
+      },
+      {
+        "name": "the exemption ends with the shift itself",
+        "input": { "atMinFromStart": 481, "confirmedMinFromStart": 60 },
+        "expect": {
+          "decision": "locked",
+          "accepted": false,
+          "logOutcome": null,
+          "late": true,
+          "minutesLate": 481,
+          "turnAwayPayMin": null,
+          "messageKey": "no_show_locked"
+        }
+      },
+      {
+        "name": "the last check-in inside the headcount works",
+        "input": { "atMinFromStart": 5, "slotsFilled": 5, "headcount": 6 },
+        "expect": {
+          "decision": "checked_in_late",
+          "accepted": true,
+          "logOutcome": "checked_in",
+          "late": true,
+          "minutesLate": 5,
+          "turnAwayPayMin": null,
+          "messageKey": "checked_in_late"
+        }
+      },
+      {
+        "name": "past the headcount a strict-buffer worker is turned away, 4 hours if on time",
+        "input": { "atMinFromStart": 10, "slotsFilled": 6, "headcount": 6 },
+        "expect": {
+          "decision": "turned_away",
+          "accepted": false,
+          "logOutcome": "turned_away",
+          "late": true,
+          "minutesLate": 10,
+          "turnAwayPayMin": 240,
+          "messageKey": "turned_away_paid"
+        }
+      },
+      {
+        "name": "a turn-away who was themselves late is paid nothing (RULE-15)",
+        "input": { "atMinFromStart": 45, "slotsFilled": 6, "headcount": 6 },
+        "expect": {
+          "decision": "turned_away",
+          "accepted": false,
+          "logOutcome": "turned_away",
+          "late": true,
+          "minutesLate": 45,
+          "turnAwayPayMin": 0,
+          "messageKey": "turned_away_unpaid"
+        }
+      },
+      {
+        "name": "a client that pays the buffer turns nobody away",
+        "input": { "atMinFromStart": 10, "slotsFilled": 7, "headcount": 6, "strictBuffer": false },
+        "expect": {
+          "decision": "checked_in_late",
+          "accepted": true,
+          "logOutcome": "checked_in",
+          "late": true,
+          "minutesLate": 10,
+          "turnAwayPayMin": null,
+          "messageKey": "checked_in_late"
+        }
+      },
+      {
+        "name": "a full shift does not turn away someone who is off site — they see the distance first",
+        "input": {
+          "atMinFromStart": 10,
+          "slotsFilled": 6,
+          "headcount": 6,
+          "insideGeofence": false
+        },
+        "expect": {
+          "decision": "out_of_radius",
+          "accepted": false,
+          "logOutcome": "out_of_radius",
+          "late": true,
+          "minutesLate": 10,
+          "turnAwayPayMin": null,
+          "messageKey": "out_of_radius"
+        }
+      }
+    ]
+  },
+
+  "checkOut": {
+    "$comment": [
+      "check_out_decision, §5.1 and RULE-02. Check-out is open from the scheduled",
+      "start until four hours after the scheduled end, FROM ANYWHERE — the geofence",
+      "only decides which timestamp is recorded and which message the worker sees.",
+      "recordedMinFromStart is the timestamp RULE-01 then prices, so the off-site",
+      "press records the last on-site fix, never the press itself."
+    ],
+    "defaults": {
+      "shiftMin": 480,
+      "insideGeofence": true,
+      "checkInMinFromStart": -8,
+      "lastOnSiteMinFromStart": null
+    },
+    "cases": [
+      {
+        "name": "check-out is not available before the shift has started",
+        "input": { "atMinFromStart": -5 },
+        "expect": {
+          "decision": "not_started",
+          "recordedMinFromStart": null,
+          "violation": "none",
+          "messageKey": "check_out_not_open"
+        }
+      },
+      {
+        "name": "on site records the moment the button was pressed",
+        "input": { "atMinFromStart": 480 },
+        "expect": {
+          "decision": "recorded_on_site",
+          "recordedMinFromStart": 480,
+          "violation": "none",
+          "messageKey": "checked_out"
+        }
+      },
+      {
+        "name": "checking out early is allowed and records the press",
+        "input": { "atMinFromStart": 300 },
+        "expect": {
+          "decision": "recorded_on_site",
+          "recordedMinFromStart": 300,
+          "violation": "none",
+          "messageKey": "checked_out"
+        }
+      },
+      {
+        "name": "off site records the last on-site fix, not the press (left 16:00, pressed 21:00)",
+        "input": { "atMinFromStart": 660, "insideGeofence": false, "lastOnSiteMinFromStart": 420 },
+        "expect": {
+          "decision": "recorded_last_on_site",
+          "recordedMinFromStart": 420,
+          "violation": "none",
+          "messageKey": "checked_out_off_site"
+        }
+      },
+      {
+        "name": "off site is open right up to four hours after the end",
+        "input": { "atMinFromStart": 719, "insideGeofence": false, "lastOnSiteMinFromStart": 480 },
+        "expect": {
+          "decision": "recorded_last_on_site",
+          "recordedMinFromStart": 480,
+          "violation": "none",
+          "messageKey": "checked_out_off_site"
+        }
+      },
+      {
+        "name": "off site with no on-site fix after check-in raises the violation on the press",
+        "input": { "atMinFromStart": 600, "insideGeofence": false, "lastOnSiteMinFromStart": null },
+        "expect": {
+          "decision": "no_on_site_fix",
+          "recordedMinFromStart": -8,
+          "violation": "no_checkout",
+          "messageKey": "no_check_out_office_confirms"
+        }
+      },
+      {
+        "name": "at four hours past the end the button locks and RULE-02 takes over",
+        "input": { "atMinFromStart": 720, "insideGeofence": true },
+        "expect": {
+          "decision": "locked",
+          "recordedMinFromStart": null,
+          "violation": "no_checkout",
+          "messageKey": "no_check_out_locked"
+        }
+      },
+      {
+        "name": "the lock does not care whether the worker is on site",
+        "input": { "atMinFromStart": 900, "insideGeofence": false, "lastOnSiteMinFromStart": 480 },
+        "expect": {
+          "decision": "locked",
+          "recordedMinFromStart": null,
+          "violation": "no_checkout",
+          "messageKey": "no_check_out_locked"
+        }
+      }
+    ]
+  },
+
+  "pay": {
+    "$comment": [
+      "payable_minutes, RULE-01 / 02 / 14. checkOutMinFromStart null = no check-out",
+      "and no manager-entered finish: the payable time is UNDETERMINED, never a",
+      "silent default to the scheduled finish."
+    ],
+    "defaults": {
+      "shiftMin": 480,
+      "checkInMinFromStart": 0,
+      "unpaidBreakMin": 0,
+      "leftEarlyViolation": false,
+      "noCheckOut": "none"
+    },
+    "cases": [
+      {
+        "name": "arriving early is not paid",
+        "input": { "checkInMinFromStart": -30, "checkOutMinFromStart": 480 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 480,
+          "workedMin": 480,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "inside the 30-minute grace is paid from the scheduled start",
+        "input": { "checkInMinFromStart": 20, "checkOutMinFromStart": 480 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 480,
+          "workedMin": 480,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "past the grace is paid from the actual arrival",
+        "input": { "checkInMinFromStart": 45, "checkOutMinFromStart": 480 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 435,
+          "workedMin": 435,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "leaving early is deducted",
+        "input": { "checkOutMinFromStart": 420 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 420,
+          "workedMin": 420,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "the 15-minute check-out grace pays to the scheduled end, not the press",
+        "input": { "checkOutMinFromStart": 495 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 480,
+          "workedMin": 480,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "past 15 minutes the monitor flags it and the money is unchanged",
+        "input": { "checkOutMinFromStart": 500 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 480,
+          "workedMin": 480,
+          "floorApplied": false,
+          "lateCheckOutFlag": true
+        }
+      },
+      {
+        "name": "three hours late still pays only to the scheduled end",
+        "input": { "checkOutMinFromStart": 660 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 480,
+          "workedMin": 480,
+          "floorApplied": false,
+          "lateCheckOutFlag": true
+        }
+      },
+      {
+        "name": "unpaid breaks are deducted (§5.2b)",
+        "input": { "checkOutMinFromStart": 480, "unpaidBreakMin": 20 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 460,
+          "workedMin": 460,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "no check-out and no manager finish time leaves the pay undetermined",
+        "input": { "checkOutMinFromStart": null },
+        "expect": {
+          "status": "undetermined",
+          "payableMin": null,
+          "workedMin": null,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "the manager-entered finish time settles it (RULE-02)",
+        "input": { "checkOutMinFromStart": 450, "noCheckOut": "resolved" },
+        "expect": {
+          "status": "settled",
+          "payableMin": 450,
+          "workedMin": 450,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "a short shift is lifted to the four-hour floor (RULE-14)",
+        "input": { "checkOutMinFromStart": 120 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 240,
+          "workedMin": 120,
+          "floorApplied": true,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "a Left early violation blocks the floor, resolved or not",
+        "input": { "checkOutMinFromStart": 120, "leftEarlyViolation": true },
+        "expect": {
+          "status": "settled",
+          "payableMin": 120,
+          "workedMin": 120,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "an unresolved No check-out blocks the floor",
+        "input": { "checkOutMinFromStart": 120, "noCheckOut": "unresolved" },
+        "expect": {
+          "status": "settled",
+          "payableMin": 120,
+          "workedMin": 120,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "resolving the No check-out restores the floor",
+        "input": { "checkOutMinFromStart": 120, "noCheckOut": "resolved" },
+        "expect": {
+          "status": "settled",
+          "payableMin": 240,
+          "workedMin": 120,
+          "floorApplied": true,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "the floor never inflates a shift already over four hours",
+        "input": { "checkOutMinFromStart": 480 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 480,
+          "workedMin": 480,
+          "floorApplied": false,
+          "lateCheckOutFlag": false
+        }
+      },
+      {
+        "name": "breaks can bring a shift under the floor, and the floor still applies",
+        "input": { "shiftMin": 300, "checkOutMinFromStart": 300, "unpaidBreakMin": 90 },
+        "expect": {
+          "status": "settled",
+          "payableMin": 240,
+          "workedMin": 210,
+          "floorApplied": true,
+          "lateCheckOutFlag": false
+        }
+      }
+    ]
+  },
+
+  "turnAway": {
+    "$comment": [
+      "turned_away_minutes, RULE-15. A flat four hours, not half the shift and not",
+      "tied to its length, decided by the logged attempt (CheckLog.attempted_at)."
+    ],
+    "defaults": { "shiftMin": 480 },
+    "cases": [
+      {
+        "name": "on time is a fixed four hours",
+        "input": { "attemptMinFromStart": 10 },
+        "expect": { "payMin": 240 }
+      },
+      {
+        "name": "the last minute of the grace is still on time",
+        "input": { "attemptMinFromStart": 29 },
+        "expect": { "payMin": 240 }
+      },
+      {
+        "name": "at start+30 the grace has elapsed and nothing is paid",
+        "input": { "attemptMinFromStart": 30 },
+        "expect": { "payMin": 0 }
+      },
+      {
+        "name": "late is paid nothing",
+        "input": { "attemptMinFromStart": 45 },
+        "expect": { "payMin": 0 }
+      },
+      {
+        "name": "arriving before the start is on time",
+        "input": { "attemptMinFromStart": -20 },
+        "expect": { "payMin": 240 }
+      },
+      {
+        "name": "four hours flat on a ten-hour shift",
+        "input": { "shiftMin": 600, "attemptMinFromStart": 0 },
+        "expect": { "payMin": 240 }
+      }
+    ]
+  }
+}
