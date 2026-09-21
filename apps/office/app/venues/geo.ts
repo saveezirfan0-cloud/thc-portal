@@ -11,7 +11,10 @@ export const TILE_SIZE = 256;
 /** §9.11: the slider runs 100–3000 m and the number is never typed. */
 export const MIN_RADIUS_M = 100;
 export const MAX_RADIUS_M = 3000;
-export const RADIUS_STEP_M = 10;
+// One metre: §9.11 says the manager may move the slider "anywhere in the
+// 100–3000 m range for that specific site", and a coarser step would put
+// 175 m out of reach.
+export const RADIUS_STEP_M = 1;
 
 /** The slider's labelled ticks, straight from the wireframe. */
 export const RADIUS_TICKS = [100, 500, 1000, 1500, 2000, 2500, 3000] as const;
@@ -98,7 +101,14 @@ export function radiusInPixels(radiusM: number, lat: number, zoom: number): numb
   return radiusM / metresPerPixel(lat, zoom);
 }
 
-/** Great-circle distance in metres — used to fit a set of venues on one map. */
+/**
+ * Great-circle distance in metres.
+ *
+ * Nothing on this screen draws with it: it is the independent measure the
+ * circle-size test checks `radiusInPixels` against, so a mistake in the
+ * projection cannot agree with itself. §5.1's check-in gate measures the
+ * same distance in PostGIS.
+ */
 export function distanceMetres(a: LatLng, b: LatLng): number {
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(b.lat - a.lat);
@@ -167,29 +177,6 @@ export function fitCircles(
     zoom -= 1;
   }
   return { centre, zoom };
-}
-
-/**
- * The zoom at which a single geofence circle fills about `fraction` of the
- * shorter side of the viewport. The modal's map re-frames on this whenever
- * the radius changes, so the manager can always see that the circle covers
- * the whole site (§9.11).
- */
-export function zoomForRadius(
-  radiusM: number,
-  lat: number,
-  viewport: Viewport,
-  fraction = 0.6,
-): number {
-  const shorterSide = Math.max(1, Math.min(viewport.width, viewport.height));
-  const wantedMetresPerPixel = (radiusM * 2) / (shorterSide * fraction);
-  const zoom = Math.log2(
-    (EQUATOR_METRES_PER_PIXEL * Math.cos((clampLatitude(lat) * Math.PI) / 180)) /
-      wantedMetresPerPixel,
-  );
-  // Whole zoom levels only: raster tiles are square and a fractional level
-  // would need them scaled. Rounding DOWN keeps the whole circle in frame.
-  return clampZoom(Math.floor(zoom));
 }
 
 const SCALE_STEPS = [

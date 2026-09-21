@@ -78,18 +78,23 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
     // Clear the address with the pin: until the lookup answers there is no
     // address for this point, and Create must not be reachable with the
     // previous one still showing.
+    moved.current = true;
     setPin({ point, address: '' });
   };
 
   const pinLat = pin?.point.lat;
   const pinLng = pin?.point.lng;
-  const startedWith = useRef(venue ? `${venue.lat},${venue.lng}` : null);
+  /**
+   * An edited venue arrives with its stored address already, so the first
+   * render must not look it up again. A flag rather than a comparison of the
+   * coordinates: a pin dragged back to where it started has still moved, and
+   * its address has already been cleared.
+   */
+  const moved = useRef(false);
 
   useEffect(() => {
     if (pinLat === undefined || pinLng === undefined) return;
-    // The venue's own pin arrives with its stored address already; only
-    // look up again once it has actually been moved.
-    if (startedWith.current === `${pinLat},${pinLng}`) return;
+    if (!moved.current) return;
 
     const ticket = (request.current += 1);
     setLookup('working');
@@ -111,7 +116,20 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
   }, [pinLat, pinLng]);
 
   const markers = useMemo(
-    () => (pin ? [{ id: 'pin', lat: pin.point.lat, lng: pin.point.lng, radiusM: radius }] : []),
+    () =>
+      pin
+        ? [
+            {
+              id: 'pin',
+              lat: pin.point.lat,
+              lng: pin.point.lng,
+              radiusM: radius,
+              // The wireframe prints the radius beside the circle, which is
+              // where "does this cover the whole site?" gets answered.
+              label: formatRadius(radius),
+            },
+          ]
+        : [],
     [pin, radius],
   );
 
@@ -247,11 +265,17 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
                 Address <span className="muted">· from the pin, read-only</span>
               </>
             }
-            value={lookup === 'working' ? 'Looking up the address…' : (pin?.address ?? '')}
+            value={pin?.address ?? ''}
             readOnly
             className="readonly"
-            placeholder="Drop the pin to fill this in"
-            hint="Reverse geocoding — not typed."
+            // The lookup's progress is status, not a value: putting it in
+            // `value` would read back as the venue's address.
+            placeholder={
+              lookup === 'working' ? 'Looking up the address…' : 'Drop the pin to fill this in'
+            }
+            hint={
+              lookup === 'working' ? 'Looking up the address…' : 'Reverse geocoding — not typed.'
+            }
             error={lookup === 'failed' ? lookupMessage : undefined}
           />
           <div className="field">

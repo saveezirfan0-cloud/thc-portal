@@ -3,6 +3,7 @@ import {
   MAX_RADIUS_M,
   METRES_PER_DEGREE_LAT,
   MIN_RADIUS_M,
+  RADIUS_STEP_M,
   clampRadius,
   distanceMetres,
   fitCircles,
@@ -14,7 +15,6 @@ import {
   scaleBar,
   unproject,
   wrapLongitude,
-  zoomForRadius,
 } from '../geo';
 
 /**
@@ -93,14 +93,20 @@ describe('the geofence radius (§9.11: slider 100–3000 m)', () => {
   });
 
   it('frames a single circle so the whole thing is on screen', () => {
+    // What the modal's map does when the pin is first dropped (§9.11).
     const viewport = { width: 800, height: 300 };
     for (const radius of [100, 250, 500, 1500, 3000]) {
-      const zoom = zoomForRadius(radius, LEONARDO_ROYAL.lat, viewport);
-      expect(Number.isInteger(zoom)).toBe(true);
+      const { centre, zoom } = fitCircles([{ ...LEONARDO_ROYAL, radiusM: radius }], viewport);
+      expect(centre.lat).toBeCloseTo(LEONARDO_ROYAL.lat, 3);
       const diameterPx = radiusInPixels(radius, LEONARDO_ROYAL.lat, zoom) * 2;
       expect(diameterPx).toBeLessThanOrEqual(Math.min(viewport.width, viewport.height));
       expect(diameterPx).toBeGreaterThan(0);
     }
+  });
+
+  it('is a slider a manager can land on any metre of (§9.11)', () => {
+    expect(RADIUS_STEP_M).toBe(1);
+    expect(clampRadius(MIN_RADIUS_M + 75)).toBe(175);
   });
 });
 

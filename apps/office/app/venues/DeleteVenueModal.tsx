@@ -46,15 +46,21 @@ export function DeleteVenueModal({ venue, onClose, onDeleted }: DeleteVenueModal
     });
   };
 
-  // The count comes from the list row, which read it from the same view.
-  // The names are a lookup that may still be in flight, or may be short if
-  // the manager's own policy hides an event from them — neither is a reason
-  // to stop warning about the number.
-  const count = venue.events_upcoming;
+  // Once the names arrive they are the fresher count — the list row was
+  // read when the page loaded. Until then, and if the lookup fails, the row
+  // is what the warning is built from: "I don't know" must never be shown
+  // as "no upcoming events".
+  const count = upcoming?.length ?? venue.events_upcoming;
 
   return (
     <Modal
       open
+      // The wireframe puts the venue's name in the header beside the title.
+      // It stays in the body here: `Modal` derives the dialog's accessible
+      // name from a STRING title (packages/ui/src/components/Modal.tsx), so
+      // a node here would leave the dialog unnamed to a screen reader.
+      // Moving it belongs in the design-system PR that gives Modal an
+      // aria-label of its own.
       title="Delete venue?"
       onClose={onClose}
       footer={

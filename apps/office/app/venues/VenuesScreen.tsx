@@ -43,6 +43,10 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
     );
   }, [venues, query]);
 
+  // The map draws `filtered`, not `venues`. §9.11's "every venue at once"
+  // is what an untouched screen shows, because the search starts empty; the
+  // search box sits in the same toolbar row as both tabs, so once a manager
+  // has typed in it, it would be odd for one tab to ignore them.
   const markers = useMemo(
     () =>
       filtered.map((venue) => ({
@@ -69,7 +73,15 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
     <>
       {/* §9.11: this row sits directly under the page title. */}
       <div className="toolbar">
-        <Button tone="primary" size="sm" onClick={() => setEditing('new')}>
+        <Button
+          tone="primary"
+          size="sm"
+          // The radius defaults come from `venue_types` (§9.11). With none
+          // loaded the modal has nothing to pre-fill from, so there is
+          // nothing useful to open.
+          disabled={venueTypes.length === 0}
+          onClick={() => setEditing('new')}
+        >
           + New venue
         </Button>
         <Tabs
@@ -174,7 +186,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
               const venue = venues.find((candidate) => candidate.id === id);
               if (venue) setEditing(venue);
             }}
-            refitKey={`map:${filtered.length}`}
+            refitKey={`map:${filtered.map((venue) => venue.id).join(',')}`}
             ariaLabel="Every venue's geofence circle, to scale"
             legend
           />

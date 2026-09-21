@@ -64,14 +64,31 @@ create index if not exists events_venue_id_idx on events (venue_id);
 create index if not exists venues_live_name_idx on venues (name) where deleted_at is null;
 
 -- ---------------------------------------------------------------------
--- venue_directory_v — one row per venue, everything /venues renders
+-- venue_directory_v — one LIVE venue per row, everything /venues renders
+--
+-- Soft-deleted venues are not in it. §9.11: deleting a venue removes it
+-- from venue selection when new events are built, and that rule belongs
+-- here rather than in each caller — the Shift Builder (§3.2) reaches for
+-- this view too, and a venue picker that has to remember to filter is a
+-- venue picker that eventually forgets. Nothing needs the deleted rows:
+-- events carry their own snapshot of the address, location and radius.
 --
 -- "Today" is Europe/London, not UTC: an event on tonight's date is still
 -- upcoming at 00:30 UK time, and §1.8 evaluates every rule in UK time.
+-- The split is by DATE, so an event that finished earlier today is still
+-- "upcoming" — deliberately: §9.11's Events column counts events that have
+-- taken place, and one that ran this morning has not been signed off yet.
 -- Cancelled events are counted as neither — they did not take place, and
 -- they are not upcoming.
 -- ---------------------------------------------------------------------
-create or replace view venue_directory_v with (security_invoker = true) as
+-- Dropped rather than replaced: `create or replace view` cannot remove a
+-- column, so replacing this definition in place would fail on a database
+-- that already has an earlier shape of it. Not `cascade` — if something
+-- ever does depend on the view, this should fail loudly here rather than
+-- take that object with it.
+drop view if exists venue_directory_v;
+
+create view venue_directory_v with (security_invoker = true) as
 select
   v.id,
   v.name,
@@ -82,7 +99,6 @@ select
   v.geofence_radius_m,
   st_y(v.location::geometry)                 as lat,
   st_x(v.location::geometry)                 as lng,
-  v.deleted_at,
   v.created_at,
   (select count(*) from events e
      where e.venue_id = v.id and e.cancelled_at is null
@@ -91,10 +107,11 @@ select
      where e.venue_id = v.id and e.cancelled_at is null
        and e.event_date >= (now() at time zone 'Europe/London')::date)::int as events_upcoming
 from venues v
-join venue_types vt on vt.key = v.venue_type;
+join venue_types vt on vt.key = v.venue_type
+where v.deleted_at is null;
 
 comment on view venue_directory_v is
-  'The /venues list and map (§9.11): venue + its type label and default radius + the pin as plain lat/lng + how many events have taken place there and how many are still upcoming. security_invoker, so venues'' RLS applies unchanged.';
+  'Live venues for the /venues list and map and for venue selection (§9.11): venue + its type label and default radius + the pin as plain lat/lng + how many events have taken place there and how many are still upcoming. Soft-deleted venues are excluded here, once, so no caller has to remember to. security_invoker, so venues'' RLS applies unchanged.';
 
 -- ---------------------------------------------------------------------
 -- venue_upcoming_events_v — the delete confirmation's list
@@ -102,7 +119,9 @@ comment on view venue_directory_v is
 -- §9.11: the confirmation states how many upcoming events use the venue
 -- and names them ("Afternoon Tea (Thu 18 Sep), …").
 -- ---------------------------------------------------------------------
-create or replace view venue_upcoming_events_v with (security_invoker = true) as
+drop view if exists venue_upcoming_events_v;
+
+create view venue_upcoming_events_v with (security_invoker = true) as
 select e.venue_id, e.id as event_id, e.title, e.event_date
 from events e
 where e.venue_id is not null

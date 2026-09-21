@@ -40,9 +40,9 @@ export async function loadVenuesPage(): Promise<VenuesPageData> {
       .select(
         'id, name, address, venue_type, venue_type_label, default_radius_m, geofence_radius_m, lat, lng, events_past, events_upcoming',
       )
-      // Soft-deleted venues leave the directory but keep their row, so that
-      // events built against them still resolve (§9.11).
-      .is('deleted_at', null)
+      // No deleted-venue filter here: venue_directory_v is the live
+      // directory (0005_venues_directory.sql), so soft delete is one rule
+      // in one place rather than a condition every caller has to repeat.
       .order('name')
       .returns<Venue[]>(),
     // sort_order is the §9.11 table's own order (0005_venues_directory.sql),

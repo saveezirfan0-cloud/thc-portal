@@ -11,7 +11,7 @@
 -- itself, which is nothing.
 -- =====================================================================
 begin;
-select plan(30);
+select plan(40);
 \ir _shared/fixtures.psql
 
 -- The fixtures give the venue two events, both in the future (current_date
@@ -110,9 +110,17 @@ select lives_ok(
   'admin deletes a venue');
 select isnt((select deleted_at from venues where id = :'venue_new'), null,
   'delete is soft: the row stays so events keep resolving their venue_id (§9.11)');
+select is((select count(*)::int from venue_directory_v where id = :'venue_new'), 0,
+  'a deleted venue leaves the directory, so it leaves venue selection too (§9.11)');
+select is((select count(*)::int from venues where id = :'venue_new'), 1,
+  'and the row itself is still there for the events that reference it');
 select throws_ok(
   $$ select delete_venue('7a7a7a7a-0000-4000-8000-00000000000a') $$,
   'P0002', null, 'deleting an already-deleted venue is rejected rather than silently repeated');
+select throws_ok(
+  $$ select update_venue('7a7a7a7a-0000-4000-8000-00000000000a', 'Resurrected',
+                         '4 Test Street, London', 51.6, -0.2, 'hotel', 150) $$,
+  'P0002', null, 'a deleted venue cannot be edited back into the directory');
 
 -- ---------------------------------------------------------------------
 -- Client — no policy on venues, so the new view shows them nothing.
@@ -126,6 +134,21 @@ select is((select count(*)::int from venue_directory_v), 0,
   'a client reads no venue through venue_directory_v (§11.1)');
 select is((select count(*)::int from venue_upcoming_events_v where venue_id = :'venue_id'), 1,
   'a client sees only their own upcoming event at the venue, exactly as the events policy says');
+
+-- A client's update and delete fail differently from an insert: RLS filters
+-- the row out first, so the function reports "no live venue" rather than a
+-- privilege error. Both directions matter — silently matching zero rows is
+-- how a write that should be refused looks like a write that did nothing.
+select throws_ok(
+  $$ select update_venue('cccccccc-0000-4000-8000-000000000001', 'Client edit',
+                         '1 Test Street, London', 51.5, -0.1, 'hotel', 150) $$,
+  'P0002', null, 'a client cannot edit a venue');
+select throws_ok(
+  $$ select delete_venue('cccccccc-0000-4000-8000-000000000001') $$,
+  'P0002', null, 'a client cannot delete a venue');
+select throws_ok(
+  $$ select create_venue('Client venue', '1 Forged Street', 51.5, -0.1, 'hotel', 150) $$,
+  '42501', null, 'a client cannot create a venue');
 
 -- ---------------------------------------------------------------------
 -- Worker — the geofence reaches them through their booking, never through
@@ -142,7 +165,24 @@ select is((select count(*)::int from venue_upcoming_events_v), 0,
 select throws_ok(
   $$ select create_venue('Forged', '1 Forged Street', 51.5, -0.1, 'hotel', 150) $$,
   '42501', null, 'a worker cannot create a venue: create_venue is security invoker, so RLS refuses');
+select throws_ok(
+  $$ select update_venue('cccccccc-0000-4000-8000-000000000001', 'Worker edit',
+                         '1 Test Street, London', 51.5, -0.1, 'hotel', 3000) $$,
+  'P0002', null, 'a worker cannot widen a geofence by editing the venue');
+select throws_ok(
+  $$ select delete_venue('cccccccc-0000-4000-8000-000000000001') $$,
+  'P0002', null, 'a worker cannot delete a venue');
 
 reset role;
+
+-- Back on the migration role: every refused write above really did leave
+-- the geofence alone. A write that is refused and a write that silently
+-- matches no rows look the same from the caller's side, and the radius is
+-- what decides whether a worker can check in at all (§5.1).
+select is((select geofence_radius_m from venues where id = :'venue_id'), 150,
+  'none of the refused writes moved the geofence a worker checks in against (§5.1)');
+select is((select name from venues where id = :'venue_id'), 'RLS Fixture Venue',
+  'nor renamed the venue');
+
 select * from finish();
 rollback;

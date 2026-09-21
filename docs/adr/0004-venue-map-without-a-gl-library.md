@@ -15,7 +15,11 @@ Two things make the GL library a poor fit for the first screen that needs a map:
 - Zoom is whole levels only, moved with the `+`/`−` controls and a double-click — never the wheel, which on a full-width map would trap a manager scrolling past it.
 - When `NEXT_PUBLIC_MAPBOX_TOKEN` is set, Mapbox raster tiles for the current appearance are laid over that surface as plain `<img>` elements. At whole zoom levels a 256 px tile grid is four lines of arithmetic.
 - Without a token, the `.map` token grid and the scale bar still place every pin and size every geofence correctly: the projection, not the imagery, is what positions them.
+- In the modal, the circle grows with the slider rather than the map re-framing to keep it the same apparent size — §9.11 wants the manager to *see* the circle cover the site. The view gives way only at the edges: it drops a zoom level once the circle passes ~92% of the shorter side, and adds one if it has shrunk below ~10%. At those two thresholds the circle does jump smaller as the radius grows, which is the cost of whole zoom levels; the scale bar keeps the reading honest.
 - Reverse geocoding is unchanged from `docs/01`: Mapbox Geocoding, called from a server action so the token can stay server-side. With no token the modal says so and refuses to save rather than storing a venue with a blank or invented address.
+
+## Token handling
+`NEXT_PUBLIC_MAPBOX_TOKEN` is interpolated into tile URLs in the browser, which is what a *public* Mapbox token is for — but it must be URL-restricted in the Mapbox account to the three Vercel domains, or it is a bill anyone can run up. Reverse geocoding does not use it: that call is a server action and prefers a server-only `MAPBOX_TOKEN` (docs/04 already sets one for the Edge Functions), falling back to the public token only so a preview deploy can resolve an address at all.
 
 ## Consequences
 - No new dependency, and `apps/office`'s first-load JS for `/venues` stays around 111 kB.
