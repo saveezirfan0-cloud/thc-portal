@@ -10,9 +10,9 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 301 | `pnpm test` |
-| Browser smoke | 24 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 365 | `supabase test db` |
+| Unit | 379 | `pnpm test` |
+| Browser smoke | 35 | `pnpm turbo e2e:smoke` |
+| Database, row-level security and rules | 538 | `supabase test db` |
 
 What exists:
 
@@ -27,20 +27,25 @@ What exists:
   component against both token axes.
 - **Seed data**: 5 clients, 8 venues, 6 roles, 40 workers, mirroring
   `wireframes/CONVENTIONS.md`.
+- **The §8 notification register** in `packages/notifications`: every push N1–N15 and
+  every email E1–E9, copy verbatim from the scope.
 - **The day of the shift** (§5.1–5.2b): migration `0006` adds `attempt_check_in`,
   `check_out`, the four pure rule functions behind them and `payable_shifts_v`.
   `packages/domain/pay.ts` repeats the same rules in TypeScript, and
   `packages/domain/src/pay.vectors.json` is the contract between them: Vitest reads it,
   pgTAP reads the file generated from it, and a drift test fails the build if the copy
   goes stale. The Check-in monitor screen (§9.5) is still to come.
+- **The public application form** at `/apply` (§2.1), the first screen of Phase 1, with
+  `submit_application()` behind it: the age gate on the form, in the server action and in
+  the database, and the §2.12 duplicate check.
 - **The Shift Builder** at `/events/new` and `/events/:id/edit` (§3.2), the first screen
   of Phase 3. Its rules live in `packages/domain/shift.ts` with `shift.vectors.json`:
   the four-hour minimum per role section, the derived event window (RULE-18), the
   allocation default of headcount + buffer, and the edit lock at the event's start.
 
-What does not exist yet: every screen in Phases 1 to 7 apart from the Shift Builder, the
-Supabase project, and the Vercel projects. Two pieces the Shift Builder leans on are also
-outstanding and belong to later sessions:
+What does not exist yet: every screen in Phases 1 to 7 apart from the application form
+and the Shift Builder, the Supabase project, and the Vercel projects. Two pieces the
+Shift Builder leans on are also outstanding and belong to later sessions:
 
 - **Auto-assign's Deno half** (§3.4). The engine itself is built and tested in SQL —
   the candidate pool with its hard gates, additive invitations, first-to-confirm with
@@ -56,6 +61,12 @@ outstanding and belong to later sessions:
   Push yet, so the row waits there.
 
 Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
+
+**Open with THC.** §2.1 collects an *age band* on /apply while §2.12 matches duplicates on
+*mobile + date of birth*, and the form has no date-of-birth field. Until THC decides,
+the public-form migration matches on email and on mobile — the wider net of the two — and `staff.dob` stays
+null until Right to Work supplies one (§2.5). `wireframes/public/apply.html` carries the
+same flag.
 
 ## Security: one item closed, one open
 
@@ -145,7 +156,7 @@ say so rather than reporting the suite as passing.
   breaking out the 12.07%, showing the event window where a role-section window belongs,
   and letting any money reach the client.
 - Never edit an applied migration. Add the next numbered one. `0001`, `0002`, `0004`,
-  `0005`, `0006`, `0007`, `0008` and `0009` exist, and `0003` is reserved for the cron schedules
+  `0005`, `0006`, `0007`, `0008`, `0009` and `0010` exist, and `0003` is reserved for the cron schedules
   in `docs/01` §4. Check `supabase/migrations/` before you pick a number, and check it
   again after merging `main`: git does not conflict on two files with different names,
   so two branches both reaching for `0006` merged quietly and turned `main` red at

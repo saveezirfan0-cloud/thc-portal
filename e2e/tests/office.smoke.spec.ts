@@ -10,20 +10,20 @@ test('the design system renders and the appearance switch flips both axes', asyn
   await page.goto('/design-system');
   const html = page.locator('html');
 
-  // ADR-0007 pairing: dark renders Fluid (the warm geometry), light renders
-  // the Scope §1.6 geometry. Both axes move together, from one control.
-  await page.getByRole('button', { name: 'Dark · Fluid' }).click();
+  // ADR-0007: the switch moves the theme and leaves the style alone, because
+  // every supplied board is the same rounded language on a different ground.
+  await page.getByRole('button', { name: 'Dark' }).click();
   await expect(html).toHaveAttribute('data-theme', 'dark');
   await expect(html).toHaveAttribute('data-style', 'warm');
 
-  await page.getByRole('button', { name: 'Light · Scope §1.6' }).click();
+  await page.getByRole('button', { name: 'Light' }).click();
   await expect(html).toHaveAttribute('data-theme', 'light');
-  await expect(html).toHaveAttribute('data-style', 'scope');
+  await expect(html).toHaveAttribute('data-style', 'warm');
 });
 
 test('the mode survives a reload (ADR-0003)', async ({ page }) => {
   await page.goto('/design-system');
-  await page.getByRole('button', { name: 'Dark · Fluid' }).click();
+  await page.getByRole('button', { name: 'Dark' }).click();
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   // The inline head script has to agree with styleForMode, or the geometry
