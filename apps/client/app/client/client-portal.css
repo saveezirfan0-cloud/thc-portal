@@ -1,0 +1,286 @@
+/*
+ * Client Portal shell — §11.1, §11.2.
+ *
+ * Split out of wireframes/client/events.html and event.html, which give the
+ * portal a top bar and no sidebar: the customer has one list and one page
+ * per event, so a nav rail would be a rail to nowhere.
+ *
+ * Tokens only. Every colour, radius and font here is a variable from
+ * packages/ui, so the portal follows both style axes without knowing which
+ * one is on (ADR-0003, ADR-0007).
+ */
+
+.ctop {
+  height: 56px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 0 24px;
+}
+
+.ctop .who {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+  border-left: 1px solid var(--line);
+  padding-left: 16px;
+}
+
+.ctop .who .n {
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.ctop .who .l {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ctop .tz {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
+
+.cwrap {
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* ---- the fill cell: "13 of 17 confirmed" over its bar (§11.1) ---- */
+.fill-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 120px;
+}
+
+.fill-cell .progress {
+  width: 100px;
+}
+
+.fill-cell > span {
+  white-space: nowrap;
+}
+
+/* ---- the dual-zone window cell (§1.8) ---- */
+.win {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.win .sub {
+  font-family: var(--font-mono);
+  display: block;
+  color: var(--muted);
+}
+
+/* A cancelled event keeps its row, greyed, rather than disappearing. */
+.tbl tr.cancelled td {
+  color: var(--muted);
+}
+
+.tbl tr.cancelled .avatar {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+
+/* ---- the event page ---- */
+.ehead {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.meta .k {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.meta .v {
+  font-size: 14px;
+  margin-top: 4px;
+}
+
+.meta .v .sub {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.wgrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1px;
+  background: var(--line);
+}
+
+.wrow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--panel);
+}
+
+.wrow .n {
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.wrow .s {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.wrow .fb {
+  margin-left: auto;
+}
+
+/* The line-up of a cancelled event is not shown: the bookings were
+   released, so there is no confirmed line-up left to show (§11.2). */
+
+/* ---- phone: rows become cards, nothing is dropped (§1.2) ---- */
+.ecard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ecard .t {
+  font-family: var(--font-head);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.ecard .m {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ecard.cancelled {
+  opacity: 0.55;
+}
+
+.ecard.cancelled .t {
+  text-decoration: line-through;
+}
+
+.cards {
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 820px) {
+  .cwrap {
+    padding: 14px;
+  }
+
+  .ctop {
+    padding: 0 14px;
+    gap: 10px;
+  }
+
+  /* The table folds away and the cards take over; both are rendered from
+     the same rows, so the phone drops no field (§1.2, §11.1). */
+  .table-wrap {
+    display: none;
+  }
+
+  .cards {
+    display: flex;
+  }
+
+  .wgrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---- "+3 more confirmed" on a line-up preview (§11.1) ---- */
+.avatars .more {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--muted);
+  background: var(--panel-2);
+  border: 2px solid var(--panel);
+  box-shadow: 0 0 0 1px var(--line);
+  border-radius: var(--r-avatar);
+  margin-right: -6px;
+}
+
+/* ---- the feedback popup's star picker (§11.2) ----
+   The design system's .stars is a read-only score; this one is an input,
+   so it is five radio buttons wearing stars rather than a rating display. */
+.stars-field {
+  border: 0;
+  padding: 0;
+  margin: 0 0 14px;
+}
+
+.stars-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.star {
+  background: none;
+  border: 0;
+  padding: 2px 4px;
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--line);
+  transition: color 0.12s ease;
+}
+
+.star:hover:not(:disabled) {
+  color: var(--amber-ink);
+}
+
+.star.on {
+  color: var(--amber-ink);
+}
+
+.star:focus-visible {
+  outline: var(--focus-line);
+  outline-offset: 2px;
+}
+
+.star:disabled {
+  cursor: default;
+}
