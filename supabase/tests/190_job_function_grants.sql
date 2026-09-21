@@ -116,12 +116,18 @@ select is_empty(
 -- ---------------------------------------------------------------------
 -- 4. Every registry entry names a job, and an enabled one should have a
 --    function in the repo. The three auto-staffing modes share one.
+--
+--    This list is the reason the assertion exists: enabling a schedule is
+--    one line in a migration, and a schedule enabled before its function
+--    is deployed spends the gap posting at a 404. So the list is edited
+--    in the same commit that adds the function, or not at all.
 -- ---------------------------------------------------------------------
 select bag_eq(
   $$ select job::text from job_schedules where enabled $$,
   $$ values ('booking-tick'::text), ('auto-staffing-hourly'),
-            ('auto-staffing-cutoff'), ('auto-staffing-escalation') $$,
-  'exactly the four schedules whose Edge Function exists are enabled; the rest wait for theirs'
+            ('auto-staffing-cutoff'), ('auto-staffing-escalation'),
+            ('compliance-daily') $$,
+  'exactly the five schedules whose Edge Function exists are enabled; the rest wait for theirs'
 );
 
 select * from finish();

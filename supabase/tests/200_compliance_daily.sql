@@ -100,10 +100,10 @@ insert into compliance_docs (id, staff_id, doc_type, review_status, expiry_date,
 -- s4 holds one future confirmed shift, one open invitation and one worked
 -- shift in the past. The cascade must take the first two and leave the third.
 insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location,
-                    geofence_radius_m, title, event_date) values
+                    geofence_radius_m, title, event_date, pays_breaks, pays_buffer) values
   ('7d000000-0000-4000-8000-000000000001', :'clienta', :'venue_id', 'RLS Fixture Venue',
    '1 Test Street, London', st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150,
-   'Expiry Cascade', date '2026-10-01');
+   'Expiry Cascade', date '2026-10-01', false, true);
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
                                 charge_rate, pay_rate, allocation_per_hour) values
   ('7e000000-0000-4000-8000-000000000001','7d000000-0000-4000-8000-000000000001',:'role_id','2026-10-01 10:00+00','2026-10-01 18:00+00',2,0,30,15,1),
