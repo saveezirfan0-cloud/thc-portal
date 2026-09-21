@@ -11,8 +11,16 @@ is covered by tests.
 | Suite | Count | Command |
 |---|---|---|
 | Unit | 498 | `pnpm test` |
-| Browser smoke | 35 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 544 at `ad81538`, + the three files merged since | `supabase test db` |
+| Browser smoke | 44 | `pnpm turbo e2e:smoke` |
+| Database, row-level security and rules | 671 over 17 files | `supabase test db` |
+
+The database figure is derived, not measured here: 544 over 14 files at `ad81538`,
+plus the declared plans of the three files merged since — 130 auto-assign (57),
+140 check-in write paths (45), 150 roles directory (25). pgTAP fails a file whose
+plan does not match the assertions it runs, so a green `supabase test db` makes
+each of those counts exact. `supabase start` needs Docker, which some sandboxes
+block; when it is unavailable, take the number from the CI run rather than a
+local count.
 
 What exists:
 
