@@ -48,7 +48,10 @@ select is_empty(
           -- supersedes every piece of a worker's compliance evidence, so
           -- a grant that went missing here fails the office's only route
           -- back for a returning worker.
-          'block_worker_manually', 'unblock_worker', 'reset_to_candidate'
+          'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
+          -- §1.7 (20260921190118). Irreversible, so the grant matters in
+          -- both directions: service_role must have it, and nobody else.
+          'remove_worker'
         )
         and not has_function_privilege('service_role', p.oid, 'execute') $$,
   'the service role can execute every function the §7 jobs call'
