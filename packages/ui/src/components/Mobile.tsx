@@ -106,6 +106,8 @@ export interface BottomNavItem {
   count?: number;
   /** Compliance auto-block leaves only Documents reachable (§10.1). */
   locked?: boolean;
+  /** Phase 0: the route does not exist yet, so it renders as text. */
+  pending?: boolean;
 }
 
 /** Frosted bottom navigation: Documents · Shifts · Invites · Radar. */
@@ -121,7 +123,11 @@ export function BottomNav({
   return (
     <nav className="bottom-nav">
       {items.map((item) => {
-        const className = clsx(item.href === activeHref && 'active', item.locked && 'locked');
+        const className = clsx(
+          item.href === activeHref && 'active',
+          item.locked && 'locked',
+          item.pending && 'pending',
+        );
         const body = (
           <>
             {item.icon ? <span className="ico">{item.icon}</span> : null}
@@ -131,6 +137,13 @@ export function BottomNav({
             </span>
           </>
         );
+        if (item.pending) {
+          return (
+            <span key={item.href} className={className} aria-disabled="true">
+              {body}
+            </span>
+          );
+        }
         return renderLink ? (
           <Fragment key={item.href}>{renderLink(item, className, body)}</Fragment>
         ) : (
