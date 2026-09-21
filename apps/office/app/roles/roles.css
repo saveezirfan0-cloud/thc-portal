@@ -1,0 +1,85 @@
+/*
+ * Page-local styles for /roles, mirroring the inline <style> block in
+ * wireframes/backoffice/roles.html. Tokens only — no colour or radius is
+ * hard-coded (CLAUDE.md).
+ */
+.tbl td.money,
+.tbl th.money {
+  font-family: var(--font-num);
+  text-align: right;
+  white-space: nowrap;
+}
+/* The holiday element reads as an addition to the base beside it, not a total. */
+.tbl td.money.hol {
+  color: var(--muted);
+}
+.tbl td.money.fin {
+  font-weight: 600;
+}
+.tbl td.desc {
+  max-width: 34ch;
+}
+
+.tbl .role-name {
+  color: var(--text);
+  font-weight: 600;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.tbl .role-name:hover {
+  color: var(--cyan-ink);
+}
+
+.hol-lbl {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.hol-lbl .pill {
+  height: 18px;
+  font-size: 9.5px;
+}
+
+/* The rate field's £ / per-hour addons stay tight to the input. */
+.rate-row {
+  max-width: 220px;
+}
+
+/* The §9.8 table's three columns, live under the rate while it is typed. */
+.calc {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.calc .c {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: 10px 12px;
+  border-radius: var(--r-sm);
+}
+.calc .c .label {
+  display: block;
+  margin-bottom: 4px;
+}
+.calc .c .v {
+  font-family: var(--font-num);
+  font-size: 16px;
+  font-weight: 600;
+}
+.calc .c .v.cyan {
+  color: var(--cyan-ink);
+}
+
+@media (max-width: 720px) {
+  .calc {
+    grid-template-columns: 1fr;
+  }
+  .tbl td.desc {
+    max-width: 20ch;
+  }
+}

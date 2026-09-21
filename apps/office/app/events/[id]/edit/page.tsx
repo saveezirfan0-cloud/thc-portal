@@ -1,8 +1,10 @@
+import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { UK_ZONE, derivedEventWindow, formatTimeIn, isEditLocked, ukRoleWindow } from '@thc/domain';
 import { updateEvent } from '../../actions';
 import { loadEvent, loadReferenceData } from '../../data';
-import { OfficeShell } from '../../_components/OfficeShell';
+import { OfficeShell } from '../../../_components/OfficeShell';
+import { ViewerZone } from '../../_components/ViewerZone';
 import { ShiftBuilder } from '../../_components/ShiftBuilder';
 import { DRESS_CODE_OTHER, type EventDraft, type RoleDraft } from '../../draft';
 import '../../shift-builder.css';
@@ -77,7 +79,16 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const booked = Object.fromEntries(event.sections.map((s) => [s.id, s.booked]));
 
   return (
-    <OfficeShell title={event.title}>
+    <OfficeShell
+      activeHref="/events"
+      title={event.title}
+      crumbs={
+        <>
+          <Link href="/events">Scheduling</Link> / <b>Shift Builder</b>
+        </>
+      }
+      timezone={<ViewerZone />}
+    >
       <ShiftBuilder
         mode="edit"
         reference={reference}

@@ -113,7 +113,7 @@ select throws_ok(
   '42501', null, 'BY DESIGN: a worker writes no check-in directly — attempt_check_in() is the only way in (§5.1)');
 select throws_ok(
   format($$ insert into breaks (booking_id, started_at) values (%L, now()) $$, :'booking_a'),
-  '42501', null, 'KNOWN GAP: worker cannot start their own break directly');
+  '42501', null, 'BY DESIGN: a worker writes no break directly — start_break()/finish_break() are the only way in (§5.2b)');
 select throws_ok(
   format($$ insert into violations (staff_id, booking_id, type) values (%L, %L, 'late') $$, :'staffa', :'booking_a'),
   '42501', null, 'worker cannot write a violation');

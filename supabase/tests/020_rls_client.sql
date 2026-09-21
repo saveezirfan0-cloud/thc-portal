@@ -7,7 +7,7 @@
 -- Every money-bearing table is asserted unreachable, in both directions.
 -- =====================================================================
 begin;
-select plan(58);
+select plan(59);
 \ir _shared/fixtures.psql
 
 select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
@@ -157,11 +157,23 @@ select throws_ok(
   '42501', null, 'client cannot grant or revoke a clearance itself — do-not-return is a back-office action (§9.6)');
 
 -- ---- feedback is the one thing a client may write (§11.2) --------------
+-- The shared fixtures already leave a client entry on (staffa, event_a),
+-- and 20260921140000_client_portal made that one entry per worker per
+-- event (§11.5). So the write goes to the worker who has none, and the
+-- rule itself is asserted straight after rather than left to surprise the
+-- next person who reads this file.
 select lives_ok(
   format($$ insert into feedback (author_kind, author_id, staff_id, event_id, rating, text)
             values ('client', %L, %L, %L, 5, 'Great team') $$,
-         :'clienta_uid', :'staffa', :'event_a'),
+         :'clienta_uid', :'staffb', :'event_a'),
   'client can leave feedback on a worker at its own event');
+
+select throws_ok(
+  format($$ insert into feedback (author_kind, author_id, staff_id, event_id, rating, text)
+            values ('client', %L, %L, %L, 4, 'Second thoughts') $$,
+         :'clienta_uid', :'staffa', :'event_a'),
+  '23505', null,
+  '§11.5 one client entry per worker per event: the fixtures already left one on this pair');
 
 select throws_ok(
   format($$ insert into feedback (author_kind, author_id, staff_id, event_id, rating, text)

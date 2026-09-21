@@ -10,7 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "gen:vectors": "node scripts/gen-vectors-sql.mjs"
+    "gen:vectors": "node scripts/gen-vectors-sql.mjs && node scripts/gen-overlap-vectors.mjs"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
