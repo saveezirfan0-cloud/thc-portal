@@ -9,6 +9,7 @@ Staff-management platform for an event-staffing agency: Back Office Portal (web)
 3. `docs/04-setup-github-vercel-supabase.md` — connect the services.
 4. `wireframes/index.html` — every screen, every state, in the real design system.
 5. `docs/10-working-with-agents.md` — running several domain bots in parallel.
+6. `docs/11-session-prompts.md` — a ready prompt for each of the next sessions.
 
 **Layout**
 

@@ -1,37 +1,109 @@
 # 00 · How to build this with Claude Code
 
-This repo is set up so that a Claude Code session can pick up any slice of the scope and build it correctly on the first pass. This page is the operating manual.
+The operating manual. Read this first, then `docs/11-session-prompts.md` for the prompt
+to paste into your next session.
 
-## What is already in the repo (this session's output)
-| Folder | What |
-|---|---|
-| `docs/scope/` | The full scope text, greppable by section. |
-| `docs/01–08` | Architecture, build plan, data model, setup, bots, PWA analysis, design system, screen inventory. |
-| `docs/adr/` | Decisions that change or interpret the scope (PWA, gov.uk). |
-| `supabase/migrations/0001_init.sql` | The core schema, enums, RLS skeleton, calculated-cap function. |
-| `wireframes/` | Every screen as static HTML in the real design system. Open `wireframes/index.html`. |
-| `CLAUDE.md` | The rules every session reads automatically. |
-| `.claude/agents/` | Twelve domain bots. `.claude/skills/` — four reusable skills. |
+## Where the project is
 
-## First three sessions (do these in order)
-1. **Bootstrap** — "Use the platform agent to bootstrap the monorepo per docs/04, create apps/office, apps/staff, apps/client, packages/ui|domain|db|notifications|pdf, wire Supabase local + Vercel, and get login per role working. Then run /init to refresh CLAUDE.md commands."
-2. **Design system** — "Use the design-system agent to port wireframes/assets/thc.css into packages/ui with the components listed in docs/07 and a /design-system route that mirrors wireframes/design-system.html."
-3. **Domain core** — "Use the scheduling and compliance agents to implement packages/domain (state machines, scoring, cap, pay, overlap) with test vectors from the scope, and the SQL functions listed in docs/03."
-Then follow `docs/02-build-plan.md` phase by phase.
+Phase 0 of `docs/02-build-plan.md` is complete and on `main`. The repo builds, boots and
+is covered by tests.
 
-## Prompt pattern that works
+| Suite | Count | Command |
+|---|---|---|
+| Unit | 41 | `pnpm test` |
+| Browser smoke | 14 | `pnpm turbo e2e:smoke` |
+| Database, row-level security | 159 | `supabase test db` |
+
+What exists:
+
+- **Three apps** on Next.js. Office on port 3000, staff on 3001, client on 3002.
+  `pnpm i && pnpm dev` works on a fresh clone with no environment file.
+- **Five shared packages.** `ui` is the design system as plain CSS plus React
+  components. `domain` holds the pure rules and their vectors. `db` holds the Supabase
+  clients and roles. `notifications` holds the §8 register. `pdf` holds the §11.3 paging.
+- **Sign-in** in all three apps, with role-routing middleware as the first gate in front
+  of row-level security.
+- **A live design system** at `/design-system` in the Back Office, showing every
+  component against both token axes.
+- **Seed data**: 5 clients, 8 venues, 6 roles, 40 workers, mirroring
+  `wireframes/CONVENTIONS.md`.
+
+What does not exist yet: every screen in Phases 1 to 7, the Supabase project, and the
+Vercel projects. Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
+
+## Two open security items
+
+Both are pre-existing in `0001_init.sql` and both are recorded in the test suite rather
+than papered over.
+
+1. **Eleven tables have no row-level security**, so they are readable and writable
+   through the API by any signed-in user. Two of them hold bank details and tax
+   checklists. `supabase/tests/001_rls_guard.sql` pins the list, so the build fails the
+   moment it changes in either direction. Session S1 in `docs/11-session-prompts.md`
+   closes them.
+2. **The Client Portal line-up has no data path.** §11.2 promises the customer sees the
+   confirmed line-up, but the view returns nothing for a client. This needs a decision,
+   not a patch. See S8.
+
+A third is already fixed. A client could read both the charge rate and the pay rate
+straight from the role-sections table, which §11.1 forbids absolutely. Migration `0002`
+drops that policy. The lesson generalises: a view cannot take away a privilege the base
+table grants, so "hidden behind a view" is never an access control.
+
+## How to run a session
+
 ```
-Use the <bot> agent. Goal: <feature> (§x.y). Read the § and the wireframe first.
-Constraints: one domain, one PR; no shared-package changes without a separate PR; tests for every rule.
+Use the <bot> agent. Branch feat/<domain>-<thing>.
+Goal: <feature> (§x.y). Read the section and the wireframe first.
+Constraints: one domain; no shared-package changes without a separate PR first.
 Done when: <acceptance from the build plan>. Then run qa-reviewer on the diff.
 ```
 
-## Where to work
-- **Claude Code on the web** (claude.ai/code): one session per domain in parallel, each on its own branch; the Vercel and Supabase connectors (once connected) let the session deploy previews, run migrations on a branch DB, and read build logs.
-- **CLI / IDE**: same repo, same agents; `supabase start` for a local DB.
-- **GitHub**: `@claude` in an issue with a `domain:*` label routes to that bot; every PR gets a `qa-reviewer` comment (workflow in `.github/workflows/claude.yml`).
+`docs/11-session-prompts.md` has this filled in for each of the next sessions.
+`docs/10-working-with-agents.md` explains how to run several at once without collisions:
+the ownership map, the three shared hot spots, and which phases genuinely overlap.
+
+Where to work:
+
+- **Claude Code on the web.** One session per domain, each on its own branch. Once the
+  Vercel and Supabase connectors are attached, a session can deploy a preview, run a
+  migration against a branch database and read build logs.
+- **CLI or IDE.** Same repo, same agents, with `supabase start` for a local database.
+- **GitHub.** `@claude` on an issue with a `domain:*` label routes to that bot, and every
+  pull request gets a `qa-reviewer` pass.
+
+## When the design changes
+
+The generated stylesheets in `packages/ui/src/styles` are split out of
+`wireframes/assets/thc.css` on comment boundaries, so a design change is re-derived
+rather than hand-patched. `auth.css` and `fixes.css` are hand-written and layer last;
+re-check each fix against the new CSS and delete the ones the wireframes now handle.
+Run S0 in the prompts doc, and use `/design-system` as the check: if a component looks
+wrong there, it is wrong everywhere.
+
+## Verifying your own work
+
+Run what CI runs, in this order, before opening a pull request:
+
+```
+pnpm turbo lint typecheck test
+supabase start && supabase test db
+pnpm turbo e2e:smoke
+```
+
+One validated push beats three speculative ones. If you cannot run the database locally,
+say so rather than reporting the suite as passing.
 
 ## Guard-rails
-- The scope wins over any suggestion, including Claude's; changes are ADRs.
-- Never let a bot "simplify" a rule (e.g. store the weekly cap, blend holiday pay, show the event window on a shift card). `qa-reviewer` checks these explicitly.
-- Keep THC's Appendix B inputs (Willo keys, contract text, sample letters, logo, DNS) in an issue with due dates; several phases block on them.
+
+- The scope wins over any suggestion, including Claude's. Departures are ADRs in
+  `docs/adr/`, not comments.
+- Never let a session simplify a rule the scope states precisely. The recurring ones are
+  storing the weekly cap instead of calculating it, blending holiday pay instead of
+  breaking out the 12.07%, showing the event window where a role-section window belongs,
+  and letting any money reach the client.
+- Never edit an applied migration. Add the next numbered one. `0001` and `0002`
+  exist, and `0003` is reserved for the cron schedules in `docs/01` §4.
+- Seed data mirrors `wireframes/CONVENTIONS.md`, so a screenshot and a test read the same.
+- Keep THC's Appendix B inputs in an issue with due dates. Several phases block on them:
+  Willo keys, contract text, sample letters, the logo, and DNS.

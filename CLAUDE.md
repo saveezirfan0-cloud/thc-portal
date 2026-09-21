@@ -71,3 +71,4 @@ mirroring `wireframes/assets/thc.css`) `packages/domain` (pure rules + vectors)
 - Sample/seed data mirrors `wireframes/CONVENTIONS.md` so screenshots and tests read the same.
 - Use the domain bots in `.claude/agents/` (see `docs/05-domain-bots.md`). Ask `qa-reviewer` before opening a PR.
 - Running more than one bot at once: `docs/10-working-with-agents.md` (ownership map, the three shared hot spots, which phases overlap).
+- Starting a session: `docs/11-session-prompts.md` has a self-contained prompt per phase; `docs/00-how-to-build-with-claude.md` is the operating manual and current status.
