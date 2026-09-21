@@ -61,16 +61,31 @@ The scope is rule-heavy. Every rule is implemented **once**, in the layer that m
 
 ## 4. Background and time-based rules (§7) → jobs
 
-All cron entries are created by migration `0002_cron.sql` (times in Europe/London; pg_cron runs in UTC, so the migration converts and notes DST):
+Cron entries are **data**, in the `job_schedules` table
+(`20260921130927_jobs_and_outbox_drain.sql`), applied to pg_cron by
+`select install_job_schedules()` as a deploy step. They are not scheduled by the migration
+itself: doing that would start a per-minute `net.http_post` against an Edge Function URL
+that does not exist yet, on every `supabase start` in CI, and it would bake the
+service-role key into a stored command string. The command reads the base URL from
+`settings.edge_base_url` and the key from `vault` when it runs.
+
+Schedules below are **UTC**, because pg_cron is. The three jobs the scope pins to a UK
+wall-clock time — the 12:05 cutoff, the 05:00 compliance sweep and the Monday 09:00
+finance send — are therefore registered as every-5-minute entries with the UK-minute
+decision inside the Edge Function, per `.claude/skills/supabase-workflow`. **That gate is
+load-bearing:** an `auto-staffing?mode=cutoff` that forgets it runs the §3.5 cutoff 288
+times a day, dropping confirmed workers on each pass (N6b). Every job is also disabled in
+the registry until its Edge Function exists.
+
 
 | Scope job | Schedule | Edge Function | Notes |
 |---|---|---|---|
 | `auto_staffing` | hourly at :17 | `auto-staffing?mode=hourly` | every unfilled role section whose shift has not started |
-| `auto_staffing --cutoff` | daily 12:05 | `auto-staffing?mode=cutoff` | drops confirmed workers without "I'm ready" for tomorrow → N6b → refill |
+| `auto_staffing --cutoff` | every 5 min, UK 12:05 gate in the function | `auto-staffing?mode=cutoff` | drops confirmed workers without "I'm ready" for tomorrow → N6b → refill |
 | `auto_staffing --escalation` | every 10 min | `auto-staffing?mode=escalation` | events under way and short; 3-mile widened pool; ignores headcount+buffer cap |
-| `compliance_daily` | daily 05:00 | `compliance-daily` | auto-block on expiry (BG-05), release bookings, N1–N4 tiers, N14 cap-band changes |
+| `compliance_daily` | every 5 min, UK 05:00 gate in the function | `compliance-daily` | auto-block on expiry (BG-05), release bookings, N1–N4 tiers, N14 cap-band changes |
 | BG-01/02/02b/03/09/10 per-booking timers | every minute | `booking-tick` | selects due bookings and writes outbox rows keyed `N9:booking:<id>` etc.; raises No-show at start+30 (exempt if confirmed after start), No check-out at end+4h, 6-hour break alert |
-| BG-08 finance reports | Monday 09:00 | `finance-reports` | payroll CSV always; New Starter CSV only if any; holds shifts with unresolved No check-out |
+| BG-08 finance reports | every 5 min, UK Monday 09:00 gate in the function | `finance-reports` | payroll CSV always; New Starter CSV only if any; holds shifts with unresolved No check-out |
 | Outbox drain | every minute | `notify-drain` | Web Push + email; retries with backoff; marks `sent_at`/`failed_at` |
 | Willo | webhook | `willo-webhook` | New Response → interview_completed; Stage Change → documents / rejected (+E2) |
 | RULE-16 stale invites | none | live filter `event_window.ends_at < now()` in queries | no job, per spec |
