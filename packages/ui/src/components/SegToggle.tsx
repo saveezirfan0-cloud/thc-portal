@@ -15,6 +15,8 @@ export interface SegToggleProps<T extends string> {
   value: T;
   onChange: (value: T) => void;
   small?: boolean;
+  /** Full-width track, as used in the Staff App header. */
+  block?: boolean;
   'aria-label'?: string;
 }
 
@@ -23,10 +25,11 @@ export function SegToggle<T extends string>({
   value,
   onChange,
   small,
+  block,
   ...rest
 }: SegToggleProps<T>) {
   return (
-    <div className={clsx('seg', small && 'sm')} role="group" {...rest}>
+    <div className={clsx('seg', small && 'sm', block && 'block')} role="group" {...rest}>
       {options.map((option) => (
         <button
           key={option.value}
@@ -45,7 +48,14 @@ export function SegToggle<T extends string>({
   );
 }
 
-export function Tabs<T extends string>({ options, value, onChange, ...rest }: SegToggleProps<T>) {
+export function Tabs<T extends string>({
+  options,
+  value,
+  onChange,
+  small: _small,
+  block: _block,
+  ...rest
+}: SegToggleProps<T>) {
   return (
     <div className="tabs" role="tablist" {...rest}>
       {options.map((option) => (

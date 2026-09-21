@@ -19,7 +19,7 @@ There is a second consequence. §2.1 also says a valid submission creates the ca
 
 ## Decision
 
-Option 4, in `0008_public_application.sql`:
+Option 4, in `20260921132000_public_application.sql`:
 
 - `staff.dob` becomes nullable, and a new check constraint `dob_required_from_quiz` allows it to be null **only** at `interview_requested`, `interview_completed`, `documents`, `rejected` and `removed`. The wizard (§2.5) collects the date during `documents`, the gov.uk share-code check (§2.6) needs it before any document can be verified, and the quiz only unlocks once every document is verified (§2.3) — so the constraint bites before the date could ever matter. `removed` is allowed because a GDPR removal wipes personal data (§1.7); `rejected` because a candidate can be rejected out of any stage.
 - `submit_application` takes an optional `p_dob`. Left null — which is what /apply passes today — the §2.12 mobile arm matches on **mobile alone**. That is deliberately wider than "mobile + DOB": a false match is routed to a human as a returning-applicant entry and costs a manager one decision, whereas a missed match creates the second record §2.12 exists to prevent.

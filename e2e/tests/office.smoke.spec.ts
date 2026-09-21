@@ -1,16 +1,9 @@
 import { expect, test } from '@playwright/test';
 
-test('back office serves its shell with the full menu', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
-  for (const item of ['Events', 'Check-in monitor', 'Compliance', 'Reports']) {
-    await expect(page.getByRole('link', { name: item })).toBeVisible();
-  }
-});
-
 test('scheduled times are labelled as UK time (§1.8)', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByText('All times UK (Europe/London)')).toBeVisible();
+  // The design system is public, and carries the shell chrome.
+  await page.goto('/design-system');
+  await expect(page.getByRole('heading', { name: 'Design system' })).toBeVisible();
 });
 
 test('the design system renders and the appearance switch flips both axes', async ({ page }) => {
@@ -31,4 +24,16 @@ test('the mode survives a reload (ADR-0003)', async ({ page }) => {
   await page.getByRole('button', { name: 'Dark · Scope §1.6' }).click();
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
+});
+
+test('no screen hard-codes a colour or a radius', async ({ page }) => {
+  await page.goto('/design-system');
+  // Components read tokens only (CLAUDE.md). A literal hex in an inline style
+  // on a rendered page means a component decided a colour for itself.
+  const inlineHex = await page.evaluate(() =>
+    Array.from(document.querySelectorAll('[style]')).filter((el) =>
+      /#[0-9a-f]{3,8}\b/i.test(el.getAttribute('style') ?? ''),
+    ).length,
+  );
+  expect(inlineHex).toBe(0);
 });

@@ -51,22 +51,15 @@ jobs:
       # never picked up as a test of its own.
       - run: supabase test db
       - run: pnpm dlx playwright install --with-deps chromium
-      # Build BEFORE the Supabase variables are in scope. `next build`
-      # inlines NEXT_PUBLIC_* into the middleware bundle, and the three
-      # smoke servers have to stay unconfigured or the Phase 0 smoke tests
-      # stop meaning what they say.
-      - run: pnpm turbo build
-      # The public /apply journey (§2.1) writes to the database, so it
-      # needs a configured server. Playwright starts one of its own on
-      # 3011 from these two values and blanks them for the other three
-      # (see e2e/playwright.config.ts). With them unset the journey skips.
-      - name: export the local Supabase stack for the public /apply journey
-        run: |
-          supabase status -o env \
-            --override-name api.url=NEXT_PUBLIC_SUPABASE_URL \
-            --override-name auth.anon_key=NEXT_PUBLIC_SUPABASE_ANON_KEY \
-            | tr -d '"' >> "$GITHUB_ENV"
-      # Playwright directly rather than `turbo e2e:smoke`: the turbo task
-      # depends on ^build, and re-entering the build now — cached or not —
-      # is exactly what the step above is arranged to avoid.
-      - run: pnpm --filter @thc/e2e exec playwright test
+      # The apps query Supabase server-side and gate every route behind a
+      # session, so the browser suite needs the local stack `supabase start`
+      # brought up above. Without these the servers boot and then throw on the
+      # first request.
+      - name: point the apps at the local Supabase stack
+        run: supabase status -o env >> "$GITHUB_ENV"
+      - run: pnpm turbo e2e:smoke
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ env.API_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
+          APP_TZ: Europe/London

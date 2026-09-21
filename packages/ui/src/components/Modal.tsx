@@ -52,7 +52,9 @@ export function Modal({ open, title, onClose, footer, children, wide }: ModalPro
   );
 }
 
-export function Toast({ tone, children }: { tone?: string; children: ReactNode }) {
+export type ToastTone = 'cyan' | 'green' | 'amber' | 'coral' | 'purple';
+
+export function Toast({ tone, children }: { tone?: ToastTone; children: ReactNode }) {
   return (
     <div className={tone ? `toast ${tone}` : 'toast'} role="status" aria-live="polite">
       {children}

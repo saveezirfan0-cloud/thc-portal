@@ -446,6 +446,7 @@ declare
   required text[] := array['id','aud','role','email','encrypted_password','email_confirmed_at',
                            'raw_app_meta_data','raw_user_meta_data','created_at','updated_at'];
   missing text;
+  col text;
 begin
   if to_regclass('auth.users') is null then
     raise notice 'seed: auth.users not found, skipping dev logins';
@@ -467,19 +468,47 @@ begin
                           raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
   select '00000000-0000-0000-0000-000000000000', u.id::uuid, 'authenticated', 'authenticated', u.email,
          crypt('password123', gen_salt('bf')), now(),
-         '{"provider":"email","providers":["email"]}'::jsonb,
+         -- The role must be in app_metadata, not just on profiles: each app's
+         -- middleware reads it off the session to decide whether this person
+         -- belongs in this app at all (§1.4). Without it the role gate is
+         -- inert and an admin can open the Client Portal. app_metadata rather
+         -- than user_metadata because the user cannot edit it.
+         '{"provider":"email","providers":["email"]}'::jsonb || jsonb_build_object('role', u.role),
          jsonb_build_object('full_name', u.full_name), now(), now()
   from (values
-    ('10000000-0000-4000-8000-000000000001','gisela@thehospitalitycompany.example','Gisela M.'),
-    ('10000000-0000-4000-8000-000000000002','ops@thehospitalitycompany.example','Operations'),
-    ('10000000-0000-4000-8000-000000000003','marco@leonardo-stpauls.example','Marco V.'),
-    ('10000000-0000-4000-8000-000000000004','sophie@mo-hydepark.example','Sophie L.'),
-    ('10000000-0000-4000-8000-000000000005','tom.reid@example.com','Tom Reid'),
-    ('10000000-0000-4000-8000-000000000006','amara.kalu@example.com','Amara Kalu')
-  ) as u(id, email, full_name)
+    ('10000000-0000-4000-8000-000000000001','gisela@thehospitalitycompany.example','Gisela M.','admin'),
+    ('10000000-0000-4000-8000-000000000002','ops@thehospitalitycompany.example','Operations','admin'),
+    ('10000000-0000-4000-8000-000000000003','marco@leonardo-stpauls.example','Marco V.','client'),
+    ('10000000-0000-4000-8000-000000000004','sophie@mo-hydepark.example','Sophie L.','client'),
+    ('10000000-0000-4000-8000-000000000005','tom.reid@example.com','Tom Reid','staff'),
+    ('10000000-0000-4000-8000-000000000006','amara.kalu@example.com','Amara Kalu','staff')
+  ) as u(id, email, full_name, role)
   on conflict (id) do update set
     email = excluded.email, encrypted_password = excluded.encrypted_password,
-    email_confirmed_at = excluded.email_confirmed_at, updated_at = now();
+    email_confirmed_at = excluded.email_confirmed_at,
+    raw_app_meta_data = excluded.raw_app_meta_data, updated_at = now();
+
+  -- GoTrue reads these token columns into non-nullable Go strings. A row
+  -- inserted by hand leaves them NULL, the scan fails with "converting NULL
+  -- to string is unsupported", and EVERY sign-in for that user returns a
+  -- server error. The client surfaces that as a generic auth failure, so it
+  -- looks exactly like a wrong password and sends you hunting for the wrong
+  -- thing.
+  --
+  -- Done dynamically because which of these columns exists varies by GoTrue
+  -- version, and a bare Postgres stub of auth.users has none of them.
+  for col in
+    select c.column_name
+    from information_schema.columns c
+    where c.table_schema = 'auth' and c.table_name = 'users'
+      and c.column_name in ('confirmation_token','recovery_token','email_change',
+                            'email_change_token_new','email_change_token_current',
+                            'phone_change','phone_change_token','reauthentication_token')
+      and c.data_type in ('text','character varying')
+  loop
+    execute format(
+      'update auth.users set %1$I = coalesce(%1$I, '''') where %1$I is null', col);
+  end loop;
 
   -- GoTrue >= 2.x needs an identity row before email/password login works.
   if to_regclass('auth.identities') is not null

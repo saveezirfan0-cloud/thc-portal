@@ -17,12 +17,18 @@ export interface AuthCardProps {
  * The error copy never says which of email or password was wrong — that is
  * deliberate in the wireframes and is an account-enumeration defence.
  */
-export function AuthCard({ product, heading = 'Sign in', banner, footer, children }: AuthCardProps) {
+export function AuthCard({
+  product,
+  heading = 'Sign in',
+  banner,
+  footer,
+  children,
+}: AuthCardProps) {
   return (
     <div className="auth-wrap">
       <section className="auth-card">
         <div className="brand">
-          <span className="logo round" aria-hidden="true">
+          <span className="logo" aria-hidden="true">
             THC
           </span>
           <div>

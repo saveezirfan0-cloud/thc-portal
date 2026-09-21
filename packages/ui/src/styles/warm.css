@@ -1,421 +1,82 @@
-/* Generated from wireframes/assets/thc.css §12 · warm style expression (ADR-0003 v2). */
+/* Handoff v2 ("softened") deltas — data-style="warm".
 
-/* =====================================================================
-   12 · WARM STYLE — stronger expression (ADR-0003 v2)
-   Light by default, warm ground, tinted surfaces, bigger type, filled nav,
-   gradient primary. Scope style is untouched by everything below.
-   ===================================================================== */
-:root[data-style='warm'] {
-  --r-xs: 8px;
-  --r-sm: 12px;
-  --r: 16px;
-  --r-lg: 22px;
-  --r-phone: 44px;
-  --r-nav: 12px;
-  --head-weight: 800;
-  --head-track: -0.025em;
-  --label-size: 11px;
-  --label-track: 0.06em;
-  --label-weight: 700;
-  --btn-h: 44px;
-  --input-h: 46px;
-  --grad-primary: linear-gradient(135deg, #3edcec 0%, #21b7cf 100%);
-  --grad-purple: linear-gradient(135deg, #b48bff 0%, #8b5cf6 100%);
-  --grad-card: linear-gradient(160deg, var(--cyan-dim), transparent 70%);
-}
-:root[data-style='warm'][data-theme='dark'] {
-  --bg: #0d1117;
-  --panel: #151b26;
-  --panel-2: #1b2230;
-  --line: #263043;
-  --panel-glass: rgba(21, 27, 38, 0.88);
-  --glass: rgba(21, 27, 38, 0.62);
-  --glass-strong: rgba(21, 27, 38, 0.9);
-  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.28);
-}
-:root[data-style='warm'][data-theme='light'] {
-  --bg: #f4f1ea;
-  --panel: #ffffff;
-  --panel-2: #f8f6f1;
-  --line: #e7e2d9;
-  --shadow-card: 0 10px 30px rgba(20, 26, 44, 0.07), 0 1px 2px rgba(20, 26, 44, 0.05);
-  --tint: rgba(62, 220, 236, 0.06);
-}
+   Almost all of v2 falls out of the tokens: Outfit / Plus Jakarta Sans,
+   sentence-case labels, and the 20 / 18 / 14 / 999 / 50% radius scale are set
+   in tokens.css and consumed by components.css. What is left here is the
+   handful of rules whose *shape* changes, not just their values:
 
-/* type scale */
-:root[data-style='warm'] body {
-  font-size: 14.5px;
-}
-:root[data-style='warm'] h1 {
-  font-size: 28px;
-}
-:root[data-style='warm'] h2 {
-  font-size: 20px;
-}
-:root[data-style='warm'] h3 {
-  font-size: 16px;
-}
-:root[data-style='warm'] .topbar h1 {
-  font-size: 22px;
-}
-:root[data-style='warm'] .page-head h1 {
-  font-size: 26px;
-}
-:root[data-style='warm'] .kpi .v {
-  font-size: 34px;
-  letter-spacing: -0.03em;
-}
-:root[data-style='warm'] .app-header .title {
-  font-size: 26px;
-}
-:root[data-style='warm'] .mcard .t {
-  font-size: 17px;
-}
-:root[data-style='warm'] .mcard .big {
-  font-size: 26px;
-}
-:root[data-style='warm'] .wizard-top h2 {
-  font-size: 26px;
-}
-:root[data-style='warm'] .static-screen h2 {
-  font-size: 24px;
-}
+     · the sidebar active state becomes a pill instead of a left bar
+     · primary buttons carry the cyan→violet gradient
+     · a couple of tiles gain their own surface
 
-/* surfaces: colour, elevation, no hairline-everything */
-:root[data-style='warm'] .panel,
-:root[data-style='warm'] .card,
-:root[data-style='warm'] .kpi {
-  border-color: transparent;
-  box-shadow: var(--shadow-card);
-}
-:root[data-style='warm'][data-theme='dark'] .panel,
-:root[data-style='warm'][data-theme='dark'] .card,
-:root[data-style='warm'][data-theme='dark'] .kpi {
-  border-color: var(--line);
-}
-:root[data-style='warm'] .kpi {
-  background: var(--panel);
-  position: relative;
-  overflow: hidden;
-}
-:root[data-style='warm'] .kpi::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: var(--grad-card);
-  opacity: 0.9;
-  pointer-events: none;
-}
-:root[data-style='warm'] .kpi.ok::before {
-  background: linear-gradient(160deg, var(--green-dim), transparent 70%);
-}
-:root[data-style='warm'] .kpi.danger::before {
-  background: linear-gradient(160deg, var(--coral-dim), transparent 70%);
-}
-:root[data-style='warm'] .kpi.warn::before {
-  background: linear-gradient(160deg, var(--amber-dim), transparent 70%);
-}
-:root[data-style='warm'] .kpi > * {
-  position: relative;
-}
-:root[data-style='warm'] .panel-h {
-  padding: 14px 18px;
-}
-:root[data-style='warm'] .panel-b {
-  padding: 18px;
-}
-:root[data-style='warm'] .card.accent {
-  border-left: 0;
-  background: linear-gradient(135deg, var(--cyan-dim), var(--panel) 60%);
-}
-:root[data-style='warm'] .tbl th {
-  border-bottom: 0;
-  background: var(--panel-2);
-}
-:root[data-style='warm'] .tbl th:first-child {
-  border-radius: var(--r-sm) 0 0 var(--r-sm);
-}
-:root[data-style='warm'] .tbl th:last-child {
-  border-radius: 0 var(--r-sm) var(--r-sm) 0;
-}
-:root[data-style='warm'] .tbl td {
-  padding: 12px;
-}
-:root[data-style='warm'] .note {
-  border-style: solid;
-  background: var(--panel-2);
-}
-:root[data-style='warm'] .alert {
-  border: 0;
-  padding: 12px 14px;
-}
+   Nothing below introduces a shadow. v1 (scope) is untouched by this file. */
 
-/* shell */
-:root[data-style='warm'] .sidebar {
-  border-right: 0;
-  background: var(--panel);
-}
-:root[data-style='warm'] .sidebar nav {
-  padding: 10px 12px;
-  gap: 4px;
-}
+/* ---- sidebar: pill active state, no left bar ------------------------
+   v1: 3px accent left bar + 8% fill, padding 11px 18px.
+   v2: padding 11px 16px; margin 2px 12px; 14px radius; 12% fill. */
 :root[data-style='warm'] .sidebar nav a {
-  font-weight: 700;
-  font-size: 14px;
-  padding: 11px 12px;
+  padding: 11px var(--sp-16);
+  margin: 2px var(--sp-12);
+  border-left: 0;
 }
 :root[data-style='warm'] .sidebar nav a.active {
-  background: var(--cyan);
-  color: var(--on-cyan);
-  box-shadow: 0 6px 16px rgba(62, 220, 236, 0.25);
-}
-:root[data-style='warm'] .sidebar nav a.active .count {
-  background: var(--on-cyan);
-  color: var(--cyan);
-}
-:root[data-style='warm'] .topbar {
-  border-bottom: 0;
-  background: transparent;
-}
-:root[data-style='warm'] .content {
-  padding: 20px 28px 32px;
-  gap: 22px;
+  background: var(--cyan-dim);
 }
 
-/* buttons & pills */
-:root[data-style='warm'] .btn {
-  border-color: transparent;
-  background: var(--panel-2);
-}
-:root[data-style='warm'][data-theme='dark'] .btn {
-  border-color: var(--line);
-}
+/* ---- gradient primary ----------------------------------------------
+   dark  linear-gradient(135deg,#3EDCEC,#8F7BFF)
+   light linear-gradient(135deg,#0B7A88,#7C5CD6)
+   both with the background colour as the label. */
 :root[data-style='warm'] .btn.primary {
   background: var(--grad-primary);
+  border-color: transparent;
+  color: var(--on-cyan);
+}
+:root[data-style='warm'] .btn.primary:hover {
+  background: var(--grad-primary-hover);
+  color: var(--on-cyan);
+}
+
+/* ---- surfaces -------------------------------------------------------
+   v1 draws the KPI and financial tiles as a 1px-gap grid on the divider
+   colour; v2 separates them into bordered cards, which is what the plain
+   `.kpi` already is. The only extra is the tinted fill used on the tile
+   inside a panel so it still reads as a card. */
+:root[data-style='warm'] .kpi.flat {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: var(--sp-16) var(--sp-18);
+}
+
+:root[data-style='warm'] .tilegrid {
+  gap: var(--sp-12);
+  background: transparent;
   border: 0;
-  box-shadow: 0 8px 20px rgba(33, 183, 207, 0.28);
 }
-:root[data-style='warm'] .btn.purple {
-  background: var(--grad-purple);
-  border: 0;
-  color: #fff;
-  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.28);
+:root[data-style='warm'] .tilegrid > .kpi,
+:root[data-style='warm'] .tilegrid > .card {
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
 }
-:root[data-style='warm'] .btn.green {
-  box-shadow: 0 8px 20px rgba(61, 220, 151, 0.22);
-  border: 0;
-}
-:root[data-style='warm'] .btn.outline {
-  border: 2px solid var(--cyan-ink);
-}
-:root[data-style='warm'] .btn.danger {
-  border: 2px solid var(--coral-line);
-}
-:root[data-style='warm'] .pill {
-  height: 24px;
-  padding: 2px 10px;
-  border-color: transparent;
-}
-:root[data-style='warm'][data-theme='dark'] .pill {
-  border-color: transparent;
-}
-:root[data-style='warm'] .chip {
-  border-color: transparent;
-}
-:root[data-style='warm'] .seg {
-  padding: 3px;
-  background: var(--panel-2);
-  border-color: transparent;
-  border-radius: var(--r-pill);
-}
+
+/* ---- segmented control ---------------------------------------------
+   The v2 track is a pill with pill-shaped segments and no internal rules. */
 :root[data-style='warm'] .seg button,
 :root[data-style='warm'] .seg a {
   border-right: 0;
   border-radius: var(--r-pill);
-  height: 34px;
-}
-:root[data-style='warm'] .seg .on,
-:root[data-style='warm'] .seg .active {
-  background: var(--panel);
-  color: var(--text);
-  box-shadow: 0 2px 8px rgba(20, 26, 44, 0.12);
-}
-:root[data-style='warm'] .tabs button,
-:root[data-style='warm'] .tabs a {
-  padding: 10px 16px;
-  border-bottom-width: 3px;
-}
-:root[data-style='warm'] .input,
-:root[data-style='warm'] select.input,
-:root[data-style='warm'] textarea.input {
-  border-width: 1.5px;
-}
-:root[data-style='warm'] .avatar {
-  border-radius: 14px;
-}
-:root[data-style='warm'] .avatar.sm {
-  border-radius: 8px;
-}
-:root[data-style='warm'] .avatar.xl {
-  border-radius: 22px;
-}
-:root[data-style='warm'] .stepper {
-  border: 0;
-  background: var(--panel-2);
-}
-:root[data-style='warm'] .stepper .st {
-  border-right: 0;
-}
-:root[data-style='warm'] .stepper .st.now {
-  background: var(--panel);
-  border-bottom: 0;
-  border-radius: var(--r-sm);
-  box-shadow: var(--shadow-card);
-}
-:root[data-style='warm'] .kcol {
-  border: 0;
-  background: var(--panel-2);
-}
-:root[data-style='warm'] .kcard {
-  background: var(--panel);
-  border: 0;
-  box-shadow: var(--shadow-card);
-  padding: 12px;
-}
-:root[data-style='warm'] .docrow {
-  border-color: transparent;
-}
-:root[data-style='warm'] .docrow + .docrow {
-  border-top: 1px solid var(--line);
-}
-:root[data-style='warm'] .modal {
-  border: 0;
-}
-:root[data-style='warm'] .cal {
-  border: 0;
-  gap: 6px;
-  background: transparent;
-}
-:root[data-style='warm'] .cal .dh {
-  background: transparent;
-}
-:root[data-style='warm'] .cal .day {
-  border-radius: var(--r-sm);
-  box-shadow: var(--shadow-card);
-}
-:root[data-style='warm'] .evchip {
-  border-left-width: 4px;
 }
 
-/* mobile */
-:root[data-style='warm'] .phone {
-  border: 0;
-  box-shadow:
-    0 0 0 8px #1a1a1e,
-    0 0 0 9px #3a3a40,
-    0 30px 60px rgba(0, 0, 0, 0.35);
+/* ---- stepper --------------------------------------------------------
+   Stepper nodes are round in v2 (radius table), so the marker column uses
+   the avatar radius; the rails themselves stay flat. */
+:root[data-style='warm'] .stepper {
+  border-radius: var(--r-card);
 }
-:root[data-style='warm'] .phone::before {
-  width: 420px;
-  height: 420px;
-  top: -160px;
-  left: -120px;
-}
-:root[data-style='warm'] .statusbar {
-  height: 48px;
-}
-:root[data-style='warm'] .app-header {
-  padding: 10px 18px 12px;
-  border-bottom: 0;
-}
-:root[data-style='warm'] .app-body {
-  padding: 16px 18px 100px;
-  gap: 14px;
-}
-:root[data-style='warm'] .mcard {
-  padding: 16px;
-  border-color: transparent;
-  box-shadow: var(--shadow-card);
-}
-:root[data-style='warm'][data-theme='dark'] .mcard {
-  border-color: var(--line);
-}
-:root[data-style='warm'] .mcard.today {
-  border-left: 0;
-  background: linear-gradient(150deg, var(--cyan-dim) 0%, var(--panel-glass) 55%);
-}
-:root[data-style='warm'] .mcard.needs {
-  border: 0;
-  background: linear-gradient(150deg, var(--amber-dim) 0%, var(--panel-glass) 55%);
-  box-shadow:
-    0 0 0 2px var(--amber-line),
-    var(--shadow-card);
-}
-:root[data-style='warm'] .mcard.applied {
-  border-left: 0;
-  background: linear-gradient(150deg, var(--purple-dim) 0%, var(--panel-glass) 55%);
-}
-:root[data-style='warm'] .bottom-nav {
-  padding: 10px 10px 22px;
-  border-top: 0;
-}
-:root[data-style='warm'] .bottom-nav a {
-  font-size: 10px;
-  letter-spacing: 0.02em;
-  text-transform: none;
-  font-weight: 700;
-  gap: 5px;
-  padding: 6px 0;
-  border-radius: var(--r-sm);
-}
-:root[data-style='warm'] .bottom-nav a .i {
-  width: 24px;
-  height: 24px;
-  border-width: 2px;
-  border-radius: 8px;
-}
-:root[data-style='warm'] .bottom-nav a.active {
-  background: var(--cyan-dim);
-  color: var(--cyan-ink);
-}
-:root[data-style='warm'] .bottom-nav a.active .i {
-  background: var(--cyan-ink);
-  border-color: var(--cyan-ink);
-}
-:root[data-style='warm'] .gps {
-  border: 0;
-  padding: 12px 14px;
-  font-weight: 600;
-}
-:root[data-style='warm'] .quiz-opt {
-  border-color: transparent;
-  box-shadow: var(--shadow-card);
-  padding: 14px;
-}
-:root[data-style='warm'] .quiz-opt.sel {
-  box-shadow: 0 0 0 2px var(--cyan-ink);
-}
-:root[data-style='warm'] .push {
-  border: 0;
-  box-shadow: var(--shadow-card);
-}
+
+/* ---- mobile ---------------------------------------------------------
+   Sentence-case nav labels are already the token default; only the sheet
+   corner radius differs from the tile scale. */
 :root[data-style='warm'] .sheet {
-  border-top: 0;
-}
-:root[data-style='warm'] .mrow {
-  padding: 14px 0;
-}
-:root[data-style='warm'] .timer {
-  font-size: 40px;
-  letter-spacing: -0.02em;
-}
-/* flat KPI inside a panel (no card chrome) */
-.kpi.flat {
-  background: transparent !important;
-  box-shadow: none !important;
-  border: 0 !important;
-  padding: 6px 0 0;
-}
-.kpi.flat::before {
-  display: none;
+  border-radius: var(--r-tile) var(--r-tile) 0 0;
 }

@@ -4,7 +4,7 @@
 -- client-facing view must be empty for the `anon` PostgREST role.
 -- =====================================================================
 begin;
-select plan(39);
+select plan(40);
 \ir _shared/fixtures.psql
 
 select set_config('request.jwt.claims', '', true);
@@ -41,12 +41,21 @@ select is((select count(*)::int from audit_log             where action = 'rls_f
 select is((select count(*)::int from report_sends          where error  = 'rls_fixture_probe'),             0, 'anon reads no report sends');
 select is((select count(*)::int from venue_types           where key = 'rls_fixture_type'),                 0, 'anon reads no venue types: venue_types_read needs a profile, and anon has none');
 
-select is((select count(*)::int from client_events_v       where id in (:'event_a', :'event_b')),            0, 'anon reads no client_events_v');
+-- 0009 took back the default grants on event_windows. It runs with owner
+-- rights over the money-bearing shift_requirements table, so a world grant
+-- on it handed every event's timings to a logged-out caller (§11.1).
+select throws_ok(
+  $$ select count(*) from event_windows $$,
+  '42501', null, 'anon holds no privilege on event_windows: it reads shift_requirements with owner rights');
 
--- The two owner-rights views (ADR-0004) are not merely empty for anon: the
--- privilege itself is revoked, so the attempt fails rather than returning
+-- All three client views run with the owner's rights (ADR-0004; 0009 brought
+-- client_events_v into line), so they are not merely empty for anon: the
+-- privilege itself is revoked and the attempt fails rather than returning
 -- nothing. Anything that runs with the owner's rights must not depend on
 -- auth.uid() being null to stay shut.
+select throws_ok(
+  $$ select count(*) from client_events_v $$,
+  '42501', null, 'anon holds no privilege at all on client_events_v');
 select throws_ok(
   $$ select count(*) from client_lineup_v $$,
   '42501', null, 'anon holds no privilege at all on client_lineup_v');

@@ -6,9 +6,9 @@ import { expect, test, type Page } from '@playwright/test';
  *
  * Wireframe: `wireframes/public/apply.html`.
  *
- * These write to the database, so they run against the server Playwright
- * starts with NEXT_PUBLIC_SUPABASE_* set (see playwright.config.ts). With
- * no local Supabase stack there is nothing to submit to, and they skip.
+ * These run in the `staff` project, against the staff server Playwright
+ * starts on 3001. The submitting tests need a reachable Supabase — CI
+ * exports the local stack — and skip without one.
  */
 const configured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,

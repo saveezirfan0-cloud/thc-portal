@@ -38,15 +38,18 @@ export function Progress({
   value,
   max = 100,
   tone,
+  thin,
 }: {
   value: number;
   max?: number;
-  tone?: string;
+  tone?: 'green' | 'amber' | 'coral' | 'purple';
+  /** 3px track, as used under the wizard header. */
+  thin?: boolean;
 }) {
   const pct = max === 0 ? 0 : Math.min(100, Math.max(0, (value / max) * 100));
   return (
     <div
-      className="progress"
+      className={clsx('progress', thin && 'thin')}
       role="progressbar"
       aria-valuenow={value}
       aria-valuemin={0}
