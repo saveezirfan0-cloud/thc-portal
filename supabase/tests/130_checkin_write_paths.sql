@@ -1,5 +1,5 @@
 -- =====================================================================
--- 120 · breaks and Resolve (Scope §5.2b, §9.5, RULE-02 / 06 / 14)
+-- 130 · breaks and Resolve (Scope §5.2b, §9.5, RULE-02 / 06 / 14)
 --
 -- The two write paths the pay maths in 0006 was waiting on. `now()` is frozen
 -- inside a transaction, so the RPC behaviour (what rows appear, which guards

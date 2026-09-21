@@ -113,6 +113,12 @@
   --glow-soft: none; /* lift under an active nav item or a raised tile */
   --glow-dot: none; /* tight halo on a status dot, in its own colour */
 
+  /* On a dark ground a shadow is invisible, so depth there is glow and
+     frosted glass and this stays `none`. The warm light boards do carry a
+     soft card shadow — it is the only place one is allowed, and it is warm
+     rather than black. See the elevation tests. */
+  --shadow-card: none;
+
   /* --- keyboard focus: always visible, always the accent ------------ */
   --focus-line: var(--cyan-ink);
   --focus-halo: rgba(62, 220, 236, 0.28);
@@ -126,6 +132,11 @@
   /* --- gradient primary: v2 only; flat accent in v1 ----------------- */
   --grad-primary: none;
   --grad-primary-hover: none;
+
+  /* Auto-assign is the one action the boards give its own colour, and the
+     design system already reserves purple for it. Set per style below. */
+  --grad-auto: none;
+  --grad-auto-hover: none;
 
   /* =================================================================
      Typography — v1: Space Grotesk / Inter / IBM Plex Mono,
@@ -372,6 +383,13 @@
 
   --grad-primary: linear-gradient(135deg, #3edcec 0%, #8f7bff 100%);
   --grad-primary-hover: linear-gradient(135deg, #7de9f4 0%, #a99bff 100%);
+
+  --grad-auto: linear-gradient(135deg, #7c3aed 0%, #a879ff 100%);
+  --grad-auto-hover: linear-gradient(135deg, #8b4ef5 0%, #bb96ff 100%);
+
+  /* Restated rather than inherited, so the pair reads together with the
+     light block below: on this ground depth is the glow, never a shadow. */
+  --shadow-card: none;
 }
 
 /* --- v2 light: same warm ground, teal→violet gradient --------------- */
@@ -383,4 +401,14 @@
      hover does on the warm ground. */
   --grad-primary: linear-gradient(135deg, #0a6d79 0%, #7758cd 100%);
   --grad-primary-hover: linear-gradient(135deg, #0c7885 0%, #7758cd 100%);
+
+  /* The boards' violet action. Both stops clear 4.5:1 against a white
+     label, which #7C3AED alone does not at the lighter end of a sweep. */
+  --grad-auto: linear-gradient(135deg, #6d28d9 0%, #7c3aed 100%);
+  --grad-auto-hover: linear-gradient(135deg, #7c3aed 0%, #8b4ef5 100%);
+
+  /* The one shadow in the system. Warm rather than black — a neutral cast
+     on a cream ground reads as grey dirt — and two layers so a card has a
+     contact edge as well as a lift. */
+  --shadow-card: 0 1px 2px rgba(36, 29, 22, 0.05), 0 10px 26px -14px rgba(36, 29, 22, 0.16);
 }

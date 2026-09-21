@@ -121,13 +121,18 @@ each need an owner role of their own. Worth noting that the check-in work has ke
 from growing — `resolve_violation` is deliberately `security invoker`, because admins
 already hold the policies it needs.
 
-## O2 · Two pull requests build the same screen
+## O2 · Parallel sessions keep colliding on file names
 
-[#4](https://github.com/saveezirfan0-cloud/thc-portal/pull/4) and
-[#12](https://github.com/saveezirfan0-cloud/thc-portal/pull/12) are both the public
-application form (§2.1, §2.12), from two sessions that ran in parallel. They need a
-decision about which one survives before either is merged; merging both would leave two
-`/apply` routes.
+Three collisions so far, none of which git reports as a conflict, because the filenames
+differ: two migrations numbered `0005`, four renumbered to `0006`, and two `/apply`
+implementations built at once (resolved on `main` in bbfb885). Timestamps have not fixed
+it either — this branch and the `/apply` branch both picked `20260921150000` to the
+second, and Supabase keys `schema_migrations.version` on exactly that prefix, so the two
+would have collided on a primary key rather than merely sorting oddly.
+
+Nothing here needs undoing; it is a process note. The cheapest guard is the one already
+written at the top of `docs/13`: `git fetch origin && git branch -r` before naming a
+migration, and prefer a timestamp with real minutes in it over a round number.
 
 ## O3 · The accounts the build is waiting on
 
