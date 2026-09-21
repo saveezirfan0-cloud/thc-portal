@@ -44,7 +44,37 @@ select is((select count(*)::int from shift_requirements where id = :'shift_a'), 
 select is((select count(*)::int from roles where id = :'role_id'), 0,
   'KNOWN GAP: roles has admin_all only — a worker cannot read the role name; it also keeps pay_rate out of reach');
 
+-- ---- the tables 0004_rls_gaps policed, own row only --------------------
+select is((select count(*)::int from bank_details where staff_id = :'staffa'), 1,
+  'worker reads their own bank details (§10.1 Payment information)');
+select is((select count(*)::int from bank_details where staff_id = :'staffb'), 0,
+  'another worker''s bank details are invisible — sort code and account number never leave their owner');
+select is((select count(*)::int from staff_references where id = :'ref_a'), 1, 'worker reads their own referees');
+select is((select count(*)::int from staff_references where id = :'ref_b'), 0, 'worker cannot read another worker''s referees');
+select is((select count(*)::int from staff_roles where staff_id = :'staffa'), 1, 'worker reads their own role qualifications');
+select is((select count(*)::int from staff_roles where staff_id = :'staffb'), 0, 'worker cannot read another worker''s role qualifications');
+select is((select count(*)::int from quiz_attempts where id = :'quiz_a'), 1, 'worker reads their own quiz attempt');
+select is((select count(*)::int from quiz_attempts where id = :'quiz_b'), 0, 'worker cannot read another worker''s quiz attempt');
+select is((select count(*)::int from push_subscriptions where id = :'push_a'), 1, 'worker reads their own push subscription');
+select is((select count(*)::int from push_subscriptions where id = :'push_b'), 0, 'worker cannot read another worker''s push subscription');
+select is((select count(*)::int from location_pings where booking_id = :'booking_a'), 1, 'worker reads their own location trail');
+select is((select count(*)::int from location_pings where booking_id = :'booking_b'), 0, 'worker cannot read another worker''s location trail');
+select is((select count(*)::int from venue_types where key = 'rls_fixture_type'), 1,
+  'worker may read venue_types reference data (§9.11) — no money, no personal data');
+
+-- §2.8: the derived A/B/C statement lives on this row and "the worker never
+-- sees the resulting letter", so the worker holds no policy at all here and
+-- submission goes through a security definer RPC (see 0004).
+select is((select count(*)::int from hmrc_checklists where staff_id = :'staffa'), 0,
+  '§2.8 worker cannot read even their OWN HMRC checklist — the row carries the derived statement');
+select is((select count(*)::int from hmrc_checklists where staff_id = :'staffb'), 0,
+  'worker cannot read another worker''s HMRC checklist');
+
 -- ---- things a worker must never reach ---------------------------------
+select is((select count(*)::int from client_qualifications where staff_id in (:'staffa', :'staffb')), 0,
+  'worker cannot read client+role clearances — it would leak the client directory into the PWA (§9.6)');
+select is((select count(*)::int from audit_log where action = 'rls_fixture_probe'), 0, 'worker cannot read the audit log');
+select is((select count(*)::int from report_sends where error = 'rls_fixture_probe'), 0, 'worker cannot read the report send log');
 select is((select count(*)::int from client_rate_cards where id = :'ratecard_a'), 0, 'worker cannot read charge rates');
 select is((select count(*)::int from clients where id = :'clienta'), 0, 'worker cannot read the client directory');
 select is((select count(*)::int from venues where id = :'venue_id'), 0, 'worker cannot read the venue directory');

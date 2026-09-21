@@ -1,10 +1,12 @@
 -- =====================================================================
 -- 010 · RLS for the admin role (Back Office) — §1.4, §9.x
 -- Both directions for every RLS-enabled table: what admin may reach, and
--- the two tables admin is locked out of today.
+-- the two tables admin is locked out of today. Since 0004_rls_gaps this
+-- also covers the eleven previously unpoliced tables, including the two
+-- that are admin-READ and service-role-write (audit_log, report_sends).
 -- =====================================================================
 begin;
-select plan(36);
+select plan(61);
 \ir _shared/fixtures.psql
 
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
@@ -30,6 +32,23 @@ select is((select count(*)::int from settings               where key = 'rls_fix
 -- admin sees money, which is the whole point of the Back Office (§9.8, §9.9)
 select is((select charge_rate from shift_requirements where id = :'shift_a'), 22.97::numeric, 'admin sees charge_rate on a role section');
 select is((select pay_rate    from shift_requirements where id = :'shift_a'), 14.00::numeric, 'admin sees pay_rate on a role section');
+
+-- ---- the tables 0004_rls_gaps policed ---------------------------------
+select is((select count(*)::int from bank_details          where staff_id in (:'staffa', :'staffb')), 2, 'admin reads every worker''s bank details (payroll)');
+select is((select count(*)::int from hmrc_checklists       where staff_id in (:'staffa', :'staffb')), 2, 'admin reads every HMRC checklist (§2.8 New Starter report)');
+select is((select count(*)::int from staff_references      where id in (:'ref_a', :'ref_b')),         2, 'admin reads every worker''s referees');
+select is((select count(*)::int from staff_roles           where staff_id in (:'staffa', :'staffb')), 2, 'admin reads role qualifications');
+select is((select count(*)::int from client_qualifications where id in (:'qual_a', :'qual_b')),       2, 'admin reads client+role clearances (§9.6)');
+select is((select count(*)::int from quiz_attempts         where id in (:'quiz_a', :'quiz_b')),       2, 'admin reads quiz attempts');
+select is((select count(*)::int from push_subscriptions    where id in (:'push_a', :'push_b')),       2, 'admin reads push subscriptions');
+select is((select count(*)::int from location_pings        where booking_id in (:'booking_a', :'booking_b')), 2, 'admin reads location pings');
+select is((select count(*)::int from audit_log             where action = 'rls_fixture_probe'),       1, 'admin reads the audit log (§1.7)');
+select is((select count(*)::int from report_sends          where error  = 'rls_fixture_probe'),       1, 'admin reads the report send log (§9.9)');
+select is((select count(*)::int from venue_types           where key = 'rls_fixture_type'),           1, 'admin reads venue type defaults (§9.11)');
+
+-- admin sees the derived HMRC statement the worker is never shown (§2.8)
+select is((select statement::text from hmrc_checklists where staff_id = :'staffa'), 'A',
+  'admin sees the derived A/B/C statement, which §2.8 keeps from the worker');
 
 -- ---- reads that are blocked today (documented gaps) --------------------
 select is((select count(*)::int from profiles where id in (:'staffa_uid', :'clienta_uid')), 0,
@@ -70,6 +89,39 @@ with u as (update client_rate_cards set charge_rate = 24.00 where id = :'ratecar
   select is((select count(*)::int from u), 1, 'admin writes rate cards');
 with u as (update settings set value = '{"secret":false}' where key = 'rls_fixture_probe' returning 1)
   select is((select count(*)::int from u), 1, 'admin writes settings');
+
+-- ---- writes on the tables 0004_rls_gaps policed -----------------------
+with u as (update bank_details set sort_code = '99-99-99' where staff_id = :'staffa' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes bank details');
+with u as (update hmrc_checklists set superseded = true where staff_id = :'staffa' returning 1)
+  select is((select count(*)::int from u), 1, 'admin supersedes an HMRC checklist');
+with u as (update staff_references set phone = '+447700900031' where id = :'ref_a' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes staff references');
+with u as (delete from staff_roles where staff_id = :'staffb' returning 1)
+  select is((select count(*)::int from u), 1, 'admin revokes a role qualification');
+with u as (update client_qualifications set do_not_return = true where id = :'qual_a' returning 1)
+  select is((select count(*)::int from u), 1, 'admin sets do-not-return on a clearance (§9.6)');
+with u as (update quiz_attempts set score = 100.00 where id = :'quiz_a' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes quiz attempts');
+with u as (update push_subscriptions set user_agent = 'admin-edited' where id = :'push_a' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes push subscriptions');
+with u as (update location_pings set inside_geofence = false where booking_id = :'booking_a' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes location pings');
+with u as (update venue_types set default_radius_m = 300 where key = 'rls_fixture_type' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes venue type defaults');
+
+-- ---- the two evidence tables are admin-READ, service-role-write --------
+with u as (update audit_log set action = 'tampered' where action = 'rls_fixture_probe' returning 1)
+  select is((select count(*)::int from u), 0, 'admin cannot rewrite the audit log (§1.7 append-only)');
+select throws_ok(
+  $$ insert into audit_log (action, entity) values ('forged','staff') $$,
+  '42501', null, 'admin cannot forge an audit_log row; only definer functions and service_role write it');
+with u as (update report_sends set status = 'sent' where error = 'rls_fixture_probe' returning 1)
+  select is((select count(*)::int from u), 0, 'admin cannot rewrite a report send record (§9.9)');
+select throws_ok(
+  $$ insert into report_sends (kind, period_start, period_end, status)
+     values ('payroll', current_date, current_date, 'sent') $$,
+  '42501', null, 'admin cannot fake a report send; only the scheduled job on the service role writes it');
 
 select throws_ok(
   $$ insert into notification_outbox (key, channel, template) values ('RLS:denied:outbox','push','N1') $$,

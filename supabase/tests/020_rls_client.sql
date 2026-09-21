@@ -7,7 +7,7 @@
 -- Every money-bearing table is asserted unreachable, in both directions.
 -- =====================================================================
 begin;
-select plan(34);
+select plan(49);
 \ir _shared/fixtures.psql
 
 select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
@@ -39,6 +39,39 @@ select is((select count(*)::int from violations where id in (:'violation_a', :'v
 select is((select count(*)::int from staff where id in (:'staffa', :'staffb')), 0, 'client cannot read the staff table');
 select is((select count(*)::int from compliance_docs where id in (:'doc_a', :'doc_b')), 0, 'client cannot read compliance documents');
 select is((select count(*)::int from criminal_declarations where id in (:'decl_a', :'decl_b')), 0, 'client cannot read criminal declarations');
+
+-- ---- payroll data: the two tables 0004 was written for ----------------
+select is((select count(*)::int from bank_details where staff_id in (:'staffa', :'staffb')), 0,
+  '§11.1/§1.7 a client cannot read bank_details — sort code and account number are the worker''s money and the worker''s personal data');
+select is((select count(*)::int from hmrc_checklists where staff_id in (:'staffa', :'staffb')), 0,
+  '§11.1/§1.7 a client cannot read hmrc_checklists — tax status is personal data');
+
+-- ---- the rest of what 0004_rls_gaps policed ---------------------------
+select is((select count(*)::int from staff_references where id in (:'ref_a', :'ref_b')), 0,
+  'client cannot read a worker''s referees');
+select is((select count(*)::int from staff_roles where staff_id in (:'staffa', :'staffb')), 0,
+  'client cannot read role qualifications');
+select is((select count(*)::int from client_qualifications where id = :'qual_a'), 0,
+  'client cannot read even its OWN client+role clearances — the list names workers (§9.6 is a back-office screen)');
+select is((select count(*)::int from client_qualifications where id = :'qual_b'), 0,
+  'client cannot read another client''s clearances');
+select is((select count(*)::int from quiz_attempts where id in (:'quiz_a', :'quiz_b')), 0,
+  'client cannot read quiz attempts');
+select is((select count(*)::int from push_subscriptions where id in (:'push_a', :'push_b')), 0,
+  'client cannot read push subscriptions');
+select is((select count(*)::int from location_pings where booking_id in (:'booking_a', :'booking_b')), 0,
+  'client cannot read a worker''s location trail');
+select is((select count(*)::int from audit_log where action = 'rls_fixture_probe'), 0,
+  'client cannot read the audit log');
+select is((select count(*)::int from report_sends where error = 'rls_fixture_probe'), 0,
+  'client cannot read the report send log (payroll periods)');
+
+-- venue_types is the one thing 0004 opened to every signed-in role: nine
+-- rows of label + default radius, no money and no personal data (§9.11).
+select is((select count(*)::int from venue_types where key = 'rls_fixture_type'), 1,
+  'client may read venue_types reference data — no money, no personal data');
+with u as (update venue_types set default_radius_m = 999 where key = 'rls_fixture_type' returning 1)
+  select is((select count(*)::int from u), 0, 'client cannot edit venue_types (read-only, §11.1)');
 
 -- ---- internal configuration -------------------------------------------
 select is((select count(*)::int from settings where key = 'rls_fixture_probe'), 0, 'client cannot read settings');
@@ -83,6 +116,16 @@ select throws_ok(
   format($$ insert into bookings (shift_id, staff_id, status, source) values (%L, %L, 'confirmed', 'manual') $$,
          :'shift_a', :'staffb'),
   '42501', null, 'client cannot book a worker onto a shift');
+
+select throws_ok(
+  format($$ insert into bank_details (staff_id, account_holder, sort_code, account_number)
+            values (%L, 'Mallory', '00-00-00', '00000000') $$, :'staffa'),
+  '42501', null, 'client cannot write a worker''s bank details');
+
+select throws_ok(
+  format($$ insert into client_qualifications (client_id, role_id, staff_id, do_not_return)
+            values (%L, %L, %L, true) $$, :'clienta', :'role_id', :'staffb'),
+  '42501', null, 'client cannot grant or revoke a clearance itself — do-not-return is a back-office action (§9.6)');
 
 -- ---- feedback is the one thing a client may write (§11.2) --------------
 select lives_ok(

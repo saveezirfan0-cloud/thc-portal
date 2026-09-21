@@ -49,6 +49,14 @@
 \set decl_b       '0f0f0f0f-0000-4000-8000-000000000002'
 \set feedback_a   '1a1a1a1a-0000-4000-8000-000000000001'
 \set feedback_b   '1a1a1a1a-0000-4000-8000-000000000002'
+\set ref_a        '2a2a2a2a-0000-4000-8000-000000000001'
+\set ref_b        '2a2a2a2a-0000-4000-8000-000000000002'
+\set quiz_a       '3a3a3a3a-0000-4000-8000-000000000001'
+\set quiz_b       '3a3a3a3a-0000-4000-8000-000000000002'
+\set qual_a       '4a4a4a4a-0000-4000-8000-000000000001'
+\set qual_b       '4a4a4a4a-0000-4000-8000-000000000002'
+\set push_a       '5a5a5a5a-0000-4000-8000-000000000001'
+\set push_b       '5a5a5a5a-0000-4000-8000-000000000002'
 \set new_id       '9f9f9f9f-0000-4000-8000-00000000000f'
 
 insert into auth.users (id, email) values
@@ -127,3 +135,48 @@ insert into notification_outbox (key, channel, template, recipient_staff_id) val
   ('RLS:fixture:outbox', 'push', 'N6', :'staffa');
 
 insert into settings (key, value) values ('rls_fixture_probe', '{"secret":true}');
+
+-- ---- rows for the tables policed by 0004_rls_gaps -------------------
+-- Addressed by their fixed ids, or by a fixture-only marker value where the
+-- table uses a generated identity key.
+
+insert into staff_roles (staff_id, role_id) values
+  (:'staffa', :'role_id'),
+  (:'staffb', :'role_id');
+
+insert into client_qualifications (id, client_id, role_id, staff_id, note) values
+  (:'qual_a', :'clienta', :'role_id', :'staffa', 'Fixture clearance A'),
+  (:'qual_b', :'clientb', :'role_id', :'staffb', 'Fixture clearance B');
+
+insert into staff_references (id, staff_id, name, relationship, phone, email) values
+  (:'ref_a', :'staffa', 'Referee Alpha', 'Tutor', '+447700900021', 'ref-a@rls.test'),
+  (:'ref_b', :'staffb', 'Referee Bravo', 'Coach', '+447700900022', 'ref-b@rls.test');
+
+insert into bank_details (staff_id, account_holder, sort_code, account_number) values
+  (:'staffa', 'Staff Alpha', '04-00-04', '11110001'),
+  (:'staffb', 'Staff Bravo', '04-00-04', '11110002');
+
+insert into hmrc_checklists (staff_id, q1_other_job, q2_pension, q3_since_6_april, statement, declared) values
+  (:'staffa', false, false, false, 'A', true),
+  (:'staffb', true,  null,  null,  'C', true);
+
+insert into quiz_attempts (id, staff_id, attempt_no, score, passed, answers) values
+  (:'quiz_a', :'staffa', 1, 92.00, true,  '{"q1":"a"}'),
+  (:'quiz_b', :'staffb', 1, 64.00, false, '{"q1":"b"}');
+
+insert into push_subscriptions (id, staff_id, endpoint, p256dh, auth) values
+  (:'push_a', :'staffa', 'https://push.rls.test/fixture-a', 'p256dh-a', 'auth-a'),
+  (:'push_b', :'staffb', 'https://push.rls.test/fixture-b', 'p256dh-b', 'auth-b');
+
+insert into location_pings (booking_id, location, inside_geofence) values
+  (:'booking_a', st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, true),
+  (:'booking_b', st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, true);
+
+insert into audit_log (actor, action, entity, entity_id) values
+  (:'admin_uid', 'rls_fixture_probe', 'staff', :'staffa');
+
+insert into report_sends (kind, period_start, period_end, sent_at, status, error) values
+  ('payroll', current_date - 7, current_date - 1, now(), 'sent', 'rls_fixture_probe');
+
+insert into venue_types (key, label, default_radius_m) values
+  ('rls_fixture_type', 'RLS Fixture venue type', 275);
