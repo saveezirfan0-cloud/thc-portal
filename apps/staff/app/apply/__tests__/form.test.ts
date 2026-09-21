@@ -1,5 +1,22 @@
 import { describe, expect, it } from 'vitest';
-import { AGE_OPTIONS, DIAL_CODES, EMPTY_VALUES, errorBanner, toE164, validate } from '../form';
+import {
+  DIAL_CODES,
+  EMPTY_VALUES,
+  ageBandFor,
+  ageOn,
+  errorBanner,
+  parseDob,
+  toE164,
+  validate,
+} from '../form';
+
+/** `yyyy-mm-dd` for someone who turns `age` today, offset by whole days. */
+function dobForAge(age: number, offsetDays = 0): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - age);
+  d.setDate(d.getDate() + offsetDays);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 import type { ApplicationValues } from '../form';
 
 /**
@@ -19,26 +36,41 @@ function values(over: Partial<ApplicationValues> = {}): ApplicationValues {
     email: 'amara.kalu@example.com',
     dialCode: '+44',
     mobile: '7700 900123',
-    ageBand: '24',
+    dob: '1994-06-15',
     consent: true,
     ...over,
   };
 }
 
-describe('the age select (§2.1)', () => {
-  it('offers Under 18 so the form can reject it honestly, rather than hiding the case', () => {
-    expect(AGE_OPTIONS[0]).toEqual({ value: 'under_18', label: 'Under 18' });
+describe('the date of birth (§2.1, ADR-0008)', () => {
+  it('derives the §2.1 band rather than asking for it', () => {
+    expect(ageBandFor(18)).toBe('18');
+    expect(ageBandFor(30)).toBe('30');
+    expect(ageBandFor(31)).toBe('31_40');
+    expect(ageBandFor(40)).toBe('31_40');
+    expect(ageBandFor(41)).toBe('41_50');
+    expect(ageBandFor(51)).toBe('51_60');
+    expect(ageBandFor(61)).toBe('60_plus');
   });
 
-  it('lists every year from 18 to 30, then the bands the wireframe shows', () => {
-    const labels = AGE_OPTIONS.map((o) => o.label);
-    expect(labels.slice(1, 14)).toEqual(Array.from({ length: 13 }, (_, i) => String(18 + i)));
-    expect(labels.slice(14)).toEqual(['31 – 40', '41 – 50', '51 – 60', '60+']);
+  it('counts completed years, not calendar-year differences', () => {
+    const on = new Date(2026, 8, 21); // 21 September 2026
+    expect(ageOn(new Date(2008, 8, 21), on)).toBe(18); // birthday today
+    expect(ageOn(new Date(2008, 8, 22), on)).toBe(17); // birthday tomorrow
+    expect(ageOn(new Date(2008, 11, 31), on)).toBe(17);
   });
 
-  it('has no duplicate values, so a band cannot be submitted ambiguously', () => {
-    const seen = AGE_OPTIONS.map((o) => o.value);
-    expect(new Set(seen).size).toBe(seen.length);
+  it('parses the date input\u2019s value in local time, not UTC', () => {
+    const d = parseDob('1994-06-15');
+    expect(d?.getFullYear()).toBe(1994);
+    expect(d?.getMonth()).toBe(5);
+    expect(d?.getDate()).toBe(15);
+  });
+
+  it('refuses a day that does not exist', () => {
+    expect(parseDob('1994-02-31')).toBeNull();
+    expect(parseDob('1994-13-01')).toBeNull();
+    expect(parseDob('94-06-15')).toBeNull();
   });
 });
 
@@ -89,25 +121,23 @@ describe('validate (§2.1, §1.7)', () => {
     expect(validate(values())).toEqual({});
   });
 
-  it('rejects Under 18 with the wireframe’s wording', () => {
-    expect(validate(values({ ageBand: 'under_18' })).ageBand).toBe(
-      'You must be 18 or over to apply',
-    );
+  it('rejects someone a day short of 18, with the wireframe’s wording', () => {
+    expect(validate(values({ dob: dobForAge(18, 1) })).dob).toBe('You must be 18 or over to apply');
   });
 
-  it('rejects an age band the form never offered, rather than letting it through', () => {
-    expect(validate(values({ ageBand: '17' })).ageBand).toBe('You must be 18 or over to apply');
+  it('accepts someone on their eighteenth birthday', () => {
+    expect(validate(values({ dob: dobForAge(18) })).dob).toBeUndefined();
   });
 
-  it('asks for an age when none is chosen', () => {
-    expect(validate(values({ ageBand: '' })).ageBand).toBe('Select your age');
+  it('asks for a date when none is given', () => {
+    expect(validate(values({ dob: '' })).dob).toBe('Enter your date of birth');
   });
 
-  it('accepts every 18-plus band the select offers', () => {
-    for (const option of AGE_OPTIONS) {
-      if (option.value === 'under_18') continue;
-      expect(validate(values({ ageBand: option.value })).ageBand).toBeUndefined();
-    }
+  it('separates an impossible date from an under-18 one', () => {
+    const real = 'Enter a real date, as day, month and year';
+    expect(validate(values({ dob: '1994-02-31' })).dob).toBe(real);
+    expect(validate(values({ dob: dobForAge(-1) })).dob).toBe(real);
+    expect(validate(values({ dob: '1890-01-01' })).dob).toBe(real);
   });
 
   it('requires the GDPR tick, and says why', () => {
@@ -139,8 +169,8 @@ describe('validate (§2.1, §1.7)', () => {
   });
 
   it('reports every broken field at once, not just the first', () => {
-    const errors = validate(values({ ageBand: 'under_18', consent: false }));
-    expect(Object.keys(errors).sort()).toEqual(['ageBand', 'consent']);
+    const errors = validate(values({ dob: dobForAge(17), consent: false }));
+    expect(Object.keys(errors).sort()).toEqual(['consent', 'dob']);
   });
 
   it('trims before judging, so trailing spaces are not an error', () => {
@@ -154,11 +184,11 @@ describe('errorBanner', () => {
   });
 
   it('is singular for one field', () => {
-    expect(errorBanner({ ageBand: 'x' })).toBe('Please fix the field highlighted below.');
+    expect(errorBanner({ dob: 'x' })).toBe('Please fix the field highlighted below.');
   });
 
   it('counts the fields, as the wireframe does', () => {
-    expect(errorBanner({ ageBand: 'x', consent: 'y' })).toBe(
+    expect(errorBanner({ dob: 'x', consent: 'y' })).toBe(
       'Please fix the 2 fields highlighted below.',
     );
   });
