@@ -6,7 +6,7 @@
 -- that are admin-READ and service-role-write (audit_log, report_sends).
 -- =====================================================================
 begin;
-select plan(61);
+select plan(62);
 \ir _shared/fixtures.psql
 
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
@@ -105,12 +105,20 @@ with u as (update quiz_attempts set score = 100.00 where id = :'quiz_a' returnin
   select is((select count(*)::int from u), 1, 'admin writes quiz attempts');
 with u as (update push_subscriptions set user_agent = 'admin-edited' where id = :'push_a' returning 1)
   select is((select count(*)::int from u), 1, 'admin writes push subscriptions');
-with u as (update location_pings set inside_geofence = false where booking_id = :'booking_a' returning 1)
-  select is((select count(*)::int from u), 1, 'admin writes location pings');
 with u as (update venue_types set default_radius_m = 300 where key = 'rls_fixture_type' returning 1)
   select is((select count(*)::int from u), 1, 'admin writes venue type defaults');
 
--- ---- the two evidence tables are admin-READ, service-role-write --------
+-- ---- the three evidence tables are admin-READ, service-role-write ------
+-- location_pings joined these in 0006: inside_geofence decides the last
+-- on-site fix behind RULE-01 pay, so an admin who could edit it could move
+-- a worker's money with no record (§5.2b, §1.7).
+with u as (update location_pings set inside_geofence = false where booking_id = :'booking_a' returning 1)
+  select is((select count(*)::int from u), 0, 'admin cannot rewrite the location trail (§5.2b evidence behind RULE-01 pay)');
+select throws_ok(
+  format($$ insert into location_pings (booking_id, location, inside_geofence)
+            values (%L, st_setsrid(st_makepoint(-0.1, 51.5), 4326)::geography, true) $$, :'booking_a'),
+  '42501', null, 'admin cannot forge a location ping; only the record_location_ping definer RPC writes one');
+
 with u as (update audit_log set action = 'tampered' where action = 'rls_fixture_probe' returning 1)
   select is((select count(*)::int from u), 0, 'admin cannot rewrite the audit log (§1.7 append-only)');
 select throws_ok(

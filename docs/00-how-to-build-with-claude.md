@@ -10,9 +10,9 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 67 | `pnpm test` |
+| Unit | 157 | `pnpm test` |
 | Browser smoke | 14 | `pnpm turbo e2e:smoke` |
-| Database, row-level security | 278 | `supabase test db` |
+| Database, row-level security | 286 | `supabase test db` |
 
 What exists:
 
@@ -48,6 +48,23 @@ Vercel projects. Steps 2 and 3 of `docs/04` are still to do and need THC's accou
    migration `0005` implements it. The lesson from item 1 still stands — the base tables
    did not move — but the shorthand "client access goes only through `security_invoker`
    views" was wrong and is corrected everywhere it appeared.
+4. **Closed.** `event_windows` had run with owner rights since `0001` and still carried
+   Supabase's default world grants, so `GET /rest/v1/event_windows` returned every
+   event's timings to any caller, signed in or not. No rate ever left through it, but
+   `0005` cites it as the precedent for owner-rights views and `0003` is reserved for
+   `payable_shifts_v`, which is pay by definition. Migration `0006` takes the grants
+   back and moves its one caller, `client_events_v`, onto the ADR-0004 shape. The guard
+   test now also covers materialised views and foreign tables, which cannot carry RLS
+   at all and were the cheapest way past it.
+5. **Closed.** `location_pings` carried `admin_all ... for all` under a comment
+   promising the rows were append-only. `inside_geofence` is the last on-site fix behind
+   RULE-01 pay, so an admin could move a worker's money with no record. `0006` makes it
+   `admin_read`, alongside `audit_log` and `report_sends`.
+6. **Open, and an ADR rather than a patch.** No table sets `FORCE ROW LEVEL SECURITY`,
+   so any connection as the table owner reads `bank_details` and `hmrc_checklists` in
+   full. That bypass is currently load-bearing: the pgTAP fixtures depend on it, and so
+   would the definer RPCs `0004` still owes. Forcing it means giving those routines an
+   owner of their own. Assertion 7 in `001_rls_guard.sql` records the gap.
 
 ## How to run a session
 
