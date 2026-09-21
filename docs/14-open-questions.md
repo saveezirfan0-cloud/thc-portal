@@ -249,3 +249,35 @@ job; it is a way for anyone holding the anon key to staff an event.
 
 Nothing to do here. Recorded because the next person to revoke something from `PUBLIC`
 should know that test exists and why.
+
+## O7 · Every function in `public` is anon-callable unless something revoked it from anon
+
+Found by `190_job_function_grants.sql` on its first CI run, and fixed for the six it
+covers — but the shape of it is repo-wide and worth a pass of its own.
+
+Supabase's bootstrap sets default privileges granting EXECUTE on new functions in
+`public` to `anon`, `authenticated` **and** `service_role`, individually. A
+`revoke execute ... from public` therefore reads as a lockdown and changes nothing for
+those three: `public` is the implicit grant, not the named ones.
+
+`20260921141500` revoked six functions from `PUBLIC` and believed them closed. They were
+not. `anon` could call `invite_worker` — and its own guard does not help, because that
+guard exists to let the *service role* through by testing `auth.uid() is not null`, and
+anon has no `auth.uid()` either. So anon passed it and could book a worker onto a shift.
+`release_unready_bookings` was reachable the same way: a way to cancel every confirmed
+booking for tomorrow and tell each worker they had been dropped.
+
+`20260921162758_revoke_engine_from_anon.sql` closes those six and `190` now asserts it in
+both directions, so this particular set cannot regress.
+
+**What is not done:** the same audit for every other function in `public`. There are
+around fifty, and each needs a decision rather than a sweep — `attempt_check_in`,
+`start_break`, `submit_application` and the rest are *meant* to be reachable by a
+signed-in worker or an anonymous applicant, so a blanket revoke would break the product.
+The right shape is an allowlist assertion — "these are the functions anon may execute,
+and this is why each one is on the list" — which is a security pass with an owner, not a
+side-quest inside a jobs pull request.
+
+Two things make it urgent enough to name: the rule is invisible (a revoke that looks
+right does nothing), and it is easy to repeat (every new `security definer` function in
+`public` starts life anon-callable).
