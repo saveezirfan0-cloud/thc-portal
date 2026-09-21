@@ -25,17 +25,17 @@ export default defineConfig({
     {
       name: 'office',
       use: { ...devices['Desktop Chrome'], baseURL: `http://127.0.0.1:${PORTS.office}` },
-      testMatch: /office\..*\.spec\.ts/,
+      testMatch: [/office\..*\.spec\.ts/, new RegExp(`auth\\.smoke\\.spec\\.ts`)],
     },
     {
       name: 'staff',
       use: { ...devices['Pixel 7'], baseURL: `http://127.0.0.1:${PORTS.staff}` },
-      testMatch: /staff\..*\.spec\.ts/,
+      testMatch: [/staff\..*\.spec\.ts/, new RegExp(`auth\\.smoke\\.spec\\.ts`)],
     },
     {
       name: 'client',
       use: { ...devices['Desktop Chrome'], baseURL: `http://127.0.0.1:${PORTS.client}` },
-      testMatch: /client\..*\.spec\.ts/,
+      testMatch: [/client\..*\.spec\.ts/, new RegExp(`auth\\.smoke\\.spec\\.ts`)],
     },
   ],
   webServer: [

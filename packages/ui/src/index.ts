@@ -25,6 +25,9 @@ export type { Step, StepperProps } from './components/Stepper';
 export { DocRow } from './components/DocRow';
 export type { DocRowProps, DocState } from './components/DocRow';
 
+export { AuthCard } from './components/AuthCard';
+export type { AuthCardProps } from './components/AuthCard';
+
 export { Modal, Toast } from './components/Modal';
 export type { ModalProps } from './components/Modal';
 
