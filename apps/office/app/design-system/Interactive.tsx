@@ -2,12 +2,15 @@
 
 import { useState } from 'react';
 import {
+  AppBody,
   Avatar,
   Button,
   Checkbox,
   Modal,
   OptionRow,
   Panel,
+  PhoneFrame,
+  PhoneRow,
   Radio,
   SegToggle,
   Sheet,
@@ -131,11 +134,11 @@ export function Overlays() {
           those events without a venue and without a geofence.
         </p>
       </Modal>
-      <div className="phones">
-        <div className="phone short">
-          <div className="app-body center">
+      <PhoneRow>
+        <PhoneFrame caption="M5 · Profile sheet" short>
+          <AppBody className="center">
             <p className="muted">The sheet opens over this frame.</p>
-          </div>
+          </AppBody>
           <Sheet open={sheet} onClose={() => setSheet(false)} label="Profile">
             <div className="row">
               <Avatar name="Joy Nwosu" size="lg" />
@@ -152,8 +155,8 @@ export function Overlays() {
               again unless you re-apply.
             </p>
           </Sheet>
-        </div>
-      </div>
+        </PhoneFrame>
+      </PhoneRow>
     </Panel>
   );
 }
