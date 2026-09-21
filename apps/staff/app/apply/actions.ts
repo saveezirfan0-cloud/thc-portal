@@ -15,7 +15,7 @@ import {
 import { DEFAULT_ISO } from './countries';
 
 /**
- * The shape of `submit_application` (migration 0006).
+ * The shape of `submit_application` (migration 0008).
  *
  * `packages/db`'s generated types are still the Phase 0 placeholder
  * (`Functions: Record<string, never>`), so the typed client cannot name an

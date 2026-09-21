@@ -283,7 +283,7 @@ export const OTHER_COUNTRIES: Country[] = COUNTRIES.filter(
 ).sort((a, b) => a.name.localeCompare(b.name, 'en'));
 
 /**
- * The dialling code comes first on purpose — see docs/adr/0006.
+ * The dialling code comes first on purpose — see docs/adr/0007.
  *
  * A native `<select>` shows the selected option's own text in a fixed-width
  * control, and no amount of CSS gives the collapsed state a shorter label

@@ -4,7 +4,7 @@
  * The same module runs twice: in the browser, so the form can reject an
  * under-18 "on the spot" the way the wireframe shows, and in the server
  * action before it reaches the database. The database repeats the age and
- * consent checks a third time in `submit_application` (migration 0006),
+ * consent checks a third time in `submit_application` (migration 0008),
  * because §1.7 asks for the age gate "on the form and on the backend" and
  * a form is not a security boundary.
  *

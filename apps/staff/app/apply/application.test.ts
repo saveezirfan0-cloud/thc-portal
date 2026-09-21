@@ -36,7 +36,7 @@ function draft(over: Partial<ApplicationDraft> = {}): ApplicationDraft {
 
 // ---------------------------------------------------------------------
 // §2.1 / §1.7 — age >= 18, on the form. The server half of the same gate
-// lives in submit_application (0006_public_application.sql) and is
+// lives in submit_application (0008_public_application.sql) and is
 // covered by supabase/tests/070_applications.sql.
 // ---------------------------------------------------------------------
 describe('the age gate (§2.1, §1.7)', () => {

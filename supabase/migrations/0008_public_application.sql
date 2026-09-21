@@ -59,7 +59,7 @@ create index staff_email_normalised_idx on staff (lower(btrim(email)));
 create index staff_msisdn_idx           on staff (normalise_msisdn(phone));
 
 -- ---------------------------------------------------------------------
--- staff.dob becomes nullable — see docs/adr/0005
+-- staff.dob becomes nullable — see docs/adr/0006
 --
 -- §2.1 collects Age, not date of birth; the DOB is asked for in the Staff
 -- App wizard (§2.5), which the candidate works through during the
@@ -160,7 +160,7 @@ create or replace function public.submit_application(
   p_age_band   text,
   p_consent    boolean,
   -- §2.12 matches mobile + DOB, but §2.1's form has no DOB field (the open
-  -- point recorded in docs/adr/0005). The parameter exists so that the day
+  -- point recorded in docs/adr/0006). The parameter exists so that the day
   -- the form collects one, the mobile arm of the match tightens without a
   -- signature change. Left null, the mobile arm matches on mobile alone,
   -- which errs towards routing to the office rather than towards a second

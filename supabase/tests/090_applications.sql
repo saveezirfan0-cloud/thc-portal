@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 070 · the public application form
 --
--- Covers migration 0006: `applications` RLS for admin / client / staff /
+-- Covers migration 0008: `applications` RLS for admin / client / staff /
 -- anon, and everything `submit_application` promises —
 --   §2.1  age >= 18 checked on the server as well as the form,
 --   §1.7  GDPR consent is mandatory and its timestamp is stored,
@@ -127,7 +127,7 @@ select is(
 select is(
   (select age_band from applications where lower(email) = 'nia.okafor@rls.test'),
   '22',
-  'the age band is kept — it is the only record of what the applicant said (docs/adr/0005)');
+  'the age band is kept — it is the only record of what the applicant said (docs/adr/0006)');
 
 select ok(
   (select s.dob is null and s.willo_candidate_id is null
@@ -238,7 +238,7 @@ select is(
   'every submission that survived validation is on the audit trail');
 
 -- ---------------------------------------------------------------------
--- The date of birth (0006, docs/adr/0005)
+-- The date of birth (0008, docs/adr/0006)
 -- ---------------------------------------------------------------------
 \set nia_id '(select staff_id from applications where lower(email) = ''nia.okafor@rls.test'' and outcome = ''candidate_created'')'
 
