@@ -13,7 +13,7 @@
 --      address anyone cares to type.
 -- =====================================================================
 begin;
-select plan(33);
+select plan(39);
 \ir _shared/fixtures.psql
 
 -- ---------------------------------------------------------------------
@@ -166,6 +166,30 @@ select throws_ok(
      values ('Too','Young','ty@rls.test','+447700900807', current_date - interval '17 years') $$,
   '23514', null,
   '§2.1 age_18 still rejects an under-18 date of birth once one is supplied');
+
+-- ---------------------------------------------------------------------
+-- What 20260921160000 added: the race and the sequential scan
+-- ---------------------------------------------------------------------
+select is(normalise_msisdn('+44 7700 900108'), '+447700900108',
+  'normalise_msisdn strips the formatting the seed and the Appendix B5 import both store');
+select is(normalise_msisdn('(0)7700-900.123'), '+07700900123',
+  'it strips punctuation too, and re-prefixes exactly one +');
+select is((select provolatile::text from pg_proc where proname = 'normalise_msisdn'), 'i',
+  'it is IMMUTABLE, which is what lets an index be built on it');
+
+-- Without these the duplicate check scans every staff row on every
+-- application — and the form itself is what makes that table grow.
+select is((select count(*)::int from pg_indexes where indexname = 'staff_email_normalised_idx'), 1,
+  'the email half of the §2.12 match is indexed on the expression the predicate uses');
+select is((select count(*)::int from pg_indexes where indexname = 'staff_msisdn_idx'), 1,
+  'and so is the mobile half');
+
+-- Two tabs, or one double tap, would otherwise both find no match and both
+-- insert a candidate: exactly the second record §2.12 exists to prevent.
+-- Every submission above ran in this transaction, so the locks are still held.
+select ok(
+  (select count(*)::int from pg_locks where locktype = 'advisory' and pid = pg_backend_pid()) >= 1,
+  'submit_application takes a transaction-scoped advisory lock, so concurrent submissions queue instead of racing');
 
 select * from finish();
 rollback;

@@ -10,9 +10,9 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 379 | `pnpm test` |
+| Unit | 498 | `pnpm test` |
 | Browser smoke | 35 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 583 | `supabase test db` |
+| Database, row-level security and rules | 544 at `ad81538`, + the three files merged since | `supabase test db` |
 
 What exists:
 
