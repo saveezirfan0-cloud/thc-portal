@@ -27,7 +27,9 @@ All of it is drawn as restaurant-reservation screens (tables, covers, sommelier 
 
 4. **Auto-assign gets the violet gradient.** The boards give that one action its own colour next to the teal primary, and this design system already reserves purple for Auto-Assign. So the tone is the trigger — `<Button tone="purple">` already renders every Auto-Assign action, and no screen changes.
 
-5. **The light accent is `#0E7688`**, the boards' `primary`. An improvement, not a cost: the old `#0B7A88` sat exactly on 4.50:1 against the warm ground, which any antialiasing lost; `#0E7688` measures 4.96:1.
+5. **The grounds come from the spec, the foreground tones do not.** The implementation guide's "Luminous Midnight" and "Editorial Linen" grounds are adopted verbatim — dark `#0A0E18` / `#0F131D` / `#171B26` / `#1E2333`, light `#FAF7F4` / `#FFFFFF` / `#F5F1EB` / `#EBE4DA`. Its *foreground* palette is not, because it fails AA against its own page: cyan 3.45:1, emerald 2.38:1, amber 2.01:1, coral 3.44:1, muted 4.46:1. Our ink tones measure 4.5:1 or better on all three grounds in both themes — 42 pairs, asserted by `contrast.test.ts` rather than trusted.
+
+6. **The light accent is `#0E7688`**, the boards' `primary`. An improvement, not a cost: the old `#0B7A88` sat exactly on 4.50:1 against the warm ground, which any antialiasing lost; `#0E7688` measures 4.96:1.
 
 ## What was not adopted, and why
 
