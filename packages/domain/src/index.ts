@@ -7,3 +7,4 @@ export * from './overlap';
 export * from './pay';
 export * from './shift';
 export * from './events';
+export * from './autoAssign';

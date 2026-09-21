@@ -228,3 +228,56 @@ rather than an oversight:
 
 The first is worth doing the moment a second Edge Function lands. The second is worth
 doing before anything depends on a job actually running.
+
+## O6 · The jobs layer depends on a Supabase default it did not set
+
+`20260921141500_auto_assign.sql` revokes `release_unready_bookings`,
+`invite_worker` and others from `PUBLIC` and re-grants only to `authenticated`.
+Nothing grants them to `service_role` — which is what every §7 job holds.
+
+That almost certainly still works, because Supabase's bootstrap sets default
+privileges granting EXECUTE on new functions in `public` to `service_role`. But
+"almost certainly" is doing real work in that sentence, and if it is ever wrong the
+symptom is every auto-staffing run 500ing once a minute in production, with nothing
+in the repo to explain why.
+
+So `20260921162107_enable_auto_staffing.sql` states the grants explicitly rather than
+inheriting them, and `190_job_function_grants.sql` asserts in CI that the service role
+can execute every function the jobs call — and that `anon` can execute none of them.
+`invite_worker` alone can book a worker onto a shift, so an open one is not a bug in a
+job; it is a way for anyone holding the anon key to staff an event.
+
+Nothing to do here. Recorded because the next person to revoke something from `PUBLIC`
+should know that test exists and why.
+
+## O7 · Every function in `public` is anon-callable unless something revoked it from anon
+
+Found by `190_job_function_grants.sql` on its first CI run, and fixed for the six it
+covers — but the shape of it is repo-wide and worth a pass of its own.
+
+Supabase's bootstrap sets default privileges granting EXECUTE on new functions in
+`public` to `anon`, `authenticated` **and** `service_role`, individually. A
+`revoke execute ... from public` therefore reads as a lockdown and changes nothing for
+those three: `public` is the implicit grant, not the named ones.
+
+`20260921141500` revoked six functions from `PUBLIC` and believed them closed. They were
+not. `anon` could call `invite_worker` — and its own guard does not help, because that
+guard exists to let the *service role* through by testing `auth.uid() is not null`, and
+anon has no `auth.uid()` either. So anon passed it and could book a worker onto a shift.
+`release_unready_bookings` was reachable the same way: a way to cancel every confirmed
+booking for tomorrow and tell each worker they had been dropped.
+
+`20260921162758_revoke_engine_from_anon.sql` closes those six and `190` now asserts it in
+both directions, so this particular set cannot regress.
+
+**What is not done:** the same audit for every other function in `public`. There are
+around fifty, and each needs a decision rather than a sweep — `attempt_check_in`,
+`start_break`, `submit_application` and the rest are *meant* to be reachable by a
+signed-in worker or an anonymous applicant, so a blanket revoke would break the product.
+The right shape is an allowlist assertion — "these are the functions anon may execute,
+and this is why each one is on the list" — which is a security pass with an owner, not a
+side-quest inside a jobs pull request.
+
+Two things make it urgent enough to name: the rule is invisible (a revoke that looks
+right does nothing), and it is easy to repeat (every new `security definer` function in
+`public` starts life anon-callable).
