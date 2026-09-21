@@ -10,9 +10,9 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 130 | `pnpm test` |
-| Browser smoke | 14 | `pnpm turbo e2e:smoke` |
-| Database, row-level security | 252 | `supabase test db` |
+| Unit | 145 | `pnpm test` |
+| Browser smoke | 24 | `pnpm turbo e2e:smoke` |
+| Database, row-level security and rules | 263 | `supabase test db` |
 
 What exists:
 
@@ -33,8 +33,17 @@ What exists:
   allocation default of headcount + buffer, and the edit lock at the event's start.
 
 What does not exist yet: every screen in Phases 1 to 7 apart from the Shift Builder, the
-auto-assign engine itself (§3.4) and the N11 send behind the re-confirmation flag (§3.5),
-the Supabase project, and the Vercel projects. Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
+Supabase project, and the Vercel projects. Two pieces the Shift Builder leans on are also
+outstanding and belong to later sessions:
+
+- **Auto-assign itself** (§3.4). The switches and the per-role allocation are stored; no
+  hourly round runs yet, so a saved event fills nobody.
+- **N11** (§3.5, §8). Saving a time, dress-code or venue change sets `reconfirm_required`
+  on that section's confirmed bookings, so they show as Awaiting — but
+  `packages/notifications` has no N11 template and nothing writes the
+  `notification_outbox` row, so the worker is not pushed about it yet.
+
+Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
 
 ## Security: one item closed, one open
 

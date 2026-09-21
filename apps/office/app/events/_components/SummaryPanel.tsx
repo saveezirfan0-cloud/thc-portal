@@ -1,11 +1,15 @@
 'use client';
 
 import { Panel, Pill } from '@thc/ui';
-import { type Forecast, formatAllocation, formatHours, formatTimeIn, UK_ZONE } from '@thc/domain';
+import { type Forecast, displayTime, formatAllocationPair, formatHours } from '@thc/domain';
 import type { RoleSectionWindow } from '@thc/domain';
+import { useViewerZone } from './useViewerZone';
 
 const gbp = (pence: number) =>
   new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(pence / 100);
+
+/** The label belongs on the end of a range, not in the middle of it. */
+const stripZone = (line: string) => line.replace(/ \((UK)\)$| your time$/, '');
 
 export interface SummaryPanelProps {
   /** The derived event window (RULE-18), or null before the first role. */
@@ -33,25 +37,42 @@ export function SummaryPanel({
   buffer,
   forecast,
 }: SummaryPanelProps) {
+  const zone = useViewerZone();
+  // A scheduled time shows both zones, with the local line dropped when they
+  // coincide — never a bare clock the reader could take for their own (§1.8).
+  const start = window ? displayTime(window.startsAt, 'scheduled', zone) : null;
+  const end = window ? displayTime(window.endsAt, 'scheduled', zone) : null;
+
   return (
     <Panel title="Summary">
       <div className="sumrow">
         <span>Derived event window</span>
         <span className="v">
-          {window
-            ? `${formatTimeIn(window.startsAt, UK_ZONE)} – ${formatTimeIn(window.endsAt, UK_ZONE)}`
-            : '—'}
+          {start && end ? (
+            <>
+              {stripZone(start.primary)} – {end.primary}
+              {start.secondary && end.secondary ? (
+                <>
+                  <br />
+                  {stripZone(start.secondary)} – {end.secondary}
+                </>
+              ) : null}
+            </>
+          ) : (
+            '—'
+          )}
         </span>
       </div>
       <div className="sumrow">
         <span>Roles</span>
         <span className="v">
-          {validRoles} valid{erroredRoles > 0 ? ` · ${erroredRoles} error` : ''}
+          {validRoles} valid
+          {erroredRoles > 0 ? ` · ${erroredRoles} error${erroredRoles === 1 ? '' : 's'}` : ''}
         </span>
       </div>
       <div className="sumrow">
         <span>Headcount (+buffer)</span>
-        <span className="v">{formatAllocation(headcount, buffer)}</span>
+        <span className="v">{formatAllocationPair(headcount, buffer)}</span>
       </div>
       <div className="sumrow">
         <span>Payable hours (forecast)</span>

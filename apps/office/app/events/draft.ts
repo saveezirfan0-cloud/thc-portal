@@ -167,13 +167,12 @@ export function draftIssues(draft: EventDraft): DraftIssues {
 
   const roles = new Map<string, RoleSectionIssue[]>();
   for (const role of draft.roles) {
-    if (!role.roleId) {
-      roles.set(role.key, []);
-      if (!event.includes(NEEDS_ROLE)) event.push(NEEDS_ROLE);
-      continue;
-    }
+    if (!role.roleId && !event.includes(NEEDS_ROLE)) event.push(NEEDS_ROLE);
+
     // A half-typed date or time has nothing to check yet; the event-level
-    // message above is what the manager needs to see first.
+    // message is what the manager needs to see first. A missing ROLE is not
+    // the same thing — the times are wrong on their own terms, so the
+    // four-hour error shows whether or not the role has been picked.
     if (!isResolvable(draft.date, role)) {
       roles.set(role.key, []);
       if (draft.date && !event.includes(NEEDS_TIMES)) event.push(NEEDS_TIMES);
@@ -191,6 +190,21 @@ export function canSave(draft: EventDraft): boolean {
   if (draft.roles.some((role) => !isResolvable(draft.date, role))) return false;
   for (const list of issues.roles.values()) if (list.length > 0) return false;
   return true;
+}
+
+/**
+ * Whether a role section can be removed from the builder at all.
+ *
+ * `bookings.shift_id` cascades on delete, so removing a section with people
+ * on it would destroy their invitations and confirmations outright — no
+ * cancelled transition, no cause, no history. §3.6 makes Withdraw the only
+ * way a manager takes someone off a shift, and §3.2 is explicit that cutting
+ * headcount never auto-removes anyone. A section that was never saved has
+ * nobody on it and is always removable.
+ */
+export function canRemoveRole(role: RoleDraft, bookedBySectionId: Record<string, number>): boolean {
+  if (!role.id) return true;
+  return (bookedBySectionId[role.id] ?? 0) === 0;
 }
 
 /** What the worker is actually told to wear (§9.7). */

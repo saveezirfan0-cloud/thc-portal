@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { UK_ZONE, formatTimeIn } from '@thc/domain';
 import { eventsDb, supabaseConfigured } from './db';
 
 /**
@@ -152,6 +153,13 @@ export interface SavedRoleSection {
   allocationPerHour: number;
   /** Confirmed bookings on THIS role section — who re-confirms if it moves. */
   confirmed: number;
+  /**
+   * Every booking still standing on this section, invitations included.
+   * Deleting the section would cascade these away, so the builder refuses
+   * while any remain: leaving a booking is the manager's call on the event
+   * board, through Withdraw (§3.3, §3.6).
+   */
+  booked: number;
 }
 
 export interface SavedEvent {
@@ -195,14 +203,12 @@ interface SectionRow {
   allocation_per_hour: number;
 }
 
+/** A booking that still ties a worker to the shift (§3.6). */
+export const LIVE_BOOKING_STATUSES = ['invited', 'confirmed', 'applied', 'worked'] as const;
+
 /** Reads a Europe/London wall-clock "HH:MM" back out of a stored timestamptz. */
 function ukTime(iso: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/London',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(new Date(iso));
+  return formatTimeIn(new Date(iso), UK_ZONE);
 }
 
 export async function loadEvent(id: string): Promise<SavedEvent | null> {
@@ -231,14 +237,18 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
 
   const ids = sections.map((s) => s.id);
   const confirmed = new Map<string, number>();
+  const booked = new Map<string, number>();
   if (ids.length > 0) {
     const { data: bookings } = await supabase
       .from('bookings')
-      .select('shift_id')
-      .eq('status', 'confirmed')
-      .in('shift_id', ids);
-    for (const booking of (bookings ?? []) as { shift_id: string }[]) {
-      confirmed.set(booking.shift_id, (confirmed.get(booking.shift_id) ?? 0) + 1);
+      .select('shift_id, status')
+      .in('shift_id', ids)
+      .in('status', LIVE_BOOKING_STATUSES);
+    for (const row of (bookings ?? []) as { shift_id: string; status: string }[]) {
+      booked.set(row.shift_id, (booked.get(row.shift_id) ?? 0) + 1);
+      if (row.status === 'confirmed') {
+        confirmed.set(row.shift_id, (confirmed.get(row.shift_id) ?? 0) + 1);
+      }
     }
   }
 
@@ -266,6 +276,7 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
       autoAssign: s.auto_assign,
       allocationPerHour: s.allocation_per_hour,
       confirmed: confirmed.get(s.id) ?? 0,
+      booked: booked.get(s.id) ?? 0,
     })),
   };
 }

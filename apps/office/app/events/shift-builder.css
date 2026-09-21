@@ -180,3 +180,20 @@
   outline: 2px solid var(--cyan-ink);
   outline-offset: 2px;
 }
+
+/* A button that reads as a link — the "override" affordance beside the
+   rate-card charge rate (§3.2). Tokens only, no hard-coded colour. */
+.linkish {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--cyan-ink);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.linkish:disabled {
+  color: var(--muted);
+  cursor: default;
+  text-decoration: none;
+}

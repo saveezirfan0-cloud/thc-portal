@@ -245,6 +245,23 @@ describe('typed times are Europe/London wall clock (§1.8)', () => {
     expect(ukInstant('2026-12-01', '17:00').toISOString()).toBe('2026-12-01T17:00:00.000Z');
   });
 
+  it('skips the hour that does not exist on a spring-forward night', () => {
+    // 01:30 never happens on 29 March 2026: the clock goes 01:00 GMT → 02:00
+    // BST. The instant it names is 02:30 BST, which is what Postgres does too.
+    expect(formatTimeIn(ukInstant('2026-03-29', '01:30'), UK_ZONE)).toBe('02:30');
+  });
+
+  it('measures a section in real hours across both changeovers', () => {
+    // Reads four hours on the manager's clock, is three in fact — so it fails
+    // the §3.2 floor, exactly as the DB's interval check would.
+    const spring = ukRoleWindow('2026-03-28', '23:00', '03:00');
+    expect(spring.endsAt.getTime() - spring.startsAt.getTime()).toBe(3 * 3_600_000);
+
+    // Reads eight, is nine, because the clocks go back inside the shift.
+    const autumn = ukRoleWindow('2026-10-24', '22:00', '06:00');
+    expect(autumn.endsAt.getTime() - autumn.startsAt.getTime()).toBe(9 * 3_600_000);
+  });
+
   it('rolls an after-midnight end forward a day', () => {
     const { startsAt, endsAt } = ukRoleWindow('2026-09-18', '17:00', '01:30');
     expect(formatTimeIn(startsAt, UK_ZONE)).toBe('17:00');

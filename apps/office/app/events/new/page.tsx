@@ -43,6 +43,7 @@ export default async function Page() {
         initial={initial}
         saved={null}
         confirmed={{}}
+        booked={{}}
         locked={false}
         save={createEvent}
       />

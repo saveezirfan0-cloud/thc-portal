@@ -74,6 +74,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   const locked = isEditLocked(sections);
 
   const confirmed = Object.fromEntries(event.sections.map((s) => [s.id, s.confirmed]));
+  const booked = Object.fromEntries(event.sections.map((s) => [s.id, s.booked]));
 
   return (
     <OfficeShell title={event.title}>
@@ -83,6 +84,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         initial={initial}
         saved={event}
         confirmed={confirmed}
+        booked={booked}
         locked={locked}
         save={updateEvent}
       />

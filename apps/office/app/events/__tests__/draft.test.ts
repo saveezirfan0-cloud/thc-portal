@@ -4,6 +4,7 @@ import {
   DRESS_CODE_OTHER,
   type EventDraft,
   type RoleDraft,
+  canRemoveRole,
   canSave,
   draftIssues,
   draftLocked,
@@ -159,6 +160,16 @@ describe('a section is at least four hours, and Save waits for it (§3.2)', () =
     expect(draftIssues(empty).event).toContain('Add at least one role');
   });
 
+  it('flags a short section even before its role type has been chosen', () => {
+    // The times are wrong on their own terms; hiding that behind an unrelated
+    // empty field leaves the manager guessing why Save stays off.
+    const nameless = role({ roleId: '', start: '18:00', end: '21:00' });
+    expect(roleIssues(nameless, DATE)).toContain('below_minimum_hours');
+    expect(draftIssues(event({ roles: [nameless] })).roles.get(nameless.key)).toContain(
+      'below_minimum_hours',
+    );
+  });
+
   it('will not save without a client, a venue, a title or a date', () => {
     expect(canSave(event({ clientId: '' }))).toBe(false);
     expect(canSave(event({ venueId: '' }))).toBe(false);
@@ -186,6 +197,25 @@ describe('editing is locked once the event has started (§3.2)', () => {
 
   it('is locked for a past event', () => {
     expect(draftLocked(draft, ukInstant('2026-10-02', '09:00'))).toBe(true);
+  });
+});
+
+describe('a section with people on it is never removed here (§3.2, §3.6)', () => {
+  // bookings.shift_id cascades on delete: removing the section would wipe the
+  // invitations and confirmations with it, which is not a transition §3.6 has.
+  it('refuses a saved section that still has bookings', () => {
+    const saved = role({ id: 'sec-waiting' });
+    expect(canRemoveRole(saved, { 'sec-waiting': 9 })).toBe(false);
+    expect(canRemoveRole(saved, { 'sec-waiting': 1 })).toBe(false);
+  });
+
+  it('allows one nobody is on', () => {
+    expect(canRemoveRole(role({ id: 'sec-waiting' }), { 'sec-waiting': 0 })).toBe(true);
+    expect(canRemoveRole(role({ id: 'sec-waiting' }), {})).toBe(true);
+  });
+
+  it('always allows a section that was never saved', () => {
+    expect(canRemoveRole(role({ id: null }), { 'sec-waiting': 9 })).toBe(true);
   });
 });
 

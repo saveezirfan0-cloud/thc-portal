@@ -8,10 +8,12 @@ import { eventsDb, supabaseConfigured } from './db';
 import {
   type EditableField,
   ROLE_SECTION_MESSAGE,
+  isEditLocked,
   reconfirmingChanges,
   ukRoleWindow,
   validateRoleSection,
 } from '@thc/domain';
+import { LIVE_BOOKING_STATUSES } from './data';
 
 /**
  * Saving an event — Scope §3.2, §3.5.
@@ -157,7 +159,7 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
 
   const { data: event } = await supabase
     .from('events')
-    .select('event_date, venue_address')
+    .select('event_date, venue_address, cancelled_at')
     .eq('id', input.id)
     .single();
   if (!event) return { error: 'That event no longer exists.' };
@@ -168,11 +170,17 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
     .eq('event_id', input.id);
   const before: ExistingSection[] = existing ?? [];
 
-  // §3.2: editing is allowed only up to the event's start. The derived window
-  // starts at the earliest section, so that is what the lock reads.
-  const startedAt = before.map((s) => new Date(s.starts_at).getTime()).sort((a, b) => a - b)[0];
-  if (startedAt !== undefined && Date.now() >= startedAt) {
+  // §3.2: editing is allowed only up to the event's start — the same rule the
+  // form applies, read from the stored sections rather than from the payload.
+  const stored = before.map((s) => ({
+    startsAt: new Date(s.starts_at),
+    endsAt: new Date(s.ends_at),
+  }));
+  if (isEditLocked(stored)) {
     return { error: 'This event has started. Editing is locked (§3.2).' };
+  }
+  if (event.cancelled_at) {
+    return { error: 'This event is cancelled and is not edited (§3.2).' };
   }
 
   const { data: venue } = await supabase
@@ -204,6 +212,21 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
   const keep = new Set(input.roles.map((role) => role.id).filter(Boolean) as string[]);
   const removed = before.map((s) => s.id).filter((id) => !keep.has(id));
   if (removed.length > 0) {
+    // `bookings.shift_id` cascades on delete, so dropping a section here would
+    // destroy its invitations and confirmations outright — no cancelled
+    // transition, no cause, no history. §3.6 makes Withdraw the only way a
+    // manager takes someone off a shift, so refuse instead (§3.2, §3.3).
+    const { data: held } = await supabase
+      .from('bookings')
+      .select('shift_id')
+      .in('shift_id', removed)
+      .in('status', LIVE_BOOKING_STATUSES);
+    if ((held ?? []).length > 0) {
+      return {
+        error:
+          'A role section with people booked on it cannot be removed. Withdraw them on the event board first (§3.3).',
+      };
+    }
     await supabase.from('shift_requirements').delete().in('id', removed);
   }
 
@@ -236,8 +259,11 @@ interface ExistingSection {
  * and nobody is auto-removed when headcount drops below the confirmed count
  * (§3.2, §3.3) — the manager withdraws people by hand on the event board.
  *
- * The N11 push itself is sent from `notification_outbox` by the §8 register,
- * off the flag this sets.
+ * This sets the flag only. The N11 push that §3.5 pairs with it is NOT built
+ * yet: `packages/notifications` has no N11 template and nothing writes the
+ * `notification_outbox` row, so a worker currently sees the Awaiting state in
+ * the app without being pushed about it. That send belongs to the §8 register
+ * and is listed as outstanding in docs/00-how-to-build-with-claude.md.
  */
 async function flagReconfirmations(
   supabase: SupabaseClient,

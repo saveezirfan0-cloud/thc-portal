@@ -6,7 +6,10 @@
     "`event_windows` view must accept and reject exactly the same cases.",
     "Times are written as Europe/London wall-clock values on the event's own",
     "date; `ukRoleWindow` resolves them, rolling an after-midnight end forward",
-    "one day. Owned by the `scheduling` bot."
+    "one day. Owned by the `scheduling` bot.",
+    "Both BST changeovers are covered: a section is measured in REAL hours, so",
+    "a spring-forward night that reads four hours on the clock is three and is",
+    "rejected — which is what `ends_at >= starts_at + interval '4 hours'` does."
   ],
   "roleSections": [
     {
@@ -136,6 +139,35 @@
         "allocation": "0 (+0)",
         "target": 0
       }
+    },
+    {
+      "name": "BST starts overnight: 23:00-03:00 reads four hours but is three, so it is rejected",
+      "input": {
+        "date": "2026-03-28",
+        "start": "23:00",
+        "end": "03:00",
+        "headcount": 2,
+        "buffer": 0,
+        "allocationPerHour": 2
+      },
+      "expect": {
+        "hours": 3,
+        "issues": ["below_minimum_hours"],
+        "allocation": "2 (+0)",
+        "target": 2
+      }
+    },
+    {
+      "name": "BST starts overnight: 23:00-04:00 is exactly four real hours, so it is allowed",
+      "input": {
+        "date": "2026-03-28",
+        "start": "23:00",
+        "end": "04:00",
+        "headcount": 2,
+        "buffer": 0,
+        "allocationPerHour": 2
+      },
+      "expect": { "hours": 4, "issues": [], "allocation": "2 (+0)", "target": 2 }
     },
     {
       "name": "BST ends overnight: 22:00 BST to 06:00 GMT is nine real hours, not eight",

@@ -1,13 +1,18 @@
 'use client';
 
+import { useId, useState } from 'react';
 import { Alert, Button, Input, Pill, Select } from '@thc/ui';
 import {
+  type EditableField,
   ROLE_SECTION_MESSAGE,
   type RoleSectionIssue,
+  defaultAllocationPerHour,
+  finalHourlyPence,
   formatAllocationPair,
   formatConfirmationTarget,
   formatHours,
   marginPerHourPence,
+  reconfirmingChanges,
   sectionHours,
   ukInputLabel,
 } from '@thc/domain';
@@ -25,6 +30,7 @@ function signedPence(pence: number): string {
 }
 
 export interface RoleSectionProps {
+  mode: 'new' | 'edit';
   index: number;
   role: RoleDraft;
   date: string;
@@ -33,6 +39,8 @@ export interface RoleSectionProps {
   client: ClientOption | undefined;
   /** Confirmed bookings on this section — the people a time change re-asks. */
   confirmed: number;
+  /** Every booking still standing on this section, invited ones included. */
+  booked: number;
   /** The fields that differ from the saved version, for the amber hints. */
   changed: Set<string>;
   original: RoleDraft | undefined;
@@ -42,6 +50,7 @@ export interface RoleSectionProps {
 }
 
 export function RoleSection({
+  mode,
   index,
   role,
   date,
@@ -49,6 +58,7 @@ export function RoleSection({
   roles,
   client,
   confirmed,
+  booked,
   changed,
   original,
   locked,
@@ -63,12 +73,19 @@ export function RoleSection({
     Math.round(role.chargeRate * 100),
     Math.round(role.payRate * 100),
   );
-  const finalRate = role.payRate * 1.1207;
+  const finalRatePence = finalHourlyPence(Math.round(role.payRate * 100));
+
+  // §3.2: the charge rate comes from the client's rate card. On a new event
+  // it is read-only until the manager deliberately overrides it, so a typo
+  // cannot quietly undercut the card.
+  const [chargeOverride, setChargeOverride] = useState(false);
+  const fieldId = useId();
+  const cardRate = client?.rateCard[role.roleId]?.chargeRate;
+  const chargeFromCard = mode === 'new' && !chargeOverride && cardRate !== undefined;
 
   const issueFor = (field: RoleSectionIssue) => (issues.includes(field) ? field : null);
   const lengthIssue = issueFor('below_minimum_hours') ?? issueFor('end_before_start');
-  const reconfirming =
-    changed.has('starts_at') || changed.has('ends_at') || changed.has('dress_code');
+  const reconfirming = reconfirmingChanges([...changed] as EditableField[]).length > 0;
 
   if (locked) {
     return (
@@ -113,7 +130,17 @@ export function RoleSection({
             onChange={(autoAssign) => onChange({ autoAssign })}
             label="Auto-assign"
           />
-          <Button size="sm" tone="ghost" onClick={onRemove}>
+          <Button
+            size="sm"
+            tone="ghost"
+            onClick={onRemove}
+            disabled={booked > 0}
+            title={
+              booked > 0
+                ? 'This section has people on it. Withdraw them on the event board first (§3.3).'
+                : undefined
+            }
+          >
             Remove
           </Button>
         </div>
@@ -183,28 +210,43 @@ export function RoleSection({
           />
 
           <div className="field">
-            <span className="label">Charge rate</span>
+            <label className="label" htmlFor={`${fieldId}-charge`}>
+              Charge rate
+            </label>
             <div className="input-row">
               <span className="addon l">£</span>
               <input
-                className="input mono"
+                id={`${fieldId}-charge`}
+                className={classes('input', 'mono', chargeFromCard && 'readonly')}
                 type="number"
                 step="0.01"
                 min={0}
+                readOnly={chargeFromCard}
                 value={money(role.chargeRate)}
                 onChange={(e) => onChange({ chargeRate: Number(e.target.value) })}
               />
             </div>
             <span className="hint">
-              {client ? `${client.name} rate card · editable per event` : 'From the rate card'}
+              {client ? `${client.name} rate card` : 'From the rate card'}
+              {chargeFromCard ? (
+                <>
+                  {' · '}
+                  <button type="button" className="linkish" onClick={() => setChargeOverride(true)}>
+                    override
+                  </button>
+                </>
+              ) : null}
             </span>
           </div>
 
           <div className="field">
-            <span className="label">Pay rate (base)</span>
+            <label className="label" htmlFor={`${fieldId}-pay`}>
+              Pay rate (base)
+            </label>
             <div className="input-row">
               <span className="addon l">£</span>
               <input
+                id={`${fieldId}-pay`}
                 className="input mono"
                 type="number"
                 step="0.01"
@@ -214,7 +256,7 @@ export function RoleSection({
               />
             </div>
             {/* Holiday is always broken out at 12.07%, never blended (§9.8). */}
-            <span className="hint">final £{money(finalRate)} (+12.07%)</span>
+            <span className="hint">final £{money(finalRatePence / 100)} (+12.07%)</span>
           </div>
         </div>
 
@@ -263,15 +305,19 @@ export function RoleSection({
             {...(issues.includes('allocation_below_one')
               ? { error: ROLE_SECTION_MESSAGE.allocation_below_one }
               : {
-                  hint: `Invites per hourly round · default headcount + buffer = ${
-                    role.headcount + role.buffer
-                  } · editable (§3.4)`,
+                  hint: `Invites per hourly round · default headcount + buffer = ${defaultAllocationPerHour(
+                    role.headcount,
+                    role.buffer,
+                  )} · editable (§3.4)`,
                 })}
           />
 
           <div className="field">
-            <span className="label">Confirmation target</span>
+            <label className="label" htmlFor={`${fieldId}-target`}>
+              Confirmation target
+            </label>
             <input
+              id={`${fieldId}-target`}
               className="input readonly mono"
               readOnly
               value={formatConfirmationTarget(role.headcount, role.buffer)}

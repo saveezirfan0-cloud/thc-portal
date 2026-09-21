@@ -1,15 +1,17 @@
 'use client';
 
-import { useMemo, useState, useTransition } from 'react';
+import { useId, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { Alert, Button, Chip, Input, Note, Panel, Pill, Select, Textarea } from '@thc/ui';
-import { forecastEvent, ukInputLabel } from '@thc/domain';
+import { UK_ZONE, forecastEvent, formatTimeIn, ukInputLabel } from '@thc/domain';
 import { RoleSection } from './RoleSection';
 import { Switch } from './Switch';
 import { ClientPolicies, SummaryPanel } from './SummaryPanel';
 import {
+  DRESS_CODE_OTHER,
   type EventDraft,
   type RoleDraft,
+  canRemoveRole,
   canSave,
   draftIssues,
   draftWindow,
@@ -29,8 +31,9 @@ export interface ShiftBuilderProps {
   initial: EventDraft;
   /** The saved event, for the edit state's "was 17:00" hints and counts. */
   saved: SavedEvent | null;
-  /** Confirmed bookings per saved section id. */
+  /** Confirmed and still-standing booking counts, per saved section id. */
   confirmed: Record<string, number>;
+  booked: Record<string, number>;
   /** §3.2: the event has started, so nothing can be changed. */
   locked: boolean;
   save: (input: EventInput) => Promise<{ error: string } | { ok: true; id: string }>;
@@ -77,11 +80,13 @@ export function ShiftBuilder({
   initial,
   saved,
   confirmed,
+  booked,
   locked,
   save,
 }: ShiftBuilderProps) {
   const [draft, setDraft] = useState<EventDraft>(initial);
   const [error, setError] = useState<string | null>(null);
+  const fieldId = useId();
   const [pending, startTransition] = useTransition();
 
   const client: ClientOption | undefined = reference.clients.find((c) => c.id === draft.clientId);
@@ -89,7 +94,9 @@ export function ShiftBuilder({
 
   const issues = useMemo(() => draftIssues(draft), [draft]);
   const window = useMemo(() => draftWindow(draft), [draft]);
-  const saveable = canSave(draft) && !locked;
+  const cancelled = Boolean(saved?.cancelledAt);
+  const readOnly = locked || cancelled;
+  const saveable = canSave(draft) && !readOnly;
 
   const erroredRoles = [...issues.roles.values()].filter((list) => list.length > 0).length;
   const validRoles = draft.roles.filter(
@@ -143,10 +150,16 @@ export function ShiftBuilder({
       ...current,
       clientId,
       onsiteContact: current.onsiteContact || (picked?.staffContactPoint ?? ''),
-      roles: current.roles.map((role) => ({
-        ...role,
-        chargeRate: picked?.rateCard[role.roleId]?.chargeRate ?? role.chargeRate,
-      })),
+      roles: current.roles.map((role) => {
+        const card = picked?.rateCard[role.roleId];
+        const stillOnList =
+          role.dressCode === DRESS_CODE_OTHER || (card?.dressCodes ?? []).includes(role.dressCode);
+        return {
+          ...role,
+          chargeRate: card?.chargeRate ?? role.chargeRate,
+          dressCode: stillOnList ? role.dressCode : '',
+        };
+      }),
     }));
   }
 
@@ -165,7 +178,14 @@ export function ShiftBuilder({
     setDraft((current) => ({ ...current, roles: [...current.roles, newRoleDraft(current, '')] }));
   }
 
+  /**
+   * Removing a section deletes the `shift_requirements` row, and bookings
+   * cascade off it. A section with people on it is therefore never removed
+   * here: the manager withdraws them on the event board first (§3.3, §3.6).
+   */
   function removeRole(key: string) {
+    const role = draft.roles.find((r) => r.key === key);
+    if (!role || !canRemoveRole(role, booked)) return;
     setDraft((current) => ({ ...current, roles: current.roles.filter((r) => r.key !== key) }));
   }
 
@@ -187,15 +207,23 @@ export function ShiftBuilder({
   }
 
   return (
-    <div className={`builder${locked ? ' locked' : ''}`}>
+    <div className={`builder${readOnly ? ' locked' : ''}`}>
       <div className="stack" style={{ gap: 16 }}>
         {reference.unavailable ? <Alert tone="coral">{reference.unavailable}</Alert> : null}
 
-        {locked ? (
+        {cancelled ? (
+          <Alert tone="coral">
+            <b>This event is cancelled.</b> A cancelled event is not edited — it stays on the record
+            with its Cancelled status (§1.5, §3.2). Re-run it as a new event, or use Duplicate on
+            the event board to copy the roles.
+          </Alert>
+        ) : null}
+
+        {locked && !cancelled ? (
           <Alert tone="coral">
             <b>
               Editing is locked — {draft.title} started at{' '}
-              {draft.roles[0] ? draft.roles[0].start : ''}.
+              {window ? `${formatTimeIn(window.startsAt, UK_ZONE)} (UK)` : 'its scheduled start'}.
             </b>{' '}
             Once the event has started, and for any past event, no field can be changed (§3.2). What
             is still possible is on the event board: Withdraw, No show / Get back, Cancel event,
@@ -203,7 +231,7 @@ export function ShiftBuilder({
           </Alert>
         ) : null}
 
-        {mode === 'edit' && !locked ? (
+        {mode === 'edit' && !readOnly ? (
           <Alert>
             <b>
               Editing {draft.title} · {draft.date}
@@ -232,6 +260,7 @@ export function ShiftBuilder({
                   </>
                 }
                 value={draft.clientId}
+                disabled={readOnly}
                 onChange={(e) => pickClient(e.target.value)}
                 hint="Loads this client's rate card, dress codes, on-site contact and policies."
               >
@@ -249,6 +278,7 @@ export function ShiftBuilder({
                   </>
                 }
                 value={draft.venueId}
+                disabled={readOnly}
                 onChange={(e) => setDraft((c) => ({ ...c, venueId: e.target.value }))}
                 hint={
                   mode === 'edit' ? (
@@ -272,16 +302,33 @@ export function ShiftBuilder({
 
             <div className="f3">
               <div className="field">
-                <span className="label">Address</span>
-                <input className="input readonly" readOnly value={venue?.address ?? '—'} />
-              </div>
-              <div className="field">
-                <span className="label">Venue type</span>
-                <input className="input readonly" readOnly value={venue?.venueTypeLabel ?? '—'} />
-              </div>
-              <div className="field">
-                <span className="label">Geofence radius</span>
+                <label className="label" htmlFor={`${fieldId}-address`}>
+                  Address
+                </label>
                 <input
+                  id={`${fieldId}-address`}
+                  className="input readonly"
+                  readOnly
+                  value={venue?.address ?? '—'}
+                />
+              </div>
+              <div className="field">
+                <label className="label" htmlFor={`${fieldId}-venue-type`}>
+                  Venue type
+                </label>
+                <input
+                  id={`${fieldId}-venue-type`}
+                  className="input readonly"
+                  readOnly
+                  value={venue?.venueTypeLabel ?? '—'}
+                />
+              </div>
+              <div className="field">
+                <label className="label" htmlFor={`${fieldId}-radius`}>
+                  Geofence radius
+                </label>
+                <input
+                  id={`${fieldId}-radius`}
                   className="input readonly mono"
                   readOnly
                   value={venue ? `${venue.geofenceRadiusM} m` : '—'}
@@ -298,6 +345,7 @@ export function ShiftBuilder({
                   </>
                 }
                 value={draft.title}
+                disabled={readOnly}
                 onChange={(e) => setDraft((c) => ({ ...c, title: e.target.value }))}
               />
               {/* Manual, optional, no format or uniqueness rule; editable any
@@ -306,6 +354,7 @@ export function ShiftBuilder({
                 label="PO Number"
                 mono
                 value={draft.poNumber}
+                disabled={readOnly}
                 placeholder="Optional — as given by the client"
                 onChange={(e) => setDraft((c) => ({ ...c, poNumber: e.target.value }))}
                 hint="Free text, optional, no format or uniqueness rule; can be added or edited any time (§3.2)."
@@ -333,6 +382,7 @@ export function ShiftBuilder({
                 type="date"
                 mono
                 value={draft.date}
+                disabled={readOnly}
                 onChange={(e) => setDraft((c) => ({ ...c, date: e.target.value }))}
               />
               <Input
@@ -344,6 +394,7 @@ export function ShiftBuilder({
                 type="time"
                 mono
                 value={draft.overallStart}
+                disabled={readOnly}
                 onChange={(e) => setDraft((c) => ({ ...c, overallStart: e.target.value }))}
               />
               <Input
@@ -355,6 +406,7 @@ export function ShiftBuilder({
                 type="time"
                 mono
                 value={draft.overallEnd}
+                disabled={readOnly}
                 onChange={(e) => setDraft((c) => ({ ...c, overallEnd: e.target.value }))}
                 hint="A role may end after midnight (e.g. 17:00–01:30)."
               />
@@ -375,7 +427,7 @@ export function ShiftBuilder({
               <span className="muted sm">
                 one section per role, each with its own start and end (RULE-18)
               </span>
-              <Button size="sm" onClick={addRole} disabled={locked}>
+              <Button size="sm" onClick={addRole} disabled={readOnly}>
                 + Add role
               </Button>
             </>
@@ -401,7 +453,9 @@ export function ShiftBuilder({
                 confirmed={role.id ? (confirmed[role.id] ?? 0) : 0}
                 changed={changesByKey.get(role.key) ?? new Set()}
                 original={role.id ? originals.get(role.id) : undefined}
-                locked={locked}
+                mode={mode}
+                booked={role.id ? (booked[role.id] ?? 0) : 0}
+                locked={readOnly}
                 onChange={(patch) =>
                   patch.roleId !== undefined
                     ? pickRole(role.key, patch.roleId)
@@ -419,6 +473,7 @@ export function ShiftBuilder({
               <Input
                 label="On-site contact"
                 value={draft.onsiteContact}
+                disabled={readOnly}
                 onChange={(e) => setDraft((c) => ({ ...c, onsiteContact: e.target.value }))}
                 hint={
                   'Pre-filled from the client profile ("Staff contact point"), editable per event.'
@@ -443,6 +498,7 @@ export function ShiftBuilder({
               label="Notes / specific instructions"
               rows={3}
               value={draft.notes}
+              disabled={readOnly}
               onChange={(e) => setDraft((c) => ({ ...c, notes: e.target.value }))}
               hint="Visible to staff on their shift details in the app (§10.4) — entrance, parking, a specific ask from the client."
             />
@@ -468,7 +524,7 @@ export function ShiftBuilder({
           forecast={forecast}
         />
 
-        {mode === 'edit' && !locked ? (
+        {mode === 'edit' && !readOnly ? (
           <Panel title="What triggers re-confirmation" actions={<Pill>§3.5</Pill>}>
             <div className="stack tight sm">
               <div>
@@ -483,34 +539,42 @@ export function ShiftBuilder({
           </Panel>
         ) : null}
 
-        {!locked ? (
+        {mode === 'edit' ? (
+          <Panel title="Duplicate">
+            <span className="sm muted">
+              Multi-day = separate events created via <b>Duplicate</b> on the event board. The clone
+              copies the roles (times, headcount, buffer, rates, dress code), <b>not the staff</b>,
+              and starts filling from zero (§3.2).
+            </span>
+          </Panel>
+        ) : null}
+
+        {!readOnly ? (
           <Panel
             title="Auto-assign"
             actions={
               <Switch
                 checked={draft.autoAssign}
-                onChange={(autoAssign) =>
-                  setDraft((c) => ({
-                    ...c,
-                    autoAssign,
-                    roles: c.roles.map((role) => ({ ...role, autoAssign })),
-                  }))
-                }
+                // The event switch never rewrites the role switches: §3.4
+                // allows auto-assign to be off at EITHER level, and the
+                // wireframe's Host role is off because the client asked for a
+                // named person. Flicking this must not undo that.
+                onChange={(autoAssign) => setDraft((c) => ({ ...c, autoAssign }))}
                 label="Event level"
               />
             }
           >
             <span className="sm muted">
               Default ON at event and role level. From the moment the event is saved, auto-assign
-              adds <i>allocation</i> invites every hour in score order — qualified staff first
-              (RULE-17) — until headcount + buffer is filled (§3.4). Turn a role off when the client
-              asks for a specific person.
+              adds <i>allocation</i> invites every hour (at :17) in score order — qualified staff
+              first (RULE-17) — until headcount + buffer is filled (§3.4). Turn a role off when the
+              client asks for a specific person.
             </span>
           </Panel>
         ) : null}
 
         <div className="stack tight">
-          {locked ? (
+          {readOnly ? (
             <>
               <Link className="btn primary lg block keep" href={`/events/${saved?.id ?? ''}`}>
                 Open event board →
@@ -537,7 +601,7 @@ export function ShiftBuilder({
                 Cancel
               </Link>
               {!saveable ? (
-                <span className="muted xs">
+                <span className="muted xs" data-testid="save-blockers">
                   {issues.event.length > 0
                     ? issues.event.join(' · ')
                     : 'Save is disabled while a role section fails validation.'}

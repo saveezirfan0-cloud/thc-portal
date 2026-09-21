@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { Content, Shell, Sidebar, Topbar } from '@thc/ui';
+import { ViewerZone } from './ViewerZone';
 
 /**
  * The Back Office chrome around the Shift Builder, mirroring the sidebar in
@@ -52,7 +53,7 @@ export function OfficeShell({ title, children }: { title: string; children: Reac
             <Link href="/events">Scheduling</Link> / <b>Shift Builder</b>
           </>
         }
-        timezone="Viewer: Europe/London (UK)"
+        timezone={<ViewerZone />}
       />
       <Content>{children}</Content>
     </Shell>
