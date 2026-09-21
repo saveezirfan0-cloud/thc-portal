@@ -106,7 +106,7 @@
   --glow-a: rgba(62, 220, 236, 0.22);
   --glow-b: rgba(168, 121, 255, 0.18);
 
-  /* --- accent glow (ADR-0006, fluid style only) ---------------------
+  /* --- accent glow (ADR-0007, fluid style only) ---------------------
      The scope style casts nothing at all, which is why these are `none`
      here. Where they are set they are always accent-tinted: a glow, never
      a neutral drop shadow. packages/ui's style tests assert that. */
@@ -251,7 +251,7 @@
 
   /* Solid fills keep the handoff values where they clear 4.5:1 against the
      background-coloured label. Amber #B5730A does not — 3.45:1 — so it uses
-     its darker ink instead, 5.1:1. Teal is the ADR-0006 board value #0E7688
+     its darker ink instead, 5.1:1. Teal is the ADR-0007 board value #0E7688
      at 4.96:1 on the warm ground (the old #0B7A88 sat exactly on 4.50:1,
      which any antialiasing lost); it keeps the ink fill anyway so a solid
      chip and a text accent never drift apart. */
@@ -327,7 +327,7 @@
   --head-track: -0.02em;
   --body-size: 13px;
 
-  /* Fluid scale (ADR-0006). The boards' Tailwind table is
+  /* Fluid scale (ADR-0007). The boards' Tailwind table is
      DEFAULT 1rem · lg 1.5rem · xl/2xl 2rem · 3xl 2.5rem · full 9999px, and
      every button, input, nav item, chip and avatar in them is `rounded-full`.
      Mapped onto our token names: cards/panels 28 · tiles 22 · buttons, inputs

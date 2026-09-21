@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 
 /**
- * ADR-0006 supersedes ADR-0003's pairing: one user-facing switch still, but
+ * ADR-0007 supersedes ADR-0003's pairing: one user-facing switch still, but
  * light mode now renders the Scope §1.6 geometry on the warm ground (zero
  * radius, Space Grotesk, IBM Plex Mono labels) and dark mode renders the
  * Fluid look (round, Plus Jakarta Sans, frosted glass, accent glow).

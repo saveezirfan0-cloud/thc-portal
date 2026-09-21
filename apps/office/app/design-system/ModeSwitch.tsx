@@ -8,7 +8,7 @@ const OPTIONS = [
   { value: 'dark' as const, label: 'Dark · Fluid' },
 ];
 
-/** ADR-0006: one switch. Light renders the Scope §1.6 look, dark renders Fluid. */
+/** ADR-0007: one switch. Light renders the Scope §1.6 look, dark renders Fluid. */
 export function ModeSwitch() {
   const { mode, setMode } = useAppearance();
   return (

@@ -10,7 +10,7 @@ test('the design system renders and the appearance switch flips both axes', asyn
   await page.goto('/design-system');
   const html = page.locator('html');
 
-  // ADR-0006 pairing: dark renders Fluid (the warm geometry), light renders
+  // ADR-0007 pairing: dark renders Fluid (the warm geometry), light renders
   // the Scope §1.6 geometry. Both axes move together, from one control.
   await page.getByRole('button', { name: 'Dark · Fluid' }).click();
   await expect(html).toHaveAttribute('data-theme', 'dark');

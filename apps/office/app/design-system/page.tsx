@@ -57,7 +57,7 @@ import './design-system.css';
  *
  * It is derived from the four boards in `design-handoff/`. Light renders the
  * softened v2 look on the warm ground; dark renders the scope §1.6 look
- * (ADR-0003; pairing inverted by ADR-0006). Every element below reads tokens only — no page in this repo may
+ * (ADR-0003; pairing inverted by ADR-0007). Every element below reads tokens only — no page in this repo may
  * hard-code a colour or a radius.
  */
 const TONES = ['cyan', 'green', 'amber', 'coral', 'purple'] as const;
@@ -104,7 +104,7 @@ export default function Page() {
       <Content>
         <PageHead
           title="Components"
-          description="Derived from design-handoff/ and the ADR-0006 boards. Two token axes, one switch: light renders the scope §1.6 geometry on the warm ground, dark renders the Fluid look."
+          description="Derived from design-handoff/ and the ADR-0007 boards. Two token axes, one switch: light renders the scope §1.6 geometry on the warm ground, dark renders the Fluid look."
         />
 
         {/* ---------------- tokens ---------------- */}
@@ -222,7 +222,7 @@ export default function Page() {
             Every button animates on hover (§1.6): solid accent lightens, outlined takes the accent
             border and text, outlined danger fills 12% danger. In the fluid look the primary carries
             the cyan→violet gradient and an accent glow. Nothing casts a <em>drop</em> shadow: depth
-            is frosted glass and coloured glow, never a neutral cast (ADR-0006).
+            is frosted glass and coloured glow, never a neutral cast (ADR-0007).
           </Note>
         </Panel>
 

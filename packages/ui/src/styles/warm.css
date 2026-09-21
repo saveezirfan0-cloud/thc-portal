@@ -82,10 +82,10 @@
 }
 
 /* =====================================================================
-   ADR-0006 · Fluid deltas.
+   ADR-0007 · Fluid deltas.
 
    The v2 sheet above stays exactly as it was. What follows is the extra
-   step the ADR-0006 boards take beyond it: a pill-shaped control scale,
+   step the ADR-0007 boards take beyond it: a pill-shaped control scale,
    and depth from an accent glow rather than a border.
 
    Nothing here casts a neutral shadow. Every box-shadow below is built

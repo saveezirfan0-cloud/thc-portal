@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { appearanceScript, MODE_STORAGE_KEY, styleForMode } from '../components/Appearance';
 
 /**
- * ADR-0006 is one function and one line of inline script. There is nothing
+ * ADR-0007 is one function and one line of inline script. There is nothing
  * else to change when the pairing changes, which is the property ADR-0003
  * set out to buy — so both are worth pinning.
  */
-describe('the appearance pairing (ADR-0006)', () => {
+describe('the appearance pairing (ADR-0007)', () => {
   it('renders the scope §1.6 geometry in light mode', () => {
     expect(styleForMode('light')).toBe('scope');
   });

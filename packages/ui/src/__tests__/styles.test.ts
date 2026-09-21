@@ -94,7 +94,7 @@ describe('radius', () => {
     expect(/--r-logo:\s*50%/.test(scope)).toBe(true);
   });
 
-  it('follows the fluid scale in the warm style (ADR-0006)', () => {
+  it('follows the fluid scale in the warm style (ADR-0007)', () => {
     const warm = ":root[data-style='warm']";
     expect(token(warm, '--r-card')).toBe('28px');
     expect(token(warm, '--r-tile')).toBe('22px');
@@ -189,7 +189,7 @@ describe('grouped and decorated inputs', () => {
 
 describe('elevation', () => {
   it('casts no drop shadow — depth is frosted glass and accent glow', () => {
-    // The handoff is explicit that nothing drops a shadow. ADR-0006 adds the
+    // The handoff is explicit that nothing drops a shadow. ADR-0007 adds the
     // fluid style's glow, which is a box-shadow by mechanism but never by
     // intent: it is always the accent or the element's own colour, and never
     // a neutral cast downward. Both halves of that are worth holding.

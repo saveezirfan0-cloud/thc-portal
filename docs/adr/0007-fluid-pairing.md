@@ -1,4 +1,4 @@
-# ADR-0006 · Invert the ADR-0003 pairing, and grow the warm style into "Fluid"
+# ADR-0007 · Invert the ADR-0003 pairing, and grow the warm style into "Fluid"
 
 **Status:** Accepted (product owner, 21.09.2026). Supersedes the *pairing* in ADR-0003. Everything else in ADR-0003 — the two axes, the ten brand colours, the contrast work — stands.
 
