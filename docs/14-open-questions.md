@@ -482,7 +482,12 @@ that is not mine to do here:
    cannot occur and the N14 it promises cannot fire. The rules are in place and will act
    the morning after that write lands.
 
-4. **`request_p45()` and `declare_conviction()` are service-role only too, and for a
+4. **`block_worker()` now HAS its manual caller** — `block_worker_manually()` (§9.6),
+   along with `unblock_worker()` and `reset_to_candidate()`. All three are service-role
+   only, which is right for Back Office actions reached through a server action, so this
+   half of O10 is closed. What is still missing is the screen (B8).
+
+5. **`request_p45()` and `declare_conviction()` are service-role only too, and for a
    sharper reason.** Both take a staff id and neither checks that it is the *caller's* —
    they are written for a server action holding the service key, which is how the Staff
    App reaches every other write path. Granting either to `authenticated` as they stand

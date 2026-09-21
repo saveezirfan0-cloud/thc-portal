@@ -43,7 +43,12 @@ select is_empty(
           -- reach the database through a server action holding the service
           -- key, so a revoke that took this grant with it would make
           -- "Request my P45" fail silently for every leaver.
-          'request_p45', 'declare_conviction', 'released_shift_lines'
+          'request_p45', 'declare_conviction', 'released_shift_lines',
+          -- §9.6's three buttons (20260921183945). reset_to_candidate
+          -- supersedes every piece of a worker's compliance evidence, so
+          -- a grant that went missing here fails the office's only route
+          -- back for a returning worker.
+          'block_worker_manually', 'unblock_worker', 'reset_to_candidate'
         )
         and not has_function_privilege('service_role', p.oid, 'execute') $$,
   'the service role can execute every function the §7 jobs call'

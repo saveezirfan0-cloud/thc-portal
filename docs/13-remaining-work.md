@@ -34,6 +34,10 @@ Also built, server side only, with no screen in front of any of it:
   `declare_conviction`), both of which reuse the §4.3 cascade, plus the §2.12 staff state
   machine in SQL — which nothing had, though CLAUDE.md asks for every state change to be
   rejected in the database too. A Vitest holds it to `STAFF_TRANSITIONS` edge for edge.
+- the manager's three profile buttons (§9.6): `block_worker_manually` with its mandatory
+  reason, `unblock_worker` which runs the §4.3 full check first and reports what is still
+  outstanding when it refuses, and `reset_to_candidate` — the Employee ID and all history
+  retained, every piece of compliance evidence superseded but kept read-only
 
 Not built: every screen bar sign-in, the venues directory and the roles directory. Of the
 background rules, BG-06/07 (geofence) wait on the geolocation shell and BG-08 on the
