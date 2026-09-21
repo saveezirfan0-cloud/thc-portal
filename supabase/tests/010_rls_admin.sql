@@ -40,21 +40,36 @@ select is((select count(*)::int from notification_outbox where key = 'RLS:fixtur
   'KNOWN GAP: notification_outbox is deny-all, admin cannot read the send queue');
 
 -- ---- writes ----------------------------------------------------------
-with u as (update staff set rating = 4.50 where id = :'staffa' returning 1) select is((select count(*)::int from u), 1, 'admin writes staff');
-with u as (update events set notes = 'edited' where id = :'event_a' returning 1) select is((select count(*)::int from u), 1, 'admin writes events');
-with u as (update shift_requirements set headcount = 7 where id = :'shift_a' returning 1) select is((select count(*)::int from u), 1, 'admin writes role sections');
-with u as (update bookings set status = 'worked' where id = :'booking_a' returning 1) select is((select count(*)::int from u), 1, 'admin writes bookings');
-with u as (update compliance_docs set review_status = 'rejected' where id = :'doc_a' returning 1) select is((select count(*)::int from u), 1, 'admin writes compliance docs');
-with u as (update criminal_declarations set review_status = 'verified' where id = :'decl_a' returning 1) select is((select count(*)::int from u), 1, 'admin writes criminal declarations');
-with u as (update check_logs set on_site_verified = true where id = :'checklog_a' returning 1) select is((select count(*)::int from u), 1, 'admin writes check logs');
-with u as (update breaks set ended_at = now() where id = :'break_a' returning 1) select is((select count(*)::int from u), 1, 'admin writes breaks');
-with u as (update violations set resolved = true where id = :'violation_a' returning 1) select is((select count(*)::int from u), 1, 'admin resolves violations');
-with u as (update feedback set read_at = now() where id = :'feedback_a' returning 1) select is((select count(*)::int from u), 1, 'admin marks feedback read');
-with u as (update clients set pays_breaks = false where id = :'clienta' returning 1) select is((select count(*)::int from u), 1, 'admin writes clients');
-with u as (update venues set geofence_radius_m = 200 where id = :'venue_id' returning 1) select is((select count(*)::int from u), 1, 'admin writes venues');
-with u as (update roles set pay_rate = 15.00 where id = :'role_id' returning 1) select is((select count(*)::int from u), 1, 'admin writes roles');
-with u as (update client_rate_cards set charge_rate = 24.00 where id = :'ratecard_a' returning 1) select is((select count(*)::int from u), 1, 'admin writes rate cards');
-with u as (update settings set value = '{"secret":false}' where key = 'rls_fixture_probe' returning 1) select is((select count(*)::int from u), 1, 'admin writes settings');
+with u as (update staff set rating = 4.50 where id = :'staffa' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes staff');
+with u as (update events set notes = 'edited' where id = :'event_a' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes events');
+with u as (update shift_requirements set headcount = 7 where id = :'shift_a' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes role sections');
+with u as (update bookings set status = 'worked' where id = :'booking_a' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes bookings');
+with u as (update compliance_docs set review_status = 'rejected' where id = :'doc_a' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes compliance docs');
+with u as (update criminal_declarations set review_status = 'verified' where id = :'decl_a' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes criminal declarations');
+with u as (update check_logs set on_site_verified = true where id = :'checklog_a' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes check logs');
+with u as (update breaks set ended_at = now() where id = :'break_a' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes breaks');
+with u as (update violations set resolved = true where id = :'violation_a' returning 1)
+  select is((select count(*)::int from u), 1, 'admin resolves violations');
+with u as (update feedback set read_at = now() where id = :'feedback_a' returning 1)
+  select is((select count(*)::int from u), 1, 'admin marks feedback read');
+with u as (update clients set pays_breaks = false where id = :'clienta' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes clients');
+with u as (update venues set geofence_radius_m = 200 where id = :'venue_id' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes venues');
+with u as (update roles set pay_rate = 15.00 where id = :'role_id' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes roles');
+with u as (update client_rate_cards set charge_rate = 24.00 where id = :'ratecard_a' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes rate cards');
+with u as (update settings set value = '{"secret":false}' where key = 'rls_fixture_probe' returning 1)
+  select is((select count(*)::int from u), 1, 'admin writes settings');
 
 select throws_ok(
   $$ insert into notification_outbox (key, channel, template) values ('RLS:denied:outbox','push','N1') $$,

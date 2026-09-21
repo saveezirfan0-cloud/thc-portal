@@ -8,15 +8,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # Version comes from package.json packageManager; naming it here as well
+      # makes the action fail with "multiple versions".
       - uses: pnpm/action-setup@v4
-        with: { version: 9 }
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo lint typecheck test
       - uses: supabase/setup-cli@v1
         with: { version: latest }
+      # `supabase start` applies supabase/migrations/* and then supabase/seed.sql.
       - run: supabase start
+      # The seed must be re-runnable against an already seeded database
+      # (Phase 0). Replaying it here fails the build if an upsert key is
+      # missing, and 060_seed_shape.sql below catches any duplicated rows.
+      - name: seed is idempotent
+        run: psql "postgresql://postgres:postgres@127.0.0.1:54322/postgres" -v ON_ERROR_STOP=1 -q -f supabase/seed.sql
+      # pgTAP RLS suite for admin / client / staff / anon. `supabase test db`
+      # runs pg_prove recursively over supabase/tests with --ext .sql/.pg, so
+      # supabase/tests/_shared/fixtures.psql is included by the tests and is
+      # never picked up as a test of its own.
       - run: supabase test db
       - run: pnpm dlx playwright install --with-deps chromium
       - run: pnpm turbo e2e:smoke
