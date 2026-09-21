@@ -106,6 +106,13 @@
   --glow-a: rgba(62, 220, 236, 0.22);
   --glow-b: rgba(168, 121, 255, 0.18);
 
+  /* --- accent glow (ADR-0006, fluid style only) ---------------------
+     The scope style casts nothing at all, which is why these are `none`
+     here. Where they are set they are always accent-tinted: a glow, never
+     a neutral drop shadow. packages/ui's style tests assert that. */
+  --glow-soft: none; /* lift under an active nav item or a raised tile */
+  --glow-dot: none; /* tight halo on a status dot, in its own colour */
+
   /* --- keyboard focus: always visible, always the accent ------------ */
   --focus-line: var(--cyan-ink);
   --focus-halo: rgba(62, 220, 236, 0.28);
@@ -177,6 +184,7 @@
   --sp-26: 26px;
   --sp-28: 28px;
   --sp-32: 32px;
+  --sp-36: 36px;
   --sp-44: 44px;
   --sp-56: 56px;
   --gutter: 28px;
@@ -192,6 +200,8 @@
   --r-pill: 0; /* pills, chips, segmented controls */
   --r-track: 0; /* progress / score tracks */
   --r-avatar: 0; /* square avatars in v1 */
+  --r-field: 0; /* textareas and other multi-line boxes */
+  --r-check: 0; /* checkbox and radio boxes */
   --r-phone: 0;
   --r-frame: 0;
   --r-logo: 50%; /* the one exception, both styles */
@@ -209,7 +219,7 @@
 /* =====================================================================
    2 · LIGHT THEME — warm ground, deep teal accent.
    Not a mechanical inversion: raw cyan fails contrast on a light ground,
-   so #0B7A88 carries the accent and the neutrals are warmed (bone, clay).
+   so #0E7688 carries the accent and the neutrals are warmed (bone, clay).
    Shared by handoff v1 light and v2 light — their colour columns are
    identical; only geometry and type differ.
    ===================================================================== */
@@ -223,7 +233,7 @@
   --text: #241d16;
   --muted: #7a6b5c;
 
-  --cyan: #0b7a88;
+  --cyan: #0e7688;
   --purple: #6e45c4;
   --green: #1f7a4d;
   --amber: #b5730a;
@@ -240,9 +250,11 @@
   --coral-ink: #ad392a;
 
   /* Solid fills keep the handoff values where they clear 4.5:1 against the
-     background-coloured label. Two do not: amber #B5730A gives 3.45:1 and
-     teal #0B7A88 lands exactly on 4.50:1, which any antialiasing loses. Both
-     use their darker ink instead — 5.1:1 and 5.4:1. */
+     background-coloured label. Amber #B5730A does not — 3.45:1 — so it uses
+     its darker ink instead, 5.1:1. Teal is the ADR-0006 board value #0E7688
+     at 4.96:1 on the warm ground (the old #0B7A88 sat exactly on 4.50:1,
+     which any antialiasing lost); it keeps the ink fill anyway so a solid
+     chip and a text accent never drift apart. */
   --cyan-solid: var(--cyan-ink);
   --purple-solid: var(--purple);
   --green-solid: var(--green);
@@ -253,9 +265,9 @@
   --amber-hot: #8f5a06;
   --link-hover: #0a5f6a;
 
-  --cyan-dim: rgba(11, 122, 136, 0.12);
-  --cyan-dim-soft: rgba(11, 122, 136, 0.08);
-  --cyan-line: rgba(11, 122, 136, 0.45);
+  --cyan-dim: rgba(14, 118, 136, 0.12);
+  --cyan-dim-soft: rgba(14, 118, 136, 0.08);
+  --cyan-line: rgba(14, 118, 136, 0.45);
   --purple-dim: rgba(110, 69, 196, 0.15);
   --purple-line: rgba(110, 69, 196, 0.5);
   --green-dim: rgba(31, 122, 77, 0.12);
@@ -300,6 +312,11 @@
   --font-label: var(--font-body);
   --font-num: var(--font-body);
 
+  /* Both glows derive from the accent line colour, so they follow the
+     theme without a second set of values. */
+  --glow-soft: 0 10px 26px -8px var(--cyan-line);
+  --glow-dot: 0 0 8px currentColor;
+
   --label-case: none; /* sentence case */
   --label-size: 10px;
   --label-track: 0.01em;
@@ -310,17 +327,25 @@
   --head-track: -0.02em;
   --body-size: 13px;
 
-  /* cards/panels 20 · tiles 18 · buttons and inputs 14 · nav pills 14 ·
-     chips, pills, segmented controls, tracks 999 · avatars and the logo
-     50% · phone frames 44 · desktop frames 24. */
-  --r-card: 20px;
-  --r-tile: 18px;
-  --r-control: 14px;
+  /* Fluid scale (ADR-0006). The boards' Tailwind table is
+     DEFAULT 1rem · lg 1.5rem · xl/2xl 2rem · 3xl 2.5rem · full 9999px, and
+     every button, input, nav item, chip and avatar in them is `rounded-full`.
+     Mapped onto our token names: cards/panels 28 · tiles 22 · buttons, inputs
+     and nav items 999 · chips, pills, segmented controls, tracks 999 ·
+     avatars and the logo 50% · phone frames 44 · desktop frames 32.
+
+     Two boxes cannot take the pill: a textarea and a checkbox. They get their
+     own radii rather than an override buried in a component rule. */
+  --r-card: 28px;
+  --r-tile: 22px;
+  --r-control: 999px;
   --r-pill: 999px;
   --r-track: 999px;
   --r-avatar: 50%;
+  --r-field: 20px;
+  --r-check: 8px;
   --r-phone: 44px;
-  --r-frame: 24px;
+  --r-frame: 32px;
   --nav-bar: 0px;
 
   --btn-h: 38px;

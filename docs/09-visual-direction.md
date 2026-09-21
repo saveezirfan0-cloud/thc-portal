@@ -1,6 +1,6 @@
 # 09 · Visual direction — "Warm" style and light mode
 
-**Status:** proposed to THC (ADR-0003). **Decision taken by the product owner (19.09.2026): one switch — Light mode is the Warm look, Dark mode is the Scope §1.6 look.** The switch follows the device setting by default and the worker/admin can override it. The Scope of Work §1.6 marks the visual system as STRICT, so this is a recorded change request, not a silent drift. Both looks ship from the same tokens; the switch in the wireframes' top bar shows either at any time (`Warm` / `Scope §1.6`, `Dark` / `Light`).
+**Status:** proposed to THC (ADR-0003, pairing inverted by [ADR-0006](adr/0006-fluid-pairing.md)). **Decision taken by the product owner (21.09.2026): one switch — Light mode is the Scope §1.6 look on the warm ground, Dark mode is the Fluid look.** The table below still describes what each *style* does; read "Warm style" as the style that now renders in dark mode, grown to the Fluid radius scale and given an accent glow. The switch follows the device setting by default and the worker/admin can override it. The Scope of Work §1.6 marks the visual system as STRICT, so this is a recorded change request, not a silent drift. Both looks ship from the same tokens; the switch in the wireframes' top bar shows either at any time (`Warm` / `Scope §1.6`, `Dark` / `Light`).
 
 ## Who this is for
 | Audience | Situation | What the UI has to feel like |

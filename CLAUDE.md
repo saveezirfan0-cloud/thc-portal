@@ -16,7 +16,7 @@ Bespoke staffing platform for an event-staffing agency (~1,000 workers, 10–15 
 
 ## Visual direction
 
-One user-facing switch (ADR-0003, `docs/09-visual-direction.md`): **Light mode = Warm look** (rounded, Plus Jakarta Sans, tinted surfaces), **Dark mode = Scope §1.6 look** (navy, cyan, zero radius, mono labels). Under the hood these are two token axes (`data-style` warm/scope, `data-theme` light/dark) so the pairing can change without touching screens. Components read tokens only; never hard-code colours or radii.
+One user-facing switch (ADR-0006, superseding ADR-0003's pairing; `docs/09-visual-direction.md`): **Light mode = Scope §1.6 look** (zero radius, Space Grotesk, IBM Plex Mono labels) on the warm cream ground, **Dark mode = Fluid look** (navy, cyan, pill controls, Plus Jakarta Sans, frosted glass, accent glow). Under the hood these are two token axes (`data-style` warm/scope, `data-theme` light/dark), and the flip was one function — `styleForMode` in `packages/ui/src/components/Appearance.tsx`. Components read tokens only; never hard-code colours or radii.
 
 ## Stack
 
