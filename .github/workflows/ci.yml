@@ -17,6 +17,27 @@ jobs:
       - run: pnpm turbo lint typecheck test
       - uses: supabase/setup-cli@v1
         with: { version: latest }
+      # Supabase takes the digits before the first underscore as a
+      # migration's version and makes that the primary key of
+      # supabase_migrations.schema_migrations, so two files sharing one
+      # number is fatal: the second to apply is rejected and every step
+      # after `supabase start` is skipped.
+      #
+      # This has broken main three times in one morning (#5/#7 both took
+      # 0006, then #3 took it again), and every time it broke on main
+      # rather than on the pull request that caused it — because a
+      # collision does not exist until two branches are in one tree. A
+      # `pull_request` run builds exactly that tree, so this check sees
+      # it; it is two lines and it fails with the numbers named, instead
+      # of an opaque 23505 sixty lines into a container pull.
+      - name: migration versions are unique
+        run: |
+          dupes=$(ls supabase/migrations | sed 's/_.*//' | sort | uniq -d)
+          if [ -n "$dupes" ]; then
+            echo "::error::Two migrations share a version: $dupes"
+            ls -1 supabase/migrations
+            exit 1
+          fi
       # `supabase start` applies supabase/migrations/* and then supabase/seed.sql.
       - run: supabase start
       # The seed must be re-runnable against an already seeded database
