@@ -42,8 +42,9 @@ select bag_eq(
             ('notification_outbox'),('profiles'),
             ('push_subscriptions'),('quiz_attempts'),('report_sends'),('roles'),('settings'),
             ('shift_requirements'),('staff'),('staff_references'),('staff_roles'),
+            ('staff_transitions'),
             ('venue_types'),('venues'),('violations') $$,
-  'RLS is enabled on all 32 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, and cap_band_notices from the compliance job'
+  'RLS is enabled on all 33 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, and staff_transitions from the §2.12 machine'
 );
 
 -- ---------------------------------------------------------------------
@@ -109,7 +110,8 @@ select bag_eq(
             ('notification_outbox'),
             ('push_subscriptions'),('quiz_attempts'),
             ('report_sends'),('roles'),('settings'),('shift_requirements'),('staff'),
-            ('staff_references'),('staff_roles'),('venue_types'),('venues'),('violations') $$,
+            ('staff_references'),('staff_roles'),('staff_transitions'),
+            ('venue_types'),('venues'),('violations') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );
 
@@ -141,6 +143,9 @@ select bag_eq(
 --    row a client can now reach that it could not before is venue_types,
 --    through venue_types_read (any signed-in role, reference data only) —
 --    deliberately not named client_*, because it is not a client policy.
+--    staff_transitions (20260921180312) is the second of that shape and
+--    is named the same way for the same reason: it describes the §2.12
+--    machine, not any person, and a client reading it learns nothing.
 --    0005 added none either: ADR-0004 gives the Client Portal owner-rights
 --    views that scope themselves instead of policies on the tables under
 --    them, so this list staying at two IS the money isolation. A new name

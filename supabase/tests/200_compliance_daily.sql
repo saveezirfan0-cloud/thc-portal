@@ -215,7 +215,8 @@ select is((select status::text || '/' || block_kind::text from staff where id = 
 select is((select status::text || '/' || cancel_cause from bookings where id = '7f000000-0000-4000-8000-000000000001'),
   'cancelled/blocked', '§4.3 step 2: the future confirmed allocation is released, so the section is short again and auto-assign refills it');
 select is((select status::text || '/' || cancel_cause from bookings where id = '7f000000-0000-4000-8000-000000000002'),
-  'cancelled/blocked', '§4.3 step 3: the open invitation is withdrawn and disappears from their app');
+  'cancelled/blocked_invite',
+  '§4.3 step 3: the open invitation is withdrawn and disappears from their app — marked apart from a RELEASED allocation, because §10.6''s E8 lists what the event actually lost and an invitation nobody accepted is not that');
 select is((select status::text from bookings where id = '7f000000-0000-4000-8000-000000000003'),
   'worked', 'a shift already worked is a pay record and is never touched');
 select is(
