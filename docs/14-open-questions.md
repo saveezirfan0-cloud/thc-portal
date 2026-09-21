@@ -228,3 +228,24 @@ rather than an oversight:
 
 The first is worth doing the moment a second Edge Function lands. The second is worth
 doing before anything depends on a job actually running.
+
+## O6 · The jobs layer depends on a Supabase default it did not set
+
+`20260921141500_auto_assign.sql` revokes `release_unready_bookings`,
+`invite_worker` and others from `PUBLIC` and re-grants only to `authenticated`.
+Nothing grants them to `service_role` — which is what every §7 job holds.
+
+That almost certainly still works, because Supabase's bootstrap sets default
+privileges granting EXECUTE on new functions in `public` to `service_role`. But
+"almost certainly" is doing real work in that sentence, and if it is ever wrong the
+symptom is every auto-staffing run 500ing once a minute in production, with nothing
+in the repo to explain why.
+
+So `20260921162107_enable_auto_staffing.sql` states the grants explicitly rather than
+inheriting them, and `190_job_function_grants.sql` asserts in CI that the service role
+can execute every function the jobs call — and that `anon` can execute none of them.
+`invite_worker` alone can book a worker onto a shift, so an open one is not a bug in a
+job; it is a way for anyone holding the anon key to staff an event.
+
+Nothing to do here. Recorded because the next person to revoke something from `PUBLIC`
+should know that test exists and why.
