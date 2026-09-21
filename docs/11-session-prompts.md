@@ -8,8 +8,8 @@ must not touch, and how it will be judged.
 one domain per branch (`docs/10-working-with-agents.md`), and shared-package changes go
 first in their own pull request.
 
-**If the design has changed**, run S0 before anything that draws a screen. Everything in
-S1 and S2 is design-independent and can run regardless.
+**If the design has changed**, run S0 before anything that draws a screen. S2 is
+design-independent and can run regardless.
 
 ---
 
@@ -41,39 +41,17 @@ S1 and S2 is design-independent and can run regardless.
 
 ---
 
-## S1 · Close the row-level-security gaps (urgent, do early)
+## S1 · Close the row-level-security gaps — DONE
 
-> Use the `platform` agent. Branch `feat/platform-rls-gaps`.
->
-> Eleven tables in `0001_init.sql` have no row-level security at all. Supabase grants
-> the `authenticated` role full DML on everything in `public`, so each one is currently
-> readable and writable through PostgREST by any signed-in user. The list is pinned by a
-> `bag_eq` in `supabase/tests/001_rls_guard.sql`:
->
-> `audit_log`, `bank_details`, `client_qualifications`, `hmrc_checklists`,
-> `location_pings`, `push_subscriptions`, `quiz_attempts`, `report_sends`,
-> `staff_references`, `staff_roles`, `venue_types`.
->
-> `bank_details` (sort code and account number) and `hmrc_checklists` are the urgent
-> ones. Design a policy set for each table against §1.4, §1.5, §1.7 and §11.1, add them
-> in a new forward-only migration, and update the guard test in the same change so the
-> expected lists move together.
->
-> Rules that decide most of these: a worker reads and writes only their own rows; a
-> client sees no money anywhere and no staff personal data; `audit_log` and
-> `report_sends` are admin-read, service-role-write. Where a worker mutation should go
-> through a `security definer` RPC rather than a policy, say so in the migration comment
-> rather than adding a write policy.
->
-> Constraints: `supabase/` only. Never edit `0001_init.sql`; add `000N_*.sql`.
-> `0002` exists and `0003` is reserved for the cron schedules (`docs/01` §4), so
-> start at `0004`.
->
-> Done when: every table in `public` has RLS enabled, `supabase test db` passes, and the
-> guard test's two lists reflect the new reality. Report any table where you could not
-> decide the policy without a product call.
+Migration `0004_rls_gaps.sql` policed all eleven tables. The guard test now asserts that
+no table in `public` is unpoliced, so this cannot silently regress.
 
----
+Three calls in that migration were judgement rather than scope, and are cheap to reverse
+if you disagree. Workers get nothing from `client_qualifications`, because exposing it
+would pull the client directory into the staff app. `venue_types` is readable by any
+signed-in role as harmless reference data. Bank details and references took real write
+policies rather than RPCs, which leaves the E5 notification on a bank change unwired;
+picking that up belongs with S2.
 
 ## S2 · Notification register (§8)
 

@@ -10,9 +10,9 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 41 | `pnpm test` |
+| Unit | 67 | `pnpm test` |
 | Browser smoke | 14 | `pnpm turbo e2e:smoke` |
-| Database, row-level security | 159 | `supabase test db` |
+| Database, row-level security | 252 | `supabase test db` |
 
 What exists:
 
@@ -31,24 +31,19 @@ What exists:
 What does not exist yet: every screen in Phases 1 to 7, the Supabase project, and the
 Vercel projects. Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
 
-## Two open security items
+## Security: one item closed, one open
 
-Both are pre-existing in `0001_init.sql` and both are recorded in the test suite rather
-than papered over.
-
-1. **Eleven tables have no row-level security**, so they are readable and writable
-   through the API by any signed-in user. Two of them hold bank details and tax
-   checklists. `supabase/tests/001_rls_guard.sql` pins the list, so the build fails the
-   moment it changes in either direction. Session S1 in `docs/11-session-prompts.md`
-   closes them.
-2. **The Client Portal line-up has no data path.** §11.2 promises the customer sees the
-   confirmed line-up, but the view returns nothing for a client. This needs a decision,
-   not a patch. See S8.
-
-A third is already fixed. A client could read both the charge rate and the pay rate
-straight from the role-sections table, which §11.1 forbids absolutely. Migration `0002`
-drops that policy. The lesson generalises: a view cannot take away a privilege the base
-table grants, so "hidden behind a view" is never an access control.
+1. **Closed.** A client could read both the charge rate and the pay rate straight from
+   the role-sections table, which §11.1 forbids absolutely. Migration `0002` drops that
+   policy. The lesson generalises: a view cannot take away a privilege the base table
+   grants, so "hidden behind a view" is never an access control.
+2. **Closed.** Eleven tables had no row-level security at all, so any signed-in user
+   could read and write them through the API, bank details and tax checklists included.
+   Migration `0004` policed all eleven. The guard test now asserts that no table in
+   `public` is unpoliced, so the next one to arrive without it fails the build.
+3. **Open, and needs a decision rather than a patch.** The Client Portal line-up returns
+   nothing for a client. §11.2 promises the customer sees the confirmed line-up, but the
+   tables beneath the view hold no client policy. See S8 in the prompts doc.
 
 ## How to run a session
 
@@ -102,8 +97,8 @@ say so rather than reporting the suite as passing.
   storing the weekly cap instead of calculating it, blending holiday pay instead of
   breaking out the 12.07%, showing the event window where a role-section window belongs,
   and letting any money reach the client.
-- Never edit an applied migration. Add the next numbered one. `0001` and `0002`
-  exist, and `0003` is reserved for the cron schedules in `docs/01` §4.
+- Never edit an applied migration. Add the next numbered one. `0001`, `0002` and
+  `0004` exist, and `0003` is reserved for the cron schedules in `docs/01` §4.
 - Seed data mirrors `wireframes/CONVENTIONS.md`, so a screenshot and a test read the same.
 - Keep THC's Appendix B inputs in an issue with due dates. Several phases block on them:
   Willo keys, contract text, sample letters, the logo, and DNS.
