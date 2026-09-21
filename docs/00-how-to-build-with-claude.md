@@ -10,9 +10,9 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 407 | `pnpm test` |
-| Browser smoke | 41 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 563 | `supabase test db` |
+| Unit | 522 | `pnpm test` |
+| Browser smoke | 50 | `pnpm turbo e2e:smoke` |
+| Database, row-level security and rules | 696 | `supabase test db` |
 
 What exists:
 
@@ -34,7 +34,13 @@ What exists:
   `packages/domain/pay.ts` repeats the same rules in TypeScript, and
   `packages/domain/src/pay.vectors.json` is the contract between them: Vitest reads it,
   pgTAP reads the file generated from it, and a drift test fails the build if the copy
-  goes stale. The Check-in monitor screen (§9.5) is still to come.
+  goes stale. Migration `20260921153000` adds the write paths that maths was waiting
+  on: `start_break` / `finish_break` (§5.2b) and `resolve_violation` (§9.5), which is
+  what finally lets an unresolved No check-out settle and RULE-14's floor come back.
+  The two screens on top — the Check-in monitor (§9.5) and the on-shift screen
+  (§10.4) — are still to come, as is the background-geolocation shell: nothing writes
+  `location_pings` yet, so every off-site check-out currently falls to the RULE-02
+  fallback by design.
 - **The public application form** at `/apply` (§2.1), the first screen of Phase 1, with
   `submit_application()` behind it: the age gate on the form, in the server action and in
   the database, and the §2.12 duplicate check.
@@ -55,8 +61,14 @@ What does not exist yet: every screen in Phases 1 to 7 apart from the applicatio
 the Shift Builder and the Client Portal, the Supabase project, and the Vercel projects. Two pieces the
 Shift Builder leans on are also outstanding and belong to later sessions:
 
-- **Auto-assign itself** (§3.4). The switches and the per-role allocation are stored; no
-  hourly round runs yet, so a saved event fills nobody.
+- **Auto-assign's Deno half** (§3.4). The engine itself is built and tested in SQL —
+  the candidate pool with its hard gates, additive invitations, first-to-confirm with
+  automatic withdrawal of overlapping invitations, the 12:00 cutoff, self-cancel, and the
+  exclusive handover from the hourly round to escalation. The §6 scoring deliberately
+  stays in `packages/domain/scoring.ts` so it has one implementation, which is why the
+  last piece is an Edge Function that ranks between two RPCs — and why it waits on
+  ADR-0006 alongside `notify-drain`. Until it exists no round fires on a schedule, so a
+  saved event still fills nobody without someone calling the RPCs.
 - **The sender behind the outbox** (§8). Saving a time, dress-code or venue change sets
   `reconfirm_required` on that section's confirmed bookings and queues N11 in
   `notification_outbox` with its idempotency key — but no job drains the outbox to Web
@@ -113,6 +125,10 @@ Goal: <feature> (§x.y). Read the section and the wireframe first.
 Constraints: one domain; no shared-package changes without a separate PR first.
 Done when: <acceptance from the build plan>. Then run qa-reviewer on the diff.
 ```
+
+`docs/14-open-questions.md` carries the questions THC still has to answer — each one
+already implemented one way, with what changes if they pick the other — and the short
+list of things that need the repository owner rather than a bot.
 
 `docs/11-session-prompts.md` has this filled in for each of the next sessions.
 `docs/10-working-with-agents.md` explains how to run several at once without collisions:

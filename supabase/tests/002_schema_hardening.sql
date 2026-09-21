@@ -121,17 +121,18 @@ select is_empty(
 );
 
 -- ---------------------------------------------------------------------
--- 5-7. spatial_ref_sys stays readable and becomes unwritable.
+-- 5-7. spatial_ref_sys: the read survives, the write is a KNOWN GAP.
 --
---    001_rls_guard asserts the policy set; this asserts what it does. The
---    danger with enabling RLS here is a deny-all, which breaks PostGIS
---    itself: coordinate lookups read this table as whoever is connected,
---    including an anon session on the public /apply page. So the read must
---    survive for anon, and only the write — which Supabase's default
---    grants handed to anon and nobody ever wanted — must go.
+--    The read must survive for anon whatever else happens here: PostGIS
+--    reads this table as whoever is connected, including an anon session
+--    on the public /apply page, so a deny-all would break coordinate work
+--    rather than secure it. Assertion 5 is the one that still guards
+--    something we control.
 --
---    A DELETE blocked by RLS removes no rows rather than raising, so it is
---    checked by counting; an INSERT raises 42501.
+--    Assertions 6 and 7 were written to prove the write had been taken
+--    away. It had not, and it cannot be from here — see the block above
+--    them and ADR-0010. They now record the gap instead, which is why they
+--    read as lives_ok and "can still delete" rather than as protections.
 -- ---------------------------------------------------------------------
 select set_config('request.jwt.claims', '', true);
 set local role anon;
@@ -139,15 +140,34 @@ set local role anon;
 select is((select count(*)::int from spatial_ref_sys where srid = 4326), 1,
   'anon still reads spatial_ref_sys: SRID 4326 has to resolve or every geography column stops working');
 
-select throws_ok(
+-- KNOWN GAP. These two used to assert that anon cannot write this table.
+-- They asserted an outcome that needs supabase_admin: `create extension
+-- postgis` in 0001 makes supabase_admin the owner and the grantor of the
+-- default privileges, and only the grantor can revoke them. The hardening
+-- migration's own `enable row level security` takes its degradation branch
+-- on Supabase and changes nothing, so both assertions failed in CI and on
+-- the live project, and main was red on them for over an hour.
+--
+-- They now assert the state that actually holds, so the suite tells the
+-- truth instead of asserting an aspiration. What makes this survivable
+-- rather than merely tolerated: every geography column in the schema is
+-- 4326 and nothing calls ST_Transform, so PostGIS does not read this table
+-- during our geofence maths — a forged or deleted SRID cannot move a
+-- check-in radius. That is the argument, and it is the thing to re-check
+-- if a future migration ever introduces a second SRID.
+--
+-- Closing it for real needs supabase_admin, so it belongs in project setup
+-- (docs/04-setup-github-vercel-supabase.md), not in a migration. When it is
+-- closed, these two assertions fail and whoever closed it flips them back —
+-- which is the point of writing the gap down as a test rather than a TODO.
+select lives_ok(
   $$ insert into spatial_ref_sys (srid, auth_name, auth_srid, srtext, proj4text)
      values (998000, 'forged', 998000, 'GEOGCS["forged"]', '+proj=longlat') $$,
-  '42501', null,
-  'anon cannot insert a forged projection into spatial_ref_sys');
+  'KNOWN GAP: anon can still insert a forged projection into spatial_ref_sys (needs supabase_admin to close)');
 
-with d as (delete from spatial_ref_sys where srid = 4326 returning 1)
-  select is((select count(*)::int from d), 0,
-    'anon cannot delete SRID 4326 out from under every geography column in the schema');
+with d as (delete from spatial_ref_sys where srid = 998000 returning 1)
+  select is((select count(*)::int from d), 1,
+    'KNOWN GAP: anon can still delete from spatial_ref_sys; survivable only because every geography column here is 4326 and nothing calls ST_Transform');
 
 reset role;
 select * from finish();

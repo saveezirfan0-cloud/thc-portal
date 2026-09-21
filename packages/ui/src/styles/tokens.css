@@ -235,11 +235,17 @@
    identical; only geometry and type differ.
    ===================================================================== */
 :root[data-theme='light'] {
-  --canvas: #ede6dc;
-  --bg: #f6f1ea;
-  --panel: #fffcf7;
-  --panel-2: #f2ebe1;
-  --line: #e2d6c7;
+  /* Grounds from the ADR-0007 spec's "Editorial Linen": page #FAF7F4,
+     card #FFFFFF, surface #F5F1EB, border #EBE4DA. Only the *grounds* are
+     taken. The spec's foreground colours fail AA on its own page — cyan
+     3.45:1, emerald 2.38:1, amber 2.01:1, coral 3.44:1, muted 4.46:1 —
+     so the ink tones below stay ours. All seven measure 4.5:1 or better
+     on all three grounds; the style tests hold the table. */
+  --canvas: #f0ebe4;
+  --bg: #faf7f4;
+  --panel: #ffffff;
+  --panel-2: #f5f1eb;
+  --line: #ebe4da;
 
   --text: #241d16;
   --muted: #7a6b5c;
@@ -363,23 +369,28 @@
   --input-h: 42px;
 }
 
-/* --- v2 dark: its own, slightly lifted navy ------------------------- */
+/* --- v2 dark: the spec's "Luminous Midnight" ------------------------
+   page #0A0E18 · surface #0F131D · card #171B26 · elevated #1E2333, and
+   a border that is the spec's rgba(255,255,255,0.08) resolved over the
+   card so it stays a single flat value. Every accent we ship measures
+   5:1 or better on all three grounds — the style tests hold that too. */
 :root[data-style='warm'][data-theme='dark'] {
-  --bg: #070c16;
-  --panel: #111a2b;
-  --panel-2: #1b263a;
-  --line: #28354c;
+  --canvas: #070b12;
+  --bg: #0a0e18;
+  --panel: #171b26;
+  --panel-2: #1e2333;
+  --line: #252a36;
 
-  --glass: rgba(17, 26, 43, 0.6);
-  --glass-nav: rgba(17, 26, 43, 0.72);
-  --glass-strong: rgba(17, 26, 43, 0.88);
-  --card-glass: rgba(17, 26, 43, 0.78);
-  --glass-line: rgba(40, 53, 76, 0.9);
-  --scrim: rgba(7, 12, 22, 0.72);
-  --scrim-soft: rgba(7, 12, 22, 0.55);
+  --glass: rgba(23, 27, 38, 0.6);
+  --glass-nav: rgba(23, 27, 38, 0.72);
+  --glass-strong: rgba(23, 27, 38, 0.88);
+  --card-glass: rgba(23, 27, 38, 0.78);
+  --glass-line: rgba(37, 42, 54, 0.9);
+  --scrim: rgba(10, 14, 24, 0.72);
+  --scrim-soft: rgba(10, 14, 24, 0.55);
 
-  --map-a: #111a2b;
-  --map-b: #162034;
+  --map-a: #171b26;
+  --map-b: #1e2333;
 
   --grad-primary: linear-gradient(135deg, #3edcec 0%, #8f7bff 100%);
   --grad-primary-hover: linear-gradient(135deg, #7de9f4 0%, #a99bff 100%);

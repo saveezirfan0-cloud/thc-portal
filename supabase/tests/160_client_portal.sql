@@ -1,5 +1,5 @@
 -- =====================================================================
--- 130 · Client Portal · §11.1 event list, §11.2 event page, §11.5 feedback
+-- 160 · Client Portal · §11.1 event list, §11.2 event page, §11.5 feedback
 --
 -- The two screens read three owner-rights views and write through one
 -- `security definer` RPC. The views are covered structurally by 050; what

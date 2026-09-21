@@ -3,21 +3,25 @@ import { expect, test } from '@playwright/test';
 /**
  * Client Portal — §11.1 the event list, §11.2 the event page.
  *
- * These run against a portal with no Supabase project, which is what CI
- * builds, so there are no rows to assert on. What can be checked without a
- * database is the part §11.1 is most emphatic about: the shape of the shell,
- * and the fact that no money reaches this app. The seeded journeys — a
- * line-up grouped by role, "N of M confirmed", the feedback popup — belong
- * with the suite that has a database behind it, and are covered meanwhile by
- * supabase/tests/130_client_portal.sql and the unit tests over `rules.ts`.
+ * These describe an ungated portal — a local run with no .env.local — so
+ * there are no rows to assert on and no session to hold. What can be checked
+ * without a database is the part §11.1 is most emphatic about: the shape of
+ * the shell, and the fact that no money reaches this app.
+ *
+ * In CI they skip. Since #15 the workflow points the apps at the local
+ * Supabase stack before e2e:smoke, so every route is gated and /client
+ * redirects to /login — the same reason office.shift-builder.spec.ts skips
+ * itself. Making them run there needs a signed-in session fixture, which
+ * belongs with the seeded suite rather than here. Until that exists the
+ * portal's behaviour is held by supabase/tests/160_client_portal.sql and the
+ * unit tests over `rules.ts`, both of which do run on every push.
  */
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/client');
-  // With no Supabase project the middleware degrades open and the portal
-  // renders. Pointed at a real project every route is gated, and these
-  // assertions would otherwise report a missing heading for one missing
-  // session — the same guard the Shift Builder suite uses.
+  // Ungated, the middleware degrades open and the portal renders. Gated —
+  // which is CI since #15 — every route redirects, and these assertions
+  // would otherwise report a missing heading for one missing session.
   test.skip(
     page.url().includes('/login'),
     'Client Portal is gated: run against the ungated CI build, or sign in first.',

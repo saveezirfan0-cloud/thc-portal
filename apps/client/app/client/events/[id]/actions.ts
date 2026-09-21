@@ -4,7 +4,7 @@
    placeholder Database type (Views and Functions are Record<string, never>)
    until `pnpm --filter @thc/db gen:types` runs against a live project, so
    every view and RPC is typed `never`. The shapes are asserted instead by
-   supabase/tests/130_client_portal.sql, which checks them against the real
+   supabase/tests/160_client_portal.sql, which checks them against the real
    schema rather than against a stub. */
 
 import { cookies } from 'next/headers';

@@ -45,9 +45,9 @@ describe('the handoff colour table is what ships', () => {
     [
       ":root[data-theme='light']",
       {
-        '--bg': '#f6f1ea',
-        '--panel': '#fffcf7',
-        '--line': '#e2d6c7',
+        '--bg': '#faf7f4',
+        '--panel': '#ffffff',
+        '--line': '#ebe4da',
         '--text': '#241d16',
         '--muted': '#7a6b5c',
         '--cyan': '#0e7688',
@@ -55,12 +55,12 @@ describe('the handoff colour table is what ships', () => {
         '--green': '#1f7a4d',
         '--amber': '#b5730a',
         '--coral': '#c2402f',
-        '--canvas': '#ede6dc',
+        '--canvas': '#f0ebe4',
       },
     ],
     [
       ":root[data-style='warm'][data-theme='dark']",
-      { '--bg': '#070c16', '--panel': '#111a2b', '--line': '#28354c' },
+      { '--bg': '#0a0e18', '--panel': '#171b26', '--line': '#252a36' },
     ],
   ];
 
