@@ -1,28 +1,132 @@
 /* Generated from wireframes/assets/thc.css §2 · BASE */
 
-*, *::before, *::after { box-sizing: border-box; }
-html, body { margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 14px; line-height: 1.45; -webkit-font-smoothing: antialiased; transition: background .2s, color .2s; }
-a { color: var(--cyan-ink); text-decoration: none; }
-a:hover { text-decoration: underline; }
-h1, h2, h3, h4 { font-family: var(--font-head); margin: 0; font-weight: var(--head-weight); letter-spacing: var(--head-track); }
-h1 { font-size: 24px; } h2 { font-size: 18px; } h3 { font-size: 15px; } h4 { font-size: 13px; }
-p { margin: 0; }
-small { font-size: 12px; color: var(--muted); }
-hr { border: 0; border-top: 1px solid var(--line); margin: 16px 0; }
-code { font-family: var(--font-mono); }
-.mono { font-family: var(--font-num); font-variant-numeric: tabular-nums; }
-.code { font-family: var(--font-mono); letter-spacing: .06em; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  transition:
+    background 0.2s,
+    color 0.2s;
+}
+a {
+  color: var(--cyan-ink);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-head);
+  margin: 0;
+  font-weight: var(--head-weight);
+  letter-spacing: var(--head-track);
+}
+h1 {
+  font-size: 24px;
+}
+h2 {
+  font-size: 18px;
+}
+h3 {
+  font-size: 15px;
+}
+h4 {
+  font-size: 13px;
+}
+p {
+  margin: 0;
+}
+small {
+  font-size: 12px;
+  color: var(--muted);
+}
+hr {
+  border: 0;
+  border-top: 1px solid var(--line);
+  margin: 16px 0;
+}
+code {
+  font-family: var(--font-mono);
+}
+.mono {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+.code {
+  font-family: var(--font-mono);
+  letter-spacing: 0.06em;
+}
 
-.label, .mono-label { font-family: var(--font-label); font-size: var(--label-size); text-transform: uppercase; letter-spacing: var(--label-track); color: var(--muted); font-weight: var(--label-weight); }
-.label.cyan { color: var(--cyan-ink); }
-.label.text { color: var(--text); }
+.label,
+.mono-label {
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  text-transform: uppercase;
+  letter-spacing: var(--label-track);
+  color: var(--muted);
+  font-weight: var(--label-weight);
+}
+.label.cyan {
+  color: var(--cyan-ink);
+}
+.label.text {
+  color: var(--text);
+}
 
 /* logo: the only round element in scope style */
-.logo { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: var(--cyan); color: var(--on-cyan); font-family: var(--font-head); font-weight: 700; font-size: 14px; flex: 0 0 auto; border-radius: var(--r-sm); }
-.logo.round { border-radius: 50%; }
-.logo svg { width: 20px; height: 20px; }
-.brand { display: flex; align-items: center; gap: 10px; }
-.brand .name { font-family: var(--font-head); font-weight: var(--head-weight); font-size: 14px; line-height: 1.1; }
-.brand .sub { font-family: var(--font-label); font-size: 9.5px; letter-spacing: var(--label-track); text-transform: uppercase; color: var(--muted); font-weight: var(--label-weight); }
-
+.logo {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--cyan);
+  color: var(--on-cyan);
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 14px;
+  flex: 0 0 auto;
+  border-radius: var(--r-sm);
+}
+.logo.round {
+  border-radius: 50%;
+}
+.logo svg {
+  width: 20px;
+  height: 20px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand .name {
+  font-family: var(--font-head);
+  font-weight: var(--head-weight);
+  font-size: 14px;
+  line-height: 1.1;
+}
+.brand .sub {
+  font-family: var(--font-label);
+  font-size: 9.5px;
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: var(--label-weight);
+}

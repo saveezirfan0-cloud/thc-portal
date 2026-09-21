@@ -1,6 +1,11 @@
 import { clsx } from 'clsx';
 import { useId } from 'react';
-import type { InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import type {
+  InputHTMLAttributes,
+  ReactNode,
+  SelectHTMLAttributes,
+  TextareaHTMLAttributes,
+} from 'react';
 
 interface FieldShell {
   label?: ReactNode;

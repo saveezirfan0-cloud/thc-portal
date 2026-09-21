@@ -64,7 +64,15 @@ export function BottomNav({
   );
 }
 
-export function Sheet({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) {
+export function Sheet({
+  open,
+  onClose,
+  children,
+}: {
+  open: boolean;
+  onClose: () => void;
+  children: ReactNode;
+}) {
   if (!open) return null;
   return (
     <>

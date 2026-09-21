@@ -26,10 +26,24 @@ export function Stepper({ steps, current }: StepperProps) {
   );
 }
 
-export function Progress({ value, max = 100, tone }: { value: number; max?: number; tone?: string }) {
+export function Progress({
+  value,
+  max = 100,
+  tone,
+}: {
+  value: number;
+  max?: number;
+  tone?: string;
+}) {
   const pct = max === 0 ? 0 : Math.min(100, Math.max(0, (value / max) * 100));
   return (
-    <div className="progress" role="progressbar" aria-valuenow={value} aria-valuemin={0} aria-valuemax={max}>
+    <div
+      className="progress"
+      role="progressbar"
+      aria-valuenow={value}
+      aria-valuemin={0}
+      aria-valuemax={max}
+    >
       <div className={clsx('fill', tone)} style={{ width: `${pct}%` }} />
     </div>
   );

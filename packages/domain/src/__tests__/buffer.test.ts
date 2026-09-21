@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { allocationTarget, formatAllocation, formatFill, isFilled, isTurnedAway, seatsToOffer } from '../buffer';
+import {
+  allocationTarget,
+  formatAllocation,
+  formatFill,
+  isFilled,
+  isTurnedAway,
+  seatsToOffer,
+} from '../buffer';
 
 describe('buffer display (§3.2)', () => {
   it('shows 6 (+1), never 7', () => {

@@ -14,11 +14,7 @@
 export type TermState = 'none' | 'term' | 'holiday' | 'straddle';
 
 export type CapBand =
-  | 'student_term_20'
-  | 'student_holiday_48'
-  | 'graduated_48'
-  | 'standard_48'
-  | 'uncapped';
+  'student_term_20' | 'student_holiday_48' | 'graduated_48' | 'standard_48' | 'uncapped';
 
 export interface CapInput {
   /** The worker's Right to Work carries a working-hours limit (student visa). */

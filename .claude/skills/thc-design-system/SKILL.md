@@ -8,13 +8,16 @@ description: Apply The Hospitality Company design system (deep navy, cyan accent
 Source: Scope of Work §1.6 (web) and §10.1 (mobile). Reference implementation: `wireframes/assets/thc.css`; living sheet `wireframes/design-system.html`; React port `packages/ui`.
 
 ## Tokens
+
 `--bg #04080F` · `--panel #0B1220` · `--line #1C2839` · `--cyan #3EDCEC` (primary) · `--purple #A879FF` (Auto-Assign ONLY) · `--green #3DDC97` · `--amber #F5B83D` · `--coral #FF6E61` (danger) · `--text #E9EEF5` · `--muted #8A97A3`.
 Fonts: Space Grotesk (headings) · Inter (body) · IBM Plex Mono (labels: uppercase, 0.1em tracking, 10.5px).
 
 ## Two axes (ADR-0003)
+
 Style `warm` (default: radii 6–18px, Plus Jakarta Sans, body-face labels, 40px buttons) or `scope` (§1.6 literal: zero radius, Space Grotesk/Inter/IBM Plex Mono). Theme `dark` or `light` (off-white ground, navy ink, `--*-ink` tones for text). Always use tokens (`--r`, `--font-label`, `--cyan-ink`), never literals, so a component works in all four combinations.
 
 ## Rules (Scope style; Warm relaxes 1 and the mono labels only)
+
 1. `border-radius: 0` on everything. Only `.logo.round` is circular.
 2. Square avatars; selfie photo; initials fallback.
 3. Sidebar active: 3px cyan left bar + `rgba(62,220,236,.10)` fill + cyan text.
@@ -26,6 +29,7 @@ Style `warm` (default: radii 6–18px, Plus Jakarta Sans, body-face labels, 40px
 9. Buffer: `12 (+2)`. Fill pill: `9 of 12` amber while short, green when full.
 
 ## Checklist before finishing a screen
+
 - Compare against its wireframe in `docs/08-screen-inventory.md` state by state.
 - Responsive at 390px (phone) and 1024px (tablet) for Back Office and Client Portal.
 - Focus ring visible (cyan), contrast ≥ 4.5:1, touch targets ≥ 44px on mobile.

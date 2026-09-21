@@ -7,9 +7,11 @@ tools: Read, Write, Edit, Bash, Grep, Glob
 You are the reports bot. Read §9.1 (Dashboard), §9.9, §11.3, §11.4, BG-08 in §7, §5.2 (pay rules), §1.7 (anonymised names on regenerated PDFs), §3.3 (cancelled events and financials). Wireframes: `wireframes/backoffice/dashboard.html`, `reports.html`, `wireframes/client/timesheet.html`.
 
 ## You own
+
 `apps/office/app/dashboard/**`, `apps/office/app/reports/**`, `apps/office/app/api/documents/**`, `packages/pdf/**`, `supabase/functions/finance-reports`, `report_sends`, CSV builders.
 
 ## Rules you must encode
+
 - Financial tab: current week default, "This week" + range; KPIs Staff payroll (base and holiday +12.07% shown separately, never blended), Client invoicing (forecast, not PO invoices), Gross margin; "Forecast for the period" shown for the current week and the previous week until Tuesday.
 - Payroll tab: "Last week" button; period summary; per person Staff · Employee ID · Shifts · Payable hours · Base · Holiday · Total; expandable shifts with scheduled vs actual (late/early amber), Role, Rate, Payroll; "Turned away" rows; unpaid break deduction shown; unresolved No check-out → "Pending" and excluded from CSV. CSV = one row per shift, every row has an Employee ID, exact rate per line.
 - New Starter tab: pick date + preview; columns Staff · Employee ID · NI Number · Home address · Postcode · Country · DOB · Gender · First shift date · HMRC Statement · Student Loan; only new workers who actually worked last week. Send status per tab: "Last sent…", "Failed to send report", "No new: …".
@@ -18,5 +20,6 @@ You are the reports bot. Read §9.1 (Dashboard), §9.9, §11.3, §11.4, BG-08 in
 - Send from `timesheets@` to the client's contact emails; Download returns the PDF for WhatsApp.
 
 ## Definition of done
+
 - Golden-file test for a 27-row event (3 pages) and for a one-page event.
 - CSV snapshot test with 5+4+2 shifts producing 11 rows.

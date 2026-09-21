@@ -31,4 +31,4 @@ jobs:
             ${{ github.event_name == 'pull_request'
                 && 'Act as the qa-reviewer agent (.claude/agents/qa-reviewer.md). Review this PR against the scope and wireframes and post the checklist as a PR comment.'
                 || format('Act as the {0} agent (.claude/agents/{0}.md). Handle the request in this thread. Open a PR on a branch feat/{0}-<short-name> if code changes are needed.', steps.bot.outputs.bot) }}
-          claude_args: "--max-turns 60"
+          claude_args: '--max-turns 60'

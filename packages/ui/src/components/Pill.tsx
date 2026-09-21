@@ -13,10 +13,24 @@ export interface PillProps extends HTMLAttributes<HTMLSpanElement> {
   children?: ReactNode;
 }
 
-export function Pill({ tone = 'neutral', solid, large, dot, className, children, ...rest }: PillProps) {
+export function Pill({
+  tone = 'neutral',
+  solid,
+  large,
+  dot,
+  className,
+  children,
+  ...rest
+}: PillProps) {
   return (
     <span
-      className={clsx('pill', tone !== 'neutral' && tone, solid && 'solid', large && 'lg', className)}
+      className={clsx(
+        'pill',
+        tone !== 'neutral' && tone,
+        solid && 'solid',
+        large && 'lg',
+        className,
+      )}
       {...rest}
     >
       {dot ? <i className="dot" /> : null}

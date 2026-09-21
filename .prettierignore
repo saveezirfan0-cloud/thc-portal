@@ -5,3 +5,5 @@ dist
 docs/scope
 docs/pdfs
 wireframes
+docs
+*.md
