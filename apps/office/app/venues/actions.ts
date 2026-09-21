@@ -10,7 +10,7 @@ import type { ActionResult, UpcomingEvent, VenueDraft } from './types';
 /**
  * Writes and lookups for /venues (§9.11).
  *
- * The three mutations go through the RPCs in 0006_venues_directory.sql, not
+ * The three mutations go through the RPCs in 0007_venues_directory.sql, not
  * through table writes: a PostgREST body cannot build a geography, and the
  * radius, the venue type and the coordinate range are rejected by the
  * database as well as by the form. RLS is the gate on all three — these
@@ -25,7 +25,7 @@ const NOT_CONFIGURED =
  * `packages/db`'s generated types are still the Phase 0 placeholder, whose
  * `Functions` map is empty, so supabase-js types every RPC's arguments as
  * `undefined`. This is the one place that works around it: the argument
- * names still have to match 0006_venues_directory.sql, and regenerating
+ * names still have to match 0007_venues_directory.sql, and regenerating
  * (`pnpm --filter @thc/db gen:types`) makes the cast redundant.
  */
 type RpcArguments = Record<string, string | number>;
