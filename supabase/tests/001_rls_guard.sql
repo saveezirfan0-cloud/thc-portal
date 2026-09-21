@@ -19,14 +19,14 @@ select bag_eq(
   $$ select c.relname::text
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity $$,
-  $$ values ('audit_log'::text),('bank_details'),('bookings'),('breaks'),('check_logs'),
+  $$ values ('applications'::text),('audit_log'),('bank_details'),('bookings'),('breaks'),('check_logs'),
             ('client_qualifications'),('client_rate_cards'),('clients'),
             ('compliance_docs'),('criminal_declarations'),('events'),('feedback'),
             ('hmrc_checklists'),('location_pings'),('notification_outbox'),('profiles'),
             ('push_subscriptions'),('quiz_attempts'),('report_sends'),('roles'),('settings'),
             ('shift_requirements'),('staff'),('staff_references'),('staff_roles'),
             ('venue_types'),('venues'),('violations') $$,
-  'RLS is enabled on all 28 tables: the 17 from 0001_init.sql plus the 11 closed by 0004_rls_gaps'
+  'RLS is enabled on all 29 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, and applications from 0005'
 );
 
 -- ---------------------------------------------------------------------
@@ -57,7 +57,7 @@ select is_empty(
 select bag_eq(
   $$ select distinct c.relname::text from pg_policy p join pg_class c on c.oid = p.polrelid
       where p.polname like 'admin\_%' $$,
-  $$ values ('audit_log'::text),('bank_details'),('bookings'),('breaks'),('check_logs'),
+  $$ values ('applications'::text),('audit_log'),('bank_details'),('bookings'),('breaks'),('check_logs'),
             ('client_qualifications'),('client_rate_cards'),('clients'),
             ('compliance_docs'),('criminal_declarations'),('events'),('feedback'),
             ('hmrc_checklists'),('location_pings'),('push_subscriptions'),('quiz_attempts'),

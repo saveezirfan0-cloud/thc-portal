@@ -1,0 +1,142 @@
+/* Public /apply, on top of the shared auth card (§2.1).
+
+   `packages/ui` owns the card, the fields and the tick box. What lives
+   here is only what `wireframes/public/apply.html` does differently from
+   the three sign-in screens the card was built for: a slightly wider card,
+   a left-aligned brand with a divider, a left-aligned heading, and the
+   confirmation screen's tick and detail box.
+
+   Nothing below invents a colour or a radius — every value is a token. */
+
+.apply-page .auth-card {
+  max-width: 460px;
+  gap: 14px;
+}
+
+/* The sign-in screens centre the brand; /apply keeps it on one line with a
+   rule under it, the way the wireframe draws it. */
+.apply-page .auth-card .brand {
+  flex-direction: row;
+  align-items: center;
+  text-align: left;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.apply-page .auth-card h2 {
+  text-align: left;
+  font-size: 20px;
+}
+
+.apply-page .lead {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.apply-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* The dialling-code picker keeps its own width at every size; only the
+   number beside it flexes. Wide enough for "+44 🇬🇧 United Kingdom"; a
+   longer country name clips from the right, which is why the code is
+   first in the label (see optionLabel in countries.ts). */
+.apply-dial {
+  flex: 0 0 168px;
+  min-width: 0;
+  font-size: 12px;
+  text-overflow: ellipsis;
+}
+
+.apply-consent {
+  position: relative;
+}
+
+.apply-consent .txt {
+  line-height: 1.4;
+}
+
+/* The wireframe's tick box is a styled square. The real checkbox is a
+   transparent 18px square sitting exactly on top of it, rather than a
+   clipped 1px box parked somewhere off-layout: the keyboard, the screen
+   reader, the form data AND a pointer all then land on the real control. */
+.apply-consent input[type='checkbox'] {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  padding: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.apply-consent input[type='checkbox']:focus-visible + .box {
+  border-color: var(--cyan-ink);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+/* Two-column name row collapses on a phone (the wireframe's 390px frame). */
+@media (max-width: 420px) {
+  .apply-page .grid.c2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   Confirmation — "Check your inbox" (§2.7, §2.12)
+   --------------------------------------------------------------------- */
+
+/* The tick sits above the heading in the wireframe. It is passed through
+   the card's banner slot, which renders it as a sibling of the heading, so
+   ordering it is a two-line job rather than a second copy of the card. */
+.apply-done .auth-card .brand {
+  order: -2;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  justify-content: center;
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.apply-done .auth-card {
+  text-align: center;
+  align-items: center;
+}
+
+.apply-done .auth-card h2 {
+  text-align: center;
+}
+
+.apply-done .ico {
+  order: -1;
+  width: 56px;
+  height: 56px;
+  background: var(--cyan);
+  color: var(--on-cyan);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+  border-radius: var(--r-pill);
+}
+
+.apply-done .lead {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.apply-done .box {
+  width: 100%;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  text-align: left;
+  border-radius: var(--r-sm);
+}
