@@ -363,25 +363,51 @@ Two things make it urgent enough to name: the rule is invisible (a revoke that l
 right does nothing), and it is easy to repeat (every new `security definer` function in
 `public` starts life anon-callable).
 
-## O8 · The PR review bot does its work and then throws it away
+## O8 · The PR review bot — two faults, and the second one needs you today
 
-The `claude` check has gone red on several PRs today. It is not finding problems and it
-is not broken — it is running out of turns by one, after succeeding:
+### The one blocking it now: there is no API key
+
+Since roughly 17:09 on 21.09 the `claude` check fails after **twelve seconds**, before it
+reads a line of the diff:
+
+```
+##[error]Action failed with error: Environment variable validation failed:
+  - Either ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN, or workload identity federation
+    (ANTHROPIC_FEDERATION_RULE_ID and ANTHROPIC_ORGANIZATION_ID) is required when using
+    the direct Anthropic API.
+```
+
+and the step's own environment dump shows `ANTHROPIC_API_KEY:` with nothing after it.
+`.github/workflows/claude.yml` passes `${{ secrets.ANTHROPIC_API_KEY }}`, so the
+repository secret is empty, deleted, or not reaching the workflow.
+
+It worked earlier the same day — a run at 16:29 took 9m 40s and billed $3.44 — so
+something changed between the two. Whether the secret was removed or the account behind it
+ran out is not visible from the log, and both look identical from here.
+
+**This one is yours and nothing in the repo can substitute for it.** A bot cannot hold or
+set a repository secret, and CLAUDE.md rightly forbids putting one in code. Set it at
+Settings → Secrets and variables → Actions → `ANTHROPIC_API_KEY`.
+
+Re-running the check is pointless until then, which is why I have not spent a re-run on
+it. Note that `build-test` is the gate and is unaffected: the `claude` check is advisory,
+so this does not block merging.
+
+### The one underneath it: the review is thrown away after it succeeds
+
+This is the fault that will come back the moment the key is restored, so it is recorded
+rather than closed. Before the key went, the check was failing like this:
 
 ```
 "subtype": "success", "is_error": false, "num_turns": 61
-##[error]Claude reported a successful result after 61 turns, exceeding the configured maximum of 60
+##[error]Claude reported a successful result after 61 turns, exceeding the configured
+maximum of 60
 ```
 
-`.github/workflows/claude.yml` sets `--max-turns 60`. That run took 9m 40s and cost
-$3.44, completed its review, and the action then discarded the result and failed the
-check. Nothing was posted to the pull request.
+`claude.yml` sets `--max-turns 60`. That run completed its review, cost $3.44, and the
+action discarded the result and failed the check. Nothing was posted to the pull request.
 
-It does not block anything — `build-test` is the gate, and a red `claude` check has been
-ignorable all day — which is the problem: a check that is red for a reason nobody acts on
-stops being read, and the next time it goes red for a real finding it will look the same.
-
-Two things to weigh, and both cost money, which is why this is yours:
+Two things to weigh, and both cost money, which is why this is yours too:
 
 1. **Raise the limit.** The obvious fix and the one with a recurring bill attached. These
    PRs are large — five or six commits across SQL, tests and docs — so the reviewer needs
@@ -393,10 +419,15 @@ Two things to weigh, and both cost money, which is why this is yours:
    would likely bring it under the existing limit for free. Cheaper than (1) and worth
    trying first.
 
-Not changed here, because it is a standing cost on every pull request in the repo rather
-than a bug in one.
+Neither is changed here, because both are standing costs on every pull request in the repo
+rather than a bug in one.
 
----
+### Meanwhile
+
+The review still happens — I run the `qa-reviewer` agent in-session before pushing, which
+is what CLAUDE.md asks for anyway ("Ask `qa-reviewer` before opening a PR"). On PR #24 that
+found four blockers the CI bot never got the chance to. So the gap is a missing second
+opinion, not a missing review.
 
 ## O9 · Prettier is run by hand, so `main` carries unformatted files
 
