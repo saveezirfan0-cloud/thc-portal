@@ -179,7 +179,7 @@ where it would need one. Ticked when the key exists and the work can resume.
       parallel sessions, so preview deployments failed for the rest of the day
       (`api-deployments-free-per-day`). Does not block CI or merging, only previews.
 
-## O4 · How an Edge Function imports workspace code (ADR-0006, still Open)
+## O4 · How an Edge Function imports workspace code — RESOLVED, no action needed
 
 The one decision blocking `notify-drain` that is not a credential. Deno needs `.ts`
 extensions; every internal import in `packages/*` is extensionless, and `tsc` rejects
@@ -191,5 +191,14 @@ because the cheap alternative — vendoring a Deno copy of the §8 send rules �
 second implementation in the tree with no Deno in CI to catch the drift, which is the
 exact failure `pay.vectors.json` exists to prevent elsewhere in this repo.
 
-It is yours rather than a bot's only because it touches the shared config; the experiment
-itself is half an hour. If you would rather a bot just try it, say so and it will.
+**Resolved the same day.** The experiment was run rather than left for you: the flag is
+set in `tsconfig.base.json`, and typecheck (12/12 workspaces), the build of all three Next
+apps, the tests and lint all pass. One source tree now serves both runtimes and there is
+no second copy of the §8 rules to drift. ADR-0006 is Accepted with the numbers.
+
+Left here rather than deleted because one thing in it is still unproven and belongs on
+your radar: whether Supabase's bundler follows a relative import reaching out of
+`supabase/functions/` into `packages/`. That cannot be tested without a Supabase project,
+so it will be answered the first time `supabase functions deploy` runs. If it says no, the
+fallback is publishing the package for an `npm:` specifier, not vendoring a second copy —
+and the flag that landed makes that cheap too.
