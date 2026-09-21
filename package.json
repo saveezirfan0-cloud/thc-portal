@@ -14,6 +14,7 @@
     "e2e:smoke": "turbo e2e:smoke",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "check:numbering": "node scripts/check-file-numbering.mjs",
     "design": "python3 -m http.server 8099 --bind 127.0.0.1 --directory design-handoff"
   },
   "devDependencies": {

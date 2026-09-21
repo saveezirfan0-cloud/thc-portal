@@ -130,11 +130,66 @@ it either — this branch and the `/apply` branch both picked `20260921150000` t
 second, and Supabase keys `schema_migrations.version` on exactly that prefix, so the two
 would have collided on a primary key rather than merely sorting oddly.
 
-Nothing here needs undoing; it is a process note. The cheapest guard is the one already
-written at the top of `docs/13`: `git fetch origin && git branch -r` before naming a
-migration, and prefer a timestamp with real minutes in it over a round number.
+Two more since that was written, making five: a third `0006` migration (the weekly cap,
+which kept `main` red after the first fix), and two ADRs numbered `0008`. The ADR one is
+cheap — a rename — but it is the same failure, and it means the habit now costs something
+in three directories rather than one.
+
+**This is no longer only a process note.** `scripts/check-file-numbering.mjs` now runs as
+the first step in CI, over `supabase/migrations`, `supabase/tests` and `docs/adr`. It
+fails in milliseconds on the merge result, which is where the collision actually exists —
+a PR's own branch always looks fine, which is exactly why five of these reached `main`.
+Verified against all four real collisions plus the identical-timestamp case above.
+
+It catches, it does not prevent. The habit at the top of `docs/13` still matters
+(`git fetch origin && git branch -r` before naming a file, and a timestamp with real
+minutes rather than a round number); the guard just means a miss costs a rename on a red
+PR instead of an hour of red `main` for nine sessions.
 
 ## O3 · The accounts the build is waiting on
 
 Steps 2 and 3 of `docs/04` still need THC's own accounts, and `docs/12` lists the keys.
 Nothing in Phases 1–5 is blocked on them yet; Phase 6 onwards is.
+
+### What is blocked, and on which key
+
+Each line is a piece of work that is otherwise ready. Nothing here is a defect or a
+design question — it is a credential a bot cannot obtain, so the work stops at the point
+where it would need one. Ticked when the key exists and the work can resume.
+
+- [ ] **VAPID key pair** (`npx web-push generate-vapid-keys`) and **Resend API key** —
+      blocks P2, the `notify-drain` Edge Function. The §8 register and the outbox
+      claim/retry are merged and tested; what cannot be done without these is proving a
+      push reaches an installed PWA and an email actually sends. Two verified senders are
+      also needed, `admin@` and `timesheets@`, with SPF/DKIM/DMARC — THC dependency B7.
+- [ ] **`settings.edge_base_url` + a `service_role_key` vault secret on the live
+      project** — blocks running `select install_job_schedules()`. Until then every §7
+      cron entry is registered as data and none is scheduled. `install_job_schedules()`
+      raises rather than scheduling a broken job if the URL is missing, deliberately.
+- [ ] **Gemini API key** — blocks P3, the `extract-document` Edge Function (§2.6).
+- [ ] **Willo account + webhook signing secret** — blocks P3's `willo-webhook`, and with
+      it E1/E2/E3 end to end (§2.4).
+- [ ] **Mapbox token** — the Venues map draws its own tiles today (ADR-0005), so this is
+      only needed for forward/reverse geocoding.
+- [ ] **`supabase_admin`, or Supabase exposing it** — blocks closing the
+      `spatial_ref_sys` write hole for real (ADR-0010). Recorded as a known gap in the
+      pgTAP suite rather than hidden; see the ADR for why it is survivable today and the
+      one change that would stop it being so.
+- [ ] **Vercel plan** — the free tier's 100 deployments/day was exhausted on 21.09 by
+      parallel sessions, so preview deployments failed for the rest of the day
+      (`api-deployments-free-per-day`). Does not block CI or merging, only previews.
+
+## O4 · How an Edge Function imports workspace code (ADR-0006, still Open)
+
+The one decision blocking `notify-drain` that is not a credential. Deno needs `.ts`
+extensions; every internal import in `packages/*` is extensionless, and `tsc` rejects
+adding them without `allowImportingTsExtensions`, which is a change to the shared base
+config and to how three Next apps resolve modules.
+
+ADR-0006 sets out four options and recommends trying the flag as its own pull request,
+because the cheap alternative — vendoring a Deno copy of the §8 send rules — puts a
+second implementation in the tree with no Deno in CI to catch the drift, which is the
+exact failure `pay.vectors.json` exists to prevent elsewhere in this repo.
+
+It is yours rather than a bot's only because it touches the shared config; the experiment
+itself is half an hour. If you would rather a bot just try it, say so and it will.

@@ -13,6 +13,12 @@ jobs:
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with: { node-version: 22, cache: pnpm }
+      # First, because it costs milliseconds and the failure it catches
+      # otherwise costs three minutes of `supabase start` before anyone
+      # learns anything. Four collisions in one afternoon, two of which took
+      # main down — see docs/14 O2 and the script's own header.
+      - name: no two files share a number
+        run: node scripts/check-file-numbering.mjs
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo lint typecheck test
       - uses: supabase/setup-cli@v1
