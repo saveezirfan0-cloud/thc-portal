@@ -4,7 +4,7 @@
 -- client-facing view must be empty for the `anon` PostgREST role.
 -- =====================================================================
 begin;
-select plan(38);
+select plan(39);
 \ir _shared/fixtures.psql
 
 select set_config('request.jwt.claims', '', true);
@@ -42,7 +42,17 @@ select is((select count(*)::int from report_sends          where error  = 'rls_f
 select is((select count(*)::int from venue_types           where key = 'rls_fixture_type'),                 0, 'anon reads no venue types: venue_types_read needs a profile, and anon has none');
 
 select is((select count(*)::int from client_events_v       where id in (:'event_a', :'event_b')),            0, 'anon reads no client_events_v');
-select is((select count(*)::int from client_lineup_v       where booking_id in (:'booking_a', :'booking_b')),0, 'anon reads no client_lineup_v');
+
+-- The two owner-rights views (ADR-0004) are not merely empty for anon: the
+-- privilege itself is revoked, so the attempt fails rather than returning
+-- nothing. Anything that runs with the owner's rights must not depend on
+-- auth.uid() being null to stay shut.
+select throws_ok(
+  $$ select count(*) from client_lineup_v $$,
+  '42501', null, 'anon holds no privilege at all on client_lineup_v');
+select throws_ok(
+  $$ select count(*) from client_role_sections_v $$,
+  '42501', null, 'anon holds no privilege at all on client_role_sections_v');
 
 select throws_ok(
   $$ insert into staff (first_name, last_name, email, phone, dob)
