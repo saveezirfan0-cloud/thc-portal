@@ -12,7 +12,7 @@
   padding: 12px 14px;
   border: 1px solid var(--line);
   background: var(--panel);
-  border-radius: var(--radius);
+  border-radius: var(--r-card);
 }
 .evcard .t {
   display: flex;
@@ -40,7 +40,7 @@
   color: var(--coral);
   border: 1px solid var(--coral);
   padding: 1px 6px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--r-pill);
 }
 
 /* WINDOW is a scheduled time: UK first, the viewer's zone underneath (§1.8). */
