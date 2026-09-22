@@ -507,6 +507,56 @@ other way round, pg_cron spends the gap posting at a 404.
 
 ---
 
+# Known defects
+
+Found while building something else, too small to stop for and too easy to lose. Neither
+is a missing screen, so neither shows up in the lists above.
+
+## D1 · The shared Checkbox and Radio cannot be used by keyboard (§1.2)
+
+> Use the `design-system` agent. Branch `feat/design-system-checkbox-a11y`.
+>
+> `packages/ui/src/components/Controls.tsx` hides the real `<input>` behind
+> `className="hide"`, which is `display: none !important`. A hidden input is not
+> focusable and is not in the accessibility tree, so both controls work with a mouse and
+> with nothing else — no keyboard, no screen reader. Playwright's `.check()` times out on
+> them, which is how it surfaced.
+>
+> Two consumers today: the design-system gallery, and `/apply`, which deliberately does
+> NOT use the shared component — it carries its own visually-hidden input and a comment
+> saying why, because a GDPR consent tick that has to be given deliberately (§1.7) cannot
+> be mouse-only. Any screen that reaches for `Checkbox` or `Radio` before this is fixed
+> ships an unusable control.
+>
+> The fix is the visually-hidden pattern `/apply` already uses: the input positioned over
+> the box at `opacity: 0`, with the focus ring drawn on the box via
+> `:focus-visible + .box`. It is a shared-package change, so it ships in its own pull
+> request first.
+>
+> Done when: the control can be tabbed to and toggled with the keyboard, a Playwright
+> test checks it without `force`, and `apps/staff/app/apply/ApplyForm.tsx` has gone back
+> to the shared component and dropped its local copy and CSS.
+
+## D2 · /apply is a public write endpoint with no rate limit (§2.1)
+
+> Use the `onboarding` agent — this belongs with P3, where it starts costing money.
+> Branch `feat/onboarding-apply-abuse`.
+>
+> `submit_application` is granted to `anon` by design: §2.1 is a public URL with no
+> registration. Nothing limits how often it may be called, so candidate rows can be
+> created in a loop, and once P3 lands each one becomes a Willo interview.
+>
+> The scope specifies no captcha, so which defence to use is a product decision rather
+> than something to invent in a migration — a challenge on the form, a per-IP limit at
+> the edge, or a server-side throttle keyed on the normalised email and mobile the
+> duplicate check already computes. Whichever it is, a genuine applicant must never meet
+> a challenge they cannot pass.
+>
+> Done when: a burst from one source is refused, a single honest application is not, and
+> the limit is asserted rather than assumed.
+
+---
+
 # Before go-live
 
 ## G1 · Load test and hardening
