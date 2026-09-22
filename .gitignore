@@ -38,3 +38,12 @@ next-env.d.ts
 test-results/
 playwright-report/
 blob-report/
+
+# agent scratch worktrees
+#
+# CLAUDE.md asks every session to run the domain bots in .claude/agents/, and an
+# isolated one checks the repository out again under here. They are working
+# copies, not source: transient, sometimes several gigabytes, and auto-removed.
+# .claude/agents/*.md stays tracked — it is the bots themselves — so this
+# ignores the worktrees directory alone rather than .claude.
+.claude/worktrees/
