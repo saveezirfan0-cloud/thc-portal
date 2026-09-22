@@ -685,7 +685,13 @@ All five are live again now that the setting is `main`:
 
 No code change was waiting on it. It was a setting, and it is now `main`.
 
-**What this does not settle:** the deploy runs, but the live project still has to catch up
-26 migrations, and the first `deploy-database` job is the one that does it. Read that job's
-log rather than assuming — it names every pending version before applying it, and a
-`db push` that fails halfway leaves the project part-applied.
+**The catch-up has happened.** The first `deploy-database` job ran on `1c78fc8` at
+15:34 on 22.09 and applied all 26 pending migrations in one push, from
+`20260921153000_checkin_write_paths` through `20260922160000_accept_invite_event_ended`,
+ending `Finished supabase db push.` The live project is current for the first time since
+21.09, and the twenty-six-migration gap this question was opened over is closed.
+
+Read the job's log rather than the badge on any future run: `db push` applies migrations
+one at a time, so a failure halfway leaves the project part-applied with a green
+`build-test` above it, and the log is the only place that says which version it stopped
+at.
