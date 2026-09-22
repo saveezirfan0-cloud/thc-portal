@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { AppBody, AppFrame, AppHeader, BottomNav } from '@thc/ui';
+import { AppBody, AppFrame, AppHeader, BottomNav, SignOut } from '@thc/ui';
 
 /**
  * The Staff App chrome (§10.1): frosted header, body, frosted bottom nav.
@@ -8,6 +8,13 @@ import { AppBody, AppFrame, AppHeader, BottomNav } from '@thc/ui';
  * The four tabs are the ones §10.4 names, in the wireframes' order. Counts
  * are passed in rather than fetched here so the nav badge and the list it
  * points at can never disagree.
+ *
+ * Sign out sits in the header's action slot, which is an INTERIM placement:
+ * `wireframes/staff/profile.html` puts it in the profile sheet behind the
+ * avatar, above the help line (§10.1, §10.6). That sheet is the staff-pwa
+ * bot's and does not exist yet, and a worker with no way out of the app at
+ * all is the worse of the two deviations. Move it into the sheet — and drop
+ * it from here — when /profile lands.
  */
 export function StaffShell({
   title,
@@ -43,6 +50,7 @@ export function StaffShell({
         title={title}
         {...(sub ? { sub } : {})}
         brand={<span className="logo round">🥂</span>}
+        actions={<SignOut />}
         {...(below ? { below } : {})}
       />
       <AppBody>{children}</AppBody>

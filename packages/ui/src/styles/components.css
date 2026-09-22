@@ -338,6 +338,11 @@
 .ml-auto {
   margin-left: auto;
 }
+/* Sign-out has to be a form (POST only), but every placement in the
+   wireframes is a flex row that expects the button itself as the child. */
+.signout {
+  display: contents;
+}
 .mt-8 {
   margin-top: var(--sp-8);
 }

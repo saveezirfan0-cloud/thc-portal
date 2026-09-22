@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Content, Logo, Shell, Sidebar, Topbar } from '@thc/ui';
+import { Avatar, Content, Logo, Shell, Sidebar, SignOut, Topbar } from '@thc/ui';
 import type { ReactNode } from 'react';
 
 /**
@@ -50,6 +50,17 @@ export interface OfficeShellProps {
    */
   timezone?: ReactNode;
   actions?: ReactNode;
+  /**
+   * The signed-in operator, for the sidebar foot
+   * (`wireframes/backoffice/dashboard.html`: avatar, name, role).
+   *
+   * A prop rather than a lookup in here, because five screens render this
+   * shell from a client component (`StaffScreen`, `RolesScreen`,
+   * `ClientsScreen`, `ClientCard`, `ProfileScreen`), and a `next/headers`
+   * read anywhere in the shell's import graph fails their build. Server
+   * pages pass it; the sign-out button below does not wait for it.
+   */
+  user?: { name: string; role?: string };
   children: ReactNode;
 }
 
@@ -59,6 +70,7 @@ export function OfficeShell({
   crumbs,
   timezone = 'All times UK (Europe/London)',
   actions,
+  user,
   children,
 }: OfficeShellProps) {
   return (
@@ -81,6 +93,20 @@ export function OfficeShell({
               {body}
             </Link>
           )}
+          footer={
+            <>
+              {user ? (
+                <>
+                  <Avatar name={user.name} size="sm" />
+                  <div>
+                    <div className="sm strong">{user.name}</div>
+                    {user.role ? <div className="xs muted">{user.role}</div> : null}
+                  </div>
+                </>
+              ) : null}
+              <SignOut className="ml-auto" />
+            </>
+          }
         />
       }
     >

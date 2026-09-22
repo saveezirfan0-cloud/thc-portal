@@ -17,6 +17,16 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
+/**
+ * Signing out is allowed to everyone holding a session, whatever their role.
+ *
+ * Without this the role gate below answers the POST with the wrong-app page
+ * instead of passing it to the route handler, so the one button on that page
+ * re-renders the page and the account is stuck: signed in, admitted nowhere,
+ * and unable to sign out and switch accounts (§1.4).
+ */
+const SIGN_OUT_PATH = '/auth/signout';
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -71,6 +81,9 @@ export async function middleware(request: NextRequest) {
     url.searchParams.set('next', pathname);
     return NextResponse.redirect(url);
   }
+
+  // Before the role gate: a session with the wrong role still gets to end it.
+  if (pathname === SIGN_OUT_PATH) return response;
 
   // app_metadata ONLY. user_metadata is writable by the user from the
   // browser — `supabase.auth.updateUser({ data: { role: 'admin' } })` — so

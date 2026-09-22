@@ -47,6 +47,9 @@ export type { DocRowProps, DocState } from './components/DocRow';
 export { AuthCard } from './components/AuthCard';
 export type { AuthCardProps } from './components/AuthCard';
 
+export { SignOut } from './components/SignOut';
+export type { SignOutProps } from './components/SignOut';
+
 export { Modal, Toast } from './components/Modal';
 export type { ModalProps, ToastTone } from './components/Modal';
 
