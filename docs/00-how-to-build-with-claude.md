@@ -50,7 +50,9 @@ What exists, at platform level:
 **The screen-by-screen, system-by-system map lives in `docs/13-remaining-work.md` under
 "State of play", and that is the only copy.** This file used to keep a second one; the two
 drifted apart inside a day and both were wrong by the next morning. Do not reintroduce it
-here — when the two disagree, nobody can tell which is stale.
+here — when the two disagree, nobody can tell which is stale. "Start here next", just
+below it, names the three sessions worth taking first and why, so a new session does not
+have to rank thirty prompts to pick one.
 
 Screens that exist today: `/apply` and `/apply/submitted` (§2.1, §2.12), the events list
 (§3.1), the Shift Builder (§3.2), Roles & rates (§9.8), Venues (§9.11), and the whole

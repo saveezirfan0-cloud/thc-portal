@@ -55,6 +55,30 @@ registered but disabled, because Web Push needs VAPID keys and email needs Resen
 both are in `docs/14` O3. The §4.3 cascade likewise has no manual entry point until §9.6
 is built — see `docs/14` O10.
 
+## Start here next
+
+Three candidates, in the order they unblock the most. None of them needs anything from
+THC, so all three can start today.
+
+1. **B3 · Event board (§3.3–3.5).** The strongest case. The auto-assign engine, its three
+   rounds, the 12:05 cutoff and the escalation handover are all built and tested in SQL
+   with no screen in front of them, so today a saved event fills nobody unless somebody
+   calls the RPCs by hand. B3 is the screen that makes the largest already-finished piece
+   of the product usable, and `rankPool` means the hard part is done.
+2. **S1 · App shell, auth and install (§10.1–10.2, §10.5).** The Staff App is where ~1,000
+   workers live and it has nothing but sign-in. S1 also gates every later staff session
+   and O3's push keys: installability is what makes Web Push possible on iOS at all, so
+   until S1 lands, "nothing is sent" cannot be fixed even once the VAPID keys arrive.
+3. **B6b · Completion letter, the screens half (new requirement).** The rule is finished
+   on both sides now — `cap.ts` and `weekly_cap()` agree across all 27 vectors — but a
+   worker still has nowhere to upload a letter and a reviewer nowhere to approve one, and
+   four of the ten facts the rule takes have no column behind them. This is the one with
+   a civil-penalty exposure attached, which is why it is on this list rather than further
+   down it.
+
+Pick one, take its prompt below verbatim, and check `git branch -r` first: the costliest
+collision here is two sessions writing the same migration.
+
 ---
 
 # Back Office
@@ -216,6 +240,19 @@ is built — see `docs/14` O10.
 >   effective date, rejected with the reason. Admin: awaiting review, visa expiry at
 >   60/30/14 days, opt-out signed or cancelled. These are new entries in the §8 register
 >   in `packages/notifications`, each with its own outbox key.
+>
+> - **The four facts the database cannot yet read.** `weekly_cap()` takes all ten
+>   inputs and agrees with `cap.ts` case for case. `weekly_cap_for(staff, date)` — the
+>   wrapper auto-assign's hours gate actually calls — can only source six of them.
+>   `below_degree_level` has no field at all; `completion_date` and `visa_expiry` exist
+>   on `compliance_docs` but which verified document is authoritative is a compliance
+>   decision, not one to take from a migration; `optout_cancelled_from` has no column,
+>   because §2.4's notice period is recorded nowhere. Each currently defaults to the
+>   value that reproduces today's behaviour, so the wrapper is never quietly wrong — but
+>   until they are wired, the review screens above can approve a letter that the rota
+>   guard will not act on. Wire them in the same branch as **Review**, and extend
+>   `150_roles_directory.sql`-style coverage to `weekly_cap_for()` itself, which today
+>   has no test naming the sourced facts.
 >
 > Watch the edge cases in §7, which is where this gets subtle: a completion date in the
 > future, a visa expiring around completion, and a worker switching to a Graduate or
