@@ -28,6 +28,11 @@ jobs:
       # main down — see docs/14 O2 and the script's own header.
       - name: no two files share a number
         run: node scripts/check-file-numbering.mjs
+      # Milliseconds, and it catches a failure that is otherwise invisible:
+      # an app writing an admin-only table is refused at runtime and the
+      # screen still reports success. See docs/14 O13.
+      - name: no app writes an admin-only table directly
+        run: node scripts/check-write-paths.mjs
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo lint typecheck test
       - uses: supabase/setup-cli@v1

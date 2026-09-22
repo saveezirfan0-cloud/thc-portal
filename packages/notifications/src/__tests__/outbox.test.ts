@@ -130,3 +130,66 @@ describe('rows that can never be sent', () => {
     expect(() => messageFor(push({ template: 'N99' }))).toThrow(UnsendableRow);
   });
 });
+
+/**
+ * The rows the OFFICE queues, run through the real drain — §8, §3.3, §3.5.
+ *
+ * `payload` is the values map `messageFor` renders the register's copy with.
+ * The event board and the Shift Builder originally wrote pre-rendered
+ * `title` / `body` / `deepLink` into it instead, which the drain ignores, so
+ * every worker on a re-timed event would have been sent the literal
+ * "Shift time changed — now {window}".
+ *
+ * These are the exact shapes `apps/office/app/events/actions.ts` and
+ * `apps/office/app/events/[id]/actions.ts` queue. A brace reaching a phone is
+ * the failure; asserting no brace survives is the test.
+ */
+describe('the office\u2019s own rows render, rather than shipping braces (§8)', () => {
+  const row = (template: string, payload: Record<string, string>) => ({
+    key: `${template}:booking:x`,
+    channel: 'push' as const,
+    template,
+    recipient_staff_id: '20000000-0000-4000-8000-000000000001',
+    recipient_emails: null,
+    payload,
+  });
+
+  it('N11 renders the worker\u2019s own new window and a real deep link (§3.5)', () => {
+    const msg = messageFor(
+      row('N11', { window: '11:00 – 00:30 (UK)', bookingId: 'b1', reason: 'starts_at' }) as never,
+    );
+    expect(msg).toMatchObject({ kind: 'push' });
+    expect((msg as { body: string }).body).toBe('Shift time changed — now 11:00 – 00:30 (UK)');
+    expect((msg as { url?: string }).url).toBe('/shifts/b1');
+  });
+
+  it('N10b names the event and when it was (§3.3)', () => {
+    const msg = messageFor(
+      row('N10b', { event: 'Gala Dinner', dateTime: '25 Sep, 17:00', bookingId: 'b1' }) as never,
+    );
+    expect((msg as { body: string }).body).toBe(
+      "You've been removed from Gala Dinner · 25 Sep, 17:00",
+    );
+  });
+
+  it('N12 needs no values at all, and must not gain any', () => {
+    const msg = messageFor(row('N12', { bookingId: 'b1' }) as never);
+    expect((msg as { body: string }).body).toBe('This event has been cancelled');
+  });
+
+  it.each(['N10b', 'N11', 'N12'])('%s leaves no unrendered placeholder behind', (code) => {
+    const values: Record<string, Record<string, string>> = {
+      N10b: { event: 'Gala Dinner', dateTime: '25 Sep, 17:00', bookingId: 'b1' },
+      N11: { window: '11:00 – 00:30 (UK)', bookingId: 'b1' },
+      N12: { bookingId: 'b1' },
+    };
+    const msg = messageFor(row(code, values[code]!) as never) as {
+      title: string;
+      body: string;
+      url?: string;
+    };
+    for (const text of [msg.title, msg.body, msg.url ?? '']) {
+      expect(text, `${code}: "${text}"`).not.toMatch(/[{}]/);
+    }
+  });
+});
