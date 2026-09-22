@@ -286,9 +286,9 @@ async function enqueue(
 ): Promise<string | null> {
   const template = TEMPLATES[code];
   if (!template) return null;
-  // Through the RPC, never straight at the table: `notification_outbox` is
-  // admin_read and holds no insert privilege for `authenticated` at all
-  // (001_rls_guard assertion 8), so a direct insert is refused every time.
+  // Through the RPC, never straight at the table: `notification_outbox`
+  // carries only `admin_read` (001_rls_guard assertion 8), so a direct
+  // insert reaches RLS, finds no INSERT policy and is rejected every time.
   const { error } = await supabase.rpc('queue_office_notifications', {
     p_rows: [
       {

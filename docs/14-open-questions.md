@@ -413,10 +413,33 @@ that is the whole point.
 
 One more thing for whoever takes it: a local Postgres does NOT reproduce this. Plain
 Postgres has no such default privilege, so `revoke ... from public` really does close
-everything and a local suite passes. Any harness used to check this has to run
-`alter default privileges in schema public grant execute on functions to anon,
-authenticated, service_role` first, or it is more secure than production and will keep
-saying so.
+everything and a local suite passes.
+
+**What a faithful local harness needs**, learned by getting each one wrong in turn and
+watching CI disagree. Without all four it is *more permissive or more secure than
+production in ways that invert a diagnosis*:
+
+```sql
+-- 1. Functions: why `revoke ... from public` alone leaves anon holding EXECUTE.
+alter default privileges in schema public
+  grant execute on functions to anon, authenticated, service_role;
+-- 2. Tables: why a write is stopped by RLS and NOT by a missing GRANT.
+alter default privileges in schema public
+  grant all on tables    to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on sequences to anon, authenticated, service_role;
+-- 3. auth.uid() must guard the empty string BEFORE casting, as Supabase's does,
+--    or an RLS refusal surfaces as 22P02 instead of 42501.
+select nullif(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub', '')::uuid
+-- 4. PostGIS in `public`, not `extensions` — 20260921123503 names
+--    `public.spatial_ref_sys` directly.
+```
+
+With 1 and 3 missing the suite ran 837 assertions over 33 files and looked healthy; with
+all four it runs **1203**, because the RLS suites (`010`–`040`) were silently doing
+nothing. The only remaining failure is `002`'s KNOWN GAP assertion, which asserts the
+`spatial_ref_sys` hole EXISTS and therefore inverts wherever the migration role owns
+PostGIS (ADR-0010).
 
 ## O14 · Three office pushes were silently never sent — RESOLVED, and the shape is worth keeping
 
@@ -430,14 +453,23 @@ await supabase.from('notification_outbox').insert({ ... })
 ```
 
 as the signed-in manager. That can never work. `notification_outbox` carries exactly one
-policy — `admin_read`, SELECT only — and the `authenticated` role holds no table
-privilege on it at all, so PostgREST refuses with `permission denied for table
-notification_outbox` before RLS is even consulted. Reproduced as the real role:
+policy — `admin_read`, SELECT only — so the insert finds no INSERT policy and RLS rejects
+it. Reproduced as the real role:
 
 ```
-BEFORE  insert into notification_outbox ...   ERROR: permission denied
+BEFORE  insert into notification_outbox ...   ERROR: new row violates row-level
+                                                     security policy
 AFTER   select queue_office_notifications(...)  queued = 1
 ```
+
+**A correction worth keeping, because it is the same lesson twice.** The first diagnosis
+said `authenticated` held *no table privilege*, so the write was refused before RLS was
+consulted. That was true of the local harness and false of Supabase, which grants the
+Data API roles privileges on everything in `public` by default. CI caught it by failing
+three `has_table_privilege` assertions that passed locally. The defect and the fix were
+unchanged; the *mechanism* was wrong, and a wrong mechanism in a header is what the next
+person reasons from. The assertions are now behavioural — they attempt the insert under
+`role authenticated` and expect the RLS rejection — which is both correct and stronger.
 
 Nothing caught it because nothing looked. The server action does not check the result of
 the insert, so the manager sees "Event cancelled" and every worker on it is told nothing.

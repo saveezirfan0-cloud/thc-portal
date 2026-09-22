@@ -3,11 +3,10 @@
  * No app may write an admin-only table directly — Scope §8, §1.7, §9.9.
  *
  * `notification_outbox` is `admin_read`, SELECT only (001_rls_guard
- * assertion 8), and the `authenticated` role holds no table privilege on it
- * at all. A server action that inserts into it as the signed-in manager is
- * refused with `permission denied` — and because nobody checks the result of
- * an insert that was never going to work, the screen reports success and the
- * push is never sent.
+ * assertion 8). A server action that inserts into it as the signed-in
+ * manager reaches RLS, finds no INSERT policy, and is rejected — and because
+ * nobody checks the result of an insert that was never going to work, the
+ * screen reports success and the push is never sent.
  *
  * That is not hypothetical: N10b (withdraw) and N12 (event cancelled), both
  * mandatory, and N11 (time changed) shipped that way and reached nobody
@@ -47,8 +46,8 @@ for (const table of OWNED_BY_RPC) {
   for (const file of sources) {
     if (re.test(readFileSync(join(REPO, file), 'utf8'))) {
       console.error(
-        `::error file=${file}::${file} writes \`${table}\` directly. That table is admin-read; ` +
-          `the write is refused at runtime and fails silently. Use the security definer RPC.`,
+        `::error file=${file}::${file} writes \`${table}\` directly. That table is admin-read, ` +
+          `so RLS rejects the write at runtime and it fails silently. Use the security definer RPC.`,
       );
       bad += 1;
     }

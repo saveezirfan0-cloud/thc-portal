@@ -14,12 +14,18 @@
 --
 -- All three are queued by a server action running as the signed-in manager,
 -- with `supabase.from('notification_outbox').insert(...)`. That cannot work
--- and never could: `notification_outbox` carries exactly one policy,
+-- and never could. `notification_outbox` carries exactly one policy —
 -- `admin_read`, SELECT only (20260921123503, asserted by 001_rls_guard
--- assertion 8), and the `authenticated` role holds no table privilege on it
--- at all. The insert is refused with `permission denied for table
--- notification_outbox`, the server action does not check, and the manager
--- sees the cancellation succeed while nobody is told.
+-- assertion 8). The Data API roles DO hold table privileges on it, because
+-- Supabase grants those on everything in `public` by default, so the insert
+-- is not refused for want of a GRANT: it reaches RLS, finds no INSERT
+-- policy, and is rejected with
+--
+--   new row violates row-level security policy for table "notification_outbox"
+--
+-- The server action does not read the error, so the manager sees the
+-- cancellation succeed while nobody is told. The read still works — an
+-- admin can open their own send queue — which is why nothing looked wrong.
 --
 -- Why not simply give admin an insert policy: 001_rls_guard asserts the
 -- exact policy set on this table on purpose, and its comment says why — "a

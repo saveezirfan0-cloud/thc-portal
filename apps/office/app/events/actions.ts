@@ -325,9 +325,9 @@ async function flagReconfirmations(
 
     // One call, one row per worker, keyed so a re-save of the same times is
     // a no-op against the unique index (§8). Through the RPC rather than the
-    // table: `notification_outbox` is admin_read with no insert privilege for
-    // `authenticated`, so the direct insert this used to do was refused every
-    // time and N11 reached nobody.
+    // table: `notification_outbox` carries only `admin_read`, so a direct
+    // insert reaches RLS, finds no INSERT policy and is rejected — which is
+    // what this used to do, every time, while N11 reached nobody.
     //
     // `payload` is the VALUES map the drain renders the §8 copy with — NOT
     // rendered text. `render(entry.body, values)` runs in

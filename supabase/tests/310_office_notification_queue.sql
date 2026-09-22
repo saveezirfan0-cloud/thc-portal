@@ -4,8 +4,13 @@
 -- N10b and N12 are mandatory (§8); N11 is required by §3.5 without being
 -- unmutable. All three were silently going nowhere: the server actions
 -- insert into `notification_outbox` as the signed-in manager, and that
--- table is admin_read, SELECT only, with no table privilege for
--- `authenticated` at all.
+-- table carries exactly one policy — `admin_read`, SELECT only. The Data
+-- API roles DO hold table privileges on it (Supabase grants those by
+-- default), so the write is not refused for want of a GRANT: it reaches
+-- RLS, finds no INSERT policy, and is rejected with "new row violates
+-- row-level security policy". The manager can read the outbox and cannot
+-- write it, which is exactly the intent — and exactly what the code did
+-- not expect.
 --
 -- What this pins:
 --   1. The hole itself, so a future change cannot quietly reopen it by
@@ -40,17 +45,14 @@ values (:'wrk', :'wrk_uid', 'Queue', 'Worker', 'queue-wrk@office.test', '+447700
         date '1995-06-01', 'compliant', 'uk_irish');
 
 -- ---------------------------------------------------------------------
--- 1. The table itself is still closed, which is the reason the function
---    has to exist. Asserted as privilege, not policy: `authenticated` has
---    no GRANT here, so RLS never even gets a say.
+-- 1. The policy set, which is the thing that must not move.
+--
+--    Asserted as POLICY rather than as privilege: the Data API roles hold
+--    table grants on everything in `public` by Supabase default, so
+--    `has_table_privilege` says `true` here and says nothing useful. What
+--    stops the write is the absence of an INSERT policy. The behavioural
+--    proof is in section 2, under the role that actually does it.
 -- ---------------------------------------------------------------------
-select ok(not has_table_privilege('authenticated', 'notification_outbox', 'insert'),
-  'a signed-in account cannot insert into notification_outbox directly — the event board tried and was refused');
-select ok(not has_table_privilege('anon', 'notification_outbox', 'insert'),
-  'nor can an anonymous one: a row anybody can insert is a notification anybody can send');
-select ok(not has_table_privilege('authenticated', 'notification_outbox', 'update'),
-  'nor update it, because an updatable sent_at is a send anybody can suppress');
-
 select bag_eq(
   $$ select p.polname::text || ':' || p.polcmd::text
        from pg_policy p where p.polrelid = 'notification_outbox'::regclass $$,
@@ -74,12 +76,26 @@ select bag_eq(
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"d1d1d1d1-0000-4000-8000-000000000001","role":"authenticated"}';
 
+-- THE DEFECT, reproduced. This is what both server actions used to do.
+select throws_ok(
+  $$ insert into notification_outbox (key, channel, template, payload)
+     values ('N12:direct-insert', 'push', 'N12', '{}'::jsonb) $$,
+  '42501',
+  'new row violates row-level security policy for table "notification_outbox"',
+  'an admin inserting straight into the outbox is rejected by RLS — this is the write the event board made on every cancel');
+
+-- And it is only the WRITE. The manager can read their own send queue, so
+-- nothing about this looks broken from the outside.
+select lives_ok(
+  $$ select count(*) from notification_outbox $$,
+  'the same admin can READ it (admin_read), which is why the failure was invisible');
+
 select is(
   queue_office_notifications(jsonb_build_array(jsonb_build_object(
     'key', 'N12:booking:queue-fixture-1', 'channel', 'push', 'template', 'N12',
     'recipient_staff_id', 'd2d2d2d2-0000-4000-8000-000000000001',
     'payload', jsonb_build_object('title', 'This event has been cancelled')))),
-  1, '§3.3: the office queues N12 for a worker whose event it just cancelled');
+  1, '§3.3: but through the RPC the office queues N12 for a worker whose event it just cancelled');
 
 -- The idempotency key: pressing Cancel event twice must not send twice.
 select is(
@@ -142,6 +158,16 @@ select throws_ok(
        'recipient_staff_id', 'd2d2d2d2-0000-4000-8000-000000000001'))) $$,
   '42501', 'not_authorised',
   'a signed-in CLIENT cannot queue a push to a worker either (§11.1: the portal reaches no worker data)');
+
+-- Nor can the office mark a queued push as already sent: there is no
+-- UPDATE policy, so the row is not visible to update and nothing changes.
+-- No error — which is the quiet half of the same shape.
+with touched as (
+  update notification_outbox set sent_at = now()
+   where key = 'N12:booking:queue-fixture-1' returning 1
+)
+select is((select count(*)::int from touched), 0,
+  'an admin cannot mark a push sent: an updatable sent_at is a send anybody can suppress (§8)');
 
 reset role;
 
