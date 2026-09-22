@@ -634,16 +634,15 @@ number) until the row is drained and pruned, and `location_pings` keep the GPS t
 shifts worked. Both are arguably operational records rather than profile data, and §1.7
 does not mention either way — raised here rather than decided.
 
-## O13 · The repository's default branch is not `main`, and it silently broke the deploy
+## O13 · The repository's default branch was not `main` — **RESOLVED 22.09**
 
-**This one needs you, and it is two clicks.**
+**Done by the owner.** `GET /repos/saveezirfan0-cloud/thc-portal` now returns
+`"default_branch": "main"`, and `actions/workflows` resolves both workflow files at
+`blob/main/` rather than at the old branch. Kept here because the cost below is what
+makes the two clicks worth understanding, and because the trap catches the next
+trigger-based workflow, not just this one.
 
-```
-https://github.com/saveezirfan0-cloud/thc-portal/settings
-→ Default branch → switch to `main`
-```
-
-The default branch today is `claude/youthful-meitner-hs0o7d` — an agent branch from the
+The default branch had been `claude/youthful-meitner-hs0o7d` — an agent branch from the
 first afternoon of the build, which happened to be what the repository was created from and
 was never changed. Everything since has merged into `main`, so nothing looked wrong.
 
@@ -668,11 +667,13 @@ pushed to, so it fires regardless of this setting, and `deploy.yml` is deleted r
 left as a decoy. **That fix stands on its own — changing the default branch is not required
 to make the database deploy.**
 
-### Why it is still worth fixing
+### What the fix restored
 
-- Anything trigger-based added later walks into the same trap. `schedule` is the one to
-  watch: the jobs layer (§8, `pg_cron`) has a plausible future need for a nightly workflow,
-  and it would be just as silently inert.
+All five are live again now that the setting is `main`:
+
+- Anything trigger-based added later no longer walks into the trap. `schedule` was the one
+  to watch: the jobs layer (§8, `pg_cron`) has a plausible future need for a nightly
+  workflow, and it would have been just as silently inert.
 - A new pull request defaults its base to `claude/youthful-meitner-hs0o7d`, so a session
   that does not set the base explicitly proposes a merge into a dead branch.
 - Branch protection is configured per branch. docs/12 asks you to require `ci` on `main`;
@@ -682,4 +683,9 @@ to make the database deploy.**
 - GitHub renders the repository — README, the file listing, the language bar — from the
   default branch, so the front page is a snapshot of 21.09.
 
-No code change is waiting on this. It is a setting, and it should be `main`.
+No code change was waiting on it. It was a setting, and it is now `main`.
+
+**What this does not settle:** the deploy runs, but the live project still has to catch up
+26 migrations, and the first `deploy-database` job is the one that does it. Read that job's
+log rather than assuming — it names every pending version before applying it, and a
+`db push` that fails halfway leaves the project part-applied.
