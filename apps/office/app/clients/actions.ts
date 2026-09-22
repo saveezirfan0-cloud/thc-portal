@@ -13,7 +13,7 @@ import type { ActionResult, ClientDraft } from './types';
  *
  * There is no delete action, and there is no delete function behind one:
  * §9.7 says a client record cannot be removed from the system, only
- * edited, and `240_clients_directory.sql` asserts the function's absence.
+ * edited, and `280_clients_directory.sql` asserts the function's absence.
  */
 
 const NOT_CONFIGURED =

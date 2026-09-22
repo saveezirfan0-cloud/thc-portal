@@ -23,7 +23,7 @@ import './card.css';
  * There is no Delete, anywhere. §9.7: "there is no Delete action; a
  * client record cannot be removed from the system, only edited." The
  * database agrees — `delete_client` does not exist, and
- * 240_clients_directory.sql asserts its absence, because on this screen
+ * 280_clients_directory.sql asserts its absence, because on this screen
  * the absence IS the requirement.
  *
  * Every figure here is money, which is why none of it goes near the

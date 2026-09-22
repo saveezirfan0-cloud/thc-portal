@@ -15,7 +15,7 @@ import type { ActionResult } from './types';
  *
  * There is no delete action for the client itself, and no function behind
  * one: §9.7 says a client record can only ever be edited, and
- * 240_clients_directory.sql asserts `delete_client` does not exist.
+ * 280_clients_directory.sql asserts `delete_client` does not exist.
  * `removeRole` below drops a row from the RATE CARD, which is a different
  * thing and leaves every built event alone.
  */

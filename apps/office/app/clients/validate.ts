@@ -2,7 +2,7 @@ import type { ClientDraft } from './types';
 
 /**
  * The form's half of §9.7's rules. `assert_client_input` rejects the same
- * drafts in the database (supabase/tests/240_clients_directory.sql).
+ * drafts in the database (supabase/tests/280_clients_directory.sql).
  *
  * §9.7 is unusually absolute about this screen: "All fields on this form
  * are mandatory — none can be skipped." So every check below is a
