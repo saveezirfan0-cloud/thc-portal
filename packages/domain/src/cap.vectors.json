@@ -24,7 +24,26 @@
     "supabase/tests/_shared/cap_vectors.psql is GENERATED from this file by",
     "supabase/tests/_shared/cap-vectors.mjs. Re-run it after any edit here:",
     "  node supabase/tests/_shared/cap-vectors.mjs",
-    "The Vitest suite fails if the generated file has drifted."
+    "The Vitest suite fails if the generated file has drifted.",
+    "",
+    "--- University Completion Letter Requirement (docs/scope/) ---",
+    "Six further dimensions, all optional. Omit them and every case above is",
+    "unchanged, which is why the original fifteen carry none of them:",
+    "  weekStart            - Monday of the week being asked about; the dated",
+    "                         facts below are meaningless without it",
+    "  belowDegreeLevel     - the Student condition is 10 h, not 20",
+    "  completionDate       - the release runs from the course completion date,",
+    "                         NOT from the day a manager verified the letter",
+    "  visaExpiry           - inclusive; outranks everything, completion letter",
+    "                         included",
+    "  optOutCancelledFrom  - end of the notice period, not the day notice was",
+    "                         given",
+    "  under18              - cannot sign an opt-out, so a recorded tick is not",
+    "                         a valid one",
+    "",
+    "A week straddling the completion date, or the end of an opt-out notice",
+    "period, takes the LOWER cap - the same principle RULE-20 already applies",
+    "to a week straddling term and holiday."
   ],
   "cases": [
     {
@@ -35,7 +54,10 @@
         "completionLetterVerified": false,
         "optOut48h": false
       },
-      "expect": { "capHours": 48, "band": "standard_48" }
+      "expect": {
+        "capHours": 48,
+        "band": "standard_48"
+      }
     },
     {
       "name": "British citizen with a signed 48-hour opt-out",
@@ -45,7 +67,10 @@
         "completionLetterVerified": false,
         "optOut48h": true
       },
-      "expect": { "capHours": null, "band": "uncapped" }
+      "expect": {
+        "capHours": null,
+        "band": "uncapped"
+      }
     },
     {
       "name": "Student visa, term time",
@@ -55,7 +80,10 @@
         "completionLetterVerified": false,
         "optOut48h": false
       },
-      "expect": { "capHours": 20, "band": "student_term_20" }
+      "expect": {
+        "capHours": 20,
+        "band": "student_term_20"
+      }
     },
     {
       "name": "Student visa, holiday",
@@ -65,7 +93,10 @@
         "completionLetterVerified": false,
         "optOut48h": false
       },
-      "expect": { "capHours": 48, "band": "student_holiday_48" }
+      "expect": {
+        "capHours": 48,
+        "band": "student_holiday_48"
+      }
     },
     {
       "name": "Week straddles term and holiday — the lower cap wins",
@@ -75,7 +106,10 @@
         "completionLetterVerified": false,
         "optOut48h": false
       },
-      "expect": { "capHours": 20, "band": "student_term_20" }
+      "expect": {
+        "capHours": 20,
+        "band": "student_term_20"
+      }
     },
     {
       "name": "Verified completion letter graduates the worker off the term cap",
@@ -85,7 +119,10 @@
         "completionLetterVerified": true,
         "optOut48h": false
       },
-      "expect": { "capHours": 48, "band": "graduated_48" }
+      "expect": {
+        "capHours": 48,
+        "band": "graduated_48"
+      }
     },
     {
       "name": "Opt-out does not lift a visa limit",
@@ -95,7 +132,10 @@
         "completionLetterVerified": false,
         "optOut48h": true
       },
-      "expect": { "capHours": 20, "band": "student_term_20" }
+      "expect": {
+        "capHours": 20,
+        "band": "student_term_20"
+      }
     },
     {
       "name": "Student visa, holiday, opt-out signed — no ceiling",
@@ -105,7 +145,10 @@
         "completionLetterVerified": false,
         "optOut48h": true
       },
-      "expect": { "capHours": null, "band": "uncapped" }
+      "expect": {
+        "capHours": null,
+        "band": "uncapped"
+      }
     },
     {
       "name": "Straddling week, opt-out signed — still 20, the visa condition stands",
@@ -115,7 +158,10 @@
         "completionLetterVerified": false,
         "optOut48h": true
       },
-      "expect": { "capHours": 20, "band": "student_term_20" }
+      "expect": {
+        "capHours": 20,
+        "band": "student_term_20"
+      }
     },
     {
       "name": "Graduated in holiday, no opt-out — 48, term dates no longer apply",
@@ -125,7 +171,10 @@
         "completionLetterVerified": true,
         "optOut48h": false
       },
-      "expect": { "capHours": 48, "band": "graduated_48" }
+      "expect": {
+        "capHours": 48,
+        "band": "graduated_48"
+      }
     },
     {
       "name": "Graduated in a straddling week, no opt-out — 48, term dates no longer apply",
@@ -135,7 +184,10 @@
         "completionLetterVerified": true,
         "optOut48h": false
       },
-      "expect": { "capHours": 48, "band": "graduated_48" }
+      "expect": {
+        "capHours": 48,
+        "band": "graduated_48"
+      }
     },
     {
       "name": "Completion letter plus opt-out removes the ceiling, even in term time",
@@ -145,7 +197,10 @@
         "completionLetterVerified": true,
         "optOut48h": true
       },
-      "expect": { "capHours": null, "band": "uncapped" }
+      "expect": {
+        "capHours": null,
+        "band": "uncapped"
+      }
     },
     {
       "name": "Graduated in holiday with an opt-out — no ceiling",
@@ -155,7 +210,10 @@
         "completionLetterVerified": true,
         "optOut48h": true
       },
-      "expect": { "capHours": null, "band": "uncapped" }
+      "expect": {
+        "capHours": null,
+        "band": "uncapped"
+      }
     },
     {
       "name": "Student visa with no holiday ranges on file reads as term time",
@@ -165,7 +223,10 @@
         "completionLetterVerified": false,
         "optOut48h": false
       },
-      "expect": { "capHours": 20, "band": "student_term_20" }
+      "expect": {
+        "capHours": 20,
+        "band": "student_term_20"
+      }
     },
     {
       "name": "Student visa, no holiday ranges, opt-out signed — the visa still wins",
@@ -175,7 +236,192 @@
         "completionLetterVerified": false,
         "optOut48h": true
       },
-      "expect": { "capHours": 20, "band": "student_term_20" }
+      "expect": {
+        "capHours": 20,
+        "band": "student_term_20"
+      }
+    },
+    {
+      "name": "Below degree level, term time: the condition is 10 h, not 20",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": false,
+        "optOut48h": false,
+        "belowDegreeLevel": true,
+        "weekStart": "2026-10-05"
+      },
+      "expect": {
+        "capHours": 10,
+        "band": "student_term_10"
+      }
+    },
+    {
+      "name": "Below degree level in a university holiday is still released to 48",
+      "input": {
+        "visaLimited": true,
+        "termState": "holiday",
+        "completionLetterVerified": false,
+        "optOut48h": false,
+        "belowDegreeLevel": true,
+        "weekStart": "2026-12-21"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "student_holiday_48"
+      }
+    },
+    {
+      "name": "Completion letter verified but dated in the future: still 20 h",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": false,
+        "completionDate": "2026-07-03",
+        "weekStart": "2026-06-01"
+      },
+      "expect": {
+        "capHours": 20,
+        "band": "student_term_20"
+      }
+    },
+    {
+      "name": "The week the course completes straddles the date, so takes the lower cap",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": false,
+        "completionDate": "2026-07-03",
+        "weekStart": "2026-06-29"
+      },
+      "expect": {
+        "capHours": 20,
+        "band": "student_term_20"
+      }
+    },
+    {
+      "name": "The first whole week after completion is released to 48",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": false,
+        "completionDate": "2026-07-03",
+        "weekStart": "2026-07-06"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "graduated_48"
+      }
+    },
+    {
+      "name": "Right to work expired: nothing rosters, completion letter or not",
+      "input": {
+        "visaLimited": true,
+        "termState": "holiday",
+        "completionLetterVerified": true,
+        "optOut48h": true,
+        "completionDate": "2026-07-03",
+        "visaExpiry": "2026-09-30",
+        "weekStart": "2026-10-05"
+      },
+      "expect": {
+        "capHours": 0,
+        "band": "visa_expired_0"
+      }
+    },
+    {
+      "name": "The week the visa expires still has workable days, so the cap stands",
+      "input": {
+        "visaLimited": true,
+        "termState": "holiday",
+        "completionLetterVerified": true,
+        "optOut48h": false,
+        "completionDate": "2026-07-03",
+        "visaExpiry": "2026-09-30",
+        "weekStart": "2026-09-28"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "graduated_48"
+      }
+    },
+    {
+      "name": "Graduated student with a valid opt-out may exceed 48",
+      "input": {
+        "visaLimited": true,
+        "termState": "holiday",
+        "completionLetterVerified": true,
+        "optOut48h": true,
+        "completionDate": "2026-07-03",
+        "weekStart": "2026-07-06"
+      },
+      "expect": {
+        "capHours": null,
+        "band": "uncapped"
+      }
+    },
+    {
+      "name": "Opt-out cancelled: the 48 h ceiling is back from the end of the notice",
+      "input": {
+        "visaLimited": false,
+        "termState": "none",
+        "completionLetterVerified": false,
+        "optOut48h": true,
+        "optOutCancelledFrom": "2026-08-10",
+        "weekStart": "2026-08-10"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "standard_48"
+      }
+    },
+    {
+      "name": "The week the notice period ends straddles it, so takes the lower cap",
+      "input": {
+        "visaLimited": false,
+        "termState": "none",
+        "completionLetterVerified": false,
+        "optOut48h": true,
+        "optOutCancelledFrom": "2026-08-12",
+        "weekStart": "2026-08-10"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "standard_48"
+      }
+    },
+    {
+      "name": "Before the notice period ends the opt-out still stands",
+      "input": {
+        "visaLimited": false,
+        "termState": "none",
+        "completionLetterVerified": false,
+        "optOut48h": true,
+        "optOutCancelledFrom": "2026-08-17",
+        "weekStart": "2026-08-10"
+      },
+      "expect": {
+        "capHours": null,
+        "band": "uncapped"
+      }
+    },
+    {
+      "name": "An under-18 cannot opt out, so a recorded tick does not lift the ceiling",
+      "input": {
+        "visaLimited": false,
+        "termState": "none",
+        "completionLetterVerified": false,
+        "optOut48h": true,
+        "under18": true,
+        "weekStart": "2026-08-10"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "standard_48"
+      }
     }
   ]
 }
