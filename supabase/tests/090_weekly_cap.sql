@@ -86,9 +86,20 @@ select is(
   '§4.5: completion letter PLUS opt-out is what removes the weekly ceiling'
 );
 
+-- The distinction this guards is between NO CEILING and NO HOURS, which are
+-- opposites that both used to be expressible as 0. `uncapped` is null.
+--
+-- `visa_expired_0` is excluded, and is the reason this assertion had to be
+-- narrowed rather than kept: an expired right to work IS a cap of zero
+-- hours, and "no hours left" is exactly the reading every caller should
+-- take from it. When this was written that band did not exist, so a blanket
+-- "no vector anywhere expects 0" said the same thing; the University
+-- Completion Letter requirement added the band and made the blanket form
+-- fail on a vector that is correct.
 select is_empty(
-  $$ select 1 from cap_vectors where expect_cap_hours = 0 $$,
-  'no ceiling is null, never 0 — a 0 would read as "no hours left" to every caller'
+  $$ select 1 from cap_vectors
+      where expect_cap_hours = 0 and expect_band <> 'visa_expired_0' $$,
+  'no ceiling is null, never 0 — outside visa_expired_0, where 0 is the point'
 );
 
 -- ---------------------------------------------------------------------
