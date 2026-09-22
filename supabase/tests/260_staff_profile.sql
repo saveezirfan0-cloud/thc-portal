@@ -20,7 +20,7 @@
 --     qualification they earned.
 -- =====================================================================
 begin;
-select plan(40);
+select plan(42);
 \ir _shared/fixtures.psql
 
 \set role_b     'bbbbbbbb-0000-4000-8000-000000000002'
@@ -67,6 +67,18 @@ select is((select bank_sort_code_masked from staff_profile_v where id = :'staffa
   'the sort code shows its first pair only');
 select is((select bank_account_masked from staff_profile_v where id = :'staffa'), '••••0001',
   'the account number its last four');
+
+select is((select weekly_cap_until from staff_profile_v where id = :'staffa'), null,
+  'a worker who is not an international student has no band end date — cap_band_until() assumes a visa condition, and its answer for anyone else is a date with no rule behind it');
+
+update staff set rtw_branch = 'international_student',
+       term_dates = array[daterange(current_date + 30, current_date + 60)]
+ where id = :'staffa';
+select is((select weekly_cap_until from staff_profile_v where id = :'staffa'),
+  cap_band_until(array[daterange(current_date + 30, current_date + 60)],
+                 (now() at time zone 'Europe/London')::date),
+  'and a student''s is cap_band_until()''s answer, so §9.6''s "term time until <date>" and N14''s copy come from one function');
+update staff set rtw_branch = null, term_dates = '{}' where id = :'staffa';
 
 select is((select hmrc_statement::text from staff_profile_v where id = :'staffa'), 'A',
   'the HMRC statement is the derived one (§2.8)');

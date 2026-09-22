@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Alert, Avatar, Chip, EmptyState, Note, Panel, Pill, SegToggle, Select } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
@@ -284,11 +285,17 @@ function StaffTableRow({ row }: { row: StaffRow }) {
         <Avatar name={row.removed ? '#' : row.display_name} size="sm" />
       </td>
       <td className="name">
-        {row.removed ? (
-          <span className="staff-name removed">{row.display_name}</span>
-        ) : (
-          <span className="staff-name">{row.display_name}</span>
-        )}
+        {/*
+          §9.6: "The name is clickable → the profile." A removed worker's
+          is too — §1.7 keeps the record openable with its non-personal
+          history visible, and the label is already the anonymised one.
+        */}
+        <Link
+          href={`/staff/${row.id}`}
+          className={row.removed ? 'staff-name removed' : 'staff-name'}
+        >
+          {row.display_name}
+        </Link>
       </td>
       <td className="mono sm">{employeeId(row.employee_id)}</td>
       <td>

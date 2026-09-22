@@ -65,6 +65,15 @@ select
   end                                                        as ni_number_masked,
   s.ni_number is not null                                    as has_ni_number,
   s.term_dates,
+  -- §9.6 wants the cap's reason in full — "20 h — term time until
+  -- 13.12.2026" — and §8 gives N14 the same shape. cap_band_until() is
+  -- that date, and it is asked only of a student: the function assumes a
+  -- visa condition, so for anyone else its answer would be a date with no
+  -- rule behind it.
+  case
+    when s.rtw_branch = 'international_student'
+      then cap_band_until(s.term_dates, (now() at time zone 'Europe/London')::date)
+  end                                                        as weekly_cap_until,
   s.contract_signed_at,
   s.contract_version,
   s.created_at                                               as joined_at,
