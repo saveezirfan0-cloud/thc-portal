@@ -37,6 +37,47 @@ const HOME = '/shifts';
 /** The offline shell. Precached, so it is there when nothing else is. */
 const OFFLINE = '/offline';
 
+/**
+ * NEVER cache a page. Every HTML document and every RSC payload this app
+ * serves is personal, signed-in and state-dependent: the app lock (§10.1)
+ * is computed per request from `staff_me()`, so the same URL is a working
+ * Shifts screen for one worker and a "your account is on hold" screen for
+ * the next.
+ *
+ * `defaultCache` from `@serwist/next` routes both through `NetworkFirst`
+ * (cacheName "others" for documents — its "html" matcher tests the REQUEST's
+ * Content-Type, which a navigation does not send, so documents fall through
+ * to it — and "pages-rsc"/"pages-rsc-prefetch" for flight payloads), each
+ * keeping 32 entries for 24 hours. NetworkFirst only serves the cache when
+ * the network FAILS, which is precisely when it does the most damage:
+ *
+ *   · a worker unblocked at 08:00 (§4.3 unblocks automatically on the
+ *     office's Verify) reopens the app in a basement and is shown last
+ *     night's locked screen, with no way to tell it is stale;
+ *   · two workers share a phone — the case `save_push_subscription` exists
+ *     to handle — and the second one's first load on a bad connection
+ *     renders the first one's name, employee ID and shift list.
+ *
+ * The Cache API stores whatever it is given; `Cache-Control: private,
+ * no-store` on a dynamic Next response does not stop a service worker
+ * caching it. So the rule has to be here.
+ *
+ * NetworkOnly, and INSIDE `runtimeCaching` rather than through
+ * `registerCapture`: Serwist attaches the `PrecacheFallbackPlugin` to
+ * `runtimeCaching` handlers only (Serwist.ts), so a route registered any
+ * other way would lose the /offline fallback and give a disconnected
+ * worker the browser's error page instead of ours. First match wins, so
+ * this sits ahead of `defaultCache`.
+ *
+ * Static assets are untouched: `_next/static` is content-hashed and
+ * immutable, and it is what makes the offline shell render at all.
+ */
+const PAGES_ARE_NEVER_CACHED = {
+  matcher: ({ request, sameOrigin }: { request: Request; sameOrigin: boolean }) =>
+    sameOrigin && (request.mode === 'navigate' || request.headers.get('RSC') === '1'),
+  handler: new NetworkOnly(),
+};
+
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
   // A worker must never be looking at a stale build of the check-in screen:
@@ -44,7 +85,7 @@ const serwist = new Serwist({
   skipWaiting: true,
   clientsClaim: true,
   navigationPreload: true,
-  runtimeCaching: defaultCache,
+  runtimeCaching: [PAGES_ARE_NEVER_CACHED, ...defaultCache],
   fallbacks: {
     entries: [
       {

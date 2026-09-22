@@ -26,6 +26,30 @@ const PASSWORD = 'password123';
 /** A reason no worker may ever see (§9.6). Written, then looked for. */
 const INTERNAL_REASON = 'INTERNAL-ONLY-REASON-DO-NOT-SHOW-THE-WORKER';
 
+/**
+ * SERIAL, AT FILE LEVEL, AND IT HAS TO BE.
+ *
+ * Two describes below drive the SAME seeded worker (Amara) through
+ * different states with the service key, so they must never overlap.
+ * `mode: 'serial'` INSIDE each describe does not achieve that: with
+ * `fullyParallel: true` (e2e/playwright.config.ts) a serial describe is one
+ * ordered group in one worker, and two such groups are two groups — which
+ * Playwright is free to hand to two workers at once. Measured, not
+ * assumed: with a configure in each describe, the two started 46 ms apart
+ * on workers 0 and 1 and ran concurrently for 1.5 s; moved here, all four
+ * tests ran on worker 0, in order, with no overlap.
+ *
+ * That race is what made "the bottom navigation is Documents · Shifts ·
+ * Invites · Radar" flaky. It asserted three LINKS and found zero, because
+ * the app-lock describe had just set Amara to a state where every tab is a
+ * locked span — the shape the nav takes for a leaver, and for the two
+ * document locks. Nothing to do with the service worker or with the app.
+ *
+ * If another spec file ever seeds Amara, this comes back: Playwright has
+ * no cross-file lock. Use a different seeded worker there.
+ */
+test.describe.configure({ mode: 'serial' });
+
 const supabaseUrl = process.env['NEXT_PUBLIC_SUPABASE_URL'];
 const serviceKey = process.env['SUPABASE_SERVICE_ROLE_KEY'];
 
@@ -185,8 +209,6 @@ test.describe('Auth A0–A3 (§10.2)', () => {
 });
 
 test.describe('The shell around a compliant worker (§10.1)', () => {
-  test.describe.configure({ mode: 'serial' });
-
   test.beforeEach(async ({ page }) => {
     test.skip(
       !(await serving(page)),
@@ -240,8 +262,6 @@ test.describe('The shell around a compliant worker (§10.1)', () => {
 });
 
 test.describe('App lock — the four cases (§10.1)', () => {
-  test.describe.configure({ mode: 'serial' });
-
   test.beforeEach(async ({ page }) => {
     test.skip(
       !(await serving(page)),
