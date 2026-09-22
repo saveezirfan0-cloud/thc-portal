@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { Logo } from '@thc/ui';
 import { SENT_TO_COOKIE } from '../form';
 import '../apply.css';
 
@@ -24,9 +25,7 @@ export default async function Page() {
       <div className="auth-wrap">
         <section className="auth-card done">
           <div className="brand">
-            <span className="logo round" aria-hidden="true">
-              THC
-            </span>
+            <Logo size="lg" />
             <div>
               <div className="name">The Hospitality Company</div>
               <div className="sub">Join our team</div>

@@ -1,5 +1,5 @@
 -- =====================================================================
--- 250 · Staff directory and the Student visa view (§9.6, §4.5)
+-- 290 · Staff directory and the Student visa view (§9.6, §4.5)
 --                             — 20260922091732_staff_directory.sql
 --
 -- Two things carry real weight here.

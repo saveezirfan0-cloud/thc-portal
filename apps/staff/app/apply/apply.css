@@ -64,7 +64,7 @@
 }
 
 .apply-page .check .check-input:focus-visible + .box {
-  outline: 2px solid var(--cyan);
+  outline: 2px solid var(--focus-line);
   outline-offset: 2px;
 }
 
@@ -75,7 +75,7 @@
 .apply-page .check .error {
   display: block;
   font-size: 11.5px;
-  color: var(--coral);
+  color: var(--coral-ink);
   margin-top: 4px;
 }
 
@@ -106,7 +106,9 @@
   justify-content: center;
   font-size: 28px;
   font-weight: 700;
-  border-radius: var(--r-xs);
+  /* --r-xs is not a token. It resolved to nothing, so the tick badge was the
+     one square corner on a page of rounded ones. */
+  border-radius: var(--r-tile);
 }
 
 .apply-page .done .box {
@@ -116,6 +118,7 @@
   padding: 10px 12px;
   font-size: 12.5px;
   text-align: left;
+  border-radius: var(--r-tile);
 }
 
 .apply-page .done .box .row {

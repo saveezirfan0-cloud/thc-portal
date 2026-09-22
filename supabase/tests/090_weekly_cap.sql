@@ -14,12 +14,18 @@
 --      boundary, the sum of committed hours, what is left and the hard
 --      gate auto-assign calls (§3.4).
 --
+-- Sections 6-10 add the half the University Completion Letter requirement
+-- brought (docs/scope/university-completion-letter-requirement.pdf,
+-- migration 20260922090100): the per-shift right-to-work hard stop that
+-- the weekly cap cannot express, "under 18" asked of a week rather than of
+-- today, and the three new dated facts read off a real worker's row.
+--
 -- Every row is created inside the transaction and rolled back, so this
 -- coexists with supabase/seed.sql; assertions address fixture rows by
 -- their fixed UUIDs, never by global counts.
 -- =====================================================================
 begin;
-select plan(28);
+select plan(51);
 
 \ir _shared/cap_vectors.psql
 
@@ -35,10 +41,30 @@ select results_eq(
   $$ select v.name, c.cap_hours, c.band::text
        from cap_vectors v
        cross join lateral weekly_cap(v.visa_limited, v.term_state,
-                                     v.completion_letter_verified, v.optout_48h) c
+                                     v.completion_letter_verified, v.optout_48h,
+                                     v.week_start, v.below_degree_level,
+                                     v.completion_date, v.visa_expiry,
+                                     v.optout_cancelled_from, v.under18) c
       order by v.name $$,
   $$ select name, expect_cap_hours, expect_band from cap_vectors order by name $$,
   'cap.vectors.json: SQL weekly_cap() gives the same cap AND band as TypeScript weeklyCap(), case for case'
+);
+
+-- The four-argument signature 0008 shipped is still there and still
+-- answers what it answered, which is what lets every existing caller --
+-- cap_band_until() among them -- stay as it is. The vectors that carry no
+-- week_start are exactly the ones with no dated fact to offer, so they are
+-- precisely the set that signature is allowed to be asked about.
+select results_eq(
+  $$ select v.name, c.cap_hours, c.band::text
+       from cap_vectors v
+       cross join lateral weekly_cap(v.visa_limited, v.term_state,
+                                     v.completion_letter_verified, v.optout_48h) c
+      where v.week_start is null
+      order by v.name $$,
+  $$ select name, expect_cap_hours, expect_band from cap_vectors
+      where week_start is null order by name $$,
+  'the 0008 four-argument weekly_cap() still gives the same answers: absent dated facts change nothing'
 );
 
 -- The vectors say what the rule does; these say it is the rule, not a
@@ -60,9 +86,25 @@ select is(
   '§4.5: completion letter PLUS opt-out is what removes the weekly ceiling'
 );
 
+-- Zero and null are opposite answers and neither may be spelled the other
+-- way. Null is NO CEILING; 0 is CANNOT BE ROSTERED AT ALL. A caller
+-- subtracting hours worked from the cap turns a null into "unlimited" and
+-- a 0 into "none left", so a band that means one must never carry the
+-- other's value.
+--
+-- `visa_expired_0` is the one band whose answer IS 0: right to work has
+-- run out, so the ceiling is not merely low, there are no workable hours.
+-- It is exempted by name rather than by relaxing the guard, so a future
+-- band that reaches 0 by accident still fails this.
 select is_empty(
-  $$ select 1 from cap_vectors where expect_cap_hours = 0 $$,
+  $$ select 1 from cap_vectors
+      where expect_cap_hours = 0 and expect_band <> 'visa_expired_0' $$,
   'no ceiling is null, never 0 — a 0 would read as "no hours left" to every caller'
+);
+select is(
+  (select count(*)::int from cap_vectors
+    where expect_band = 'visa_expired_0' and expect_cap_hours is distinct from 0), 0,
+  'and the one band that does mean 0 always says 0 — never null, which would read as unlimited for somebody with no right to work at all'
 );
 
 -- ---------------------------------------------------------------------
@@ -188,6 +230,123 @@ select is(weekly_cap_would_breach(:'capstudent', :'cap_shift3'), false,
   'a worker with no ceiling is never gated out on hours, however many they hold');
 select is(weekly_hours_remaining(:'capstudent', date '2026-11-04'), null,
   'no ceiling is null hours remaining, not 0 — the two must never be confused');
+
+-- ---------------------------------------------------------------------
+-- 6. The per-shift right-to-work hard stop
+--
+-- The weekly cap cannot express this one, which is the whole reason it
+-- exists as a second function: a week that straddles the visa expiry has
+-- workable days before it and none after, so the band for that week is
+-- untouched and the question has to be asked per shift (the University
+-- Completion Letter requirement, §2.3 and acceptance criterion 6).
+--
+-- Mirrors canRoster() in packages/domain/src/cap.ts: expiry inclusive, and
+-- an absent expiry is "no limit recorded", never a block.
+-- ---------------------------------------------------------------------
+select ok(can_roster(date '2026-09-30', date '2026-09-30'),
+  'the expiry date is INCLUSIVE — the day it expires is still a day the worker may work');
+select ok(not can_roster(date '2026-10-01', date '2026-09-30'),
+  'the day after is not, whatever the weekly cap says');
+select ok(can_roster(date '2026-09-29', date '2026-09-30'),
+  'and every day before it is');
+select ok(can_roster(date '2030-01-01', null),
+  'no expiry recorded is no limit — every UK and settled worker, who must not be blocked by a null');
+
+-- ---------------------------------------------------------------------
+-- 7. Under 18, as of the WEEK — the opt-out that was never valid
+--
+-- An under-18 cannot sign a 48-hour opt-out (requirement §2.4), and the
+-- question is asked of the Mon-Sun week, not of today: a worker who turns
+-- 18 on the Tuesday was under 18 for part of that week, so the week takes
+-- the lower cap like every other straddle in RULE-20.
+-- ---------------------------------------------------------------------
+select ok(cap_under_18(date '2009-06-01', date '2027-05-31'),
+  'the week a worker turns 18 in is still an under-18 week: the ceiling stands for all seven days');
+select ok(not cap_under_18(date '2009-06-01', date '2027-06-07'),
+  'the first whole week after their eighteenth birthday is not');
+select ok(not cap_under_18(null, date '2027-06-07'),
+  'an unknown date of birth is not evidence of being under 18 — /apply collects an age band, not a dob (§2.1)');
+
+-- ---------------------------------------------------------------------
+-- 8. The new facts, read off a real worker's row
+--
+-- Section 5 left capstudent graduated and opted out; put them back to a
+-- plain student first, so each fact below is the only thing moving.
+-- ---------------------------------------------------------------------
+update staff set graduated_at = null, wtr_optout = false where id = :'capstudent';
+
+-- Below degree level: the Student condition is 10 h, not 20 (requirement
+-- §1, §3 state table).
+update staff set below_degree_level = true where id = :'capstudent';
+select is(weekly_cap_hours(:'capstudent', date '2026-11-04'), 10,
+  'a student below degree level is capped at 10 h in term time, not 20');
+select is(weekly_cap_band(:'capstudent', date '2026-11-04')::text, 'student_term_10',
+  'and the band says so, so the §2.3 profile line and N14 can name it');
+update staff set below_degree_level = false where id = :'capstudent';
+
+-- The completion letter has TWO gates and both have to pass: §4.5 says
+-- the release is effective-dated from verification, the requirement §2.3
+-- says it runs from the course completion date on the letter. The later
+-- of the two therefore wins, which is the only reading that satisfies
+-- both documents — and a letter issued before the final exam carries a
+-- future date and must not lift anything yet (requirement §7).
+update staff set graduated_at = date '2026-06-30', course_completion_date = date '2026-07-03'
+ where id = :'capstudent';
+select is(weekly_cap_hours(:'capstudent', date '2026-07-01'), 20,
+  'verified in June, but the letter says the course ends on 3 July: the week of 29 June straddles that date and stays at the term cap');
+select is(weekly_cap_hours(:'capstudent', date '2026-07-08'), 48,
+  'the first whole week after the completion date is released to 48 h');
+
+-- Right to work outranks the letter (requirement §3, acceptance criterion 6).
+update staff set right_to_work_until = date '2026-10-30' where id = :'capstudent';
+select is(weekly_cap_hours(:'capstudent', date '2026-11-04'), 0,
+  'a week wholly past the recorded right to work is zero hours — the completion letter does not outrank it');
+select is(weekly_cap_band(:'capstudent', date '2026-11-04')::text, 'visa_expired_0',
+  'and the band is the hard stop, not a 48 that happens to have nothing left in it');
+update staff set right_to_work_until = null, graduated_at = null,
+                 course_completion_date = null where id = :'capstudent';
+
+-- ---------------------------------------------------------------------
+-- 9. The hard stop inside the gate auto-assign calls
+--
+-- capbrit holds no bookings and is capped at 48 h, so the hours side of
+-- weekly_cap_would_breach has nothing to say about an 8-hour shift. That
+-- is what makes them the right worker to show the expiry half with: the
+-- only thing that can change the answer is the right-to-work date.
+--
+-- cap_shift3 runs on Wednesday 04.11.2026, inside the Mon-Sun week of
+-- 02.11.2026.
+-- ---------------------------------------------------------------------
+select is(weekly_cap_would_breach(:'capbrit', :'cap_shift3'), false,
+  'a worker with 48 h free and nothing booked is not gated out of an 8-hour shift');
+
+update staff set right_to_work_until = date '2026-11-03' where id = :'capbrit';
+select is(weekly_hours_remaining(:'capbrit', date '2026-11-04'), 48::numeric,
+  'a week that straddles the expiry keeps its cap: it still has workable days, so the band is untouched');
+select ok(can_roster_staff(:'capbrit', date '2026-11-02'),
+  'and the Monday of that week is one of them');
+select is(weekly_cap_would_breach(:'capbrit', :'cap_shift3'), true,
+  'but the Wednesday shift is past the day their right to work ends, and the §3.4 gate stops it — the weekly cap alone never could');
+update staff set right_to_work_until = null where id = :'capbrit';
+
+-- ---------------------------------------------------------------------
+-- 10. The opt-out: valid, invalid, and cancelled
+--
+-- Two ways a recorded tick is not an opt-out in force (requirement §2.4,
+-- acceptance criteria 4 and 5). capbrit was born 04.04.1993.
+-- ---------------------------------------------------------------------
+update staff set wtr_optout = true where id = :'capbrit';
+select is(weekly_cap_hours(:'capbrit', date '2026-11-04'), null,
+  'a signed opt-out removes the 48 h ceiling for a worker with no visa condition');
+select is(weekly_cap_hours(:'capbrit', date '2011-03-30'), 48,
+  'the same tick lifts nothing in a week they were 17 in: an under-18 cannot sign a 48-hour opt-out');
+
+update staff set wtr_optout_cancelled_from = date '2026-11-04' where id = :'capbrit';
+select is(weekly_cap_hours(:'capbrit', date '2026-11-04'), 48,
+  'the 48 h ceiling is back for the week the notice period ends in — the lower cap, as everywhere else in RULE-20');
+select is(weekly_cap_hours(:'capbrit', date '2026-10-28'), null,
+  'and the week before it still has none: the ceiling returns from the end of the notice, not from the day notice was given');
+
 
 select * from finish();
 rollback;

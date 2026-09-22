@@ -60,6 +60,7 @@
   border: 1px solid var(--line);
   background: var(--bg);
   padding: 10px 12px;
+  /* --r-sm is not a token; this read as 0 next to rounded cards. */
   border-radius: var(--r-tile);
 }
 .calc .c .label {

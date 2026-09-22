@@ -36,6 +36,15 @@
   padding: 0 var(--sp-18);
   border-bottom: 1px solid var(--line);
   flex: 0 0 auto;
+  overflow: hidden;
+}
+/* A long label wraps to two lines and makes one item twice the height of
+   its neighbours, which reads as a broken list rather than a long name. */
+.sidebar nav :is(a, .pending) > span:not(.count):not(.soon) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .sidebar nav {
   padding: var(--sp-16) 0 0;
@@ -45,7 +54,13 @@
 }
 /* One active state, identical on every page: accent left bar + 8% accent
    fill + accent text (§1.6). */
-.sidebar nav a {
+/* `:is(a, .pending)` because a route nobody has built yet renders as a
+   <span>, not an <a> (Sidebar, BottomNav). Targeting the anchor alone left
+   those items with no flex, no padding and no gap, so the "soon" pill fell
+   out of the sidebar. Every rule that lays a nav item out has to name both;
+   only the ones that describe a *link* (hover, the active state) stay on
+   the anchor. */
+.sidebar nav :is(a, .pending) {
   display: flex;
   align-items: center;
   gap: var(--sp-10);
@@ -259,11 +274,14 @@
   padding: var(--sp-16) var(--sp-20);
   border-radius: var(--r-tile);
 }
-.card.accent {
-  border-left: 3px solid var(--cyan-ink);
+.card.accent,
+.card.purple {
+  --accent: var(--cyan-ink);
+  position: relative;
+  border-left: 3px solid var(--accent);
 }
 .card.purple {
-  border-left: 3px solid var(--purple-ink);
+  --accent: var(--purple-ink);
 }
 .card.warn {
   border-color: var(--amber-ink);
@@ -1497,10 +1515,15 @@ textarea.input {
   justify-content: flex-end;
 }
 
+/* The tone travels on --accent rather than straight into border-left-color,
+   because the rounded style draws the same accent as an inset bar instead of
+   an edge (warm.css) and both renderings need to read one value. */
 .toast {
+  --accent: var(--cyan-ink);
+  position: relative;
   background: var(--panel);
   border: 1px solid var(--line);
-  border-left: 3px solid var(--cyan-ink);
+  border-left: 3px solid var(--accent);
   padding: var(--sp-12) var(--sp-14);
   display: flex;
   gap: var(--sp-10);
@@ -1509,16 +1532,16 @@ textarea.input {
   border-radius: var(--r-tile);
 }
 .toast.coral {
-  border-left-color: var(--coral-ink);
+  --accent: var(--coral-ink);
 }
 .toast.amber {
-  border-left-color: var(--amber-ink);
+  --accent: var(--amber-ink);
 }
 .toast.green {
-  border-left-color: var(--green-ink);
+  --accent: var(--green-ink);
 }
 .toast.purple {
-  border-left-color: var(--purple-ink);
+  --accent: var(--purple-ink);
 }
 .note {
   border: 1px solid var(--line);
@@ -1882,7 +1905,7 @@ textarea.input {
   cursor: default;
 }
 
-.bottom-nav a {
+.bottom-nav :is(a, .pending) {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1898,7 +1921,7 @@ textarea.input {
   text-decoration: none;
   color: var(--text);
 }
-.bottom-nav a .ico {
+.bottom-nav :is(a, .pending) .ico {
   width: 20px;
   height: 20px;
   display: inline-flex;
@@ -1912,12 +1935,12 @@ textarea.input {
 .bottom-nav a.locked {
   opacity: 0.35;
 }
-.bottom-nav a .l {
+.bottom-nav :is(a, .pending) .l {
   display: inline-flex;
   align-items: center;
   gap: var(--sp-4);
 }
-.bottom-nav a .n {
+.bottom-nav :is(a, .pending) .n {
   background: var(--coral-solid);
   color: var(--on-coral);
   font-family: var(--font-num);
@@ -2143,13 +2166,13 @@ textarea.input {
     grid-template-columns: 188px 1fr;
   }
   .sidebar .brand,
-  .sidebar nav a,
+  .sidebar nav :is(a, .pending),
   .sidebar .foot,
   .sidebar nav .divider {
     padding-left: var(--sp-12);
     padding-right: var(--sp-12);
   }
-  .sidebar nav a {
+  .sidebar nav :is(a, .pending) {
     padding-left: calc(var(--sp-12) - var(--nav-bar));
   }
   .sidebar nav .divider {
@@ -2202,7 +2225,7 @@ textarea.input {
     overflow-x: auto;
     width: 100%;
   }
-  .sidebar nav a {
+  .sidebar nav :is(a, .pending) {
     border-left: 0;
     border-bottom: var(--nav-bar) solid transparent;
     white-space: nowrap;
@@ -2226,8 +2249,39 @@ textarea.input {
   .content {
     padding: var(--sp-16) var(--gutter-mobile) var(--sp-26);
   }
+  /* The top bar is one non-wrapping row of title + zone note + actions +
+     user chip, which at 390px ran the appearance switch off the right edge
+     and put the avatar on top of it. Below the tablet break it becomes two
+     rows: title and identity, then the zone note and whatever actions the
+     screen passes. Nothing is hidden — §1.8 requires the zone note to be
+     readable, and an action a phone cannot reach is an action a phone
+     cannot perform. */
   .topbar {
-    padding: 0 var(--gutter-mobile);
+    padding: var(--sp-10) var(--gutter-mobile);
+    flex-wrap: wrap;
+    row-gap: var(--sp-8);
+    column-gap: var(--sp-10);
+    align-items: center;
+  }
+  .topbar h1 {
+    font-size: var(--fs-17);
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .topbar .tz {
+    order: 2;
+    flex: 1 1 100%;
+  }
+  .topbar .crumbs {
+    flex: 1 1 100%;
+  }
+  .userchip {
+    max-width: 45vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .table-scroll {
     overflow-x: auto;
@@ -2318,12 +2372,14 @@ textarea.input {
 }
 
 .evchip {
-  font-size: 11px;
-  padding: 3px 6px;
+  --accent: var(--amber);
+  position: relative;
+  font-size: var(--fs-11);
+  padding: 3px var(--sp-6);
   background: var(--bg);
-  border-left: 3px solid var(--amber);
+  border-left: 3px solid var(--accent);
   display: flex;
-  gap: 6px;
+  gap: var(--sp-6);
   align-items: center;
   white-space: nowrap;
   overflow: hidden;
@@ -2333,13 +2389,13 @@ textarea.input {
   background: var(--panel-2);
 }
 .evchip.full {
-  border-left-color: var(--green);
+  --accent: var(--green);
 }
 .evchip.ongoing {
-  border-left-color: var(--cyan);
+  --accent: var(--cyan);
 }
 .evchip.cancelled {
-  border-left-color: var(--muted);
+  --accent: var(--muted);
   color: var(--muted);
   text-decoration: line-through;
 }

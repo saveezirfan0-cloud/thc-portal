@@ -1,3 +1,6 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { ReactElement } from 'react';
@@ -18,6 +21,7 @@ import {
 import { DocRow } from '../components/DocRow';
 import { Addon, Input, InputRow, SearchInput, Select, Slider, Textarea } from '../components/Input';
 import { Kanban, KanbanCard, KanbanColumn } from '../components/Kanban';
+import { Logo, LogoMark } from '../components/Logo';
 import {
   AppBody,
   AppFrame,
@@ -50,7 +54,10 @@ import {
 } from '../components/Shell';
 import { Progress, Stepper } from '../components/Stepper';
 
-const html = (node: ReactElement) => renderToStaticMarkup(node);
+/* The inlined logo is ~1.6kB of path coordinates that says nothing about a
+   class contract, and that the component and brand/thc-mark.svg agree is
+   asserted directly below. Collapse it so a snapshot diff stays readable. */
+const html = (node: ReactElement) => renderToStaticMarkup(node).replace(/ d="[^"]+"/g, ' d="…"');
 const noop = () => {};
 
 const TONES = ['cyan', 'green', 'amber', 'coral', 'purple'] as const;
@@ -60,6 +67,49 @@ const TONES = ['cyan', 'green', 'amber', 'coral', 'purple'] as const;
    class the stylesheets do not define, or stops emitting one they do, the
    snapshot moves and the diff says so.
    ------------------------------------------------------------------------- */
+
+describe('Logo', () => {
+  it('renders the real mark in the tile, at every size', () => {
+    expect(
+      html(
+        <>
+          <Logo size="sm" />
+          <Logo />
+          <Logo size="lg" />
+          <LogoMark label="The Hospitality Company" />
+        </>,
+      ),
+    ).toMatchSnapshot();
+  });
+
+  it('inlines brand/thc-mark.svg rather than drifting from it', () => {
+    // The mark was cut out of the stacked lockup by hand (brand/README.md).
+    // If THC supply a new logo that work has to be redone and this file
+    // regenerated — so the guard is that the two agree, not that either is
+    // some particular shape.
+    const svg = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', 'brand', 'thc-mark.svg'),
+      'utf8',
+    );
+    const paths = [...svg.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]!);
+    expect(paths).toHaveLength(2);
+
+    const rendered = renderToStaticMarkup(<LogoMark />);
+    for (const d of paths) expect(rendered).toContain(d);
+    expect(rendered).toContain(`viewBox="${/viewBox="([^"]+)"/.exec(svg)![1]}"`);
+    // Neither file names a colour: one mark, every ground, both themes.
+    expect(rendered).toContain('fill="currentColor"');
+    expect(rendered).not.toMatch(/#[0-9a-f]{3,6}/i);
+  });
+
+  it('is decorative unless it is given a label', () => {
+    // The company name is written next to the mark everywhere it appears, so
+    // announcing it twice is noise.
+    expect(html(<Logo />)).toContain('aria-hidden="true"');
+    expect(html(<Logo />)).not.toContain('aria-label');
+    expect(html(<LogoMark label="THC" />)).toContain('aria-label="THC"');
+  });
+});
 
 describe('Web/Button', () => {
   it('renders every tone, size and state', () => {
@@ -130,7 +180,7 @@ describe('Web/Sidebar and Web/Topbar', () => {
               activeHref="/dashboard"
               brand={
                 <>
-                  <span className="logo">THC</span>
+                  <Logo />
                   <span>
                     <span className="name">The Hospitality Company</span>
                     <span className="sub">Back office</span>
@@ -252,7 +302,7 @@ describe('AppHeader and Staff App chrome', () => {
         <AppFrame>
           <StatusBar />
           <AppHeader
-            brand={<span className="logo sm">THC</span>}
+            brand={<Logo size="sm" />}
             title="Shifts"
             actions={<Avatar name="Joy Nwosu" size="sm" />}
             below={
@@ -270,7 +320,7 @@ describe('AppHeader and Staff App chrome', () => {
           />
           <AppHeader
             collapsed
-            brand={<span className="logo sm">THC</span>}
+            brand={<Logo size="sm" />}
             title="Shifts"
             actions={<Avatar name="Joy Nwosu" size="sm" />}
           />

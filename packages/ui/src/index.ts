@@ -9,6 +9,9 @@ export type { InputProps, SelectProps, SliderProps, TextareaProps } from './comp
 
 export { Kanban, KanbanCard, KanbanColumn } from './components/Kanban';
 
+export { Logo, LogoMark } from './components/Logo';
+export type { LogoMarkProps, LogoProps } from './components/Logo';
+
 export { Avatar, AvatarGroup, Person, initials } from './components/Avatar';
 export type { AvatarProps } from './components/Avatar';
 
