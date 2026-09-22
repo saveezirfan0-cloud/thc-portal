@@ -39,8 +39,9 @@ Also built, server side only, with no screen in front of any of it:
   outstanding when it refuses, and `reset_to_candidate` — the Employee ID and all history
   retained, every piece of compliance evidence superseded but kept read-only
 - GDPR removal (§1.7, `remove_worker`): anonymised to "Deleted account #id", documents and
-  contacts deleted, login unlinked, future bookings released — and the Employee ID,
-  bookings, violations and verbatim feedback all retained for reporting
+  contacts deleted, the Storage objects queued for the `gdpr-purge` job, the public form's
+  own submissions anonymised, login unlinked, future bookings released — and the Employee
+  ID, bookings, violations and verbatim feedback all retained for reporting
 
 Not built: every screen bar sign-in, the venues directory and the roles directory. Of the
 background rules, BG-06/07 (geofence) wait on the geolocation shell and BG-08 on the
@@ -492,7 +493,9 @@ other way round, pg_cron spends the gap posting at a 404.
 > gaps: deleting the GoTrue `auth.users` row needs the admin API, which SQL cannot reach,
 > so removal unlinks `user_id` instead; and redacting a worker's name from free-text
 > feedback needs an LLM step the scope rules out of v1 — feedback is retained verbatim and
-> the office redacts by hand.
+> the office redacts by hand. The Storage half IS built (`gdpr-purge`), and the only
+> genuine residue is deleting the interview video at Willo, which waits on P3's account —
+> see `docs/14` O11.
 
 > Use the `platform` agent. Branch `feat/platform-lifecycle`.
 >
