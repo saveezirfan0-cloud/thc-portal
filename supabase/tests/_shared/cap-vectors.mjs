@@ -22,6 +22,9 @@ export const VECTORS_PSQL = resolve(here, 'cap_vectors.psql');
 const sqlBool = (v) => (v ? 'true' : 'false');
 const sqlInt = (v) => (v === null ? 'null' : String(v));
 const sqlText = (v) => `'${String(v).replace(/'/g, "''")}'`;
+/** Optional dated facts: absent means "not on file", which is SQL null. */
+const sqlDate = (v) => (v === undefined || v === null ? 'null' : `'${v}'::date`);
+const sqlOptBool = (v) => (v === undefined ? 'false' : sqlBool(v));
 
 /** The .psql file body for a parsed cap.vectors.json. Pure — no I/O. */
 export function renderCapVectors(vectors) {
@@ -32,6 +35,12 @@ export function renderCapVectors(vectors) {
       `${sqlText(c.input.termState)},`,
       `${sqlBool(c.input.completionLetterVerified)},`,
       `${sqlBool(c.input.optOut48h)},`,
+      `${sqlDate(c.input.weekStart)},`,
+      `${sqlOptBool(c.input.belowDegreeLevel)},`,
+      `${sqlDate(c.input.completionDate)},`,
+      `${sqlDate(c.input.visaExpiry)},`,
+      `${sqlDate(c.input.optOutCancelledFrom)},`,
+      `${sqlOptBool(c.input.under18)},`,
       `${sqlInt(c.expect.capHours)},`,
       `${sqlText(c.expect.band)})`,
     ].join(' '),
@@ -58,6 +67,14 @@ create temporary table cap_vectors (
   term_state                 text    not null,
   completion_letter_verified boolean not null,
   optout_48h                 boolean not null,
+  -- University Completion Letter Requirement (docs/scope/). Null means the
+  -- fact is not on file, which is what the original vectors carry.
+  week_start                 date,
+  below_degree_level         boolean not null,
+  completion_date            date,
+  visa_expiry                date,
+  optout_cancelled_from      date,
+  under18                    boolean not null,
   expect_cap_hours           int,               -- null = no ceiling
   expect_band                text    not null
 ) on commit drop;

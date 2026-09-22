@@ -174,6 +174,56 @@ is built — see `docs/14` O10.
 > Done when: it matches the wireframe, and the re-check rule has a test proving one
 > verification does not unblock while something else is outstanding.
 
+## B6b · University completion letter and the 48-hour opt-out (new requirement)
+
+> Use the `compliance` agent for the review side and `staff-pwa` for the upload side.
+> Branch `feat/compliance-completion-letter`.
+>
+> Contract: `docs/scope/university-completion-letter-requirement.pdf`. This is a NEW
+> document from THC, not part of scope v1.6, and it refines RULE-20. Read it whole —
+> the exposure is civil penalties for illegal working, so the cautious reading wins
+> every time.
+>
+> **The rule half is already done.** `packages/domain/src/cap.ts` implements all of it:
+> the 10-hour below-degree-level band, the release running from the course completion
+> date rather than the verification date, the visa-expiry hard stop, opt-out
+> cancellation after a notice period, and under-18s being unable to opt out. 27 shared
+> vectors in `cap.vectors.json` hold the TypeScript and the SQL to the same cases. Do
+> not re-derive any of that — read it and build against it.
+>
+> What is left is everything around the rule:
+>
+> - **Upload** (§2.1). Student/Tier 4 workers get a completion-letter slot in the Staff
+>   App documents hub. Accept PDF, JPG, PNG, 10 MB. Also accept a completers transcript
+>   or an official university email — one document type, three acceptable forms. The
+>   worker enters the course completion date printed on it. The upload lands in
+>   `pending` and changes NO cap by itself; that is acceptance criterion 2.
+> - **Review** (§2.2). Approve or reject in the Needs review queue. A rejection needs a
+>   reason and notifies the worker, who can re-upload. On approval the reviewer confirms
+>   the completion date and the visa expiry.
+> - **Audit and retention** (§4). Document, upload timestamp, reviewer identity, approval
+>   timestamp, completion date, rejection reasons — all of it, exportable. Retention is
+>   employment plus two years, which is longer than anything else in the schema, so it
+>   needs its own rule rather than riding on the general one.
+> - **Rota guard** (§4). Warn or block when an assignment would breach the current cap —
+>   configurable, so it belongs in `settings`. The expiry hard stop is NOT configurable:
+>   `canRoster()` is a hard no.
+> - **Reporting** (§4). Every student-visa worker, their current cap, evidence status and
+>   visa expiry, in one view.
+> - **Notifications** (§5). Worker: upload received, approved with the new cap and its
+>   effective date, rejected with the reason. Admin: awaiting review, visa expiry at
+>   60/30/14 days, opt-out signed or cancelled. These are new entries in the §8 register
+>   in `packages/notifications`, each with its own outbox key.
+>
+> Watch the edge cases in §7, which is where this gets subtle: a completion date in the
+> future, a visa expiring around completion, and a worker switching to a Graduate or
+> Skilled Worker visa mid-employment — a new right-to-work check that ends the student
+> logic but leaves the 48-hour Working Time rules in force.
+>
+> Done when: the seven acceptance criteria in §6 each have a test naming them, and a
+> Student-visa worker with no approved letter cannot be rostered past 20 hours in any
+> week through the UI, not merely in the rule.
+
 ## B7 · Check-in monitor and violation log (§9.5)
 
 > Use the `checkin` agent. Branch `feat/checkin-monitor`.

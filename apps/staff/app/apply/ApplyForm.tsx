@@ -1,9 +1,9 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { Alert, Button, Input, InputRow, Select } from '@thc/ui';
+import { Alert, Button, Input, InputRow } from '@thc/ui';
 import { apply } from './actions';
-import { AGE_OPTIONS, DIAL_CODES, INITIAL_STATE, errorBanner, validate } from './form';
+import { DIAL_CODES, INITIAL_STATE, ageOn, errorBanner, parseDob, validate } from './form';
 import type { ApplicationValues, FieldErrors } from './form';
 
 /**
@@ -28,7 +28,10 @@ export function ApplyForm() {
 
   // The wireframe shows the button disabled in the under-18 / no-consent
   // state. Nothing is created until the server and the database agree anyway.
-  const blocked = values.ageBand === 'under_18' || !values.consent;
+  // "On the spot" (§2.1) now means a complete date that puts them under 18.
+  // A half-typed year is an unfinished field, not a rejection.
+  const dob = parseDob(values.dob);
+  const blocked = (dob !== null && ageOn(dob) < 18) || !values.consent;
 
   return (
     <form
@@ -121,21 +124,20 @@ export function ApplyForm() {
         )}
       </div>
 
-      <Select
-        label="Age"
-        name="ageBand"
+      {/* A native date input opens the OS wheel picker on the phone browsers
+          §2.1 says applicants use. No `max`: capping it at today minus
+          eighteen years hides the under-18 case instead of refusing it, and
+          both §1.7 and the wireframe refuse it out loud. */}
+      <Input
+        label="Date of birth"
+        name="dob"
+        type="date"
+        autoComplete="bday"
         hint="You must be 18 or over to work with us."
-        value={values.ageBand}
-        onChange={(e) => set('ageBand', e.target.value)}
-        error={errors.ageBand}
-      >
-        <option value="">Select your age</option>
-        {AGE_OPTIONS.map((a) => (
-          <option key={a.value} value={a.value}>
-            {a.label}
-          </option>
-        ))}
-      </Select>
+        value={values.dob}
+        onChange={(e) => set('dob', e.target.value)}
+        error={errors.dob}
+      />
 
       {/*
         Deliberately not `Checkbox` from @thc/ui: that component hides its

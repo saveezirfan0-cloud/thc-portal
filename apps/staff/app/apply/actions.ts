@@ -13,7 +13,7 @@ function read(formData: FormData): ApplicationValues {
     email: String(formData.get('email') ?? ''),
     dialCode: String(formData.get('dialCode') ?? '+44'),
     mobile: String(formData.get('mobile') ?? ''),
-    ageBand: String(formData.get('ageBand') ?? ''),
+    dob: String(formData.get('dob') ?? ''),
     consent: formData.get('consent') === 'on',
   };
 }
@@ -32,7 +32,7 @@ interface RpcClient {
       p_last_name: string;
       p_email: string;
       p_phone: string;
-      p_age_band: string;
+      p_dob: string;
       p_consent: boolean;
     },
   ): Promise<{ error: { message: string; code?: string } | null }>;
@@ -71,7 +71,7 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
     p_last_name: values.lastName.trim(),
     p_email: email,
     p_phone: toE164(values.dialCode, values.mobile),
-    p_age_band: values.ageBand,
+    p_dob: values.dob.trim(),
     p_consent: values.consent,
   });
 

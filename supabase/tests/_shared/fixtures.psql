@@ -185,5 +185,12 @@ insert into venue_types (key, label, default_radius_m) values
 -- ---- the public application form (the public application form) ----------
 -- A returning-applicant entry (§2.12): the submission matched Staff Alpha,
 -- so no second candidate exists and the office acts on the named record.
-insert into applications (id, first_name, last_name, email, phone, age_band, outcome, staff_id, consented_at) values
-  (:'applic_a', 'Staff', 'Alpha', 'staffa@rls.test', '+447700900011', '25', 'returning_applicant', :'staffa', now());
+--
+-- The date of birth is Staff Alpha's own, because §2.12's mobile arm is
+-- mobile AND date of birth (ADR-0008) and this row is supposed to be a
+-- match. `age_band` is the band the submission derived when it was made,
+-- not one recomputed against today's date: the column records what was
+-- submitted, and a fixture that recomputed it would change meaning every
+-- birthday.
+insert into applications (id, first_name, last_name, email, phone, dob, age_band, outcome, staff_id, consented_at) values
+  (:'applic_a', 'Staff', 'Alpha', 'staffa@rls.test', '+447700900011', date '1995-01-01', '31_40', 'returning_applicant', :'staffa', now());
