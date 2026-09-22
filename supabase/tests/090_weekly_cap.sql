@@ -86,25 +86,24 @@ select is(
   '§4.5: completion letter PLUS opt-out is what removes the weekly ceiling'
 );
 
--- Zero and null are opposite answers and neither may be spelled the other
--- way. Null is NO CEILING; 0 is CANNOT BE ROSTERED AT ALL. A caller
--- subtracting hours worked from the cap turns a null into "unlimited" and
--- a 0 into "none left", so a band that means one must never carry the
--- other's value.
+-- This asserted that 0 never appears at all, and it was right until the
+-- completion-letter requirement gave 0 a meaning: a week wholly past a
+-- lapsed right to work (`visa_expired_0`). docs/13 B6b names it as a STALE
+-- invariant rather than an unimplemented rule, and it is the last assertion
+-- standing between `main` and green.
 --
--- `visa_expired_0` is the one band whose answer IS 0: right to work has
--- run out, so the ceiling is not merely low, there are no workable hours.
--- It is exempted by name rather than by relaxing the guard, so a future
--- band that reaches 0 by accident still fails this.
+-- What it was really protecting is worth keeping, so it becomes two: NO
+-- CEILING is null and never 0 — a 0 there would read as "no hours left" to
+-- every caller and gate the worker out of everything — and 0 itself now
+-- means exactly one thing.
+select is_empty(
+  $$ select 1 from cap_vectors where expect_band = 'uncapped' and expect_cap_hours is not null $$,
+  'no ceiling is null, never 0 — a 0 there would read as "no hours left" to every caller'
+);
 select is_empty(
   $$ select 1 from cap_vectors
       where expect_cap_hours = 0 and expect_band <> 'visa_expired_0' $$,
-  'no ceiling is null, never 0 — a 0 would read as "no hours left" to every caller'
-);
-select is(
-  (select count(*)::int from cap_vectors
-    where expect_band = 'visa_expired_0' and expect_cap_hours is distinct from 0), 0,
-  'and the one band that does mean 0 always says 0 — never null, which would read as unlimited for somebody with no right to work at all'
+  '0 means exactly one thing: a week wholly past a lapsed right to work'
 );
 
 -- ---------------------------------------------------------------------

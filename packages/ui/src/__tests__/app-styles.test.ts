@@ -12,14 +12,7 @@ import { describe, expect, it } from 'vitest';
  * square corners on otherwise rounded pages.
  *
  * So every `var(--…)` an app stylesheet reads has to be a property this
- * package actually defines — OR one the sheet declares itself.
- *
- * That second case is not a loophole, it is the pattern the fill chips use:
- * `events.css` sets `--accent` to a different palette token per state and
- * reads it once, which is how one rule draws four states. A locally
- * declared property is visibly present in the same file, so it cannot be
- * the silent drop this test exists to catch — a typo still is, because
- * nothing declares it anywhere.
+ * package actually defines.
  */
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO = join(HERE, '..', '..', '..', '..');
@@ -38,11 +31,16 @@ describe('app stylesheets read the design system', () => {
   for (const sheet of sheets) {
     const css = readFileSync(join(REPO, sheet), 'utf8');
 
+    // A sheet may also define its own custom properties — `events.css` sets
+    // `--accent` per fill state so one rule can draw four of them. Those are
+    // not tokens this package owes, and counting them as missing turned a
+    // legitimate pattern into a failing build.
+    const local = new Set([...css.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)].map((m) => m[1]!));
+
     it(`${sheet} names only tokens that exist`, () => {
-      const local = new Set([...css.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)].map((m) => m[1]!));
       const used = [...css.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]!);
       const missing = [...new Set(used)].filter((name) => !defined.has(name) && !local.has(name));
-      expect(missing, `undefined in tokens.css and not declared in this sheet`).toEqual([]);
+      expect(missing, `undefined in tokens.css and not defined by this sheet`).toEqual([]);
     });
 
     it(`${sheet} names no literal colour`, () => {
