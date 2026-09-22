@@ -82,9 +82,14 @@ test('the ten-day list puts the margin on each role row (§9.1)', async ({ page 
   test.skip(await withoutData(page), 'No Supabase project: there are no events to list.');
 
   // Every role line carries its allocation, its fill and its margin.
+  //
+  // Scoped to `.mono`, because the fill pill is green too: `.green, .coral`
+  // alone matched both `<span class="pill green">2 of 2</span>` and
+  // `<span class="mono green">+£9.40/h</span>` and failed on strict mode. The
+  // margin is the monospaced one — money is `.mono` everywhere in this repo.
   const firstRole = panel.locator('.dash-roles .r').first();
   await expect(firstRole).toBeVisible();
-  await expect(firstRole.locator('.green, .coral')).toHaveText(/[+−]£\d+\.\d{2}\/h/);
+  await expect(firstRole.locator('.mono.green, .mono.coral')).toHaveText(/[+−]£\d+\.\d{2}\/h/);
 
   // The buffer is absolute: "6 (+1)", never "7" (§3.2).
   const allocations = await panel.locator('.dash-roles .r .mono').allInnerTexts();

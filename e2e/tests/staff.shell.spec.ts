@@ -68,6 +68,18 @@ async function signIn(page: Page): Promise<void> {
   await page.waitForURL((url) => !url.pathname.startsWith('/login'));
 }
 
+// Serial for the WHOLE FILE, not per block.
+//
+// Two describes below sign in as Amara, and the lock block rewrites her row
+// through the REST API to walk the four §10.1 states. `mode: 'serial'` inside
+// each block only orders the tests within it — with `fullyParallel: true` and
+// two workers the blocks themselves still ran at the same time, so the lock
+// block blanked the bottom bar while the compliant-worker block was asserting
+// on it. That surfaced as two "flaky" tests that passed on retry, which is the
+// misleading shape of this bug: a shared fixture being mutated under another
+// test reads as an infrastructure wobble. It is not one, and retrying hides it.
+test.describe.configure({ mode: 'serial' });
+
 test.describe('PWA shell (§10.1, §10.5)', () => {
   test.beforeEach(async ({ page }) => {
     test.skip(
