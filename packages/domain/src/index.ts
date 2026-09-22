@@ -9,3 +9,4 @@ export * from './shift';
 export * from './events';
 export * from './board';
 export * from './autoAssign';
+export * from './staff';

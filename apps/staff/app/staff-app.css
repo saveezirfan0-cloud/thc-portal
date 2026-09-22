@@ -1,0 +1,119 @@
+/*
+ * The Staff App's working screens — mirrors the page-local styles in
+ * wireframes/staff/{shifts,invites,radar,shift-detail}.html. Layout only:
+ * every colour, radius and size is a token from packages/ui.
+ */
+
+/* A scheduled time and its "your time" second line (§1.8). */
+.shift-time {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.25;
+}
+.shift-time .sub {
+  font-size: var(--fs-10);
+  color: var(--muted);
+}
+
+/* The detail screens' label/value table. */
+.kvs {
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--panel-glass);
+  padding: 2px var(--sp-12);
+}
+.kv {
+  display: flex;
+  gap: var(--sp-10);
+  font-size: var(--fs-12);
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+  align-items: flex-start;
+}
+.kv:last-child {
+  border-bottom: 0;
+}
+.kv .k {
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--muted);
+  flex: 0 0 84px;
+  padding-top: 3px;
+}
+.kv .v {
+  flex: 1;
+  min-width: 0;
+}
+/* "Shown after you accept" — withheld, and visibly so (§10.4). */
+.kv.off {
+  opacity: 0.55;
+}
+.kv.off .v {
+  font-style: italic;
+}
+
+/* Radar's km badge. */
+.km {
+  font-family: var(--font-mono);
+  font-size: var(--fs-10);
+  padding: 2px 6px;
+  border-radius: var(--r-pill);
+  border: 1px solid var(--cyan-line);
+  color: var(--cyan);
+  background: var(--cyan-dim);
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+
+/* A group heading with a rule running off it. */
+.grp {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: var(--sp-4);
+}
+.grp::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+.grp.purple {
+  color: var(--purple);
+}
+
+/* The card's own action row: Decline / Accept, side by side and equal. */
+.card-actions {
+  display: flex;
+  gap: var(--sp-8);
+  margin-top: var(--sp-10);
+}
+.card-actions > * {
+  flex: 1;
+}
+
+/* A line of chips and a right-aligned time on one row. */
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+.card-head .right {
+  margin-left: auto;
+  text-align: right;
+}
+
+.detail-hours {
+  font-family: var(--font-head);
+  font-size: var(--fs-24);
+  font-weight: 600;
+}

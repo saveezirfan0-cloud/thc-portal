@@ -40,9 +40,16 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/onboarding/1…11` | Wizard | `staff/onboarding-1.html`, `-2`, `-3` | 10.3, 2.5–2.11 | onboarding |
 | `/documents` | Documents hub / tab + declare conviction | `staff/onboarding-3.html`, `staff/documents.html` | 10.4, 10.7 | compliance |
 | `/shifts` | My shifts · Open shifts | `staff/shifts.html` | 10.4, 3.5 | scheduling |
-| `/shifts/:id` | Shift detail, check-in/out, breaks, static screens | `staff/shift-detail.html` | 5.1–5.2b | checkin |
+| `/shifts/:id` | Shift detail, check-in/out, breaks, static screens | `staff/shift-detail.html` | 5.1–5.2b, 10.4 | checkin (+ scheduling) |
 | `/radar` | Radar | `staff/radar.html` | 10.4 | scheduling |
 | `/invites`, `/invites/:id` | Invites | `staff/invites.html` | 10.4, 3.4 | scheduling |
+
+> `/shifts/:id` is the one route two bots share. `scheduling` owns what §10.4
+> puts on it — the details an invitation withheld (on-site contact, notes,
+> break policy) and the three static message screens for a cancelled event, a
+> withdrawn booking and an unresolved No check-out. `checkin` owns everything
+> §5 puts on it: the map, the geofence, check-in/check-out, the breaks block
+> and the chargeable-so-far counter. Neither half needs to touch the other.
 | (sheet) | Profile sheet | `staff/profile.html` | 10.1 | staff-pwa |
 | `/profile`, `/security`, `/payments` | Profile details, Security, Payment information | `staff/profile.html` | 10.1 | staff-pwa |
 | (flow) | Request my P45 → leaver screen | `staff/profile.html` | 10.6 | staff-pwa |
