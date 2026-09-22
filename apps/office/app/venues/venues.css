@@ -112,8 +112,14 @@
   font-family: var(--font-label);
   font-size: 9.5px;
   color: var(--muted);
-  background: var(--panel-glass);
-  padding: 4px 8px;
+  /* --panel-glass is not a token; the legend had no fill at all and sat
+     unreadable on the map tiles. --card-glass is the one meant for a
+     surface floating over something busy. */
+  background: var(--card-glass);
+  backdrop-filter: blur(var(--blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
+  padding: 4px var(--sp-10);
+  border-radius: var(--r-pill);
 }
 .map .legend b {
   color: var(--cyan-ink);

@@ -2,16 +2,19 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { Avatar, AvatarGroup, Button, Panel, Pill, Progress, SearchInput, SegToggle } from '@thc/ui';
+import {
+  Avatar,
+  AvatarGroup,
+  Button,
+  Panel,
+  Pill,
+  Progress,
+  SearchInput,
+  SegToggle,
+} from '@thc/ui';
 import { EventWindow } from './EventWindow';
 import { ukDateShort } from './format';
-import {
-  byDateDescending,
-  documentFor,
-  fillOf,
-  filterByTab,
-  statusTone,
-} from './rules';
+import { byDateDescending, documentFor, fillOf, filterByTab, statusTone } from './rules';
 import type { LineupRow, PortalEvent, RoleSection, Tab } from './rules';
 
 /**
@@ -236,7 +239,11 @@ export function EventsScreen({
                     )}
                     <div className="row">
                       {doc ? (
-                        <Button size="sm" disabled title="The timesheet documents arrive with §11.3">
+                        <Button
+                          size="sm"
+                          disabled
+                          title="The timesheet documents arrive with §11.3"
+                        >
                           {DOC_LABEL[doc]}
                         </Button>
                       ) : (

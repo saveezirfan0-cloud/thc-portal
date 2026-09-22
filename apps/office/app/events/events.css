@@ -66,9 +66,14 @@
   flex: 0 0 auto;
 }
 
+/* The fill accent travels on --accent so the rounded look can draw it as an
+   inset bar: a 3px left BORDER on a 22px-radius box renders as a crescent,
+   not a marker (see the same treatment on .toast in packages/ui). */
 .wchip {
+  --accent: var(--amber);
+  position: relative;
   background: var(--bg);
-  border-left: 3px solid var(--amber);
+  border-left: 3px solid var(--accent);
   padding: 6px 8px;
   display: flex;
   flex-direction: column;
@@ -86,13 +91,13 @@
   outline: 1px solid var(--cyan-line);
 }
 .wchip.full {
-  border-left-color: var(--green);
+  --accent: var(--green);
 }
 .wchip.ongoing {
-  border-left-color: var(--cyan);
+  --accent: var(--cyan);
 }
 .wchip.cancelled {
-  border-left-color: var(--muted);
+  --accent: var(--muted);
   opacity: 0.55;
   text-decoration: line-through;
 }
@@ -192,4 +197,21 @@
   .dayrow {
     grid-template-columns: 1fr;
   }
+}
+
+/* Rounded look: the accent moves off the edge and inside the corner, exactly
+   as packages/ui/styles/warm.css does for .toast and .evchip. */
+:root[data-style='warm'] .wchip {
+  border-left: 0;
+  padding-left: var(--sp-14);
+}
+:root[data-style='warm'] .wchip::before {
+  content: '';
+  position: absolute;
+  left: var(--sp-6);
+  top: var(--sp-6);
+  bottom: var(--sp-6);
+  width: 3px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
 }
