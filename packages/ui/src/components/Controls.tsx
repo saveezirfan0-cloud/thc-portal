@@ -7,17 +7,31 @@ export interface SwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   label?: ReactNode;
+  /**
+   * The accessible name where there is no visible `label` — a switch in a
+   * table column, whose heading names it once for sighted readers and not
+   * at all for a screen reader.
+   */
+  'aria-label'?: string;
   /** Auto-Assign is the only purple control in the product (§3.4). */
   purple?: boolean;
   disabled?: boolean;
 }
 
-export function Switch({ checked, onChange, label, purple, disabled }: SwitchProps) {
+export function Switch({
+  checked,
+  onChange,
+  label,
+  purple,
+  disabled,
+  'aria-label': ariaLabel,
+}: SwitchProps) {
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
+      aria-label={ariaLabel}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={clsx('switch', checked && 'on', purple && 'purple')}

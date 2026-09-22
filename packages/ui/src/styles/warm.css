@@ -225,7 +225,6 @@
   color: var(--on-purple);
 }
 
-
 /* ---- the phone gallery frame ----------------------------------------
    `backdrop-filter` puts an element in its own backdrop root, and Chromium
    does not clip that root to an ancestor's border-radius — so the frosted

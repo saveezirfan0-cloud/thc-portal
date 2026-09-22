@@ -25,7 +25,7 @@
 -- their fixed UUIDs, never by global counts.
 -- =====================================================================
 begin;
-select plan(50);
+select plan(51);
 
 \ir _shared/cap_vectors.psql
 
@@ -86,20 +86,24 @@ select is(
   '§4.5: completion letter PLUS opt-out is what removes the weekly ceiling'
 );
 
--- The distinction this guards is between NO CEILING and NO HOURS, which are
--- opposites that both used to be expressible as 0. `uncapped` is null.
+-- This asserted that 0 never appears at all, and it was right until the
+-- completion-letter requirement gave 0 a meaning: a week wholly past a
+-- lapsed right to work (`visa_expired_0`). docs/13 B6b names it as a STALE
+-- invariant rather than an unimplemented rule, and it is the last assertion
+-- standing between `main` and green.
 --
--- `visa_expired_0` is excluded, and is the reason this assertion had to be
--- narrowed rather than kept: an expired right to work IS a cap of zero
--- hours, and "no hours left" is exactly the reading every caller should
--- take from it. When this was written that band did not exist, so a blanket
--- "no vector anywhere expects 0" said the same thing; the University
--- Completion Letter requirement added the band and made the blanket form
--- fail on a vector that is correct.
+-- What it was really protecting is worth keeping, so it becomes two: NO
+-- CEILING is null and never 0 — a 0 there would read as "no hours left" to
+-- every caller and gate the worker out of everything — and 0 itself now
+-- means exactly one thing.
+select is_empty(
+  $$ select 1 from cap_vectors where expect_band = 'uncapped' and expect_cap_hours is not null $$,
+  'no ceiling is null, never 0 — a 0 there would read as "no hours left" to every caller'
+);
 select is_empty(
   $$ select 1 from cap_vectors
       where expect_cap_hours = 0 and expect_band <> 'visa_expired_0' $$,
-  'no ceiling is null, never 0 — outside visa_expired_0, where 0 is the point'
+  '0 means exactly one thing: a week wholly past a lapsed right to work'
 );
 
 -- ---------------------------------------------------------------------

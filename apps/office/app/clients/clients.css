@@ -1,0 +1,71 @@
+/*
+ * Page-local styles for /clients, mirroring the inline <style> block in
+ * wireframes/backoffice/clients.html. Tokens only (CLAUDE.md).
+ */
+.tbl .client-name {
+  color: var(--text);
+  font-weight: 600;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.tbl .client-name:hover {
+  color: var(--cyan-ink);
+}
+.tbl td.num.margin {
+  color: var(--green-ink);
+  font-family: var(--font-num);
+}
+.tbl td.num.margin .muted {
+  color: var(--muted);
+}
+.tbl .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* The pager sits under the table, inside the panel. */
+.panel .pager {
+  border-bottom: 0;
+  border-top: 1px solid var(--line);
+}
+.panel .pager .right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/*
+ * The contact-email chip field: several addresses, added with Enter and
+ * removed with ×. It reads as one input, so the border is on the wrapper
+ * and the text field inside it is bare.
+ */
+.emails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: 7px 8px;
+  min-height: var(--input-h);
+  border-radius: var(--r-control);
+}
+.emails:focus-within {
+  border-color: var(--cyan-ink);
+}
+.emails input {
+  flex: 1;
+  min-width: 14ch;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-14);
+}
