@@ -19,7 +19,7 @@
 -- their fixed UUIDs, never by global counts.
 -- =====================================================================
 begin;
-select plan(28);
+select plan(29);
 
 \ir _shared/cap_vectors.psql
 
@@ -31,11 +31,18 @@ select is(
   format('all %s shared cap vectors loaded from cap.vectors.json', :cap_vector_count)
 );
 
+-- Every column, not four of them. The call site used to pass the first
+-- four and drop the rest silently, so a vector exercising a fact the SQL
+-- did not have still "ran" — which is how the two halves drifted while
+-- this test claimed to be holding them together.
 select results_eq(
   $$ select v.name, c.cap_hours, c.band::text
        from cap_vectors v
        cross join lateral weekly_cap(v.visa_limited, v.term_state,
-                                     v.completion_letter_verified, v.optout_48h) c
+                                     v.completion_letter_verified, v.optout_48h,
+                                     v.week_start, v.below_degree_level,
+                                     v.completion_date, v.visa_expiry,
+                                     v.optout_cancelled_from, v.under18) c
       order by v.name $$,
   $$ select name, expect_cap_hours, expect_band from cap_vectors order by name $$,
   'cap.vectors.json: SQL weekly_cap() gives the same cap AND band as TypeScript weeklyCap(), case for case'
@@ -60,9 +67,21 @@ select is(
   '§4.5: completion letter PLUS opt-out is what removes the weekly ceiling'
 );
 
+-- 0 used to be impossible here. The University Completion Letter
+-- Requirement makes it a real answer for exactly one band: no valid right
+-- to work, no rota. It must stay confined to that band, because anywhere
+-- else a 0 would read as "no hours left this week" to every caller, while
+-- no ceiling is still null and nothing else returns either.
 select is_empty(
-  $$ select 1 from cap_vectors where expect_cap_hours = 0 $$,
-  'no ceiling is null, never 0 — a 0 would read as "no hours left" to every caller'
+  $$ select 1 from cap_vectors
+      where expect_cap_hours = 0 and expect_band <> 'visa_expired_0' $$,
+  '0 hours means visa_expired_0 and nothing else — no ceiling is null, never 0'
+);
+
+select is_empty(
+  $$ select 1 from cap_vectors
+      where expect_band = 'visa_expired_0' and expect_cap_hours is distinct from 0 $$,
+  'and visa_expired_0 always means 0, never null: no right to work is not no ceiling'
 );
 
 -- ---------------------------------------------------------------------

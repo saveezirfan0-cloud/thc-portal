@@ -10,9 +10,9 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 540 | `pnpm test` |
+| Unit | 577 | `pnpm test` |
 | Browser smoke | 50 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 890 over 25 files | `supabase test db` |
+| Database, row-level security and rules | 891 over 25 files | `supabase test db` |
 
 The database figure is derived, not measured here: 544 over 14 files at `ad81538`,
 plus the declared plans of the four files merged since — 130 auto-assign (57),
