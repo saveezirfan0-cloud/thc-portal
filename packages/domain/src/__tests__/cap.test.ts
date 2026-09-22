@@ -2,7 +2,9 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import vectors from '../cap.vectors.json' with { type: 'json' };
 import {
+  canRoster,
   capEvidence,
+  capWeekDays,
   capWeekStart,
   explainCap,
   remainingHours,
@@ -46,8 +48,10 @@ describe('cap vectors are the same on both sides', () => {
       'graduated_48',
       'standard_48',
       'student_holiday_48',
+      'student_term_10',
       'student_term_20',
       'uncapped',
+      'visa_expired_0',
     ]);
   });
 });
@@ -130,5 +134,39 @@ describe('the profile line', () => {
     expect(capEvidence(student)).toBe('term_letter');
     expect(capEvidence({ ...student, completionLetterVerified: true })).toBe('completion_letter');
     expect(capEvidence({ ...student, visaLimited: false })).toBe('none');
+  });
+});
+
+// ---------------------------------------------------------------------
+// The per-shift right-to-work hard stop (University Completion Letter
+// Requirement §2.3, acceptance criterion 6). The weekly cap cannot express
+// this: the week a visa expires has workable days before it and none after.
+// ---------------------------------------------------------------------
+describe('canRoster — the visa expiry hard stop', () => {
+  it('allows a shift on the expiry date itself, which is inclusive', () => {
+    expect(canRoster('2026-09-30', '2026-09-30')).toBe(true);
+  });
+
+  it('blocks the day after expiry', () => {
+    expect(canRoster('2026-10-01', '2026-09-30')).toBe(false);
+  });
+
+  it('allows everything when no expiry is recorded', () => {
+    expect(canRoster('2030-01-01')).toBe(true);
+  });
+
+  it('blocks the back half of the week the visa expires', () => {
+    // The same week weeklyCap() still reports 48: the cap is not the gate
+    // here, this is.
+    const week = capWeekDays('2026-09-28');
+    expect(week.map((d) => canRoster(d, '2026-09-30'))).toEqual([
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+    ]);
   });
 });

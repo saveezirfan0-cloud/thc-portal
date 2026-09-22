@@ -39,8 +39,9 @@ Also built, server side only, with no screen in front of any of it:
   outstanding when it refuses, and `reset_to_candidate` — the Employee ID and all history
   retained, every piece of compliance evidence superseded but kept read-only
 - GDPR removal (§1.7, `remove_worker`): anonymised to "Deleted account #id", documents and
-  contacts deleted, login unlinked, future bookings released — and the Employee ID,
-  bookings, violations and verbatim feedback all retained for reporting
+  contacts deleted, the Storage objects queued for the `gdpr-purge` job, the public form's
+  own submissions anonymised, login unlinked, future bookings released — and the Employee
+  ID, bookings, violations and verbatim feedback all retained for reporting
 
 Not built: every screen bar sign-in, the venues directory and the roles directory. Of the
 background rules, BG-06/07 (geofence) wait on the geolocation shell and BG-08 on the
@@ -173,7 +174,109 @@ is built — see `docs/14` O10.
 > Done when: it matches the wireframe, and the re-check rule has a test proving one
 > verification does not unblock while something else is outstanding.
 
-## B7 · Check-in monitor and violation log (§9.5)
+## B6b · University completion letter and the 48-hour opt-out (new requirement)
+
+> Use the `compliance` agent for the review side and `staff-pwa` for the upload side.
+> Branch `feat/compliance-completion-letter`.
+>
+> **Two SQL callers already read the old shape, and the TypeScript and SQL caps have
+> diverged until this lands.** `packages/domain/src/cap.ts` now models the completion
+> DATE, the 10-hour sub-degree band and visa expiry; `weekly_cap()` and `weekly_cap_for()`
+> in `0008_weekly_cap.sql` still model only `graduated_at <= date`. Whoever builds the SQL
+> half must also update:
+>
+> - `term_letter_applies()` (`20260921180312`), which stops the §4.2 expiry ladder for a
+>   graduate. It keys on `staff.graduated_at`, so under the new rule it should key on the
+>   course completion date — otherwise a letter issued before the final exam stops the
+>   ladder early, which is the exact failure the new contract calls out.
+> - `reset_to_candidate()` (`20260921183945`), which clears `graduated_at` with the rest of
+>   the superseded evidence. Whatever column replaces or joins it needs clearing too, or a
+>   returning candidate keeps a cap off evidence that has been superseded.
+>
+> Both are one line each; they are named here because neither is in this file's own domain
+> and a grep for `graduated_at` is the only thing that finds them.
+>
+> ### `main` is red on this, and exactly why
+>
+> `090_weekly_cap.sql` fails two assertions on `main` (runs 107 and 110; last green was
+> `ce593bd`, before `640272b`). They are different problems and only one is "the SQL half
+> is missing":
+>
+> - **Assertion 2**, the `results_eq` at `090:34`, runs all 27 vectors through the SQL
+>   `weekly_cap(visa_limited, term_state, completion_letter_verified, optout_48h)`. That
+>   signature has four inputs and the new rule needs nine, so the vectors carrying a
+>   completion date, a sub-degree course or a visa expiry cannot come out right. This one
+>   is the deferred SQL half.
+> - **Assertion 7**, the `is_empty` at `090:63`, asserts *"no ceiling is null, never 0 — a
+>   0 would read as 'no hours left' to every caller"*. The new rule **deliberately makes 0
+>   meaningful**: `weeklyCap()` returns 0 for a week wholly past right-to-work expiry, and
+>   the generated vectors now contain exactly one such case (`visa_expired_0`,
+>   `cap_vectors.psql:55`). So this assertion no longer states the rule — it contradicts
+>   it, and it is stale rather than unimplemented.
+>
+> Assertion 7 is a one-line change and does not wait on the rest of B6b: the invariant
+> needs re-wording to "no ceiling is null; 0 means no workable day in the week, which only
+> a lapsed right to work produces". Worth doing first, because it gets `main` from two
+> failures to one and makes the remaining one honestly say "the SQL half is not built yet".
+>
+> Contract: `docs/scope/university-completion-letter-requirement.pdf`. This is a NEW
+> document from THC, not part of scope v1.6, and it refines RULE-20. Read it whole —
+> the exposure is civil penalties for illegal working, so the cautious reading wins
+> every time.
+>
+> **The rule half is already done.** `packages/domain/src/cap.ts` implements all of it:
+> the 10-hour below-degree-level band, the release running from the course completion
+> date rather than the verification date, the visa-expiry hard stop, opt-out
+> cancellation after a notice period, and under-18s being unable to opt out. 27 shared
+> vectors in `cap.vectors.json` hold the TypeScript and the SQL to the same cases. Do
+> not re-derive any of that — read it and build against it.
+>
+> What is left is everything around the rule:
+>
+> - **Upload** (§2.1). Student/Tier 4 workers get a completion-letter slot in the Staff
+>   App documents hub. Accept PDF, JPG, PNG, 10 MB. Also accept a completers transcript
+>   or an official university email — one document type, three acceptable forms. The
+>   worker enters the course completion date printed on it. The upload lands in
+>   `pending` and changes NO cap by itself; that is acceptance criterion 2.
+> - **Review** (§2.2). Approve or reject in the Needs review queue. A rejection needs a
+>   reason and notifies the worker, who can re-upload. On approval the reviewer confirms
+>   the completion date and the visa expiry.
+> - **Audit and retention** (§4). Document, upload timestamp, reviewer identity, approval
+>   timestamp, completion date, rejection reasons — all of it, exportable. Retention is
+>   employment plus two years, which is longer than anything else in the schema, so it
+>   needs its own rule rather than riding on the general one.
+> - **Rota guard** (§4). Warn or block when an assignment would breach the current cap —
+>   configurable, so it belongs in `settings`. The expiry hard stop is NOT configurable:
+>   `canRoster()` is a hard no.
+> - **Reporting** (§4). Every student-visa worker, their current cap, evidence status and
+>   visa expiry, in one view.
+> - **Notifications** (§5). Worker: upload received, approved with the new cap and its
+>   effective date, rejected with the reason. Admin: awaiting review, visa expiry at
+>   60/30/14 days, opt-out signed or cancelled. These are new entries in the §8 register
+>   in `packages/notifications`, each with its own outbox key.
+>
+> Watch the edge cases in §7, which is where this gets subtle: a completion date in the
+> future, a visa expiring around completion, and a worker switching to a Graduate or
+> Skilled Worker visa mid-employment — a new right-to-work check that ends the student
+> logic but leaves the 48-hour Working Time rules in force.
+>
+> Done when: the seven acceptance criteria in §6 each have a test naming them, and a
+> Student-visa worker with no approved letter cannot be rostered past 20 hours in any
+> week through the UI, not merely in the rule.
+
+## B7 · Check-in monitor and violation log (§9.5) — **built**
+
+`/checkin` is live. The Status column is resolved by `checkin_monitor_v`, not by the
+screen: seven states with time arithmetic in each is exactly what drifts when a page
+re-derives it, and pgTAP holds the view (`240_ping_ingest_and_monitor.sql`). Resolve goes
+through `resolve_violation`, which keeps the mandatory note and the finish-time validation
+on the server where the dialog can show its refusal. Live is two mechanisms on purpose:
+Realtime for the writes, and a 30-second refresh for the states that arrive by the clock
+alone — Due becoming the 30-minute alert, and a shift crossing end+4h into No check-out.
+
+Still to come on this screen: the per-event counters in the strip are derived from the
+rows on the board rather than from the roster, so an event with nobody booked does not
+appear at all.
 
 > Use the `checkin` agent. Branch `feat/checkin-monitor`.
 >
@@ -357,7 +460,21 @@ is built — see `docs/14` O10.
 >
 > Done when: every document state renders and the conviction path has a test.
 
-## S5 · On-shift screen (§10.4, §5.1–5.2b)
+## S5 · On-shift screen (§10.4, §5.1–5.2b) — **built**
+
+`/shifts/[id]` is live: the GPS states, check-in through the grace and the lock, the
+breaks block where the client does not pay for them, check-out, and the earnings
+confirmation showing the base rate only. Every decision is the database's —
+`attempt_check_in`, `start_break`, `finish_break`, `check_out` — and the screen renders
+the message key that comes back.
+
+`record_ping` runs while the screen is open, which is as much background tracking as a
+PWA can do (ADR-0001, docs/06). It is worth having even so: the off-site check-out reads
+that trail, so a worker who had the app open at any point during the shift gets their
+real finish recorded instead of falling to RULE-02.
+
+Still to come here: the shift LIST (S3) that links to this screen, the static message
+screens for a cancelled event and a removal, and the push registration.
 
 > Use the `checkin` agent. Branch `feat/checkin-staff-shift`.
 >
@@ -492,7 +609,9 @@ other way round, pg_cron spends the gap posting at a 404.
 > gaps: deleting the GoTrue `auth.users` row needs the admin API, which SQL cannot reach,
 > so removal unlinks `user_id` instead; and redacting a worker's name from free-text
 > feedback needs an LLM step the scope rules out of v1 — feedback is retained verbatim and
-> the office redacts by hand.
+> the office redacts by hand. The Storage half IS built (`gdpr-purge`), and the only
+> genuine residue is deleting the interview video at Willo, which waits on P3's account —
+> see `docs/14` O11.
 
 > Use the `platform` agent. Branch `feat/platform-lifecycle`.
 >
@@ -504,6 +623,56 @@ other way round, pg_cron spends the gap posting at a 404.
 >
 > Done when: an anonymised worker still appears correctly on historical timesheets, and
 > the import produces the right status split on staging.
+
+---
+
+# Known defects
+
+Found while building something else, too small to stop for and too easy to lose. Neither
+is a missing screen, so neither shows up in the lists above.
+
+## D1 · The shared Checkbox and Radio cannot be used by keyboard (§1.2)
+
+> Use the `design-system` agent. Branch `feat/design-system-checkbox-a11y`.
+>
+> `packages/ui/src/components/Controls.tsx` hides the real `<input>` behind
+> `className="hide"`, which is `display: none !important`. A hidden input is not
+> focusable and is not in the accessibility tree, so both controls work with a mouse and
+> with nothing else — no keyboard, no screen reader. Playwright's `.check()` times out on
+> them, which is how it surfaced.
+>
+> Two consumers today: the design-system gallery, and `/apply`, which deliberately does
+> NOT use the shared component — it carries its own visually-hidden input and a comment
+> saying why, because a GDPR consent tick that has to be given deliberately (§1.7) cannot
+> be mouse-only. Any screen that reaches for `Checkbox` or `Radio` before this is fixed
+> ships an unusable control.
+>
+> The fix is the visually-hidden pattern `/apply` already uses: the input positioned over
+> the box at `opacity: 0`, with the focus ring drawn on the box via
+> `:focus-visible + .box`. It is a shared-package change, so it ships in its own pull
+> request first.
+>
+> Done when: the control can be tabbed to and toggled with the keyboard, a Playwright
+> test checks it without `force`, and `apps/staff/app/apply/ApplyForm.tsx` has gone back
+> to the shared component and dropped its local copy and CSS.
+
+## D2 · /apply is a public write endpoint with no rate limit (§2.1)
+
+> Use the `onboarding` agent — this belongs with P3, where it starts costing money.
+> Branch `feat/onboarding-apply-abuse`.
+>
+> `submit_application` is granted to `anon` by design: §2.1 is a public URL with no
+> registration. Nothing limits how often it may be called, so candidate rows can be
+> created in a loop, and once P3 lands each one becomes a Willo interview.
+>
+> The scope specifies no captcha, so which defence to use is a product decision rather
+> than something to invent in a migration — a challenge on the form, a per-IP limit at
+> the edge, or a server-side throttle keyed on the normalised email and mobile the
+> duplicate check already computes. Whichever it is, a genuine applicant must never meet
+> a challenge they cannot pass.
+>
+> Done when: a burst from one source is refused, a single honest application is not, and
+> the limit is asserted rather than assumed.
 
 ---
 
