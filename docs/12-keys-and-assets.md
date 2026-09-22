@@ -146,9 +146,9 @@ names the code already expects.
 
 | File | App | Why |
 |---|---|---|
-| `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` | `apps/staff/public/` | The web app manifest already names these three. They do not exist yet, so the staff app is currently not installable. |
+| `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` | `apps/staff/public/` | **Done.** All three exist at the right sizes, are the real mark on cyan, and the manifest is valid — the staff app is installable. (This line used to say they were missing; they were not.) |
 | `favicon.ico` and `apple-icon.png` | All three apps' `public/` | Browser tab and iOS home screen |
-| Brand mark | `packages/ui` | The sign-in card and sidebar currently render the letters "THC" in a box as a placeholder |
+| Brand mark | `packages/ui` | **Done.** `packages/ui/src/components/Logo.tsx` inlines `brand/thc-mark.svg` and is wired into all three sign-in cards, the Back Office sidebar, the Client Portal top bar and `/apply/submitted`. A test asserts the inlined paths still equal the source file, so a new logo must be regenerated rather than hand-edited. |
 
 The maskable icon needs roughly 20% clear padding around the mark, because Android crops
 it to whatever shape the phone uses. I will handle that when generating.
