@@ -16,8 +16,9 @@ below. This page is the map: what exists, what is missing, and the order.
 
 ## 1 · What is genuinely built
 
-**Foundations — done.** Three Next.js apps on one Supabase database, **41
-migrations**, **33 pgTAP files**, the design system in `packages/ui`, the pure
+**Foundations — done.** Three Next.js apps on one Supabase database, **46
+migrations**, **35 pgTAP files (1291 assertions)**, the design system in
+`packages/ui`, the pure
 rule layer in `packages/domain` (`cap` `pay` `scoring` `autoAssign` `buffer`
 `time` `state` `overlap` `shift` `board` `events`), and the §8 notification
 register in `packages/notifications`. The rule layer's own suite is **293 tests
@@ -32,8 +33,8 @@ for a fortnight.
 
 | App | Routes |
 |---|---|
-| Back Office | `/` (a landing page standing in for the Dashboard) · `/events` · `/events/:id` · `/events/new` · `/events/:id/edit` · `/checkin` · `/clients` · `/clients/:id` · `/staff` · `/staff/:id` · `/roles` · `/venues` · `/login` · `/design-system` |
-| Staff App | `/` · `/apply` · `/apply/submitted` · `/shifts` · `/shifts/:id` · `/invites` · `/invites/:id` · `/radar` · `/radar/:id` · `/login` |
+| Back Office | `/` (a landing page standing in for the Dashboard) · `/events` · `/events/:id` · `/events/new` · `/events/:id/edit` · `/checkin` · `/clients` · `/clients/:id` · `/staff` · `/staff/:id` · `/roles` · `/venues` · `/settings` · `/login` · `/design-system` |
+| Staff App | `/` · `/apply` · `/apply/submitted` · `/shifts` · `/shifts/:id` · `/invites` · `/invites/:id` · `/radar` · `/radar/:id` · `/profile` · `/profile/details` · `/profile/security` · `/profile/payments` · `/login` |
 | Client Portal | `/` · `/client` · `/client/events/:id` · `/login` — **§11 is feature-complete bar the two PDFs** |
 
 Everything else in `docs/08-screen-inventory.md` is not started. The Back Office
@@ -42,8 +43,18 @@ with a "soon" tag rather than linking to a 404; the Staff App does the same for
 `/documents`. Drop the `pending` flag in `apps/office/app/_components/OfficeShell.tsx`
 or `apps/staff/app/_components/StaffShell.tsx` when one lands.
 
-`/settings` (§6, the Django-Admin replacement) is not in the Back Office nav at
-all — it has no route and no placeholder. That is item **B14**.
+`/settings` (§6, the Django-Admin replacement) **now exists** — scoring weights,
+auto-assign limits, the Willo stage map, senders and the standard venue radii,
+each block saved on its own. It is **not in the sidebar yet**: add it to `NAV` in
+`apps/office/app/_components/OfficeShell.tsx`. Nothing reads the `senders` rows it
+writes, either — `packages/notifications/src/templates.ts` still hard-codes the
+two addresses, so §9.12's "changed without a release" is only half true until
+whoever owns §8 makes the outbox drain read the setting.
+
+The Staff App profile routes are `/profile/details`, `/profile/security` and
+`/profile/payments`, where `docs/08-screen-inventory.md` says `/security` and
+`/payments`. Nesting them is the better shape; **the inventory is what should
+move**, and until it does the two pages disagree.
 
 ---
 
@@ -68,7 +79,7 @@ two at once — it names the three files every session reaches for.
    subscription. It gates **P2** — installability is what makes Web Push possible
    on iOS at all, so "no notification is ever sent" cannot be fixed without it.
 6. **B11 / B12 · Reports, CSV, the Monday 09:00 send, and the two PDFs.**
-7. **B14 · System settings**, then **S2** (the 11-step wizard), **S4** and **B13**.
+7. **S2** (the 11-step wizard), then **S4** and **B13**. B14 is done.
 
 ---
 
@@ -97,7 +108,8 @@ two at once — it names the three files every session reaches for.
 
 ## 4 · Known defects, unassigned
 
-These came out of the `qa-reviewer` sweep and are real. Nobody is on them.
+These are real and nobody is on them. The first two came out of the `qa-reviewer`
+sweep; the rest were found by running things rather than reading them.
 
 - **B2 · the booking state machine models four of the seven states the database
   can hold**, and there is no DB-side guard at all — `packages/domain/state.ts`
@@ -112,6 +124,23 @@ These came out of the `qa-reviewer` sweep and are real. Nobody is on them.
 - **D2 · `/apply` is a public write endpoint with no rate limit** (§2.1).
 - **D3 · the GDPR consent on `/apply` links to a page that does not exist**
   (§1.7).
+- **`apps/staff/app/shifts/[id]/data.ts` takes `(row.logs ?? [])[0]`.**
+  `check_logs` holds one row per button press, not one per booking, so a worker
+  who was turned away and then checked in can render the wrong log. The SQL
+  elsewhere uses `left join lateral … where check_in_at is not null … limit 1`
+  for exactly this; that screen does not.
+- **A worker's home address is not re-geocoded when they edit it.** There is no
+  geocoder in the repo, so `home_location` — and therefore the §6 proximity score
+  — goes stale on an address change. E7 tells the office and the screen says so,
+  but it wants a decision rather than a note.
+- **`/apply` is still unthrottled per caller.** The new limits are per email and
+  per mobile; a distributed attacker with a fresh pair each time is bounded only
+  at the edge. That belongs in front of PostgREST, so it is an `apps/` change.
+- **`public.rls_auto_enable()` exists on the live project and in no migration.**
+  A `SECURITY DEFINER` function that manipulates RLS, origin unknown, which was
+  reachable unauthenticated. EXECUTE is now revoked from `public`, `anon` and
+  `authenticated` by a `DO` block that no-ops where it is absent — but nobody has
+  established what created it, and that is worth finding out.
 
 ---
 
@@ -153,7 +182,17 @@ previews back on for everything.
 ## 7 · Before you trust a local test run
 
 - `supabase start` needs Docker, which some sandboxes block. Where it is
-  unavailable, take database numbers from CI, not from a local count.
+  unavailable, **build a throwaway cluster rather than shipping unrun SQL**: a
+  plain PostgreSQL 16 `initdb`, the Supabase-shaped roles and schemas, then every
+  migration in order against an empty database and `pg_prove` over
+  `supabase/tests`. It takes a few minutes and it is how the three defects in the
+  staff self-service migration were found — including one that raised at run time
+  and not at create time, so it would have deployed green and broken every
+  contact save.
+- **`002` assertion 6 fails in any local harness and that is expected.** It
+  records the ADR-0010 known gap — on Supabase `anon` can write `spatial_ref_sys`
+  — which is false locally because `postgres` owns PostGIS there. One failure is
+  the clean baseline; two is a regression.
 - The browser suite needs a Supabase project to reach, and since the auth gate
   closed it needs one to *start*: an app built without `NEXT_PUBLIC_SUPABASE_URL`
   answers 503 on every route, so Playwright's `webServer` wait times out after
