@@ -120,6 +120,13 @@ export type StaticScreenCase = 'event_cancelled' | 'withdrawn' | 'no_checkout';
  * afterwards. The third is different: the booking stays `worked`, so the card
  * stays visible in My shifts and shows this in place of the check-out
  * controls until a manager resolves the violation.
+ *
+ * NOT YET WIRED IN. `/shifts/:id` is the §5 on-shift screen, which already
+ * renders the No check-out case in its own words. The other two need
+ * `events.cancelled_at` and `bookings.cancel_cause` on that screen's
+ * `ShiftDetail`, which is the `checkin` bot's loader — two columns and one
+ * branch. This lives here, tested, so that change is a one-liner rather than
+ * a second copy of the copy.
  */
 export function staticScreenCase(booking: StaffBooking): StaticScreenCase | null {
   if (booking.eventCancelledAt) return 'event_cancelled';

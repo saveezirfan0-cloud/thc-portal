@@ -18,6 +18,7 @@ import {
   KanbanCard,
   KanbanColumn,
   KpiTile,
+  Logo,
   MobileCard,
   MobileList,
   MobileRow,
@@ -567,7 +568,7 @@ export default function Page() {
             <PhoneFrame caption="M1 · Shifts">
               <StatusBar />
               <AppHeader
-                brand={<span className="logo sm">THC</span>}
+                brand={<Logo size="sm" />}
                 title="Shifts"
                 actions={<Avatar name="Joy Nwosu" size="sm" />}
               />
@@ -628,7 +629,7 @@ export default function Page() {
               <StatusBar />
               <AppHeader
                 collapsed
-                brand={<span className="logo sm">THC</span>}
+                brand={<Logo size="sm" />}
                 title="On shift"
                 actions={<Avatar name="Joy Nwosu" size="sm" />}
               />
@@ -674,7 +675,7 @@ export default function Page() {
             <PhoneFrame caption="M3 · Wizard and app lock" short>
               <StatusBar />
               <AppHeader
-                brand={<span className="logo sm">THC</span>}
+                brand={<Logo size="sm" />}
                 title="Get set up"
                 actions={<Pill tone="cyan">1 / 11</Pill>}
                 below={<Progress value={9} max={100} thin />}

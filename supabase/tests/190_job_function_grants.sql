@@ -49,9 +49,12 @@ select is_empty(
           -- a grant that went missing here fails the office's only route
           -- back for a returning worker.
           'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
-          -- §1.7 (20260921190118). Irreversible, so the grant matters in
-          -- both directions: service_role must have it, and nobody else.
-          'remove_worker'
+          -- §1.7 (20260921190118, 20260922081512). Irreversible, so the
+          -- grant matters in both directions: service_role must have it,
+          -- and nobody else. The Storage pair is how the erasure is
+          -- actually discharged — a missing grant there leaves a passport
+          -- scan on disk after the row that named it is gone.
+          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion'
         )
         and not has_function_privilege('service_role', p.oid, 'execute') $$,
   'the service role can execute every function the §7 jobs call'
@@ -80,7 +83,7 @@ select is_empty(
           'compliance_daily', 'block_worker', 'unblock_if_compliant',
           'request_p45', 'declare_conviction', 'released_shift_lines',
           'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
-          'remove_worker'
+          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion'
         )
         and has_function_privilege('anon', p.oid, 'execute') $$,
   'anon can execute none of the job, engine, compliance or lifecycle write paths'
@@ -109,7 +112,7 @@ select is_empty(
           'compliance_daily', 'block_worker', 'unblock_if_compliant',
           'request_p45', 'declare_conviction', 'released_shift_lines',
           'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
-          'remove_worker'
+          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion'
         )
         and has_function_privilege('authenticated', p.oid, 'execute') $$,
   'nor can a signed-in worker block, retire, reset or remove anybody'

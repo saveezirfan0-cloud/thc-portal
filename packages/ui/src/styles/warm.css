@@ -14,7 +14,7 @@
 /* ---- sidebar: pill active state, no left bar ------------------------
    v1: 3px accent left bar + 8% fill, padding 11px 18px.
    v2: padding 11px 16px; margin 2px 12px; 14px radius; 12% fill. */
-:root[data-style='warm'] .sidebar nav a {
+:root[data-style='warm'] .sidebar nav :is(a, .pending) {
   padding: 11px var(--sp-16);
   margin: 2px var(--sp-12);
   border-left: 0;
@@ -156,8 +156,43 @@
 :root[data-style='warm'] .cal .day {
   border-radius: var(--r-card);
 }
+/* ---- the accent bar on a rounded box --------------------------------
+   §1.6 draws a status accent as a 3px left border. At radius 0 that is a
+   clean bar; at 22px or 999px the border follows the curve and renders as
+   a crescent floating beside the text, which reads as a bug rather than a
+   marker. So in this style the edge goes back to the hairline and the
+   accent is drawn inset: a rounded bar that clears the corner, with room
+   made for it in the padding. --accent carries the tone from
+   components.css, so a green toast is still green here and nothing about
+   the palette rules moves. */
+:root[data-style='warm'] .toast,
+:root[data-style='warm'] .card.accent,
+:root[data-style='warm'] .card.purple,
 :root[data-style='warm'] .evchip {
-  border-left-width: 4px;
+  border-left: 1px solid var(--line);
+  padding-left: var(--sp-20);
+}
+:root[data-style='warm'] .evchip {
+  border-left: 0;
+  padding-left: var(--sp-14);
+}
+:root[data-style='warm'] .toast::before,
+:root[data-style='warm'] .card.accent::before,
+:root[data-style='warm'] .card.purple::before,
+:root[data-style='warm'] .evchip::before {
+  content: '';
+  position: absolute;
+  left: var(--sp-8);
+  top: var(--sp-10);
+  bottom: var(--sp-10);
+  width: 3px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+}
+:root[data-style='warm'] .evchip::before {
+  left: var(--sp-6);
+  top: 3px;
+  bottom: 3px;
 }
 
 /* ---- the card shadow, light only -------------------------------------
@@ -188,4 +223,23 @@
 :root[data-style='warm'] .btn.purple:hover {
   background: var(--grad-auto-hover);
   color: var(--on-purple);
+}
+
+
+/* ---- the phone gallery frame ----------------------------------------
+   `backdrop-filter` puts an element in its own backdrop root, and Chromium
+   does not clip that root to an ancestor's border-radius — so the frosted
+   bottom navigation painted square corners over the 44px frame and the
+   gallery phones looked broken along their bottom edge. Rounding the nav
+   itself is what actually clips. It is scoped to `.phone` because the real
+   Staff App runs the same nav full-bleed on a device, where it must stay
+   square. 1px comes off for the frame's own border. */
+:root[data-style='warm'] .phone > .bottom-nav {
+  border-bottom-left-radius: calc(var(--r-phone) - 1px);
+  border-bottom-right-radius: calc(var(--r-phone) - 1px);
+}
+:root[data-style='warm'] .phone > .statusbar,
+:root[data-style='warm'] .phone > .app-header:first-child {
+  border-top-left-radius: calc(var(--r-phone) - 1px);
+  border-top-right-radius: calc(var(--r-phone) - 1px);
 }

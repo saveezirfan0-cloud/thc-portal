@@ -20,7 +20,7 @@
 .kvs {
   border: 1px solid var(--line);
   border-radius: var(--r-card);
-  background: var(--panel-glass);
+  background: var(--card-glass);
   padding: 2px var(--sp-12);
 }
 .kv {

@@ -288,6 +288,39 @@ describe('palette discipline', () => {
   });
 });
 
+describe('a nav item that is not a link', () => {
+  // Phase 0 renders an unbuilt route as a <span class="pending">, not an
+  // <a>. Anything that lays a nav item out has to name both, or those items
+  // lose their flex, padding and gap and the "soon" pill leaves the
+  // sidebar. Anything that describes a *link* — hover, the active state —
+  // may stay on the anchor.
+  const LAYOUT = /display|flex|padding|gap|align-items|border-bottom: var\(--nav-bar\)/;
+
+  function itemRules(prefix: string) {
+    return stripComments(sheets['components.css']!)
+      .split(/(?=\n\s*[.@])/)
+      .filter((rule) => new RegExp(`${prefix}\\s+a[ {,]`).test(rule.split('{')[0] ?? ''));
+  }
+
+  for (const prefix of ['\\.sidebar nav', '\\.bottom-nav']) {
+    it(`${prefix.replace(/\\/g, '')} lays the pending span out like the link`, () => {
+      for (const rule of itemRules(prefix)) {
+        const selector = rule.split('{')[0]!;
+        const body = rule.slice(rule.indexOf('{'));
+        if (!LAYOUT.test(body)) continue;
+        expect(selector, `link-only layout rule: ${selector.trim()}`).toContain('.pending');
+      }
+    });
+  }
+
+  it('keeps the two navs reachable from the components that emit them', () => {
+    // The class the component writes and the class the sheet styles are the
+    // same one, which is what makes the rule above worth anything.
+    expect(sheets['components.css']).toContain('.sidebar nav :is(a, .pending)');
+    expect(sheets['components.css']).toContain('.bottom-nav :is(a, .pending)');
+  });
+});
+
 describe('focus', () => {
   it('gives every interactive element a visible accent ring', () => {
     const base = stripComments(sheets['base.css']!);
