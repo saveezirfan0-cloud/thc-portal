@@ -8,18 +8,56 @@
  * server" and a form can be edited by whoever is sitting in front of it.
  */
 
-/** The age select, exactly as `wireframes/public/apply.html` lists it. */
-export const AGE_OPTIONS = [
-  { value: 'under_18', label: 'Under 18' },
-  ...Array.from({ length: 13 }, (_, i) => ({ value: String(18 + i), label: String(18 + i) })),
-  { value: '31_40', label: '31 – 40' },
-  { value: '41_50', label: '41 – 50' },
-  { value: '51_60', label: '51 – 60' },
-  { value: '60_plus', label: '60+' },
-] as const;
+/**
+ * Date of birth, not an age band — ADR-0008.
+ *
+ * §2.1 asks for "Age (select from 18)" and the wireframe draws a select.
+ * §2.12 matches returning applicants on mobile + date of birth, which a
+ * band cannot satisfy, and THC settled the contradiction in favour of the
+ * date. The band §2.1 wanted is still recorded; it is derived from the
+ * date rather than asked, so the two can never disagree.
+ */
 
-/** Every value the database will accept. "under_18" is deliberately absent. */
-const ADULT_BANDS = new Set(AGE_OPTIONS.map((o) => o.value).filter((v) => v !== 'under_18'));
+/** The §2.1 band, computed never typed. Mirrors the SQL in the migration. */
+export function ageBandFor(age: number): string {
+  if (age <= 30) return String(age);
+  if (age <= 40) return '31_40';
+  if (age <= 50) return '41_50';
+  if (age <= 60) return '51_60';
+  return '60_plus';
+}
+
+/**
+ * Completed years on `on`, which defaults to today. Plain calendar
+ * arithmetic: the birthday has happened this year only once the month and
+ * day have passed.
+ */
+export function ageOn(dob: Date, on: Date = new Date()): number {
+  let age = on.getFullYear() - dob.getFullYear();
+  const months = on.getMonth() - dob.getMonth();
+  if (months < 0 || (months === 0 && on.getDate() < dob.getDate())) age -= 1;
+  return age;
+}
+
+/**
+ * Parses the `yyyy-mm-dd` an `<input type="date">` produces.
+ *
+ * Built from the parts rather than `new Date(string)`, which reads a bare
+ * date as UTC — shifting it a day for anyone west of Greenwich — and which
+ * accepts 2007-02-31 by rolling it into March. The round-trip check is
+ * what rejects a day that does not exist.
+ */
+export function parseDob(value: string): Date | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!m) return null;
+  const [year, month, day] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const d = new Date(year, month - 1, day);
+  if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+  return d;
+}
+
+/** Older than this is a typo, not an applicant. */
+const MAX_AGE = 100;
 
 /**
  * International dialling codes for the mobile picker (§2.1).
@@ -98,7 +136,8 @@ export interface ApplicationValues {
   email: string;
   dialCode: string;
   mobile: string;
-  ageBand: string;
+  /** `yyyy-mm-dd`, straight from the date input. */
+  dob: string;
   consent: boolean;
 }
 
@@ -111,7 +150,7 @@ export const EMPTY_VALUES: ApplicationValues = {
   email: '',
   dialCode: '+44',
   mobile: '',
-  ageBand: '',
+  dob: '',
   consent: false,
 };
 
@@ -143,9 +182,21 @@ export function validate(values: ApplicationValues): FieldErrors {
   if (!values.mobile.trim()) errors.mobile = 'Enter your mobile number';
   else if (!/^\+[1-9]\d{6,14}$/.test(e164)) errors.mobile = 'Check your mobile number';
 
-  // §2.1: under 18 is rejected on the spot, and again on the server.
-  if (!values.ageBand) errors.ageBand = 'Select your age';
-  else if (!ADULT_BANDS.has(values.ageBand)) errors.ageBand = 'You must be 18 or over to apply';
+  // §2.1 / ADR-0008: under 18 is rejected on the spot, and again on the
+  // server. A missing date, an impossible one and an under-18 one are three
+  // different mistakes and say so.
+  const typed = values.dob.trim();
+  const dob = typed === '' ? null : parseDob(typed);
+  if (typed === '') errors.dob = 'Enter your date of birth';
+  else if (dob === null) errors.dob = 'Enter a real date, as day, month and year';
+  else {
+    const age = ageOn(dob);
+    if (dob.getTime() > Date.now() || age > MAX_AGE) {
+      errors.dob = 'Enter a real date, as day, month and year';
+    } else if (age < 18) {
+      errors.dob = 'You must be 18 or over to apply';
+    }
+  }
 
   // §1.7: consent is mandatory and nothing is created without it.
   if (!values.consent) {

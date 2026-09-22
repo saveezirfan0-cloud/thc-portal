@@ -15,7 +15,7 @@
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(57);
+select plan(61);
 
 \ir _shared/overlap_vectors.psql
 
@@ -225,6 +225,38 @@ select is(invite_worker(:'sec', :'blocked')->>'reason', 'blocked',
   'the gates are re-applied at the moment of the insert, not just when the pool was queried');
 select is(invite_worker(:'sec', :'selfc')->>'reason', 'self_cancelled',
   'RULE-04 blocks a MANUAL invitation too, not only auto-assign');
+
+-- ---------------------------------------------------------------------
+-- The gate that is an ABSENCE rather than a value.
+--
+-- auto_assign_candidates ends `where s.removed_at is null and s.left_at
+-- is null`, so for a leaver (§10.6) or a removed worker (§1.7) it returns
+-- NO ROW — not a row carrying a gate. invite_worker read that with
+-- `select gate into v_gate ... ; if v_gate is not null then refuse`, and
+-- PL/pgSQL leaves the variable NULL when nothing matches. So the absence
+-- of a candidate row read exactly like "no gate applies" and the insert
+-- went ahead: §10.6 step 5 says a leaver "cannot be invited,
+-- auto-assigned or manually added to any event", and §2.12 says the same
+-- of all three stopped states.
+--
+-- Unreachable until §10.6 and §1.7 existed, because nothing could set
+-- either column. 20260921192246 closes it with `not found`.
+-- ---------------------------------------------------------------------
+update staff set status = 'inactive', left_at = now() - interval '1 day' where id = :'clean2';
+select is(invite_worker(:'sec', :'clean2')->>'reason', 'not_bookable',
+  '§10.6: a worker who has left cannot be invited — their absence from the candidate pool must not read as "no gate applies"');
+select is((select count(*)::int from bookings where shift_id = :'sec' and staff_id = :'clean2'), 0,
+  'and no row is written, which is what the old code did instead');
+
+update staff set status = 'removed', left_at = null, removed_at = now() - interval '1 day' where id = :'clean2';
+select is(invite_worker(:'sec', :'clean2')->>'reason', 'not_bookable',
+  '§1.7: nor can a GDPR-removed worker, for the same reason and by the same route');
+
+-- Put them back: clean2 is the second worker in the first-to-confirm and
+-- withdrawal cases below, and borrowing them here must not change those.
+update staff set status = 'compliant', left_at = null, removed_at = null where id = :'clean2';
+select is((select gate from auto_assign_candidates(:'sec') where staff_id = :'clean2'), null,
+  'and they return to the pool cleanly, so the cases below are unaffected by having borrowed them');
 
 -- ---------------------------------------------------------------------
 -- 5. First-to-confirm and the automatic withdrawal (§3.4, §3.6)
