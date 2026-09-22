@@ -39,8 +39,9 @@ Also built, server side only, with no screen in front of any of it:
   outstanding when it refuses, and `reset_to_candidate` — the Employee ID and all history
   retained, every piece of compliance evidence superseded but kept read-only
 - GDPR removal (§1.7, `remove_worker`): anonymised to "Deleted account #id", documents and
-  contacts deleted, login unlinked, future bookings released — and the Employee ID,
-  bookings, violations and verbatim feedback all retained for reporting
+  contacts deleted, the Storage objects queued for the `gdpr-purge` job, the public form's
+  own submissions anonymised, login unlinked, future bookings released — and the Employee
+  ID, bookings, violations and verbatim feedback all retained for reporting
 
 Not built: every screen bar sign-in, the venues directory and the roles directory. Of the
 background rules, BG-06/07 (geofence) wait on the geolocation shell and BG-08 on the
@@ -177,6 +178,46 @@ is built — see `docs/14` O10.
 
 > Use the `compliance` agent for the review side and `staff-pwa` for the upload side.
 > Branch `feat/compliance-completion-letter`.
+>
+> **Two SQL callers already read the old shape, and the TypeScript and SQL caps have
+> diverged until this lands.** `packages/domain/src/cap.ts` now models the completion
+> DATE, the 10-hour sub-degree band and visa expiry; `weekly_cap()` and `weekly_cap_for()`
+> in `0008_weekly_cap.sql` still model only `graduated_at <= date`. Whoever builds the SQL
+> half must also update:
+>
+> - `term_letter_applies()` (`20260921180312`), which stops the §4.2 expiry ladder for a
+>   graduate. It keys on `staff.graduated_at`, so under the new rule it should key on the
+>   course completion date — otherwise a letter issued before the final exam stops the
+>   ladder early, which is the exact failure the new contract calls out.
+> - `reset_to_candidate()` (`20260921183945`), which clears `graduated_at` with the rest of
+>   the superseded evidence. Whatever column replaces or joins it needs clearing too, or a
+>   returning candidate keeps a cap off evidence that has been superseded.
+>
+> Both are one line each; they are named here because neither is in this file's own domain
+> and a grep for `graduated_at` is the only thing that finds them.
+>
+> ### `main` is red on this, and exactly why
+>
+> `090_weekly_cap.sql` fails two assertions on `main` (runs 107 and 110; last green was
+> `ce593bd`, before `640272b`). They are different problems and only one is "the SQL half
+> is missing":
+>
+> - **Assertion 2**, the `results_eq` at `090:34`, runs all 27 vectors through the SQL
+>   `weekly_cap(visa_limited, term_state, completion_letter_verified, optout_48h)`. That
+>   signature has four inputs and the new rule needs nine, so the vectors carrying a
+>   completion date, a sub-degree course or a visa expiry cannot come out right. This one
+>   is the deferred SQL half.
+> - **Assertion 7**, the `is_empty` at `090:63`, asserts *"no ceiling is null, never 0 — a
+>   0 would read as 'no hours left' to every caller"*. The new rule **deliberately makes 0
+>   meaningful**: `weeklyCap()` returns 0 for a week wholly past right-to-work expiry, and
+>   the generated vectors now contain exactly one such case (`visa_expired_0`,
+>   `cap_vectors.psql:55`). So this assertion no longer states the rule — it contradicts
+>   it, and it is stale rather than unimplemented.
+>
+> Assertion 7 is a one-line change and does not wait on the rest of B6b: the invariant
+> needs re-wording to "no ceiling is null; 0 means no workable day in the week, which only
+> a lapsed right to work produces". Worth doing first, because it gets `main` from two
+> failures to one and makes the remaining one honestly say "the SQL half is not built yet".
 >
 > Contract: `docs/scope/university-completion-letter-requirement.pdf`. This is a NEW
 > document from THC, not part of scope v1.6, and it refines RULE-20. Read it whole —
@@ -568,7 +609,9 @@ other way round, pg_cron spends the gap posting at a 404.
 > gaps: deleting the GoTrue `auth.users` row needs the admin API, which SQL cannot reach,
 > so removal unlinks `user_id` instead; and redacting a worker's name from free-text
 > feedback needs an LLM step the scope rules out of v1 — feedback is retained verbatim and
-> the office redacts by hand.
+> the office redacts by hand. The Storage half IS built (`gdpr-purge`), and the only
+> genuine residue is deleting the interview video at Willo, which waits on P3's account —
+> see `docs/14` O11.
 
 > Use the `platform` agent. Branch `feat/platform-lifecycle`.
 >
