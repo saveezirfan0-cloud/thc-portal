@@ -127,9 +127,17 @@ back on for everything.
 
 - `supabase start` needs Docker, which some sandboxes block. When it is unavailable
   take database numbers from the CI run, not a local count.
-- The browser suite signs in, so it needs to reach Supabase. Where egress is blocked
-  every signed-in test fails with a `waitForURL` timeout. That is the environment,
-  not the code — CI runs a local Supabase and passes.
+- The browser suite needs a Supabase project to reach, and since `7d28ba4` closed the
+  auth gate it needs one to *start*: an app built without
+  `NEXT_PUBLIC_SUPABASE_URL` answers 503 on every route, so Playwright's `webServer`
+  wait times out after 120s and nothing runs. Point `.env.local` at a project, or run
+  `supabase start` and export its URL and anon key the way `ci.yml` does. Where egress
+  is blocked the signed-in tests fail with a `waitForURL` timeout instead. Both are the
+  environment, not the code — CI runs a local Supabase and passes.
+- **Six Client Portal browser tests are unreachable**, not merely skipped. They assert
+  an ungated portal, which no longer exists in either environment. Reviving them needs a
+  signed-in client fixture; the file says so at the top, and C1 in `docs/13` is where
+  that work belongs.
 - `pnpm format` once rewrote the checked-in `design-handoff/` vendor bundles. That
   folder is in `.prettierignore` now; do not take it out.
 

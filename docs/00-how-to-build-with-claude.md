@@ -10,12 +10,12 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 611 | `pnpm test` |
+| Unit | 638 | `pnpm test` |
 | Browser smoke | 57 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 966 over 27 files | `supabase test db` |
+| Database, row-level security and rules | 967 over 27 files | `supabase test db` |
 
 The database figure is the sum of the declared plans across `supabase/tests/`, read off
-this tree — 881 stated as literals plus `070_check_in_out.sql`, whose plan is computed
+this tree — 882 stated as literals plus `070_check_in_out.sql`, whose plan is computed
 from `pay.vectors.json` (50 vectors + 35 fixed = 85). It is not a measured run. pgTAP
 fails a file whose plan does not match the assertions it actually runs, so a green
 `supabase test db` turns the sum into an exact count; a red one means the sum was the
@@ -23,18 +23,21 @@ wrong number to quote. `supabase start` needs Docker, which some sandboxes block
 when it is unavailable the CI run is the number to take rather than a local guess.
 
 The browser figure is 57 — nine spec files over three Playwright projects, so the suites
-that run per app are counted once per app. On a checkout with no `.env.local`, 44 run and
-13 skip: `gate.smoke`'s two role-routing assertions need a configured project to have a
-gate to assert and run in all three projects (six), the Event Board suite needs a seeded
-event (six), and `/apply`'s end-to-end submission needs somewhere for the application to
-land (one). CI has both a project and a seeded database, so all thirteen run there and
-the Client Portal suite skips instead — it asserts an ungated shell, and every route in
-CI redirects to `/login`.
+that run per app are counted once per app. **It only runs in CI now**, where 51 pass and
+6 skip. Since `7d28ba4` closed the auth gate, the middleware no longer degrades open: an
+app built without `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` answers
+503 on every route rather than serving an ungated shell. Playwright's `webServer` waits
+for a healthy response, so on a checkout with no `.env.local` it times out after 120s and
+the suite never starts. Point `.env.local` at a project, or run `supabase start` and
+export its URL and anon key the way `ci.yml` does, before expecting a local run.
 
-Each of those skips is conditioned on something the environment says about itself, never
-on `process.env.CI`, so a suite that stops working still fails rather than quietly
-skipping. The `/apply` one keys off the exact sentence the server action renders when no
-project is configured, which with a project wired up can never appear.
+That was the right call for production and it leaves one thing to tidy. The six Client
+Portal browser tests assert an **ungated** portal, which is a state that no longer exists
+anywhere: they skip in CI because every route redirects to `/login`, and locally the app
+will not boot for them to skip. They are unreachable rather than merely skipped, and
+making them run needs a signed-in client fixture — see `docs/13` C1. Until that exists
+the portal is held by `supabase/tests/160_client_portal.sql` and the unit tests over
+`rules.ts`, both of which do run on every push.
 
 What exists, at platform level:
 

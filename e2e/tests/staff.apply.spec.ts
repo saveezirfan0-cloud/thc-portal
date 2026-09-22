@@ -92,24 +92,6 @@ test.describe('/apply', () => {
 
     await page.getByRole('button', { name: 'Submit application' }).click();
 
-    // Without a project the action says so on the page instead of throwing a
-    // 500 (apps/staff/app/apply/actions.ts), and there is no database for a
-    // submission to reach. Skip on that exact sentence rather than on a URL
-    // or a timeout: with a project wired up it can never appear, so this
-    // cannot quietly swallow a real regression in CI, which does have one.
-    //
-    // Waiting on either outcome first is what makes the check honest. The
-    // submit goes through a server action, so at the moment of the click
-    // neither has happened yet and an immediate read would find no message,
-    // not skip, and fail here exactly as it did before the guard.
-    const failure = page.getByText('this environment has no Supabase project');
-    const confirmation = page.getByRole('heading', { name: 'Check your inbox' });
-    await expect(failure.or(confirmation)).toBeVisible();
-    test.skip(
-      await failure.isVisible(),
-      'No Supabase project: the submission has nowhere to land.',
-    );
-
     await expect(page).toHaveURL(/\/apply\/submitted$/);
     await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
     // Echoed from the cookie the action set, which only exists if the
