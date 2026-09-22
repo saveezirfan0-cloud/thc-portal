@@ -1,0 +1,115 @@
+/*
+ * Page-local styles for /staff, mirroring the inline <style> block in
+ * wireframes/backoffice/staff.html. Tokens only (CLAUDE.md).
+ */
+.tbl .staff-name {
+  color: var(--text);
+  font-weight: 600;
+  background: none;
+  border: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.tbl .staff-name:hover {
+  color: var(--cyan-ink);
+}
+/* A removed worker is not a person any more — the row reads as a record. */
+.tbl .staff-name.removed {
+  font-style: italic;
+  font-weight: 400;
+  color: var(--muted);
+  cursor: default;
+}
+
+/* §9.6: 0–2.9 red · 3.0–3.9 amber · 4.0+ green. */
+.rating {
+  font-family: var(--font-num);
+  white-space: nowrap;
+}
+.rating.green {
+  color: var(--green-ink);
+}
+.rating.amber {
+  color: var(--amber-ink);
+}
+.rating.coral {
+  color: var(--coral-ink);
+}
+.rating.none {
+  color: var(--muted);
+}
+
+/*
+ * "Limit reached" is a per-week condition, not a status (RULE-20), so it
+ * sits BESIDE the compliance pill and never looks like one.
+ */
+.limit {
+  display: inline-block;
+  font-family: var(--font-label);
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: var(--label-track);
+  color: var(--amber-ink);
+  border: 1px dashed var(--amber-ink);
+  padding: 1px 5px;
+  margin-left: 6px;
+  cursor: help;
+  border-radius: var(--r-pill);
+}
+
+.tbl .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.tbl td.status .sub {
+  display: block;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+.tbl td.status .sub.coral {
+  color: var(--coral-ink);
+}
+
+.person {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.person .n {
+  font-weight: 600;
+}
+.person .s {
+  color: var(--muted);
+  font-size: 11.5px;
+  font-family: var(--font-num);
+}
+
+/* The student view's cap chip, coloured by the band that produced it. */
+.cap {
+  font-family: var(--font-num);
+  font-weight: 600;
+}
+.cap.t {
+  color: var(--amber-ink);
+}
+.cap.h,
+.cap.g {
+  color: var(--green-ink);
+}
+.cap.none {
+  color: var(--coral-ink);
+}
+
+.panel .pager {
+  border-bottom: 0;
+  border-top: 1px solid var(--line);
+}
+.panel .pager .right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

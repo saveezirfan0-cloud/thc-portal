@@ -17,41 +17,15 @@ covers the foundation sessions; this file covers everything after them.
 
 ## State of play
 
-Built: the monorepo, the design system, sign-in for all three apps, the venues directory,
-the domain rules (state machines, times, buffer, cap, scoring, pay), the §8 notification
-register, the full row-level-security suite, and the live database with seed data.
+**`docs/14-handover.md` holds it, and that is the only copy** — §1 for what exists, §3
+for the order to build in. This section used to keep a second one and `docs/00` a third.
+They drifted: this page was still calling the Event Board, the Check-in monitor and the
+on-shift screen unbuilt after all three had merged, and recommending the Event Board as
+the next session to take. A stale map is worse than no map, because it is the one a new
+session trusts.
 
-Also built, server side only, with no screen in front of any of it:
-
-- the whole day of the shift (§5.1–5.2b, §9.5) — check-in, check-out, breaks and Resolve,
-  with the pay window behind them (screens B7, S5 are not built)
-- the auto-assign engine (§3.4–3.6, §6) and the three rounds that run it (screen B3)
-- the jobs layer (§7): `job_runs`, the outbox claim/complete pair, the UK wall-clock gate,
-  and four of the ten background rules — `booking-tick` (BG-01/02/02b/03/09/10),
-  `auto-staffing` (the hourly, 12:05 cutoff and escalation rounds) and `compliance-daily`
-  (BG-04/05, plus the §4.3 block cascade and the §4.4 cap-band change)
-- leaving (§10.6, `request_p45`) and the in-employment conviction declaration (§10.7,
-  `declare_conviction`), both of which reuse the §4.3 cascade, plus the §2.12 staff state
-  machine in SQL — which nothing had, though CLAUDE.md asks for every state change to be
-  rejected in the database too. A Vitest holds it to `STAFF_TRANSITIONS` edge for edge.
-- the manager's three profile buttons (§9.6): `block_worker_manually` with its mandatory
-  reason, `unblock_worker` which runs the §4.3 full check first and reports what is still
-  outstanding when it refuses, and `reset_to_candidate` — the Employee ID and all history
-  retained, every piece of compliance evidence superseded but kept read-only
-- GDPR removal (§1.7, `remove_worker`): anonymised to "Deleted account #id", documents and
-  contacts deleted, the Storage objects queued for the `gdpr-purge` job, the public form's
-  own submissions anonymised, login unlinked, future bookings released — and the Employee
-  ID, bookings, violations and verbatim feedback all retained for reporting
-
-Not built: every screen bar sign-in, the venues directory and the roles directory. Of the
-background rules, BG-06/07 (geofence) wait on the geolocation shell and BG-08 on the
-reports layer. Nothing writes `location_pings`, so the off-site check-out path always
-takes its RULE-02 fallback until that shell lands.
-
-**Nothing is sent.** N1–N15 and E1–E9 reach `notification_outbox` and stop: the drain is
-registered but disabled, because Web Push needs VAPID keys and email needs Resend, and
-both are in `docs/14` O3. The §4.3 cascade likewise has no manual entry point until §9.6
-is built — see `docs/14` O10.
+The prompts below are still the prompts. Read `docs/14` first to find out which of them
+is still open, then take that one verbatim.
 
 ---
 

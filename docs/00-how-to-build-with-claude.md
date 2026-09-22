@@ -10,25 +10,36 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 522 | `pnpm test` |
-| Browser smoke | 50 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 696 over 18 files | `supabase test db` |
+| Unit | 638 | `pnpm test` |
+| Browser smoke | 57 | `pnpm turbo e2e:smoke` |
+| Database, row-level security and rules | 967 over 27 files | `supabase test db` |
 
-The database figure is derived, not measured here: 544 over 14 files at `ad81538`,
-plus the declared plans of the four files merged since — 130 auto-assign (57),
-140 check-in write paths (45), 150 roles directory (25), 160 client portal (24) —
-and the one assertion 020 gained with the Client Portal's one-entry-per-event
-index. pgTAP fails a file whose plan does not match the assertions it runs, so a
-green `supabase test db` makes each of those counts exact. `supabase start` needs
-Docker, which some sandboxes block; when it is unavailable, take the number from
-the CI run rather than a local count.
+The database figure is the sum of the declared plans across `supabase/tests/`, read off
+this tree — 882 stated as literals plus `070_check_in_out.sql`, whose plan is computed
+from `pay.vectors.json` (50 vectors + 35 fixed = 85). It is not a measured run. pgTAP
+fails a file whose plan does not match the assertions it actually runs, so a green
+`supabase test db` turns the sum into an exact count; a red one means the sum was the
+wrong number to quote. `supabase start` needs Docker, which some sandboxes block, and
+when it is unavailable the CI run is the number to take rather than a local guess.
 
-The browser figure is 50 tests, of which 44 run and 6 skip on a checkout with no
-`.env.local`: the gate tests need a configured project to have a gate to assert,
-and the Shift Builder and Client Portal suites need one to be absent. CI has a
-project, so a different six skip there.
+The browser figure is 57 — nine spec files over three Playwright projects, so the suites
+that run per app are counted once per app. **It only runs in CI now**, where 51 pass and
+6 skip. Since `7d28ba4` closed the auth gate, the middleware no longer degrades open: an
+app built without `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` answers
+503 on every route rather than serving an ungated shell. Playwright's `webServer` waits
+for a healthy response, so on a checkout with no `.env.local` it times out after 120s and
+the suite never starts. Point `.env.local` at a project, or run `supabase start` and
+export its URL and anon key the way `ci.yml` does, before expecting a local run.
 
-What exists:
+That was the right call for production and it leaves one thing to tidy. The six Client
+Portal browser tests assert an **ungated** portal, which is a state that no longer exists
+anywhere: they skip in CI because every route redirects to `/login`, and locally the app
+will not boot for them to skip. They are unreachable rather than merely skipped, and
+making them run needs a signed-in client fixture — see `docs/13` C1. Until that exists
+the portal is held by `supabase/tests/160_client_portal.sql` and the unit tests over
+`rules.ts`, both of which do run on every push.
+
+What exists, at platform level:
 
 - **Three apps** on Next.js. Office on port 3000, staff on 3001, client on 3002.
   `pnpm i && pnpm dev` works on a fresh clone with no environment file.
@@ -41,73 +52,29 @@ What exists:
   component against both token axes.
 - **Seed data**: 5 clients, 8 venues, 6 roles, 40 workers, mirroring
   `wireframes/CONVENTIONS.md`.
-- **The §8 notification register** in `packages/notifications`: every push N1–N15 and
-  every email E1–E9, copy verbatim from the scope.
-- **The day of the shift** (§5.1–5.2b): migration `0006` adds `attempt_check_in`,
-  `check_out`, the four pure rule functions behind them and `payable_shifts_v`.
-  `packages/domain/pay.ts` repeats the same rules in TypeScript, and
-  `packages/domain/src/pay.vectors.json` is the contract between them: Vitest reads it,
-  pgTAP reads the file generated from it, and a drift test fails the build if the copy
-  goes stale. Migration `20260921153000` adds the write paths that maths was waiting
-  on: `start_break` / `finish_break` (§5.2b) and `resolve_violation` (§9.5), which is
-  what finally lets an unresolved No check-out settle and RULE-14's floor come back.
-  The two screens on top — the Check-in monitor (§9.5) and the on-shift screen
-  (§10.4) — are still to come, as is the background-geolocation shell: nothing writes
-  `location_pings` yet, so every off-site check-out currently falls to the RULE-02
-  fallback by design.
-- **The public application form** at `/apply` (§2.1), the first screen of Phase 1, with
-  `submit_application()` behind it: the age gate on the form, in the server action and in
-  the database, and the §2.12 duplicate check.
-- **The Check-in monitor** at `/checkin` (§9.5), the day-of-the-event screen: the live
-  table with all seven status pills, the dual-zone WINDOW column (§1.8), the Breaks column
-  that reads a dash rather than a zero where the client pays, and the violation log with
-  its detail window and Resolve. Behind it, `record_ping()` finally writes
-  `location_pings`, so an off-site check-out records the last on-site fix instead of always
-  falling to RULE-02, and an exit from the geofence raises the `left_geofence` violation
-  that nothing could raise before (BG-06/07).
-- **The on-shift screen** at `/shifts/[id]` in the Staff App (§10.4, §5.1–5.2b): check-in
-  with the 30-minute grace and the lock, the breaks block where the client does not pay,
-  check-out, and the earnings confirmation — base rate only, with no field for the
-  +12.07% to be rendered into by accident (§9.8).
-- **The Shift Builder** at `/events/new` and `/events/:id/edit` (§3.2), the first screen
-  of Phase 3. Its rules live in `packages/domain/shift.ts` with `shift.vectors.json`:
-  the four-hour minimum per role section, the derived event window (RULE-18), the
-  allocation default of headcount + buffer, and the edit lock at the event's start.
+- **32 migrations and 27 pgTAP files.** Every table carries row-level security and a
+  test per role.
 
-- **The Client Portal** at `/client` and `/client/events/:id` (§11.1, §11.2), the whole
-  customer-facing app: the event list with "N of M confirmed" and the confirmed workers'
-  faces, the event page grouped by role, and the feedback popup. Its reads go through the
-  three owner-rights `client_*` views (ADR-0004) and its one write goes through
-  `submit_client_feedback()`, which re-checks tenancy, confirmed status, the event having
-  started and one-entry-per-worker-per-event — a disabled button stops nobody. §11.3's
-  PDFs are not built, so the document buttons say so rather than linking nowhere.
+**The screen-by-screen, system-by-system map lives in `docs/14-handover.md`, and that is
+the only copy.** §1 is what exists, §3 is the order to build in. This file kept a second
+one and `docs/13` a third; all three drifted apart inside a day, and by the time
+`docs/14` was written two of them were listing screens as unbuilt that had already
+merged. Do not reintroduce one here — when copies disagree, nobody can tell which is
+stale, and the cost lands on whoever picks the next session.
 
-What does not exist yet: every screen in Phases 1 to 7 apart from the application form,
-the Shift Builder and the Client Portal, the Supabase project, and the Vercel projects. Two pieces the
-Shift Builder leans on are also outstanding and belong to later sessions:
+Two systemic gaps shape what is worth planning next:
 
-- **Auto-assign's Deno half** (§3.4). The engine itself is built and tested in SQL —
-  the candidate pool with its hard gates, additive invitations, first-to-confirm with
-  automatic withdrawal of overlapping invitations, the 12:00 cutoff, self-cancel, and the
-  exclusive handover from the hourly round to escalation. The §6 scoring deliberately
-  stays in `packages/domain/scoring.ts` so it has one implementation, which is why the
-  last piece is an Edge Function that ranks between two RPCs — and why it waits on
-  ADR-0006 alongside `notify-drain`. Until it exists no round fires on a schedule, so a
-  saved event still fills nobody without someone calling the RPCs.
-- **The sender behind the outbox** (§8). Saving a time, dress-code or venue change sets
-  `reconfirm_required` on that section's confirmed bookings and queues N11 in
-  `notification_outbox` with its idempotency key — but no job drains the outbox to Web
-  Push yet, so the row waits there.
+- **Nothing is sent.** N1–N15 and E1–E9 reach `notification_outbox` and stop. The drain is
+  registered but disabled, because Web Push needs VAPID keys and email needs Resend
+  (`docs/14` O3). Every feature that "notifies" someone is therefore only half-observable.
+- **Auto-assign does not fire on a schedule.** The engine, the additive rounds, the 12:05
+  cutoff and the escalation handover are built and tested in SQL. The Edge Function that
+  ranks between two RPCs is not, and waits on ADR-0006, so a saved event still fills
+  nobody unless somebody calls the RPCs by hand.
 
 Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
 
-**Open with THC.** §2.1 collects an *age band* on /apply while §2.12 matches duplicates on
-*mobile + date of birth*, and the form has no date-of-birth field. Until THC decides,
-the public-form migration matches on email and on mobile — the wider net of the two — and `staff.dob` stays
-null until Right to Work supplies one (§2.5). `wireframes/public/apply.html` carries the
-same flag.
-
-## Security: one item closed, one open
+## Security: five closed, one open
 
 1. **Closed.** A client could read both the charge rate and the pay rate straight from
    the role-sections table, which §11.1 forbids absolutely. Migration `0002` drops that

@@ -15,7 +15,7 @@
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(61);
+select plan(65);
 
 \ir _shared/overlap_vectors.psql
 
@@ -436,6 +436,46 @@ select throws_ok(
   $$ select accept_invite('0e0e0e0e-0000-4000-8000-000000000005') $$,
   '42501', 'not_your_booking',
   'and cannot accept somebody else''s, which is the whole reason these are definer functions');
+
+-- ---------------------------------------------------------------------
+-- 9. The weekly cap is re-read at the moment of Accept (§10.4, RULE-20)
+--
+-- The gate in auto_assign_candidates stops the INVITATION. This is the
+-- other half: a worker may hold an open invitation for days and accept
+-- other shifts in the meantime, so the cap has to be asked again here,
+-- exactly as the slot count and the booked-elsewhere gap already are.
+--
+-- `capped` is the student from the fixtures above: no holiday ranges on
+-- file, so term time and a 20-hour cap, already holding the 16-hour
+-- section in the same Mon-Sun week. An 8-hour section takes them to 24.
+-- ---------------------------------------------------------------------
+-- Back to the manager: section 8 left the session as a worker, and these
+-- calls are about a different worker's booking.
+set local "request.jwt.claims" = '{"sub":"8a8a8a8a-0000-4000-8000-000000000001","role":"authenticated"}';
+
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                charge_rate, pay_rate, allocation_per_hour)
+values ('7e7e7e7e-0000-4000-8000-00000000000a', :'evt2', :'ro',
+        date_trunc('week', (now() + interval '10 days')) + interval '2 days 9 hours',
+        date_trunc('week', (now() + interval '10 days')) + interval '2 days 17 hours',
+        4, 0, 22.97, 14.00, 4);
+insert into bookings (id, shift_id, staff_id, status, source)
+values ('0e0e0e0e-0000-4000-8000-00000000000a','7e7e7e7e-0000-4000-8000-00000000000a',
+        :'capped', 'invited', 'manual');
+
+select is(weekly_cap_hours(:'capped', (date_trunc('week', (now() + interval '10 days')))::date), 20,
+  'the fixture student is on the 20-hour term cap, with no holiday ranges on file');
+select is(accept_invite('0e0e0e0e-0000-4000-8000-00000000000a')->>'reason', 'hours_limit',
+  '§10.4: Accept is blocked where it would take the worker over their weekly limit');
+select is((select status::text from bookings where id = '0e0e0e0e-0000-4000-8000-00000000000a'),
+  'invited',
+  'and the invitation stays live rather than closing: the hours can free up, unlike a slot that has gone');
+
+-- The same worker, under the cap: the gate must not be a blanket refusal.
+update bookings set status = 'cancelled', cancelled_at = now(), cancel_cause = 'office_withdraw'
+ where shift_id = '7e7e7e7e-0000-4000-8000-000000000003' and staff_id = :'capped';
+select is(accept_invite('0e0e0e0e-0000-4000-8000-00000000000a')->>'ok', 'true',
+  'with the 16 hours released, the same 8-hour shift fits inside the 20 and Accept goes through');
 
 select * from finish();
 rollback;
