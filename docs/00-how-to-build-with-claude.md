@@ -58,6 +58,13 @@ What exists:
 - **The public application form** at `/apply` (§2.1), the first screen of Phase 1, with
   `submit_application()` behind it: the age gate on the form, in the server action and in
   the database, and the §2.12 duplicate check.
+- **The Check-in monitor** at `/checkin` (§9.5), the day-of-the-event screen: the live
+  table with all seven status pills, the dual-zone WINDOW column (§1.8), the Breaks column
+  that reads a dash rather than a zero where the client pays, and the violation log with
+  its detail window and Resolve. Behind it, `record_ping()` finally writes
+  `location_pings`, so an off-site check-out records the last on-site fix instead of always
+  falling to RULE-02, and an exit from the geofence raises the `left_geofence` violation
+  that nothing could raise before (BG-06/07).
 - **The Shift Builder** at `/events/new` and `/events/:id/edit` (§3.2), the first screen
   of Phase 3. Its rules live in `packages/domain/shift.ts` with `shift.vectors.json`:
   the four-hour minimum per role section, the derived event window (RULE-18), the

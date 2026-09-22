@@ -223,7 +223,19 @@ is built — see `docs/14` O10.
 > Student-visa worker with no approved letter cannot be rostered past 20 hours in any
 > week through the UI, not merely in the rule.
 
-## B7 · Check-in monitor and violation log (§9.5)
+## B7 · Check-in monitor and violation log (§9.5) — **built**
+
+`/checkin` is live. The Status column is resolved by `checkin_monitor_v`, not by the
+screen: seven states with time arithmetic in each is exactly what drifts when a page
+re-derives it, and pgTAP holds the view (`240_ping_ingest_and_monitor.sql`). Resolve goes
+through `resolve_violation`, which keeps the mandatory note and the finish-time validation
+on the server where the dialog can show its refusal. Live is two mechanisms on purpose:
+Realtime for the writes, and a 30-second refresh for the states that arrive by the clock
+alone — Due becoming the 30-minute alert, and a shift crossing end+4h into No check-out.
+
+Still to come on this screen: the per-event counters in the strip are derived from the
+rows on the board rather than from the roster, so an event with nobody booked does not
+appear at all.
 
 > Use the `checkin` agent. Branch `feat/checkin-monitor`.
 >
