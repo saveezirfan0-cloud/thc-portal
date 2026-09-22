@@ -189,6 +189,34 @@ piece of work (B5/S2) rather than the compliance sweep's.
 
 # For the owner
 
+## O0 · An under-18 with an opt-out tick has NO weekly hours ceiling — live on `main`
+
+Found while merging, not looked for, and it is the most serious thing in this file.
+
+`090_weekly_cap.sql` assertion 2 is failing on `main` right now:
+
+```
+have: ("An under-18 cannot opt out, so a recorded tick does not lift the ceiling", , uncapped)
+want: ("An under-18 cannot opt out, so a recorded tick does not lift the ceiling", 48, standard_48)
+```
+
+The vectors are right and the SQL is wrong. `weekly_cap()` honours `wtr_optout` without
+checking age, so a worker under 18 whose record carries that tick comes back `uncapped` —
+no weekly ceiling at all. Under-18s cannot sign the 48-hour Working Time opt-out; young
+workers have a lower statutory limit, not a removable one. Auto-assign's hours gate reads
+this function, so the effect is not cosmetic: nothing would stop a 16-year-old being
+booked past any limit.
+
+Assertion 7 fails with it, for the same reason — `remaining_hours` returns a row where it
+should return none.
+
+Not fixed here deliberately: this is the compliance domain and that session pushed the
+cap change minutes before this was found, so it is very likely already in hand. It is
+written down because the failing test is the only thing currently carrying it, and this
+session has now watched a red `main` teach four pull requests to read past a failing
+suite (O2). If it is still red by the next compliance session, it should be the first
+thing that session does.
+
 ## O1 · Force row level security (carried, by your decision)
 
 `docs/00` records it as the one open security item: no table sets `FORCE ROW LEVEL
