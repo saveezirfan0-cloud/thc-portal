@@ -1,5 +1,5 @@
 -- =====================================================================
--- 240 · The rest of §1.7 (docs/14 O11)
+-- 250 · The rest of §1.7 (docs/14 O11)
 --   remove_worker's Storage queue, the applications anonymisation,
 --   willo_candidate_id, and the claim/complete pair behind gdpr-purge
 --   from 20260922081512_gdpr_removal_reaches_the_rest.sql
