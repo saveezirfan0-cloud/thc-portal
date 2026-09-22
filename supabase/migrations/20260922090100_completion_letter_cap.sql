@@ -392,8 +392,8 @@ $$;
 -- ---------------------------------------------------------------------
 -- 8 · Two things this migration deliberately leaves alone
 --
---   · reset_to_candidate() (20260921192246) and gdpr_remove()
---     (20260921190118) clear right_to_work_until, term_dates,
+--   · reset_to_candidate() (20260921192246) and remove_worker()
+--     (20260921190118, §1.7) clear right_to_work_until, term_dates,
 --     graduated_at and wtr_optout, and do NOT clear the three columns
 --     added above. That is a hygiene gap, not a cap bug, and the
 --     difference matters: both new dated facts are AND-gated by a column

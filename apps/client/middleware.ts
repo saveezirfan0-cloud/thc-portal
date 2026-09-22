@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { HOME_PATH, isRole } from '@thc/db';
+import { isRole, wrongAppBody } from '@thc/db';
 
 /**
  * Role routing for the client app (§1.4).
@@ -23,8 +23,22 @@ export async function middleware(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) {
-    // No Supabase configured yet: render the shell rather than redirect-looping.
-    // Copy .env.example to .env.local to turn the auth gate on.
+    // No Supabase configured. Locally that is the Phase 0 shell and we let
+    // it render; in a deployed environment it means the auth gate is OFF,
+    // and failing open there published this app to anyone with the URL.
+    //
+    // That is not hypothetical: marking NEXT_PUBLIC_* as "Sensitive" in
+    // Vercel withholds them at BUILD time, and Next inlines NEXT_PUBLIC_*
+    // at build — so they arrived undefined and every route rendered
+    // unauthenticated in production. Fail closed instead.
+    if (process.env.VERCEL_ENV || process.env.NODE_ENV === 'production') {
+      return new NextResponse(
+        'This deployment is not configured: NEXT_PUBLIC_SUPABASE_URL / ' +
+          'NEXT_PUBLIC_SUPABASE_ANON_KEY did not reach the build, so the ' +
+          'sign-in gate cannot run. Refusing to serve without it.',
+        { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } },
+      );
+    }
     return response;
   }
 
@@ -53,13 +67,23 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  const role = user.app_metadata?.['role'] ?? user.user_metadata?.['role'];
-  if (isRole(role) && role !== ALLOWED_ROLE) {
-    // Signed in, wrong app. Send them to their own home rather than a dead end.
-    const url = request.nextUrl.clone();
-    url.pathname = HOME_PATH[role];
-    url.search = '';
-    return NextResponse.redirect(url);
+  // app_metadata ONLY. user_metadata is writable by the user from the
+  // browser — `supabase.auth.updateUser({ data: { role: 'admin' } })` — so
+  // reading it here, even as a fallback, is a self-service role change.
+  const role = user.app_metadata?.['role'];
+  // And an allow-list, not a deny-list: the old `isRole(role) && role !== …`
+  // admitted a session whose role was missing from both places, because the
+  // redirect only fired when the value parsed. Unknown role = not this app.
+  if (!isRole(role) || role !== ALLOWED_ROLE) {
+    // Signed in, wrong app. This used to redirect to HOME_PATH[role], which
+    // is a PATH — and the three apps are on three different hosts, so it
+    // only ever bounced them to a local route that failed this same check
+    // again. That was the ERR_TOO_MANY_REDIRECTS. A terminal response is
+    // the only thing here that cannot loop.
+    return new NextResponse(wrongAppBody(isRole(role) ? role : null, 'Client Portal'), {
+      status: 403,
+      headers: { 'content-type': 'text/html; charset=utf-8' },
+    });
   }
 
   return response;
