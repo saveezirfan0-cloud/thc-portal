@@ -24,10 +24,12 @@ rule layer in `packages/domain` (`cap` `pay` `scoring` `autoAssign` `buffer`
 register in `packages/notifications`. The rule layer's own suite is **293 tests
 across 14 files**, green. Four Edge Functions exist
 (`auto-staffing`, `booking-tick`, `compliance-daily`, `gdpr-purge`). CI runs
-lint, typecheck, Vitest, `supabase test db` and Playwright on every push;
-`.github/workflows/deploy.yml` pushes migrations to the live project on merge to
-`main` — before it existed the live database sat 17 migrations behind the repo
-for a fortnight.
+lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
+its `deploy-database` job pushes migrations to the live project on merge to
+`main`. There is no `deploy.yml` — it existed briefly, fired from `workflow_run`,
+and was folded into `ci.yml` because GitHub registers that trigger only from the
+default branch. Before the job existed the live database sat 17 migrations behind
+the repo for a fortnight.
 
 **Screens that exist today:**
 
@@ -96,7 +98,7 @@ two at once — it names the three files every session reaches for.
   a right-to-work expiry has workable days before it and none after, so that
   question is per shift.
 - **The live database was 17 migrations behind** and nothing would ever have
-  pushed them. `deploy.yml` now does, on merge.
+  pushed them. `ci.yml`'s `deploy-database` job now does, on merge.
 - **The Client Portal was ungated** — `/client` served without a session. The
   cause was empty Supabase values on that one Vercel project, not anything in the
   code. All three middlewares now fail closed with a 503 when they are
