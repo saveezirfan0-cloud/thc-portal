@@ -91,3 +91,87 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
           APP_TZ: Europe/London
+
+  # =====================================================================
+  # Deploy the database
+  #
+  # Why this is a job in `ci` and not a workflow of its own
+  # ------------------------------------------------------
+  # It WAS a workflow of its own — `deploy.yml`, triggered by
+  # `workflow_run` on `ci` completing. It never ran once. GitHub only
+  # registers `workflow_run`, `schedule` and `workflow_dispatch` triggers
+  # from the file as it exists on the repository's DEFAULT branch, and
+  # this repository's default branch is not `main` (see docs/14 O13). So
+  # `deploy.yml` sat on `main`, looking like a deploy, while `ci` went
+  # green on `main` five times and the live project stayed twenty-six
+  # migrations behind. A workflow that cannot fire is worse than no
+  # workflow, because it stops anyone looking for the missing one.
+  #
+  # `push` has no such rule: it runs the workflow file from the commit
+  # that was pushed, on whatever branch it was pushed to. `ci` already
+  # triggers that way and demonstrably runs on `main`, so putting the
+  # deploy here makes it fire today, without anyone changing a repository
+  # setting. It also gets the gate for free — `needs: build-test` means
+  # the deploy is skipped unless the tests that ran against THIS commit
+  # passed, which is stricter than `workflow_run` was.
+  #
+  # What it does is still the point: `supabase db push` applies the
+  # migration FILES. A file is byte-exact, where anything hand-copied into
+  # a SQL console can differ from what CI proved by one character and
+  # never be caught by anything.
+  # =====================================================================
+  deploy-database:
+    needs: build-test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # One deploy at a time. Two `db push` runs racing on the same project
+    # is how a migration history ends up half applied.
+    concurrency:
+      group: deploy-database
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      # Missing secrets are a setup state, not a failure: the repo should
+      # not go red for everyone because the project is not wired up yet.
+      # This says exactly which secret is absent and stops.
+      - name: check the deploy secrets are present
+        id: secrets
+        env:
+          TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          REF: ${{ secrets.SUPABASE_PROJECT_ID }}
+          PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          missing=
+          [ -z "$TOKEN" ]    && missing="$missing SUPABASE_ACCESS_TOKEN"
+          [ -z "$REF" ]      && missing="$missing SUPABASE_PROJECT_ID"
+          [ -z "$PASSWORD" ] && missing="$missing SUPABASE_DB_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::notice::Database deploy skipped — missing secret(s):$missing"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: supabase/setup-cli@v1
+        if: steps.secrets.outputs.ready == 'true'
+        with: { version: latest }
+
+      # --dry-run first, so the log records what WOULD be applied even when
+      # the push then fails. Without it a failed deploy leaves no trace of
+      # which migration it choked on.
+      - name: list the migrations still to apply
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: |
+          supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_ID }}"
+          supabase db push --dry-run
+
+      - name: apply them
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+        run: supabase db push

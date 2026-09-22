@@ -54,9 +54,9 @@ https://github.com/saveezirfan0-cloud/thc-portal/settings/secrets/actions
 | Secret | Where to get it | Needed for |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | https://console.anthropic.com/settings/keys | The `@claude` workflow and the automatic pull-request review |
-| `SUPABASE_ACCESS_TOKEN` | https://supabase.com/dashboard/account/tokens | **`deploy.yml` — set this and the database deploys itself** |
-| `SUPABASE_PROJECT_ID` | The project reference in your Supabase URL — today `dgxtqvalfiisfpbwodew` | **`deploy.yml`** |
-| `SUPABASE_DB_PASSWORD` | Set when you create the project. Save it then; it is not shown again. Resettable under Settings → Database → Database password | **`deploy.yml`** |
+| `SUPABASE_ACCESS_TOKEN` | https://supabase.com/dashboard/account/tokens | **The database deploy — set this and `main` deploys itself** |
+| `SUPABASE_PROJECT_ID` | The project reference in your Supabase URL — today `dgxtqvalfiisfpbwodew` | **The database deploy** |
+| `SUPABASE_DB_PASSWORD` | Set when you create the project. Save it then; it is not shown again. Resettable under Settings → Database → Database password | **The database deploy** |
 | `VERCEL_TOKEN` | https://vercel.com/account/tokens | Later, only if you deploy from CI rather than the Git integration |
 | `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID_*` | Vercel project → Settings → General | Later |
 
@@ -65,16 +65,31 @@ https://github.com/apps/claude/installations/select_target
 
 ### Deploying the database
 
-`.github/workflows/deploy.yml` runs `supabase db push` after `ci` succeeds on
-`main`, so a merge that passes its tests reaches the live database on its own. It
-skips with a notice, rather than failing, while the three secrets above are unset.
+The `deploy-database` job in `.github/workflows/ci.yml` runs `supabase db push`
+after the tests pass on `main`, so a merge that proves itself reaches the live
+database on its own. It skips with a notice, rather than failing, while the
+three secrets above are unset.
 
-This did not exist until 22.09.2026, and the gap it left is worth knowing about:
-`ci.yml` only ever ran `supabase start`, a throwaway local stack, so the live
-project was pushed by hand once and then sat **seventeen migrations behind
+It is a job inside `ci` rather than a workflow of its own, and that is not a
+tidiness choice — it is the fix for the second half of this story. Read on.
+
+This did not exist until 22.09.2026, and the gap it left is worth knowing
+about: `ci.yml` only ever ran `supabase start`, a throwaway local stack, so the
+live project was pushed by hand once and then sat **seventeen migrations behind
 `main`** — the jobs layer, the Client Portal, `/apply`, compliance, leaving and
 GDPR removal were all merged, all tested, and none of them were on the database
 anyone was actually looking at. Every suite was green the whole time.
+
+The first attempt at a fix did not work either, for a reason nothing warns you
+about. It was a separate `deploy.yml`, triggered by `workflow_run` on `ci`
+finishing. GitHub only registers `workflow_run`, `schedule` and
+`workflow_dispatch` triggers from the copy of the file on the repository's
+**default branch**, and this repository's default branch is not `main` (docs/14
+O13). So the file sat on `main` looking exactly like a working deploy, was never
+registered as a workflow at all, and `ci` went green on `main` five times while
+the gap grew from seventeen migrations to twenty-six. `push` carries no such
+rule — it runs the file from the commit that was pushed — which is why the
+deploy now lives beside the tests that gate it.
 
 If the live project ever drifts from the migration history again, the repair is
 `supabase migration repair --status applied <version>` rather than re-running the
