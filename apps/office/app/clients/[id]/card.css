@@ -1,0 +1,134 @@
+/*
+ * Page-local styles for /clients/:id, mirroring the inline <style> block in
+ * wireframes/backoffice/client-card.html. Tokens only (CLAUDE.md).
+ */
+
+/* The numbered block badge on each of §9.7's four panels. */
+.blk-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  border-radius: var(--r-pill);
+  background: var(--cyan-dim);
+  color: var(--cyan-ink);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+/*
+ * The key/value grid for block 1. The wireframes define this per page in
+ * their own <style> blocks, and so do we: /staff/:id carries its own copy
+ * in profile.css. Moving it into packages/ui is a shared-package change
+ * and belongs in its own PR (CLAUDE.md).
+ */
+.kv {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 8px 14px;
+  font-size: 13px;
+  align-items: baseline;
+}
+.kv .k {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Money never wraps: "+£7.28/h" split over two lines reads as two figures. */
+.tbl .right-align.mono {
+  white-space: nowrap;
+}
+
+/* The dress-code list: chips plus the add row, on one line where it fits. */
+.dcs {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.dcs .x {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 0 0 4px;
+}
+.dcs .input {
+  height: 28px;
+  width: 160px;
+  font-size: 12px;
+}
+
+/* A role group in the qualified-staff block. */
+.grp {
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+}
+.grp .gh {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  width: 100%;
+  padding: 10px 14px;
+  background: var(--panel-2);
+  border: 0;
+  border-radius: var(--r-card) var(--r-card) 0 0;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.grp .gh h4 {
+  margin: 0;
+  font-size: 13px;
+}
+.grp .gh .cnt {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--cyan-ink);
+}
+
+/* Row actions sit side by side, as the wireframe draws them. */
+.tbl td.right-align {
+  white-space: nowrap;
+}
+
+/* A barred worker, so the gate is legible without reading the toggle. */
+.tbl tr.barred td {
+  background: var(--coral-dim);
+}
+
+/* The margin column carries meaning, so it carries colour. */
+.tbl .green {
+  color: var(--green-ink);
+}
+.tbl .coral {
+  color: var(--coral-ink);
+}
+
+/* The bulk staff picker in "+ Add staff". */
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 260px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 10px 12px;
+}
+
+@media (max-width: 900px) {
+  .dcs .input {
+    width: 100%;
+  }
+  .kv {
+    grid-template-columns: 1fr;
+  }
+}

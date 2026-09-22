@@ -88,7 +88,15 @@ describe('Logo', () => {
     // regenerated — so the guard is that the two agree, not that either is
     // some particular shape.
     const svg = readFileSync(
-      join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..', 'brand', 'thc-mark.svg'),
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        '..',
+        '..',
+        '..',
+        '..',
+        'brand',
+        'thc-mark.svg',
+      ),
       'utf8',
     );
     const paths = [...svg.matchAll(/<path d="([^"]+)"/g)].map((m) => m[1]!);

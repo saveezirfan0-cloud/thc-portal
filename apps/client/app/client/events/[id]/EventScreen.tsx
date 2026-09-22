@@ -142,11 +142,7 @@ export function EventScreen({
                   />
                 </>
               }
-              actions={
-                <Pill tone="green">
-                  {group.confirmed} confirmed
-                </Pill>
-              }
+              actions={<Pill tone="green">{group.confirmed} confirmed</Pill>}
               flush
             >
               <div className="wgrid">

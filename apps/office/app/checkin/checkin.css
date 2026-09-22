@@ -12,6 +12,8 @@
   padding: 12px 14px;
   border: 1px solid var(--line);
   background: var(--panel);
+  /* --radius is not a token, so this box had square corners on a page of
+     rounded ones. The card scale is --r-tile (packages/ui/styles/tokens.css). */
   border-radius: var(--r-tile);
 }
 .evcard .t {
@@ -37,9 +39,13 @@
 }
 .evflag {
   font-size: 11px;
-  color: var(--coral);
-  border: 1px solid var(--coral);
+  /* --coral is the solid fill tone; --coral-ink / --coral-line are the two
+     the system uses for danger text and its border on a panel, and they are
+     what contrast.test.ts measures. */
+  color: var(--coral-ink);
+  border: 1px solid var(--coral-line);
   padding: 1px 6px;
+  /* --radius-sm is not a token; a small inline flag takes the pill scale. */
   border-radius: var(--r-pill);
 }
 

@@ -1,0 +1,172 @@
+/*
+ * Page-local styles for /staff/:id, mirroring the inline <style> block in
+ * wireframes/backoffice/staff-profile.html. Tokens only (CLAUDE.md).
+ */
+
+/* The profile header: photo, who, and the manager's buttons. */
+.phead {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: 18px 20px;
+}
+.phead .who {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.phead h2 {
+  font-size: 24px;
+  margin: 0;
+}
+.phead .facts {
+  display: flex;
+  gap: 6px 18px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.phead .facts b {
+  color: var(--text);
+  font-weight: 500;
+}
+.phead .acts {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+  flex: 0 0 auto;
+}
+
+/* Role qualification, edited in place on the header (§9.6). */
+.roles-edit {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.roles-edit .x {
+  background: none;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  padding: 0 0 0 4px;
+}
+
+/* The key/value grid used by every Overview panel. */
+.kv {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 8px 14px;
+  font-size: 13px;
+  align-items: baseline;
+}
+.kv .k {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.kv.tight {
+  grid-template-columns: 96px 1fr;
+}
+
+/*
+ * The manual block label. §9.6: the reason is shown FIRST, before
+ * anything else, when a blocked profile is opened — so this sits above
+ * the header rather than inside it.
+ */
+.blocklbl {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1px solid var(--coral);
+  border-radius: var(--r-card);
+  background: var(--coral-dim);
+  font-size: 14px;
+}
+.blocklbl b {
+  color: var(--coral-ink);
+}
+
+/* A feedback entry: the source colour is the whole point of the stripe. */
+.fb {
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--bg);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.fb .h {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+}
+.fb .h .who {
+  font-weight: 600;
+}
+.fb .h .when {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.fb.client {
+  border-left: 3px solid var(--cyan);
+}
+.fb.office {
+  border-left: 3px solid var(--purple);
+}
+
+/* Superseded documents stay visible and read-only (§2.12). */
+.superseded-group {
+  opacity: 0.7;
+}
+
+/* The do-not-return row, so a bar is legible at a glance. */
+.tbl tr.barred td {
+  background: var(--coral-dim);
+}
+
+.two {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+.two ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 12.5px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+@media (max-width: 900px) {
+  .phead {
+    flex-direction: column;
+  }
+  .phead .acts {
+    align-items: flex-start;
+  }
+  .kv,
+  .two {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* A panel that runs the full width of a two-column tab. */
+.span-2 {
+  grid-column: 1 / -1;
+}

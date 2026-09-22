@@ -25,7 +25,7 @@
 -- their fixed UUIDs, never by global counts.
 -- =====================================================================
 begin;
-select plan(50);
+select plan(51);
 
 \ir _shared/cap_vectors.psql
 
@@ -86,15 +86,24 @@ select is(
   '§4.5: completion letter PLUS opt-out is what removes the weekly ceiling'
 );
 
--- A ceiling of 0 has exactly one meaning: the whole week falls past a lapsed
--- right to work, so there is no workable day in it (RULE-20). Anywhere else a
--- 0 would read as "no hours left this week" to every caller, which is what an
--- absent ceiling must never collapse to — that stays null, asserted directly
--- against weekly_cap above and weekly_hours_remaining below.
+-- This asserted that 0 never appears at all, and it was right until the
+-- completion-letter requirement gave 0 a meaning: a week wholly past a
+-- lapsed right to work (`visa_expired_0`). docs/13 B6b names it as a STALE
+-- invariant rather than an unimplemented rule, and it is the last assertion
+-- standing between `main` and green.
+--
+-- What it was really protecting is worth keeping, so it becomes two: NO
+-- CEILING is null and never 0 — a 0 there would read as "no hours left" to
+-- every caller and gate the worker out of everything — and 0 itself now
+-- means exactly one thing.
+select is_empty(
+  $$ select 1 from cap_vectors where expect_band = 'uncapped' and expect_cap_hours is not null $$,
+  'no ceiling is null, never 0 — a 0 there would read as "no hours left" to every caller'
+);
 select is_empty(
   $$ select 1 from cap_vectors
       where expect_cap_hours = 0 and expect_band <> 'visa_expired_0' $$,
-  'the only ceiling of 0 is a right to work that expired before the week began'
+  '0 means exactly one thing: a week wholly past a lapsed right to work'
 );
 
 -- ---------------------------------------------------------------------

@@ -53,15 +53,33 @@ https://github.com/saveezirfan0-cloud/thc-portal/settings/secrets/actions
 
 | Secret | Where to get it | Needed for |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | https://console.anthropic.com/settings/keys | The `@claude` workflow and the automatic pull-request review. **This is the only secret any workflow reads today.** |
-| `SUPABASE_ACCESS_TOKEN` | https://supabase.com/dashboard/account/tokens | Later, for running migrations from CI |
-| `SUPABASE_PROJECT_ID` | The project reference in your Supabase URL | Later |
-| `SUPABASE_DB_PASSWORD` | Set when you create the project. Save it then; it is not shown again | Later |
+| `ANTHROPIC_API_KEY` | https://console.anthropic.com/settings/keys | The `@claude` workflow and the automatic pull-request review |
+| `SUPABASE_ACCESS_TOKEN` | https://supabase.com/dashboard/account/tokens | **`deploy.yml` — set this and the database deploys itself** |
+| `SUPABASE_PROJECT_ID` | The project reference in your Supabase URL — today `dgxtqvalfiisfpbwodew` | **`deploy.yml`** |
+| `SUPABASE_DB_PASSWORD` | Set when you create the project. Save it then; it is not shown again. Resettable under Settings → Database → Database password | **`deploy.yml`** |
 | `VERCEL_TOKEN` | https://vercel.com/account/tokens | Later, only if you deploy from CI rather than the Git integration |
 | `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID_*` | Vercel project → Settings → General | Later |
 
 Also install the Claude GitHub App on the repository, or `@claude` will not respond:
 https://github.com/apps/claude/installations/select_target
+
+### Deploying the database
+
+`.github/workflows/deploy.yml` runs `supabase db push` after `ci` succeeds on
+`main`, so a merge that passes its tests reaches the live database on its own. It
+skips with a notice, rather than failing, while the three secrets above are unset.
+
+This did not exist until 22.09.2026, and the gap it left is worth knowing about:
+`ci.yml` only ever ran `supabase start`, a throwaway local stack, so the live
+project was pushed by hand once and then sat **seventeen migrations behind
+`main`** — the jobs layer, the Client Portal, `/apply`, compliance, leaving and
+GDPR removal were all merged, all tested, and none of them were on the database
+anyone was actually looking at. Every suite was green the whole time.
+
+If the live project ever drifts from the migration history again, the repair is
+`supabase migration repair --status applied <version>` rather than re-running the
+file: the history is keyed on the digits before the first underscore in the
+filename, and `db push` applies whatever is missing from it.
 
 ### Vercel
 
@@ -128,9 +146,9 @@ names the code already expects.
 
 | File | App | Why |
 |---|---|---|
-| `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` | `apps/staff/public/` | The web app manifest already names these three. They do not exist yet, so the staff app is currently not installable. |
+| `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` | `apps/staff/public/` | **Done.** All three exist at the right sizes, are the real mark on cyan, and the manifest is valid — the staff app is installable. (This line used to say they were missing; they were not.) |
 | `favicon.ico` and `apple-icon.png` | All three apps' `public/` | Browser tab and iOS home screen |
-| Brand mark | `packages/ui` | The sign-in card and sidebar currently render the letters "THC" in a box as a placeholder |
+| Brand mark | `packages/ui` | **Done.** `packages/ui/src/components/Logo.tsx` inlines `brand/thc-mark.svg` and is wired into all three sign-in cards, the Back Office sidebar, the Client Portal top bar and `/apply/submitted`. A test asserts the inlined paths still equal the source file, so a new logo must be regenerated rather than hand-edited. |
 
 The maskable icon needs roughly 20% clear padding around the mark, because Android crops
 it to whatever shape the phone uses. I will handle that when generating.
