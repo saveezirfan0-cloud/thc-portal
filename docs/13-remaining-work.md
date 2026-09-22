@@ -179,6 +179,23 @@ is built — see `docs/14` O10.
 > Use the `compliance` agent for the review side and `staff-pwa` for the upload side.
 > Branch `feat/compliance-completion-letter`.
 >
+> **Two SQL callers already read the old shape, and the TypeScript and SQL caps have
+> diverged until this lands.** `packages/domain/src/cap.ts` now models the completion
+> DATE, the 10-hour sub-degree band and visa expiry; `weekly_cap()` and `weekly_cap_for()`
+> in `0008_weekly_cap.sql` still model only `graduated_at <= date`. Whoever builds the SQL
+> half must also update:
+>
+> - `term_letter_applies()` (`20260921180312`), which stops the §4.2 expiry ladder for a
+>   graduate. It keys on `staff.graduated_at`, so under the new rule it should key on the
+>   course completion date — otherwise a letter issued before the final exam stops the
+>   ladder early, which is the exact failure the new contract calls out.
+> - `reset_to_candidate()` (`20260921183945`), which clears `graduated_at` with the rest of
+>   the superseded evidence. Whatever column replaces or joins it needs clearing too, or a
+>   returning candidate keeps a cap off evidence that has been superseded.
+>
+> Both are one line each; they are named here because neither is in this file's own domain
+> and a grep for `graduated_at` is the only thing that finds them.
+>
 > Contract: `docs/scope/university-completion-letter-requirement.pdf`. This is a NEW
 > document from THC, not part of scope v1.6, and it refines RULE-20. Read it whole —
 > the exposure is civil penalties for illegal working, so the cautious reading wins
