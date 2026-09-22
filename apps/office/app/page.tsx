@@ -2,13 +2,14 @@ import { PageHead, Panel } from '@thc/ui';
 import { OfficeShell } from './_components/OfficeShell';
 
 /**
- * The Back Office root. Still the Phase 0 placeholder: `/dashboard` (§9.1)
- * belongs to the `reports` bot and does not exist yet, so this stands in
- * rather than 404ing the one route every admin lands on after sign-in.
+ * The Back Office root, and the Dashboard until §9.1 is built: that screen
+ * belongs to the `reports` bot. The sidebar points here rather than at
+ * /dashboard, which does not exist, and marks every other unbuilt route
+ * `pending` so none of them 404s either.
  */
 export default function Page() {
   return (
-    <OfficeShell activeHref="/dashboard" title="Dashboard">
+    <OfficeShell activeHref="/" title="Dashboard">
       <PageHead title="Foundation" description="Screens are built per docs/02-build-plan.md." />
       <Panel title="Next">
         <p>

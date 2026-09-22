@@ -13,7 +13,7 @@ import {
 /**
  * §9.8: the holiday element is calculated at 12.07%, shown broken out, and
  * the final rate is what every margin in the system is computed from. These
- * are the wireframe's own figures, and `supabase/tests/130_roles_directory.sql`
+ * are the wireframe's own figures, and `supabase/tests/150_roles_directory.sql`
  * asserts the same ones against `final_rate()` in SQL — if the two ever
  * disagree, every margin on every screen moves.
  */

@@ -9,7 +9,7 @@ import type { ActionResult, RoleDraft } from './types';
 
 /**
  * Writes for /roles (§9.8), through the RPCs in
- * 20260921153000_roles_directory.sql. RLS is the gate: they are security
+ * 20260921153100_roles_directory.sql. RLS is the gate: they are security
  * invoker, so a caller who is not an admin is refused by the policy on
  * `roles`, not by a role test written here.
  */

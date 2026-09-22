@@ -268,12 +268,30 @@ export const TEMPLATES = {
     code: 'N14',
     channel: 'push',
     title: 'Your weekly limit has changed',
-    body: 'Your weekly limit is now {limit} hours — {band} until {date}.',
+    // No `body`: §8's copy ends "until [date]", and two of the five bands
+    // (RULE-20) have no date to put there — a verified completion letter is
+    // permanent, and the 48-hour opt-out lasts until the worker revokes it.
+    // `render` leaves an unmatched placeholder in the string, so one body
+    // with an optional date would send the literal "{date}" to a worker.
+    // Two halves, as N9 does it, and the sender picks by variant.
+    scopeCopy:
+      'Your weekly limit is now [20 / 48] hours — [term time / university holiday] until [date].',
     trigger:
       'Weekly hours cap changes band — term time starts or ends, or a completion letter is verified (§4.4, §4.5)',
     timing:
       'On the morning the change takes effect, from the daily compliance job (§7) — once per change',
     deepLink: '/documents',
+    variants: {
+      dated: { body: 'Your weekly limit is now {limit} hours — {band} until {date}.' },
+      // The band has no end date on the calendar, so the clause is dropped
+      // rather than filled with a placeholder nobody can answer.
+      open: { body: 'Your weekly limit is now {limit} hours — {band}.' },
+      // §8's copy offers "[20 / 48] hours", which the fifth band (RULE-20's
+      // `uncapped`) has no number for. Reusing the sentence would send
+      // "your weekly limit is now no hours", which reads as zero — the
+      // opposite of what signing the opt-out did.
+      uncapped: { body: 'You no longer have a weekly hours limit — {band}.' },
+    },
   },
   N15: {
     code: 'N15',

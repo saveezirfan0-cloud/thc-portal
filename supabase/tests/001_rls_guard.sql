@@ -14,6 +14,10 @@
 -- spatial_ref_sys, the last table in public that had no RLS at all.
 -- 20260921130927_jobs_and_outbox_drain added job_runs and job_schedules to
 -- assertions 1 and 3; both are admin-read, written by the service role.
+-- ADR-0010 re-exempted spatial_ref_sys in assertions 2 and 9: the hardening
+-- pass asserted an outcome that needs supabase_admin, which no migration in
+-- this repo has, so main was red on it for over an hour. The gap is real and
+-- is recorded rather than hidden.
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
@@ -30,15 +34,17 @@ select bag_eq(
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
         and c.relname <> 'spatial_ref_sys' $$,
-  $$ values ('applications'::text),('audit_log'),('bank_details'),('bookings'),('breaks'),('check_logs'),
+  $$ values ('applications'::text),('audit_log'),('bank_details'),('bookings'),('breaks'),
+            ('cap_band_notices'),('check_logs'),
             ('client_qualifications'),('client_rate_cards'),('clients'),
             ('compliance_docs'),('criminal_declarations'),('events'),('feedback'),
             ('hmrc_checklists'),('job_runs'),('job_schedules'),('location_pings'),
             ('notification_outbox'),('profiles'),
             ('push_subscriptions'),('quiz_attempts'),('report_sends'),('roles'),('settings'),
             ('shift_requirements'),('staff'),('staff_references'),('staff_roles'),
+            ('staff_transitions'),
             ('venue_types'),('venues'),('violations') $$,
-  'RLS is enabled on all 31 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, and applications from the public form'
+  'RLS is enabled on all 33 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, and staff_transitions from the §2.12 machine'
 );
 
 -- ---------------------------------------------------------------------
@@ -51,16 +57,39 @@ select bag_eq(
 --    staff_roles, venue_types); 0004_rls_gaps closed all eleven. This
 --    assertion is what stops the next table from arriving without RLS.
 --    It used to exempt spatial_ref_sys as "PostGIS's, not ours to alter".
---    20260921123503_db_hardening removed the need for the exemption: the
---    table is owned by the migration role, the Supabase default grants had
---    handed anon full DML on it, and it now has RLS plus a read-only
---    policy. So the query below has no exemption left at all.
+--    20260921123503_db_hardening removed the exemption on the premise that
+--    the table is owned by the migration role. On Supabase it is not: the
+--    extension is created by supabase_admin, so the `alter table ... enable
+--    row level security` in that migration takes the degradation branch it
+--    wrapped itself in, emits a notice, and changes nothing. The assertion
+--    went in asserting an outcome no migration in this repo can produce,
+--    and main went red on it for over an hour.
+--
+--    20260921130156_pin_remaining_search_paths reached the same conclusion
+--    in prose and is worth quoting, because it is the reason this exemption
+--    is back rather than a second attempt at the migration:
+--
+--      "PostGIS's table is owned by supabase_admin and its privileges were
+--       granted by supabase_admin, so only that role can revoke them or
+--       enable row-level security on it. Neither `postgres` nor the SQL
+--       editor can, and Supabase does not expose supabase_admin."
+--
+--    KNOWN GAP, and a real one: anon retains write privileges on the SRID
+--    lookup table on every Supabase project using PostGIS. It is survivable
+--    here only because our geography columns are all 4326 and nothing in
+--    the schema calls ST_Transform, so the geofence maths never reads this
+--    table at query time. Closing it needs supabase_admin and therefore
+--    belongs in project setup (docs/04), not in a migration.
+--
+--    The exemption is spelled as an explicit name rather than a wider
+--    filter so that the next table arriving without RLS still fails here.
 -- ---------------------------------------------------------------------
 select is_empty(
   $$ select c.relname::text
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
-      where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity $$,
-  'every table in public has row level security enabled, with no exemptions'
+      where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity
+        and c.relname <> 'spatial_ref_sys' $$,
+  'every table in public has row level security enabled, except PostGIS''s spatial_ref_sys (KNOWN GAP, see above)'
 );
 
 -- ---------------------------------------------------------------------
@@ -73,14 +102,16 @@ select is_empty(
 select bag_eq(
   $$ select distinct c.relname::text from pg_policy p join pg_class c on c.oid = p.polrelid
       where p.polname like 'admin\_%' $$,
-  $$ values ('applications'::text),('audit_log'),('bank_details'),('bookings'),('breaks'),('check_logs'),
+  $$ values ('applications'::text),('audit_log'),('bank_details'),('bookings'),('breaks'),
+            ('cap_band_notices'),('check_logs'),
             ('client_qualifications'),('client_rate_cards'),('clients'),
             ('compliance_docs'),('criminal_declarations'),('events'),('feedback'),
             ('hmrc_checklists'),('job_runs'),('job_schedules'),('location_pings'),
             ('notification_outbox'),
             ('push_subscriptions'),('quiz_attempts'),
             ('report_sends'),('roles'),('settings'),('shift_requirements'),('staff'),
-            ('staff_references'),('staff_roles'),('venue_types'),('venues'),('violations') $$,
+            ('staff_references'),('staff_roles'),('staff_transitions'),
+            ('venue_types'),('venues'),('violations') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );
 
@@ -99,6 +130,11 @@ select bag_eq(
             ('quiz_attempts'),('location_pings') $$,
   'workers hold a self policy on their own staff, docs, bookings, declarations, profile, bank details, references, push subscriptions, roles, quiz attempts and location pings'
 );
+-- cap_band_notices is deliberately absent from that list. It records what
+-- N14 last told a worker their weekly cap was, which is a send receipt and
+-- not the cap: the cap is recalculated every time it is needed (RULE-20),
+-- and a worker who could read this table would be reading a number that is
+-- allowed to be out of date.
 
 -- ---------------------------------------------------------------------
 -- 5. Which tables a client has any policy on.
@@ -107,10 +143,15 @@ select bag_eq(
 --    row a client can now reach that it could not before is venue_types,
 --    through venue_types_read (any signed-in role, reference data only) —
 --    deliberately not named client_*, because it is not a client policy.
+--    staff_transitions (20260921180312) is the second of that shape and
+--    is named the same way for the same reason: it describes the §2.12
+--    machine, not any person, and a client reading it learns nothing.
 --    0005 added none either: ADR-0004 gives the Client Portal owner-rights
 --    views that scope themselves instead of policies on the tables under
 --    them, so this list staying at two IS the money isolation. A new name
 --    here means somebody re-opened what 0002 closed.
+--    The public application migration added none either: `applications` is admin-only, and a customer
+--    has no business in the onboarding pipeline at all.
 -- ---------------------------------------------------------------------
 select bag_eq(
   $$ select c.relname::text from pg_policy p join pg_class c on c.oid = p.polrelid
@@ -181,22 +222,29 @@ select bag_eq(
 );
 
 -- ---------------------------------------------------------------------
--- 9. spatial_ref_sys: RLS on, read-only, readable by everybody.
---    PostGIS's EPSG lookup, created in public by `create extension
---    postgis` in 0001 and left without RLS while Supabase's default grants
---    gave anon, authenticated and service_role full DML on it — anon could
---    delete SRID 4326 and take every geography column down with it.
---    Enabling RLS with NO policy would have been worse than the hole,
---    because PostGIS reads this table during coordinate work as whoever is
---    connected, so a deny-all breaks ST_Transform. Hence exactly one
---    permissive SELECT policy, granted to public to match PostGIS's own
---    `grant select ... to public`, and nothing that can write.
+-- 9. spatial_ref_sys carries no policy that can write it.
+--
+--    This used to assert the exact policy set `spatial_ref_sys_read:r:true`,
+--    which only exists where the migration role owns the PostGIS extension.
+--    On Supabase it does not (see assertion 2), so that assertion could
+--    never pass in CI or on the live project.
+--
+--    What is asserted instead holds in both worlds: whatever policies this
+--    table ends up with, none of them may permit a write. It passes on
+--    Supabase, where the degradation leaves no policy at all, and it still
+--    passes — and still means something — on a Postgres where the migration
+--    succeeds and the read-only policy exists. What it refuses is somebody
+--    "fixing" the gap by adding a policy that lets anon write.
+--
+--    Note this is about policies, not privileges. The grants are the actual
+--    hole and they are not reachable from here; see assertion 2.
 -- ---------------------------------------------------------------------
-select bag_eq(
-  $$ select p.polname::text || ':' || p.polcmd::text || ':' || p.polpermissive::text
-       from pg_policy p where p.polrelid = 'public.spatial_ref_sys'::regclass $$,
-  $$ values ('spatial_ref_sys_read:r:true'::text) $$,
-  'spatial_ref_sys has one permissive read policy and no policy that can write it'
+select is_empty(
+  $$ select p.polname::text || ':' || p.polcmd::text
+       from pg_policy p
+      where p.polrelid = 'public.spatial_ref_sys'::regclass
+        and p.polcmd <> 'r' $$,
+  'no policy on spatial_ref_sys permits anything but SELECT'
 );
 
 select * from finish();

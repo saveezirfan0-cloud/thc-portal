@@ -45,9 +45,9 @@ describe('the handoff colour table is what ships', () => {
     [
       ":root[data-theme='light']",
       {
-        '--bg': '#f6f1ea',
-        '--panel': '#fffcf7',
-        '--line': '#e2d6c7',
+        '--bg': '#faf7f4',
+        '--panel': '#ffffff',
+        '--line': '#ebe4da',
         '--text': '#241d16',
         '--muted': '#7a6b5c',
         '--cyan': '#0e7688',
@@ -55,12 +55,12 @@ describe('the handoff colour table is what ships', () => {
         '--green': '#1f7a4d',
         '--amber': '#b5730a',
         '--coral': '#c2402f',
-        '--canvas': '#ede6dc',
+        '--canvas': '#f0ebe4',
       },
     ],
     [
       ":root[data-style='warm'][data-theme='dark']",
-      { '--bg': '#070c16', '--panel': '#111a2b', '--line': '#28354c' },
+      { '--bg': '#0a0e18', '--panel': '#171b26', '--line': '#252a36' },
     ],
   ];
 
@@ -202,9 +202,23 @@ describe('elevation', () => {
         /rgba?\(\s*0\s*,\s*0\s*,\s*0|black|#000/i,
       );
       expect(line, `untokenised shadow: ${line.trim()}`).toMatch(
-        /var\(--glow-(soft|dot)\)|box-shadow:\s*none/,
+        /var\(--glow-(soft|dot)\)|var\(--shadow-card\)|box-shadow:\s*none/,
       );
     }
+  });
+
+  it('casts its one shadow on the warm light ground only, and warm not black', () => {
+    // A shadow is invisible on a dark ground, so dark gets glow instead and
+    // this stays `none` — which is what makes the rules in warm.css inert
+    // there rather than needing a second selector.
+    expect(token(':root', '--shadow-card')).toBe('none');
+    expect(token(":root[data-style='warm'][data-theme='dark']", '--shadow-card')).toBe('none');
+
+    const light = token(":root[data-style='warm'][data-theme='light']", '--shadow-card');
+    expect(light).not.toBe('none');
+    // Warm, not neutral: a black cast on cream reads as grey dirt.
+    expect(light).not.toMatch(/rgba?\(\s*0\s*,\s*0\s*,\s*0/);
+    expect(light).toMatch(/rgba\(36, 29, 22/);
   });
 
   it('confines the glow to the fluid style, and leaves scope flat', () => {
@@ -220,6 +234,7 @@ describe('elevation', () => {
     ).toBeGreaterThan(0);
     for (const other of ['components.css', 'base.css', 'auth.css', 'tokens.css']) {
       expect(sheets[other], other).not.toMatch(/box-shadow:\s*var\(--glow/);
+      expect(sheets[other], other).not.toMatch(/box-shadow:\s*var\(--shadow-card/);
     }
   });
 

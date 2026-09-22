@@ -139,3 +139,53 @@
 :root[data-style='warm'] .gps .dot {
   box-shadow: var(--glow-dot);
 }
+
+/* ---- calendar -------------------------------------------------------
+   Warm drops the hairline grid for spaced cards, the way every other
+   warm surface reads, and thickens the chip's fill border to match.
+   The day cell takes --shadow-card with the other warm card surfaces
+   below, so a calendar cell lifts exactly like a panel or a tile. */
+:root[data-style='warm'] .cal {
+  border: 0;
+  gap: 6px;
+  background: transparent;
+}
+:root[data-style='warm'] .cal .dh {
+  background: transparent;
+}
+:root[data-style='warm'] .cal .day {
+  border-radius: var(--r-card);
+}
+:root[data-style='warm'] .evchip {
+  border-left-width: 4px;
+}
+
+/* ---- the card shadow, light only -------------------------------------
+   --shadow-card resolves to `none` everywhere except the warm light
+   ground, so these rules are inert in dark and in scope. The boards give
+   every panel, card and tile the same lift; the border stays for the
+   contact edge rather than being traded away for it. */
+:root[data-style='warm'] .panel,
+:root[data-style='warm'] .card,
+:root[data-style='warm'] .kpi,
+:root[data-style='warm'] .tile,
+:root[data-style='warm'] .mcard,
+:root[data-style='warm'] .cal .day {
+  box-shadow: var(--shadow-card);
+}
+
+/* ---- auto-assign: the violet action ---------------------------------
+   Purple is reserved for Auto-Assign across the whole system, so the tone
+   is the trigger and no screen changes: <Button tone="purple"> already
+   renders every Auto-Assign action. The boards give that one action its
+   own gradient next to the teal primary. */
+:root[data-style='warm'] .btn.purple {
+  background: var(--grad-auto);
+  border-color: transparent;
+  color: var(--on-purple);
+  box-shadow: var(--glow-soft);
+}
+:root[data-style='warm'] .btn.purple:hover {
+  background: var(--grad-auto-hover);
+  color: var(--on-purple);
+}

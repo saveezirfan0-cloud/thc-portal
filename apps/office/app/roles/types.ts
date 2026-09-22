@@ -1,6 +1,6 @@
 /**
  * The row shapes /roles reads, mirroring `role_directory_v`
- * (20260921153000_roles_directory.sql).
+ * (20260921153100_roles_directory.sql).
  *
  * Money arrives from PostgREST as a number of pounds; the screen works in
  * pence (`money.ts`), so nothing here is added or compared as a float.

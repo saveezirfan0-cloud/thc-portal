@@ -36,9 +36,18 @@ export default defineConfig({
       testMatch: [/office\..*\.spec\.ts/, /auth\.smoke\.spec\.ts/, /gate\.smoke\.spec\.ts/],
     },
     {
+      // public.* is the logged-out /apply journey (§2.1). It lives in the
+      // staff app and is reached from a phone browser long before there is
+      // an account, so it runs on this project's phone viewport rather
+      // than standing up a server of its own.
       name: 'staff',
       use: { ...devices['Pixel 7'], baseURL: `http://127.0.0.1:${PORTS.staff}` },
-      testMatch: [/staff\..*\.spec\.ts/, /auth\.smoke\.spec\.ts/, /gate\.smoke\.spec\.ts/],
+      testMatch: [
+        /staff\..*\.spec\.ts/,
+        /public\..*\.spec\.ts/,
+        /auth\.smoke\.spec\.ts/,
+        /gate\.smoke\.spec\.ts/,
+      ],
     },
     {
       name: 'client',

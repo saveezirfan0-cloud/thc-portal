@@ -21,8 +21,36 @@ Built: the monorepo, the design system, sign-in for all three apps, the venues d
 the domain rules (state machines, times, buffer, cap, scoring, pay), the §8 notification
 register, the full row-level-security suite, and the live database with seed data.
 
-Not built: every other screen, and the entire background-jobs layer. There are no Edge
-Functions yet.
+Also built, server side only, with no screen in front of any of it:
+
+- the whole day of the shift (§5.1–5.2b, §9.5) — check-in, check-out, breaks and Resolve,
+  with the pay window behind them (screens B7, S5 are not built)
+- the auto-assign engine (§3.4–3.6, §6) and the three rounds that run it (screen B3)
+- the jobs layer (§7): `job_runs`, the outbox claim/complete pair, the UK wall-clock gate,
+  and four of the ten background rules — `booking-tick` (BG-01/02/02b/03/09/10),
+  `auto-staffing` (the hourly, 12:05 cutoff and escalation rounds) and `compliance-daily`
+  (BG-04/05, plus the §4.3 block cascade and the §4.4 cap-band change)
+- leaving (§10.6, `request_p45`) and the in-employment conviction declaration (§10.7,
+  `declare_conviction`), both of which reuse the §4.3 cascade, plus the §2.12 staff state
+  machine in SQL — which nothing had, though CLAUDE.md asks for every state change to be
+  rejected in the database too. A Vitest holds it to `STAFF_TRANSITIONS` edge for edge.
+- the manager's three profile buttons (§9.6): `block_worker_manually` with its mandatory
+  reason, `unblock_worker` which runs the §4.3 full check first and reports what is still
+  outstanding when it refuses, and `reset_to_candidate` — the Employee ID and all history
+  retained, every piece of compliance evidence superseded but kept read-only
+- GDPR removal (§1.7, `remove_worker`): anonymised to "Deleted account #id", documents and
+  contacts deleted, login unlinked, future bookings released — and the Employee ID,
+  bookings, violations and verbatim feedback all retained for reporting
+
+Not built: every screen bar sign-in, the venues directory and the roles directory. Of the
+background rules, BG-06/07 (geofence) wait on the geolocation shell and BG-08 on the
+reports layer. Nothing writes `location_pings`, so the off-site check-out path always
+takes its RULE-02 fallback until that shell lands.
+
+**Nothing is sent.** N1–N15 and E1–E9 reach `notification_outbox` and stop: the drain is
+registered but disabled, because Web Push needs VAPID keys and email needs Resend, and
+both are in `docs/14` O3. The §4.3 cascade likewise has no manual entry point until §9.6
+is built — see `docs/14` O10.
 
 ---
 
@@ -94,6 +122,23 @@ Functions yet.
 >
 > Done when: a 15-event day fills from seed data and the scoring order is provable from
 > `job_runs`.
+>
+> **Half done, 21.09.2026.** The engine is built and tested in SQL — migration
+> `20260921141500_auto_assign.sql`, 57 assertions in `supabase/tests/130_auto_assign.sql`.
+> `auto_assign_candidates` gives the pool with its gate and the five §6 factor inputs,
+> `invite_worker` adds additively, `accept_invite` is first-to-confirm with the automatic
+> withdrawal of overlapping invitations, `release_unready_bookings` is the 12:00 cutoff
+> with N6b, `self_cancel_booking` is RULE-04, and `auto_assign_due_shifts` splits hourly
+> from escalation exclusively at the shift's start.
+>
+> What is left is only the Deno process that calls them, and it is blocked on ADR-0006
+> exactly as `notify-drain` is: the function must import `packages/domain/scoring.ts`,
+> because the scoring stays in TypeScript so it has one implementation. The ADR's
+> option 3 has now been shown to build (see its 21.09.2026 update); take that first and
+> both Edge Functions unblock together. The Edge Function is then thin: for each due
+> section, read the candidates, `rankPool()` them, and call `invite_worker` for the top
+> `allocation` — plus a distance filter of 3 miles and `p_ignore_target` in escalation
+> mode.
 
 ## B5 · Onboarding kanban and candidate profile (§2.2–2.3)
 
@@ -138,10 +183,13 @@ Functions yet.
 > the dual-zone WINDOW column per §1.8, the Breaks column, and the violation log with
 > detail and Resolve.
 >
-> Resolving needs a mandatory note. Resolving a No check-out additionally needs an actual
-> finish time, labelled "(UK time)", validated server-side. Until then the booking's
-> payable time stays undetermined: `payableMinutes` in `@thc/domain` returns null rather
-> than a number, deliberately.
+> The server side is already built: call `resolve_violation(id, note, actual_finish)`
+> rather than writing to `violations` from the screen. It enforces the mandatory note,
+> validates the finish time against the check-in and against now, reclassifies a No-show
+> to Late exactly as "Get back" does, and returns `payrollExported` so you can show the
+> "please notify Finance" warning on an already-exported shift. Until a No check-out is
+> resolved the booking's payable time stays undetermined: `payableMinutes` in
+> `@thc/domain` returns null rather than a number, deliberately.
 >
 > Done when: it matches the wireframe, updates live, and the undetermined case never
 > renders a number.
@@ -292,6 +340,11 @@ Functions yet.
 
 ## S4 · Documents hub and conviction declaration (§10.4, §10.7)
 
+> **The server side of §10.7 is built.** `declare_conviction()` adds the declaration to the
+> history, suspends the worker exactly as an expired document does, and queues E9 without
+> the declaration text. Verify and Reject on the row already do what §10.7 says. What is
+> left here is the screen and the grant (docs/14 O10).
+
 > Use the `compliance` agent. Branch `feat/compliance-staff-documents`.
 >
 > Build the worker's Documents tab with every state, re-upload after rejection, and the
@@ -314,6 +367,11 @@ Functions yet.
 > Late, not No-show. At start plus 30 the button locks, unless the booking was confirmed
 > after the shift had already started.
 >
+> Every button has its RPC already: `attempt_check_in`, `start_break`, `finish_break`,
+> `check_out`. Call them; do not write to `check_logs` or `breaks` from the app, because
+> a worker holds no insert policy on either. `start_break` is disabled before check-in
+> and absent entirely where the client pays for breaks (§3.2).
+>
 > Pay is computed by `payableMinutes` in `@thc/domain`. Note the asymmetry it encodes:
 > checking in inside the grace pays from the SCHEDULED start, checking in past it pays
 > from the ACTUAL time.
@@ -331,6 +389,11 @@ Functions yet.
 > Requesting a P45 makes the worker inactive with a leaving date and fires E8 immediately
 > rather than in a batch. Inactive is the leaver state: entered only this way, and left
 > only by a manager pressing Reset to candidate. There is no reactivate.
+>
+> **The server side of this is built.** `request_p45()` does the whole §10.6 cascade and
+> queues E8 with the released-shift list; it refuses while the worker is checked in, so
+> the greyed-out button has a rule behind it. What is left here is the screen, and the
+> grant: the function is service-role only until there is a caller (docs/14 O10).
 >
 > Profile edits fire E5, E6 and E7. An email change needs verification.
 >
@@ -377,6 +440,16 @@ Functions yet.
 > Done when: each job runs, is idempotent under a forced double-run, and writes a
 > `job_runs` row.
 
+**Mostly done.** The plumbing, the UK gate and three of the five Edge Functions exist and
+are covered by pgTAP (110, 170, 180, 190, 200). What is left under P1: `finance-reports`
+(BG-08, which needs the reports layer — see B11) and `notify-drain` (P2, which needs the
+keys). The registry row for the drain is deliberately `enabled = false` so
+`install_job_schedules()` does not schedule a post at a function that is not deployed.
+
+One deploy-order rule, stated in each migration and repeated here because it is easy to
+get wrong: `supabase functions deploy` runs **before** `install_job_schedules()`. The
+other way round, pg_cron spends the gap posting at a 404.
+
 ## P2 · Notification senders (§8, §10.5)
 
 > Use the `notifications` agent. Branch `feat/notifications-senders`.
@@ -410,6 +483,16 @@ Functions yet.
 > expiry with a confidence without ever setting verified.
 
 ## P4 · Lifecycle, GDPR and migration (§1.7, §10.6, Appendix B)
+
+> **The lifecycle half is built**, server side: `request_p45` (§10.6), `remove_worker`
+> (§1.7), `reset_to_candidate` (§2.12/§9.6) and the staff state machine in SQL. What is
+> left under P4 is the Appendix B migration and the screens that press these.
+>
+> Two things §1.7 deliberately leaves to a later pass, recorded so they are not read as
+> gaps: deleting the GoTrue `auth.users` row needs the admin API, which SQL cannot reach,
+> so removal unlinks `user_id` instead; and redacting a worker's name from free-text
+> feedback needs an LLM step the scope rules out of v1 — feedback is retained verbatim and
+> the office redacts by hand.
 
 > Use the `platform` agent. Branch `feat/platform-lifecycle`.
 >

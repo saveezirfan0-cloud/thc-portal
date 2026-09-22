@@ -4,7 +4,7 @@ import type { RoleDraft } from './types';
 /**
  * The form's half of the §9.8 rules. `assert_role_input` and the `roles`
  * constraints reject the same drafts in the database
- * (supabase/tests/130_roles_directory.sql).
+ * (supabase/tests/150_roles_directory.sql).
  */
 export function validateRole(draft: RoleDraft): string | null {
   if (!draft.name.trim()) return 'Give the role a name.';

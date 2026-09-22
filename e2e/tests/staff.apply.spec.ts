@@ -10,12 +10,20 @@ import { expect, test } from '@playwright/test';
  * instead — including the duplicate check, which by design produces exactly
  * the same screen as a new application and so could not be told apart here.
  */
+/** `yyyy-mm-dd` for someone who turns `age` today, offset by whole days. */
+function dobForAge(age: number, offsetDays = 0): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - age);
+  d.setDate(d.getDate() + offsetDays);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 test.describe('/apply', () => {
   test('is public and shows the §2.1 fields', async ({ page }) => {
     await page.goto('/apply');
 
     await expect(page.getByRole('heading', { name: 'Apply to work with us' })).toBeVisible();
-    for (const label of ['First name', 'Surname', 'Email', 'Mobile', 'Age']) {
+    for (const label of ['First name', 'Surname', 'Email', 'Mobile', 'Date of birth']) {
       await expect(page.getByLabel(label, { exact: true })).toBeVisible();
     }
     await expect(page.getByText('You must be 18 or over to work with us.')).toBeVisible();
@@ -32,7 +40,7 @@ test.describe('/apply', () => {
     await page.getByLabel('Surname', { exact: true }).fill('Kalu');
     await page.getByLabel('Email', { exact: true }).fill('amara.kalu@example.com');
     await page.getByLabel('Mobile', { exact: true }).fill('7010 000123');
-    await page.getByLabel('Age', { exact: true }).selectOption('24');
+    await page.getByLabel('Date of birth', { exact: true }).fill(dobForAge(24));
     await expect(submit).toBeDisabled();
 
     await page.getByRole('checkbox').check();
@@ -49,12 +57,14 @@ test.describe('/apply', () => {
     await page.getByLabel('Mobile', { exact: true }).fill('7010 000124');
     await page.getByRole('checkbox').check();
 
-    await page.getByLabel('Age', { exact: true }).selectOption('under_18');
-    // Consent is given and every other field is valid, so the age alone is
-    // what holds the button. The server and the database check it again.
+    // A day short of eighteen. Consent is given and every other field is
+    // valid, so the age alone is what holds the button. The server and the
+    // database check it again (ADR-0008).
+    await page.getByLabel('Date of birth', { exact: true }).fill(dobForAge(18, 1));
     await expect(submit).toBeDisabled();
 
-    await page.getByLabel('Age', { exact: true }).selectOption('18');
+    // Eighteen exactly, today. The boundary belongs to the applicant.
+    await page.getByLabel('Date of birth', { exact: true }).fill(dobForAge(18));
     await expect(submit).toBeEnabled();
   });
 

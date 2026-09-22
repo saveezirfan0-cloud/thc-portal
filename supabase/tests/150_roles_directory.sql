@@ -1,5 +1,5 @@
 -- =====================================================================
--- 130 · Roles & rates (§9.8) — 20260921153000_roles_directory.sql
+-- 150 · Roles & rates (§9.8) — 20260921153100_roles_directory.sql
 --
 -- The holiday element is the thing to hold still. §1.5 says it is
 -- calculated and never stored, and §9.8 says all margin in the system is

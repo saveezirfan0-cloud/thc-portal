@@ -1,37 +1,46 @@
-# ADR-0007 · Invert the ADR-0003 pairing, and grow the warm style into "Fluid"
+# ADR-0007 · One rounded look in two grounds; the switch is a theme switch
 
-**Status:** Accepted (product owner, 21.09.2026). Supersedes the *pairing* in ADR-0003. Everything else in ADR-0003 — the two axes, the ten brand colours, the contrast work — stands.
+**Status:** Accepted (product owner, 21.09.2026). Settles the *pairing* left open by ADR-0003. Everything else in ADR-0003 — the two axes, the ten brand colours, the contrast work — stands.
 
 ## Context
 
-The product owner supplied seven new boards: three labelled "Warm Light Mode" and four labelled "Modern 2026 Fluid". They are drawn as restaurant-reservation screens (tables, covers, sommelier notes), which is not this product; the screens themselves are not adoptable. The *visual language* in them is, and reading it against our tokens turned out to be unusually clean:
+The product owner supplied boards in three batches:
 
-- The **"Warm Light" boards** are zero radius, Space Grotesk headlines and IBM Plex Mono uppercase labels, on a cream ground. That is our `scope` geometry on `light`.
-- The **"Fluid" boards** are round (1–2.5 rem, `rounded-full` on every control), Plus Jakarta Sans, frosted glass and accent glow, on navy. That is our `warm` geometry on `dark`, with a bigger radius scale and one new effect.
+1. Seven boards: three labelled "Warm Light Mode" (zero radius, Space Grotesk, IBM Plex Mono caps, cream) and four "Modern 2026 Fluid" (round, Plus Jakarta Sans, glass and glow, navy).
+2. Four boards, captioned **"this is warm design direction"**: cream ground, rounded cards, soft shadows, teal and violet gradient actions.
+3. The same four screens again, captioned **"this is dark mode"**: navy ground, identical layout and geometry, glow in place of the shadow.
 
-Their dark palette is our dark palette to the hex — `#3EDCEC`, `#DFE2F1`, `#0F131D` all appear verbatim — so nothing about the colour system is being asked to move.
+Batches 2 and 3 are decisive, because they are *the same four screens* rendered twice. They settle what one earlier reading of batch 1 got wrong — that the zero-radius "Warm Light" boards described the light mode. They did not. **Every board the owner has called a direction is the same rounded, gradient-accented language; only the ground changes.**
 
-In other words the request is not a new design system. It is **the existing two axes, paired the other way round**, plus a larger radius scale and a glow.
+All of it is drawn as restaurant-reservation screens (tables, covers, sommelier notes). That is not this product, and no screen is adoptable. The visual language is.
 
 ## Decision
 
-1. **Flip the pairing.** `styleForMode` returns `scope` for light and `warm` for dark. ADR-0003 said the pairing could change "without touching a single screen"; this is that claim being spent. The diff is one function and one line of inline head script.
+1. **The switch is a theme switch.** `styleForMode` returns `warm` for both modes. Light is cream, dark is navy; the geometry, type and radius scale are identical in both. This is one function, as ADR-0003 promised.
 
-2. **Grow the warm radius scale to the boards' values.** Cards 28, tiles 22, frames 32, and `--r-control` becomes `999px` — on the boards every button, input, nav item and chip is `rounded-full`. Two things cannot take a pill, so they get their own tokens rather than an override buried in a component rule: `--r-field` (20px, textareas) and `--r-check` (8px, checkbox and radio boxes).
+2. **`scope` stays reachable but unpaired.** The Scope of Work marks §1.6 STRICT, so the literal rendering has to stay reproducible for the approved design pack. It is now set by hand on `data-style`, not by the switch.
 
-3. **Add an accent glow, and keep "no drop shadows".** The boards use `shadow-lg shadow-primary/20` and `shadow-[0_0_8px_…]`. Both are coloured glows, not neutral casts. Two tokens carry them — `--glow-soft` (active nav, primary button) and `--glow-dot` (status dots, in `currentColor` so an amber pill halos amber). Both are `none` in `scope`. The style test no longer bans `box-shadow` outright; it now bans a *neutral* one and requires every shadow to come from a glow token, which is the rule the handoff actually meant.
+3. **Depth follows the ground.** A shadow is invisible on navy and a glow is invisible on cream, so each ground gets the one that works:
+   - light → `--shadow-card`, two layers, and **warm** (`rgba(36,29,22,…)`) rather than black, because a neutral cast on cream reads as grey dirt;
+   - dark → `--glow-soft` and `--glow-dot`, accent-tinted.
+   Both tokens are `none` on the other ground, which is what keeps the rules in `warm.css` inert rather than needing a second selector. "No *drop* shadows" survives as the thing it always meant: no neutral cast.
 
-4. **Adopt `#0E7688` as the light accent**, the boards' `primary`, replacing `#0B7A88`. This is an accessibility improvement rather than a cost: `#0B7A88` sat exactly on 4.50:1 against the warm ground, which any antialiasing lost. `#0E7688` measures 4.96:1.
+4. **Auto-assign gets the violet gradient.** The boards give that one action its own colour next to the teal primary, and this design system already reserves purple for Auto-Assign. So the tone is the trigger — `<Button tone="purple">` already renders every Auto-Assign action, and no screen changes.
+
+5. **The grounds come from the spec, the foreground tones do not.** The implementation guide's "Luminous Midnight" and "Editorial Linen" grounds are adopted verbatim — dark `#0A0E18` / `#0F131D` / `#171B26` / `#1E2333`, light `#FAF7F4` / `#FFFFFF` / `#F5F1EB` / `#EBE4DA`. Its *foreground* palette is not, because it fails AA against its own page: cyan 3.45:1, emerald 2.38:1, amber 2.01:1, coral 3.44:1, muted 4.46:1. Our ink tones measure 4.5:1 or better on all three grounds in both themes — 42 pairs, asserted by `contrast.test.ts` rather than trusted.
+
+6. **The light accent is `#0E7688`**, the boards' `primary`. An improvement, not a cost: the old `#0B7A88` sat exactly on 4.50:1 against the warm ground, which any antialiasing lost; `#0E7688` measures 4.96:1.
 
 ## What was not adopted, and why
 
-- **Tailwind.** The boards are built on the Tailwind CDN build. This repo's design system is plain CSS tokens in `packages/ui` (CLAUDE.md, `docs/07-design-system.md`), and the whole reason this change is fifty lines rather than a rewrite is that the values live in tokens. Adopting Tailwind would have cost the property that made this cheap.
-- **The screens themselves.** Reservations grids, floor plans, covers, dietary flags and sommelier notes belong to a restaurant booking product. This one schedules event staff: events, role sections, bookings, check-in, compliance, payroll. Nothing in `docs/08-screen-inventory.md` moves.
-- **`#0891B2`**, which appears in the boards' inline classes alongside their declared `#0E7688`. It measures 3.45:1 on the warm ground and fails AA for text.
-- **The boards' `#FAF7F4` / `#FAF7F5` / `#F5F1EB` grounds.** They disagree with each other by a percent or two and with our `#F6F1EA` by less than that. Not worth the churn.
+- **Tailwind.** The boards run the Tailwind CDN. This repo's design system is plain CSS tokens (CLAUDE.md, `docs/07-design-system.md`), and that is the entire reason each of these revisions costs tens of lines instead of a rewrite.
+- **The screens themselves.** Reservations grids, floor plans, covers, dietary flags and sommelier notes belong to a restaurant booking product. This one schedules event staff. Nothing in `docs/08-screen-inventory.md` moves.
+- **The three zero-radius "Warm Light" boards** from batch 1, superseded by batch 2.
+- **`#0891B2`**, which appears in the boards' inline classes beside their own declared `#0E7688`. It measures 3.45:1 on the warm ground and fails AA for text.
 
 ## Consequences
 
-- Light mode is now the denser, flatter look and dark is the softer one — the reverse of what shipped. Anyone who had set a preference keeps their *mode*; the geometry under it changes.
-- `docs/09-visual-direction.md`'s audience table now reads backwards in places: it argued rounded corners for the 18–30 worker audience, who are mostly on light mode by default. That argument is not withdrawn, it is overruled by the product owner's preference for the boards. Worth revisiting if worker feedback disagrees.
+- The appearance control is now just Light / Dark. It no longer names a style, because it no longer picks one.
+- `docs/09-visual-direction.md`'s argument for rounded corners for an 18–30 workforce is back in force rather than overruled — it now describes both modes.
+- One earlier revision of this ADR inverted the pairing instead. That reading is recorded here rather than erased, because the boards that supported it are still in the repository and someone will find them.
 - No functional change. No screen file changed. No notification copy, rule or migration is touched.

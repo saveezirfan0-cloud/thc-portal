@@ -15,18 +15,26 @@ import type { ReactNode } from 'react';
  * `/settings` is deliberately absent: it is in the screen inventory but in
  * none of the wireframes' sidebars. It is the Django-Admin replacement
  * (§9.11, §9.12) and where it hangs is platform's call, not this file's.
+ *
+ * `pending` marks a route its owning bot has not built yet: the item keeps
+ * its place, so the sidebar still shows the shape of the product, but it
+ * renders as text rather than a link. A sidebar that 404s reads as broken
+ * rather than unfinished. Drop the flag when the route lands.
+ *
+ * Dashboard points at `/`, not `/dashboard`: §9.1 belongs to the `reports`
+ * bot and until it exists the index stands in for it.
  */
 const NAV = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/onboarding', label: 'Onboarding' },
+  { href: '/', label: 'Dashboard' },
+  { href: '/onboarding', label: 'Onboarding', pending: true },
   { href: '/events', label: 'Scheduling' },
-  { href: '/compliance', label: 'Compliance' },
-  { href: '/checkin', label: 'Check In / Out' },
-  { href: '/staff', label: 'Staff', dividerBefore: true },
-  { href: '/clients', label: 'Clients' },
+  { href: '/compliance', label: 'Compliance', pending: true },
+  { href: '/checkin', label: 'Check In / Out', pending: true },
+  { href: '/staff', label: 'Staff', dividerBefore: true, pending: true },
+  { href: '/clients', label: 'Clients', pending: true },
   { href: '/roles', label: 'Roles' },
-  { href: '/reports', label: 'Reports' },
-  { href: '/feedback', label: 'Feedback' },
+  { href: '/reports', label: 'Reports', pending: true },
+  { href: '/feedback', label: 'Feedback', pending: true },
   { href: '/venues', label: 'Venues' },
 ];
 

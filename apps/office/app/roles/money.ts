@@ -5,7 +5,7 @@ import { HOLIDAY_RATE } from '@thc/domain';
  *
  * Rates are held in pence here and as `numeric(8,2)` in the database. The
  * 12.07% lives in two places only — `HOLIDAY_RATE` in `packages/domain` and
- * `final_rate()` in SQL — and `130_roles_directory.sql` asserts the two
+ * `final_rate()` in SQL — and `150_roles_directory.sql` asserts the two
  * agree at every penny. This module is the screen's side of that.
  */
 

@@ -1,40 +1,15 @@
-import { Content, PageHead, Panel, Shell, Sidebar, Topbar } from '@thc/ui';
+import { redirect } from 'next/navigation';
 
-/** The Client Portal is read-only and shows no money at all (§11.1–11.2). */
-const NAV = [
-  { href: '/events', label: 'Events' },
-  { href: '/feedback', label: 'Feedback' },
-];
-
-export default function Page() {
-  return (
-    <Shell
-      sidebar={
-        <Sidebar
-          items={NAV}
-          activeHref="/events"
-          brand={
-            <>
-              <span className="logo">THC</span>
-              <span>
-                <span className="name">The Hospitality Company</span>
-                <span className="sub">Client portal</span>
-              </span>
-            </>
-          }
-        />
-      }
-    >
-      <Topbar title="Events" timezone="All times UK (Europe/London)" />
-      <Content>
-        <PageHead title="Foundation" description="Phase 0 shell. Built in Phase 6." />
-        <Panel title="Scope">
-          <p>
-            This portal is read-only: confirmed line-up, event details and feedback. It never shows
-            a rate, a charge or any other money (§11.1).
-          </p>
-        </Panel>
-      </Content>
-    </Shell>
-  );
+/**
+ * The portal lives at /client, which is the route
+ * `docs/08-screen-inventory.md` names and the URL the wireframe's address
+ * bar shows (`portal.thehospitalitycompany.co.uk/client`).
+ *
+ * This root exists only to send people there, so a bookmarked bare domain
+ * still lands on the event list rather than on a dead index. It replaces
+ * the Phase 0 placeholder, whose "Events" nav item pointed at `/` — that
+ * item now has a real screen to point at.
+ */
+export default function Home() {
+  redirect('/client');
 }
