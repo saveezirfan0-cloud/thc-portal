@@ -36,28 +36,30 @@ lands.
 
 **RULE-20 was implemented twice and the two did not match.**
 
-`docs/scope/university-completion-letter-requirement.pdf` is a new contract document
-from THC. `packages/domain/src/cap.ts` implemented it in full. The SQL `weekly_cap()`
-did not — it still ran the older four-input rule, and auto-assign filters on the SQL
-side inside a query, so a student-visa worker could be offered a shift the TypeScript
-rule would refuse. The worst case was not the student: an **under-18 with a recorded
-opt-out tick came back uncapped**, no weekly ceiling at all, where the rule says a
-minor cannot sign one.
+`packages/domain/src/cap.ts` implemented the University Completion Letter
+requirement in full. The SQL `weekly_cap()` did not — it still ran the older
+four-input rule, and auto-assign filters on the SQL side inside a query, so a
+student-visa worker could be offered a shift the TypeScript rule would refuse. The
+worst case was not the student: an **under-18 with a recorded opt-out tick came back
+uncapped**, no weekly ceiling at all, where the rule says a minor cannot sign one.
 
-Migrations `20260922140000` and `20260922140100` close it. `weekly_cap()` now takes all
-ten inputs and agrees with `cap.ts` across every one of the 27 shared vectors, and
-`090_weekly_cap.sql` passes every column at the call site, so the next divergence fails
-on arity rather than running four columns and silently dropping six.
+Migrations `20260922093000` and `20260922093100` close it. `weekly_cap()` now takes
+all ten inputs and agrees with `cap.ts` across every one of the 27 shared vectors;
+the four-argument signature survives as an overload that delegates, so existing
+callers keep working and `090_weekly_cap.sql` asserts both. `can_roster()` covers what
+the weekly cap structurally cannot — the week that straddles a right-to-work expiry
+has workable days before it and none after, so that question is per shift, not per
+week. `weekly_cap_for()` sources all ten facts from real columns:
+`below_degree_level`, `course_completion_date` and `wtr_optout_cancelled_from` were
+added to `staff` in the same migration.
 
-**What is still open from it** is the impure half. `weekly_cap_for(staff, date)` — the
-wrapper auto-assign's hours gate calls — can source only six of the ten facts. Under-18
-now reads live from `staff.dob`. The other four do not: `below_degree_level` has no
-field at all, `completion_date` and `visa_expiry` exist on `compliance_docs` but which
-verified document is authoritative is a compliance decision, and `optout_cancelled_from`
-has no column because §2.4's notice period is recorded nowhere. Each defaults to the
-value that reproduces the previous behaviour, so the wrapper is never quietly wrong in a
-new way — but until they are wired, a reviewer can approve a letter the rota guard will
-not act on. That belongs with B6b below, and `docs/13` carries it.
+**Worth knowing, because it nearly cost a regression.** Two sessions fixed this
+independently and the second one's migrations were timestamped later, so they would
+have applied last and `drop function ... weekly_cap(boolean, text, boolean, boolean)`
+would have removed the overload the first one's tests rely on. They were dropped on
+the branch rather than merged. `docs/13`'s header already says to run `git fetch
+origin && git branch -r` before starting; this is what it is for, and a migration is
+the most expensive place to learn it.
 
 ---
 
@@ -68,8 +70,8 @@ item, on its own branch, and read `docs/10-working-with-agents.md` before runnin
 at once — it lists the three files that every session wants to touch.
 
 1. **B6b · completion letter + opt-out.** The rule half is finished on both sides now
-   (§2 above). What is left is the upload, the review screen, the four facts
-   `weekly_cap_for()` still cannot read, the audit trail, retention, the rota guard,
+   and reads off real columns (§2 above). What is left is the screens and the plumbing
+   around it: the upload, the review queue, the audit trail, retention, the rota guard,
    notifications and reporting. Legal exposure: civil penalties for illegal working.
 2. **B1 · Dashboard (§9.1).** The one route every admin lands on after sign-in, and
    still the only screen in the Back Office standing in for itself.

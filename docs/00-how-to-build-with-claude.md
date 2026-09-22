@@ -12,10 +12,10 @@ is covered by tests.
 |---|---|---|
 | Unit | 611 | `pnpm test` |
 | Browser smoke | 57 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 945 over 27 files | `supabase test db` |
+| Database, row-level security and rules | 966 over 27 files | `supabase test db` |
 
 The database figure is the sum of the declared plans across `supabase/tests/`, read off
-this tree — 860 stated as literals plus `070_check_in_out.sql`, whose plan is computed
+this tree — 881 stated as literals plus `070_check_in_out.sql`, whose plan is computed
 from `pay.vectors.json` (50 vectors + 35 fixed = 85). It is not a measured run. pgTAP
 fails a file whose plan does not match the assertions it actually runs, so a green
 `supabase test db` turns the sum into an exact count; a red one means the sum was the

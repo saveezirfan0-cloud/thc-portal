@@ -21,7 +21,9 @@ const section = (over: Partial<RoleSection> & Pick<RoleSection, 'role'>): RoleSe
   ...over,
 });
 
-const person = (over: Partial<LineupRow> & Pick<LineupRow, 'name' | 'role' | 'sortKey'>): LineupRow => ({
+const person = (
+  over: Partial<LineupRow> & Pick<LineupRow, 'name' | 'role' | 'sortKey'>,
+): LineupRow => ({
   bookingId: `b-${over.name}`,
   eventId: 'ev-1',
   startsAt: '2026-09-19T06:00:00Z',
@@ -131,7 +133,11 @@ describe('when feedback unlocks (§11.2)', () => {
 
 describe('the line-up, grouped and ordered (§11.2, §11.3)', () => {
   const sections = [
-    section({ role: 'Waiting Staff', startsAt: '2026-09-19T16:00:00Z', endsAt: '2026-09-19T22:30:00Z' }),
+    section({
+      role: 'Waiting Staff',
+      startsAt: '2026-09-19T16:00:00Z',
+      endsAt: '2026-09-19T22:30:00Z',
+    }),
     section({ role: 'Chef', startsAt: '2026-09-19T06:00:00Z', endsAt: '2026-09-19T14:00:00Z' }),
   ];
 
@@ -185,9 +191,23 @@ describe('the line-up, grouped and ordered (§11.2, §11.3)', () => {
 
 describe('the Upcoming / Past / All tabs (§11.1)', () => {
   const now = new Date('2026-09-19T12:00:00Z');
-  const ongoing = event({ id: 'now', startsAt: '2026-09-19T06:00:00Z', endsAt: '2026-09-19T22:30:00Z', status: 'ongoing' });
-  const future = event({ id: 'later', startsAt: '2026-09-26T11:00:00Z', endsAt: '2026-09-26T19:00:00Z' });
-  const past = event({ id: 'before', startsAt: '2026-09-12T07:00:00Z', endsAt: '2026-09-12T16:00:00Z', status: 'completed' });
+  const ongoing = event({
+    id: 'now',
+    startsAt: '2026-09-19T06:00:00Z',
+    endsAt: '2026-09-19T22:30:00Z',
+    status: 'ongoing',
+  });
+  const future = event({
+    id: 'later',
+    startsAt: '2026-09-26T11:00:00Z',
+    endsAt: '2026-09-26T19:00:00Z',
+  });
+  const past = event({
+    id: 'before',
+    startsAt: '2026-09-12T07:00:00Z',
+    endsAt: '2026-09-12T16:00:00Z',
+    status: 'completed',
+  });
   const all = [ongoing, future, past];
 
   it('keeps an event that is running now in Upcoming, not Past', () => {
@@ -203,7 +223,12 @@ describe('the Upcoming / Past / All tabs (§11.1)', () => {
   });
 
   it('keeps a cancelled event in the list rather than hiding it', () => {
-    const cancelled = event({ id: 'off', status: 'cancelled', startsAt: '2026-09-21T17:00:00Z', endsAt: '2026-09-21T21:00:00Z' });
+    const cancelled = event({
+      id: 'off',
+      status: 'cancelled',
+      startsAt: '2026-09-21T17:00:00Z',
+      endsAt: '2026-09-21T21:00:00Z',
+    });
     expect(filterByTab([cancelled], 'upcoming', now).map((e) => e.id)).toEqual(['off']);
   });
 

@@ -229,19 +229,6 @@ is still open, then take that one verbatim.
 >   60/30/14 days, opt-out signed or cancelled. These are new entries in the §8 register
 >   in `packages/notifications`, each with its own outbox key.
 >
-> - **The four facts the database cannot yet read.** `weekly_cap()` takes all ten
->   inputs and agrees with `cap.ts` case for case. `weekly_cap_for(staff, date)` — the
->   wrapper auto-assign's hours gate actually calls — can only source six of them.
->   `below_degree_level` has no field at all; `completion_date` and `visa_expiry` exist
->   on `compliance_docs` but which verified document is authoritative is a compliance
->   decision, not one to take from a migration; `optout_cancelled_from` has no column,
->   because §2.4's notice period is recorded nowhere. Each currently defaults to the
->   value that reproduces today's behaviour, so the wrapper is never quietly wrong — but
->   until they are wired, the review screens above can approve a letter that the rota
->   guard will not act on. Wire them in the same branch as **Review**, and extend
->   `150_roles_directory.sql`-style coverage to `weekly_cap_for()` itself, which today
->   has no test naming the sourced facts.
->
 > Watch the edge cases in §7, which is where this gets subtle: a completion date in the
 > future, a visa expiring around completion, and a worker switching to a Graduate or
 > Skilled Worker visa mid-employment — a new right-to-work check that ends the student
