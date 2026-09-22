@@ -31,17 +31,16 @@ describe('app stylesheets read the design system', () => {
   for (const sheet of sheets) {
     const css = readFileSync(join(REPO, sheet), 'utf8');
 
+    // A sheet may also define its own custom properties — `events.css` sets
+    // `--accent` per fill state so one rule can draw four of them. Those are
+    // not tokens this package owes, and counting them as missing turned a
+    // legitimate pattern into a failing build.
+    const local = new Set([...css.matchAll(/^\s*(--[a-z0-9-]+)\s*:/gm)].map((m) => m[1]!));
+
     it(`${sheet} names only tokens that exist`, () => {
       const used = [...css.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]!);
-      // A sheet may declare its own custom properties as local aliases, and
-      // that is not a token violation: events.css sets `--accent: var(--amber)`
-      // per fill state and draws the border with it, which is the whole reason
-      // the states differ by one declaration rather than by a rule each. The
-      // invariant worth holding is "names a token that nobody defines", not
-      // "names a token tokens.css does not define".
-      const local = new Set([...css.matchAll(/^\s*(--[a-z0-9-]+):/gm)].map((m) => m[1]!));
       const missing = [...new Set(used)].filter((name) => !defined.has(name) && !local.has(name));
-      expect(missing, `undefined in tokens.css`).toEqual([]);
+      expect(missing, `undefined in tokens.css and not defined by this sheet`).toEqual([]);
     });
 
     it(`${sheet} names no literal colour`, () => {

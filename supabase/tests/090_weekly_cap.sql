@@ -25,7 +25,7 @@
 -- their fixed UUIDs, never by global counts.
 -- =====================================================================
 begin;
-select plan(50);
+select plan(51);
 
 \ir _shared/cap_vectors.psql
 
@@ -86,20 +86,24 @@ select is(
   '§4.5: completion letter PLUS opt-out is what removes the weekly ceiling'
 );
 
--- This read "no ceiling is null, never 0" when I wrote it for PR #3, and it
--- was right then: no band returned 0, so a 0 could only have been a null
--- that lost its way. The completion-letter requirement introduced
--- visa_expired_0, which is a real cap of no hours and a different thing
--- entirely — the assertion outlived the rule it was protecting.
+-- This asserted that 0 never appears at all, and it was right until the
+-- completion-letter requirement gave 0 a meaning: a week wholly past a
+-- lapsed right to work (`visa_expired_0`). docs/13 B6b names it as a STALE
+-- invariant rather than an unimplemented rule, and it is the last assertion
+-- standing between `main` and green.
 --
--- What still has to hold, and what it was actually guarding, is that the
--- two are never confused: null means NO CEILING and belongs to `uncapped`
--- alone, so a real zero can never be written as one, nor a no-ceiling week
--- as 0 hours.
+-- What it was really protecting is worth keeping, so it becomes two: NO
+-- CEILING is null and never 0 — a 0 there would read as "no hours left" to
+-- every caller and gate the worker out of everything — and 0 itself now
+-- means exactly one thing.
 select is_empty(
-  $$ select name from cap_vectors
-      where (expect_cap_hours is null) <> (expect_band = 'uncapped') $$,
-  'null hours means no ceiling and only the uncapped band; a real cap of 0 (visa_expired_0) is never written as null'
+  $$ select 1 from cap_vectors where expect_band = 'uncapped' and expect_cap_hours is not null $$,
+  'no ceiling is null, never 0 — a 0 there would read as "no hours left" to every caller'
+);
+select is_empty(
+  $$ select 1 from cap_vectors
+      where expect_cap_hours = 0 and expect_band <> 'visa_expired_0' $$,
+  '0 means exactly one thing: a week wholly past a lapsed right to work'
 );
 
 -- ---------------------------------------------------------------------
