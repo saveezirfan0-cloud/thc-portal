@@ -79,7 +79,9 @@ export const DIAL_CODES = [
   { code: '+43', label: '🇦🇹 +43' },
   { code: '+32', label: '🇧🇪 +32' },
   { code: '+359', label: '🇧🇬 +359' },
-  { code: '+1', label: '🇨🇦 +1' },
+  // One entry, not two: the <select> is controlled by `code`, so a second
+  // option carrying '+1' made picking 🇺🇸 snap the display back to 🇨🇦.
+  { code: '+1', label: '🇺🇸🇨🇦 +1' },
   { code: '+86', label: '🇨🇳 +86' },
   { code: '+385', label: '🇭🇷 +385' },
   { code: '+357', label: '🇨🇾 +357' },
@@ -126,7 +128,6 @@ export const DIAL_CODES = [
   { code: '+256', label: '🇺🇬 +256' },
   { code: '+380', label: '🇺🇦 +380' },
   { code: '+971', label: '🇦🇪 +971' },
-  { code: '+1', label: '🇺🇸 +1' },
   { code: '+84', label: '🇻🇳 +84' },
 ] as const;
 

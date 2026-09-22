@@ -65,9 +65,43 @@ test.describe('/apply', () => {
     await page.getByLabel('Date of birth', { exact: true }).fill(dobForAge(18, 1));
     await expect(submit).toBeDisabled();
 
+    // A dead button is not an explanation. The wireframe's behaviour note is
+    // "under 18 is rejected on the spot — coral error on the form", and
+    // because the button is disabled there is no first submit to reveal it,
+    // so the error has to appear without one. Asserting only toBeDisabled()
+    // above is how that went unnoticed.
+    await expect(page.getByText('You must be 18 or over to apply')).toBeVisible();
+
     // Eighteen exactly, today. The boundary belongs to the applicant.
     await page.getByLabel('Date of birth', { exact: true }).fill(dobForAge(18));
     await expect(submit).toBeEnabled();
+    await expect(page.getByText('You must be 18 or over to apply')).toHaveCount(0);
+  });
+
+  test('says why the button is dead when consent is taken back (§1.7)', async ({ page }) => {
+    await page.goto('/apply');
+    const submit = page.getByRole('button', { name: 'Submit application' });
+    const consent = page.getByRole('checkbox');
+
+    await page.getByLabel('First name', { exact: true }).fill('Amara');
+    await page.getByLabel('Surname', { exact: true }).fill('Kalu');
+    await page.getByLabel('Email', { exact: true }).fill('amara.kalu@example.com');
+    await page.getByLabel('Mobile', { exact: true }).fill('7010 000125');
+    await page.getByLabel('Date of birth', { exact: true }).fill(dobForAge(24));
+
+    // Untouched: the form has no business telling anyone off yet.
+    await expect(page.getByText('Please tick the box to continue', { exact: false })).toHaveCount(
+      0,
+    );
+
+    await consent.check();
+    await expect(submit).toBeEnabled();
+
+    // Taken back. Same problem as the age gate — the button dies and, before
+    // this, nothing said why.
+    await consent.uncheck();
+    await expect(submit).toBeDisabled();
+    await expect(page.getByText('Please tick the box to continue', { exact: false })).toBeVisible();
   });
 
   test('a complete application reaches the database and lands on the confirmation (§2.1)', async ({
