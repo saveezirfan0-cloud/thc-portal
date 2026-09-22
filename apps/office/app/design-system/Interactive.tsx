@@ -7,6 +7,7 @@ import {
   Button,
   Checkbox,
   Modal,
+  ModeSwitch,
   OptionRow,
   Panel,
   PhoneFrame,
@@ -53,6 +54,17 @@ export function InteractiveControls() {
         />
         <Switch checked={auto} onChange={setAuto} label="Auto-Assign" purple />
         <Switch checked={notify} onChange={setNotify} label="Email me" />
+      </div>
+      <hr />
+      {/* ADR-0007's one user-facing switch, in both of its forms. The pair
+          is what the two web top bars and the sign-in cards carry; the icon
+          is what the Staff App header carries, where there is no room for
+          two words beside the title. Both are live: they drive the page you
+          are reading. */}
+      <div className="toolbar">
+        <span className="label">Appearance</span>
+        <ModeSwitch small />
+        <ModeSwitch compact />
       </div>
       <hr />
       <Tabs

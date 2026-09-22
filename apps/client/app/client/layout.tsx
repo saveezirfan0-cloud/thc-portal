@@ -8,7 +8,7 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
-import { Avatar, Logo } from '@thc/ui';
+import { Avatar, Logo, ModeSwitch } from '@thc/ui';
 import { supabaseConfigured } from './data';
 import './client-portal.css';
 
@@ -23,6 +23,10 @@ import './client-portal.css';
  * The bar carries who is signed in, because a customer with several venues
  * needs to know which company's events they are looking at before they read
  * a single row (§11.1: "They see only their own events").
+ *
+ * It also carries the appearance switch (ADR-0007). This is the only chrome
+ * the portal has, so if the switch is not here the customer has no way to
+ * reach it at all.
  */
 async function signedInAs(): Promise<{ company: string | null; person: string | null }> {
   if (!supabaseConfigured()) return { company: null, person: null };
@@ -74,7 +78,9 @@ export default async function ClientPortalLayout({ children }: { children: React
           </span>
         ) : null}
 
-        <span className="spacer" style={{ flex: 1 }} />
+        {/* The rule lives in client-portal.css so the phone breakpoint can
+            turn it into a line break; an inline `flex: 1` would outrank it. */}
+        <span className="spacer" />
 
         {person ? (
           <>
@@ -82,6 +88,8 @@ export default async function ClientPortalLayout({ children }: { children: React
             <span className="sm">{person}</span>
           </>
         ) : null}
+
+        <ModeSwitch small />
 
         <Link className="btn ghost sm" href="/auth/signout" prefetch={false}>
           Sign out

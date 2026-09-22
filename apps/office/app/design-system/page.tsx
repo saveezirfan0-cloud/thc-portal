@@ -22,6 +22,7 @@ import {
   MobileCard,
   MobileList,
   MobileRow,
+  ModeSwitch,
   Note,
   PageHead,
   Panel,
@@ -49,7 +50,6 @@ import {
   WizardHeader,
 } from '@thc/ui';
 import { InteractiveControls, Overlays } from './Interactive';
-import { ModeSwitch } from './ModeSwitch';
 import './design-system.css';
 
 /**

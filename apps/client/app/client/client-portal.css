@@ -42,6 +42,10 @@
   color: var(--muted);
 }
 
+.ctop .spacer {
+  flex: 1;
+}
+
 .ctop .tz {
   font-family: var(--font-mono);
   font-size: 10.5px;
@@ -205,9 +209,21 @@
     padding: 14px;
   }
 
+  /* The bar is one row of brand + company + viewer + the appearance switch
+     + sign out. At 390px that ran the last of them off the right edge, so
+     below the tablet break it wraps: brand and company first, identity and
+     controls underneath. Nothing is hidden — a customer with several venues
+     reads the company name to know whose events these are (§11.1), and a
+     control a phone cannot reach is a control a phone has not got. */
   .ctop {
-    padding: 0 14px;
+    height: auto;
+    flex-wrap: wrap;
+    padding: 10px 14px;
     gap: 10px;
+  }
+
+  .ctop .spacer {
+    flex: 1 0 100%;
   }
 
   /* The table folds away and the cards take over; both are rendered from

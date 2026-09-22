@@ -149,16 +149,14 @@ describe('typography', () => {
     expect(token(warm, '--label-case')).toBe('none');
   });
 
-  it('loads all five families', () => {
-    const importLine = sheets['tokens.css']!.split('\n').find((l) => l.startsWith('@import url'))!;
-    for (const family of [
-      'Space+Grotesk',
-      'Inter',
-      'IBM+Plex+Mono',
-      'Outfit',
-      'Plus+Jakarta+Sans',
-    ]) {
-      expect(importLine).toContain(family);
+  it('loads the five families from a sheet of our own, not from a font CDN', () => {
+    // The Google Fonts `@import` that used to sit at the top of this sheet
+    // was render-blocking on every page and could never resolve for an
+    // installed, offline Staff App. The woff2 subsets are checked in;
+    // fonts.css holds the @font-face rules and fonts.test.ts guards them.
+    expect(sheets['tokens.css']).not.toContain('@import url');
+    for (const sheet of Object.values(sheets)) {
+      expect(sheet).not.toContain('fonts.googleapis.com');
     }
   });
 });

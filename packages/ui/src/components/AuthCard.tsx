@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { Logo } from './Logo';
+import { ModeSwitch } from './ModeSwitch';
 
 export interface AuthCardProps {
   /** Which app this is, shown under the company name. */
@@ -17,6 +18,10 @@ export interface AuthCardProps {
  *
  * The error copy never says which of email or password was wrong — that is
  * deliberate in the wireframes and is an account-enumeration defence.
+ *
+ * The appearance switch is in the card's corner because sign-in is the one
+ * screen that has no chrome to put it in, and a viewer whose device prefers
+ * dark would otherwise get a light login followed by a dark app (ADR-0007).
  */
 export function AuthCard({
   product,
@@ -28,6 +33,9 @@ export function AuthCard({
   return (
     <div className="auth-wrap">
       <section className="auth-card">
+        <div className="appearance">
+          <ModeSwitch small />
+        </div>
         <div className="brand">
           <Logo size="lg" />
           <div>

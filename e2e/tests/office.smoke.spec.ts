@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 test('scheduled times are labelled as UK time (§1.8)', async ({ page }) => {
   // The design system is public, and carries the shell chrome.
@@ -6,24 +7,32 @@ test('scheduled times are labelled as UK time (§1.8)', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'Design system' })).toBeVisible();
 });
 
+// The switch now lives in the chrome of all three apps, and /design-system
+// additionally PREVIEWS it — segment and compact, light and dark, plus the
+// staff headers in the mobile section. A bare `button, name: 'Dark'` matches
+// six of them. These tests are about the real control in the shell, so they
+// scope to the banner; the previews are covered by the unit tests instead.
+const chromeSwitch = (page: Page, name: 'Dark' | 'Light') =>
+  page.getByRole('banner').getByRole('button', { name, exact: true });
+
 test('the design system renders and the appearance switch flips both axes', async ({ page }) => {
   await page.goto('/design-system');
   const html = page.locator('html');
 
   // ADR-0007: the switch moves the theme and leaves the style alone, because
   // every supplied board is the same rounded language on a different ground.
-  await page.getByRole('button', { name: 'Dark' }).click();
+  await chromeSwitch(page, 'Dark').click();
   await expect(html).toHaveAttribute('data-theme', 'dark');
   await expect(html).toHaveAttribute('data-style', 'warm');
 
-  await page.getByRole('button', { name: 'Light' }).click();
+  await chromeSwitch(page, 'Light').click();
   await expect(html).toHaveAttribute('data-theme', 'light');
   await expect(html).toHaveAttribute('data-style', 'warm');
 });
 
 test('the mode survives a reload (ADR-0003)', async ({ page }) => {
   await page.goto('/design-system');
-  await page.getByRole('button', { name: 'Dark' }).click();
+  await chromeSwitch(page, 'Dark').click();
   await page.reload();
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark');
   // The inline head script has to agree with styleForMode, or the geometry
