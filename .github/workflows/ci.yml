@@ -3,6 +3,15 @@ on:
   pull_request:
   push:
     branches: [main]
+
+# Neither job writes to the repository, and `deploy-database` runs beside the
+# live database's credentials. Least privilege for the default GITHUB_TOKEN.
+# The other half of this — putting the three Supabase secrets in a `production`
+# environment scoped to `main`, rather than leaving them as repository secrets
+# any workflow can read — needs a repository setting. See docs/14 O13.
+permissions:
+  contents: read
+
 jobs:
   build-test:
     runs-on: ubuntu-latest
@@ -126,6 +135,13 @@ jobs:
     runs-on: ubuntu-latest
     # One deploy at a time. Two `db push` runs racing on the same project
     # is how a migration history ends up half applied.
+    #
+    # Known cost of doing this inside `ci`: with one run in progress and one
+    # pending, a third merge cancels the pending one, and a cancelled job
+    # makes its whole `ci` run conclude `cancelled`. That reads as a red run
+    # on `main` whose tests all passed. No migration is lost — `db push` is
+    # cumulative and the newest run applies them — but check WHICH job went
+    # red before treating it as a test failure.
     concurrency:
       group: deploy-database
       cancel-in-progress: false
@@ -165,10 +181,21 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_ID }}
         run: |
-          supabase link --project-ref "${{ secrets.SUPABASE_PROJECT_ID }}"
+          supabase link --project-ref "$PROJECT_REF"
           supabase db push --dry-run
 
+      # Relies on the link state the step above wrote to supabase/.temp/.
+      # If that step is ever removed or reordered, this one needs its own
+      # `supabase link` or it will not know which project to push to.
+      #
+      # No --include-all: every pending migration currently sorts above the
+      # newest version applied remotely, so `db push` takes them all. If a
+      # renumbering (docs/14 O2) ever leaves a file BELOW that high-water
+      # mark, `db push` skips it and says so — the silent-nothing-happened
+      # failure this job exists to kill. Read the log, do not add the flag
+      # blind.
       - name: apply them
         if: steps.secrets.outputs.ready == 'true'
         env:

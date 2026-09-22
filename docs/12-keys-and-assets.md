@@ -91,6 +91,18 @@ the gap grew from seventeen migrations to twenty-six. `push` carries no such
 rule — it runs the file from the commit that was pushed — which is why the
 deploy now lives beside the tests that gate it.
 
+**It deploys migrations, and nothing else.** Two deploy steps stay manual, and in this
+order — `supabase functions deploy`, then `select install_job_schedules()`. docs/13 P1 is
+explicit about why the order matters: the other way round, pg_cron spends the gap posting
+at a 404. No migration calls `install_job_schedules()` itself, so there is no automatic
+hazard here; the risk is only that this page leaves you believing a green `ci` means the
+whole system is deployed. It means the schema is.
+
+**If the deploy fails,** re-run the `deploy-database` job from its run page in Actions —
+the tests do not need repeating. There is no `workflow_dispatch` button for it, and adding
+one would not help until the default branch is fixed (docs/14 O13), which is a second
+reason that setting matters.
+
 If the live project ever drifts from the migration history again, the repair is
 `supabase migration repair --status applied <version>` rather than re-running the
 file: the history is keyed on the digits before the first underscore in the

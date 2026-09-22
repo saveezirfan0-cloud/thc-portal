@@ -445,7 +445,13 @@ back.
 Not fixed in #35 deliberately: the fix is to pin a version, and that session could not
 reach `supabase/cli` from its environment to read a real tag. Pinning to a guessed one
 breaks every branch rather than fixing one. Whoever takes it should choose the version
-deliberately, change both workflows together, and note it here.
+deliberately, change both uses together, and note it here.
+
+**Raised in priority since that was written.** There is now one workflow rather than two,
+but the second use is the `deploy-database` job, so `latest` no longer only decides how a
+branch is tested — it decides which build of the CLI writes to the live database, and it
+can change between two merges with no commit to explain it. The rate-limit flake that took
+down a build is now a flake on the production deploy path.
 
 ## O8 · The PR review bot — two faults, and the second one needs you today
 
@@ -645,8 +651,8 @@ was never changed. Everything since has merged into `main`, so nothing looked wr
 
 The database deploy. `deploy.yml` was added on 22.09 to run `supabase db push` after `ci`
 succeeded on `main`, triggered by `workflow_run`. **It never ran once, and never could.**
-GitHub registers `workflow_run`, `schedule` and `workflow_dispatch` triggers only from the
-copy of the file on the *default* branch. `deploy.yml` was on `main`, so as far as GitHub
+GitHub registers `workflow_run`, `schedule`, `workflow_dispatch` and `repository_dispatch`
+triggers only from the copy of the file on the *default* branch. `deploy.yml` was on `main`, so as far as GitHub
 was concerned the workflow did not exist — `actions/workflows` listed two workflows, `ci`
 and `claude`, and no third. Meanwhile `ci` concluded **success on `main` five times**
 between that merge and this one, every one of which should have deployed.
