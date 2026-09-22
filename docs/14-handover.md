@@ -146,12 +146,17 @@ sweep; the rest were found by running things rather than reading them.
 
 ## 5 · What is yours, not a session's
 
-- **Rotate the Supabase service role key.** It was pasted into a chat transcript
-  and it bypasses every security policy in the database. Nothing a session does
-  can undo that.
-- **Delete `ANTHROPIC_API_KEY` from the Vercel client project**, then rotate it.
-  It belongs only in GitHub Actions secrets; on Vercel it is readable and it is
-  on the wrong project.
+- ~~**Rotate the Supabase service role key.**~~ **Done 22.09.** It had been pasted
+  into a chat transcript, and it bypasses every security policy in the database.
+  Nothing in the repository ever held it — only `.env.example` files are tracked,
+  `.gitignore` covers `.env` and `.env.*`, and no key-shaped string appears
+  anywhere in the history — so the transcript was the whole of the exposure and
+  rotating closes it.
+- ~~**Delete `ANTHROPIC_API_KEY` from the Vercel client project.**~~ **Done 22.09.**
+  It belongs only in GitHub Actions secrets. Note that the `claude` check stays
+  red until that secret is set on the repository: it fails environment validation
+  before it reads a diff, so a red `claude` is not a review finding. `build-test`
+  is the check that gates a merge.
 - **Enable branch protection on `main`** — require a pull request and a green
   `ci`: https://github.com/saveezirfan0-cloud/thc-portal/settings/rules/new?target=branch
 - **Turn on leaked-password protection** in Supabase Auth. The advisor still
