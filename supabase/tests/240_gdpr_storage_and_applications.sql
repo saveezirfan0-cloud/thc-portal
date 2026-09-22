@@ -39,13 +39,15 @@ insert into compliance_docs (id, staff_id, doc_type, review_status, file_path, g
   ('e5000000-0000-4000-8000-000000000003', :'stay','passport','verified',
    'documents/95102/passport.pdf', null, :'now'::timestamptz);
 
-insert into applications (id, first_name, last_name, email, phone, age_band, outcome, staff_id, consented_at) values
+-- `dob` arrived with main's 20260921170000: §2.12 matches a returning
+-- applicant on mobile AND date of birth, so the column is not null.
+insert into applications (id, first_name, last_name, email, phone, dob, age_band, outcome, staff_id, consented_at) values
   ('f5000000-0000-4000-8000-000000000001','Grace','Lindqvist','grace@example.com','+447700900501',
-   '25-34','candidate_created', :'gone', :'now'::timestamptz),
+   date '1997-03-30','25-34','candidate_created', :'gone', :'now'::timestamptz),
   ('f5000000-0000-4000-8000-000000000002','Grace','Lindqvist','grace@example.com','+447700900501',
-   '25-34','returning_applicant', :'gone', :'now'::timestamptz),
+   date '1997-03-30','25-34','returning_applicant', :'gone', :'now'::timestamptz),
   ('f5000000-0000-4000-8000-000000000003','Stays','Here','stays@example.com','+447700900502',
-   '25-34','candidate_created', :'stay', :'now'::timestamptz);
+   date '1996-01-01','25-34','candidate_created', :'stay', :'now'::timestamptz);
 
 create temporary table t_rm as select remove_worker(:'gone', :'now'::timestamptz) as r;
 

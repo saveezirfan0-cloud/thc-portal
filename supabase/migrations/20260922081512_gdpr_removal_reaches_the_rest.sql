@@ -49,6 +49,11 @@ create table if not exists storage_deletions (
 );
 create index if not exists storage_deletions_pending_idx
   on storage_deletions (queued_at) where deleted_at is null;
+-- 002_schema_hardening asserts every foreign key in public is covered by
+-- an index on its referencing columns: without one, deleting a staff row
+-- sequential-scans this table to null the reference.
+create index if not exists storage_deletions_staff_idx
+  on storage_deletions (staff_id);
 
 comment on table storage_deletions is
   'Storage objects a §1.7 removal owes but SQL cannot delete. Drained by the gdpr-purge Edge Function; a row stays until deleted_at is set, so an erasure obligation survives Storage being unreachable.';
