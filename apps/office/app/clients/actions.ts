@@ -32,6 +32,10 @@ async function callRpc(fn: string, args: RpcArguments): Promise<ActionResult> {
   if (error) return { ok: false, message: error.message };
 
   revalidatePath('/clients');
+  // The Edit dialog is opened from the client card too (§9.7), so the
+  // card's own route has to be revalidated or it keeps showing the name
+  // and policies the manager has just changed.
+  revalidatePath('/clients/[id]', 'page');
   return { ok: true };
 }
 

@@ -143,7 +143,7 @@ export function Qualifications({
                       <Switch
                         checked={row.do_not_return}
                         disabled={pending || profile.removed}
-                        label="Do not return"
+                        aria-label={`Do not return · ${row.client_name} · ${row.role_name}`}
                         onChange={(next) => {
                           if (next) {
                             // Switching it ON opens the reason dialog: an

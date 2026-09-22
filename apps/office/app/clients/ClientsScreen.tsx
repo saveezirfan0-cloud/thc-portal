@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Chip, EmptyState, Note, Panel, Select } from '@thc/ui';
@@ -149,13 +150,15 @@ export function ClientsScreen({ clients, problem }: ClientsScreenProps) {
                 {shown.map((client) => (
                   <tr key={client.id}>
                     <td className="name">
-                      <button
-                        type="button"
-                        className="client-name"
-                        onClick={() => setEditing(client)}
-                      >
+                      {/*
+                        The name opens the card (§9.7), not the edit modal:
+                        the card is where the rate card, the qualified pool
+                        and this client's events live, and Edit is one
+                        button on it.
+                      */}
+                      <Link href={`/clients/${client.id}`} className="client-name">
                         {client.name}
-                      </button>
+                      </Link>
                       <span className="sub">{client.staff_contact_point}</span>
                     </td>
                     <td>

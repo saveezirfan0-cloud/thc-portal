@@ -20,7 +20,7 @@
 --     qualification they earned.
 -- =====================================================================
 begin;
-select plan(42);
+select plan(44);
 \ir _shared/fixtures.psql
 
 \set role_b     'bbbbbbbb-0000-4000-8000-000000000002'
@@ -125,8 +125,17 @@ select throws_ok($$ select add_staff_role('dddddddd-0000-4000-8000-000000000002'
   'an unknown role is refused rather than silently ignored');
 
 -- The Do-not-return exception, which is the point of this block.
+--
+-- The unbarred entry is at a DIFFERENT client on purpose: the bar sweeps
+-- every entry at the client it is set on, so an entry at Client A could
+-- not be the "not barred" case however it was created.
+\set clientc 'aaaaaaaa-0000-4000-8000-00000000000c'
+insert into clients (id, name, contact_name, phone, staff_contact_point, contact_emails,
+                     pays_breaks, pays_buffer) values
+  (:'clientc', 'Profile Fixture Client C', 'Cara C', '+447700900003', 'Side door',
+   array['clientc@rls.test'], true, true);
 insert into client_qualifications (client_id, role_id, staff_id, note) values
-  (:'clienta', :'role_b', :'staffa', 'Manual clearance for role B');
+  (:'clientc', :'role_b', :'staffa', 'Manual clearance for role B');
 select set_do_not_return((select id from client_qualifications
                            where staff_id = :'staffa' and role_id = :'role_id'
                              and client_id = :'clienta'),
@@ -187,11 +196,34 @@ select is((select note from client_qualifications
   'Complaint 02.09, service attitude',
   'switching the flag off KEEPS the reason — it is the record the next manager''s decision rests on');
 
+-- The flag moves every entry at the client, because the gate already
+-- does. A worker barred as Waiting Staff and left cleared as Host would
+-- read one way on the profile and another on the client card, off the
+-- same rows.
+insert into client_qualifications (client_id, role_id, staff_id, note) values
+  (:'clientb', :'role_b', :'staffa', 'Second role at this client');
+select set_do_not_return((select id from client_qualifications
+                           where staff_id = :'staffa' and client_id = :'clientb'
+                             and role_id = :'role_id'),
+                         true, 'Client complaint');
+select is((select count(*)::int from client_qualifications
+            where staff_id = :'staffa' and client_id = :'clientb' and do_not_return), 2,
+  'switching it on through one entry bars every entry this worker has at the client (§9.6: "excluded from this client outright")');
+select set_do_not_return((select id from client_qualifications
+                           where staff_id = :'staffa' and client_id = :'clientb'
+                             and role_id = :'role_b'),
+                         false);
+select is((select count(*)::int from client_qualifications
+            where staff_id = :'staffa' and client_id = :'clientb' and do_not_return), 0,
+  'and switching it off lifts them all — a half-lifted bar is a gate nobody can read');
+delete from client_qualifications
+ where staff_id = :'staffa' and client_id = :'clientb' and role_id = :'role_b';
+
 select is((select count(*)::int from audit_log
-            where action = 'do_not_return_on' and entity = 'client_qualification'), 2,
+            where action = 'do_not_return_on' and entity = 'client_qualification'), 3,
   'every switch-on is audited — a hard gate is not a silent edit');
 select is((select count(*)::int from audit_log
-            where action = 'do_not_return_off' and entity = 'client_qualification'), 2,
+            where action = 'do_not_return_off' and entity = 'client_qualification'), 3,
   'and so is every switch-off: lifting a bar is the half a manager has to answer for');
 
 select lives_ok($$ select revoke_client_qualification(

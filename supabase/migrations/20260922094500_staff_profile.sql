@@ -522,10 +522,21 @@ begin
       using errcode = 'check_violation';
   end if;
 
+  -- The flag is stored per entry, but the GATE is client-wide:
+  -- auto_assign_candidates refuses a worker with any do_not_return row at
+  -- the client, whatever role it names (20260921141500). §9.6 says the
+  -- same in words — the toggle "marks that worker as excluded from this
+  -- client outright".
+  --
+  -- So setting it on one entry and leaving the worker's other entries at
+  -- that client unflagged shows two screens a half-truth: the profile
+  -- says they are barred as Waiting Staff and cleared as Host, and the
+  -- client card, which aggregates, says they are barred. Both are reading
+  -- the same rows. Every entry at the client moves together.
   update client_qualifications
      set do_not_return = p_on,
          note = coalesce(nullif(btrim(p_reason), ''), note)
-   where id = p_id;
+   where staff_id = v.staff_id and client_id = v.client_id;
 
   insert into audit_log (at, actor, action, entity, entity_id, data)
   values (now(), auth.uid(),
@@ -540,7 +551,7 @@ begin
 end $$;
 
 comment on function public.set_do_not_return(uuid, boolean, text) is
-  '§9.6 Do not return: the client-scoped hard gate — not invited in either wave, never on the Radar, cannot be invited manually. Requires a reason to switch on, keeps it when switched off, and writes both directions to audit_log.';
+  '§9.6 Do not return: the client-scoped hard gate — not invited in either wave, never on the Radar, cannot be invited manually. Applies to EVERY entry this worker has at the client, because the auto-assign gate is client-wide and a per-role flag would show the profile and the client card two different answers. Requires a reason to switch on, keeps it when switched off, and writes both directions to audit_log.';
 
 -- =====================================================================
 -- The automatic grant after a clean shift (§9.6)
