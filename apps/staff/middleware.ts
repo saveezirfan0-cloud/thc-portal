@@ -11,7 +11,21 @@ import { isRole, wrongAppBody } from '@thc/db';
  * which is what actually protects the data: a forged URL gets past nothing.
  */
 const ALLOWED_ROLE = 'staff' as const;
-const PUBLIC_PATHS = ['/login', '/auth', '/apply', '/activate'];
+// §10.2's auth screens and the two PWA screens that must render before
+// there is a session: /install is where the activation email hands off
+// (§2.7, ADR-0001) and /offline is what the service worker serves when the
+// network is gone — a redirect to /login there would be a sign-in screen
+// that cannot load either.
+const PUBLIC_PATHS = [
+  '/login',
+  '/auth',
+  '/apply',
+  '/activate',
+  '/forgot',
+  '/reset',
+  '/install',
+  '/offline',
+];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -96,6 +110,8 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)',
+    // The service worker and its manifest are excluded: a 302 to /login in
+    // answer to a request for sw.js means no offline shell and no push.
+    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|swe-worker-.*\\.js|workbox-.*\\.js|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)',
   ],
 };

@@ -1,0 +1,180 @@
+import Link from 'next/link';
+import { Alert, KpiTile, Panel, Pill, TileGrid } from '@thc/ui';
+import { OfficeShell } from '../_components/OfficeShell';
+import { UpcomingTable } from './_components/UpcomingTable';
+import { ViewerZone } from './_components/ViewerZone';
+import { loadDashboard } from './data';
+import {
+  formatAsOf,
+  formatHours,
+  formatPercent,
+  formatPounds,
+  formatWeekRange,
+  todayInUk,
+} from './view-model';
+import './dashboard.css';
+
+export const metadata = { title: 'Dashboard · THC Back Office' };
+
+/**
+ * Every number on this screen is "as of this minute" (§9.1). Caching one
+ * for even a second would be caching the answer to "what is on fire right
+ * now", which is the only question the screen asks.
+ */
+export const dynamic = 'force-dynamic';
+
+/**
+ * /dashboard — Scope §9.1, `wireframes/backoffice/dashboard.html`, and the
+ * `BO1 Dashboard` frame in `design-handoff/`.
+ *
+ * The first screen after login, and the one that answers "what is on fire
+ * right now": four operational counters, the current Mon–Sun week's money,
+ * and the next ten days with the margin on every role.
+ *
+ * None of those figures is computed here — see `data.ts` and
+ * `supabase/migrations/20260922180000_dashboard_kpis.sql`. Fill, the
+ * 12.07% holiday element and the Europe/London week each have exactly one
+ * definition in this platform, and a screen that re-derived any of them
+ * would be the second.
+ */
+export default async function Page() {
+  const { kpis, finance, upcoming, problem } = await loadDashboard();
+  const asOf = kpis ? formatAsOf(new Date(kpis.asOf)) : null;
+  const today = todayInUk();
+
+  return (
+    <OfficeShell
+      activeHref="/dashboard"
+      title="Dashboard"
+      crumbs={
+        asOf ? (
+          <>
+            as of <b>{asOf.time} UK time</b> · {asOf.date}
+          </>
+        ) : null
+      }
+      // The windows below are scheduled times, so the topbar names the
+      // reader's own zone and the rows carry both (§1.8).
+      timezone={<ViewerZone />}
+      actions={
+        <Link className="btn primary sm" href="/events/new">
+          + New event
+        </Link>
+      }
+    >
+      <div className="stack">
+        {problem ? <Alert tone="coral">{problem}</Alert> : null}
+
+        {/* ---- the four operational KPIs, on one row (§9.1) ---------- */}
+        <TileGrid columns={4}>
+          <KpiTile
+            label="Open positions"
+            // Amber, not accent: this is the number that means work is
+            // sold and nobody is standing in it.
+            tone="warn"
+            value={kpis?.openPositions ?? '—'}
+            description="Across all events, any date · sold, not staffed"
+          />
+          <KpiTile
+            label="On shift now"
+            tone="ok"
+            value={kpis?.onShiftNow ?? '—'}
+            description="Checked in and working this minute"
+          />
+          <KpiTile
+            label="Staff available"
+            value={kpis?.staffAvailable ?? '—'}
+            description="Compliant, with a live right to work, nothing booked today"
+          />
+          <KpiTile
+            label="Compliance blocks"
+            tone="danger"
+            value={kpis?.complianceBlocks ?? '—'}
+            // The wireframe hangs a "view radar →" link here and §9.1 wants
+            // one. It is plain text until /compliance is built, for the same
+            // reason OfficeShell renders an unbuilt route as text: a link
+            // that 404s reads as broken rather than as unfinished. Make it
+            // a <Link href="/compliance#tab=radar"> when B6 lands.
+            description="Blocked over documents · see the compliance radar"
+          />
+        </TileGrid>
+
+        {/* ---- the current week, Mon–Sun (§9.1) ---------------------- */}
+        <Panel
+          title={
+            <>
+              This week · financial snapshot{' '}
+              {finance ? <Pill>{formatWeekRange(finance.weekStart, finance.weekEnd)}</Pill> : null}{' '}
+              {/* §9.9 calls this out on the Financial tab too: what is
+                  shown for a week still running is a forecast, not
+                  payroll. Saying so is part of the number. */}
+              <Pill tone="amber">Forecast for the period</Pill>
+            </>
+          }
+          // Same as the compliance tile: the wireframe's "Full report →"
+          // points at /reports (§9.9), which is not built yet, so it is a
+          // note rather than a dead link. Make it a <Link> when B12 lands.
+          actions={<span className="muted sm">Full report in Reports (§9.9)</span>}
+        >
+          {finance ? (
+            <div className="dash-finance">
+              <KpiTile
+                flat
+                small
+                label="Chargeable (client invoicing)"
+                value={formatPounds(finance.chargeTotal)}
+                description={`${formatHours(finance.forecastHours)} forecast hours at charge rate · ${finance.events} ${
+                  finance.events === 1 ? 'event' : 'events'
+                }`}
+              />
+              <KpiTile
+                flat
+                small
+                label="Payable (incl. holiday +12.07%)"
+                value={formatPounds(finance.payTotal)}
+                description={
+                  // §1.5: broken out, never blended. Two figures side by
+                  // side, not one total with an asterisk.
+                  <span className="dash-split">
+                    <span>Base {formatPounds(finance.baseTotal)}</span>
+                    <span>Holiday {formatPounds(finance.holidayTotal)}</span>
+                    <span className="muted">never blended</span>
+                  </span>
+                }
+              />
+              <KpiTile
+                flat
+                small
+                tone="ok"
+                label="Gross margin"
+                value={formatPounds(finance.marginTotal)}
+                description={`${formatPercent(finance.marginPct)} · after holiday pay`}
+              />
+            </div>
+          ) : (
+            <p className="muted sm">No figures for this week.</p>
+          )}
+        </Panel>
+
+        {/* ---- the next ten days, by date (§9.1) --------------------- */}
+        <Panel
+          title={
+            <>
+              Upcoming events <span className="muted sm">· next 10 days</span>
+            </>
+          }
+          actions={
+            <Link className="btn sm" href="/events">
+              Open scheduling
+            </Link>
+          }
+          flush
+        >
+          <div className="panel-b tight">
+            <UpcomingTable events={upcoming} today={today} />
+          </div>
+        </Panel>
+      </div>
+    </OfficeShell>
+  );
+}

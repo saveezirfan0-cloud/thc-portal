@@ -1,0 +1,117 @@
+/*
+ * Staff App chrome — the page-local styles in wireframes/staff/profile.html
+ * and auth.html, promoted into the app. Layout only: every colour, radius
+ * and size is a token from packages/ui.
+ *
+ * The frosted header, bottom navigation and sheet themselves live in
+ * packages/ui (§10.1); what is here is the handful of pieces those
+ * wireframes style inline — the sheet's link rows, the separated P45
+ * block, and the install screen's step list.
+ */
+
+/* The avatar in the header is a button (it opens the profile sheet), and
+   a button must not inherit the browser's chrome. */
+.avatar-btn {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  display: inline-flex;
+  line-height: 0;
+}
+.avatar-btn[aria-expanded='true'] .avatar {
+  outline: 2px solid var(--cyan);
+}
+
+/* Profile sheet link rows: Profile details / Security settings / Payment
+   information (§10.1). */
+.sheet .links {
+  display: flex;
+  flex-direction: column;
+}
+.sheet .link {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  padding: 11px 0;
+  border-bottom: 1px solid var(--glass-line);
+  font-weight: 500;
+  font-size: var(--fs-13);
+  color: var(--text);
+  text-align: left;
+  background: none;
+  border-left: 0;
+  border-right: 0;
+  border-top: 0;
+  width: 100%;
+}
+.sheet .link:last-child {
+  border-bottom: 0;
+}
+.sheet .link .chev {
+  margin-left: auto;
+  color: var(--muted);
+}
+/* A link to a screen that does not exist yet is shown, and shown as not
+   yet reachable — the same treatment the Documents tab carries. */
+.sheet .link[aria-disabled='true'] {
+  color: var(--muted);
+  cursor: default;
+}
+
+/* "Request my P45" sits below sign-out, separated, and is deliberately not
+   styled as a primary action (§10.6). */
+.sheet .p45 {
+  margin-top: var(--sp-10);
+  padding-top: var(--sp-12);
+  border-top: 1px dashed var(--glass-line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  text-align: center;
+}
+.sheet .p45 .muted {
+  text-decoration: underline;
+}
+
+/* The install screen's numbered steps (wireframes/staff/auth.html). */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+.steps .step {
+  display: flex;
+  gap: var(--sp-10);
+  align-items: flex-start;
+}
+.steps .step .t {
+  font-size: var(--fs-13);
+  font-weight: 500;
+}
+.steps .step .s {
+  font-size: var(--fs-11);
+  color: var(--muted);
+}
+
+/* The auth screens' hero: mark, product name, one mono sub-line. */
+.auth-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-10);
+  padding: var(--sp-26) 0 var(--sp-8);
+  text-align: center;
+}
+.auth-hero .name {
+  font-family: var(--font-head);
+  font-size: var(--fs-20);
+  font-weight: 600;
+}
+.auth-hero .sub {
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--muted);
+}

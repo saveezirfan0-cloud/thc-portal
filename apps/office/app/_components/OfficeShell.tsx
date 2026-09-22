@@ -21,11 +21,11 @@ import type { ReactNode } from 'react';
  * renders as text rather than a link. A sidebar that 404s reads as broken
  * rather than unfinished. Drop the flag when the route lands.
  *
- * Dashboard points at `/`, not `/dashboard`: §9.1 belongs to the `reports`
- * bot and until it exists the index stands in for it.
+ * Dashboard points at `/dashboard` now that §9.1 is built; `/` redirects
+ * there, so an old link still lands in the right place.
  */
 const NAV = [
-  { href: '/', label: 'Dashboard' },
+  { href: '/dashboard', label: 'Dashboard' },
   { href: '/onboarding', label: 'Onboarding', pending: true },
   { href: '/events', label: 'Scheduling' },
   { href: '/compliance', label: 'Compliance', pending: true },
