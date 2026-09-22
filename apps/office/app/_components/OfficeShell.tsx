@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Content, Logo, Shell, Sidebar, Topbar } from '@thc/ui';
+import { Content, Logo, ModeSwitch, Shell, Sidebar, Topbar } from '@thc/ui';
 import type { ReactNode } from 'react';
 
 /**
@@ -23,6 +23,10 @@ import type { ReactNode } from 'react';
  *
  * Dashboard points at `/`, not `/dashboard`: §9.1 belongs to the `reports`
  * bot and until it exists the index stands in for it.
+ *
+ * The appearance switch is added to whatever the screen passes as actions,
+ * not passed by the screen: ADR-0007 makes it part of the chrome, and one
+ * screen forgetting it is how it ended up living only on /design-system.
  */
 const NAV = [
   { href: '/', label: 'Dashboard' },
@@ -84,7 +88,17 @@ export function OfficeShell({
         />
       }
     >
-      <Topbar title={title} crumbs={crumbs} timezone={timezone} actions={actions} />
+      <Topbar
+        title={title}
+        crumbs={crumbs}
+        timezone={timezone}
+        actions={
+          <>
+            {actions}
+            <ModeSwitch small />
+          </>
+        }
+      />
       <Content>{children}</Content>
     </Shell>
   );

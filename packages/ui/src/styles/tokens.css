@@ -20,9 +20,12 @@
 
    Elevation: the handoff is explicit that NO drop shadows are used anywhere.
    Depth comes from frosted surfaces (backdrop-filter) and background radial
-   glows. There is no --shadow token on purpose. */
+   glows. There is no --shadow token on purpose.
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Outfit:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+   Fonts: the five families are self-hosted, from checked-in woff2 subsets.
+   The @font-face rules are in ./fonts.css, which index.css loads ahead of
+   this sheet; that file says why the CDN had to go. This sheet names the
+   families and nothing else — it loads nothing over the network. */
 
 /* =====================================================================
    1 · BASE = handoff v1 dark (scope §1.6). Every other combination is a

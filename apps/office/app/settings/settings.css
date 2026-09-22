@@ -1,0 +1,48 @@
+/*
+ * /settings — the Django-Admin replacement (§6, §2.4, §9.11, §9.12).
+ *
+ * There is no wireframe for this screen (docs/08-screen-inventory.md marks
+ * it "simple form"), so it deliberately adds no new visual language: the
+ * blocks are the Back Office's existing `Panel`, and everything below is
+ * layout. Every colour, size and spacing is a token from packages/ui.
+ */
+
+.settings-grid {
+  display: grid;
+  gap: var(--sp-16);
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  align-items: start;
+}
+
+/* The §9.11 standard-radius table: label, slider, value, save. */
+.radius-row {
+  display: grid;
+  grid-template-columns: 1fr 2fr auto auto;
+  gap: var(--sp-10);
+  align-items: center;
+  padding: var(--sp-8) 0;
+  border-bottom: 1px solid var(--line);
+}
+.radius-row:last-child {
+  border-bottom: 0;
+}
+.radius-label {
+  font-size: var(--fs-13);
+}
+.radius-value {
+  font-size: var(--fs-12);
+  color: var(--muted);
+  min-width: 56px;
+  text-align: right;
+}
+.radius-slider {
+  width: 100%;
+  accent-color: var(--cyan-ink);
+}
+/* Feedback spans the row rather than squeezing the controls. */
+.radius-feedback {
+  grid-column: 1 / -1;
+}
+.radius-feedback:empty {
+  display: none;
+}

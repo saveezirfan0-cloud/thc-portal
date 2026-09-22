@@ -3,6 +3,7 @@
 import { clsx } from 'clsx';
 import { Fragment, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { ModeSwitch } from './ModeSwitch';
 
 /** Staff App chrome (§10.1). These components are only used by apps/staff. */
 
@@ -65,6 +66,17 @@ export interface AppHeaderProps {
  * Frosted top bar: rgba(panel, .6) + backdrop-filter, 1px divider. It
  * collapses on scroll — the logo stays left, the profile stays right, only
  * the title shrinks.
+ *
+ * The appearance switch (ADR-0007) is part of the header rather than
+ * something each screen passes in `actions`. Every Staff App screen builds
+ * its own header — `StaffShell` for the four tabs, a hand-rolled one on the
+ * shift screen and on its no-project fallback — so a switch that screens
+ * opt into is a switch that is missing from whichever screen lands next.
+ *
+ * It is the icon-only form on purpose: this header is designed at 390px and
+ * §10.1 fixes what it may spend width on (logo left, profile right, title
+ * in between). A labelled Light/Dark pair does not fit beside a title like
+ * "Corporate Summer Party".
  */
 export function AppHeader({ title, sub, brand, actions, below, collapsed }: AppHeaderProps) {
   return (
@@ -74,7 +86,10 @@ export function AppHeader({ title, sub, brand, actions, below, collapsed }: AppH
         {title}
         {sub ? <div className="sub">{sub}</div> : null}
       </div>
-      {actions ? <div className="actions">{actions}</div> : null}
+      <div className="actions">
+        {actions}
+        <ModeSwitch compact />
+      </div>
       {below ? <div className="below">{below}</div> : null}
     </header>
   );

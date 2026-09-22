@@ -18,8 +18,15 @@
 -- §2.8 says the worker never sees the derived A/B/C statement.
 -- =====================================================================
 begin;
-select plan(78);
+select plan(82);
 \ir _shared/fixtures.psql
+
+-- A cap-band notice for the worker under test. Created here rather than in
+-- the shared fixtures on purpose: 200_compliance_daily runs
+-- compliance_daily() over the whole table and counts the N14 sends, so a
+-- standing row for a fixture worker would change what that file measures.
+insert into cap_band_notices (staff_id, band, cap_hours, notified_on)
+  values (:'staffa', 'standard_48', 48, current_date - 1);
 
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
@@ -193,6 +200,31 @@ with u as (update venue_types set default_radius_m = 999 where key = 'rls_fixtur
 select throws_ok(
   $$ insert into venue_types (key, label, default_radius_m) values ('forged','Forged',200) $$,
   '42501', null, 'worker cannot add a venue type');
+
+-- cap_band_notices (20260921170411) and staff_transitions (20260921180312):
+-- RLS since the day they landed, and no per-role test until now.
+--
+-- The worker's own cap-band notice is the interesting one. It is ABOUT
+-- them, it is not money, and a self policy would look reasonable — which
+-- is exactly the mistake. RULE-20 says the weekly cap is calculated and
+-- never stored, and this table stores what N14 last TOLD the worker. A
+-- letter verified this morning moves the real cap and leaves this row
+-- saying yesterday's number; a screen that could read it would show a
+-- worker hours they may not legally work. 001_rls_guard's assertion 4
+-- states the same rule from the policy side; this is it from the
+-- worker's.
+select is((select count(*)::int from cap_band_notices where staff_id = :'staffa'), 0,
+  'RULE-20 a worker cannot read even their OWN cap-band notice: it is a send receipt, not the cap, and the cap is always recalculated');
+select throws_ok(
+  format($$ insert into cap_band_notices (staff_id, band, cap_hours, notified_on)
+            values (%L, 'uncapped', null, current_date) $$, :'staffb'),
+  '42501', null, 'worker cannot write a cap-band notice for anybody, least of all a colleague');
+
+select is((select count(*)::int from staff_transitions where from_status = 'compliant' and to_status = 'blocked'), 1,
+  'worker may read staff_transitions: the §2.12 machine as data, so the Staff App can grey out a button it knows will be refused');
+select throws_ok(
+  $$ insert into staff_transitions (from_status, to_status) values ('compliant','documents') $$,
+  '42501', null, 'worker cannot add an edge to the staff state machine — that would be editing §2.12 from the phone');
 
 -- ---- symmetry: the second worker sees only their own rows ---------------
 reset role;
