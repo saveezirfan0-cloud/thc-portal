@@ -92,6 +92,15 @@ describe('the dialling picker (§2.1)', () => {
   it('every entry carries a dialling code in E.164 shape', () => {
     for (const country of DIAL_CODES) expect(country.code).toMatch(/^\+[1-9]\d{0,3}$/);
   });
+
+  // The picker is a controlled <select>: its displayed option is whichever
+  // one matches `value`. Two options sharing a code meant choosing the
+  // second snapped the display back to the first — Canada and the US both
+  // carried '+1' until they were merged into one entry.
+  it('never lists one dialling code twice', () => {
+    const seen = DIAL_CODES.map((c) => c.code);
+    expect(new Set(seen).size).toBe(seen.length);
+  });
 });
 
 describe('toE164', () => {
