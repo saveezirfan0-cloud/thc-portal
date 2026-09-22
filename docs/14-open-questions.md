@@ -453,6 +453,29 @@ branch is tested — it decides which build of the CLI writes to the live databa
 can change between two merges with no commit to explain it. The rate-limit flake that took
 down a build is now a flake on the production deploy path.
 
+**Third occurrence, #39 at 15:53 on 22.09**, and the pattern is now clear enough to state:
+it is not rare. Same signature, same place — all 29 turbo tasks green, then
+
+```
+##[error]Failed to resolve latest Supabase CLI release: rate limit exceeded
+```
+
+before `supabase start`, so the database and browser halves of the suite did not run and
+the pull request read red for a reason that had nothing to do with its diff. That is three
+builds lost to it in one day (#32, #35, #39), which is the argument for pinning rather than
+for retrying.
+
+Worth knowing for whoever picks it up: `rerun-failed-jobs` returns **403 Resource not
+accessible by integration** for an agent session, so the usual answer to a flake is not
+available here. The only way past it from a session is another commit, which means the
+cost of the flake is a full CI cycle every time.
+
+Still not fixed here, for the reason the paragraph above gives: choosing the tag needs
+`supabase/cli`, which is outside this session's repository scope, and this is the version
+of the CLI that writes to the live database. Guessing it is worse than leaving it. It
+wants a session that can read a real tag, changes both uses together, and records the
+choice here.
+
 ## O8 · The PR review bot — two faults, and the second one needs you today
 
 ### The one blocking it now: there is no API key
