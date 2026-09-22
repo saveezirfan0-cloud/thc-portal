@@ -460,7 +460,21 @@ appear at all.
 >
 > Done when: every document state renders and the conviction path has a test.
 
-## S5 · On-shift screen (§10.4, §5.1–5.2b)
+## S5 · On-shift screen (§10.4, §5.1–5.2b) — **built**
+
+`/shifts/[id]` is live: the GPS states, check-in through the grace and the lock, the
+breaks block where the client does not pay for them, check-out, and the earnings
+confirmation showing the base rate only. Every decision is the database's —
+`attempt_check_in`, `start_break`, `finish_break`, `check_out` — and the screen renders
+the message key that comes back.
+
+`record_ping` runs while the screen is open, which is as much background tracking as a
+PWA can do (ADR-0001, docs/06). It is worth having even so: the off-site check-out reads
+that trail, so a worker who had the app open at any point during the shift gets their
+real finish recorded instead of falling to RULE-02.
+
+Still to come here: the shift LIST (S3) that links to this screen, the static message
+screens for a cancelled event and a removal, and the push registration.
 
 > Use the `checkin` agent. Branch `feat/checkin-staff-shift`.
 >

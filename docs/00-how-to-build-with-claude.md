@@ -65,6 +65,10 @@ What exists:
   `location_pings`, so an off-site check-out records the last on-site fix instead of always
   falling to RULE-02, and an exit from the geofence raises the `left_geofence` violation
   that nothing could raise before (BG-06/07).
+- **The on-shift screen** at `/shifts/[id]` in the Staff App (§10.4, §5.1–5.2b): check-in
+  with the 30-minute grace and the lock, the breaks block where the client does not pay,
+  check-out, and the earnings confirmation — base rate only, with no field for the
+  +12.07% to be rendered into by accident (§9.8).
 - **The Shift Builder** at `/events/new` and `/events/:id/edit` (§3.2), the first screen
   of Phase 3. Its rules live in `packages/domain/shift.ts` with `shift.vectors.json`:
   the four-hour minimum per role section, the derived event window (RULE-18), the

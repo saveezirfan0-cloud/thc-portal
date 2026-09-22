@@ -8,7 +8,7 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
-import { Avatar } from '@thc/ui';
+import { Avatar, Logo } from '@thc/ui';
 import { supabaseConfigured } from './data';
 import './client-portal.css';
 
@@ -60,7 +60,7 @@ export default async function ClientPortalLayout({ children }: { children: React
     <>
       <header className="ctop">
         <Link href="/client" className="brand">
-          <span className="logo round">THC</span>
+          <Logo />
           <span>
             <span className="name">The Hospitality Company</span>
             <span className="sub">Client Portal</span>

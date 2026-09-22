@@ -114,7 +114,7 @@ code { font-family: var(--font-mono); }
 /* logo: the only round element in scope style */
 .logo { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background: var(--cyan); color: var(--on-cyan); font-family: var(--font-head); font-weight: 700; font-size: 14px; flex: 0 0 auto; border-radius: var(--r-sm); }
 .logo.round { border-radius: 50%; }
-.logo svg { width: 20px; height: 20px; }
+.logo svg, .logo .logo-mark { height: 62%; width: auto; max-width: 70%; display: block; } /* the mark is taller than it is wide, so height sets its size — mirrors packages/ui base.css */
 .brand { display: flex; align-items: center; gap: 10px; }
 .brand .name { font-family: var(--font-head); font-weight: var(--head-weight); font-size: 14px; line-height: 1.1; }
 .brand .sub { font-family: var(--font-label); font-size: 9.5px; letter-spacing: var(--label-track); text-transform: uppercase; color: var(--muted); font-weight: var(--label-weight); }
