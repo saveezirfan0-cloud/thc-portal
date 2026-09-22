@@ -316,8 +316,12 @@ async function flagReconfirmations(
 
     // One outbox row per worker, keyed so a re-save of the same times is a
     // no-op against the unique index (§8).
-    await supabase.from('notification_outbox').insert(
-      bookings.map((booking) => ({
+    // One call, one row per worker. Through the RPC rather than the table:
+    // `notification_outbox` is admin_read with no insert privilege for
+    // `authenticated`, so the direct insert this used to do was refused and
+    // N11 — a mandatory send — reached nobody (§8).
+    await supabase.rpc('queue_office_notifications', {
+      p_rows: bookings.map((booking) => ({
         key: outboxKey('N11', 'booking', `${booking.id}:${section.startsAt.toISOString()}`),
         channel: TEMPLATES.N11.channel,
         template: 'N11',
@@ -329,6 +333,6 @@ async function flagReconfirmations(
           reason: section.reason,
         },
       })),
-    );
+    });
   }
 }

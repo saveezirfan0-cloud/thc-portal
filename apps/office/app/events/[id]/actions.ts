@@ -247,15 +247,24 @@ async function enqueue(
 ): Promise<void> {
   const template = TEMPLATES[code];
   if (!template) return;
-  await supabase.from('notification_outbox').insert({
-    key: outboxKey(code, 'booking', bookingId),
-    channel: template.channel,
-    template: code,
-    recipient_staff_id: staffId,
-    payload: {
-      title: template.title,
-      body: render(template.body ?? '', values),
-      deepLink: render(template.deepLink ?? '', { bookingId }),
-    },
+  // Through the RPC, never straight at the table. `notification_outbox` is
+  // admin_read and holds no insert privilege for `authenticated` at all
+  // (001_rls_guard assertion 8), so the direct insert this used to do was
+  // refused every time — the manager saw the action succeed and nobody was
+  // told. The copy still comes from the §8 register; only the write moved.
+  await supabase.rpc('queue_office_notifications', {
+    p_rows: [
+      {
+        key: outboxKey(code, 'booking', bookingId),
+        channel: template.channel,
+        template: code,
+        recipient_staff_id: staffId,
+        payload: {
+          title: template.title,
+          body: render(template.body ?? '', values),
+          deepLink: render(template.deepLink ?? '', { bookingId }),
+        },
+      },
+    ],
   });
 }

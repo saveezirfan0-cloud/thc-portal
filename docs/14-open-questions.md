@@ -418,6 +418,55 @@ everything and a local suite passes. Any harness used to check this has to run
 authenticated, service_role` first, or it is more secure than production and will keep
 saying so.
 
+## O13 · Three mandatory pushes were silently never sent — RESOLVED, and the shape is worth keeping
+
+Found by auditing `main` after the §10.4 merge, not by anything failing. N11 (the office
+moves a shift's time), N10b (the office withdraws a booking) and N12 (the office cancels
+an event) are all **mandatory** in §8, and all three were queued by a server action doing
+
+```ts
+await supabase.from('notification_outbox').insert({ ... })
+```
+
+as the signed-in manager. That can never work. `notification_outbox` carries exactly one
+policy — `admin_read`, SELECT only — and the `authenticated` role holds no table
+privilege on it at all, so PostgREST refuses with `permission denied for table
+notification_outbox` before RLS is even consulted. Reproduced as the real role:
+
+```
+BEFORE  insert into notification_outbox ...   ERROR: permission denied
+AFTER   select queue_office_notifications(...)  queued = 1
+```
+
+Nothing caught it because nothing looked. The server action does not check the result of
+the insert, so the manager sees "Event cancelled" and every worker on it is told nothing.
+It is the worst kind of defect: the screen is honest about what it did and wrong about
+what happened.
+
+Fixed by `20260922170000_office_notification_queue.sql` —
+`queue_office_notifications(jsonb)`, `security definer`, admin-checked, taking rows that
+are already rendered so §8's copy stays in `packages/notifications` where CLAUDE.md
+requires it. `001_rls_guard` assertion 8 is untouched and `310` re-asserts it: the fix is
+a door, not a hole in the wall.
+
+**Three things worth carrying forward.**
+
+1. **A test that runs as the owner proves nothing about grants.** The first version of
+   `310` set the JWT but not the role, so it exercised the admin check and would have
+   passed with the grant missing entirely. pgTAP runs as the table owner, which bypasses
+   RLS and holds every privilege. Any assertion about what a *caller* can reach needs
+   `set local role authenticated`. This is the same lesson as O7's, in a second costume.
+2. **The guard is a grep, and it is in the suite.**
+   `packages/notifications/src/__tests__/write-path.test.ts` fails if any file under
+   `apps/*/app/**` chains an insert, update, upsert or delete onto
+   `from('notification_outbox')` — or `audit_log` or `report_sends`, which are owned by
+   definer RPCs for the same reason. It was verified by reintroducing the bug and
+   watching it fail. A runtime failure this invisible needs a compile-time-ish guard.
+3. **Look for the same shape elsewhere.** The question "does this server action write a
+   table the caller's role cannot write?" has not been asked of every screen. The three
+   tables above are covered; the audit that would cover the rest is the same one O7 asks
+   for, from the other direction.
+
 ## O12 · CI resolves `supabase/setup-cli` as `latest`, and it is neither reproducible nor reliable
 
 `.github/workflows/ci.yml:24-25` and `deploy.yml:63-65` both pin the action and not the
