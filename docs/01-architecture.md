@@ -128,5 +128,5 @@ Portal/
   supabase/migrations | functions | seed.sql | tests
   wireframes/                ← the visual contract (this session's output)
   docs/                      ← this folder; ADRs in docs/adr
-  .github/workflows/         ← CI, Claude review bot, preview deploys
+  .github/workflows/         ← CI + the database deploy, Claude review bot
 ```

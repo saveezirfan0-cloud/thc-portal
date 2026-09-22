@@ -10,21 +10,34 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 638 | `pnpm test` |
-| Browser smoke | 57 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 967 over 27 files | `supabase test db` |
+| Unit | 759 | `pnpm test` |
+| Browser smoke | 69 | `pnpm turbo e2e:smoke` |
+| Database, row-level security and rules | 1185 over 32 files | `supabase test db` |
 
-The database figure is the sum of the declared plans across `supabase/tests/`, read off
-this tree — 882 stated as literals plus `070_check_in_out.sql`, whose plan is computed
-from `pay.vectors.json` (50 vectors + 35 fixed = 85). It is not a measured run. pgTAP
+**Measured at `a1da78d`, and they go stale fast** — every one of these was wrong within
+an hour of being written, three times in one day, because this repo merges several
+sessions a day and prose cannot keep up. Re-derive rather than trust, with the commands
+below; if yours disagree, yours are right and this table is old.
+
+```sh
+pnpm turbo test 2>&1 | grep -E 'Tests +[0-9]+'          # unit, summed per package
+ls supabase/tests/*.sql | wc -l                          # pgTAP files
+grep -hoiE 'select plan\(([0-9]+)\)' supabase/tests/*.sql | grep -oE '[0-9]+' | paste -sd+ | bc
+grep -cE '^\s*test\(' e2e/tests/*.spec.ts               # browser, before per-project fan-out
+```
+
+The database figure is the sum of the declared plans across `supabase/tests/` — 1100
+stated as literals plus `070_check_in_out.sql`, whose plan is computed from
+`pay.vectors.json` (50 vectors + 35 fixed = 85), which is why the one-liner above
+undercounts by 85. It is not a measured run. pgTAP
 fails a file whose plan does not match the assertions it actually runs, so a green
 `supabase test db` turns the sum into an exact count; a red one means the sum was the
 wrong number to quote. `supabase start` needs Docker, which some sandboxes block, and
 when it is unavailable the CI run is the number to take rather than a local guess.
 
-The browser figure is 57 — nine spec files over three Playwright projects, so the suites
-that run per app are counted once per app. **It only runs in CI now**, where 51 pass and
-6 skip. Since `7d28ba4` closed the auth gate, the middleware no longer degrades open: an
+The browser figure is 69 — ten spec files over three Playwright projects, so `auth.smoke`
+and `gate.smoke` are counted once per app: 59 `test(` calls fan out to 69 runs, the extra
+ten being those two suites' second and third projects. **It only runs in CI now.** Since `7d28ba4` closed the auth gate, the middleware no longer degrades open: an
 app built without `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` answers
 503 on every route rather than serving an ungated shell. Playwright's `webServer` waits
 for a healthy response, so on a checkout with no `.env.local` it times out after 120s and
@@ -52,7 +65,7 @@ What exists, at platform level:
   component against both token axes.
 - **Seed data**: 5 clients, 8 venues, 6 roles, 40 workers, mirroring
   `wireframes/CONVENTIONS.md`.
-- **32 migrations and 27 pgTAP files.** Every table carries row-level security and a
+- **40 migrations and 32 pgTAP files.** Every table carries row-level security and a
   test per role.
 
 **The screen-by-screen, system-by-system map lives in `docs/14-handover.md`, and that is
