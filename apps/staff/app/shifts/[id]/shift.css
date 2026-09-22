@@ -8,7 +8,8 @@
   gap: 4px;
   padding: 16px;
   border: 1px solid var(--green);
-  border-radius: var(--r-card);
+  /* --radius is not a token; --r-tile is the card scale. */
+  border-radius: var(--r-tile);
 }
 .earn-total .earn {
   font-family: var(--font-head);
