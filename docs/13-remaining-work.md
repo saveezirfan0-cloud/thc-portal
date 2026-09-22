@@ -605,6 +605,45 @@ is a missing screen, so neither shows up in the lists above.
 > Done when: a burst from one source is refused, a single honest application is not, and
 > the limit is asserted rather than assumed.
 
+## D3 · The GDPR consent on /apply links to a page that does not exist (§1.7)
+
+> Use the `onboarding` agent. Branch `feat/onboarding-privacy-notice`.
+>
+> `ApplyForm.tsx` asks the applicant to agree to their details being processed "as
+> described in the Privacy notice" and links that phrase to `/privacy`. There is no
+> `/privacy` route in any of the three apps, and it is not in `apps/staff/middleware.ts`
+> `PUBLIC_PATHS`, so a logged-out applicant who clicks it is sent to
+> `/login?next=/privacy` — a sign-in screen, in the middle of giving consent.
+>
+> §1.7 requires the consent to be informed, which means the notice has to be readable
+> before the box is ticked, by someone who has no account and is on their phone. The
+> wireframe uses `href="#"` because it is a wireframe; the shipped form needs a
+> destination.
+>
+> The blocker is content, not code: the notice itself is THC's to write (or their
+> solicitor's). Adding the route without it would only turn a redirect into a 404. Until
+> then the link should point at whatever public privacy page the company already has.
+>
+> Done when: the link opens a readable notice without a login, the route is in
+> `PUBLIC_PATHS`, and a test asserts a logged-out visit returns the page rather than a
+> redirect.
+
+## D4 · The brand mark changes shape between /apply and /apply/submitted (§1.2)
+
+> Use the `design-system` agent — this is a `packages/ui` change and the conventions say
+> those ship in their own PR first. Branch `feat/ui-authcard-round-logo`.
+>
+> `/apply` renders `AuthCard`, whose logo is square; `/apply/submitted` hand-rolls
+> `<span className="logo round">`. `wireframes/public/apply.html` uses the round mark on
+> both. So the logo changes shape between two consecutive screens of one flow, and the
+> second screen only looks right because it bypasses the shared component.
+>
+> The fix belongs in `AuthCard` (an option, not a second hand-rolled span), after which
+> `submitted/page.tsx` should use it like every other screen.
+>
+> Done when: both screens render the same mark through the same component, and the
+> hand-rolled copy is gone.
+
 ---
 
 # Before go-live

@@ -16,11 +16,7 @@ export function ApplyForm() {
   const [state, formAction, pending] = useActionState(apply, INITIAL_STATE);
   const [values, setValues] = useState<ApplicationValues>(state.values);
   const [touched, setTouched] = useState(false);
-
-  // Before the first submit the form stays quiet; after it, the field errors
-  // follow what the person types. The server's answer seeds the first pass.
-  const errors: FieldErrors = touched ? validate(values) : state.errors;
-  const banner = errorBanner(errors);
+  const [consentTouched, setConsentTouched] = useState(false);
 
   function set<K extends keyof ApplicationValues>(key: K, value: ApplicationValues[K]) {
     setValues((v) => ({ ...v, [key]: value }));
@@ -31,7 +27,26 @@ export function ApplyForm() {
   // "On the spot" (§2.1) now means a complete date that puts them under 18.
   // A half-typed year is an unfinished field, not a rejection.
   const dob = parseDob(values.dob);
-  const blocked = (dob !== null && ageOn(dob) < 18) || !values.consent;
+  const underage = dob !== null && ageOn(dob) < 18;
+  const blocked = underage || !values.consent;
+
+  // Before the first submit the form stays quiet; after it, the field errors
+  // follow what the person types. The server's answer seeds the first pass.
+  const checked = validate(values);
+  const errors: FieldErrors = { ...(touched ? checked : state.errors) };
+
+  // ...except for the two fields that hold the button down. `blocked`
+  // disables submit, so in exactly those states the first submit never
+  // happens and a submit-gated error never renders: the button silently goes
+  // dead and nothing says why. The wireframe draws the opposite — "under 18
+  // is rejected on the spot, coral error on the form" (§2.1) — so these two
+  // explain themselves as soon as they are the reason it is dead. Consent
+  // waits for the person to have touched it, so a form nobody has filled in
+  // yet is not already telling them off.
+  if (underage) errors.dob = checked.dob;
+  if (consentTouched && !values.consent) errors.consent = checked.consent;
+
+  const banner = errorBanner(errors);
 
   return (
     <form
@@ -155,7 +170,10 @@ export function ApplyForm() {
           name="consent"
           className="check-input"
           checked={values.consent}
-          onChange={(e) => set('consent', e.target.checked)}
+          onChange={(e) => {
+            setConsentTouched(true);
+            set('consent', e.target.checked);
+          }}
         />
         <span
           className={`box${values.consent ? ' on' : ''}`}

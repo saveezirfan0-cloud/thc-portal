@@ -13,7 +13,7 @@
 --      address anyone cares to type.
 -- =====================================================================
 begin;
-select plan(42);
+select plan(54);
 \ir _shared/fixtures.psql
 
 -- ---------------------------------------------------------------------
@@ -202,9 +202,156 @@ select is((select count(*)::int from pg_indexes where indexname = 'staff_msisdn_
 -- Two tabs, or one double tap, would otherwise both find no match and both
 -- insert a candidate: exactly the second record §2.12 exists to prevent.
 -- Every submission above ran in this transaction, so the locks are still held.
-select ok(
-  (select count(*)::int from pg_locks where locktype = 'advisory' and pid = pg_backend_pid()) >= 1,
-  'submit_application takes a transaction-scoped advisory lock, so concurrent submissions queue instead of racing');
+--
+-- The keys are asserted, not just the count. The first version of this
+-- assertion read `count(*) >= 1`, which passed for a lock on anything at
+-- all — and it did pass, while the lock was a single key hashed from email
+-- AND mobile against a predicate that matches on email OR mobile. Two
+-- submissions agreeing on only one arm took different keys and raced anyway
+-- (20260922100000). A count cannot see that; the keys can. Named keys
+-- rather than a total, because `applications` also holds a row inserted
+-- directly by _shared/fixtures.psql, which never went through the RPC and
+-- so never took a lock at all.
+select is(
+  (select count(*)::int from pg_locks
+    where locktype = 'advisory' and pid = pg_backend_pid()
+      and classid = hashtext('apply:email')
+      and objid = hashtext('nadia.testwood@rls.test')),
+  1,
+  '§2.12 the email arm of the match is locked under its own key');
+select is(
+  (select count(*)::int from pg_locks
+    where locktype = 'advisory' and pid = pg_backend_pid()
+      and classid = hashtext('apply:msisdn')
+      and objid = hashtext('+447010000456')),
+  1,
+  'and the mobile arm under a separate one — a single key hashed from both left the arms racing');
+
+-- ---------------------------------------------------------------------
+-- §1.8 · the age gate is evaluated in Europe/London
+--
+-- This one is asserted against the source, because the behaviour it guards
+-- is only observable for the hour between 00:00 and 01:00 UK time during
+-- BST — a test that reproduces it would pass twenty-three hours a day and
+-- fail at 00:30, which is worse than no test. What went wrong was textual:
+-- `current_date` resolves against the session TimeZone, UTC on Supabase,
+-- while the comment beside it claimed UK time. So the text is what is
+-- pinned. Every other date rule in this repo uses the same expression.
+-- ---------------------------------------------------------------------
+select matches(
+  (select prosrc from pg_proc where proname = 'submit_application'),
+  'Europe/London',
+  '§1.8 submit_application derives today in Europe/London');
+select doesnt_match(
+  (select prosrc from pg_proc where proname = 'submit_application'),
+  '[^_]current_date',
+  'and never from current_date, which is UTC on Supabase and refuses an applicant on their eighteenth birthday');
+
+-- Behaviour, as far as it can be pinned deterministically: the answer must
+-- not depend on the caller's session timezone. Someone born exactly
+-- eighteen years ago by the London calendar is eighteen, whoever asks.
+set local timezone = 'Pacific/Kiritimati';
+set local role anon;
+select lives_ok(
+  $$ select submit_application('Dateline','East','dateline.east@rls.test','+447700900851',
+       ((now() at time zone 'Europe/London')::date - interval '18 years')::date, true) $$,
+  'a caller fourteen hours ahead of London gets the London answer');
+reset role;
+set local timezone = 'Pacific/Niue';
+set local role anon;
+select lives_ok(
+  $$ select submit_application('Dateline','West','dateline.west@rls.test','+447700900852',
+       ((now() at time zone 'Europe/London')::date - interval '18 years')::date, true) $$,
+  'and so does one eleven hours behind it');
+reset role;
+reset timezone;
+
+-- ---------------------------------------------------------------------
+-- The pre-ADR-0008 signature is gone, not shadowed
+--
+-- 20260921170000 dropped submit_application(text,text,text,text,text,boolean)
+-- rather than replacing it, because `create or replace` on a new parameter
+-- list leaves the old one behind as an overload that `anon` can still call
+-- — with an age BAND, which is the applicant's own word for how old they
+-- are and is exactly what ADR-0008 stopped trusting. Nothing asserted the
+-- drop until now.
+-- ---------------------------------------------------------------------
+select is(
+  (select count(*)::int from pg_proc where proname = 'submit_application'),
+  1,
+  'exactly one submit_application exists, so the age-band signature cannot be called');
+select is(
+  (select pg_get_function_identity_arguments(oid) from pg_proc where proname = 'submit_application'),
+  'p_first_name text, p_last_name text, p_email text, p_phone text, p_dob date, p_consent boolean',
+  'and it is the date-of-birth one (ADR-0008)');
+
+-- ---------------------------------------------------------------------
+-- §2.12 matches a worker whatever state they left in
+--
+-- The point of the returning-applicant entry is the worker the office needs
+-- to look at again: "Reset to candidate is available on a blocked or
+-- rejected profile" (§2.12). Both duplicate fixtures above are `compliant`,
+-- so a regression narrowing the predicate to compliant workers would pass
+-- every other assertion in this file.
+-- ---------------------------------------------------------------------
+insert into staff (first_name, last_name, email, phone, dob, status)
+values ('Was','Blocked','was.blocked@rls.test','+447700900861', date '1990-03-03', 'blocked'),
+       ('Was','Rejected','was.rejected@rls.test','+447700900862', date '1990-04-04', 'rejected');
+
+set local role anon;
+select submit_application('Was','Blocked','was.blocked@rls.test','+447700900871', date '1990-03-03', true);
+select submit_application('Was','Rejected','was.rejected@rls.test','+447700900872', date '1990-04-04', true);
+reset role;
+select is((select outcome::text from applications where email = 'was.blocked@rls.test'), 'returning_applicant',
+  '§2.12 a blocked worker who re-applies is a returning applicant, not a new candidate');
+select is((select outcome::text from applications where email = 'was.rejected@rls.test'), 'returning_applicant',
+  'and so is a rejected one — both are what "reset to candidate" acts on');
+
+-- ---------------------------------------------------------------------
+-- The band boundaries, in SQL
+--
+-- The CASE in submit_application is a hand-copy of `ageBandFor` in
+-- apps/staff/app/apply/form.ts. Only the TypeScript side had boundary
+-- vectors, so the two could drift at exactly the ages where a band changes.
+-- ---------------------------------------------------------------------
+set local role anon;
+select submit_application('Band','Thirty','band30@rls.test','+447700900881', ((now() at time zone 'Europe/London')::date - interval '30 years')::date, true);
+select submit_application('Band','Thirtyone','band31@rls.test','+447700900882', ((now() at time zone 'Europe/London')::date - interval '31 years')::date, true);
+select submit_application('Band','Forty','band40@rls.test','+447700900883', ((now() at time zone 'Europe/London')::date - interval '40 years')::date, true);
+select submit_application('Band','Fortyone','band41@rls.test','+447700900884', ((now() at time zone 'Europe/London')::date - interval '41 years')::date, true);
+select submit_application('Band','Fifty','band50@rls.test','+447700900885', ((now() at time zone 'Europe/London')::date - interval '50 years')::date, true);
+select submit_application('Band','Fiftyone','band51@rls.test','+447700900886', ((now() at time zone 'Europe/London')::date - interval '51 years')::date, true);
+select submit_application('Band','Sixty','band60@rls.test','+447700900887', ((now() at time zone 'Europe/London')::date - interval '60 years')::date, true);
+select submit_application('Band','Sixtyone','band61@rls.test','+447700900888', ((now() at time zone 'Europe/London')::date - interval '61 years')::date, true);
+reset role;
+select is(
+  (select array_agg(age_band order by email) from applications where email like 'band%@rls.test'),
+  -- Ordered by email: band30, band31, band40, band41, band50, band51,
+  -- band60, band61. Thirty is still its own number because the first arm of
+  -- the CASE runs to 30; from 31 the bands are ten-year ranges whose upper
+  -- bound is inclusive, so 40 is the top of 31_40, not the bottom of 41_50.
+  array['30','31_40','31_40','41_50','41_50','51_60','51_60','60_plus']::text[],
+  '§2.1 the bands change at 31, 41, 51 and 61, and each range includes its upper year');
+
+-- ---------------------------------------------------------------------
+-- The "too old to be an applicant" boundary matches the form's
+--
+-- The form rejects more than 100 completed years (MAX_AGE in form.ts). The
+-- database used to reject anything before `today - interval '100 years'`,
+-- which is a day earlier, so dates in that one-year gap passed the form and
+-- came back as a server banner on a field the form had called fine.
+-- ---------------------------------------------------------------------
+set local role anon;
+select lives_ok(
+  $$ select submit_application('Exactly','Hundred','exactly100@rls.test','+447700900891',
+       ((now() at time zone 'Europe/London')::date - interval '100 years')::date, true) $$,
+  'exactly 100 completed years is accepted, as it is on the form');
+select throws_ok(
+  $$ select submit_application('Over','Hundred','over100@rls.test','+447700900892',
+       ((now() at time zone 'Europe/London')::date - interval '101 years')::date, true) $$,
+  '22023', 'Enter a real date of birth.',
+  'and 101 is refused as a typo by both');
+reset role;
 
 select * from finish();
 rollback;
