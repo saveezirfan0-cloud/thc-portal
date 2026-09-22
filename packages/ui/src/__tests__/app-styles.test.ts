@@ -33,7 +33,14 @@ describe('app stylesheets read the design system', () => {
 
     it(`${sheet} names only tokens that exist`, () => {
       const used = [...css.matchAll(/var\((--[a-z0-9-]+)/g)].map((m) => m[1]!);
-      const missing = [...new Set(used)].filter((name) => !defined.has(name));
+      // A sheet may declare its own custom properties as local aliases, and
+      // that is not a token violation: events.css sets `--accent: var(--amber)`
+      // per fill state and draws the border with it, which is the whole reason
+      // the states differ by one declaration rather than by a rule each. The
+      // invariant worth holding is "names a token that nobody defines", not
+      // "names a token tokens.css does not define".
+      const local = new Set([...css.matchAll(/^\s*(--[a-z0-9-]+):/gm)].map((m) => m[1]!));
+      const missing = [...new Set(used)].filter((name) => !defined.has(name) && !local.has(name));
       expect(missing, `undefined in tokens.css`).toEqual([]);
     });
 

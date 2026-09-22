@@ -86,9 +86,20 @@ select is(
   '§4.5: completion letter PLUS opt-out is what removes the weekly ceiling'
 );
 
+-- This read "no ceiling is null, never 0" when I wrote it for PR #3, and it
+-- was right then: no band returned 0, so a 0 could only have been a null
+-- that lost its way. The completion-letter requirement introduced
+-- visa_expired_0, which is a real cap of no hours and a different thing
+-- entirely — the assertion outlived the rule it was protecting.
+--
+-- What still has to hold, and what it was actually guarding, is that the
+-- two are never confused: null means NO CEILING and belongs to `uncapped`
+-- alone, so a real zero can never be written as one, nor a no-ceiling week
+-- as 0 hours.
 select is_empty(
-  $$ select 1 from cap_vectors where expect_cap_hours = 0 $$,
-  'no ceiling is null, never 0 — a 0 would read as "no hours left" to every caller'
+  $$ select name from cap_vectors
+      where (expect_cap_hours is null) <> (expect_band = 'uncapped') $$,
+  'null hours means no ceiling and only the uncapped band; a real cap of 0 (visa_expired_0) is never written as null'
 );
 
 -- ---------------------------------------------------------------------
