@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260922090100 · the University Completion Letter requirement
+-- Migration 20260922093100 · the University Completion Letter requirement
 -- in SQL (RULE-20, §4.4–4.5 +
 -- docs/scope/university-completion-letter-requirement.pdf)
 --
@@ -65,7 +65,7 @@
 -- Nothing that calls it today has to change, and the fifteen original
 -- vectors — which carry none of the new facts — are the proof.
 --
--- Forward-only: 0008 is left untouched. 20260922090000 added the two enum
+-- Forward-only: 0008 is left untouched. 20260922093000 added the two enum
 -- labels this file uses; they cannot be added and used in one transaction.
 -- =====================================================================
 

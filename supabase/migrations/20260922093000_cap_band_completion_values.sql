@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260922090000 · two new cap bands (RULE-20, §4.4–4.5 +
+-- Migration 20260922093000 · two new cap bands (RULE-20, §4.4–4.5 +
 -- docs/scope/university-completion-letter-requirement.pdf)
 --
 -- Why this is a migration of its own
@@ -13,7 +13,7 @@
 -- `row(0, 'visa_expired_0')::cap_assessment` is exactly that use, resolved
 -- at parse-analysis time when the function is created — is two files.
 --
--- 20260922090100_completion_letter_cap.sql is the other half and is
+-- 20260922093100_completion_letter_cap.sql is the other half and is
 -- meaningless without this one. They must be applied in order, which their
 -- timestamps guarantee.
 --

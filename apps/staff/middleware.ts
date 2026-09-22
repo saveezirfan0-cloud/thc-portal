@@ -24,13 +24,18 @@ export async function middleware(request: NextRequest) {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) {
     // No Supabase configured. Locally that is the Phase 0 shell and we let
-    // it render; in a deployed environment it means the auth gate is OFF,
-    // and failing open there published this app to anyone with the URL.
+    // it render; in a deployed environment it means this gate is OFF, and
+    // failing open there publishes the app to anyone with the URL.
     //
-    // That is not hypothetical: marking NEXT_PUBLIC_* as "Sensitive" in
-    // Vercel withholds them at BUILD time, and Next inlines NEXT_PUBLIC_*
-    // at build — so they arrived undefined and every route rendered
-    // unauthenticated in production. Fail closed instead.
+    // Measured, not theoretical: the deployed Client Portal served /client
+    // to an unauthenticated request with 200 and the whole page, because
+    // its two NEXT_PUBLIC_SUPABASE_* values were never filled in on that
+    // Vercel project. The Back Office and Staff App, whose values are set,
+    // redirected to /login from the same test — so the cause is an empty
+    // value on one project, not anything about how Vercel stores them.
+    //
+    // Which is the point: a gate must not decide it is unnecessary because
+    // its own configuration is missing. Fail closed.
     if (process.env.VERCEL_ENV || process.env.NODE_ENV === 'production') {
       return new NextResponse(
         'This deployment is not configured: NEXT_PUBLIC_SUPABASE_URL / ' +
