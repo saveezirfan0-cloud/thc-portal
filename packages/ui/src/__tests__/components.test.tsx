@@ -9,6 +9,7 @@ import { Avatar, AvatarGroup, Person, initials } from '../components/Avatar';
 import { AuthCard } from '../components/AuthCard';
 import { Button } from '../components/Button';
 import { Checkbox, OptionRow, Radio, Switch } from '../components/Controls';
+import { SignOut } from '../components/SignOut';
 import {
   KpiTile,
   Rating,
@@ -511,5 +512,30 @@ describe('initials and rating bands', () => {
     expect(ratingTone(3.0)).toBe('amber');
     expect(ratingTone(3.9)).toBe('amber');
     expect(ratingTone(4.0)).toBe('green');
+  });
+});
+
+describe('SignOut', () => {
+  /**
+   * The regression this guards is the one that shipped: `/auth/signout`
+   * answers POST only, both call sites used a link, and every click on a
+   * Sign out button in the product returned 405. All three apps now get the
+   * control from here, so pinning it here pins it everywhere.
+   */
+  it('submits by POST and is never a link', () => {
+    const html = renderToStaticMarkup(<SignOut />);
+    expect(html).toContain('method="post"');
+    expect(html).toContain('action="/auth/signout"');
+    expect(html).toContain('type="submit"');
+    expect(html).not.toContain('<a ');
+  });
+
+  it("puts the caller's class on the button, not the display:contents form", () => {
+    // A margin or alignment class on the form would do nothing: it generates
+    // no box. The Back Office's `ml-auto` depends on this.
+    const html = renderToStaticMarkup(<SignOut className="ml-auto" />);
+    expect(html).toMatch(/<form[^>]*class="signout"/);
+    expect(html).not.toMatch(/<form[^>]*class="[^"]*ml-auto/);
+    expect(html).toMatch(/<button[^>]*class="[^"]*ml-auto[^"]*"/);
   });
 });

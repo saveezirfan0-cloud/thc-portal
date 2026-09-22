@@ -53,6 +53,7 @@ export function wrongAppBody(role: Role | null, appName: string): string {
   main{max-width:34rem}
   h1{font-size:1.4rem;margin:0 0 .5rem}
   p{margin:0 0 1rem;opacity:.8}
+  form{margin:0 0 1rem}
   button{font:inherit;cursor:pointer;background:none;
     padding:.6rem 1.1rem;border:1px solid currentColor;
     border-radius:999px;color:inherit}

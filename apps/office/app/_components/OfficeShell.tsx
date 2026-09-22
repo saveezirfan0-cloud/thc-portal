@@ -110,7 +110,22 @@ export function OfficeShell({
         />
       }
     >
-      <Topbar title={title} crumbs={crumbs} timezone={timezone} actions={actions} />
+      <Topbar
+        title={title}
+        crumbs={crumbs}
+        timezone={timezone}
+        actions={
+          <>
+            {actions}
+            {/* The sidebar foot is `display: none` below 760px, where the rail
+                becomes a bottom bar — so on a phone the button above is gone
+                and this is the only sign-out left. */}
+            <span className="only-phone">
+              <SignOut />
+            </span>
+          </>
+        }
+      />
       <Content>{children}</Content>
     </Shell>
   );
