@@ -34,6 +34,11 @@ export interface BookingRow extends StaffBooking {
   onsiteContact: string | null;
   notes: string | null;
   paysBreaks: boolean | null;
+  /** RULE-20, read live for the week this SECTION falls in (§10.4, §4.4). */
+  hoursLimit: boolean;
+  weekStart: string | null;
+  bookedHours: number | null;
+  capHours: number | null;
 }
 
 export interface OpenShift extends OpenShiftRow {
@@ -49,6 +54,9 @@ export interface OpenShift extends OpenShiftRow {
   headcount: number;
   buffer: number;
   confirmedCount: number;
+  weekStart: string | null;
+  bookedHours: number | null;
+  capHours: number | null;
 }
 
 const date = (value: unknown): Date | null => (value ? new Date(value as string) : null);
@@ -89,6 +97,10 @@ export async function loadBookings(): Promise<BookingRow[]> {
     notes: (row['notes'] as string) ?? null,
     paysBreaks: row['pays_breaks'] === null ? null : Boolean(row['pays_breaks']),
     noCheckoutOpen: Boolean(row['no_checkout_open']),
+    hoursLimit: Boolean(row['hours_limit']),
+    weekStart: (row['week_start'] as string) ?? null,
+    bookedHours: row['booked_hours'] === null ? null : Number(row['booked_hours']),
+    capHours: row['cap_hours'] === null ? null : Number(row['cap_hours']),
   }));
 }
 
@@ -115,6 +127,9 @@ export async function loadOpenShifts(): Promise<OpenShift[]> {
     qualified: Boolean(row['qualified']),
     hoursLimit: Boolean(row['hours_limit']),
     appliedAt: date(row['applied_at']),
+    weekStart: (row['week_start'] as string) ?? null,
+    bookedHours: row['booked_hours'] === null ? null : Number(row['booked_hours']),
+    capHours: row['cap_hours'] === null ? null : Number(row['cap_hours']),
   }));
 }
 
@@ -126,4 +141,25 @@ export async function findBooking(bookingId: string): Promise<BookingRow | null>
 export async function findOpenShift(shiftId: string): Promise<OpenShift | null> {
   const all = await loadOpenShifts();
   return all.find((s) => s.shiftId === shiftId) ?? null;
+}
+
+/**
+ * The invitations a worker may still answer — Scope §10.4.
+ *
+ * RULE-16 lives here rather than in the query, because `staff_bookings()`
+ * has to keep returning everything: a worker tapping a stale push needs the
+ * detail route to find the row and show them the static message, not a 404.
+ * What this filters is the LIST.
+ *
+ * An invitation goes when its section has ended ("an open invitation
+ * disappears on its own once the event it belongs to has ended — even if the
+ * worker never accepted or declined it"), and when the office cancels the
+ * event ("the shift's card simply disappears from the list the moment the
+ * push arrives"). Neither waits for a job: an Accept on either would be
+ * refused by `accept_invite`, so offering the button is the bug.
+ */
+export function openInvites(bookings: readonly BookingRow[], now: Date = new Date()): BookingRow[] {
+  return bookings.filter(
+    (b) => b.status === 'invited' && !b.eventCancelledAt && b.endsAt.getTime() > now.getTime(),
+  );
 }

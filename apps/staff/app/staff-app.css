@@ -47,12 +47,15 @@
   flex: 1;
   min-width: 0;
 }
-/* "Shown after you accept" — withheld, and visibly so (§10.4). */
+/* "Shown after you accept" — withheld, and visibly so (§10.4). Struck
+   through at .45, as wireframes/staff/invites.html renders it: the row is
+   present so the worker knows there IS something, and plainly not yet
+   theirs. */
 .kv.off {
-  opacity: 0.55;
+  opacity: 0.45;
 }
 .kv.off .v {
-  font-style: italic;
+  text-decoration: line-through;
 }
 
 /* Radar's km badge. */

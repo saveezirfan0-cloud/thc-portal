@@ -173,15 +173,22 @@ export type ShiftCard =
 /**
  * Which card a confirmed booking becomes (§10.4).
  *
- * Order matters and is the rule, not an implementation detail. A changed time
- * outranks everything else the card could say: a worker who reads "Today" and
- * turns up at the old hour has been failed by the screen. "Today" then
- * outranks the day-before prompt, because once the day has arrived the 12:00
- * deadline is behind them and stage 3 is the only thing left to press.
+ * Order matters and is the rule, not an implementation detail. A finished
+ * shift is `past` whatever flags its row still carries. Below that, a changed
+ * time outranks everything else the card could say: a worker who reads
+ * "Today" and turns up at the old hour has been failed by the screen.
+ * "Today" then outranks the day-before prompt, because once the day has
+ * arrived the 12:00 deadline is behind them and stage 3 is the only thing
+ * left to press.
  */
 export function shiftCard(booking: StaffBooking, now: Date = new Date()): ShiftCard {
-  if (booking.reconfirmRequired) return 'reconfirm';
+  // `past` outranks even a changed time. A stale reconfirm flag on a shift
+  // that finished last month must not render a permanent "Confirm new time".
   if (now.getTime() >= booking.endsAt.getTime()) return 'past';
+  if (booking.reconfirmRequired) return 'reconfirm';
+  // Stage 3 belongs to a booking that is still awaiting the worker. One
+  // already `worked` has been checked into, and confirm_on_day refuses it.
+  if (booking.status !== 'confirmed') return 'today';
   if (civilDate(booking.startsAt) === civilDate(now)) return 'today';
   if (
     !booking.dayBeforeConfirmedAt &&
@@ -344,4 +351,61 @@ export const RADAR_GROUP_LABEL = {
 export function formatDistance(km: number | null): string {
   if (km === null || !Number.isFinite(km)) return '—';
   return `${km >= 10 ? Math.round(km) : km.toFixed(1)} km`;
+}
+
+/** What the RPCs return about the Mon–Sun week a shift falls in (RULE-20). */
+export interface CapFigures {
+  /** Monday of the week the SECTION starts in, not the week today is in. */
+  weekStart: string | null;
+  /** Hours already confirmed, worked or closed in that week. */
+  bookedHours: number | null;
+  /** The calculated ceiling, or null where there is none. */
+  capHours: number | null;
+  /** This section's own length. */
+  shiftHours: number;
+}
+
+/**
+ * "You've worked 18 h in the week of Mon 21 — 18 h + 4 h is over your 20 h
+ * limit" (§10.4, §4.4).
+ *
+ * The scope puts the numbers in front of the worker rather than the verdict
+ * alone, and it is right to: the cap is calculated and never typed, so these
+ * figures are the only way a worker can tell a term/holiday boundary from a
+ * mistake by the office. Returns null where there is no ceiling to explain.
+ */
+export function explainLimit(figures: CapFigures): string | null {
+  const { weekStart, bookedHours, capHours, shiftHours } = figures;
+  if (capHours === null || bookedHours === null) return null;
+  const week = weekStart ? ` in the week of ${formatWeekStart(weekStart)}` : '';
+  const total = round1(bookedHours + shiftHours);
+  return (
+    `You've got ${formatHoursShort(bookedHours)}${week} — ` +
+    `${formatHoursShort(bookedHours)} + ${formatHoursShort(shiftHours)} is ${total} h ` +
+    `against your ${formatHoursShort(capHours)} limit.`
+  );
+}
+
+/** "This week (Mon 14) · 8 h of 20 h" — the Radar header strip (§10.4). */
+export function capMeter(figures: CapFigures): string | null {
+  if (figures.capHours === null || figures.bookedHours === null) return null;
+  return `${formatHoursShort(figures.bookedHours)} of ${formatHoursShort(figures.capHours)}`;
+}
+
+const round1 = (n: number): number => Math.round(n * 10) / 10;
+
+function formatHoursShort(hours: number): string {
+  return `${round1(hours)} h`;
+}
+
+/** "Mon 21 Sep", the label §10.4 uses for a Mon–Sun week. */
+function formatWeekStart(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const at = new Date(Date.UTC(y!, m! - 1, d!));
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'UTC',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+  }).format(at);
 }

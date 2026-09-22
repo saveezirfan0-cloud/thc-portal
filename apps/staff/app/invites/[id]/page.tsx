@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Alert, Pill } from '@thc/ui';
-import { formatDistance, formatHours, sectionHours } from '@thc/domain';
+import { explainLimit, formatDistance, formatHours, sectionHours } from '@thc/domain';
 import { StaffShell } from '../../_components/StaffShell';
 import { ShiftTime } from '../../_components/ShiftTime';
 import { ActionButton } from '../../_components/ActionButton';
 import { acceptInvite, declineInvite } from '../../actions';
-import { findBooking, loadBookings } from '../../data';
+import { findBooking, loadBookings, openInvites } from '../../data';
 import '../../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -27,6 +27,14 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   const all = await loadBookings();
   const hours = sectionHours({ startsAt: invite.startsAt, endsAt: invite.endsAt });
+  const limit = invite.hoursLimit
+    ? explainLimit({
+        weekStart: invite.weekStart,
+        bookedHours: invite.bookedHours,
+        capHours: invite.capHours,
+        shiftHours: hours,
+      })
+    : null;
 
   return (
     <StaffShell
@@ -34,10 +42,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       sub={<Link href="/invites">‹ Invites</Link>}
       active="/invites"
       shifts={all.filter((b) => b.status === 'confirmed').length}
-      invites={all.filter((b) => b.status === 'invited').length}
+      invites={openInvites(all).length}
     >
       <div className="card-head">
         <Pill tone="cyan">Invited</Pill>
+        {invite.hoursLimit ? <Pill tone="coral">Limit reached</Pill> : null}
         <Pill>{invite.venueName}</Pill>
         <span className="right mono sm muted">{invite.eventDate}</span>
       </div>
@@ -85,10 +94,17 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         </div>
       </div>
 
-      <Alert tone="cyan">
-        Invitations don’t expire — but the slot goes to the first person who confirms. If you
-        accept, you’ll be asked to press “I’m ready” by 12:00 the day before.
-      </Alert>
+      {invite.hoursLimit ? (
+        <Alert tone="coral">
+          <b>Limit Reached.</b> {limit} The limit is calculated from your verified documents and
+          can’t be changed in the app (RULE-20, §4.4).
+        </Alert>
+      ) : (
+        <Alert tone="cyan">
+          Invitations don’t expire — but the slot goes to the first person who confirms. If you
+          accept, you’ll be asked to press “I’m ready” by 12:00 the day before.
+        </Alert>
+      )}
 
       <div className="card-actions">
         <ActionButton
@@ -109,6 +125,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           tone="primary"
           block
           size="lg"
+          disabled={invite.hoursLimit}
+          disabledLabel="Limit Reached"
           action={acceptInvite.bind(null, invite.bookingId)}
           confirm={{
             title: 'Accept this shift?',

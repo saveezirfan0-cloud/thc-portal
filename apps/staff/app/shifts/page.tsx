@@ -2,16 +2,21 @@ import Link from 'next/link';
 import { Alert, EmptyState, Pill } from '@thc/ui';
 import {
   READY_DEADLINE_UK,
+  UK_ZONE,
   canCancelShift,
+  cancelDeadline,
+  explainLimit,
+  formatDateTimeIn,
   formatDistance,
   openSlots,
+  sectionHours,
   shiftCard,
 } from '@thc/domain';
 import { StaffShell } from '../_components/StaffShell';
 import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
 import { applyForShift, cancelShift, confirmToday, markReady, reconfirm } from '../actions';
-import { loadBookings, loadOpenShifts } from '../data';
+import { loadBookings, loadOpenShifts, openInvites } from '../data';
 import type { BookingRow } from '../data';
 import '../staff-app.css';
 
@@ -35,8 +40,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
   const open = tab === 'open';
 
   const [bookings, openShifts] = await Promise.all([loadBookings(), loadOpenShifts()]);
+  // §10.4 names them — "Shifts for your roles: Waiting Staff · Bar Staff" —
+  // because "your roles" is otherwise a claim the worker cannot check.
+  const roleNames = [...new Set([...openShifts.map((s) => s.role), ...bookings.map((b) => b.role)])]
+    .sort()
+    .join(' · ');
   const mine = bookings.filter((b) => b.status === 'confirmed' || b.status === 'worked');
-  const invites = bookings.filter((b) => b.status === 'invited').length;
+  const invites = openInvites(bookings).length;
   const needsAction = mine.filter((b) => {
     const card = shiftCard(b);
     return card === 'needs_ready' || card === 'reconfirm';
@@ -46,7 +56,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
     <StaffShell
       title="Shifts"
       active="/shifts"
-      shifts={needsAction}
+      shifts={mine.length}
       invites={invites}
       below={
         <div className="seg" role="tablist">
@@ -63,8 +73,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
       {open ? (
         <>
           <p className="xs muted">
-            Shifts for your roles, soonest first. Auto-assign still runs — self-apply is an extra
-            channel (RULE-08).
+            Shifts for your roles{roleNames ? `: ${roleNames}` : ''}, soonest first. Auto-assign
+            still runs — self-apply is an extra channel (RULE-08).
           </p>
           {openShifts.length === 0 ? (
             <EmptyState>
@@ -102,8 +112,13 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
                   </div>
                   {shift.hoursLimit ? (
                     <p className="m">
-                      This shift would take you over your weekly hours limit for that Mon–Sun week.
-                      The limit is calculated from your documents (RULE-20).
+                      {explainLimit({
+                        weekStart: shift.weekStart,
+                        bookedHours: shift.bookedHours,
+                        capHours: shift.capHours,
+                        shiftHours: sectionHours(shift),
+                      }) ??
+                        'This shift would take you over your weekly hours limit for that Mon–Sun week.'}
                     </p>
                   ) : null}
                   {shift.appliedAt ? (
@@ -203,8 +218,11 @@ function ShiftCardView({ booking }: { booking: BookingRow }) {
 
       {card === 'today' ? (
         <>
-          {booking.onDayConfirmedAt ? (
-            <p className="m">Confirmed for today. Check-in opens on the shift screen (§5).</p>
+          {/* Stage 3 is for a booking still awaiting the worker. One already
+              `worked` has been checked into, and confirm_on_day refuses it —
+              offering the button would be a press that can only fail. */}
+          {booking.status !== 'confirmed' || booking.onDayConfirmedAt ? (
+            <p className="m">Check-in and check-out are on the shift screen (§5).</p>
           ) : (
             <>
               <p className="m">
@@ -222,22 +240,35 @@ function ShiftCardView({ booking }: { booking: BookingRow }) {
       ) : null}
 
       {/* RULE-04: available strictly while more than 72 hours remain, and it
-          bars the worker from this EVENT permanently, so the dialog says so. */}
-      {card === 'confirmed' && canCancelShift(booking.startsAt) ? (
-        <div className="card-actions">
-          <ActionButton
-            label="Cancel shift"
-            tone="ghost"
-            size="sm"
-            block
-            action={cancelShift.bind(null, booking.bookingId)}
-            confirm={{
-              title: 'Cancel this shift?',
-              body: 'We’ll offer this shift to the next person on the list. This can’t be undone, and you won’t be able to take any shift on this event again.',
-              confirmLabel: 'Cancel shift',
-              keepLabel: 'Keep it',
-            }}
-          />
+          bars the worker from this EVENT permanently — said as a SECOND
+          sentence, after the one §10.4 fixes word for word.
+
+          Offered on a `reconfirm` card too: §10.4 ties this to the booking
+          being confirmed and to the 72-hour window, not to the absence of an
+          N11, and a shift the office has just moved is exactly when a worker
+          wants their way out of it. */}
+      {(card === 'confirmed' || card === 'reconfirm') &&
+      booking.status === 'confirmed' &&
+      canCancelShift(booking.startsAt) ? (
+        <div className="row" style={{ gap: 8, alignItems: 'center' }}>
+          <span className="xs muted">
+            Cancel available until {formatDateTimeIn(cancelDeadline(booking.startsAt), UK_ZONE)}{' '}
+            (UK), 72 h before the start
+          </span>
+          <span style={{ marginLeft: 'auto' }}>
+            <ActionButton
+              label="Cancel shift"
+              tone="ghost"
+              size="sm"
+              action={cancelShift.bind(null, booking.bookingId)}
+              confirm={{
+                title: 'Cancel this shift?',
+                body: 'We’ll offer this shift to the next person on the list. This can’t be undone. You also won’t be able to take any shift on this event again.',
+                confirmLabel: 'Cancel shift',
+                keepLabel: 'Keep it',
+              }}
+            />
+          </span>
         </div>
       ) : null}
     </div>

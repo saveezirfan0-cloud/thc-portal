@@ -12,12 +12,15 @@ export const dynamic = 'force-dynamic';
 // `pending` text this carried while they did not. Documents and Profile
 // still do not, and Documents stays listed either way: it is the one tab an
 // auto-blocked worker keeps (§10.1).
+// The same four tabs in the same order as `_components/StaffShell`, which is
+// the wireframes' order: tapping into a shift must not reorder the tab bar
+// under the worker's thumb. Documents stays listed although it does not
+// exist yet — it is the one tab an auto-blocked worker keeps (§10.1).
 const NAV = [
+  { href: '/documents', label: 'Documents', pending: true },
   { href: '/shifts', label: 'Shifts' },
   { href: '/invites', label: 'Invites' },
   { href: '/radar', label: 'Radar' },
-  { href: '/documents', label: 'Documents', pending: true },
-  { href: '/profile', label: 'Profile', pending: true },
 ];
 
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {

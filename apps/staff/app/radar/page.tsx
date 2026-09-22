@@ -1,11 +1,21 @@
 import Link from 'next/link';
 import { EmptyState, Pill } from '@thc/ui';
-import { RADAR_GROUP_LABEL, formatDistance, openSlots, radarGroups } from '@thc/domain';
+import {
+  RADAR_GROUP_LABEL,
+  UK_ZONE,
+  capMeter,
+  explainLimit,
+  formatDateTimeIn,
+  formatDistance,
+  openSlots,
+  radarGroups,
+  sectionHours,
+} from '@thc/domain';
 import { StaffShell } from '../_components/StaffShell';
 import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
 import { withdrawApplication } from '../actions';
-import { loadBookings, loadOpenShifts } from '../data';
+import { loadBookings, loadOpenShifts, openInvites } from '../data';
 import type { OpenShift } from '../data';
 import '../staff-app.css';
 
@@ -36,14 +46,31 @@ export default async function Page() {
 
   const empty =
     groups.qualified.length === 0 && groups.other.length === 0 && groups.applied.length === 0;
+  // §10.4's header strip: "This week (Mon 14 – Sun 20) · 8 h of 20 h". Any
+  // row carries the figures for its own week; the soonest is this week's.
+  const first = shifts[0];
+  const meter = first
+    ? capMeter({
+        weekStart: first.weekStart,
+        bookedHours: first.bookedHours,
+        capHours: first.capHours,
+        shiftHours: 0,
+      })
+    : null;
 
   return (
     <StaffShell
       title="Radar"
       active="/radar"
-      shifts={bookings.filter((b) => b.status === 'confirmed').length}
-      invites={bookings.filter((b) => b.status === 'invited').length}
+      shifts={bookings.filter((b) => b.status === 'confirmed' || b.status === 'worked').length}
+      invites={openInvites(bookings).length}
     >
+      {meter ? (
+        <div className="note xs">
+          This week · <b>{meter}</b>. Your weekly limit is calculated from your verified documents
+          and is never typed by anyone (RULE-20, §4.4).
+        </div>
+      ) : null}
       {empty ? (
         <EmptyState>
           <h3>Nothing open nearby</h3>
@@ -122,9 +149,22 @@ function RadarCard({ shift, bookingId }: { shift: OpenShift; bookingId?: string 
         })}{' '}
         open
       </div>
+      {shift.hoursLimit ? (
+        <p className="m">
+          {explainLimit({
+            weekStart: shift.weekStart,
+            bookedHours: shift.bookedHours,
+            capHours: shift.capHours,
+            shiftHours: sectionHours(shift),
+          })}
+        </p>
+      ) : null}
       {applied ? (
         <>
-          <p className="m">You’ll get a push either way.</p>
+          <p className="m">
+            Applied {formatDateTimeIn(shift.appliedAt!, UK_ZONE)} (UK) · you’ll get a push either
+            way.
+          </p>
           {bookingId ? (
             <ActionButton
               label="Withdraw application"

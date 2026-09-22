@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Alert, Pill } from '@thc/ui';
 import {
+  explainLimit,
   formatAllocationPair,
   formatDistance,
   formatHours,
@@ -12,7 +13,7 @@ import { StaffShell } from '../../_components/StaffShell';
 import { ShiftTime } from '../../_components/ShiftTime';
 import { ActionButton } from '../../_components/ActionButton';
 import { applyForShift } from '../../actions';
-import { findOpenShift, loadBookings } from '../../data';
+import { findOpenShift, loadBookings, openInvites } from '../../data';
 import '../../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -47,8 +48,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       title={`${shift.eventTitle} · ${shift.role}`}
       sub={<Link href="/radar">‹ Radar</Link>}
       active="/radar"
-      shifts={bookings.filter((b) => b.status === 'confirmed').length}
-      invites={bookings.filter((b) => b.status === 'invited').length}
+      shifts={bookings.filter((b) => b.status === 'confirmed' || b.status === 'worked').length}
+      invites={openInvites(bookings).length}
     >
       <div className="card-head">
         {shift.qualified ? <Pill tone="purple">Worked here before</Pill> : null}
@@ -94,9 +95,16 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
       {shift.hoursLimit ? (
         <Alert tone="coral">
-          <b>Limit Reached.</b> This {formatHours(hours)} shift would take you over your weekly
-          hours limit for that Mon–Sun week. The limit is calculated from your verified documents
-          and cannot be changed in the app (RULE-20, §4.4).
+          <b>Limit Reached.</b>{' '}
+          {explainLimit({
+            weekStart: shift.weekStart,
+            bookedHours: shift.bookedHours,
+            capHours: shift.capHours,
+            shiftHours: hours,
+          }) ??
+            `This ${formatHours(hours)} shift would take you over your weekly hours limit for that Mon–Sun week.`}{' '}
+          The limit is calculated from your verified documents and cannot be changed in the app
+          (RULE-20, §4.4).
         </Alert>
       ) : (
         <p className="note xs">

@@ -16,7 +16,7 @@
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(49);
+select plan(73);
 
 -- ---------------------------------------------------------------------
 -- Fixtures
@@ -134,6 +134,15 @@ values ('a5a5a5a5-0000-4000-8000-00000000000a', :'ev2', :'ro',
 insert into bookings (shift_id, staff_id, status, source, confirmed_at)
 values ('a5a5a5a5-0000-4000-8000-00000000000a', :'capped', 'confirmed', 'manual', now());
 
+-- RULE-04 needs a SECOND section on the same event as s1, because the bar is
+-- per EVENT rather than per section: self-cancelling off one role must take
+-- the whole event off Radar, including roles never touched.
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                charge_rate, pay_rate, allocation_per_hour)
+values ('a5a5a5a5-0000-4000-8000-00000000000b', :'ev1', :'ro',
+        now() + interval '10 days 1 hour', now() + interval '10 days 9 hours',
+        2, 0, 22.97, 14.00, 2);
+
 -- The manager is the caller for most of this file: staff_bookings and
 -- staff_open_shifts take a worker id, and only an admin may name one.
 set local "request.jwt.claims" = '{"sub":"a7a7a7a7-0000-4000-8000-000000000001","role":"authenticated"}';
@@ -205,8 +214,9 @@ delete from bookings where id = :'inv';
 
 select bag_eq(
   $$ select shift_id::text from staff_open_shifts('a6a6a6a6-0000-4000-8000-000000000001') $$,
-  $$ values ('a5a5a5a5-0000-4000-8000-000000000001'::text) $$,
-  'Radar shows the wave-1 section only: the wave-2 client is still hidden (RULE-17)');
+  $$ values ('a5a5a5a5-0000-4000-8000-000000000001'::text),
+            ('a5a5a5a5-0000-4000-8000-00000000000b') $$,
+  'Radar shows the wave-1 client''s sections only: the wave-2 client is still hidden (RULE-17)');
 
 -- Everything absent from that list, named one at a time so a regression
 -- says which rule broke.
@@ -234,12 +244,13 @@ select is(radar_wave1_exhausted(:'s2'), true,
 select bag_eq(
   $$ select shift_id::text from staff_open_shifts('a6a6a6a6-0000-4000-8000-000000000001') $$,
   $$ values ('a5a5a5a5-0000-4000-8000-000000000001'::text),
+            ('a5a5a5a5-0000-4000-8000-00000000000b'),
             ('a5a5a5a5-0000-4000-8000-000000000002') $$,
   'and only then does the wave-2 client surface — self-apply cannot bypass the priority invitations enforce');
 
 select results_eq(
   $$ select qualified from staff_open_shifts('a6a6a6a6-0000-4000-8000-000000000001') $$,
-  $$ values (true), (false) $$,
+  $$ values (true), (true), (false) $$,
   '"You''ve worked here before" sorts first, which is the grouping the screen renders');
 
 -- RULE-20 is the one gate that is SHOWN rather than hidden: the wireframe's
@@ -349,10 +360,10 @@ select is(
   (select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'public'
       and p.proname in ('staff_caller','staff_bookings','staff_open_shifts',
-                        'radar_wave1_exhausted','decline_invite','apply_to_shift',
+                        'decline_invite','apply_to_shift',
                         'withdraw_application','confirm_on_day','reconfirm_booking')
       and has_function_privilege('authenticated', p.oid, 'execute')),
-  9, 'and a signed-in worker can execute all nine, or the three screens are dead');
+  8, 'and a signed-in worker can execute all eight of the reachable ones, or the screens are dead');
 
 -- A worker in their own session reaches their own rows and nobody else's.
 set local "request.jwt.claims" = '{"sub":"a7a7a7a7-0000-4000-8000-000000000002","role":"authenticated"}';
@@ -362,6 +373,176 @@ select throws_ok(
   $$ select * from staff_bookings('a6a6a6a6-0000-4000-8000-000000000002') $$,
   '42501', 'not_your_worker',
   'and naming a colleague is refused, which is what makes these definer functions safe');
+
+
+-- =====================================================================
+-- Reset what section 3 left behind: it holds a booking on s1 and moved that
+-- section's window to today for the stage-3 assertions. Everything below
+-- reads s1 as the ten-days-out section the fixtures declared.
+-- =====================================================================
+-- Section 4 ended in the worker's own session, to prove the caller check.
+-- Everything below names a worker, which only an admin may do.
+set local "request.jwt.claims" = '{"sub":"a7a7a7a7-0000-4000-8000-000000000001","role":"authenticated"}';
+
+delete from bookings where shift_id = :'s1' and staff_id = :'me';
+update shift_requirements set starts_at = now() + interval '10 days',
+                              ends_at   = now() + interval '10 days 8 hours'
+ where id = :'s1';
+
+-- =====================================================================
+-- 5. The exclusions that are NOT shown, one rule at a time
+--
+-- staff_open_shifts filters five gates out entirely rather than listing
+-- them with a reason, because none of them tells a worker anything they can
+-- act on. Each is asserted separately so a regression names the rule.
+-- =====================================================================
+select ok(
+  (select count(*) from staff_open_shifts(:'me')
+    where shift_id in ('a5a5a5a5-0000-4000-8000-000000000001',
+                       'a5a5a5a5-0000-4000-8000-00000000000b')) = 2,
+  'both of the event''s sections are on Radar before anything bars the worker');
+
+-- RULE-04: self-cancelling off ONE section takes the whole EVENT away.
+insert into bookings (shift_id, staff_id, status, source, cancelled_at, cancel_cause, self_cancelled)
+values (:'s1', :'me', 'cancelled', 'auto', now(), 'self_cancel', true);
+select is_empty(
+  $$ select shift_id::text from staff_open_shifts('a6a6a6a6-0000-4000-8000-000000000001')
+      where shift_id in ('a5a5a5a5-0000-4000-8000-000000000001',
+                         'a5a5a5a5-0000-4000-8000-00000000000b') $$,
+  'RULE-04: a worker who self-cancelled off an event never sees THAT EVENT on Radar again — not just the section');
+select is(apply_to_shift('a5a5a5a5-0000-4000-8000-00000000000b', :'me')->>'reason', 'self_cancelled',
+  'and applying to its other role is refused with the reason, not silently');
+delete from bookings where shift_id = :'s1' and staff_id = :'me';
+
+-- §9.6: the client-level bar.
+insert into client_qualifications (client_id, role_id, staff_id, do_not_return)
+values (:'cl', :'ro2', :'me', true);
+select is_empty(
+  $$ select shift_id::text from staff_open_shifts('a6a6a6a6-0000-4000-8000-000000000001')
+      where shift_id = 'a5a5a5a5-0000-4000-8000-000000000001' $$,
+  '§9.6: do-not-return is read per CLIENT, so a bar set on another role still clears Radar');
+delete from client_qualifications where staff_id = :'me' and do_not_return;
+
+-- §3.4: a confirmed booking inside the two-hour different-venue gap.
+insert into bookings (shift_id, staff_id, status, source, confirmed_at)
+values (:'s2', :'me', 'confirmed', 'manual', now());
+update shift_requirements set starts_at = now() + interval '10 days 9 hours',
+                              ends_at   = now() + interval '10 days 17 hours'
+ where id = :'s2';
+select is_empty(
+  $$ select shift_id::text from staff_open_shifts('a6a6a6a6-0000-4000-8000-000000000001')
+      where shift_id = 'a5a5a5a5-0000-4000-8000-000000000001' $$,
+  '§3.4: a section the worker could not physically reach is not offered at all');
+delete from bookings where shift_id = :'s2' and staff_id = :'me';
+update shift_requirements set starts_at = now() + interval '11 days',
+                              ends_at   = now() + interval '11 days 8 hours'
+ where id = :'s2';
+
+-- =====================================================================
+-- 6. Declining and withdrawing are not a bar (§10.4)
+--
+-- The dialogs in front of both say "You can still apply for this shift on
+-- Radar later if it's open". A `closed` row survives only because
+-- (shift_id, staff_id) is unique; treating it as a booking silently and
+-- irreversibly removed the worker from the section they declined.
+-- =====================================================================
+insert into bookings (id, shift_id, staff_id, status, source)
+values (:'inv', :'s1', :'me', 'invited', 'auto');
+select is(decline_invite(:'inv')->>'ok', 'true', 'the worker declines');
+select ok(
+  (select count(*) from staff_open_shifts(:'me')
+    where shift_id = 'a5a5a5a5-0000-4000-8000-000000000001') = 1,
+  'and the shift comes back on Radar, exactly as the dialog promised');
+select is(apply_to_shift(:'s1', :'me')->>'ok', 'true',
+  'and they can apply for it again');
+select is((select count(*)::int from bookings where shift_id = :'s1' and staff_id = :'me'), 1,
+  'reviving the closed row rather than inserting a second: (shift_id, staff_id) is unique');
+select is((select status::text from bookings where shift_id = :'s1' and staff_id = :'me'), 'applied',
+  'and the revived row is a fresh application');
+
+select is(withdraw_application(
+  (select id from bookings where shift_id = :'s1' and staff_id = :'me'))->>'ok', 'true',
+  'withdrawing it again');
+select is(apply_to_shift(:'s1', :'me')->>'ok', 'true',
+  'and the same is true of a withdrawal — neither costs the worker the shift');
+delete from bookings where shift_id = :'s1' and staff_id = :'me';
+
+-- A CANCELLED row is different and must stay a bar: RULE-04's self-cancel
+-- and the office's withdraw both land there, and neither invites a retry.
+insert into bookings (shift_id, staff_id, status, source, cancelled_at, cancel_cause)
+values (:'s1', :'me', 'cancelled', 'auto', now(), 'office_withdraw');
+select is(apply_to_shift(:'s1', :'me')->>'reason', 'already_has_booking',
+  'a cancelled booking is NOT a closed one: an office withdrawal is not an invitation to re-apply');
+delete from bookings where shift_id = :'s1' and staff_id = :'me';
+
+-- =====================================================================
+-- 7. RULE-20 at the moment of Accept (§10.4)
+--
+-- The gate in auto_assign_candidates stops the INVITATION. This is the
+-- other half: a worker may hold an invitation for days and accept other
+-- shifts meanwhile, and a manager can invite by hand, bypassing the round
+-- altogether. A hard gate that exists only on the screen is not one.
+-- =====================================================================
+insert into bookings (id, shift_id, staff_id, status, source)
+values ('a8a8a8a8-0000-4000-8000-000000000002', :'s1', :'capped', 'invited', 'manual');
+select is(accept_invite('a8a8a8a8-0000-4000-8000-000000000002')->>'reason', 'hours_limit',
+  '§10.4: Accept is blocked where it would take the worker over their weekly limit');
+select is((select status::text from bookings where id = 'a8a8a8a8-0000-4000-8000-000000000002'),
+  'invited',
+  'and the invitation stays LIVE: hours free up, unlike a slot that has gone (RULE-16, §4.4)');
+select is(
+  (select hours_limit from staff_bookings(:'capped')
+    where booking_id = 'a8a8a8a8-0000-4000-8000-000000000002'),
+  true,
+  'and the card can render "Limit Reached" rather than only discovering it on the tap');
+select ok(
+  (select cap_hours from staff_bookings(:'capped')
+    where booking_id = 'a8a8a8a8-0000-4000-8000-000000000002') = 20,
+  'with the arithmetic §10.4 shows the worker: the calculated ceiling for that Mon-Sun week');
+select ok(
+  (select booked_hours from staff_bookings(:'capped')
+    where booking_id = 'a8a8a8a8-0000-4000-8000-000000000002') = 16,
+  'and the hours already committed in it');
+
+-- RULE-16's other half: an invitation to a shift that has ended is not live.
+update shift_requirements set starts_at = now() - interval '12 hours',
+                              ends_at   = now() - interval '4 hours'
+ where id = :'s1';
+select is(accept_invite('a8a8a8a8-0000-4000-8000-000000000002')->>'reason', 'event_ended',
+  'RULE-16: an invitation to a shift that has already ended cannot be accepted');
+update shift_requirements set starts_at = now() + interval '10 days',
+                              ends_at   = now() + interval '10 days 8 hours'
+ where id = :'s1';
+delete from bookings where id = 'a8a8a8a8-0000-4000-8000-000000000002';
+
+-- =====================================================================
+-- 8. Every RPC checks that the booking is the caller's own
+--
+-- These are `security definer` over `bookings`. The check is the only thing
+-- between a worker and declining a colleague's invitation.
+-- =====================================================================
+insert into bookings (id, shift_id, staff_id, status, source)
+values ('a8a8a8a8-0000-4000-8000-000000000003', :'s1', :'mate', 'invited', 'auto');
+set local "request.jwt.claims" = '{"sub":"a7a7a7a7-0000-4000-8000-000000000002","role":"authenticated"}';
+select throws_ok($$ select decline_invite('a8a8a8a8-0000-4000-8000-000000000003') $$,
+  '42501', 'not_your_booking', 'a worker cannot decline a colleague''s invitation');
+select throws_ok($$ select withdraw_application('a8a8a8a8-0000-4000-8000-000000000003') $$,
+  '42501', 'not_your_booking', 'nor withdraw their application');
+select throws_ok($$ select confirm_on_day('a8a8a8a8-0000-4000-8000-000000000003') $$,
+  '42501', 'not_your_booking', 'nor confirm their shift on the day');
+select throws_ok($$ select reconfirm_booking('a8a8a8a8-0000-4000-8000-000000000003') $$,
+  '42501', 'not_your_booking', 'nor accept a time change on their behalf');
+set local "request.jwt.claims" = '{"sub":"a7a7a7a7-0000-4000-8000-000000000001","role":"authenticated"}';
+delete from bookings where id = 'a8a8a8a8-0000-4000-8000-000000000003';
+
+-- radar_wave1_exhausted is the one function here with no caller of its own
+-- to check, so it must not be reachable from outside.
+select is_empty(
+  $$ select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.proname = 'radar_wave1_exhausted'
+        and (has_function_privilege('authenticated', p.oid, 'execute')
+          or has_function_privilege('anon', p.oid, 'execute')) $$,
+  'radar_wave1_exhausted is internal to staff_open_shifts: no signed-in account can probe a role''s pool');
 
 select * from finish();
 rollback;

@@ -102,7 +102,14 @@ returns table (
   onsite_contact        text,
   notes                 text,
   pays_breaks           boolean,
-  no_checkout_open      boolean
+  no_checkout_open      boolean,
+  -- RULE-20, read live (§4.4, §10.4). The cap is calculated and never
+  -- stored, so the figures travel with the row rather than being
+  -- recomputed by a screen that would have to know the rule to do it.
+  hours_limit           boolean,
+  week_start            date,
+  booked_hours          numeric,
+  cap_hours             numeric
 ) language sql stable security definer
 set search_path = public, extensions as $$
   with me as (select staff_caller(p_staff) as id)
@@ -127,7 +134,15 @@ set search_path = public, extensions as $$
     -- the static screen in place of the check-out controls until a manager
     -- resolves the violation (§5.2, §9.5).
     exists (select 1 from violations v
-             where v.booking_id = b.id and v.type = 'no_checkout' and not v.resolved)
+             where v.booking_id = b.id and v.type = 'no_checkout' and not v.resolved),
+    -- §10.4: "Accept is blocked and shows 'Limit Reached' instead". The
+    -- screen cannot ask this itself — the cap is derived from documents a
+    -- worker's own RLS does not reach — so it is answered here, for the
+    -- Mon-Sun week the SECTION falls in, not the week today falls in.
+    weekly_cap_would_breach(b.staff_id, b.shift_id),
+    cap_week_start((sr.starts_at at time zone 'Europe/London')::date),
+    weekly_booked_hours(b.staff_id, (sr.starts_at at time zone 'Europe/London')::date),
+    weekly_cap_hours(b.staff_id, (sr.starts_at at time zone 'Europe/London')::date)
   from me
     join staff s                on s.id = me.id
     join bookings b             on b.staff_id = me.id
@@ -206,7 +221,10 @@ returns table (
   confirmed_count int,
   qualified       boolean,
   hours_limit     boolean,
-  applied_at      timestamptz
+  applied_at      timestamptz,
+  week_start      date,
+  booked_hours    numeric,
+  cap_hours       numeric
 ) language sql stable security definer
 set search_path = public, extensions as $$
   with me as (select staff_caller(p_staff) as id)
@@ -215,28 +233,51 @@ set search_path = public, extensions as $$
     sr.pay_rate, sr.dress_code, ev.venue_name, ev.venue_address,
     round((st_distance(s.home_location, ev.venue_location) / 1000.0)::numeric, 1),
     sr.headcount, sr.buffer, f.confirmed,
-    c.qualified,
-    coalesce(c.gate = 'hours_limit', false),
+    c.my_qualified,
+    coalesce(c.my_gate = 'hours_limit', false),
     (select o.applied_at from bookings o
-      where o.shift_id = sr.id and o.staff_id = me.id and o.status = 'applied')
+      where o.shift_id = sr.id and o.staff_id = me.id and o.status = 'applied'),
+    -- The arithmetic behind "Limit reached", for the Mon-Sun week this
+    -- SECTION falls in. §10.4 shows the worker the numbers, not just the
+    -- verdict: "18 h + 4 h is over your 20 h limit". Since the cap is
+    -- calculated and never typed, those figures are the only way to tell a
+    -- term/holiday boundary from a mistake.
+    cap_week_start((sr.starts_at at time zone 'Europe/London')::date),
+    weekly_booked_hours(me.id, (sr.starts_at at time zone 'Europe/London')::date),
+    weekly_cap_hours(me.id, (sr.starts_at at time zone 'Europe/London')::date)
   from me
     join staff s               on s.id = me.id
     join shift_requirements sr on sr.starts_at > now()
     join events ev             on ev.id = sr.event_id and ev.cancelled_at is null
     join roles r               on r.id = sr.role_id
     cross join lateral shift_fill(sr.id) f
-    cross join lateral (select * from auto_assign_candidates(sr.id) a
-                         where a.staff_id = me.id) c
+    -- ONE pass over the section's candidates, answering both questions.
+    -- Asking auto_assign_candidates for this worker's row and then calling
+    -- radar_wave1_exhausted() scanned every worker in the agency twice per
+    -- section, on a phone-facing screen.
+    cross join lateral (
+      select
+        count(*) filter (where a.staff_id = me.id) > 0        as me_present,
+        min(a.gate)           filter (where a.staff_id = me.id) as my_gate,
+        bool_or(a.qualified)  filter (where a.staff_id = me.id) as my_qualified,
+        min(a.booking_status) filter (where a.staff_id = me.id) as my_status,
+        -- RULE-17: is anyone qualified at this client and role still
+        -- reachable? A worker not in that set waits for it to empty.
+        bool_or(a.gate is null and a.qualified and a.booking_status is null) as wave1_alive
+      from auto_assign_candidates(sr.id) a
+    ) c
   where f.confirmed < sr.headcount
-    and (c.gate is null or c.gate = 'hours_limit')
-    -- RULE-17: a client the worker is not qualified at surfaces only once
-    -- every qualified worker for the role has been reached.
-    and (c.qualified or radar_wave1_exhausted(sr.id))
+    and c.me_present
+    and (c.my_gate is null or c.my_gate = 'hours_limit')
+    and (c.my_qualified or not c.wave1_alive)
     -- Already invited or confirmed here: that lives on Invites or My
-    -- shifts. An `applied` row stays, which is what c.booking_status
-    -- being 'applied' means.
-    and (c.booking_status is null or c.booking_status = 'applied')
-  order by c.qualified desc,
+    -- shifts. `applied` stays, because §10.4 keeps it visible under its own
+    -- section until it resolves. `closed` — declined, withdrawn, or a slot
+    -- that went to somebody else — is NOT a booking: the row survives only
+    -- because (shift_id, staff_id) is unique, and treating it as one is
+    -- what silently barred a worker from a shift they declined.
+    and (c.my_status is null or c.my_status in ('applied', 'closed'))
+  order by c.my_qualified desc,
            round((st_distance(s.home_location, ev.venue_location) / 1000.0)::numeric, 1),
            sr.starts_at
 $$;
@@ -298,12 +339,13 @@ create or replace function apply_to_shift(p_shift uuid, p_staff uuid default nul
 returns jsonb language plpgsql security definer
 set search_path = public, extensions as $$
 declare
-  v_me   uuid := staff_caller(p_staff);
-  sr     shift_requirements;
-  ev     events;
-  v_gate text;
-  v_fill record;
-  v_id   uuid;
+  v_me     uuid := staff_caller(p_staff);
+  sr       shift_requirements;
+  ev       events;
+  v_gate   text;
+  v_fill   record;
+  v_id     uuid;
+  v_status text;
 begin
   select * into sr from shift_requirements where id = p_shift for update;
   if sr.id is null then raise exception 'shift_not_found' using errcode = 'P0002'; end if;
@@ -326,13 +368,33 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'full');
   end if;
 
-  if exists (select 1 from bookings where shift_id = p_shift and staff_id = v_me) then
+  -- A LIVE booking blocks a second one. A `closed` row does not: that is a
+  -- declined invitation, a withdrawn application, or a slot that went to
+  -- somebody else, and §10.4 tells the worker in as many words that they
+  -- can come back to it — "You can still apply for this shift on Radar
+  -- later if it's open". The row survives only because (shift_id, staff_id)
+  -- is unique, so it is REVIVED rather than a second one inserted.
+  --
+  -- `cancelled` is deliberately not in that set. RULE-04's self-cancel and
+  -- the office's withdraw both land there, and neither is an invitation to
+  -- try again; the self_cancelled gate in auto_assign_candidates catches
+  -- the first of those before this line anyway.
+  select id, status::text into v_id, v_status
+    from bookings where shift_id = p_shift and staff_id = v_me;
+  if v_id is not null and v_status <> 'closed' then
     return jsonb_build_object('ok', false, 'reason', 'already_has_booking');
   end if;
 
-  insert into bookings (shift_id, staff_id, status, source, applied_at)
-  values (p_shift, v_me, 'applied', 'self', now())
-  returning id into v_id;
+  if v_id is not null then
+    update bookings
+       set status = 'applied', source = 'self', applied_at = now(),
+           cancelled_at = null, cancel_cause = null
+     where id = v_id;
+  else
+    insert into bookings (shift_id, staff_id, status, source, applied_at)
+    values (p_shift, v_me, 'applied', 'self', now())
+    returning id into v_id;
+  end if;
   return jsonb_build_object('ok', true, 'bookingId', v_id);
 end $$;
 
@@ -445,6 +507,107 @@ comment on function reconfirm_booking(uuid) is
   'Accept a changed time, venue or dress code (§3.5, N11). Clears the Awaiting flag and resets the day-before and on-the-day stages: agreement to the old shift is not agreement to this one.';
 
 -- ---------------------------------------------------------------------
+-- accept_invite re-checks the weekly cap (§10.4, RULE-20)
+--
+-- 20260921141500 applied the hard gate in `auto_assign_candidates`, so a
+-- worker over their cap is never invited. It did NOT re-check at the moment
+-- of Accept, and that is a hole rather than an optimisation: an invitation
+-- and its acceptance are separated by hours or days, a worker is meant to
+-- hold several at once (§3.4), and in between they can accept OTHER shifts
+-- and cross the line. A manager can also invite by hand, which bypasses the
+-- round's gate entirely.
+--
+-- §10.4 states it outright, for Invites and Radar alike: "if accepting
+-- would take the worker over their weekly limit for that Mon-Sun week,
+-- Accept is blocked and shows 'Limit Reached' instead". Without this the
+-- label this branch's Invites screen renders would have nothing behind it,
+-- and a UI-only hard gate is not a hard gate.
+--
+-- Checked AFTER the overlap test, so a worker who is both booked elsewhere
+-- and at their cap is told the specific, immediate thing rather than the
+-- weekly aggregate. The invitation is left LIVE, like `overlap` and unlike
+-- `taken`: hours free up — a cancellation elsewhere in the week, or a
+-- term-to-holiday boundary that moves the band overnight (§4.4) — and
+-- §10.4 says an open invitation disappears on its own only once its event
+-- has ended (RULE-16).
+--
+-- PR #31 carries this same branch independently, written from the other
+-- side. The two are identical in effect, so whichever migration applies
+-- last wins and either order is correct; this is here because the screens
+-- in this change are the ones that show the result.
+-- ---------------------------------------------------------------------
+create or replace function accept_invite(p_booking uuid)
+returns jsonb language plpgsql security definer set search_path = public, extensions as $$
+declare
+  b           bookings;
+  sr          shift_requirements;
+  ev          events;
+  v_fill      record;
+  v_gap       int := booked_elsewhere_gap_minutes();
+  v_withdrawn int := 0;
+begin
+  select * into b from bookings where id = p_booking;
+  if b.id is null then raise exception 'booking_not_found' using errcode = 'P0002'; end if;
+
+  if current_app_role() is distinct from 'admin'
+     and b.staff_id is distinct from (select id from staff where user_id = auth.uid()) then
+    raise exception 'not_your_booking' using errcode = '42501';
+  end if;
+
+  select * into sr from shift_requirements where id = b.shift_id for update;
+  select * into ev from events where id = sr.event_id;
+  if ev.cancelled_at is not null then raise exception 'event_cancelled' using errcode = 'P0001'; end if;
+  if b.status <> 'invited' then
+    return jsonb_build_object('ok', false, 'reason', 'not_invited', 'status', b.status::text);
+  end if;
+
+  -- RULE-16, the other half of what §10.4 promises: an invitation to a
+  -- shift that has already ended is not live, whatever its row still says.
+  if now() >= sr.ends_at then
+    return jsonb_build_object('ok', false, 'reason', 'event_ended');
+  end if;
+
+  select * into v_fill from shift_fill(b.shift_id);
+  if v_fill.confirmed >= v_fill.target then
+    update bookings set status = 'closed', cancelled_at = now(), cancel_cause = 'slot_taken'
+     where id = b.id;
+    return jsonb_build_object('ok', false, 'reason', 'taken');
+  end if;
+
+  if exists (
+    select 1 from bookings o
+      join shift_requirements sr2 on sr2.id = o.shift_id
+      join events ev2 on ev2.id = sr2.event_id
+     where o.staff_id = b.staff_id and o.status = 'confirmed' and o.shift_id <> b.shift_id
+       and booked_elsewhere_conflict(sr.starts_at, sr.ends_at, ev.venue_id,
+                                     sr2.starts_at, sr2.ends_at, ev2.venue_id, v_gap) <> 'clear'
+  ) then
+    return jsonb_build_object('ok', false, 'reason', 'overlap');
+  end if;
+
+  if weekly_cap_would_breach(b.staff_id, b.shift_id) then
+    return jsonb_build_object('ok', false, 'reason', 'hours_limit');
+  end if;
+
+  update bookings set status = 'confirmed', confirmed_at = now() where id = b.id;
+
+  with overlapping as (
+    update bookings o set status = 'cancelled', cancelled_at = now(),
+                          cancel_cause = 'overlap_auto_withdraw'
+     from shift_requirements sr3
+    where sr3.id = o.shift_id
+      and o.staff_id = b.staff_id and o.status = 'invited' and o.id <> b.id
+      and sr.starts_at < sr3.ends_at and sr3.starts_at < sr.ends_at
+    returning o.id
+  ) select count(*)::int into v_withdrawn from overlapping;
+
+  return jsonb_build_object('ok', true, 'withdrawn', v_withdrawn);
+end $$;
+
+comment on function accept_invite(uuid) is
+  'First-to-confirm (§3.4): taken / overlap / hours_limit / event_ended / ok. Re-checks the slot, the booked-elsewhere gap and the RULE-20 weekly cap, and withdraws the worker''s other intersecting invitations.';
+
+-- ---------------------------------------------------------------------
 -- Grants. Postgres hands EXECUTE on a new function to PUBLIC, which for a
 -- `security definer` function in `public` is the whole internet by way of
 -- `anon`. Take it back first, then hand it to the signed-in role: every
@@ -453,6 +616,11 @@ comment on function reconfirm_booking(uuid) is
 revoke execute on function staff_caller(uuid)            from public;
 revoke execute on function staff_bookings(uuid)          from public;
 revoke execute on function staff_open_shifts(uuid)       from public;
+-- radar_wave1_exhausted is definer and takes an arbitrary shift id, and it
+-- is the one function here with no caller of its own to check. It is called
+-- only from staff_open_shifts, which is itself definer, so nothing outside
+-- needs it: leaving it granted would let any signed-in account — a client
+-- login included — probe whether any role's qualified pool is exhausted.
 revoke execute on function radar_wave1_exhausted(uuid)   from public;
 revoke execute on function decline_invite(uuid)          from public;
 revoke execute on function apply_to_shift(uuid, uuid)    from public;
@@ -463,7 +631,6 @@ revoke execute on function reconfirm_booking(uuid)       from public;
 grant execute on function staff_caller(uuid)            to authenticated;
 grant execute on function staff_bookings(uuid)          to authenticated;
 grant execute on function staff_open_shifts(uuid)       to authenticated;
-grant execute on function radar_wave1_exhausted(uuid)   to authenticated;
 grant execute on function decline_invite(uuid)          to authenticated;
 grant execute on function apply_to_shift(uuid, uuid)    to authenticated;
 grant execute on function withdraw_application(uuid)    to authenticated;

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   ACCEPT_REFUSAL_COPY,
+  capMeter,
+  explainLimit,
   APPLY_REFUSAL_COPY,
   STATIC_SCREEN_CONTACT,
   SELF_CANCEL_WINDOW_HOURS,
@@ -102,6 +104,49 @@ describe('shiftCard (§10.4, §3.5)', () => {
 
   it('is past once the role window has ended', () => {
     expect(shiftCard(booking(), new Date('2026-09-20T00:00:00Z'))).toBe('past');
+  });
+
+  it('is past even carrying a stale reconfirm flag, or it asks forever', () => {
+    const b = booking({ reconfirmRequired: true });
+    expect(shiftCard(b, new Date('2026-09-20T00:00:00Z'))).toBe('past');
+  });
+
+  it('never asks a worked booking to confirm: they have already checked in', () => {
+    // confirm_on_day refuses anything that is not `confirmed`, so offering
+    // the button would be a press that can only fail.
+    const b = booking({ status: 'worked' });
+    expect(shiftCard(b, new Date('2026-09-18T08:00:00Z'))).toBe('today');
+  });
+});
+
+describe('the cap arithmetic reaches the worker (§10.4, RULE-20)', () => {
+  const figures = {
+    weekStart: '2026-09-21',
+    bookedHours: 18,
+    capHours: 20,
+    shiftHours: 4,
+  };
+
+  it('gives §10.4\u2019s own worked example back', () => {
+    const text = explainLimit(figures)!;
+    expect(text).toContain('18 h');
+    expect(text).toContain('4 h');
+    expect(text).toContain('22 h');
+    expect(text).toContain('20 h');
+    expect(text).toContain('Mon 21 Sep');
+  });
+
+  it('explains nothing where there is no ceiling — null is not zero', () => {
+    expect(explainLimit({ ...figures, capHours: null })).toBe(null);
+    expect(capMeter({ ...figures, capHours: null })).toBe(null);
+  });
+
+  it('gives the header strip its "8 h of 20 h"', () => {
+    expect(capMeter({ ...figures, bookedHours: 8 })).toBe('8 h of 20 h');
+  });
+
+  it('rounds to one place rather than printing 21.999999999999996 h', () => {
+    expect(explainLimit({ ...figures, bookedHours: 17.9, shiftHours: 4.1 })).toContain('22 h');
   });
 });
 
