@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useActionState, useState } from 'react';
 import { Alert, Button, Input } from '@thc/ui';
 import { signIn } from './actions';
@@ -35,6 +36,13 @@ export function LoginForm({ next }: { next?: string }) {
       <Button type="submit" tone="primary" size="lg" block disabled={pending}>
         {pending ? 'Signing in…' : 'Sign in'}
       </Button>
+      {/* A1 (§10.2). Under the button, where the wireframe puts it — a
+          worker who cannot sign in has nowhere else to look. */}
+      <div className="row" style={{ justifyContent: 'center' }}>
+        <Link href="/forgot" className="sm">
+          Forgot password?
+        </Link>
+      </div>
     </form>
   );
 }

@@ -1,0 +1,117 @@
+import { Alert } from '@thc/ui';
+import { describeBlockers } from '../profile/lock';
+import { HELP_EMAIL } from '../profile/types';
+
+/**
+ * Lock case 1 — §4.3, §10.7. The ONE lock with something behind it.
+ *
+ * The other four cases are terminal and are `profile/_components/
+ * LockScreen.tsx`'s; this is the case that one does not draw, because it
+ * is not a terminal screen: the worker keeps Documents, keeps their
+ * profile and keeps their bank details, and only Shifts, Invites and Radar
+ * close. What lives here is what those three tabs show when a locked
+ * worker reaches them anyway — from a stale push, the back button or a
+ * typed URL.
+ *
+ * Not a redirect to Documents. §10.1 LOCKS the tab rather than moving the
+ * worker, and a silent bounce out of a notification they just tapped reads
+ * as an app that has lost their shift.
+ *
+ * The reason comes from `describeBlockers()` (#42) rather than from a
+ * `because` flag of our own: it reads the same `compliance_blockers()`
+ * output §4.3 unblocks on, so the screen names the actual document —
+ * "1 expired document" — instead of guessing from the status.
+ */
+export function documentsNotice(
+  blockers: readonly string[],
+  blockKind: 'auto_document' | 'manual' | 'conviction_review' | null,
+  onboarding: boolean,
+): { tone: 'coral' | 'amber' | 'cyan'; headline: string; detail: string } {
+  if (onboarding) {
+    return {
+      tone: 'cyan',
+      headline: 'Your documents are with the office.',
+      detail:
+        'Shifts, Invites and Radar open as soon as everything is verified and in date. You’ll get a notification the moment that happens.',
+    };
+  }
+
+  const described = describeBlockers(blockers);
+
+  if (blockKind === 'conviction_review' || blockers.includes('conviction_unreviewed')) {
+    return {
+      tone: 'amber',
+      headline: 'Thanks for telling us.',
+      // §10.7: factual, not punitive, and the declaration is never read
+      // back to them. `describeBlockers` says the same and is the copy of
+      // record, so it is used rather than restated.
+      detail:
+        described ??
+        'We’ve paused your upcoming shifts while the office reviews your declaration, and we’ll be in touch.',
+    };
+  }
+
+  if (!described) {
+    // Blocked, with nothing `compliance_blockers()` can name. That happens
+    // when a block carries no `block_kind` — #42's rule reads anything
+    // that is not 'manual' as the documents case, so this screen is where
+    // such a row lands. Telling that worker to "update your document"
+    // would send them uploading something that cannot unblock them, so
+    // this says the one thing that is true of every block instead.
+    return {
+      tone: 'coral',
+      headline: 'Your account is blocked.',
+      detail: `Shifts, Invites and Radar are closed. There is nothing for you to upload — please contact the office at: ${HELP_EMAIL}`,
+    };
+  }
+
+  return {
+    tone: 'coral',
+    headline: 'You have been blocked — update your document.',
+    detail: `${described} You’ve been removed from your upcoming shifts and your invitations have been withdrawn.`,
+  };
+}
+
+export function DocumentsOnlyNotice({
+  blockers,
+  blockKind,
+  onboarding,
+}: {
+  blockers: readonly string[];
+  blockKind: 'auto_document' | 'manual' | 'conviction_review' | null;
+  onboarding: boolean;
+}) {
+  const notice = documentsNotice(blockers, blockKind, onboarding);
+  return (
+    <Alert tone={notice.tone}>
+      <b>{notice.headline}</b>
+      <br />
+      <span className="xs">{notice.detail}</span>
+    </Alert>
+  );
+}
+
+/** What a locked Shifts / Invites / Radar shows (§10.1 case 1). */
+export function TabLockedScreen({
+  blockers,
+  blockKind,
+  onboarding,
+}: {
+  blockers: readonly string[];
+  blockKind: 'auto_document' | 'manual' | 'conviction_review' | null;
+  onboarding: boolean;
+}) {
+  return (
+    <>
+      <DocumentsOnlyNotice blockers={blockers} blockKind={blockKind} onboarding={onboarding} />
+      <div className="static-screen">
+        <h2>{onboarding ? 'Not open to you yet' : 'Locked until your documents are in order'}</h2>
+        <p>
+          Shifts, Invites and Radar are closed while your compliance is outstanding. Documents is
+          the one tab still open to you — everything reopens automatically once the office has
+          verified what is missing and nothing else has expired (§4.3).
+        </p>
+      </div>
+    </>
+  );
+}

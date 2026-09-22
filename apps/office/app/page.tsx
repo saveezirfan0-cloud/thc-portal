@@ -1,23 +1,14 @@
-import { PageHead, Panel } from '@thc/ui';
-import { OfficeShell } from './_components/OfficeShell';
+import { redirect } from 'next/navigation';
 
 /**
- * The Back Office root, and the Dashboard until §9.1 is built: that screen
- * belongs to the `reports` bot. The sidebar points here rather than at
- * /dashboard, which does not exist, and marks every other unbuilt route
- * `pending` so none of them 404s either.
+ * The Back Office root.
+ *
+ * §9.1 is "the first screen after login", and it now exists at its own
+ * route, so this redirects rather than standing in for it. The redirect
+ * stays because `HOME_PATH.admin` in `packages/db` still points here and
+ * that file belongs to another domain: sending `/` somewhere real is this
+ * app's job, not the shared package's.
  */
 export default function Page() {
-  return (
-    <OfficeShell activeHref="/" title="Dashboard">
-      <PageHead title="Foundation" description="Screens are built per docs/02-build-plan.md." />
-      <Panel title="Next">
-        <p>
-          Each route in the sidebar is owned by a domain bot. Open
-          <code> docs/08-screen-inventory.md</code> for the route → wireframe → section → owner
-          table, and <code>docs/10-working-with-agents.md</code> for how to run them.
-        </p>
-      </Panel>
-    </OfficeShell>
-  );
+  redirect('/dashboard');
 }
