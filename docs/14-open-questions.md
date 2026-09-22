@@ -387,6 +387,66 @@ Two things make it urgent enough to name: the rule is invisible (a revoke that l
 right does nothing), and it is easy to repeat (every new `security definer` function in
 `public` starts life anon-callable).
 
+**It has now repeated, which is the argument for the allowlist rather than against it.**
+§10.4's nine Staff App RPCs (`20260922140000`) shipped with `revoke execute ... from
+public` and nothing else, and CI found all nine open to `anon`:
+
+```
+# Failed test 46: "anon can execute none of the Staff App RPCs"
+#     (radar_wave1_exhausted) (staff_caller) (staff_bookings) (staff_open_shifts)
+#     (decline_invite) (apply_to_shift) (withdraw_application) (confirm_on_day)
+#     (reconfirm_booking)
+```
+
+The session that wrote them had read `20260921162758`'s header, which explains this trap
+in full, and wrote the bug anyway. That is what an invisible rule does. Worth noting how
+close it came to shipping: `staff_caller` returns null without an `auth.uid()`, so seven
+of the nine find nothing for an anonymous caller and would have looked fine in any manual
+test — `radar_wave1_exhausted` was the one that actually leaked, and `apply_to_shift`
+stopped at a not-null constraint rather than an authorisation check.
+
+The assertion that caught it was written in the same change, which is the only reason it
+did not merge. **Nothing catches this by default.** An allowlist assertion in
+`001_rls_guard.sql` — every function in `public`, each either on the list with a reason
+or closed to anon — would catch the next one without the author having to remember, and
+that is the whole point.
+
+One more thing for whoever takes it: a local Postgres does NOT reproduce this. Plain
+Postgres has no such default privilege, so `revoke ... from public` really does close
+everything and a local suite passes. Any harness used to check this has to run
+`alter default privileges in schema public grant execute on functions to anon,
+authenticated, service_role` first, or it is more secure than production and will keep
+saying so.
+
+## O12 · CI resolves `supabase/setup-cli` as `latest`, and it is neither reproducible nor reliable
+
+`.github/workflows/ci.yml:24-25` and `deploy.yml:63-65` both pin the action and not the
+tool:
+
+```yaml
+- uses: supabase/setup-cli@v1
+  with: { version: latest }
+```
+
+Two problems, one of which has already cost a build.
+
+**It is rate-limited.** `latest` makes the action resolve the newest release through an
+unauthenticated GitHub API call, limited per runner IP and shared by everything running
+at once. On #35 it failed with `Failed to resolve latest Supabase CLI release: rate limit
+exceeded` — after all 29 turbo tasks had passed, and before `supabase start`, so the
+whole database and browser half of the suite simply did not run. It reads as a red PR
+and is a download that did not happen.
+
+**It is not reproducible.** The CLI that builds the test database can change under every
+branch the moment Supabase ships a release, with no commit anywhere to explain it. A
+green suite yesterday and a red one today with an identical tree is a day nobody gets
+back.
+
+Not fixed in #35 deliberately: the fix is to pin a version, and that session could not
+reach `supabase/cli` from its environment to read a real tag. Pinning to a guessed one
+breaks every branch rather than fixing one. Whoever takes it should choose the version
+deliberately, change both workflows together, and note it here.
+
 ## O8 · The PR review bot — two faults, and the second one needs you today
 
 ### The one blocking it now: there is no API key

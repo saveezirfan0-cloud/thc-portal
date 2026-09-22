@@ -11,17 +11,19 @@ import { expect, type Page } from '@playwright/test';
  * which goes stale the moment CI changes — this asks the app: if it sent us
  * to /login, sign in; otherwise carry on.
  *
- * Gisela is the seeded admin from supabase/seed.sql.
+ * Gisela is the seeded admin from supabase/seed.sql; Tom Reid is one of the
+ * two seeded workers, and the one `seed.sql` links to a staff record.
  */
 const ADMIN_EMAIL = 'gisela@thehospitalitycompany.example';
-const ADMIN_PASSWORD = 'password123';
+const PASSWORD = 'password123';
+const WORKER_EMAIL = 'tom.reid@example.com';
 
-export async function openAsAdmin(page: Page, path: string): Promise<void> {
+async function open(page: Page, path: string, email: string): Promise<void> {
   await page.goto(path);
   if (!new URL(page.url()).pathname.startsWith('/login')) return;
 
-  await page.getByLabel('Email').fill(ADMIN_EMAIL);
-  await page.getByLabel('Password').fill(ADMIN_PASSWORD);
+  await page.getByLabel('Email').fill(email);
+  await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
 
   // The middleware's `next` carries the pathname only, so a route that
@@ -29,4 +31,17 @@ export async function openAsAdmin(page: Page, path: string): Promise<void> {
   await page.waitForURL((url) => !url.pathname.startsWith('/login'));
   await page.goto(path);
   await expect(page).not.toHaveURL(/\/login/);
+}
+
+export async function openAsAdmin(page: Page, path: string): Promise<void> {
+  return open(page, path, ADMIN_EMAIL);
+}
+
+/**
+ * The Staff App's own gate (§1.4). Tom holds `worked`, `confirmed` and
+ * `invited` bookings in the seed, which is what makes all three tabs render
+ * something rather than an empty state.
+ */
+export async function openAsWorker(page: Page, path: string): Promise<void> {
+  return open(page, path, WORKER_EMAIL);
 }

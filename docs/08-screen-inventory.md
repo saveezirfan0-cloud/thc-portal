@@ -40,13 +40,25 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/onboarding/1…11` | Wizard | `staff/onboarding-1.html`, `-2`, `-3` | 10.3, 2.5–2.11 | onboarding |
 | `/documents` | Documents hub / tab + declare conviction | `staff/onboarding-3.html`, `staff/documents.html` | 10.4, 10.7 | compliance |
 | `/shifts` | My shifts · Open shifts | `staff/shifts.html` | 10.4, 3.5 | scheduling |
-| `/shifts/:id` | Shift detail, check-in/out, breaks, static screens | `staff/shift-detail.html` | 5.1–5.2b | checkin |
+| `/shifts/:id` | Shift detail, check-in/out, breaks, static screens | `staff/shift-detail.html` | 5.1–5.2b, 10.4 | checkin (see note) |
 | `/radar` | Radar | `staff/radar.html` | 10.4 | scheduling |
 | `/invites`, `/invites/:id` | Invites | `staff/invites.html` | 10.4, 3.4 | scheduling |
 | (sheet) | Profile sheet | `staff/profile.html` | 10.1 | staff-pwa |
 | `/profile`, `/security`, `/payments` | Profile details, Security, Payment information | `staff/profile.html` | 10.1 | staff-pwa |
 | (flow) | Request my P45 → leaver screen | `staff/profile.html` | 10.6 | staff-pwa |
 | (lock) | Doc block · Manual hold · Quiz failed · Leaver | `staff/locks.html` | 10.1 | staff-pwa |
+
+> **Note · `/shifts/:id` is the one route two bots share.** `checkin` owns the
+> route and everything §5 puts on it: the map, the geofence, check-in and
+> check-out, the breaks block and the chargeable-so-far counter — including
+> the "No check-out" static screen (RULE-02), which it already renders in
+> §10.4's own words. `scheduling` owns the two remaining §10.4 static
+> screens, for a cancelled event (N12) and a withdrawn booking (N10b), and
+> **they are not built yet**: they need `events.cancelled_at` and
+> `bookings.cancel_cause` on that screen's `ShiftDetail`. The rule and the
+> approved copy for all three live in `packages/domain/src/staff.ts`
+> (`staticScreenCase`, `STATIC_SCREEN_COPY`), tested, so wiring them is a
+> two-column select and one branch rather than a second copy of the copy.
 
 ## Client Portal (`apps/client`)
 | Route | Screen | Wireframe | § | Bot |
