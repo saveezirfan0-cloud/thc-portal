@@ -29,7 +29,7 @@ const NAV = [
   { href: '/onboarding', label: 'Onboarding', pending: true },
   { href: '/events', label: 'Scheduling' },
   { href: '/compliance', label: 'Compliance', pending: true },
-  { href: '/checkin', label: 'Check In / Out', pending: true },
+  { href: '/checkin', label: 'Check In / Out' },
   { href: '/staff', label: 'Staff', dividerBefore: true, pending: true },
   { href: '/clients', label: 'Clients', pending: true },
   { href: '/roles', label: 'Roles' },

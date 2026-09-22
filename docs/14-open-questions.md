@@ -189,6 +189,34 @@ piece of work (B5/S2) rather than the compliance sweep's.
 
 # For the owner
 
+## O0 · An under-18 with an opt-out tick has NO weekly hours ceiling — live on `main`
+
+Found while merging, not looked for, and it is the most serious thing in this file.
+
+`090_weekly_cap.sql` assertion 2 is failing on `main` right now:
+
+```
+have: ("An under-18 cannot opt out, so a recorded tick does not lift the ceiling", , uncapped)
+want: ("An under-18 cannot opt out, so a recorded tick does not lift the ceiling", 48, standard_48)
+```
+
+The vectors are right and the SQL is wrong. `weekly_cap()` honours `wtr_optout` without
+checking age, so a worker under 18 whose record carries that tick comes back `uncapped` —
+no weekly ceiling at all. Under-18s cannot sign the 48-hour Working Time opt-out; young
+workers have a lower statutory limit, not a removable one. Auto-assign's hours gate reads
+this function, so the effect is not cosmetic: nothing would stop a 16-year-old being
+booked past any limit.
+
+Assertion 7 fails with it, for the same reason — `remaining_hours` returns a row where it
+should return none.
+
+Not fixed here deliberately: this is the compliance domain and that session pushed the
+cap change minutes before this was found, so it is very likely already in hand. It is
+written down because the failing test is the only thing currently carrying it, and this
+session has now watched a red `main` teach four pull requests to read past a failing
+suite (O2). If it is still red by the next compliance session, it should be the first
+thing that session does.
+
 ## O1 · Force row level security (carried, by your decision)
 
 `docs/00` records it as the one open security item: no table sets `FORCE ROW LEVEL
@@ -501,37 +529,45 @@ rather than forgotten.
 
 ---
 
-## O11 · GDPR removal cannot reach everything §1.7 asks it to
+## O11 · GDPR removal now reaches everything but the Willo video — RESOLVED
 
 `remove_worker()` (§1.7) anonymises the profile, deletes the documents, bank details,
-referees, HMRC checklist and push subscriptions, and releases future bookings. Four places
-hold personal data it does **not** reach, three of which need a decision from you.
+referees, HMRC checklist and push subscriptions, and releases future bookings. Three
+places held personal data it did not reach. All three are closed
+(`20260922081512_gdpr_removal_reaches_the_rest.sql`), with one residue that genuinely
+waits on a key.
 
-**1. The files themselves.** The `compliance_docs` rows go; the objects they pointed at —
-a passport scan in the `documents` bucket, a selfie in `photos` — do not. §1.7 says
-"contacts / documents / photo wiped", and today the row is wiped while the file survives.
-SQL cannot call the Storage API, so this needs either an Edge Function called after
-removal, or a queue the drain picks up. **This is the one that matters most**: it is the
-actual document, not a reference to it.
+**1. The files themselves — closed.** Deleting a `compliance_docs` row never touched the
+object it pointed at, so the passport scan in `documents` and the selfie in `photos`
+outlived the erasure. SQL cannot call the Storage API, so removal now **queues** every
+path into `storage_deletions` — read before the rows that name them are deleted, because a
+path nothing captures is a file nothing can ever find again — and a new `gdpr-purge` Edge
+Function drains the queue.
 
-**2. `applications`.** The public form (§2.1) stores `first_name`, `last_name`, `email`,
-`phone` and `age_band` per submission, keyed to the staff record. `remove_worker` never
-touches it, so the worker's name and contact details survive an irreversible
-anonymisation. Fixable in SQL; not done here because the application row is also the
-duplicate-check §2.12 relies on for a returning applicant, and blanking it changes that
-behaviour. **Ask:** should removal anonymise the application rows too, accepting that the
-person can then re-apply as a genuinely new candidate — which is what §2.12 says happens
-to a removed worker anyway?
+A queue rather than an inline call on purpose: §1.7 is an obligation, not a best effort. A
+row stays until the object is actually gone, so an erasure survives Storage being briefly
+unreachable instead of being silently dropped. **No new key** — the service role key every
+§7 job already carries is what the Storage API wants.
 
-**3. `staff.willo_candidate_id`.** A live identifier for the interview video held by a
-third party. Nulling it is one line; deleting the video is a Willo API call we cannot make
-until P3's account exists. Left as-is so the two go together rather than leaving an
-orphaned video nobody can find.
+**2. `applications` — closed, and the question I asked was the wrong one.** I recorded this
+as needing your decision because anonymising the rows might break the §2.12 duplicate
+check. It does not: that check reads `staff`, not `applications`, and already excludes a
+removed worker outright (`where s.removed_at is null`). And §2.12 settles the policy
+anyway — *"A GDPR-removed worker (§1.7) is the one exception: their personal data is gone
+and cannot be matched against, so they apply as a genuinely new candidate and receive a new
+Employee ID."* So the rows are anonymised in place, per submission; the outcome is kept,
+because that is what the office did rather than who they did it to.
 
-**4. Lower risk, same decision.** `notification_outbox` payloads keep the name, and E8's
-keeps the NI number, until the row is drained and pruned; `location_pings` keep the GPS
-trace of shifts worked. Both are arguably operational records rather than profile data,
-but they are personal data and they are not mentioned in §1.7 either way.
+**3. `willo_candidate_id` — nulled, with the video still to delete.** The handle on the
+interview video is gone from the profile. Deleting the video *at Willo* is an API call that
+waits on P3's account (O3). So the id is written into the `gdpr_remove` audit row before it
+is nulled — nulling it alone would strand the video for ever with nothing able to name it.
 
-Recorded rather than guessed at, because each one trades a GDPR obligation against a
-behaviour the scope defines elsewhere, and that is your call rather than a bot's.
+> **The one thing left for you here:** when the Willo account lands, the videos of anyone
+> removed in the meantime need deleting. `select data->>'willoCandidateId' from audit_log
+> where action = 'gdpr_remove'` lists exactly which.
+
+**Still outside this:** `notification_outbox` payloads keep the name (and E8's keeps the NI
+number) until the row is drained and pruned, and `location_pings` keep the GPS trace of
+shifts worked. Both are arguably operational records rather than profile data, and §1.7
+does not mention either way — raised here rather than decided.

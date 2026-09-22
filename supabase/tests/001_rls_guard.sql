@@ -42,9 +42,9 @@ select bag_eq(
             ('notification_outbox'),('profiles'),
             ('push_subscriptions'),('quiz_attempts'),('report_sends'),('roles'),('settings'),
             ('shift_requirements'),('staff'),('staff_references'),('staff_roles'),
-            ('staff_transitions'),
+            ('staff_transitions'),('storage_deletions'),
             ('venue_types'),('venues'),('violations') $$,
-  'RLS is enabled on all 33 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, and staff_transitions from the §2.12 machine'
+  'RLS is enabled on all 34 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, and storage_deletions from §1.7''s Storage half'
 );
 
 -- ---------------------------------------------------------------------
@@ -110,7 +110,7 @@ select bag_eq(
             ('notification_outbox'),
             ('push_subscriptions'),('quiz_attempts'),
             ('report_sends'),('roles'),('settings'),('shift_requirements'),('staff'),
-            ('staff_references'),('staff_roles'),('staff_transitions'),
+            ('staff_references'),('staff_roles'),('staff_transitions'),('storage_deletions'),
             ('venue_types'),('venues'),('violations') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );

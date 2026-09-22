@@ -17,67 +17,15 @@ covers the foundation sessions; this file covers everything after them.
 
 ## State of play
 
-Built: the monorepo, the design system, sign-in for all three apps, the venues directory,
-the domain rules (state machines, times, buffer, cap, scoring, pay), the §8 notification
-register, the full row-level-security suite, and the live database with seed data.
+**`docs/14-handover.md` holds it, and that is the only copy** — §1 for what exists, §3
+for the order to build in. This section used to keep a second one and `docs/00` a third.
+They drifted: this page was still calling the Event Board, the Check-in monitor and the
+on-shift screen unbuilt after all three had merged, and recommending the Event Board as
+the next session to take. A stale map is worse than no map, because it is the one a new
+session trusts.
 
-Also built, server side only, with no screen in front of any of it:
-
-- the whole day of the shift (§5.1–5.2b, §9.5) — check-in, check-out, breaks and Resolve,
-  with the pay window behind them (screens B7, S5 are not built)
-- the auto-assign engine (§3.4–3.6, §6) and the three rounds that run it (screen B3)
-- the jobs layer (§7): `job_runs`, the outbox claim/complete pair, the UK wall-clock gate,
-  and four of the ten background rules — `booking-tick` (BG-01/02/02b/03/09/10),
-  `auto-staffing` (the hourly, 12:05 cutoff and escalation rounds) and `compliance-daily`
-  (BG-04/05, plus the §4.3 block cascade and the §4.4 cap-band change)
-- leaving (§10.6, `request_p45`) and the in-employment conviction declaration (§10.7,
-  `declare_conviction`), both of which reuse the §4.3 cascade, plus the §2.12 staff state
-  machine in SQL — which nothing had, though CLAUDE.md asks for every state change to be
-  rejected in the database too. A Vitest holds it to `STAFF_TRANSITIONS` edge for edge.
-- the manager's three profile buttons (§9.6): `block_worker_manually` with its mandatory
-  reason, `unblock_worker` which runs the §4.3 full check first and reports what is still
-  outstanding when it refuses, and `reset_to_candidate` — the Employee ID and all history
-  retained, every piece of compliance evidence superseded but kept read-only
-- GDPR removal (§1.7, `remove_worker`): anonymised to "Deleted account #id", documents and
-  contacts deleted, login unlinked, future bookings released — and the Employee ID,
-  bookings, violations and verbatim feedback all retained for reporting
-
-Not built: every screen bar sign-in, `/apply` (§2.1), the events list (§3.1), the Shift
-Builder (§3.2), Roles & rates (§9.8), Venues (§9.11) and the Client Portal (§11.1, §11.2,
-§11.5) — the Client Portal being the only one of the three apps finished end to end, apart
-from §11.3's PDFs, which its document buttons say plainly they are waiting on. Of the
-background rules, BG-06/07 (geofence) wait on the geolocation shell and BG-08 on the
-reports layer. Nothing writes `location_pings`, so the off-site check-out path always
-takes its RULE-02 fallback until that shell lands.
-
-**Nothing is sent.** N1–N15 and E1–E9 reach `notification_outbox` and stop: the drain is
-registered but disabled, because Web Push needs VAPID keys and email needs Resend, and
-both are in `docs/14` O3. The §4.3 cascade likewise has no manual entry point until §9.6
-is built — see `docs/14` O10.
-
-## Start here next
-
-Three candidates, in the order they unblock the most. None of them needs anything from
-THC, so all three can start today.
-
-1. **B3 · Event board (§3.3–3.5).** The strongest case. The auto-assign engine, its three
-   rounds, the 12:05 cutoff and the escalation handover are all built and tested in SQL
-   with no screen in front of them, so today a saved event fills nobody unless somebody
-   calls the RPCs by hand. B3 is the screen that makes the largest already-finished piece
-   of the product usable, and `rankPool` means the hard part is done.
-2. **S1 · App shell, auth and install (§10.1–10.2, §10.5).** The Staff App is where ~1,000
-   workers live and it has nothing but sign-in. S1 also gates every later staff session
-   and O3's push keys: installability is what makes Web Push possible on iOS at all, so
-   until S1 lands, "nothing is sent" cannot be fixed even once the VAPID keys arrive.
-3. **B6b · Completion letter, the screens half (new requirement).** The rule is finished
-   on both sides now — `cap.ts` and `weekly_cap()` agree across all 27 vectors — but a
-   worker still has nowhere to upload a letter and a reviewer nowhere to approve one, and
-   four of the ten facts the rule takes have no column behind them. This is the one with
-   a civil-penalty exposure attached, which is why it is on this list rather than further
-   down it.
-
-Pick one, take its prompt below verbatim, and check `git branch -r` first: the costliest
-collision here is two sessions writing the same migration.
+The prompts below are still the prompts. Read `docs/14` first to find out which of them
+is still open, then take that one verbatim.
 
 ---
 
@@ -205,6 +153,46 @@ collision here is two sessions writing the same migration.
 > Use the `compliance` agent for the review side and `staff-pwa` for the upload side.
 > Branch `feat/compliance-completion-letter`.
 >
+> **Two SQL callers already read the old shape, and the TypeScript and SQL caps have
+> diverged until this lands.** `packages/domain/src/cap.ts` now models the completion
+> DATE, the 10-hour sub-degree band and visa expiry; `weekly_cap()` and `weekly_cap_for()`
+> in `0008_weekly_cap.sql` still model only `graduated_at <= date`. Whoever builds the SQL
+> half must also update:
+>
+> - `term_letter_applies()` (`20260921180312`), which stops the §4.2 expiry ladder for a
+>   graduate. It keys on `staff.graduated_at`, so under the new rule it should key on the
+>   course completion date — otherwise a letter issued before the final exam stops the
+>   ladder early, which is the exact failure the new contract calls out.
+> - `reset_to_candidate()` (`20260921183945`), which clears `graduated_at` with the rest of
+>   the superseded evidence. Whatever column replaces or joins it needs clearing too, or a
+>   returning candidate keeps a cap off evidence that has been superseded.
+>
+> Both are one line each; they are named here because neither is in this file's own domain
+> and a grep for `graduated_at` is the only thing that finds them.
+>
+> ### `main` is red on this, and exactly why
+>
+> `090_weekly_cap.sql` fails two assertions on `main` (runs 107 and 110; last green was
+> `ce593bd`, before `640272b`). They are different problems and only one is "the SQL half
+> is missing":
+>
+> - **Assertion 2**, the `results_eq` at `090:34`, runs all 27 vectors through the SQL
+>   `weekly_cap(visa_limited, term_state, completion_letter_verified, optout_48h)`. That
+>   signature has four inputs and the new rule needs nine, so the vectors carrying a
+>   completion date, a sub-degree course or a visa expiry cannot come out right. This one
+>   is the deferred SQL half.
+> - **Assertion 7**, the `is_empty` at `090:63`, asserts *"no ceiling is null, never 0 — a
+>   0 would read as 'no hours left' to every caller"*. The new rule **deliberately makes 0
+>   meaningful**: `weeklyCap()` returns 0 for a week wholly past right-to-work expiry, and
+>   the generated vectors now contain exactly one such case (`visa_expired_0`,
+>   `cap_vectors.psql:55`). So this assertion no longer states the rule — it contradicts
+>   it, and it is stale rather than unimplemented.
+>
+> Assertion 7 is a one-line change and does not wait on the rest of B6b: the invariant
+> needs re-wording to "no ceiling is null; 0 means no workable day in the week, which only
+> a lapsed right to work produces". Worth doing first, because it gets `main` from two
+> failures to one and makes the remaining one honestly say "the SQL half is not built yet".
+>
 > Contract: `docs/scope/university-completion-letter-requirement.pdf`. This is a NEW
 > document from THC, not part of scope v1.6, and it refines RULE-20. Read it whole —
 > the exposure is civil penalties for illegal working, so the cautious reading wins
@@ -263,7 +251,19 @@ collision here is two sessions writing the same migration.
 > Student-visa worker with no approved letter cannot be rostered past 20 hours in any
 > week through the UI, not merely in the rule.
 
-## B7 · Check-in monitor and violation log (§9.5)
+## B7 · Check-in monitor and violation log (§9.5) — **built**
+
+`/checkin` is live. The Status column is resolved by `checkin_monitor_v`, not by the
+screen: seven states with time arithmetic in each is exactly what drifts when a page
+re-derives it, and pgTAP holds the view (`240_ping_ingest_and_monitor.sql`). Resolve goes
+through `resolve_violation`, which keeps the mandatory note and the finish-time validation
+on the server where the dialog can show its refusal. Live is two mechanisms on purpose:
+Realtime for the writes, and a 30-second refresh for the states that arrive by the clock
+alone — Due becoming the 30-minute alert, and a shift crossing end+4h into No check-out.
+
+Still to come on this screen: the per-event counters in the strip are derived from the
+rows on the board rather than from the roster, so an event with nobody booked does not
+appear at all.
 
 > Use the `checkin` agent. Branch `feat/checkin-monitor`.
 >
@@ -447,7 +447,21 @@ collision here is two sessions writing the same migration.
 >
 > Done when: every document state renders and the conviction path has a test.
 
-## S5 · On-shift screen (§10.4, §5.1–5.2b)
+## S5 · On-shift screen (§10.4, §5.1–5.2b) — **built**
+
+`/shifts/[id]` is live: the GPS states, check-in through the grace and the lock, the
+breaks block where the client does not pay for them, check-out, and the earnings
+confirmation showing the base rate only. Every decision is the database's —
+`attempt_check_in`, `start_break`, `finish_break`, `check_out` — and the screen renders
+the message key that comes back.
+
+`record_ping` runs while the screen is open, which is as much background tracking as a
+PWA can do (ADR-0001, docs/06). It is worth having even so: the off-site check-out reads
+that trail, so a worker who had the app open at any point during the shift gets their
+real finish recorded instead of falling to RULE-02.
+
+Still to come here: the shift LIST (S3) that links to this screen, the static message
+screens for a cancelled event and a removal, and the push registration.
 
 > Use the `checkin` agent. Branch `feat/checkin-staff-shift`.
 >
@@ -582,7 +596,9 @@ other way round, pg_cron spends the gap posting at a 404.
 > gaps: deleting the GoTrue `auth.users` row needs the admin API, which SQL cannot reach,
 > so removal unlinks `user_id` instead; and redacting a worker's name from free-text
 > feedback needs an LLM step the scope rules out of v1 — feedback is retained verbatim and
-> the office redacts by hand.
+> the office redacts by hand. The Storage half IS built (`gdpr-purge`), and the only
+> genuine residue is deleting the interview video at Willo, which waits on P3's account —
+> see `docs/14` O11.
 
 > Use the `platform` agent. Branch `feat/platform-lifecycle`.
 >

@@ -11,8 +11,8 @@ what exists, what is missing, and the order to do it in.
 
 ## 1 · What is genuinely built
 
-**Foundations — done.** Three Next.js apps on one Supabase database, 29 migrations,
-25 pgTAP files, the design system in `packages/ui`, and the pure rule layer in
+**Foundations — done.** Three Next.js apps on one Supabase database, 32 migrations,
+27 pgTAP files, the design system in `packages/ui`, and the pure rule layer in
 `packages/domain` (`cap` `pay` `scoring` `autoAssign` `buffer` `time` `state`
 `overlap` `shift` `events`). CI runs lint, typecheck, unit, `supabase test db` and
 the Playwright suite on every push, and is green.
@@ -21,8 +21,8 @@ the Playwright suite on every push, and is green.
 
 | App | Routes |
 |---|---|
-| Back Office | `/` (stands in for the Dashboard) · `/events` · `/events/new` · `/events/:id/edit` · `/roles` · `/venues` · `/login` · `/design-system` |
-| Staff App | `/` · `/apply` · `/apply/submitted` · `/login` |
+| Back Office | `/` (stands in for the Dashboard) · `/events` · `/events/:id` (the board) · `/events/new` · `/events/:id/edit` · `/checkin` · `/roles` · `/venues` · `/login` · `/design-system` |
+| Staff App | `/` · `/apply` · `/apply/submitted` · `/shifts/:id` · `/login` |
 | Client Portal | `/` · `/client` · `/client/events/:id` · `/login` |
 
 **Everything else in `docs/08-screen-inventory.md` is not started.** The Back Office
@@ -32,20 +32,32 @@ lands.
 
 ---
 
-## 2 · The one place the code currently disagrees with itself
+## 2 · The place the code disagreed with itself — closed
 
-**RULE-20 is implemented twice and the two do not match.**
+**RULE-20 was implemented twice and the two did not match.**
 
 `docs/scope/university-completion-letter-requirement.pdf` is a new contract document
-from THC. `packages/domain/src/cap.ts` implements it in full. The SQL
-`weekly_cap()` does **not** yet — it still runs the older four-input rule.
+from THC. `packages/domain/src/cap.ts` implemented it in full. The SQL `weekly_cap()`
+did not — it still ran the older four-input rule, and auto-assign filters on the SQL
+side inside a query, so a student-visa worker could be offered a shift the TypeScript
+rule would refuse. The worst case was not the student: an **under-18 with a recorded
+opt-out tick came back uncapped**, no weekly ceiling at all, where the rule says a
+minor cannot sign one.
 
-That matters because auto-assign filters on the SQL side inside a query. Until the
-migration lands, a student-visa worker could be offered a shift the TypeScript rule
-would refuse. The 27 shared vectors in `cap.vectors.json` hold both implementations,
-so the pgTAP suite will fail loudly rather than silently — but fix it first.
+Migrations `20260922140000` and `20260922140100` close it. `weekly_cap()` now takes all
+ten inputs and agrees with `cap.ts` across every one of the 27 shared vectors, and
+`090_weekly_cap.sql` passes every column at the call site, so the next divergence fails
+on arity rather than running four columns and silently dropping six.
 
-This is the top of the queue.
+**What is still open from it** is the impure half. `weekly_cap_for(staff, date)` — the
+wrapper auto-assign's hours gate calls — can source only six of the ten facts. Under-18
+now reads live from `staff.dob`. The other four do not: `below_degree_level` has no
+field at all, `completion_date` and `visa_expiry` exist on `compliance_docs` but which
+verified document is authoritative is a compliance decision, and `optout_cancelled_from`
+has no column because §2.4's notice period is recorded nowhere. Each defaults to the
+value that reproduces the previous behaviour, so the wrapper is never quietly wrong in a
+new way — but until they are wired, a reviewer can approve a letter the rota guard will
+not act on. That belongs with B6b below, and `docs/13` carries it.
 
 ---
 
@@ -55,20 +67,24 @@ Each of these has a full prompt in `docs/13-remaining-work.md`. Run one session 
 item, on its own branch, and read `docs/10-working-with-agents.md` before running two
 at once — it lists the three files that every session wants to touch.
 
-1. **B6b · completion letter + opt-out.** Finish the SQL half first (above), then the
-   upload, review, audit trail, retention, rota guard, notifications and reporting.
-   Legal exposure: civil penalties for illegal working.
-2. **B1 · Dashboard (§9.1).** The one route every admin lands on after sign-in.
-3. **B3 · Event board (§3.3–3.5).** Scheduling is half-built: the Shift Builder
-   exists, the board that fills it does not.
-4. **B5 · Onboarding kanban and candidate profile (§2.2–2.3).** `/apply` collects
+1. **B6b · completion letter + opt-out.** The rule half is finished on both sides now
+   (§2 above). What is left is the upload, the review screen, the four facts
+   `weekly_cap_for()` still cannot read, the audit trail, retention, the rota guard,
+   notifications and reporting. Legal exposure: civil penalties for illegal working.
+2. **B1 · Dashboard (§9.1).** The one route every admin lands on after sign-in, and
+   still the only screen in the Back Office standing in for itself.
+3. **B5 · Onboarding kanban and candidate profile (§2.2–2.3).** `/apply` collects
    applications that nothing yet reviews.
-5. **B6 · Compliance queue and radar (§4.1–4.3).**
-6. **B7 · Check-in monitor (§9.5)** and **S5 · the on-shift screen (§5.1–5.2b).**
-   Build these as a pair — same rules, two ends.
-7. **B8 · Staff directory and profile.**
-8. **B11/B12 · Reports, CSV, the Monday send, and the two PDFs.**
-9. **S2 · the 11-step onboarding wizard**, then the rest of the Staff App.
+4. **B6 · Compliance queue and radar (§4.1–4.3).**
+5. **S1 · the PWA shell, auth and install (§10.1–10.2, §10.5).** The Staff App has two
+   screens and no shell. It also gates the push keys in §4: installability is what makes
+   Web Push possible on iOS at all, so "nothing is sent" cannot be fixed without it.
+6. **B8 · Staff directory and profile.**
+7. **B11/B12 · Reports, CSV, the Monday send, and the two PDFs.**
+8. **S2 · the 11-step onboarding wizard**, then the rest of the Staff App.
+
+**Done since this page was written:** B3 the Event board, B7 the Check-in monitor and
+S5 the on-shift screen have all merged, and §1's route table is updated for them.
 
 ---
 

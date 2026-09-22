@@ -10,26 +10,31 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 577 | `pnpm test` |
-| Browser smoke | 56 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 891 over 25 files | `supabase test db` |
+| Unit | 611 | `pnpm test` |
+| Browser smoke | 57 | `pnpm turbo e2e:smoke` |
+| Database, row-level security and rules | 945 over 27 files | `supabase test db` |
 
-The database figure is derived, not measured here: 544 over 14 files at `ad81538`,
-plus the declared plans of the four files merged since — 130 auto-assign (57),
-140 check-in write paths (45), 150 roles directory (25), 160 client portal (24) —
-and the one assertion 020 gained with the Client Portal's one-entry-per-event
-index. pgTAP fails a file whose plan does not match the assertions it runs, so a
-green `supabase test db` makes each of those counts exact. `supabase start` needs
-Docker, which some sandboxes block; when it is unavailable, take the number from
-the CI run rather than a local count.
+The database figure is the sum of the declared plans across `supabase/tests/`, read off
+this tree — 860 stated as literals plus `070_check_in_out.sql`, whose plan is computed
+from `pay.vectors.json` (50 vectors + 35 fixed = 85). It is not a measured run. pgTAP
+fails a file whose plan does not match the assertions it actually runs, so a green
+`supabase test db` turns the sum into an exact count; a red one means the sum was the
+wrong number to quote. `supabase start` needs Docker, which some sandboxes block, and
+when it is unavailable the CI run is the number to take rather than a local guess.
 
-The browser figure is 56 — nine spec files over three Playwright projects, so the
-suites that run per app are counted once per app. On a checkout with no `.env.local`,
-44 run and 12 skip: the two role-routing assertions in `gate.smoke` need a configured
-project to have a gate to assert, and they run in all three projects (six), while the
-Event Board suite needs a seeded event (six). CI has both a project and a seeded
-database, so those twelve run there and the Client Portal suite skips instead — it
-asserts an ungated shell, and every route in CI redirects to `/login`.
+The browser figure is 57 — nine spec files over three Playwright projects, so the suites
+that run per app are counted once per app. On a checkout with no `.env.local`, 44 run and
+13 skip: `gate.smoke`'s two role-routing assertions need a configured project to have a
+gate to assert and run in all three projects (six), the Event Board suite needs a seeded
+event (six), and `/apply`'s end-to-end submission needs somewhere for the application to
+land (one). CI has both a project and a seeded database, so all thirteen run there and
+the Client Portal suite skips instead — it asserts an ungated shell, and every route in
+CI redirects to `/login`.
+
+Each of those skips is conditioned on something the environment says about itself, never
+on `process.env.CI`, so a suite that stops working still fails rather than quietly
+skipping. The `/apply` one keys off the exact sentence the server action renders when no
+project is configured, which with a project wired up can never appear.
 
 What exists, at platform level:
 
@@ -44,21 +49,15 @@ What exists, at platform level:
   component against both token axes.
 - **Seed data**: 5 clients, 8 venues, 6 roles, 40 workers, mirroring
   `wireframes/CONVENTIONS.md`.
-- **27 migrations and 25 pgTAP files.** Every table carries row-level security and a
+- **32 migrations and 27 pgTAP files.** Every table carries row-level security and a
   test per role.
 
-**The screen-by-screen, system-by-system map lives in `docs/13-remaining-work.md` under
-"State of play", and that is the only copy.** This file used to keep a second one; the two
-drifted apart inside a day and both were wrong by the next morning. Do not reintroduce it
-here — when the two disagree, nobody can tell which is stale. "Start here next", just
-below it, names the three sessions worth taking first and why, so a new session does not
-have to rank thirty prompts to pick one.
-
-Screens that exist today: `/apply` and `/apply/submitted` (§2.1, §2.12), the events list
-(§3.1), the Shift Builder (§3.2), Roles & rates (§9.8), Venues (§9.11), and the whole
-Client Portal (§11.1, §11.2, §11.5). A great deal more is built server-side with no screen
-in front of it — the day of the shift, auto-assign, compliance, leaving, convictions, the
-manager's buttons and GDPR removal — which `docs/13` lists in full.
+**The screen-by-screen, system-by-system map lives in `docs/14-handover.md`, and that is
+the only copy.** §1 is what exists, §3 is the order to build in. This file kept a second
+one and `docs/13` a third; all three drifted apart inside a day, and by the time
+`docs/14` was written two of them were listing screens as unbuilt that had already
+merged. Do not reintroduce one here — when copies disagree, nobody can tell which is
+stale, and the cost lands on whoever picks the next session.
 
 Two systemic gaps shape what is worth planning next:
 
