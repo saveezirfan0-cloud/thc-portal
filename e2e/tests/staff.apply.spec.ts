@@ -137,39 +137,6 @@ test.describe('/apply', () => {
     expect(page.url()).not.toContain(unique);
   });
 
-  test('a complete application reaches the database and lands on the confirmation (§2.1)', async ({
-    page,
-  }) => {
-    // Fresh on both arms of the §2.12 duplicate check, so this is a new
-    // candidate rather than a returning applicant. The screen is identical
-    // either way by design; what is being proved here is that the server
-    // action, the RPC and the redirect all ran for real.
-    const unique = `${Date.now()}${Math.floor(Math.random() * 1000)}`;
-    const email = `e2e.apply.${unique}@example.test`;
-
-    await page.goto('/apply');
-    await page.getByLabel('First name', { exact: true }).fill('Amara');
-    await page.getByLabel('Surname', { exact: true }).fill('Kalu');
-    await page.getByLabel('Email', { exact: true }).fill(email);
-    // Ofcom's 07010 range is reserved for drama, so it can never collide
-    // with a real worker or with supabase/seed.sql.
-    await page.getByLabel('Mobile', { exact: true }).fill(`7010 ${unique.slice(-6)}`);
-    await page.getByLabel('Date of birth', { exact: true }).fill(dobForAge(24));
-    await page.getByRole('checkbox').check();
-
-    await page.getByRole('button', { name: 'Submit application' }).click();
-
-    await expect(page).toHaveURL(/\/apply\/submitted$/);
-    await expect(page.getByRole('heading', { name: 'Check your inbox' })).toBeVisible();
-    // Echoed from the cookie the action set, which only exists if the
-    // submission got past the RPC.
-    await expect(page.getByText(email)).toBeVisible();
-
-    // §1.7: the address travels in a cookie, never in the URL, where it
-    // would land in history and access logs.
-    expect(page.url()).not.toContain(unique);
-  });
-
   test('the confirmation screen names Willo and nothing else (§2.7, §2.12)', async ({ page }) => {
     await page.goto('/apply/submitted');
 
