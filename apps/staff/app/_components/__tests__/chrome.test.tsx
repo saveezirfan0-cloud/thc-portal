@@ -9,7 +9,7 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-const { AppChrome } = await import('../AppChrome');
+const { StaffShell } = await import('../StaffShell');
 
 /**
  * §10.1 fixes what the phone header may spend width on — logo left, profile
@@ -18,25 +18,27 @@ const { AppChrome } = await import('../AppChrome');
  * because the shift screen builds its own header and would otherwise be the
  * one screen in the app without a switch.
  *
- * Renders `AppChrome` rather than `StaffShell`, which is what this asserted
- * when #42 wrote it. `StaffShell` became async when the app-wide §10.1 lock
- * landed — it loads the worker to decide which tabs are reachable — and
- * `renderToStaticMarkup` is synchronous, so it now throws "a component
- * suspended while responding to synchronous input" rather than failing on
- * the switch. AppChrome is the header, is what every StaffShell screen
- * renders, and is synchronous. The guarantee is unchanged and is if anything
- * closer to the one the comment above describes: the switch comes from
- * `AppHeader`, and this proves the app's chrome asks for it.
+ * `StaffShell` is an async server component: it reads the profile once and
+ * applies the §10.1 app lock for every screen behind it. `renderToStaticMarkup`
+ * cannot render a promise, so each case awaits the component as the function
+ * it is and renders what it returns. With no Supabase configured in the test
+ * environment `loadProfile()` returns null and the lock is `none`, which is
+ * the unlocked chrome these two assertions are about.
  */
+async function render(title: string): Promise<string> {
+  const element = await StaffShell({ title, active: '/shifts', children: <span /> });
+  return renderToStaticMarkup(element);
+}
+
 describe('the Staff App header', () => {
-  it('carries the appearance switch', () => {
-    const markup = renderToStaticMarkup(<AppChrome title="Shifts" worker={null} />);
+  it('carries the appearance switch', async () => {
+    const markup = await render('Shifts');
     expect(markup).toContain('mode-switch');
     expect(markup).toContain('aria-label="Dark appearance"');
   });
 
-  it('uses the icon form, so the title keeps its line at 390px', () => {
-    const markup = renderToStaticMarkup(<AppChrome title="Autumn Partners Dinner" worker={null} />);
+  it('uses the icon form, so the title keeps its line at 390px', async () => {
+    const markup = await render('Autumn Partners Dinner');
     expect(markup).toContain('Autumn Partners Dinner');
     expect(markup).not.toContain('>Light<');
   });

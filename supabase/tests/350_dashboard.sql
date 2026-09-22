@@ -1,5 +1,5 @@
 -- =====================================================================
--- 320 · The Dashboard's numbers (§9.1) — 20260922180000_dashboard_kpis.sql
+-- 320 · The Dashboard's numbers (§9.1) — 20260922182000_dashboard_kpis.sql
 --
 -- Four counters, one weekly money panel and a ten-day list, and every one
 -- of them is a place where a plausible-looking wrong number would go

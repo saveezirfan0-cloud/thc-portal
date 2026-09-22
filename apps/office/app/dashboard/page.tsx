@@ -32,7 +32,7 @@ export const dynamic = 'force-dynamic';
  * and the next ten days with the margin on every role.
  *
  * None of those figures is computed here — see `data.ts` and
- * `supabase/migrations/20260922180000_dashboard_kpis.sql`. Fill, the
+ * `supabase/migrations/20260922182000_dashboard_kpis.sql`. Fill, the
  * 12.07% holiday element and the Europe/London week each have exactly one
  * definition in this platform, and a screen that re-derived any of them
  * would be the second.

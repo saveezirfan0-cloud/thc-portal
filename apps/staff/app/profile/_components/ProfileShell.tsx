@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { AppBody, AppFrame, AppHeader, Avatar, BottomNav } from '@thc/ui';
+import { AppBody, AppFrame, AppHeader, Avatar } from '@thc/ui';
+import { BottomTabs } from '../../_components/BottomTabs';
 import { reachableTabs, showsBottomNav } from '../lock';
 import type { AppLock } from '../lock';
 
@@ -64,22 +65,16 @@ export function ProfileShell({
         actions={<Avatar name={name} {...(photoUrl ? { src: photoUrl } : {})} size="sm" />}
       />
       <AppBody>{children}</AppBody>
-      {showsBottomNav(lock) ? (
-        <BottomNav
-          items={tabs}
-          renderLink={(item, className, body) =>
-            item.locked ? (
-              <span className={className} aria-disabled="true">
-                {body}
-              </span>
-            ) : (
-              <Link href={item.href} className={className}>
-                {body}
-              </Link>
-            )
-          }
-        />
-      ) : null}
+      {/* BottomTabs, not BottomNav+renderLink. This file is a server
+          component and BottomNav is under a file-level 'use client', so
+          passing it a `renderLink` FUNCTION threw "Functions cannot be
+          passed directly to Client Components" and answered 500 on
+          /profile, /profile/details, /profile/security and
+          /profile/payments — the whole §10.1 sheet. BottomTabs takes the
+          same `{href, label, locked}` data and decides what a link is
+          itself, so only strings cross the boundary. Same markup, same
+          classes, same locked-is-a-span behaviour. */}
+      {showsBottomNav(lock) ? <BottomTabs tabs={tabs} /> : null}
     </AppFrame>
   );
 }

@@ -819,3 +819,43 @@ Read the job's log rather than the badge on any future run: `db push` applies mi
 one at a time, so a failure halfway leaves the project part-applied with a green
 `build-test` above it, and the log is the only place that says which version it stopped
 at.
+
+## O15 · `BottomNav`'s `renderLink` callback has now crashed the Staff App twice
+
+**This one is `design-system`'s, and it is a prop that should not exist.**
+
+`BottomNav` lives in `packages/ui/src/components/Mobile.tsx` under a file-level
+`'use client'`, and it takes
+
+```ts
+renderLink?: (item: BottomNavItem, className: string, children: ReactNode) => ReactNode;
+```
+
+A server component cannot pass it. React refuses to serialise a function across that
+boundary, and the page answers **500** — not a warning, not a degraded render.
+
+It has happened twice in one day, both times in code that shipped green:
+
+- `StaffShell` (#35) took out `/shifts`, `/invites`, `/radar` and their three detail
+  routes. CI missed it because `staff.working-screens.spec.ts` skipped on
+  `.mcard, .empty` being absent, which is equally true of a 500 page.
+- `ProfileShell` (#42) took out `/profile`, `/profile/details`, `/profile/security` and
+  `/profile/payments` — the whole §10.1 profile sheet, Security settings, Bank &
+  payroll, and the leaver's earnings history behind the P45 flow.
+
+Both now render `apps/staff/app/_components/BottomTabs.tsx`, which takes the same
+`{href, label, locked}` data and decides what a link is itself, so only strings cross the
+boundary. Same markup, same classes, same "locked is a span, not a link" behaviour.
+
+**Why it keeps happening**, and why the next one is a matter of time: the Back Office's
+`Sidebar` takes an identical-looking `renderLink` and is completely safe, because
+`packages/ui/src/components/Shell.tsx` carries no `'use client'`. The two look the same at
+the call site and differ only in a directive at the top of a file nobody opens. A screen
+bot copying the Office pattern into the Staff App writes a 500 and gets a green build.
+
+**The fix is to delete the prop**, not to document it: `BottomTabs` proves the data-driven
+shape covers every caller, and there are no others. That is a `packages/ui` change, which
+`docs/10` §3 reserves for `design-system`, so it is filed here rather than taken. Until it
+goes, a lint rule banning function props to anything exported from `Mobile.tsx` would do
+the same job.
+

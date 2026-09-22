@@ -16,7 +16,7 @@ import {
  *
  * Nothing on this screen is counted here. All four KPIs, the weekly money
  * panel and the ten-day list come back already derived from
- * `20260922180000_dashboard_kpis.sql`, because every one of them is a rule
+ * `20260922182000_dashboard_kpis.sql`, because every one of them is a rule
  * the rest of the platform also has to agree with:
  *
  *   · fill counts confirmed bookings against headcount (§3.2);
@@ -78,7 +78,7 @@ export async function loadDashboard(): Promise<DashboardData> {
   // The three views are not in the generated `Database` type: they are
   // this migration's and the types are regenerated per migration, not per
   // screen. The row shapes are asserted here and must match
-  // 20260922180000_dashboard_kpis.sql.
+  // 20260922182000_dashboard_kpis.sql.
   const kpiRow = kpis.data as unknown as KpiRow | null;
   const financeRow = finance.data as unknown as FinanceRow | null;
   const rows = (upcoming.data ?? []) as unknown as UpcomingRow[];

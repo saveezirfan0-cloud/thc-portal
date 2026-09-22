@@ -1,23 +1,27 @@
 import type { ReactNode } from 'react';
 import { AppBody, AppFrame } from '@thc/ui';
-import { BottomTabs } from './BottomTabs';
 import { AppChrome } from './AppChrome';
-import type { ChromeWorker } from './AppChrome';
-import { LockScreen } from './LockScreens';
+import { BottomTabs } from './BottomTabs';
+import { TabLockedScreen } from './DocumentsLock';
 import { PushStatus } from './PushStatus';
-import { lockFor, reachableTabs } from '../lock';
-import type { Lock } from '../lock';
-import { loadWorker } from '../worker';
-import type { Worker } from '../worker';
-import '../chrome.css';
+import { LockScreen } from '../profile/_components/LockScreen';
+import { appLock, reachableTabs, showsBottomNav } from '../profile/lock';
+import { loadProfile } from '../profile/data';
+import type { StaffProfile } from '../profile/types';
 
 /**
  * The Staff App chrome (§10.1): frosted header, body, frosted bottom nav,
- * profile sheet behind the avatar, and the app lock in front of all of it.
+ * the profile behind the avatar, and the app lock in front of all of it.
  *
  * Every working screen renders through here, which is the point: the lock
  * is not something each screen remembers to check. A screen that forgets
  * shows a blocked worker their shifts.
+ *
+ * The RULE is `appLock()` from `profile/lock.ts` (#42) and is not restated
+ * here — this file applies it. That split matters: #42 computed the lock
+ * on the profile screen only, so an auto-blocked worker could still open
+ * /shifts, and §10.1 says "ONLY the Documents tab is available". The rule
+ * is theirs; the app-wide gate is this.
  *
  * The four tabs are the ones §10.4 names, in the wireframes' order. Counts
  * are passed in rather than fetched here so the nav badge and the list it
@@ -33,9 +37,9 @@ export async function StaffShell({
   invites,
   below,
   /**
-   * Screens that are ABOUT the lock, or that must work before the worker
-   * is compliant — /install and /notifications (§10.5) — render their own
-   * content regardless. Everything else is gated.
+   * Screens that must work before the worker is compliant — /install and
+   * /notifications (§10.5) — render their own content whatever the lock
+   * says. The NAVIGATION still reflects it.
    */
   ignoreLock,
   children,
@@ -49,14 +53,11 @@ export async function StaffShell({
   ignoreLock?: boolean;
   children: ReactNode;
 }) {
-  const worker = await loadWorker();
-  // No worker row (no database wired up, docs/04) means nothing to lock on.
+  const profile = await loadProfile();
+  // No profile (no database wired up, docs/04) means nothing to lock on.
   // Locking on an absent row would black out the whole app on the strength
   // of a failed query, which is a worse failure than the one it prevents.
-  const lock: Lock = worker ? lockFor(worker) : { kind: 'none' };
-  // The nav always reflects the real lock, even on a screen that renders
-  // regardless of it: a blocked worker on /notifications must still see
-  // Shifts, Invites and Radar closed (§10.1).
+  const lock = profile ? appLock(profile) : 'none';
   const unlocked = reachableTabs(lock);
 
   const items = [
@@ -70,32 +71,30 @@ export async function StaffShell({
     { href: '/radar', label: 'Radar' },
   ].map((item) => ({ ...item, locked: !unlocked.includes(item.href) }));
 
-  // Cases 2, 3 and 4 of §10.1 are terminal: there is no navigation to
-  // offer, and the leaver's own wireframe keeps the bar only to show all
-  // four closed. Case 1 keeps the bar, with three of the four locked.
-  const terminal = lock.kind === 'hold' || lock.kind === 'rejected' || lock.kind === 'removed';
-  const showNav = !terminal;
-
-  const body =
-    ignoreLock || lock.kind === 'none' || (lock.kind === 'documents' && active === '/documents') ? (
-      <>
-        <PushStatus />
-        {children}
-      </>
-    ) : (
-      <LockScreen lock={lock} />
-    );
+  // `showsBottomNav` (#42): the leaver keeps the bar with all four closed,
+  // because the wireframe does; a hold, a rejection and a removal get no
+  // bar at all, because §10.1 says the Documents tab "is not shown as an
+  // action either" and a row of dead tabs reads as one.
+  const open = ignoreLock || lock === 'none';
+  const showNav = showsBottomNav(lock);
 
   return (
     <AppFrame>
       <AppChrome
-        title={lock.kind === 'none' || ignoreLock ? title : 'The Hospitality Company'}
-        {...(sub && (lock.kind === 'none' || ignoreLock) ? { sub } : {})}
-        {...(below && (lock.kind === 'none' || ignoreLock) ? { below } : {})}
-        worker={chromeWorker(worker, lock)}
+        title={open ? title : 'The Hospitality Company'}
+        {...(sub && open ? { sub } : {})}
+        {...(below && open ? { below } : {})}
+        worker={chromeWorker(profile)}
       />
-      <AppBody className={lock.kind === 'none' || ignoreLock ? undefined : 'center'}>
-        {body}
+      <AppBody className={open ? undefined : 'center'}>
+        {open ? (
+          <>
+            <PushStatus />
+            {children}
+          </>
+        ) : (
+          <Locked lock={lock} profile={profile} />
+        )}
       </AppBody>
       {showNav ? <BottomTabs tabs={items} {...(active ? { active } : {})} /> : null}
     </AppFrame>
@@ -103,34 +102,47 @@ export async function StaffShell({
 }
 
 /**
- * What the profile sheet shows about the worker. Note what is NOT here:
- * `block_reason` is never loaded (see lock.ts), so no render path can
- * leak the manager's internal note (§9.6).
+ * Which screen a lock puts in place of the tab.
+ *
+ * The four terminal cases are #42's `LockScreen` — one implementation of
+ * THC's E4 copy, of §10.6's leaver wording and of the hold sentence, used
+ * both here and at /profile. `documents` and `onboarding` are NOT passed
+ * to it: it falls through to the hold screen for anything it does not
+ * recognise, and telling an auto-blocked worker their account is on hold
+ * would be wrong in the one case where they can actually fix something.
  */
-function chromeWorker(worker: Worker | null, lock: Lock): ChromeWorker | null {
-  if (!worker) return null;
-  const name = `${worker.firstName} ${worker.lastName}`.trim() || 'Your profile';
-  return {
-    name,
-    employeeId: worker.employeeId,
-    // The selfie lives in Storage and is served through a signed URL the
-    // onboarding session owns (§10.3 step 3). Initials until then.
-    photoUrl: null,
-    standing: standingFor(lock),
-  };
+function Locked({
+  lock,
+  profile,
+}: {
+  lock: ReturnType<typeof appLock>;
+  profile: StaffProfile | null;
+}) {
+  if (lock === 'documents' || lock === 'onboarding') {
+    return (
+      <TabLockedScreen
+        blockers={profile?.blockers ?? []}
+        blockKind={profile?.blockKind ?? null}
+        onboarding={lock === 'onboarding'}
+      />
+    );
+  }
+  return <LockScreen lock={lock} leftAt={profile?.leftAt ?? null} />;
 }
 
-function standingFor(lock: Lock): ChromeWorker['standing'] {
-  switch (lock.kind) {
-    case 'none':
-      return { label: 'Compliant', tone: 'green' };
-    case 'documents':
-      return { label: 'Action needed', tone: 'coral' };
-    case 'hold':
-      return { label: 'On hold', tone: 'amber' };
-    case 'leaver':
-      return { label: 'Left', tone: 'neutral' };
-    default:
-      return { label: 'Closed', tone: 'neutral' };
-  }
+/**
+ * What the header shows about the worker. Note what is NOT here:
+ * `staff_me()` does not return `block_reason` and `StaffProfile` has no
+ * field for it (#42, types.ts), so there is no path from a manager's
+ * internal note (§9.6) to this app's markup.
+ */
+function chromeWorker(profile: StaffProfile | null) {
+  if (!profile) return null;
+  return {
+    name: `${profile.firstName} ${profile.lastName}`.trim() || 'Your profile',
+    // The signed selfie URL is `profile/photos.ts`'s and costs a Storage
+    // round trip; the header falls back to initials rather than spending
+    // one on every screen. /profile itself shows the photo.
+    photoUrl: null,
+  };
 }

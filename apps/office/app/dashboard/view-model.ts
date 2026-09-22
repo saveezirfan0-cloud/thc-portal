@@ -6,7 +6,7 @@ import type { Tone } from '@thc/ui';
  *
  * Pure functions only, and no arithmetic that decides anything: the money,
  * the fill and the margin are all computed by
- * `20260922180000_dashboard_kpis.sql`. What is here is how they read, and
+ * `20260922182000_dashboard_kpis.sql`. What is here is how they read, and
  * how the flat section rows are grouped into events.
  *
  * It is a separate file from `data.ts` so it can be unit-tested: `data.ts`

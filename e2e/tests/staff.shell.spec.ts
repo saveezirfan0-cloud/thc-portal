@@ -37,17 +37,48 @@ async function serving(page: Page): Promise<boolean> {
 
 /** Moves the seeded worker into a state. Service key: no RLS, no session. */
 async function setStaff(fields: Record<string, unknown>): Promise<void> {
-  const response = await fetch(`${supabaseUrl}/rest/v1/staff?id=eq.${AMARA_STAFF_ID}`, {
+  await rest(`staff?id=eq.${AMARA_STAFF_ID}`, {
     method: 'PATCH',
+    body: JSON.stringify(fields),
+  });
+}
+
+/** A passport that expired yesterday, for the §4.3 re-check. */
+const EXPIRED_DOC_ID = '62000000-0000-4000-8000-0000000000ff';
+
+async function rest(path: string, init: RequestInit): Promise<Response> {
+  const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
+    ...init,
     headers: {
       apikey: serviceKey as string,
       Authorization: `Bearer ${serviceKey}`,
       'Content-Type': 'application/json',
       Prefer: 'return=minimal',
+      ...(init.headers ?? {}),
     },
-    body: JSON.stringify(fields),
   });
-  if (!response.ok) throw new Error(`seeding the lock state failed: ${response.status}`);
+  if (!response.ok) throw new Error(`${init.method} ${path} failed: ${response.status}`);
+  return response;
+}
+
+async function addExpiredDocument(): Promise<void> {
+  await removeExpiredDocument();
+  await rest('compliance_docs', {
+    method: 'POST',
+    body: JSON.stringify({
+      id: EXPIRED_DOC_ID,
+      staff_id: AMARA_STAFF_ID,
+      doc_type: 'passport',
+      file_path: 'documents/873/expired-passport.pdf',
+      expiry_date: new Date(Date.now() - 86_400_000).toISOString().slice(0, 10),
+      review_status: 'verified',
+      needs_manual_review: false,
+    }),
+  });
+}
+
+async function removeExpiredDocument(): Promise<void> {
+  await rest(`compliance_docs?id=eq.${EXPIRED_DOC_ID}`, { method: 'DELETE' });
 }
 
 const COMPLIANT = {
@@ -67,18 +98,6 @@ async function signIn(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Sign in' }).click();
   await page.waitForURL((url) => !url.pathname.startsWith('/login'));
 }
-
-// Serial for the WHOLE FILE, not per block.
-//
-// Two describes below sign in as Amara, and the lock block rewrites her row
-// through the REST API to walk the four §10.1 states. `mode: 'serial'` inside
-// each block only orders the tests within it — with `fullyParallel: true` and
-// two workers the blocks themselves still ran at the same time, so the lock
-// block blanked the bottom bar while the compliant-worker block was asserting
-// on it. That surfaced as two "flaky" tests that passed on retry, which is the
-// misleading shape of this bug: a shared fixture being mutated under another
-// test reads as an infrastructure wobble. It is not one, and retrying hides it.
-test.describe.configure({ mode: 'serial' });
 
 test.describe('PWA shell (§10.1, §10.5)', () => {
   test.beforeEach(async ({ page }) => {
@@ -205,21 +224,18 @@ test.describe('The shell around a compliant worker (§10.1)', () => {
     await expect(nav.locator('.locked')).toHaveCount(0);
   });
 
-  test('the avatar opens the profile sheet, with the help line and the P45 action', async ({
-    page,
-  }) => {
-    await page.goto('/shifts');
-    await page.getByRole('button', { name: 'Your profile' }).click();
-    const sheet = page.getByRole('dialog', { name: 'Your profile' });
-    await expect(sheet).toBeVisible();
-    // §10.1's three links, the sign-out, the contact LINE (not a screen),
-    // and §10.6's action at the very bottom.
-    await expect(sheet.getByText('Profile details')).toBeVisible();
-    await expect(sheet.getByText('Security settings')).toBeVisible();
-    await expect(sheet.getByText('Payment information')).toBeVisible();
-    await expect(sheet.getByRole('button', { name: 'Sign out' })).toBeVisible();
-    await expect(sheet.getByText('admin@thehospitalitycompany.co.uk').first()).toBeVisible();
-    await expect(sheet.getByText(/Request my P45/)).toBeVisible();
+  test('the avatar is the way into the profile, on every tab (§10.1)', async ({ page }) => {
+    // The sheet itself is /profile (#42) — its three links, the help line
+    // and the §10.6 P45 flow are asserted by that session's own tests. What
+    // belongs to the chrome is that every screen carries the avatar, that
+    // it goes there, and that there is no profile TAB competing with it.
+    for (const path of ['/shifts', '/invites', '/radar']) {
+      await page.goto(path);
+      const avatar = page.locator('header.app-header a.avatar-btn');
+      await expect(avatar).toHaveAttribute('href', '/profile');
+      await expect(avatar).toHaveAccessibleName('Your profile');
+      await expect(page.locator('nav.bottom-nav').getByText('Profile')).toHaveCount(0);
+    }
   });
 });
 
@@ -242,7 +258,26 @@ test.describe('App lock — the four cases (§10.1)', () => {
     if (serviceKey && supabaseUrl) await setStaff(COMPLIANT);
   });
 
-  test('1 · an expired document leaves ONLY Documents open (§4.3)', async ({ page }) => {
+  test('1 · an expired document locks the app before any job has run (§4.3)', async ({ page }) => {
+    // The worker's ROW still says compliant: the nightly sweep has not run
+    // yet. `appLock()` re-checks `compliance_blockers()` itself, so the
+    // passport that expired last night closes Shifts this morning rather
+    // than tonight. Nothing else in the app asks that question.
+    await setStaff(COMPLIANT);
+    await addExpiredDocument();
+    try {
+      await page.goto('/shifts');
+      await expect(page.getByText('You have been blocked — update your document.')).toBeVisible();
+      // The reason is the real one, read off the blocker, not a guess from
+      // the status.
+      await expect(page.getByText(/1 expired document/)).toBeVisible();
+      await expect(page.locator('nav.bottom-nav .locked')).toHaveCount(3);
+    } finally {
+      await removeExpiredDocument();
+    }
+  });
+
+  test('1 · an auto-block leaves ONLY Documents open (§4.3)', async ({ page }) => {
     await setStaff({ status: 'blocked', block_kind: 'auto_document', block_reason: null });
     await page.goto('/shifts');
 
@@ -293,7 +328,13 @@ test.describe('App lock — the four cases (§10.1)', () => {
 
     await expect(page.getByText('You’ve left The Hospitality Company.')).toBeVisible();
     await expect(page.getByText(/P45 has been requested/)).toBeVisible();
-    await expect(page.getByRole('button', { name: /Payment information/ })).toBeVisible();
+    // The one live action a leaver keeps (§10.6 step 7). It is a link to
+    // /profile/payments, not a dead button: their earnings history has to
+    // stay reachable after they leave.
+    await expect(page.getByRole('link', { name: /Payment information/ })).toHaveAttribute(
+      'href',
+      '/profile/payments',
+    );
     // The bar stays, showing all four closed — that is the wireframe.
     const nav = page.locator('nav.bottom-nav');
     await expect(nav).toBeVisible();

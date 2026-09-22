@@ -17,7 +17,7 @@ import {
 
 /**
  * §9.1's formatting rules. The arithmetic is the database's
- * (20260922180000_dashboard_kpis.sql, pinned by supabase/tests/320); what
+ * (20260922182000_dashboard_kpis.sql, pinned by supabase/tests/320); what
  * is asserted here is the part a screen can still get wrong on its own —
  * the buffer, the fill denominator, and dates that must not slide a day.
  */

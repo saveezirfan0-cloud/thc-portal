@@ -1,5 +1,5 @@
 -- =====================================================================
--- 330 · The device's write path into push_subscriptions (§10.5, §8)
+-- 340 · The device's write path into push_subscriptions (§10.5, §8)
 --
 -- The table's RLS is already covered (010 admin, 030 staff, 040 anon).
 -- What is new in 20260922181000 is the pair of functions the Staff App
