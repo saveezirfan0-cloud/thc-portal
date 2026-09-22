@@ -86,9 +86,15 @@ select is(
   '§4.5: completion letter PLUS opt-out is what removes the weekly ceiling'
 );
 
+-- A ceiling of 0 has exactly one meaning: the whole week falls past a lapsed
+-- right to work, so there is no workable day in it (RULE-20). Anywhere else a
+-- 0 would read as "no hours left this week" to every caller, which is what an
+-- absent ceiling must never collapse to — that stays null, asserted directly
+-- against weekly_cap above and weekly_hours_remaining below.
 select is_empty(
-  $$ select 1 from cap_vectors where expect_cap_hours = 0 $$,
-  'no ceiling is null, never 0 — a 0 would read as "no hours left" to every caller'
+  $$ select 1 from cap_vectors
+      where expect_cap_hours = 0 and expect_band <> 'visa_expired_0' $$,
+  'the only ceiling of 0 is a right to work that expired before the week began'
 );
 
 -- ---------------------------------------------------------------------
