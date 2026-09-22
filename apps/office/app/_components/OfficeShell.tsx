@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Content, Shell, Sidebar, Topbar } from '@thc/ui';
+import { Content, Logo, Shell, Sidebar, Topbar } from '@thc/ui';
 import type { ReactNode } from 'react';
 
 /**
@@ -69,7 +69,7 @@ export function OfficeShell({
           activeHref={activeHref}
           brand={
             <>
-              <span className="logo">THC</span>
+              <Logo />
               <div>
                 <div className="name">The Hospitality Company</div>
                 <div className="sub">Back Office</div>

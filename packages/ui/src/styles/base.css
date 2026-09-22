@@ -146,10 +146,29 @@ code {
   height: 58%;
   object-fit: contain;
 }
+/* The mark is taller than it is wide, so height is what sets its size: at
+   58% of the tile the two glasses sit on the same optical centre as the
+   generated app icons. `currentColor` is --on-cyan from the tile above, so
+   one file works on the cyan in dark and the teal in light (brand/README). */
+.logo .logo-mark {
+  height: 62%;
+  width: auto;
+  max-width: 70%;
+  display: block;
+}
 .brand {
   display: flex;
   align-items: center;
   gap: var(--sp-10);
+  min-width: 0;
+}
+/* The sidebar brand sits in a box exactly as tall as the top bar, so the two
+   rules line up across the shell. "The Hospitality Company" is long enough
+   to wrap inside 236px at some font fallbacks, which pushed "Back Office"
+   out through the bottom of that box. It truncates instead: the divider
+   stays where the top bar's divider is. */
+.brand > * {
+  min-width: 0;
 }
 .brand .name {
   display: block;
@@ -157,9 +176,15 @@ code {
   font-weight: 600;
   font-size: var(--fs-13);
   line-height: 1.15;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .brand .sub {
   display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-family: var(--font-label);
   font-size: var(--fs-9);
   letter-spacing: var(--label-track);

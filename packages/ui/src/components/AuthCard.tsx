@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { Logo } from './Logo';
 
 export interface AuthCardProps {
   /** Which app this is, shown under the company name. */
@@ -28,9 +29,7 @@ export function AuthCard({
     <div className="auth-wrap">
       <section className="auth-card">
         <div className="brand">
-          <span className="logo" aria-hidden="true">
-            THC
-          </span>
+          <Logo size="lg" />
           <div>
             <div className="name">The Hospitality Company</div>
             <div className="sub">{product}</div>
