@@ -38,10 +38,10 @@ select is((select status::text from staff where email = 'nadia.testwood@rls.test
   '§2.1 there is no "Applied" stage: the candidate lands straight in Interview requested');
 select is((select phone from staff where last_name = 'Testwood'), '+447010000456',
   'the mobile is stored in E.164, as the form promises');
-select is((select dob from staff where last_name = 'Testwood'), null::date,
-  'the candidate has no date of birth yet: /apply collects an age band, and a date of birth arrives with Right to Work (§2.5)');
-select is((select applied_age_band from staff where last_name = 'Testwood'), '24',  -- derived from the date
-  'the age band is kept as the evidence behind the server-side 18+ gate');
+select is((select dob from staff where last_name = 'Testwood'), (current_date - interval '24 years')::date,
+  'the candidate carries the date of birth from creation (ADR-0008), which is what §2.6 needs for the share-code check');
+select is((select applied_age_band from staff where last_name = 'Testwood'), '24',
+  'and the age band beside it is derived from that date, not asked for separately');
 select is((select employee_id from staff where last_name = 'Testwood'), null::int,
   '§2.7 the Employee ID is generated at contract signature, not here');
 select is((select outcome::text from applications where last_name = 'Testwood'), 'candidate_created',
@@ -61,12 +61,12 @@ select throws_ok(
   '§2.1 under 18 is rejected on the server, so a tampered form still fails');
 select throws_ok(
   $$ select submit_application('Kid','Young','kid@rls.test','+447700900801', (current_date + interval '1 day')::date, true) $$,
-  '22023', 'You must be 18 or over to apply.',
-  'an age band the form never offered is refused rather than guessed at');
+  '22023', 'Enter a real date of birth.',
+  'a date in the future is refused as impossible, not as under-age');
 select throws_ok(
   $$ select submit_application('Kid','Young','kid@rls.test','+447700900801', null::date, true) $$,
-  '22023', 'You must be 18 or over to apply.',
-  'a missing age is not treated as an adult');
+  '22023', 'Enter your date of birth.',
+  'a missing date is asked for rather than treated as an adult');
 
 -- ---------------------------------------------------------------------
 -- Consent (§1.7) and the field rules
@@ -133,17 +133,16 @@ select is((select count(*)::int from staff where email = 'someone.newagain@rls.t
 -- The same number with a different date is a different person — a recycled
 -- number, or a second person in one household — and must not be matched.
 set local role anon;
-select submit_application('Not','Thesame','not.thesame@rls.test','+447700900108', date '1975-04-04', true);
+select submit_application('Not','Thesame','not.thesame@rls.test','+447700900108', (current_date - interval '55 years')::date, true);
 reset role;
 select is((select outcome::text from applications where email = 'not.thesame@rls.test'), 'candidate_created',
   '§2.12 the same mobile with a different date of birth is a new candidate, not a match');
 
-select is((select dob from applications where email = 'not.thesame@rls.test'), date '1975-04-04',
+select is((select dob from applications where email = 'not.thesame@rls.test'), (current_date - interval '55 years')::date,
   'the date of birth is stored on the application row, which is what the match reads');
 
-select is((select age_band from applications where email = 'not.thesame@rls.test'),
-  (extract(year from age(current_date, date '1975-04-04'))::int)::text,
-  'and the §2.1 band is derived from it rather than asked for (ADR-0008)');
+select is((select age_band from applications where email = 'not.thesame@rls.test'), '51_60',
+  'and the §2.1 band is derived from it rather than asked for: 55 lands in the 51 – 60 band, not a bare year count (ADR-0008)');
 
 -- A GDPR-removed worker (§1.7) is deliberately unmatchable: their record no
 -- longer describes them, so they apply as a genuinely new person.

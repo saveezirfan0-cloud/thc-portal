@@ -77,6 +77,12 @@ end $$;
 -- Dropped rather than replaced: the parameter list changes, and
 -- `create or replace` on a different signature leaves the old function
 -- behind as an overload that `anon` can still call.
+--
+-- The body below is 20260921160000's, not 20260921150000's: the advisory
+-- lock and the two indexed match expressions that migration added are
+-- carried over deliberately. Rebuilding from the older body silently
+-- reverts a concurrency fix, which is exactly what happened on the first
+-- attempt at this migration and what 120_apply's lock assertion caught.
 -- ---------------------------------------------------------------------
 drop function if exists public.submit_application(text, text, text, text, text, boolean);
 
@@ -94,14 +100,14 @@ declare
   v_first   text := nullif(btrim(coalesce(p_first_name, '')), '');
   v_last    text := nullif(btrim(coalesce(p_last_name, '')), '');
   v_email   text := nullif(lower(btrim(coalesce(p_email, ''))), '');
-  v_phone   text := nullif(regexp_replace(coalesce(p_phone, ''), '[^0-9+]', '', 'g'), '');
+  -- '+' is what an empty number normalises to, and is not a number.
+  v_phone   text := nullif(normalise_msisdn(coalesce(p_phone, '')), '+');
   v_age     int;
   v_band    text;
   v_match   uuid;
-  v_staff   uuid;
   v_outcome application_outcome;
+  v_staff   uuid;
 begin
-  -- ---- the form's own rules, repeated where they cannot be edited out ----
   if v_first is null or v_last is null then
     raise exception 'Enter your first name and surname.' using errcode = '22023';
   end if;
@@ -111,7 +117,6 @@ begin
   if v_phone is null or v_phone !~ '^\+[1-9][0-9]{6,14}$' then
     raise exception 'Enter a valid mobile number, including the country code.' using errcode = '22023';
   end if;
-  -- §1.7: no consent, no processing. Checked here as well as on the form.
   if p_consent is not true then
     raise exception 'Tick the consent box to continue.' using errcode = '22023';
   end if;
@@ -141,26 +146,24 @@ begin
     else '60_plus'
   end;
 
-  -- ---- duplicate check (§2.12) ------------------------------------------
-  -- Email, or mobile AND date of birth — the match the scope specifies, now
-  -- that there is a date to match on. A removed worker (§1.7) is
-  -- deliberately unmatchable.
-  --
-  -- Both sides of the mobile comparison are normalised, not just the one
-  -- coming in: `staff.phone` is free text and every worker in
-  -- supabase/seed.sql holds a spaced number ("+44 7700 900108"), so
-  -- comparing against the stored string directly would mean the mobile half
-  -- of §2.12 silently never matched anybody.
+  -- Held to the end of this transaction, keyed on the two things the match
+  -- below looks at. Taken after validation so a malformed submission
+  -- cannot be used to hold a lock somebody else needs. Carried over from
+  -- 20260921160000 — recreating this function must not quietly drop it.
+  perform pg_advisory_xact_lock(hashtext(v_email), hashtext(v_phone));
+
+  -- §2.12 against the two indexed expressions, with the mobile arm now
+  -- carrying the date of birth the scope always specified. A removed
+  -- worker (§1.7) stays unmatchable.
   select s.id into v_match
     from staff s
    where s.removed_at is null
-     and (lower(s.email) = v_email
-          or (regexp_replace(s.phone, '[^0-9+]', '', 'g') = v_phone and s.dob = p_dob))
+     and (lower(btrim(s.email)) = v_email
+          or (normalise_msisdn(s.phone) = v_phone and s.dob = p_dob))
    order by s.created_at
    limit 1;
 
   if v_match is not null then
-    -- No second candidate. The office decides on the existing record.
     v_staff   := v_match;
     v_outcome := 'returning_applicant';
   else
@@ -176,9 +179,6 @@ begin
   insert into audit_log (actor, action, entity, entity_id, data)
   values (null, 'application_submitted', 'staff', v_staff,
           jsonb_build_object('outcome', v_outcome, 'age_band', v_band));
-
-  -- Returns void on purpose: the caller cannot tell a new candidate from a
-  -- returning one, which is what §2.12 requires.
 end
 $$;
 
