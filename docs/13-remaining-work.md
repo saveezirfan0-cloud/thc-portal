@@ -42,7 +42,10 @@ Also built, server side only, with no screen in front of any of it:
   contacts deleted, login unlinked, future bookings released — and the Employee ID,
   bookings, violations and verbatim feedback all retained for reporting
 
-Not built: every screen bar sign-in, the venues directory and the roles directory. Of the
+Not built: every screen bar sign-in, `/apply` (§2.1), the events list (§3.1), the Shift
+Builder (§3.2), Roles & rates (§9.8), Venues (§9.11) and the Client Portal (§11.1, §11.2,
+§11.5) — the Client Portal being the only one of the three apps finished end to end, apart
+from §11.3's PDFs, which its document buttons say plainly they are waiting on. Of the
 background rules, BG-06/07 (geofence) wait on the geolocation shell and BG-08 on the
 reports layer. Nothing writes `location_pings`, so the off-site check-out path always
 takes its RULE-02 fallback until that shell lands.

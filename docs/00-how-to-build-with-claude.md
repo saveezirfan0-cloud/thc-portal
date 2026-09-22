@@ -10,9 +10,9 @@ is covered by tests.
 
 | Suite | Count | Command |
 |---|---|---|
-| Unit | 522 | `pnpm test` |
+| Unit | 540 | `pnpm test` |
 | Browser smoke | 50 | `pnpm turbo e2e:smoke` |
-| Database, row-level security and rules | 696 over 18 files | `supabase test db` |
+| Database, row-level security and rules | 890 over 25 files | `supabase test db` |
 
 The database figure is derived, not measured here: 544 over 14 files at `ad81538`,
 plus the declared plans of the four files merged since — 130 auto-assign (57),
@@ -28,7 +28,7 @@ The browser figure is 50 tests, of which 44 run and 6 skip on a checkout with no
 and the Shift Builder and Client Portal suites need one to be absent. CI has a
 project, so a different six skip there.
 
-What exists:
+What exists, at platform level:
 
 - **Three apps** on Next.js. Office on port 3000, staff on 3001, client on 3002.
   `pnpm i && pnpm dev` works on a fresh clone with no environment file.
@@ -41,62 +41,33 @@ What exists:
   component against both token axes.
 - **Seed data**: 5 clients, 8 venues, 6 roles, 40 workers, mirroring
   `wireframes/CONVENTIONS.md`.
-- **The §8 notification register** in `packages/notifications`: every push N1–N15 and
-  every email E1–E9, copy verbatim from the scope.
-- **The day of the shift** (§5.1–5.2b): migration `0006` adds `attempt_check_in`,
-  `check_out`, the four pure rule functions behind them and `payable_shifts_v`.
-  `packages/domain/pay.ts` repeats the same rules in TypeScript, and
-  `packages/domain/src/pay.vectors.json` is the contract between them: Vitest reads it,
-  pgTAP reads the file generated from it, and a drift test fails the build if the copy
-  goes stale. Migration `20260921153000` adds the write paths that maths was waiting
-  on: `start_break` / `finish_break` (§5.2b) and `resolve_violation` (§9.5), which is
-  what finally lets an unresolved No check-out settle and RULE-14's floor come back.
-  The two screens on top — the Check-in monitor (§9.5) and the on-shift screen
-  (§10.4) — are still to come, as is the background-geolocation shell: nothing writes
-  `location_pings` yet, so every off-site check-out currently falls to the RULE-02
-  fallback by design.
-- **The public application form** at `/apply` (§2.1), the first screen of Phase 1, with
-  `submit_application()` behind it: the age gate on the form, in the server action and in
-  the database, and the §2.12 duplicate check.
-- **The Shift Builder** at `/events/new` and `/events/:id/edit` (§3.2), the first screen
-  of Phase 3. Its rules live in `packages/domain/shift.ts` with `shift.vectors.json`:
-  the four-hour minimum per role section, the derived event window (RULE-18), the
-  allocation default of headcount + buffer, and the edit lock at the event's start.
+- **27 migrations and 25 pgTAP files.** Every table carries row-level security and a
+  test per role.
 
-- **The Client Portal** at `/client` and `/client/events/:id` (§11.1, §11.2), the whole
-  customer-facing app: the event list with "N of M confirmed" and the confirmed workers'
-  faces, the event page grouped by role, and the feedback popup. Its reads go through the
-  three owner-rights `client_*` views (ADR-0004) and its one write goes through
-  `submit_client_feedback()`, which re-checks tenancy, confirmed status, the event having
-  started and one-entry-per-worker-per-event — a disabled button stops nobody. §11.3's
-  PDFs are not built, so the document buttons say so rather than linking nowhere.
+**The screen-by-screen, system-by-system map lives in `docs/13-remaining-work.md` under
+"State of play", and that is the only copy.** This file used to keep a second one; the two
+drifted apart inside a day and both were wrong by the next morning. Do not reintroduce it
+here — when the two disagree, nobody can tell which is stale.
 
-What does not exist yet: every screen in Phases 1 to 7 apart from the application form,
-the Shift Builder and the Client Portal, the Supabase project, and the Vercel projects. Two pieces the
-Shift Builder leans on are also outstanding and belong to later sessions:
+Screens that exist today: `/apply` and `/apply/submitted` (§2.1, §2.12), the events list
+(§3.1), the Shift Builder (§3.2), Roles & rates (§9.8), Venues (§9.11), and the whole
+Client Portal (§11.1, §11.2, §11.5). A great deal more is built server-side with no screen
+in front of it — the day of the shift, auto-assign, compliance, leaving, convictions, the
+manager's buttons and GDPR removal — which `docs/13` lists in full.
 
-- **Auto-assign's Deno half** (§3.4). The engine itself is built and tested in SQL —
-  the candidate pool with its hard gates, additive invitations, first-to-confirm with
-  automatic withdrawal of overlapping invitations, the 12:00 cutoff, self-cancel, and the
-  exclusive handover from the hourly round to escalation. The §6 scoring deliberately
-  stays in `packages/domain/scoring.ts` so it has one implementation, which is why the
-  last piece is an Edge Function that ranks between two RPCs — and why it waits on
-  ADR-0006 alongside `notify-drain`. Until it exists no round fires on a schedule, so a
-  saved event still fills nobody without someone calling the RPCs.
-- **The sender behind the outbox** (§8). Saving a time, dress-code or venue change sets
-  `reconfirm_required` on that section's confirmed bookings and queues N11 in
-  `notification_outbox` with its idempotency key — but no job drains the outbox to Web
-  Push yet, so the row waits there.
+Two systemic gaps shape what is worth planning next:
+
+- **Nothing is sent.** N1–N15 and E1–E9 reach `notification_outbox` and stop. The drain is
+  registered but disabled, because Web Push needs VAPID keys and email needs Resend
+  (`docs/14` O3). Every feature that "notifies" someone is therefore only half-observable.
+- **Auto-assign does not fire on a schedule.** The engine, the additive rounds, the 12:05
+  cutoff and the escalation handover are built and tested in SQL. The Edge Function that
+  ranks between two RPCs is not, and waits on ADR-0006, so a saved event still fills
+  nobody unless somebody calls the RPCs by hand.
 
 Steps 2 and 3 of `docs/04` are still to do and need THC's accounts.
 
-**Open with THC.** §2.1 collects an *age band* on /apply while §2.12 matches duplicates on
-*mobile + date of birth*, and the form has no date-of-birth field. Until THC decides,
-the public-form migration matches on email and on mobile — the wider net of the two — and `staff.dob` stays
-null until Right to Work supplies one (§2.5). `wireframes/public/apply.html` carries the
-same flag.
-
-## Security: one item closed, one open
+## Security: five closed, one open
 
 1. **Closed.** A client could read both the charge rate and the pay rate straight from
    the role-sections table, which §11.1 forbids absolutely. Migration `0002` drops that
