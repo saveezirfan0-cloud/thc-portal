@@ -10,11 +10,12 @@ import { expect, test } from '@playwright/test';
  *
  * In CI they skip. Since #15 the workflow points the apps at the local
  * Supabase stack before e2e:smoke, so every route is gated and /client
- * redirects to /login — the same reason office.shift-builder.spec.ts skips
- * itself. Making them run there needs a signed-in session fixture, which
- * belongs with the seeded suite rather than here. Until that exists the
- * portal's behaviour is held by supabase/tests/160_client_portal.sql and the
- * unit tests over `rules.ts`, both of which do run on every push.
+ * redirects to /login. Making them run there needs a signed-in session
+ * fixture — the one office.shift-builder.spec.ts now uses through
+ * openAsAdmin, which is why it stopped skipping and this suite has not. A
+ * client fixture belongs with the seeded suite rather than here. Until it
+ * exists the portal's behaviour is held by supabase/tests/160_client_portal.sql
+ * and the unit tests over `rules.ts`, both of which do run on every push.
  */
 
 test.beforeEach(async ({ page }) => {
@@ -69,10 +70,9 @@ test('the selection process is never named in the portal (§11.2)', async ({ pag
 });
 
 test('an event that belongs to nobody renders not-found, not a crash', async ({ page }) => {
-  const response = await page.goto(
-    '/client/events/00000000-0000-4000-8000-000000000000',
-    { waitUntil: 'domcontentloaded' },
-  );
+  const response = await page.goto('/client/events/00000000-0000-4000-8000-000000000000', {
+    waitUntil: 'domcontentloaded',
+  });
   // Without a project the page reports that rather than 404ing; with one, a
   // stranger's id and a nonexistent id are indistinguishable by design.
   expect([200, 404]).toContain(response?.status() ?? 0);

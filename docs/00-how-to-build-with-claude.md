@@ -11,7 +11,7 @@ is covered by tests.
 | Suite | Count | Command |
 |---|---|---|
 | Unit | 577 | `pnpm test` |
-| Browser smoke | 50 | `pnpm turbo e2e:smoke` |
+| Browser smoke | 56 | `pnpm turbo e2e:smoke` |
 | Database, row-level security and rules | 891 over 25 files | `supabase test db` |
 
 The database figure is derived, not measured here: 544 over 14 files at `ad81538`,
@@ -23,10 +23,13 @@ green `supabase test db` makes each of those counts exact. `supabase start` need
 Docker, which some sandboxes block; when it is unavailable, take the number from
 the CI run rather than a local count.
 
-The browser figure is 50 tests, of which 44 run and 6 skip on a checkout with no
-`.env.local`: the gate tests need a configured project to have a gate to assert,
-and the Shift Builder and Client Portal suites need one to be absent. CI has a
-project, so a different six skip there.
+The browser figure is 56 — nine spec files over three Playwright projects, so the
+suites that run per app are counted once per app. On a checkout with no `.env.local`,
+44 run and 12 skip: the two role-routing assertions in `gate.smoke` need a configured
+project to have a gate to assert, and they run in all three projects (six), while the
+Event Board suite needs a seeded event (six). CI has both a project and a seeded
+database, so those twelve run there and the Client Portal suite skips instead — it
+asserts an ungated shell, and every route in CI redirects to `/login`.
 
 What exists, at platform level:
 
