@@ -277,11 +277,21 @@ test.describe('App lock — the four cases (§10.1)', () => {
     }
   });
 
-  test('1 · an auto-block leaves ONLY Documents open (§4.3)', async ({ page }) => {
+  test('1b · a block whose document is no longer nameable says so (§4.3)', async ({ page }) => {
+    // The row says `auto_document` but `compliance_blockers()` names
+    // nothing — the document that caused the block has since been replaced
+    // and the nightly sweep has not caught up. The tab locking is
+    // identical to the test above; the COPY is not, and deliberately.
+    //
+    // "Update your document" would be a dead end here: there is no
+    // document to name, so the worker cannot tell which one to replace,
+    // and the one they might re-upload is already the good one. This
+    // asserts the honest version instead.
     await setStaff({ status: 'blocked', block_kind: 'auto_document', block_reason: null });
     await page.goto('/shifts');
 
-    await expect(page.getByText('You have been blocked — update your document.')).toBeVisible();
+    await expect(page.getByText('Your account is blocked.')).toBeVisible();
+    await expect(page.getByText(/nothing for you to upload/)).toBeVisible();
     // The other three tabs are not links. A locked tab that is still
     // pressable is a different promise from one that is not.
     const nav = page.locator('nav.bottom-nav');
