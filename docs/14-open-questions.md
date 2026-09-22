@@ -420,8 +420,8 @@ saying so.
 
 ## O12 · CI resolves `supabase/setup-cli` as `latest`, and it is neither reproducible nor reliable
 
-`.github/workflows/ci.yml:24-25` and `deploy.yml:63-65` both pin the action and not the
-tool:
+Both uses of it in `.github/workflows/ci.yml` — the `build-test` job's and the
+`deploy-database` job's — pin the action and not the tool:
 
 ```yaml
 - uses: supabase/setup-cli@v1
@@ -445,7 +445,13 @@ back.
 Not fixed in #35 deliberately: the fix is to pin a version, and that session could not
 reach `supabase/cli` from its environment to read a real tag. Pinning to a guessed one
 breaks every branch rather than fixing one. Whoever takes it should choose the version
-deliberately, change both workflows together, and note it here.
+deliberately, change both uses together, and note it here.
+
+**Raised in priority since that was written.** There is now one workflow rather than two,
+but the second use is the `deploy-database` job, so `latest` no longer only decides how a
+branch is tested — it decides which build of the CLI writes to the live database, and it
+can change between two merges with no commit to explain it. The rate-limit flake that took
+down a build is now a flake on the production deploy path.
 
 ## O8 · The PR review bot — two faults, and the second one needs you today
 
@@ -627,3 +633,53 @@ is nulled — nulling it alone would strand the video for ever with nothing able
 number) until the row is drained and pruned, and `location_pings` keep the GPS trace of
 shifts worked. Both are arguably operational records rather than profile data, and §1.7
 does not mention either way — raised here rather than decided.
+
+## O13 · The repository's default branch is not `main`, and it silently broke the deploy
+
+**This one needs you, and it is two clicks.**
+
+```
+https://github.com/saveezirfan0-cloud/thc-portal/settings
+→ Default branch → switch to `main`
+```
+
+The default branch today is `claude/youthful-meitner-hs0o7d` — an agent branch from the
+first afternoon of the build, which happened to be what the repository was created from and
+was never changed. Everything since has merged into `main`, so nothing looked wrong.
+
+### What it cost
+
+The database deploy. `deploy.yml` was added on 22.09 to run `supabase db push` after `ci`
+succeeded on `main`, triggered by `workflow_run`. **It never ran once, and never could.**
+GitHub registers `workflow_run`, `schedule`, `workflow_dispatch` and `repository_dispatch`
+triggers only from the copy of the file on the *default* branch. `deploy.yml` was on `main`, so as far as GitHub
+was concerned the workflow did not exist — `actions/workflows` listed two workflows, `ci`
+and `claude`, and no third. Meanwhile `ci` concluded **success on `main` five times**
+between that merge and this one, every one of which should have deployed.
+
+The failure mode is the bad kind: not an error, not a red X, not a skipped job with a
+notice. No run, no record, nothing to notice. The live project quietly went from seventeen
+migrations behind to twenty-six while a file sat in the repository claiming to prevent
+exactly that.
+
+The deploy is now the `deploy-database` job inside `ci.yml`, gated on `needs: build-test`.
+`push` triggers run the workflow file from the pushed commit on whatever branch it was
+pushed to, so it fires regardless of this setting, and `deploy.yml` is deleted rather than
+left as a decoy. **That fix stands on its own — changing the default branch is not required
+to make the database deploy.**
+
+### Why it is still worth fixing
+
+- Anything trigger-based added later walks into the same trap. `schedule` is the one to
+  watch: the jobs layer (§8, `pg_cron`) has a plausible future need for a nightly workflow,
+  and it would be just as silently inert.
+- A new pull request defaults its base to `claude/youthful-meitner-hs0o7d`, so a session
+  that does not set the base explicitly proposes a merge into a dead branch.
+- Branch protection is configured per branch. docs/12 asks you to require `ci` on `main`;
+  GitHub's own "protect the default branch" affordances all point somewhere else.
+- A fresh `git clone` checks out that branch, which is a day-one confusion for whoever
+  takes this over.
+- GitHub renders the repository — README, the file listing, the language bar — from the
+  default branch, so the front page is a snapshot of 21.09.
+
+No code change is waiting on this. It is a setting, and it should be `main`.
