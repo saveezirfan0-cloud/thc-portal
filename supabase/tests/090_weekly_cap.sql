@@ -19,7 +19,7 @@
 -- their fixed UUIDs, never by global counts.
 -- =====================================================================
 begin;
-select plan(28);
+select plan(38);
 
 \ir _shared/cap_vectors.psql
 
@@ -35,7 +35,10 @@ select results_eq(
   $$ select v.name, c.cap_hours, c.band::text
        from cap_vectors v
        cross join lateral weekly_cap(v.visa_limited, v.term_state,
-                                     v.completion_letter_verified, v.optout_48h) c
+                                     v.completion_letter_verified, v.optout_48h,
+                                     v.week_start, v.below_degree_level,
+                                     v.completion_date, v.visa_expiry,
+                                     v.optout_cancelled_from, v.under18) c
       order by v.name $$,
   $$ select name, expect_cap_hours, expect_band from cap_vectors order by name $$,
   'cap.vectors.json: SQL weekly_cap() gives the same cap AND band as TypeScript weeklyCap(), case for case'
@@ -60,9 +63,16 @@ select is(
   '§4.5: completion letter PLUS opt-out is what removes the weekly ceiling'
 );
 
+-- This used to read "no ceiling is null, never 0", written when no band
+-- returned 0 and the only way to see one would have been a bug. The
+-- completion-letter requirement introduced visa_expired_0, which is a real
+-- cap of no hours and a different thing entirely. What still has to hold —
+-- and what that assertion was actually protecting — is that the two are
+-- never confused: null means no ceiling and belongs to `uncapped` alone.
 select is_empty(
-  $$ select 1 from cap_vectors where expect_cap_hours = 0 $$,
-  'no ceiling is null, never 0 — a 0 would read as "no hours left" to every caller'
+  $$ select name from cap_vectors
+      where (expect_cap_hours is null) <> (expect_band = 'uncapped') $$,
+  'null hours means no ceiling and only the uncapped band; a real cap of 0 (visa_expired_0) is never written as null'
 );
 
 -- ---------------------------------------------------------------------
@@ -188,6 +198,56 @@ select is(weekly_cap_would_breach(:'capstudent', :'cap_shift3'), false,
   'a worker with no ceiling is never gated out on hours, however many they hold');
 select is(weekly_hours_remaining(:'capstudent', date '2026-11-04'), null,
   'no ceiling is null hours remaining, not 0 — the two must never be confused');
+
+-- ---------------------------------------------------------------------
+-- 8. The worker-bound wiring (completion-letter requirement)
+--
+-- The vectors above hold the PURE function to TypeScript. They cannot
+-- reach weekly_cap_for(), which is where the six dated facts are read off
+-- the row — and two of them are derived rather than stored, which is
+-- exactly where a bug would sit unseen.
+-- ---------------------------------------------------------------------
+\set rtwgone '9a9a9a9a-0000-4000-8000-000000000001'
+\set young   '9a9a9a9a-0000-4000-8000-000000000002'
+\set lettered '9a9a9a9a-0000-4000-8000-000000000003'
+\set legacy  '9a9a9a9a-0000-4000-8000-000000000004'
+
+insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_branch,
+                   right_to_work_until, wtr_optout, graduated_at, course_completion_date) values
+  (:'rtwgone',  'Expired','RTW',    'x1@cap.test','+447700900301', date '1995-01-01','compliant',
+   'international_student', date '2026-06-30', false, null, null),
+  (:'young',    'Young','Worker',   'x2@cap.test','+447700900302', date '2008-07-08','compliant',
+   'uk_irish',              null,            true,  null, null),
+  (:'lettered', 'Letter','Future',  'x3@cap.test','+447700900303', date '1995-01-01','compliant',
+   'international_student', null,            false, date '2026-05-01', date '2026-08-03'),
+  (:'legacy',   'Legacy','Verified','x4@cap.test','+447700900304', date '1995-01-01','compliant',
+   'international_student', null,            false, date '2026-05-04', null);
+
+select is((select band::text from weekly_cap_for(:'rtwgone', date '2026-07-13')), 'visa_expired_0',
+  'right_to_work_until is read: a week wholly past expiry is no rota at all');
+select is(weekly_hours_remaining(:'rtwgone', date '2026-07-13'), 0::numeric,
+  'so nothing is left to book, and weekly_cap_would_breach bars every shift in that week');
+select is((select cap_hours from weekly_cap_for(:'rtwgone', date '2026-06-29')), 20,
+  'the week the visa expires still has workable days, so the cap is a real number');
+select is(can_roster(date '2026-06-30', date '2026-06-30'), true,
+  'expiry is inclusive: the last day is workable');
+select is(can_roster(date '2026-07-01', date '2026-06-30'), false,
+  'and the day after it is not — the per-shift stop the weekly cap cannot express');
+
+select is((select band::text from weekly_cap_for(:'young', date '2026-07-06')), 'standard_48',
+  'under-18 is derived from dob, not stored: a worker who turns 18 mid-week was under 18 for part of it, so the opt-out does not lift the ceiling');
+select is((select band::text from weekly_cap_for(:'young', date '2026-07-13')), 'uncapped',
+  'and from the first whole week after their birthday the same recorded opt-out is valid');
+
+select is((select cap_hours from weekly_cap_for(:'lettered', date '2026-06-01')), 20,
+  'a letter verified in May with an August completion date does not release the cap in June');
+select is((select cap_hours from weekly_cap_for(:'lettered', date '2026-08-10')), 48,
+  'and releases it from the first whole week on or after that completion date');
+
+-- The fallback that keeps rows predating course_completion_date behaving
+-- as they did: effective-dated from verification, not from the tick.
+select is((select cap_hours from weekly_cap_for(:'legacy', date '2026-04-27')), 20,
+  'with no completion date on file the release still dates from graduated_at, so the week before it is unchanged');
 
 select * from finish();
 rollback;
