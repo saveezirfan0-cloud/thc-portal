@@ -41,6 +41,32 @@ Per project env vars (Production + Preview): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_P
 - Domains: `office.` / `app.` / `clients.` on THC's domain; `app.` must be HTTPS with a valid cert for PWA install + push (Vercel does this).
 - The Vercel MCP connector in Claude (`list_projects`, `deploy_to_vercel`, `get_deployment_build_logs`) works once the Vercel account is connected in claude.ai → Connectors; same for the Supabase connector (`apply_migration`, `execute_sql`, `deploy_edge_function`). After connecting, a Claude session can run migrations and read build logs directly.
 
+### Keeping inside the 100 deployments/day limit
+
+One push builds all three Vercel projects, so the free plan's 100 deployments per
+rolling 24 h is spent three times faster than the commit count suggests. Each project
+therefore carries an **Ignored Build Step** (Project → Settings → Git) that skips the
+build when nothing in that app's Turborepo dependency graph changed:
+
+| Project | Ignored Build Step |
+| --- | --- |
+| `office-thc` | `npx turbo-ignore @thc/office --fallback=HEAD^1` |
+| `thc-portal-staff` | `npx turbo-ignore @thc/staff --fallback=HEAD^1` |
+| `thc-portal-client` | `npx turbo-ignore @thc/client --fallback=HEAD^1` |
+
+A skipped build does not count against the limit. A change under `packages/*` still
+builds all three — they all depend on it — and a change under `docs/` or `wireframes/`
+builds none. The rest of the budget goes on:
+
+- Add every environment variable first, then redeploy once per project. One redeploy per
+  variable is three deployments for three variables.
+- Promote or roll back an existing deployment instead of rebuilding when the build you
+  want already exists; it reuses the build.
+- `[skip ci]` in the commit message for a commit that needs no deploy at all.
+- Previews: every push to a branch previews all three apps. Turn previews off on the apps
+  a branch does not touch, or restrict previews to PR branches, when a session is pushing
+  often.
+
 ## 4. Monorepo bootstrap (first coding session)
 ```bash
 pnpm dlx create-turbo@latest . --skip-install
