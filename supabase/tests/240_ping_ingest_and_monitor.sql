@@ -14,7 +14,7 @@ begin;
 
 \ir _shared/fixtures.psql
 
-select plan(30);
+select plan(34);
 
 \set ev_mon   '9e9e9e9e-0000-4000-8000-000000000001'
 \set ev_paid  '9e9e9e9e-0000-4000-8000-000000000002'
@@ -184,6 +184,30 @@ set local "request.jwt.claims" = '{"sub":"22222222-2222-2222-2222-222222222222",
 set local role authenticated;
 select is((select count(*)::int from checkin_monitor_v), 0,
   '§11.1 a client reads no row of the monitor at all');
+reset role;
+
+-- ---------------------------------------------------------------------
+-- 4 · booking_venue_point (§5.1)
+--
+-- The shift screen needs the venue centre as numbers, which a geography
+-- column does not survive PostgREST as. It is a reader: the distance that
+-- decides a check-in is computed inside attempt_check_in from the fix the
+-- device sends.
+-- ---------------------------------------------------------------------
+set local "request.jwt.claims" = '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}';
+select is(
+  round((booking_venue_point(:'bk_on')->>'lat')::numeric, 4), 51.5000::numeric,
+  '§5.1 the worker can read their own venue''s latitude');
+select is(
+  round((booking_venue_point(:'bk_on')->>'lng')::numeric, 4), -0.1000::numeric,
+  'and its longitude');
+select is(
+  (booking_venue_point(:'bk_on')->>'radiusM')::int, 150,
+  'and the radius the screen quotes back to them');
+select throws_ok(
+  format('select booking_venue_point(%L)', :'bk_paid'),
+  '42501', 'not_your_booking',
+  'but not a venue they hold no booking at — the booking is the entitlement');
 reset role;
 
 select * from finish();

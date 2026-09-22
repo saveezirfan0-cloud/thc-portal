@@ -1,0 +1,30 @@
+/* Shift detail — §10.4. Tokens only. */
+
+.earn-total {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 4px;
+  padding: 16px;
+  border: 1px solid var(--green);
+  border-radius: var(--radius);
+}
+.earn-total .earn {
+  font-family: var(--font-head);
+  font-size: 32px;
+  font-weight: 700;
+}
+.mobile-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.mobile-list .mrow {
+  display: flex;
+  align-items: center;
+  padding: 8px 0;
+}
+.mobile-list .right {
+  margin-left: auto;
+}
