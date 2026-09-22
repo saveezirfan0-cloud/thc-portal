@@ -697,22 +697,6 @@ is a missing screen, so neither shows up in the lists above.
 > `PUBLIC_PATHS`, and a test asserts a logged-out visit returns the page rather than a
 > redirect.
 
-## D4 · The brand mark changes shape between /apply and /apply/submitted (§1.2)
-
-> Use the `design-system` agent — this is a `packages/ui` change and the conventions say
-> those ship in their own PR first. Branch `feat/ui-authcard-round-logo`.
->
-> `/apply` renders `AuthCard`, whose logo is square; `/apply/submitted` hand-rolls
-> `<span className="logo round">`. `wireframes/public/apply.html` uses the round mark on
-> both. So the logo changes shape between two consecutive screens of one flow, and the
-> second screen only looks right because it bypasses the shared component.
->
-> The fix belongs in `AuthCard` (an option, not a second hand-rolled span), after which
-> `submitted/page.tsx` should use it like every other screen.
->
-> Done when: both screens render the same mark through the same component, and the
-> hand-rolled copy is gone.
-
 ---
 
 # Before go-live
