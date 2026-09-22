@@ -243,7 +243,7 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
     venueChanged: event.venue_address !== venue.address,
   });
   // This path redirects, so there is no result to hang a warning on and the
-  // manager cannot be told inline — see docs/14 O13. Logging it is the
+  // manager cannot be told inline — see docs/14 O14. Logging it is the
   // difference between a failure somebody can find and the silent one this
   // whole change exists to remove. `console.error` is allowed by the lint
   // config and is what `login/actions.ts` already uses for the same reason.

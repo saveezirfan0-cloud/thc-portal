@@ -418,7 +418,7 @@ everything and a local suite passes. Any harness used to check this has to run
 authenticated, service_role` first, or it is more secure than production and will keep
 saying so.
 
-## O13 · Three mandatory pushes were silently never sent — RESOLVED, and the shape is worth keeping
+## O14 · Three office pushes were silently never sent — RESOLVED, and the shape is worth keeping
 
 Found by auditing `main` after the §10.4 merge, not by anything failing. N10b (the office withdraws a
 booking) and N12 (the office cancels an event) are **mandatory** in §8; N11 (the office
