@@ -17,27 +17,45 @@ begin;
 select plan(7);
 
 -- ---------------------------------------------------------------------
--- 1. The three functions the linter flagged carry a fixed search_path.
+-- 1. EVERY function this repo owns in `public` pins its search_path.
 --
 --    A function with no `set search_path` resolves its body against the
 --    caller's path, so a caller who can prepend a schema chooses which
---    `staff` table weekly_cap_hours reads. These three are reachable from
---    a view (event_status via client_events_v), from a rate calculation
---    (final_rate) and from the auto-assign hard gate (weekly_cap_hours).
+--    `staff` table weekly_cap_hours reads, which `settings` row decides
+--    the RULE-17 gap, and which `round` final_rate applies.
 --
---    Asserted by name and not as "every function in public", because 17
---    others are still unpinned. That is a real finding but it was not in
---    this pass's scope; widen this assertion when they are done rather
---    than adding names to it one at a time.
+--    This assertion used to name three functions, with a comment saying
+--    "widen this when the other 17 are done rather than adding names to
+--    it one at a time". The other 17 were done by 20260921130156 and the
+--    assertion was never widened — so fourteen more unpinned functions
+--    landed over the following day (six in 20260921141500_auto_assign,
+--    four in 20260921153100_roles_directory, three in
+--    20260922091447_clients_directory, one in 20260922095200_client_card)
+--    and a green suite said nothing about any of them. A list of names
+--    in a repo moving this fast is stale within hours; this is the
+--    invariant the list was standing in for.
+--
+--    Extension-owned functions are excluded and must be: PostGIS, pgtap,
+--    pg_net and pg_cron all install into `public` here (20260921123503
+--    decided to leave them there) and none of them is ours to alter.
+--    prokind 'f' keeps it to plain functions — an aggregate or a
+--    procedure has no body to resolve this way.
+--
+--    If this fails, the fix is one `alter function … set search_path =
+--    public, extensions` line in a new migration, next to the fourteen
+--    in 20260922183014. It is not to add a name to an exclusion list.
 -- ---------------------------------------------------------------------
-select bag_eq(
-  $$ select p.proname::text
+select is_empty(
+  $$ select p.proname::text || '(' || pg_get_function_identity_arguments(p.oid) || ')'
        from pg_proc p join pg_namespace n on n.oid = p.pronamespace
       where n.nspname = 'public'
-        and p.proname in ('final_rate', 'event_status', 'weekly_cap_hours')
-        and exists (select 1 from unnest(p.proconfig) c where c like 'search\_path=%') $$,
-  $$ values ('final_rate'::text), ('event_status'), ('weekly_cap_hours') $$,
-  'final_rate, event_status and weekly_cap_hours each pin their search_path'
+        and p.prokind = 'f'
+        and not exists (select 1 from pg_depend d
+                         where d.classid = 'pg_proc'::regclass
+                           and d.objid = p.oid and d.deptype = 'e')
+        and not exists (select 1 from unnest(coalesce(p.proconfig, '{}')) c
+                         where c like 'search\_path=%') $$,
+  'every function in public that this repo owns pins its search_path'
 );
 
 -- ---------------------------------------------------------------------

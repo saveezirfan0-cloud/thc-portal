@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Content, Logo, Shell, Sidebar, Topbar } from '@thc/ui';
+import { Content, Logo, ModeSwitch, Shell, Sidebar, Topbar } from '@thc/ui';
 import type { ReactNode } from 'react';
 
 /**
@@ -22,7 +22,12 @@ import type { ReactNode } from 'react';
  * rather than unfinished. Drop the flag when the route lands.
  *
  * Dashboard points at `/dashboard` now that §9.1 is built; `/` redirects
- * there, so an old link still lands in the right place.
+ * there, so an old link still lands in the right place. (Until this branch
+ * it pointed at `/`, which stood in for the Dashboard.)
+ *
+ * The appearance switch is added to whatever the screen passes as actions,
+ * not passed by the screen: ADR-0007 makes it part of the chrome, and one
+ * screen forgetting it is how it ended up living only on /design-system.
  */
 const NAV = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -84,7 +89,17 @@ export function OfficeShell({
         />
       }
     >
-      <Topbar title={title} crumbs={crumbs} timezone={timezone} actions={actions} />
+      <Topbar
+        title={title}
+        crumbs={crumbs}
+        timezone={timezone}
+        actions={
+          <>
+            {actions}
+            <ModeSwitch small />
+          </>
+        }
+      />
       <Content>{children}</Content>
     </Shell>
   );

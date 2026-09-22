@@ -19,7 +19,7 @@
 -- gap. This is the half of the contract that SQL can hold.
 -- =====================================================================
 begin;
-select plan(7);
+select plan(10);
 
 -- ---------------------------------------------------------------------
 -- 1. Everything the jobs call is callable by the service role.
@@ -147,6 +147,88 @@ select is(
       and p.proname in ('accept_invite', 'mark_ready', 'self_cancel_booking')
       and has_function_privilege('authenticated', p.oid, 'execute')),
   3, 'a signed-in worker can still accept, press I am ready, and self-cancel');
+
+-- ---------------------------------------------------------------------
+-- 2d. The on-shift RPCs, closed to anon by 20260922183013.
+--
+--     attempt_check_in / check_out (0006), start_break / finish_break
+--     (20260921153000), record_ping (20260922090000) and
+--     booking_venue_point (20260922110000) were granted to
+--     `authenticated` and never revoked from anything, so Supabase's
+--     default privileges left all six reachable by anon.
+--
+--     None was exploitable: each raises not_your_booking for a caller
+--     who does not own the booking. What each one DID give a logged-out
+--     caller is a booking-id oracle — 'booking_not_found' (P0002) for an
+--     id that does not exist, 'not_your_booking' (42501) for one that
+--     does, decided before authorisation is considered — and a standing
+--     dependency on six hand-copied guards never being edited wrong.
+-- ---------------------------------------------------------------------
+select is_empty(
+  $$ select p.proname::text
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in ('attempt_check_in', 'check_out', 'start_break', 'finish_break',
+                          'record_ping', 'booking_venue_point',
+                          'bookings_grant_qualification', 'violations_grant_qualification')
+        and has_function_privilege('anon', p.oid, 'execute') $$,
+  'anon can execute none of the on-shift RPCs, and neither trigger function'
+);
+
+select is(
+  (select count(*)::int from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname in ('attempt_check_in', 'check_out', 'start_break', 'finish_break',
+                        'record_ping', 'booking_venue_point')
+      and has_function_privilege('authenticated', p.oid, 'execute')),
+  6, 'and a signed-in worker can still check in, check out, take a break, ping and read their venue');
+
+-- ---------------------------------------------------------------------
+-- 2e. The invariant behind 2, 2b and 2d: no `security definer` function
+--     in public is reachable by anon unless it is on this list.
+--
+--     Every assertion above names functions, and a name list is a
+--     snapshot — six definer RPCs reached anon for a day because nobody
+--     added them to one. A definer function runs with the owner's
+--     rights, which on this schema means past every RLS policy in it, so
+--     "which of these is anon allowed to call" is the one question worth
+--     asking structurally rather than per feature.
+--
+--     The three exceptions, and why each is not a hole:
+--
+--     · current_app_role() / current_client_id() — called inside the
+--       predicate of essentially every policy in the schema, which is
+--       evaluated as the caller. Revoking from anon does not close
+--       anything; it breaks every policy for logged-out requests and
+--       with it the anon path /apply needs. Each returns only the
+--       caller's own role or client id, and returns NULL when there is
+--       no profile, which is exactly how anon is kept out of
+--       venue_types and staff_transitions. 20260921123503's triage
+--       reached the same conclusion.
+--     · submit_application() — the public form (§2.1) is anonymous by
+--       definition. It is bounded instead: validation, two advisory
+--       locks, a per-email and per-mobile throttle
+--       (20260922183012), and a void return so it cannot be used as an
+--       account-existence oracle. 120_apply holds that.
+--
+--     Extension-owned functions are excluded: PostGIS's
+--     st_estimatedextent overloads are definer and are not ours.
+--
+--     If this fails, the answer is a revoke in a new migration. Adding a
+--     name here is a decision to publish a function that runs past RLS
+--     to the whole internet, and wants to be argued for in the PR.
+-- ---------------------------------------------------------------------
+select bag_eq(
+  $$ select p.proname::text
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.prosecdef
+        and not exists (select 1 from pg_depend d
+                         where d.classid = 'pg_proc'::regclass
+                           and d.objid = p.oid and d.deptype = 'e')
+        and has_function_privilege('anon', p.oid, 'execute') $$,
+  $$ values ('current_app_role'::text), ('current_client_id'), ('submit_application') $$,
+  'exactly three security definer functions in public are reachable by anon, and each is there on purpose'
+);
 
 -- ---------------------------------------------------------------------
 -- 3. Nor can a signed-in worker drive the jobs directly.

@@ -1,0 +1,201 @@
+/*
+ * The profile sheet and its screens — mirrors the page-local styles in
+ * wireframes/staff/profile.html. Layout only: every colour, radius, size
+ * and spacing below is a token from packages/ui, so both grounds (warm and
+ * scope) render this correctly without a second stylesheet.
+ */
+
+/* --- The sheet's link list (Profile details / Security / Payment) ----- */
+.sheet-links {
+  display: flex;
+  flex-direction: column;
+}
+.sheet-link {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  padding: 11px 0;
+  border-bottom: 1px solid var(--glass-line);
+  font-weight: 500;
+  font-size: var(--fs-13);
+  color: var(--text);
+}
+.sheet-link:last-child {
+  border-bottom: 0;
+}
+.sheet-link .chev {
+  margin-left: auto;
+  color: var(--muted);
+}
+
+/*
+ * Request my P45 (§10.6): "below the sign-out link, set apart from the
+ * everyday links and not styled as a primary action". The dashed rule and
+ * the muted, underlined text are what "set apart" and "not primary" mean
+ * here — this block is deliberately the quietest thing on the sheet.
+ */
+.p45-slot {
+  margin-top: var(--sp-10);
+  padding-top: var(--sp-12);
+  border-top: 1px dashed var(--glass-line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  text-align: center;
+}
+.p45-slot .p45-link {
+  font-size: var(--fs-11);
+  color: var(--muted);
+  text-decoration: underline;
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+.p45-slot .p45-link[disabled] {
+  opacity: 0.5;
+  cursor: default;
+}
+.p45-slot .p45-hint {
+  font-size: var(--fs-11);
+  color: var(--muted);
+}
+
+/* The full consequences list on the confirmation sheet (§10.6). */
+.consq {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  font-size: var(--fs-12);
+}
+.consq > div::before {
+  content: '— ';
+  color: var(--coral);
+}
+
+/* --- Locked fields: name, NI, avatar (§10.1) -------------------------- */
+.lockf .input {
+  color: var(--muted);
+  background: var(--panel-2);
+}
+.lockf > .label::after {
+  content: ' · locked';
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* --- The 6-digit email confirmation code ------------------------------ */
+.code-row {
+  display: flex;
+  gap: var(--sp-6);
+}
+.code-row input {
+  flex: 1;
+  min-width: 0;
+  height: 44px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--text);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-19);
+  /* `--r-input`/`--r` are not tokens this design system defines, so the
+     declaration was dropped and the field was square on a rounded page.
+     Inputs take the control radius. */
+  border-radius: var(--r-control);
+}
+.code-row input:focus {
+  outline: none;
+  border-color: var(--focus-line);
+}
+
+/* --- Payment information ---------------------------------------------- */
+.mtabs {
+  display: flex;
+  gap: var(--sp-20);
+  border-bottom: 1px solid var(--line);
+}
+.mtabs a {
+  padding: var(--sp-8) 0;
+  color: var(--muted);
+  font-weight: 700;
+  font-size: var(--fs-13);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.mtabs a.active {
+  color: var(--cyan-ink);
+  border-bottom-color: var(--cyan-ink);
+}
+
+/* "Paid so far · Sep 2026". Base pay only — never holiday pay (§9.8). */
+.paid-total {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-12) var(--sp-14);
+  border: 1px solid var(--line);
+  background: var(--card-glass);
+  border-radius: var(--r-card);
+}
+.paid-total .v {
+  font-family: var(--font-head);
+  font-size: var(--fs-26);
+  font-weight: 600;
+}
+.earn {
+  font-family: var(--font-head);
+  font-size: var(--fs-20);
+  font-weight: 600;
+  color: var(--green);
+}
+
+/* The profile-photo row: the avatar and what the worker may do with it. */
+.photo-row {
+  display: flex;
+  gap: var(--sp-12);
+  align-items: flex-start;
+}
+.photo-row .photo-copy {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.photo-preview {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: var(--r-avatar);
+  border: 1px solid var(--line);
+}
+.photo-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The identity block at the top of the sheet. */
+.sheet-id {
+  display: flex;
+  gap: var(--sp-12);
+  align-items: flex-start;
+}
+.sheet-id .n {
+  font-family: var(--font-head);
+  font-size: var(--fs-17);
+  font-weight: 600;
+}
+.sheet-id .chips {
+  display: flex;
+  gap: var(--sp-6);
+  margin-top: var(--sp-4);
+  flex-wrap: wrap;
+}

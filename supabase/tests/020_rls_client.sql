@@ -7,8 +7,15 @@
 -- Every money-bearing table is asserted unreachable, in both directions.
 -- =====================================================================
 begin;
-select plan(59);
+select plan(63);
 \ir _shared/fixtures.psql
+
+-- A cap-band notice to probe for. Created here rather than in the shared
+-- fixtures on purpose: 200_compliance_daily runs compliance_daily() over
+-- the whole table and counts the N14 sends, so a standing row for a
+-- fixture worker would change what that file is measuring.
+insert into cap_band_notices (staff_id, band, cap_hours, notified_on)
+  values (:'staffa', 'standard_48', 48, current_date - 1);
 
 select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
@@ -67,6 +74,24 @@ select is((select count(*)::int from report_sends where error = 'rls_fixture_pro
   'client cannot read the report send log (payroll periods)');
 select is((select count(*)::int from applications where id = :'applic_a'), 0,
   'client cannot read applications — an applicant is a private individual, not this client''s business (§11.1)');
+
+-- cap_band_notices (20260921170411) and staff_transitions (20260921180312)
+-- both arrived with RLS and neither had a per-role test, which CLAUDE.md
+-- requires of every table. They sit at opposite ends of the same question,
+-- so they are asserted together: one is about a named worker's visa, the
+-- other is about the machine and names nobody.
+select is((select count(*)::int from cap_band_notices where staff_id = :'staffa'), 0,
+  '§11.1 client cannot read cap_band_notices — what N14 told a worker their weekly cap was is their immigration status in a column (RULE-20, §4.4)');
+select throws_ok(
+  format($$ insert into cap_band_notices (staff_id, band, cap_hours, notified_on)
+            values (%L, 'uncapped', null, current_date) $$, :'staffb'),
+  '42501', null, 'client cannot forge a cap-band notice');
+
+select is((select count(*)::int from staff_transitions where from_status = 'compliant' and to_status = 'blocked'), 1,
+  'client may read staff_transitions: it is the §2.12 machine as data, carrying no money and naming no person — the same shape as venue_types');
+select throws_ok(
+  $$ insert into staff_transitions (from_status, to_status) values ('compliant','documents') $$,
+  '42501', null, 'client cannot add an edge to the staff state machine (§11.1 read-only)');
 
 -- venue_types is the one thing 0004 opened to every signed-in role: nine
 -- rows of label + default radius, no money and no personal data (§9.11).

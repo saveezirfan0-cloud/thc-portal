@@ -73,3 +73,12 @@
   font-size: var(--fs-12);
   color: var(--muted);
 }
+
+/* The appearance switch (ADR-0007) sits in the card's top-right corner. Sign
+   in is the one screen with no chrome to carry it, and a viewer whose device
+   prefers dark must not get a light login and then a dark app. */
+.auth-card .appearance {
+  position: absolute;
+  top: var(--sp-10);
+  right: var(--sp-10);
+}
