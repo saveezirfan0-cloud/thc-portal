@@ -13,7 +13,7 @@
 --      address anyone cares to type.
 -- =====================================================================
 begin;
-select plan(39);
+select plan(42);
 \ir _shared/fixtures.psql
 
 -- ---------------------------------------------------------------------
@@ -29,7 +29,7 @@ select set_config('request.jwt.claims', '', true);
 set local role anon;
 -- Untrimmed, mixed case and spaced out on purpose: this is what a phone
 -- keyboard produces.
-select submit_application('Nadia', 'Testwood', '  Nadia.Testwood@RLS.test ', '+44 7010 000456', '24', true);
+select submit_application('Nadia', 'Testwood', '  Nadia.Testwood@RLS.test ', '+44 7010 000456', (current_date - interval '24 years')::date, true);
 reset role;
 
 select is((select count(*)::int from staff where email = 'nadia.testwood@rls.test'), 1,
@@ -38,10 +38,10 @@ select is((select status::text from staff where email = 'nadia.testwood@rls.test
   '§2.1 there is no "Applied" stage: the candidate lands straight in Interview requested');
 select is((select phone from staff where last_name = 'Testwood'), '+447010000456',
   'the mobile is stored in E.164, as the form promises');
-select is((select dob from staff where last_name = 'Testwood'), null::date,
-  'the candidate has no date of birth yet: /apply collects an age band, and a date of birth arrives with Right to Work (§2.5)');
+select is((select dob from staff where last_name = 'Testwood'), (current_date - interval '24 years')::date,
+  'the candidate carries the date of birth from creation (ADR-0008), which is what §2.6 needs for the share-code check');
 select is((select applied_age_band from staff where last_name = 'Testwood'), '24',
-  'the age band is kept as the evidence behind the server-side 18+ gate');
+  'and the age band beside it is derived from that date, not asked for separately');
 select is((select employee_id from staff where last_name = 'Testwood'), null::int,
   '§2.7 the Employee ID is generated at contract signature, not here');
 select is((select outcome::text from applications where last_name = 'Testwood'), 'candidate_created',
@@ -56,37 +56,37 @@ select is((select count(*)::int from audit_log where action = 'application_submi
 -- ---------------------------------------------------------------------
 set local role anon;
 select throws_ok(
-  $$ select submit_application('Kid','Young','kid@rls.test','+447700900801','under_18', true) $$,
+  $$ select submit_application('Kid','Young','kid@rls.test','+447700900801', (current_date - interval '18 years' + interval '1 day')::date, true) $$,
   '22023', 'You must be 18 or over to apply.',
   '§2.1 under 18 is rejected on the server, so a tampered form still fails');
 select throws_ok(
-  $$ select submit_application('Kid','Young','kid@rls.test','+447700900801','17', true) $$,
-  '22023', 'You must be 18 or over to apply.',
-  'an age band the form never offered is refused rather than guessed at');
+  $$ select submit_application('Kid','Young','kid@rls.test','+447700900801', (current_date + interval '1 day')::date, true) $$,
+  '22023', 'Enter a real date of birth.',
+  'a date in the future is refused as impossible, not as under-age');
 select throws_ok(
-  $$ select submit_application('Kid','Young','kid@rls.test','+447700900801',null, true) $$,
-  '22023', 'You must be 18 or over to apply.',
-  'a missing age is not treated as an adult');
+  $$ select submit_application('Kid','Young','kid@rls.test','+447700900801', null::date, true) $$,
+  '22023', 'Enter your date of birth.',
+  'a missing date is asked for rather than treated as an adult');
 
 -- ---------------------------------------------------------------------
 -- Consent (§1.7) and the field rules
 -- ---------------------------------------------------------------------
 select throws_ok(
-  $$ select submit_application('No','Consent','nc@rls.test','+447700900802','25', false) $$,
+  $$ select submit_application('No','Consent','nc@rls.test','+447700900802', date '1995-05-05', false) $$,
   '22023', 'Tick the consent box to continue.',
   '§1.7 no consent, no processing');
 select throws_ok(
-  $$ select submit_application('No','Consent','nc@rls.test','+447700900802','25', null) $$,
+  $$ select submit_application('No','Consent','nc@rls.test','+447700900802', date '1995-05-05', null) $$,
   '22023', 'Tick the consent box to continue.',
   'an absent tick is not consent');
 select throws_ok(
-  $$ select submit_application('   ','','x@rls.test','+447700900803','25', true) $$,
+  $$ select submit_application('   ','','x@rls.test','+447700900803', date '1995-05-05', true) $$,
   '22023', 'Enter your first name and surname.', 'a blank name is refused');
 select throws_ok(
-  $$ select submit_application('A','B','not-an-email','+447700900803','25', true) $$,
+  $$ select submit_application('A','B','not-an-email','+447700900803', date '1995-05-05', true) $$,
   '22023', 'Enter a valid email address.', 'a malformed email is refused');
 select throws_ok(
-  $$ select submit_application('A','B','x@rls.test','07700900803','25', true) $$,
+  $$ select submit_application('A','B','x@rls.test','07700900803', date '1995-05-05', true) $$,
   '22023', 'Enter a valid mobile number, including the country code.',
   'a mobile without its country code is refused — the column is E.164');
 reset role;
@@ -98,7 +98,7 @@ select is((select count(*)::int from staff where email in ('kid@rls.test','nc@rl
 -- ---------------------------------------------------------------------
 set local role anon;
 -- Different case from the stored address, to prove the match is not literal.
-select submit_application('Staff','Alpha','STAFFA@rls.test','+447700900804','26', true);
+select submit_application('Staff','Alpha','STAFFA@rls.test','+447700900804', date '1995-01-01', true);
 reset role;
 select is((select count(*)::int from staff where lower(email) = 'staffa@rls.test'), 1,
   '§2.12 an email match creates no second candidate');
@@ -110,7 +110,7 @@ select is((select status::text from staff where id = :'staffa'), 'compliant',
   'the existing record is not touched by the application: the manager decides');
 
 set local role anon;
-select submit_application('Someone','Else','brand.new@rls.test','+44 7700 900011','30', true);
+select submit_application('Someone','Else','brand.new@rls.test','+44 7700 900011', date '1995-01-01', true);
 reset role;
 select is((select outcome::text from applications where email = 'brand.new@rls.test'), 'returning_applicant',
   '§2.12 a mobile match routes to the office too, even with an unknown email');
@@ -122,18 +122,33 @@ select is((select count(*)::int from staff where email = 'brand.new@rls.test'), 
 -- whole half of §2.12 passes its own tests against tidy fixture data and
 -- matches nobody in the real table.
 set local role anon;
-select submit_application('Someone','Newagain','someone.newagain@rls.test','+447700900108','27', true);
+select submit_application('Someone','Newagain','someone.newagain@rls.test','+447700900108', date '1998-12-09', true);
 reset role;
 select is((select outcome::text from applications where email = 'someone.newagain@rls.test'), 'returning_applicant',
   '§2.12 a mobile matches a worker whose stored number is formatted differently');
 select is((select count(*)::int from staff where email = 'someone.newagain@rls.test'), 0,
   'and still creates no candidate');
 
+-- ADR-0008: the mobile arm is mobile AND date of birth, not mobile alone.
+-- The same number with a different date is a different person — a recycled
+-- number, or a second person in one household — and must not be matched.
+set local role anon;
+select submit_application('Not','Thesame','not.thesame@rls.test','+447700900108', (current_date - interval '55 years')::date, true);
+reset role;
+select is((select outcome::text from applications where email = 'not.thesame@rls.test'), 'candidate_created',
+  '§2.12 the same mobile with a different date of birth is a new candidate, not a match');
+
+select is((select dob from applications where email = 'not.thesame@rls.test'), (current_date - interval '55 years')::date,
+  'the date of birth is stored on the application row, which is what the match reads');
+
+select is((select age_band from applications where email = 'not.thesame@rls.test'), '51_60',
+  'and the §2.1 band is derived from it rather than asked for: 55 lands in the 51 – 60 band, not a bare year count (ADR-0008)');
+
 -- A GDPR-removed worker (§1.7) is deliberately unmatchable: their record no
 -- longer describes them, so they apply as a genuinely new person.
 update staff set removed_at = now() where id = :'staffb';
 set local role anon;
-select submit_application('Staff','Bravo','staffb@rls.test','+447700900805','28', true);
+select submit_application('Staff','Bravo','staffb@rls.test','+447700900805', date '1994-02-02', true);
 reset role;
 select is((select outcome::text from applications where phone = '+447700900805'), 'candidate_created',
   '§1.7 a removed worker is never matched and applies as a new candidate');
@@ -142,14 +157,14 @@ select is((select outcome::text from applications where phone = '+447700900805')
 -- What the endpoint gives away, and who may reach it
 -- ---------------------------------------------------------------------
 select is(
-  (select pg_get_function_result('public.submit_application(text,text,text,text,text,boolean)'::regprocedure)),
+  (select pg_get_function_result('public.submit_application(text,text,text,text,date,boolean)'::regprocedure)),
   'void',
   '§2.12 the caller learns nothing: an outcome in the return value would make this public endpoint an account-existence oracle');
-select ok(has_function_privilege('anon', 'public.submit_application(text,text,text,text,text,boolean)', 'execute'),
+select ok(has_function_privilege('anon', 'public.submit_application(text,text,text,text,date,boolean)', 'execute'),
   'anon may call it — /apply is a public URL with no registration (§2.1)');
-select ok(has_function_privilege('authenticated', 'public.submit_application(text,text,text,text,text,boolean)', 'execute'),
+select ok(has_function_privilege('authenticated', 'public.submit_application(text,text,text,text,date,boolean)', 'execute'),
   'a signed-in visitor may call it too: being logged in elsewhere is no reason to block an application');
-select ok(not has_function_privilege('public', 'public.submit_application(text,text,text,text,text,boolean)', 'execute'),
+select ok(not has_function_privilege('public', 'public.submit_application(text,text,text,text,date,boolean)', 'execute'),
   'the grant is named, not inherited from PUBLIC');
 
 set local role anon;
