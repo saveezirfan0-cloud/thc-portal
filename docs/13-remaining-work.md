@@ -196,6 +196,29 @@ is built — see `docs/14` O10.
 > Both are one line each; they are named here because neither is in this file's own domain
 > and a grep for `graduated_at` is the only thing that finds them.
 >
+> ### `main` is red on this, and exactly why
+>
+> `090_weekly_cap.sql` fails two assertions on `main` (runs 107 and 110; last green was
+> `ce593bd`, before `640272b`). They are different problems and only one is "the SQL half
+> is missing":
+>
+> - **Assertion 2**, the `results_eq` at `090:34`, runs all 27 vectors through the SQL
+>   `weekly_cap(visa_limited, term_state, completion_letter_verified, optout_48h)`. That
+>   signature has four inputs and the new rule needs nine, so the vectors carrying a
+>   completion date, a sub-degree course or a visa expiry cannot come out right. This one
+>   is the deferred SQL half.
+> - **Assertion 7**, the `is_empty` at `090:63`, asserts *"no ceiling is null, never 0 — a
+>   0 would read as 'no hours left' to every caller"*. The new rule **deliberately makes 0
+>   meaningful**: `weeklyCap()` returns 0 for a week wholly past right-to-work expiry, and
+>   the generated vectors now contain exactly one such case (`visa_expired_0`,
+>   `cap_vectors.psql:55`). So this assertion no longer states the rule — it contradicts
+>   it, and it is stale rather than unimplemented.
+>
+> Assertion 7 is a one-line change and does not wait on the rest of B6b: the invariant
+> needs re-wording to "no ceiling is null; 0 means no workable day in the week, which only
+> a lapsed right to work produces". Worth doing first, because it gets `main` from two
+> failures to one and makes the remaining one honestly say "the SQL half is not built yet".
+>
 > Contract: `docs/scope/university-completion-letter-requirement.pdf`. This is a NEW
 > document from THC, not part of scope v1.6, and it refines RULE-20. Read it whole —
 > the exposure is civil penalties for illegal working, so the cautious reading wins
