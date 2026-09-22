@@ -554,6 +554,29 @@ branch is tested — it decides which build of the CLI writes to the live databa
 can change between two merges with no commit to explain it. The rate-limit flake that took
 down a build is now a flake on the production deploy path.
 
+**Third occurrence, #39 at 15:53 on 22.09**, and the pattern is now clear enough to state:
+it is not rare. Same signature, same place — all 29 turbo tasks green, then
+
+```
+##[error]Failed to resolve latest Supabase CLI release: rate limit exceeded
+```
+
+before `supabase start`, so the database and browser halves of the suite did not run and
+the pull request read red for a reason that had nothing to do with its diff. That is three
+builds lost to it in one day (#32, #35, #39), which is the argument for pinning rather than
+for retrying.
+
+Worth knowing for whoever picks it up: `rerun-failed-jobs` returns **403 Resource not
+accessible by integration** for an agent session, so the usual answer to a flake is not
+available here. The only way past it from a session is another commit, which means the
+cost of the flake is a full CI cycle every time.
+
+Still not fixed here, for the reason the paragraph above gives: choosing the tag needs
+`supabase/cli`, which is outside this session's repository scope, and this is the version
+of the CLI that writes to the live database. Guessing it is worse than leaving it. It
+wants a session that can read a real tag, changes both uses together, and records the
+choice here.
+
 ## O8 · The PR review bot — two faults, and the second one needs you today
 
 ### The one blocking it now: there is no API key
@@ -735,16 +758,15 @@ number) until the row is drained and pruned, and `location_pings` keep the GPS t
 shifts worked. Both are arguably operational records rather than profile data, and §1.7
 does not mention either way — raised here rather than decided.
 
-## O13 · The repository's default branch is not `main`, and it silently broke the deploy
+## O13 · The repository's default branch was not `main` — **RESOLVED 22.09**
 
-**This one needs you, and it is two clicks.**
+**Done by the owner.** `GET /repos/saveezirfan0-cloud/thc-portal` now returns
+`"default_branch": "main"`, and `actions/workflows` resolves both workflow files at
+`blob/main/` rather than at the old branch. Kept here because the cost below is what
+makes the two clicks worth understanding, and because the trap catches the next
+trigger-based workflow, not just this one.
 
-```
-https://github.com/saveezirfan0-cloud/thc-portal/settings
-→ Default branch → switch to `main`
-```
-
-The default branch today is `claude/youthful-meitner-hs0o7d` — an agent branch from the
+The default branch had been `claude/youthful-meitner-hs0o7d` — an agent branch from the
 first afternoon of the build, which happened to be what the repository was created from and
 was never changed. Everything since has merged into `main`, so nothing looked wrong.
 
@@ -769,11 +791,13 @@ pushed to, so it fires regardless of this setting, and `deploy.yml` is deleted r
 left as a decoy. **That fix stands on its own — changing the default branch is not required
 to make the database deploy.**
 
-### Why it is still worth fixing
+### What the fix restored
 
-- Anything trigger-based added later walks into the same trap. `schedule` is the one to
-  watch: the jobs layer (§8, `pg_cron`) has a plausible future need for a nightly workflow,
-  and it would be just as silently inert.
+All five are live again now that the setting is `main`:
+
+- Anything trigger-based added later no longer walks into the trap. `schedule` was the one
+  to watch: the jobs layer (§8, `pg_cron`) has a plausible future need for a nightly
+  workflow, and it would have been just as silently inert.
 - A new pull request defaults its base to `claude/youthful-meitner-hs0o7d`, so a session
   that does not set the base explicitly proposes a merge into a dead branch.
 - Branch protection is configured per branch. docs/12 asks you to require `ci` on `main`;
@@ -783,4 +807,15 @@ to make the database deploy.**
 - GitHub renders the repository — README, the file listing, the language bar — from the
   default branch, so the front page is a snapshot of 21.09.
 
-No code change is waiting on this. It is a setting, and it should be `main`.
+No code change was waiting on it. It was a setting, and it is now `main`.
+
+**The catch-up has happened.** The first `deploy-database` job ran on `1c78fc8` at
+15:34 on 22.09 and applied all 26 pending migrations in one push, from
+`20260921153000_checkin_write_paths` through `20260922160000_accept_invite_event_ended`,
+ending `Finished supabase db push.` The live project is current for the first time since
+21.09, and the twenty-six-migration gap this question was opened over is closed.
+
+Read the job's log rather than the badge on any future run: `db push` applies migrations
+one at a time, so a failure halfway leaves the project part-applied with a green
+`build-test` above it, and the log is the only place that says which version it stopped
+at.
