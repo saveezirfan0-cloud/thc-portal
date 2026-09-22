@@ -11,8 +11,8 @@ what exists, what is missing, and the order to do it in.
 
 ## 1 · What is genuinely built
 
-**Foundations — done.** Three Next.js apps on one Supabase database, 32 migrations,
-27 pgTAP files, the design system in `packages/ui`, and the pure rule layer in
+**Foundations — done.** Three Next.js apps on one Supabase database, 40 migrations,
+32 pgTAP files, the design system in `packages/ui`, and the pure rule layer in
 `packages/domain` (`cap` `pay` `scoring` `autoAssign` `buffer` `time` `state`
 `overlap` `shift` `events`). CI runs lint, typecheck, unit, `supabase test db` and
 the Playwright suite on every push, and is green.
@@ -21,8 +21,8 @@ the Playwright suite on every push, and is green.
 
 | App | Routes |
 |---|---|
-| Back Office | `/` (stands in for the Dashboard) · `/events` · `/events/:id` (the board) · `/events/new` · `/events/:id/edit` · `/checkin` · `/roles` · `/venues` · `/login` · `/design-system` |
-| Staff App | `/` · `/apply` · `/apply/submitted` · `/shifts/:id` · `/login` |
+| Back Office | `/` (stands in for the Dashboard) · `/events` · `/events/:id` (the board) · `/events/new` · `/events/:id/edit` · `/checkin` · `/clients` · `/clients/:id` · `/staff` · `/staff/:id` · `/roles` · `/venues` · `/login` · `/design-system` |
+| Staff App | `/` · `/apply` · `/apply/submitted` · `/invites` · `/invites/:id` · `/shifts` · `/shifts/:id` · `/radar` · `/radar/:id` · `/login` |
 | Client Portal | `/` · `/client` · `/client/events/:id` · `/login` |
 
 **Everything else in `docs/08-screen-inventory.md` is not started.** The Back Office
@@ -78,15 +78,22 @@ at once — it lists the three files that every session wants to touch.
 3. **B5 · Onboarding kanban and candidate profile (§2.2–2.3).** `/apply` collects
    applications that nothing yet reviews.
 4. **B6 · Compliance queue and radar (§4.1–4.3).**
-5. **S1 · the PWA shell, auth and install (§10.1–10.2, §10.5).** The Staff App has two
-   screens and no shell. It also gates the push keys in §4: installability is what makes
-   Web Push possible on iOS at all, so "nothing is sent" cannot be fixed without it.
-6. **B8 · Staff directory and profile.**
-7. **B11/B12 · Reports, CSV, the Monday send, and the two PDFs.**
-8. **S2 · the 11-step onboarding wizard**, then the rest of the Staff App.
+5. **S1 · the PWA shell, auth and install (§10.1–10.2, §10.5).** The Staff App now has
+   its working screens but no shell around them — no service worker, no install flow, no
+   push subscription. It gates the push keys in §4: installability is what makes Web Push
+   possible on iOS at all, so "nothing is sent" cannot be fixed without it.
+6. **B11/B12 · Reports, CSV, the Monday send, and the two PDFs.**
+7. **S2 · the 11-step onboarding wizard**, then S4 and S6.
 
-**Done since this page was written:** B3 the Event board, B7 the Check-in monitor and
-S5 the on-shift screen have all merged, and §1's route table is updated for them.
+**Done since this page was written**, and the reason the list above is shorter than it
+was: B3 the Event board, B7 the Check-in monitor, S5 the on-shift screen, B8 the Staff
+directory and profile, B9 Clients and rate cards, and S3 Invites · Shifts · Radar have
+all merged. §1's route table is updated for every one of them.
+
+Check that list against `git log` before taking an item, not against this paragraph. On
+22.09 alone, three sessions each built something a second session had already merged —
+the weekly cap in SQL, the Event board and `/apply` — because each read a page like this
+one rather than the repository.
 
 ---
 
