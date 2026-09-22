@@ -1,0 +1,123 @@
+/*
+ * Event board — mirrors the page-local styles in
+ * `wireframes/backoffice/event-board.html`. Layout only; every colour and
+ * radius is a token from `packages/ui`.
+ */
+
+/* A sub-list inside a role section: Confirmed, Invited, Potential, Unavailable. */
+.sub + .sub {
+  border-top: 1px solid var(--line);
+}
+.subh {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--panel-2);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  font-weight: var(--label-weight);
+  color: var(--muted);
+}
+.subh .n {
+  font-family: var(--font-num);
+  color: var(--text);
+}
+.subh .right {
+  margin-left: auto;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+
+/* One person: avatar, who, chips, actions. */
+.prow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  font-size: 13px;
+}
+.prow + .prow {
+  border-top: 1px solid var(--line);
+}
+.prow:hover {
+  background: var(--row-hover);
+}
+.prow .who {
+  min-width: 0;
+}
+.prow .who .n {
+  font-weight: 600;
+}
+.prow .who .s {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.prow .right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+.prow .rank {
+  font-family: var(--font-num);
+  font-size: 11px;
+  color: var(--muted);
+  width: 18px;
+  text-align: right;
+  flex: 0 0 auto;
+}
+
+/* The §6 factors behind a score, shown inline on a pool row. */
+.factors {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.factors .fc {
+  font-family: var(--font-num);
+  font-size: 10px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  padding: 1px 5px;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+
+/* The score weights, stated once above the pool. */
+.legend {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+  font-size: 11px;
+  color: var(--muted);
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* The event header's read-only policy checkmarks (§3.2, kept visible §3.3). */
+.policies {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: 12px;
+}
+
+@media (max-width: 900px) {
+  .prow {
+    flex-wrap: wrap;
+  }
+  .prow .right {
+    margin-left: 0;
+    width: 100%;
+  }
+  .factors {
+    width: 100%;
+  }
+}

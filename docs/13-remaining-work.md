@@ -176,6 +176,56 @@ is built — see `docs/14` O10.
 > Done when: it matches the wireframe, and the re-check rule has a test proving one
 > verification does not unblock while something else is outstanding.
 
+## B6b · University completion letter and the 48-hour opt-out (new requirement)
+
+> Use the `compliance` agent for the review side and `staff-pwa` for the upload side.
+> Branch `feat/compliance-completion-letter`.
+>
+> Contract: `docs/scope/university-completion-letter-requirement.pdf`. This is a NEW
+> document from THC, not part of scope v1.6, and it refines RULE-20. Read it whole —
+> the exposure is civil penalties for illegal working, so the cautious reading wins
+> every time.
+>
+> **The rule half is already done.** `packages/domain/src/cap.ts` implements all of it:
+> the 10-hour below-degree-level band, the release running from the course completion
+> date rather than the verification date, the visa-expiry hard stop, opt-out
+> cancellation after a notice period, and under-18s being unable to opt out. 27 shared
+> vectors in `cap.vectors.json` hold the TypeScript and the SQL to the same cases. Do
+> not re-derive any of that — read it and build against it.
+>
+> What is left is everything around the rule:
+>
+> - **Upload** (§2.1). Student/Tier 4 workers get a completion-letter slot in the Staff
+>   App documents hub. Accept PDF, JPG, PNG, 10 MB. Also accept a completers transcript
+>   or an official university email — one document type, three acceptable forms. The
+>   worker enters the course completion date printed on it. The upload lands in
+>   `pending` and changes NO cap by itself; that is acceptance criterion 2.
+> - **Review** (§2.2). Approve or reject in the Needs review queue. A rejection needs a
+>   reason and notifies the worker, who can re-upload. On approval the reviewer confirms
+>   the completion date and the visa expiry.
+> - **Audit and retention** (§4). Document, upload timestamp, reviewer identity, approval
+>   timestamp, completion date, rejection reasons — all of it, exportable. Retention is
+>   employment plus two years, which is longer than anything else in the schema, so it
+>   needs its own rule rather than riding on the general one.
+> - **Rota guard** (§4). Warn or block when an assignment would breach the current cap —
+>   configurable, so it belongs in `settings`. The expiry hard stop is NOT configurable:
+>   `canRoster()` is a hard no.
+> - **Reporting** (§4). Every student-visa worker, their current cap, evidence status and
+>   visa expiry, in one view.
+> - **Notifications** (§5). Worker: upload received, approved with the new cap and its
+>   effective date, rejected with the reason. Admin: awaiting review, visa expiry at
+>   60/30/14 days, opt-out signed or cancelled. These are new entries in the §8 register
+>   in `packages/notifications`, each with its own outbox key.
+>
+> Watch the edge cases in §7, which is where this gets subtle: a completion date in the
+> future, a visa expiring around completion, and a worker switching to a Graduate or
+> Skilled Worker visa mid-employment — a new right-to-work check that ends the student
+> logic but leaves the 48-hour Working Time rules in force.
+>
+> Done when: the seven acceptance criteria in §6 each have a test naming them, and a
+> Student-visa worker with no approved letter cannot be rostered past 20 hours in any
+> week through the UI, not merely in the rule.
+
 ## B7 · Check-in monitor and violation log (§9.5)
 
 > Use the `checkin` agent. Branch `feat/checkin-monitor`.
@@ -507,6 +557,56 @@ other way round, pg_cron spends the gap posting at a 404.
 >
 > Done when: an anonymised worker still appears correctly on historical timesheets, and
 > the import produces the right status split on staging.
+
+---
+
+# Known defects
+
+Found while building something else, too small to stop for and too easy to lose. Neither
+is a missing screen, so neither shows up in the lists above.
+
+## D1 · The shared Checkbox and Radio cannot be used by keyboard (§1.2)
+
+> Use the `design-system` agent. Branch `feat/design-system-checkbox-a11y`.
+>
+> `packages/ui/src/components/Controls.tsx` hides the real `<input>` behind
+> `className="hide"`, which is `display: none !important`. A hidden input is not
+> focusable and is not in the accessibility tree, so both controls work with a mouse and
+> with nothing else — no keyboard, no screen reader. Playwright's `.check()` times out on
+> them, which is how it surfaced.
+>
+> Two consumers today: the design-system gallery, and `/apply`, which deliberately does
+> NOT use the shared component — it carries its own visually-hidden input and a comment
+> saying why, because a GDPR consent tick that has to be given deliberately (§1.7) cannot
+> be mouse-only. Any screen that reaches for `Checkbox` or `Radio` before this is fixed
+> ships an unusable control.
+>
+> The fix is the visually-hidden pattern `/apply` already uses: the input positioned over
+> the box at `opacity: 0`, with the focus ring drawn on the box via
+> `:focus-visible + .box`. It is a shared-package change, so it ships in its own pull
+> request first.
+>
+> Done when: the control can be tabbed to and toggled with the keyboard, a Playwright
+> test checks it without `force`, and `apps/staff/app/apply/ApplyForm.tsx` has gone back
+> to the shared component and dropped its local copy and CSS.
+
+## D2 · /apply is a public write endpoint with no rate limit (§2.1)
+
+> Use the `onboarding` agent — this belongs with P3, where it starts costing money.
+> Branch `feat/onboarding-apply-abuse`.
+>
+> `submit_application` is granted to `anon` by design: §2.1 is a public URL with no
+> registration. Nothing limits how often it may be called, so candidate rows can be
+> created in a loop, and once P3 lands each one becomes a Willo interview.
+>
+> The scope specifies no captcha, so which defence to use is a product decision rather
+> than something to invent in a migration — a challenge on the form, a per-IP limit at
+> the edge, or a server-side throttle keyed on the normalised email and mobile the
+> duplicate check already computes. Whichever it is, a genuine applicant must never meet
+> a challenge they cannot pass.
+>
+> Done when: a burst from one source is refused, a single honest application is not, and
+> the limit is asserted rather than assumed.
 
 ---
 
