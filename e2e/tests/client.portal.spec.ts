@@ -3,18 +3,25 @@ import { expect, test } from '@playwright/test';
 /**
  * Client Portal — §11.1 the event list, §11.2 the event page.
  *
- * These describe an ungated portal — a local run with no .env.local — so
- * there are no rows to assert on and no session to hold. What can be checked
- * without a database is the part §11.1 is most emphatic about: the shape of
- * the shell, and the fact that no money reaches this app.
+ * THESE DO NOT RUN ANYWHERE, and the fix is a fixture rather than an edit
+ * here. They were written against an ungated portal — a local run with no
+ * .env.local, where the middleware degraded open and the shell rendered
+ * without a session. That state no longer exists. `7d28ba4` closed the auth
+ * gate, so an app built without NEXT_PUBLIC_SUPABASE_URL now answers 503 on
+ * every route instead of serving; locally the suite cannot boot at all, and
+ * in CI, which points the apps at a real local Supabase, every route
+ * redirects to /login and the beforeEach below skips them.
  *
- * In CI they skip. Since #15 the workflow points the apps at the local
- * Supabase stack before e2e:smoke, so every route is gated and /client
- * redirects to /login — the same reason office.shift-builder.spec.ts skips
- * itself. Making them run there needs a signed-in session fixture, which
- * belongs with the seeded suite rather than here. Until that exists the
- * portal's behaviour is held by supabase/tests/160_client_portal.sql and the
- * unit tests over `rules.ts`, both of which do run on every push.
+ * What they need is a signed-in client session — the equivalent of the
+ * openAsAdmin fixture office.shift-builder.spec.ts moved onto, which is why
+ * that suite stopped skipping and this one did not. That belongs with the
+ * seeded suite (docs/13 C1) rather than with a patch to this file.
+ *
+ * Until it exists the portal's behaviour is held by
+ * supabase/tests/160_client_portal.sql and the unit tests over `rules.ts`,
+ * both of which do run on every push. What is asserted below is the part
+ * §11.1 is most emphatic about — the shape of the shell, and the fact that
+ * no money reaches this app — so it is worth reviving, not deleting.
  */
 
 test.beforeEach(async ({ page }) => {

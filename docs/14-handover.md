@@ -11,8 +11,8 @@ what exists, what is missing, and the order to do it in.
 
 ## 1 · What is genuinely built
 
-**Foundations — done.** Three Next.js apps on one Supabase database, 29 migrations,
-25 pgTAP files, the design system in `packages/ui`, and the pure rule layer in
+**Foundations — done.** Three Next.js apps on one Supabase database, 32 migrations,
+27 pgTAP files, the design system in `packages/ui`, and the pure rule layer in
 `packages/domain` (`cap` `pay` `scoring` `autoAssign` `buffer` `time` `state`
 `overlap` `shift` `events`). CI runs lint, typecheck, unit, `supabase test db` and
 the Playwright suite on every push, and is green.
@@ -21,8 +21,8 @@ the Playwright suite on every push, and is green.
 
 | App | Routes |
 |---|---|
-| Back Office | `/` (stands in for the Dashboard) · `/events` · `/events/new` · `/events/:id/edit` · `/roles` · `/venues` · `/login` · `/design-system` |
-| Staff App | `/` · `/apply` · `/apply/submitted` · `/login` |
+| Back Office | `/` (stands in for the Dashboard) · `/events` · `/events/:id` (the board) · `/events/new` · `/events/:id/edit` · `/checkin` · `/roles` · `/venues` · `/login` · `/design-system` |
+| Staff App | `/` · `/apply` · `/apply/submitted` · `/shifts/:id` · `/login` |
 | Client Portal | `/` · `/client` · `/client/events/:id` · `/login` |
 
 **Everything else in `docs/08-screen-inventory.md` is not started.** The Back Office
@@ -32,20 +32,34 @@ lands.
 
 ---
 
-## 2 · The one place the code currently disagrees with itself
+## 2 · The place the code disagreed with itself — closed
 
-**RULE-20 is implemented twice and the two do not match.**
+**RULE-20 was implemented twice and the two did not match.**
 
-`docs/scope/university-completion-letter-requirement.pdf` is a new contract document
-from THC. `packages/domain/src/cap.ts` implements it in full. The SQL
-`weekly_cap()` does **not** yet — it still runs the older four-input rule.
+`packages/domain/src/cap.ts` implemented the University Completion Letter
+requirement in full. The SQL `weekly_cap()` did not — it still ran the older
+four-input rule, and auto-assign filters on the SQL side inside a query, so a
+student-visa worker could be offered a shift the TypeScript rule would refuse. The
+worst case was not the student: an **under-18 with a recorded opt-out tick came back
+uncapped**, no weekly ceiling at all, where the rule says a minor cannot sign one.
 
-That matters because auto-assign filters on the SQL side inside a query. Until the
-migration lands, a student-visa worker could be offered a shift the TypeScript rule
-would refuse. The 27 shared vectors in `cap.vectors.json` hold both implementations,
-so the pgTAP suite will fail loudly rather than silently — but fix it first.
+Migrations `20260922093000` and `20260922093100` close it. `weekly_cap()` now takes
+all ten inputs and agrees with `cap.ts` across every one of the 27 shared vectors;
+the four-argument signature survives as an overload that delegates, so existing
+callers keep working and `090_weekly_cap.sql` asserts both. `can_roster()` covers what
+the weekly cap structurally cannot — the week that straddles a right-to-work expiry
+has workable days before it and none after, so that question is per shift, not per
+week. `weekly_cap_for()` sources all ten facts from real columns:
+`below_degree_level`, `course_completion_date` and `wtr_optout_cancelled_from` were
+added to `staff` in the same migration.
 
-This is the top of the queue.
+**Worth knowing, because it nearly cost a regression.** Two sessions fixed this
+independently and the second one's migrations were timestamped later, so they would
+have applied last and `drop function ... weekly_cap(boolean, text, boolean, boolean)`
+would have removed the overload the first one's tests rely on. They were dropped on
+the branch rather than merged. `docs/13`'s header already says to run `git fetch
+origin && git branch -r` before starting; this is what it is for, and a migration is
+the most expensive place to learn it.
 
 ---
 
@@ -55,20 +69,24 @@ Each of these has a full prompt in `docs/13-remaining-work.md`. Run one session 
 item, on its own branch, and read `docs/10-working-with-agents.md` before running two
 at once — it lists the three files that every session wants to touch.
 
-1. **B6b · completion letter + opt-out.** Finish the SQL half first (above), then the
-   upload, review, audit trail, retention, rota guard, notifications and reporting.
-   Legal exposure: civil penalties for illegal working.
-2. **B1 · Dashboard (§9.1).** The one route every admin lands on after sign-in.
-3. **B3 · Event board (§3.3–3.5).** Scheduling is half-built: the Shift Builder
-   exists, the board that fills it does not.
-4. **B5 · Onboarding kanban and candidate profile (§2.2–2.3).** `/apply` collects
+1. **B6b · completion letter + opt-out.** The rule half is finished on both sides now
+   and reads off real columns (§2 above). What is left is the screens and the plumbing
+   around it: the upload, the review queue, the audit trail, retention, the rota guard,
+   notifications and reporting. Legal exposure: civil penalties for illegal working.
+2. **B1 · Dashboard (§9.1).** The one route every admin lands on after sign-in, and
+   still the only screen in the Back Office standing in for itself.
+3. **B5 · Onboarding kanban and candidate profile (§2.2–2.3).** `/apply` collects
    applications that nothing yet reviews.
-5. **B6 · Compliance queue and radar (§4.1–4.3).**
-6. **B7 · Check-in monitor (§9.5)** and **S5 · the on-shift screen (§5.1–5.2b).**
-   Build these as a pair — same rules, two ends.
-7. **B8 · Staff directory and profile.**
-8. **B11/B12 · Reports, CSV, the Monday send, and the two PDFs.**
-9. **S2 · the 11-step onboarding wizard**, then the rest of the Staff App.
+4. **B6 · Compliance queue and radar (§4.1–4.3).**
+5. **S1 · the PWA shell, auth and install (§10.1–10.2, §10.5).** The Staff App has two
+   screens and no shell. It also gates the push keys in §4: installability is what makes
+   Web Push possible on iOS at all, so "nothing is sent" cannot be fixed without it.
+6. **B8 · Staff directory and profile.**
+7. **B11/B12 · Reports, CSV, the Monday send, and the two PDFs.**
+8. **S2 · the 11-step onboarding wizard**, then the rest of the Staff App.
+
+**Done since this page was written:** B3 the Event board, B7 the Check-in monitor and
+S5 the on-shift screen have all merged, and §1's route table is updated for them.
 
 ---
 
@@ -109,9 +127,17 @@ back on for everything.
 
 - `supabase start` needs Docker, which some sandboxes block. When it is unavailable
   take database numbers from the CI run, not a local count.
-- The browser suite signs in, so it needs to reach Supabase. Where egress is blocked
-  every signed-in test fails with a `waitForURL` timeout. That is the environment,
-  not the code — CI runs a local Supabase and passes.
+- The browser suite needs a Supabase project to reach, and since `7d28ba4` closed the
+  auth gate it needs one to *start*: an app built without
+  `NEXT_PUBLIC_SUPABASE_URL` answers 503 on every route, so Playwright's `webServer`
+  wait times out after 120s and nothing runs. Point `.env.local` at a project, or run
+  `supabase start` and export its URL and anon key the way `ci.yml` does. Where egress
+  is blocked the signed-in tests fail with a `waitForURL` timeout instead. Both are the
+  environment, not the code — CI runs a local Supabase and passes.
+- **Six Client Portal browser tests are unreachable**, not merely skipped. They assert
+  an ungated portal, which no longer exists in either environment. Reviving them needs a
+  signed-in client fixture; the file says so at the top, and C1 in `docs/13` is where
+  that work belongs.
 - `pnpm format` once rewrote the checked-in `design-handoff/` vendor bundles. That
   folder is in `.prettierignore` now; do not take it out.
 
