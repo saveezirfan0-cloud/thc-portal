@@ -69,10 +69,9 @@ test('the selection process is never named in the portal (§11.2)', async ({ pag
 });
 
 test('an event that belongs to nobody renders not-found, not a crash', async ({ page }) => {
-  const response = await page.goto(
-    '/client/events/00000000-0000-4000-8000-000000000000',
-    { waitUntil: 'domcontentloaded' },
-  );
+  const response = await page.goto('/client/events/00000000-0000-4000-8000-000000000000', {
+    waitUntil: 'domcontentloaded',
+  });
   // Without a project the page reports that rather than 404ing; with one, a
   // stranger's id and a nonexistent id are indistinguishable by design.
   expect([200, 404]).toContain(response?.status() ?? 0);
