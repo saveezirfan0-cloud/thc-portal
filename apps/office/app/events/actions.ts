@@ -15,7 +15,7 @@ import {
   ukRoleWindow,
   validateRoleSection,
 } from '@thc/domain';
-import { TEMPLATES, outboxKey, render } from '@thc/notifications';
+import { TEMPLATES, outboxKey } from '@thc/notifications';
 import { LIVE_BOOKING_STATUSES } from './data';
 
 /**
@@ -238,10 +238,18 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
     .upsert(input.roles.map((role) => sectionRow(input.id!, input.date, role)));
   if (sectionError) return { error: sectionError.message };
 
-  await flagReconfirmations(supabase, input, before, {
+  const notifyFailed = await flagReconfirmations(supabase, input, before, {
     dateChanged: event.event_date !== input.date,
     venueChanged: event.venue_address !== venue.address,
   });
+  // This path redirects, so there is no result to hang a warning on and the
+  // manager cannot be told inline — see docs/14 O13. Logging it is the
+  // difference between a failure somebody can find and the silent one this
+  // whole change exists to remove. `console.error` is allowed by the lint
+  // config and is what `login/actions.ts` already uses for the same reason.
+  if (notifyFailed) {
+    console.error('[events] N11 could not be queued', { eventId: input.id, error: notifyFailed });
+  }
 
   revalidatePath(`/events/${input.id}`);
   redirect(`/events/${input.id}`);
@@ -273,8 +281,9 @@ async function flagReconfirmations(
   input: EventInput,
   before: ExistingSection[],
   changed: { dateChanged: boolean; venueChanged: boolean },
-): Promise<void> {
+): Promise<string | null> {
   const previous = new Map(before.map((s) => [s.id, s]));
+  const failures: string[] = [];
   const affected: { id: string; reason: string; startsAt: Date; window: string }[] = [];
 
   for (const role of input.roles) {
@@ -314,25 +323,35 @@ async function flagReconfirmations(
     const bookings = (rows ?? []) as { id: string; staff_id: string }[];
     if (bookings.length === 0) continue;
 
-    // One outbox row per worker, keyed so a re-save of the same times is a
-    // no-op against the unique index (§8).
-    // One call, one row per worker. Through the RPC rather than the table:
-    // `notification_outbox` is admin_read with no insert privilege for
-    // `authenticated`, so the direct insert this used to do was refused and
-    // N11 — a mandatory send — reached nobody (§8).
-    await supabase.rpc('queue_office_notifications', {
+    // One call, one row per worker, keyed so a re-save of the same times is
+    // a no-op against the unique index (§8). Through the RPC rather than the
+    // table: `notification_outbox` is admin_read with no insert privilege for
+    // `authenticated`, so the direct insert this used to do was refused every
+    // time and N11 reached nobody.
+    //
+    // `payload` is the VALUES map the drain renders the §8 copy with — NOT
+    // rendered text. `render(entry.body, values)` runs in
+    // packages/notifications/src/outbox.ts and ignores anything a row calls
+    // `body`, so sending pre-rendered copy delivered the literal
+    // "Shift time changed — now {window}" to the worker. N11 reads {window}
+    // and {bookingId}; `reason` rides along for the card's "was 12:00–00:30".
+    const { error: queueError } = await supabase.rpc('queue_office_notifications', {
       p_rows: bookings.map((booking) => ({
         key: outboxKey('N11', 'booking', `${booking.id}:${section.startsAt.toISOString()}`),
         channel: TEMPLATES.N11.channel,
         template: 'N11',
         recipient_staff_id: booking.staff_id,
         payload: {
-          title: TEMPLATES.N11.title,
-          body: render(TEMPLATES.N11.body, { window: section.window }),
-          deepLink: render(TEMPLATES.N11.deepLink ?? '', { bookingId: booking.id }),
+          window: section.window,
+          bookingId: booking.id,
           reason: section.reason,
         },
       })),
     });
+    // supabase-js returns `{ data, error }` and never throws. The unchecked
+    // await is how this failed silently for every save until now.
+    if (queueError) failures.push(queueError.message);
   }
+
+  return failures.length > 0 ? failures[0]! : null;
 }

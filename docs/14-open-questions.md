@@ -420,9 +420,10 @@ saying so.
 
 ## O13 · Three mandatory pushes were silently never sent — RESOLVED, and the shape is worth keeping
 
-Found by auditing `main` after the §10.4 merge, not by anything failing. N11 (the office
-moves a shift's time), N10b (the office withdraws a booking) and N12 (the office cancels
-an event) are all **mandatory** in §8, and all three were queued by a server action doing
+Found by auditing `main` after the §10.4 merge, not by anything failing. N10b (the office withdraws a
+booking) and N12 (the office cancels an event) are **mandatory** in §8; N11 (the office
+moves a shift's time) is required by §3.5 without being marked unmutable. All three were
+queued by a server action doing
 
 ```ts
 await supabase.from('notification_outbox').insert({ ... })
@@ -462,10 +463,29 @@ a door, not a hole in the wall.
    `from('notification_outbox')` — or `audit_log` or `report_sends`, which are owned by
    definer RPCs for the same reason. It was verified by reintroducing the bug and
    watching it fail. A runtime failure this invisible needs a compile-time-ish guard.
-3. **Look for the same shape elsewhere.** The question "does this server action write a
+3. **The payload contract is the opposite of what it looks like.** The drain renders §8's
+   copy itself — `render(entry.title, values)` in `outbox.ts` — so `payload` is the
+   VALUES map and any `title` or `body` a row carries is ignored. The first fix restored
+   the three sends and made them gibberish: `messageFor()` over the exact rows returned
+   `"Shift time changed — now {window}"` with the url `/shifts/{bookingId}`. Caught in
+   review, before merge, and now pinned by vectors in
+   `packages/notifications/src/__tests__/outbox.test.ts` that assert no brace survives.
+   `queue_booking_push` had this right from the start; the office simply did not follow it.
+
+4. **Look for the same shape elsewhere.** The question "does this server action write a
    table the caller's role cannot write?" has not been asked of every screen. The three
-   tables above are covered; the audit that would cover the rest is the same one O7 asks
-   for, from the other direction.
+   tables above are covered by `scripts/check-write-paths.mjs`; the audit that would cover
+   the rest is the same one O7 asks for, from the other direction.
+
+5. **The concrete next target for lesson 1** is `supabase/tests/300_staff_app_screens.sql`.
+   It sets `request.jwt.claims` in five places and never `set local role`, so §10.4's
+   assertions run as the table owner. Its grant assertions are catalog queries
+   (`has_function_privilege`), which are role-independent and therefore still sound — but
+   the behavioural ones prove logic, not reachability. Worth a pass.
+
+6. **`updateEvent` redirects**, so an N11 queue failure has no result to ride back on and
+   the manager cannot be told inline; it is logged with `console.error` instead. Giving
+   that path a way to surface a warning is UI work nobody has done.
 
 ## O12 · CI resolves `supabase/setup-cli` as `latest`, and it is neither reproducible nor reliable
 
