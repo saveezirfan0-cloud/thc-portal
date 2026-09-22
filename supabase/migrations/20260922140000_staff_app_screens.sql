@@ -507,25 +507,40 @@ comment on function reconfirm_booking(uuid) is
   'Accept a changed time, venue or dress code (§3.5, N11). Clears the Awaiting flag and resets the day-before and on-the-day stages: agreement to the old shift is not agreement to this one.';
 
 -- ---------------------------------------------------------------------
--- Grants. Postgres hands EXECUTE on a new function to PUBLIC, which for a
--- `security definer` function in `public` is the whole internet by way of
--- `anon`. Take it back first, then hand it to the signed-in role: every
--- function above identifies its own caller and refuses anyone else's row.
+-- Grants.
+--
+-- Two revokes, not one, and the second is the one that does the work.
+--
+-- Postgres hands EXECUTE on a new function to PUBLIC. Supabase's bootstrap
+-- ALSO sets default privileges granting EXECUTE on every new function in
+-- `public` to anon, authenticated and service_role INDIVIDUALLY — and
+-- `revoke ... from public` does not touch a grant held by a named role. So
+-- revoking from PUBLIC alone looks right and changes nothing for the two
+-- roles that matter.
+--
+-- 20260921162758 exists because exactly this shipped once before, and
+-- `300_staff_app_screens.sql` caught it here the same way `190` caught it
+-- then: on CI's real Supabase, anon could execute all nine of these. They
+-- are `security definer` over tables a worker cannot read. `staff_caller`
+-- returns null for a caller with no `auth.uid()`, so most of them find
+-- nothing — but `radar_wave1_exhausted` takes an arbitrary shift id and
+-- answers it for anybody holding the anon key, and "most of them find
+-- nothing" is not a grant policy.
 -- ---------------------------------------------------------------------
-revoke execute on function staff_caller(uuid)            from public;
-revoke execute on function staff_bookings(uuid)          from public;
-revoke execute on function staff_open_shifts(uuid)       from public;
+revoke execute on function staff_caller(uuid)            from public, anon;
+revoke execute on function staff_bookings(uuid)          from public, anon;
+revoke execute on function staff_open_shifts(uuid)       from public, anon;
 -- radar_wave1_exhausted is definer and takes an arbitrary shift id, and it
 -- is the one function here with no caller of its own to check. It is called
 -- only from staff_open_shifts, which is itself definer, so nothing outside
 -- needs it: leaving it granted would let any signed-in account — a client
 -- login included — probe whether any role's qualified pool is exhausted.
-revoke execute on function radar_wave1_exhausted(uuid)   from public;
-revoke execute on function decline_invite(uuid)          from public;
-revoke execute on function apply_to_shift(uuid, uuid)    from public;
-revoke execute on function withdraw_application(uuid)    from public;
-revoke execute on function confirm_on_day(uuid)          from public;
-revoke execute on function reconfirm_booking(uuid)       from public;
+revoke execute on function radar_wave1_exhausted(uuid)   from public, anon, authenticated;
+revoke execute on function decline_invite(uuid)          from public, anon;
+revoke execute on function apply_to_shift(uuid, uuid)    from public, anon;
+revoke execute on function withdraw_application(uuid)    from public, anon;
+revoke execute on function confirm_on_day(uuid)          from public, anon;
+revoke execute on function reconfirm_booking(uuid)       from public, anon;
 
 grant execute on function staff_caller(uuid)            to authenticated;
 grant execute on function staff_bookings(uuid)          to authenticated;
