@@ -5,7 +5,7 @@ import type { ClientDraft } from '../types';
 /**
  * §9.7: "All fields on this form are mandatory — none can be skipped."
  * `assert_client_input` rejects the same drafts in the database
- * (supabase/tests/140_clients_directory.sql), so these vectors and those
+ * (supabase/tests/240_clients_directory.sql), so these vectors and those
  * assertions are deliberately the same list.
  */
 const CLARIDGES: ClientDraft = {

@@ -43,8 +43,14 @@ select
   s.employee_id,
   s.status,
   s.removed_at is not null                                   as removed,
+  -- deleted_account_label() is §1.7's one definition of the anonymised
+  -- name (20260921190118_gdpr_removal.sql). It is called rather than
+  -- repeated: it already decides what a worker removed before an Employee
+  -- ID was issued is called, and two views answering that differently is
+  -- how the client portal and the Back Office end up naming the same
+  -- person two ways.
   case
-    when s.removed_at is not null then 'Deleted account #' || coalesce(s.employee_id::text, left(s.id::text, 8))
+    when s.removed_at is not null then deleted_account_label(s.employee_id)
     else s.first_name || ' ' || s.last_name
   end                                                        as display_name,
   case when s.removed_at is null then s.photo_path end       as photo_path,

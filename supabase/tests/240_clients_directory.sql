@@ -1,5 +1,5 @@
 -- =====================================================================
--- 140 · Clients directory (§9.7) — 20260921160000_clients_directory.sql
+-- 240 · Clients directory (§9.7) — 20260922091447_clients_directory.sql
 --
 -- The margin is the thing worth pinning. §9.7 defines it in one line —
 -- "(charge − final pay) ÷ charge across completed events, after holiday

@@ -1,6 +1,6 @@
 /**
  * The row shapes /staff reads, mirroring `staff_directory_v` and
- * `student_visa_v` (20260921170000_staff_directory.sql).
+ * `student_visa_v` (20260922091732_staff_directory.sql).
  *
  * `display_name` is the only name any caller prints: the view applies
  * §1.7's anonymisation, so a removed worker reads as "Deleted account #id"

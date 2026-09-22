@@ -1,6 +1,6 @@
 /**
  * The row shapes /clients reads, mirroring `clients_directory_v`
- * (20260921160000_clients_directory.sql).
+ * (20260922091447_clients_directory.sql).
  */
 export interface Client {
   id: string;

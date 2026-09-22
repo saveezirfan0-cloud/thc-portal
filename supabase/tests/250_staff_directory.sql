@@ -1,6 +1,6 @@
 -- =====================================================================
--- 150 · Staff directory and the Student visa view (§9.6, §4.5)
---                             — 20260921170000_staff_directory.sql
+-- 250 · Staff directory and the Student visa view (§9.6, §4.5)
+--                             — 20260922091732_staff_directory.sql
 --
 -- Two things carry real weight here.
 --
@@ -15,7 +15,7 @@
 -- manager depending on whether it is term time, a holiday or a graduation.
 -- =====================================================================
 begin;
-select plan(26);
+select plan(27);
 \ir _shared/fixtures.psql
 
 \set removed_staff 'ababab00-0000-4000-8000-000000000001'
@@ -61,6 +61,9 @@ select is((select unresolved_violations from staff_directory_v where id = :'staf
 select is((select display_name from staff_directory_v where id = :'removed_staff'),
   'Deleted account #91042',
   'a removed worker reads as "Deleted account #id" (§1.7)');
+select is((select display_name from staff_directory_v where id = :'removed_staff'),
+  deleted_account_label(91042),
+  'and it is deleted_account_label()''s answer, not a second copy of the rule — the client portal names the same person from the same function');
 select is((select photo_path from staff_directory_v where id = :'removed_staff'), null,
   'their photo is not reachable through the view');
 select is((select leave_reason from staff_directory_v where id = :'removed_staff'), null,

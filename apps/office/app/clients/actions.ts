@@ -9,11 +9,11 @@ import type { ActionResult, ClientDraft } from './types';
 
 /**
  * Writes for /clients (§9.7), through the RPCs in
- * 20260921160000_clients_directory.sql.
+ * 20260922091447_clients_directory.sql.
  *
  * There is no delete action, and there is no delete function behind one:
  * §9.7 says a client record cannot be removed from the system, only
- * edited, and `140_clients_directory.sql` asserts the function's absence.
+ * edited, and `240_clients_directory.sql` asserts the function's absence.
  */
 
 const NOT_CONFIGURED =
