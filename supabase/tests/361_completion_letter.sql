@@ -442,8 +442,8 @@ select throws_ok($$ update bookings set status = 'confirmed' where id = 'c730000
 update settings set value = '"block"' where key = 'rota_guard_mode';
 select is(invite_worker('c7200000-0000-4000-8000-0000000000c1', :'expw', 'manual') ->> 'invited', 'true',
   'AC6: the last valid day itself is still workable (the expiry is inclusive)');
-select is(invite_worker('c7200000-0000-4000-8000-0000000000c3', :'expw', 'manual') ->> 'reason', 'hours_limit',
-  'AC6: the office cannot invite them to the overnight shift either');
+select is(invite_worker('c7200000-0000-4000-8000-0000000000c3', :'expw', 'manual') ->> 'reason', 'rtw_expired',
+  'AC6: the office cannot invite them to the overnight shift either — refused as the expiry, not as hours (20260924130100)');
 
 -- §7 · the switch to a Graduate or Skilled Worker visa.
 select is(record_right_to_work_change(:'stu2', 'work_visa', :'w'::date + 700, 'W99887766') ->> 'studentLogicEnded',
