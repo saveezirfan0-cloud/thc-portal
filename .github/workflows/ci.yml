@@ -11,6 +11,9 @@ on:
 # any workflow can read — needs a repository setting. See docs/14 O13.
 permissions:
   contents: read
+  # Read-only, and only so the overlap check below can list open pull
+  # requests. It writes nothing; the least-privilege note above still holds.
+  pull-requests: read
 
 jobs:
   build-test:
@@ -33,6 +36,16 @@ jobs:
       # screen still reports success. See docs/14 O13.
       - name: no app writes an admin-only table directly
         run: node scripts/check-write-paths.mjs
+      # Advisory, never fails: it reports which files another OPEN pull
+      # request is also editing. Five times in one day two sessions built
+      # the same thing, and one pair came within an editing decision of
+      # deleting a shipped rule with a green build. git reports none of it
+      # until merge. See the script's header and docs/10.
+      - name: what else is editing these files
+        if: github.event_name == 'pull_request'
+        run: node scripts/check-pr-overlap.mjs --pr ${{ github.event.pull_request.number }} | tee -a "$GITHUB_STEP_SUMMARY"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo lint typecheck test
       - uses: supabase/setup-cli@v1

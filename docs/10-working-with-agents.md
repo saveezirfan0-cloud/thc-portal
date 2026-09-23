@@ -77,10 +77,58 @@ vector first, in its own PR, and both implementations get held to it.
 opens the migration PR alone, `platform` reviews it, it merges, and everyone regenerates
 types with `pnpm --filter @thc/db gen:types`.
 
-Before starting any migration, check what is already in flight: `git fetch origin` then
-`git branch -r`, and look at what each branch touches. Two sessions writing the same
-migration is the most expensive collision in this repo, because both are long and both
-look correct in isolation.
+Before starting any migration — or any slice at all — check what is already in flight:
+
+```
+pnpm check:overlap                 every open PR and the files it touches
+pnpm check:overlap -- --pr 47      just what one PR collides with
+```
+
+It reads `origin` for the repository. The repo is private, so a local run needs
+`GITHUB_TOKEN` set to a token with `pull-requests: read`; CI passes its own and
+needs nothing. Either way the check never fails a build — it only reports.
+
+In a cloud session, outbound HTTPS goes through the agent proxy and Node does
+not use it unless told to, so the invocation there is:
+
+```
+NODE_USE_ENV_PROXY=1 pnpm check:overlap
+```
+
+This used to say "`git fetch origin`, `git branch -r`, and look at what each branch
+touches". That was right in intent and unusable in practice: branch names do not say
+what a branch edits, half of them have no open PR, and nobody diffs fifteen of them by
+hand. It failed five times in one day (see §3b). The command above answers the question
+the old advice was asking.
+
+Two sessions writing the same migration is the most expensive collision here, because
+both are long and both look correct in isolation.
+
+## 3b. The collision that has actually happened, five times
+
+Not hypothetical. In one day, on 22.09.2026:
+
+| Both sessions built | Cost |
+|---|---|
+| The RULE-20 cap SQL | One landed unverified; `main` red for hours |
+| `accept_invite`'s weekly-cap gate | Near-miss: see below |
+| The `spatial_ref_sys` assertions | A branch dropped its copy at merge |
+| The `--radius` / `--accent` tokens | A branch dropped its copy at merge |
+| The §9.8 penny-sweep timeout | PR #47 closed unmerged against `main`'s copy |
+
+Four of the five were a **red-`main` pile-on**: `main` breaks, every concurrent session
+sees the same red, and every one of them reaches for the same fix. Nobody is being
+careless — a red `main` is an open invitation, and the sessions cannot see each other.
+
+The `accept_invite` pair is the one worth remembering. #31 added the RULE-20 cap gate and
+#35 added RULE-16, in parallel, to the same function. `20260922160000` happened to build
+on `20260922153000`'s body rather than replace it. Written as a straight `create or
+replace` — the obvious way — it would have **deleted a shipped rule with a green build**,
+because at the time no test asserted the two gates together. Nothing in git, in review or
+in CI would have said a word.
+
+So: the guard is advisory, not blocking. Overlap is often legitimate, and a check that
+cries wolf gets switched off. What was missing was never enforcement. It was knowing.
 
 ## 4. What can actually run in parallel
 
