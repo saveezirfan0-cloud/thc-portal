@@ -360,7 +360,10 @@ select is((select count(*)::int from audit_log where action = 'rota_guard.warned
 select is((select band from rota_guard_warnings_v where booking_id = 'c7300000-0000-4000-8000-000000000004'),
   'graduated_48', '§4: on the warnings list, with the band it breached');
 update settings set value = '"block"' where key = 'rota_guard_mode';
-update bookings set status = 'invited', confirmed_at = null where id = 'c7300000-0000-4000-8000-000000000004';
+-- confirmed → invited is not a §3.6 edge (20260924120000): a fresh row.
+delete from bookings where id = 'c7300000-0000-4000-8000-000000000004';
+insert into bookings (id, shift_id, staff_id, status, source)
+values ('c7300000-0000-4000-8000-000000000004', 'c7200000-0000-4000-8000-0000000000b4', :'grad', 'invited', 'auto');
 
 -- Signing the opt-out.
 select set_config('request.jwt.claims', json_build_object('sub', :'grad_uid')::text, true);

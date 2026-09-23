@@ -3,6 +3,7 @@ import {
   DEFAULT_WEIGHTS,
   type EventStatus,
   UK_ZONE,
+  canCancelBooking,
   formatAllocationPair,
   formatHours,
   formatTimeIn,
@@ -117,6 +118,8 @@ export function RoleBoard({
                   noShow={booking.noShow}
                   confirmed
                   payrollExported={payrollExported}
+                  // Checked in = `worked`, which §3.6 never cancels.
+                  withdrawable={canCancelBooking(booking.status)}
                 />
               </div>
             </div>

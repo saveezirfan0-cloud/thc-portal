@@ -199,7 +199,10 @@ select is((select no_checkout_open from staff_bookings(:'me') where booking_id =
 
 -- Back to an invitation for the action tests below.
 delete from violations where booking_id = :'inv';
-update bookings set status = 'invited', confirmed_at = null where id = :'inv';
+-- confirmed → invited is not a §3.6 edge (20260924120000): a fresh row.
+delete from bookings where id = :'inv';
+insert into bookings (id, shift_id, staff_id, status, source)
+values (:'inv', :'s1', :'me', 'invited', 'auto');
 
 -- =====================================================================
 -- 2. staff_open_shifts — RULE-17's two waves, and what never appears

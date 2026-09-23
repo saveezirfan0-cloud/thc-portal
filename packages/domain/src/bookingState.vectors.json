@@ -1,0 +1,125 @@
+{
+  "description": "The booking state machine (Scope §3.6, with §3.3, §3.4, §3.5, §4.3, §5.2 RULE-15, §10.4, §10.6, §1.7) and the cancel_cause vocabulary. Held against BOOKING_TRANSITIONS / CANCEL_CAUSES in state.ts and against booking_transitions(), booking_transition_allowed(), the bookings_state_guard trigger and the bookings_cancel_cause_check constraint in 20260924120000_booking_state_machine.sql. Every pair of distinct statuses NOT listed under edges is illegal; staying in the same status is not a transition.",
+  "statuses": ["invited", "applied", "confirmed", "worked", "turned_away", "cancelled", "closed"],
+  "edges": [
+    {
+      "from": "invited",
+      "to": "confirmed",
+      "ref": "§3.6 worker Accepts (accept_invite, first-to-confirm §3.4)"
+    },
+    {
+      "from": "invited",
+      "to": "cancelled",
+      "ref": "§3.6 office Withdraw / GDPR; §3.4 overlap auto-withdraw; §4.3 · §10.6 · §10.7 cascade; §3.3 event cancelled"
+    },
+    {
+      "from": "invited",
+      "to": "closed",
+      "ref": "§3.4 slot taken — the invitation moves to Closed; §10.4 Decline"
+    },
+    {
+      "from": "applied",
+      "to": "confirmed",
+      "ref": "§10.4 / §8 N10 — the Radar application is taken forward"
+    },
+    {
+      "from": "applied",
+      "to": "cancelled",
+      "ref": "§3.3 event cancelled (N12 reaches pending applicants); §4.3 · §10.6 · §1.7 pending application cancelled"
+    },
+    {
+      "from": "applied",
+      "to": "closed",
+      "ref": "§10.4 the worker withdraws the application; §8 N10c the role fills without it"
+    },
+    {
+      "from": "closed",
+      "to": "applied",
+      "ref": "§10.4 a declined, withdrawn or lost offer may be applied for again on Radar (apply_to_shift revives the row)"
+    },
+    {
+      "from": "confirmed",
+      "to": "worked",
+      "ref": "§3.6 [shift + checklog] (attempt_check_in; resolve_violation's Get back §3.3)"
+    },
+    {
+      "from": "confirmed",
+      "to": "turned_away",
+      "ref": "§3.2 · §5.2 RULE-15 strict buffer policy turn-away at check-in"
+    },
+    {
+      "from": "confirmed",
+      "to": "cancelled",
+      "ref": "§3.6 office Withdraw / 12:00 cutoff (§3.5) / GDPR / self-cancel (RULE-04); §3.3 event cancelled; §4.3 · §10.6 · §10.7 cascade"
+    }
+  ],
+  "cancelCauses": [
+    {
+      "cause": "office_withdraw",
+      "status": "cancelled",
+      "ref": "§3.3 · §3.6 the manager presses Withdraw"
+    },
+    {
+      "cause": "ready_cutoff",
+      "status": "cancelled",
+      "ref": "§3.5 no \"I'm ready\" by 12:00, released at 12:05"
+    },
+    {
+      "cause": "self_cancel",
+      "status": "cancelled",
+      "ref": "§3.6 RULE-04 self-cancel, more than 72 h out"
+    },
+    {
+      "cause": "overlap_auto_withdraw",
+      "status": "cancelled",
+      "ref": "§3.4 · §3.6 an Accept withdraws overlapping invitations"
+    },
+    { "cause": "event_cancelled", "status": "cancelled", "ref": "§3.3 Cancel event" },
+    {
+      "cause": "blocked",
+      "status": "cancelled",
+      "ref": "§4.3 · §9.6 · §10.7 a confirmed booking released by a block"
+    },
+    {
+      "cause": "blocked_invite",
+      "status": "cancelled",
+      "ref": "§4.3 · §9.6 · §10.7 an invitation or application withdrawn by a block"
+    },
+    {
+      "cause": "left",
+      "status": "cancelled",
+      "ref": "§10.6 a confirmed booking released when the worker leaves"
+    },
+    {
+      "cause": "left_invite",
+      "status": "cancelled",
+      "ref": "§10.6 an invitation or application withdrawn when the worker leaves"
+    },
+    {
+      "cause": "gdpr",
+      "status": "cancelled",
+      "ref": "§1.7 · §3.6 a confirmed booking released by GDPR removal"
+    },
+    {
+      "cause": "gdpr_invite",
+      "status": "cancelled",
+      "ref": "§1.7 an invitation or application withdrawn by GDPR removal"
+    },
+    {
+      "cause": "slot_taken",
+      "status": "closed",
+      "ref": "§3.4 first-to-confirm — \"Sorry, this shift has been taken\"; §8 N10c"
+    },
+    { "cause": "declined", "status": "closed", "ref": "§10.4 Decline, no show-rate impact" },
+    {
+      "cause": "withdrawn_by_worker",
+      "status": "closed",
+      "ref": "§10.4 the worker withdraws a pending Radar application"
+    }
+  ],
+  "legacyCauses": {
+    "withdraw": "office_withdraw",
+    "cutoff": "ready_cutoff",
+    "compliance_block": "blocked"
+  }
+}
