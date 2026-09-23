@@ -4,8 +4,15 @@
 -- client-facing view must be empty for the `anon` PostgREST role.
 -- =====================================================================
 begin;
-select plan(41);
+select plan(45);
 \ir _shared/fixtures.psql
+
+-- A cap-band notice to probe for. Created here rather than in the shared
+-- fixtures on purpose: 200_compliance_daily runs compliance_daily() over
+-- the whole table and counts the N14 sends, so a standing row for a
+-- fixture worker would change what that file measures.
+insert into cap_band_notices (staff_id, band, cap_hours, notified_on)
+  values (:'staffa', 'standard_48', 48, current_date - 1);
 
 select set_config('request.jwt.claims', '', true);
 set local role anon;
@@ -42,6 +49,23 @@ select is((select count(*)::int from report_sends          where error  = 'rls_f
 -- anon WRITES here, through submit_application (§2.1), and reads nothing back.
 select is((select count(*)::int from applications          where id = :'applic_a'),                        0, 'anon reads no applications, though the public form writes them');
 select is((select count(*)::int from venue_types           where key = 'rls_fixture_type'),                 0, 'anon reads no venue types: venue_types_read needs a profile, and anon has none');
+-- cap_band_notices and staff_transitions: RLS from the day each landed,
+-- and no per-role test until now. staff_transitions is the one worth
+-- reading twice — its policy is `current_app_role() is not null`, and its
+-- own migration explains that the obvious alternative spelling,
+-- `auth.role() is not null`, is never null for a logged-out caller and
+-- would have published the §2.12 machine to the world. This is the
+-- assertion that would have caught it.
+select is((select count(*)::int from cap_band_notices where staff_id = :'staffa'), 0, 'anon reads no cap-band notices');
+select is((select count(*)::int from staff_transitions where from_status = 'compliant'), 0,
+  'anon reads no staff_transitions: current_app_role() is null without a profile, which is what keeps the reference-data policy shut to the world');
+select throws_ok(
+  format($$ insert into cap_band_notices (staff_id, band, cap_hours, notified_on)
+            values (%L, 'uncapped', null, current_date) $$, :'staffb'),
+  '42501', null, 'anon cannot forge a cap-band notice');
+select throws_ok(
+  $$ insert into staff_transitions (from_status, to_status) values ('compliant','documents') $$,
+  '42501', null, 'anon cannot add an edge to the staff state machine');
 
 -- 0009 took back the default grants on event_windows. It runs with owner
 -- rights over the money-bearing shift_requirements table, so a world grant

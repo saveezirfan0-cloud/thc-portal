@@ -13,7 +13,7 @@
 --      address anyone cares to type.
 -- =====================================================================
 begin;
-select plan(54);
+select plan(71);
 \ir _shared/fixtures.psql
 
 -- ---------------------------------------------------------------------
@@ -352,6 +352,94 @@ select throws_ok(
   '22023', 'Enter a real date of birth.',
   'and 101 is refused as a typo by both');
 reset role;
+
+-- ---------------------------------------------------------------------
+-- What 20260922183012 added: the date of birth on the email arm, and a
+-- throttle
+--
+-- The finding: `submit_application` is granted to anon, so PostgREST
+-- publishes it and the form is not the only door. The §2.12 email arm
+-- needed nothing but an email address, so submitting with a known
+-- worker's address filed a `returning_applicant` entry carrying THEIR
+-- staff_id — and the office's action on that entry is
+-- reset_to_candidate(), which supersedes the worker's whole compliance
+-- evidence set (§9.6). An anonymous caller plus a colleague's email
+-- address was a path to wiping verified right-to-work evidence.
+-- ---------------------------------------------------------------------
+
+-- Staff Alpha's real address, Staff Alpha's real mobile, somebody else's
+-- date of birth. Before the fix this matched on the email arm.
+set local role anon;
+select submit_application('Mallory','Impostor','STAFFA@rls.test','+447700900011', date '1979-06-06', true);
+reset role;
+select is((select outcome::text from applications where email = 'staffa@rls.test' and dob = date '1979-06-06'), 'candidate_created',
+  '§2.12 a known worker''s email with the WRONG date of birth is a new candidate, not a returning-applicant entry against their record');
+select is((select count(*)::int from applications where staff_id = :'staffa' and dob = date '1979-06-06'), 0,
+  'and nothing is filed against the real worker, so Reset to candidate is never offered over their evidence (§9.6)');
+select is((select status::text from staff where id = :'staffa'), 'compliant',
+  'the worker''s record is untouched');
+
+-- The right date of birth still matches, so §2.12 still does its job.
+select is((select matched_on from applications where phone = '+447700900804'), 'email_dob',
+  'the genuine email match above is recorded as email_dob: the office can see which arm a returning-applicant claim rests on');
+select is((select matched_on from applications where email = 'brand.new@rls.test'), 'msisdn_dob',
+  'and a mobile match is recorded as msisdn_dob');
+select is((select matched_on from applications where email = 'not.thesame@rls.test'), null,
+  'a new candidate matched on nothing, so the column is null');
+
+-- ---- the throttle -----------------------------------------------------
+-- Three per address and three per mobile per rolling day, from
+-- settings.apply_throttle (§9.12), checked inside the two advisory locks
+-- so a race cannot slip a fourth through.
+select is((select value from settings where key = 'apply_throttle'),
+  '{"per_email": 3, "per_msisdn": 3, "window_hours": 24}'::jsonb,
+  'the limits are settings, not constants: an office running a recruitment day raises them without a release');
+
+set local role anon;
+select lives_ok(
+  $$ select submit_application('Rate','Limit','rate.limit@rls.test','+447700900901', date '1990-03-03', true) $$,
+  'first submission from an address is accepted');
+select lives_ok(
+  $$ select submit_application('Rate','Limit','rate.limit@rls.test','+447700900902', date '1990-03-03', true) $$,
+  'second is too — a mis-typed address and a retry are ordinary');
+select lives_ok(
+  $$ select submit_application('Rate','Limit','rate.limit@rls.test','+447700900903', date '1990-03-03', true) $$,
+  'and the third');
+select throws_ok(
+  $$ select submit_application('Rate','Limit','rate.limit@rls.test','+447700900904', date '1990-03-03', true) $$,
+  '22023', 'Too many applications from these details. Please try again later.',
+  'the fourth from that address is refused — every accepted call writes a staff row, an applications row and an audit row, and before this there was no bound at all');
+reset role;
+
+-- The same ceiling on the mobile, reached from three different addresses,
+-- and the same message. Naming which of the two arms tripped would turn
+-- the endpoint back into the oracle §2.12 and 20260921150000's header both
+-- refuse, so the copy mentions neither.
+set local role anon;
+select lives_ok(
+  $$ select submit_application('One','Household','h1@rls.test','+447700900911', date '1991-04-04', true) $$,
+  'a mobile may be used once');
+select lives_ok(
+  $$ select submit_application('Two','Household','h2@rls.test','+447700900911', date '1992-05-05', true) $$,
+  'twice');
+select lives_ok(
+  $$ select submit_application('Three','Household','h3@rls.test','+447700900911', date '1993-06-06', true) $$,
+  'and three times — a family sharing one number is a real case, so the limit is not one');
+select throws_ok(
+  $$ select submit_application('Four','Household','h4@rls.test','+447700900911', date '1994-07-07', true) $$,
+  '22023', 'Too many applications from these details. Please try again later.',
+  'the fourth is refused on the mobile arm, with the identical message the email arm gives');
+reset role;
+
+-- The three accepted submissions share an address AND a date of birth, so
+-- §2.12 matches the second and third back to the first: three application
+-- rows, one staff row. Both halves are the point. The throttle bounds the
+-- rows a caller can write at all, and the duplicate check bounds how many
+-- of them become people.
+select is((select count(*)::int from applications where email = 'rate.limit@rls.test'), 3,
+  'three submissions from one address were accepted and no more: the write the throttle bounds is the applications row');
+select is((select count(*)::int from staff where email = 'rate.limit@rls.test'), 1,
+  'and §2.12 still keeps them to one candidate record');
 
 select * from finish();
 rollback;

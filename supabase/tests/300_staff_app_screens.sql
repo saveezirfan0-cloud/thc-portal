@@ -329,8 +329,23 @@ values (:'inv', :'s1', :'me', 'confirmed', 'auto', now(), now());
 
 select is(confirm_on_day(:'inv')->>'reason', 'not_today',
   'the on-the-day confirmation is refused before the day itself');
-update shift_requirements set starts_at = date_trunc('hour', now()) + interval '3 hours',
-                              ends_at   = date_trunc('hour', now()) + interval '11 hours'
+-- Anchored to MIDDAY on the UK day, not to now() + 3 hours.
+--
+-- `confirm_on_day()` compares `(starts_at at time zone 'Europe/London')::date`
+-- with today's UK date and nothing else — it has no "not yet started" rule. The
+-- old form was `now() + 3 hours`, which is tomorrow in UK terms for any run
+-- after about 21:00 BST, so the next assertion got `not_today` and the file
+-- failed. It passed all day and broke in the evening: CI run 173 on 22.09 at
+-- 20:18 UTC (21:18 BST) is the first one that reached this window.
+--
+-- Midday is on today's UK date whatever the hour, and stays eight hours long.
+-- Nothing after this depends on the shift being in the future:
+-- `reconfirm_booking()` checks status and `reconfirm_required`, never a time.
+update shift_requirements
+   set starts_at = ((now() at time zone 'Europe/London')::date + time '12:00')
+                     at time zone 'Europe/London',
+       ends_at   = ((now() at time zone 'Europe/London')::date + time '20:00')
+                     at time zone 'Europe/London'
  where id = :'s1';
 select is(confirm_on_day(:'inv')->>'ok', 'true', 'and accepted on it');
 select is((select status::text from bookings where id = :'inv'), 'confirmed',

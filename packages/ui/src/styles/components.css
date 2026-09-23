@@ -1862,6 +1862,13 @@ textarea.input {
 .app-header .actions {
   margin-left: auto;
 }
+/* The actions zone is always rendered now, because the appearance switch
+   lives in it (ADR-0007). It has to lay its children out as a row. */
+.app-header .actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-6);
+}
 .app-header .below {
   flex: 1 0 100%;
   margin-top: var(--sp-4);
@@ -1909,6 +1916,13 @@ textarea.input {
 }
 .app-frame > .bottom-nav {
   position: fixed;
+}
+/* The icon-only appearance switch (ADR-0007), as the Staff App header
+   carries it: at 390px the title keeps its line, so the control is a glyph.
+   Pressed = dark is on, and it takes the accent so the state is not left to
+   the glyph alone. */
+.mode-switch[aria-pressed='true'] {
+  color: var(--cyan-ink);
 }
 /* Phase 0, as in the sidebar: an unbuilt route is text, not a dead link. */
 .bottom-nav .pending {

@@ -12,7 +12,12 @@
    combination is active.
    ===================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+/* The five families, from the woff2 subsets checked in under packages/ui/fonts — the same
+   @font-face sheet the React design system loads, so the wireframes and the product can never
+   end up on different typefaces. It replaces a Google Fonts @import: that was render-blocking,
+   it told a third party who was opening a sign-in screen, and it could not resolve at all for
+   an installed, offline Staff App. See packages/ui/src/styles/fonts.css. */
+@import url('../../packages/ui/src/styles/fonts.css');
 
 /* ---------------------------------------------------------------------
    1 · TOKENS — dark + scope is the literal §1.6 palette
@@ -441,6 +446,9 @@ textarea.input { height: auto; min-height: 84px; padding: 10px 12px; resize: ver
 :root[data-style="warm"] .app-header .title { font-size: 22px; }
 .app-header.collapsed .title { font-size: 15px !important; }
 .app-header .sub { font-size: 11.5px; color: var(--muted); }
+.app-header .actions { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+/* Appearance switch in the phone header (§10.1): icon-only, so the title keeps its line. Pressed = dark is on. */
+.mode-switch[aria-pressed="true"] { color: var(--cyan-ink); }
 .app-body { flex: 1; overflow: auto; padding: 14px 16px 96px; display: flex; flex-direction: column; gap: 12px; }
 .app-body > * { flex-shrink: 0; }
 .app-body.center { justify-content: center; align-items: stretch; padding-bottom: 24px; }

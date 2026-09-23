@@ -16,6 +16,20 @@ import { openAsWorker } from './_support/session';
  */
 
 async function skipWithoutData(page: Page): Promise<boolean> {
+  // Assert the shell FIRST, then decide whether to skip.
+  //
+  // This used to be the count alone, and it hid a real outage for a day. Every
+  // screen here answered 500 — StaffShell is a server component and was handing
+  // BottomNav a `renderLink` FUNCTION, which React will not serialise across the
+  // 'use client' boundary — and a 500 page carries no `.mcard` and no `.empty`
+  // either, so all eleven tests read that as "no Supabase project" and skipped
+  // themselves. Green suite, six dead routes, nobody told.
+  //
+  // The bottom bar renders from the tab list, not from the worker's data, so it
+  // is there on a page with no invitations and absent only when the page did not
+  // render. Failing here is the point: "nothing came back" and "the screen is
+  // broken" must never again take the same branch.
+  await expect(page.locator('.bottom-nav')).toBeVisible();
   return (await page.locator('.mcard, .empty').count()) === 0;
 }
 

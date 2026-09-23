@@ -21,7 +21,7 @@
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
-select plan(9);
+select plan(11);
 
 -- ---------------------------------------------------------------------
 -- 1. Tables with RLS enabled (0001_init.sql)
@@ -158,6 +158,67 @@ select bag_eq(
       where p.polname like 'client\_%' $$,
   $$ values ('events'::text),('feedback') $$,
   'clients reach only events (read) and feedback (insert) directly; no money-bearing table'
+);
+
+-- ---------------------------------------------------------------------
+-- 5b. The same rule, read from the PREDICATE instead of the name.
+--
+--     Assertion 5 keys on `polname like 'client\_%'`. That is a naming
+--     convention, and a naming convention is not an access control: a
+--     policy called `portal_read`, or `lineup`, or `admin_all_v2`, that
+--     grants the client role is invisible to it. ADR-0004 is the
+--     invariant CLAUDE.md singles out as the one most likely to be got
+--     wrong — "a view cannot take back a privilege the base table
+--     grants" — so it gets an assertion that does not depend on anybody
+--     choosing the right name.
+--
+--     The four tables are the four ADR-0004 names: `roles` and
+--     `shift_requirements` carry pay_rate and charge_rate, `bookings`
+--     carries who worked what, `staff` is worker personal data. What the
+--     Client Portal shows out of them comes from the owner-rights
+--     client_* views, which scope themselves with
+--     client_portal_visible() and name their columns — 050_client_views
+--     and 160_client_portal hold that half.
+--
+--     Two shapes are refused, because there are two ways in:
+--
+--       · Naming the client. `'client'::app_role`, current_client_id()
+--         and client_portal_visible() all contain the string, and a
+--         predicate on one of these tables has no other reason to.
+--       · Not naming anybody. `using (true)`, or the venue_types /
+--         staff_transitions shape `current_app_role() is not null`,
+--         which reads as "any signed-in role" and therefore includes the
+--         client without ever saying so. Every legitimate policy on
+--         these four tables is either the admin one or a self-ownership
+--         one, so the predicate must mention 'admin' or auth.uid().
+--
+--     Not asserted from here, and worth knowing: a policy could also be
+--     written `to authenticated` with an innocent-looking predicate that
+--     happens to be true for a client session. 020_rls_client is the
+--     backstop for that — it reads these four tables AS a client and
+--     expects nothing back. The two assertions are deliberately
+--     different kinds of evidence.
+-- ---------------------------------------------------------------------
+select is_empty(
+  $$ select c.relname::text || '.' || p.polname::text
+       from pg_policy p join pg_class c on c.oid = p.polrelid
+       join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public'
+        and c.relname in ('roles', 'shift_requirements', 'bookings', 'staff')
+        and (coalesce(pg_get_expr(p.polqual, p.polrelid), '')
+          || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')) ~ 'client' $$,
+  'ADR-0004: no policy on roles, shift_requirements, bookings or staff names the client role in its predicate, whatever it is called'
+);
+
+select is_empty(
+  $$ select c.relname::text || '.' || p.polname::text
+       from pg_policy p join pg_class c on c.oid = p.polrelid
+       join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public'
+        and c.relname in ('roles', 'shift_requirements', 'bookings', 'staff')
+        and (coalesce(pg_get_expr(p.polqual, p.polrelid), '')
+          || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')) !~ '''admin''|auth\.uid\(\)' $$,
+  'ADR-0004: every policy on those four tables restricts to admin or to the caller''s own row, so none of them is open to "any signed-in role"'
 );
 
 -- ---------------------------------------------------------------------

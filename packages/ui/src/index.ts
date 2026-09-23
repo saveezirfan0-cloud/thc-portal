@@ -29,6 +29,9 @@ export type { NavItem, PageHeadProps, SidebarProps, TopbarProps } from './compon
 export { Alert, EmptyState, Note, Panel } from './components/Panel';
 export type { NoteTone, PanelProps } from './components/Panel';
 
+export { ModeSwitch } from './components/ModeSwitch';
+export type { ModeSwitchProps } from './components/ModeSwitch';
+
 export { SegToggle, Tabs } from './components/SegToggle';
 export type { SegOption, SegToggleProps } from './components/SegToggle';
 

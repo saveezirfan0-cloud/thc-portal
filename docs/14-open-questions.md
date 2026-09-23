@@ -413,10 +413,111 @@ that is the whole point.
 
 One more thing for whoever takes it: a local Postgres does NOT reproduce this. Plain
 Postgres has no such default privilege, so `revoke ... from public` really does close
-everything and a local suite passes. Any harness used to check this has to run
-`alter default privileges in schema public grant execute on functions to anon,
-authenticated, service_role` first, or it is more secure than production and will keep
-saying so.
+everything and a local suite passes.
+
+**What a faithful local harness needs**, learned by getting each one wrong in turn and
+watching CI disagree. Without all four it is *more permissive or more secure than
+production in ways that invert a diagnosis*:
+
+```sql
+-- 1. Functions: why `revoke ... from public` alone leaves anon holding EXECUTE.
+alter default privileges in schema public
+  grant execute on functions to anon, authenticated, service_role;
+-- 2. Tables: why a write is stopped by RLS and NOT by a missing GRANT.
+alter default privileges in schema public
+  grant all on tables    to anon, authenticated, service_role;
+alter default privileges in schema public
+  grant all on sequences to anon, authenticated, service_role;
+-- 3. auth.uid() must guard the empty string BEFORE casting, as Supabase's does,
+--    or an RLS refusal surfaces as 22P02 instead of 42501.
+select nullif(nullif(current_setting('request.jwt.claims', true), '')::jsonb ->> 'sub', '')::uuid
+-- 4. PostGIS in `public`, not `extensions` — 20260921123503 names
+--    `public.spatial_ref_sys` directly.
+```
+
+With 1 and 3 missing the suite ran 837 assertions over 33 files and looked healthy; with
+all four it runs **1203**, because the RLS suites (`010`–`040`) were silently doing
+nothing. The only remaining failure is `002`'s KNOWN GAP assertion, which asserts the
+`spatial_ref_sys` hole EXISTS and therefore inverts wherever the migration role owns
+PostGIS (ADR-0010).
+
+## O14 · Three office pushes were silently never sent — RESOLVED, and the shape is worth keeping
+
+Found by auditing `main` after the §10.4 merge, not by anything failing. N10b (the office withdraws a
+booking) and N12 (the office cancels an event) are **mandatory** in §8; N11 (the office
+moves a shift's time) is required by §3.5 without being marked unmutable. All three were
+queued by a server action doing
+
+```ts
+await supabase.from('notification_outbox').insert({ ... })
+```
+
+as the signed-in manager. That can never work. `notification_outbox` carries exactly one
+policy — `admin_read`, SELECT only — so the insert finds no INSERT policy and RLS rejects
+it. Reproduced as the real role:
+
+```
+BEFORE  insert into notification_outbox ...   ERROR: new row violates row-level
+                                                     security policy
+AFTER   select queue_office_notifications(...)  queued = 1
+```
+
+**A correction worth keeping, because it is the same lesson twice.** The first diagnosis
+said `authenticated` held *no table privilege*, so the write was refused before RLS was
+consulted. That was true of the local harness and false of Supabase, which grants the
+Data API roles privileges on everything in `public` by default. CI caught it by failing
+three `has_table_privilege` assertions that passed locally. The defect and the fix were
+unchanged; the *mechanism* was wrong, and a wrong mechanism in a header is what the next
+person reasons from. The assertions are now behavioural — they attempt the insert under
+`role authenticated` and expect the RLS rejection — which is both correct and stronger.
+
+Nothing caught it because nothing looked. The server action does not check the result of
+the insert, so the manager sees "Event cancelled" and every worker on it is told nothing.
+It is the worst kind of defect: the screen is honest about what it did and wrong about
+what happened.
+
+Fixed by `20260922170000_office_notification_queue.sql` —
+`queue_office_notifications(jsonb)`, `security definer`, admin-checked, taking rows that
+are already rendered so §8's copy stays in `packages/notifications` where CLAUDE.md
+requires it. `001_rls_guard` assertion 8 is untouched and `310` re-asserts it: the fix is
+a door, not a hole in the wall.
+
+**Three things worth carrying forward.**
+
+1. **A test that runs as the owner proves nothing about grants.** The first version of
+   `310` set the JWT but not the role, so it exercised the admin check and would have
+   passed with the grant missing entirely. pgTAP runs as the table owner, which bypasses
+   RLS and holds every privilege. Any assertion about what a *caller* can reach needs
+   `set local role authenticated`. This is the same lesson as O7's, in a second costume.
+2. **The guard is a grep, and it is in the suite.**
+   `packages/notifications/src/__tests__/write-path.test.ts` fails if any file under
+   `apps/*/app/**` chains an insert, update, upsert or delete onto
+   `from('notification_outbox')` — or `audit_log` or `report_sends`, which are owned by
+   definer RPCs for the same reason. It was verified by reintroducing the bug and
+   watching it fail. A runtime failure this invisible needs a compile-time-ish guard.
+3. **The payload contract is the opposite of what it looks like.** The drain renders §8's
+   copy itself — `render(entry.title, values)` in `outbox.ts` — so `payload` is the
+   VALUES map and any `title` or `body` a row carries is ignored. The first fix restored
+   the three sends and made them gibberish: `messageFor()` over the exact rows returned
+   `"Shift time changed — now {window}"` with the url `/shifts/{bookingId}`. Caught in
+   review, before merge, and now pinned by vectors in
+   `packages/notifications/src/__tests__/outbox.test.ts` that assert no brace survives.
+   `queue_booking_push` had this right from the start; the office simply did not follow it.
+
+4. **Look for the same shape elsewhere.** The question "does this server action write a
+   table the caller's role cannot write?" has not been asked of every screen. The three
+   tables above are covered by `scripts/check-write-paths.mjs`; the audit that would cover
+   the rest is the same one O7 asks for, from the other direction.
+
+5. **The concrete next target for lesson 1** is `supabase/tests/300_staff_app_screens.sql`.
+   It sets `request.jwt.claims` in five places and never `set local role`, so §10.4's
+   assertions run as the table owner. Its grant assertions are catalog queries
+   (`has_function_privilege`), which are role-independent and therefore still sound — but
+   the behavioural ones prove logic, not reachability. Worth a pass.
+
+6. **`updateEvent` redirects**, so an N11 queue failure has no result to ride back on and
+   the manager cannot be told inline; it is logged with `console.error` instead. Giving
+   that path a way to surface a warning is UI work nobody has done.
 
 ## O12 · CI resolves `supabase/setup-cli` as `latest`, and it is neither reproducible nor reliable
 
@@ -452,6 +553,29 @@ but the second use is the `deploy-database` job, so `latest` no longer only deci
 branch is tested — it decides which build of the CLI writes to the live database, and it
 can change between two merges with no commit to explain it. The rate-limit flake that took
 down a build is now a flake on the production deploy path.
+
+**Third occurrence, #39 at 15:53 on 22.09**, and the pattern is now clear enough to state:
+it is not rare. Same signature, same place — all 29 turbo tasks green, then
+
+```
+##[error]Failed to resolve latest Supabase CLI release: rate limit exceeded
+```
+
+before `supabase start`, so the database and browser halves of the suite did not run and
+the pull request read red for a reason that had nothing to do with its diff. That is three
+builds lost to it in one day (#32, #35, #39), which is the argument for pinning rather than
+for retrying.
+
+Worth knowing for whoever picks it up: `rerun-failed-jobs` returns **403 Resource not
+accessible by integration** for an agent session, so the usual answer to a flake is not
+available here. The only way past it from a session is another commit, which means the
+cost of the flake is a full CI cycle every time.
+
+Still not fixed here, for the reason the paragraph above gives: choosing the tag needs
+`supabase/cli`, which is outside this session's repository scope, and this is the version
+of the CLI that writes to the live database. Guessing it is worse than leaving it. It
+wants a session that can read a real tag, changes both uses together, and records the
+choice here.
 
 ## O8 · ~~The PR review bot~~ — CLOSED: the workflow is deleted
 
@@ -598,16 +722,15 @@ number) until the row is drained and pruned, and `location_pings` keep the GPS t
 shifts worked. Both are arguably operational records rather than profile data, and §1.7
 does not mention either way — raised here rather than decided.
 
-## O13 · The repository's default branch is not `main`, and it silently broke the deploy
+## O13 · The repository's default branch was not `main` — **RESOLVED 22.09**
 
-**This one needs you, and it is two clicks.**
+**Done by the owner.** `GET /repos/saveezirfan0-cloud/thc-portal` now returns
+`"default_branch": "main"`, and `actions/workflows` resolves both workflow files at
+`blob/main/` rather than at the old branch. Kept here because the cost below is what
+makes the two clicks worth understanding, and because the trap catches the next
+trigger-based workflow, not just this one.
 
-```
-https://github.com/saveezirfan0-cloud/thc-portal/settings
-→ Default branch → switch to `main`
-```
-
-The default branch today is `claude/youthful-meitner-hs0o7d` — an agent branch from the
+The default branch had been `claude/youthful-meitner-hs0o7d` — an agent branch from the
 first afternoon of the build, which happened to be what the repository was created from and
 was never changed. Everything since has merged into `main`, so nothing looked wrong.
 
@@ -632,11 +755,13 @@ pushed to, so it fires regardless of this setting, and `deploy.yml` is deleted r
 left as a decoy. **That fix stands on its own — changing the default branch is not required
 to make the database deploy.**
 
-### Why it is still worth fixing
+### What the fix restored
 
-- Anything trigger-based added later walks into the same trap. `schedule` is the one to
-  watch: the jobs layer (§8, `pg_cron`) has a plausible future need for a nightly workflow,
-  and it would be just as silently inert.
+All five are live again now that the setting is `main`:
+
+- Anything trigger-based added later no longer walks into the trap. `schedule` was the one
+  to watch: the jobs layer (§8, `pg_cron`) has a plausible future need for a nightly
+  workflow, and it would have been just as silently inert.
 - A new pull request defaults its base to `claude/youthful-meitner-hs0o7d`, so a session
   that does not set the base explicitly proposes a merge into a dead branch.
 - Branch protection is configured per branch. docs/12 asks you to require `ci` on `main`;
@@ -646,4 +771,55 @@ to make the database deploy.**
 - GitHub renders the repository — README, the file listing, the language bar — from the
   default branch, so the front page is a snapshot of 21.09.
 
-No code change is waiting on this. It is a setting, and it should be `main`.
+No code change was waiting on it. It was a setting, and it is now `main`.
+
+**The catch-up has happened.** The first `deploy-database` job ran on `1c78fc8` at
+15:34 on 22.09 and applied all 26 pending migrations in one push, from
+`20260921153000_checkin_write_paths` through `20260922160000_accept_invite_event_ended`,
+ending `Finished supabase db push.` The live project is current for the first time since
+21.09, and the twenty-six-migration gap this question was opened over is closed.
+
+Read the job's log rather than the badge on any future run: `db push` applies migrations
+one at a time, so a failure halfway leaves the project part-applied with a green
+`build-test` above it, and the log is the only place that says which version it stopped
+at.
+
+## O15 · `BottomNav`'s `renderLink` callback has now crashed the Staff App twice
+
+**This one is `design-system`'s, and it is a prop that should not exist.**
+
+`BottomNav` lives in `packages/ui/src/components/Mobile.tsx` under a file-level
+`'use client'`, and it takes
+
+```ts
+renderLink?: (item: BottomNavItem, className: string, children: ReactNode) => ReactNode;
+```
+
+A server component cannot pass it. React refuses to serialise a function across that
+boundary, and the page answers **500** — not a warning, not a degraded render.
+
+It has happened twice in one day, both times in code that shipped green:
+
+- `StaffShell` (#35) took out `/shifts`, `/invites`, `/radar` and their three detail
+  routes. CI missed it because `staff.working-screens.spec.ts` skipped on
+  `.mcard, .empty` being absent, which is equally true of a 500 page.
+- `ProfileShell` (#42) took out `/profile`, `/profile/details`, `/profile/security` and
+  `/profile/payments` — the whole §10.1 profile sheet, Security settings, Bank &
+  payroll, and the leaver's earnings history behind the P45 flow.
+
+Both now render `apps/staff/app/_components/BottomTabs.tsx`, which takes the same
+`{href, label, locked}` data and decides what a link is itself, so only strings cross the
+boundary. Same markup, same classes, same "locked is a span, not a link" behaviour.
+
+**Why it keeps happening**, and why the next one is a matter of time: the Back Office's
+`Sidebar` takes an identical-looking `renderLink` and is completely safe, because
+`packages/ui/src/components/Shell.tsx` carries no `'use client'`. The two look the same at
+the call site and differ only in a directive at the top of a file nobody opens. A screen
+bot copying the Office pattern into the Staff App writes a 500 and gets a green build.
+
+**The fix is to delete the prop**, not to document it: `BottomTabs` proves the data-driven
+shape covers every caller, and there are no others. That is a `packages/ui` change, which
+`docs/10` §3 reserves for `design-system`, so it is filed here rather than taken. Until it
+goes, a lint rule banning function props to anything exported from `Mobile.tsx` would do
+the same job.
+

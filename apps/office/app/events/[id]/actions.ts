@@ -2,8 +2,8 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { CANCEL_NOTIFIES, canMarkNoShow, payrollWarning } from '@thc/domain';
-import { TEMPLATES, outboxKey, render } from '@thc/notifications';
+import { CANCEL_NOTIFIES, UK_ZONE, canMarkNoShow, displayTime, payrollWarning } from '@thc/domain';
+import { TEMPLATES, outboxKey } from '@thc/notifications';
 import { eventsDb, supabaseConfigured } from '../db';
 
 export type ActionResult = { error: string } | { ok: true; warning?: string };
@@ -36,12 +36,22 @@ export async function withdraw(
   if (!supabaseConfigured()) return { error: NO_SUPABASE };
   const supabase = await db();
 
+  // The §8 register renders N10b from `{event}` and `{dateTime}`, so the
+  // values have to be read before the booking is cancelled.
   const { data: booking } = await supabase
     .from('bookings')
-    .select('id, staff_id, status, shift_id')
+    .select('id, staff_id, status, shift_id, shift_requirements(starts_at, events(title))')
     .eq('id', bookingId)
     .maybeSingle();
   if (!booking) return { error: 'That booking no longer exists.' };
+
+  const shift = (
+    booking as { shift_requirements?: { starts_at?: string; events?: { title?: string } } }
+  ).shift_requirements;
+  const eventTitle = shift?.events?.title ?? 'your shift';
+  const when = shift?.starts_at
+    ? displayTime(new Date(shift.starts_at), 'scheduled', UK_ZONE, true).primary
+    : '';
 
   const { error } = await supabase
     .from('bookings')
@@ -55,12 +65,21 @@ export async function withdraw(
 
   // N10b only where there was something to lose: a confirmed worker had the
   // shift, an invited one merely had the offer.
+  let queueFailed: string | null = null;
   if (wasConfirmed) {
-    await enqueue(supabase, 'N10b', bookingId, (booking as { staff_id: string }).staff_id, {});
+    queueFailed = await enqueue(
+      supabase,
+      'N10b',
+      bookingId,
+      (booking as { staff_id: string }).staff_id,
+      { event: eventTitle, dateTime: when },
+    );
   }
 
   revalidatePath(`/events/${eventId}`);
-  return { ok: true };
+  return queueFailed
+    ? { ok: true, warning: `Withdrawn, but the worker could not be notified: ${queueFailed}` }
+    : { ok: true };
 }
 
 /**
@@ -153,6 +172,7 @@ export async function cancelEvent(eventId: string, reason: string): Promise<Acti
         .in('status', [...CANCEL_NOTIFIES])
     : { data: [] };
   const affected = (bookingData ?? []) as { id: string; staff_id: string }[];
+  let queueFailed: string | null = null;
 
   const { error } = await supabase
     .from('events')
@@ -178,14 +198,24 @@ export async function cancelEvent(eventId: string, reason: string): Promise<Acti
         affected.map((b) => b.id),
       );
 
+    // N12 carries no placeholders (§8), so the payload is just the deep-link
+    // value. One row per worker; the unique key makes a second press a no-op.
     for (const booking of affected) {
-      await enqueue(supabase, 'N12', booking.id, booking.staff_id, {});
+      const failed = await enqueue(supabase, 'N12', booking.id, booking.staff_id, {});
+      if (failed) queueFailed ??= failed;
     }
   }
 
   revalidatePath(`/events/${eventId}`);
   revalidatePath('/events');
-  return { ok: true };
+  // §3.3 promises everyone still attached is notified. If the queue refused,
+  // the manager is told so rather than shown a clean success.
+  return queueFailed
+    ? {
+        ok: true,
+        warning: `Event cancelled, but ${affected.length === 1 ? 'the worker' : 'the workers'} could not be notified: ${queueFailed}`,
+      }
+    : { ok: true };
 }
 
 // ---------------------------------------------------------------------
@@ -237,25 +267,41 @@ async function bookingContext(
   };
 }
 
-/** One outbox row, keyed so a repeat press does not queue a second push (§8). */
+/**
+ * One outbox row, keyed so a repeat press does not queue a second push (§8).
+ *
+ * `payload` is the VALUES map, not rendered copy. The drain renders from the
+ * register itself — `render(entry.title, values)` in
+ * `packages/notifications/src/outbox.ts` — and ignores any title or body a
+ * row carries. Sending pre-rendered text therefore delivered the literal
+ * "Shift time changed — now {window}" to the worker. `queue_booking_push`
+ * (20260921141500) has always written values for exactly this reason.
+ */
 async function enqueue(
   supabase: Awaited<ReturnType<typeof db>>,
   code: 'N10b' | 'N12',
   bookingId: string,
   staffId: string,
   values: Record<string, string>,
-): Promise<void> {
+): Promise<string | null> {
   const template = TEMPLATES[code];
-  if (!template) return;
-  await supabase.from('notification_outbox').insert({
-    key: outboxKey(code, 'booking', bookingId),
-    channel: template.channel,
-    template: code,
-    recipient_staff_id: staffId,
-    payload: {
-      title: template.title,
-      body: render(template.body ?? '', values),
-      deepLink: render(template.deepLink ?? '', { bookingId }),
-    },
+  if (!template) return null;
+  // Through the RPC, never straight at the table: `notification_outbox`
+  // carries only `admin_read` (001_rls_guard assertion 8), so a direct
+  // insert reaches RLS, finds no INSERT policy and is rejected every time.
+  const { error } = await supabase.rpc('queue_office_notifications', {
+    p_rows: [
+      {
+        key: outboxKey(code, 'booking', bookingId),
+        channel: template.channel,
+        template: code,
+        recipient_staff_id: staffId,
+        payload: { ...values, bookingId },
+      },
+    ],
   });
+  // supabase-js returns `{ data, error }` and never throws. Not reading it is
+  // how the original defect stayed invisible: the write failed, the action
+  // returned ok, and the manager was told the opposite of what happened.
+  return error ? error.message : null;
 }

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Avatar, Content, Logo, Shell, Sidebar, SignOut, Topbar } from '@thc/ui';
+import { Avatar, Content, Logo, ModeSwitch, Shell, Sidebar, SignOut, Topbar } from '@thc/ui';
 import type { ReactNode } from 'react';
 
 /**
@@ -21,11 +21,16 @@ import type { ReactNode } from 'react';
  * renders as text rather than a link. A sidebar that 404s reads as broken
  * rather than unfinished. Drop the flag when the route lands.
  *
- * Dashboard points at `/`, not `/dashboard`: §9.1 belongs to the `reports`
- * bot and until it exists the index stands in for it.
+ * Dashboard points at `/dashboard` now that §9.1 is built; `/` redirects
+ * there, so an old link still lands in the right place. (Until this branch
+ * it pointed at `/`, which stood in for the Dashboard.)
+ *
+ * The appearance switch is added to whatever the screen passes as actions,
+ * not passed by the screen: ADR-0007 makes it part of the chrome, and one
+ * screen forgetting it is how it ended up living only on /design-system.
  */
 const NAV = [
-  { href: '/', label: 'Dashboard' },
+  { href: '/dashboard', label: 'Dashboard' },
   { href: '/onboarding', label: 'Onboarding', pending: true },
   { href: '/events', label: 'Scheduling' },
   { href: '/compliance', label: 'Compliance', pending: true },
@@ -117,6 +122,7 @@ export function OfficeShell({
         actions={
           <>
             {actions}
+            <ModeSwitch small />
             {/* The sidebar foot is `display: none` below 760px, where the rail
                 becomes a bottom bar — so on a phone the button above is gone
                 and this is the only sign-out left. */}

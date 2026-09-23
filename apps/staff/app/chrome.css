@@ -1,0 +1,61 @@
+/*
+ * Staff App chrome — the page-local styles in wireframes/staff/auth.html,
+ * promoted into the app. Layout only: every colour, radius and size is a
+ * token from packages/ui.
+ *
+ * The frosted header, bottom navigation and sheet themselves live in
+ * packages/ui (§10.1), and the profile sheet's own rows and its separated
+ * P45 block live in `app/profile/profile.css` (#42) — this file does not
+ * restate either. What is here is the header's avatar link and the two
+ * blocks the install and auth screens need.
+ */
+
+/* The avatar in the header is the way into /profile (§10.1). It is a link,
+   so it must not pick up the underline the rest of the app gives them. */
+.avatar-btn {
+  display: inline-flex;
+  line-height: 0;
+  text-decoration: none;
+}
+
+/* The install screen's numbered steps (wireframes/staff/auth.html). */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+.steps .step {
+  display: flex;
+  gap: var(--sp-10);
+  align-items: flex-start;
+}
+.steps .step .t {
+  font-size: var(--fs-13);
+  font-weight: 500;
+}
+.steps .step .s {
+  font-size: var(--fs-11);
+  color: var(--muted);
+}
+
+/* The auth screens' hero: mark, product name, one mono sub-line. */
+.auth-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-10);
+  padding: var(--sp-26) 0 var(--sp-8);
+  text-align: center;
+}
+.auth-hero .name {
+  font-family: var(--font-head);
+  font-size: var(--fs-20);
+  font-weight: 600;
+}
+.auth-hero .sub {
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--muted);
+}

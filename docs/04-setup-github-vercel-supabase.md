@@ -19,7 +19,7 @@ supabase gen types typescript --linked > packages/db/src/types.ts
 ```
 Dashboard steps (one-off):
 - Enable extensions: `postgis`, `pg_cron`, `pg_net` (Database → Extensions).
-- Storage buckets (private): `documents`, `photos`, `reports`, `timesheets`.
+- ~~Storage buckets (private): `documents`, `photos`, `reports`, `timesheets`.~~ **No longer a manual step.** `20260922183015_storage_buckets_and_policies.sql` creates all four with `public = false` and re-asserts that on every deploy, so a bucket flipped public in the dashboard is flipped back. `320_storage.sql` fails if any bucket in the project is public — `documents` holds passport scans and right-to-work evidence, and a public Supabase bucket serves every object from an unauthenticated URL. Only `photos` carries a policy for a user JWT (a worker writes and reads their own `<staff_id>/…` folder, an admin reads any); `documents`, `reports` and `timesheets` are deny-all and are reached only by server code holding the service key.
 - Auth: enable Email provider, disable sign-ups (workers are invited; admins/clients are created by an admin), set Site URL per app, add redirect URLs for `/activate` and `/auth/reset`.
 - Integrations → GitHub: connect the repo and turn on **Supabase Branching** so every PR gets a preview database with migrations applied.
 - Edge Function secrets: `supabase secrets set GEMINI_API_KEY=… WILLO_API_KEY=… WILLO_WEBHOOK_SECRET=… RESEND_API_KEY=… VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=… MAPBOX_TOKEN=…`

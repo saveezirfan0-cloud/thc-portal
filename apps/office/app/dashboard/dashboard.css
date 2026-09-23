@@ -1,0 +1,67 @@
+/*
+ * /dashboard — page-local layout, mirroring `wireframes/backoffice/dashboard.html`
+ * and the `BO1 Dashboard` board.
+ *
+ * Layout only. Every colour, radius and space is a token (CLAUDE.md): the
+ * tiles, pills, chips and table all come from `packages/ui`, and nothing
+ * here restates one of their decisions.
+ */
+
+/* The role lines inside the Roles cell of the upcoming table. One line per
+   role section, because §9.1 puts the margin on the role's row and §3.2
+   lets two roles on one event run different windows. */
+.dash-roles {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+.dash-roles .r {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  font-size: var(--fs-12);
+}
+/* The role name column is fixed so the windows, allocations and margins
+   line up down the cell and can be compared at a glance. */
+.dash-roles .r > .chip {
+  min-width: 108px;
+}
+.dash-roles .r > .mono {
+  font-size: var(--fs-12);
+}
+/* §1.8's second line sits under its own window, not under the row. */
+.dash-roles .r .sub {
+  display: block;
+}
+
+/* The upcoming table's Roles column is the wide one; the rest stay tight
+   so the date and the fill do not drift apart on a large screen. */
+.dash-upcoming th:first-child,
+.dash-upcoming td:first-child {
+  white-space: nowrap;
+}
+
+/* The financial snapshot: three tiles inside one panel, drawn flat because
+   the panel is already the card. */
+.dash-finance {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-20);
+  align-items: start;
+}
+
+/* The base / holiday split under the Payable tile. §1.5 requires the
+   12.07% to be visible on its own, so it is given its own line rather
+   than a parenthesis at the end of the number. */
+.dash-split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+  align-items: baseline;
+}
+
+@media (max-width: 1100px) {
+  .dash-finance {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
