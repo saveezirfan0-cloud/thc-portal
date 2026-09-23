@@ -59,7 +59,10 @@ select is_empty(
           -- here is a Monday with no payroll email and a job 500ing every
           -- five minutes until someone notices.
           'finance_reports_due', 'prepare_finance_reports', 'payroll_export_rows',
-          'new_starter_export_rows', 'queue_finance_report_email'
+          'new_starter_export_rows', 'queue_finance_report_email',
+          -- P2, the outbox drain (20260924100000). Without these the drain
+          -- 500s on its first unsendable row and holds the whole batch.
+          'fail_outbox_send', 'release_outbox_claim'
         )
         and not has_function_privilege('service_role', p.oid, 'execute') $$,
   'the service role can execute every function the §7 jobs call'
@@ -266,8 +269,8 @@ select bag_eq(
   $$ select job::text from job_schedules where enabled $$,
   $$ values ('booking-tick'::text), ('auto-staffing-hourly'),
             ('auto-staffing-cutoff'), ('auto-staffing-escalation'),
-            ('compliance-daily') $$,
-  'exactly the five schedules whose Edge Function exists AND whose sends can go out are enabled; finance-reports waits for the outbox drain (P2, 20260923193100)'
+            ('compliance-daily'), ('notify-drain'), ('finance-reports') $$,
+  'exactly the seven schedules whose Edge Function exists are enabled: notify-drain ships with P2 and re-enables finance-reports (20260924100000), which 20260923193100 paused until its email could go out'
 );
 
 select * from finish();
