@@ -318,6 +318,28 @@ describe('7/11 HMRC', () => {
     expect(html).toContain('●●●●●●●6C');
     expect(footer(html).disabled).toBe(false);
   });
+  it('asks gender as HMRC’s two values, says why, and waits for it (§9.9 Tab 3)', () => {
+    const unanswered = renderToStaticMarkup(
+      <HmrcStep
+        initial={{ ...form, q1OtherJob: true, declared: true, gender: null }}
+        niMasked={null}
+      />,
+    );
+    expect(unanswered).toContain('Gender, as HMRC records it');
+    expect(unanswered).toContain('>Male<');
+    expect(unanswered).toContain('>Female<');
+    expect(unanswered).toContain('only accept male or female');
+    expect(unanswered).toContain('Answer the gender question to continue');
+    expect(footer(unanswered).disabled).toBe(true);
+
+    const answered = renderToStaticMarkup(
+      <HmrcStep
+        initial={{ ...form, q1OtherJob: true, declared: true, gender: 'F' }}
+        niMasked={null}
+      />,
+    );
+    expect(footer(answered).disabled).toBe(false);
+  });
 });
 
 describe('8/11 References', () => {

@@ -553,3 +553,348 @@ export function readInviteAnswer(status: number, bodyText: string): InviteAnswer
     ? { ok: true, willoCandidateId: id }
     : { ok: false, retry: false, reason: 'response_without_candidate_key' };
 }
+
+// ---------------------------------------------------------------------
+// Idempotent create (ADR-0024). If Willo created the candidate but our
+// link was lost, the next sweep must not create them — and have Willo
+// send E1 — again. Two defences, in order:
+//
+//   1. The database remembers every key Willo returned
+//      (`willo_invite_created` records THEN links, in one call, and a
+//      failed link keeps the record) and hands an unlinked one back to
+//      the sweep as `known_candidate_id`.
+//   2. If even that call was lost in flight, a retry asks Willo for the
+//      candidate whose `external_id` is our staff id before creating.
+//
+// WHAT IS ASSUMED for (2), all of it configuration, none of it verified
+// against Willo's documentation (Appendix B, B1):
+//   - GET {WILLO_API_BASE}{WILLO_LOOKUP_PATH}, default
+//     `/interviews/{interviewKey}/candidates/?external_id={externalId}`,
+//     same auth header as the create. `WILLO_LOOKUP_PATH=off` disables it.
+//   - Willo stores and echoes the `external_id` the create sends. A
+//     candidate is accepted only if it CARRIES our staff id, so an endpoint
+//     that ignores the filter and lists everybody matches nobody and the
+//     sweep creates as before — it never links a stranger.
+//   - 404 = none; 401/403/405/501 = no such endpoint for this key → create
+//     as before, logged; 5xx/408/429/network = try later WITHOUT creating,
+//     because not knowing is exactly when a create risks the duplicate.
+// ---------------------------------------------------------------------
+
+export const DEFAULT_LOOKUP_PATH =
+  '/interviews/{interviewKey}/candidates/?external_id={externalId}';
+
+/** The lookup path, or null when turned off (`WILLO_LOOKUP_PATH=off`). */
+export function willoLookupPath(env: EnvReader): string | null {
+  const value = envText(env, 'WILLO_LOOKUP_PATH');
+  if (value && /^(off|none|false|0)$/i.test(value)) return null;
+  return value ?? DEFAULT_LOOKUP_PATH;
+}
+
+export interface HttpGetSpec {
+  url: string;
+  method: 'GET';
+  headers: Record<string, string>;
+}
+
+export function willoLookupRequest(
+  config: WilloApiConfig,
+  lookupPath: string,
+  staffId: string,
+): HttpGetSpec {
+  const path = lookupPath
+    .replace('{interviewKey}', encodeURIComponent(config.interviewKey))
+    .replace('{externalId}', encodeURIComponent(staffId));
+  return {
+    url: `${config.apiBase}${path.startsWith('/') ? path : `/${path}`}`,
+    method: 'GET',
+    headers: {
+      Accept: 'application/json',
+      [config.authHeader]: `${config.authPrefix}${config.apiKey}`,
+    },
+  };
+}
+
+export type LookupAnswer =
+  | { kind: 'found'; willoCandidateId: string }
+  | { kind: 'none' }
+  | { kind: 'unsupported'; reason: string }
+  | { kind: 'retry'; reason: string };
+
+const LIST_PATHS = ['data', 'results', 'candidates', 'items', 'data.candidates', 'data.results'];
+const EXTERNAL_ID_PATHS = [
+  'external_id',
+  'externalId',
+  'candidate.external_id',
+  'metadata.external_id',
+  'meta.external_id',
+];
+const LOOKUP_KEY_PATHS = [
+  'key',
+  'candidate_key',
+  'id',
+  'candidate.key',
+  'candidate.id',
+  'participant.key',
+];
+
+function lookupItems(body: unknown): unknown[] {
+  if (Array.isArray(body)) return body;
+  const out: unknown[] = [];
+  for (const path of LIST_PATHS) {
+    const node = at(body, path);
+    if (Array.isArray(node)) out.push(...node);
+  }
+  // A single-object answer (a "get by external id" endpoint).
+  if (out.length === 0 && isObject(body)) {
+    out.push(isObject(body['data']) ? body['data'] : body);
+  }
+  return out;
+}
+
+/**
+ * Willo's answer to the lookup. `found` only for a candidate that carries
+ * our staff id as its external id and is not a key from an earlier
+ * onboarding period (§2.12 wants a fresh interview after Reset).
+ */
+export function readLookupAnswer(
+  status: number,
+  bodyText: string,
+  staffId: string,
+  excludeKeys: readonly string[] = [],
+): LookupAnswer {
+  if (status === 404) return { kind: 'none' };
+  if (status === 401 || status === 403 || status === 405 || status === 501) {
+    return { kind: 'unsupported', reason: `lookup http_${status}` };
+  }
+  if (status < 200 || status >= 300) {
+    return { kind: 'retry', reason: `lookup http_${status}: ${bodyText.slice(0, 200)}` };
+  }
+  let body: unknown;
+  try {
+    body = JSON.parse(bodyText);
+  } catch {
+    return { kind: 'unsupported', reason: 'lookup_not_json' };
+  }
+  const excluded = new Set(excludeKeys);
+  for (const item of lookupItems(body)) {
+    if (firstText(item, EXTERNAL_ID_PATHS) !== staffId) continue;
+    const key = firstText(item, LOOKUP_KEY_PATHS);
+    if (key && !excluded.has(key)) return { kind: 'found', willoCandidateId: key };
+  }
+  return { kind: 'none' };
+}
+
+// ---------------------------------------------------------------------
+// The sweep, with its I/O injected so vitest can hold it. The Edge
+// Function supplies fetch and the RPCs; nothing here reads Deno.
+// ---------------------------------------------------------------------
+
+/** A row of `willo_invite_due()` (20260926100000). */
+export interface InviteDue {
+  staff_id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone: string | null;
+  attempt: number;
+  known_candidate_id?: string | null;
+  prior_candidate_ids?: string[] | null;
+}
+
+export interface HttpAnswer {
+  status: number;
+  text: string;
+}
+
+export type RecordOutcome =
+  | { ok: true; outcome: 'linked' | 'already_linked' | 'not_linked'; code?: string }
+  | { ok: false; message: string };
+
+export interface InviteSweepDeps {
+  config: WilloApiConfig;
+  /** Null = no lookup (`WILLO_LOOKUP_PATH=off`). */
+  lookupPath: string | null;
+  http(spec: HttpRequestSpec | HttpGetSpec): Promise<HttpAnswer>;
+  /** `willo_invite_created`: record the key, then link it, in one call. */
+  recordCreated(staffId: string, willoCandidateId: string): Promise<RecordOutcome>;
+  /** `willo_invite_failed`. */
+  recordFailure(staffId: string, reason: string): Promise<void>;
+  log(level: 'info' | 'warn' | 'error', message: string, data: Record<string, unknown>): void;
+  /** Tries of `recordCreated` in this run before leaving it to the next. Default 3. */
+  recordTries?: number;
+}
+
+export type InviteOutcome = 'created' | 'relinked' | 'found' | 'failed';
+
+export interface InviteSweepResult {
+  due: number;
+  created: number;
+  relinked: number;
+  found: number;
+  failed: number;
+}
+
+async function recordWithRetry(
+  deps: InviteSweepDeps,
+  staffId: string,
+  key: string,
+): Promise<RecordOutcome> {
+  const tries = Math.max(1, deps.recordTries ?? 3);
+  let last: RecordOutcome = { ok: false, message: 'not tried' };
+  for (let i = 0; i < tries; i += 1) {
+    try {
+      last = await deps.recordCreated(staffId, key);
+    } catch (cause) {
+      last = { ok: false, message: cause instanceof Error ? cause.message : String(cause) };
+    }
+    if (last.ok) return last;
+  }
+  return last;
+}
+
+async function safeFailure(deps: InviteSweepDeps, staffId: string, reason: string): Promise<void> {
+  try {
+    await deps.recordFailure(staffId, reason);
+  } catch (cause) {
+    // Logged; the lease's backoff retries regardless.
+    deps.log('error', '[willo-invite] could not record the failure', {
+      staffId,
+      error: cause instanceof Error ? cause.message : String(cause),
+    });
+  }
+}
+
+/** Willo gave us `key`: record + link, and say how it went. */
+async function settle(
+  deps: InviteSweepDeps,
+  row: InviteDue,
+  key: string,
+  success: InviteOutcome,
+): Promise<InviteOutcome> {
+  const recorded = await recordWithRetry(deps, row.staff_id, key);
+  if (!recorded.ok) {
+    // The key may be nowhere in the database now. The next sweep's
+    // lookup by external_id is what stops this becoming a second E1.
+    deps.log('error', '[willo-invite] created in Willo, key not recorded', {
+      staffId: row.staff_id,
+      willo: key,
+      error: recorded.message,
+    });
+    await safeFailure(deps, row.staff_id, `created ${key}, not recorded: ${recorded.message}`);
+    return 'failed';
+  }
+  if (recorded.outcome === 'not_linked') {
+    // On file, so never created again; the next sweep links it if the
+    // candidate is still waiting (known_candidate_id).
+    deps.log('warn', '[willo-invite] recorded but not linked', {
+      staffId: row.staff_id,
+      willo: key,
+      code: recorded.code ?? null,
+    });
+    return 'failed';
+  }
+  return success;
+}
+
+export async function inviteOne(deps: InviteSweepDeps, row: InviteDue): Promise<InviteOutcome> {
+  // 1 · A key Willo already gave us this period: link it, never create.
+  const known = row.known_candidate_id?.trim();
+  if (known) return settle(deps, row, known, 'relinked');
+
+  // 2 · A retry (an earlier lease this period may have created them):
+  //     ask Willo before creating.
+  if (row.attempt > 1 && deps.lookupPath) {
+    let answer: LookupAnswer;
+    try {
+      const response = await deps.http(
+        willoLookupRequest(deps.config, deps.lookupPath, row.staff_id),
+      );
+      answer = readLookupAnswer(
+        response.status,
+        response.text,
+        row.staff_id,
+        row.prior_candidate_ids ?? [],
+      );
+    } catch (cause) {
+      answer = {
+        kind: 'retry',
+        reason: `lookup network: ${cause instanceof Error ? cause.message : String(cause)}`,
+      };
+    }
+    if (answer.kind === 'found') return settle(deps, row, answer.willoCandidateId, 'found');
+    if (answer.kind === 'retry') {
+      deps.log('warn', '[willo-invite] lookup failed, not creating', {
+        staffId: row.staff_id,
+        attempt: row.attempt,
+        reason: answer.reason,
+      });
+      await safeFailure(deps, row.staff_id, answer.reason);
+      return 'failed';
+    }
+    if (answer.kind === 'unsupported') {
+      deps.log('warn', '[willo-invite] lookup unavailable, creating as before', {
+        staffId: row.staff_id,
+        reason: answer.reason,
+      });
+    }
+  }
+
+  // 3 · Create. Willo sends E1.
+  let answer: InviteAnswer;
+  try {
+    const response = await deps.http(
+      willoInviteRequest(deps.config, {
+        staffId: row.staff_id,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        email: row.email,
+        phone: row.phone,
+      }),
+    );
+    answer = readInviteAnswer(response.status, response.text);
+  } catch (cause) {
+    answer = {
+      ok: false,
+      retry: true,
+      reason: `network: ${cause instanceof Error ? cause.message : String(cause)}`,
+    };
+  }
+  if (!answer.ok) {
+    deps.log('error', '[willo-invite] create failed', {
+      staffId: row.staff_id,
+      attempt: row.attempt,
+      retry: answer.retry,
+      reason: answer.reason,
+    });
+    await safeFailure(deps, row.staff_id, answer.reason);
+    return 'failed';
+  }
+  return settle(deps, row, answer.willoCandidateId, 'created');
+}
+
+export async function runInviteSweep(
+  deps: InviteSweepDeps,
+  due: readonly InviteDue[],
+): Promise<InviteSweepResult> {
+  const result: InviteSweepResult = {
+    due: due.length,
+    created: 0,
+    relinked: 0,
+    found: 0,
+    failed: 0,
+  };
+  for (const row of due) {
+    let outcome: InviteOutcome;
+    try {
+      outcome = await inviteOne(deps, row);
+    } catch (cause) {
+      deps.log('error', '[willo-invite] unexpected', {
+        staffId: row.staff_id,
+        error: cause instanceof Error ? cause.message : String(cause),
+      });
+      outcome = 'failed';
+    }
+    result[outcome] += 1;
+  }
+  return result;
+}

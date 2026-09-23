@@ -14,7 +14,7 @@ import { RtwStep } from '../_components/RtwStep';
 import { SelfieStep } from '../_components/SelfieStep';
 import { TutorialStep } from '../_components/TutorialStep';
 import { WizardFrame, WizardTop, workerFor } from '../_components/Wizard';
-import { loadOnboarding, loadQuizQuestions, supabaseConfigured } from '../data';
+import { loadHmrcGender, loadOnboarding, loadQuizQuestions, supabaseConfigured } from '../data';
 import { requirementRows, wizardFacts } from '../state';
 import type { OnboardingState } from '../state';
 import '../onboarding.css';
@@ -116,6 +116,7 @@ async function render(n: number, s: OnboardingState) {
             postgraduateLoan: s.hmrc?.postgraduateLoan ?? false,
             niNumber: '',
             declared: false,
+            gender: await loadHmrcGender(s.staffId),
           }}
         />
       );

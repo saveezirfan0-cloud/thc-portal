@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  HMRC_GENDER_NOTE,
+  HMRC_GENDER_OPTIONS,
   HMRC_TAX_CODE,
   deriveStatement,
   hmrcMissing,
@@ -100,6 +102,18 @@ describe('the checklist form', () => {
 
   it('ignores the NI field once it is locked', () => {
     expect(hmrcMissing({ ...complete, niNumber: 'nonsense' }, true)).toEqual([]);
+  });
+
+  it('asks for gender when the form asks it (§9.9 Tab 3, ADR-0024)', () => {
+    expect(hmrcMissing({ ...complete, gender: null })).toEqual(['answer the gender question']);
+    expect(hmrcMissing({ ...complete, gender: 'F' })).toEqual([]);
+    // A form that does not carry the field is not held up by it.
+    expect(hmrcMissing(complete)).toEqual([]);
+  });
+
+  it('offers HMRC’s two values and says why', () => {
+    expect(HMRC_GENDER_OPTIONS.map((o) => o.value)).toEqual(['M', 'F']);
+    expect(HMRC_GENDER_NOTE).toMatch(/HMRC/);
   });
 });
 

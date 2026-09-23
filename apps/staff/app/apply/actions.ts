@@ -1,8 +1,9 @@
 'use server';
 
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@thc/db/server';
+import { callerKey } from './caller';
 import { SENT_TO_COOKIE, toE164, validate } from './form';
 import type { ApplicationValues, ApplyState } from './form';
 
@@ -24,18 +25,55 @@ function read(formData: FormData): ApplicationValues {
  * functions and `.rpc()` cannot be typed from the schema yet. The one call
  * this page makes is typed by hand here instead of loosening the shared type.
  */
+interface ApplicationArgs {
+  p_first_name: string;
+  p_last_name: string;
+  p_email: string;
+  p_phone: string;
+  p_dob: string;
+  p_consent: boolean;
+}
+
+type RpcAnswer = Promise<{ error: { message: string; code?: string } | null }>;
+
 interface RpcClient {
+  rpc(fn: 'submit_application', args: ApplicationArgs): RpcAnswer;
+}
+
+interface AdminRpcClient {
   rpc(
-    fn: 'submit_application',
-    args: {
-      p_first_name: string;
-      p_last_name: string;
-      p_email: string;
-      p_phone: string;
-      p_dob: string;
-      p_consent: boolean;
-    },
-  ): Promise<{ error: { message: string; code?: string } | null }>;
+    fn: 'submit_application_as_caller',
+    args: ApplicationArgs & { p_caller_hash: string | null },
+  ): RpcAnswer;
+}
+
+let warnedNoServiceKey = false;
+
+/**
+ * The write, with the per-caller limit when this deployment can apply it
+ * (ADR-0024). `submit_application_as_caller` is service-role only — a
+ * caller key anyone could send would be a limit anyone could dodge — so
+ * it needs SUPABASE_SERVICE_ROLE_KEY. Without the key the form still
+ * works through the anon `submit_application`, with the per-email and
+ * per-mobile limits only, and says so once in the log.
+ */
+async function submit(args: ApplicationArgs, jar: Awaited<ReturnType<typeof cookies>>): RpcAnswer {
+  if (process.env['SUPABASE_SERVICE_ROLE_KEY']) {
+    const { createAdminClient } = await import('@thc/db/admin');
+    const admin = createAdminClient() as unknown as AdminRpcClient;
+    return admin.rpc('submit_application_as_caller', {
+      ...args,
+      p_caller_hash: callerKey(await headers()),
+    });
+  }
+  if (!warnedNoServiceKey) {
+    warnedNoServiceKey = true;
+    console.warn(
+      '[apply] SUPABASE_SERVICE_ROLE_KEY is not set — /apply runs without the per-caller throttle (per-email and per-mobile limits still apply).',
+    );
+  }
+  const supabase = createClient(jar) as unknown as RpcClient;
+  return supabase.rpc('submit_application', args);
 }
 
 /**
@@ -64,16 +102,18 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
 
   const email = values.email.trim().toLowerCase();
   const jar = await cookies();
-  const supabase = createClient(jar) as unknown as RpcClient;
 
-  const { error } = await supabase.rpc('submit_application', {
-    p_first_name: values.firstName.trim(),
-    p_last_name: values.lastName.trim(),
-    p_email: email,
-    p_phone: toE164(values.dialCode, values.mobile),
-    p_dob: values.dob.trim(),
-    p_consent: values.consent,
-  });
+  const { error } = await submit(
+    {
+      p_first_name: values.firstName.trim(),
+      p_last_name: values.lastName.trim(),
+      p_email: email,
+      p_phone: toE164(values.dialCode, values.mobile),
+      p_dob: values.dob.trim(),
+      p_consent: values.consent,
+    },
+    jar,
+  );
 
   if (error) {
     // 22023 is the function's own validation, so its message is copy written

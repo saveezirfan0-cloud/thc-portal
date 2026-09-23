@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { staffDb, supabaseConfigured } from '../db';
 import { mapOnboardingState } from './state';
 import type { OnboardingState } from './state';
+import type { HmrcGender } from '@thc/domain';
 
 /**
  * What the eleven screens read — one RPC, `onboarding_state()`, which
@@ -16,6 +17,19 @@ export async function loadOnboarding(): Promise<OnboardingState | null> {
   const supabase = staffDb(await cookies());
   const { data } = await supabase.rpc('onboarding_state');
   return mapOnboardingState(data);
+}
+
+/**
+ * The gender already on the caller's row (step 7 re-opened), through the
+ * worker's own-row read. Null when unanswered or unreadable — the form
+ * then asks, and the database refuses a checklist without it.
+ */
+export async function loadHmrcGender(staffId: string): Promise<HmrcGender | null> {
+  if (!supabaseConfigured() || !staffId) return null;
+  const supabase = staffDb(await cookies());
+  const { data } = await supabase.from('staff').select('gender').eq('id', staffId).maybeSingle();
+  const gender = (data as { gender?: unknown } | null)?.gender;
+  return gender === 'M' || gender === 'F' ? gender : null;
 }
 
 export interface QuizQuestion {

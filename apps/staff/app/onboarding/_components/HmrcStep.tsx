@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Alert, Button, Checkbox, Input, Radio, RadioGroup } from '@thc/ui';
 import {
   HMRC_DECLARATION,
+  HMRC_GENDER_NOTE,
+  HMRC_GENDER_OPTIONS,
+  HMRC_GENDER_QUESTION,
   HMRC_QUESTIONS,
   STUDENT_LOAN_OPTIONS,
   hmrcMissing,
@@ -126,6 +129,34 @@ export function HmrcStep({ initial, niMasked }: { initial: HmrcForm; niMasked: s
           I’m also repaying a <b>Postgraduate Loan</b>{' '}
           <span className="xs muted">— can be ticked together with a plan</span>
         </Checkbox>
+      </div>
+
+      {/* §9.9 Tab 3's "Gender (M/F)" column (ADR-0024). Not on the
+          wireframe, which predates THC confirming the report's columns;
+          it sits with the other payroll facts, before the NI number. */}
+      <div className="wiz-block">
+        <div className="qt" id="hmrc-gender-label">
+          {HMRC_GENDER_QUESTION}
+        </div>
+        <RadioGroup
+          className="wiz-choices"
+          aria-labelledby="hmrc-gender-label"
+          aria-describedby="hmrc-gender-note"
+          name="hmrc-gender"
+        >
+          {HMRC_GENDER_OPTIONS.map((o) => (
+            <Radio
+              key={o.value}
+              checked={form.gender === o.value}
+              onChange={() => set('gender', o.value)}
+            >
+              {o.label}
+            </Radio>
+          ))}
+        </RadioGroup>
+        <p className="xs muted" id="hmrc-gender-note">
+          {HMRC_GENDER_NOTE}
+        </p>
       </div>
 
       {niMasked ? (
