@@ -1,0 +1,269 @@
+/*
+ * Page-local styles for /onboarding and /onboarding/:id, mirroring the
+ * inline <style> blocks of wireframes/backoffice/onboarding.html and
+ * candidate.html. Tokens only (CLAUDE.md): no colour or radius is written
+ * here that the design system does not already name.
+ */
+
+/* ---- the board (BO3) ---- */
+.kanban.six {
+  grid-auto-columns: minmax(184px, 1fr);
+}
+.kcard .top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.kcard .nm {
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.15;
+}
+.kcard .age {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-size: 10px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.kcard .age.warn {
+  color: var(--amber-ink);
+}
+.kcard .age.bad {
+  color: var(--coral-ink);
+}
+.kcard .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.kcard .meta {
+  font-size: 11px;
+  color: var(--muted);
+}
+.kcard .meta.amber {
+  color: var(--amber-ink);
+}
+.kcard .meta.coral {
+  color: var(--coral-ink);
+}
+.kcard .willo {
+  font-size: 11.5px;
+}
+.kcard .willo.off {
+  color: var(--muted);
+}
+.kcard .acts {
+  display: flex;
+  gap: 6px;
+  margin-top: 2px;
+  flex-wrap: wrap;
+}
+.kh .t.c1 {
+  color: var(--muted);
+}
+.kh .t.c3 {
+  color: var(--amber-ink);
+}
+.kh .t.c6 {
+  color: var(--green-ink);
+}
+.kb .empty.small {
+  padding: 24px 10px;
+  font-size: 12px;
+}
+.toolbar .annot,
+.annot {
+  font-size: 11.5px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ---- the candidate profile (BO4) ---- */
+.cand-head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+.cand-head .who {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+.cand-head h2 {
+  font-size: 22px;
+  margin: 0;
+}
+.cand-head .facts {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.cand-head .facts b {
+  color: var(--text);
+  font-weight: 500;
+}
+.cand-head .actions {
+  flex: 0 0 auto;
+  margin-left: auto;
+}
+
+.kv {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 8px 14px;
+  font-size: 13px;
+  align-items: baseline;
+}
+.kv.narrow {
+  grid-template-columns: 90px 1fr;
+  margin-top: 6px;
+}
+.kv .k {
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ai {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-num);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  color: var(--muted);
+  margin-left: 6px;
+  vertical-align: middle;
+}
+.ai.hi {
+  color: var(--green-ink);
+  border-color: var(--green-line);
+}
+.ai.mid {
+  color: var(--amber-ink);
+  border-color: var(--amber-line);
+}
+.ai.manual {
+  color: var(--coral-ink);
+  border-color: var(--coral-line);
+}
+
+.period {
+  display: grid;
+  grid-template-columns: 24px 1fr 150px 20px 150px 60px;
+  gap: 8px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font-size: 12.5px;
+}
+.period + .period {
+  border-top: 0;
+}
+.period.head {
+  background: transparent;
+  border: 0;
+  padding: 0 10px 4px;
+}
+.period .input {
+  height: 30px;
+  font-size: 12px;
+}
+.period .rm {
+  background: none;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  text-decoration: underline;
+}
+
+.rolepick {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 8px;
+}
+.rolepick .check {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: var(--r-tile);
+}
+.rolepick .check.sel {
+  border-color: var(--cyan);
+  background: var(--cyan-dim);
+}
+
+.attempt {
+  display: grid;
+  grid-template-columns: 90px 1fr 90px 120px;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  font-size: 12.5px;
+}
+.attempt + .attempt {
+  border-top: 0;
+}
+.attempt.head {
+  background: transparent;
+  border: 0;
+  padding: 0 10px 4px;
+}
+
+.contract-text {
+  max-height: 220px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: 14px 16px;
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.55;
+  border-radius: var(--r-tile);
+}
+
+.pdfcard {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  border-radius: var(--r-tile);
+}
+.pdfcard .thumb {
+  flex: 0 0 64px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-family: var(--font-label);
+  font-size: 10px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  background: var(--panel);
+  border-radius: var(--r-check);
+}
+
+.card.term {
+  border-left: 3px solid var(--amber);
+}
+.superseded-group {
+  opacity: 0.65;
+}
