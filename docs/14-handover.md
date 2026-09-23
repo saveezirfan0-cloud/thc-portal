@@ -1,8 +1,9 @@
 # 14 · Where the build actually is, and what to do next
 
-Rewritten 23.09.2026 against branch `claude/fervent-cerf-tlxnm1` as it merges to
-`main`. This is the honest state, not the plan — every line was checked against
-the repository. Where something looks finished but is not, it says so.
+Figures re-verified against `main` at `dbd0227`. This is the honest state, not
+the plan — every number below was produced by running something, not by counting
+what a previous revision claimed. Where something looks finished but is not, it
+says so.
 
 `docs/13-remaining-work.md` still holds the original prompt for every item. Every
 screen it names is now built; what is left is listed in §2 and §4 below.
@@ -15,19 +16,38 @@ screen it names is now built; what is left is listed in §2 and §4 below.
 ## 1 · What is genuinely built
 
 **Every screen in the product now exists.** Three Next.js apps on one Supabase
-database, **79 migrations**, **67 pgTAP files (2,392 assertions)**, **1,575 Vitest
-tests** across eight packages, six Edge Functions (`auto-staffing`,
-`booking-tick`, `compliance-daily`, `finance-reports`, `gdpr-purge`, plus
-`_shared`), and ADRs up to `0022`. CI runs lint, typecheck, Vitest,
-`supabase test db` and Playwright on every push, and `deploy-database` pushes
-migrations to the live project on merge to `main`.
+database, **81 migrations**, **70 pgTAP files (2,472 assertions)**, **1,597 Vitest
+tests across 94 files** in eight packages, seven Edge Functions (`auto-staffing`,
+`booking-tick`, `compliance-daily`, `finance-reports`, `gdpr-purge`,
+`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0023`. CI runs
+lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
+`deploy-database` pushes migrations to the live project on merge to `main`.
+
+**Verified on this revision, not inherited from the last one:**
+
+| Check | Result |
+|---|---|
+| All 81 migrations applied in order to an **empty** database | clean |
+| `scripts/pgtest-local.sh` — all 70 pgTAP files | 2,473 assertions, **2 failures**, both expected (below) |
+| `turbo lint typecheck test` | 29/29 tasks |
+| Live Supabase project vs the repo | **identical**, all 81 applied |
+
+`002` assertions **6 and 7** fail in every local harness and **that pair is the
+clean baseline**: they record that on Supabase `anon` *can* write
+`spatial_ref_sys`, which is false locally because `postgres` owns PostGIS there.
+Two failures are expected; three is a regression.
+
+Use `scripts/pgtest-local.sh` and not a hand-rolled cluster. A stub `auth.users`
+missing `encrypted_password` stops the suite at migration 73, and a `002` that
+aborts mid-file reports 2,472 assertions and one failure — a plausible-looking
+number that is simply wrong. The script gets both right.
 
 **Screens:**
 
 | App | Routes |
 |---|---|
 | Back Office | `/dashboard` (`/` redirects) · `/onboarding` · `/onboarding/:id` · `/events` · `/events/:id` · `/events/new` · `/events/:id/edit` · `/compliance` · `/compliance/export` · `/checkin` · `/staff` (`?view=student`) · `/staff/:id` · `/clients` · `/clients/:id` · `/roles` · `/reports` · `/reports/export` · `/feedback` · `/venues` · `/settings` · `/api/documents/:eventId` · `/login` · `/design-system` |
-| Staff App | `/` · `/apply` · `/apply/submitted` · `/activate/:token` · `/activate/done` · `/onboarding` (11 steps) · `/shifts` · `/shifts/:id` · `/invites` · `/invites/:id` · `/radar` · `/radar/:id` · `/documents` · `/documents/upload/:docType` · `/documents/completion-letter` · `/documents/opt-out` · `/documents/declare` · `/notifications` · `/install` · `/offline` · `/profile` · `/profile/details` · `/profile/security` · `/profile/payments` · `/login` · `/forgot` · `/reset` |
+| Staff App | `/` · `/apply` · `/apply/submitted` · `/activate/:token` · `/activate/done` · `/onboarding` (11 steps) · `/shifts` · `/shifts/:id` · `/invites` · `/invites/:id` · `/radar` · `/radar/:id` · `/documents` · `/documents/upload/:docType` · `/documents/completion-letter` · `/documents/opt-out` · `/documents/declare` · `/notifications` · `/install` · `/offline` · `/privacy` · `/profile` · `/profile/details` · `/profile/security` · `/profile/payments` · `/login` · `/forgot` · `/forgot/sent` · `/reset` |
 | Client Portal | `/` · `/client` · `/client/events/:id` (+ the latest allocation sheet / timesheet PDF) · `/login` |
 
 The Back Office sidebar has no `pending` items left, and `/settings` is linked
@@ -94,7 +114,7 @@ real environment to prove it in.
 
 ---
 
-## 3b · Closed on 25.09
+## 3 · Closed on 25.09, the most recent round
 
 - **The office can take a Radar application forward** (`accept_application`,
   ADR-0023): same gates as `accept_invite`, N10 to the worker, and the press that
@@ -109,7 +129,7 @@ real environment to prove it in.
   minutes of retries; document emails sign with the `/settings` sender.
 - `OWNER-TODO.md` is the owner's live checklist.
 
-## 3a · Closed in the 24.09 wave
+## 3b · Closed in the 24.09 wave
 
 - **P2 · the outbox drain.** Web Push (VAPID, WebCrypto, byte-for-byte against
   RFC 8291) and email via Resend with the outbox key as the idempotency key;
@@ -146,7 +166,7 @@ real environment to prove it in.
   Willo) would have reverted each other's changes; `20260924160000` carries
   both (`504`).
 
-## 3 · Closed in this build (23.09)
+## 3c · Closed in the 23.09 build
 
 - **E2's interview wording went to every rejection.** Candidates rejected after
   the interview, and returning applicants, now get **E2b** — the same close
@@ -203,6 +223,20 @@ real environment to prove it in.
 ---
 
 ## 4 · Known defects and gaps, unassigned
+
+### The security advisor, read against the live project on this revision
+
+Run it yourself with the Supabase advisor rather than trusting this table; it is
+here so a reader can tell a deliberate finding from a new one.
+
+| Finding | Count | Verdict |
+|---|---|---|
+| Functions with a mutable `search_path` | **0** | closed 22.09 and held since, guarded by an invariant over `pg_proc` in `002` |
+| `SECURITY DEFINER` callable by `anon` | **6** | all deliberate: 3 are PostGIS's own `st_estimatedextent` overloads, plus `current_app_role`, `current_client_id` and `submit_application` — reasons in the migration headers |
+| `SECURITY DEFINER` callable by `authenticated` | **86** | the product's RPC surface; every one is guarded internally. It grew with the build and is not in itself a defect, but it is the number to watch |
+| `SECURITY DEFINER` views | **8** | the ADR-0004 owner-rights pattern — it is the mechanism that keeps money and worker data away from the client role, not a lapse |
+| `spatial_ref_sys` without RLS | 1 | ADR-0010, known gap, needs `supabase_admin` |
+| **Leaked-password protection** | off | **still owed — see §5.** The only advisor finding that is nobody's design decision |
 
 New from the 24.09 wave:
 
@@ -343,10 +377,15 @@ previews back on for everything.
   staff self-service migration were found — including one that raised at run time
   and not at create time, so it would have deployed green and broken every
   contact save.
-- **`002` assertions 6 and 7 fail in any local harness and that is expected.** It
-  records the ADR-0010 known gap — on Supabase `anon` can write `spatial_ref_sys`
-  — which is false locally because `postgres` owns PostGIS there. One failure is
-  the clean baseline; two is a regression.
+- **`002` assertions 6 and 7 fail in any local harness and that is expected.**
+  They record the ADR-0010 known gap — on Supabase `anon` can write
+  `spatial_ref_sys` — which is false locally because `postgres` owns PostGIS
+  there. **Two** failures are the clean baseline; three is a regression.
+- **`scripts/pgtest-local.sh` needs `postgresql-16-cron`**, which its header
+  lists but a fresh sandbox does not have. Without it the cluster dies at
+  startup with `could not access file "pg_cron"` and the script only reports
+  `pg_ctl: could not start server`, which reads like a broken script rather
+  than a missing package. `apt-get install -y postgresql-16-cron` fixes it.
 - The browser suite needs a Supabase project to reach, and since the auth gate
   closed it needs one to *start*: an app built without `NEXT_PUBLIC_SUPABASE_URL`
   answers 503 on every route, so Playwright's `webServer` wait times out after
