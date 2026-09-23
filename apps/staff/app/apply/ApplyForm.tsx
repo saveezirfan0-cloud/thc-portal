@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useState } from 'react';
-import { Alert, Button, Input, InputRow } from '@thc/ui';
+import { Alert, Button, Checkbox, Input, InputRow } from '@thc/ui';
 import { apply } from './actions';
 import { DIAL_CODES, INITIAL_STATE, ageOn, errorBanner, parseDob, validate } from './form';
 import type { ApplicationValues, FieldErrors } from './form';
@@ -155,37 +155,28 @@ export function ApplyForm() {
       />
 
       {/*
-        Still spelled out rather than `Checkbox` from @thc/ui, but only for
-        the coral box border this tick takes when the GDPR consent is missing
-        (§1.7) — the shared component has no error-border prop. The keyboard
-        problem that used to be the reason is gone: D1 replaced `.hide`
-        (`display: none !important`, so no tab stop and nothing in the
-        accessibility tree) with `.check-input`, the visually-hidden-but-
-        focusable rule, and that rule now lives in packages/ui for everyone.
+        The shared Checkbox (D1): a real, focusable input under the drawn
+        square, so Tab and Space work and the accessible name is the
+        browser's. The one thing it has no prop for is the coral box border
+        the wireframe draws when the GDPR consent is missing (§1.7), so that
+        state is a class on the wrapper and one rule in apply.css rather
+        than a second copy of the control.
       */}
-      <label className="check">
-        <input
-          type="checkbox"
+      <div className={errors.consent ? 'consent-missing' : undefined}>
+        <Checkbox
           name="consent"
-          className="check-input"
           checked={values.consent}
-          onChange={(e) => {
+          onChange={(checked) => {
             setConsentTouched(true);
-            set('consent', e.target.checked);
+            set('consent', checked);
           }}
-        />
-        <span
-          className={`box${values.consent ? ' on' : ''}`}
-          aria-hidden="true"
-          style={errors.consent ? { borderColor: 'var(--coral)' } : undefined}
-        />
-        <span className="txt">
+          error={errors.consent}
+        >
           I agree to The Hospitality Company storing and processing the details on this form to
           assess my application, as described in the <a href="/privacy">Privacy notice</a>.{' '}
           <span className="muted">(GDPR consent — required)</span>
-          {errors.consent ? <span className="error">{errors.consent}</span> : null}
-        </span>
-      </label>
+        </Checkbox>
+      </div>
 
       <Button type="submit" tone="primary" size="lg" block disabled={pending || blocked}>
         {pending ? 'Sending…' : 'Submit application'}

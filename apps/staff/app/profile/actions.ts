@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { staffDb, supabaseConfigured } from '../db';
+import { extractPostcode, lookupPostcode } from '../../lib/postcodes';
 import { photoPathFor } from './photos';
 import type { ActionResult } from './types';
 
@@ -72,17 +73,7 @@ async function call(fn: string, args: Record<string, string | null>): Promise<Ac
   return { ok: true, ...noteFor(fn, data as Rpc) };
 }
 
-function noteFor(fn: string, data: Rpc): { note?: string } {
-  if (fn === 'staff_update_contact') {
-    const changed = (data?.['changed'] as string[]) ?? [];
-    if (changed.length === 0) return { note: 'Nothing had changed, so nothing was saved.' };
-    // §10.1: an address change is reported to the office (E7). Saying so
-    // is the difference between a worker thinking nothing happened and
-    // knowing the office has been told.
-    return changed.includes('home address')
-      ? { note: 'Saved. We’ve let the office and payroll know your address changed.' }
-      : { note: 'Saved.' };
-  }
+function noteFor(fn: string, _data: Rpc): { note?: string } {
   if (fn === 'staff_save_bank') {
     return {
       note: 'Saved. Changes apply from the next payroll run, and the office and payroll have been notified.',
@@ -91,12 +82,85 @@ function noteFor(fn: string, data: Rpc): { note?: string } {
   return {};
 }
 
-/** Profile details — phone and home address (§10.1). Address change fires E7. */
+/**
+ * Profile details — phone and home address (§10.1).
+ *
+ * An address change queues E7, then (ADR-0025) moves the worker's map pin
+ * to the centre of the postcode in the new address, so the §6 proximity
+ * score — and every distance the app prints — follows them rather than
+ * going stale until the office finds time.
+ *
+ * Two RPCs, in this order, on purpose. `staff_update_contact()` saves the
+ * address and queues E7 whatever happens next. Only then is postcodes.io
+ * asked, and only then `staff_set_home_location_from_postcode()`, which
+ * refuses any postcode not in the address it just saved. If there is no
+ * postcode to find, or the lookup is unreachable, the address is still
+ * saved, E7 is still queued, the old point stays, and the note says the
+ * office will move the pin — which is what E7 asks of them anyway. The
+ * save never fails on the pin.
+ */
 export async function saveContactDetails(
   phone: string,
   homeAddress: string,
 ): Promise<ActionResult> {
-  return call('staff_update_contact', { p_phone: phone, p_home_address: homeAddress });
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const supabase = await db();
+  const { data, error } = await supabase.rpc('staff_update_contact', {
+    p_phone: phone,
+    p_home_address: homeAddress,
+  });
+  if (error) return { ok: false, message: message(error.message) };
+
+  const changed = ((data as Rpc)?.['changed'] as string[]) ?? [];
+  if (changed.length === 0) {
+    refreshProfile();
+    return { ok: true, note: 'Nothing had changed, so nothing was saved.' };
+  }
+  if (!changed.includes('home address')) {
+    refreshProfile();
+    return { ok: true, note: 'Saved.' };
+  }
+
+  // §10.1: an address change is reported to the office (E7). Saying so
+  // is the difference between a worker thinking nothing happened and
+  // knowing the office has been told.
+  const pin = await followPostcode(supabase, homeAddress);
+  refreshProfile();
+  return {
+    ok: true,
+    note: `Saved. We’ve let the office and payroll know your address changed. ${pin}`,
+  };
+}
+
+const PIN_STAYS = 'so your map pin stays where it was for now — the office will move it.';
+
+/**
+ * The second half of an address save (ADR-0025): the sentence about the
+ * pin. Every branch is a sentence, never a failure — the address is
+ * already saved and E7 already queued by the time this runs.
+ */
+async function followPostcode(
+  supabase: Awaited<ReturnType<typeof db>>,
+  homeAddress: string,
+): Promise<string> {
+  const postcode = extractPostcode(homeAddress);
+  if (!postcode) return `We couldn’t find a UK postcode in it, ${PIN_STAYS}`;
+
+  const found = await lookupPostcode(postcode);
+  if (!found.ok) {
+    return found.reason === 'unreachable'
+      ? `Postcode lookup is unreachable right now, ${PIN_STAYS}`
+      : `We couldn’t find ${postcode}, ${PIN_STAYS}`;
+  }
+
+  const { error } = await supabase.rpc('staff_set_home_location_from_postcode', {
+    p_postcode: postcode,
+    p_lat: found.lat,
+    p_lng: found.lng,
+  });
+  if (error) return `Your map pin stays where it was for now — the office will move it.`;
+
+  return `Your map pin now sits at the centre of ${postcode} — close enough for venue distances — and the office can fine-tune it.`;
 }
 
 /**

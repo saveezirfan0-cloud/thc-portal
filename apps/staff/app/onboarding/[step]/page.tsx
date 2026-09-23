@@ -63,6 +63,7 @@ async function render(n: number, s: OnboardingState) {
           initial={{
             branch: s.rtwBranch,
             dob: s.dob ?? '',
+            gender: s.gender,
             shareCode: s.shareCode ?? '',
             visaType: s.progress.visaType ?? '',
             visaExpiry: s.progress.visaExpiry ?? '',
@@ -161,12 +162,20 @@ async function render(n: number, s: OnboardingState) {
 /**
  * The saved address is one line — "Flat 4, 22 Roman Road, London E2 0RY"
  * (onboarding_save_address). Splitting it back is best effort, for a
- * worker editing before they submit.
+ * worker editing before they submit. The postcode is stored on its own
+ * since 20260926100300 and is preferred when present; parsing it off the
+ * end of the line covers a worker saved before that.
  */
 function splitAddress(s: OnboardingState) {
-  const base = { line: '', town: '', postcode: '', lat: s.homeLat, lng: s.homeLng };
+  const base = {
+    line: '',
+    town: '',
+    postcode: s.homePostcode ?? '',
+    lat: s.homeLat,
+    lng: s.homeLng,
+  };
   if (!s.homeAddress) return base;
   const m = /^(.*),\s*([^,]+?)\s+([A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2})$/i.exec(s.homeAddress);
   if (!m) return { ...base, line: s.homeAddress };
-  return { ...base, line: m[1]!, town: m[2]!, postcode: m[3]!.toUpperCase() };
+  return { ...base, line: m[1]!, town: m[2]!, postcode: base.postcode || m[3]!.toUpperCase() };
 }

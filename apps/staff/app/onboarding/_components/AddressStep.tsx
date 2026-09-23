@@ -16,6 +16,11 @@ import { WizardFoot, WizardTop } from './Wizard';
  * The pin is the point of the step: "needed to calculate the home ↔ venue
  * distance" — §6 proximity and Radar's distances. The lines are what the
  * office and payroll read. The postcode search only moves the map.
+ *
+ * The postcode is also stored on its own, formatted, and the country as
+ * United Kingdom (onboarding_save_address, 20260926100300) — the §9.9 New
+ * Starter report's Postcode and Country columns. There is no country field
+ * because the step refuses a non-UK postcode and a pin outside the UK.
  */
 export function AddressStep({
   initial,

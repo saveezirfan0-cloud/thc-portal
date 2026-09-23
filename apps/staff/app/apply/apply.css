@@ -43,22 +43,28 @@
   background-position: right 11px center;
 }
 
-/* The consent tick (§1.7). `.check`, `.check-input` and its focus ring are the
-   shared rules in packages/ui now (D1); all that is left here is the 2px
-   nudge that lines the transparent input up with this page's taller text. */
+/* The consent tick (§1.7) is the shared Checkbox from packages/ui (D1):
+   `.check`, `.check-input`, the focus ring, the square and the error text are
+   all its. What is left here is this page's: the 2px nudge that lines the
+   transparent input up with its taller text, the text's line height, the
+   error on its own line, and the coral box border the wireframe draws when
+   consent is missing — a state the shared control has no prop for, so the
+   form sets `.consent-missing` on the wrapper. */
 .apply-page .check .check-input {
   top: 2px;
 }
 
-.apply-page .check .txt {
+.apply-page .check > span:not(.box) {
   line-height: 1.4;
 }
 
 .apply-page .check .error {
   display: block;
-  font-size: 11.5px;
-  color: var(--coral-ink);
-  margin-top: 4px;
+  margin-top: var(--sp-4);
+}
+
+.apply-page .consent-missing .check .box {
+  border-color: var(--coral);
 }
 
 /* "Check your inbox" (§2.7) — the one confirmation screen, which a returning

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  GENDER_OPTIONS,
   ONBOARDING_STEPS,
   RELATIVE_WORDS,
   TOTAL_STEPS,
@@ -13,6 +14,7 @@ import {
   canEditStep,
   currentStep,
   formatFileSize,
+  isGender,
   looksLikeRelative,
   needsShareCode,
   needsVisaExpiry,
@@ -111,6 +113,7 @@ describe('step 1 validation', () => {
   const base: RtwForm = {
     branch: 'eu_settled',
     dob: '1999-09-30',
+    gender: 'F',
     shareCode: 'W12 3AB 4CD',
     visaType: '',
     visaExpiry: '',
@@ -132,6 +135,29 @@ describe('step 1 validation', () => {
     ] as const) {
       expect(rtwErrors({ ...base, branch, dob: '' }, today).dob).toBe('Date of birth is required.');
     }
+  });
+
+  it('gender is a required choice of exactly Male or Female — the report column is M/F (§9.9)', () => {
+    expect(GENDER_OPTIONS.map((o) => `${o.value}:${o.label}`)).toEqual(['M:Male', 'F:Female']);
+    expect(isGender('M') && isGender('F')).toBe(true);
+    expect(isGender('X') || isGender('') || isGender(null)).toBe(false);
+    for (const branch of [
+      'uk_irish',
+      'eu_settled',
+      'work_visa',
+      'international_student',
+      'dependant_other',
+    ] as const) {
+      expect(rtwErrors({ ...base, branch, gender: null }, today).gender).toBe(
+        'Choose Male or Female.',
+      );
+    }
+    // A value the check constraint would refuse is refused here too.
+    expect(rtwErrors({ ...base, gender: 'X' as never }, today).gender).toBeDefined();
+    expect(rtwFooterHint({ ...base, gender: null }, today)).toBe('Gender is required');
+    expect(rtwFooterHint({ ...base, dob: '', gender: null }, today)).toBe(
+      'Date of birth and gender are required',
+    );
   });
 
   it('under 18 is refused; an 18th birthday today is fine', () => {

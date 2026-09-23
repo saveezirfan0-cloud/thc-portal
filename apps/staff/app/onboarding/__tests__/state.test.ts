@@ -21,10 +21,13 @@ const raw = {
   status: 'documents',
   employeeId: null,
   dob: '2003-11-22',
+  gender: 'F',
   rtwBranch: 'international_student',
   shareCode: 'W123AB4CD',
   wtrOptOut: false,
   homeAddress: 'Flat 4, 22 Roman Road, London E2 0RY',
+  homePostcode: 'E2 0RY',
+  homeCountry: 'United Kingdom',
   homeLat: 51.529,
   homeLng: -0.045,
   photoPath: 's1/selfie-1.jpg',
@@ -84,6 +87,13 @@ describe('onboarding_state() → the wizard', () => {
   it('maps the fields', () => {
     expect(s.firstName).toBe('Amara');
     expect(s.rtwBranch).toBe('international_student');
+    // The three §9.9 New Starter fields (20260926100300); an unknown
+    // gender value is read as not chosen, never as a third option.
+    expect([s.gender, s.homePostcode, s.homeCountry]).toEqual(['F', 'E2 0RY', 'United Kingdom']);
+    expect(mapOnboardingState({ ...raw, gender: 'X' })!.gender).toBeNull();
+    expect(
+      mapOnboardingState({ ...raw, gender: null, homePostcode: null })!.homePostcode,
+    ).toBeNull();
     expect(s.progress.selfieAt).toBe('2026-09-18T10:17:00Z');
     expect(s.documents[0]!.fileSize).toBe(2202009);
     expect(s.contract?.isPlaceholder).toBe(true);

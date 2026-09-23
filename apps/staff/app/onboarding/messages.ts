@@ -13,6 +13,8 @@ const REASONS: Record<string, string> = {
   bad_branch: 'Choose which describes you.',
   dob_required: 'Your date of birth is required.',
   under_18: 'You must be 18 or over to work with us.',
+  gender_required: 'Choose Male or Female.',
+  bad_gender: 'Choose Male or Female.',
   doc_choice_required: 'Choose which documents you will provide.',
   bad_share_code:
     "Share code must be 9 letters and numbers starting with W — e.g. W123AB4CD. Spaces are fine, we'll remove them.",

@@ -68,12 +68,16 @@ async function sessionStaffId(): Promise<string | null> {
 export async function saveRightToWork(input: {
   branch: string;
   dob: string;
+  /** M or F — required in every branch, like the DOB (§9.9 Tab 3). */
+  gender: string | null;
   shareCode: string;
   visaType: string;
   visaExpiry: string;
   ukChoice: string | null;
   wtrOptOut: boolean;
 }): Promise<Result> {
+  // p_gender is always sent: the eight-argument RPC is the only one a
+  // client may call (20260926100300), and it refuses a null itself.
   return call('onboarding_save_right_to_work', {
     p_branch: input.branch,
     p_dob: input.dob || null,
@@ -82,6 +86,7 @@ export async function saveRightToWork(input: {
     p_visa_expiry: input.visaExpiry || null,
     p_uk_doc_choice: input.ukChoice,
     p_wtr_optout: input.wtrOptOut,
+    p_gender: input.gender,
   });
 }
 
@@ -104,36 +109,22 @@ export async function saveAddress(input: {
   });
 }
 
+// The lookup is shared with the profile's address edit (ADR-0025) and
+// lives in lib/postcodes.ts. The import sits next to its only use so the
+// move was one edit to this file; an import declaration is hoisted
+// wherever it is written.
+import { lookupPostcode as lookupUkPostcode } from '../../lib/postcodes';
+
 /**
  * Postcode → a point to centre the map on, from postcodes.io (open data,
  * no key, UK-only — which is exactly the population). A convenience for
  * finding the street; the pin the worker then places is what is saved.
+ * Stays a server action so AddressStep can call it.
  */
 export async function lookupPostcode(
   postcode: string,
 ): Promise<Result<{ lat: number; lng: number }>> {
-  const code = postcode.replace(/\s+/g, '').toUpperCase();
-  if (!/^[A-Z]{1,2}[0-9][A-Z0-9]?[0-9][A-Z]{2}$/.test(code)) {
-    return { ok: false, message: 'Enter a UK postcode, e.g. E2 0RY.' };
-  }
-  try {
-    const response = await fetch(`https://api.postcodes.io/postcodes/${code}`, {
-      cache: 'no-store',
-    });
-    if (!response.ok) return { ok: false, message: 'We couldn’t find that postcode.' };
-    const body = (await response.json()) as { result?: { latitude?: number; longitude?: number } };
-    const lat = body.result?.latitude;
-    const lng = body.result?.longitude;
-    if (typeof lat !== 'number' || typeof lng !== 'number') {
-      return { ok: false, message: 'We couldn’t find that postcode.' };
-    }
-    return { ok: true, lat, lng };
-  } catch {
-    return {
-      ok: false,
-      message: 'Postcode search is unreachable — use your location or move the map.',
-    };
-  }
+  return lookupUkPostcode(postcode);
 }
 
 // ---------------------------------------------------------------------

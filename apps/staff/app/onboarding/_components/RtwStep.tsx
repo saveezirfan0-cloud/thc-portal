@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Alert, Button, Checkbox, Input, OptionRow, SegToggle, Select } from '@thc/ui';
 import {
   BRANCH_HEADING,
+  GENDER_OPTIONS,
   NI_EVIDENCE_ACCEPTED,
   RTW_BRANCHES,
   VISA_TYPES,
@@ -16,7 +17,7 @@ import {
   rtwErrors,
   rtwFooterHint,
 } from '@thc/domain';
-import type { RtwBranch, RtwForm, UkDocChoice } from '@thc/domain';
+import type { Gender, RtwBranch, RtwForm, UkDocChoice } from '@thc/domain';
 import { saveRightToWork } from '../actions';
 import { WizardFoot, WizardTop } from './Wizard';
 
@@ -27,6 +28,11 @@ import { WizardFoot, WizardTop } from './Wizard';
  * every branch, the share code is TYPED and validated before anything goes
  * near gov.uk, and the 48-hour opt-out is offered to everyone with the
  * wireframe's per-branch caveat (it never overrides a visa limit, §4.4).
+ *
+ * Gender sits under the DOB, in every branch: the §9.9 New Starter (HMRC)
+ * report carries "Gender (M/F)" and is sent the Monday after the first
+ * paid shift, so it has to be on file by then. The two options are the two
+ * HMRC's Starter Checklist takes; the shared segment control shows them.
  */
 const OPT_OUT_NOTE: Record<RtwBranch, string> = {
   uk_irish: 'Optional — no visa limit applies to you (§4.4).',
@@ -56,6 +62,7 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
       const result = await saveRightToWork({
         branch: branch ?? '',
         dob: form.dob,
+        gender: form.gender,
         shareCode: form.shareCode,
         visaType: form.visaType,
         visaExpiry: form.visaExpiry,
@@ -132,6 +139,22 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
         error={touched ? errors.dob : undefined}
         hint="Required in every branch (§2.5)."
       />
+
+      <div className="field">
+        <span className="label">
+          Gender <span className="coral">*</span>
+        </span>
+        <SegToggle<Gender | ''>
+          block
+          aria-label="Gender"
+          options={GENDER_OPTIONS.map((o) => ({ value: o.value, label: o.label }))}
+          value={form.gender ?? ''}
+          onChange={(v) => set('gender', v === '' ? null : v)}
+        />
+        <span className="hint">
+          For the HMRC New Starter report only — it takes Male or Female (§9.9).
+        </span>
+      </div>
 
       {needsShareCode(branch) ? (
         <Input

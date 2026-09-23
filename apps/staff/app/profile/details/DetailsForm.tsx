@@ -30,7 +30,9 @@ import { PhotoField } from './PhotoField';
  *                 the NEW address; the old one stays until the code is
  *                 entered. Then E7.
  *   Home address  Editable. E7, because the office needs to know: it
- *                 drives the home-to-venue distance in §6 scoring.
+ *                 drives the home-to-venue distance in §6 scoring — and
+ *                 the map pin follows the new postcode (ADR-0025), so
+ *                 that distance does not go stale waiting for them.
  */
 export function DetailsForm({
   profile,
@@ -135,8 +137,9 @@ export function DetailsForm({
       </Button>
 
       <Note>
-        We don’t move the map pin you dropped during onboarding when you edit this address — the
-        office does that, so a typo can’t quietly change which shifts you’re offered.
+        When you save a new address, your map pin moves to the centre of its UK postcode — close
+        enough for the venue distances we show and score on. The office is told about every change
+        and can fine-tune the pin.
       </Note>
     </>
   );
