@@ -822,7 +822,7 @@ at.
 
 ## O15 · `BottomNav`'s `renderLink` callback crashed the Staff App twice — **RESOLVED 23.09**
 
-**This one is `design-system`'s, and it is a prop that should not exist.**
+**It was `design-system`'s, and it was a prop that should not have existed. It is gone.**
 
 `BottomNav` lives in `packages/ui/src/components/Mobile.tsx` under a file-level
 `'use client'`, and it takes
