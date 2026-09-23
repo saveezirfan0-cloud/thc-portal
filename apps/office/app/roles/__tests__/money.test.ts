@@ -39,9 +39,23 @@ describe('the holiday element', () => {
     // The three columns of §9.8's table sit next to each other, so they have
     // to add up in front of the manager at any rate, not only at the ones
     // the wireframe happens to print.
+    //
+    // The comparison is a plain loop and the assertion runs once, rather
+    // than 50,001 expect() calls. Same coverage, and it matters twice over:
+    // building that many assertion contexts took the test past vitest's
+    // 5-second default on a loaded CI runner while passing on a developer's
+    // machine, so it failed by where it ran rather than by what it checked.
+    // A mismatch now also names the rate it happened at, which an expect()
+    // inside the loop did not.
+    const wrong: string[] = [];
     for (let base = 0; base <= 50_000; base += 1) {
-      expect(finalPence(base)).toBe(base + holidayPence(base));
+      const sum = base + holidayPence(base);
+      if (finalPence(base) !== sum) {
+        wrong.push(`${base}p: final ${finalPence(base)} ≠ base + holiday ${sum}`);
+        if (wrong.length === 5) break;
+      }
     }
+    expect(wrong).toEqual([]);
   });
 
   it('is zero on a zero rate rather than a penny', () => {
