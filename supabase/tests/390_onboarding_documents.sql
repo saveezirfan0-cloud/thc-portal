@@ -27,7 +27,7 @@
 -- employee_id is left null: candidates have none until they sign (§2.7).
 -- =====================================================================
 begin;
-select plan(88);
+select plan(90);
 
 \set cl        'c3900000-0000-4000-8000-000000000001'
 \set amara     'c3910000-0000-4000-8000-000000000001'
@@ -417,6 +417,15 @@ select ok(
   and not has_function_privilege('anon', 'public.onboarding_submit_documents(boolean, text, date)', 'execute')
   and not has_function_privilege('anon', 'public.onboarding_attach_document(text, text, text, int, text)', 'execute'),
   'anon can call none of the wizard''s functions');
+
+-- =====================================================================
+-- 12. GDPR removal reaches the wizard's own row (§1.7)
+-- =====================================================================
+update onboarding_progress set visa_type = 'Skilled Worker', visa_expiry = date '2028-03-31'
+ where staff_id = :'tom';
+select lives_ok(format($$ select remove_worker(%L) $$, :'tom'), 'the office removes Tom (§1.7)');
+select is_empty(format($$ select 1 from onboarding_progress where staff_id = %L $$, :'tom'),
+  'and his wizard progress — visa type and typed expiry are personal data — goes with it');
 
 select * from finish();
 rollback;
