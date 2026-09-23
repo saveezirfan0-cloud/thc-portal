@@ -432,7 +432,7 @@ insert into bookings (id, shift_id, staff_id, status, source) values
   ('c7300000-0000-4000-8000-000000000006', 'c7200000-0000-4000-8000-0000000000c2', :'expw', 'invited', 'auto'),
   ('c7300000-0000-4000-8000-000000000007', 'c7200000-0000-4000-8000-0000000000c3', :'expw', 'invited', 'auto');
 select set_config('request.jwt.claims', json_build_object('sub', :'exp_uid')::text, true);
-select is(accept_invite('c7300000-0000-4000-8000-000000000006') ->> 'reason', 'hours_limit',
+select is(accept_invite('c7300000-0000-4000-8000-000000000006') ->> 'reason', 'rtw_expired',
   'AC6: a shift the day after the recorded visa expiry cannot be accepted');
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid')::text, true);
 update settings set value = '"warn"' where key = 'rota_guard_mode';

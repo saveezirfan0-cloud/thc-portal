@@ -10,6 +10,7 @@ import {
   formatOpen,
   formatTimeIn,
   isEditLocked,
+  isNotifiedOnCancel,
   orderSections,
 } from '@thc/domain';
 import { OfficeShell } from '../../_components/OfficeShell';
@@ -58,8 +59,15 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   );
   const open = formatOpen(fill);
   const locked = isEditLocked(windows);
+  // Everyone Cancel event reaches (CANCEL_NOTIFIES): confirmed, invited and
+  // pending Radar applicants. A checked-in (`worked`) booking is not
+  // cancelled (§3.6), so it is not counted.
   const attached = event.sections.reduce(
-    (sum, section) => sum + section.confirmed.length + section.invited.length,
+    (sum, section) =>
+      sum +
+      section.confirmed.filter((b) => isNotifiedOnCancel(b.status)).length +
+      section.invited.length +
+      section.applied.length,
     0,
   );
 

@@ -21,6 +21,7 @@
  */
 
 import type { EventStatus } from './events';
+import type { ApplicationAcceptRefusal } from './state';
 
 const DAY_MS = 86_400_000;
 
@@ -122,4 +123,60 @@ export type CancelNotifies = (typeof CANCEL_NOTIFIES)[number];
 
 export function isNotifiedOnCancel(status: string): status is CancelNotifies {
   return (CANCEL_NOTIFIES as readonly string[]).includes(status);
+}
+
+/**
+ * §3.3. "Applied 2h ago" — the marker a Radar applicant carries on the
+ * board, relative to now. Under a minute reads "just now"; under an hour in
+ * minutes; under two days in hours; then in days.
+ */
+export function appliedAgo(appliedAt: Date, now: Date = new Date()): string {
+  const minutes = Math.max(0, Math.floor((now.getTime() - appliedAt.getTime()) / 60_000));
+  if (minutes < 1) return 'Applied just now';
+  if (minutes < 60) return `Applied ${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 48) return `Applied ${hours}h ago`;
+  return `Applied ${Math.floor(hours / 24)}d ago`;
+}
+
+/**
+ * The office's refusals when taking an application forward
+ * (`accept_application`, §3.3), in the manager's words.
+ */
+export const ACCEPT_APPLICATION_REFUSAL_COPY: Readonly<Record<ApplicationAcceptRefusal, string>> = {
+  event_cancelled: 'This event has been cancelled, so nobody can be booked onto it.',
+  not_applied:
+    'This application is no longer pending — the worker withdrew it, or it has already been answered.',
+  event_ended: 'This shift has already ended, and the application closed with it (RULE-16).',
+  full: 'This role is already fully confirmed (headcount + buffer). Anyone still waiting has been told it filled (N10c).',
+  not_bookable: 'This worker has left or been removed and cannot be booked (§10.6, §1.7).',
+  wrong_role: 'This worker is not signed off for this role.',
+  do_not_return: 'This worker is marked Do not return at this client.',
+  blocked: 'This worker is blocked (compliance) and cannot be booked.',
+  self_cancelled: 'This worker cancelled off this event and is excluded from it (RULE-04).',
+  booked_elsewhere:
+    'This worker is already confirmed on an overlapping shift, or at a different venue less than 2 hours apart.',
+  rtw_expired:
+    'This shift is past the worker’s right-to-work expiry, so they cannot be booked on it.',
+  hours_limit: 'This shift would take the worker over their weekly hours limit (RULE-20).',
+};
+
+export function acceptApplicationRefusal(reason: string): string {
+  return (
+    (ACCEPT_APPLICATION_REFUSAL_COPY as Record<string, string>)[reason] ??
+    `The application could not be accepted (${reason}).`
+  );
+}
+
+/** §3.3 Cancel event's refusals (`cancel_event`), in the manager's words. */
+export const CANCEL_EVENT_REFUSAL_COPY = {
+  reason_required: 'Give a reason for the cancellation (§3.3).',
+  already_cancelled: 'This event has already been cancelled.',
+} as const;
+
+export function cancelEventRefusal(reason: string): string {
+  return (
+    (CANCEL_EVENT_REFUSAL_COPY as Record<string, string>)[reason] ??
+    `The event was not cancelled (${reason || 'unknown'}).`
+  );
 }

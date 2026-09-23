@@ -63,6 +63,12 @@ export interface BoardSection {
   allocationPerHour: number;
   confirmed: BoardBooking[];
   invited: BoardBooking[];
+  /**
+   * Pending Radar self-applications (§3.3, §10.4): `applied`, oldest first.
+   * They sit in the Potential pool with the "Applied" marker; an invited
+   * worker who also applied is one row in `invited`, never here too.
+   */
+  applied: BoardBooking[];
   unavailable: BoardUnavailable[];
 }
 
@@ -244,6 +250,10 @@ export async function loadBoard(eventId: string): Promise<BoardEvent | null> {
           .filter((b) => b['status'] === 'confirmed' || b['status'] === 'worked')
           .map((b) => toBooking(b, roleId)),
         invited: mine.filter((b) => b['status'] === 'invited').map((b) => toBooking(b, roleId)),
+        applied: mine
+          .filter((b) => b['status'] === 'applied')
+          .map((b) => toBooking(b, roleId))
+          .sort((a, b) => (a.appliedAt ?? a.createdAt).localeCompare(b.appliedAt ?? b.createdAt)),
         // Self-cancelled and blocked bookings are the "rejected" reason (§3.6).
         unavailable: mine
           .filter((b) => b['status'] === 'cancelled')
