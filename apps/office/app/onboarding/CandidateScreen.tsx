@@ -52,6 +52,7 @@ import {
   studentLoanLabel,
 } from './view-model';
 import type { Period } from './view-model';
+import { rtwDateProblem, rtwDateRule, rtwDateValue } from '../compliance/rtw';
 import type {
   ActionResult,
   CandidateData,
@@ -145,11 +146,17 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
     });
   };
 
-  const doc = {
+  const doc: DocHandlers = {
     readOnly,
     busy,
-    onVerify: (d: CandidateDocument, periods?: Period[] | null) =>
-      run(() => verifyDocument(row.id, d.id, { periods: periods ?? null })),
+    branch: row.rtw_branch,
+    onVerify: (d: CandidateDocument, input: VerifyChoice = {}) =>
+      run(() =>
+        verifyDocument(row.id, d.id, {
+          periods: input.periods ?? null,
+          expiry: input.expiry ?? null,
+        }),
+      ),
     onReject: (d: CandidateDocument) => {
       setReason('');
       setReject({ kind: 'document', doc: d });
@@ -655,10 +662,22 @@ function RolePick({
 // ---------------------------------------------------------------------
 // 3 · Documents
 // ---------------------------------------------------------------------
+/**
+ * What a Verify carries: the term periods for the term letter, and for a
+ * visa document, status document or share code report the right-to-work
+ * date the manager confirmed (20260923200000 refuses those three without it).
+ */
+interface VerifyChoice {
+  periods?: Period[] | null;
+  expiry?: string | null;
+}
+
 interface DocHandlers {
   readOnly: boolean;
   busy: boolean;
-  onVerify: (doc: CandidateDocument, periods?: Period[] | null) => void;
+  /** The candidate's right-to-work branch (§2.5): decides whether settled status may be confirmed. */
+  branch: string | null;
+  onVerify: (doc: CandidateDocument, input?: VerifyChoice) => void;
   onReject: (doc: CandidateDocument) => void;
   onOpen: (docId: string, which: 'file' | 'report') => void;
 }
@@ -707,6 +726,11 @@ function DocumentLine({
   const badge = aiBadge(doc.ai_confidence, doc.needs_manual_review);
   const pill = REVIEW_PILL[doc.review_status];
   const actionable = !handlers.readOnly && doc.review_status === 'pending';
+  // A visa or status document is verified on its expiry: the one the
+  // candidate typed at step 1 (or the AI read) is pre-filled to confirm.
+  const rule = rtwDateRule(doc.doc_type, handlers.branch);
+  const [expiry, setExpiry] = useState(doc.expiry_date ?? '');
+  const expiryProblem = rtwDateProblem(rule, expiry, false);
   return (
     <DocRow
       icon={ICON[doc.doc_type] ?? 'DOC'}
@@ -731,11 +755,28 @@ function DocumentLine({
             </Link>
           ) : actionable ? (
             <>
+              {rule ? (
+                <input
+                  className="input mono"
+                  type="date"
+                  aria-label={`${rule.label} — confirm against the document`}
+                  title={rule.hint}
+                  value={expiry}
+                  onChange={(event) => setExpiry(event.target.value)}
+                />
+              ) : null}
               <Button
                 size="sm"
                 tone="green"
-                disabled={handlers.busy || (periods ? periodsProblem(periods) !== null : false)}
-                onClick={() => handlers.onVerify(doc, periods)}
+                disabled={
+                  handlers.busy ||
+                  (periods ? periodsProblem(periods) !== null : false) ||
+                  expiryProblem !== null
+                }
+                title={expiryProblem ?? undefined}
+                onClick={() =>
+                  handlers.onVerify(doc, { periods: periods ?? null, expiry: rule ? expiry : null })
+                }
               >
                 Verify
               </Button>
@@ -760,10 +801,21 @@ function DocumentLine({
   );
 }
 
-/** The gov.uk share-code report (§2.6): the worker typed it; nobody types the date. */
+/**
+ * The gov.uk share-code report (§2.6): the worker typed the code; the date is
+ * read off the report (the extractor pre-fills it, ADR-0002) and the manager
+ * confirms it — Verify is refused without it, because it is the worker's
+ * right-to-work expiry and the last day they can be rostered. On the EU
+ * settled branch, settled status is confirmed explicitly as no time limit.
+ */
 function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: DocHandlers }) {
   const pill = REVIEW_PILL[doc.review_status];
   const manual = doc.needs_manual_review;
+  const actionable = !handlers.readOnly && doc.review_status === 'pending';
+  const rule = rtwDateRule(doc.doc_type, handlers.branch);
+  const [until, setUntil] = useState(doc.right_to_work_until ?? '');
+  const [noTimeLimit, setNoTimeLimit] = useState(false);
+  const problem = rtwDateProblem(rule, until, noTimeLimit);
   return (
     <div className="pdfcard">
       <div className="thumb">
@@ -788,10 +840,39 @@ function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: Do
             </span>
           </span>
           <span className="k">Right to work until</span>
-          <span>
-            <b>{doc.right_to_work_until ? formatUkDate(doc.right_to_work_until) : '—'}</b>{' '}
-            <span className="muted sm">— becomes the expiry used for reminders (§2.6, §4.4)</span>
-          </span>
+          {actionable ? (
+            <span className="stack">
+              <span className="row wrap">
+                <input
+                  className="input mono"
+                  type="date"
+                  aria-label="Right to work until, from the gov.uk report"
+                  value={noTimeLimit ? '' : until}
+                  disabled={noTimeLimit}
+                  onChange={(event) => setUntil(event.target.value)}
+                />
+                <span className="muted sm">
+                  read off the report — becomes the expiry used for reminders and the last day they
+                  can be rostered (§2.6, §4.4)
+                </span>
+              </span>
+              {rule?.allowNoTimeLimit ? (
+                <label className="row sm">
+                  <input
+                    type="checkbox"
+                    checked={noTimeLimit}
+                    onChange={(event) => setNoTimeLimit(event.target.checked)}
+                  />
+                  Settled status — no time limit (§2.5 pt 2). Pre-settled has an end date: enter it.
+                </label>
+              ) : null}
+            </span>
+          ) : (
+            <span>
+              <b>{doc.right_to_work_until ? formatUkDate(doc.right_to_work_until) : '—'}</b>{' '}
+              <span className="muted sm">— becomes the expiry used for reminders (§2.6, §4.4)</span>
+            </span>
+          )}
           <span className="k">Checked</span>
           <span>{formatUkStamp(doc.uploaded_at)} · gov.uk/view-right-to-work</span>
         </div>
@@ -801,13 +882,14 @@ function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: Do
               Open PDF report
             </Button>
           ) : null}
-          {!handlers.readOnly && doc.review_status === 'pending' ? (
+          {actionable ? (
             <>
               <Button
                 size="sm"
                 tone="green"
-                disabled={handlers.busy}
-                onClick={() => handlers.onVerify(doc)}
+                disabled={handlers.busy || problem !== null}
+                title={problem ?? undefined}
+                onClick={() => handlers.onVerify(doc, { expiry: rtwDateValue(until, noTimeLimit) })}
               >
                 Verify
               </Button>

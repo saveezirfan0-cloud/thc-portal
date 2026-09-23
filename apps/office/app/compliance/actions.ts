@@ -45,19 +45,48 @@ function isFailure(result: { data: unknown } | ActionResult): result is ActionRe
   return 'ok' in result;
 }
 
+/**
+ * The date a right-to-work document is verified on (20260923200000): the
+ * expiry of a visa or status document, or the right-to-work-until of a share
+ * code report — `NO_TIME_LIMIT` for EU settled status. The database refuses
+ * those three documents without it.
+ */
+export interface VerifyDates {
+  expiry?: string | null;
+  rightToWorkUntil?: string | null;
+}
+
 /** §4.1 Verify. Reports the §4.3 re-check's answer rather than hiding it. */
-export async function verifyDocument(docId: string): Promise<ActionResult> {
-  const result = await call('compliance_verify_document', { p_doc: docId });
+export async function verifyDocument(
+  docId: string,
+  dates: VerifyDates = {},
+): Promise<ActionResult> {
+  const args: RpcArguments = { p_doc: docId };
+  if (dates.expiry) args['p_expiry'] = dates.expiry;
+  if (dates.rightToWorkUntil) args['p_right_to_work_until'] = dates.rightToWorkUntil;
+  const result = await call('compliance_verify_document', args);
   if (isFailure(result)) return result;
-  const data = (result.data ?? {}) as { unblocked?: boolean; status?: string; blockers?: string[] };
-  if (data.unblocked) return { ok: true, message: 'Verified. Everything is in order — unblocked.' };
+  const data = (result.data ?? {}) as {
+    unblocked?: boolean;
+    status?: string;
+    blockers?: string[];
+    rightToWorkUntil?: string | null;
+  };
+  const rtw =
+    dates.expiry || dates.rightToWorkUntil
+      ? data.rightToWorkUntil
+        ? ` Right to work until ${ukDate(data.rightToWorkUntil)} — no shift after it can be rostered.`
+        : ' Right to work: no time limit on file.'
+      : '';
+  if (data.unblocked)
+    return { ok: true, message: `Verified. Everything is in order — unblocked.${rtw}` };
   if (data.status === 'blocked' && data.blockers?.length) {
     return {
       ok: true,
-      message: `Verified. Still blocked: ${data.blockers.map(blockerLabel).join(', ')}.`,
+      message: `Verified. Still blocked: ${data.blockers.map(blockerLabel).join(', ')}.${rtw}`,
     };
   }
-  return { ok: true, message: 'Verified.' };
+  return { ok: true, message: `Verified.${rtw}` };
 }
 
 /** §4.1 Reject. The reason goes to the worker word for word in N8. */

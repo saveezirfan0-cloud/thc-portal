@@ -7,6 +7,7 @@ import { createAdminClient } from '@thc/db/admin';
 import { supabaseConfigured } from '../staff/data';
 import { periodToRange, periodsProblem } from './view-model';
 import { acceptWithAccount } from './activation';
+import { reviewErrorMessage } from '../compliance/messages';
 import type { AcceptRpc, AdminAuth } from './activation';
 import type { Period } from './view-model';
 import type { ActionResult } from './types';
@@ -78,7 +79,9 @@ function explain(message: string): string {
     return 'This person has signed their contract — use Block on the staff profile.';
   if (code === 'illegal_staff_transition')
     return `Not allowed by the onboarding state machine (${message}).`;
-  return message;
+  // Verify and Reject are the Compliance queue's functions underneath
+  // (20260923200000), so their refusals read the same on both screens.
+  return reviewErrorMessage(message);
 }
 
 async function call(fn: string, args: RpcArguments, paths: string[]): Promise<ActionResult> {
@@ -187,9 +190,13 @@ export async function addQualifiedRole(staffId: string, roleId: string): Promise
 // Documents and the declaration (§2.3, §2.10)
 // ---------------------------------------------------------------------
 export interface VerifyInput {
+  /**
+   * The expiry — or, on a share code report, the right-to-work-until off the
+   * gov.uk report (`NO_TIME_LIMIT` for EU settled status). Required by the
+   * database for a visa document, status document or share code report.
+   */
   expiry?: string | null;
   periods?: Period[] | null;
-  completionDate?: string | null;
 }
 
 export async function verifyDocument(
@@ -207,7 +214,8 @@ export async function verifyDocument(
   // An empty list is a real answer — "zero periods" happens (§2.3) — so it
   // is sent as an empty array, not dropped.
   if (periods) args['p_term_dates'] = periods.map(periodToRange);
-  if (input.completionDate) args['p_completion_date'] = input.completionDate;
+  // A completion letter is approved in Compliance (approve_completion_letter),
+  // so there is no completion date to send from here.
   return call('verify_document', args, paths(staffId));
 }
 

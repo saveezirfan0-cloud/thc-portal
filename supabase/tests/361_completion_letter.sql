@@ -390,6 +390,10 @@ select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid')::
 alter table staff drop constraint age_18;
 alter table staff drop constraint dob_present_unless_removed;
 update staff set dob = null where id = :'nodob';
+-- The opt-out is the worker's own agreement, so only the worker or the
+-- service role may name one (20260923200000); the guards are reached as
+-- the service role.
+select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 select is(sign_wtr_optout(null, 7, :'nodob') ->> 'reason', 'age_unknown',
   'AC4: no date of birth on file, no opt-out — an age that was never checked cannot be relied on');
 update staff set dob = current_date - interval '17 years' where id = :'nodob';
