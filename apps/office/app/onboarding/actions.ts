@@ -6,6 +6,8 @@ import { createClient } from '@thc/db/server';
 import { createAdminClient } from '@thc/db/admin';
 import { supabaseConfigured } from '../staff/data';
 import { periodToRange, periodsProblem } from './view-model';
+import { acceptWithAccount } from './activation';
+import type { AcceptRpc, AdminAuth } from './activation';
 import type { Period } from './view-model';
 import type { ActionResult } from './types';
 
@@ -16,12 +18,15 @@ import type { ActionResult } from './types';
  * called through the SESSION client. Each is `security definer` and
  * refuses a caller whose own profile is not an admin, so the gate is the
  * database's and not this file's — a request crafted around the screen
- * meets the same refusal. None of them is reached with the service key.
+ * meets the same refusal. None of those RPCs is reached with the service
+ * key.
  *
- * The one exception is opening a document: the `documents` bucket is
- * deny-all to every signed-in role (20260922183015), so a signed URL can
- * only be minted with the service key, and `asAdmin()` below is what
- * stands between that key and the caller.
+ * Two things do need the service key, and `asAdmin()` below is what stands
+ * between that key and the caller in both. Opening a document: the
+ * `documents` bucket is deny-all to every signed-in role (20260922183015),
+ * so a signed URL can only be minted with it. And Accept: the candidate's
+ * login is created through the GoTrue Admin API (activation.ts) — the
+ * database write that follows is still the session client's.
  */
 
 const NOT_CONFIGURED =
@@ -42,6 +47,23 @@ const MESSAGES: Record<string, string> = {
     'The activation link could not be built — set NEXT_PUBLIC_STAFF_URL for the Back Office.',
   term_dates_invalid: 'Every period needs a start and an end date.',
   already_resolved: 'This entry has already been dealt with.',
+  // Accept's login (§1.4, §2.7) — activation.ts and 20260923180000.
+  account_service_key:
+    'The candidate’s login could not be created — set SUPABASE_SERVICE_ROLE_KEY for the Back Office.',
+  account_missing:
+    'The login linked to this candidate no longer exists. Ask a developer to check the account before accepting.',
+  account_not_staff:
+    'This email address already belongs to an office or client login, so it cannot be used for a worker. Ask the candidate for another address.',
+  account_link_failed: 'The activation link could not be created. Try again in a minute.',
+  account_role_failed: 'The candidate’s login could not be set up for the Staff App. Try again.',
+  account_email_mismatch:
+    'The login found for this candidate is under a different email address. Check the email on the profile.',
+  staff_linked_elsewhere:
+    'This candidate is already linked to a different login. Ask a developer to check before accepting.',
+  account_linked_elsewhere:
+    'This email address’s login already belongs to another staff record — possibly a duplicate. Check before accepting.',
+  activation_link_not_personal:
+    'The activation link could not be built — set NEXT_PUBLIC_STAFF_URL for the Back Office.',
 };
 
 function explain(message: string): string {
@@ -90,9 +112,16 @@ function staffOrigin(): string | null {
 
 /**
  * Accept — move to Documents (§2.4, BO4 phase 2). The role type(s) are
- * mandatory at this point; E3 goes to the candidate with the activation
- * link. What `/activate` does with that link is the activation screen's
- * (not built on this branch).
+ * mandatory at this point; E3 goes to the candidate with their personal
+ * activation link, `/activate/:token` (§2.7, §2.8).
+ *
+ * The one write on this page that needs the service key: the candidate's
+ * login is created (or reused) through the GoTrue Admin API before the
+ * database is asked to accept, because E3 must carry that login's
+ * one-time token. activation.ts has the order and the reasons. The
+ * manager is checked here FIRST, and the database checks again inside
+ * `onboarding_accept_with_account` — which also links `staff.user_id` in
+ * the same transaction as E3, so neither exists without the other.
  */
 export async function acceptCandidate(
   staffId: string,
@@ -102,17 +131,45 @@ export async function acceptCandidate(
   if (roleIds.length === 0) return { ok: false, message: MESSAGES.roles_required! };
   const origin = staffOrigin();
   if (!origin) return { ok: false, message: MESSAGES.activation_link_required! };
-  return call(
-    'onboarding_accept',
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  if (!(await asAdmin())) return { ok: false, message: MESSAGES.not_authorised! };
+
+  const supabase = createClient(await cookies());
+  const { data: candidate, error: readError } = await supabase
+    .from('staff')
+    .select('id, email, user_id, status')
+    .eq('id', staffId)
+    .maybeSingle<{ id: string; email: string; user_id: string | null; status: string }>();
+  if (readError) return { ok: false, message: readError.message };
+  if (!candidate)
+    return { ok: false, message: 'This candidate no longer exists — refresh the page.' };
+  // Checked here as well as in the database so that a stale card does not
+  // create a login for someone who is not being accepted.
+  if (candidate.status !== 'interview_completed') {
+    return { ok: false, message: explain(`not_awaiting_decision: ${candidate.status}`) };
+  }
+
+  let admin: AdminAuth;
+  try {
+    admin = createAdminClient().auth.admin as unknown as AdminAuth;
+  } catch {
+    return { ok: false, message: MESSAGES.account_service_key! };
+  }
+
+  const outcome = await acceptWithAccount(
+    { admin, rpc: supabase as unknown as AcceptRpc },
     {
-      p_staff: staffId,
-      p_roles: roleIds,
-      p_note: note.trim() || null,
-      p_activation_link: `${origin}/activate`,
-      p_install_link: `${origin}/install`,
+      staffId,
+      email: candidate.email,
+      linkedUserId: candidate.user_id,
+      roleIds,
+      note: note.trim() || null,
+      staffOrigin: origin,
     },
-    paths(staffId),
   );
+  if (!outcome.ok) return { ok: false, message: explain(outcome.error) };
+  for (const path of paths(staffId)) revalidatePath(path);
+  return { ok: true };
 }
 
 /** Reject candidate — final on this record (§2.3). E2 goes out; the reason stays in the office. */
