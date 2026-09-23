@@ -8,8 +8,9 @@
 #
 # Needs, as root (Debian/Ubuntu):
 #   apt-get install postgresql-16 postgresql-16-postgis-3 postgresql-16-pgtap \
-#                   postgresql-16-cron libtap-parser-sourcehandler-pgtap-perl
-# pg_net has no package; a no-op stub is written below the first time.
+#                   libtap-parser-sourcehandler-pgtap-perl
+# pg_net and pg_cron are stubbed below the first time if absent, so
+# postgresql-16-cron is optional — install it only to exercise real scheduling.
 #
 # usage: scripts/pgtest-local.sh [repo_dir] [port]
 #        TESTS="120_apply.sql 290_staff_directory.sql" scripts/pgtest-local.sh
@@ -19,7 +20,7 @@
 # Supabase). Anything else failing is real.
 # =====================================================================
 set -euo pipefail
-EXT=/usr/share/postgresql/16/extension
+EXT=/usr/share/postgresql/16/extension; LIB=/usr/lib/postgresql/16/lib
 if [ ! -f $EXT/pg_net.control ]; then
   printf "comment = 'local no-op stub of pg_net'\ndefault_version = '0.1'\nrelocatable = false\nschema = public\n" > $EXT/pg_net.control
   cat > $EXT/pg_net--0.1.sql <<'SQL'
@@ -28,11 +29,41 @@ create or replace function net.http_post(url text, body jsonb default '{}'::json
 create or replace function net.http_get(url text, params jsonb default '{}'::jsonb, headers jsonb default '{}'::jsonb, timeout_milliseconds int default 5000) returns bigint language sql as $$ select 1::bigint $$;
 SQL
 fi
+# pg_cron: use the real extension when postgresql-16-cron is installed, and a
+# no-op stub otherwise. The real one must be in shared_preload_libraries or the
+# CLUSTER REFUSES TO START, and pg_ctl reports only "could not start server" —
+# the reason is in $DIR/log, which the trap below deletes. That failure mode
+# cost someone twenty minutes, so the script no longer depends on the package.
+# Only three cron APIs appear anywhere in supabase/: schedule, unschedule, job.
+CRON_PRELOAD=""
+if [ -f $LIB/pg_cron.so ]; then
+  CRON_PRELOAD="-c shared_preload_libraries=pg_cron -c cron.database_name=postgres"
+elif [ ! -f $EXT/pg_cron.control ]; then
+  printf "comment = 'local no-op stub of pg_cron'\ndefault_version = '0.1'\nrelocatable = false\nschema = pg_catalog\n" > $EXT/pg_cron.control
+  cat > $EXT/pg_cron--0.1.sql <<'SQL'
+create schema if not exists cron;
+create table if not exists cron.job (
+  jobid bigserial primary key, schedule text, command text,
+  nodename text default 'localhost', nodeport int default 5432,
+  database text, username text, active boolean default true, jobname text unique);
+create or replace function cron.schedule(job_name text, schedule text, command text)
+  returns bigint language sql as $$
+  insert into cron.job (jobname, schedule, command, database, username)
+  values (job_name, schedule, command, current_database(), current_user)
+  on conflict (jobname) do update set schedule = excluded.schedule, command = excluded.command
+  returning jobid $$;
+create or replace function cron.unschedule(job_name text) returns boolean language sql as $$
+  delete from cron.job where jobname = job_name returning true $$;
+SQL
+fi
+
 REPO=$(cd "${1:-$PWD}" && pwd); PORT=${2:-$((50000 + RANDOM % 9000))}
 BIN=/usr/lib/postgresql/16/bin; DIR=/tmp/thc-pg-$PORT
 rm -rf "$DIR"; mkdir -p "$DIR"; chown postgres "$DIR"
 su postgres -c "$BIN/initdb -D $DIR/data -U postgres --auth=trust -E UTF8 --locale=C.UTF-8 >/dev/null"
-su postgres -c "$BIN/pg_ctl -D $DIR/data -o '-p $PORT -k $DIR -c shared_preload_libraries=pg_cron -c cron.database_name=postgres -c timezone=UTC' -l $DIR/log start -w >/dev/null"
+if ! su postgres -c "$BIN/pg_ctl -D $DIR/data -o '-p $PORT -k $DIR $CRON_PRELOAD -c timezone=UTC' -l $DIR/log start -w >/dev/null"; then
+  echo "postgres did not start. Its log said:" >&2; tail -5 "$DIR/log" >&2; exit 1
+fi
 trap 'su postgres -c "$BIN/pg_ctl -D $DIR/data stop -m immediate >/dev/null" || true; rm -rf "$DIR"' EXIT
 export PGHOST=$DIR PGPORT=$PORT PGUSER=postgres PGDATABASE=postgres
 P="psql -X -q -v ON_ERROR_STOP=1"
