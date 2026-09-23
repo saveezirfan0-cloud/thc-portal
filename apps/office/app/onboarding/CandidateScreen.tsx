@@ -21,7 +21,14 @@ import {
   Textarea,
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
-import { RTW_LABEL, capReason, employeeId, formatDateRange, formatUkDate } from '../staff/staff';
+import {
+  RTW_LABEL,
+  capReason,
+  employeeId,
+  formatDateRange,
+  formatUkDate,
+  rtwUntilLabel,
+} from '../staff/staff';
 import { formatUkStamp } from '../staff/[id]/profile';
 import {
   acceptCandidate,
@@ -869,7 +876,7 @@ function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: Do
             </span>
           ) : (
             <span>
-              <b>{doc.right_to_work_until ? formatUkDate(doc.right_to_work_until) : '—'}</b>{' '}
+              <b>{rtwUntilLabel(doc)}</b>{' '}
               <span className="muted sm">— becomes the expiry used for reminders (§2.6, §4.4)</span>
             </span>
           )}

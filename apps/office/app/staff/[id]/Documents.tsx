@@ -1,7 +1,7 @@
 'use client';
 
 import { DocRow, Panel, Pill } from '@thc/ui';
-import { formatUkDate } from '../staff';
+import { SETTLED_NO_TIME_LIMIT, formatUkDate } from '../staff';
 import { complianceSummary, documentOrder, formatUkStamp } from './profile';
 import type { DocumentRow, ProfileRow } from './types';
 
@@ -21,6 +21,7 @@ import type { DocumentRow, ProfileRow } from './types';
 function meta(row: DocumentRow): string {
   const parts: string[] = [];
   if (row.expires_on) parts.push(`Expires ${formatUkDate(row.expires_on)}`);
+  else if (row.rtw_no_time_limit) parts.push(SETTLED_NO_TIME_LIMIT);
   if (row.ai_confidence !== null) parts.push(`AI ${Math.round(row.ai_confidence * 100)}%`);
   if (row.reviewed_at) {
     parts.push(

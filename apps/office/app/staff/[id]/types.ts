@@ -61,6 +61,8 @@ export interface DocumentRow {
   reviewed_by_name: string | null;
   share_code: string | null;
   right_to_work_until: string | null;
+  /** The reviewer confirmed settled status: no date, by design (20260923200000). */
+  rtw_no_time_limit: boolean;
   completion_date: string | null;
   awarding_institution: string | null;
 }

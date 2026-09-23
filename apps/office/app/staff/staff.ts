@@ -184,3 +184,21 @@ export function formatUkDate(iso: string): string {
     timeZone: 'Europe/London',
   }).format(at);
 }
+
+/** What a verified settled-status share code says instead of a date (§2.5 pt 2). */
+export const SETTLED_NO_TIME_LIMIT = 'Settled — no time limit';
+
+/**
+ * The right-to-work line on a share code report: the date read off the
+ * gov.uk report, or — on the EU settled branch — the reviewer's explicit
+ * "no time limit" confirmation (`rtw_no_time_limit`, 20260923200000). A
+ * blank date without that confirmation is still a blank: "—", never
+ * "settled", because a forgotten date must not read as indefinite leave.
+ */
+export function rtwUntilLabel(doc: {
+  right_to_work_until: string | null;
+  rtw_no_time_limit?: boolean | null;
+}): string {
+  if (doc.right_to_work_until) return formatUkDate(doc.right_to_work_until);
+  return doc.rtw_no_time_limit ? SETTLED_NO_TIME_LIMIT : '—';
+}

@@ -52,6 +52,7 @@ const doc = (over: Partial<DocumentRow>): DocumentRow => ({
   reviewed_by_name: null,
   share_code: null,
   right_to_work_until: null,
+  rtw_no_time_limit: false,
   completion_date: null,
   awarding_institution: null,
   ...over,
