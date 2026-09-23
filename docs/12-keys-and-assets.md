@@ -136,21 +136,94 @@ Do not chase these now. Each is listed against the phase that first needs it.
 
 | Key | Where | First needed |
 |---|---|---|
-| `WILLO_API_KEY`, `WILLO_WEBHOOK_SECRET` | THC's Willo account | Phase 1, interviews |
+| `WILLO_API_KEY`, `WILLO_INTERVIEW_KEY`, `WILLO_WEBHOOK_SECRET` | THC's Willo account (Appendix B, B1). Supabase secrets for the `willo-webhook` Edge Function, never Vercel. Without the first two no candidate is created in Willo (logged); without the secret every webhook is refused | Phase 1, interviews |
+| `STAFF_APP_URL` | The Staff App's public origin, e.g. `https://app.thehospitalitycompany.co.uk`. Supabase secret: the Willo Accept builds E3's `/activate/{token}` link from it (the Back Office reads `NEXT_PUBLIC_STAFF_URL` for the same thing) | With the Willo keys |
+| Optional Willo overrides: `WILLO_SIGNATURE_HEADER`, `WILLO_TIMESTAMP_HEADER`, `WILLO_TIMESTAMP_TOLERANCE_SECONDS`, `WILLO_API_BASE`, `WILLO_INVITE_PATH`, `WILLO_API_AUTH_HEADER`, `WILLO_API_AUTH_PREFIX` | Set only if Willo's docs differ from the defaults in ADR-0021 | With the Willo keys |
 | `GEMINI_API_KEY` | https://aistudio.google.com/apikey | Phase 1, reading dates off documents |
-| `RESEND_API_KEY` | https://resend.com/api-keys | Phase 1, the activation email |
-| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` | Generated, not obtained. Run `npx web-push generate-vapid-keys`, or ask me | Phase 3, push notifications |
+| `RESEND_API_KEY` | https://resend.com/api-keys — a **Sending access** key for the verified domain | P2, every email (`notify-drain`) — see below |
+| `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Generated, not obtained. Run `npx web-push generate-vapid-keys`; the subject is `mailto:admin@thehospitalitycompany.co.uk` | P2, every push (`notify-drain`) — see below |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | https://account.mapbox.com/access-tokens/ | Phase 2, the venues map |
 
 Anything used by a background function goes in Supabase rather than Vercel:
 
 ```
-supabase secrets set GEMINI_API_KEY=… WILLO_API_KEY=… RESEND_API_KEY=…
+supabase secrets set GEMINI_API_KEY=… WILLO_API_KEY=… RESEND_API_KEY=… VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=… VAPID_SUBJECT=…
+```
+
+The Willo function is deployed without Supabase's JWT check, because Willo signs its own
+deliveries (ADR-0021). Point Willo's webhook at `{SUPABASE_URL}/functions/v1/willo-webhook`:
+
+```
+supabase secrets set WILLO_API_KEY=… WILLO_INTERVIEW_KEY=… WILLO_WEBHOOK_SECRET=… STAFF_APP_URL=https://…
+supabase functions deploy willo-webhook --no-verify-jwt
 ```
 
 Email needs two verified senders on THC's domain, `admin@` and `timesheets@`, which means
 adding DNS records. That is a dependency on THC and has lead time, so start it early even
 though the code needs it later.
+
+### The notification senders (P2, `notify-drain`)
+
+Every push and every email leaves through one Edge Function, `notify-drain`, which pg_cron
+calls every minute. It reads five secrets, all from **Supabase**, none from Vercel:
+
+```
+supabase secrets set \
+  RESEND_API_KEY=re_… \
+  VAPID_PUBLIC_KEY=B… \
+  VAPID_PRIVATE_KEY=… \
+  VAPID_SUBJECT=mailto:admin@thehospitalitycompany.co.uk
+```
+
+(`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by Supabase itself.)
+
+| Secret | What it is | If it is missing |
+|---|---|---|
+| `RESEND_API_KEY` | Resend API key with sending access to THC's domain | Every email row is **held**: the row's `error` says "not configured", no attempt is spent, and it is looked at again every 5 minutes. Push still sends. |
+| `VAPID_PUBLIC_KEY` | base64url, 65 bytes, from `npx web-push generate-vapid-keys` | Every push row is held the same way. Email still sends. |
+| `VAPID_PRIVATE_KEY` | base64url, 32 bytes, same command. **Secret.** | Same |
+| `VAPID_SUBJECT` | `mailto:` or `https:` contact the push services can reach | Same |
+
+The **same public key** must also be set on the staff app in Vercel as
+`NEXT_PUBLIC_VAPID_PUBLIC_KEY` — the browser subscribes with it, and a push signed by a
+different pair is refused by the push service. Generate the pair **once**: rotating it
+silently orphans every device already subscribed (they re-subscribe the next time the app
+opens).
+
+**The sender addresses are not secrets and not env vars.** They are the `senders` row in
+`settings`, edited on the Back Office `/settings` page, and read by the drain on every
+run. If that row is missing, malformed or a no-reply address, the drain falls back to
+`admin@thehospitalitycompany.co.uk` / `timesheets@thehospitalitycompany.co.uk` and logs
+why.
+
+**DNS, before the first email.** In Resend → Domains, add `thehospitalitycompany.co.uk`
+(or a sending subdomain) and publish the records it shows at THC's DNS host: the DKIM
+`TXT` record(s), the SPF `TXT`/`MX` on the bounce subdomain, and a DMARC `TXT` at
+`_dmarc` (start at `p=none`). Resend will not send from `admin@` or `timesheets@` until
+the domain shows **Verified**; until then it refuses the send (a 4xx), and the drain
+either retries on its backoff and fails the row after six attempts (401/403) or fails it
+at once (400/422) — so verify the domain before setting the
+key, not after. Both mailboxes must be real and monitored: §9.12 rules out no-reply, and
+every email sets `Reply-To` to its sender.
+
+**Deploy order** (as for every job):
+
+```
+supabase functions deploy notify-drain
+supabase functions deploy finance-reports
+psql … -c "select install_job_schedules();"
+```
+
+Functions first. `install_job_schedules()` reads `settings.edge_base_url` and the vault
+secret `service_role_key`; it (re)schedules every enabled `job_schedules` row, which now
+includes `notify-drain` (every minute) and `finance-reports` (re-enabled with the drain).
+Run from the repository root, because the function imports `packages/notifications` by
+relative path (ADR-0020).
+
+**Checking it works:** `select job, ok, counts, error from job_runs where job =
+'notify-drain' order by started_at desc limit 5;` — `counts` has `sent`, `retried`,
+`failed`, `unconfigured` and, while keys are missing, `notConfigured`. A single row's
+story is on `notification_outbox` (`attempts`, `error`, `sent_at`, `failed_at`).
 
 ---
 

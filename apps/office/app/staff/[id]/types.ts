@@ -61,6 +61,8 @@ export interface DocumentRow {
   reviewed_by_name: string | null;
   share_code: string | null;
   right_to_work_until: string | null;
+  /** The reviewer confirmed settled status: no date, by design (20260923200000). */
+  rtw_no_time_limit: boolean;
   completion_date: string | null;
   awarding_institution: string | null;
 }
@@ -178,6 +180,12 @@ export interface ProfileData {
   clients: ClientOption[];
   /** The signed-in manager, named as the author of a new office entry (§9.10). */
   managerName: string | null;
+  /**
+   * Whether the worker's login has a password (`staff_account_activated`,
+   * 20260924110000). False offers "Resend activation link"; null/absent =
+   * not known, and nothing is offered.
+   */
+  activated?: boolean | null;
   problem: string | null;
 }
 

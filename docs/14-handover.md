@@ -15,10 +15,10 @@ screen it names is now built; what is left is listed in §2 and §4 below.
 ## 1 · What is genuinely built
 
 **Every screen in the product now exists.** Three Next.js apps on one Supabase
-database, **70 migrations**, **58 pgTAP files (2,226 assertions)**, **1,358 Vitest
+database, **79 migrations**, **67 pgTAP files (2,392 assertions)**, **1,575 Vitest
 tests** across eight packages, six Edge Functions (`auto-staffing`,
 `booking-tick`, `compliance-daily`, `finance-reports`, `gdpr-purge`, plus
-`_shared`), and ADRs up to `0018`. CI runs lint, typecheck, Vitest,
+`_shared`), and ADRs up to `0022`. CI runs lint, typecheck, Vitest,
 `supabase test db` and Playwright on every push, and `deploy-database` pushes
 migrations to the live project on merge to `main`.
 
@@ -69,35 +69,68 @@ last, below a divider. The Staff App's Documents tab is live.
 
 ## 2 · What is left, in order
 
-1. **P2 · the outbox drain and the push/email senders.** The single biggest gap.
-   Every notification in the product — E2/E2b/E3 to candidates, N8, CL1–CL6, the
-   Monday finance email (BG08), the timesheet sends (D1/D2) — stops at a
-   `notification_outbox` row. Nothing is actually sent until the drain exists and
-   `RESEND_API_KEY`, the VAPID keys and the two verified senders are set. The
-   drain must send `BG08`/`D1`/`D2` rows through `documentMessageFor()` (they are
-   deliberately outside the §8 register). It should also read the `senders`
-   setting `/settings` writes; `templates.ts` still hard-codes the two addresses.
-   **The `finance-reports` schedule is disabled until then** (20260923193100);
-   re-enable it in the same commit as the drain, and update `190`'s list.
-2. **Willo.** No webhook receiver and no "create candidate" call — both need
-   THC's keys. `willo_link_candidate` / `willo_record_event` are built and tested;
-   the receiver must also provision the login exactly as the office Accept does
-   (`link_staff_account` as the service role) and pass the personal link.
-3. **THC content, all flagged as placeholders in the code:** the 10 quiz
-   questions, the induction slides, the contract text (`contract_versions`), the
-   CL1–CL6 wording, and sample completion letters for the Gemini extractor (the
-   `DocumentExtractor` seam returns nothing until then, so every upload goes to
-   manual review).
-4. **Resend activation link.** An expired E3 link means the candidate writes to
-   admin@; nothing in the office can issue a new one. Needs an office action and a
-   DB function with a new E3 outbox key.
-5. **B2 / B3** from §4 — the booking state machine and `cancel_cause`.
-6. **Browser passes.** No new screen has been clicked through against a live
-   Supabase project; coverage is render tests, view-model tests and pgTAP. A
-   `qa-reviewer` pass against each wireframe, and Playwright journeys for the
-   wizard and activation, are the next safety net.
+**Everything that can be built without THC or live credentials is built** (24.09
+wave below). What is left needs an input only the owner or THC can supply, or a
+real environment to prove it in.
+
+1. **Turn sending on** — the drain is built (`notify-drain`, ADR-0020) but sends
+   nothing until the owner steps in §5 are done: Resend key and verified domain,
+   the VAPID pair, the Edge Function deploys, then `install_job_schedules()`.
+   Until then every row waits as "not configured" without spending retries.
+2. **Willo keys** — the receiver and the create-candidate sweep are built
+   (ADR-0021) on an *assumed* signing scheme and API shape, all configurable.
+   Check ADR-0021's list against Willo's first sandbox delivery, then enable the
+   `willo-invite` schedule and add it to `190`'s list in the same commit.
+3. **THC content, flagged as placeholders in the code:** the 10 quiz questions,
+   the induction slides, the contract text (`contract_versions`), E2b and
+   CL1–CL6 wording, the `/privacy` legal text, and sample completion letters for
+   the Gemini extractor.
+4. **Browser passes against the live project.** No new screen has been clicked
+   through for real; coverage is render tests, view-model tests and pgTAP. A
+   `qa-reviewer` pass per wireframe and Playwright journeys for the wizard,
+   activation and the drain are the next safety net.
+5. **Small open items** in §4 (accepting an application has no DB function yet;
+   `cancelEvent` ignores its bookings update's error; `accept_invite` still says
+   `hours_limit` for an expired right to work).
 
 ---
+
+## 3a · Closed in the 24.09 wave
+
+- **P2 · the outbox drain.** Web Push (VAPID, WebCrypto, byte-for-byte against
+  RFC 8291) and email via Resend with the outbox key as the idempotency key;
+  leased claims (`skip locked`), shared backoff, permanent failures failed at once,
+  missing keys held without spending attempts; senders read from `/settings` at
+  run time; `finance-reports` re-enabled. `deno check` and `deno bundle` pass
+  locally — the Supabase deploy bundler resolving `../../../packages` is still
+  unproven (ADR-0020's fallback is option 4).
+- **Willo receiver and resend activation** (ADR-0021). Provisioning is one shared
+  module (`packages/db/src/provision.ts`) for the office Accept and the webhook;
+  retried deliveries mint no new token. `activated` now means "has a password",
+  not "a login is linked" — every accepted candidate had read Activated.
+- **B2 · the booking state machine** in the database: seven states, ten edges,
+  `bookings_state_guard`, TS and SQL held to one vectors file (ADR-0022).
+- **B3 · one `cancel_cause` vocabulary** with a check constraint. The office
+  Withdraw had been writing a cause the Staff App never matched, so "You've been
+  removed from this shift" never showed.
+- **The shift screen showed the first button press, not the check-in** — also
+  fixed by #48 in parallel (`acceptedLog()` in `packages/domain/pay.ts`, which
+  also covers the office's violation window); #48's version stands.
+- **Declining an invitation qualified the worker at that client** and counted as
+  a shift worked; `closed` is no longer read as completed (`20260924150000`).
+- **`rejection_reason` is internal** — done by #48 (`20260923220000`) in
+  parallel; this wave's duplicate was dropped before merge.
+- **Rota guard gaps closed**: re-timing a shift re-checks confirmed workers at
+  commit; one statement confirming several bookings sees its own rows; declined
+  invites no longer count toward the cap; an expired right to work is its own
+  refusal (`rtw_expired`), with board and Radar copy.
+- **N14 names the Sunday for the 10-hour band**; a settled share code reads
+  "Settled — no time limit".
+- **D3** `/privacy` exists, public, linked from `/apply` and both login footers.
+  (**D1** was fixed by #48 in parallel, more widely; its version stands.)
+- Three restatements of `onboarding_candidates_v` from different bases (#48,
+  Willo) would have reverted each other's changes; `20260924160000` carries
+  both (`504`).
 
 ## 3 · Closed in this build (23.09)
 
@@ -157,25 +190,32 @@ last, below a divider. The Staff App's Documents tab is live.
 
 ## 4 · Known defects and gaps, unassigned
 
-New from this build:
+New from the 24.09 wave:
+
+- **Accepting an application has no DB function yet.** `applied → confirmed` is
+  a legal edge (ADR-0022) but nothing performs it; the office cannot yet take a
+  Radar application forward.
+- **`cancelEvent` ignores the error from its bookings update.**
+- **`accept_invite` still answers `hours_limit` for an expired right to work** —
+  it reads the gate directly rather than through auto-assign.
+- **A worker with no subscribed device** is retried and then failed after about
+  31 minutes; the D1/D2/BG08 email signatures still name the literal
+  `timesheets@`/`admin@` even if `/settings` changes the sender (ADR-0020).
+- **Willo:** if Willo creates a candidate and the local link then fails
+  transiently, the next sweep creates them again and a second E1 goes out.
+- `/apply` still uses its own consent tick; it can move to the shared `Checkbox`
+  now that D1 is fixed.
+
+From the 23.09 build:
 
 - **Workers verified on a share code before 23.09 with no date still have
   none** — nothing to backfill from. Re-verify them; the query that finds them
   is in the header of `20260923200000`.
-- **A verified settled-status share code shows "—"** on the candidate profile:
-  `staff_documents_v` does not carry the new `rtw_no_time_limit` flag.
 - **The share-code date is confirmed by the office** until the extractor that
   reads the gov.uk report exists; §2.3 says nobody types it (ADR-0018).
 - **A later direct update that blanks a verified document's date is not
   refused** — only the moment of verifying is guarded, because the `200`/`220`/
   `250` fixtures blank dates that way. The worker's date still recomputes.
-- **Rota guard gaps:** changing a shift's times does not re-check confirmed
-  workers against the cap; one statement confirming several bookings for one
-  worker can read a stale total; `weekly_booked_hours` counts `closed` bookings,
-  which over-restricts; auto-assign labels an expired right to work as
-  `hours_limit`.
-- **N14 for a 10-hour-band student** lacks the "until [date]" clause (fixing it
-  means restating `compliance_daily`).
 - **New Starter report fields** (gender, postcode, country) are blank until
   collected; the wizard does not ask for gender yet.
 - **Types not regenerated.** `packages/db` `types.generated.ts` is still the
@@ -201,38 +241,7 @@ New from this build:
 
 Carried over:
 
-- **B2 · the booking state machine models four of the seven states the database
-  can hold**, and there is no DB-side guard at all — `packages/domain/state.ts`
-  rejects an illegal transition, a direct `update` does not. The convention in
-  `CLAUDE.md` is one function in `state.ts` *and* a DB function; half of it is
-  missing here.
-- **B3 · `cancel_cause` has three disagreeing vocabularies** across the schema,
-  the domain layer and the UI, and no check constraint anywhere. Pick one, write
-  the constraint, migrate the rows.
-- ~~**D1 · the shared `Checkbox` and `Radio` cannot be operated by keyboard**~~
-  **Closed 23.09.** The cause was `class="hide"` on the real native input, and
-  `.hide` is `display: none !important` — so it was not rendered, not focusable
-  and not in the accessibility tree. A mouse worked because the wrapping
-  `<label>` forwards activation to the hidden input, which is why it survived:
-  fine with a mouse, dead without one. Now visually hidden but focusable, with
-  the focus ring drawn on the square. Radios additionally emitted no `name`, so
-  they were never a group to the browser and arrow keys did nothing; a new
-  `RadioGroup` supplies one shared name. The same `.hide` bug was in `Slider`
-  and in three hand-rolled ticks — the HMRC declaration, the office role picker,
-  and **the contract's electronic signature**, which therefore could not be
-  given from a keyboard at all.
 - **D2 · `/apply` is a public write endpoint with no rate limit** (§2.1).
-- **D3 · the GDPR consent on `/apply` links to a page that does not exist**
-  (§1.7).
-- ~~**`apps/staff/app/shifts/[id]/data.ts` takes `(row.logs ?? [])[0]`.**~~
-  **Closed 23.09.** It was in `apps/office/app/checkin/data.ts` as well, on the
-  §9.5 violation detail window — beside the "Actual finish (UK time)" field a
-  manager types into to resolve one. Both now call `acceptedLog()` from
-  `packages/domain/pay.ts`: `check_logs` holds one row per button press, a
-  RULE-15 turn-away and an out-of-radius refusal are logged too, and only the
-  accepted press carries `check_in_at`. The rule lives in `domain` rather than
-  in either app precisely because both screens got it wrong the same way — one
-  definition is what stops the third.
 - **A worker's home address is not re-geocoded when they edit it.** There is no
   geocoder in the repo, so `home_location` — and therefore the §6 proximity score
   — goes stale on an address change. E7 tells the office and the screen says so,
@@ -267,18 +276,29 @@ Carried over:
   https://github.com/saveezirfan0-cloud/thc-portal/settings/rules/new?target=branch
 - **Turn on leaked-password protection** in Supabase Auth. The advisor still
   reports it off.
-- **Set the secrets this build needs** (docs/12): `SUPABASE_SERVICE_ROLE_KEY`
-  on the Office **and Staff** Vercel projects (uploads, activation, PDFs);
-  `RESEND_API_KEY` and the VAPID pair for P2; `NEXT_PUBLIC_STAFF_URL` on the
-  Office project — Accept refuses in production without it.
+- ~~**Vercel env**~~ **Done 24.09:** `SUPABASE_SERVICE_ROLE_KEY` was already on
+  Office and Staff; `NEXT_PUBLIC_STAFF_URL=https://thc-portal-staff.vercel.app`
+  added to Office and Client. Change both if the Staff App gets a custom domain.
 - **Supabase Auth → Email OTP Expiration → 86400.** Activation and reset links
-  otherwise die after an hour.
-- **Deploy the Edge Functions before `install_job_schedules()`**, and the
-  migrations before `compliance-daily` (it now calls `rtw_daily`).
-  `finance-reports` is deployed but its schedule stays disabled until P2.
-- **Confirm with THC:** E2b's wording (ADR-0017); the CL1–CL6 wording and which are
-  mandatory; whether ADR-0019's retention-over-removal extends to other
-  right-to-work documents.
+  otherwise die after an hour. (Not reachable from a session's tools.)
+- **Turn on sending** (ADR-0020, docs/12):
+  1. Verify the sending domain in Resend (DKIM/SPF/DMARC at THC's DNS host).
+  2. `npx web-push generate-vapid-keys`, then
+     `supabase secrets set RESEND_API_KEY=… VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=… VAPID_SUBJECT=mailto:admin@thehospitalitycompany.co.uk`,
+     and `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (the same public key) on the Staff
+     Vercel project.
+  3. `supabase functions deploy notify-drain` and
+     `supabase functions deploy finance-reports` from the repository root.
+  4. Only then `select install_job_schedules();` (needs `settings.edge_base_url`
+     and the vault secret `service_role_key`), and watch `job_runs`.
+- **Willo, once THC's keys exist** (ADR-0021):
+  `supabase secrets set WILLO_WEBHOOK_SECRET=… WILLO_API_KEY=… WILLO_INTERVIEW_KEY=… STAFF_APP_URL=https://thc-portal-staff.vercel.app`,
+  `supabase functions deploy willo-webhook --no-verify-jwt`, point Willo's
+  webhook at `{SUPABASE_URL}/functions/v1/willo-webhook`, then enable
+  `willo-invite` (with `190`) and re-run `install_job_schedules()`.
+- **Confirm with THC:** E2b's wording (ADR-0017); the CL1–CL6 wording and which
+  are mandatory; whether ADR-0019's retention-over-removal extends to other
+  right-to-work documents; the `/privacy` legal text.
 - **Chase THC for the Appendix B inputs**: the contract text, sample completion
   letters, the Willo keys, DNS for the two senders, and the export from the old
   system. Several phases stop dead without them.

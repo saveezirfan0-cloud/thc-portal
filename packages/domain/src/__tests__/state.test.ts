@@ -69,11 +69,16 @@ describe('booking state machine (§3.6)', () => {
     expect(canTransitionBooking('invited', 'worked')).toBe(false);
   });
 
-  it('treats worked and cancelled as terminal', () => {
-    for (const status of BOOKING_STATUSES) {
-      expect(canTransitionBooking('worked', status)).toBe(false);
-      expect(canTransitionBooking('cancelled', status)).toBe(false);
+  it('treats worked, turned_away and cancelled as terminal', () => {
+    for (const terminal of ['worked', 'turned_away', 'cancelled'] as const) {
+      for (const status of BOOKING_STATUSES) {
+        if (status !== terminal) expect(canTransitionBooking(terminal, status)).toBe(false);
+      }
     }
+  });
+
+  it('treats staying put as no transition, as the database does', () => {
+    for (const status of BOOKING_STATUSES) expect(canTransitionBooking(status, status)).toBe(true);
   });
 
   it('only a self-cancel excludes the worker from the event (RULE-04)', () => {

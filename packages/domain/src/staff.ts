@@ -22,6 +22,7 @@
  */
 
 import { UK_ZONE } from './time';
+import type { BookingStatus, CancelCause } from './state';
 
 const HOUR_MS = 3_600_000;
 
@@ -31,8 +32,8 @@ export const SELF_CANCEL_WINDOW_HOURS = 72;
 /** §3.5: the one hard deadline in the three-stage confirmation. */
 export const READY_DEADLINE_UK = '12:00';
 
-export type StaffBookingStatus =
-  'invited' | 'confirmed' | 'worked' | 'applied' | 'cancelled' | 'closed' | 'turned_away';
+/** The same seven states as the §3.6 machine in state.ts — one list, not two. */
+export type StaffBookingStatus = BookingStatus;
 
 /** The fields of one row of `staff_bookings()` that any rule here reads. */
 export interface StaffBooking {
@@ -42,7 +43,8 @@ export interface StaffBooking {
   dayBeforeConfirmedAt: Date | null;
   onDayConfirmedAt: Date | null;
   reconfirmRequired: boolean;
-  cancelCause: string | null;
+  /** `bookings.cancel_cause` — CANCEL_CAUSES in state.ts; null while live. */
+  cancelCause: CancelCause | null;
   eventCancelledAt: Date | null;
   /** RULE-02: check-out never pressed, four hours past the scheduled end. */
   noCheckoutOpen: boolean;
@@ -249,6 +251,7 @@ export const ACCEPT_REFUSAL_COPY: Record<AcceptRefusal, { title: string; body: s
 export type ApplyRefusal =
   | 'full'
   | 'hours_limit'
+  | 'rtw_expired'
   | 'already_has_booking'
   | 'event_cancelled'
   | 'shift_started'
@@ -266,6 +269,10 @@ export const APPLY_REFUSAL_COPY: Record<ApplyRefusal, { title: string; body: str
   hours_limit: {
     title: 'Limit Reached',
     body: 'This shift would take you over your weekly hours limit for that Mon–Sun week.',
+  },
+  rtw_expired: {
+    title: 'Right to work needs updating',
+    body: 'Your right-to-work evidence has expired for this date. Check the Documents tab — you can’t be booked until it’s renewed.',
   },
   already_has_booking: {
     title: 'You’re already on this shift',

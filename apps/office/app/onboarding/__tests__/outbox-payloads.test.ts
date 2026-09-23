@@ -47,6 +47,23 @@ describe('onboarding outbox rows render completely', () => {
     expect(message.body).not.toMatch(UNFILLED);
   });
 
+  it('E3 resend (onboarding_resend_activation, 20260924110000): same template, its own key', () => {
+    const message = messageFor(
+      row({
+        key: 'E3:resend:c-1:2',
+        template: 'E3',
+        payload: {
+          link: `https://staff.example/activate/${'a1'.repeat(28)}`,
+          installLink: 'https://staff.example/install',
+          name: 'Hana',
+        },
+      }),
+    );
+    if (message.kind !== 'email') throw new Error('E3 is an email');
+    expect(message.body).toContain(`/activate/${'a1'.repeat(28)}`);
+    expect(message.body).not.toMatch(UNFILLED);
+  });
+
   it('E2 (onboarding_do_reject, returning applicant): THC wording, nothing to fill, no reason', () => {
     const message = messageFor(row({ template: 'E2', payload: { name: 'Hana' } }));
     if (message.kind !== 'email') throw new Error('E2 is an email');

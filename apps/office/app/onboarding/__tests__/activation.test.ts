@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { acceptWithAccount, isEmailTaken, provisionStaffLogin } from '../activation';
-import type { AcceptInput, AcceptRpc, AdminAuth, AuthUserLike } from '../activation';
+import {
+  acceptWithAccount,
+  isEmailTaken,
+  provisionStaffLogin,
+  resendActivation,
+} from '../activation';
+import type { AcceptInput, AcceptRpc, AdminAuth, AuthUserLike, ResendRpc } from '../activation';
 
 /**
  * Accept with the candidate's login (§2.4, §2.7, E3) — the order of the
@@ -245,5 +250,112 @@ describe('Accept (steps 1 and 2)', () => {
       INPUT,
     );
     expect(out).toEqual({ ok: false, error: 'staff_linked_elsewhere' });
+  });
+});
+
+describe('Resend activation link', () => {
+  function resendRpc(
+    calls: Call[],
+    script: {
+      check?: string | null;
+      checkData?: unknown;
+      write?: string | null;
+      writeData?: unknown;
+    },
+  ): ResendRpc {
+    return {
+      async rpc(fn: string, args: unknown) {
+        calls.push({ fn, args });
+        if (fn === 'onboarding_resend_activation_check') {
+          return script.check
+            ? { data: null, error: { message: script.check } }
+            : {
+                data: (script.checkData ?? {
+                  email: 'mei@example.com',
+                  userId: 'u-staff',
+                }) as never,
+                error: null,
+              };
+        }
+        return script.write
+          ? { data: null, error: { message: script.write } }
+          : { data: (script.writeData ?? { queued: true, n: 1 }) as never, error: null };
+      },
+    } as ResendRpc;
+  }
+  const UNCONFIRMED: AuthUserLike = { ...STAFF_USER, email_confirmed_at: null };
+
+  it('asks the database first, then mints for the linked login, then queues the NEW E3', async () => {
+    const calls: Call[] = [];
+    const out = await resendActivation(
+      {
+        admin: fakeAdmin(
+          { getUser: { data: { user: UNCONFIRMED }, error: null }, invite: link(UNCONFIRMED) },
+          calls,
+        ),
+        rpc: resendRpc(calls, {}),
+      },
+      { staffId: 'staff-1', staffOrigin: 'https://app.thc.example' },
+    );
+    expect(out).toEqual({ ok: true, queued: true, n: 1 });
+    expect(calls.map((c) => c.fn)).toEqual([
+      'onboarding_resend_activation_check',
+      'getUserById',
+      'generateLink:invite',
+      'onboarding_resend_activation',
+    ]);
+    expect(calls.at(-1)!.args).toEqual({
+      p_staff: 'staff-1',
+      p_user: 'u-staff',
+      p_activation_link: `https://app.thc.example/activate/${TOKEN}`,
+      p_install_link: 'https://app.thc.example/install',
+    });
+  });
+
+  it('a refusal (too soon, already activated…) mints nothing, so the link in the inbox still works', async () => {
+    for (const refusal of ['resend_too_soon: 14:32', 'already_activated', 'not_accepted']) {
+      const calls: Call[] = [];
+      const out = await resendActivation(
+        {
+          admin: fakeAdmin({ invite: link(NEW_USER) }, calls),
+          rpc: resendRpc(calls, { check: refusal }),
+        },
+        { staffId: 'staff-1', staffOrigin: 'https://app.thc.example' },
+      );
+      expect(out).toEqual({ ok: false, error: refusal });
+      expect(calls.map((c) => c.fn)).toEqual(['onboarding_resend_activation_check']);
+    }
+  });
+
+  it('a candidate with no login yet gets one, as at Accept', async () => {
+    const calls: Call[] = [];
+    await resendActivation(
+      {
+        admin: fakeAdmin({ invite: link(NEW_USER) }, calls),
+        rpc: resendRpc(calls, { checkData: { email: 'mei@example.com', userId: null } }),
+      },
+      { staffId: 'staff-1', staffOrigin: 'https://app.thc.example' },
+    );
+    expect(calls.map((c) => c.fn)).toEqual([
+      'onboarding_resend_activation_check',
+      'generateLink:invite',
+      'updateUserById',
+      'onboarding_resend_activation',
+    ]);
+  });
+
+  it('a raced click that only refreshed the pending email reports queued: false', async () => {
+    const calls: Call[] = [];
+    const out = await resendActivation(
+      {
+        admin: fakeAdmin(
+          { getUser: { data: { user: STAFF_USER }, error: null }, magiclink: link(STAFF_USER) },
+          calls,
+        ),
+        rpc: resendRpc(calls, { writeData: { queued: false, refreshed: true } }),
+      },
+      { staffId: 'staff-1', staffOrigin: 'https://app.thc.example' },
+    );
+    expect(out).toEqual({ ok: true, queued: false, n: null });
   });
 });

@@ -360,7 +360,10 @@ select is((select count(*)::int from audit_log where action = 'rota_guard.warned
 select is((select band from rota_guard_warnings_v where booking_id = 'c7300000-0000-4000-8000-000000000004'),
   'graduated_48', '§4: on the warnings list, with the band it breached');
 update settings set value = '"block"' where key = 'rota_guard_mode';
-update bookings set status = 'invited', confirmed_at = null where id = 'c7300000-0000-4000-8000-000000000004';
+-- confirmed → invited is not a §3.6 edge (20260924120000): a fresh row.
+delete from bookings where id = 'c7300000-0000-4000-8000-000000000004';
+insert into bookings (id, shift_id, staff_id, status, source)
+values ('c7300000-0000-4000-8000-000000000004', 'c7200000-0000-4000-8000-0000000000b4', :'grad', 'invited', 'auto');
 
 -- Signing the opt-out.
 select set_config('request.jwt.claims', json_build_object('sub', :'grad_uid')::text, true);
@@ -442,8 +445,8 @@ select throws_ok($$ update bookings set status = 'confirmed' where id = 'c730000
 update settings set value = '"block"' where key = 'rota_guard_mode';
 select is(invite_worker('c7200000-0000-4000-8000-0000000000c1', :'expw', 'manual') ->> 'invited', 'true',
   'AC6: the last valid day itself is still workable (the expiry is inclusive)');
-select is(invite_worker('c7200000-0000-4000-8000-0000000000c3', :'expw', 'manual') ->> 'reason', 'hours_limit',
-  'AC6: the office cannot invite them to the overnight shift either');
+select is(invite_worker('c7200000-0000-4000-8000-0000000000c3', :'expw', 'manual') ->> 'reason', 'rtw_expired',
+  'AC6: the office cannot invite them to the overnight shift either — refused as the expiry, not as hours (20260924130100)');
 
 -- §7 · the switch to a Graduate or Skilled Worker visa.
 select is(record_right_to_work_change(:'stu2', 'work_visa', :'w'::date + 700, 'W99887766') ->> 'studentLogicEnded',

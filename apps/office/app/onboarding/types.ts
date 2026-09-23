@@ -118,6 +118,8 @@ export interface CandidateDocument {
   share_code: string | null;
   gov_report_path: string | null;
   right_to_work_until: string | null;
+  /** The reviewer confirmed settled status: no date, by design (20260923200000). */
+  rtw_no_time_limit: boolean;
   term_dates: string[] | null;
   completion_date: string | null;
   awarding_institution: string | null;

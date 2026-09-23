@@ -10,6 +10,7 @@ import {
   matchesFilter,
   matchesQuery,
   ratingTone,
+  rtwUntilLabel,
 } from '../staff';
 import type { StaffRow } from '../types';
 
@@ -226,5 +227,24 @@ describe('capReason with the date the band ends (§9.6, §8)', () => {
 
   it('never dates a standard cap — no calendar produces it', () => {
     expect(capReason('standard_48', 48, '2026-12-13')).toBe('48 h — standard weekly limit');
+  });
+});
+
+describe('rtwUntilLabel (§2.5 pt 2)', () => {
+  it('prints the date read off the gov.uk report', () => {
+    expect(rtwUntilLabel({ right_to_work_until: '2027-03-31', rtw_no_time_limit: false })).toBe(
+      '31/03/2027',
+    );
+  });
+
+  it('says settled status has no time limit instead of a dash', () => {
+    expect(rtwUntilLabel({ right_to_work_until: null, rtw_no_time_limit: true })).toBe(
+      'Settled — no time limit',
+    );
+  });
+
+  it('never reads a blank date as settled without the confirmation', () => {
+    expect(rtwUntilLabel({ right_to_work_until: null, rtw_no_time_limit: false })).toBe('—');
+    expect(rtwUntilLabel({ right_to_work_until: null })).toBe('—');
   });
 });

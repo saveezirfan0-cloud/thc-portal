@@ -174,7 +174,8 @@ select is((select count(*)::int from violations where booking_id::text like 'b10
   'and no second No-show or No check-out row appears, which would double-count against the show rate (§6)');
 
 -- A cancelled booking drops out entirely, whatever its clock says.
-update bookings set cancelled_at = :'now'::timestamptz, cancel_cause = 'withdraw'
+update bookings set status = 'cancelled', cancelled_at = :'now'::timestamptz,
+                    cancel_cause = 'office_withdraw'
  where id = 'b1000000-0000-4000-8000-000000000001';
 delete from notification_outbox where key like 'N9:booking:b1000000-0000-4000-8000-000000000001%';
 

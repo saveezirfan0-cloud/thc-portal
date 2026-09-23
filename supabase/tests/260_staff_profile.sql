@@ -287,7 +287,11 @@ select set_do_not_return((select id from client_qualifications
                          true, 'Do not return');
 select add_staff_role(:'staffa', :'role_b');
 update shift_requirements set role_id = :'role_b' where id = :'past_shift';
-update bookings set status = 'confirmed' where id = :'past_bkg';
+-- worked → confirmed is not a §3.6 edge (20260924120000), so the second
+-- clean shift is a fresh booking on the same section, not a rewind.
+delete from bookings where id = :'past_bkg';
+insert into bookings (id, shift_id, staff_id, status, source) values
+  (:'past_bkg', :'past_shift', :'staffa', 'confirmed', 'auto');
 update bookings set status = 'worked' where id = :'past_bkg';
 select is((select count(*)::int from client_qualifications
             where staff_id = :'staffa' and client_id = :'clientb'), 1,

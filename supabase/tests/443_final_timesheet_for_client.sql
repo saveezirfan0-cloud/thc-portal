@@ -6,8 +6,10 @@ begin;
 select plan(4);
 \ir _shared/fixtures.psql
 
-select ok(not (select enabled from job_schedules where job = 'finance-reports'),
-  'the Monday finance send is paused until the outbox drain exists');
+-- 20260923193100 paused the Monday finance send until the outbox drain
+-- existed; 20260924100000 ships the drain and re-enables it (190, 470).
+select ok((select enabled from job_schedules where job = 'finance-reports'),
+  'the Monday finance send, paused until the outbox drain existed, is enabled again with it');
 
 -- Fixture Event A is client A's, and its last role ends a week from now.
 \set ev :event_a

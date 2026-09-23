@@ -2,7 +2,15 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import { CANCEL_NOTIFIES, UK_ZONE, canMarkNoShow, displayTime, payrollWarning } from '@thc/domain';
+import {
+  CANCEL_NOTIFIES,
+  UK_ZONE,
+  canCancelBooking,
+  canMarkNoShow,
+  displayTime,
+  payrollWarning,
+  type CancelCause,
+} from '@thc/domain';
 import { TEMPLATES, outboxKey } from '@thc/notifications';
 import { eventsDb, supabaseConfigured } from '../db';
 
@@ -44,6 +52,14 @@ export async function withdraw(
     .eq('id', bookingId)
     .maybeSingle();
   if (!booking) return { error: 'That booking no longer exists.' };
+  // §3.6: a worked or turned-away booking has no edge to cancelled, and the
+  // database would refuse the update (bookings_state_guard). Say why.
+  if (!canCancelBooking((booking as { status: string }).status)) {
+    return {
+      error:
+        'This worker has already checked in (or been turned away), so the booking cannot be withdrawn (§3.6).',
+    };
+  }
 
   const shift = (
     booking as { shift_requirements?: { starts_at?: string; events?: { title?: string } } }
@@ -58,7 +74,10 @@ export async function withdraw(
     .update({
       status: 'cancelled',
       cancelled_at: new Date().toISOString(),
-      cancel_cause: 'withdraw',
+      // The §3.6 vocabulary (CANCEL_CAUSES, bookings_cancel_cause_check).
+      // This used to write 'withdraw', which nothing read: the Staff App's
+      // "You've been removed from this shift" screen keys on office_withdraw.
+      cancel_cause: 'office_withdraw' satisfies CancelCause,
     })
     .eq('id', bookingId);
   if (error) return { error: error.message };
@@ -191,7 +210,7 @@ export async function cancelEvent(eventId: string, reason: string): Promise<Acti
       .update({
         status: 'cancelled',
         cancelled_at: new Date().toISOString(),
-        cancel_cause: 'event_cancelled',
+        cancel_cause: 'event_cancelled' satisfies CancelCause,
       })
       .in(
         'id',

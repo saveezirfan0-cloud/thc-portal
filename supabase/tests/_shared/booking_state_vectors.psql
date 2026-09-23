@@ -1,0 +1,78 @@
+-- =====================================================================
+-- GENERATED FILE — DO NOT EDIT.
+--
+-- Source:    packages/domain/src/bookingState.vectors.json
+-- Generator: node supabase/tests/_shared/booking-state-vectors.mjs
+--
+-- The §3.6 booking machine and the cancel_cause vocabulary as tables pgTAP
+-- can join against. The Vitest suite in packages/domain fails if this file
+-- has drifted from the JSON, so BOOKING_TRANSITIONS / CANCEL_CAUSES and
+-- booking_transitions() / bookings_cancel_cause_check are held to the same
+-- cases.
+-- =====================================================================
+
+create temporary table booking_status_vectors (
+  status text primary key
+) on commit drop;
+
+insert into booking_status_vectors values
+  ('invited'),
+  ('applied'),
+  ('confirmed'),
+  ('worked'),
+  ('turned_away'),
+  ('cancelled'),
+  ('closed');
+
+create temporary table booking_edge_vectors (
+  from_status text not null,
+  to_status   text not null,
+  primary key (from_status, to_status)
+) on commit drop;
+
+insert into booking_edge_vectors values
+  ('invited', 'confirmed'),
+  ('invited', 'cancelled'),
+  ('invited', 'closed'),
+  ('applied', 'confirmed'),
+  ('applied', 'cancelled'),
+  ('applied', 'closed'),
+  ('closed', 'applied'),
+  ('confirmed', 'worked'),
+  ('confirmed', 'turned_away'),
+  ('confirmed', 'cancelled');
+
+create temporary table cancel_cause_vectors (
+  cause  text primary key,
+  status text not null
+) on commit drop;
+
+insert into cancel_cause_vectors values
+  ('office_withdraw', 'cancelled'),
+  ('ready_cutoff', 'cancelled'),
+  ('self_cancel', 'cancelled'),
+  ('overlap_auto_withdraw', 'cancelled'),
+  ('event_cancelled', 'cancelled'),
+  ('blocked', 'cancelled'),
+  ('blocked_invite', 'cancelled'),
+  ('left', 'cancelled'),
+  ('left_invite', 'cancelled'),
+  ('gdpr', 'cancelled'),
+  ('gdpr_invite', 'cancelled'),
+  ('slot_taken', 'closed'),
+  ('declined', 'closed'),
+  ('withdrawn_by_worker', 'closed');
+
+create temporary table legacy_cause_vectors (
+  legacy text primary key,
+  cause  text not null
+) on commit drop;
+
+insert into legacy_cause_vectors values
+  ('withdraw', 'office_withdraw'),
+  ('cutoff', 'ready_cutoff'),
+  ('compliance_block', 'blocked');
+
+\set booking_status_count 7
+\set booking_edge_count 10
+\set cancel_cause_count 14

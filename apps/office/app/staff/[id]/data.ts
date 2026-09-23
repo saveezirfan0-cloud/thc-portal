@@ -62,6 +62,14 @@ const PROFILE_COLUMNS =
   'hmrc_postgraduate_loan, hmrc_declared_at, shifts_worked, no_shows, feedback_count, ' +
   'documents_pending, qualification_count';
 
+/** Typed by hand until `gen:types` runs against the live project (docs/14 §4). */
+interface ActivatedRpc {
+  rpc(
+    fn: 'staff_account_activated',
+    args: { p_staff: string },
+  ): PromiseLike<{ data: boolean | null; error: unknown }>;
+}
+
 export async function loadProfile(id: string): Promise<ProfileData> {
   if (!supabaseConfigured()) return { ...EMPTY, problem: NOT_CONFIGURED };
 
@@ -79,6 +87,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     roles,
     clients,
     manager,
+    activated,
   ] = await Promise.all([
     supabase.from('staff_profile_v').select(PROFILE_COLUMNS).eq('id', id).maybeSingle<ProfileRow>(),
     supabase
@@ -134,6 +143,9 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
     supabase.from('clients').select('id, name').order('name').returns<ClientOption[]>(),
     managerName(supabase),
+    // Resend activation link (20260924110000): only someone who never
+    // activated is offered it. A failed read hides the button, nothing more.
+    (supabase as unknown as ActivatedRpc).rpc('staff_account_activated', { p_staff: id }),
   ]);
 
   const error =
@@ -161,6 +173,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     roles: roles.data ?? [],
     clients: clients.data ?? [],
     managerName: manager,
+    activated: activated.error ? null : (activated.data ?? null),
     problem: null,
   };
 }
