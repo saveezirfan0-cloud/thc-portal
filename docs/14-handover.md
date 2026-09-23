@@ -154,13 +154,14 @@ sweep; the rest were found by running things rather than reading them.
   `.gitignore` covers `.env` and `.env.*`, and no key-shaped string appears
   anywhere in the history — so the transcript was the whole of the exposure and
   rotating closes it.
-- ~~**Delete `ANTHROPIC_API_KEY` from the Vercel client project.**~~ **Done 22.09.**
-  It belongs only in GitHub Actions secrets. Note that the `claude` check stays
-  red until that secret is set on the repository: it fails environment validation
-  before it reads a diff, so a red `claude` is not a review finding. `build-test`
-  is the check that gates a merge.
+- ~~**Delete `ANTHROPIC_API_KEY` from the Vercel client project.**~~ **Done 22.09**,
+  and nothing wants that key now: the workflow that read it was deleted on 23.09
+  (O8), so no repository secret is owed for it either. Rotate it anyway if it was
+  ever in a transcript.
 - **Enable branch protection on `main`** — require a pull request and a green
-  `ci`: https://github.com/saveezirfan0-cloud/thc-portal/settings/rules/new?target=branch
+  `build-test` (the job name, not the workflow; `ci` is the workflow and a branch
+  rule wants the job):
+  https://github.com/saveezirfan0-cloud/thc-portal/settings/rules/new?target=branch
 - **Turn on leaked-password protection** in Supabase Auth. The advisor still
   reports it off.
 - **Chase THC for the Appendix B inputs**: the contract text, sample completion

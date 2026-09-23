@@ -53,7 +53,6 @@ https://github.com/saveezirfan0-cloud/thc-portal/settings/secrets/actions
 
 | Secret | Where to get it | Needed for |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | https://console.anthropic.com/settings/keys | The `@claude` workflow and the automatic pull-request review |
 | `SUPABASE_ACCESS_TOKEN` | https://supabase.com/dashboard/account/tokens | **The database deploy — set this and `main` deploys itself** |
 | `SUPABASE_PROJECT_ID` | The project reference in your Supabase URL — today `dgxtqvalfiisfpbwodew` | **The database deploy** |
 | `SUPABASE_DB_PASSWORD` | Set when you create the project. Save it then; it is not shown again. Resettable under Settings → Database → Database password | **The database deploy** |

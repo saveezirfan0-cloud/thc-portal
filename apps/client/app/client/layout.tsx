@@ -8,7 +8,7 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
-import { Avatar, Logo, ModeSwitch } from '@thc/ui';
+import { Avatar, Logo, ModeSwitch, SignOut } from '@thc/ui';
 import { supabaseConfigured } from './data';
 import './client-portal.css';
 
@@ -91,9 +91,7 @@ export default async function ClientPortalLayout({ children }: { children: React
 
         <ModeSwitch small />
 
-        <Link className="btn ghost sm" href="/auth/signout" prefetch={false}>
-          Sign out
-        </Link>
+        <SignOut />
       </header>
 
       <div className="cwrap">{children}</div>

@@ -3,10 +3,10 @@
 Vercel and Supabase are not connected to this project yet. This is the order to connect them, with the exact commands, so the first Claude Code session on the code can start from a working pipeline.
 
 ## 1. GitHub (already: `saveezirfan0-cloud/thc-portal`)
-1. Protect `main`: require PR, require status checks `ci`, `claude-review` (added in §5 below).
-2. Add repository secrets (Settings → Secrets → Actions): `ANTHROPIC_API_KEY`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, `SUPABASE_DB_PASSWORD`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID_OFFICE|STAFF|CLIENT`.
+1. Protect `main`: require PR, require the `build-test` status check from `ci.yml` (§5 below).
+2. Add repository secrets (Settings → Secrets → Actions): `SUPABASE_ACCESS_TOKEN`, `SUPABASE_PROJECT_ID`, `SUPABASE_DB_PASSWORD`, `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID_OFFICE|STAFF|CLIENT`. No `ANTHROPIC_API_KEY`: the workflow that used it is deleted (O8).
 3. Labels for bot routing: `domain:onboarding`, `domain:scheduling`, `domain:compliance`, `domain:checkin`, `domain:reports`, `domain:client-portal`, `domain:staff-pwa`, `domain:platform`, `domain:design-system`.
-4. Install the **Claude GitHub App** on the repo (https://github.com/apps/claude) so `@claude` works on issues/PRs and so Claude Code on the web can open PRs.
+4. Install the **Claude GitHub App** on the repo (https://github.com/apps/claude) so Claude Code on the web can open PRs. (`@claude` on issues/PRs does nothing — that workflow is deleted, O8.)
 
 ## 2. Supabase
 ```bash
@@ -56,7 +56,6 @@ Then run `/init` in Claude Code to refresh `CLAUDE.md` with the real commands, a
 
 ## 5. GitHub Actions
 `.github/workflows/ci.yml` — pnpm install, `turbo lint typecheck test`, `supabase db start && supabase test db` (pgTAP), Playwright smoke.
-`.github/workflows/claude.yml` — `anthropics/claude-code-action@v1` triggered on `issue_comment`/`pull_request_review_comment` containing `@claude`, and on PR open for an automatic review using the `qa-reviewer` agent prompt (see `05-domain-bots.md`).
 `.github/workflows/preview.yml` — Vercel preview deploy per app when its folder changes (or rely on the Vercel Git integration, which is simpler).
 
 ## 6. Local development

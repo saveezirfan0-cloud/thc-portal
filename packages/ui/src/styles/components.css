@@ -338,6 +338,17 @@
 .ml-auto {
   margin-left: auto;
 }
+/* Sign-out has to be a form (POST only), but every placement in the
+   wireframes is a flex row that expects the button itself as the child. */
+.signout {
+  display: contents;
+}
+/* Below 760px the sidebar becomes a bottom bar and its foot is hidden, which
+   takes the Back Office's only sign-out with it. Screens that keep a control
+   in the foot pair it with an `.only-phone` copy somewhere that survives. */
+.only-phone {
+  display: none;
+}
 .mt-8 {
   margin-top: var(--sp-8);
 }
@@ -2231,6 +2242,11 @@ textarea.input {
   .sidebar .foot,
   .sidebar nav .divider {
     display: none;
+  }
+  /* The foot goes with it, so anything that lived only there — sign out —
+     has to reappear where this breakpoint can still reach it. */
+  .only-phone {
+    display: contents;
   }
   .sidebar nav {
     flex-direction: row;

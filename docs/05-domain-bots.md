@@ -33,36 +33,23 @@ or explicitly: `/agents` to list them. Each agent brief tells it which spec sect
 1. Start on a fresh branch: `feat/<domain>-<thing>`.
 2. Ask the domain bot for a plan first (`EnterPlanMode` or "plan only"), check it against the scope section, then let it build.
 3. Ask `qa-reviewer` for a review before opening the PR. It reports drift from the scope as a checklist with § references.
-4. Open the PR; the GitHub action runs the same review; address findings; merge.
+4. Open the PR; `build-test` gates it; address findings; merge. (There is no review action on GitHub — see O8.)
 
 ### Parallel work
 Different bots own different paths, so several sessions can run at once (Claude Code on the web: one session per domain, each on its own branch). Shared packages (`packages/domain`, `packages/ui`, `supabase/migrations`) are the merge hot-spots: the convention is that a bot needing a change there opens a small separate PR first ("domain: add cap vectors for split week") rather than bundling it.
 
-## GitHub automation (the same bots, invoked from GitHub)
+## GitHub automation — removed
 
-`.github/workflows/claude.yml` (sketch):
-```yaml
-name: claude
-on:
-  issue_comment: { types: [created] }
-  pull_request_review_comment: { types: [created] }
-  pull_request: { types: [opened, synchronize] }
-jobs:
-  claude:
-    if: contains(github.event.comment.body, '@claude') || github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    permissions: { contents: write, pull-requests: write, issues: write, id-token: write }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: anthropics/claude-code-action@v1
-        with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          # On PRs: run the qa-reviewer brief. On @claude comments: the label decides the domain bot.
-          prompt: |
-            ${{ github.event_name == 'pull_request' && 'Run the qa-reviewer agent brief from .claude/agents/qa-reviewer.md on this PR.' || '' }}
-          claude_args: "--max-turns 40"
-```
-Routing rule (in the prompt or a small script): the `domain:*` label on the issue/PR → the agent file with that name. No label → `platform`.
+`.github/workflows/claude.yml` ran the bots from GitHub: `@claude` in a comment, or a
+`domain:*` label routing to the matching agent file, plus an automatic `qa-reviewer` pass
+on every PR. **It was deleted on 23.09.2026** (O8): it had been failing on every PR since
+21.09 for want of a repository secret, and before that it was discarding completed reviews
+on a `--max-turns` overrun. `@claude` and the `domain:*` labels therefore do nothing on
+GitHub today.
+
+Run the bots in-session instead, which is what CLAUDE.md asks for anyway: `qa-reviewer`
+before opening a PR, the domain bots for the work itself. `build-test` in `ci.yml` is the
+check that gates a merge.
 
 Optional **Routines** (Claude Code on the web → Routines): a nightly "spec drift" run that asks `qa-reviewer` to compare `docs/08-screen-inventory.md` with the routes that exist and open an issue per missing screen; a weekly "dependency + advisor" run that calls the Supabase `get_advisors` tool and files security/performance findings.
 

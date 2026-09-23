@@ -53,8 +53,10 @@ export function wrongAppBody(role: Role | null, appName: string): string {
   main{max-width:34rem}
   h1{font-size:1.4rem;margin:0 0 .5rem}
   p{margin:0 0 1rem;opacity:.8}
-  a{display:inline-block;padding:.6rem 1.1rem;border:1px solid currentColor;
-    border-radius:999px;text-decoration:none;color:inherit}
+  form{margin:0 0 1rem}
+  button{font:inherit;cursor:pointer;background:none;
+    padding:.6rem 1.1rem;border:1px solid currentColor;
+    border-radius:999px;color:inherit}
 </style></head><body><main>
 <h1>This account is not for the ${appName}</h1>
 <p>${
@@ -62,6 +64,6 @@ export function wrongAppBody(role: Role | null, appName: string): string {
       ? `You are signed in to a ${safeRole} account.`
       : 'Your account has no role set, so it cannot be admitted to any app.'
   } Sign out and use the account for this app.</p>
-<p><a href="/auth/signout">Sign out</a></p>
+<form method="post" action="/auth/signout"><button type="submit">Sign out</button></form>
 </main></body></html>`;
 }
