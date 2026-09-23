@@ -378,7 +378,11 @@ test.describe('App lock — the four cases (§10.1)', () => {
     await setStaff({ status: 'blocked', block_kind: 'auto_document' });
     await page.goto('/notifications');
     await expect(page.getByRole('button', { name: /Turn on notifications/ })).toBeVisible();
-    // …while the navigation still shows the three tabs they cannot reach.
-    await expect(page.locator('nav.bottom-nav a')).toHaveCount(0);
+    // …while the navigation shows the three tabs they cannot reach closed,
+    // and Documents — the one tab a document-blocked worker keeps (§4, "sees
+    // ONLY the Documents tab") — open, now that /documents exists (S4).
+    const links = page.locator('nav.bottom-nav a');
+    await expect(links).toHaveCount(1);
+    await expect(links.first()).toHaveAttribute('href', '/documents');
   });
 });
