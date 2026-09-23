@@ -16,7 +16,7 @@ screen it names is now built; what is left is listed in §2 and §4 below.
 ## 1 · What is genuinely built
 
 **Every screen in the product now exists.** Three Next.js apps on one Supabase
-database, **81 migrations**, **70 pgTAP files (2,472 assertions)**, **1,597 Vitest
+database, **81 migrations**, **70 pgTAP files (2,473 assertions)**, **1,597 Vitest
 tests across 94 files** in eight packages, seven Edge Functions (`auto-staffing`,
 `booking-tick`, `compliance-daily`, `finance-reports`, `gdpr-purge`,
 `notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0023`. CI runs
