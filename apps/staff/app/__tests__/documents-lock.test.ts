@@ -23,11 +23,26 @@ describe('documents lock copy', () => {
 
   it('is factual, never punitive, for a conviction under review (§10.7)', () => {
     const notice = documentsNotice(['conviction_unreviewed'], 'conviction_review', false);
-    expect(notice.tone).toBe('amber');
+    expect(notice.tone).toBe('cyan');
     expect(notice.headline).toBe('Thanks for telling us.');
-    expect(notice.detail).toMatch(/paused your upcoming shifts/);
+    // §10.7 step 5, word for word (typographic apostrophes).
+    expect(`${notice.headline} ${notice.detail}`).toBe(
+      'Thanks for telling us. We’ve paused your upcoming shifts while the office reviews your ' +
+        'declaration, and we’ll be in touch. If you need to speak to someone, contact us at: ' +
+        'admin@thehospitalitycompany.co.uk.',
+    );
     // The declaration itself is never read back to the worker.
     expect(notice.detail).not.toMatch(/conviction_unreviewed/);
+  });
+
+  it('keeps the §10.7 copy when an expired document is on the record too', () => {
+    const notice = documentsNotice(
+      ['conviction_unreviewed', 'document_expired:passport'],
+      'conviction_review',
+      false,
+    );
+    expect(notice.headline).toBe('Thanks for telling us.');
+    expect(notice.detail).not.toMatch(/expired/);
   });
 
   it('does not tell a worker to upload something when nothing is uploadable', () => {

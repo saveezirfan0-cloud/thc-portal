@@ -22,6 +22,10 @@ import { HELP_EMAIL } from '../profile/types';
  * output §4.3 unblocks on, so the screen names the actual document —
  * "1 expired document" — instead of guessing from the status.
  */
+/** §10.7 step 5's first sentence — the same words `describeBlockers()` uses. */
+const CONVICTION_PAUSED =
+  'We’ve paused your upcoming shifts while the office reviews your declaration, and we’ll be in touch.';
+
 export function documentsNotice(
   blockers: readonly string[],
   blockKind: 'auto_document' | 'manual' | 'conviction_review' | null,
@@ -40,14 +44,17 @@ export function documentsNotice(
 
   if (blockKind === 'conviction_review' || blockers.includes('conviction_unreviewed')) {
     return {
-      tone: 'amber',
+      // The wireframe's post-submit alert is cyan: this is information, not
+      // a warning (§10.7 "factual rather than punitive").
+      tone: 'cyan',
       headline: 'Thanks for telling us.',
-      // §10.7: factual, not punitive, and the declaration is never read
-      // back to them. `describeBlockers` says the same and is the copy of
-      // record, so it is used rather than restated.
-      detail:
-        described ??
-        'We’ve paused your upcoming shifts while the office reviews your declaration, and we’ll be in touch.',
+      // §10.7 step 5, word for word: "Thanks for telling us. We've paused
+      // your upcoming shifts while the office reviews your declaration, and
+      // we'll be in touch. If you need to speak to someone, contact us at:
+      // admin@thehospitalitycompany.co.uk." The declaration is never read
+      // back to them — and an expired document on top does not change the
+      // copy, because the declaration is what the worker just did.
+      detail: `${CONVICTION_PAUSED} If you need to speak to someone, contact us at: ${HELP_EMAIL}.`,
     };
   }
 
