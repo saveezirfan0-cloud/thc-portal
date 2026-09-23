@@ -89,7 +89,11 @@ select is((select weekly_cap_hours from staff_directory_v where id = :'staffa'),
 
 -- The cap is derived on the date it is read. Moving the holiday range over
 -- today has to move the cap with no write anywhere.
-update staff set term_dates = array[daterange(current_date - 1, current_date + 30)]
+-- The range starts before this week's Monday: a Mon–Sun week straddling
+-- term and holiday takes the lower cap (RULE-20), so a range starting
+-- yesterday only read as holiday when the test ran on a Monday or Tuesday.
+update staff set term_dates = array[daterange(date_trunc('week', (now() at time zone 'Europe/London'))::date - 1,
+                                              (now() at time zone 'Europe/London')::date + 30)]
  where id = :'student_staff';
 select is((select weekly_cap_hours from staff_directory_v where id = :'student_staff'), 48,
   'the same worker in a university holiday is 48 h — nothing was stored, so nothing had to be updated');
