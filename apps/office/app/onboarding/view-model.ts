@@ -524,6 +524,8 @@ export function blockerLabel(token: string): string {
   switch (token) {
     case 'conviction_unreviewed':
       return 'Criminal Record declaration (Yes) not yet verified';
+    case 'conviction_rejected':
+      return 'Criminal Record declaration (Yes) rejected';
     case 'criminal_declaration':
       return 'Criminal Record declaration not yet made';
     case 'rtw_branch':
