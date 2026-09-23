@@ -94,6 +94,36 @@ real environment to prove it in.
 
 ---
 
+## 3c · Closed on 26.09 (the §4 clean-up)
+
+- **Database types** are generated from the live project
+  (`packages/db/src/types.generated.ts`); `gen:types` formats them.
+- **A verified right-to-work date cannot be blanked** by any API role
+  (`20260926120000`, pgTAP `540`); fixtures use an owner-only
+  `thc.allow_rtw_date_clear` escape.
+- **A worker's home location follows their address** (`20260926110000`,
+  `530`): postcodes.io on edit, a `home_location_stale` flag the office sees
+  when the lookup fails. No office pin editor — a flag clears on the next
+  successful lookup.
+- **Willo's create-candidate is idempotent** across a lost link, and asks Willo
+  by `external_id` before creating again (`20260926100000`, `520`, ADR-0024).
+  Residual: with the record lost AND no lookup endpoint, a duplicate is possible.
+- **New Starter fields**: gender asked at wizard step 7 (§9.9 Tab 3, "M/F" — a
+  wireframe deviation, ADR-0024); postcode and country derived from the address.
+- **`/apply`**: the shared, keyboard-operable `Checkbox`; and a per-caller
+  limit (hashed caller, 5/hour, 20/day, in `settings`). Residual: anon can
+  still call `submit_application` directly through PostgREST, which bypasses
+  the per-caller limit (not the per-email/mobile ones) — closing it means
+  revoking anon and making the service key mandatory for `/apply`.
+- **`rls_auto_enable()` is Supabase's own** "enable RLS automatically on new
+  tables" option: the `ensure_rls` event trigger enables RLS on any new table in
+  `public`. It only adds protection; left in place, not mirrored in a migration
+  (locally every migration enables RLS itself, and 001 asserts it).
+- `docs/08-screen-inventory.md` lists the routes that exist.
+- Workers verified on a share code with no date: the live project has 5, all
+  seed demo accounts (`@example.com`, EU settled). None real; recheck after any
+  data import (query in `20260923200000`'s header).
+
 ## 3b · Closed on 25.09
 
 - **The office can take a Radar application forward** (`accept_application`,
@@ -206,10 +236,6 @@ real environment to prove it in.
 
 New from the 24.09 wave:
 
-- **Willo:** if Willo creates a candidate and the local link then fails
-  transiently, the next sweep creates them again and a second E1 goes out.
-- `/apply` still uses its own consent tick; it can move to the shared `Checkbox`
-  now that D1 is fixed.
 
 From the 23.09 build:
 
@@ -218,14 +244,6 @@ From the 23.09 build:
   is in the header of `20260923200000`.
 - **The share-code date is confirmed by the office** until the extractor that
   reads the gov.uk report exists; §2.3 says nobody types it (ADR-0018).
-- **A later direct update that blanks a verified document's date is not
-  refused** — only the moment of verifying is guarded, because the `200`/`220`/
-  `250` fixtures blank dates that way. The worker's date still recomputes.
-- **New Starter report fields** (gender, postcode, country) are blank until
-  collected; the wizard does not ask for gender yet.
-- **Types not regenerated.** `packages/db` `types.generated.ts` is still the
-  placeholder; the new RPCs are called through loose typed wrappers. Run
-  `pnpm --filter @thc/db gen:types` against the live project after deploy.
 - **Unverified on real infrastructure:** the `finance-reports` Edge Function has
   not been run under Deno (ADR-0006's `../../../packages` import question); Storage
   image transforms may be off (photos then fall back to the original); GoTrue's
@@ -240,25 +258,9 @@ From the 23.09 build:
   pins the distinction that makes this easy to get wrong: **`compliance_docs`.`rejection_reason`
   has the opposite rule** and must stay readable, because §2.6 and N8 require a
   rejected DOCUMENT to tell the worker why so they can re-upload.
-- `docs/08-screen-inventory.md` does not yet list the `/documents` sub-routes,
-  `/activate` or `/compliance/export`; `docs/14-open-questions.md` still lists
-  O10 point 5 as open.
 
 Carried over:
 
-- **D2 · `/apply` is a public write endpoint with no rate limit** (§2.1).
-- **A worker's home address is not re-geocoded when they edit it.** There is no
-  geocoder in the repo, so `home_location` — and therefore the §6 proximity score
-  — goes stale on an address change. E7 tells the office and the screen says so,
-  but it wants a decision rather than a note.
-- **`/apply` is still unthrottled per caller.** The new limits are per email and
-  per mobile; a distributed attacker with a fresh pair each time is bounded only
-  at the edge. That belongs in front of PostgREST, so it is an `apps/` change.
-- **`public.rls_auto_enable()` exists on the live project and in no migration.**
-  A `SECURITY DEFINER` function that manipulates RLS, origin unknown, which was
-  reachable unauthenticated. EXECUTE is now revoked from `public`, `anon` and
-  `authenticated` by a `DO` block that no-ops where it is absent — but nobody has
-  established what created it, and that is worth finding out.
 
 
 ---

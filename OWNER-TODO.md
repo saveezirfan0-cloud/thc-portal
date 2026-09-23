@@ -5,7 +5,7 @@ below is a setting, a key, a deploy or content that a coding session cannot
 supply. Tick items off here as they are done. `docs/14-handover.md` §5 has the
 background for each.
 
-Last updated 25.09.2026.
+Last updated 26.09.2026.
 
 ## 1 · Supabase settings (dashboard)
 
@@ -66,7 +66,22 @@ Nothing is lost; it all sends once the keys exist.
       also be kept for employment + 2 years after a removal (ADR-0019)?
 - [ ] The export from the old system, if data is to be migrated.
 
-## 6 · If the Staff App gets its own domain
+## 6 · Decisions
+
+- [ ] **Office pin editor?** When a worker's postcode lookup fails, their
+      profile shows "location out of date" until they re-save a findable
+      address. Say if managers should be able to move the pin themselves.
+- [ ] **Close `/apply`'s last bypass?** Revoking anon from `submit_application`
+      makes the per-caller limit unbypassable, but then `/apply` depends on
+      `SUPABASE_SERVICE_ROLE_KEY` being set on the Staff App (it is today).
+- [ ] **Gender at step 7** is asked as Male/Female because §9.9's New Starter
+      report says "Gender (M/F)" (HMRC). Confirm with THC, or ask a session to
+      remove it (ADR-0024).
+- [ ] **Data import**: after importing workers from the old system, re-verify
+      any non-UK worker with no right-to-work date (query in migration
+      `20260923200000`). Today only 5 seed demo accounts match.
+
+## 7 · If the Staff App gets its own domain
 
 - [ ] Update `NEXT_PUBLIC_STAFF_URL` on the **office-thc** and
       **thc-portal-client** Vercel projects. Both are currently
@@ -80,3 +95,4 @@ Nothing is lost; it all sends once the keys exist.
 - [x] 24.09: `SUPABASE_SERVICE_ROLE_KEY` confirmed on Office and Staff.
 - [x] 24.09: `NEXT_PUBLIC_STAFF_URL` added to Office and Client.
 - [x] 24.09: the live database caught up; every migration is applied.
+- [x] 26.09: `APPLY_THROTTLE_SALT` set on the Staff Vercel project.
