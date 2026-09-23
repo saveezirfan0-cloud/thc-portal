@@ -84,6 +84,9 @@ importers:
 
   apps/office:
     dependencies:
+      '@react-pdf/renderer':
+        specifier: ^4.3.0
+        version: 4.9.0(react@19.3.0)
       '@supabase/ssr':
         specifier: ^0.8.0
         version: 0.8.0(@supabase/supabase-js@2.116.0)
@@ -99,6 +102,9 @@ importers:
       '@thc/notifications':
         specifier: workspace:*
         version: link:../../packages/notifications
+      '@thc/pdf':
+        specifier: workspace:*
+        version: link:../../packages/pdf
       '@thc/ui':
         specifier: workspace:*
         version: link:../../packages/ui

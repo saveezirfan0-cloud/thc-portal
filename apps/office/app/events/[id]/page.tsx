@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Alert, Button, Panel, Pill } from '@thc/ui';
+import { Alert, Panel, Pill } from '@thc/ui';
 import {
   UK_ZONE,
   derivedEventWindow,
@@ -18,6 +18,7 @@ import { StatusPill } from '../_components/EventViews';
 import { loadBoard } from './board-data';
 import { RoleBoard } from './_components/RoleBoard';
 import { CancelEvent } from './_components/CancelEvent';
+import { DocumentActions } from './_components/DocumentActions';
 import '../shift-builder.css';
 import '../event-board.css';
 
@@ -80,9 +81,13 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               Edit
             </Link>
           )}
-          <Button size="sm" disabled title="Arrives with the §11.4 documents">
-            Send allocation sheet
-          </Button>
+          {/* §11.4. No document at all for a cancelled event (§3.3). */}
+          {status === 'cancelled' ? null : (
+            <DocumentActions
+              eventId={event.id}
+              started={status === 'ongoing' || status === 'completed'}
+            />
+          )}
           {status === 'cancelled' ? null : <CancelEvent eventId={event.id} affected={attached} />}
         </span>
       }

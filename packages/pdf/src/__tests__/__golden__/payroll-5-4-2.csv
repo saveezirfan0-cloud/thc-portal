@@ -1,0 +1,12 @@
+﻿Employee ID,Staff,Event,Client,Role,Date,Scheduled start–end,Check in,Check out,Break deduction,Payable hours,Rate,Base,Holiday,Total
+THC-00412,Tom Reid,Launch,Mandarin Oriental,Bar Staff,03/03/2025,18:00–23:00,17:55,23:02,0:00,5.00,15.50,77.50,9.35,86.85
+THC-00412,Tom Reid,Event 1,Mandarin Oriental,Waiting Staff,04/03/2025,12:00–16:00,12:00,16:00,0:00,6.00,14.00,84.00,10.14,94.14
+THC-00412,Tom Reid,Event 2,Mandarin Oriental,Host,05/03/2025,12:00–16:00,12:14,16:00,0:00,4.00,16.00,64.00,7.72,71.72
+THC-00412,Tom Reid,Event 3,Mandarin Oriental,Bar Staff,06/03/2025,12:00–16:00,12:00,16:00,0:20,3.67,15.50,56.83,6.86,63.69
+THC-00412,Tom Reid,Event 6,Mandarin Oriental,Waiting Staff,09/03/2025,12:00–16:00,Turned away,,0:00,4.00,14.00,56.00,6.76,62.76
+THC-00655,Priya Sharma,Event 0,Mandarin Oriental,Waiting Staff,03/03/2025,12:00–16:00,12:00,16:00,0:00,4.00,14.00,56.00,6.76,62.76
+THC-00655,Priya Sharma,Event 1,Mandarin Oriental,Waiting Staff,04/03/2025,12:00–16:00,12:00,16:00,0:00,4.00,14.00,56.00,6.76,62.76
+THC-00655,Priya Sharma,Event 2,Mandarin Oriental,Waiting Staff,05/03/2025,12:00–16:00,12:00,16:00,0:00,4.00,14.00,56.00,6.76,62.76
+THC-00655,Priya Sharma,Event 3,Mandarin Oriental,Waiting Staff,06/03/2025,12:00–16:00,12:00,16:00,0:00,4.00,14.00,56.00,6.76,62.76
+THC-00701,Luca Moretti,Event 4,Mandarin Oriental,Bar Staff,07/03/2025,12:00–16:00,12:00,16:00,0:00,4.00,15.50,62.00,7.48,69.48
+THC-00701,Luca Moretti,Event 5,Mandarin Oriental,Waiting Staff,08/03/2025,12:00–16:00,12:00,16:00,0:00,4.00,14.00,56.00,6.76,62.76
