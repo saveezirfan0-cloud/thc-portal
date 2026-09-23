@@ -39,9 +39,14 @@ describe('the holiday element', () => {
     // The three columns of §9.8's table sit next to each other, so they have
     // to add up in front of the manager at any rate, not only at the ones
     // the wireframe happens to print.
+    //
+    // Checked in plain code and asserted once: 50,001 separate expect() calls
+    // took over five seconds on a loaded CI runner and timed the test out.
+    const wrong: number[] = [];
     for (let base = 0; base <= 50_000; base += 1) {
-      expect(finalPence(base)).toBe(base + holidayPence(base));
+      if (finalPence(base) !== base + holidayPence(base)) wrong.push(base);
     }
+    expect(wrong).toEqual([]);
   });
 
   it('is zero on a zero rate rather than a penny', () => {
