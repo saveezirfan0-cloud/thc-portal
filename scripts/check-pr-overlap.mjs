@@ -36,8 +36,12 @@
  * enforcement, it was knowing.
  *
  * Auth: GITHUB_TOKEN or GH_TOKEN if set; falls back to unauthenticated,
- * which works for a public repository and is rate-limited.
+ * which works for a public repository and is rate-limited. This repository is
+ * private, so a local run needs a token with `pull-requests: read`. CI passes
+ * `secrets.GITHUB_TOKEN` and needs nothing.
  */
+import { execFileSync } from 'node:child_process';
+
 const API = process.env.GITHUB_API_URL || 'https://api.github.com';
 const TOKEN = process.env.GITHUB_TOKEN || process.env.GH_TOKEN || '';
 
@@ -84,13 +88,49 @@ async function api(path) {
   const headers = { accept: 'application/vnd.github+json' };
   if (TOKEN) headers.authorization = `Bearer ${TOKEN}`;
   const res = await fetch(`${API}${path}`, { headers });
-  if (!res.ok) throw new Error(`${path} → ${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    // 401/403 unauthenticated is the one failure worth explaining: the repo is
+    // private, so the answer is a token, not a retry.
+    const hint =
+      !TOKEN && (res.status === 401 || res.status === 403)
+        ? ' — set GITHUB_TOKEN to a token with pull-requests: read'
+        : '';
+    throw new Error(`${path} → ${res.status} ${res.statusText}${hint}`);
+  }
   return res.json();
 }
 
+/**
+ * owner/repo from `origin`, so the documented local run needs no setup. Both
+ * URL shapes GitHub hands out:
+ *
+ *   https://github.com/owner/repo.git
+ *   git@github.com:owner/repo.git
+ *
+ * @param {string} url
+ */
+export function repoSlugFromRemote(url) {
+  const m = /[:/]([^/:]+)\/([^/]+?)(?:\.git)?\s*$/.exec(url);
+  return m ? `${m[1]}/${m[2]}` : null;
+}
+
 function repoSlug() {
+  // CI sets this, and it is also the escape hatch for a checkout whose origin
+  // is not the repository you want to ask about.
   if (process.env.GITHUB_REPOSITORY) return process.env.GITHUB_REPOSITORY;
-  throw new Error('Set GITHUB_REPOSITORY (owner/repo), or run this from CI.');
+  let url;
+  try {
+    url = execFileSync('git', ['remote', 'get-url', 'origin'], {
+      encoding: 'utf8',
+      // git's own "not a git repository" would print ahead of our message.
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  } catch {
+    throw new Error('no git remote `origin`; set GITHUB_REPOSITORY (owner/repo) instead');
+  }
+  const slug = repoSlugFromRemote(url);
+  if (!slug) throw new Error(`could not read owner/repo from origin (${url.trim()})`);
+  return slug;
 }
 
 async function main() {

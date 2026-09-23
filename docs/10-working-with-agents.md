@@ -84,6 +84,10 @@ pnpm check:overlap                 every open PR and the files it touches
 pnpm check:overlap -- --pr 47      just what one PR collides with
 ```
 
+It reads `origin` for the repository. The repo is private, so a local run needs
+`GITHUB_TOKEN` set to a token with `pull-requests: read`; CI passes its own and
+needs nothing. Either way the check never fails a build — it only reports.
+
 This used to say "`git fetch origin`, `git branch -r`, and look at what each branch
 touches". That was right in intent and unusable in practice: branch names do not say
 what a branch edits, half of them have no open PR, and nobody diffs fifteen of them by
