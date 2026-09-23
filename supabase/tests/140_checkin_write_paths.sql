@@ -10,7 +10,7 @@ begin;
 
 \ir _shared/fixtures.psql
 
-select plan(45);
+select plan(46);
 
 \set ev_unpaid   '8e8e8e8e-0000-4000-8000-000000000001'
 \set ev_paid     '8e8e8e8e-0000-4000-8000-000000000002'
@@ -283,8 +283,24 @@ select is(
 );
 
 -- ---- RULE-06: an exported payroll is never corrected retroactively ---
+-- Asked per booking (20260923190000): the event going out on a Monday says
+-- nothing about a shift that was held from that export.
 \set v_late2 '0d0d0d0d-0000-4000-8000-00000000000c'
+\set v_late3 '0d0d0d0d-0000-4000-8000-00000000000d'
 update events set payroll_exported_at = now() - interval '1 day' where id = :'ev_unpaid';
+insert into violations (id, staff_id, booking_id, type, detected_at, minutes_late)
+  values (:'v_late3', :'staffa', :'bk_worker', 'left_early', now(), null);
+select is(
+  resolve_violation(:'v_late3', 'Held from the export, resolved before the next one.')->>'payrollExported',
+  'false',
+  'RULE-06 the event was exported but this shift was not, so resolving it warns nothing: it is paid on the next Monday'
+);
+with rs as (
+  insert into report_sends (kind, period_start, period_end, sent_at, status)
+  values ('payroll', date '2001-01-01', date '2001-01-07', now() - interval '1 day', 'sent') returning id
+)
+insert into payroll_export_lines (report_send_id, booking_id, staff_id, event_id, state, shift_date, payable_min, rate, base, holiday)
+select rs.id, :'bk_worker', :'staffa', :'ev_unpaid', 'exported', current_date - 1, 240, 12.21, 48.84, 5.89 from rs;
 insert into violations (id, staff_id, booking_id, type, detected_at, minutes_late)
   values (:'v_late2', :'staffa', :'bk_worker', 'left_early', now(), null);
 select is(
