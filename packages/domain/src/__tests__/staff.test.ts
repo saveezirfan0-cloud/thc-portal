@@ -234,6 +234,13 @@ describe('refusal copy', () => {
     expect(ACCEPT_REFUSAL_COPY.hours_limit.title).toBe('Limit Reached');
   });
 
+  it('does not tell a worker past their right to work that they are over their hours', () => {
+    // accept_invite answers rtw_expired since 20260925100000.
+    expect(ACCEPT_REFUSAL_COPY.rtw_expired).toEqual(APPLY_REFUSAL_COPY.rtw_expired);
+    expect(ACCEPT_REFUSAL_COPY.rtw_expired.title).not.toBe(ACCEPT_REFUSAL_COPY.hours_limit.title);
+    expect(ACCEPT_REFUSAL_COPY.event_ended.title).toBe('This shift has already ended');
+  });
+
   it('uses the scope’s own words for a shift that filled while the screen was open', () => {
     expect(APPLY_REFUSAL_COPY.full.title).toBe('Sorry, this shift is now full');
   });

@@ -218,11 +218,20 @@ export function readyDeadlinePassed(startsAt: Date, now: Date = new Date()): boo
 /**
  * The refusals `accept_invite` can return, in the worker's words (§3.4, §10.4).
  *
- * `overlap` and `hours_limit` leave the invitation live — the office may move
- * one of the two shifts, and hours free up — so both read as a block, not a
- * loss. `taken` is the only one that has already closed the invitation.
+ * `overlap`, `hours_limit` and `rtw_expired` leave the invitation live — the
+ * office may move one of the two shifts, hours free up, the right to work is
+ * renewed — so they read as a block, not a loss. `taken` is the only one that
+ * has already closed the invitation. `rtw_expired` is its own answer since
+ * 20260925100000: a worker past their right to work is not over their hours.
  */
-export type AcceptRefusal = 'taken' | 'overlap' | 'hours_limit' | 'not_invited' | 'event_cancelled';
+export type AcceptRefusal =
+  | 'taken'
+  | 'overlap'
+  | 'hours_limit'
+  | 'rtw_expired'
+  | 'not_invited'
+  | 'event_cancelled'
+  | 'event_ended';
 
 export const ACCEPT_REFUSAL_COPY: Record<AcceptRefusal, { title: string; body: string }> = {
   taken: {
@@ -237,6 +246,10 @@ export const ACCEPT_REFUSAL_COPY: Record<AcceptRefusal, { title: string; body: s
     title: 'Limit Reached',
     body: 'This shift would take you over your weekly hours limit for that Mon–Sun week. The limit is calculated from your documents and can’t be changed in the app.',
   },
+  rtw_expired: {
+    title: 'Right to work needs updating',
+    body: 'Your right-to-work evidence has expired for this date. Check the Documents tab — you can’t be booked until it’s renewed.',
+  },
   not_invited: {
     title: 'This invitation is no longer open',
     body: 'It has already been answered or withdrawn.',
@@ -244,6 +257,10 @@ export const ACCEPT_REFUSAL_COPY: Record<AcceptRefusal, { title: string; body: s
   event_cancelled: {
     title: 'This event has been cancelled',
     body: 'The office has cancelled it. You are not expected at the venue.',
+  },
+  event_ended: {
+    title: 'This shift has already ended',
+    body: 'It finished before the invitation was answered, so the invitation has closed.',
   },
 };
 

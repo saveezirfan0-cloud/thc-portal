@@ -178,3 +178,92 @@ export function assertStaffTransition(from: StaffStatus, to: StaffStatus): void 
 export function assertBookingTransition(from: BookingStatus, to: BookingStatus): void {
   if (!canTransitionBooking(from, to)) throw new IllegalTransitionError('booking', from, to);
 }
+
+/**
+ * The office takes a Radar application forward — `applied → confirmed`
+ * (§3.3, §10.4, §8 N10). The TS half of `accept_application()`
+ * (20260925100000), which is authoritative: it re-reads everything under a
+ * row lock. This is the same decision, in the same order, for a screen that
+ * wants to explain a refusal or a test that pins the order.
+ *
+ * `gate` is the auto-assign hard gate for this worker on this section
+ * (`auto_assign_candidates`): `null` for none, `undefined` when the worker
+ * has no candidate row at all (removed §1.7, left §10.6). Fill counts ONLY
+ * confirmed and the buffer is absolute, so the role is full at
+ * `headcount + buffer`.
+ *
+ * There is no Decline: §10.4 and §8 end an application only by N10 (taken
+ * forward), N10c (the role filled), the worker withdrawing it, or N12 (the
+ * event cancelled) — ADR-0023.
+ */
+export const APPLICATION_ACCEPT_REFUSALS = [
+  'event_cancelled',
+  'not_applied',
+  'event_ended',
+  'full',
+  'not_bookable',
+  'wrong_role',
+  'do_not_return',
+  'blocked',
+  'self_cancelled',
+  'booked_elsewhere',
+  'rtw_expired',
+  'hours_limit',
+] as const;
+
+export type ApplicationAcceptRefusal = (typeof APPLICATION_ACCEPT_REFUSALS)[number];
+
+export interface ApplicationAcceptInput {
+  status: BookingStatus;
+  eventCancelled: boolean;
+  shiftEndsAt: Date;
+  confirmed: number;
+  headcount: number;
+  buffer: number;
+  gate: string | null | undefined;
+}
+
+export type ApplicationAcceptOutcome =
+  | { ok: true; to: 'confirmed'; fillsRole: boolean }
+  | { ok: false; reason: ApplicationAcceptRefusal };
+
+export function acceptApplication(
+  input: ApplicationAcceptInput,
+  now: Date = new Date(),
+): ApplicationAcceptOutcome {
+  if (input.eventCancelled) return { ok: false, reason: 'event_cancelled' };
+  if (input.status !== 'applied') return { ok: false, reason: 'not_applied' };
+  if (now.getTime() >= input.shiftEndsAt.getTime()) return { ok: false, reason: 'event_ended' };
+  if (roleFilled(input.confirmed, input.headcount, input.buffer)) {
+    return { ok: false, reason: 'full' };
+  }
+  if (input.gate === undefined) return { ok: false, reason: 'not_bookable' };
+  if (input.gate !== null) {
+    const gate = input.gate as ApplicationAcceptRefusal;
+    return {
+      ok: false,
+      reason: (APPLICATION_ACCEPT_REFUSALS as readonly string[]).includes(gate)
+        ? gate
+        : 'not_bookable',
+    };
+  }
+  assertBookingTransition('applied', 'confirmed');
+  return {
+    ok: true,
+    to: 'confirmed',
+    fillsRole: roleFilled(input.confirmed + 1, input.headcount, input.buffer),
+  };
+}
+
+/**
+ * §8 N10c: the moment a role is fully confirmed — headcount + buffer, only
+ * confirmed counting — every still-pending application on it closes
+ * (`closed`, cause `slot_taken`) and its worker is told the shift filled.
+ * `close_filled_role_applications()` in the database.
+ */
+export function roleFilled(confirmed: number, headcount: number, buffer: number): boolean {
+  return confirmed >= headcount + buffer;
+}
+
+/** The cause an application closes with when the role fills without it (N10c). */
+export const APPLICATION_NOT_TAKEN_CAUSE = 'slot_taken' satisfies CancelCause;

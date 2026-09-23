@@ -3,6 +3,7 @@ import {
   DEFAULT_WEIGHTS,
   type EventStatus,
   UK_ZONE,
+  appliedAgo,
   canCancelBooking,
   formatAllocationPair,
   formatHours,
@@ -12,6 +13,7 @@ import {
   showsCandidatePools,
 } from '@thc/domain';
 import type { BoardBooking, BoardSection, BoardUnavailable } from '../board-data';
+import { ApplicationActions } from './ApplicationActions';
 import { BookingActions } from './BookingActions';
 
 const classes = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ');
@@ -147,7 +149,9 @@ export function RoleBoard({
                 ) : null}
                 {/* Already invited and also self-applied: the marker shows
                     here rather than duplicating them into the pool (§3.3). */}
-                {booking.appliedAt ? <span className="applied">Applied</span> : null}
+                {booking.appliedAt ? (
+                  <span className="applied">{appliedMarker(booking)}</span>
+                ) : null}
                 <div className="right">
                   <Pill tone="amber">Awaiting</Pill>
                   <BookingActions
@@ -189,6 +193,25 @@ export function RoleBoard({
             </span>
             <span className="muted">· weights editable in /settings (§6)</span>
           </div>
+          {/* Radar self-applications (§3.3, §10.4): the "Applied" marker with
+              its relative time. Picking one confirms them and sends N10;
+              once the role is fully confirmed the rest get N10c. */}
+          {section.applied.map((booking) => (
+            <div className="prow" key={booking.bookingId}>
+              <Person person={booking} sub={`${section.roleName} · self-applied via Radar`} />
+              {booking.qualified ? (
+                <Pill tone="cyan">Qualified — this client · {section.roleName}</Pill>
+              ) : null}
+              <span className="applied">{appliedMarker(booking)}</span>
+              <div className="right">
+                <ApplicationActions
+                  eventId={eventId}
+                  bookingId={booking.bookingId}
+                  name={booking.name}
+                />
+              </div>
+            </div>
+          ))}
           <div className="prow muted">
             The ranked pool arrives with the auto-assign engine (§3.4), which is a separate change.
             Its scoring, waves and hard gates already live in <code>@thc/domain</code>.
@@ -226,6 +249,11 @@ function confirmedLine(booking: BoardBooking, roleName: string): string {
   );
   if (booking.source === 'self') parts.push('self-applied via Radar');
   return parts.join(' · ');
+}
+
+/** "Applied 2h ago" (§3.3), computed on each render — never a snapshot. */
+function appliedMarker(booking: BoardBooking): string {
+  return booking.appliedAt ? appliedAgo(new Date(booking.appliedAt)) : 'Applied';
 }
 
 function invitedLine(booking: BoardBooking): string {

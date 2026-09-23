@@ -3,8 +3,9 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import {
-  CANCEL_NOTIFIES,
   UK_ZONE,
+  acceptApplicationRefusal,
+  cancelEventRefusal,
   canCancelBooking,
   canMarkNoShow,
   displayTime,
@@ -23,8 +24,9 @@ const NO_SUPABASE =
  * The manager's actions on the event board — Scope §3.3.
  *
  * There is deliberately no Confirm here: the WORKER confirms, in the app.
- * The manager can only withdraw, record a no-show, undo one, or cancel the
- * whole event.
+ * The manager can only withdraw, record a no-show, undo one, take a Radar
+ * application forward (the applicant already said yes — §3.3, N10), or
+ * cancel the whole event.
  */
 
 async function db() {
@@ -169,70 +171,66 @@ export async function getBack(eventId: string, bookingId: string): Promise<Actio
  * §3.3. Cancel event. The event stays visible, greyed out, for the record;
  * every booking moves to cancelled; auto-assign stops; and N12 reaches
  * everyone still attached — including anyone with an open Radar application,
- * not only the confirmed and invited.
+ * not only the confirmed and invited (CANCEL_NOTIFIES).
+ *
+ * One RPC, `cancel_event()` (20260925100100), so it is all or nothing. This
+ * used to be four writes from here, and the bookings update's error was never
+ * read: a refused update left a Cancelled event with live bookings and no
+ * N12, and the manager was told it had worked.
  */
 export async function cancelEvent(eventId: string, reason: string): Promise<ActionResult> {
   const trimmed = reason.trim();
-  if (!trimmed) return { error: 'Give a reason for the cancellation (§3.3).' };
+  if (!trimmed) return { error: cancelEventRefusal('reason_required') };
   if (!supabaseConfigured()) return { error: NO_SUPABASE };
   const supabase = await db();
 
-  const { data: sectionData } = await supabase
-    .from('shift_requirements')
-    .select('id')
-    .eq('event_id', eventId);
-  const sectionIds = ((sectionData ?? []) as { id: string }[]).map((s) => s.id);
-
-  const { data: bookingData } = sectionIds.length
-    ? await supabase
-        .from('bookings')
-        .select('id, staff_id, status')
-        .in('shift_id', sectionIds)
-        .in('status', [...CANCEL_NOTIFIES])
-    : { data: [] };
-  const affected = (bookingData ?? []) as { id: string; staff_id: string }[];
-  let queueFailed: string | null = null;
-
-  const { error } = await supabase
-    .from('events')
-    .update({
-      cancelled_at: new Date().toISOString(),
-      cancel_reason: trimmed,
-      // Auto-assign stops for this event immediately (§3.3, point 3).
-      auto_assign: false,
-    })
-    .eq('id', eventId);
-  if (error) return { error: error.message };
-
-  if (affected.length > 0) {
-    await supabase
-      .from('bookings')
-      .update({
-        status: 'cancelled',
-        cancelled_at: new Date().toISOString(),
-        cancel_cause: 'event_cancelled' satisfies CancelCause,
-      })
-      .in(
-        'id',
-        affected.map((b) => b.id),
-      );
-
-    // N12 carries no placeholders (§8), so the payload is just the deep-link
-    // value. One row per worker; the unique key makes a second press a no-op.
-    for (const booking of affected) {
-      const failed = await enqueue(supabase, 'N12', booking.id, booking.staff_id, {});
-      if (failed) queueFailed ??= failed;
-    }
-  }
+  const { data, error } = await supabase.rpc('cancel_event', {
+    p_event: eventId,
+    p_reason: trimmed,
+  });
+  if (error) return { error: `The event was not cancelled: ${error.message}` };
+  const result = (data ?? {}) as { ok?: boolean; reason?: string };
+  if (result.ok !== true) return { error: cancelEventRefusal(String(result.reason ?? '')) };
 
   revalidatePath(`/events/${eventId}`);
   revalidatePath('/events');
-  // §3.3 promises everyone still attached is notified. If the queue refused,
-  // the manager is told so rather than shown a clean success.
-  return queueFailed
+  return { ok: true };
+}
+
+/**
+ * §3.3 / §10.4. The manager picks a Radar applicant from the Potential pool:
+ * `applied → confirmed` through `accept_application()` (20260925100000),
+ * which re-checks every hard gate and the fill under a row lock, queues N10,
+ * and — if this fills the role — closes the other applications with N10c.
+ *
+ * There is no Decline: the scope ends an application only by N10, N10c, the
+ * worker withdrawing it, or the event being cancelled (ADR-0023).
+ */
+export async function acceptApplication(eventId: string, bookingId: string): Promise<ActionResult> {
+  if (!supabaseConfigured()) return { error: NO_SUPABASE };
+  const supabase = await db();
+
+  const { data, error } = await supabase.rpc('accept_application', { p_booking: bookingId });
+  if (error) {
+    // The rota guard trigger is the backstop underneath the gates; its
+    // refusal arrives as an exception named after the reason.
+    const guard = /rota_guard_(rtw_expired|visa_cap|wtr_cap)/.exec(error.message)?.[1];
+    if (guard) {
+      return {
+        error: acceptApplicationRefusal(guard === 'rtw_expired' ? 'rtw_expired' : 'hours_limit'),
+      };
+    }
+    return { error: error.message };
+  }
+  const result = (data ?? {}) as { ok?: boolean; reason?: string; closedApplications?: number };
+  revalidatePath(`/events/${eventId}`);
+  if (result.ok !== true) return { error: acceptApplicationRefusal(String(result.reason ?? '')) };
+
+  const closed = Number(result.closedApplications ?? 0);
+  return closed > 0
     ? {
         ok: true,
-        warning: `Event cancelled, but ${affected.length === 1 ? 'the worker' : 'the workers'} could not be notified: ${queueFailed}`,
+        warning: `The role is now fully confirmed: ${closed} other ${closed === 1 ? 'applicant was' : 'applicants were'} told it filled (N10c).`,
       }
     : { ok: true };
 }
@@ -298,7 +296,7 @@ async function bookingContext(
  */
 async function enqueue(
   supabase: Awaited<ReturnType<typeof db>>,
-  code: 'N10b' | 'N12',
+  code: 'N10b',
   bookingId: string,
   staffId: string,
   values: Record<string, string>,
