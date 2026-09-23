@@ -241,3 +241,34 @@ describe('the wireframe stylesheet stays in sync', () => {
     );
   });
 });
+
+describe('the invalid state (§1.7)', () => {
+  it('announces the error on the input, not only as text beside it', () => {
+    const markup = renderToStaticMarkup(
+      <Checkbox checked={false} onChange={() => {}} error="Please tick to continue">
+        I agree
+      </Checkbox>,
+    );
+    // Without this a screen-reader user is told nothing is wrong: the message
+    // renders in a sibling span with no programmatic relationship to the
+    // control. /apply hand-rolled this whole checkbox for want of the border
+    // that hangs off the same attribute.
+    expect(markup).toContain('aria-invalid="true"');
+    expect(markup).toContain('Please tick to continue');
+  });
+
+  it('carries no aria-invalid when there is no error', () => {
+    const markup = renderToStaticMarkup(
+      <Checkbox checked={false} onChange={() => {}}>
+        I agree
+      </Checkbox>,
+    );
+    expect(markup).not.toContain('aria-invalid');
+  });
+
+  it('draws the coral border off the same attribute, so the two cannot drift', () => {
+    const css = readFileSync(join(STYLES, 'components.css'), 'utf8');
+    expect(css).toMatch(/\.check \.check-input\[aria-invalid='true'\] \+ \.box/);
+    expect(css).toMatch(/border-color: var\(--coral\)/);
+  });
+});

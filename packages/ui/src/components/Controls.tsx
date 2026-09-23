@@ -80,6 +80,13 @@ export function Checkbox({
         value={value}
         checked={checked}
         disabled={disabled}
+        // `error` used to render a message and nothing else: a screen reader
+        // was never told the control itself was in error, and the drawn square
+        // kept its normal border, so the validation state §1.7 relies on was
+        // invisible both ways. Matches Input.tsx's convention, and the CSS
+        // draws the coral border off the same attribute — /apply hand-rolled
+        // this whole control for want of it.
+        aria-invalid={error ? true : undefined}
         onChange={(event) => onChange(event.target.checked)}
       />
       <span className={clsx('box', checked && 'on')} aria-hidden="true" />
