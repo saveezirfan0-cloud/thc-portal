@@ -820,7 +820,7 @@ one at a time, so a failure halfway leaves the project part-applied with a green
 `build-test` above it, and the log is the only place that says which version it stopped
 at.
 
-## O15 · `BottomNav`'s `renderLink` callback has now crashed the Staff App twice
+## O15 · `BottomNav`'s `renderLink` callback crashed the Staff App twice — **RESOLVED 23.09**
 
 **This one is `design-system`'s, and it is a prop that should not exist.**
 
@@ -853,9 +853,16 @@ boundary. Same markup, same classes, same "locked is a span, not a link" behavio
 the call site and differ only in a directive at the top of a file nobody opens. A screen
 bot copying the Office pattern into the Staff App writes a 500 and gets a green build.
 
-**The fix is to delete the prop**, not to document it: `BottomTabs` proves the data-driven
-shape covers every caller, and there are no others. That is a `packages/ui` change, which
-`docs/10` §3 reserves for `design-system`, so it is filed here rather than taken. Until it
-goes, a lint rule banning function props to anything exported from `Mobile.tsx` would do
-the same job.
+**The prop is gone.** `BottomTabs` proved the data-driven shape covers every caller, and a
+check of the remaining `BottomNav` callers — `/shifts/[id]`, the design-system showcase and
+two `packages/ui` tests — found that none of them passed `renderLink`, so deleting it broke
+nothing and no caller had to change. `packages/ui/src/components/Mobile.tsx` now carries the
+reasoning where the next person will read it, including why the Office's `Sidebar` keeps an
+identical-looking callback and is safe.
+
+Note for whoever adds the next mobile component: the asymmetry is still there.
+`Shell.tsx` has no `'use client'` and `Mobile.tsx` does, so a function prop is fine in one
+and a 500 in the other, and nothing at the call site says which you are in. A lint rule
+banning function props to anything exported from `Mobile.tsx` would make that structural
+rather than remembered; it is not written.
 
