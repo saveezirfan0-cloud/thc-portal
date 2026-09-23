@@ -721,7 +721,15 @@ function DocumentLine({
       actions={
         <>
           <Pill tone={pill.tone}>{pill.label}</Pill>
-          {actionable ? (
+          {actionable && doc.doc_type === 'university_completion_letter' ? (
+            // A completion letter is approved, not verified: the reviewer
+            // confirms the completion date AND the visa expiry, and the
+            // database refuses a bare Verify (completion_letter_approval_guard,
+            // 20260923100100). That form lives in the Needs review queue.
+            <Link className="btn sm" href="/compliance">
+              Review in Compliance
+            </Link>
+          ) : actionable ? (
             <>
               <Button
                 size="sm"
