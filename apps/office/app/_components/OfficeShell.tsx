@@ -31,7 +31,7 @@ import type { ReactNode } from 'react';
  */
 const NAV = [
   { href: '/dashboard', label: 'Dashboard' },
-  { href: '/onboarding', label: 'Onboarding', pending: true },
+  { href: '/onboarding', label: 'Onboarding' },
   { href: '/events', label: 'Scheduling' },
   { href: '/compliance', label: 'Compliance', pending: true },
   { href: '/checkin', label: 'Check In / Out' },
