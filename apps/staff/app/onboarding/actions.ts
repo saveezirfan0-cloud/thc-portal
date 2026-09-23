@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { uploadError, uploadKind, UPLOAD_MAX_BYTES, UPLOAD_MIME } from '@thc/domain';
-import type { DocType, StudentLoanPlan } from '@thc/domain';
+import type { DocType, HmrcGender, StudentLoanPlan } from '@thc/domain';
 import { staffDb, supabaseConfigured } from '../db';
 import { photoPathFor } from '../profile/photos';
 import { documentExtractor, toDaterangeLiteral } from './extractor';
@@ -358,8 +358,13 @@ export async function submitHmrc(input: {
   postgraduateLoan: boolean;
   niNumber: string;
   declared: boolean;
+  gender?: HmrcGender | null;
 }): Promise<Result> {
+  // The 8-argument checklist (20260926100100): the gender HMRC's payroll
+  // record needs, written with the checklist in one transaction. The
+  // database refuses a missing one (`gender_required`).
   return call('submit_hmrc_checklist', {
+    p_gender: input.gender ?? null,
     p_q1_other_job: input.q1OtherJob,
     p_q2_pension: input.q2Pension,
     p_q3_since_april: input.q3Since6April,
