@@ -29,6 +29,15 @@ const MESSAGES: [RegExp, string][] = [
   [/^completion_date_required/, 'Confirm the course completion date.'],
   [/^visa_expiry_required/, 'Confirm the visa expiry date.'],
   [/^term_dates_invalid/, 'A holiday range needs both a start and an end date.'],
+  [
+    /^rtw_date_required/,
+    'Confirm the right-to-work date on this document before verifying it — the expiry of a visa or status document, or the date on the gov.uk report (§2.5, §2.6).',
+  ],
+  [
+    /^no_time_limit_not_allowed/,
+    'Only a share code showing EU settled status can be verified with no time limit (§2.5 pt 2).',
+  ],
+  [/^date_invalid/, 'That date is not a real calendar date.'],
   [/^(document|declaration)_not_found/, 'This item no longer exists — refresh the queue.'],
 ];
 

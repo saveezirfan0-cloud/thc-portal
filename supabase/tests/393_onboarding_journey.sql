@@ -72,6 +72,11 @@ select isnt_empty(
   'and the system sends E3: set your password and download the app');
 
 insert into auth.users (id, email) values (:'uid', 'amara@journey.test');
+-- What Storage holds once the Staff App has uploaded her files.
+insert into storage.objects (bucket_id, name, metadata) values
+  ('documents', :'cand' || '/passport/1.jpg', '{"mimetype":"image/jpeg","size":2202009}'),
+  ('documents', :'cand' || '/passport/2.jpg', '{"mimetype":"image/jpeg","size":1900000}'),
+  ('documents', :'cand' || '/university_term_dates_letter/1.pdf', '{"mimetype":"application/pdf","size":348160}');
 insert into profiles (id, role, full_name) values (:'uid', 'staff', 'Amara Journey');
 update staff set user_id = :'uid' where id = :'cand';
 set local "request.jwt.claims" = '{"sub":"c3970000-0000-4000-8000-000000000001","role":"authenticated"}';

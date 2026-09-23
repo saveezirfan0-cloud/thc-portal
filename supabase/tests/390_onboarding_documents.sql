@@ -59,6 +59,19 @@ insert into staff (id, user_id, first_name, last_name, email, phone, dob, status
   (:'tom',   :'tom_uid',   'Tom',   'Reid', 'tom@onboarding.test',   '+447700900322',
    date '1994-01-09', 'documents');
 
+-- The objects as Storage records them once the Staff App has uploaded
+-- them with the service key. onboarding_attach_document() judges the
+-- size and type off these, never off what the caller says
+-- (20260923200000).
+insert into storage.objects (bucket_id, name, metadata) values
+  ('documents', :'amara' || '/passport/a.jpg',   '{"mimetype":"image/jpeg","size":10485761}'),
+  ('documents', :'amara' || '/passport/1.jpg',   '{"mimetype":"image/jpeg","size":2202009}'),
+  ('documents', :'amara' || '/passport/2.heic',  '{"mimetype":"image/heic","size":2202009}'),
+  ('documents', :'amara' || '/passport/3.jpg',   '{"mimetype":"image/jpeg","size":1000}'),
+  ('documents', :'amara' || '/passport/4.jpg',   '{"mimetype":"image/jpeg","size":1900000}'),
+  ('documents', :'amara' || '/university_term_dates_letter/1.pdf', '{"mimetype":"application/pdf","size":348160}'),
+  ('documents', :'tom'   || '/passport/1.pdf',   '{"mimetype":"application/pdf","size":50000}');
+
 -- Amara is the caller until said otherwise.
 set local "request.jwt.claims" = '{"sub":"c3920000-0000-4000-8000-000000000001","role":"authenticated"}';
 

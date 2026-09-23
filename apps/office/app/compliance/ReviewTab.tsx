@@ -35,6 +35,8 @@ import {
   whoLine,
 } from './queue';
 import type { WhoFilter } from './queue';
+import { rtwDateProblem, rtwDateRule, rtwDateValue } from './rtw';
+import type { RtwDateRule } from './rtw';
 import type { ActionResult, QueueRow } from './types';
 
 /**
@@ -47,7 +49,9 @@ import type { ActionResult, QueueRow } from './types';
  * The completion letter's Verify opens a confirmation rather than acting on
  * the click: the requirement (§2.2) makes the reviewer confirm the course
  * completion date and the visa expiry, and the database refuses the approval
- * without both.
+ * without both. So does the Verify of a visa document, a status document or
+ * a share code report: the reviewer confirms the right-to-work date it
+ * carries, because that date is the per-shift hard stop (20260923200000).
  */
 export function ReviewTab({ rows }: { rows: QueueRow[] }) {
   const router = useRouter();
@@ -56,6 +60,7 @@ export function ReviewTab({ rows }: { rows: QueueRow[] }) {
   const [document, setDocument] = useState('any');
   const [rejecting, setRejecting] = useState<QueueRow | null>(null);
   const [approving, setApproving] = useState<QueueRow | null>(null);
+  const [confirming, setConfirming] = useState<QueueRow | null>(null);
   const [result, setResult] = useState<ActionResult | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [, start] = useTransition();
@@ -82,6 +87,10 @@ export function ReviewTab({ rows }: { rows: QueueRow[] }) {
   const verify = (row: QueueRow) => {
     if (row.item_type === 'university_completion_letter') {
       setApproving(row);
+      return;
+    }
+    if (row.kind === 'document' && rtwDateRule(row.item_type, row.rtw_branch)) {
+      setConfirming(row);
       return;
     }
     run(row.item_id, () =>
@@ -200,6 +209,26 @@ export function ReviewTab({ rows }: { rows: QueueRow[] }) {
                   ? rejectDeclaration(rejecting.item_id, reason)
                   : rejectDocument(rejecting.item_id, reason),
               () => setRejecting(null),
+            )
+          }
+        />
+      ) : null}
+
+      {confirming ? (
+        <RightToWorkModal
+          row={confirming}
+          rule={rtwDateRule(confirming.item_type, confirming.rtw_branch)!}
+          busy={pendingId === confirming.item_id}
+          onClose={() => setConfirming(null)}
+          onVerify={(field, value) =>
+            run(
+              confirming.item_id,
+              () =>
+                verifyDocument(
+                  confirming.item_id,
+                  field === 'expiry' ? { expiry: value } : { rightToWorkUntil: value },
+                ),
+              () => setConfirming(null),
             )
           }
         />
@@ -465,6 +494,99 @@ function ApproveModal({
         — never before it, never backdated, and never past the visa expiry. A completion date in the
         future lifts nothing until it arrives.
       </Note>
+    </Modal>
+  );
+}
+
+/**
+ * §2.5 / §2.6: a visa document, a status document or a share code report is
+ * verified on the right-to-work date it carries. The AI's (or the worker's
+ * typed) date is pre-filled; the reviewer confirms it against the document.
+ * The worker's right-to-work date becomes the earliest across their current
+ * evidence, and no shift after it can be rostered.
+ */
+function RightToWorkModal({
+  row,
+  rule,
+  busy,
+  onClose,
+  onVerify,
+}: {
+  row: QueueRow;
+  rule: RtwDateRule;
+  busy: boolean;
+  onClose: () => void;
+  onVerify: (field: RtwDateRule['field'], value: string) => void;
+}) {
+  const [date, setDate] = useState(
+    (rule.field === 'expiry' ? row.expiry_date : row.doc_right_to_work_until) ?? '',
+  );
+  const [noTimeLimit, setNoTimeLimit] = useState(false);
+  const problem = rtwDateProblem(rule, date, noTimeLimit);
+  return (
+    <Modal
+      open
+      title={`Verify ${row.item_label}`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button tone="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            tone="green"
+            solid
+            disabled={busy || problem !== null}
+            onClick={() => onVerify(rule.field, rtwDateValue(date, noTimeLimit))}
+          >
+            Verify
+          </Button>
+        </>
+      }
+    >
+      <div className="row">
+        <Avatar name={row.display_name} size="sm" />
+        <div className="sm">
+          {row.display_name} · {row.is_candidate ? 'Candidate' : 'Staff'} · {row.item_label} ·
+          uploaded {ukStamp(row.submitted_at)}
+          {row.share_code ? (
+            <>
+              {' '}
+              · share code <span className="mono">{row.share_code}</span>
+            </>
+          ) : null}
+        </div>
+      </div>
+      <Input
+        type="date"
+        label={
+          <>
+            {rule.label} <span className="coral">*</span>
+          </>
+        }
+        value={noTimeLimit ? '' : date}
+        disabled={noTimeLimit}
+        onChange={(event) => setDate(event.target.value)}
+        hint={rule.hint}
+      />
+      {rule.allowNoTimeLimit ? (
+        <label className="row sm">
+          <input
+            type="checkbox"
+            checked={noTimeLimit}
+            onChange={(event) => setNoTimeLimit(event.target.checked)}
+          />
+          The gov.uk report shows <b>settled status</b> — no time limit (§2.5 pt 2). Pre-settled
+          status has an end date: enter it instead.
+        </label>
+      ) : null}
+      {row.staff_right_to_work_until ? (
+        <Note>
+          On file now: right to work until {ukDate(row.staff_right_to_work_until)}. The earliest
+          date across the worker’s current evidence is kept.
+        </Note>
+      ) : null}
+      {problem && (date !== '' || noTimeLimit) ? <div className="coral sm">{problem}</div> : null}
     </Modal>
   );
 }

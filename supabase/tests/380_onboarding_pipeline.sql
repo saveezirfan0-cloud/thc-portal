@@ -17,7 +17,7 @@
 --   J. The two read views across admin / client / staff / anon.
 -- =====================================================================
 begin;
-select plan(75);
+select plan(76);
 \ir _shared/fixtures.psql
 
 \set c_req      '38000000-0000-4000-8000-000000000001'
@@ -164,7 +164,7 @@ select is((select count(*)::int from onboarding_returning_v), 0, 'nor any return
 
 -- a worker
 set local "request.jwt.claims" = '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}';
-select throws_ok($$ select onboarding_accept('38000000-0000-4000-8000-000000000002', array['bbbbbbbb-0000-4000-8000-000000000001']::uuid[], null, 'https://x', 'https://y') $$,
+select throws_ok($$ select onboarding_accept_with_account('38000000-0000-4000-8000-000000000002', array['bbbbbbbb-0000-4000-8000-000000000001']::uuid[], null, '44444444-4444-4444-4444-444444444444', 'https://x', 'https://y') $$,
   '42501', 'not_authorised', 'a worker cannot accept a candidate');
 select throws_ok($$ select reject_document('38000000-0000-4000-8000-0000000000d1', 'x') $$,
   '42501', 'not_authorised', 'a worker cannot reject a document');
@@ -200,6 +200,15 @@ select is((select count(*)::int from onboarding_candidates_v where id in
 -- is what stops that door being a way round the quiz.
 select throws_like($$ update staff set status = 'compliant' where id = '38000000-0000-4000-8000-000000000007' $$,
   'illegal_staff_transition%', 'a manager writing status directly still cannot skip the quiz and the contract');
+
+-- The office's Accept is onboarding_accept_with_account() (20260923180000),
+-- which links the login and then runs onboarding_accept() as owner. The
+-- bare five-argument form is no longer granted to any signed-in role
+-- (20260923200000); its rules are exercised here as the owner, with the
+-- manager's identity still in the claims — assert_office_caller() reads it.
+select ok(not has_function_privilege('authenticated', 'onboarding_accept(uuid,uuid[],text,text,text)', 'execute'),
+  'the bare onboarding_accept() is not callable by a signed-in session — Accept links the login first');
+reset role;
 select throws_ok($$ select onboarding_accept('38000000-0000-4000-8000-000000000002', '{}'::uuid[], null, 'https://x', 'https://y') $$,
   '22023', 'roles_required', 'Accept needs at least one qualified role (§2.4)');
 select throws_like($$ select onboarding_accept('38000000-0000-4000-8000-000000000001', array['bbbbbbbb-0000-4000-8000-000000000001']::uuid[], null, 'https://x', 'https://y') $$,
@@ -248,11 +257,11 @@ insert into compliance_docs (id, staff_id, doc_type, file_path, review_status, t
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
 select throws_ok($$ select reject_document('38000000-0000-4000-8000-0000000000d3', '') $$,
-  '22023', 'reason_required', 'rejecting a document needs a reason');
+  'P0001', 'reason_required', 'rejecting a document needs a reason');
 select lives_ok($$ select reject_document('38000000-0000-4000-8000-0000000000d3', 'Number obscured — please re-upload') $$,
   'the office rejects a document');
 select throws_like($$ select verify_document('38000000-0000-4000-8000-0000000000d3') $$,
-  'not_under_review%', 'a rejected document is not verified — the worker re-uploads (§2.3)');
+  'not_pending%', 'a rejected document is not verified — the worker re-uploads (§2.3)');
 select lives_ok($$ select verify_document('38000000-0000-4000-8000-0000000000d2', null,
                     array['[2026-12-13,2027-01-11)'::daterange, '[2027-03-27,2027-04-26)'::daterange]) $$,
   'the office verifies the term letter with a period it added by hand (+ Add period)');
@@ -286,7 +295,7 @@ set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111",
 select lives_ok($$ select reject_declaration('38000000-0000-4000-8000-0000000000e1', 'Please add the date of the conviction') $$,
   'a Yes declaration can be rejected with a reason');
 select throws_like($$ select verify_declaration('38000000-0000-4000-8000-0000000000e1') $$,
-  'not_under_review%', 'and is then no longer under review');
+  'not_pending%', 'and is then no longer under review');
 reset role;
 select is((select count(*)::int from notification_outbox where key = 'N8:declaration:' || :'decl_yes'), 1,
   'an onboarding declaration rejection sends N8, like a document');
