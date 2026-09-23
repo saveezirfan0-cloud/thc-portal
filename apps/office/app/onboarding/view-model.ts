@@ -143,6 +143,26 @@ export function candidateActions(status: StaffStatus): CandidateAction[] {
 }
 
 /**
+ * Statuses a "Resend activation link" is offered for — the same set
+ * `activation_resend_refusal()` (20260924110000) allows: accepted, and not
+ * rejected, inactive or removed. The database decides; this only keeps
+ * the button off screens where it could only ever be refused.
+ */
+const RESENDABLE: ReadonlySet<StaffStatus> = new Set<StaffStatus>([
+  'documents',
+  'quiz',
+  'additional_info',
+  'contract',
+  'compliant',
+  'blocked',
+]);
+
+/** Offer "Resend activation link"? Only to someone accepted who has not activated. */
+export function canResendActivation(status: StaffStatus, activated: boolean): boolean {
+  return !activated && RESENDABLE.has(status);
+}
+
+/**
  * The returning-applicant card (§2.12): "the manager either presses Reset
  * to candidate on it or rejects the application". Reset is drawn only
  * where the machine has the edge — blocked, rejected or inactive — so a

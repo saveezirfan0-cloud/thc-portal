@@ -6,9 +6,9 @@ import { createClient } from '@thc/db/server';
 import { createAdminClient } from '@thc/db/admin';
 import { supabaseConfigured } from '../staff/data';
 import { periodToRange, periodsProblem } from './view-model';
-import { acceptWithAccount } from './activation';
+import { acceptWithAccount, resendActivation } from './activation';
 import { reviewErrorMessage } from '../compliance/messages';
-import type { AcceptRpc, AdminAuth } from './activation';
+import type { AcceptRpc, AdminAuth, ResendRpc } from './activation';
 import type { Period } from './view-model';
 import type { ActionResult } from './types';
 
@@ -65,11 +65,22 @@ const MESSAGES: Record<string, string> = {
     'This email address’s login already belongs to another staff record — possibly a duplicate. Check before accepting.',
   activation_link_not_personal:
     'The activation link could not be built — set NEXT_PUBLIC_STAFF_URL for the Back Office.',
+  // Resend activation link (20260924110000)
+  not_accepted:
+    'There is no activation link to resend yet — the candidate receives it when they are accepted.',
+  not_resendable: 'A rejected or inactive person is not sent an activation link.',
+  already_activated:
+    'This person has already activated their account. If they have forgotten their password, they can reset it from the Staff App sign-in page.',
+  unknown_staff: 'This person no longer exists — refresh the page.',
 };
 
 function explain(message: string): string {
   const code = message.split(':')[0]?.trim() ?? '';
   if (MESSAGES[code]) return MESSAGES[code];
+  if (code === 'resend_too_soon') {
+    const at = message.split(':').slice(1).join(':').trim();
+    return `A new link was sent less than 10 minutes ago. You can send another${at ? ` after ${at} (UK time)` : ' shortly'}.`;
+  }
   if (code === 'not_resettable') {
     return 'Reset to candidate is only possible on a blocked, rejected or inactive record (§9.6).';
   }
@@ -172,6 +183,38 @@ export async function acceptCandidate(
   );
   if (!outcome.ok) return { ok: false, message: explain(outcome.error) };
   for (const path of paths(staffId)) revalidatePath(path);
+  return { ok: true };
+}
+
+/**
+ * Resend activation link (§2.7, E3; docs/14 §2 item 4). A fresh personal
+ * link under a NEW E3 for someone accepted who has not activated yet —
+ * the usual reason is that the first link expired (a day, §10.2). The
+ * database refuses before anything is minted if it is too soon, the
+ * person has already activated, or they are not an accepted candidate or
+ * worker; activation.ts has the order. Service key for GoTrue only, after
+ * the manager check; the database write is the session client's.
+ */
+export async function resendActivationLink(staffId: string): Promise<ActionResult> {
+  const origin = staffOrigin();
+  if (!origin) return { ok: false, message: MESSAGES.activation_link_required! };
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  if (!(await asAdmin())) return { ok: false, message: MESSAGES.not_authorised! };
+
+  let admin: AdminAuth;
+  try {
+    admin = createAdminClient().auth.admin as unknown as AdminAuth;
+  } catch {
+    return { ok: false, message: MESSAGES.account_service_key! };
+  }
+
+  const supabase = createClient(await cookies());
+  const outcome = await resendActivation(
+    { admin, rpc: supabase as unknown as ResendRpc },
+    { staffId, staffOrigin: origin },
+  );
+  if (!outcome.ok) return { ok: false, message: explain(outcome.error) };
+  for (const path of [...paths(staffId), `/staff/${staffId}`]) revalidatePath(path);
   return { ok: true };
 }
 

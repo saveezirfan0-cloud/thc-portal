@@ -180,6 +180,12 @@ export interface ProfileData {
   clients: ClientOption[];
   /** The signed-in manager, named as the author of a new office entry (§9.10). */
   managerName: string | null;
+  /**
+   * Whether the worker's login has a password (`staff_account_activated`,
+   * 20260924110000). False offers "Resend activation link"; null/absent =
+   * not known, and nothing is offered.
+   */
+  activated?: boolean | null;
   problem: string | null;
 }
 

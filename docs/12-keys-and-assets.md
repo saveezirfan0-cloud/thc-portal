@@ -136,7 +136,9 @@ Do not chase these now. Each is listed against the phase that first needs it.
 
 | Key | Where | First needed |
 |---|---|---|
-| `WILLO_API_KEY`, `WILLO_WEBHOOK_SECRET` | THC's Willo account | Phase 1, interviews |
+| `WILLO_API_KEY`, `WILLO_INTERVIEW_KEY`, `WILLO_WEBHOOK_SECRET` | THC's Willo account (Appendix B, B1). Supabase secrets for the `willo-webhook` Edge Function, never Vercel. Without the first two no candidate is created in Willo (logged); without the secret every webhook is refused | Phase 1, interviews |
+| `STAFF_APP_URL` | The Staff App's public origin, e.g. `https://app.thehospitalitycompany.co.uk`. Supabase secret: the Willo Accept builds E3's `/activate/{token}` link from it (the Back Office reads `NEXT_PUBLIC_STAFF_URL` for the same thing) | With the Willo keys |
+| Optional Willo overrides: `WILLO_SIGNATURE_HEADER`, `WILLO_TIMESTAMP_HEADER`, `WILLO_TIMESTAMP_TOLERANCE_SECONDS`, `WILLO_API_BASE`, `WILLO_INVITE_PATH`, `WILLO_API_AUTH_HEADER`, `WILLO_API_AUTH_PREFIX` | Set only if Willo's docs differ from the defaults in ADR-0021 | With the Willo keys |
 | `GEMINI_API_KEY` | https://aistudio.google.com/apikey | Phase 1, reading dates off documents |
 | `RESEND_API_KEY` | https://resend.com/api-keys — a **Sending access** key for the verified domain | P2, every email (`notify-drain`) — see below |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Generated, not obtained. Run `npx web-push generate-vapid-keys`; the subject is `mailto:admin@thehospitalitycompany.co.uk` | P2, every push (`notify-drain`) — see below |
@@ -146,6 +148,14 @@ Anything used by a background function goes in Supabase rather than Vercel:
 
 ```
 supabase secrets set GEMINI_API_KEY=… WILLO_API_KEY=… RESEND_API_KEY=… VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=… VAPID_SUBJECT=…
+```
+
+The Willo function is deployed without Supabase's JWT check, because Willo signs its own
+deliveries (ADR-0021). Point Willo's webhook at `{SUPABASE_URL}/functions/v1/willo-webhook`:
+
+```
+supabase secrets set WILLO_API_KEY=… WILLO_INTERVIEW_KEY=… WILLO_WEBHOOK_SECRET=… STAFF_APP_URL=https://…
+supabase functions deploy willo-webhook --no-verify-jwt
 ```
 
 Email needs two verified senders on THC's domain, `admin@` and `timesheets@`, which means

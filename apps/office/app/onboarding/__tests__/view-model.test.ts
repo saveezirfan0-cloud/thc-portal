@@ -8,6 +8,7 @@ import {
   blockerLabel,
   boardColumns,
   boardCounts,
+  canResendActivation,
   candidateActions,
   cardLines,
   columnFor,
@@ -168,6 +169,21 @@ describe('every transition the board offers is legal (§2.12)', () => {
           canTransitionStaff(status as (typeof STAFF_STATUSES)[number], ACTION_TARGET[action]),
         ).toBe(true);
       }
+    }
+  });
+
+  it('Resend activation link is offered only to someone accepted who has not activated', () => {
+    expect(canResendActivation('documents', false)).toBe(true);
+    expect(canResendActivation('compliant', false)).toBe(true);
+    expect(canResendActivation('documents', true)).toBe(false);
+    for (const status of [
+      'interview_requested',
+      'interview_completed',
+      'rejected',
+      'inactive',
+      'removed',
+    ] as const) {
+      expect(canResendActivation(status, false)).toBe(false);
     }
   });
 

@@ -37,6 +37,7 @@ import {
   rejectCandidate,
   rejectDeclaration,
   rejectDocument,
+  resendActivationLink,
   verifyDeclaration,
   verifyDocument,
 } from './actions';
@@ -47,6 +48,7 @@ import {
   QUIZ_PASS_MARK,
   REVIEW_PILL,
   aiBadge,
+  canResendActivation,
   candidateActions,
   columnFor,
   orDash,
@@ -111,6 +113,7 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
   const [reason, setReason] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, start] = useTransition();
+  const [resent, setResent] = useState(false);
 
   const actions = candidateActions(row.status);
   const readOnly = row.status === 'rejected' || row.status === 'compliant';
@@ -221,6 +224,21 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
             <Facts row={row} data={data} phase={phase} />
           </div>
           <div className="actions">
+            {canResendActivation(row.status, row.activated) ? (
+              <Button
+                tone="outline"
+                disabled={busy || resent}
+                title="A fresh personal link and a new E3, for a candidate whose link has expired (§2.7). Once every 10 minutes."
+                onClick={() =>
+                  run(
+                    () => resendActivationLink(row.id),
+                    () => setResent(true),
+                  )
+                }
+              >
+                {resent ? 'Activation link sent ✓' : 'Resend activation link'}
+              </Button>
+            ) : null}
             {actions.includes('reject') ? (
               <Button tone="danger" onClick={() => setReject({ kind: 'candidate' })}>
                 Reject candidate
