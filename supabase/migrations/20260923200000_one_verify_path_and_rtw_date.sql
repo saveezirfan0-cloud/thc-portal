@@ -95,7 +95,7 @@
 -- report and the extractor read the date off it — so
 -- record_document_extraction() now pre-fills right_to_work_until on a
 -- share code report, and both screens show that date for the reviewer to
--- CONFIRM (or enter it from the report when no extractor has run). ADR-0017.
+-- CONFIRM (or enter it from the report when no extractor has run). ADR-0018.
 --
 -- Also in this migration (same PR, docs/14 hot spot list)
 -- -------------------------------------------------------

@@ -1,4 +1,4 @@
-# ADR-0017 · The right-to-work date is confirmed on Verify, and one Verify serves both screens
+# ADR-0018 · The right-to-work date is confirmed on Verify, and one Verify serves both screens
 
 **Status:** Accepted (migration `20260923200000`, pgTAP 460–461) · **Builds on:** ADR-0002 (gov.uk share-code check), ADR-0012 (completion letter and rota guard), ADR-0014 (wizard seams)
 

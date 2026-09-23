@@ -15,10 +15,10 @@ screen it names is now built; what is left is listed in §2 and §4 below.
 ## 1 · What is genuinely built
 
 **Every screen in the product now exists.** Three Next.js apps on one Supabase
-database, **65 migrations**, **52 pgTAP files (2,101 assertions)**, **1,350 Vitest
+database, **68 migrations**, **56 pgTAP files (2,190 assertions)**, **1,358 Vitest
 tests** across eight packages, six Edge Functions (`auto-staffing`,
 `booking-tick`, `compliance-daily`, `finance-reports`, `gdpr-purge`, plus
-`_shared`), and ADRs up to `0016`. CI runs lint, typecheck, Vitest,
+`_shared`), and ADRs up to `0018`. CI runs lint, typecheck, Vitest,
 `supabase test db` and Playwright on every push, and `deploy-database` pushes
 migrations to the live project on merge to `main`.
 
@@ -77,6 +77,8 @@ last, below a divider. The Staff App's Documents tab is live.
    drain must send `BG08`/`D1`/`D2` rows through `documentMessageFor()` (they are
    deliberately outside the §8 register). It should also read the `senders`
    setting `/settings` writes; `templates.ts` still hard-codes the two addresses.
+   **The `finance-reports` schedule is disabled until then** (20260923193100);
+   re-enable it in the same commit as the drain, and update `190`'s list.
 2. **Willo.** No webhook receiver and no "create candidate" call — both need
    THC's keys. `willo_link_candidate` / `willo_record_event` are built and tested;
    the receiver must also provision the login exactly as the office Accept does
@@ -120,6 +122,21 @@ last, below a divider. The Staff App's Documents tab is live.
   expected a band the database never returns (`uncapped`).
 - **Customers could fake a rating change** through the 0001 client insert
   policy on `feedback`; the policy now requires unread rows under the caller.
+- **qa-reviewer's two blockers.** (1) A worker could delete their own verified
+  right-to-work evidence from Storage by naming its path to a refusing upload
+  action; every discard now asks `evidence_path_discardable()` (`20260923193000`,
+  `442`). (2) Two verify paths disagreed and neither put a right-to-work date
+  on a non-UK worker, so `can_roster_staff()` never stopped them. One verify
+  body now serves both screens, the date is required per branch and the
+  worker's `right_to_work_until` follows the earliest verified evidence
+  (`20260923200000`, `460`, ADR-0018).
+- **Also from that review:** the wizard's opt-out tick now signs/cancels with
+  notice, audit and CL5/CL6 like the hub; only the worker (or the service role)
+  may sign or cancel their own opt-out; the old five-argument
+  `onboarding_accept` is revoked from `authenticated`; `size_bytes` is the one
+  size column and the wizard reads it off the real Storage object; the Monday
+  finance send is paused until P2; the client sees a sign-out timesheet only
+  once it is final (`443`); E2b has ADR-0017.
 - `supabase/config.toml` `otp_expiry` is 86400 (activation links last a day).
 - `scripts/pgtest-local.sh` — the Docker-free pgTAP harness §7 describes, as a
   script.
@@ -130,14 +147,16 @@ last, below a divider. The Staff App's Documents tab is live.
 
 New from this build:
 
-- **Two sets of document verify/reject functions.** B5 added `verify_document` /
-  `reject_document` / `verify_declaration` / `reject_declaration` (used by
-  `/onboarding`); B6 added `compliance_verify_document` etc. (used by
-  `/compliance`). They agree today and both go through the same row guards, but
-  one should call the other.
-- **The old five-argument `onboarding_accept` is still executable by admins**
-  with a static link; `380` calls it. Move `380` to
-  `onboarding_accept_with_account` and revoke it from `authenticated`.
+- **Workers verified on a share code before 23.09 with no date still have
+  none** — nothing to backfill from. Re-verify them; the query that finds them
+  is in the header of `20260923200000`.
+- **A verified settled-status share code shows "—"** on the candidate profile:
+  `staff_documents_v` does not carry the new `rtw_no_time_limit` flag.
+- **The share-code date is confirmed by the office** until the extractor that
+  reads the gov.uk report exists; §2.3 says nobody types it (ADR-0018).
+- **A later direct update that blanks a verified document's date is not
+  refused** — only the moment of verifying is guarded, because the `200`/`220`/
+  `250` fixtures blank dates that way. The worker's date still recomputes.
 - **Rota guard gaps:** changing a shift's times does not re-check confirmed
   workers against the cap; one statement confirming several bookings for one
   worker can read a stale total; `weekly_booked_hours` counts `closed` bookings,
@@ -222,7 +241,7 @@ Carried over:
   otherwise die after an hour.
 - **Deploy the Edge Functions before `install_job_schedules()`** — the
   `finance-reports` row is enabled and would otherwise post to a 404.
-- **Confirm with THC:** E2b's wording; the CL1–CL6 wording and which are
+- **Confirm with THC:** E2b's wording (ADR-0017); the CL1–CL6 wording and which are
   mandatory; whether ADR-0012's retention-over-removal extends to other
   right-to-work documents.
 - **Chase THC for the Appendix B inputs**: the contract text, sample completion
@@ -288,7 +307,7 @@ Each of these cost a merge conflict or a red build:
   collapsed when four sessions all reached for `0006`. Two sessions still managed
   to pick the same second; CI has a uniqueness guard now.
 - **ADRs collide too** — four sessions reached for `0008`. Check `docs/adr/` for
-  the highest number immediately before you write one. It is at `0016`.
+  the highest number immediately before you write one. It is at `0018`.
 - **pgTAP files collide as well**; three landed on `130`. Number from the highest
   file in `supabase/tests/`, not from the highest you remember.
 - **Doc numbers collide.** There are two `14-`s right now: this page and
