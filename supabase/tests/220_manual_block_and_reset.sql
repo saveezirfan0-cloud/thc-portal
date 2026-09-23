@@ -27,7 +27,10 @@ select plan(25);
 \set stale 'd9000000-0000-4000-8000-000000000002'
 \set gone  'd9000000-0000-4000-8000-000000000003'
 
+-- 20260926120000: blanking a verified right-to-work date needs the owner-only escape.
+set local thc.allow_rtw_date_clear = 'on';
 update compliance_docs set expiry_date = null, right_to_work_until = null, uploaded_at = :'now'::timestamptz;
+set local thc.allow_rtw_date_clear = 'off';
 update staff set right_to_work_until = null, term_dates = '{}';
 
 insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_branch,
