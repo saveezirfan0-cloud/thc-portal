@@ -296,7 +296,10 @@ textarea.input { height: auto; min-height: 84px; padding: 10px 12px; resize: ver
 .input-row .addon.l { border-left: 1px solid var(--line); border-right: 0; border-radius: var(--r-sm) 0 0 var(--r-sm); }
 .input-row .input:not(:first-child) { border-top-left-radius: 0; border-bottom-left-radius: 0; }
 .input-row .input:not(:last-child) { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-.check { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 13px; }
+.check { position: relative; display: flex; gap: 10px; align-items: flex-start; cursor: pointer; font-size: 13px; }
+/* Native input under the drawn box: hidden visually only, so it stays focusable (§1.2). */
+.check-input { position: absolute; top: 0; left: 0; width: 1px; height: 1px; margin: 0; padding: 0; opacity: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.check-input:focus-visible + .box { outline: 2px solid var(--cyan-ink); outline-offset: 2px; }
 .check .box { width: 18px; height: 18px; border: 1.5px solid var(--muted); flex: 0 0 18px; margin-top: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: var(--on-cyan); border-radius: var(--r-xs); }
 .check .box.on { background: var(--cyan); border-color: var(--cyan); }
 .check .box.on::after { content: '✓'; font-weight: 700; }
