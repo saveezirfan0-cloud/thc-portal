@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { pickCheckLog } from './checkLog';
 import type { ShiftDetail } from './types';
 
 export function supabaseConfigured(): boolean {
@@ -40,7 +41,13 @@ export async function loadShift(bookingId: string): Promise<ShiftDetail | null> 
   const row = data as any;
   const shift = row.shift;
   const event = shift?.event;
-  const log = (row.logs ?? [])[0];
+  // One row per button press (§1.5), so a refused attempt can sit beside
+  // the real check-in. The same log the RPCs read: see checkLog.ts.
+  const log = pickCheckLog<{
+    check_in_at: string | null;
+    check_out_at: string | null;
+    manager_finish_at: string | null;
+  }>(row.logs);
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   // The venue point is a PostGIS geography, which PostgREST does not hand

@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import type { OpenShiftRow, StaffBooking, StaffBookingStatus } from '@thc/domain';
+import type { CancelCause, OpenShiftRow, StaffBooking, StaffBookingStatus } from '@thc/domain';
 import { staffDb, supabaseConfigured } from './db';
 
 /**
@@ -76,7 +76,8 @@ export async function loadBookings(): Promise<BookingRow[]> {
     reconfirmRequired: Boolean(row['reconfirm_required']),
     reconfirmReason: (row['reconfirm_reason'] as string) ?? null,
     appliedAt: date(row['applied_at']),
-    cancelCause: (row['cancel_cause'] as string) ?? null,
+    // bookings_cancel_cause_check holds the column to CANCEL_CAUSES.
+    cancelCause: (row['cancel_cause'] as CancelCause | null) ?? null,
     shiftId: row['shift_id'] as string,
     startsAt: new Date(row['starts_at'] as string),
     endsAt: new Date(row['ends_at'] as string),

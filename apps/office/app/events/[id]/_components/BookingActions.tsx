@@ -20,12 +20,15 @@ export function BookingActions({
   noShow,
   confirmed,
   payrollExported,
+  withdrawable = true,
 }: {
   eventId: string;
   bookingId: string;
   noShow: boolean;
   confirmed: boolean;
   payrollExported: boolean;
+  /** False once the booking is `worked`: §3.6 has no edge out (canCancelBooking). */
+  withdrawable?: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -80,14 +83,16 @@ export function BookingActions({
         </Button>
       ) : null}
 
-      <Button
-        size="sm"
-        tone="ghost"
-        disabled={pending}
-        onClick={() => run(() => withdraw(eventId, bookingId, confirmed))}
-      >
-        {confirmed ? 'Withdraw' : 'Withdraw invite'}
-      </Button>
+      {withdrawable ? (
+        <Button
+          size="sm"
+          tone="ghost"
+          disabled={pending}
+          onClick={() => run(() => withdraw(eventId, bookingId, confirmed))}
+        >
+          {confirmed ? 'Withdraw' : 'Withdraw invite'}
+        </Button>
+      ) : null}
     </>
   );
 }
