@@ -1,3 +1,4 @@
+import { acceptedLog } from '@thc/domain';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import type { MonitorRow, MonitorStatus, ViolationRow, ViolationType } from './types';
@@ -106,7 +107,26 @@ export async function loadMonitor(): Promise<MonitorPageData> {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const violationRows: ViolationRow[] = (violations.data ?? []).map((v: any) => {
     const shift = v.booking?.shift;
-    const log = (v.booking?.logs ?? [])[0];
+    // `acceptedLog`, not `[0]` (§1.5). check_logs holds one row per button
+    // press: a RULE-15 turn-away and an out-of-radius refusal are logged
+    // too, and only the accepted press carries check_in_at. An embedded
+    // array has no ordering guarantee, so `[0]` could hand this window the
+    // turned-away attempt — blank or wrong times, immediately beside the
+    // "Actual finish (UK time)" field a manager types into to resolve.
+    // The monitor table above is already safe: it reads checkin_monitor_v,
+    // which resolves the row in SQL.
+    //
+    // Narrowed in TypeScript rather than in the query, unlike the worker's
+    // on-shift loader: there `logs` is embedded one level down and takes a
+    // `referencedTable` filter cleanly, whereas here it hangs off `booking`
+    // and the nested form is not something this repo can exercise without a
+    // live PostgREST. The guard is what makes the screen correct either
+    // way, so the untested modifier buys nothing.
+    const log = acceptedLog<{
+      check_in_at: string | null;
+      check_out_at: string | null;
+      manager_finish_at: string | null;
+    }>(v.booking?.logs);
     const staff = v.staff;
     return {
       id: v.id,

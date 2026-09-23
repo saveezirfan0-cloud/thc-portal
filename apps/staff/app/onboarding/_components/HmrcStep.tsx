@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Checkbox, Input, Radio } from '@thc/ui';
+import { Alert, Button, Checkbox, Input, Radio, RadioGroup } from '@thc/ui';
 import {
   HMRC_DECLARATION,
   HMRC_QUESTIONS,
@@ -35,14 +35,14 @@ function YesNo({
   label: string;
 }) {
   return (
-    <div className="wiz-choices" role="radiogroup" aria-label={label}>
+    <RadioGroup className="wiz-choices" aria-label={label}>
       <Radio checked={value === true} onChange={() => onChange(true)}>
         Yes
       </Radio>
       <Radio checked={value === false} onChange={() => onChange(false)}>
         No
       </Radio>
-    </div>
+    </RadioGroup>
   );
 }
 
@@ -111,7 +111,7 @@ export function HmrcStep({ initial, niMasked }: { initial: HmrcForm; niMasked: s
 
       <div className="wiz-block">
         <div className="qt">Student loan</div>
-        <div className="wiz-choices" role="radiogroup" aria-label="Student loan">
+        <RadioGroup className="wiz-choices" aria-label="Student loan" name="student-loan">
           {STUDENT_LOAN_OPTIONS.map((o) => (
             <Radio
               key={o.value}
@@ -121,7 +121,7 @@ export function HmrcStep({ initial, niMasked }: { initial: HmrcForm; niMasked: s
               {o.label}
             </Radio>
           ))}
-        </div>
+        </RadioGroup>
         <Checkbox checked={form.postgraduateLoan} onChange={(v) => set('postgraduateLoan', v)}>
           I’m also repaying a <b>Postgraduate Loan</b>{' '}
           <span className="xs muted">— can be ticked together with a plan</span>
@@ -156,7 +156,7 @@ export function HmrcStep({ initial, niMasked }: { initial: HmrcForm; niMasked: s
       <label className={`check boxed ${form.declared ? 'on' : ''}`}>
         <input
           type="checkbox"
-          className="hide"
+          className="check-input"
           checked={form.declared}
           onChange={(e) => set('declared', e.target.checked)}
         />

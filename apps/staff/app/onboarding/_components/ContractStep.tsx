@@ -73,7 +73,7 @@ export function ContractStep({
       <label className={`check boxed ${signed ? 'on' : ''}`}>
         <input
           type="checkbox"
-          className="hide"
+          className="check-input"
           checked={signed}
           disabled={signed || pending}
           onChange={(e) => {

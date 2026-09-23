@@ -8,7 +8,7 @@ import type { ReactElement } from 'react';
 import { Avatar, AvatarGroup, Person, initials } from '../components/Avatar';
 import { AuthCard } from '../components/AuthCard';
 import { Button } from '../components/Button';
-import { Checkbox, OptionRow, Radio, Switch } from '../components/Controls';
+import { Checkbox, OptionRow, Radio, RadioGroup, Switch } from '../components/Controls';
 import { SignOut } from '../components/SignOut';
 import {
   KpiTile,
@@ -451,6 +451,16 @@ describe('controls, people and pipeline', () => {
           <Radio checked={false} onChange={noop}>
             International student
           </Radio>
+          {/* Grouped radios: one shared `name` is what gives the arrow keys
+              and the single tab stop (D1, §1.2). */}
+          <RadioGroup className="wiz-choices" aria-label="Right to work" name="rtw">
+            <Radio checked onChange={noop}>
+              UK / Irish citizen
+            </Radio>
+            <Radio checked={false} onChange={noop}>
+              International student
+            </Radio>
+          </RadioGroup>
           <OptionRow
             selected
             title="International student"

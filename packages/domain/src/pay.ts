@@ -427,3 +427,34 @@ export function pay(payableMin: number, hourlyRatePence: number): Money {
   const basePence = Math.round((payableMin / 60) * hourlyRatePence);
   return { basePence, holidayPence: Math.round(basePence * HOLIDAY_RATE) };
 }
+
+/**
+ * Which `check_logs` row is the one that counts (§1.5, RULE-01).
+ *
+ * `check_logs` is append-only and holds one row per button press, not one
+ * per booking: a strict-buffer turn-away (RULE-15) and an out-of-radius
+ * refusal are both logged, and only the accepted press carries
+ * `check_in_at`. So the row a screen must read is the earliest one that
+ * actually checked the worker in — never `[0]` of whatever order a
+ * response happened to arrive in.
+ *
+ * This is the same row the SQL takes with
+ * `where check_in_at is not null order by check_in_at limit 1`
+ * (`payable_shifts_v`, `checkin_monitor_v`, `staff_earnings()`,
+ * `check_out()`), and it lives here rather than in either app because two
+ * screens read these rows through PostgREST — the worker's on-shift screen
+ * and the office's §9.5 violation log — and a JSON array of embedded rows
+ * carries no ordering guarantee of its own. Both got it wrong the same
+ * way; one definition is what stops the third.
+ *
+ * `check_out_at` and `manager_finish_at` only ever exist on this row,
+ * because `check_out()` and `resolve_violation()` both resolve it with
+ * that same lateral before they write.
+ */
+export function acceptedLog<T extends { check_in_at: string | null }>(
+  logs: readonly T[] | null | undefined,
+): T | null {
+  const stamp = (l: T) => Date.parse(l.check_in_at ?? '');
+  const accepted = (logs ?? []).filter((l) => Boolean(l.check_in_at));
+  return [...accepted].sort((a, b) => stamp(a) - stamp(b))[0] ?? null;
+}

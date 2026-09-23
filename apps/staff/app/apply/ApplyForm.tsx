@@ -155,14 +155,13 @@ export function ApplyForm() {
       />
 
       {/*
-        Deliberately not `Checkbox` from @thc/ui: that component hides its
-        input with `.hide`, which is `display: none !important`, so the
-        control cannot be tabbed to and is absent from the accessibility
-        tree. For a GDPR consent tick that has to be given deliberately
-        (§1.7) a mouse-only control is not good enough. The shared component
-        needs the visually-hidden pattern used here instead, and that is a
-        change to packages/ui, which the conventions say ships in its own
-        pull request before the screens that need it.
+        Still spelled out rather than `Checkbox` from @thc/ui, but only for
+        the coral box border this tick takes when the GDPR consent is missing
+        (§1.7) — the shared component has no error-border prop. The keyboard
+        problem that used to be the reason is gone: D1 replaced `.hide`
+        (`display: none !important`, so no tab stop and nothing in the
+        accessibility tree) with `.check-input`, the visually-hidden-but-
+        focusable rule, and that rule now lives in packages/ui for everyone.
       */}
       <label className="check">
         <input

@@ -43,29 +43,11 @@
   background-position: right 11px center;
 }
 
-/* The consent tick (§1.7). The real checkbox stays in the page and stays
-   focusable — it carries the value, the keyboard path and the accessible
-   name — with the design system's square drawn next to it. @thc/ui's
-   Checkbox hides its input with `display: none`, which loses all three;
-   see the note in ApplyForm.tsx. */
-.apply-page .check {
-  position: relative;
-}
-
+/* The consent tick (§1.7). `.check`, `.check-input` and its focus ring are the
+   shared rules in packages/ui now (D1); all that is left here is the 2px
+   nudge that lines the transparent input up with this page's taller text. */
 .apply-page .check .check-input {
-  position: absolute;
   top: 2px;
-  left: 0;
-  width: 18px;
-  height: 18px;
-  margin: 0;
-  opacity: 0;
-  cursor: pointer;
-}
-
-.apply-page .check .check-input:focus-visible + .box {
-  outline: 2px solid var(--focus-line);
-  outline-offset: 2px;
 }
 
 .apply-page .check .txt {

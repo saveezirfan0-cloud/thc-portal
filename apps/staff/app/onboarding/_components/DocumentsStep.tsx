@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Input, Pill, Radio, Textarea } from '@thc/ui';
+import { Alert, Button, Input, Pill, Radio, RadioGroup, Textarea } from '@thc/ui';
 import { formatFileSize, formatShareCode } from '@thc/domain';
 import type { DocRequirement } from '@thc/domain';
 import { submitDocuments } from '../actions';
@@ -124,14 +124,18 @@ export function DocumentsStep({
           convictions don’t need to be declared. You must also tell us about any conviction that
           happens while you work for us (§10.7).
         </div>
-        <div className="wiz-choices" role="radiogroup" aria-label="Unspent criminal convictions">
+        <RadioGroup
+          className="wiz-choices"
+          aria-label="Unspent criminal convictions"
+          name="unspent-convictions"
+        >
           <Radio checked={answer === true} onChange={() => setAnswer(true)}>
             Yes
           </Radio>
           <Radio checked={answer === false} onChange={() => setAnswer(false)}>
             No
           </Radio>
-        </div>
+        </RadioGroup>
         {answer === false ? (
           <div className="xs muted">
             “No” is recorded as verified straight away — nothing for the office to review.

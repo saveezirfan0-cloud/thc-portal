@@ -146,16 +146,18 @@ export function Slider({ value, min, max, onChange, label, ...rest }: SliderProp
       {label ? <span className="label">{label}</span> : null}
       <div className="slider">
         <span className="fill" style={{ width: `${pct}%` }} />
-        <span className="knob" style={{ left: `${pct}%` }} />
+        {/* Before `.knob` so the focus ring can be drawn on it, and under the
+            decoration so the pointer still lands on the real control. */}
         <input
           type="range"
-          className="hide"
+          className="slider-input"
           value={value}
           min={min}
           max={max}
           onChange={(event) => onChange(Number(event.target.value))}
           {...rest}
         />
+        <span className="knob" style={{ left: `${pct}%` }} />
       </div>
     </div>
   );
