@@ -34,10 +34,13 @@ export function Overview({
   profile,
   references,
   declarations,
+  locationStale = false,
 }: {
   profile: ProfileRow;
   references: ReferenceRow[];
   declarations: DeclarationRow[];
+  /** The address moved and the pin could not follow (20260926110000). */
+  locationStale?: boolean;
 }) {
   return (
     <div className="grid c2">
@@ -50,7 +53,20 @@ export function Overview({
           <span className="k">Date of birth</span>
           <span>{profile.dob ? formatUkDate(profile.dob) : value(null)}</span>
           <span className="k">Home address</span>
-          <span>{value(profile.home_address)}</span>
+          <span>
+            {value(profile.home_address)}
+            {locationStale ? (
+              <>
+                {' '}
+                <Pill tone="amber">location out of date</Pill>
+                <br />
+                <span className="muted sm">
+                  This address changed but its postcode could not be looked up, so venue distances
+                  (auto-assign proximity) still use the previous location.
+                </span>
+              </>
+            ) : null}
+          </span>
           <span className="k">Right to Work</span>
           <span>
             {value(profile.rtw_branch ? RTW_LABEL[profile.rtw_branch] : null)}
