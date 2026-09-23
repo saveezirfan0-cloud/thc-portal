@@ -5,20 +5,34 @@ below is a setting, a key, a deploy or content that a coding session cannot
 supply. Tick items off here as they are done. `docs/14-handover.md` §5 has the
 background for each.
 
-Last updated 26.09.2026.
+Last updated 26.09.2026. **§1 and §2 re-checked against the live project and
+GitHub on 23.09** — both are still open, they are not stale entries.
 
 ## 1 · Supabase settings (dashboard)
 
 - [ ] **Auth → Email OTP Expiration → `86400`.** Activation (E3) and reset links
       otherwise expire after an hour.
 - [ ] **Auth → turn on leaked-password protection.** The security advisor still
-      reports it off.
+      reports it off (re-read 23.09). Of everything the advisor flags on this
+      project, it is the only finding that is not a deliberate design decision.
+- [ ] **Answer, if you can: what created `public.rls_auto_enable()`?** It is a
+      `SECURITY DEFINER` function that manipulates row-level security, it exists
+      on the live project, and it is **in no migration in this repository** — so
+      no session made it. It was callable by anyone, signed in or not; a session
+      has since revoked EXECUTE from `public`, `anon` and `authenticated`, so it
+      is no longer reachable. Nobody has established where it came from. If you
+      or anyone ran something in the SQL editor, or installed a Supabase
+      integration or template, that is the likely answer — and worth knowing
+      before something else recreates it.
 
 ## 2 · GitHub
 
 - [ ] **Branch protection on `main`**: require a pull request and a green
       `build-test` check (the job name, not the `ci` workflow):
       https://github.com/saveezirfan0-cloud/thc-portal/settings/rules/new?target=branch
+      Confirmed still off on 23.09 (`"protected": false`). Worth doing now
+      rather than later: several sessions push to `main` on the same day, and
+      nothing currently stops one landing a red build.
 
 ## 3 · Turn sending on: email and push (ADR-0020, `docs/12-keys-and-assets.md`)
 
