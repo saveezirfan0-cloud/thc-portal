@@ -88,6 +88,13 @@ It reads `origin` for the repository. The repo is private, so a local run needs
 `GITHUB_TOKEN` set to a token with `pull-requests: read`; CI passes its own and
 needs nothing. Either way the check never fails a build — it only reports.
 
+In a cloud session, outbound HTTPS goes through the agent proxy and Node does
+not use it unless told to, so the invocation there is:
+
+```
+NODE_USE_ENV_PROXY=1 pnpm check:overlap
+```
+
 This used to say "`git fetch origin`, `git branch -r`, and look at what each branch
 touches". That was right in intent and unusable in practice: branch names do not say
 what a branch edits, half of them have no open PR, and nobody diffs fifteen of them by
