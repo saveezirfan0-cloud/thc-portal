@@ -232,7 +232,18 @@ export async function finishDocumentUpload(input: {
   const mime = String(object?.metadata?.['mimetype'] ?? '');
   if (!object) return { ok: false, message: 'That upload didn’t finish. Please try again.' };
 
+  // Only a fresh, unreferenced object is removed (evidence_path_discardable):
+  // the path is the browser's, and a verified document's path would
+  // otherwise be deletable by having this attach refuse it.
   const discard = async () => {
+    const { data: discardable } = await admin.rpc(
+      'evidence_path_discardable' as never,
+      {
+        p_staff: staffId,
+        p_path: input.path,
+      } as never,
+    );
+    if (discardable !== true) return;
     await admin.storage.from('documents').remove([input.path]);
   };
   if (size > UPLOAD_MAX_BYTES || size <= 0) {

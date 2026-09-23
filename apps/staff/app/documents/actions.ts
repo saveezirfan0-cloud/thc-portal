@@ -157,13 +157,28 @@ export async function startUpload(
   }
 }
 
-/** A refused upload is removed — only ever under the caller's own prefix. */
+/**
+ * A refused upload is removed — but only one the database confirms is the
+ * caller's own, uploaded within the hour, and referenced by nothing
+ * (`evidence_path_discardable()`). The path comes from the browser, so
+ * without that a worker could name their own verified passport, have the
+ * RPC refuse it, and have the service key delete right-to-work evidence.
+ */
 async function discard(path: string | null) {
   if (!path) return;
   const worker = await me();
   if (!worker || !path.startsWith(`${worker.staffId}/`)) return;
   try {
-    await createAdminClient().storage.from(BUCKET).remove([path]);
+    const admin = createAdminClient();
+    const { data: discardable } = await admin.rpc(
+      'evidence_path_discardable' as never,
+      {
+        p_staff: worker.staffId,
+        p_path: path,
+      } as never,
+    );
+    if (discardable !== true) return;
+    await admin.storage.from(BUCKET).remove([path]);
   } catch {
     // Best effort: an orphan in a private bucket is untidy, not a leak.
   }

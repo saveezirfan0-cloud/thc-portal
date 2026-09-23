@@ -266,8 +266,8 @@ select bag_eq(
   $$ select job::text from job_schedules where enabled $$,
   $$ values ('booking-tick'::text), ('auto-staffing-hourly'),
             ('auto-staffing-cutoff'), ('auto-staffing-escalation'),
-            ('compliance-daily'), ('finance-reports') $$,
-  'exactly the six schedules whose Edge Function exists are enabled; the rest wait for theirs'
+            ('compliance-daily') $$,
+  'exactly the five schedules whose Edge Function exists AND whose sends can go out are enabled; finance-reports waits for the outbox drain (P2, 20260923193100)'
 );
 
 select * from finish();

@@ -14,6 +14,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 const rpc = vi.fn();
 const createSignedUploadUrl = vi.fn();
 const remove = vi.fn();
+const adminRpc = vi.fn();
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
 vi.mock('next/cache', () => ({ revalidatePath: () => {} }));
@@ -23,6 +24,7 @@ vi.mock('../../db', () => ({
 }));
 vi.mock('@thc/db/admin', () => ({
   createAdminClient: () => ({
+    rpc: (...args: unknown[]) => adminRpc(...args),
     storage: {
       from: (bucket: string) => ({
         createSignedUploadUrl: (path: string) => createSignedUploadUrl(bucket, path),
@@ -49,6 +51,8 @@ beforeEach(() => {
   rpc.mockReset();
   createSignedUploadUrl.mockReset();
   remove.mockReset();
+  adminRpc.mockReset();
+  adminRpc.mockResolvedValue({ data: true, error: null });
   createSignedUploadUrl.mockResolvedValue({
     data: { token: 'tok', signedUrl: 'x', path: 'p' },
     error: null,
@@ -140,8 +144,24 @@ describe('finish…() — the worker’s RPC', () => {
     });
     expect(remove).toHaveBeenCalledWith('documents', [mine]);
 
+    expect(adminRpc).toHaveBeenCalledWith('evidence_path_discardable', {
+      p_staff: STAFF,
+      p_path: mine,
+    });
+
     remove.mockReset();
     await finishDocumentUpload('passport', 'someone-else/passport/abc.pdf', null);
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it('never removes a path the database says is evidence — a verified document named back to a refusing RPC', async () => {
+    rpc.mockImplementation(async (fn: string) =>
+      fn === 'staff_me'
+        ? { data: { staffId: STAFF, status: 'compliant', blockKind: null }, error: null }
+        : { data: { ok: false, reason: 'invalid_path' }, error: null },
+    );
+    adminRpc.mockResolvedValue({ data: false, error: null });
+    await finishDocumentUpload('passport', `${STAFF}/passport/verified.pdf`, null);
     expect(remove).not.toHaveBeenCalled();
   });
 
