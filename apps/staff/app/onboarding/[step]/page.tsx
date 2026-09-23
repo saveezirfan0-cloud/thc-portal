@@ -1,12 +1,15 @@
 import { notFound, redirect } from 'next/navigation';
+import { Alert } from '@thc/ui';
 import { BRANCH_HEADING, TOTAL_STEPS, canEditStep, stepAccess, ukToday } from '@thc/domain';
 import { signOwnPhoto } from '../../profile/photos';
 import { AddressStep } from '../_components/AddressStep';
 import { DocumentsStep } from '../_components/DocumentsStep';
+import { InductionStep } from '../_components/InductionStep';
+import { QuizStep } from '../_components/QuizStep';
 import { RtwStep } from '../_components/RtwStep';
 import { SelfieStep } from '../_components/SelfieStep';
-import { WizardFrame, workerFor } from '../_components/Wizard';
-import { loadOnboarding, supabaseConfigured } from '../data';
+import { WizardFrame, WizardTop, workerFor } from '../_components/Wizard';
+import { loadOnboarding, loadQuizQuestions, supabaseConfigured } from '../data';
 import { requirementRows, wizardFacts } from '../state';
 import type { OnboardingState } from '../state';
 import '../onboarding.css';
@@ -82,8 +85,22 @@ async function render(n: number, s: OnboardingState) {
           today={today}
         />
       );
+    case 5:
+      return <InductionStep alreadyDone={Boolean(s.progress.inductionAt)} />;
+    case 6: {
+      const questions = await loadQuizQuestions();
+      if (!questions) {
+        return (
+          <>
+            <WizardTop step={6} heading="Safety quiz" />
+            <Alert tone="coral">The quiz isn’t open for you right now.</Alert>
+          </>
+        );
+      }
+      return <QuizStep firstName={s.firstName} questions={questions} previous={s.quiz} />;
+    }
     default:
-      // Steps 5–11 arrive in the next commits of this branch.
+      // Steps 7–11 arrive in the next commits of this branch.
       redirect('/onboarding');
   }
 }
