@@ -389,6 +389,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             profile={profile}
             references={data.references}
             declarations={data.declarations}
+            locationStale={data.locationStale === true}
           />
         ) : null}
         {tab === 'documents' ? <Documents profile={profile} documents={data.documents} /> : null}
