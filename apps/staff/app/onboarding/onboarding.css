@@ -1,0 +1,453 @@
+/*
+ * The onboarding wizard — the page-local styles of
+ * wireframes/staff/onboarding-1.html, -2 and -3, promoted into the app.
+ * Layout only: every colour, radius, font and space is a token from
+ * packages/ui, so both appearance modes render it (ADR-0007).
+ */
+
+/* The body leaves room for the frosted footer the Continue button sits in. */
+.wizard .app-body {
+  padding-bottom: 150px;
+}
+
+/* 1/11 … 11/11 — the counter, the track, the heading (§10.3). */
+.wizard-top .progress {
+  margin-top: calc(-1 * var(--sp-4));
+}
+.wizard-top .sub {
+  font-size: var(--fs-13);
+  color: var(--muted);
+}
+.wizard-top .row h2 {
+  flex: 1;
+  min-width: 0;
+}
+
+/* A column of option rows (the five branches). */
+.wiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+/* An inline text action: "Change", "Edit", "Replace". */
+.linkbtn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cyan-ink);
+  font: inherit;
+  font-size: var(--fs-13);
+  cursor: pointer;
+}
+.linkbtn.xs {
+  font-size: var(--fs-11);
+}
+
+/* The frosted footer: Continue, and the line under it that says why not. */
+.wiz-foot {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  padding: var(--sp-12) var(--gutter-mobile) var(--sp-26);
+  background: var(--glass);
+  backdrop-filter: blur(var(--blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
+  border-top: 1px solid var(--glass-line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+.wiz-foot .xs {
+  text-align: center;
+}
+
+/* Bordered list of document rows inside a step. */
+.wiz-list {
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--card-glass);
+  overflow: hidden;
+}
+.wiz-list .docrow {
+  padding: var(--sp-10) var(--sp-12);
+}
+.wiz-list .docrow .ico {
+  width: 30px;
+  height: 30px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-10);
+}
+.wiz-list .docrow.off {
+  opacity: 0.5;
+}
+
+/* A bordered block: the declaration, a referee, an HMRC question. */
+.wiz-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  padding: var(--sp-12) var(--sp-14);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--card-glass);
+}
+.wiz-block.focus {
+  border-color: var(--cyan-line);
+}
+.wiz-block .qt {
+  font-size: var(--fs-13);
+  font-weight: 500;
+}
+.wiz-block .bh {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: var(--fs-14);
+}
+.wiz-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-14) var(--sp-18);
+}
+
+/* A check that stands on its own, bordered: the opt-out, a declaration. */
+.check.boxed {
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  padding: var(--sp-10) var(--sp-12);
+  background: var(--card-glass);
+}
+.check.boxed.on {
+  border-color: var(--cyan-line);
+  background: var(--cyan-dim);
+}
+
+/* 2/11 — the map the pin sits on. The surface is the design system's
+   map ground; Mapbox raster tiles are laid over it when a token exists. */
+.pin-map {
+  position: relative;
+  height: 250px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background:
+    linear-gradient(var(--map-a) 1px, transparent 1px) 0 0 / 32px 32px,
+    linear-gradient(90deg, var(--map-a) 1px, transparent 1px) 0 0 / 32px 32px,
+    var(--map-b);
+  touch-action: none;
+  cursor: grab;
+  user-select: none;
+}
+.pin-map:active {
+  cursor: grabbing;
+}
+.pin-map img.tile {
+  position: absolute;
+  width: 256px;
+  height: 256px;
+  pointer-events: none;
+}
+.pin-map .pin {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 22px;
+  height: 22px;
+  margin: -22px 0 0 -11px;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  background: var(--cyan-solid);
+  border: 2px solid var(--on-cyan);
+  pointer-events: none;
+}
+.pin-map .hint-lbl {
+  position: absolute;
+  left: 50%;
+  top: calc(50% + 10px);
+  transform: translateX(-50%);
+  font-size: var(--fs-11);
+  color: var(--cyan-ink);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.pin-map .controls {
+  position: absolute;
+  right: var(--sp-8);
+  bottom: var(--sp-8);
+  display: flex;
+  gap: var(--sp-6);
+}
+
+/* 3/11 — the viewfinder and the preview (square, as the avatar is). */
+.cam {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: linear-gradient(160deg, var(--photo-a), var(--photo-b));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.cam .guide {
+  width: 64%;
+  height: 78%;
+  border: 1.5px dashed var(--cyan);
+  border-radius: 45%;
+  opacity: 0.8;
+}
+.cam .lbl {
+  position: absolute;
+  bottom: var(--sp-8);
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-family: var(--font-label);
+  font-size: var(--fs-10);
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.cam img,
+.cam video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.shutter {
+  width: 62px;
+  height: 62px;
+  margin: 0 auto;
+  border: 3px solid var(--text);
+  border-radius: 50%;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.shutter i {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--text);
+  display: block;
+}
+.file-hidden {
+  display: none;
+}
+
+/* 5/11 — the induction viewer. */
+.slide {
+  position: relative;
+  aspect-ratio: 16 / 10;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--panel-2);
+  padding: var(--sp-16);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  overflow: auto;
+}
+.slide .st {
+  font-family: var(--font-head);
+  font-size: var(--fs-16);
+  font-weight: 600;
+}
+.slide p {
+  font-size: var(--fs-13);
+  color: var(--muted);
+}
+.slide img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.dots {
+  display: flex;
+  gap: var(--sp-4);
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.dots i {
+  width: 14px;
+  height: 3px;
+  background: var(--line);
+  border-radius: var(--r-track);
+  display: block;
+}
+.dots i.on {
+  background: var(--cyan);
+}
+.dots i.done {
+  background: var(--muted);
+}
+
+/* 6/11 — the quiz. */
+.q {
+  font-family: var(--font-head);
+  font-size: var(--fs-16);
+  font-weight: 600;
+  line-height: 1.35;
+}
+.quiz-opt {
+  display: flex;
+  gap: var(--sp-10);
+  align-items: center;
+  width: 100%;
+  padding: var(--sp-12);
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+  background: var(--card-glass);
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-13);
+  text-align: left;
+  cursor: pointer;
+}
+.quiz-opt .k {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-check);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+}
+.quiz-opt.sel {
+  border-color: var(--cyan-line);
+  background: var(--cyan-dim);
+}
+.quiz-opt.sel .k {
+  border-color: var(--cyan-ink);
+  color: var(--cyan-ink);
+}
+.score-big {
+  font-family: var(--font-head);
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1;
+}
+.score-big.green {
+  color: var(--green-ink);
+}
+.score-big.coral {
+  color: var(--coral-ink);
+}
+
+/* 10/11 — the agreement and the signature. */
+.contract {
+  position: relative;
+  height: 300px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--card-glass);
+  padding: var(--sp-12) var(--sp-14);
+  font-size: var(--fs-12);
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+.contract.short {
+  height: 150px;
+}
+.contract h4 {
+  color: var(--text);
+  font-size: var(--fs-13);
+}
+.contract p b {
+  color: var(--text);
+}
+.sig {
+  border: 1px solid var(--green-line);
+  border-radius: var(--r-card);
+  background: var(--green-dim);
+  padding: var(--sp-10) var(--sp-12);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  color: var(--green-ink);
+}
+
+/* 11/11 — the tutorial cards. */
+.tut {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-10) var(--sp-12);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--card-glass);
+}
+.tut .ic {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--cyan-line);
+  border-radius: var(--r-tile);
+  color: var(--cyan-ink);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+}
+.tut .t {
+  font-family: var(--font-head);
+  font-size: var(--fs-15);
+  font-weight: 600;
+}
+.tut .m {
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
+
+/* The upload sheet's three sources. */
+.sheet .src {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  width: 100%;
+  padding: var(--sp-12) 0;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-14);
+  text-align: left;
+  cursor: pointer;
+}
+.sheet .src:last-of-type {
+  border-bottom: 0;
+}
+
+.postcode-field {
+  width: 120px;
+}
+
+.center-text {
+  text-align: center;
+}
+button.cam {
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.sort-field {
+  width: 130px;
+}

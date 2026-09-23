@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Alert } from '@thc/ui';
 import { describeBlockers } from '../profile/lock';
 import { HELP_EMAIL } from '../profile/types';
@@ -111,6 +112,12 @@ export function TabLockedScreen({
           the one tab still open to you — everything reopens automatically once the office has
           verified what is missing and nothing else has expired (§4.3).
         </p>
+        {onboarding ? (
+          // §10.3: for a candidate the wizard is the way forward.
+          <Link className="btn primary block" href="/onboarding">
+            Continue onboarding
+          </Link>
+        ) : null}
       </div>
     </>
   );
