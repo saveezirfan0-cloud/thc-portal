@@ -22,7 +22,10 @@ import type {
  * eleven independent lists and serialising them would show the manager a
  * blank page for as long as the slowest one takes. Every view is
  * security_invoker, so the gate is `staff`'s own RLS: a client sees
- * nobody here and a worker sees only themselves.
+ * nobody here and a worker sees only themselves. The exception is
+ * `block_reason`, which no PostgREST role holds on `staff` since
+ * 20260923090000 and which reaches this screen through the owner-rights
+ * `staff_block_reason_v` — see the note in ../data.ts before touching it.
  *
  * A missing profile is `profile: null` with no problem string — the page
  * turns that into a 404 rather than an error panel, because a worker who

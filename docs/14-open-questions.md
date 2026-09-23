@@ -820,6 +820,47 @@ one at a time, so a failure halfway leaves the project part-applied with a green
 `build-test` above it, and the log is the only place that says which version it stopped
 at.
 
+## O16 · A worker could read the manager's reason for blocking them — **RESOLVED 23.09**
+
+`0001_init.sql:482` grants a worker their own row and every column on it:
+
+```sql
+create policy staff_self on staff for select using (user_id = auth.uid());
+```
+
+So `GET /rest/v1/staff?select=block_reason` returned the internal note a manager typed
+about that worker. §10.1 is explicit: "the manager's reason for the block is internal and
+is never shown to the worker." The application never fetched it — `staff_me()` does not
+select it and says so — but the API did, so the rule was held by discipline rather than by
+structure.
+
+**RLS could not fix it.** Policies filter rows, never columns. And the obvious privilege
+fix breaks the office: admins and workers are the same Postgres role, and both
+`staff_directory_v` and `staff_profile_v` are `security_invoker`, so a blanket
+`revoke select (block_reason) … from authenticated` would have closed §9.6's screens with
+it.
+
+`20260923090000_block_reason_is_internal.sql` applies ADR-0004 one column wide: the
+table-wide SELECT is revoked and re-granted for every column **except** that one, and the
+office reads it back through `staff_block_reason_v`, an owner-rights view carrying
+`current_app_role() = 'admin'` in its own body. `staff_directory_v` keeps its column list,
+order and `security_invoker` reloption — verified identical — so no office column list
+moved.
+
+**Two consequences worth knowing before you touch `staff`:**
+
+- A column added to `staff` by a later migration is **not readable** by `anon` or
+  `authenticated` until that migration grants it. That is deliberate — `staff` carries the
+  date of birth, NI number, home address and right-to-work branch, so failing closed on a
+  new column is correct, and the failure is a loud 42501 rather than a quiet leak. It will
+  still surprise whoever hits it.
+- An **admin** can no longer read `block_reason` off the table either, by design. The
+  owner-rights view is the whole of the office's access to it.
+
+The migration ends with a `do` block that raises if the revoke did not take or the re-grant
+did not — a `revoke` that silently no-ops is how `20260921123503` was defeated by PostGIS's
+grants, and that would have left this leak open under a green deploy.
+
 ## O15 · `BottomNav`'s `renderLink` callback crashed the Staff App twice — **RESOLVED 23.09**
 
 **It was `design-system`'s, and it was a prop that should not have existed. It is gone.**
