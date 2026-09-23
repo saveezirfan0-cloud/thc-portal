@@ -54,8 +54,13 @@ export function capReason(
    */
   until?: string | null,
 ): string {
-  if (band === 'opted_out_none') {
+  // `uncapped` is what the database's cap_band enum actually returns for no
+  // ceiling; `opted_out_none` is kept for the rows and tests that predate it.
+  if (band === 'opted_out_none' || band === 'uncapped') {
     return 'No weekly ceiling — 48h opt-out signed and no visa limit';
+  }
+  if (band === 'visa_expired_0') {
+    return '0 h — right to work expired, cannot be rostered';
   }
   if (capHours === null) {
     return 'No cap to calculate — no verified term dates, so the worker cannot be booked';
@@ -64,6 +69,8 @@ export function capReason(
   switch (band) {
     case 'student_term_20':
       return `${capHours} h — term time${ends}`;
+    case 'student_term_10':
+      return `${capHours} h — term time, below degree level${ends}`;
     case 'student_holiday_48':
       return `${capHours} h — university holiday${ends}`;
     case 'graduated_48':

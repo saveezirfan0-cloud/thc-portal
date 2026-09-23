@@ -7,6 +7,7 @@ import { Alert, Button, Input, Note, Panel, Pill, Select } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import {
   saveAutoAssignNumbers,
+  saveRotaGuardMode,
   saveSenders,
   saveVenueRadius,
   saveWeights,
@@ -14,7 +15,14 @@ import {
 } from './actions';
 import { MAX_RADIUS_M, MIN_RADIUS_M, WEIGHT_FIELDS, weightTotal } from './validate';
 import { KANBAN_STAGES } from './types';
-import type { ActionResult, ScoringWeights, SettingsData, Senders, WilloStageMap } from './types';
+import type {
+  ActionResult,
+  RotaGuardMode,
+  ScoringWeights,
+  SettingsData,
+  Senders,
+  WilloStageMap,
+} from './types';
 import './settings.css';
 
 /**
@@ -45,6 +53,7 @@ export function SettingsScreen({ data }: { data: SettingsData }) {
           gapMinutes={data.bookedElsewhereGapMinutes}
           escalationMiles={data.escalationRadiusMiles}
         />
+        <RotaGuardBlock mode={data.rotaGuardMode} />
         <WilloBlock map={data.willo} />
         <SendersBlock senders={data.senders} payroll={data.payrollRecipients} />
         <RadiiBlock types={data.venueTypes} />
@@ -196,6 +205,47 @@ function AutoAssignBlock({
         onClick={() => run(() => saveAutoAssignNumbers(gap, miles))}
       >
         {pending ? 'Saving…' : 'Save limits'}
+      </Button>
+    </Block>
+  );
+}
+
+/**
+ * Completion letter requirement §4: warn or block when a shift would breach
+ * the worker's weekly cap. The choice covers the Working Time 48 only; the
+ * block says so, because a manager who picks "warn" must not come away
+ * thinking a student can now be rostered past 20 hours.
+ */
+function RotaGuardBlock({ mode }: { mode: RotaGuardMode }) {
+  const [draft, setDraft] = useState<RotaGuardMode>(mode);
+  const { note, error, pending, run } = useSave();
+
+  return (
+    <Block
+      title="Rota guard"
+      sub="Completion letter requirement §4. What happens when a shift would take a worker over 48 hours in a week without a 48-hour opt-out."
+    >
+      <Select
+        label="Over the 48-hour limit"
+        value={draft}
+        onChange={(event) => setDraft(event.target.value as RotaGuardMode)}
+        hint="Warn lets the booking through and lists it on Compliance → Radar for the office."
+      >
+        <option value="block">Block the booking (default)</option>
+        <option value="warn">Allow it and warn the office</option>
+      </Select>
+      <Note>
+        Never configurable: a Student visa worker over 20 hours (10 below degree level) in term, and
+        any shift past a worker’s right-to-work expiry, are always refused — by the database, on
+        every booking path.
+      </Note>
+      <Feedback note={note} error={error} />
+      <Button
+        tone="primary"
+        disabled={pending || draft === mode}
+        onClick={() => run(() => saveRotaGuardMode(draft))}
+      >
+        {pending ? 'Saving…' : 'Save rota guard'}
       </Button>
     </Block>
   );

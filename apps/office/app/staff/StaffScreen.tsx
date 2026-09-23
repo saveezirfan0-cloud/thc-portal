@@ -24,6 +24,8 @@ export interface StaffScreenProps {
   staff: StaffRow[];
   students: StudentRow[];
   problem: string | null;
+  /** `/staff?view=student` lands on the Student visa view (linked from /compliance). */
+  initialView?: 'directory' | 'student';
 }
 
 type Sort = 'name' | 'rating' | 'show' | 'newest';
@@ -43,8 +45,13 @@ const PAGE_SIZE = 15;
  * it. RULE-20's cap is a per-week condition, not a value in the
  * Staff.status machine (§2.12), and the filter tabs treat it that way.
  */
-export function StaffScreen({ staff, students, problem }: StaffScreenProps) {
-  const [view, setView] = useState<'directory' | 'student'>('directory');
+export function StaffScreen({
+  staff,
+  students,
+  problem,
+  initialView = 'directory',
+}: StaffScreenProps) {
+  const [view, setView] = useState<'directory' | 'student'>(initialView);
   const [filter, setFilter] = useState<Filter>('all');
   const [role, setRole] = useState('');
   const [sort, setSort] = useState<Sort>('name');

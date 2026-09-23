@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   EXTENSION_CODES,
+  REQUIREMENT_CODES,
   SCOPE_CODES,
   TEMPLATES,
   body,
@@ -38,6 +39,14 @@ const PUSH_CODES = [
 ];
 const EMAIL_CODES = ['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9'];
 
+/**
+ * The University Completion Letter requirement §5 — a later THC document than
+ * the scope, so its codes are listed apart: CL1–CL2 to the worker, CL3–CL6 to
+ * the office. "Rejected (with reason)" is N8, not a new code.
+ */
+const REQUIREMENT_PUSH_CODES = ['CL1', 'CL2'];
+const REQUIREMENT_EMAIL_CODES = ['CL3', 'CL4', 'CL5', 'CL6'];
+
 const entries = Object.entries(TEMPLATES) as [TemplateCode, Template][];
 
 describe('notification register (§8)', () => {
@@ -47,9 +56,15 @@ describe('notification register (§8)', () => {
     }
   });
 
-  it('invents no code the scope does not name, bar the listed extensions', () => {
+  it('invents no code the scope or the completion letter requirement does not name, bar the listed extensions', () => {
     expect([...Object.keys(TEMPLATES)].sort()).toEqual(
-      [...PUSH_CODES, ...EMAIL_CODES, ...EXTENSION_CODES].sort(),
+      [
+        ...PUSH_CODES,
+        ...EMAIL_CODES,
+        ...REQUIREMENT_PUSH_CODES,
+        ...REQUIREMENT_EMAIL_CODES,
+        ...EXTENSION_CODES,
+      ].sort(),
     );
   });
 
@@ -62,10 +77,20 @@ describe('notification register (§8)', () => {
   it('puts every code on the channel §8 gives it', () => {
     for (const code of PUSH_CODES) expect(TEMPLATES[code as TemplateCode].channel).toBe('push');
     for (const code of EMAIL_CODES) expect(TEMPLATES[code as TemplateCode].channel).toBe('email');
+    for (const code of REQUIREMENT_PUSH_CODES)
+      expect(TEMPLATES[code as TemplateCode].channel).toBe('push');
+    for (const code of REQUIREMENT_EMAIL_CODES)
+      expect(TEMPLATES[code as TemplateCode].channel).toBe('email');
   });
 
-  it('exports SCOPE_CODES and EXTENSION_CODES as exactly the register', () => {
-    expect([...SCOPE_CODES, ...EXTENSION_CODES].sort()).toEqual([...Object.keys(TEMPLATES)].sort());
+  it('exports SCOPE_CODES, REQUIREMENT_CODES and EXTENSION_CODES as exactly the register, between them', () => {
+    expect([...SCOPE_CODES].sort()).toEqual([...PUSH_CODES, ...EMAIL_CODES].sort());
+    expect([...REQUIREMENT_CODES].sort()).toEqual(
+      [...REQUIREMENT_PUSH_CODES, ...REQUIREMENT_EMAIL_CODES].sort(),
+    );
+    expect([...SCOPE_CODES, ...REQUIREMENT_CODES, ...EXTENSION_CODES].sort()).toEqual(
+      [...Object.keys(TEMPLATES)].sort(),
+    );
   });
 
   it('keys every template by its register code', () => {
@@ -238,12 +263,14 @@ describe('§8 copy is verbatim', () => {
     // states in prose rather than quoting: N1 and N8 (summarised triggers),
     // N9 and N14 (two halves each, pinned in their own suite), and the
     // seven emails whose wording the scope never gives — E1 (Willo's), E3,
-    // E5, E6, E7, E8, E9.
+    // E5, E6, E7, E8, E9. The CL codes are not §8's at all: the requirement
+    // describes each send and quotes none, so they are pinned in their own
+    // suite below.
     const pinned = new Set(SCOPE_BODIES.map(([code]) => code));
-    // Extensions are not §8's, so §8 quotes nothing for them.
-    const extensions = new Set<string>(EXTENSION_CODES);
+    // Neither the requirement's codes nor the extensions are §8's.
+    const notScope = new Set<string>([...REQUIREMENT_CODES, ...EXTENSION_CODES]);
     const unpinned = Object.keys(TEMPLATES).filter(
-      (code) => !pinned.has(code) && !extensions.has(code),
+      (code) => !pinned.has(code) && !notScope.has(code),
     );
     expect(unpinned.sort()).toEqual(
       ['N1', 'N8', 'N9', 'N14', 'E1', 'E3', 'E5', 'E6', 'E7', 'E8', 'E9'].sort(),
@@ -318,9 +345,9 @@ describe('a variant-only code has nothing to send by accident', () => {
     expect(body('N14', 'uncapped')).toBe('You no longer have a weekly hours limit — {band}.');
   });
 
-  it('are the only two codes without a body', () => {
+  it('are the only codes without a body, with CL2 for the same reason', () => {
     const bodyless = entries.filter(([, v]) => v.body === undefined).map(([k]) => k);
-    expect(bodyless).toEqual(['N9', 'N14']);
+    expect(bodyless).toEqual(['N9', 'N14', 'CL2']);
   });
 
   // The bug these halves exist for. `render` leaves an unmatched
@@ -366,5 +393,52 @@ describe('E3 carries everything §8 names', () => {
     expect(copy).toContain('{link}');
     expect(copy).toContain('password');
     expect(copy.toLowerCase()).toContain('download the app');
+  });
+});
+
+/**
+ * The University Completion Letter requirement §5. Worker: upload received;
+ * approved (with new cap and effective date); rejected (with reason). Admin:
+ * awaiting review; visa expiry approaching; opt-out signed or cancelled.
+ */
+describe('completion letter requirement §5', () => {
+  it('tells the worker an upload changes nothing yet (acceptance criterion 2)', () => {
+    expect(body('CL1')).toContain('stay the same until the office has checked it');
+  });
+
+  it('gives the approval a cap and an effective date, in each of its three outcomes', () => {
+    expect(render(body('CL2', 'dated'), { limit: '48', date: '12 Oct 2026' })).toBe(
+      'Your completion letter is approved — your weekly limit is 48 hours from 12 Oct 2026.',
+    );
+    const uncapped = render(body('CL2', 'uncapped'), { date: '12 Oct 2026' });
+    expect(uncapped).not.toContain('{');
+    expect(uncapped).not.toMatch(/\bnull\b|\bno hours\b/);
+    // §7: the visa ends first, and the worker is not promised hours.
+    const visaFirst = render(body('CL2', 'visa_first'), { date: '10 Oct 2026' });
+    expect(visaFirst).toContain('right to work ends on 10 Oct 2026');
+    expect(visaFirst).toContain('do not change');
+  });
+
+  it('uses N8 for a rejection, with its Re-upload, rather than a code of its own', () => {
+    expect(REQUIREMENT_CODES as readonly string[]).not.toContain('N8');
+    expect(render(body('N8'), { reason: 'The award date is not visible' })).toBe(
+      'Document rejected — The award date is not visible. Re-upload.',
+    );
+  });
+
+  it('sends the four office emails to admin@ from admin@', () => {
+    for (const code of REQUIREMENT_EMAIL_CODES) {
+      const entry: Template = TEMPLATES[code as TemplateCode];
+      expect(entry.sender, code).toBe('admin');
+      expect(entry.recipients, code).toEqual(['admin@thehospitalitycompany.co.uk']);
+      expect(entry.mandatory, code).toBeUndefined();
+    }
+  });
+
+  it('names the alert rungs and what the opt-out does and does not lift', () => {
+    expect(template('CL4').timing).toContain('60, 30 and 14 days');
+    expect(body('CL5')).toContain('does not lift a Student visa term-time limit');
+    expect(body('CL6')).toContain('{effectiveFrom}');
+    expect(body('CL6')).toContain('{overCapWeeks}');
   });
 });

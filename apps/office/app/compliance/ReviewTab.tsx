@@ -1,0 +1,470 @@
+'use client';
+
+import Link from 'next/link';
+import { useMemo, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  Alert,
+  Avatar,
+  Button,
+  EmptyState,
+  Input,
+  Modal,
+  Note,
+  Pill,
+  Select,
+  Textarea,
+} from '@thc/ui';
+import {
+  approveCompletionLetter,
+  rejectDeclaration,
+  rejectDocument,
+  verifyDeclaration,
+  verifyDocument,
+} from './actions';
+import {
+  DOCUMENT_FILTERS,
+  EVIDENCE_FORM_LABEL,
+  ageLabel,
+  documentLine,
+  filterQueue,
+  foundLine,
+  ukDate,
+  ukStamp,
+  verifyHint,
+  whoLine,
+} from './queue';
+import type { WhoFilter } from './queue';
+import type { ActionResult, QueueRow } from './types';
+
+/**
+ * Tab 1 · Needs review (§4.1).
+ *
+ * One row per item waiting on the office, oldest first. Verify and Reject on
+ * every row; there is deliberately no "send reminder" anywhere on this screen
+ * — the ladder runs itself (§4.2).
+ *
+ * The completion letter's Verify opens a confirmation rather than acting on
+ * the click: the requirement (§2.2) makes the reviewer confirm the course
+ * completion date and the visa expiry, and the database refuses the approval
+ * without both.
+ */
+export function ReviewTab({ rows }: { rows: QueueRow[] }) {
+  const router = useRouter();
+  const [query, setQuery] = useState('');
+  const [who, setWho] = useState<WhoFilter>('all');
+  const [document, setDocument] = useState('any');
+  const [rejecting, setRejecting] = useState<QueueRow | null>(null);
+  const [approving, setApproving] = useState<QueueRow | null>(null);
+  const [result, setResult] = useState<ActionResult | null>(null);
+  const [pendingId, setPendingId] = useState<string | null>(null);
+  const [, start] = useTransition();
+
+  const visible = useMemo(
+    () => filterQueue(rows, { query, who, document }),
+    [rows, query, who, document],
+  );
+
+  const run = (id: string, action: () => Promise<ActionResult>, after?: () => void) => {
+    setResult(null);
+    setPendingId(id);
+    start(async () => {
+      const outcome = await action();
+      setResult(outcome);
+      setPendingId(null);
+      if (outcome.ok) {
+        after?.();
+        router.refresh();
+      }
+    });
+  };
+
+  const verify = (row: QueueRow) => {
+    if (row.item_type === 'university_completion_letter') {
+      setApproving(row);
+      return;
+    }
+    run(row.item_id, () =>
+      row.kind === 'declaration' ? verifyDeclaration(row.item_id) : verifyDocument(row.item_id),
+    );
+  };
+
+  return (
+    <section className="stack" aria-label="Needs review">
+      <div className="toolbar">
+        <div className="search">
+          <input
+            className="input"
+            style={{ height: 32, width: 240 }}
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search by name"
+            aria-label="Search by name"
+          />
+        </div>
+        <Select
+          value={who}
+          onChange={(event) => setWho(event.target.value as WhoFilter)}
+          aria-label="Candidates or staff"
+          style={{ height: 32, width: 170 }}
+        >
+          <option value="all">Candidates + staff</option>
+          <option value="candidates">Candidates only</option>
+          <option value="staff">Staff only</option>
+        </Select>
+        <Select
+          value={document}
+          onChange={(event) => setDocument(event.target.value)}
+          aria-label="Document type"
+          style={{ height: 32, width: 220 }}
+        >
+          {DOCUMENT_FILTERS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </Select>
+        <div className="right">
+          <span className="muted sm">Oldest first · the menu counter is this number</span>
+        </div>
+      </div>
+
+      <Alert tone="cyan">
+        <b>Why this tab exists:</b> a current worker who re-uploads after an expiry or a rejection
+        never reappears on the onboarding kanban. Every profile with a document — or a Criminal
+        Record declaration answered Yes (onboarding or in-employment, §10.7) — in the “under review”
+        state lands here, candidates and staff alike (§4.1).
+      </Alert>
+
+      {result ? (
+        <Alert tone={result.ok ? 'green' : 'coral'}>{result.message ?? 'Done.'}</Alert>
+      ) : null}
+
+      <div className="panel">
+        <div className="panel-b tight">
+          {visible.length === 0 ? (
+            <EmptyState>
+              <h3>{rows.length === 0 ? 'Nothing waiting on the office' : 'Nothing matches'}</h3>
+              <p>
+                Uploads and Yes declarations appear here the moment they are submitted. Rejected
+                candidates and removed workers drop out by themselves.
+              </p>
+            </EmptyState>
+          ) : (
+            <table className="tbl">
+              <thead>
+                <tr>
+                  <th>Who</th>
+                  <th>Document</th>
+                  <th>Uploaded</th>
+                  <th>AI found</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((row) => (
+                  <QueueLine
+                    key={row.item_id}
+                    row={row}
+                    busy={pendingId === row.item_id}
+                    onVerify={() => verify(row)}
+                    onReject={() => setRejecting(row)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+
+      <Note>
+        <b>Dropped out automatically:</b> once someone is Rejected or Removed their outstanding
+        documents no longer need review and leave this queue (§4.1). A “No” Criminal Record answer
+        is auto-verified on submission and never appears here (§2.10). References are never reviewed
+        and never queue (§2.10). The Official University Completion Letter is reviewed here too:
+        approving it confirms the completion date and visa expiry, and the cap follows from the
+        completion date (completion letter requirement §2.2–2.3).
+      </Note>
+
+      {rejecting ? (
+        <RejectModal
+          row={rejecting}
+          busy={pendingId === rejecting.item_id}
+          onClose={() => setRejecting(null)}
+          onReject={(reason) =>
+            run(
+              rejecting.item_id,
+              () =>
+                rejecting.kind === 'declaration'
+                  ? rejectDeclaration(rejecting.item_id, reason)
+                  : rejectDocument(rejecting.item_id, reason),
+              () => setRejecting(null),
+            )
+          }
+        />
+      ) : null}
+
+      {approving ? (
+        <ApproveModal
+          row={approving}
+          busy={pendingId === approving.item_id}
+          onClose={() => setApproving(null)}
+          onApprove={(completionDate, visaExpiry) =>
+            run(
+              approving.item_id,
+              () => approveCompletionLetter(approving.item_id, completionDate, visaExpiry),
+              () => setApproving(null),
+            )
+          }
+        />
+      ) : null}
+    </section>
+  );
+}
+
+function QueueLine({
+  row,
+  busy,
+  onVerify,
+  onReject,
+}: {
+  row: QueueRow;
+  busy: boolean;
+  onVerify: () => void;
+  onReject: () => void;
+}) {
+  const who = whoLine(row);
+  const found = foundLine(row);
+  const hint = verifyHint(row);
+  return (
+    <tr>
+      <td>
+        <div className="person">
+          <Avatar name={row.display_name} size="sm" />
+          <div>
+            <div className="n">
+              <Link href={`/staff/${row.staff_id}`}>{row.display_name}</Link>
+            </div>
+            <div className="s">
+              {who.text}
+              {who.blocked ? (
+                <>
+                  {' · '}
+                  <span className="coral">{who.blocked}</span>
+                </>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </td>
+      <td>
+        <b>{row.item_label}</b>{' '}
+        {row.kind === 'declaration' && row.declaration_source === 'in_employment' ? (
+          <Pill tone="purple">in-employment</Pill>
+        ) : null}
+        {row.is_reupload ? <Pill tone="amber">re-upload</Pill> : null}
+        <span className="sub">
+          {documentLine(row)}
+          {row.kind === 'declaration' && row.declaration_details ? (
+            <> · “{row.declaration_details}” · details visible to Admin only</>
+          ) : null}
+        </span>
+      </td>
+      <td className="mono sm">
+        {ukStamp(row.submitted_at)}
+        <span className="sub">{ageLabel(row.submitted_at)}</span>
+      </td>
+      <td>
+        <span
+          className={
+            found.confidence === null && row.kind === 'declaration' ? 'found muted' : 'found'
+          }
+        >
+          {found.text}
+        </span>
+        {found.confidence === 'manual' ? (
+          <span className="ai manual">needs manual review</span>
+        ) : found.confidence ? (
+          <span className={`ai ${found.confidence}`}>
+            AI {Math.round((row.ai_confidence ?? 0) * 100)}%
+          </span>
+        ) : null}
+      </td>
+      <td style={{ textAlign: 'right' }}>
+        <Button size="sm" tone="green" onClick={onVerify} disabled={busy}>
+          Verify
+        </Button>{' '}
+        <Button size="sm" tone="danger" onClick={onReject} disabled={busy}>
+          Reject
+        </Button>
+        {hint ? <span className="sub muted xs">{hint}</span> : null}
+      </td>
+    </tr>
+  );
+}
+
+/**
+ * "Reject asks for a reason → push N8 with a Re-upload button" (§4.1). The
+ * in-employment declaration is the exception: the worker is NOT told through
+ * the app (§10.7), and the reason becomes the manual block's.
+ */
+function RejectModal({
+  row,
+  busy,
+  onClose,
+  onReject,
+}: {
+  row: QueueRow;
+  busy: boolean;
+  onClose: () => void;
+  onReject: (reason: string) => void;
+}) {
+  const [reason, setReason] = useState('');
+  const inEmployment = row.kind === 'declaration' && row.declaration_source === 'in_employment';
+  return (
+    <Modal
+      open
+      title={row.kind === 'declaration' ? 'Reject declaration' : 'Reject document'}
+      onClose={onClose}
+      footer={
+        <>
+          <Button tone="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            tone="danger"
+            solid
+            disabled={busy || reason.trim() === ''}
+            onClick={() => onReject(reason)}
+          >
+            {row.kind === 'declaration' ? 'Reject declaration' : 'Reject document'}
+          </Button>
+        </>
+      }
+    >
+      <div className="row">
+        <Avatar name={row.display_name} size="sm" />
+        <div className="sm">
+          {row.display_name} · {row.is_candidate ? 'Candidate' : 'Staff'} · {row.item_label} ·
+          uploaded {ukStamp(row.submitted_at)}
+        </div>
+      </div>
+      <Textarea
+        label={
+          <>
+            Reason <span className="coral">*</span>
+          </>
+        }
+        value={reason}
+        onChange={(event) => setReason(event.target.value)}
+        hint={
+          inEmployment ? (
+            <>
+              Kept on the profile: the block converts to a manual block with this reason, and only a
+              manager can lift it. The worker is not told through the app — the office calls them
+              (§10.7).
+            </>
+          ) : (
+            <>
+              Goes to the worker word for word in push N8 — “Document rejected — [reason]” — with a{' '}
+              <b>Re-upload</b> button. The new upload comes back to this queue (§4.1, §2.3).
+            </>
+          )
+        }
+      />
+      <Note>
+        {inEmployment
+          ? 'The block stands. Bookings released when they declared are not restored.'
+          : 'Nothing else on the profile changes — including the weekly hours cap.'}
+      </Note>
+    </Modal>
+  );
+}
+
+/**
+ * Completion letter requirement §2.2: "On approval, the reviewer
+ * confirms/enters: the course completion date, and the visa expiry date
+ * (should already be on file from the right-to-work check)."
+ */
+function ApproveModal({
+  row,
+  busy,
+  onClose,
+  onApprove,
+}: {
+  row: QueueRow;
+  busy: boolean;
+  onClose: () => void;
+  onApprove: (completionDate: string, visaExpiry: string) => void;
+}) {
+  const [completionDate, setCompletionDate] = useState(row.completion_date_claimed ?? '');
+  const [visaExpiry, setVisaExpiry] = useState(row.staff_right_to_work_until ?? '');
+  const onFile = row.staff_right_to_work_until;
+  return (
+    <Modal
+      open
+      title="Approve completion letter"
+      onClose={onClose}
+      footer={
+        <>
+          <Button tone="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            tone="green"
+            solid
+            disabled={busy || !completionDate || !visaExpiry}
+            onClick={() => onApprove(completionDate, visaExpiry)}
+          >
+            Approve
+          </Button>
+        </>
+      }
+    >
+      <div className="row">
+        <Avatar name={row.display_name} size="sm" />
+        <div className="sm">
+          {row.display_name} ·{' '}
+          {row.evidence_form ? EVIDENCE_FORM_LABEL[row.evidence_form] : 'Completion letter'} ·
+          uploaded {ukStamp(row.submitted_at)}
+        </div>
+      </div>
+      <Input
+        type="date"
+        label={
+          <>
+            Course completion date on the document <span className="coral">*</span>
+          </>
+        }
+        value={completionDate}
+        onChange={(event) => setCompletionDate(event.target.value)}
+        hint={
+          row.completion_date_claimed
+            ? `The worker entered ${ukDate(row.completion_date_claimed)}. Correct it if the document says otherwise.`
+            : 'The worker did not enter one — read it off the document.'
+        }
+      />
+      <Input
+        type="date"
+        label={
+          <>
+            Visa expiry <span className="coral">*</span>
+          </>
+        }
+        value={visaExpiry}
+        onChange={(event) => setVisaExpiry(event.target.value)}
+        hint={
+          onFile
+            ? `On file from the right-to-work check: ${ukDate(onFile)}. If you enter a different date, the earlier of the two is kept.`
+            : 'No right-to-work expiry is on file yet.'
+        }
+      />
+      <Note>
+        The weekly limit becomes 48 hours from the first whole week on or after the completion date
+        — never before it, never backdated, and never past the visa expiry. A completion date in the
+        future lifts nothing until it arrives.
+      </Note>
+    </Modal>
+  );
+}

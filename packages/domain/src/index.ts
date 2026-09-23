@@ -10,3 +10,5 @@ export * from './events';
 export * from './board';
 export * from './autoAssign';
 export * from './staff';
+export * from './rotaGuard';
+export * from './completionLetter';
