@@ -631,6 +631,32 @@ table.tbl {
   border-color: transparent;
   background: var(--hover);
 }
+/* Text, not a control. The wireframes write an anchor in a few places where
+   the action has to be a button — the sidebar foot's sign-out is a form POST
+   under an `ml-auto xs` link (ADR-0012). Everything that makes a button look
+   like a button is unset, and the size is inherited so `.xs` beside it wins,
+   which is how the wireframe sizes it. */
+.btn.link {
+  height: auto;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: inherit;
+  overflow: visible;
+}
+.btn.link:hover {
+  color: var(--cyan-ink);
+  background: transparent;
+  border-color: transparent;
+  text-decoration: underline;
+}
+/* The sheen sweep belongs to a filled control and reads as a glitch on text. */
+.btn.link::after {
+  content: none;
+}
+
 .btn.sm {
   height: var(--btn-h-sm);
   padding: 0 var(--sp-12);
