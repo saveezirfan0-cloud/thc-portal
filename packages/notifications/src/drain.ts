@@ -30,7 +30,7 @@ import type { OutboxRow, PushMessage } from './outbox.ts';
 import { UnsendableRow, messageFor, outboxBackoffMs } from './outbox.ts';
 import type { ResendAttachment } from './resend.ts';
 import { buildResendRequest, classifyResendStatus, toBase64 } from './resend.ts';
-import { resolveSender } from './senders.ts';
+import { DEFAULT_SENDER_ADDRESSES, resolveSender } from './senders.ts';
 import type { PushSubscriptionKeys, VapidKeys } from './webpush.ts';
 import { buildPushRequest, classifyPushStatus } from './webpush.ts';
 
@@ -158,10 +158,15 @@ async function excerpt(response: HttpResponseLike): Promise<string> {
  * the live one its message.
  *
  * The row is `sent` if ANY device accepted it — retrying would repeat the
- * notification on the device that already has it. Otherwise it is a retry:
- * a worker with no device yet (or whose only device was just pruned) may
- * open the app and re-subscribe inside the backoff window, and the ceiling
- * still ends it.
+ * notification on the device that already has it.
+ *
+ * A worker with NO registered device — never enabled notifications, or every
+ * device just answered 404/410 and was pruned — is failed at once, not
+ * retried. Six retries spread over ~31 minutes only delayed the failure: a
+ * push is time-bound (N9 "time to check in" is worthless half an hour late),
+ * the worker re-subscribing does not re-queue it, and a clear `failed` row is
+ * what tells the office this person cannot be reached by push. A transient
+ * push-service error on a live device is still a retry.
  */
 async function sendPush(
   row: OutboxRow,
@@ -171,10 +176,12 @@ async function sendPush(
 ): Promise<Settlement> {
   const subscriptions = await ports.subscriptionsFor(message.staffId);
   if (subscriptions.length === 0) {
-    return retry(
-      row,
-      'no push subscription: the worker has not enabled notifications on any device',
-    );
+    return {
+      id: row.id,
+      key: row.key,
+      verdict: 'failed',
+      error: 'no push subscription: the worker has not enabled notifications on any device',
+    };
   }
 
   // The service worker (apps/staff/sw.ts) reads exactly these three fields.
@@ -216,12 +223,32 @@ async function sendPush(
           : `push service answered ${r.status}`,
     )
     .join('; ');
-  return retry(row, `push not delivered to any of ${subscriptions.length} devices — ${reasons}`);
+  const message_ = `push not delivered to any of ${subscriptions.length} devices — ${reasons}`;
+  // Every device was pruned: nothing left to retry against.
+  if (pruned === subscriptions.length) {
+    return { id: row.id, key: row.key, verdict: 'failed', error: message_ };
+  }
+  return retry(row, message_);
 }
 
 // ---------------------------------------------------------------------------
 // email
 // ---------------------------------------------------------------------------
+
+/**
+ * The document emails (BG08/D1/D2) sign off with their sender's address. The
+ * copy names the default (`documents.ts` keeps THC's wording readable); when
+ * `/settings` has moved that sender, the signature follows the From line
+ * rather than contradicting it.
+ */
+export function signedBy(
+  body: string,
+  sender: keyof typeof DEFAULT_SENDER_ADDRESSES,
+  address: string,
+): string {
+  const fallback = DEFAULT_SENDER_ADDRESSES[sender];
+  return address === fallback ? body : body.split(fallback).join(address);
+}
 
 async function sendEmail(
   row: OutboxRow,
@@ -264,7 +291,7 @@ async function sendEmail(
       from: sender.from,
       to: message.to,
       subject: message.subject,
-      text: message.body,
+      text: signedBy(message.body, message.sender, sender.address),
       replyTo: sender.address,
       ...(attachments ? { attachments } : {}),
     },

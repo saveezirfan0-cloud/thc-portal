@@ -1,7 +1,14 @@
 import { createECDH } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
 import type { DrainConfig, DrainPorts } from '../drain';
-import { NOT_CONFIGURED, drainBatch, drainRow, readDrainConfig, retryDecision } from '../drain';
+import {
+  NOT_CONFIGURED,
+  drainBatch,
+  drainRow,
+  readDrainConfig,
+  retryDecision,
+  signedBy,
+} from '../drain';
 import type { OutboxRow } from '../outbox';
 import { outboxBackoffMs } from '../outbox';
 import { RESEND_ENDPOINT, buildResendRequest, classifyResendStatus, toBase64 } from '../resend';
@@ -246,16 +253,19 @@ describe('push', () => {
       p,
     );
     expect(s).toMatchObject({ verdict: 'sent', detail: '2/2 devices' });
-    expect(sent.map((r) => r.url)).toEqual([device(1).endpoint, device(2).endpoint]);
+    // The devices are pushed to concurrently, so the order the requests
+    // reach the push service is not fixed: look each one up by endpoint.
+    expect(sent.map((r) => r.url).sort()).toEqual([device(1).endpoint, device(2).endpoint].sort());
+    const to = (n: number) => sent.find((r) => r.url === device(n).endpoint)!;
     // What apps/staff/sw.ts will read, decrypted on each device.
     const expected = {
       title: "You haven't checked out",
       body: "You haven't checked out of Product Launch yet — tap to check out.",
       url: '/shifts/41',
     };
-    expect(readOn(1, sent[0]!.body)).toEqual(expected);
-    expect(readOn(2, sent[1]!.body)).toEqual(expected);
-    expect(sent[0]!.headers['Content-Encoding']).toBe('aes128gcm');
+    expect(readOn(1, to(1).body)).toEqual(expected);
+    expect(readOn(2, to(2).body)).toEqual(expected);
+    expect(to(1).headers['Content-Encoding']).toBe('aes128gcm');
     expect(p.subscriptionsFor).toHaveBeenCalledWith('staff-1');
   });
 
@@ -276,7 +286,8 @@ describe('push', () => {
     });
     const s = await drainRow(push(), CONFIGURED, null, p);
     expect(deleted).toEqual([device(3).endpoint]);
-    expect(s.verdict).toBe('retry');
+    // Its only device is gone, so there is nothing left to retry against.
+    expect(s.verdict).toBe('failed');
   });
 
   it('does not delete a subscription on a transient failure', async () => {
@@ -289,11 +300,21 @@ describe('push', () => {
     expect(s).toMatchObject({ verdict: 'retry', final: false, nextInMs: 60_000 });
   });
 
-  it('retries a worker with no device yet, rather than failing them outright', async () => {
+  it('fails a worker with no device at once, rather than retrying for half an hour', async () => {
     const { p } = ports({ subscriptions: [] });
     const s = await drainRow(push(), CONFIGURED, null, p);
-    expect(s.verdict).toBe('retry');
-    expect(s.verdict === 'retry' && s.error).toMatch(/no push subscription/);
+    expect(s.verdict).toBe('failed');
+    expect(s.verdict === 'failed' && s.error).toMatch(/no push subscription/);
+  });
+
+  it('fails when every device was just pruned: there is nothing left to retry against', async () => {
+    const { p, deleted } = ports({
+      subscriptions: [device(1)],
+      statuses: { [device(1).endpoint]: 410 },
+    });
+    const s = await drainRow(push(), CONFIGURED, null, p);
+    expect(deleted).toHaveLength(1);
+    expect(s.verdict).toBe('failed');
   });
 
   it('never puts an endpoint in an error — it is a credential for the device', async () => {
@@ -428,7 +449,7 @@ describe('retry or final', () => {
       push({ attempts: 6 }),
       CONFIGURED,
       null,
-      ports({ subscriptions: [] }).p,
+      ports({ subscriptions: [device(1)], statuses: { [device(1).endpoint]: 503 } }).p,
     );
     expect(s).toMatchObject({ verdict: 'retry', final: true, nextInMs: null });
   });
@@ -492,5 +513,19 @@ describe('Resend', () => {
   it('base64-encodes bytes without Buffer', () => {
     const bytes = new Uint8Array(100_000).map((_, i) => i % 256);
     expect(toBase64(bytes)).toBe(Buffer.from(bytes).toString('base64'));
+  });
+});
+
+describe('document email signatures follow the sender setting', () => {
+  it('leaves the default address alone', () => {
+    const body = 'Thanks\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk';
+    expect(signedBy(body, 'timesheets', 'timesheets@thehospitalitycompany.co.uk')).toBe(body);
+  });
+
+  it('signs with the address /settings chose, so the signature never contradicts the From line', () => {
+    const body = 'Thanks\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk';
+    expect(signedBy(body, 'timesheets', 'rota@thehospitalitycompany.co.uk')).toBe(
+      'Thanks\nrota@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk',
+    );
   });
 });

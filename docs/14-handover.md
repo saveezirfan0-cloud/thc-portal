@@ -198,9 +198,6 @@ New from the 24.09 wave:
 - **`cancelEvent` ignores the error from its bookings update.**
 - **`accept_invite` still answers `hours_limit` for an expired right to work** —
   it reads the gate directly rather than through auto-assign.
-- **A worker with no subscribed device** is retried and then failed after about
-  31 minutes; the D1/D2/BG08 email signatures still name the literal
-  `timesheets@`/`admin@` even if `/settings` changes the sender (ADR-0020).
 - **Willo:** if Willo creates a candidate and the local link then fails
   transiently, the next sweep creates them again and a second E1 goes out.
 - `/apply` still uses its own consent tick; it can move to the shared `Checkbox`
@@ -259,6 +256,9 @@ Carried over:
 ---
 
 ## 5 · What is yours, not a session's
+
+**The live checklist is [`OWNER-TODO.md`](../OWNER-TODO.md)** at the repository
+root. Tick it there. This section keeps the background for each item.
 
 - ~~**Rotate the Supabase service role key.**~~ **Done 22.09.** It had been pasted
   into a chat transcript, and it bypasses every security policy in the database.
