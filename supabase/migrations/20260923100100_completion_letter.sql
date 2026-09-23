@@ -1205,6 +1205,105 @@ comment on view student_visa_v is
   'The §4.5 Student visa view and the completion letter requirement''s §4 report: every live worker on the International student branch, the cap RULE-20 calculates for them today, the evidence behind it (term letter, completion letter status incl. rejected and pending, completion date, below-degree level, opt-out) and the right-to-work expiry with days left. Reads through staff_directory_v, so §1.7''s anonymisation and the cap are not repeated.';
 
 -- ---------------------------------------------------------------------
+-- 13b · §2.2 — the Needs review queue carries what the reviewer confirms.
+--
+-- compliance_review_queue_v (20260923100000) predates the columns above.
+-- The reviewer approving a completion letter needs the form it came in,
+-- the completion date the worker entered (to confirm or correct) and what
+-- was actually uploaded, so they are appended. The rest is unchanged.
+-- ---------------------------------------------------------------------
+create or replace view compliance_review_queue_v with (security_invoker = true) as
+select
+  'document'::text                                           as kind,
+  d.id                                                       as item_id,
+  s.id                                                       as staff_id,
+  s.first_name || ' ' || s.last_name                         as display_name,
+  s.employee_id,
+  s.status,
+  s.status in ('interview_requested', 'interview_completed', 'documents', 'quiz', 'contract')
+                                                             as is_candidate,
+  s.block_kind,
+  s.block_reason,
+  s.rtw_branch,
+  s.photo_path,
+  d.doc_type::text                                           as item_type,
+  doc_label(d.doc_type)                                      as item_label,
+  d.uploaded_at                                              as submitted_at,
+  d.file_path,
+  d.ai_confidence,
+  d.needs_manual_review,
+  d.expiry_date,
+  d.term_dates,
+  d.right_to_work_until                                      as doc_right_to_work_until,
+  d.share_code,
+  d.awarding_institution,
+  exists (select 1 from compliance_docs p
+           where p.staff_id = d.staff_id and p.doc_type = d.doc_type and p.id <> d.id
+             and p.review_status in ('verified', 'rejected')
+             and p.uploaded_at <= d.uploaded_at)             as is_reupload,
+  (select p.rejection_reason from compliance_docs p
+    where p.staff_id = d.staff_id and p.doc_type = d.doc_type and p.id <> d.id
+      and p.review_status = 'rejected' and p.uploaded_at <= d.uploaded_at
+    order by p.uploaded_at desc limit 1)                     as previous_rejection,
+  null::text                                                 as declaration_source,
+  null::text                                                 as declaration_details,
+  null::date                                                 as conviction_date,
+  s.right_to_work_until                                      as staff_right_to_work_until,
+  d.evidence_form,
+  d.completion_date_claimed,
+  d.mime_type,
+  d.size_bytes
+from compliance_docs d
+join staff s on s.id = d.staff_id
+where d.review_status = 'pending'
+  and s.status not in ('rejected', 'removed')
+  and s.removed_at is null
+union all
+select
+  'declaration'::text,
+  c.id,
+  s.id,
+  s.first_name || ' ' || s.last_name,
+  s.employee_id,
+  s.status,
+  s.status in ('interview_requested', 'interview_completed', 'documents', 'quiz', 'contract'),
+  s.block_kind,
+  s.block_reason,
+  s.rtw_branch,
+  s.photo_path,
+  'criminal_declaration'::text,
+  'Criminal Record declaration'::text,
+  c.declared_at,
+  null::text,
+  null::numeric,
+  false,
+  null::date,
+  null::daterange[],
+  null::date,
+  null::text,
+  null::text,
+  false,
+  null::text,
+  c.source::text,
+  c.details,
+  c.conviction_date,
+  s.right_to_work_until,
+  null::text,
+  null::date,
+  null::text,
+  null::bigint
+from criminal_declarations c
+join staff s on s.id = c.staff_id
+where c.answer
+  and c.review_status = 'pending'
+  and not c.superseded
+  and s.status not in ('rejected', 'removed')
+  and s.removed_at is null;
+
+revoke all on compliance_review_queue_v from public, anon;
+grant select on compliance_review_queue_v to authenticated, service_role;
+
+-- ---------------------------------------------------------------------
 -- 14 · §4 / acceptance criterion 7 — the export.
 --
 -- Every completion letter upload and decision and every opt-out signed or

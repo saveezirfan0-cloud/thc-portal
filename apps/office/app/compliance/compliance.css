@@ -1,0 +1,59 @@
+/*
+ * /compliance — the five pieces of `wireframes/backoffice/compliance.html`'s
+ * own <style> block that the design system does not already carry. Tokens
+ * only: every colour and line is a `var(--…)` from packages/ui.
+ */
+.compliance .ai {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.compliance .ai.hi {
+  color: var(--green);
+  border-color: var(--green-line);
+}
+.compliance .ai.mid {
+  color: var(--amber);
+  border-color: var(--amber-line);
+}
+.compliance .ai.manual {
+  color: var(--coral);
+  border-color: var(--coral-line);
+}
+.compliance .tbl td .found {
+  display: block;
+  font-size: 12.5px;
+}
+.compliance .days {
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+.compliance .days.neg {
+  color: var(--coral);
+}
+.compliance .days.soon {
+  color: var(--amber);
+}
+.compliance .days.ok {
+  color: var(--green);
+}
+.compliance .ladder {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 6px 14px;
+  font-size: 12.5px;
+}
+.compliance .ladder .k {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}

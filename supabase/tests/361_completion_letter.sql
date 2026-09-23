@@ -218,9 +218,10 @@ select is((select count(*)::int from notification_outbox where template = 'CL3'
   '§5: the office is told a document is awaiting review (CL3)');
 select is((select count(*)::int from compliance_blockers(:'stu')), 0,
   'a pending completion letter is not a compliance blocker: it can only ever raise the cap');
-select is((select item_type from compliance_review_queue_v
-            where staff_id = :'stu'), 'university_completion_letter',
-  '§2.2: it is in Compliance → Needs review');
+select is((select item_type || ' · ' || evidence_form || ' · ' || completion_date_claimed
+             from compliance_review_queue_v where staff_id = :'stu'),
+  'university_completion_letter · transcript · ' || (:'w'::date + 2),
+  '§2.2: it is in Compliance → Needs review, with its form and the date the reviewer is to confirm');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid')::text, true);
 select is((select count(*)::int from compliance_review_queue_v where staff_id = :'stu'), 1,
