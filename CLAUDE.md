@@ -71,6 +71,6 @@ mirroring `wireframes/assets/thc.css`) `packages/domain` (pure rules + vectors)
 - Never put secrets in code; Edge Function secrets via `supabase secrets`, Vercel env vars per app.
 - Sample/seed data mirrors `wireframes/CONVENTIONS.md` so screenshots and tests read the same.
 - Use the domain bots in `.claude/agents/` (see `docs/05-domain-bots.md`). Ask `qa-reviewer` before opening a PR.
-- Running more than one bot at once: `docs/10-working-with-agents.md` (ownership map, the three shared hot spots, which phases overlap).
+- Running more than one bot at once: `docs/10-working-with-agents.md` (ownership map, the three shared hot spots, which phases overlap). **Before starting a slice, run `pnpm check:overlap`** — it lists what every open PR is editing. Five parallel duplications in one day, one of which nearly deleted a shipped rule with a green build (docs/10 §3b).
 - Starting a session: `docs/14-handover.md` is the current state and the order to build in; `docs/13-remaining-work.md` has a prompt for every screen and system still to build; `docs/11-session-prompts.md` has the foundation ones; `docs/00-how-to-build-with-claude.md` is the operating manual and current status.
 - Keys, connections and brand assets: `docs/12-keys-and-assets.md`. Source logos go in `brand/`; the generated icons are named in `apps/staff/app/manifest.ts`.
