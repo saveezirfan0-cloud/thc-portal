@@ -10,6 +10,7 @@ import { staffDb, supabaseConfigured } from '../db';
 import { photoPathFor } from '../profile/photos';
 import { documentExtractor, toDaterangeLiteral } from './extractor';
 import { NOT_CONFIGURED, reasonMessage } from './messages';
+import { documentPath, isOwnDocumentPath } from './paths';
 import type { Referee } from './state';
 
 /**
@@ -51,6 +52,14 @@ async function call<T extends object = object>(
   if (error) return { ok: false, message: reasonMessage(error.message) };
   if (revalidate) refresh();
   return { ok: true, data: (data ?? {}) as T };
+}
+
+/** The caller's staff id, from the session — never from the request. */
+async function sessionStaffId(): Promise<string | null> {
+  const supabase = await db();
+  const { data } = await supabase.rpc('staff_me');
+  const staffId = (data as Record<string, unknown> | null)?.['staffId'];
+  return typeof staffId === 'string' ? staffId : null;
 }
 
 // ---------------------------------------------------------------------
@@ -134,10 +143,8 @@ export async function lookupPostcode(
 /** Where the selfie goes — built from the session, never taken from the browser. */
 export async function startSelfieUpload(): Promise<Result<{ path: string }>> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
-  const supabase = await db();
-  const { data } = await supabase.rpc('staff_me');
-  const staffId = (data as Record<string, unknown> | null)?.['staffId'];
-  if (typeof staffId !== 'string') return { ok: false, message: reasonMessage('unknown_staff') };
+  const staffId = await sessionStaffId();
+  if (!staffId) return { ok: false, message: reasonMessage('unknown_staff') };
   return { ok: true, path: photoPathFor(staffId) };
 }
 
@@ -184,15 +191,13 @@ export async function startDocumentUpload(input: {
   if (invalid) return { ok: false, message: invalid };
   const kind = uploadKind({ name: input.fileName, type: input.fileType })!;
 
-  const supabase = await db();
-  const { data } = await supabase.rpc('staff_me');
-  const staffId = (data as Record<string, unknown> | null)?.['staffId'];
-  if (typeof staffId !== 'string') return { ok: false, message: reasonMessage('unknown_staff') };
+  const staffId = await sessionStaffId();
+  if (!staffId) return { ok: false, message: reasonMessage('unknown_staff') };
 
   const admin = await adminClient();
   if (!admin) return { ok: false, message: STORAGE_NOT_CONFIGURED };
 
-  const path = `${staffId}/${input.docType}/${randomUUID()}.${kind}`;
+  const path = documentPath(staffId, input.docType, randomUUID(), kind);
   const { data: slot, error } = await admin.storage.from('documents').createSignedUploadUrl(path);
   if (error || !slot)
     return { ok: false, message: 'That upload couldn’t start. Please try again.' };
@@ -208,6 +213,13 @@ export async function finishDocumentUpload(input: {
   fileName: string;
 }): Promise<Result> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  // The path came back from the browser. Before the service key touches
+  // it — list, download, or delete — it must be one this session could
+  // have been handed by startDocumentUpload.
+  const staffId = await sessionStaffId();
+  if (!staffId || !isOwnDocumentPath(staffId, input.docType, input.path)) {
+    return { ok: false, message: reasonMessage('wrong_path') };
+  }
   const admin = await adminClient();
   if (!admin) return { ok: false, message: STORAGE_NOT_CONFIGURED };
 
