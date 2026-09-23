@@ -1,0 +1,121 @@
+/*
+ * The Documents tab and its screens — mirrors the page-local styles in
+ * wireframes/staff/documents.html. Layout only: every colour, radius, size
+ * and spacing is a token from packages/ui, so both grounds render it.
+ */
+
+/* Rows are denser on the phone than the Back Office's docrow. */
+.docs-list .docrow {
+  padding: var(--sp-10) var(--sp-12);
+}
+.docs-list .docrow .ico {
+  width: 30px;
+  height: 30px;
+  flex-basis: 30px;
+}
+.docs-list .docrow .m.coral {
+  color: var(--coral-ink);
+}
+.docs-list .docrow .m.amber {
+  color: var(--amber-ink);
+}
+.docs-list .docrow.optional {
+  opacity: 0.85;
+  border-style: dashed;
+}
+.docs-list .docrow.superseded {
+  opacity: 0.7;
+}
+
+.docs-status {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  flex-wrap: wrap;
+}
+
+.docs-section-h {
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: var(--sp-12);
+}
+
+/* "↓ Pull to refresh" */
+.ptr {
+  text-align: center;
+  font-family: var(--font-label);
+  font-size: var(--fs-10);
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: var(--sp-4) 0;
+  cursor: pointer;
+  width: 100%;
+}
+
+/* §10.7: "at the foot of the list, set apart from the document rows". */
+.declare {
+  margin-top: var(--sp-16);
+  padding-top: var(--sp-14);
+  border-top: 1px dashed var(--line);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+.declare .t {
+  font-weight: 500;
+  font-size: var(--fs-13);
+}
+.declare .btn {
+  justify-content: flex-start;
+}
+
+/* The plain notice above a consequential submit (§10.7, §2.4). */
+.notice {
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--cyan);
+  background: var(--glass);
+  border-radius: var(--r-card);
+  padding: var(--sp-10) var(--sp-12);
+  font-size: var(--fs-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+/* Sub-screens: "‹ Documents" above the title. */
+.back-link {
+  display: block;
+  font-family: var(--font-label);
+  font-size: var(--fs-10);
+  color: var(--cyan);
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  margin-bottom: 1px;
+}
+
+.docs-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+.docs-form .file-pick {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.docs-form .file-pick input[type='file'] {
+  font-size: var(--fs-12);
+}
+
+.optout-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  font-size: var(--fs-12);
+}

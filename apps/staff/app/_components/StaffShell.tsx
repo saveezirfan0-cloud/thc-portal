@@ -61,11 +61,9 @@ export async function StaffShell({
   const unlocked = reachableTabs(lock);
 
   const items = [
-    // Documents is the compliance domain's screen (§10.4, §4.2). Until it
-    // exists the tab renders as text rather than a link to a 404 — and it
-    // is deliberately still shown, because it is the one tab an
-    // auto-blocked worker keeps (§10.1).
-    { href: '/documents', label: 'Documents', pending: true },
+    // Documents is the compliance domain's screen (§10.4, §4.2) — and the
+    // one tab an auto-blocked worker keeps (§10.1).
+    { href: '/documents', label: 'Documents' },
     { href: '/shifts', label: 'Shifts', ...(shifts ? { count: shifts } : {}) },
     { href: '/invites', label: 'Invites', ...(invites ? { count: invites } : {}) },
     { href: '/radar', label: 'Radar' },

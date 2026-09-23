@@ -13,6 +13,9 @@
 
 import { UK_ZONE } from './time';
 import { shareCodeError } from './shareCode';
+// The doc_type enum has one TypeScript home, documents.ts, checked there
+// against 0001_init — not declared a second time here.
+import type { DocType } from './documents';
 
 // ---------------------------------------------------------------------
 // The eleven steps (§10.3, §2.8 "Order in the wizard")
@@ -90,17 +93,6 @@ export const BRANCH_HEADING: Readonly<Record<RtwBranch, string>> = {
   international_student: 'International student',
   dependant_other: 'Dependant / other visa',
 };
-
-export type DocType =
-  | 'passport'
-  | 'birth_certificate'
-  | 'ni_evidence'
-  | 'national_id'
-  | 'visa_document'
-  | 'status_document'
-  | 'university_term_dates_letter'
-  | 'university_completion_letter'
-  | 'share_code_report';
 
 /** Branch 1 only: "passport (photo) OR birth certificate + a document showing the NI number". */
 export type UkDocChoice = 'passport' | 'birth_certificate';
