@@ -2,8 +2,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SHARE_CODE_SQL_PATTERN } from '../shareCode.ts';
+import { deriveStatement } from '../hmrc.ts';
 import {
   POSTCODE_SQL_PATTERN,
+  RELATIVE_SQL_PATTERN,
   UK_PIN_BOUNDS,
   VISA_TYPES,
   requiredDocuments,
@@ -106,5 +108,35 @@ describe('document sets (§2.5 pts 1–5) — SQL and TypeScript agree', () => {
       .map((r) => `${r.key}:${r.accepts.join('|')}`);
     const ts = requiredDocuments(branch, choice).map((r) => `${r.key}:${r.accepts.join('|')}`);
     expect(sql).toEqual(ts);
+  });
+});
+
+const contract = readFileSync(
+  join(MIGRATIONS, '20260923120200_onboarding_wizard_contract.sql'),
+  'utf8',
+);
+
+describe('references (§2.10) — SQL and TypeScript agree', () => {
+  it('looks_like_relative() uses the same word list', () => {
+    expect(contract).toContain(`~ '${RELATIVE_SQL_PATTERN}'`);
+  });
+});
+
+describe('HMRC (§2.8) — SQL and TypeScript agree', () => {
+  it('hmrc_statement_for() routes as deriveStatement() does', () => {
+    const start = contract.indexOf('create or replace function public.hmrc_statement_for');
+    const body = contract.slice(start, contract.indexOf('$$;', start)).replace(/\s+/g, ' ');
+    expect(body).toContain(
+      "when p_q1 is null then null when p_q1 then 'C' when p_q2 is null then null when p_q2 then 'C' when p_q3 is null then null when p_q3 then 'B' else 'A'",
+    );
+    const cases = [
+      [true, null, null, 'C'],
+      [false, true, null, 'C'],
+      [false, false, true, 'B'],
+      [false, false, false, 'A'],
+    ] as const;
+    for (const [q1, q2, q3, want] of cases) {
+      expect(deriveStatement({ q1OtherJob: q1, q2Pension: q2, q3Since6April: q3 })).toBe(want);
+    }
   });
 });
