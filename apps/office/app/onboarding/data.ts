@@ -24,6 +24,19 @@ import type {
  * `applications`, which are admin_all / admin_read — so a client reads
  * nobody and a worker reads only themselves without this file doing
  * anything (380_onboarding_pipeline asserts both).
+ *
+ * One column is not covered by that. Since 20260923220000 no PostgREST
+ * role holds `staff.rejection_reason`: a rejected candidate could
+ * otherwise read the office's free-text note about themselves straight
+ * off the table, and ADR-0017 keeps it out of E2/E2b/E4 precisely because
+ * it is the office's. `onboarding_candidates_v` reads it back through the
+ * owner-rights `staff_rejection_reason_v`, which carries the admin gate
+ * in its own body. Deleting that sub-view as redundant makes this column
+ * null for the office too.
+ *
+ * Not the same as `compliance_docs.rejection_reason`, which the worker is
+ * MEANT to see — §2.6 and N8 tell them why a document was rejected so
+ * they can re-upload.
  */
 const NOT_CONFIGURED =
   'This environment has no Supabase project, so the onboarding pipeline cannot be read. See docs/04-setup-github-vercel-supabase.md.';
