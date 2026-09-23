@@ -15,15 +15,12 @@ GitHub on 23.09** — both are still open, they are not stale entries.
 - [ ] **Auth → turn on leaked-password protection.** The security advisor still
       reports it off (re-read 23.09). Of everything the advisor flags on this
       project, it is the only finding that is not a deliberate design decision.
-- [ ] **Answer, if you can: what created `public.rls_auto_enable()`?** It is a
-      `SECURITY DEFINER` function that manipulates row-level security, it exists
-      on the live project, and it is **in no migration in this repository** — so
-      no session made it. It was callable by anyone, signed in or not; a session
-      has since revoked EXECUTE from `public`, `anon` and `authenticated`, so it
-      is no longer reachable. Nobody has established where it came from. If you
-      or anyone ran something in the SQL editor, or installed a Supabase
-      integration or template, that is the likely answer — and worth knowing
-      before something else recreates it.
+- [x] ~~What created `public.rls_auto_enable()`?~~ **Answered 26.09:** it is the
+      function behind an event trigger named `ensure_rls` that enables
+      row-level security on every new table in `public`. That is Supabase's
+      "enable RLS automatically on new tables" option, turned on in the
+      dashboard, which is why no migration has it. It only ever adds
+      protection; leave it (handover §3).
 
 ## 2 · GitHub
 
