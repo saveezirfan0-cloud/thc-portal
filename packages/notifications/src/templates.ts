@@ -330,6 +330,17 @@ export const TEMPLATES = {
     timing: 'on the rejection decision',
     mandatory: true,
   },
+  E2b: {
+    code: 'E2b',
+    channel: 'email',
+    sender: 'admin',
+    title: 'Your application to The Hospitality Company',
+    body: 'Thank you for the time you have given to your application with The Hospitality Company. On this occasion we will not be taking your application further. We wish you the very best.',
+    trigger:
+      'Rejected after the interview stage (documents, quiz stage, additional info), or a returning applicant declined. Not in §8: E2 thanks the candidate for completing their interview, which is untrue for these, so this is E2 without the interview (20260923170000)',
+    timing: 'on the rejection decision',
+    mandatory: true,
+  },
   E3: {
     code: 'E3',
     channel: 'email',
@@ -440,6 +451,14 @@ export const SCOPE_CODES = [
   'E8',
   'E9',
 ] as const satisfies readonly TemplateCode[];
+
+/**
+ * Codes the register carries that §8 does not name. Each one exists because
+ * §8's own copy would have been untrue where it was about to be sent, and
+ * its `trigger` says so. Kept apart from SCOPE_CODES so the test can still
+ * hold that list to the scope exactly.
+ */
+export const EXTENSION_CODES = ['E2b'] as const satisfies readonly TemplateCode[];
 
 export function template(code: TemplateCode): Template {
   return TEMPLATES[code];

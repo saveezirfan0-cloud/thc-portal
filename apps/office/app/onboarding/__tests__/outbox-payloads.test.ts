@@ -54,6 +54,13 @@ describe('onboarding outbox rows render completely', () => {
     expect(message.subject).not.toMatch(UNFILLED);
   });
 
+  it('E2b (rejected after the interview, or a returning applicant): no interview wording, no reason', () => {
+    const message = messageFor(row({ template: 'E2b', payload: { name: 'Hana' } }));
+    if (message.kind !== 'email') throw new Error('E2b is an email');
+    expect(message.body).not.toMatch(UNFILLED);
+    expect(message.body).not.toMatch(/interview/i);
+  });
+
   it('N8 (reject_document / reject_declaration): the reason word for word', () => {
     const message = messageFor(
       row({

@@ -318,8 +318,8 @@ select results_eq(
   'Reset: back to Interview requested, the Employee ID kept, the old rejection cleared (§2.12)');
 select ok((select onboarding_started_at > now() - interval '1 minute' from staff where id = :'c_rej'),
   'and a new onboarding period starts, so old evidence cannot satisfy the new gates');
-select is((select count(*)::int from notification_outbox where key = 'E2:application:' || :'applic_new' and recipient_emails = array['someone@onb.test']), 1,
-  'a rejected application gets E2 at the address on the application — never a reason');
+select is((select count(*)::int from notification_outbox where key = 'E2b:application:' || :'applic_new' and recipient_emails = array['someone@onb.test']), 1,
+  'a rejected application gets E2b at the address on the application — never a reason, and not the interview wording');
 select is((select status::text from staff where id = 'dddddddd-0000-4000-8000-000000000001'), 'compliant',
   'and the matched record is untouched');
 

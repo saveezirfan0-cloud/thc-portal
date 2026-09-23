@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { SCOPE_CODES, TEMPLATES, body, outboxKey, render, template } from '../templates';
+import {
+  EXTENSION_CODES,
+  SCOPE_CODES,
+  TEMPLATES,
+  body,
+  outboxKey,
+  render,
+  template,
+} from '../templates';
 import type { Template, TemplateCode } from '../templates';
 
 /**
@@ -39,8 +47,16 @@ describe('notification register (§8)', () => {
     }
   });
 
-  it('invents no code the scope does not name', () => {
-    expect([...Object.keys(TEMPLATES)].sort()).toEqual([...PUSH_CODES, ...EMAIL_CODES].sort());
+  it('invents no code the scope does not name, bar the listed extensions', () => {
+    expect([...Object.keys(TEMPLATES)].sort()).toEqual(
+      [...PUSH_CODES, ...EMAIL_CODES, ...EXTENSION_CODES].sort(),
+    );
+  });
+
+  it('says why every extension exists, on the entry itself', () => {
+    for (const code of EXTENSION_CODES) {
+      expect(TEMPLATES[code].trigger, `${code} trigger`).toMatch(/Not in §8/);
+    }
   });
 
   it('puts every code on the channel §8 gives it', () => {
@@ -48,8 +64,8 @@ describe('notification register (§8)', () => {
     for (const code of EMAIL_CODES) expect(TEMPLATES[code as TemplateCode].channel).toBe('email');
   });
 
-  it('exports SCOPE_CODES as exactly the register', () => {
-    expect([...SCOPE_CODES].sort()).toEqual([...Object.keys(TEMPLATES)].sort());
+  it('exports SCOPE_CODES and EXTENSION_CODES as exactly the register', () => {
+    expect([...SCOPE_CODES, ...EXTENSION_CODES].sort()).toEqual([...Object.keys(TEMPLATES)].sort());
   });
 
   it('keys every template by its register code', () => {
@@ -89,7 +105,7 @@ describe('notification register (§8)', () => {
   it('marks mandatory exactly the sends §8 calls mandatory', () => {
     const mandatory = entries.filter(([, v]) => v.mandatory).map(([k]) => k);
     expect(mandatory.sort()).toEqual(
-      ['E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9', 'N10', 'N10b', 'N10c', 'N12'].sort(),
+      ['E2', 'E2b', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9', 'N10', 'N10b', 'N10c', 'N12'].sort(),
     );
   });
 
@@ -224,7 +240,11 @@ describe('§8 copy is verbatim', () => {
     // seven emails whose wording the scope never gives — E1 (Willo's), E3,
     // E5, E6, E7, E8, E9.
     const pinned = new Set(SCOPE_BODIES.map(([code]) => code));
-    const unpinned = Object.keys(TEMPLATES).filter((code) => !pinned.has(code));
+    // Extensions are not §8's, so §8 quotes nothing for them.
+    const extensions = new Set<string>(EXTENSION_CODES);
+    const unpinned = Object.keys(TEMPLATES).filter(
+      (code) => !pinned.has(code) && !extensions.has(code),
+    );
     expect(unpinned.sort()).toEqual(
       ['N1', 'N8', 'N9', 'N14', 'E1', 'E3', 'E5', 'E6', 'E7', 'E8', 'E9'].sort(),
     );
