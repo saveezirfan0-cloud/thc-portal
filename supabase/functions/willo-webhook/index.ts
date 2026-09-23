@@ -22,6 +22,7 @@
  * WILLO_API_KEY, WILLO_INTERVIEW_KEY, STAFF_APP_URL, and optionally
  * WILLO_SIGNATURE_HEADER, WILLO_TIMESTAMP_HEADER,
  * WILLO_TIMESTAMP_TOLERANCE_SECONDS, WILLO_API_BASE, WILLO_INVITE_PATH,
+ * WILLO_LOOKUP_PATH (ADR-0024; `off` disables the lookup),
  * WILLO_API_AUTH_HEADER, WILLO_API_AUTH_PREFIX. docs/12 lists them.
  */
 
@@ -31,13 +32,14 @@ import {
   eventTime,
   isPermanentRefusal,
   parseWilloEvent,
-  readInviteAnswer,
   refusalCode,
+  runInviteSweep,
   verifyWilloSignature,
   willoApiConfig,
-  willoInviteRequest,
+  willoLookupPath,
   willoSignatureConfig,
 } from '../../../packages/db/src/willo.ts';
+import type { InviteDue } from '../../../packages/db/src/willo.ts';
 import { issueActivationLink } from '../../../packages/db/src/provision.ts';
 import type { AdminAuth } from '../../../packages/db/src/provision.ts';
 
@@ -210,15 +212,13 @@ async function webhook(request: Request): Promise<Response> {
 // Outbound: create due candidates in Willo
 // ---------------------------------------------------------------------
 
-interface Due {
-  staff_id: string;
-  first_name: string;
-  last_name: string;
-  email: string;
-  phone: string | null;
-  attempt: number;
-}
-
+/**
+ * The order of the calls lives in `runInviteSweep` (packages/db/src/
+ * willo.ts), held by vitest: a key Willo already returned this period is
+ * linked, never created again; a retry asks Willo by external_id before
+ * creating; a created key is recorded and linked in ONE call
+ * (`willo_invite_created`, 20260926100000). ADR-0024.
+ */
 function invite(request: Request): Promise<Response> {
   return runJob('willo-invite', request, async (db) => {
     const config = willoApiConfig(env);
@@ -235,69 +235,48 @@ function invite(request: Request): Promise<Response> {
 
     const { data, error } = await db.rpc('willo_invite_due', { p_limit: 20 });
     if (error) throw new Error(`willo_invite_due: ${error.message}`);
-    const due = (data ?? []) as Due[];
+    const due = (data ?? []) as InviteDue[];
 
-    let created = 0;
-    let failed = 0;
-    for (const row of due) {
-      const spec = willoInviteRequest(config, {
-        staffId: row.staff_id,
-        firstName: row.first_name,
-        lastName: row.last_name,
-        email: row.email,
-        phone: row.phone,
-      });
-      let answer: ReturnType<typeof readInviteAnswer>;
-      try {
-        const response = await fetch(spec.url, {
-          method: spec.method,
-          headers: spec.headers,
-          body: spec.body,
-          signal: AbortSignal.timeout(10_000),
-        });
-        answer = readInviteAnswer(response.status, await response.text());
-      } catch (cause) {
-        answer = {
-          ok: false,
-          retry: true,
-          reason: `network: ${cause instanceof Error ? cause.message : String(cause)}`,
-        };
-      }
-
-      if (!answer.ok) {
-        failed += 1;
-        console.error('[willo-invite] create failed', {
-          staffId: row.staff_id,
-          attempt: row.attempt,
-          retry: answer.retry,
-          reason: answer.reason,
-        });
-        await db.rpc('willo_invite_failed', { p_staff: row.staff_id, p_error: answer.reason });
-        continue;
-      }
-
-      const { error: linkError } = await db.rpc('willo_link_candidate', {
-        p_staff: row.staff_id,
-        p_willo_candidate_id: answer.willoCandidateId,
-      });
-      if (linkError) {
-        // Created in Willo but the candidate moved on meanwhile (rejected,
-        // removed). Their webhooks will be refused as unknown; recorded.
-        failed += 1;
-        console.error('[willo-invite] created but not linked', {
-          staffId: row.staff_id,
-          willo: answer.willoCandidateId,
-          error: linkError.message,
-        });
-        await db.rpc('willo_invite_failed', {
-          p_staff: row.staff_id,
-          p_error: `created ${answer.willoCandidateId}, not linked: ${linkError.message}`,
-        });
-        continue;
-      }
-      created += 1;
-    }
-    return { due: due.length, created, failed };
+    const result = await runInviteSweep(
+      {
+        config,
+        lookupPath: willoLookupPath(env),
+        async http(spec) {
+          const response = await fetch(spec.url, {
+            method: spec.method,
+            headers: spec.headers,
+            body: 'body' in spec ? spec.body : undefined,
+            signal: AbortSignal.timeout(10_000),
+          });
+          return { status: response.status, text: await response.text() };
+        },
+        async recordCreated(staffId, willoCandidateId) {
+          const { data: out, error: recordError } = await db.rpc('willo_invite_created', {
+            p_staff: staffId,
+            p_willo_candidate_id: willoCandidateId,
+          });
+          if (recordError) return { ok: false, message: recordError.message };
+          const body = (out ?? {}) as { outcome?: string; code?: string };
+          const outcome =
+            body.outcome === 'linked' || body.outcome === 'already_linked'
+              ? body.outcome
+              : 'not_linked';
+          return body.code ? { ok: true, outcome, code: body.code } : { ok: true, outcome };
+        },
+        async recordFailure(staffId, reason) {
+          const { error: failError } = await db.rpc('willo_invite_failed', {
+            p_staff: staffId,
+            p_error: reason,
+          });
+          if (failError) throw new Error(failError.message);
+        },
+        log(level, message, details) {
+          console[level](message, details);
+        },
+      },
+      due,
+    );
+    return { ...result };
   });
 }
 

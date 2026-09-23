@@ -122,12 +122,37 @@ export function maskNiNumber(raw: string): string {
   return '●'.repeat(Math.max(ni.length - 2, 0)) + ni.slice(-2);
 }
 
+/**
+ * Gender for HMRC's payroll record — §9.9 Tab 3's "Gender (M/F)" column,
+ * confirmed by THC 28.07.2026 (ADR-0024). HMRC's Real Time Information
+ * submission takes exactly these two values, so the form offers exactly
+ * these two and says why rather than offering options payroll could not
+ * send. SQL twin: the `staff_gender_m_or_f` check and the 8-argument
+ * `submit_hmrc_checklist` (20260926100100).
+ */
+export type HmrcGender = 'M' | 'F';
+
+export const HMRC_GENDER_OPTIONS: readonly { value: HmrcGender; label: string }[] = [
+  { value: 'M', label: 'Male' },
+  { value: 'F', label: 'Female' },
+];
+
+export const HMRC_GENDER_QUESTION = 'Gender, as HMRC records it';
+
+export const HMRC_GENDER_NOTE =
+  'HMRC’s payroll records only accept male or female, so these are the only two options we can send. Choose the one HMRC holds for you — usually the one on your birth certificate or Gender Recognition Certificate. It goes on your payroll record for HMRC and is used for nothing else.';
+
 export interface HmrcForm extends HmrcAnswers {
   studentLoan: StudentLoanPlan | null;
   postgraduateLoan: boolean;
   /** Blank = the worker has no NI number yet, which is allowed. */
   niNumber: string;
   declared: boolean;
+  /**
+   * `null` = asked and not yet answered (the Staff App's step 7); left out
+   * = a form that does not ask it, which `hmrcMissing` then ignores.
+   */
+  gender?: HmrcGender | null;
 }
 
 /**
@@ -142,6 +167,7 @@ export function hmrcMissing(form: HmrcForm, niLocked = false): string[] {
   else if (q2 && form.q2Pension === null) missing.push('answer question 2');
   else if (q3 && form.q3Since6April === null) missing.push('answer question 3');
   if (form.studentLoan === null) missing.push('answer the student loan question');
+  if (form.gender === null) missing.push('answer the gender question');
   if (!niLocked && form.niNumber.trim() !== '' && !isValidNiNumber(form.niNumber)) {
     missing.push('fix the National Insurance number');
   }

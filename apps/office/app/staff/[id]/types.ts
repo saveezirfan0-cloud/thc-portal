@@ -186,6 +186,12 @@ export interface ProfileData {
    * not known, and nothing is offered.
    */
   activated?: boolean | null;
+  /**
+   * `staff.home_location_stale` (20260926110000): the worker changed their
+   * address and the postcode lookup failed, so §6 proximity still uses the
+   * old location. Null/absent = not known, and nothing is shown.
+   */
+  locationStale?: boolean | null;
   problem: string | null;
 }
 
