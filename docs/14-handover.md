@@ -101,9 +101,12 @@ one rather than the repository.
 
 - **Rotate the Supabase service role key.** It was pasted into a chat transcript and
   bypasses every security policy in the database.
-- **Delete `ANTHROPIC_API_KEY` from the Vercel client project.** It belongs only in
-  GitHub Actions secrets. Rotate it after.
-- **Enable branch protection on `main`** — require a pull request and a green `ci`:
+- ~~**Delete `ANTHROPIC_API_KEY` from the Vercel client project.**~~ Done — the project's
+  environment no longer lists it. Nothing in this repo wants that key any more either:
+  the only workflow that read it was deleted on 23.09 (O8). Rotate it anyway if it was
+  ever in a transcript.
+- **Enable branch protection on `main`** — require a pull request and a green
+  `build-test` (the job name, not the workflow):
   https://github.com/saveezirfan0-cloud/thc-portal/settings/rules/new?target=branch
 - **Turn on leaked-password protection** in Supabase Auth.
 - **Chase THC for the Appendix B inputs**: contract text, sample completion letters,

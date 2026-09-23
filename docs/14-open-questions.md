@@ -453,71 +453,35 @@ branch is tested — it decides which build of the CLI writes to the live databa
 can change between two merges with no commit to explain it. The rate-limit flake that took
 down a build is now a flake on the production deploy path.
 
-## O8 · The PR review bot — two faults, and the second one needs you today
+## O8 · ~~The PR review bot~~ — CLOSED: the workflow is deleted
 
-### The one blocking it now: there is no API key
+**Closed 23.09.2026 by the owner's decision: the `claude` GitHub Action will not be used.**
+`.github/workflows/claude.yml` is deleted rather than left red, so neither fault below can
+recur and no repository secret is owed for it.
 
-Since roughly 17:09 on 21.09 the `claude` check fails after **twelve seconds**, before it
-reads a line of the diff:
+For the record, since both were real and both cost money:
 
-```
-##[error]Action failed with error: Environment variable validation failed:
-  - Either ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN, or workload identity federation
-    (ANTHROPIC_FEDERATION_RULE_ID and ANTHROPIC_ORGANIZATION_ID) is required when using
-    the direct Anthropic API.
-```
+1. **No API key.** From roughly 17:09 on 21.09 the check failed after twelve seconds, in
+   environment validation, before reading a line of any diff — the step's own environment
+   dump showed `ANTHROPIC_API_KEY:` with nothing after it. It had worked earlier the same
+   day (a run at 16:29 took 9m 40s and billed $3.44), and whether the secret was removed
+   or the account behind it ran out was never visible from the log. It failed identically
+   on every PR from then until deletion.
+2. **The review was thrown away after it succeeded.** Before the key went, the check was
+   failing on `--max-turns 60` with `"subtype": "success", "is_error": false,
+   "num_turns": 61` — the reviewer finished, the action discarded the result and failed the
+   check, and nothing was posted. That run also logged `permission_denials_count: 17`:
+   seventeen refused tool calls, each costing a turn that did no work.
 
-and the step's own environment dump shows `ANTHROPIC_API_KEY:` with nothing after it.
-`.github/workflows/claude.yml` passes `${{ secrets.ANTHROPIC_API_KEY }}`, so the
-repository secret is empty, deleted, or not reaching the workflow.
+Neither needs deciding now. If the action is ever reinstated, both are waiting for it, and
+pre-approving the read-only tools a reviewer needs (`Read`, `Grep`, `Glob`, `git diff`,
+`git log`) is the cheaper of the two fixes to try first.
 
-It worked earlier the same day — a run at 16:29 took 9m 40s and billed $3.44 — so
-something changed between the two. Whether the secret was removed or the account behind it
-ran out is not visible from the log, and both look identical from here.
-
-**This one is yours and nothing in the repo can substitute for it.** A bot cannot hold or
-set a repository secret, and CLAUDE.md rightly forbids putting one in code. Set it at
-Settings → Secrets and variables → Actions → `ANTHROPIC_API_KEY`.
-
-Re-running the check is pointless until then, which is why I have not spent a re-run on
-it. Note that `build-test` is the gate and is unaffected: the `claude` check is advisory,
-so this does not block merging.
-
-### The one underneath it: the review is thrown away after it succeeds
-
-This is the fault that will come back the moment the key is restored, so it is recorded
-rather than closed. Before the key went, the check was failing like this:
-
-```
-"subtype": "success", "is_error": false, "num_turns": 61
-##[error]Claude reported a successful result after 61 turns, exceeding the configured
-maximum of 60
-```
-
-`claude.yml` sets `--max-turns 60`. That run completed its review, cost $3.44, and the
-action discarded the result and failed the check. Nothing was posted to the pull request.
-
-Two things to weigh, and both cost money, which is why this is yours too:
-
-1. **Raise the limit.** The obvious fix and the one with a recurring bill attached. These
-   PRs are large — five or six commits across SQL, tests and docs — so the reviewer needs
-   the turns. Roughly $3.50 a review at 60 turns; a higher ceiling raises the worst case,
-   not the average, since a short PR still finishes early.
-2. **Spend fewer turns.** The same run logged `permission_denials_count: 17`. Seventeen
-   tool calls were refused, and every refusal costs a turn that did no work. Pre-approving
-   the read-only tools a reviewer needs — `Read`, `Grep`, `Glob`, `git diff`, `git log` —
-   would likely bring it under the existing limit for free. Cheaper than (1) and worth
-   trying first.
-
-Neither is changed here, because both are standing costs on every pull request in the repo
-rather than a bug in one.
-
-### Meanwhile
-
-The review still happens — I run the `qa-reviewer` agent in-session before pushing, which
-is what CLAUDE.md asks for anyway ("Ask `qa-reviewer` before opening a PR"). On PR #24 that
-found four blockers the CI bot never got the chance to. So the gap is a missing second
-opinion, not a missing review.
+**Review has not gone anywhere.** CLAUDE.md asks for `qa-reviewer` before opening a PR and
+that is where it runs — in-session, against the working tree. On PR #24 that found four
+blockers the CI bot never got to; on PR #41 it found two, one of which (the Back Office
+having no sign-out at all below 760px) would have shipped. `build-test` remains the check
+that gates a merge, and is unaffected.
 
 ## O9 · Prettier is run by hand, so `main` carries unformatted files
 
