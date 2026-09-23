@@ -15,11 +15,14 @@ const ALLOWED_ROLE = 'staff' as const;
 // there is a session: /install is where the activation email hands off
 // (§2.7, ADR-0001) and /offline is what the service worker serves when the
 // network is gone — a redirect to /login there would be a sign-in screen
-// that cannot load either.
+// that cannot load either. /privacy is the notice the /apply consent links
+// to (§1.7): an applicant has to be able to read it before they have an
+// account, not be sent to a sign-in screen mid-consent (D3).
 const PUBLIC_PATHS = [
   '/login',
   '/auth',
   '/apply',
+  '/privacy',
   '/activate',
   '/forgot',
   '/reset',

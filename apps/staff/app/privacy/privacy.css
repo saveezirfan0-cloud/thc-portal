@@ -1,0 +1,45 @@
+/* `/privacy` (§1.7). Rides on the /apply card (apply.css: left-aligned brand
+   row, left heading) and widens it for reading. Tokens only. */
+
+.privacy-page .auth-card {
+  max-width: 640px;
+  align-items: stretch;
+}
+
+.privacy-page .auth-card h3 {
+  font-family: var(--font-head);
+  font-size: var(--fs-15);
+  margin: 0 0 var(--sp-6);
+}
+
+.privacy-page section p,
+.privacy-page section li {
+  font-size: var(--fs-13);
+  line-height: 1.55;
+}
+
+.privacy-page section p {
+  margin: 0 0 var(--sp-8);
+}
+
+.privacy-page ul {
+  margin: 0;
+  padding-left: var(--sp-18);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+
+.privacy-page .notice {
+  margin: 0;
+  padding: var(--sp-10) var(--sp-12);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--amber);
+  border-radius: var(--r-tile);
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
+
+.privacy-page a {
+  color: var(--cyan-ink);
+}
