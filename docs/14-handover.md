@@ -206,8 +206,17 @@ real environment to prove it in.
 
 New from the 24.09 wave:
 
-- **Willo:** if Willo creates a candidate and the local link then fails
-  transiently, the next sweep creates them again and a second E1 goes out.
+- ~~**Willo:** if Willo creates a candidate and the local link then fails
+  transiently, the next sweep creates them again and a second E1 goes out.~~
+  **Closed 25.09** by `20260924170000` (pgTAP 512): the key Willo returns is
+  written to `audit_log` *before* the link is attempted, `willo_invite_due`
+  hands it back as mode `relink`, and the sweep re-links instead of creating.
+  A create whose outcome is unknown retries under the same `Idempotency-Key`;
+  a 2xx we could not read a key out of HOLDS the candidate rather than send a
+  second E1 (Reset is the way back). Still open under it: if Willo creates the
+  candidate and our process dies before anything is recorded, the retry is
+  still a create — bounded only by that idempotency header, which Willo may or
+  may not honour (ADR-0021 §1).
 - ~~`/apply` still uses its own consent tick~~ **Closed 25.09.** It hand-rolled
   the control for the coral border §1.7's validation state needs, which the
   shared `Checkbox` did not draw. It does now, off `aria-invalid` — which also

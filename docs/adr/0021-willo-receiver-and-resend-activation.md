@@ -51,7 +51,14 @@ Without `WILLO_API_KEY` / `WILLO_INTERVIEW_KEY` the route logs `no candidate cre
 
 The apply form is untouched. `submit_application()` deliberately returns nothing that tells a new applicant from a returning one (§2.12). A call from the form would need exactly that, and it would also miss Resets.
 
-**Known edge:** if Willo creates the candidate and `willo_link_candidate` then fails transiently, the next lease creates them again (a second E1). It is logged (`willo_invite_failed … created X, not linked`). Willo may de-duplicate by email; this is to be confirmed with the real API.
+~~**Known edge:** if Willo creates the candidate and `willo_link_candidate` then fails transiently, the next lease creates them again (a second E1).~~ **Closed by `20260924170000`** (pgTAP 512). Creating a candidate is not undoable and is what sends E1, so the sweep no longer decides for itself what to do with a person:
+
+- `willo_invite_created(staff, key, ref)` replaces `willo_link_candidate` in the sweep. It writes the key to `audit_log` **before** attempting the link, in one transaction, and **returns** its outcome (`linked`, `already_linked`, or a terminal `not_awaiting_interview` / `superseded` / `other_candidate_linked` / `candidate_taken` / `unknown_staff`) instead of raising — so a raised error now means only that the call did not get through, which the Edge Function retries with the key still in memory, and which `willo_invite_failed(…, p_willo_candidate_id => …)` records if the retries run out.
+- `willo_invite_due()` reads that key back as `invite_mode = 'relink'` with `created_candidate_id`. A candidate carrying one is **re-linked, never re-created**.
+- A failure now carries how much it knows: `no` (a 4xx — create again), `unknown` (5xx, 408/429, timeout — create again as `recover`, reusing the same `invite_ref` as an `Idempotency-Key`), `yes` with no key (a 2xx whose body we could not read — the candidate exists and E1 has gone, so they are **held** for this onboarding period rather than invited twice; the office's Reset, §2.12, is the way back).
+- A key that can never be ours is audited `willo_invite_orphan` — a live Willo candidate belonging to nobody, to be removed there — and the orphan releases the candidate to create again, so a terminal outcome cannot wedge the sweep in a re-link loop.
+
+The `Idempotency-Key` header is a **second line only**: §1 above says the API shape is assumed until THC's sandbox arrives, so nothing here depends on Willo de-duplicating anything. What remains, and cannot be closed from this side, is the window between the POST and any record of it: if the isolate dies there, the retry is still a create.
 
 No new table: `001_rls_guard` inventories every table, and `audit_log` is where these rows would be looked for anyway.
 

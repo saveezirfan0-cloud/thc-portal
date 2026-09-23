@@ -477,6 +477,16 @@ export interface InviteCandidate {
   lastName: string;
   email: string;
   phone: string | null;
+  /**
+   * `willo_invite_due.invite_ref`: this attempt at inviting this person,
+   * stable across a retry of the SAME attempt (20260924170000). Sent as an
+   * `Idempotency-Key` header — the second line of defence only. Whether
+   * Willo honours it is unknown (ADR-0021 §1: the whole API shape is
+   * assumed until THC's sandbox arrives), so nothing depends on it: the
+   * database never offers a candidate for creation twice once a key has
+   * come back, and never guesses that one has not.
+   */
+  reference?: string | null;
 }
 
 export interface HttpRequestSpec {
@@ -491,6 +501,7 @@ export function willoInviteRequest(
   candidate: InviteCandidate,
 ): HttpRequestSpec {
   const path = config.invitePath.replace('{interviewKey}', encodeURIComponent(config.interviewKey));
+  const reference = candidate.reference?.trim();
   return {
     url: `${config.apiBase}${path.startsWith('/') ? path : `/${path}`}`,
     method: 'POST',
@@ -498,6 +509,9 @@ export function willoInviteRequest(
       'Content-Type': 'application/json',
       Accept: 'application/json',
       [config.authHeader]: `${config.authPrefix}${config.apiKey}`,
+      // A header, not a body field: an API that does not know this one
+      // ignores it, where an unexpected body field can be a 400.
+      ...(reference ? { 'Idempotency-Key': reference } : {}),
     },
     body: JSON.stringify({
       first_name: candidate.firstName,
@@ -511,23 +525,47 @@ export function willoInviteRequest(
   };
 }
 
+/**
+ * Did Willo create the candidate? Creating one is not undoable and is what
+ * sends E1, so "we do not know" is its own answer and never rounds down to
+ * "no" (20260924170000).
+ *
+ *   no      — Willo refused the request outright (a 4xx that is not 408 or
+ *             429). Nothing exists there; creating again is safe.
+ *   unknown — a 5xx, a 408/429, a timeout, a dropped connection. Probably
+ *             nothing was created. Possibly something was.
+ *   yes     — Willo answered 2xx, so a candidate exists and E1 has gone,
+ *             but we could not read its key out of the body. Creating
+ *             again would certainly send a second E1.
+ */
+export type InviteCreated = 'no' | 'unknown' | 'yes';
+
 export type InviteAnswer =
-  { ok: true; willoCandidateId: string } | { ok: false; retry: boolean; reason: string };
+  | { ok: true; willoCandidateId: string }
+  | { ok: false; retry: boolean; reason: string; created: InviteCreated };
 
 /**
  * Willo's answer to the create call. The candidate key is read from the
  * places it is likely to be; a 2xx without one is an error, because an
- * unlinked candidate's webhooks would all be `unknown_willo_candidate`.
+ * unlinked candidate's webhooks would all be `unknown_willo_candidate` —
+ * but it is the error that says `created: 'yes'`, because Willo has
+ * invited that person whether or not we can name them.
+ *
  * `retry` says whether the same request could succeed later (5xx, 408,
  * 429); it is logged with the failure. The database's backoff
  * (`willo_invite_due`) tries again either way, so a key fixed after a 401
- * heals every waiting candidate without anyone touching them.
+ * heals every waiting candidate without anyone touching them — while
+ * `created` decides whether trying again may create at all.
  */
 export function readInviteAnswer(status: number, bodyText: string): InviteAnswer {
   if (status < 200 || status >= 300) {
+    const retry = status >= 500 || status === 408 || status === 429;
     return {
       ok: false,
-      retry: status >= 500 || status === 408 || status === 429,
+      retry,
+      // A 4xx is Willo declining to act; a 5xx or a throttle may have
+      // acted first and failed afterwards.
+      created: retry ? 'unknown' : 'no',
       reason: `http_${status}: ${bodyText.slice(0, 300)}`,
     };
   }
@@ -535,7 +573,7 @@ export function readInviteAnswer(status: number, bodyText: string): InviteAnswer
   try {
     body = JSON.parse(bodyText);
   } catch {
-    return { ok: false, retry: false, reason: 'response_not_json' };
+    return { ok: false, retry: false, created: 'yes', reason: 'response_not_json' };
   }
   const id = firstText(body, [
     'key',
@@ -551,5 +589,5 @@ export function readInviteAnswer(status: number, bodyText: string): InviteAnswer
   ]);
   return id
     ? { ok: true, willoCandidateId: id }
-    : { ok: false, retry: false, reason: 'response_without_candidate_key' };
+    : { ok: false, retry: false, created: 'yes', reason: 'response_without_candidate_key' };
 }

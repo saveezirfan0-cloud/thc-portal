@@ -331,6 +331,8 @@ describe('create candidate in Willo', () => {
     expect(spec.url).toBe(`${DEFAULT_API_BASE}/interviews/int%201/candidates/`);
     expect(spec.url).not.toContain('key-1');
     expect(spec.headers['Authorization']).toBe('Bearer key-1');
+    // No reference given, no header invented.
+    expect(spec.headers['Idempotency-Key']).toBeUndefined();
     expect(JSON.parse(spec.body)).toEqual({
       first_name: 'Mei',
       last_name: 'Lin',
@@ -363,6 +365,23 @@ describe('create candidate in Willo', () => {
     expect(spec.headers['X-Api-Key']).toBe('k');
   });
 
+  it('carries the invite reference as an idempotency key, never in the body', () => {
+    const config = willoApiConfig(env({ WILLO_API_KEY: 'k', WILLO_INTERVIEW_KEY: 'i' }))!;
+    const spec = willoInviteRequest(config, {
+      staffId: 's-1',
+      firstName: 'Mei',
+      lastName: 'Lin',
+      email: 'mei@example.com',
+      phone: null,
+      reference: ' thc-s-1-1700000000-2 ',
+    });
+    expect(spec.headers['Idempotency-Key']).toBe('thc-s-1-1700000000-2');
+    // An unexpected body field can be a 400; an unexpected header is
+    // ignored. ADR-0021: Willo's request shape is assumed, so the second
+    // line of defence must not be able to break the first.
+    expect(Object.keys(JSON.parse(spec.body))).not.toContain('reference');
+  });
+
   it('reads the candidate key from the answer, or fails', () => {
     expect(readInviteAnswer(201, '{"key":"W-9"}')).toEqual({ ok: true, willoCandidateId: 'W-9' });
     expect(readInviteAnswer(200, '{"data":{"candidate":{"key":"W-8"}}}')).toEqual({
@@ -375,5 +394,25 @@ describe('create candidate in Willo', () => {
     });
     expect(readInviteAnswer(503, 'down')).toMatchObject({ ok: false, retry: true });
     expect(readInviteAnswer(401, 'nope')).toMatchObject({ ok: false, retry: false });
+  });
+
+  it('says how much it knows about whether Willo created the candidate', () => {
+    // Willo declined to act: nothing exists there, so creating again is
+    // safe.
+    expect(readInviteAnswer(401, 'nope')).toMatchObject({ created: 'no' });
+    expect(readInviteAnswer(400, 'bad')).toMatchObject({ created: 'no' });
+    // It may have acted and failed afterwards, or been throttled before
+    // it did. Not knowable from here.
+    expect(readInviteAnswer(500, 'boom')).toMatchObject({ created: 'unknown' });
+    expect(readInviteAnswer(429, 'slow down')).toMatchObject({ created: 'unknown' });
+    expect(readInviteAnswer(408, 'timeout')).toMatchObject({ created: 'unknown' });
+    // 2xx: the candidate EXISTS and E1 has gone, whether or not we can
+    // read its key. Creating again would be a second invitation to a real
+    // person, so this is never rounded down to "failed".
+    expect(readInviteAnswer(200, '{}')).toMatchObject({ created: 'yes' });
+    expect(readInviteAnswer(201, 'not json at all')).toMatchObject({
+      created: 'yes',
+      reason: 'response_not_json',
+    });
   });
 });
