@@ -665,13 +665,27 @@ that is not mine to do here:
    only, which is right for Back Office actions reached through a server action, so this
    half of O10 is closed. What is still missing is the screen (B8).
 
-5. **`request_p45()` and `declare_conviction()` are service-role only too, and for a
-   sharper reason.** Both take a staff id and neither checks that it is the *caller's* —
-   they are written for a server action holding the service key, which is how the Staff
-   App reaches every other write path. Granting either to `authenticated` as they stand
-   would let any signed-in worker retire a colleague or suspend them on a fabricated
-   declaration. Whoever builds S4 and S6 either keeps the server-action shape or adds the
-   self-check and the grant in the same commit — never the grant alone.
+5. ~~**`request_p45()` and `declare_conviction()` are service-role only too, and for a
+   sharper reason.**~~ **Closed.** Both take a staff id and neither checks that it is the
+   *caller's*, so granting either to `authenticated` as they stood would have let any
+   signed-in worker retire a colleague or suspend them on a fabricated declaration. This
+   entry said whoever built S4 and S6 must either keep the server-action shape or add the
+   self-check and the grant in the same commit — **never the grant alone**.
+
+   They took the third option, which is better than either: a **self-scoped wrapper that
+   takes no staff id at all**, so there is no argument to point at somebody else.
+   `request_my_p45(text)` (`20260922180000`) and `declare_my_conviction(text, date)`
+   (`20260923150000`) are what `authenticated` holds. The two-argument originals are
+   **still granted to `service_role` only**, and `190_job_function_grants.sql` names both
+   in the list it asserts stays out of the PostgREST roles — so the grant this entry
+   warned about cannot be added later by accident without turning a test red.
+
+   Verified 23.09 by reading the grants in the migrations and the assertion in `190`,
+   not by taking the handover's word for it.
+
+Points 4 and 5 are now closed; 1, 2 and 3 were superseded by later waves — the §9.6
+screen, the drain and the verify action all exist, so what remains of this entry is the
+record of why the grants were withheld, which is still the reason not to widen them.
 
 None of these blocks the other work. They are recorded so that "compliance is built" is
 not read as "workers are being told", and so that the missing grants read as deliberate

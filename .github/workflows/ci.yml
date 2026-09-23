@@ -36,6 +36,13 @@ jobs:
       # screen still reports success. See docs/14 O13.
       - name: no app writes an admin-only table directly
         run: node scripts/check-write-paths.mjs
+      # Also milliseconds. CLAUDE.md says a screen is done when its states are
+      # listed in the inventory; nothing enforced it, and by 23.09 the document
+      # was missing a dozen routes AND still named two the Staff App has never
+      # served. A session reads that page to decide what is built, so a wrong
+      # row is worse than a missing one.
+      - name: the screen inventory names every route
+        run: node scripts/check-screen-inventory.mjs
       # Advisory, never fails: it reports which files another OPEN pull
       # request is also editing. Five times in one day two sessions built
       # the same thing, and one pair came within an editing decision of

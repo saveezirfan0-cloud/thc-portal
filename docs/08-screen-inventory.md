@@ -29,7 +29,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/clients/:id` | Client card (4 blocks) | `backoffice/client-card.html` | 9.7 | directory |
 | `/roles` | Roles & rates | `backoffice/roles.html` | 9.8 | directory |
 | `/reports`, `/reports/export` | Financial · Payroll · New Starter, CSV export | `backoffice/reports.html` | 9.9 | reports |
-| `/api/documents/:eventId` | Allocation sheet / sign-out timesheet PDF (Download, Send) | `client/timesheet.html` | 11.3–11.4 | reports |
+| `/api/documents/:eventId`, `/api/documents/:eventId/send` | Allocation sheet / sign-out timesheet PDF: Download and Send are two handlers | `client/timesheet.html` | 11.3–11.4 | reports |
 | `/feedback` | Client · Office | `backoffice/feedback.html` | 9.10 | client-portal |
 | `/venues` | List · On map · modal | `backoffice/venues.html` | 9.11 | directory |
 | `/settings` | Scoring weights, Willo map, venue radii, senders (Django-Admin replacement) | — (simple form) | 6, 2.4, 9.11, 9.12 | platform |
@@ -38,9 +38,9 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 ## Staff App PWA (`apps/staff`)
 | Route | Screen | Wireframe | § | Bot |
 |---|---|---|---|---|
-| `/login`, `/forgot`, `/reset` | A0–A3 | `staff/auth.html` | 10.2 | staff-pwa |
+| `/login`, `/forgot`, `/forgot/sent`, `/reset` | A0–A3 | `staff/auth.html` | 10.2 | staff-pwa |
 | `/install`, `/notifications`, `/offline` | Install + push permission; offline fallback | `staff/auth.html` | 10.5 | staff-pwa |
-| `/onboarding` | Wizard, 11 steps (one route; the step is state, not a path segment) | `staff/onboarding-1.html`, `-2`, `-3` | 10.3, 2.5–2.11 | onboarding |
+| `/onboarding`, `/onboarding/:step` | Wizard, 11 steps. `/onboarding` resolves where the worker is and sends them on; each step really is its own path segment (`apps/staff/app/onboarding/[step]/page.tsx`). | `staff/onboarding-1.html`, `-2`, `-3` | 10.3, 2.5–2.11 | onboarding |
 | `/documents` | Documents hub / tab | `staff/onboarding-3.html`, `staff/documents.html` | 10.4 | compliance |
 | `/documents/upload/:docType` | Upload / re-upload a document | `staff/documents.html` | 10.4 | compliance |
 | `/documents/completion-letter` | University completion letter (three forms) | `staff/documents.html` | completion letter req. §2.1 | compliance |
@@ -48,7 +48,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/documents/declare` | Declare a criminal conviction | `staff/documents.html` | 10.7 | compliance |
 | `/shifts` | My shifts · Open shifts | `staff/shifts.html` | 10.4, 3.5 | scheduling |
 | `/shifts/:id` | Shift detail, check-in/out, breaks, static screens | `staff/shift-detail.html` | 5.1–5.2b, 10.4 | checkin (see note) |
-| `/radar` | Radar | `staff/radar.html` | 10.4 | scheduling |
+| `/radar`, `/radar/:id` | Radar, and one shift's detail before applying | `staff/radar.html` | 10.4 | scheduling |
 | `/invites`, `/invites/:id` | Invites | `staff/invites.html` | 10.4, 3.4 | scheduling |
 | (sheet) | Profile sheet | `staff/profile.html` | 10.1 | staff-pwa |
 | `/profile`, `/profile/details`, `/profile/security`, `/profile/payments` | Profile sheet, Profile details, Security, Payment information | `staff/profile.html` | 10.1 | staff-pwa |
