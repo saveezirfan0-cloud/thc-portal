@@ -251,42 +251,7 @@ From the 23.09 build:
 
 Carried over:
 
-<<<<<<< HEAD
 - **D2 · `/apply` is a public write endpoint with no rate limit** (§2.1).
-=======
-- **B2 · the booking state machine models four of the seven states the database
-  can hold**, and there is no DB-side guard at all — `packages/domain/state.ts`
-  rejects an illegal transition, a direct `update` does not. The convention in
-  `CLAUDE.md` is one function in `state.ts` *and* a DB function; half of it is
-  missing here.
-- **B3 · `cancel_cause` has three disagreeing vocabularies** across the schema,
-  the domain layer and the UI, and no check constraint anywhere. Pick one, write
-  the constraint, migrate the rows.
-- ~~**D1 · the shared `Checkbox` and `Radio` cannot be operated by keyboard**~~
-  **Closed 23.09.** The cause was `class="hide"` on the real native input, and
-  `.hide` is `display: none !important` — so it was not rendered, not focusable
-  and not in the accessibility tree. A mouse worked because the wrapping
-  `<label>` forwards activation to the hidden input, which is why it survived:
-  fine with a mouse, dead without one. Now visually hidden but focusable, with
-  the focus ring drawn on the square. Radios additionally emitted no `name`, so
-  they were never a group to the browser and arrow keys did nothing; a new
-  `RadioGroup` supplies one shared name. The same `.hide` bug was in `Slider`
-  and in three hand-rolled ticks — the HMRC declaration, the office role picker,
-  and **the contract's electronic signature**, which therefore could not be
-  given from a keyboard at all.
-- **D2 · `/apply` is a public write endpoint with no rate limit** (§2.1).
-- **D3 · the GDPR consent on `/apply` links to a page that does not exist**
-  (§1.7).
-- ~~**`apps/staff/app/shifts/[id]/data.ts` takes `(row.logs ?? [])[0]`.**~~
-  **Closed 23.09.** It was in `apps/office/app/checkin/data.ts` as well, on the
-  §9.5 violation detail window — beside the "Actual finish (UK time)" field a
-  manager types into to resolve one. Both now call `acceptedLog()` from
-  `packages/domain/pay.ts`: `check_logs` holds one row per button press, a
-  RULE-15 turn-away and an out-of-radius refusal are logged too, and only the
-  accepted press carries `check_in_at`. The rule lives in `domain` rather than
-  in either app precisely because both screens got it wrong the same way — one
-  definition is what stops the third.
->>>>>>> origin/claude/compassionate-cerf-hzg6i6
 - **A worker's home address is not re-geocoded when they edit it.** There is no
   geocoder in the repo, so `home_location` — and therefore the §6 proximity score
   — goes stale on an address change. E7 tells the office and the screen says so,
