@@ -1,0 +1,14 @@
+=== Page 1 of 1 ===
+[logo] The Hospitality Company · Event staffing · London | STAFF ALLOCATION | Date: 19/09/2026
+Leonardo Hotel St Pauls – Gala Dinner | PO Number: 4471-A
+Photo | Staff Name | Start Time | Finish Time | Signature | Comments | Hours Worked
+-- Chef · 07:00 – 15:00 · 2 staff
+[photo] | Luca Moretti (THC-00412) (Chef) | 07:00 (15:00) | 15:05 |  | Break 30 min | 7h 30m
+[photo] | Daniel Okafor (THC-00388) (Chef) | 07:00 (15:00) | 14:40 |  | Break 30 min | 7h 10m
+-- Kitchen Porter · 09:00 – 17:00 · 3 staff
+[photo] | Aisha Bello (THC-00467) (Kitchen Porter) | 09:00 (17:00) | 17:10 |  | Break 20 min | 7h 40m
+[photo] | Mateusz Nowak (THC-00505) (Kitchen Porter) | 09:00 (17:00) |  |  | No show | 
+[photo] | Tom Reid (THC-00231) (Kitchen Porter) | 09:00 (17:00) |  |  | Break 20 min | 
+Total Hours: 22h 20m | Manager's Name (PRINT): | Manager's Signature: | Date:
+The Hospitality Company · Registered Company 12411407 · timesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk
+Page 1 of 1

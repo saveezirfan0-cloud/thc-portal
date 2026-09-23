@@ -43,8 +43,9 @@ select bag_eq(
             ('push_subscriptions'),('quiz_attempts'),('report_sends'),('roles'),('settings'),
             ('shift_requirements'),('staff'),('staff_references'),('staff_roles'),
             ('staff_transitions'),('storage_deletions'),
-            ('venue_types'),('venues'),('violations') $$,
-  'RLS is enabled on all 34 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, and storage_deletions from §1.7''s Storage half'
+            ('venue_types'),('venues'),('violations'),
+            ('payroll_export_lines'),('event_documents') $$,
+  'RLS is enabled on all 36 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, and payroll_export_lines + event_documents from §9.9/§11.3'
 );
 
 -- ---------------------------------------------------------------------
@@ -111,7 +112,8 @@ select bag_eq(
             ('push_subscriptions'),('quiz_attempts'),
             ('report_sends'),('roles'),('settings'),('shift_requirements'),('staff'),
             ('staff_references'),('staff_roles'),('staff_transitions'),('storage_deletions'),
-            ('venue_types'),('venues'),('violations') $$,
+            ('venue_types'),('venues'),('violations'),
+            ('payroll_export_lines'),('event_documents') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );
 
