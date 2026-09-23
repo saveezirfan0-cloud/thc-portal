@@ -200,8 +200,18 @@ Carried over:
 - **B3 · `cancel_cause` has three disagreeing vocabularies** across the schema,
   the domain layer and the UI, and no check constraint anywhere. Pick one, write
   the constraint, migrate the rows.
-- **D1 · the shared `Checkbox` and `Radio` cannot be operated by keyboard**
-  (§1.2). Accessibility, and it affects every form already shipped.
+- ~~**D1 · the shared `Checkbox` and `Radio` cannot be operated by keyboard**~~
+  **Closed 23.09.** The cause was `class="hide"` on the real native input, and
+  `.hide` is `display: none !important` — so it was not rendered, not focusable
+  and not in the accessibility tree. A mouse worked because the wrapping
+  `<label>` forwards activation to the hidden input, which is why it survived:
+  fine with a mouse, dead without one. Now visually hidden but focusable, with
+  the focus ring drawn on the square. Radios additionally emitted no `name`, so
+  they were never a group to the browser and arrow keys did nothing; a new
+  `RadioGroup` supplies one shared name. The same `.hide` bug was in `Slider`
+  and in three hand-rolled ticks — the HMRC declaration, the office role picker,
+  and **the contract's electronic signature**, which therefore could not be
+  given from a keyboard at all.
 - **D2 · `/apply` is a public write endpoint with no rate limit** (§2.1).
 - **D3 · the GDPR consent on `/apply` links to a page that does not exist**
   (§1.7).

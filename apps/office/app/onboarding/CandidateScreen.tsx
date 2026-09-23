@@ -646,7 +646,7 @@ function RolePick({
           <label key={role.id} className={on ? 'check sel' : 'check'}>
             <input
               type="checkbox"
-              className="hide"
+              className="check-input"
               checked={on}
               onChange={() => onToggle(role.id)}
             />
