@@ -47,8 +47,16 @@ export interface SettingsData {
   /** §3.4's escalation radius, in miles. */
   escalationRadiusMiles: number;
   venueTypes: VenueTypeRadius[];
+  /**
+   * Completion letter requirement §4: what the rota does with a Working Time
+   * 48 h breach. Never a Student visa limit or a right-to-work expiry, which
+   * are always refused (20260923100200_rota_guard.sql).
+   */
+  rotaGuardMode: RotaGuardMode;
   problem: string | null;
 }
+
+export type RotaGuardMode = 'block' | 'warn';
 
 export type ActionResult = { ok: true } | { ok: false; message: string };
 

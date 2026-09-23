@@ -50,6 +50,7 @@ export async function loadSettings(): Promise<SettingsData> {
     bookedElsewhereGapMinutes: 120,
     escalationRadiusMiles: 3,
     venueTypes: [],
+    rotaGuardMode: 'block',
     problem: null,
   };
 
@@ -91,6 +92,8 @@ export async function loadSettings(): Promise<SettingsData> {
     bookedElsewhereGapMinutes: number('booked_elsewhere_gap_minutes', 120),
     escalationRadiusMiles: number('escalation_radius_miles', 3),
     venueTypes: venueTypes.data ?? [],
+    // rota_guard_mode() fails closed; so does the screen.
+    rotaGuardMode: byKey.get('rota_guard_mode') === 'warn' ? 'warn' : 'block',
     problem: null,
   };
 }

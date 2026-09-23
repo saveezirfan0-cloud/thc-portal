@@ -12,7 +12,7 @@ import {
   validateWeights,
   validateWillo,
 } from './validate';
-import type { ActionResult, ScoringWeights, Senders, WilloStageMap } from './types';
+import type { ActionResult, RotaGuardMode, ScoringWeights, Senders, WilloStageMap } from './types';
 
 /**
  * Writes for /settings (§6, §2.4, §9.11, §9.12).
@@ -84,6 +84,22 @@ export async function saveAutoAssignNumbers(
   const gap = await put('booked_elsewhere_gap_minutes', gapMinutes);
   if (!gap.ok) return gap;
   return put('escalation_radius_miles', escalationMiles);
+}
+
+/**
+ * Completion letter requirement §4: "Rota/scheduling engine must warn (or
+ * block, configurable) when a shift assignment would breach the worker's
+ * current cap." Only the Working Time 48 is configurable; the database
+ * refuses a Student visa breach or a shift past the right to work whatever
+ * this says, so there is no value here that could make one possible.
+ */
+export async function saveRotaGuardMode(mode: RotaGuardMode): Promise<ActionResult> {
+  if (mode !== 'block' && mode !== 'warn') {
+    return { ok: false, message: 'Choose block or warn.' };
+  }
+  const saved = await put('rota_guard_mode', mode);
+  if (saved.ok) revalidatePath('/compliance');
+  return saved;
 }
 
 /**

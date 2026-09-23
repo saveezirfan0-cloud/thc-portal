@@ -35,6 +35,17 @@ Deno.serve((request) =>
 
     const { data, error } = await db.rpc('compliance_daily');
     if (error) throw new Error(`compliance_daily: ${error.message}`);
-    return (data ?? {}) as Record<string, unknown>;
+
+    // The completion letter requirement's daily half (20260923100100): the
+    // 60/30/14-day right-to-work alerts to the office (§2.3) and the purge
+    // of completion letters whose employment + 2 years hold has run out
+    // (§4, ADR-0012). Same gate, same run: both are dated by the UK day.
+    const { data: rtw, error: rtwError } = await db.rpc('rtw_daily');
+    if (rtwError) throw new Error(`rtw_daily: ${rtwError.message}`);
+
+    return {
+      ...((data ?? {}) as Record<string, unknown>),
+      ...((rtw ?? {}) as Record<string, unknown>),
+    };
   }),
 );
