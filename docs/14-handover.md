@@ -242,8 +242,15 @@ New from the 24.09 wave:
 
 - **Willo:** if Willo creates a candidate and the local link then fails
   transiently, the next sweep creates them again and a second E1 goes out.
-- `/apply` still uses its own consent tick; it can move to the shared `Checkbox`
-  now that D1 is fixed.
+- `/apply` still uses its own consent tick. **The reason it could not move is
+  now gone**: it hand-rolled the control for the coral border §1.7's validation
+  state needs, which the shared `Checkbox` did not draw. It does now, off
+  `aria-invalid` — which also makes the error *audible*, because the component
+  took an `error` prop, rendered the message in a sibling span, and told
+  assistive technology nothing was wrong. The page-level move is PR #53's; it
+  does not need its own `apply.css` border rule any more. Three hand-rolled
+  copies remain (the HMRC declaration, the contract signature, the office role
+  picker); each is a place the next D1 can hide.
 
 From the 23.09 build:
 

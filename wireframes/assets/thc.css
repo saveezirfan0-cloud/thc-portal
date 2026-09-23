@@ -303,6 +303,8 @@ textarea.input { height: auto; min-height: 84px; padding: 10px 12px; resize: ver
 .check .check-input { position: absolute; top: 0; left: 0; width: 18px; height: 18px; margin: 0; padding: 0; opacity: 0; cursor: inherit; }
 .check .check-input:disabled { cursor: not-allowed; }
 .check .check-input:focus-visible + .box { outline: 2px solid var(--cyan-ink); outline-offset: 2px; }
+/* §1.7 validation state, drawn on the square and keyed off the same attribute that announces it. */
+.check .check-input[aria-invalid='true'] + .box { border-color: var(--coral); }
 .check .box { width: 18px; height: 18px; border: 1.5px solid var(--muted); flex: 0 0 18px; margin-top: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; color: var(--on-cyan); border-radius: var(--r-xs); }
 .check .box.on { background: var(--cyan); border-color: var(--cyan); }
 .check .box.on::after { content: '✓'; font-weight: 700; }
