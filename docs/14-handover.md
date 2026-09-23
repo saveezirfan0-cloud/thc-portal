@@ -177,11 +177,15 @@ New from this build:
   image transforms may be off (photos then fall back to the original); GoTrue's
   `email_exists` on an invite for a confirmed address and `hashed_token` equal to
   the stored token are assumed, not observed.
-- **A worker can read the office's reason for rejecting them** off their own
-  `staff` row (`rejection_reason`), as they could `block_reason` before #44.
-  `onboarding_candidates_v` is security_invoker and reads it, so the fix is
-  #44's: revoke the column and route the office through an owner-rights view
-  (ADR-0017).
+- ~~**A worker can read the office's reason for rejecting them**~~ **Closed
+  23.09** by `20260923220000`, with #44's shape: the column is revoked from both
+  PostgREST roles and the office reads it through the owner-rights
+  `staff_rejection_reason_v`. `onboarding_candidates_v` keeps its
+  `security_invoker` reloption and its column list, order and types — verified
+  identical — so no office column list moved. `480_rejection_reason.sql` also
+  pins the distinction that makes this easy to get wrong: **`compliance_docs`.`rejection_reason`
+  has the opposite rule** and must stay readable, because §2.6 and N8 require a
+  rejected DOCUMENT to tell the worker why so they can re-upload.
 - `docs/08-screen-inventory.md` does not yet list the `/documents` sub-routes,
   `/activate` or `/compliance/export`; `docs/14-open-questions.md` still lists
   O10 point 5 as open.
