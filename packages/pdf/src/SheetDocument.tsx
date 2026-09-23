@@ -19,7 +19,17 @@
  */
 
 import type { ReactNode } from 'react';
-import { Document, Image, Page, Path, Svg, StyleSheet, Text, View, renderToBuffer } from '@react-pdf/renderer';
+import {
+  Document,
+  Image,
+  Page,
+  Path,
+  Svg,
+  StyleSheet,
+  Text,
+  View,
+  renderToBuffer,
+} from '@react-pdf/renderer';
 import { LOGO_CORK, LOGO_GLASSES, LOGO_VIEW_BOX } from './logo.ts';
 import { COMPANY, COMPANY_LINE, SHEET_COLUMNS, SHEET_TITLE } from './sheet.ts';
 import type { SheetLayout, SheetPage, SheetRow } from './sheet.ts';
@@ -45,9 +55,30 @@ const ROW_H = 32;
 const PHOTO = 26;
 
 const s = StyleSheet.create({
-  page: { paddingTop: 26, paddingBottom: 24, paddingHorizontal: 28, fontFamily: 'Helvetica', fontSize: 8.5, color: INK },
-  head: { flexDirection: 'row', alignItems: 'center', borderBottomWidth: 1.2, borderBottomColor: INK, paddingBottom: 8 },
-  logo: { width: 30, height: 30, borderRadius: 15, backgroundColor: INK, alignItems: 'center', justifyContent: 'center', marginRight: 8 },
+  page: {
+    paddingTop: 26,
+    paddingBottom: 24,
+    paddingHorizontal: 28,
+    fontFamily: 'Helvetica',
+    fontSize: 8.5,
+    color: INK,
+  },
+  head: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderBottomWidth: 1.2,
+    borderBottomColor: INK,
+    paddingBottom: 8,
+  },
+  logo: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: INK,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
+  },
   brandName: { fontFamily: 'Helvetica-Bold', fontSize: 11 },
   brandSub: { fontSize: 7.5, color: MUTED, marginTop: 1 },
   titleBox: { marginLeft: 'auto', alignItems: 'flex-end' },
@@ -60,15 +91,34 @@ const s = StyleSheet.create({
   table: { borderTopWidth: 1, borderLeftWidth: 1, borderColor: INK },
   tr: { flexDirection: 'row' },
   th: {
-    fontFamily: 'Helvetica-Bold', fontSize: 7.5, textAlign: 'center', paddingVertical: 4, paddingHorizontal: 2,
-    borderRightWidth: 1, borderBottomWidth: 1, borderColor: INK,
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7.5,
+    textAlign: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: INK,
   },
-  td: { height: ROW_H, paddingHorizontal: 3, justifyContent: 'center', borderRightWidth: 1, borderBottomWidth: 1, borderColor: RULE },
+  td: {
+    height: ROW_H,
+    paddingHorizontal: 3,
+    justifyContent: 'center',
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: RULE,
+  },
   tdLast: { borderRightColor: INK },
   center: { textAlign: 'center' },
   sec: {
-    fontFamily: 'Helvetica-Bold', fontSize: 7.5, paddingVertical: 2.5, paddingHorizontal: 4, backgroundColor: SECTION_FILL,
-    borderRightWidth: 1, borderBottomWidth: 1, borderColor: INK,
+    fontFamily: 'Helvetica-Bold',
+    fontSize: 7.5,
+    paddingVertical: 2.5,
+    paddingHorizontal: 4,
+    backgroundColor: SECTION_FILL,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: INK,
   },
   photo: { width: PHOTO, height: PHOTO, objectFit: 'cover', alignSelf: 'center' },
   name: { fontFamily: 'Helvetica-Bold', fontSize: 8.5 },
@@ -76,7 +126,14 @@ const s = StyleSheet.create({
   role: { fontSize: 7.5, marginTop: 1 },
   foot: { marginTop: 10 },
   sign: { flexDirection: 'row', borderTopWidth: 1, borderLeftWidth: 1, borderColor: INK },
-  signCell: { flex: 1, height: 44, padding: 4, borderRightWidth: 1, borderBottomWidth: 1, borderColor: INK },
+  signCell: {
+    flex: 1,
+    height: 44,
+    padding: 4,
+    borderRightWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: INK,
+  },
   signKey: { fontSize: 7, color: MUTED, textTransform: 'uppercase' },
   signVal: { fontFamily: 'Helvetica-Bold', fontSize: 11, marginTop: 6 },
   company: { fontSize: 7.5, color: MUTED, marginTop: 6, textAlign: 'center' },
@@ -119,10 +176,22 @@ function Header({ layout, page }: { layout: SheetLayout; page: SheetPage }) {
   );
 }
 
-function Cell({ index, children, center }: { index: number; children?: ReactNode; center?: boolean }) {
+function Cell({
+  index,
+  children,
+  center,
+}: {
+  index: number;
+  children?: ReactNode;
+  center?: boolean;
+}) {
   return (
     <View style={[s.td, { width: WIDTHS[index] }, index === WIDTHS.length - 1 ? s.tdLast : {}]}>
-      {typeof children === 'string' ? <Text style={center ? s.center : {}}>{children}</Text> : children}
+      {typeof children === 'string' ? (
+        <Text style={center ? s.center : {}}>{children}</Text>
+      ) : (
+        children
+      )}
     </View>
   );
 }
@@ -131,7 +200,9 @@ function Row({ row, photos }: { row: SheetRow; photos: SheetPhotos }) {
   const photo = row.photoPath ? photos.get(row.photoPath) : undefined;
   return (
     <View style={s.tr} wrap={false}>
-      <Cell index={0}>{photo ? <Image style={s.photo} src={{ data: photo.data, format: photo.format }} /> : null}</Cell>
+      <Cell index={0}>
+        {photo ? <Image style={s.photo} src={{ data: photo.data, format: photo.format }} /> : null}
+      </Cell>
       <Cell index={1}>
         <Text>
           <Text style={s.name}>{row.name}</Text>
@@ -139,11 +210,17 @@ function Row({ row, photos }: { row: SheetRow; photos: SheetPhotos }) {
         </Text>
         <Text style={s.role}>{row.role}</Text>
       </Cell>
-      <Cell index={2} center>{row.startTime}</Cell>
-      <Cell index={3} center>{row.finishTime}</Cell>
+      <Cell index={2} center>
+        {row.startTime}
+      </Cell>
+      <Cell index={3} center>
+        {row.finishTime}
+      </Cell>
       <Cell index={4}>{row.signature}</Cell>
       <Cell index={5}>{row.comments}</Cell>
-      <Cell index={6} center>{row.hoursWorked}</Cell>
+      <Cell index={6} center>
+        {row.hoursWorked}
+      </Cell>
     </View>
   );
 }
@@ -174,7 +251,12 @@ function Footer({ layout }: { layout: SheetLayout }) {
 export function SheetDocument({ layout, photos }: { layout: SheetLayout; photos?: SheetPhotos }) {
   const images = photos ?? new Map<string, SheetPhoto>();
   return (
-    <Document title={layout.title} author={COMPANY.name} creator={COMPANY.name} producer={COMPANY.name}>
+    <Document
+      title={layout.title}
+      author={COMPANY.name}
+      creator={COMPANY.name}
+      producer={COMPANY.name}
+    >
       {layout.pages.map((page) => (
         <Page key={page.number} size="A4" style={s.page} wrap={false}>
           <Header layout={layout} page={page} />
@@ -217,10 +299,17 @@ export async function renderSheetPdf(layout: SheetLayout, photos?: SheetPhotos):
  * than failing the whole sheet.
  */
 export function photoFormat(bytes: Uint8Array): SheetPhoto['format'] | null {
-  if (bytes.length >= 8 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+  if (
+    bytes.length >= 8 &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
+  ) {
     return 'png';
   }
-  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'jpg';
+  if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
+    return 'jpg';
   return null;
 }
 

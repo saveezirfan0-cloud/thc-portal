@@ -47,12 +47,9 @@ export const COMPANY = {
   website: 'www.thehospitalitycompany.co.uk',
 } as const;
 
-export const COMPANY_LINE = [
-  COMPANY.name,
-  COMPANY.registered,
-  COMPANY.email,
-  COMPANY.website,
-].join(' · ');
+export const COMPANY_LINE = [COMPANY.name, COMPANY.registered, COMPANY.email, COMPANY.website].join(
+  ' · ',
+);
 
 export const SHEET_TITLE = 'STAFF ALLOCATION';
 
@@ -256,14 +253,17 @@ export function layoutSheet(input: SheetInput, perPage: number = ROWS_PER_PAGE):
         const onThisPage = chunk.filter((e) => e.section === current).length;
         const total = current.people.length;
         const window = `${ukTime(current.startsAt)} – ${ukTime(current.endsAt)}`;
-        const startedEarlier = i === 0 && index > 0 && chunks[index - 1]!.some((e) => e.section === current);
-        const continuesLater = index < of - 1 && chunks[index + 1]!.some((e) => e.section === current);
+        const startedEarlier =
+          i === 0 && index > 0 && chunks[index - 1]!.some((e) => e.section === current);
+        const continuesLater =
+          index < of - 1 && chunks[index + 1]!.some((e) => e.section === current);
         let label = `${current.roleName} · ${window} · `;
         if (startedEarlier) {
           label += `continued (${onThisPage} of ${total})`;
         } else {
           label += `${total} staff`;
-          if (continuesLater) label += ` (${onThisPage} on this page, continued on page ${index + 2})`;
+          if (continuesLater)
+            label += ` (${onThisPage} on this page, continued on page ${index + 2})`;
         }
         lines.push({ type: 'section', label });
       }
@@ -303,7 +303,9 @@ export function sheetText(layout: SheetLayout): string {
   const out: string[] = [];
   for (const page of layout.pages) {
     out.push(`=== Page ${page.number} of ${page.of} ===`);
-    out.push(`[logo] ${COMPANY.name} · ${COMPANY.strapline} | ${SHEET_TITLE} | Date: ${layout.dateLabel}`);
+    out.push(
+      `[logo] ${COMPANY.name} · ${COMPANY.strapline} | ${SHEET_TITLE} | Date: ${layout.dateLabel}`,
+    );
     const eventLine = page.continued
       ? `${layout.title} · ${layout.dateLabel} (continued)`
       : layout.title;

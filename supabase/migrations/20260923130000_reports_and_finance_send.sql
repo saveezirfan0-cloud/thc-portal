@@ -310,6 +310,11 @@ create table payroll_export_lines (
 -- The "never twice" rule, in the one place it cannot be forgotten.
 create unique index payroll_export_lines_once on payroll_export_lines (booking_id) where state = 'exported';
 create index payroll_export_lines_held on payroll_export_lines (booking_id) where state = 'held';
+-- Every foreign key indexed (002_schema_hardening): a GDPR removal or an
+-- event lookup must not scan every export line ever written.
+create index payroll_export_lines_booking_idx on payroll_export_lines (booking_id);
+create index payroll_export_lines_staff_idx on payroll_export_lines (staff_id);
+create index payroll_export_lines_event_idx on payroll_export_lines (event_id);
 
 alter table payroll_export_lines enable row level security;
 create policy admin_read on payroll_export_lines for select using (current_app_role() = 'admin');

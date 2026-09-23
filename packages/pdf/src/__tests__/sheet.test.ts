@@ -28,7 +28,9 @@ describe('allocation sheet · 27 rows (§11.3)', () => {
 
   it('marks every page after the first "(continued)"', () => {
     expect(layout.pages.map((p) => p.continued)).toEqual([false, true, true]);
-    expect(sheetText(layout)).toContain('Leonardo Hotel St Pauls – Gala Dinner · 19/09/2026 (continued)');
+    expect(sheetText(layout)).toContain(
+      'Leonardo Hotel St Pauls – Gala Dinner · 19/09/2026 (continued)',
+    );
   });
 
   it('orders by role section (its own start), then surname', () => {
@@ -46,8 +48,13 @@ describe('allocation sheet · 27 rows (§11.3)', () => {
 
   it('repeats the section heading on the page it continues onto', () => {
     const page2 = layout.pages[1]!.lines[0]!;
-    expect(page2).toEqual({ type: 'section', label: 'Waiting Staff · 17:00 – 23:30 · continued (12 of 22)' });
-    const page1Wait = layout.pages[0]!.lines.find((l) => l.type === 'section' && l.label.startsWith('Waiting'));
+    expect(page2).toEqual({
+      type: 'section',
+      label: 'Waiting Staff · 17:00 – 23:30 · continued (12 of 22)',
+    });
+    const page1Wait = layout.pages[0]!.lines.find(
+      (l) => l.type === 'section' && l.label.startsWith('Waiting'),
+    );
     expect(page1Wait).toEqual({
       type: 'section',
       label: 'Waiting Staff · 17:00 – 23:30 · 22 staff (7 on this page, continued on page 2)',
@@ -88,7 +95,9 @@ describe('B12 done-when: a 25-worker event', () => {
   });
 
   it('24 workers is exactly two pages', () => {
-    expect(layoutSheet({ kind: 'allocation', event: GALA, people: galaPeople(19) }).pages).toHaveLength(2);
+    expect(
+      layoutSheet({ kind: 'allocation', event: GALA, people: galaPeople(19) }).pages,
+    ).toHaveLength(2);
   });
 });
 
@@ -106,16 +115,21 @@ describe('sign-out timesheet · one page (§11.3)', () => {
 
   it('fills Finish, Comments (breaks) and Hours Worked from check-in/out', () => {
     const luca = rows(layout).find((r) => r.name === 'Luca Moretti')!;
-    expect(luca).toMatchObject({ finishTime: '15:05', comments: 'Break 30 min', hoursWorked: '7h 30m' });
+    expect(luca).toMatchObject({
+      finishTime: '15:05',
+      comments: 'Break 30 min',
+      hoursWorked: '7h 30m',
+    });
   });
 
   it('leaves Finish and Hours blank for an unresolved No check-out, and nobody else (RULE-02)', () => {
     const tom = rows(layout).find((r) => r.name === 'Tom Reid')!;
     expect(tom).toMatchObject({ finishTime: '', hoursWorked: '', comments: 'Break 20 min' });
-    expect(rows(layout).filter((r) => r.hoursWorked === '').map((r) => r.name)).toEqual([
-      'Mateusz Nowak',
-      'Tom Reid',
-    ]);
+    expect(
+      rows(layout)
+        .filter((r) => r.hoursWorked === '')
+        .map((r) => r.name),
+    ).toEqual(['Mateusz Nowak', 'Tom Reid']);
   });
 
   it("keeps the Signature column empty — it is the client's, by hand", () => {
@@ -134,7 +148,11 @@ describe('GDPR: a copy regenerated after a removal (§1.7)', () => {
   const removed = rows(layout).find((r) => r.name === 'Deleted account #1042')!;
 
   it('prints "Deleted account #id", keeps the Employee ID, and draws no photo', () => {
-    expect(removed).toMatchObject({ name: 'Deleted account #1042', idLabel: '(THC-00463)', photoPath: null });
+    expect(removed).toMatchObject({
+      name: 'Deleted account #1042',
+      idLabel: '(THC-00463)',
+      photoPath: null,
+    });
     expect(sheetText(layout)).toContain('[ ] | Deleted account #1042 (THC-00463) (Waiting Staff)');
   });
 

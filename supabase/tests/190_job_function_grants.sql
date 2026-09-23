@@ -54,7 +54,12 @@ select is_empty(
           -- and nobody else. The Storage pair is how the erasure is
           -- actually discharged — a missing grant there leaves a passport
           -- scan on disk after the row that named it is gone.
-          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion'
+          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion',
+          -- BG-08, the Monday finance send (20260923130000). A missing grant
+          -- here is a Monday with no payroll email and a job 500ing every
+          -- five minutes until someone notices.
+          'finance_reports_due', 'prepare_finance_reports', 'payroll_export_rows',
+          'new_starter_export_rows', 'queue_finance_report_email'
         )
         and not has_function_privilege('service_role', p.oid, 'execute') $$,
   'the service role can execute every function the §7 jobs call'
@@ -261,8 +266,8 @@ select bag_eq(
   $$ select job::text from job_schedules where enabled $$,
   $$ values ('booking-tick'::text), ('auto-staffing-hourly'),
             ('auto-staffing-cutoff'), ('auto-staffing-escalation'),
-            ('compliance-daily') $$,
-  'exactly the five schedules whose Edge Function exists are enabled; the rest wait for theirs'
+            ('compliance-daily'), ('finance-reports') $$,
+  'exactly the six schedules whose Edge Function exists are enabled; the rest wait for theirs'
 );
 
 select * from finish();

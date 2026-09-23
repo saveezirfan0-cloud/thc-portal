@@ -13,9 +13,24 @@ export const GALA: SheetEvent = {
   poNumber: '4471-A',
 };
 
-const CHEF = { roleName: 'Chef', sectionId: 'chef', startsAt: '2026-09-19T06:00:00Z', endsAt: '2026-09-19T14:00:00Z' };
-const KP = { roleName: 'Kitchen Porter', sectionId: 'kp', startsAt: '2026-09-19T08:00:00Z', endsAt: '2026-09-19T16:00:00Z' };
-const WAIT = { roleName: 'Waiting Staff', sectionId: 'wait', startsAt: '2026-09-19T16:00:00Z', endsAt: '2026-09-19T22:30:00Z' };
+const CHEF = {
+  roleName: 'Chef',
+  sectionId: 'chef',
+  startsAt: '2026-09-19T06:00:00Z',
+  endsAt: '2026-09-19T14:00:00Z',
+};
+const KP = {
+  roleName: 'Kitchen Porter',
+  sectionId: 'kp',
+  startsAt: '2026-09-19T08:00:00Z',
+  endsAt: '2026-09-19T16:00:00Z',
+};
+const WAIT = {
+  roleName: 'Waiting Staff',
+  sectionId: 'wait',
+  startsAt: '2026-09-19T16:00:00Z',
+  endsAt: '2026-09-19T22:30:00Z',
+};
 
 let seq = 0;
 function person(

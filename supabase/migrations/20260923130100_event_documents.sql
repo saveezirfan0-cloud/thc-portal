@@ -54,6 +54,7 @@ create table event_documents (
 );
 
 create index event_documents_event_idx on event_documents (event_id, kind, generated_at desc);
+create index event_documents_generated_by_idx on event_documents (generated_by);
 
 alter table event_documents enable row level security;
 create policy admin_read on event_documents for select using (current_app_role() = 'admin');
@@ -242,6 +243,8 @@ create trigger event_documents_follow_outbox
 -- carries no money (§11.1), and a client sees the same names and photos on
 -- it as on their own line-up (client_lineup_v).
 -- ---------------------------------------------------------------------
+-- `issued_at`, not `generated_at`: 050_client_views refuses any client-facing
+-- column whose name contains "rate", and gene-RATE-d does.
 create view client_event_documents_v with (security_barrier = true) as
 select distinct on (d.event_id, d.kind)
        d.id,
@@ -249,7 +252,7 @@ select distinct on (d.event_id, d.kind)
        d.kind,
        d.file_name,
        d.storage_path,
-       d.generated_at
+       d.generated_at as issued_at
   from event_documents d
   join events e on e.id = d.event_id
  where client_portal_visible(e.client_id)

@@ -1,0 +1,180 @@
+/*
+ * /reports — page-local layout for `wireframes/backoffice/reports.html`.
+ *
+ * Layout only, tokens only (CLAUDE.md). The classes mirror the wireframe's
+ * own <style> block — .daterange, .sent, .kpi .split, the expandable
+ * person rows — so the screen and the wireframe read the same.
+ */
+
+.rp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  flex-wrap: wrap;
+}
+.rp-toolbar .right {
+  margin-left: auto;
+  display: flex;
+  gap: var(--sp-8);
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.daterange {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-6);
+}
+.daterange .input {
+  height: var(--btn-h-sm);
+  width: 150px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-12);
+}
+
+.rp-annot {
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  color: var(--amber-ink);
+}
+
+/* The send status chip (§9.9): Last sent / Failed / No new / Queued. */
+.sent {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  padding: var(--sp-4) var(--sp-10);
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--panel-2);
+  color: var(--muted);
+}
+.sent.ok {
+  border-color: var(--green-line);
+  color: var(--green-ink);
+}
+.sent.queued {
+  border-color: var(--amber-line);
+  color: var(--amber-ink);
+}
+.sent.fail {
+  border-color: var(--coral-line);
+  color: var(--coral-ink);
+  background: var(--coral-dim);
+}
+
+/* Base and holiday side by side under the Staff payroll figure — §1.5:
+   broken out, never blended. */
+.rp-split {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-14);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  margin-top: var(--sp-4);
+}
+.rp-split b {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.tbl td.money,
+.tbl th.money {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.tbl tr.rp-total td {
+  background: var(--panel-2);
+}
+
+.tbl tr.rp-person td {
+  cursor: pointer;
+}
+.tbl tr.rp-person.open td {
+  background: var(--panel-2);
+  border-bottom: 0;
+}
+.tbl tr.rp-shifts > td {
+  background: var(--panel-2);
+  padding: 0 var(--sp-12) var(--sp-12);
+}
+.tbl tr.rp-shifts .inner {
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+  background: var(--bg);
+  overflow: auto;
+}
+.tbl tr.rp-shifts .inner .tbl {
+  min-width: 960px;
+  font-size: var(--fs-12);
+}
+.tbl tr.rp-shifts .inner .tbl td,
+.tbl tr.rp-shifts .inner .tbl th {
+  padding: var(--sp-8) var(--sp-10);
+}
+
+/* A figure never wraps; the explanation under it does, so a long note
+   ("excluded from the CSV until resolved…") cannot push the column off
+   the side of the table. */
+.tbl td.money .sub {
+  white-space: normal;
+  min-width: 140px;
+  max-width: 220px;
+  margin-left: auto;
+}
+.rp-nowrap {
+  white-space: nowrap;
+}
+.tbl tr.rp-pending td {
+  background: var(--coral-dim);
+}
+
+.rp-amber {
+  color: var(--amber-ink);
+}
+.rp-coral {
+  color: var(--coral-ink);
+}
+.rp-green {
+  color: var(--green-ink);
+}
+
+.rp-history {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+.rp-history .row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  flex-wrap: wrap;
+}
+.rp-history .when {
+  width: 150px;
+}
+
+.rp-pager {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  padding: var(--sp-10) var(--sp-16);
+  border-top: 1px solid var(--line);
+}
+.rp-pager .right {
+  margin-left: auto;
+  display: flex;
+  gap: var(--sp-8);
+  align-items: center;
+}
+
+.rp-search {
+  height: var(--btn-h-sm);
+  width: 220px;
+  font-size: var(--fs-12);
+}

@@ -103,7 +103,10 @@ const HELD = shift(LUCA, 5, {
 });
 
 function lines(csv: string): string[] {
-  return csv.replace(/^\uFEFF/, '').trimEnd().split('\r\n');
+  return csv
+    .replace(/^\uFEFF/, '')
+    .trimEnd()
+    .split('\r\n');
 }
 
 describe('Payroll CSV (§9.9 Tab 2)', () => {
@@ -141,11 +144,20 @@ describe('Payroll CSV (§9.9 Tab 2)', () => {
 
   it('writes UK times, the break deduction and decimal payable hours', () => {
     const fourth = lines(payrollCsv(WEEK))[4]!.split(',');
-    expect(fourth.slice(5, 11)).toEqual(['06/03/2025', '12:00–16:00', '12:00', '16:00', '0:20', '3.67']);
+    expect(fourth.slice(5, 11)).toEqual([
+      '06/03/2025',
+      '12:00–16:00',
+      '12:00',
+      '16:00',
+      '0:20',
+      '3.67',
+    ]);
   });
 
   it('writes "Turned away" instead of check-in/out times (RULE-15)', () => {
-    const row = lines(payrollCsv(WEEK)).find((l) => l.includes('Event 6'))!.split(',');
+    const row = lines(payrollCsv(WEEK))
+      .find((l) => l.includes('Event 6'))!
+      .split(',');
     expect(row.slice(7, 9)).toEqual(['Turned away', '']);
   });
 

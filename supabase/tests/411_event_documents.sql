@@ -230,7 +230,7 @@ select ok(not has_table_privilege('anon', 'client_event_documents_v', 'select'),
 select bag_eq(
   $$ select column_name::text from information_schema.columns
       where table_schema = 'public' and table_name = 'client_event_documents_v' $$,
-  $$ values ('id'::text),('event_id'),('kind'),('file_name'),('storage_path'),('generated_at') $$,
+  $$ values ('id'::text),('event_id'),('kind'),('file_name'),('storage_path'),('issued_at') $$,
   'client_event_documents_v names its columns, and none of them is money (§11.1)');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);

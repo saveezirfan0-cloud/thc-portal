@@ -227,7 +227,12 @@ export interface FinancialCsvRow {
   pending: number;
 }
 
-export function financialStatus(row: Pick<FinancialCsvRow, 'actual_sections' | 'forecast_sections' | 'pending' | 'cancelled_events' | 'events'>): string {
+export function financialStatus(
+  row: Pick<
+    FinancialCsvRow,
+    'actual_sections' | 'forecast_sections' | 'pending' | 'cancelled_events' | 'events'
+  >,
+): string {
   const parts: string[] = [];
   if (row.pending > 0) parts.push(`${row.pending} shift${row.pending === 1 ? '' : 's'} pending`);
   if (row.forecast_sections > 0 && row.actual_sections > 0) parts.push('actual + forecast');
