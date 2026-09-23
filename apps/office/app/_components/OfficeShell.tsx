@@ -12,9 +12,10 @@ import type { ReactNode } from 'react';
  * `wireframes/backoffice/*.html` has the same sidebar, and that is the
  * visual contract (CLAUDE.md).
  *
- * `/settings` is deliberately absent: it is in the screen inventory but in
- * none of the wireframes' sidebars. It is the Django-Admin replacement
- * (§9.11, §9.12) and where it hangs is platform's call, not this file's.
+ * `/settings` is in none of the wireframes' sidebars, so it hangs last,
+ * below a divider, where it does not disturb their order. It is the
+ * Django-Admin replacement (§9.11, §9.12) and without a link an admin could
+ * only reach it by typing the URL.
  *
  * `pending` marks a route its owning bot has not built yet: the item keeps
  * its place, so the sidebar still shows the shape of the product, but it
@@ -41,6 +42,7 @@ const NAV = [
   { href: '/reports', label: 'Reports', pending: true },
   { href: '/feedback', label: 'Feedback' },
   { href: '/venues', label: 'Venues' },
+  { href: '/settings', label: 'Settings', dividerBefore: true },
 ];
 
 export interface OfficeShellProps {
