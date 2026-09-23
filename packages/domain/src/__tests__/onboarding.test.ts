@@ -4,7 +4,11 @@ import {
   RELATIVE_WORDS,
   TOTAL_STEPS,
   acceptedDocTypes,
+  addressErrors,
   ageOn,
+  formatPostcode,
+  isPostcode,
+  pinInUk,
   bankErrors,
   canEditStep,
   currentStep,
@@ -167,6 +171,21 @@ describe('step 1 validation', () => {
 
   it('nothing chosen yet', () => {
     expect(rtwFooterHint({ ...base, branch: null }, today)).toBe('Choose one to continue');
+  });
+});
+
+describe('home address (§10.3 2/11)', () => {
+  it('formats and checks UK postcodes', () => {
+    expect(formatPostcode('e20ry')).toBe('E2 0RY');
+    expect(isPostcode('SW1A 1AA')).toBe(true);
+    expect(isPostcode('NOT A CODE')).toBe(false);
+  });
+  it('needs a pin, in the UK', () => {
+    const a = { line: 'Flat 4, 22 Roman Road', town: 'London', postcode: 'E2 0RY' };
+    expect(addressErrors({ ...a, lat: 51.529, lng: -0.045 })).toEqual({});
+    expect(addressErrors({ ...a, lat: null, lng: null }).lat).toMatch(/pin/);
+    expect(addressErrors({ ...a, lat: 40.7, lng: -74 }).lat).toMatch(/UK/);
+    expect(pinInUk(54.6, -5.9)).toBe(true); // Belfast
   });
 });
 

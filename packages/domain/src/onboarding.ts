@@ -332,6 +332,60 @@ export function rtwFooterHint(form: RtwForm, today: string = ukToday()): string 
 }
 
 // ---------------------------------------------------------------------
+// Home address — a pin on the map (§10.3 2/11)
+// ---------------------------------------------------------------------
+
+/** Outward + inward code, spaces removed — the shape `onboarding_save_address()` checks. */
+export const POSTCODE_SQL_PATTERN = '^[A-Z]{1,2}[0-9][A-Z0-9]?[0-9][A-Z]{2}$';
+
+export function normalisePostcode(raw: string): string {
+  return raw.replace(/\s+/g, '').toUpperCase();
+}
+
+export function isPostcode(raw: string): boolean {
+  return new RegExp(POSTCODE_SQL_PATTERN).test(normalisePostcode(raw));
+}
+
+/** "e20ry" → "E2 0RY". */
+export function formatPostcode(raw: string): string {
+  const pc = normalisePostcode(raw);
+  return pc.length > 3 ? `${pc.slice(0, -3)} ${pc.slice(-3)}` : pc;
+}
+
+/**
+ * Great Britain and Northern Ireland, generously — the same box the
+ * database refuses outside of. A pin in the Atlantic is a slipped finger.
+ */
+export const UK_PIN_BOUNDS = { minLat: 49, maxLat: 61, minLng: -9, maxLng: 2.5 } as const;
+
+export function pinInUk(lat: number, lng: number): boolean {
+  return (
+    lat >= UK_PIN_BOUNDS.minLat &&
+    lat <= UK_PIN_BOUNDS.maxLat &&
+    lng >= UK_PIN_BOUNDS.minLng &&
+    lng <= UK_PIN_BOUNDS.maxLng
+  );
+}
+
+export interface AddressForm {
+  line: string;
+  town: string;
+  postcode: string;
+  lat: number | null;
+  lng: number | null;
+}
+
+export function addressErrors(a: AddressForm): Partial<Record<keyof AddressForm, string>> {
+  const errors: Partial<Record<keyof AddressForm, string>> = {};
+  if (!a.line.trim()) errors.line = 'Enter the first line of your address.';
+  if (!a.town.trim()) errors.town = 'Enter your town or city.';
+  if (!isPostcode(a.postcode)) errors.postcode = 'Enter a UK postcode, e.g. E2 0RY.';
+  if (a.lat === null || a.lng === null) errors.lat = 'Drop the pin on your front door.';
+  else if (!pinInUk(a.lat, a.lng)) errors.lat = 'The pin needs to be in the UK.';
+  return errors;
+}
+
+// ---------------------------------------------------------------------
 // Uploads (§2.5 pt 7: PDF, JPG, PNG or HEIC, up to 10 MB per file)
 // ---------------------------------------------------------------------
 
