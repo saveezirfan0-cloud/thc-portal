@@ -12,3 +12,4 @@ export * from './autoAssign';
 export * from './staff';
 export * from './rotaGuard';
 export * from './completionLetter';
+export * from './documents';

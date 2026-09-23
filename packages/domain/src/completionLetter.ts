@@ -17,6 +17,7 @@
  */
 
 import { capWeekStart } from './cap';
+import type { DocumentFolder } from './documents';
 
 // ---------------------------------------------------------------------
 // §2.1 Upload
@@ -90,7 +91,12 @@ export function evidenceFileProblem(file: {
  */
 export function evidenceObjectPath(
   staffId: string,
-  folder: EvidenceFolder,
+  /**
+   * A completion-letter / opt-out folder, or a document type's own folder
+   * (`documentFolder()` in documents.ts: `<staffId>/passport/<fileId>.pdf`),
+   * which is where `submit_document_upload()` looks.
+   */
+  folder: EvidenceFolder | DocumentFolder,
   fileId: string,
   fileName: string,
 ): string {
