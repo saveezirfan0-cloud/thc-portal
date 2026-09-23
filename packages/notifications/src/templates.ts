@@ -11,8 +11,10 @@
  * register, §10.1 for E4, §10.6/§10.7 for E8/E9 — and every such case is listed
  * in `REGISTER-NOTES.md`.
  *
- * Nothing here sends: senders, retries and the outbox drain land in a later
- * phase. This module is the single source of copy they read.
+ * Nothing here sends. The drain (`drain.ts`, run by the `notify-drain` Edge
+ * Function) reads this copy; the sender ADDRESS for `sender: 'admin' |
+ * 'timesheets'` comes from `settings.senders` at send time (`senders.ts`),
+ * never from this file.
  */
 
 export type Channel = 'push' | 'email';
