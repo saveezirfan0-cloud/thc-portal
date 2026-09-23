@@ -39,7 +39,7 @@ const NAV = [
   { href: '/clients', label: 'Clients' },
   { href: '/roles', label: 'Roles' },
   { href: '/reports', label: 'Reports', pending: true },
-  { href: '/feedback', label: 'Feedback', pending: true },
+  { href: '/feedback', label: 'Feedback' },
   { href: '/venues', label: 'Venues' },
 ];
 
