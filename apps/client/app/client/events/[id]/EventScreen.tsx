@@ -33,12 +33,15 @@ export function EventScreen({
   lineup,
   photos,
   now,
+  documents = [],
 }: {
   event: PortalEvent;
   sections: RoleSection[];
   lineup: LineupRow[];
   photos: Record<string, string>;
   now: string;
+  /** Which §11.3 PDFs the office has produced for this event. */
+  documents?: ('allocation' | 'signout')[];
 }) {
   const [rating, setRating] = useState<LineupRow | null>(null);
 
@@ -70,16 +73,29 @@ export function EventScreen({
           {event.poNumber ? <Pill large>PO Number · {event.poNumber}</Pill> : null}
 
           <div className="ml-auto row">
-            {/* §11.2's header action. The document itself is §11.3, which is
-                not built yet, so the button states that rather than linking
-                to a page that would 404. */}
-            {cancelled ? null : (
-              <Button tone="primary" disabled title="The timesheet documents arrive with §11.3">
-                {event.status === 'completed'
-                  ? '↓ Download Signed Timesheet'
-                  : '↓ Download Allocation Sheet'}
-              </Button>
-            )}
+            {/* §11.2's header action: the §11.3 PDF, once the office has
+                produced one. Download only; sending is the office's (§11.4). */}
+            {cancelled
+              ? null
+              : (() => {
+                  const kind = event.status === 'completed' ? 'signout' : 'allocation';
+                  const label =
+                    kind === 'signout'
+                      ? '↓ Download Signed Timesheet'
+                      : '↓ Download Allocation Sheet';
+                  return documents.includes(kind) ? (
+                    <a
+                      className="btn primary"
+                      href={`/client/events/${event.id}/document?kind=${kind}`}
+                    >
+                      {label}
+                    </a>
+                  ) : (
+                    <Button tone="primary" disabled title="THC has not issued this document yet">
+                      {label}
+                    </Button>
+                  );
+                })()}
           </div>
         </div>
 

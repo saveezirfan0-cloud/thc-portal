@@ -1,0 +1,455 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useMemo, useState, useTransition } from 'react';
+import {
+  Alert,
+  Avatar,
+  Button,
+  Chip,
+  EmptyState,
+  KanbanCard,
+  KanbanColumn,
+  Modal,
+  Pill,
+  SearchInput,
+  SegToggle,
+  Select,
+  Textarea,
+} from '@thc/ui';
+import { OfficeShell } from '../_components/OfficeShell';
+import { employeeId, formatRating, formatShowRate } from '../staff/staff';
+import { resolveReturning } from './actions';
+import {
+  boardColumns,
+  boardCounts,
+  cardLines,
+  rejectedLines,
+  rejectedPill,
+  returningActions,
+  shortDay,
+  stageAge,
+} from './view-model';
+import type { BoardColumn, BoardFilter, Line, ReasonFilter } from './view-model';
+import type { BoardData, CandidateRow, ReturningRow } from './types';
+import './onboarding.css';
+
+function Meta({ line }: { line: Line }) {
+  return (
+    <div className={line.tone && line.tone !== 'muted' ? `meta ${line.tone}` : 'meta'}>
+      {line.text}
+    </div>
+  );
+}
+
+/** "Review interview on Willo ↗" — live once THC's Willo account is configured (§2.4). */
+function WilloLink({ url }: { url: string | null }) {
+  if (!url) {
+    return (
+      <span
+        className="willo off"
+        title="Set settings.willo_review_url_template once THC supplies the Willo account"
+      >
+        Review interview on Willo — not connected
+      </span>
+    );
+  }
+  return (
+    <a
+      className="willo"
+      href={url}
+      target="_blank"
+      rel="noreferrer"
+      onClick={(event) => event.stopPropagation()}
+    >
+      Review interview on Willo ↗
+    </a>
+  );
+}
+
+const STATUS_NOTE: Record<string, string> = {
+  blocked: 'Blocked',
+  rejected: 'Rejected',
+  inactive: 'Left (inactive)',
+  compliant: 'Compliant — currently working',
+};
+
+type Pending = { row: ReturningRow; action: 'reset' | 'reject' } | null;
+
+/**
+ * /onboarding (BO3): six columns, the Active / Rejected toggle, the
+ * returning-applicant card.
+ */
+export function OnboardingBoard({
+  data,
+  now,
+  applyUrl,
+}: {
+  data: BoardData;
+  now: string;
+  applyUrl: string;
+}) {
+  const router = useRouter();
+  const at = useMemo(() => new Date(now), [now]);
+  const [filter, setFilter] = useState<BoardFilter>('active');
+  const [query, setQuery] = useState('');
+  const [roleName, setRoleName] = useState('');
+  const [reason, setReason] = useState<ReasonFilter>('any');
+  const [pending, setPending] = useState<Pending>(null);
+  const [note, setNote] = useState('');
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, start] = useTransition();
+
+  const counts = boardCounts(data.candidates, data.returning);
+  const columns = boardColumns(data.candidates, data.returning, {
+    filter,
+    query,
+    roleName,
+    reason,
+  });
+
+  const open = (row: CandidateRow) => router.push(`/onboarding/${row.id}`);
+
+  const confirm = () => {
+    if (!pending) return;
+    setProblem(null);
+    start(async () => {
+      const result = await resolveReturning(
+        pending.row.application_id,
+        pending.row.staff_id,
+        pending.action,
+        note,
+      );
+      if (result.ok) {
+        setPending(null);
+        setNote('');
+        router.refresh();
+      } else {
+        setProblem(result.message);
+      }
+    });
+  };
+
+  return (
+    <OfficeShell
+      activeHref="/onboarding"
+      title="Onboarding"
+      crumbs={
+        <>
+          candidate pipeline · <b>{counts.active} active</b> · {counts.rejected} rejected
+        </>
+      }
+      actions={
+        <a className="btn sm" href={applyUrl} target="_blank" rel="noreferrer">
+          Open /apply form ↗
+        </a>
+      }
+    >
+      <div className="stack">
+        {data.problem ? <Alert tone="coral">{data.problem}</Alert> : null}
+
+        <div className="toolbar">
+          <SegToggle<BoardFilter>
+            aria-label="Active or rejected candidates"
+            options={[
+              { value: 'active', label: 'Active', count: counts.active },
+              { value: 'rejected', label: 'Rejected', count: counts.rejected },
+            ]}
+            value={filter}
+            onChange={setFilter}
+          />
+          <span className="annot">
+            {filter === 'active'
+              ? 'same filter pattern as the Staff directory (§9.6) — rejected cards are hidden by default (§2.2)'
+              : 'rejected cards stay reachable without leaving this screen; they sit in the column where they were rejected'}
+          </span>
+          <div className="right">
+            <SearchInput
+              aria-label="Search candidates"
+              placeholder="Search candidates"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            {filter === 'active' ? (
+              <Select
+                aria-label="Role"
+                value={roleName}
+                onChange={(event) => setRoleName(event.target.value)}
+              >
+                <option value="">Any role</option>
+                {data.roles.map((role) => (
+                  <option key={role.id} value={role.name}>
+                    {role.name}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <Select
+                aria-label="Reason"
+                value={reason}
+                onChange={(event) => setReason(event.target.value as ReasonFilter)}
+              >
+                <option value="any">Any reason</option>
+                <option value="willo">Rejected in Willo</option>
+                <option value="quiz_failed">Quiz failed 3×</option>
+                <option value="manager">Rejected by manager</option>
+              </Select>
+            )}
+          </div>
+        </div>
+
+        {filter === 'active' ? (
+          <Alert tone="cyan">
+            <b>No &quot;Applied&quot; stage.</b> Submitting /apply creates the candidate straight in{' '}
+            <b>Interview requested</b> and Willo sends the interview invitation (E1) itself. Cards
+            move between the first two columns on their own from the Willo webhook; the manager
+            decides <i>inside Willo</i> (§2.4).
+          </Alert>
+        ) : null}
+
+        <div className="kanban six">
+          {columns.map((column) => (
+            <Column
+              key={column.key}
+              column={column}
+              filter={filter}
+              now={at}
+              onOpen={open}
+              onResolve={(row, action) => {
+                setProblem(null);
+                setNote('');
+                setPending({ row, action });
+              }}
+            />
+          ))}
+        </div>
+
+        {filter === 'rejected' ? (
+          <Alert tone="neutral">
+            Rejection is final on this record — there is no &quot;un-reject&quot; (§2.3). If the
+            person applies again via /apply, the duplicate check (email, or mobile + DOB) routes
+            them to the office as a <b>Returning applicant</b> card in Interview requested, where
+            the manager presses <b>Reset to candidate</b> or rejects the application (§2.12).
+          </Alert>
+        ) : null}
+      </div>
+
+      <Modal
+        open={pending !== null}
+        title={pending?.action === 'reset' ? 'Reset to candidate' : 'Reject the application'}
+        onClose={() => setPending(null)}
+        footer={
+          <>
+            <Button tone="ghost" onClick={() => setPending(null)}>
+              Cancel
+            </Button>
+            <Button
+              tone={pending?.action === 'reset' ? 'primary' : 'danger'}
+              solid={pending?.action === 'reject'}
+              disabled={busy || note.trim() === ''}
+              onClick={confirm}
+            >
+              {pending?.action === 'reset' ? 'Reset to candidate' : 'Reject application'}
+            </Button>
+          </>
+        }
+      >
+        {pending ? (
+          <div className="stack">
+            <div className="sm muted">
+              {pending.row.existing_name} · {employeeId(pending.row.employee_id)} · matched on{' '}
+              {pending.row.matched_on === 'email_dob'
+                ? 'email + date of birth'
+                : 'mobile + date of birth'}
+            </div>
+            {pending.action === 'reset' ? (
+              <div className="note">
+                Same record, same Employee ID. Status goes back to Interview requested; every
+                document, the share-code result, the HMRC checklist, the declaration, the quiz and
+                the contract are marked superseded and must be supplied again. History stays
+                (§2.12).
+              </div>
+            ) : (
+              <div className="note">
+                The applicant receives E2. They are never told why a previous record was blocked
+                (§2.12). The existing record is not changed.
+              </div>
+            )}
+            <Textarea
+              label="Reason *"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+            />
+            {problem ? <Alert tone="coral">{problem}</Alert> : null}
+          </div>
+        ) : null}
+      </Modal>
+    </OfficeShell>
+  );
+}
+
+function Column({
+  column,
+  filter,
+  now,
+  onOpen,
+  onResolve,
+}: {
+  column: BoardColumn;
+  filter: BoardFilter;
+  now: Date;
+  onOpen: (row: CandidateRow) => void;
+  onResolve: (row: ReturningRow, action: 'reset' | 'reject') => void;
+}) {
+  const empty = column.candidates.length === 0 && column.returning.length === 0;
+  return (
+    <KanbanColumn
+      title={<span className={`t ${column.tone}`}>{column.label}</span>}
+      count={column.count}
+    >
+      {empty ? (
+        <EmptyState>
+          <span className="sm">
+            {filter === 'rejected' ? 'Nothing rejected at this stage' : 'Nobody at this stage'}
+          </span>
+        </EmptyState>
+      ) : null}
+
+      {column.returning.map((row) => (
+        <ReturningCard key={row.application_id} row={row} now={now} onResolve={onResolve} />
+      ))}
+
+      {column.candidates.map((row) =>
+        filter === 'rejected' ? (
+          <RejectedCard key={row.id} row={row} onOpen={onOpen} />
+        ) : (
+          <CandidateCard key={row.id} row={row} column={column.key} now={now} onOpen={onOpen} />
+        ),
+      )}
+    </KanbanColumn>
+  );
+}
+
+function CardTop({ name, age, tone }: { name: string; age: string; tone?: string }) {
+  return (
+    <div className="top">
+      <Avatar size="sm" name={name} />
+      <div className="nm">{name}</div>
+      <span className={tone && tone !== 'ok' ? `age ${tone}` : 'age'}>{age}</span>
+    </div>
+  );
+}
+
+function RoleChips({ roles }: { roles: string[] }) {
+  if (roles.length === 0) return null;
+  return (
+    <div className="chips">
+      {roles.map((role) => (
+        <Chip key={role}>{role}</Chip>
+      ))}
+    </div>
+  );
+}
+
+function CandidateCard({
+  row,
+  column,
+  now,
+  onOpen,
+}: {
+  row: CandidateRow;
+  column: BoardColumn['key'];
+  now: Date;
+  onOpen: (row: CandidateRow) => void;
+}) {
+  const age = stageAge(row.stage_entered_at, now);
+  const lines = cardLines(row, column, now);
+  const interview = column === 'interview_requested' || column === 'interview_completed';
+  return (
+    <KanbanCard onOpen={() => onOpen(row)}>
+      <CardTop name={row.display_name} age={age.label} tone={age.tone} />
+      {/* Role chips from Documents onwards: picked right after the Willo acceptance (§2.4). */}
+      {interview ? null : <RoleChips roles={row.role_names} />}
+      {lines.slice(0, 1).map((line) => (
+        <Meta key={line.text} line={line} />
+      ))}
+      {interview ? <WilloLink url={row.willo_review_url} /> : null}
+      {lines.slice(1).map((line) => (
+        <Meta key={line.text} line={line} />
+      ))}
+    </KanbanCard>
+  );
+}
+
+function RejectedCard({ row, onOpen }: { row: CandidateRow; onOpen: (row: CandidateRow) => void }) {
+  return (
+    <KanbanCard onOpen={() => onOpen(row)}>
+      <CardTop name={row.display_name} age={row.rejected_at ? shortDay(row.rejected_at) : '—'} />
+      <RoleChips roles={row.role_names} />
+      <span>
+        <Pill tone="coral">{rejectedPill(row)}</Pill>
+      </span>
+      {rejectedLines(row).map((line) => (
+        <Meta key={line.text} line={line} />
+      ))}
+      {row.rejection_cause === 'willo' ? <WilloLink url={row.willo_review_url} /> : null}
+    </KanbanCard>
+  );
+}
+
+/**
+ * §2.12: the duplicate check matched an existing record, so no second
+ * candidate was created. The applicant saw the ordinary confirmation.
+ */
+function ReturningCard({
+  row,
+  now,
+  onResolve,
+}: {
+  row: ReturningRow;
+  now: Date;
+  onResolve: (row: ReturningRow, action: 'reset' | 'reject') => void;
+}) {
+  const age = stageAge(row.applied_at, now);
+  const actions = returningActions(row.status);
+  const status =
+    row.status === 'blocked' && row.block_reason
+      ? `Blocked — ${row.block_reason}`
+      : (STATUS_NOTE[row.status] ?? row.status);
+  return (
+    <KanbanCard returning>
+      <CardTop name={row.applicant_name} age={age.days === 0 ? 'today' : age.label} tone="warn" />
+      <span>
+        <Pill tone="amber">Returning applicant</Pill>
+      </span>
+      <div className="meta">
+        Matches existing record{' '}
+        <b className="cyan">
+          {row.existing_name} · {employeeId(row.employee_id)}
+        </b>{' '}
+        ({row.matched_on === 'email_dob' ? 'email + DOB' : 'mobile + DOB'}). Status:{' '}
+        <span
+          className={row.status === 'blocked' || row.status === 'rejected' ? 'coral' : undefined}
+        >
+          {status}
+        </span>
+        . History: {row.shifts_worked} shifts · show-rate {formatShowRate(row.reliability)} · rating{' '}
+        {formatRating(row.rating)}.
+      </div>
+      <div className="meta">
+        No second record was created. The applicant saw the ordinary &quot;check your inbox&quot;
+        screen and is never told why.
+      </div>
+      <div className="acts">
+        {actions.includes('reset') ? (
+          <Button size="sm" tone="primary" onClick={() => onResolve(row, 'reset')}>
+            Reset to candidate
+          </Button>
+        ) : null}
+        <Button size="sm" tone="danger" onClick={() => onResolve(row, 'reject')}>
+          Reject
+        </Button>
+      </div>
+    </KanbanCard>
+  );
+}

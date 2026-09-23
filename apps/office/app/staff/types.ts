@@ -23,7 +23,16 @@ export type BlockKind = 'auto_document' | 'manual' | 'conviction_review' | null;
 
 /** RULE-20's bands (0008_weekly_cap.sql). */
 export type CapBand =
-  'student_term_20' | 'student_holiday_48' | 'graduated_48' | 'standard_48' | 'opted_out_none';
+  | 'student_term_20'
+  | 'student_holiday_48'
+  | 'graduated_48'
+  | 'standard_48'
+  | 'opted_out_none'
+  // What the cap_band enum actually carries for no ceiling (0008), and the
+  // two bands the completion letter requirement added (20260922093000).
+  | 'uncapped'
+  | 'student_term_10'
+  | 'visa_expired_0';
 
 export interface StaffRow {
   id: string;
@@ -68,4 +77,14 @@ export interface StudentRow {
   term_letter_expires_at: string | null;
   completion_letter_verified_at: string | null;
   completion_letter_in_review: boolean;
+  // Completion letter requirement §4 reporting (20260923100100).
+  below_degree_level: boolean;
+  course_completion_date: string | null;
+  completion_letter_status: 'pending' | 'verified' | 'rejected' | null;
+  completion_letter_rejection: string | null;
+  completion_date_claimed: string | null;
+  completion_effective_from: string | null;
+  wtr_optout_cancelled_from: string | null;
+  optout_eligible: boolean;
+  rtw_days_left: number | null;
 }

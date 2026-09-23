@@ -1,0 +1,317 @@
+/**
+ * Pure helpers for /compliance (§4.1–4.3). Everything that decides WHAT the
+ * screen shows lives here, so it is tested without a database or a browser;
+ * the components only lay it out.
+ */
+import type { QueueRow, RadarRow, RadarState } from './types';
+
+const UK = 'Europe/London';
+
+// ---------------------------------------------------------------------
+// UK formatting (§1.8: audit stamps and document dates are UK-only)
+// ---------------------------------------------------------------------
+
+/** `2026-12-31` → `31.12.2026`, the format the wireframes and profile use. */
+export function ukDate(iso: string | null): string {
+  if (!iso) return '—';
+  const [y, m, d] = iso.slice(0, 10).split('-');
+  return `${d}.${m}.${y}`;
+}
+
+// A fixed table rather than Intl's `month: 'short'`: newer ICU builds write
+// September as "Sept" in en-GB, and the wireframes (and every other screen)
+// write "Sep". The server and the browser must not disagree on a label.
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function ukParts(iso: string): { day: string; month: string; hour: string; minute: string } {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: UK,
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date(iso));
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  return {
+    day: get('day'),
+    month: MONTHS[Number(get('month')) - 1] ?? '',
+    hour: get('hour'),
+    minute: get('minute'),
+  };
+}
+
+/** `13 Sep` in UK time. */
+export function ukDayMonth(iso: string): string {
+  const p = ukParts(iso);
+  return `${p.day} ${p.month}`;
+}
+
+/** `13 Sep 15:02` in UK time — the Uploaded column. */
+export function ukStamp(iso: string): string {
+  const p = ukParts(iso);
+  return `${p.day} ${p.month} ${p.hour}:${p.minute}`;
+}
+
+/** The UK calendar day of an instant, `YYYY-MM-DD`. */
+export function ukDay(instant: Date): string {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: UK }).format(instant);
+}
+
+/** "today", "yesterday", "5 days ago" — counted in UK calendar days. */
+export function ageLabel(iso: string, now: Date = new Date()): string {
+  const days = Math.round(
+    (Date.parse(`${ukDay(now)}T00:00:00Z`) - Date.parse(`${ukDay(new Date(iso))}T00:00:00Z`)) /
+      86_400_000,
+  );
+  if (days <= 0) return 'today';
+  if (days === 1) return 'yesterday';
+  return `${days} days ago`;
+}
+
+// ---------------------------------------------------------------------
+// Needs review
+// ---------------------------------------------------------------------
+
+export type WhoFilter = 'all' | 'candidates' | 'staff';
+
+/** The document filter's options, in the wireframe's order. */
+export const DOCUMENT_FILTERS: { value: string; label: string; types: string[] }[] = [
+  { value: 'any', label: 'Any document', types: [] },
+  { value: 'id', label: 'Passport / ID', types: ['passport', 'national_id', 'birth_certificate'] },
+  { value: 'visa', label: 'Visa document', types: ['visa_document', 'status_document'] },
+  { value: 'rtw', label: 'Right to work (share code)', types: ['share_code_report'] },
+  { value: 'term', label: 'University Term Dates Letter', types: ['university_term_dates_letter'] },
+  {
+    value: 'completion',
+    label: 'Official University Completion Letter',
+    types: ['university_completion_letter'],
+  },
+  { value: 'ni', label: 'NI evidence', types: ['ni_evidence'] },
+  { value: 'declaration', label: 'Criminal Record declaration', types: ['criminal_declaration'] },
+];
+
+export interface QueueFilter {
+  query: string;
+  who: WhoFilter;
+  document: string;
+}
+
+/**
+ * Oldest first: "the menu counter is this number", and the one that has
+ * waited longest is the one to do next (§4.1).
+ */
+export function filterQueue(rows: readonly QueueRow[], filter: QueueFilter): QueueRow[] {
+  const needle = filter.query.trim().toLowerCase();
+  const types = DOCUMENT_FILTERS.find((f) => f.value === filter.document)?.types ?? [];
+  return rows
+    .filter((row) => (needle ? row.display_name.toLowerCase().includes(needle) : true))
+    .filter((row) =>
+      filter.who === 'candidates'
+        ? row.is_candidate
+        : filter.who === 'staff'
+          ? !row.is_candidate
+          : true,
+    )
+    .filter((row) => (types.length ? types.includes(row.item_type) : true))
+    .sort(
+      (a, b) => a.submitted_at.localeCompare(b.submitted_at) || a.item_id.localeCompare(b.item_id),
+    );
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  interview_requested: 'Interview requested',
+  interview_completed: 'Interview completed',
+  documents: 'Documents',
+  quiz: 'Quiz',
+  contract: 'Contract',
+  compliant: 'Compliant',
+  blocked: 'Blocked',
+  inactive: 'Inactive',
+};
+
+const BRANCH_LABEL: Record<string, string> = {
+  uk_irish: 'UK / Irish citizen',
+  eu_settled: 'EU settled / pre-settled',
+  work_visa: 'Work visa',
+  international_student: 'International student',
+  dependant_other: 'Dependant / other',
+};
+
+/**
+ * The line under the name: "Candidate · Documents · International student",
+ * or "Staff · Blocked — <reason>". A blocked worker's reason is the first
+ * thing the reviewer needs, because it says whether this upload could lift it.
+ */
+export function whoLine(row: QueueRow): { text: string; blocked: string | null } {
+  const role = row.is_candidate ? 'Candidate' : 'Staff';
+  if (row.status === 'blocked') {
+    return { text: role, blocked: `Blocked — ${row.block_reason ?? 'no reason recorded'}` };
+  }
+  const parts = [role, STATUS_LABEL[row.status] ?? row.status];
+  if (row.rtw_branch) parts.push(BRANCH_LABEL[row.rtw_branch] ?? row.rtw_branch);
+  return { text: parts.join(' · '), blocked: null };
+}
+
+export const EVIDENCE_FORM_LABEL: Record<string, string> = {
+  letter: 'Official completion letter',
+  transcript: 'Final / completers transcript',
+  university_email: 'Official university email',
+};
+
+function fileSize(bytes: number | null): string | null {
+  if (bytes === null) return null;
+  return bytes >= 1024 * 1024
+    ? `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+    : `${Math.max(1, Math.round(bytes / 1024))} KB`;
+}
+
+function fileKind(mime: string | null): string | null {
+  if (mime === 'application/pdf') return 'PDF';
+  if (mime === 'image/jpeg') return 'JPG';
+  if (mime === 'image/png') return 'PNG';
+  return null;
+}
+
+/** The sub-line under the document name. */
+export function documentLine(row: QueueRow): string {
+  if (row.kind === 'declaration') {
+    const source =
+      row.declaration_source === 'in_employment' ? 'declared from the app (§10.7)' : 'onboarding';
+    return `Answer: Yes · ${source}`;
+  }
+  const parts: string[] = [];
+  if (row.item_type === 'university_completion_letter') {
+    if (row.evidence_form) parts.push(EVIDENCE_FORM_LABEL[row.evidence_form] ?? row.evidence_form);
+    parts.push('optional document, International student branch');
+  }
+  if (row.awarding_institution) parts.push(row.awarding_institution);
+  const kind = fileKind(row.mime_type);
+  const size = fileSize(row.size_bytes);
+  if (kind || size) parts.push([kind, size].filter(Boolean).join(' '));
+  if (row.is_reupload && row.previous_rejection) {
+    parts.push(`previously rejected ("${row.previous_rejection}")`);
+  } else if (row.is_reupload) {
+    parts.push('replaces an earlier document');
+  }
+  return parts.join(' · ');
+}
+
+/** The "AI found" column, or what stands in for it. */
+export function foundLine(row: QueueRow): {
+  text: string;
+  confidence: 'hi' | 'mid' | 'manual' | null;
+} {
+  if (row.kind === 'declaration') return { text: '— no AI extraction', confidence: null };
+  if (row.item_type === 'university_completion_letter') {
+    return {
+      text: row.completion_date_claimed
+        ? `Completion date entered by the worker: ${ukDate(row.completion_date_claimed)}`
+        : 'No completion date entered',
+      confidence: row.needs_manual_review ? 'manual' : null,
+    };
+  }
+  const found: string[] = [];
+  if (row.expiry_date) found.push(`Expiry ${ukDate(row.expiry_date)}`);
+  if (row.doc_right_to_work_until)
+    found.push(`Right to work until ${ukDate(row.doc_right_to_work_until)}`);
+  if (row.term_dates?.length) {
+    found.push(`${row.term_dates.length} holiday range${row.term_dates.length === 1 ? '' : 's'}`);
+  }
+  const confidence =
+    row.needs_manual_review || row.ai_confidence === null
+      ? row.ai_confidence === null
+        ? null
+        : 'manual'
+      : row.ai_confidence >= 0.85
+        ? 'hi'
+        : 'mid';
+  return { text: found.join(' · ') || '—', confidence };
+}
+
+/** What pressing Verify will do, spelled out where it matters (§4.3, §4.5). */
+export function verifyHint(row: QueueRow): string | null {
+  if (row.item_type === 'university_completion_letter') {
+    return 'Approve → confirm the completion date and visa expiry → 48 h/week from the completion date, never past the visa';
+  }
+  if (row.kind === 'declaration' && row.declaration_source === 'in_employment') {
+    return 'Verify → re-check → N15 "your shifts are open again" · Reject → converts to a manual block';
+  }
+  if (row.status === 'blocked') {
+    return 'Verify → full compliance re-check → unblocks only if everything else is valid (§4.3)';
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------
+// Radar
+// ---------------------------------------------------------------------
+
+export type RadarFilter = 'all' | 'expired' | 'expiring';
+
+export function radarCounts(rows: readonly RadarRow[]): {
+  expired: number;
+  expiring: number;
+  termLetters: number;
+} {
+  return {
+    expired: rows.filter((r) => r.state === 'expired').length,
+    expiring: rows.filter((r) => r.state === 'expiring').length,
+    termLetters: rows.filter((r) => r.doc_type === 'university_term_dates_letter').length,
+  };
+}
+
+/** Soonest first, so the already-expired rows lead (§4.1). */
+export function filterRadar(
+  rows: readonly RadarRow[],
+  state: RadarFilter,
+  query: string,
+  document: string,
+): RadarRow[] {
+  const needle = query.trim().toLowerCase();
+  const types = DOCUMENT_FILTERS.find((f) => f.value === document)?.types ?? [];
+  return rows
+    .filter((r) => (state === 'all' ? true : r.state === state))
+    .filter((r) => (needle ? r.display_name.toLowerCase().includes(needle) : true))
+    .filter((r) => (types.length ? types.includes(r.doc_type) : true))
+    .sort((a, b) => a.days_left - b.days_left || a.display_name.localeCompare(b.display_name));
+}
+
+export function daysLabel(days: number): string {
+  return days < 0 ? `−${Math.abs(days)} d` : `${days} d`;
+}
+
+export function daysTone(state: RadarState): 'neg' | 'soon' | 'ok' {
+  return state === 'expired' ? 'neg' : state === 'expiring' ? 'soon' : 'ok';
+}
+
+/** "N1 02 Aug · N2 19 Aug" — the rungs the ladder actually queued, nothing inferred. */
+export function remindersLine(row: RadarRow): string {
+  const rungs: [string, string | null][] = [
+    ['N1', row.n1_at],
+    ['N2', row.n2_at],
+    ['N3', row.n3_at],
+    ['N4', row.n4_at],
+  ];
+  const sent = rungs
+    .filter(([, at]) => at !== null)
+    .map(([code, at]) => `${code} ${ukDayMonth(at!)}`);
+  if (sent.length > 0) return sent.join(' · ');
+  if (row.state === 'valid') {
+    // The ladder opens 30 days out (§4.2).
+    const first = new Date(Date.parse(`${row.expires_on}T00:00:00Z`) - 30 * 86_400_000);
+    return `first reminder ${ukDate(first.toISOString().slice(0, 10))}`;
+  }
+  return '—';
+}
+
+export function radarStatus(row: RadarRow): { tone: 'coral' | 'amber' | 'neutral'; label: string } {
+  if (row.state === 'expired') {
+    return {
+      tone: 'coral',
+      label: row.days_left === 0 ? 'Expires today · blocked 05:00' : 'Expired · blocked',
+    };
+  }
+  if (row.state === 'expiring') return { tone: 'amber', label: 'Expiring' };
+  return { tone: 'neutral', label: 'Valid' };
+}

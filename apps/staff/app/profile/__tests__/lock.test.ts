@@ -36,6 +36,18 @@ describe('appLock — §10.1 four cases', () => {
     expect(reachableTabs(lock)).toEqual(['/documents']);
   });
 
+  it('(1) a compliant worker with a replacement in review is NOT locked (§4.3)', () => {
+    // The old passport still counts until it expires; the database keeps
+    // rostering them, so the app must not close Shifts on them.
+    expect(appLock(worker({ blockers: ['document_unverified:passport'] }))).toBe('none');
+  });
+
+  it('(1) …but the same worker IS locked once the old one has expired', () => {
+    expect(
+      appLock(worker({ blockers: ['document_unverified:passport', 'document_expired:passport'] })),
+    ).toBe('documents');
+  });
+
   it('(1) an auto-block by status is the same case as an expired document', () => {
     expect(appLock(worker({ status: 'blocked', blockKind: 'auto_document' }))).toBe('documents');
   });

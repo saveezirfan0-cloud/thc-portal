@@ -240,9 +240,9 @@ test.describe('The shell around a compliant worker (§10.1)', () => {
       /Invites/,
       /Radar/,
     ]);
-    // Nothing is locked for a compliant worker: the three built tabs are
-    // links, and none of them carries the locked state.
-    await expect(nav.locator('> a')).toHaveCount(3);
+    // Nothing is locked for a compliant worker: all four tabs are links
+    // (Documents since S4), and none of them carries the locked state.
+    await expect(nav.locator('> a')).toHaveCount(4);
     await expect(nav.locator('.locked')).toHaveCount(0);
   });
 
@@ -315,12 +315,13 @@ test.describe('App lock — the four cases (§10.1)', () => {
     // The other three tabs are not links. A locked tab that is still
     // pressable is a different promise from one that is not.
     const nav = page.locator('nav.bottom-nav');
-    await expect(nav.locator('[aria-disabled="true"]')).toHaveCount(4);
-    await expect(nav.locator('a')).toHaveCount(0);
-    // Documents is present and is the only tab not locked. It renders as
-    // text rather than a link only because the Documents hub itself is
-    // still to be built (S4); the lock state it carries is the real one.
-    await expect(nav.getByText('Documents')).toBeVisible();
+    await expect(nav.locator('[aria-disabled="true"]')).toHaveCount(3);
+    // Documents is the only tab not locked, and the only link (S4).
+    await expect(nav.locator('a')).toHaveCount(1);
+    await expect(nav.getByRole('link', { name: 'Documents' })).toHaveAttribute(
+      'href',
+      '/documents',
+    );
     await expect(nav.locator('.locked')).toHaveCount(3);
   });
 
@@ -377,7 +378,11 @@ test.describe('App lock — the four cases (§10.1)', () => {
     await setStaff({ status: 'blocked', block_kind: 'auto_document' });
     await page.goto('/notifications');
     await expect(page.getByRole('button', { name: /Turn on notifications/ })).toBeVisible();
-    // …while the navigation still shows the three tabs they cannot reach.
-    await expect(page.locator('nav.bottom-nav a')).toHaveCount(0);
+    // …while the navigation shows the three tabs they cannot reach closed,
+    // and Documents — the one tab a document-blocked worker keeps (§4, "sees
+    // ONLY the Documents tab") — open, now that /documents exists (S4).
+    const links = page.locator('nav.bottom-nav a');
+    await expect(links).toHaveCount(1);
+    await expect(links.first()).toHaveAttribute('href', '/documents');
   });
 });

@@ -71,7 +71,21 @@ export function appLock(
 
   // Compliant on the row, but §4.3 re-checks the documents themselves: an
   // expired passport blocks before the nightly job gets to it.
-  return profile.blockers.length > 0 ? 'documents' : 'none';
+  //
+  // §10.1 case 1 is "not compliant OR has an expired document" — and a
+  // `document_unverified:*` blocker on a COMPLIANT worker is neither. It is
+  // a replacement in review (or re-uploaded after a rejection) while the
+  // verified one it replaces still counts: `current_verified_docs()` keeps
+  // measuring expiry off that one, compliance_daily keeps them in the pool,
+  // and the wireframe says it in words — "You stay compliant while a
+  // replacement is in review before the old one expires". Locking them here
+  // would close Shifts on a worker the database is still rostering.
+  return profile.blockers.some(locksCompliantWorker) ? 'documents' : 'none';
+}
+
+/** The blockers that lock a worker whose status is still `compliant` (§10.1 case 1). */
+function locksCompliantWorker(blocker: string): boolean {
+  return blocker.startsWith('document_expired:') || blocker === 'conviction_unreviewed';
 }
 
 /** Which of the four tabs a lock leaves reachable (§10.1). */

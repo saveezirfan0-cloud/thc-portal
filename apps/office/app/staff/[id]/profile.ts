@@ -149,7 +149,7 @@ export const VIOLATION_LABEL: Record<ViolationRow['type'], string> = {
  * second place to mark something read is a second place for the rating to
  * diverge from the scoring engine's.
  */
-export function feedbackState(row: FeedbackRow): string {
+export function feedbackState(row: Pick<FeedbackRow, 'author_kind' | 'read_at'>): string {
   if (row.author_kind === 'office') return 'Office entry';
   return row.read_at ? 'Read' : 'Unread — not in the rating yet';
 }

@@ -1,0 +1,105 @@
+/*
+ * /activate — the page-local styles in wireframes/public/activate.html,
+ * promoted into the app. Layout only: every colour, radius and size is a
+ * token from packages/ui.
+ */
+
+/* The live password checklist: ○ untouched, ✓ met, ✕ not met. */
+.act-rules {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  font-size: var(--fs-12);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.act-rules li::before {
+  content: '○ ';
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+.act-rules li.ok {
+  color: var(--green);
+}
+.act-rules li.ok::before {
+  content: '✓ ';
+  color: var(--green);
+}
+.act-rules li.bad {
+  color: var(--coral);
+}
+.act-rules li.bad::before {
+  content: '✕ ';
+  color: var(--coral);
+}
+
+/* The "Show" addon is a real button. */
+.input-row button.addon {
+  cursor: pointer;
+}
+
+/* Activated: the tick beside the heading. */
+.act-done {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+}
+.act-done .ico {
+  width: 56px;
+  height: 56px;
+  flex: 0 0 auto;
+  border-radius: var(--r-avatar);
+  background: var(--green);
+  color: var(--bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--fs-26);
+  font-weight: 700;
+}
+
+/* Activated: the two platform blocks (iPhone · Safari, Android · Chrome). */
+.act-install {
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--panel-2);
+  padding: var(--sp-12);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  font-size: var(--fs-12);
+}
+.act-install .k {
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+.act-install ol {
+  margin: 0;
+  padding-left: var(--sp-18);
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.act-install ol b {
+  color: var(--text);
+  font-weight: 500;
+}
+.act-install .key {
+  display: inline-block;
+  border: 1px solid var(--muted);
+  border-radius: var(--r-check);
+  padding: 0 var(--sp-4);
+  font-family: var(--font-mono);
+  font-size: var(--fs-10);
+  color: var(--text);
+}
+.act-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--sp-10);
+}

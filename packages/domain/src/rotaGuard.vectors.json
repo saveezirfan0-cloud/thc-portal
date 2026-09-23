@@ -1,0 +1,149 @@
+{
+  "description": "Rota guard (completion letter requirement §4, acceptance criteria 1, 4, 6). Held against rotaGuardVerdict() in rotaGuard.ts and rota_guard_decide() in 20260923100200_rota_guard.sql.",
+  "cases": [
+    {
+      "name": "ac1_student_term_20_fits",
+      "input": {
+        "canRoster": true,
+        "capHours": 20,
+        "band": "student_term_20",
+        "bookedHours": 12,
+        "shiftHours": 8,
+        "mode": "block"
+      },
+      "expect": { "verdict": "ok", "reason": null }
+    },
+    {
+      "name": "ac1_student_term_20_over_blocks",
+      "input": {
+        "canRoster": true,
+        "capHours": 20,
+        "band": "student_term_20",
+        "bookedHours": 16,
+        "shiftHours": 8,
+        "mode": "block"
+      },
+      "expect": { "verdict": "block", "reason": "visa_cap" }
+    },
+    {
+      "name": "ac1_student_term_20_over_blocks_even_in_warn_mode",
+      "input": {
+        "canRoster": true,
+        "capHours": 20,
+        "band": "student_term_20",
+        "bookedHours": 16,
+        "shiftHours": 8,
+        "mode": "warn"
+      },
+      "expect": { "verdict": "block", "reason": "visa_cap" }
+    },
+    {
+      "name": "ac1_below_degree_10_over_blocks_in_warn_mode",
+      "input": {
+        "canRoster": true,
+        "capHours": 10,
+        "band": "student_term_10",
+        "bookedHours": 4,
+        "shiftHours": 8,
+        "mode": "warn"
+      },
+      "expect": { "verdict": "block", "reason": "visa_cap" }
+    },
+    {
+      "name": "ac4_graduated_48_over_blocks",
+      "input": {
+        "canRoster": true,
+        "capHours": 48,
+        "band": "graduated_48",
+        "bookedHours": 44,
+        "shiftHours": 8,
+        "mode": "block"
+      },
+      "expect": { "verdict": "block", "reason": "wtr_cap" }
+    },
+    {
+      "name": "ac4_graduated_48_over_warns_in_warn_mode",
+      "input": {
+        "canRoster": true,
+        "capHours": 48,
+        "band": "graduated_48",
+        "bookedHours": 44,
+        "shiftHours": 8,
+        "mode": "warn"
+      },
+      "expect": { "verdict": "warn", "reason": "wtr_cap" }
+    },
+    {
+      "name": "ac4_standard_48_exactly_full_is_ok",
+      "input": {
+        "canRoster": true,
+        "capHours": 48,
+        "band": "standard_48",
+        "bookedHours": 40,
+        "shiftHours": 8,
+        "mode": "block"
+      },
+      "expect": { "verdict": "ok", "reason": null }
+    },
+    {
+      "name": "ac4_holiday_48_is_working_time_not_visa",
+      "input": {
+        "canRoster": true,
+        "capHours": 48,
+        "band": "student_holiday_48",
+        "bookedHours": 44,
+        "shiftHours": 8,
+        "mode": "warn"
+      },
+      "expect": { "verdict": "warn", "reason": "wtr_cap" }
+    },
+    {
+      "name": "ac4_opt_out_uncapped_is_ok",
+      "input": {
+        "canRoster": true,
+        "capHours": null,
+        "band": "uncapped",
+        "bookedHours": 70,
+        "shiftHours": 12,
+        "mode": "block"
+      },
+      "expect": { "verdict": "ok", "reason": null }
+    },
+    {
+      "name": "ac6_rtw_expired_blocks_whatever_the_cap",
+      "input": {
+        "canRoster": false,
+        "capHours": null,
+        "band": "uncapped",
+        "bookedHours": 0,
+        "shiftHours": 4,
+        "mode": "warn"
+      },
+      "expect": { "verdict": "block", "reason": "rtw_expired" }
+    },
+    {
+      "name": "ac6_week_wholly_past_expiry_is_zero",
+      "input": {
+        "canRoster": false,
+        "capHours": 0,
+        "band": "visa_expired_0",
+        "bookedHours": 0,
+        "shiftHours": 4,
+        "mode": "warn"
+      },
+      "expect": { "verdict": "block", "reason": "rtw_expired" }
+    },
+    {
+      "name": "already_over_cap_any_shift_breaches",
+      "input": {
+        "canRoster": true,
+        "capHours": 20,
+        "band": "student_term_20",
+        "bookedHours": 24,
+        "shiftHours": 1,
+        "mode": "block"
+      },
+      "expect": { "verdict": "block", "reason": "visa_cap" }
+    }
+  ]
+}

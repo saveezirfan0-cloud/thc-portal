@@ -313,12 +313,15 @@ select is((select self_cancelled from bookings where shift_id = :'s1' and staff_
 delete from bookings where shift_id = :'s1' and staff_id = :'me';
 
 -- The live re-check. s1 is headcount 2, buffer 1 — full at 2, not at 3.
+-- The second seat is filled by `blk`, not `capped`: `capped` is a student
+-- already at 16 h, and confirming them onto this 8 h shift is exactly what
+-- the rota guard (20260923100200) now refuses (acceptance criterion 1).
 insert into bookings (shift_id, staff_id, status, source, confirmed_at) values
-  (:'s1', :'mate',   'confirmed', 'manual', now()),
-  (:'s1', :'capped', 'confirmed', 'manual', now());
+  (:'s1', :'mate', 'confirmed', 'manual', now()),
+  (:'s1', :'blk',  'confirmed', 'manual', now());
 select is(apply_to_shift(:'s1', :'me')->>'reason', 'full',
   '"Sorry, this shift is now full" — measured against headcount, never headcount + buffer');
-delete from bookings where shift_id = :'s1' and staff_id in (:'mate', :'capped');
+delete from bookings where shift_id = :'s1' and staff_id in (:'mate', :'blk');
 
 select is(apply_to_shift(:'s1', :'capped')->>'reason', 'hours_limit',
   'RULE-20 blocks Apply the same way it blocks Accept, with the reason the "Limit Reached" label reads');

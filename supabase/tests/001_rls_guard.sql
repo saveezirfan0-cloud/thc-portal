@@ -18,6 +18,10 @@
 -- pass asserted an outcome that needs supabase_admin, which no migration in
 -- this repo has, so main was red on it for over an hour. The gap is real and
 -- is recorded rather than hidden.
+-- 20260923120000 (the §10.3 wizard) added onboarding_progress (admin + a
+-- worker read-only self policy), quiz_questions (admin only: it holds the
+-- answer key) and contract_versions (admin + any signed-in read, the
+-- venue_types shape) to assertions 1, 3 and 4.
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
@@ -43,8 +47,10 @@ select bag_eq(
             ('push_subscriptions'),('quiz_attempts'),('report_sends'),('roles'),('settings'),
             ('shift_requirements'),('staff'),('staff_references'),('staff_roles'),
             ('staff_transitions'),('storage_deletions'),
-            ('venue_types'),('venues'),('violations') $$,
-  'RLS is enabled on all 34 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, and storage_deletions from §1.7''s Storage half'
+            ('venue_types'),('venues'),('violations'),
+            ('payroll_export_lines'),('event_documents'),
+            ('onboarding_progress'),('quiz_questions'),('contract_versions') $$,
+  'RLS is enabled on all 39 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, and the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions)'
 );
 
 -- ---------------------------------------------------------------------
@@ -111,7 +117,9 @@ select bag_eq(
             ('push_subscriptions'),('quiz_attempts'),
             ('report_sends'),('roles'),('settings'),('shift_requirements'),('staff'),
             ('staff_references'),('staff_roles'),('staff_transitions'),('storage_deletions'),
-            ('venue_types'),('venues'),('violations') $$,
+            ('venue_types'),('venues'),('violations'),
+            ('payroll_export_lines'),('event_documents'),
+            ('onboarding_progress'),('quiz_questions'),('contract_versions') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );
 
@@ -127,8 +135,8 @@ select bag_eq(
       where p.polname like 'staff\_self%' or p.polname = 'profiles_self' $$,
   $$ values ('staff'::text),('compliance_docs'),('bookings'),('criminal_declarations'),('profiles'),
             ('bank_details'),('staff_references'),('push_subscriptions'),('staff_roles'),
-            ('quiz_attempts'),('location_pings') $$,
-  'workers hold a self policy on their own staff, docs, bookings, declarations, profile, bank details, references, push subscriptions, roles, quiz attempts and location pings'
+            ('quiz_attempts'),('location_pings'),('onboarding_progress') $$,
+  'workers hold a self policy on their own staff, docs, bookings, declarations, profile, bank details, references, push subscriptions, roles, quiz attempts, location pings and onboarding progress (read only — every wizard write is a definer RPC, 20260923120000)'
 );
 -- cap_band_notices is deliberately absent from that list. It records what
 -- N14 last told a worker their weekly cap was, which is a send receipt and

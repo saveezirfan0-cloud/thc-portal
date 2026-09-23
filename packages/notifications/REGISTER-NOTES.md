@@ -60,3 +60,23 @@ judgement call is listed below, for THC to confirm before anything sends.
   than what is listed, and no E-sub-codes. The numbering jumps (N13 and N14
   appear out of order in the table, N15 before N14) are presentation only —
   all fifteen are present.
+
+## University Completion Letter requirement (CL1–CL6)
+
+`docs/scope/university-completion-letter-requirement.pdf` §5 is a later THC
+document than scope v1.6, and it names six sends without quoting any of them.
+They are registered under their own `CL` prefix so they can never collide with
+an N- or E-code THC assigns to §8 later (E10 is already pencilled in above).
+
+| Code | Requirement §5 | What the register uses | Why |
+| --- | --- | --- | --- |
+| CL1 | Worker: upload received | push, "…your weekly hours stay the same until the office has checked it" | Acceptance criterion 2: the upload changes nothing, and the worker should not read "received" as "approved". |
+| CL2 | Worker: approved (with new cap and effective date) | push, three variants: `dated`, `uncapped`, `visa_first` | Like N14, one sentence with optional clauses would send a placeholder to someone. `visa_first` is §7: the right to work ends before the release would start, so the worker is told their hours do not change. |
+| — | Worker: rejected (with reason) | **N8** | The §8 push for any rejected document already carries the reason and the Re-upload button (§7 "reject flow with re-upload"). A second code would be two pushes for one event. |
+| CL3 | Admin: new document awaiting review | email to admin@ | |
+| CL4 | Admin: visa expiry approaching (e.g. 60/30/14 days) | email to admin@, one per rung per expiry date | Sent for every live worker with a right-to-work expiry, not only students — the cautious reading. |
+| CL5 | Admin: opt-out signed | email to admin@ | Says in terms that it does not lift a Student visa term-time limit. |
+| CL6 | Admin: opt-out cancelled | email to admin@, with the weeks already booked over the returning 48 | So the email is something the office can act on. |
+
+**Confirm with THC:** all six are our wording; none is marked mandatory, since
+the requirement does not say.

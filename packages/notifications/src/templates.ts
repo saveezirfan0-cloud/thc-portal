@@ -330,6 +330,17 @@ export const TEMPLATES = {
     timing: 'on the rejection decision',
     mandatory: true,
   },
+  E2b: {
+    code: 'E2b',
+    channel: 'email',
+    sender: 'admin',
+    title: 'Your application to The Hospitality Company',
+    body: 'Thank you for the time you have given to your application with The Hospitality Company. On this occasion we will not be taking your application further. We wish you the very best.',
+    trigger:
+      'Rejected after the interview stage (documents, quiz stage, additional info), or a returning applicant declined. Not in §8: E2 thanks the candidate for completing their interview, which is untrue for these, so this is E2 without the interview (20260923170000)',
+    timing: 'on the rejection decision',
+    mandatory: true,
+  },
   E3: {
     code: 'E3',
     channel: 'email',
@@ -405,6 +416,89 @@ export const TEMPLATES = {
     timing: 'immediately, not batched',
     mandatory: true,
   },
+
+  // ────────────────────────────────────────────────────────────────────────
+  // UNIVERSITY COMPLETION LETTER REQUIREMENT §5 — not scope v1.6 §8, a later
+  // document from THC (docs/scope/university-completion-letter-requirement.pdf).
+  // `CL` codes so they can never collide with an N- or E-code THC assigns to
+  // §8 later. "Rejected (with reason)" is not here: it is N8, the §8 push for
+  // any rejected document, with the same Re-upload button.
+  // ────────────────────────────────────────────────────────────────────────
+  CL1: {
+    code: 'CL1',
+    channel: 'push',
+    title: 'Completion letter received',
+    body: "We've received your completion letter. Your weekly hours stay the same until the office has checked it.",
+    trigger:
+      'Worker uploads a completion letter, transcript or university email (requirement §2.1, §5)',
+    timing: 'on upload — the upload itself changes no hours (acceptance criterion 2)',
+    deepLink: '/documents',
+  },
+  CL2: {
+    code: 'CL2',
+    channel: 'push',
+    title: 'Completion letter approved',
+    // No `body`: the approval has three honest outcomes, and one sentence with
+    // optional clauses would send a placeholder to somebody (see N14).
+    scopeCopy: 'Worker: approved (with new cap and effective date).',
+    trigger: 'The office approves a completion letter (requirement §2.2, §5)',
+    timing: 'on approval',
+    deepLink: '/documents',
+    variants: {
+      dated: {
+        body: 'Your completion letter is approved — your weekly limit is {limit} hours from {date}.',
+      },
+      // The worker has a valid 48-hour opt-out, so the release lifts the ceiling
+      // entirely. "Limit is null hours" would read as zero.
+      uncapped: {
+        body: 'Your completion letter is approved — from {date} you have no weekly hours limit.',
+      },
+      // §7: the right to work ends before the release would start.
+      visa_first: {
+        body: 'Your completion letter is approved, but your right to work ends on {date}, before the new limit would start — your weekly hours do not change.',
+      },
+    },
+  },
+  CL3: {
+    code: 'CL3',
+    channel: 'email',
+    sender: 'admin',
+    recipients: OFFICE,
+    title: 'Completion letter awaiting review — {name}, Employee ID {employeeId}',
+    body: "Name: {name}\nEmployee ID: {employeeId}\nUploaded: {uploadedAt}\nDocument: {form}\nCourse completion date entered by the worker: {completionDate}\n\nReview it in Compliance → Needs review. The worker's weekly hours do not change until it is approved.",
+    trigger: 'A completion letter is uploaded and waits for review (requirement §5)',
+    timing: 'on upload',
+  },
+  CL4: {
+    code: 'CL4',
+    channel: 'email',
+    sender: 'admin',
+    recipients: OFFICE,
+    title: 'Right to work expires in {days} days — {name}, Employee ID {employeeId}',
+    body: 'Name: {name}\nEmployee ID: {employeeId}\nRight to work: {route}\nExpires: {visaExpiry} ({days} days)\n\nNo shift after that date can be rostered, and they are blocked on the day unless a new right-to-work check is recorded.',
+    trigger: "A live worker's recorded right to work is approaching expiry (requirement §2.3, §5)",
+    timing: '60, 30 and 14 days before — each once per expiry date, from the daily compliance job',
+  },
+  CL5: {
+    code: 'CL5',
+    channel: 'email',
+    sender: 'admin',
+    recipients: OFFICE,
+    title: '48-hour opt-out signed — {name}, Employee ID {employeeId}',
+    body: 'Name: {name}\nEmployee ID: {employeeId}\nSigned: {signedAt} ({signedCopy})\nNotice period to cancel: {noticeDays} days\n\nThis lifts the 48-hour weekly limit. It does not lift a Student visa term-time limit.',
+    trigger: 'A worker signs the 48-hour opt-out (requirement §2.4, §5)',
+    timing: 'on signature',
+  },
+  CL6: {
+    code: 'CL6',
+    channel: 'email',
+    sender: 'admin',
+    recipients: OFFICE,
+    title: '48-hour opt-out cancelled — {name}, Employee ID {employeeId}',
+    body: 'Name: {name}\nEmployee ID: {employeeId}\nNotice given: {cancelledAt}\nThe 48-hour weekly limit applies again from: {effectiveFrom}\n\nWeeks already booked above 48 hours from then: {overCapWeeks}',
+    trigger: 'A worker gives notice to cancel the 48-hour opt-out (requirement §2.4, §5)',
+    timing: 'on notice',
+  },
 } as const satisfies Record<string, Template>;
 
 export type TemplateCode = keyof typeof TEMPLATES;
@@ -440,6 +534,29 @@ export const SCOPE_CODES = [
   'E8',
   'E9',
 ] as const satisfies readonly TemplateCode[];
+
+/**
+ * Codes from the University Completion Letter requirement §5
+ * (docs/scope/university-completion-letter-requirement.pdf), a later THC
+ * document than the scope. Kept apart from SCOPE_CODES so the test that holds
+ * the register to §8 still says exactly what §8 says.
+ */
+export const REQUIREMENT_CODES = [
+  'CL1',
+  'CL2',
+  'CL3',
+  'CL4',
+  'CL5',
+  'CL6',
+] as const satisfies readonly TemplateCode[];
+
+/**
+ * Codes the register carries that §8 does not name. Each one exists because
+ * §8's own copy would have been untrue where it was about to be sent, and
+ * its `trigger` says so. Kept apart from SCOPE_CODES so the test can still
+ * hold that list to the scope exactly.
+ */
+export const EXTENSION_CODES = ['E2b'] as const satisfies readonly TemplateCode[];
 
 export function template(code: TemplateCode): Template {
   return TEMPLATES[code];

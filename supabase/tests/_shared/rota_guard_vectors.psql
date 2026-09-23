@@ -1,0 +1,39 @@
+-- =====================================================================
+-- GENERATED FILE — DO NOT EDIT.
+--
+-- Source:    packages/domain/src/rotaGuard.vectors.json
+-- Generator: node supabase/tests/_shared/rota-guard-vectors.mjs
+--
+-- The shared rota guard vectors as a table pgTAP can join against. The
+-- Vitest suite in packages/domain fails if this file has drifted from the
+-- JSON, so rotaGuardVerdict() and rota_guard_decide() are held to the same
+-- cases.
+-- =====================================================================
+
+create temporary table rota_guard_vectors (
+  name           text primary key,
+  can_roster     boolean not null,
+  cap_hours      int,
+  band           text    not null,
+  booked_hours   numeric not null,
+  shift_hours    numeric not null,
+  mode           text    not null,
+  expect_verdict text    not null,
+  expect_reason  text
+) on commit drop;
+
+insert into rota_guard_vectors values
+  ('ac1_student_term_20_fits', true, 20, 'student_term_20', 12, 8, 'block', 'ok', null),
+  ('ac1_student_term_20_over_blocks', true, 20, 'student_term_20', 16, 8, 'block', 'block', 'visa_cap'),
+  ('ac1_student_term_20_over_blocks_even_in_warn_mode', true, 20, 'student_term_20', 16, 8, 'warn', 'block', 'visa_cap'),
+  ('ac1_below_degree_10_over_blocks_in_warn_mode', true, 10, 'student_term_10', 4, 8, 'warn', 'block', 'visa_cap'),
+  ('ac4_graduated_48_over_blocks', true, 48, 'graduated_48', 44, 8, 'block', 'block', 'wtr_cap'),
+  ('ac4_graduated_48_over_warns_in_warn_mode', true, 48, 'graduated_48', 44, 8, 'warn', 'warn', 'wtr_cap'),
+  ('ac4_standard_48_exactly_full_is_ok', true, 48, 'standard_48', 40, 8, 'block', 'ok', null),
+  ('ac4_holiday_48_is_working_time_not_visa', true, 48, 'student_holiday_48', 44, 8, 'warn', 'warn', 'wtr_cap'),
+  ('ac4_opt_out_uncapped_is_ok', true, null, 'uncapped', 70, 12, 'block', 'ok', null),
+  ('ac6_rtw_expired_blocks_whatever_the_cap', false, null, 'uncapped', 0, 4, 'warn', 'block', 'rtw_expired'),
+  ('ac6_week_wholly_past_expiry_is_zero', false, 0, 'visa_expired_0', 0, 4, 'warn', 'block', 'rtw_expired'),
+  ('already_over_cap_any_shift_breaches', true, 20, 'student_term_20', 24, 1, 'block', 'block', 'visa_cap');
+
+\set rota_vector_count 12

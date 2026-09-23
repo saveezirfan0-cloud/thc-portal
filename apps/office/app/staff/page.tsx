@@ -11,7 +11,17 @@ export const metadata = { title: 'Staff · THC Back Office' };
  * applied in the view, so nothing this screen holds could print a name a
  * GDPR removal was meant to retire.
  */
-export default async function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const { staff, students, problem } = await loadStaff();
-  return <StaffScreen staff={staff} students={students} problem={problem} />;
+  // `/staff?view=student` opens the Student visa view directly — the link
+  // /compliance uses for the completion letter requirement's §4 report.
+  const { view } = await searchParams;
+  return (
+    <StaffScreen
+      staff={staff}
+      students={students}
+      problem={problem}
+      initialView={view === 'student' ? 'student' : 'directory'}
+    />
+  );
 }
