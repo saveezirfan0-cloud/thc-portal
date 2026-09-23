@@ -39,6 +39,8 @@ import {
   resetToCandidate,
   unblockWorker,
 } from './actions';
+import { resendActivationLink } from '../../onboarding/actions';
+import { canResendActivation } from '../../onboarding/view-model';
 import type { ProfileData, ProfileRow } from './types';
 import './profile.css';
 
@@ -83,6 +85,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
   const [addingRole, setAddingRole] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [resent, setResent] = useState(false);
 
   const actionable = isActionable(profile.status);
   const unheld = data.roles.filter((role) => !profile.role_names.includes(role.name));
@@ -247,6 +250,25 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             </div>
           </div>
           <div className="acts">
+            {data.activated === false && canResendActivation(profile.status, false) ? (
+              <div className="row">
+                <span className="muted sm">Not activated yet</span>
+                <Button
+                  size="sm"
+                  tone="outline"
+                  disabled={pending || resent}
+                  title="A fresh personal link and a new E3 (§2.7). Once every 10 minutes."
+                  onClick={() =>
+                    run(
+                      () => resendActivationLink(profile.id),
+                      () => setResent(true),
+                    )
+                  }
+                >
+                  {resent ? 'Activation link sent ✓' : 'Resend activation link'}
+                </Button>
+              </div>
+            ) : null}
             <div className="row">
               {profile.status === 'blocked' ? (
                 <Button

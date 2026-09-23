@@ -8,7 +8,9 @@
     "./server": "./src/server.ts",
     "./browser": "./src/browser.ts",
     "./admin": "./src/admin.ts",
-    "./activation": "./src/activation.ts"
+    "./activation": "./src/activation.ts",
+    "./provision": "./src/provision.ts",
+    "./willo": "./src/willo.ts"
   },
   "scripts": {
     "lint": "eslint .",
