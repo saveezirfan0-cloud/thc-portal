@@ -203,6 +203,9 @@ export default function Page() {
               Cancel event
             </Button>
             <Button tone="ghost">Ghost</Button>
+            <Button tone="link" className="xs">
+              Link
+            </Button>
             <Button disabled>Disabled</Button>
           </div>
           <hr />
