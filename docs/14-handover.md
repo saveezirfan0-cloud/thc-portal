@@ -205,11 +205,15 @@ Carried over:
 - **D2 · `/apply` is a public write endpoint with no rate limit** (§2.1).
 - **D3 · the GDPR consent on `/apply` links to a page that does not exist**
   (§1.7).
-- **`apps/staff/app/shifts/[id]/data.ts` takes `(row.logs ?? [])[0]`.**
-  `check_logs` holds one row per button press, not one per booking, so a worker
-  who was turned away and then checked in can render the wrong log. The SQL
-  elsewhere uses `left join lateral … where check_in_at is not null … limit 1`
-  for exactly this; that screen does not.
+- ~~**`apps/staff/app/shifts/[id]/data.ts` takes `(row.logs ?? [])[0]`.**~~
+  **Closed 23.09.** It was in `apps/office/app/checkin/data.ts` as well, on the
+  §9.5 violation detail window — beside the "Actual finish (UK time)" field a
+  manager types into to resolve one. Both now call `acceptedLog()` from
+  `packages/domain/pay.ts`: `check_logs` holds one row per button press, a
+  RULE-15 turn-away and an out-of-radius refusal are logged too, and only the
+  accepted press carries `check_in_at`. The rule lives in `domain` rather than
+  in either app precisely because both screens got it wrong the same way — one
+  definition is what stops the third.
 - **A worker's home address is not re-geocoded when they edit it.** There is no
   geocoder in the repo, so `home_location` — and therefore the §6 proximity score
   — goes stale on an address change. E7 tells the office and the screen says so,
