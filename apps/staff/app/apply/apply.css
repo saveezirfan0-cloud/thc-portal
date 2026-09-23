@@ -43,18 +43,24 @@
   background-position: right 11px center;
 }
 
-/* The consent tick (§1.7). `.check`, `.check-input` and its focus ring are the
-   shared rules in packages/ui now (D1); all that is left here is the 2px
-   nudge that lines the transparent input up with this page's taller text. */
-.apply-page .check .check-input {
+/* The consent tick (§1.7) is the shared `Checkbox` from packages/ui (D1).
+   What is left here: the 2px nudge that lines the transparent input up with
+   this page's taller text, that text's line height (the wireframe's `.txt`),
+   and the coral square of the wireframe's validation state — keyed off the
+   error the component renders, so the border and the message always agree. */
+.apply-page .apply-consent .check .check-input {
   top: 2px;
 }
 
-.apply-page .check .txt {
+.apply-page .apply-consent .check > span:last-child {
   line-height: 1.4;
 }
 
-.apply-page .check .error {
+.apply-page .apply-consent .check:has(.error) .box {
+  border-color: var(--coral);
+}
+
+.apply-page .apply-consent .check .error {
   display: block;
   font-size: 11.5px;
   color: var(--coral-ink);
