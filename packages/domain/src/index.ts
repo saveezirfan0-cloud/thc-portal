@@ -10,3 +10,7 @@ export * from './events';
 export * from './board';
 export * from './autoAssign';
 export * from './staff';
+export * from './shareCode';
+export * from './hmrc';
+export * from './quiz';
+export * from './onboarding';
