@@ -11,15 +11,9 @@
  *                                then sends E1). Service key only: the
  *                                database's nudge trigger and the
  *                                `willo-invite` schedule call it.
- *                                Creating a candidate is NOT undoable and
- *                                is what sends E1, so what this route may
- *                                do to each person — create, re-link a key
- *                                Willo already returned, or nothing — is
- *                                decided in SQL, not here
- *                                (20260924170000, ADR-0021).
  *
- * The rules are SQL (20260924170000, 20260924110000, 20260923110000) and
- * held by pgTAP 380 / 482 / 512; the parsing and the signature are
+ * The rules are SQL (20260924110000, 20260923110000) and held by pgTAP
+ * 380 / 480; the parsing and the signature are
  * packages/db/src/willo.ts, held by vitest; the login is
  * packages/db/src/provision.ts, the SAME code the office Accept runs.
  * What is left here is only the order of the calls.
@@ -223,61 +217,6 @@ interface Due {
   email: string;
   phone: string | null;
   attempt: number;
-  /**
-   * What the database allows this attempt to do (20260924170000):
-   *   create  — nothing has reached Willo for this person this period.
-   *   relink  — Willo already returned `created_candidate_id`; create
-   *             NOTHING, only link it. This is what stops a second E1.
-   *   recover — the last attempt left the create in doubt. Create again,
-   *             reusing `invite_ref` so an API that honours an idempotency
-   *             key hands back the first candidate.
-   */
-  invite_mode: 'create' | 'relink' | 'recover';
-  invite_ref: string;
-  created_candidate_id: string | null;
-}
-
-interface Recorded {
-  outcome: string;
-  linked: boolean;
-  terminal: boolean;
-}
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/**
- * Record the key Willo returned, and link it, in one call.
- *
- * `willo_invite_created` answers a candidate who moved on with a terminal
- * OUTCOME rather than an error, so an error here means only that the call
- * did not get through — a deadlock on the staff row, a statement timeout,
- * a connection dropped mid-flight. Those are worth retrying immediately,
- * while the key is still in memory: every retry that succeeds here is a
- * duplicate Willo candidate and a duplicate E1 that never happens.
- */
-async function recordCreated(
-  db: SupabaseClient,
-  row: Due,
-  willoCandidateId: string,
-): Promise<Recorded | { error: string }> {
-  let last = 'unknown';
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    const { data, error } = await db.rpc('willo_invite_created', {
-      p_staff: row.staff_id,
-      p_willo_candidate_id: willoCandidateId,
-      p_ref: row.invite_ref,
-    });
-    if (!error) return data as Recorded;
-    last = error.message;
-    console.error('[willo-invite] could not record the Willo key', {
-      staffId: row.staff_id,
-      willo: willoCandidateId,
-      try: attempt + 1,
-      error: last,
-    });
-    if (attempt < 2) await sleep(250 * 2 ** attempt);
-  }
-  return { error: last };
 }
 
 function invite(request: Request): Promise<Response> {
@@ -299,129 +238,66 @@ function invite(request: Request): Promise<Response> {
     const due = (data ?? []) as Due[];
 
     let created = 0;
-    let relinked = 0;
-    let linked = 0;
-    let terminal = 0;
     let failed = 0;
     for (const row of due) {
-      // The whole fix, in one line: a candidate Willo has already created
-      // is never created again. Creating one is not undoable and is what
-      // sends E1, so the key the database kept is used as-is and only the
-      // link is retried.
-      let willoCandidateId = row.created_candidate_id;
-
-      if (willoCandidateId) {
-        relinked += 1;
-        console.warn('[willo-invite] re-linking a candidate Willo already created', {
-          staffId: row.staff_id,
-          willo: willoCandidateId,
-          attempt: row.attempt,
+      const spec = willoInviteRequest(config, {
+        staffId: row.staff_id,
+        firstName: row.first_name,
+        lastName: row.last_name,
+        email: row.email,
+        phone: row.phone,
+      });
+      let answer: ReturnType<typeof readInviteAnswer>;
+      try {
+        const response = await fetch(spec.url, {
+          method: spec.method,
+          headers: spec.headers,
+          body: spec.body,
+          signal: AbortSignal.timeout(10_000),
         });
-      } else {
-        if (row.invite_mode === 'recover') {
-          // The database could not rule out that the previous attempt
-          // created them. It is offering this one anyway — an applicant
-          // who is never invited is worse than a duplicate that is
-          // audited — with the same reference as that attempt.
-          console.warn('[willo-invite] the previous attempt left the create in doubt', {
-            staffId: row.staff_id,
-            attempt: row.attempt,
-            ref: row.invite_ref,
-          });
-        }
-        const spec = willoInviteRequest(config, {
-          staffId: row.staff_id,
-          firstName: row.first_name,
-          lastName: row.last_name,
-          email: row.email,
-          phone: row.phone,
-          reference: row.invite_ref,
-        });
-        let answer: ReturnType<typeof readInviteAnswer>;
-        try {
-          const response = await fetch(spec.url, {
-            method: spec.method,
-            headers: spec.headers,
-            body: spec.body,
-            signal: AbortSignal.timeout(10_000),
-          });
-          answer = readInviteAnswer(response.status, await response.text());
-        } catch (cause) {
-          // The request may have been processed before the connection
-          // died: `unknown`, never `no`.
-          answer = {
-            ok: false,
-            retry: true,
-            created: 'unknown',
-            reason: `network: ${cause instanceof Error ? cause.message : String(cause)}`,
-          };
-        }
-
-        if (!answer.ok) {
-          failed += 1;
-          console.error('[willo-invite] create failed', {
-            staffId: row.staff_id,
-            attempt: row.attempt,
-            retry: answer.retry,
-            created: answer.created,
-            reason: answer.reason,
-          });
-          await db.rpc('willo_invite_failed', {
-            p_staff: row.staff_id,
-            p_error: answer.reason,
-            p_ref: row.invite_ref,
-            p_phase: 'create',
-            p_created_in_willo: answer.created,
-            p_retry: answer.retry,
-          });
-          continue;
-        }
-        created += 1;
-        willoCandidateId = answer.willoCandidateId;
+        answer = readInviteAnswer(response.status, await response.text());
+      } catch (cause) {
+        answer = {
+          ok: false,
+          retry: true,
+          reason: `network: ${cause instanceof Error ? cause.message : String(cause)}`,
+        };
       }
 
-      const record = await recordCreated(db, row, willoCandidateId);
-      if ('error' in record) {
-        // Every retry of the record-and-link call failed. Write the key
-        // down on the failure path too — a plain insert, which takes no
-        // lock on the staff row and so survives the deadlock or timeout
-        // that most likely caused this — so the next sweep re-links.
+      if (!answer.ok) {
         failed += 1;
-        console.error('[willo-invite] created in Willo but not recorded', {
+        console.error('[willo-invite] create failed', {
           staffId: row.staff_id,
-          willo: willoCandidateId,
-          error: record.error,
+          attempt: row.attempt,
+          retry: answer.retry,
+          reason: answer.reason,
+        });
+        await db.rpc('willo_invite_failed', { p_staff: row.staff_id, p_error: answer.reason });
+        continue;
+      }
+
+      const { error: linkError } = await db.rpc('willo_link_candidate', {
+        p_staff: row.staff_id,
+        p_willo_candidate_id: answer.willoCandidateId,
+      });
+      if (linkError) {
+        // Created in Willo but the candidate moved on meanwhile (rejected,
+        // removed). Their webhooks will be refused as unknown; recorded.
+        failed += 1;
+        console.error('[willo-invite] created but not linked', {
+          staffId: row.staff_id,
+          willo: answer.willoCandidateId,
+          error: linkError.message,
         });
         await db.rpc('willo_invite_failed', {
           p_staff: row.staff_id,
-          p_error: `created ${willoCandidateId}, not linked: ${record.error}`,
-          p_willo_candidate_id: willoCandidateId,
-          p_ref: row.invite_ref,
-          p_phase: 'link',
-          p_created_in_willo: 'yes',
-          p_retry: true,
+          p_error: `created ${answer.willoCandidateId}, not linked: ${linkError.message}`,
         });
         continue;
       }
-
-      if (record.linked) {
-        linked += 1;
-        continue;
-      }
-
-      // Terminal, and told apart from the transient case above by the
-      // database rather than by reading an error string: the candidate was
-      // rejected, removed or Reset between the create and the link, or the
-      // key belongs to somebody else. Nothing to retry; the orphaned Willo
-      // candidate is audited (willo_invite_orphan) for removal there.
-      terminal += 1;
-      console.error('[willo-invite] created in Willo but it can never be linked', {
-        staffId: row.staff_id,
-        willo: willoCandidateId,
-        outcome: record.outcome,
-      });
+      created += 1;
     }
-    return { due: due.length, created, relinked, linked, terminal, failed };
+    return { due: due.length, created, failed };
   });
 }
 
