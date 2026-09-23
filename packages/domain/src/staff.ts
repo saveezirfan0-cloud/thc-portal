@@ -251,6 +251,7 @@ export const ACCEPT_REFUSAL_COPY: Record<AcceptRefusal, { title: string; body: s
 export type ApplyRefusal =
   | 'full'
   | 'hours_limit'
+  | 'rtw_expired'
   | 'already_has_booking'
   | 'event_cancelled'
   | 'shift_started'
@@ -268,6 +269,10 @@ export const APPLY_REFUSAL_COPY: Record<ApplyRefusal, { title: string; body: str
   hours_limit: {
     title: 'Limit Reached',
     body: 'This shift would take you over your weekly hours limit for that Mon–Sun week.',
+  },
+  rtw_expired: {
+    title: 'Right to work needs updating',
+    body: 'Your right-to-work evidence has expired for this date. Check the Documents tab — you can’t be booked until it’s renewed.',
   },
   already_has_booking: {
     title: 'You’re already on this shift',

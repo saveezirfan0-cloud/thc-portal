@@ -21,6 +21,7 @@ const GATE_LABEL: Record<string, string> = {
   blocked: 'blocked — compliance',
   booked_elsewhere: 'booked elsewhere',
   hours_limit: 'hours limit reached',
+  rtw_expired: 'right to work expired',
   self_cancelled: 'rejected — self-cancelled more than 72 h before the shift',
   do_not_return: 'do not return at this client',
   wrong_role: 'not signed off for this role',
