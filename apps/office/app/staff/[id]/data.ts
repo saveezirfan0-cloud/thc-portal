@@ -1,11 +1,12 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../data';
+import { ENTRY_COLUMNS, managerName } from '../../feedback/data';
+import type { FeedbackEntry } from '../../feedback/types';
 import type {
   ClientOption,
   DeclarationRow,
   DocumentRow,
-  FeedbackRow,
   ProfileData,
   ProfileRow,
   QualificationRow,
@@ -18,11 +19,13 @@ import type {
 /**
  * Reads for /staff/:id (§9.6).
  *
- * Eleven queries in one round of `Promise.all`, because the profile is
- * eleven independent lists and serialising them would show the manager a
- * blank page for as long as the slowest one takes. Every view is
- * security_invoker, so the gate is `staff`'s own RLS: a client sees
- * nobody here and a worker sees only themselves.
+ * Every read in one round of `Promise.all`, because the profile is ten
+ * independent lists (plus the signed-in manager's name) and serialising
+ * them would show the manager a blank page for as long as the slowest one
+ * takes. Every view but one is security_invoker, so the gate is `staff`'s
+ * own RLS: a client sees nobody here and a worker sees only themselves.
+ * The exception, feedback_entries_v, returns rows to an admin only
+ * (ADR-0016).
  *
  * A missing profile is `profile: null` with no problem string — the page
  * turns that into a 404 rather than an error panel, because a worker who
@@ -42,6 +45,7 @@ const EMPTY: Omit<ProfileData, 'problem'> = {
   declarations: [],
   roles: [],
   clients: [],
+  managerName: null,
 };
 
 const PROFILE_COLUMNS =
@@ -71,6 +75,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     declarations,
     roles,
     clients,
+    manager,
   ] = await Promise.all([
     supabase.from('staff_profile_v').select(PROFILE_COLUMNS).eq('id', id).maybeSingle<ProfileRow>(),
     supabase
@@ -97,12 +102,16 @@ export async function loadProfile(id: string): Promise<ProfileData> {
       .eq('staff_id', id)
       .order('detected_at', { ascending: false })
       .returns<ViolationRow[]>(),
+    // feedback_entries_v rather than staff_feedback_v: it names every
+    // author — §9.10 wants the manager's own name on an office entry — and
+    // carries the editable/deletable answers the tab's buttons follow
+    // (20260923140000, ADR-0016).
     supabase
-      .from('staff_feedback_v')
-      .select('*')
+      .from('feedback_entries_v')
+      .select(ENTRY_COLUMNS)
       .eq('staff_id', id)
       .order('created_at', { ascending: false })
-      .returns<FeedbackRow[]>(),
+      .returns<FeedbackEntry[]>(),
     supabase
       .from('staff_references')
       .select('id, name, relationship, phone, email')
@@ -121,6 +130,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
       .returns<DeclarationRow[]>(),
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
     supabase.from('clients').select('id, name').order('name').returns<ClientOption[]>(),
+    managerName(supabase),
   ]);
 
   const error =
@@ -147,6 +157,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     declarations: declarations.data ?? [],
     roles: roles.data ?? [],
     clients: clients.data ?? [],
+    managerName: manager,
     problem: null,
   };
 }

@@ -9,6 +9,7 @@
  * record openable.
  */
 import type { CapBand, StaffRow } from '../types';
+import type { FeedbackEntry } from '../../feedback/types';
 
 export type ReviewStatus = 'pending' | 'verified' | 'rejected' | 'superseded';
 export type ViolationType = 'no_show' | 'late' | 'left_early' | 'left_geofence' | 'no_checkout';
@@ -169,11 +170,14 @@ export interface ProfileData {
   qualifications: QualificationRow[];
   shifts: ShiftRow[];
   violations: ViolationRow[];
-  feedback: FeedbackRow[];
+  /** `feedback_entries_v` — the same rows /feedback reads (§9.10). */
+  feedback: FeedbackEntry[];
   references: ReferenceRow[];
   declarations: DeclarationRow[];
   roles: RoleOption[];
   clients: ClientOption[];
+  /** The signed-in manager, named as the author of a new office entry (§9.10). */
+  managerName: string | null;
   problem: string | null;
 }
 
