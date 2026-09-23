@@ -213,9 +213,9 @@ select is(submit_completion_letter(:'stu' || '/completion-letter/l1.pdf', :'w'::
   'already_pending', 'one letter with the office at a time');
 select is((select count(*)::int from notification_outbox where template = 'CL1' and recipient_staff_id = :'stu'), 1,
   '§5: the worker is told the upload was received (CL1)');
-select is((select count(*)::int from notification_outbox where template = 'CL4'
+select is((select count(*)::int from notification_outbox where template = 'CL3'
             and payload ->> 'name' = 'Amara Student'), 1,
-  '§5: the office is told a document is awaiting review (CL4)');
+  '§5: the office is told a document is awaiting review (CL3)');
 select is((select count(*)::int from compliance_blockers(:'stu')), 0,
   'a pending completion letter is not a compliance blocker: it can only ever raise the cap');
 select is((select item_type from compliance_review_queue_v
@@ -370,9 +370,9 @@ select is((weekly_cap_for(:'grad', :'w'::date)).cap_hours, null,
 select is(accept_invite('c7300000-0000-4000-8000-000000000004') ->> 'ok', 'true',
   'AC4: and rostering above 48 hours is possible');
 select is(sign_wtr_optout() ->> 'reason', 'already_signed', 'signing twice is refused');
-select is((select count(*)::int from notification_outbox where template = 'CL6'
+select is((select count(*)::int from notification_outbox where template = 'CL5'
             and payload ->> 'name' = 'Isla Graduate'), 1,
-  '§5: the office is told the opt-out was signed (CL6)');
+  '§5: the office is told the opt-out was signed (CL5)');
 
 -- The opt-out lifts nothing for a student in term.
 select set_config('request.jwt.claims', json_build_object('sub', :'stu_uid')::text, true);
@@ -410,10 +410,10 @@ select is((weekly_cap_for(:'grad', current_date)).cap_hours, null,
   'AC5: this week is inside the notice period, still no ceiling');
 select is((weekly_cap_for(:'grad', :'w'::date)).cap_hours, 48,
   'AC5: cancelling an opt-out re-imposes the 48-hour cap after the notice period');
-select matches((select payload ->> 'overCapWeeks' from notification_outbox where template = 'CL7'
+select matches((select payload ->> 'overCapWeeks' from notification_outbox where template = 'CL6'
                  and payload ->> 'name' = 'Isla Graduate'),
   to_char(:'w'::date, 'DD Mon YYYY') || ' \(52\.0 h\)',
-  '§5: the office is told, with the week already booked over the returning 48 (CL7)');
+  '§5: the office is told, with the week already booked over the returning 48 (CL6)');
 select is(cancel_wtr_optout() ->> 'reason', 'no_active_optout', 'cancelling twice is refused');
 
 -- =====================================================================
@@ -544,8 +544,8 @@ select is((remove_worker(:'cand') ->> 'documentsHeld')::int, 0,
 -- =====================================================================
 select cmp_ok((rtw_daily() ->> 'rtwAlerts')::int, '>=', 1, '§2.3: the daily job alerts the office ahead of expiry');
 select is((select count(*)::int from notification_outbox
-            where key = 'CL5:staff:' || :'alert' || ':' || (current_date + 20) || ':30'), 1,
-  '§2.3: 20 days out is the 30-day rung (CL5), keyed on the expiry date');
+            where key = 'CL4:staff:' || :'alert' || ':' || (current_date + 20) || ':30'), 1,
+  '§2.3: 20 days out is the 30-day rung (CL4), keyed on the expiry date');
 select is((rtw_daily() ->> 'rtwAlerts')::int, 0, '§2.3: and a second run the same day sends nothing new');
 
 update staff set status = 'blocked', block_kind = 'manual', block_reason = 'x' where id = :'grad';

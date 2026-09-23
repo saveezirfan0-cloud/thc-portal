@@ -29,7 +29,7 @@
 --                      §1.7 removal inside that window HOLDS the letter
 --                      and its file instead of deleting them (ADR-0012).
 --   §4   Reporting     student_visa_v, extended (the existing §4.5 view).
---   §5   Notifications CL1–CL7 in the §8 register (packages/notifications).
+--   §5   Notifications CL1–CL6 in the §8 register (packages/notifications).
 --   §7   Edge cases    future completion dates, visa expiring around
 --                      completion, and the switch to a Graduate or Skilled
 --                      Worker visa (record_right_to_work_change()).
@@ -245,7 +245,7 @@ begin
   on conflict (key) do nothing;
 
   insert into notification_outbox (key, channel, template, recipient_emails, payload)
-  values ('CL4:doc:' || v_doc, 'email', 'CL4',
+  values ('CL3:doc:' || v_doc, 'email', 'CL3',
           array['admin@thehospitalitycompany.co.uk'],
           jsonb_build_object(
             'name',           s.first_name || ' ' || s.last_name,
@@ -262,7 +262,7 @@ begin
 end $$;
 
 comment on function public.submit_completion_letter(text, date, text, text, uuid) is
-  'Completion letter requirement §2.1, the worker''s upload. Student visa only; one of three forms; the completion date the worker read off it; the file checked against Storage (PDF/JPG/PNG, ≤10 MB, under <staff_id>/completion-letter/). Lands pending, queues CL1 and CL4, and changes NO cap (acceptance criterion 2).';
+  'Completion letter requirement §2.1, the worker''s upload. Student visa only; one of three forms; the completion date the worker read off it; the file checked against Storage (PDF/JPG/PNG, ≤10 MB, under <staff_id>/completion-letter/). Lands pending, queues CL1 and CL3, and changes NO cap (acceptance criterion 2).';
 
 -- ---------------------------------------------------------------------
 -- 4 · When an approval actually starts to count.
@@ -606,7 +606,7 @@ begin
                                   s.first_name || ' ' || s.last_name || ' (worker)'))));
 
   insert into notification_outbox (key, channel, template, recipient_emails, payload)
-  values ('CL6:staff:' || v_me || ':' || extract(epoch from now())::bigint, 'email', 'CL6',
+  values ('CL5:staff:' || v_me || ':' || extract(epoch from now())::bigint, 'email', 'CL5',
           array['admin@thehospitalitycompany.co.uk'],
           jsonb_build_object(
             'name',       s.first_name || ' ' || s.last_name,
@@ -621,7 +621,7 @@ begin
 end $$;
 
 comment on function public.sign_wtr_optout(text, int, uuid) is
-  'Completion letter requirement §2.4: the worker signs (or uploads a signed copy of) the 48-hour opt-out. 18+ only, date of birth on file, notice 7–92 days. Recorded in audit_log; CL6 to the office. What it lifts is weekly_cap()''s decision, never a Student visa term-time limit.';
+  'Completion letter requirement §2.4: the worker signs (or uploads a signed copy of) the 48-hour opt-out. 18+ only, date of birth on file, notice 7–92 days. Recorded in audit_log; CL5 to the office. What it lifts is weekly_cap()''s decision, never a Student visa term-time limit.';
 
 create or replace function public.cancel_wtr_optout(
   p_staff uuid default null
@@ -676,7 +676,7 @@ begin
                                   s.first_name || ' ' || s.last_name || ' (worker)'))));
 
   insert into notification_outbox (key, channel, template, recipient_emails, payload)
-  values ('CL7:staff:' || v_me || ':' || v_from, 'email', 'CL7',
+  values ('CL6:staff:' || v_me || ':' || v_from, 'email', 'CL6',
           array['admin@thehospitalitycompany.co.uk'],
           jsonb_build_object(
             'name',          s.first_name || ' ' || s.last_name,
@@ -691,7 +691,7 @@ begin
 end $$;
 
 comment on function public.cancel_wtr_optout(uuid) is
-  'Completion letter requirement §2.4 / acceptance criterion 5: the worker gives notice; the 48-hour ceiling returns from the END of the notice period (wtr_optout_cancelled_from), and a week straddling that date takes the lower cap. Names any already-booked week over the returning ceiling in CL7.';
+  'Completion letter requirement §2.4 / acceptance criterion 5: the worker gives notice; the 48-hour ceiling returns from the END of the notice period (wtr_optout_cancelled_from), and a week straddling that date takes the lower cap. Names any already-booked week over the returning ceiling in CL6.';
 
 -- ---------------------------------------------------------------------
 -- 8 · §7 A new right-to-work check mid-employment.
@@ -1084,9 +1084,9 @@ begin
        and s.right_to_work_until - v_today <= 60
   ), q as (
     insert into notification_outbox (key, channel, template, recipient_emails, payload)
-    select 'CL5:staff:' || due.id || ':' || due.rtw_until || ':'
+    select 'CL4:staff:' || due.id || ':' || due.rtw_until || ':'
              || case when due.days_left > 30 then 60 when due.days_left > 14 then 30 else 14 end,
-           'email', 'CL5',
+           'email', 'CL4',
            array['admin@thehospitalitycompany.co.uk'],
            jsonb_build_object(
              'name',       due.first_name || ' ' || due.last_name,
@@ -1129,7 +1129,7 @@ begin
 end $$;
 
 comment on function public.rtw_daily(timestamptz) is
-  'Completion letter requirement §2.3 and §4: admin email CL5 at 60/30/14 days before any live worker''s right to work expires (bands, once each per expiry date), and the purge of completion letters whose employment + 2 years retention hold has run out.';
+  'Completion letter requirement §2.3 and §4: admin email CL4 at 60/30/14 days before any live worker''s right to work expires (bands, once each per expiry date), and the purge of completion letters whose employment + 2 years retention hold has run out.';
 
 -- ---------------------------------------------------------------------
 -- 13 · §4 Reporting — the existing §4.5 Student visa view, extended.
