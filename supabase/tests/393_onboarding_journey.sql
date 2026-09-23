@@ -6,10 +6,10 @@
 --
 --   1  they apply — name, email, phone, age; under 18 is refused on the
 --      spot, and there is no "Applied" stage (§2.1)
---   2–4  Willo: interview requested → completed → accepted. The webhook
---      is not built (P3 keys, Appendix B); the transitions it will make
---      are made here the only legal way, through the §2.12 machine.
---      Activation (E3) is likewise simulated by linking a login.
+--   2–4  Willo: interview requested → completed → accepted, through
+--      B5's willo_link_candidate / willo_record_event — what the webhook
+--      will call once THC's keys exist (Appendix B) — and E3. Following
+--      the activation link is simulated by linking a login.
 --   5  the eleven steps: right to work → address → selfie → documents
 --      (incl. the declaration) → H&S induction → quiz → HMRC → two
 --      references → bank → contract → how it works
@@ -20,11 +20,13 @@
 --      kept, evidence superseded, the wizard to walk again (§2.12)
 --
 -- The office's Verify / Reject is B5's screen; here it is the row update
--- that screen will make, and everything the wizard does in response is
--- the database's own.
+-- that screen will make, and everything that follows is the database's
+-- own — the §2.12 row guard, the automatic move to Quiz and the Employee
+-- ID at the signature come from 20260923110000 (B5), which this walk
+-- therefore needs applied.
 -- =====================================================================
 begin;
-select plan(47);
+select plan(52);
 
 \set uid 'c3970000-0000-4000-8000-000000000001'
 
@@ -50,16 +52,24 @@ select is((select employee_id from staff where id = :'cand'), null,
   'a candidate has no Employee ID yet (§2.7)');
 
 -- =====================================================================
--- 2–4. Willo and activation — simulated, through the machine
+-- 2–4. Willo — B5's entry points, as the webhook will call them
 -- =====================================================================
+select lives_ok(format($$ select willo_link_candidate(%L, 'willo-journey-1') $$, :'cand'),
+  '2: the candidate is created in Willo, which sends E1 itself');
+select lives_ok($$ select willo_record_event('willo-journey-1', 'new_response') $$,
+  '3: the video interview is completed');
+select is((select status::text from staff where id = :'cand'), 'interview_completed',
+  'and the card moves by itself (§2.4)');
+select throws_ok(format($$ update staff set status = 'quiz' where id = %L $$, :'cand'),
+  'P0001', null, 'nobody can skip her past the documents to the quiz');
 select lives_ok(
-  format($$ select assert_staff_transition(status, 'interview_completed') from staff where id = %L $$, :'cand'),
-  'interview completed is a legal move');
-update staff set status = 'interview_completed' where id = :'cand';
-select throws_ok(
-  format($$ select assert_staff_transition(status, 'quiz') from staff where id = %L $$, :'cand'),
-  'P0001', null, 'and skipping straight to the quiz is not');
-update staff set status = 'documents' where id = :'cand';
+  $$ select willo_record_event('willo-journey-1', 'accepted', now(),
+       '{"activationLink":"https://staff.example/activate?t=x","installLink":"https://staff.example/install"}'::jsonb) $$,
+  '4: the manager accepts inside Willo');
+select is((select status::text from staff where id = :'cand'), 'documents', 'she moves to Documents');
+select isnt_empty(
+  format($$ select 1 from notification_outbox where template = 'E3' and recipient_emails = array['amara@journey.test'] $$),
+  'and the system sends E3: set your password and download the app');
 
 insert into auth.users (id, email) values (:'uid', 'amara@journey.test');
 insert into profiles (id, role, full_name) values (:'uid', 'staff', 'Amara Journey');

@@ -154,9 +154,16 @@ select is(
   array[true, true, true], 'his three attempts stay, read-only, and stop counting');
 select is_empty(format($$ select 1 from onboarding_progress where staff_id = %L $$, :'fail'),
   'and his wizard progress is cleared: the full wizard again, not a partial recheck');
+-- Back through the pipeline with fresh evidence: the §2.3 gate is on the
+-- row (staff_status_guard, 20260923110000), so the quiz cannot be reached
+-- without it. Verifying the last item moves him on by itself.
 update staff set status = 'interview_completed' where id = :'fail';
-update staff set status = 'documents' where id = :'fail';
-update staff set status = 'quiz' where id = :'fail';
+update staff set status = 'documents', rtw_branch = 'uk_irish' where id = :'fail';
+insert into compliance_docs (staff_id, doc_type, file_path, review_status, uploaded_at)
+values (:'fail', 'passport', :'fail' || '/passport/2027.jpg', 'pending', clock_timestamp());
+insert into criminal_declarations (staff_id, source, answer) values (:'fail', 'onboarding', false);
+update compliance_docs set review_status = 'verified', reviewed_at = now()
+ where staff_id = :'fail' and review_status = 'pending';
 set local "request.jwt.claims" = '{"sub":"c3930000-0000-4000-8000-000000000002","role":"authenticated"}';
 select lives_ok($$ select onboarding_complete_induction() $$,
   'he sits the induction again');

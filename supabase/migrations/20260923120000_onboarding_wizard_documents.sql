@@ -3,13 +3,19 @@
 --                            (§10.3, §2.5, §2.6, §2.10, §2.12)
 --
 -- The worker's half of onboarding: right to work → home address →
--- profile selfie → documents + the criminal-conviction declaration. The
--- office's half (the kanban, Verify / Reject, the gov.uk check) is B5's
--- and is not here; what IS here is the one consequence of the office's
--- Verify that §2.3 makes automatic — "as soon as ALL documents —
--- including the Criminal Record declaration — are verified, the
--- candidate advances to the 'Quiz' stage by themselves" — because a rule
--- that only the Verify screen remembers is a rule a bulk import forgets.
+-- profile selfie → documents + the criminal-conviction declaration.
+--
+-- Built on the office's half, 20260923110000_onboarding_pipeline (B5),
+-- and deliberately NOT repeating it:
+--   · staff_status_guard holds every onboarding move to the §2.12 machine
+--     and its evidence on the ROW, so the wizard's own status changes
+--     (quiz → contract / rejected, contract → compliant) are checked there
+--     as well as here;
+--   · criminal_declaration_no_is_verified verifies a No on insert (§2.10),
+--     so the wizard files the answer and the row decides its status;
+--   · onboarding_evidence_changed / onboarding_advance_if_ready move the
+--     candidate to Quiz the moment the last item is verified (§2.3),
+--     whichever path verified it — including this wizard's own submission.
 --
 -- Shape, and why
 -- --------------
@@ -23,8 +29,7 @@
 -- (packages/domain/src/onboarding.ts, `stepAccess`) decides what the
 -- screens offer; this decides what the database accepts, so a forged
 -- call for step 4 from a candidate still in step 1 is refused here, not
--- merely hidden there. Status changes go through assert_staff_transition
--- (20260921180312) and nowhere else.
+-- merely hidden there.
 --
 -- What this adds
 -- --------------
@@ -954,99 +959,7 @@ begin
 end $$;
 
 -- ---------------------------------------------------------------------
--- 14 · The automatic move to the quiz (§2.3, §2.9)
---
--- "As soon as ALL documents — including the Criminal Record declaration
--- — are verified, the candidate advances to the 'Quiz' stage by
--- themselves." Called on submit and from the two triggers below, so it
--- holds whichever screen or import does the verifying.
---
--- compliance_blockers() is necessary and not sufficient: it lets a
--- REJECTED Yes declaration through (a manager's decision, carried by a
--- manual block for a working member of staff — 20260921192246), and a
--- candidate whose declaration was rejected must not walk into the quiz.
--- ---------------------------------------------------------------------
-create or replace function public.onboarding_advance_to_quiz(p_staff uuid)
-returns boolean
-language plpgsql
-security definer
-set search_path = public, extensions
-as $$
-declare
-  s staff;
-  p onboarding_progress;
-begin
-  select * into s from staff where id = p_staff for update;
-  if s.id is null or s.status <> 'documents' then
-    return false;
-  end if;
-  select * into p from onboarding_progress where staff_id = p_staff;
-  if p.documents_at is null or s.rtw_branch is null then
-    return false;
-  end if;
-
-  -- Every requirement of the branch satisfied by a VERIFIED current row.
-  if exists (
-    select 1 from onboarding_required_docs(s.rtw_branch, p.uk_doc_choice) r
-     where not exists (
-       select 1 from current_compliance_docs(p_staff) c
-        where c.doc_type = any (r.accepts) and c.status = 'verified'))
-  then
-    return false;
-  end if;
-
-  -- The share-code check, in every branch that has one.
-  if s.rtw_branch <> 'uk_irish' and not exists (
-       select 1 from current_compliance_docs(p_staff) c
-        where c.doc_type = 'share_code_report' and c.status = 'verified') then
-    return false;
-  end if;
-
-  -- The declaration: No is verified on submission, Yes needs a manager.
-  if not exists (
-       select 1 from (
-         select c.review_status from criminal_declarations c
-          where c.staff_id = p_staff and not c.superseded
-          order by c.declared_at desc, c.id desc limit 1) c
-        where c.review_status = 'verified') then
-    return false;
-  end if;
-
-  -- Nothing else outstanding, nothing already expired.
-  if exists (select 1 from compliance_blockers(p_staff, onboarding_uk_today())) then
-    return false;
-  end if;
-
-  perform assert_staff_transition(s.status, 'quiz'::staff_status);
-  update staff set status = 'quiz' where id = p_staff;
-  return true;
-end $$;
-
-create or replace function public.onboarding_doc_verified()
-returns trigger
-language plpgsql
-security definer
-set search_path = public, extensions
-as $$
-begin
-  if new.review_status = 'verified' and old.review_status is distinct from 'verified' then
-    perform onboarding_advance_to_quiz(new.staff_id);
-  end if;
-  return new;
-end $$;
-
-drop trigger if exists onboarding_doc_verified on compliance_docs;
-create trigger onboarding_doc_verified
-  after update of review_status on compliance_docs
-  for each row execute function onboarding_doc_verified();
-
-drop trigger if exists onboarding_declaration_verified on criminal_declarations;
-create trigger onboarding_declaration_verified
-  after update of review_status on criminal_declarations
-  for each row execute function onboarding_doc_verified();
-
--- ---------------------------------------------------------------------
--- 15 · Step 4 — Submit documents, with the declaration (§2.10, §10.3)
+-- 14 · Step 4 — Submit documents, with the declaration (§2.10, §10.3)
 -- ---------------------------------------------------------------------
 create or replace function public.onboarding_submit_documents(
   p_has_conviction  boolean,
@@ -1105,28 +1018,26 @@ begin
     values (s.id, 'share_code_report', s.share_code, true, 'pending', clock_timestamp());
   end if;
 
-  -- §2.10: No is auto-verified the moment it is submitted and never enters
-  -- the review queue; Yes is reviewed like a document.
-  insert into criminal_declarations (staff_id, source, answer, details, conviction_date,
-                                     review_status, reviewed_at, review_note)
-  values (s.id, 'onboarding', p_has_conviction,
-          case when p_has_conviction then v_details end,
-          case when p_has_conviction then p_conviction_date end,
-          case when p_has_conviction then 'pending'::review_status else 'verified'::review_status end,
-          case when p_has_conviction then null else now() end,
-          case when p_has_conviction then null
-               else 'Answered No — verified automatically on submission (§2.10)' end);
-
   update onboarding_progress set documents_at = now(), updated_at = now() where staff_id = s.id;
 
-  -- Nothing else is verified yet in the ordinary case, but an office that
-  -- verified the uploads before the worker pressed Submit should not
-  -- leave them waiting for a trigger that will never fire.
-  v_advanced := onboarding_advance_to_quiz(s.id);
+  -- §2.10: No is verified the moment it is submitted and never enters the
+  -- review queue; Yes is reviewed like a document. Filed as the answer
+  -- only: criminal_declaration_no_is_verified (B5) verifies a No on the
+  -- row, and onboarding_declaration_advance then runs the §2.3 gate — so
+  -- an office that verified every upload before the worker pressed
+  -- Submit moves them to Quiz right here, with no second rule in this file.
+  insert into criminal_declarations (staff_id, source, answer, details, conviction_date)
+  values (s.id, 'onboarding', p_has_conviction,
+          case when p_has_conviction then v_details end,
+          case when p_has_conviction then p_conviction_date end);
+
+  select status = 'quiz' into v_advanced from staff where id = s.id;
 
   return jsonb_build_object('ok', true, 'advanced', v_advanced,
-                            'declarationStatus',
-                            case when p_has_conviction then 'pending' else 'verified' end);
+    'declarationStatus',
+    (select c.review_status::text from criminal_declarations c
+      where c.staff_id = s.id and not c.superseded
+      order by c.declared_at desc, c.id desc limit 1));
 end $$;
 
 -- ---------------------------------------------------------------------
@@ -1152,11 +1063,8 @@ grant execute on function public.onboarding_attach_document(text, text, text, in
 grant execute on function public.onboarding_submit_documents(boolean, text, date)       to authenticated;
 
 revoke execute on function public.onboarding_me()                     from public, anon, authenticated;
-revoke execute on function public.onboarding_advance_to_quiz(uuid)    from public, anon, authenticated;
-revoke execute on function public.onboarding_doc_verified()           from public, anon, authenticated;
 revoke execute on function public.onboarding_on_staff_change()        from public, anon, authenticated;
 revoke execute on function public.record_document_extraction(uuid, date, daterange[], date, text, numeric, jsonb)
   from public, anon, authenticated;
 grant execute on function public.record_document_extraction(uuid, date, daterange[], date, text, numeric, jsonb)
   to service_role;
-grant execute on function public.onboarding_advance_to_quiz(uuid) to service_role;

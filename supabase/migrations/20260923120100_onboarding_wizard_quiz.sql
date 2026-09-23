@@ -7,9 +7,10 @@
 --        rejects the candidate, sends E4 and replaces the wizard with the
 --        terminal screen.
 --
--- Both are open only once the candidate is in `quiz`, which only
--- onboarding_advance_to_quiz() (20260923120000) moves them to: "the quiz
--- is available ONLY once every document is verified" (§2.9).
+-- Both are open only once the candidate is in `quiz`, which only the §2.3
+-- gate moves them to (staff_status_guard + onboarding_advance_if_ready,
+-- B5's 20260923110000): "the quiz is available ONLY once every document
+-- is verified" (§2.9).
 --
 -- Marking happens here, against quiz_questions, which the worker cannot
 -- read. The app receives the questions without their key
@@ -222,6 +223,12 @@ begin
   v_passed := v_correct * 5 >= v_total * 4;
   v_attempt := v_taken + 1;
 
+  -- The attempt is written BEFORE the status moves: a passed attempt in
+  -- this onboarding period is the evidence staff_status_guard (B5,
+  -- 20260923110000) requires for quiz → contract. "This period" is the
+  -- same thing twice over — the guard reads taken_at against
+  -- onboarding_started_at, this function counts the rows Reset to
+  -- candidate has not superseded, and both move at the same reset.
   insert into quiz_attempts (staff_id, attempt_no, score, passed, answers, taken_at)
   values (s.id, v_attempt, floor(v_correct * 100.0 / v_total), v_passed,
           jsonb_build_object('answers', p_answers, 'correct', v_correct, 'total', v_total),

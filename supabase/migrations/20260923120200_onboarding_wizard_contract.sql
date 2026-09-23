@@ -12,17 +12,17 @@
 --   9/11  Bank & payroll — staff_save_bank() (E5), recorded as the step.
 --  10/11  Contract — the versioned zero-hours agreement; ticking "I agree"
 --         IS the signature and its timestamp is the record, shown in UK
---         time only (§1.8 audit). Signing makes the candidate `compliant`
---         and generates the Employee ID at that moment, once — a worker
---         reset and re-onboarded keeps theirs (§2.7, §2.12).
+--         time only (§1.8 audit). Signing makes the candidate `compliant`;
+--         staff_status_guard (B5, 20260923110000) issues the Employee ID
+--         at that moment, once — a worker reset and re-onboarded keeps
+--         theirs (§2.7, §2.12).
 --  11/11  How it works — a tutorial and "Open app".
 --
 -- All four of 7–10 happen in the `contract` stage (the quiz pass moves
 -- the candidate there, 20260923120100). The Back Office kanban's
 -- "Additional info" column is that stage with the checklist, references
--- or bank still outstanding — derivable from onboarding_progress, and
--- B5's to draw; the §2.12 machine itself has no additional_info edge and
--- this does not add one.
+-- or bank still outstanding (ADR-0013, B5); the §2.12 machine has no
+-- additional_info edge and this does not add one.
 --
 -- PLACEHOLDER CONTENT. The agreement text below is the wireframe's draft
 -- (wireframes/staff/onboarding-3.html), marked is_placeholder. THC's
@@ -317,17 +317,17 @@ begin
     raise exception 'contract_version_changed' using errcode = 'P0001';
   end if;
 
-  -- §2.7: generated at this exact moment, and only once — a reset keeps
-  -- it (§2.12 point 2), so a returning worker already has one.
-  v_employee := coalesce(s.employee_id, nextval('employee_id_seq')::int);
-
+  -- contract → compliant, with the signature in the SAME update: that is
+  -- the evidence staff_status_guard (B5) requires for this move, and the
+  -- guard is what issues the Employee ID at this exact moment (§2.7) —
+  -- or keeps the one a returning worker already has (§2.12 point 2).
   perform assert_staff_transition(s.status, 'compliant'::staff_status);
   update staff
      set status = 'compliant',
          contract_signed_at = v_now,
-         contract_version = v_current,
-         employee_id = v_employee
-   where id = s.id;
+         contract_version = v_current
+   where id = s.id
+  returning employee_id into v_employee;
 
   update onboarding_progress set contract_at = v_now, updated_at = v_now where staff_id = s.id;
 

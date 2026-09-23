@@ -19,6 +19,10 @@
 --     declaration included — is verified (§2.3), and not a moment before;
 --   · the three new tables, read as admin, client, staff and anon.
 --
+-- The automatic move to Quiz and the No auto-verify are the office
+-- pipeline's (20260923110000, B5): this file asserts the wizard's
+-- submissions drive them, and needs that migration applied.
+--
 -- Every row is created inside the transaction and rolled back.
 -- employee_id is left null: candidates have none until they sign (§2.7).
 -- =====================================================================
@@ -347,7 +351,7 @@ select is((select status::text from staff where id = :'tom'), 'documents',
 update criminal_declarations set review_status = 'rejected', reviewed_at = now()
  where staff_id = :'tom';
 select is((select status::text from staff where id = :'tom'), 'documents',
-  'a REJECTED declaration never opens the quiz, though compliance_blockers() lets it through');
+  'rejecting the declaration opens nothing: only a verified item can move him on (§2.3)');
 update criminal_declarations set review_status = 'verified', reviewed_at = now()
  where staff_id = :'tom';
 select is((select status::text from staff where id = :'tom'), 'quiz',
