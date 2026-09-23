@@ -39,7 +39,7 @@ const NAV = [
   { href: '/staff', label: 'Staff', dividerBefore: true },
   { href: '/clients', label: 'Clients' },
   { href: '/roles', label: 'Roles' },
-  { href: '/reports', label: 'Reports', pending: true },
+  { href: '/reports', label: 'Reports' },
   { href: '/feedback', label: 'Feedback' },
   { href: '/venues', label: 'Venues' },
   { href: '/settings', label: 'Settings', dividerBefore: true },
