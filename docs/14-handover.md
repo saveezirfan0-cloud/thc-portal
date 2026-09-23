@@ -89,11 +89,25 @@ real environment to prove it in.
    through for real; coverage is render tests, view-model tests and pgTAP. A
    `qa-reviewer` pass per wireframe and Playwright journeys for the wizard,
    activation and the drain are the next safety net.
-5. **Small open items** in §4 (accepting an application has no DB function yet;
-   `cancelEvent` ignores its bookings update's error; `accept_invite` still says
-   `hours_limit` for an expired right to work).
+5. **Nothing else is open in code** beyond §4's notes. The 25.09 round closed
+   the last three gaps (below).
 
 ---
+
+## 3b · Closed on 25.09
+
+- **The office can take a Radar application forward** (`accept_application`,
+  ADR-0023): same gates as `accept_invite`, N10 to the worker, and the press that
+  fills the role closes every other pending application with N10c. Applications
+  now appear on the event board. The scope has no "Decline application", so
+  none was built. `accept_invite` also closes the rest with N10c when it fills a
+  role, because §8 has one trigger for both.
+- **Cancel event is one transaction** (`cancel_event`): event, auto-assign,
+  bookings and N12 all together, or none; the action surfaces the error.
+- **`accept_invite` answers `rtw_expired`** for a lapsed right to work.
+- **Push to a worker with no device fails at once** rather than after ~31
+  minutes of retries; document emails sign with the `/settings` sender.
+- `OWNER-TODO.md` is the owner's live checklist.
 
 ## 3a · Closed in the 24.09 wave
 
@@ -192,15 +206,6 @@ real environment to prove it in.
 
 New from the 24.09 wave:
 
-- **Accepting an application has no DB function yet.** `applied → confirmed` is
-  a legal edge (ADR-0022) but nothing performs it; the office cannot yet take a
-  Radar application forward.
-- **`cancelEvent` ignores the error from its bookings update.**
-- **`accept_invite` still answers `hours_limit` for an expired right to work** —
-  it reads the gate directly rather than through auto-assign.
-- **A worker with no subscribed device** is retried and then failed after about
-  31 minutes; the D1/D2/BG08 email signatures still name the literal
-  `timesheets@`/`admin@` even if `/settings` changes the sender (ADR-0020).
 - **Willo:** if Willo creates a candidate and the local link then fails
   transiently, the next sweep creates them again and a second E1 goes out.
 - `/apply` still uses its own consent tick; it can move to the shared `Checkbox`
@@ -259,6 +264,9 @@ Carried over:
 ---
 
 ## 5 · What is yours, not a session's
+
+**The live checklist is [`OWNER-TODO.md`](../OWNER-TODO.md)** at the repository
+root. Tick it there. This section keeps the background for each item.
 
 - ~~**Rotate the Supabase service role key.**~~ **Done 22.09.** It had been pasted
   into a chat transcript, and it bypasses every security policy in the database.
