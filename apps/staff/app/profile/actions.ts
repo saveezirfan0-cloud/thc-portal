@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { staffDb, supabaseConfigured } from '../db';
+import { addressSavedNote, locateAddress } from './geocode';
 import { photoPathFor } from './photos';
 import type { ActionResult } from './types';
 
@@ -42,6 +43,9 @@ const REASONS: Record<string, string> = {
   on_shift:
     'You’re checked in to a shift right now. Request my P45 is available once you’ve checked out.',
   unknown_staff: 'We couldn’t find your record. Please contact the office.',
+  pin_outside_uk: 'That postcode isn’t in the UK. Please check your address.',
+  no_postcode: 'Please include your postcode at the end of your address, e.g. London E2 0RY.',
+  bad_location: 'That didn’t go through. Please try again.',
 };
 
 async function db() {
@@ -91,12 +95,36 @@ function noteFor(fn: string, data: Rpc): { note?: string } {
   return {};
 }
 
-/** Profile details — phone and home address (§10.1). Address change fires E7. */
+/**
+ * Profile details — phone and home address (§10.1). Address change fires E7.
+ *
+ * The address is geocoded from its postcode (postcodes.io, the same lookup
+ * the onboarding wizard uses) so `home_location` — the §6 proximity factor
+ * — follows the worker. The point is only ever sent WITH the address it
+ * came from, and the RPC ignores it unless the address actually changed. A
+ * failed lookup still saves the address; the RPC keeps the old pin and
+ * flags it stale, which the office sees on the worker's profile.
+ */
 export async function saveContactDetails(
   phone: string,
   homeAddress: string,
 ): Promise<ActionResult> {
-  return call('staff_update_contact', { p_phone: phone, p_home_address: homeAddress });
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const location = await locateAddress(homeAddress);
+  const supabase = await db();
+  const { data, error } = await supabase.rpc('staff_update_contact_geocoded', {
+    p_phone: phone,
+    p_home_address: homeAddress,
+    p_lat: location.located ? location.lat : null,
+    p_lng: location.located ? location.lng : null,
+  });
+  if (error) return { ok: false, message: message(error.message) };
+  refreshProfile();
+  const changed = ((data as Rpc)?.['changed'] as string[] | undefined) ?? [];
+  if (changed.includes('home address')) {
+    return { ok: true, note: addressSavedNote(location) };
+  }
+  return { ok: true, ...noteFor('staff_update_contact', data as Rpc) };
 }
 
 /**

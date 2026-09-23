@@ -88,6 +88,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     clients,
     manager,
     activated,
+    location,
   ] = await Promise.all([
     supabase.from('staff_profile_v').select(PROFILE_COLUMNS).eq('id', id).maybeSingle<ProfileRow>(),
     supabase
@@ -146,6 +147,13 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     // Resend activation link (20260924110000): only someone who never
     // activated is offered it. A failed read hides the button, nothing more.
     (supabase as unknown as ActivatedRpc).rpc('staff_account_activated', { p_staff: id }),
+    // The address changed but the pin could not follow (20260926110000).
+    // Read off `staff` through admin_all; a failed read shows nothing.
+    supabase
+      .from('staff')
+      .select('home_location_stale')
+      .eq('id', id)
+      .maybeSingle<{ home_location_stale: boolean }>(),
   ]);
 
   const error =
@@ -174,6 +182,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     clients: clients.data ?? [],
     managerName: manager,
     activated: activated.error ? null : (activated.data ?? null),
+    locationStale: location.error ? null : (location.data?.home_location_stale ?? null),
     problem: null,
   };
 }

@@ -33,7 +33,12 @@ export default defineConfig({
     {
       name: 'office',
       use: { ...devices['Desktop Chrome'], baseURL: `http://127.0.0.1:${PORTS.office}` },
-      testMatch: [/office\..*\.spec\.ts/, /auth\.smoke\.spec\.ts/, /gate\.smoke\.spec\.ts/],
+      testMatch: [
+        /office\..*\.spec\.ts/,
+        /auth\.smoke\.spec\.ts/,
+        /gate\.smoke\.spec\.ts/,
+        /signout\.smoke\.spec\.ts/,
+      ],
     },
     {
       // public.* is the logged-out /apply journey (§2.1). It lives in the
@@ -47,12 +52,18 @@ export default defineConfig({
         /public\..*\.spec\.ts/,
         /auth\.smoke\.spec\.ts/,
         /gate\.smoke\.spec\.ts/,
+        /signout\.smoke\.spec\.ts/,
       ],
     },
     {
       name: 'client',
       use: { ...devices['Desktop Chrome'], baseURL: `http://127.0.0.1:${PORTS.client}` },
-      testMatch: [/client\..*\.spec\.ts/, /auth\.smoke\.spec\.ts/, /gate\.smoke\.spec\.ts/],
+      testMatch: [
+        /client\..*\.spec\.ts/,
+        /auth\.smoke\.spec\.ts/,
+        /gate\.smoke\.spec\.ts/,
+        /signout\.smoke\.spec\.ts/,
+      ],
     },
   ],
   webServer: [

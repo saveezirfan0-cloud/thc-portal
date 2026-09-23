@@ -1,14 +1,3 @@
-/**
- * Supabase-generated types for the linked project. DO NOT HAND-EDIT.
- *
- * Regenerate after every migration that changes the schema:
- *   pnpm --filter @thc/db gen:types
- *
- * Generated from the live project at 81 migrations. Until this file was
- * real, every RPC added since the placeholder landed was called through a
- * hand-written wrapper with no compiler check against the database.
- */
-
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {

@@ -1,6 +1,6 @@
 # 14 · Where the build actually is, and what to do next
 
-Figures re-verified against `main` at `dbd0227`. This is the honest state, not
+Figures re-verified on the 26.09 round (the branch that follows `dbd0227`). This is the honest state, not
 the plan — every number below was produced by running something, not by counting
 what a previous revision claimed. Where something looks finished but is not, it
 says so.
@@ -16,10 +16,10 @@ screen it names is now built; what is left is listed in §2 and §4 below.
 ## 1 · What is genuinely built
 
 **Every screen in the product now exists.** Three Next.js apps on one Supabase
-database, **81 migrations**, **70 pgTAP files (2,473 assertions)**, **1,597 Vitest
-tests across 94 files** in eight packages, seven Edge Functions (`auto-staffing`,
+database, **86 migrations**, **75 pgTAP files (2,590 assertions)**, **1,643 Vitest
+tests across 98 files** in eight packages, seven Edge Functions (`auto-staffing`,
 `booking-tick`, `compliance-daily`, `finance-reports`, `gdpr-purge`,
-`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0023`. CI runs
+`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0024`. CI runs
 lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 `deploy-database` pushes migrations to the live project on merge to `main`.
 
@@ -27,10 +27,10 @@ lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 
 | Check | Result |
 |---|---|
-| All 81 migrations applied in order to an **empty** database | clean |
-| `scripts/pgtest-local.sh` — all 70 pgTAP files | 2,473 assertions, **2 failures**, both expected (below) |
+| All 86 migrations applied in order to an **empty** database | clean |
+| `scripts/pgtest-local.sh` — all 75 pgTAP files | 2,590 assertions, **2 failures**, both expected (below) |
 | `turbo lint typecheck test` | 29/29 tasks |
-| Live Supabase project vs the repo | **identical**, all 81 applied |
+| Live Supabase project vs the repo | all 81 applied at `dbd0227`; the 26.09 round's 5 deploy on merge |
 
 `002` assertions **6 and 7** fail in every local harness and **that pair is the
 clean baseline**: they record that on Supabase `anon` *can* write
@@ -114,7 +114,37 @@ real environment to prove it in.
 
 ---
 
-## 3 · Closed on 25.09, the most recent round
+## 3 · Closed on 26.09, the most recent round (the §4 clean-up)
+
+- **Database types** are generated from the live project
+  (`packages/db/src/types.generated.ts`); `gen:types` formats them.
+- **A verified right-to-work date cannot be blanked** by any API role
+  (`20260926120000`, pgTAP `540`); fixtures use an owner-only
+  `thc.allow_rtw_date_clear` escape.
+- **A worker's home location follows their address** (`20260926110000`,
+  `530`): postcodes.io on edit, a `home_location_stale` flag the office sees
+  when the lookup fails. No office pin editor — a flag clears on the next
+  successful lookup.
+- **Willo's create-candidate is idempotent** across a lost link, and asks Willo
+  by `external_id` before creating again (`20260926100000`, `520`, ADR-0024).
+  Residual: with the record lost AND no lookup endpoint, a duplicate is possible.
+- **New Starter fields**: gender asked at wizard step 7 (§9.9 Tab 3, "M/F" — a
+  wireframe deviation, ADR-0024); postcode and country derived from the address.
+- **`/apply`**: the shared, keyboard-operable `Checkbox`; and a per-caller
+  limit (hashed caller, 5/hour, 20/day, in `settings`). Residual: anon can
+  still call `submit_application` directly through PostgREST, which bypasses
+  the per-caller limit (not the per-email/mobile ones) — closing it means
+  revoking anon and making the service key mandatory for `/apply`.
+- **`rls_auto_enable()` is Supabase's own** "enable RLS automatically on new
+  tables" option: the `ensure_rls` event trigger enables RLS on any new table in
+  `public`. It only adds protection; left in place, not mirrored in a migration
+  (locally every migration enables RLS itself, and 001 asserts it).
+- `docs/08-screen-inventory.md` lists the routes that exist.
+- Workers verified on a share code with no date: the live project has 5, all
+  seed demo accounts (`@example.com`, EU settled). None real; recheck after any
+  data import (query in `20260923200000`'s header).
+
+## 3a · Closed on 25.09
 
 - **The office can take a Radar application forward** (`accept_application`,
   ADR-0023): same gates as `accept_invite`, N10 to the worker, and the press that
@@ -240,17 +270,10 @@ here so a reader can tell a deliberate finding from a new one.
 
 New from the 24.09 wave:
 
-- **Willo:** if Willo creates a candidate and the local link then fails
-  transiently, the next sweep creates them again and a second E1 goes out.
-- `/apply` still uses its own consent tick. **The reason it could not move is
-  now gone**: it hand-rolled the control for the coral border §1.7's validation
-  state needs, which the shared `Checkbox` did not draw. It does now, off
-  `aria-invalid` — which also makes the error *audible*, because the component
-  took an `error` prop, rendered the message in a sibling span, and told
-  assistive technology nothing was wrong. The page-level move is PR #53's; it
-  does not need its own `apply.css` border rule any more. Three hand-rolled
-  copies remain (the HMRC declaration, the contract signature, the office role
-  picker); each is a place the next D1 can hide.
+- Three hand-rolled copies of the tick-box control remain (the HMRC
+  declaration, the contract signature, the office role picker); each is a
+  place the next D1 can hide. `/apply` now uses the shared `Checkbox`, which
+  draws the coral border and announces the error off `aria-invalid` (#54).
 
 From the 23.09 build:
 
@@ -259,14 +282,6 @@ From the 23.09 build:
   is in the header of `20260923200000`.
 - **The share-code date is confirmed by the office** until the extractor that
   reads the gov.uk report exists; §2.3 says nobody types it (ADR-0018).
-- **A later direct update that blanks a verified document's date is not
-  refused** — only the moment of verifying is guarded, because the `200`/`220`/
-  `250` fixtures blank dates that way. The worker's date still recomputes.
-- **New Starter report fields** (gender, postcode, country) are blank until
-  collected; the wizard does not ask for gender yet.
-- **Types not regenerated.** `packages/db` `types.generated.ts` is still the
-  placeholder; the new RPCs are called through loose typed wrappers. Run
-  `pnpm --filter @thc/db gen:types` against the live project after deploy.
 - **Unverified on real infrastructure:** the `finance-reports` Edge Function has
   not been run under Deno (ADR-0006's `../../../packages` import question); Storage
   image transforms may be off (photos then fall back to the original); GoTrue's
@@ -281,25 +296,9 @@ From the 23.09 build:
   pins the distinction that makes this easy to get wrong: **`compliance_docs`.`rejection_reason`
   has the opposite rule** and must stay readable, because §2.6 and N8 require a
   rejected DOCUMENT to tell the worker why so they can re-upload.
-- `docs/08-screen-inventory.md` does not yet list the `/documents` sub-routes,
-  `/activate` or `/compliance/export`; `docs/14-open-questions.md` still lists
-  O10 point 5 as open.
 
 Carried over:
 
-- **D2 · `/apply` is a public write endpoint with no rate limit** (§2.1).
-- **A worker's home address is not re-geocoded when they edit it.** There is no
-  geocoder in the repo, so `home_location` — and therefore the §6 proximity score
-  — goes stale on an address change. E7 tells the office and the screen says so,
-  but it wants a decision rather than a note.
-- **`/apply` is still unthrottled per caller.** The new limits are per email and
-  per mobile; a distributed attacker with a fresh pair each time is bounded only
-  at the edge. That belongs in front of PostgREST, so it is an `apps/` change.
-- **`public.rls_auto_enable()` exists on the live project and in no migration.**
-  A `SECURITY DEFINER` function that manipulates RLS, origin unknown, which was
-  reachable unauthenticated. EXECUTE is now revoked from `public`, `anon` and
-  `authenticated` by a `DO` block that no-ops where it is absent — but nobody has
-  established what created it, and that is worth finding out.
 
 
 ---

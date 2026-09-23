@@ -5,8 +5,9 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { uploadError, uploadKind, UPLOAD_MAX_BYTES, UPLOAD_MIME } from '@thc/domain';
-import type { DocType, StudentLoanPlan } from '@thc/domain';
+import type { DocType, HmrcGender, StudentLoanPlan } from '@thc/domain';
 import { staffDb, supabaseConfigured } from '../db';
+import { geocodePostcode } from '../_lib/postcode';
 import { photoPathFor } from '../profile/photos';
 import { documentExtractor, toDaterangeLiteral } from './extractor';
 import { NOT_CONFIGURED, reasonMessage } from './messages';
@@ -105,34 +106,26 @@ export async function saveAddress(input: {
 }
 
 /**
- * Postcode → a point to centre the map on, from postcodes.io (open data,
- * no key, UK-only — which is exactly the population). A convenience for
- * finding the street; the pin the worker then places is what is saved.
+ * Postcode → a point to centre the map on, from postcodes.io through the
+ * Staff App's one geocoder (app/_lib/postcode.ts, shared with
+ * /profile/details). A convenience for finding the street; the pin the
+ * worker then places is what is saved.
  */
 export async function lookupPostcode(
   postcode: string,
 ): Promise<Result<{ lat: number; lng: number }>> {
-  const code = postcode.replace(/\s+/g, '').toUpperCase();
-  if (!/^[A-Z]{1,2}[0-9][A-Z0-9]?[0-9][A-Z]{2}$/.test(code)) {
-    return { ok: false, message: 'Enter a UK postcode, e.g. E2 0RY.' };
-  }
-  try {
-    const response = await fetch(`https://api.postcodes.io/postcodes/${code}`, {
-      cache: 'no-store',
-    });
-    if (!response.ok) return { ok: false, message: 'We couldn’t find that postcode.' };
-    const body = (await response.json()) as { result?: { latitude?: number; longitude?: number } };
-    const lat = body.result?.latitude;
-    const lng = body.result?.longitude;
-    if (typeof lat !== 'number' || typeof lng !== 'number') {
+  const found = await geocodePostcode(postcode);
+  if (found.ok) return { ok: true, lat: found.lat, lng: found.lng };
+  switch (found.reason) {
+    case 'bad_postcode':
+      return { ok: false, message: 'Enter a UK postcode, e.g. E2 0RY.' };
+    case 'unreachable':
+      return {
+        ok: false,
+        message: 'Postcode search is unreachable — use your location or move the map.',
+      };
+    default:
       return { ok: false, message: 'We couldn’t find that postcode.' };
-    }
-    return { ok: true, lat, lng };
-  } catch {
-    return {
-      ok: false,
-      message: 'Postcode search is unreachable — use your location or move the map.',
-    };
   }
 }
 
@@ -358,8 +351,13 @@ export async function submitHmrc(input: {
   postgraduateLoan: boolean;
   niNumber: string;
   declared: boolean;
+  gender?: HmrcGender | null;
 }): Promise<Result> {
+  // The 8-argument checklist (20260926100100): the gender HMRC's payroll
+  // record needs, written with the checklist in one transaction. The
+  // database refuses a missing one (`gender_required`).
   return call('submit_hmrc_checklist', {
+    p_gender: input.gender ?? null,
     p_q1_other_job: input.q1OtherJob,
     p_q2_pension: input.q2Pension,
     p_q3_since_april: input.q3Since6April,
