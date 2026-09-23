@@ -155,12 +155,22 @@ export function ApplyForm() {
       />
 
       {/*
+<<<<<<< HEAD
         The shared `Checkbox`, not a hand-rolled copy. It used to be spelled
         out here for the coral border §1.7's validation state needs, which the
         component did not draw; it now does, off `aria-invalid`, which also
         makes the error audible rather than only visible. Worth removing: a
         hand-rolled copy of this control is exactly where D1 hid — the
         keyboard bug was in four of them, and each had to be found.
+=======
+        Still spelled out rather than `Checkbox` from @thc/ui, but only for
+        the coral box border this tick takes when the GDPR consent is missing
+        (§1.7) — the shared component has no error-border prop. The keyboard
+        problem that used to be the reason is gone: D1 replaced `.hide`
+        (`display: none !important`, so no tab stop and nothing in the
+        accessibility tree) with `.check-input`, the visually-hidden-but-
+        focusable rule, and that rule now lives in packages/ui for everyone.
+>>>>>>> origin/claude/compassionate-cerf-hzg6i6
       */}
       <Checkbox
         name="consent"

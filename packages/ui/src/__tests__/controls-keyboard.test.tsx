@@ -241,6 +241,7 @@ describe('the wireframe stylesheet stays in sync', () => {
     );
   });
 });
+<<<<<<< HEAD
 
 describe('the invalid state (§1.7)', () => {
   it('announces the error on the input, not only as text beside it', () => {
@@ -272,3 +273,5 @@ describe('the invalid state (§1.7)', () => {
     expect(css).toMatch(/border-color: var\(--coral\)/);
   });
 });
+=======
+>>>>>>> origin/claude/compassionate-cerf-hzg6i6

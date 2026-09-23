@@ -1074,6 +1074,7 @@ textarea.input {
 .check .check-input:focus-visible + .box {
   outline: 2px solid var(--focus-line);
   outline-offset: 2px;
+<<<<<<< HEAD
 }
 
 /* §1.7's validation state, on the drawn square rather than the transparent
@@ -1082,6 +1083,8 @@ textarea.input {
    no border, and a hand-rolled copy is what D1 was hiding in. */
 .check .check-input[aria-invalid='true'] + .box {
   border-color: var(--coral);
+=======
+>>>>>>> origin/claude/compassionate-cerf-hzg6i6
 }
 .check .box,
 .optrow .box {
