@@ -270,6 +270,10 @@ here so a reader can tell a deliberate finding from a new one.
 
 New from the 24.09 wave:
 
+- Three hand-rolled copies of the tick-box control remain (the HMRC
+  declaration, the contract signature, the office role picker); each is a
+  place the next D1 can hide. `/apply` now uses the shared `Checkbox`, which
+  draws the coral border and announces the error off `aria-invalid` (#54).
 
 From the 23.09 build:
 
