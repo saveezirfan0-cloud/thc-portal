@@ -114,9 +114,13 @@
            the icon rides the Staff App header, where the title needs the width. -->
       <div class="demo"><span class="label" style="width:110px">Appearance</span><div class="seg sm"><button class="on">Light</button><button>Dark</button></div><button class="btn ghost sm icon mode-switch" aria-pressed="false" aria-label="Dark appearance" title="Dark appearance"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"></path></svg></button></div>
       <div class="demo"><label class="switch purple on"><span class="track"></span>Auto-assign</label><label class="switch on"><span class="track"></span>Client pays for breaks</label><label class="switch"><span class="track"></span>Client pays for buffer</label></div>
-      <div class="demo"><label class="check"><span class="box on"></span>I confirm that the information I've given on this form is correct.</label></div>
-      <div class="demo"><label class="check radio"><span class="box on"></span>UK / Irish citizen</label><label class="check radio"><span class="box"></span>International student</label></div>
-      <div class="slider"><div class="fill" style="width:32%"></div><div class="knob" style="left:32%"></div></div>
+      <!-- Checkbox and radio are a real native input with the square drawn beside it. The input
+           is transparent and laid over the square (`.check-input`), never `display: none` — that
+           is what gives Tab, Space, the arrow keys across a `radiogroup` sharing one `name`, and
+           the announcement. Tab into these: the cyan ring lands on the square (D1, §1.2). -->
+      <div class="demo"><label class="check"><input type="checkbox" class="check-input" checked><span class="box on"></span>I confirm that the information I've given on this form is correct.</label></div>
+      <div class="demo" role="radiogroup" aria-label="Right to work"><label class="check radio"><input type="radio" class="check-input" name="ds-rtw" checked><span class="box on"></span>UK / Irish citizen</label><label class="check radio"><input type="radio" class="check-input" name="ds-rtw"><span class="box"></span>International student</label></div>
+      <div class="slider"><div class="fill" style="width:32%"></div><input type="range" class="slider-input" min="100" max="3000" value="1028" aria-label="Geofence radius"><div class="knob" style="left:32%"></div></div>
       <div class="progress"><div class="fill" style="width:45%"></div></div>
     </div>
     <div class="stack">

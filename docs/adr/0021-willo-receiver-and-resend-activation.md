@@ -1,6 +1,6 @@
 # ADR-0021 · The Willo receiver, the "create candidate" call, and Resend activation link
 
-**Status:** Accepted (migration `20260924110000`, pgTAP 480–481, vitest `packages/db/src/__tests__/willo.test.ts`) · **Builds on:** ADR-0006 (Edge Functions import workspace code), ADR-0013, the activation account (`20260923180000`) · **Scope:** §2.1, §2.4, §2.7, §2.8 E1/E3, §2.12, Appendix B (B1)
+**Status:** Accepted (migration `20260924110000`, pgTAP 482–481, vitest `packages/db/src/__tests__/willo.test.ts`) · **Builds on:** ADR-0006 (Edge Functions import workspace code), ADR-0013, the activation account (`20260923180000`) · **Scope:** §2.1, §2.4, §2.7, §2.8 E1/E3, §2.12, Appendix B (B1)
 
 ## Context
 
@@ -23,7 +23,7 @@ Willo's webhook signing scheme, payload shape and candidate-creation endpoint ar
 
 **To do when THC's account arrives:** read Willo's webhook docs and set the header names, or change `verifyWilloSignature` if the scheme differs (e.g. a different HMAC input); send one sandbox delivery of each kind and check `parseWilloEvent` finds the candidate key and stage, adding a path if not; check the create endpoint, body fields and where the key comes back; set `settings.willo_stage_map` to Willo's actual stage names; set `settings.willo_review_url_template`.
 
-With no timestamp, replay protection rests on idempotency: every path through `willo_record_event` is a no-op on a repeat (pgTAP 380, 480), and a repeated Accept mints no token (below).
+With no timestamp, replay protection rests on idempotency: every path through `willo_record_event` is a no-op on a repeat (pgTAP 380, 482), and a repeated Accept mints no token (below).
 
 ### 2. The receiver provisions the login with the office's code, not a copy
 

@@ -41,8 +41,13 @@ export type { Step, StepperProps } from './components/Stepper';
 export { KpiTile, Rating, Score, SegBar, StatStrip, TileGrid, ratingTone } from './components/Data';
 export type { KpiTileProps, MetricTone, SegState, Stat } from './components/Data';
 
-export { Checkbox, OptionRow, Radio, Switch } from './components/Controls';
-export type { CheckProps, OptionRowProps, SwitchProps } from './components/Controls';
+export { Checkbox, OptionRow, Radio, RadioGroup, Switch } from './components/Controls';
+export type {
+  CheckProps,
+  OptionRowProps,
+  RadioGroupProps,
+  SwitchProps,
+} from './components/Controls';
 
 export { DocRow } from './components/DocRow';
 export type { DocRowProps, DocState } from './components/DocRow';

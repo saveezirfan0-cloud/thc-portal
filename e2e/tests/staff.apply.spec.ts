@@ -49,6 +49,35 @@ test.describe('/apply', () => {
     await expect(submit).toBeEnabled();
   });
 
+  test('the consent tick can be given from a keyboard alone (§1.2, D1)', async ({ page }) => {
+    // Real proof, in a real browser, of the half of D1 that unit tests
+    // cannot reach. The shared Checkbox used to carry `class="hide"`, and
+    // `.hide` is `display: none !important` — so the input was not
+    // rendered, not focusable and not in the accessibility tree. A mouse
+    // still worked, because the wrapping <label> forwards activation to
+    // the hidden input, which is exactly why it survived: fine with a
+    // mouse, completely dead without one.
+    //
+    // This is the highest-stakes instance that is publicly reachable. §1.7
+    // requires the consent, and the form will not submit until it is
+    // given, so a candidate who cannot use a mouse could not apply at all.
+    // The unit tests assert the markup and the stylesheet; only a browser
+    // can say the key actually toggles it.
+    await page.goto('/apply');
+
+    const consent = page.getByRole('checkbox');
+    await expect(consent).not.toBeChecked();
+
+    await consent.focus();
+    await expect(consent).toBeFocused();
+
+    await page.keyboard.press('Space');
+    await expect(consent).toBeChecked();
+
+    await page.keyboard.press('Space');
+    await expect(consent).not.toBeChecked();
+  });
+
   test('rejects under 18 on the form (§2.1)', async ({ page }) => {
     await page.goto('/apply');
     const submit = page.getByRole('button', { name: 'Submit application' });

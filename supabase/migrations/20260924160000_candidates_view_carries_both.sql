@@ -1,14 +1,13 @@
 -- =====================================================================
--- onboarding_candidates_v carries both of the 24.09 changes
+-- onboarding_candidates_v carries both of its recent changes
 --
--- Two branches built in parallel each restated this view from the same
--- base: 20260924110000 (Willo / resend) made `activated` mean "the login
--- has a password" (staff_account_activated()), because Accept now links
--- the login before the candidate ever opens E3; 20260924130000 routed
--- rejection_reason through staff_rejection_reason_v. The later one won
--- and put `activated` back to "a login is linked", so every accepted
--- candidate read Activated (E3) again. This is 130000's view with 110000's
--- `activated`.
+-- #48 (20260923220000) restated this view to read rejection_reason
+-- through the owner-rights staff_rejection_reason_v. The 24.09 Willo /
+-- resend branch (20260924110000) restated it from the older base to make
+-- `activated` mean "the login has a password" (staff_account_activated()),
+-- because Accept now links the login before the candidate ever opens E3 —
+-- and in doing so read s.rejection_reason directly again, which #48 had
+-- revoked. This is #48's view with 20260924110000's `activated`.
 -- =====================================================================
 
 create or replace view onboarding_candidates_v with (security_invoker = true) as
@@ -88,10 +87,12 @@ select
   s.rejected_at,
   s.rejected_from,
   s.rejection_cause,
-  -- ADR-0017 / O16: read through the owner-rights, admin-gated view; no
-  -- PostgREST role holds the column on the table any more.
+  -- §2.9 / ADR-0017: the office's free-text reason for rejecting a
+  -- candidate is internal. E2 and E2b never carry it, and this view runs
+  -- with the caller's privileges, so it is read through the owner-rights
+  -- sub-view rather than off `s` — the caller no longer holds the column.
   (select r.rejection_reason from public.staff_rejection_reason_v r
-    where r.staff_id = s.id)                                                      as rejection_reason,
+    where r.staff_id = s.id)                                   as rejection_reason,
   p.full_name                                                                      as rejected_by_name
 from staff s
 left join profiles p on p.id = s.rejected_by

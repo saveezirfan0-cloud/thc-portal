@@ -1,6 +1,6 @@
+import { acceptedLog } from '@thc/domain';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
-import { pickCheckLog } from './checkLog';
 import type { ShiftDetail } from './types';
 
 export function supabaseConfigured(): boolean {
@@ -33,6 +33,17 @@ export async function loadShift(bookingId: string): Promise<ShiftDetail | null> 
        )`,
     )
     .eq('id', bookingId)
+    // `check_logs` is append-only: one row per BUTTON PRESS, not one per
+    // booking (§1.5). This is the embedded form of the lateral every other
+    // reader of that table uses — `where check_in_at is not null order by
+    // check_in_at limit 1` — so the screen is handed the same row
+    // `payable_shifts_v` prices and `check_out()` locks. Filtering an
+    // embedded resource narrows the embedded rows, not the booking: a
+    // worker who has only ever been turned away still gets their shift,
+    // with an empty `logs`.
+    .not('logs.check_in_at', 'is', null)
+    .order('check_in_at', { referencedTable: 'logs', ascending: true })
+    .limit(1, { referencedTable: 'logs' })
     .maybeSingle();
 
   if (!data) return null;
@@ -41,13 +52,7 @@ export async function loadShift(bookingId: string): Promise<ShiftDetail | null> 
   const row = data as any;
   const shift = row.shift;
   const event = shift?.event;
-  // One row per button press (§1.5), so a refused attempt can sit beside
-  // the real check-in. The same log the RPCs read: see checkLog.ts.
-  const log = pickCheckLog<{
-    check_in_at: string | null;
-    check_out_at: string | null;
-    manager_finish_at: string | null;
-  }>(row.logs);
+  const log = acceptedLog<CheckLogRow>(row.logs);
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   // The venue point is a PostGIS geography, which PostgREST does not hand
@@ -83,6 +88,13 @@ export async function loadShift(bookingId: string): Promise<ShiftDetail | null> 
       /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
       .sort((a: any, b: any) => a.startedAt.localeCompare(b.startedAt)),
   };
+}
+
+/** The three columns of `check_logs` this screen reads. */
+export interface CheckLogRow {
+  check_in_at: string | null;
+  check_out_at: string | null;
+  manager_finish_at: string | null;
 }
 
 /**

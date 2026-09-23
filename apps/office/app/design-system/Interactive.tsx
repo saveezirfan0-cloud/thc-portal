@@ -13,6 +13,7 @@ import {
   PhoneFrame,
   PhoneRow,
   Radio,
+  RadioGroup,
   SegToggle,
   Sheet,
   Slider,
@@ -82,12 +83,14 @@ export function InteractiveControls() {
         <Checkbox checked={agreed} onChange={setAgreed}>
           Breaks are unpaid for this client
         </Checkbox>
-        <Radio checked={branch === 'student'} onChange={() => setBranch('student')}>
-          International student
-        </Radio>
-        <Radio checked={branch === 'settled'} onChange={() => setBranch('settled')}>
-          Settled or pre-settled status
-        </Radio>
+        <RadioGroup aria-label="Right to work" name="ds-branch">
+          <Radio checked={branch === 'student'} onChange={() => setBranch('student')}>
+            International student
+          </Radio>
+          <Radio checked={branch === 'settled'} onChange={() => setBranch('settled')}>
+            Settled or pre-settled status
+          </Radio>
+        </RadioGroup>
       </div>
       <hr />
       <div className="stack">

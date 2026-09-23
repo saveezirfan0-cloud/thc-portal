@@ -113,20 +113,24 @@ real environment to prove it in.
 - **B3 · one `cancel_cause` vocabulary** with a check constraint. The office
   Withdraw had been writing a cause the Staff App never matched, so "You've been
   removed from this shift" never showed.
-- **The shift screen showed the first button press, not the check-in.**
+- **The shift screen showed the first button press, not the check-in** — also
+  fixed by #48 in parallel (`acceptedLog()` in `packages/domain/pay.ts`, which
+  also covers the office's violation window); #48's version stands.
 - **Declining an invitation qualified the worker at that client** and counted as
   a shift worked; `closed` is no longer read as completed (`20260924150000`).
-- **`rejection_reason` is internal** like `block_reason` (owner-rights view).
+- **`rejection_reason` is internal** — done by #48 (`20260923220000`) in
+  parallel; this wave's duplicate was dropped before merge.
 - **Rota guard gaps closed**: re-timing a shift re-checks confirmed workers at
   commit; one statement confirming several bookings sees its own rows; declined
   invites no longer count toward the cap; an expired right to work is its own
   refusal (`rtw_expired`), with board and Radar copy.
 - **N14 names the Sunday for the 10-hour band**; a settled share code reads
   "Settled — no time limit".
-- **D1** `Checkbox`/`Radio` are keyboard-operable; **D3** `/privacy` exists,
-  public, linked from `/apply` and both login footers.
-- Two builders restated `onboarding_candidates_v` from the same base; the later
-  one reverted the other's `activated` fix. `20260924160000` carries both (`504`).
+- **D3** `/privacy` exists, public, linked from `/apply` and both login footers.
+  (**D1** was fixed by #48 in parallel, more widely; its version stands.)
+- Three restatements of `onboarding_candidates_v` from different bases (#48,
+  Willo) would have reverted each other's changes; `20260924160000` carries
+  both (`504`).
 
 ## 3 · Closed in this build (23.09)
 
@@ -222,6 +226,15 @@ From the 23.09 build:
   image transforms may be off (photos then fall back to the original); GoTrue's
   `email_exists` on an invite for a confirmed address and `hashed_token` equal to
   the stored token are assumed, not observed.
+- ~~**A worker can read the office's reason for rejecting them**~~ **Closed
+  23.09** by `20260923220000`, with #44's shape: the column is revoked from both
+  PostgREST roles and the office reads it through the owner-rights
+  `staff_rejection_reason_v`. `onboarding_candidates_v` keeps its
+  `security_invoker` reloption and its column list, order and types — verified
+  identical — so no office column list moved. `480_rejection_reason.sql` also
+  pins the distinction that makes this easy to get wrong: **`compliance_docs`.`rejection_reason`
+  has the opposite rule** and must stay readable, because §2.6 and N8 require a
+  rejected DOCUMENT to tell the worker why so they can re-upload.
 - `docs/08-screen-inventory.md` does not yet list the `/documents` sub-routes,
   `/activate` or `/compliance/export`; `docs/14-open-questions.md` still lists
   O10 point 5 as open.

@@ -1,5 +1,5 @@
 -- =====================================================================
--- 480 · The Willo receiver and the "create candidate" sweep
+-- 482 · The Willo receiver and the "create candidate" sweep
 --   20260924110000_willo_receiver_and_resend_activation.sql, ADR-0021
 --   (§2.4, §2.12, Appendix B B1)
 --
