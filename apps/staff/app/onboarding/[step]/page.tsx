@@ -3,11 +3,16 @@ import { Alert } from '@thc/ui';
 import { BRANCH_HEADING, TOTAL_STEPS, canEditStep, stepAccess, ukToday } from '@thc/domain';
 import { signOwnPhoto } from '../../profile/photos';
 import { AddressStep } from '../_components/AddressStep';
+import { BankStep } from '../_components/BankStep';
+import { ContractStep } from '../_components/ContractStep';
 import { DocumentsStep } from '../_components/DocumentsStep';
+import { HmrcStep } from '../_components/HmrcStep';
 import { InductionStep } from '../_components/InductionStep';
 import { QuizStep } from '../_components/QuizStep';
+import { ReferencesStep } from '../_components/ReferencesStep';
 import { RtwStep } from '../_components/RtwStep';
 import { SelfieStep } from '../_components/SelfieStep';
+import { TutorialStep } from '../_components/TutorialStep';
 import { WizardFrame, WizardTop, workerFor } from '../_components/Wizard';
 import { loadOnboarding, loadQuizQuestions, supabaseConfigured } from '../data';
 import { requirementRows, wizardFacts } from '../state';
@@ -99,9 +104,57 @@ async function render(n: number, s: OnboardingState) {
       }
       return <QuizStep firstName={s.firstName} questions={questions} previous={s.quiz} />;
     }
+    case 7:
+      return (
+        <HmrcStep
+          niMasked={s.niMasked}
+          initial={{
+            q1OtherJob: s.hmrc?.q1OtherJob ?? null,
+            q2Pension: s.hmrc?.q2Pension ?? null,
+            q3Since6April: s.hmrc?.q3Since6April ?? null,
+            studentLoan: s.hmrc?.studentLoan ?? null,
+            postgraduateLoan: s.hmrc?.postgraduateLoan ?? false,
+            niNumber: '',
+            declared: false,
+          }}
+        />
+      );
+    case 8:
+      return <ReferencesStep initial={s.references} />;
+    case 9:
+      return (
+        <BankStep
+          initial={
+            s.bank ?? {
+              accountHolder: `${s.firstName} ${s.lastName}`.trim(),
+              sortCode: '',
+              accountNumber: '',
+            }
+          }
+        />
+      );
+    case 10:
+      if (!s.contract) {
+        return (
+          <>
+            <WizardTop step={10} heading="Zero-hours agreement" />
+            <Alert tone="coral">
+              The agreement isn’t available yet. Please contact the office.
+            </Alert>
+          </>
+        );
+      }
+      return (
+        <ContractStep
+          version={s.contract.version}
+          title={s.contract.title}
+          body={s.contract.body}
+          isPlaceholder={s.contract.isPlaceholder}
+          signedStamp={s.contractStamp}
+        />
+      );
     default:
-      // Steps 7–11 arrive in the next commits of this branch.
-      redirect('/onboarding');
+      return <TutorialStep firstName={s.firstName} />;
   }
 }
 
