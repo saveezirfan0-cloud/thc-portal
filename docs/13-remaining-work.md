@@ -3,6 +3,11 @@
 Every screen and system still to build, one prompt per session. `docs/11-session-prompts.md`
 covers the foundation sessions; this file covers everything after them.
 
+> **Status, 23.09.2026: every screen prompt below is built** — B1, B5, B6, B6b,
+> B11, B12, B13, S1, S2 and S4 landed together (see `docs/14-handover.md` §1).
+> The prompts stay as the record of what each was asked to do. What is still
+> open is in `docs/14-handover.md` §2 and §4, not here.
+
 **Read before handing these out:**
 
 - One domain per branch. Two bots on one branch collide. See `docs/10-working-with-agents.md`.
