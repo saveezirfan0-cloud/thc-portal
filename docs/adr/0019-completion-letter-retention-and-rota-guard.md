@@ -1,4 +1,4 @@
-# ADR-0012 · Completion letter: retention over removal, and what the rota guard may relax
+# ADR-0019 · Completion letter: retention over removal, and what the rota guard may relax
 
 **Status:** Accepted, 23.09.2026, pending THC's confirmation of point 1. Implemented in
 `supabase/migrations/20260923100100_completion_letter.sql` and

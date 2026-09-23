@@ -577,71 +577,35 @@ of the CLI that writes to the live database. Guessing it is worse than leaving i
 wants a session that can read a real tag, changes both uses together, and records the
 choice here.
 
-## O8 · The PR review bot — two faults, and the second one needs you today
+## O8 · ~~The PR review bot~~ — CLOSED: the workflow is deleted
 
-### The one blocking it now: there is no API key
+**Closed 23.09.2026 by the owner's decision: the `claude` GitHub Action will not be used.**
+`.github/workflows/claude.yml` is deleted rather than left red, so neither fault below can
+recur and no repository secret is owed for it.
 
-Since roughly 17:09 on 21.09 the `claude` check fails after **twelve seconds**, before it
-reads a line of the diff:
+For the record, since both were real and both cost money:
 
-```
-##[error]Action failed with error: Environment variable validation failed:
-  - Either ANTHROPIC_API_KEY, CLAUDE_CODE_OAUTH_TOKEN, or workload identity federation
-    (ANTHROPIC_FEDERATION_RULE_ID and ANTHROPIC_ORGANIZATION_ID) is required when using
-    the direct Anthropic API.
-```
+1. **No API key.** From roughly 17:09 on 21.09 the check failed after twelve seconds, in
+   environment validation, before reading a line of any diff — the step's own environment
+   dump showed `ANTHROPIC_API_KEY:` with nothing after it. It had worked earlier the same
+   day (a run at 16:29 took 9m 40s and billed $3.44), and whether the secret was removed
+   or the account behind it ran out was never visible from the log. It failed identically
+   on every PR from then until deletion.
+2. **The review was thrown away after it succeeded.** Before the key went, the check was
+   failing on `--max-turns 60` with `"subtype": "success", "is_error": false,
+   "num_turns": 61` — the reviewer finished, the action discarded the result and failed the
+   check, and nothing was posted. That run also logged `permission_denials_count: 17`:
+   seventeen refused tool calls, each costing a turn that did no work.
 
-and the step's own environment dump shows `ANTHROPIC_API_KEY:` with nothing after it.
-`.github/workflows/claude.yml` passes `${{ secrets.ANTHROPIC_API_KEY }}`, so the
-repository secret is empty, deleted, or not reaching the workflow.
+Neither needs deciding now. If the action is ever reinstated, both are waiting for it, and
+pre-approving the read-only tools a reviewer needs (`Read`, `Grep`, `Glob`, `git diff`,
+`git log`) is the cheaper of the two fixes to try first.
 
-It worked earlier the same day — a run at 16:29 took 9m 40s and billed $3.44 — so
-something changed between the two. Whether the secret was removed or the account behind it
-ran out is not visible from the log, and both look identical from here.
-
-**This one is yours and nothing in the repo can substitute for it.** A bot cannot hold or
-set a repository secret, and CLAUDE.md rightly forbids putting one in code. Set it at
-Settings → Secrets and variables → Actions → `ANTHROPIC_API_KEY`.
-
-Re-running the check is pointless until then, which is why I have not spent a re-run on
-it. Note that `build-test` is the gate and is unaffected: the `claude` check is advisory,
-so this does not block merging.
-
-### The one underneath it: the review is thrown away after it succeeds
-
-This is the fault that will come back the moment the key is restored, so it is recorded
-rather than closed. Before the key went, the check was failing like this:
-
-```
-"subtype": "success", "is_error": false, "num_turns": 61
-##[error]Claude reported a successful result after 61 turns, exceeding the configured
-maximum of 60
-```
-
-`claude.yml` sets `--max-turns 60`. That run completed its review, cost $3.44, and the
-action discarded the result and failed the check. Nothing was posted to the pull request.
-
-Two things to weigh, and both cost money, which is why this is yours too:
-
-1. **Raise the limit.** The obvious fix and the one with a recurring bill attached. These
-   PRs are large — five or six commits across SQL, tests and docs — so the reviewer needs
-   the turns. Roughly $3.50 a review at 60 turns; a higher ceiling raises the worst case,
-   not the average, since a short PR still finishes early.
-2. **Spend fewer turns.** The same run logged `permission_denials_count: 17`. Seventeen
-   tool calls were refused, and every refusal costs a turn that did no work. Pre-approving
-   the read-only tools a reviewer needs — `Read`, `Grep`, `Glob`, `git diff`, `git log` —
-   would likely bring it under the existing limit for free. Cheaper than (1) and worth
-   trying first.
-
-Neither is changed here, because both are standing costs on every pull request in the repo
-rather than a bug in one.
-
-### Meanwhile
-
-The review still happens — I run the `qa-reviewer` agent in-session before pushing, which
-is what CLAUDE.md asks for anyway ("Ask `qa-reviewer` before opening a PR"). On PR #24 that
-found four blockers the CI bot never got the chance to. So the gap is a missing second
-opinion, not a missing review.
+**Review has not gone anywhere.** CLAUDE.md asks for `qa-reviewer` before opening a PR and
+that is where it runs — in-session, against the working tree. On PR #24 that found four
+blockers the CI bot never got to; on PR #41 it found two, one of which (the Back Office
+having no sign-out at all below 760px) would have shipped. `build-test` remains the check
+that gates a merge, and is unaffected.
 
 ## O9 · Prettier is run by hand, so `main` carries unformatted files
 
@@ -820,9 +784,50 @@ one at a time, so a failure halfway leaves the project part-applied with a green
 `build-test` above it, and the log is the only place that says which version it stopped
 at.
 
-## O15 · `BottomNav`'s `renderLink` callback has now crashed the Staff App twice
+## O16 · A worker could read the manager's reason for blocking them — **RESOLVED 23.09**
 
-**This one is `design-system`'s, and it is a prop that should not exist.**
+`0001_init.sql:482` grants a worker their own row and every column on it:
+
+```sql
+create policy staff_self on staff for select using (user_id = auth.uid());
+```
+
+So `GET /rest/v1/staff?select=block_reason` returned the internal note a manager typed
+about that worker. §10.1 is explicit: "the manager's reason for the block is internal and
+is never shown to the worker." The application never fetched it — `staff_me()` does not
+select it and says so — but the API did, so the rule was held by discipline rather than by
+structure.
+
+**RLS could not fix it.** Policies filter rows, never columns. And the obvious privilege
+fix breaks the office: admins and workers are the same Postgres role, and both
+`staff_directory_v` and `staff_profile_v` are `security_invoker`, so a blanket
+`revoke select (block_reason) … from authenticated` would have closed §9.6's screens with
+it.
+
+`20260923090000_block_reason_is_internal.sql` applies ADR-0004 one column wide: the
+table-wide SELECT is revoked and re-granted for every column **except** that one, and the
+office reads it back through `staff_block_reason_v`, an owner-rights view carrying
+`current_app_role() = 'admin'` in its own body. `staff_directory_v` keeps its column list,
+order and `security_invoker` reloption — verified identical — so no office column list
+moved.
+
+**Two consequences worth knowing before you touch `staff`:**
+
+- A column added to `staff` by a later migration is **not readable** by `anon` or
+  `authenticated` until that migration grants it. That is deliberate — `staff` carries the
+  date of birth, NI number, home address and right-to-work branch, so failing closed on a
+  new column is correct, and the failure is a loud 42501 rather than a quiet leak. It will
+  still surprise whoever hits it.
+- An **admin** can no longer read `block_reason` off the table either, by design. The
+  owner-rights view is the whole of the office's access to it.
+
+The migration ends with a `do` block that raises if the revoke did not take or the re-grant
+did not — a `revoke` that silently no-ops is how `20260921123503` was defeated by PostGIS's
+grants, and that would have left this leak open under a green deploy.
+
+## O15 · `BottomNav`'s `renderLink` callback crashed the Staff App twice — **RESOLVED 23.09**
+
+**It was `design-system`'s, and it was a prop that should not have existed. It is gone.**
 
 `BottomNav` lives in `packages/ui/src/components/Mobile.tsx` under a file-level
 `'use client'`, and it takes
@@ -853,9 +858,16 @@ boundary. Same markup, same classes, same "locked is a span, not a link" behavio
 the call site and differ only in a directive at the top of a file nobody opens. A screen
 bot copying the Office pattern into the Staff App writes a 500 and gets a green build.
 
-**The fix is to delete the prop**, not to document it: `BottomTabs` proves the data-driven
-shape covers every caller, and there are no others. That is a `packages/ui` change, which
-`docs/10` §3 reserves for `design-system`, so it is filed here rather than taken. Until it
-goes, a lint rule banning function props to anything exported from `Mobile.tsx` would do
-the same job.
+**The prop is gone.** `BottomTabs` proved the data-driven shape covers every caller, and a
+check of the remaining `BottomNav` callers — `/shifts/[id]`, the design-system showcase and
+two `packages/ui` tests — found that none of them passed `renderLink`, so deleting it broke
+nothing and no caller had to change. `packages/ui/src/components/Mobile.tsx` now carries the
+reasoning where the next person will read it, including why the Office's `Sidebar` keeps an
+identical-looking callback and is safe.
+
+Note for whoever adds the next mobile component: the asymmetry is still there.
+`Shell.tsx` has no `'use client'` and `Mobile.tsx` does, so a function prop is fine in one
+and a 500 in the other, and nothing at the call site says which you are in. A lint rule
+banning function props to anything exported from `Mobile.tsx` would make that structural
+rather than remembered; it is not written.
 

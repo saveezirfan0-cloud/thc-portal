@@ -31,6 +31,29 @@ function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
+/**
+ * Ending a session is allowed to anyone holding one, whatever their role.
+ *
+ * Without this the role gate answers the POST with the wrong-app page rather
+ * than passing it to the route handler, so the one button on that page
+ * re-renders the page: signed in, admitted nowhere, unable to sign out and
+ * switch accounts (§1.4).
+ *
+ * It runs before the Supabase client is built, not merely before the role
+ * gate, so the two never fight over the same cookies. `getUser()` refreshes
+ * an access token near expiry and writes fresh `sb-*-auth-token` cookies on
+ * to this response; the route handler then deletes them. Both Set-Cookie
+ * headers would ride the same response and the survivor would be whichever
+ * Next.js merged last — an intermittently ineffective sign-out. Skipping the
+ * client removes the race, and the round-trip with it.
+ *
+ * This authorises nothing new: `/auth` is already in PUBLIC_PATHS, so a
+ * sessionless request reaches this route anyway. Restricted to POST because
+ * that is all the route exports; a GET page added here later must not
+ * inherit an exemption from the role gate by accident.
+ */
+const SIGN_OUT_PATH = '/auth/signout';
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -58,6 +81,10 @@ export async function middleware(request: NextRequest) {
         { status: 503, headers: { 'content-type': 'text/plain; charset=utf-8' } },
       );
     }
+    return response;
+  }
+
+  if (request.nextUrl.pathname === SIGN_OUT_PATH && request.method === 'POST') {
     return response;
   }
 

@@ -15,7 +15,7 @@ screen it names is now built; what is left is listed in §2 and §4 below.
 ## 1 · What is genuinely built
 
 **Every screen in the product now exists.** Three Next.js apps on one Supabase
-database, **68 migrations**, **56 pgTAP files (2,190 assertions)**, **1,358 Vitest
+database, **70 migrations**, **58 pgTAP files (2,226 assertions)**, **1,358 Vitest
 tests** across eight packages, six Edge Functions (`auto-staffing`,
 `booking-tick`, `compliance-daily`, `finance-reports`, `gdpr-purge`, plus
 `_shared`), and ADRs up to `0018`. CI runs lint, typecheck, Vitest,
@@ -44,7 +44,7 @@ last, below a divider. The Staff App's Documents tab is live.
 - **B6 Compliance queue and radar** and **B6b completion letter / 48-hour
   opt-out** — review queue, Radar with counters, the seven acceptance criteria of
   the completion-letter requirement each a named test (AC1–AC7), audit export,
-  retention employment + 2 years (ADR-0012), the rota guard enforced in the
+  retention employment + 2 years (ADR-0019), the rota guard enforced in the
   database (student caps and right-to-work expiry always block; the Working Time
   48 blocks or warns per `/settings`), CL1–CL6 in the register, and the
   Student-visa view on `/staff?view=student`.
@@ -101,9 +101,6 @@ last, below a divider. The Staff App's Documents tab is live.
 
 ## 3 · Closed in this build (23.09)
 
-- **Two pgTAP tests that depended on when CI ran.** `120` #47 failed 00:00–11:00
-  UTC because `age_18` read the session's date, not the UK date (constraint now
-  UK, `20260923090000`); `290` #17 only passed on a Monday or Tuesday.
 - **E2's interview wording went to every rejection.** Candidates rejected after
   the interview, and returning applicants, now get **E2b** — the same close
   without the interview (`20260923170000`). E2b is the register's first
@@ -137,6 +134,12 @@ last, below a divider. The Staff App's Documents tab is live.
   size column and the wizard reads it off the real Storage object; the Monday
   finance send is paused until P2; the client sees a sign-out timesheet only
   once it is final (`443`); E2b has ADR-0017.
+- **Merged with #44's column grants.** #44 re-granted `staff` column by
+  column; the twenty columns this build adds are granted by name in
+  `20260923210000`, and the two build views that read `block_reason` directly
+  (`compliance_review_queue_v`, `onboarding_returning_v`) now read it through
+  `staff_block_reason_v`. `445` asserts both. A column added to `staff` from
+  here on needs its own grant, as #44 intends.
 - `supabase/config.toml` `otp_expiry` is 86400 (activation links last a day).
 - `scripts/pgtest-local.sh` — the Docker-free pgTAP harness §7 describes, as a
   script.
@@ -174,8 +177,11 @@ New from this build:
   image transforms may be off (photos then fall back to the original); GoTrue's
   `email_exists` on an invite for a confirmed address and `hashed_token` equal to
   the stored token are assumed, not observed.
-- **Staff can read their own `block_reason`** through PostgREST (`staff_self` is
-  a row policy with no column restriction). Needs a narrowed self-view.
+- **A worker can read the office's reason for rejecting them** off their own
+  `staff` row (`rejection_reason`), as they could `block_reason` before #44.
+  `onboarding_candidates_v` is security_invoker and reads it, so the fix is
+  #44's: revoke the column and route the office through an owner-rights view
+  (ADR-0017).
 - `docs/08-screen-inventory.md` does not yet list the `/documents` sub-routes,
   `/activate` or `/compliance/export`; `docs/14-open-questions.md` still lists
   O10 point 5 as open.
@@ -224,13 +230,14 @@ Carried over:
   `.gitignore` covers `.env` and `.env.*`, and no key-shaped string appears
   anywhere in the history — so the transcript was the whole of the exposure and
   rotating closes it.
-- ~~**Delete `ANTHROPIC_API_KEY` from the Vercel client project.**~~ **Done 22.09.**
-  It belongs only in GitHub Actions secrets. Note that the `claude` check stays
-  red until that secret is set on the repository: it fails environment validation
-  before it reads a diff, so a red `claude` is not a review finding. `build-test`
-  is the check that gates a merge.
+- ~~**Delete `ANTHROPIC_API_KEY` from the Vercel client project.**~~ **Done 22.09**,
+  and nothing wants that key now: the workflow that read it was deleted on 23.09
+  (O8), so no repository secret is owed for it either. Rotate it anyway if it was
+  ever in a transcript.
 - **Enable branch protection on `main`** — require a pull request and a green
-  `ci`: https://github.com/saveezirfan0-cloud/thc-portal/settings/rules/new?target=branch
+  `build-test` (the job name, not the workflow; `ci` is the workflow and a branch
+  rule wants the job):
+  https://github.com/saveezirfan0-cloud/thc-portal/settings/rules/new?target=branch
 - **Turn on leaked-password protection** in Supabase Auth. The advisor still
   reports it off.
 - **Set the secrets this build needs** (docs/12): `SUPABASE_SERVICE_ROLE_KEY`
@@ -239,10 +246,11 @@ Carried over:
   Office project — Accept refuses in production without it.
 - **Supabase Auth → Email OTP Expiration → 86400.** Activation and reset links
   otherwise die after an hour.
-- **Deploy the Edge Functions before `install_job_schedules()`** — the
-  `finance-reports` row is enabled and would otherwise post to a 404.
+- **Deploy the Edge Functions before `install_job_schedules()`**, and the
+  migrations before `compliance-daily` (it now calls `rtw_daily`).
+  `finance-reports` is deployed but its schedule stays disabled until P2.
 - **Confirm with THC:** E2b's wording (ADR-0017); the CL1–CL6 wording and which are
-  mandatory; whether ADR-0012's retention-over-removal extends to other
+  mandatory; whether ADR-0019's retention-over-removal extends to other
   right-to-work documents.
 - **Chase THC for the Appendix B inputs**: the contract text, sample completion
   letters, the Willo keys, DNS for the two senders, and the export from the old
@@ -312,6 +320,11 @@ Each of these cost a merge conflict or a red build:
   file in `supabase/tests/`, not from the highest you remember.
 - **Doc numbers collide.** There are two `14-`s right now: this page and
   `14-open-questions.md`. Renumber one when neither is being edited.
+- **A session merging to `main` late collides with sessions that merged
+  early**, even on timestamps: #44 and this build both reached for
+  `20260923090000` and both fixed `age_18`; pgTAP `360` and ADR `0012` were
+  taken twice. Fetch `main` and run `node scripts/check-file-numbering.mjs`
+  before opening the PR, not after.
 - **Parallel builders duplicate helpers even when their files are disjoint.**
   On 23.09 six builders ran at once; merging found two `DocType`s, two share-code
   rules and two sets of verify functions. Before adding a type or a validator to

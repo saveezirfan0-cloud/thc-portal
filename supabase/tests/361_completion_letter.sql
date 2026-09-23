@@ -514,7 +514,7 @@ select is((select count(*)::int from student_visa_v where id = :'stu2'), 0,
   '§7: a worker who switched to a Graduate visa has left the student view');
 
 -- =====================================================================
--- §4 Retention — employment + 2 years, its own rule (ADR-0012)
+-- §4 Retention — employment + 2 years, its own rule (ADR-0019)
 -- =====================================================================
 select set_config('request.jwt.claims', '', true);
 select is((remove_worker(:'stu') ->> 'documentsHeld')::int, 1,

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Content, Logo, ModeSwitch, Shell, Sidebar, Topbar } from '@thc/ui';
+import { Avatar, Content, Logo, ModeSwitch, Shell, Sidebar, SignOut, Topbar } from '@thc/ui';
 import type { ReactNode } from 'react';
 
 /**
@@ -57,6 +57,17 @@ export interface OfficeShellProps {
    */
   timezone?: ReactNode;
   actions?: ReactNode;
+  /**
+   * The signed-in operator, for the sidebar foot
+   * (`wireframes/backoffice/dashboard.html`: avatar, name, role).
+   *
+   * A prop rather than a lookup in here, because five screens render this
+   * shell from a client component (`StaffScreen`, `RolesScreen`,
+   * `ClientsScreen`, `ClientCard`, `ProfileScreen`), and a `next/headers`
+   * read anywhere in the shell's import graph fails their build. Server
+   * pages pass it; the sign-out button below does not wait for it.
+   */
+  user?: { name: string; role?: string };
   children: ReactNode;
 }
 
@@ -66,6 +77,7 @@ export function OfficeShell({
   crumbs,
   timezone = 'All times UK (Europe/London)',
   actions,
+  user,
   children,
 }: OfficeShellProps) {
   return (
@@ -88,6 +100,20 @@ export function OfficeShell({
               {body}
             </Link>
           )}
+          footer={
+            <>
+              {user ? (
+                <>
+                  <Avatar name={user.name} size="sm" />
+                  <div>
+                    <div className="sm strong">{user.name}</div>
+                    {user.role ? <div className="xs muted">{user.role}</div> : null}
+                  </div>
+                </>
+              ) : null}
+              <SignOut className="ml-auto" />
+            </>
+          }
         />
       }
     >
@@ -99,6 +125,12 @@ export function OfficeShell({
           <>
             {actions}
             <ModeSwitch small />
+            {/* The sidebar foot is `display: none` below 760px, where the rail
+                becomes a bottom bar — so on a phone the button above is gone
+                and this is the only sign-out left. */}
+            <span className="only-phone">
+              <SignOut />
+            </span>
           </>
         }
       />

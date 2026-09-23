@@ -10,7 +10,7 @@ standing on each other, and when not to bother.
 | ------------------------------------------------ | ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Subagent inside one session**                  | "Use the `scheduling` agent to …"               | A slice of work you want done while you keep the thread. The subagent gets only the brief you write plus `.claude/agents/<bot>.md`; it reports back and you keep the conclusion. |
 | **Its own session** (web or CLI, one per domain) | Open the repo, start on `feat/<domain>-<thing>` | A whole feature. This is the real parallelism: separate branches, separate working trees, separate PRs.                                                                          |
-| **GitHub Action**                                | `@claude` on an issue/PR, or a `domain:*` label | Review on every PR, and small fixes from a comment thread. `.github/workflows/claude.yml` routes the label to the agent file; no label means `platform`.                         |
+| ~~**GitHub Action**~~                            | —                                               | **Removed 23.09.2026** (O8). `.github/workflows/claude.yml` is deleted, so `@claude` and the `domain:*` label do nothing on GitHub. Run the bots in-session instead.             |
 
 The unit of parallelism is **a branch**, not a bot. Two bots in one branch will collide.
 One bot in two branches is fine.
@@ -116,8 +116,8 @@ pnpm lint typecheck test                    pnpm lint typecheck test
 PR, domain:onboarding label                 PR, domain:directory label
 ```
 
-Both PRs get the automatic `qa-reviewer` pass from `.github/workflows/claude.yml`. Merge
-order does not matter, because the file sets are disjoint.
+Run `qa-reviewer` in-session on each before opening its PR — there is no automatic pass on
+GitHub any more (O8). Merge order does not matter, because the file sets are disjoint.
 
 ## 6. Briefing a bot well
 

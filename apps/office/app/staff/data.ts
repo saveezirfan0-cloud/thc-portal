@@ -9,6 +9,15 @@ import type { StaffRow, StudentRow } from './types';
  * state. admin_all is the only policy that reaches more than one row, and
  * both views are security_invoker, so §11.1 holds without the screen
  * doing anything: a client sees nobody, a worker sees only themselves.
+ *
+ * `block_reason` is the one exception, and the sub-view it comes through
+ * is not redundant. Since 20260923090000 no PostgREST role holds that
+ * column on `staff` at all — a worker could otherwise read the manager's
+ * internal note about themselves straight off the table (§10.1), which
+ * RLS cannot prevent because policies filter rows and never columns. It
+ * arrives here through `staff_block_reason_v`, an owner-rights view that
+ * carries the admin gate in its own body. Delete that and this column
+ * goes null for everyone, including the office.
  */
 export function supabaseConfigured(): boolean {
   return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);

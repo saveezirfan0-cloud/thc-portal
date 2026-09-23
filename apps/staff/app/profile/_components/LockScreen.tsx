@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { Pill } from '@thc/ui';
+import { Pill, SignOut } from '@thc/ui';
 import { HELP_EMAIL } from '../types';
 import type { AppLock } from '../lock';
 
@@ -31,16 +31,6 @@ const QUIZ_COPY =
   'which is the maximum number permitted at this stage. As passing this assessment is a ' +
   "required part of onboarding, we're unable to progress your application any further at " +
   'this time.';
-
-function SignOut() {
-  return (
-    <form action="/auth/signout" method="post">
-      <button className="btn ghost block" type="submit">
-        Sign out
-      </button>
-    </form>
-  );
-}
 
 function Static({
   badge,
@@ -74,7 +64,7 @@ export function LockScreen({ lock, leftAt }: { lock: AppLock; leftAt?: string | 
             <Link className="btn outline block" href="/profile/payments">
               Payment information — earnings history
             </Link>
-            <SignOut />
+            <SignOut size="md" block />
           </>
         }
       >
@@ -98,7 +88,7 @@ export function LockScreen({ lock, leftAt }: { lock: AppLock; leftAt?: string | 
             <p className="sm muted">
               If you have any questions, please contact us at: <b className="cyan">{HELP_EMAIL}</b>
             </p>
-            <SignOut />
+            <SignOut size="md" block />
           </>
         }
       >
@@ -116,7 +106,7 @@ export function LockScreen({ lock, leftAt }: { lock: AppLock; leftAt?: string | 
           </Pill>
         }
         title="Your application is closed."
-        actions={<SignOut />}
+        actions={<SignOut size="md" block />}
       >
         Please contact us at: <b className="cyan">{HELP_EMAIL}</b>
       </Static>
@@ -127,7 +117,7 @@ export function LockScreen({ lock, leftAt }: { lock: AppLock; leftAt?: string | 
     // §1.7: a removed worker cannot sign in at all, "so no screen applies".
     // This exists only for a session that outlived the removal.
     return (
-      <Static title="This account is closed." actions={<SignOut />}>
+      <Static title="This account is closed." actions={<SignOut size="md" block />}>
         Please contact us at: <b className="cyan">{HELP_EMAIL}</b>
       </Static>
     );
@@ -143,7 +133,7 @@ export function LockScreen({ lock, leftAt }: { lock: AppLock; leftAt?: string | 
         </Pill>
       }
       title="Your account is on hold."
-      actions={<SignOut />}
+      actions={<SignOut size="md" block />}
     >
       Please contact the office at: <b className="cyan">{HELP_EMAIL}</b>
     </Static>

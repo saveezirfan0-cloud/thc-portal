@@ -1,6 +1,6 @@
 -- =====================================================================
 -- A refused upload may be discarded; evidence may not (§2.3, §2.6,
--- completion letter requirement §4, ADR-0012)
+-- completion letter requirement §4, ADR-0019)
 --
 -- The Staff App's upload actions take the object path back from the
 -- browser and, when the worker's RPC refuses it, remove the object with

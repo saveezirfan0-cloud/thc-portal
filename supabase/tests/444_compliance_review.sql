@@ -1,5 +1,5 @@
 -- =====================================================================
--- 360 · Compliance → Needs review and Radar (§4.1–4.3, §10.7)
+-- 444 · Compliance → Needs review and Radar (§4.1–4.3, §10.7)
 --   compliance_verify_document(), compliance_reject_document(), compliance_verify_declaration(),
 --   compliance_reject_declaration(), compliance_review_queue_v, compliance_radar_v
 --   from 20260923100000_compliance_review.sql

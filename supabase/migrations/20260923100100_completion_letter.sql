@@ -27,7 +27,7 @@
 --                      and is exported through compliance_evidence_audit_v.
 --   §4   Retention     employment + 2 years for the completion letter: a
 --                      §1.7 removal inside that window HOLDS the letter
---                      and its file instead of deleting them (ADR-0012).
+--                      and its file instead of deleting them (ADR-0019).
 --   §4   Reporting     student_visa_v, extended (the existing §4.5 view).
 --   §5   Notifications CL1–CL6 in the §8 register (packages/notifications).
 --   §7   Edge cases    future completion dates, visa expiring around
@@ -71,7 +71,7 @@ comment on column compliance_docs.completion_date is
 comment on column compliance_docs.confirmed_visa_expiry is
   'The visa expiry the reviewer confirmed on approving a completion letter (§2.2). The worker''s right_to_work_until becomes the EARLIER of this and what was on file.';
 comment on column compliance_docs.retain_until is
-  'Set only by a §1.7 removal that falls inside a legal retention window (completion letter: employment + 2 years, ADR-0012). The row and its file are held until this date and purged by rtw_daily().';
+  'Set only by a §1.7 removal that falls inside a legal retention window (completion letter: employment + 2 years, ADR-0019). The row and its file are held until this date and purged by rtw_daily().';
 
 alter table staff
   add column if not exists wtr_optout_signed_at   timestamptz,
@@ -900,7 +900,7 @@ end $$;
 -- meet — a worker who WAS employed asks to be removed inside that window
 -- — the legal obligation wins (UK GDPR Art. 17(3)(b)) and the letter and
 -- its file are held, with retain_until on the row, until rtw_daily()
--- purges them. ADR-0012 records the decision and asks THC to confirm it.
+-- purges them. ADR-0019 records the decision and asks THC to confirm it.
 --
 -- Employment ends when they left (left_at) or, if they never did, at the
 -- removal itself. Someone never employed (no contract, no Employee ID) has
@@ -1044,7 +1044,7 @@ begin
 end $$;
 
 comment on function public.remove_worker(uuid, timestamptz) is
-  '§1.7 GDPR removal. Irreversible anonymisation; documents, bank details, referees, checklist and push subscriptions deleted; files queued for gdpr-purge; login unlinked; future bookings released. EXCEPT a completion letter of someone who was employed, removed inside employment + 2 years: held with retain_until and purged by rtw_daily() when the window closes (completion letter requirement §4, ADR-0012).';
+  '§1.7 GDPR removal. Irreversible anonymisation; documents, bank details, referees, checklist and push subscriptions deleted; files queued for gdpr-purge; login unlinked; future bookings released. EXCEPT a completion letter of someone who was employed, removed inside employment + 2 years: held with retain_until and purged by rtw_daily() when the window closes (completion letter requirement §4, ADR-0019).';
 
 -- ---------------------------------------------------------------------
 -- 12 · The daily half: right-to-work alerts and the retention purge.
@@ -1105,7 +1105,7 @@ begin
     returning 1
   ) select count(*)::int into v_alerts from q;
 
-  -- The retention purge (ADR-0012). The file is queued BEFORE the row that
+  -- The retention purge (ADR-0019). The file is queued BEFORE the row that
   -- names it is deleted; the delete writes completion_letter.purged to the
   -- audit trail through its trigger.
   for r in

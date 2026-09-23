@@ -19,13 +19,16 @@ import type {
 /**
  * Reads for /staff/:id (§9.6).
  *
- * Every read in one round of `Promise.all`, because the profile is ten
+ * Every read in one round of `Promise.all`, because the profile is a dozen
  * independent lists (plus the signed-in manager's name) and serialising
  * them would show the manager a blank page for as long as the slowest one
- * takes. Every view but one is security_invoker, so the gate is `staff`'s
+ * takes. Every view but two is security_invoker, so the gate is `staff`'s
  * own RLS: a client sees nobody here and a worker sees only themselves.
- * The exception, feedback_entries_v, returns rows to an admin only
- * (ADR-0016).
+ * The exceptions are feedback_entries_v, which returns rows to an admin
+ * only (ADR-0016), and `block_reason`, which no PostgREST role holds on
+ * `staff` since 20260923090000 and which reaches this screen through the
+ * owner-rights `staff_block_reason_v` — see the note in ../data.ts before
+ * touching it.
  *
  * A missing profile is `profile: null` with no problem string — the page
  * turns that into a 404 rather than an error panel, because a worker who
