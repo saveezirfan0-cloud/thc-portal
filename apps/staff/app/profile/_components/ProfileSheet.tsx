@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Avatar, Pill } from '@thc/ui';
+import { Avatar, Pill, SignOut } from '@thc/ui';
 import { p45Availability } from '../lock';
 import { HELP_EMAIL } from '../types';
 import type { StaffProfile } from '../types';
@@ -78,11 +78,7 @@ export function ProfileSheet({
           </Link>
         </div>
 
-        <form action="/auth/signout" method="post">
-          <button className="btn block" type="submit">
-            Sign out
-          </button>
-        </form>
+        <SignOut tone="default" size="md" block />
 
         {/* Text, not a link (§10.1). */}
         <div className="xs muted" style={{ textAlign: 'center' }}>

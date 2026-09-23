@@ -13,7 +13,7 @@
 --      address anyone cares to type.
 -- =====================================================================
 begin;
-select plan(71);
+select plan(73);
 \ir _shared/fixtures.psql
 
 -- ---------------------------------------------------------------------
@@ -246,6 +246,21 @@ select doesnt_match(
   (select prosrc from pg_proc where proname = 'submit_application'),
   '[^_]current_date',
   'and never from current_date, which is UTC on Supabase and refuses an applicant on their eighteenth birthday');
+
+-- The same rule, one layer down. The function was fixed and the CHECK
+-- constraint it writes through was not, so submit_application() computed
+-- the right answer and `staff` then refused the row — which is how the
+-- dateline pair below went red on 23.09 having passed every afternoon
+-- build before it. Pinned textually for the reason above: a behavioural
+-- test would pass all day and fail in the hour before midnight UTC.
+select matches(
+  (select pg_get_constraintdef(oid) from pg_constraint where conname = 'age_18'),
+  'Europe/London',
+  '§1.8 the age_18 constraint measures eighteen against London''s date');
+select doesnt_match(
+  (select pg_get_constraintdef(oid) from pg_constraint where conname = 'age_18'),
+  '[^_]current_date',
+  'and never the caller''s session date, which refuses an applicant on their eighteenth birthday');
 
 -- Behaviour, as far as it can be pinned deterministically: the answer must
 -- not depend on the caller's session timezone. Someone born exactly
