@@ -784,9 +784,50 @@ one at a time, so a failure halfway leaves the project part-applied with a green
 `build-test` above it, and the log is the only place that says which version it stopped
 at.
 
-## O15 · `BottomNav`'s `renderLink` callback has now crashed the Staff App twice
+## O16 · A worker could read the manager's reason for blocking them — **RESOLVED 23.09**
 
-**This one is `design-system`'s, and it is a prop that should not exist.**
+`0001_init.sql:482` grants a worker their own row and every column on it:
+
+```sql
+create policy staff_self on staff for select using (user_id = auth.uid());
+```
+
+So `GET /rest/v1/staff?select=block_reason` returned the internal note a manager typed
+about that worker. §10.1 is explicit: "the manager's reason for the block is internal and
+is never shown to the worker." The application never fetched it — `staff_me()` does not
+select it and says so — but the API did, so the rule was held by discipline rather than by
+structure.
+
+**RLS could not fix it.** Policies filter rows, never columns. And the obvious privilege
+fix breaks the office: admins and workers are the same Postgres role, and both
+`staff_directory_v` and `staff_profile_v` are `security_invoker`, so a blanket
+`revoke select (block_reason) … from authenticated` would have closed §9.6's screens with
+it.
+
+`20260923090000_block_reason_is_internal.sql` applies ADR-0004 one column wide: the
+table-wide SELECT is revoked and re-granted for every column **except** that one, and the
+office reads it back through `staff_block_reason_v`, an owner-rights view carrying
+`current_app_role() = 'admin'` in its own body. `staff_directory_v` keeps its column list,
+order and `security_invoker` reloption — verified identical — so no office column list
+moved.
+
+**Two consequences worth knowing before you touch `staff`:**
+
+- A column added to `staff` by a later migration is **not readable** by `anon` or
+  `authenticated` until that migration grants it. That is deliberate — `staff` carries the
+  date of birth, NI number, home address and right-to-work branch, so failing closed on a
+  new column is correct, and the failure is a loud 42501 rather than a quiet leak. It will
+  still surprise whoever hits it.
+- An **admin** can no longer read `block_reason` off the table either, by design. The
+  owner-rights view is the whole of the office's access to it.
+
+The migration ends with a `do` block that raises if the revoke did not take or the re-grant
+did not — a `revoke` that silently no-ops is how `20260921123503` was defeated by PostGIS's
+grants, and that would have left this leak open under a green deploy.
+
+## O15 · `BottomNav`'s `renderLink` callback crashed the Staff App twice — **RESOLVED 23.09**
+
+**It was `design-system`'s, and it was a prop that should not have existed. It is gone.**
 
 `BottomNav` lives in `packages/ui/src/components/Mobile.tsx` under a file-level
 `'use client'`, and it takes
@@ -817,9 +858,16 @@ boundary. Same markup, same classes, same "locked is a span, not a link" behavio
 the call site and differ only in a directive at the top of a file nobody opens. A screen
 bot copying the Office pattern into the Staff App writes a 500 and gets a green build.
 
-**The fix is to delete the prop**, not to document it: `BottomTabs` proves the data-driven
-shape covers every caller, and there are no others. That is a `packages/ui` change, which
-`docs/10` §3 reserves for `design-system`, so it is filed here rather than taken. Until it
-goes, a lint rule banning function props to anything exported from `Mobile.tsx` would do
-the same job.
+**The prop is gone.** `BottomTabs` proved the data-driven shape covers every caller, and a
+check of the remaining `BottomNav` callers — `/shifts/[id]`, the design-system showcase and
+two `packages/ui` tests — found that none of them passed `renderLink`, so deleting it broke
+nothing and no caller had to change. `packages/ui/src/components/Mobile.tsx` now carries the
+reasoning where the next person will read it, including why the Office's `Sidebar` keeps an
+identical-looking callback and is safe.
+
+Note for whoever adds the next mobile component: the asymmetry is still there.
+`Shell.tsx` has no `'use client'` and `Mobile.tsx` does, so a function prop is fine in one
+and a 500 in the other, and nothing at the call site says which you are in. A lint rule
+banning function props to anything exported from `Mobile.tsx` would make that structural
+rather than remembered; it is not written.
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { clsx } from 'clsx';
-import { Fragment, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { ModeSwitch } from './ModeSwitch';
 
@@ -125,16 +125,28 @@ export interface BottomNavItem {
   pending?: boolean;
 }
 
-/** Frosted bottom navigation: Documents · Shifts · Invites · Radar. */
-export function BottomNav({
-  items,
-  activeHref,
-  renderLink,
-}: {
-  items: BottomNavItem[];
-  activeHref?: string;
-  renderLink?: (item: BottomNavItem, className: string, children: ReactNode) => ReactNode;
-}) {
+/**
+ * Frosted bottom navigation: Documents · Shifts · Invites · Radar.
+ *
+ * There is deliberately NO `renderLink` callback (O15). This file carries a
+ * file-level `'use client'`, so a function prop cannot reach it from a server
+ * component — React refuses to serialise one and the page answers 500, not a
+ * warning. That prop existed here until 23.09 and crashed the Staff App twice
+ * in a day: `StaffShell` took out /shifts, /invites and /radar (#35), and
+ * `ProfileShell` took out the whole §10.1 profile sheet (#42). Both shipped
+ * green, because a 500 page carries none of the markers the specs skipped on.
+ *
+ * It was easy to write because the Back Office's `Sidebar` takes an
+ * identical-looking `renderLink` and is perfectly safe — `Shell.tsx` has no
+ * `'use client'`. The two are indistinguishable at the call site, so copying
+ * the Office pattern into the Staff App wrote a 500 that built clean.
+ *
+ * A caller that needs `next/link`, or needs a locked tab to be an unpressable
+ * span rather than a styled anchor, passes DATA to
+ * `apps/staff/app/_components/BottomTabs.tsx` instead: only strings cross the
+ * boundary, and it owns the decision about what a link is.
+ */
+export function BottomNav({ items, activeHref }: { items: BottomNavItem[]; activeHref?: string }) {
   return (
     <nav className="bottom-nav">
       {items.map((item) => {
@@ -159,9 +171,7 @@ export function BottomNav({
             </span>
           );
         }
-        return renderLink ? (
-          <Fragment key={item.href}>{renderLink(item, className, body)}</Fragment>
-        ) : (
+        return (
           <a key={item.href} href={item.href} className={className}>
             {body}
           </a>
