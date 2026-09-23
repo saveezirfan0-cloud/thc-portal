@@ -1,0 +1,213 @@
+/*
+ * /feedback and the profile's Feedback tab (§9.10, §9.6), mirroring the
+ * inline <style> blocks in wireframes/backoffice/feedback.html and
+ * staff-profile.html. Tokens only — no colour or radius is hard-coded
+ * (CLAUDE.md).
+ *
+ * The inbox rows are scoped under `.fb-list` because the profile's own
+ * stylesheet already owns a bare `.fb` (a stacked card); Next keeps both
+ * sheets loaded once each route has been visited, so an unscoped `.fb`
+ * here would restyle the profile feed.
+ */
+
+/* ---- the inbox list ------------------------------------------------ */
+.fb-list .fbhead,
+.fb-list .fb {
+  display: grid;
+  grid-template-columns: 120px 220px minmax(0, 1fr) 300px;
+  gap: 14px;
+  align-items: center;
+}
+.fb-list .fbhead {
+  padding: 6px 16px;
+}
+.fb-list .fb {
+  border: 1px solid var(--line);
+  border-radius: 0;
+  background: var(--panel);
+  padding: 12px 16px;
+}
+.fb-list .fb + .fb {
+  border-top: 0;
+}
+.fb-list .fbhead + .fb {
+  border-top-left-radius: var(--r-card);
+  border-top-right-radius: var(--r-card);
+}
+.fb-list .fb:last-child {
+  border-bottom-left-radius: var(--r-card);
+  border-bottom-right-radius: var(--r-card);
+}
+.fb-list .fb.unread {
+  border-left: 3px solid var(--amber);
+}
+.fb-list .fb.read {
+  border-left: 3px solid var(--line);
+}
+.fb-list .fb.office {
+  border-left: 3px solid var(--purple);
+}
+.fb-list .fb .stars {
+  font-size: 15px;
+}
+.fb-list .fb .who .n {
+  font-weight: 600;
+}
+.fb-list .fb .who .s {
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.fb-list .fb .txt {
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.fb-list .fb .txt .m {
+  display: block;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 3px;
+  font-family: var(--font-mono);
+}
+.fb-list .fb .acts {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.fb-list .fb .acts .note-line {
+  flex: 1 1 100%;
+  text-align: right;
+}
+
+/* ---- toolbar ------------------------------------------------------- */
+.fb-screen .fb-search {
+  height: 32px;
+  width: 260px;
+  max-width: 100%;
+}
+.fb-screen .fb-filter {
+  height: 32px;
+  width: 170px;
+}
+
+/* ---- the office form ----------------------------------------------- */
+.fb-form .fb-form-full {
+  grid-column: 1 / -1;
+}
+.fb-form .fb-form-full:empty {
+  display: none;
+}
+.fb-event {
+  width: 240px;
+  max-width: 100%;
+}
+
+.starpick {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.starpick button {
+  font-family: var(--font-mono);
+  font-size: 22px;
+  line-height: 1;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  padding: 2px;
+  cursor: pointer;
+  border-radius: var(--r-check);
+}
+.starpick button.on {
+  color: var(--amber);
+}
+.starpick button:focus-visible {
+  outline: 2px solid var(--focus-line);
+  outline-offset: 1px;
+}
+.starpick button:disabled {
+  cursor: default;
+}
+.starpick .count {
+  margin-left: 8px;
+}
+
+.typeahead {
+  position: relative;
+}
+.typeahead .dd {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 4px);
+  background: var(--panel);
+  border: 1px solid var(--cyan-line);
+  border-radius: var(--r-field);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  z-index: 3;
+}
+.typeahead .dd .o {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.typeahead .dd .o:hover,
+.typeahead .dd .o.sel {
+  background: var(--cyan-dim);
+}
+.typeahead .dd .o .s {
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+/* ---- the profile tab (§9.6) ----------------------------------------- */
+.fb-profile .fb .h .ml-auto {
+  margin-left: auto;
+}
+
+/* ---- tablet and phone (§1.2) ---------------------------------------- */
+@media (max-width: 1100px) {
+  .fb-list .fbhead,
+  .fb-list .fb {
+    grid-template-columns: 100px 180px minmax(0, 1fr);
+  }
+  .fb-list .fbhead span:last-child {
+    display: none;
+  }
+  .fb-list .fb .acts {
+    grid-column: 1 / -1;
+    justify-content: flex-start;
+  }
+  .fb-list .fb .acts .note-line {
+    text-align: left;
+  }
+}
+
+@media (max-width: 720px) {
+  .fb-list .fbhead {
+    display: none;
+  }
+  .fb-list .fb {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .fb-list .fbhead + .fb {
+    border-top-left-radius: var(--r-card);
+    border-top-right-radius: var(--r-card);
+  }
+  .fb-screen .fb-search,
+  .fb-screen .fb-filter {
+    width: 100%;
+  }
+  .fb-screen .toolbar .search {
+    flex: 1 1 100%;
+  }
+  .fb-form.grid.c3 {
+    grid-template-columns: 1fr;
+  }
+}

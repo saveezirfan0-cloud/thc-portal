@@ -379,7 +379,14 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
           />
         ) : null}
         {tab === 'shifts' ? <Shifts shifts={data.shifts} violations={data.violations} /> : null}
-        {tab === 'feedback' ? <Feedback feedback={data.feedback} /> : null}
+        {tab === 'feedback' ? (
+          <Feedback
+            profile={profile}
+            feedback={data.feedback}
+            shifts={data.shifts}
+            managerName={data.managerName}
+          />
+        ) : null}
       </div>
 
       {/* Block (§9.6, §4.3): the reason is mandatory and is the label. */}
