@@ -140,6 +140,15 @@ last, below a divider. The Staff App's Documents tab is live.
   (`compliance_review_queue_v`, `onboarding_returning_v`) now read it through
   `staff_block_reason_v`. `445` asserts both. A column added to `staff` from
   here on needs its own grant, as #44 intends.
+- **The live database had stopped deploying at #43.** #43 merged
+  `20260922181000` / `182000` after `20260922183015` was already live, so
+  every `deploy-database` since refused them as "below the last remote
+  migration" and applied nothing — #44 and #45 included. Both were
+  self-contained (own grants, pinned search paths), were rehearsed locally in
+  the live order, and were applied by hand on 23.09 and recorded in
+  `supabase_migrations.schema_migrations`; the next push to `main` deploys the
+  rest normally. The job does what its comment says: read the log, never add
+  `--include-all` blind.
 - `supabase/config.toml` `otp_expiry` is 86400 (activation links last a day).
 - `scripts/pgtest-local.sh` — the Docker-free pgTAP harness §7 describes, as a
   script.
