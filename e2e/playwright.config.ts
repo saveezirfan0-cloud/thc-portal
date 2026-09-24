@@ -1,9 +1,29 @@
 import { defineConfig, devices } from '@playwright/test';
 
 /**
- * Phase 0 smoke: each app boots, serves its shell and carries the appearance
- * switch. Once auth lands, the login-per-role journeys go here too (CI runs
- * `pnpm turbo e2e:smoke`).
+ * The browser suite (CI runs `pnpm turbo e2e:smoke`).
+ *
+ * Smoke, per app: it boots, serves its shell, carries the appearance switch,
+ * and its gate (§1.4) sends a stranger to /login. Then the journeys, each
+ * signed in through tests/_support/session.ts as the seeded account it needs:
+ *
+ *   office   the event list and calendar, the shift builder, the event
+ *            board, and `outbox.spec.ts` — a manager's "Send allocation
+ *            sheet" writes exactly one notification_outbox row under the
+ *            register's key (§8, §11.4)
+ *   staff    the public /apply form, the PWA shell and the four app locks,
+ *            the three working screens, `staff.activation.spec.ts` — a GET
+ *            of /activate/:token never spends the link and the submit does,
+ *            once (§2.7) — and `staff.wizard.spec.ts` — step 1 of 11 in
+ *            order, Male/Female before Continue, the lock until documents
+ *            are verified, the base rate only (§10.3, Appendix A)
+ *   client   `client.portal.spec.ts` — the customer's own events and no
+ *            other's, the confirmed line-up and nothing about how it was
+ *            chosen, no money anywhere, feedback locked until the event
+ *            starts and "✓ Feedback sent" after (§11.1–§11.5)
+ *
+ * The journeys that read or seed the database do it with psql through
+ * tests/_support/db.ts and skip, saying why, when no database is reachable.
  */
 const PORTS = { office: 3000, staff: 3001, client: 3002 } as const;
 
@@ -33,7 +53,14 @@ export default defineConfig({
     {
       name: 'office',
       use: { ...devices['Desktop Chrome'], baseURL: `http://127.0.0.1:${PORTS.office}` },
-      testMatch: [/office\..*\.spec\.ts/, /auth\.smoke\.spec\.ts/, /gate\.smoke\.spec\.ts/],
+      testMatch: [
+        /office\..*\.spec\.ts/,
+        // The outbox is written from the Back Office (Send on an event's
+        // document), so the journey runs against this server.
+        /outbox\.spec\.ts/,
+        /auth\.smoke\.spec\.ts/,
+        /gate\.smoke\.spec\.ts/,
+      ],
     },
     {
       // public.* is the logged-out /apply journey (§2.1). It lives in the
@@ -44,6 +71,11 @@ export default defineConfig({
       use: { ...devices['Pixel 7'], baseURL: `http://127.0.0.1:${PORTS.staff}` },
       testMatch: [
         /staff\..*\.spec\.ts/,
+        // Named as well as matched above: /activate/:token is public and
+        // the wizard is the candidate's first signed-in screen, both on
+        // this phone viewport.
+        /staff\.activation\.spec\.ts/,
+        /staff\.wizard\.spec\.ts/,
         /public\..*\.spec\.ts/,
         /auth\.smoke\.spec\.ts/,
         /gate\.smoke\.spec\.ts/,
