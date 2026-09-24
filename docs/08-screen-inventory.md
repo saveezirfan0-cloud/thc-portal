@@ -19,7 +19,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/onboarding` | Kanban (Active / Rejected) | `backoffice/onboarding.html` | 2.2 | onboarding |
 | `/onboarding/:id` | Candidate profile by phase | `backoffice/candidate.html` | 2.3 | onboarding |
 | `/events` | List · Calendar month/week/day | `backoffice/events.html` | 3.1 | scheduling |
-| `/events/new`, `/events/:id/edit` | Shift Builder | `backoffice/shift-builder.html` | 3.2 | scheduling |
+| `/events/new`, `/events/:id/edit` | Shift Builder (`/events/new?from=<id>` opens it as Duplicate: roles copied, no staff, date blank) | `backoffice/shift-builder.html` | 3.2 | scheduling |
 | `/events/:id` | Event board | `backoffice/event-board.html` | 3.3–3.5, 11.4 | scheduling |
 | `/compliance` | Needs review · Radar | `backoffice/compliance.html` | 4.1 | compliance |
 | `/compliance/export` | Completion-letter audit trail (CSV download) | — | completion letter req. §4 | compliance |

@@ -7,6 +7,7 @@ import {
   canRemoveRole,
   canSave,
   draftIssues,
+  draftFromSaved,
   draftLocked,
   draftWindow,
   editRole,
@@ -15,6 +16,7 @@ import {
   reconfirmPlan,
   roleIssues,
 } from '../draft';
+import type { SavedEvent } from '../data';
 
 const DATE = '2026-09-18';
 
@@ -273,5 +275,108 @@ describe('what an edit does to the people already booked (§3.5)', () => {
   it('reports a venue change separately, because it reaches everyone booked', () => {
     expect(reconfirmPlan(before, { ...before, venueId: 'venue-excel' }).venueChanged).toBe(true);
     expect(reconfirmPlan(before, before).venueChanged).toBe(false);
+  });
+});
+
+describe('a saved event reopened, and Duplicate (§3.2)', () => {
+  const saved: SavedEvent = {
+    id: 'ev-gala',
+    clientId: 'client-leonardo',
+    venueId: 'venue-leonardo',
+    title: 'Gala Dinner',
+    date: DATE,
+    poNumber: '4471-A',
+    onsiteContact: 'Front desk',
+    notes: 'Service lift at the rear',
+    autoAssign: false,
+    cancelledAt: null,
+    sections: [
+      {
+        id: 'sec-chef',
+        roleId: 'role-chef',
+        start: '07:00',
+        end: '15:00',
+        headcount: 2,
+        buffer: 0,
+        chargeRate: 30.69,
+        payRate: 19,
+        dressCode: 'Chef whites',
+        autoAssign: false,
+        allocationPerHour: 3,
+        confirmed: 2,
+        booked: 2,
+      },
+      {
+        id: 'sec-waiting',
+        roleId: 'role-waiting',
+        start: '17:00',
+        end: '01:30',
+        headcount: 12,
+        buffer: 2,
+        chargeRate: 22.97,
+        payRate: 14,
+        dressCode: 'Burgundy bow tie (supplied)',
+        autoAssign: true,
+        allocationPerHour: 14,
+        confirmed: 9,
+        booked: 13,
+      },
+    ],
+  };
+  const dressCodes = (roleId: string) =>
+    roleId === 'role-chef' ? ['Chef whites'] : ['Black & whites'];
+
+  it('edit keeps the section ids, the date and the switches as stored', () => {
+    const draft = draftFromSaved(saved, dressCodes, 'edit');
+    expect(draft.date).toBe(DATE);
+    expect(draft.roles.map((r) => r.id)).toEqual(['sec-chef', 'sec-waiting']);
+    expect(draft.autoAssign).toBe(false);
+    expect(draft.roles.map((r) => r.autoAssign)).toEqual([false, true]);
+    // The derived window pre-fills a new role: earliest start → latest end.
+    expect([draft.overallStart, draft.overallEnd]).toEqual(['07:00', '01:30']);
+  });
+
+  it('duplicate copies the roles but no section id — so no staff come with it', () => {
+    const draft = draftFromSaved(saved, dressCodes, 'duplicate');
+    expect(draft.roles.every((r) => r.id === null)).toBe(true);
+    expect(
+      draft.roles.map((r) => [r.roleId, r.start, r.end, r.headcount, r.buffer, r.payRate]),
+    ).toEqual([
+      ['role-chef', '07:00', '15:00', 2, 0, 19],
+      ['role-waiting', '17:00', '01:30', 12, 2, 14],
+    ]);
+    expect(draft.roles.map((r) => r.chargeRate)).toEqual([30.69, 22.97]);
+    expect(draft.roles.map((r) => r.allocationPerHour)).toEqual([3, 14]);
+    expect([draft.clientId, draft.venueId, draft.title, draft.poNumber]).toEqual([
+      'client-leonardo',
+      'venue-leonardo',
+      'Gala Dinner',
+      '4471-A',
+    ]);
+  });
+
+  it('duplicate leaves the date empty, so it cannot be saved onto the same day by accident', () => {
+    const draft = draftFromSaved(saved, dressCodes, 'duplicate');
+    expect(draft.date).toBe('');
+    expect(canSave(draft)).toBe(false);
+    expect(canSave({ ...draft, date: '2026-10-02' })).toBe(true);
+  });
+
+  it('duplicate starts auto-assign ON at event and role level, the §3.4 default', () => {
+    const draft = draftFromSaved(saved, dressCodes, 'duplicate');
+    expect(draft.autoAssign).toBe(true);
+    expect(draft.roles.every((r) => r.autoAssign)).toBe(true);
+  });
+
+  it('a dress code not on the client list reopens as this event’s "Other" text', () => {
+    for (const as of ['edit', 'duplicate'] as const) {
+      const [chef, waiting] = draftFromSaved(saved, dressCodes, as).roles;
+      expect([chef!.dressCode, chef!.dressCodeOther]).toEqual(['Chef whites', '']);
+      expect([waiting!.dressCode, waiting!.dressCodeOther]).toEqual([
+        DRESS_CODE_OTHER,
+        'Burgundy bow tie (supplied)',
+      ]);
+      expect(effectiveDressCode(waiting!)).toBe('Burgundy bow tie (supplied)');
+    }
   });
 });

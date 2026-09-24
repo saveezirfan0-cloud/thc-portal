@@ -214,8 +214,9 @@ export function ShiftBuilder({
         {cancelled ? (
           <Alert tone="coral">
             <b>This event is cancelled.</b> A cancelled event is not edited — it stays on the record
-            with its Cancelled status (§1.5, §3.2). Re-run it as a new event, or use Duplicate on
-            the event board to copy the roles.
+            with its Cancelled status (§1.5, §3.2). Re-run it as a new event, or{' '}
+            <Link href={`/events/new?from=${saved?.id ?? ''}`}>duplicate it</Link> to copy the
+            roles.
           </Alert>
         ) : null}
 
@@ -539,8 +540,15 @@ export function ShiftBuilder({
           </Panel>
         ) : null}
 
-        {mode === 'edit' ? (
-          <Panel title="Duplicate">
+        {mode === 'edit' && saved ? (
+          <Panel
+            title="Duplicate"
+            actions={
+              <Link className="btn sm" href={`/events/new?from=${saved.id}`}>
+                Duplicate
+              </Link>
+            }
+          >
             <span className="sm muted">
               Multi-day = separate events created via <b>Duplicate</b> on the event board. The clone
               copies the roles (times, headcount, buffer, rates, dress code), <b>not the staff</b>,

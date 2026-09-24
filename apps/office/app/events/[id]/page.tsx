@@ -2,13 +2,11 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Alert, Panel, Pill } from '@thc/ui';
 import {
-  UK_ZONE,
   derivedEventWindow,
   eventFill,
   eventStatus,
   formatEventFill,
   formatOpen,
-  formatTimeIn,
   isEditLocked,
   isNotifiedOnCancel,
   orderSections,
@@ -16,7 +14,10 @@ import {
 import { OfficeShell } from '../../_components/OfficeShell';
 import { ViewerZone } from '../_components/ViewerZone';
 import { StatusPill } from '../_components/EventViews';
+import { ScheduledWindow } from '../_components/ScheduledWindow';
 import { loadBoard } from './board-data';
+import { canToggleAutoAssign } from './board-model';
+import { AutoAssignSwitch } from './_components/AutoAssignSwitch';
 import { RoleBoard } from './_components/RoleBoard';
 import { CancelEvent } from './_components/CancelEvent';
 import { DocumentActions } from './_components/DocumentActions';
@@ -38,7 +39,24 @@ export const metadata = { title: 'Event board · THC Back Office' };
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const event = await loadBoard(id);
+  const { event, problem } = await loadBoard(id);
+  // A read that FAILED is not a missing event: say what went wrong instead
+  // of a 404 that tells the manager the event does not exist.
+  if (problem) {
+    return (
+      <OfficeShell
+        activeHref="/events"
+        title="Event board"
+        crumbs={
+          <>
+            <Link href="/events">Scheduling</Link> / <b>Event board</b>
+          </>
+        }
+      >
+        <Alert tone="coral">{problem}</Alert>
+      </OfficeShell>
+    );
+  }
   if (!event) notFound();
 
   const sections = orderSections(
@@ -89,6 +107,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               Edit
             </Link>
           )}
+          {/* §3.2: multi-day = separate events via Duplicate — roles, not staff. */}
+          <Link className="btn sm" href={`/events/new?from=${event.id}`}>
+            Duplicate
+          </Link>
           {/* §11.4. No document at all for a cancelled event (§3.3). */}
           {status === 'cancelled' ? null : (
             <DocumentActions
@@ -116,6 +138,13 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               <StatusPill status={status} />
               <Pill tone={fill.open === 0 ? 'green' : 'amber'}>{formatEventFill(fill)}</Pill>
               {open ? <span className="muted sm">{open}</span> : null}
+              {/* §3.4: purple, default ON; both switches must be on for a round. */}
+              <AutoAssignSwitch
+                eventId={event.id}
+                checked={event.autoAssign}
+                disabled={!canToggleAutoAssign(status)}
+                label="Auto-assign · event level"
+              />
             </span>
           }
         >
@@ -126,13 +155,21 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                 {event.venueName}
                 <span className="sub">{event.venueAddress}</span>
               </Field>
-              <Field label="Derived window (UK time)">
-                <span className="mono">
-                  {window
-                    ? `${formatTimeIn(window.startsAt, UK_ZONE)} – ${formatTimeIn(window.endsAt, UK_ZONE)}`
-                    : '—'}
+              <Field label="Event window">
+                {window ? (
+                  <ScheduledWindow
+                    className="win mono"
+                    lineClass="l2"
+                    startsAt={window.startsAt.toISOString()}
+                    endsAt={window.endsAt.toISOString()}
+                    suffix="UK time"
+                  />
+                ) : (
+                  <span className="mono">—</span>
+                )}
+                <span className="muted xs">
+                  {event.date} · earliest role start → latest role end (RULE-18)
                 </span>
-                <span className="sub">{event.date}</span>
               </Field>
               <Field label="PO number">
                 <span className="mono">{event.poNumber || '—'}</span>
@@ -168,6 +205,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               section={event.sections.find((s) => s.id === section.id)!}
               status={status}
               eventId={event.id}
+              clientName={event.clientName}
+              eventAutoAssign={event.autoAssign}
+              weights={event.weights}
               payrollExported={Boolean(event.payrollExportedAt)}
             />
           ))
