@@ -6,11 +6,15 @@
  *   ?mode=cutoff      the 12:05 UK deadline — drop confirmed workers who
  *                     never pressed "I'm ready", then re-fill.
  *   ?mode=escalation  every 10 minutes — sections already under way and
- *                     still short, ignoring the headcount + buffer cap.
+ *                     still short, ignoring the headcount + buffer cap,
+ *                     inviting only within settings.escalation_radius_miles
+ *                     of the venue (§3.4), as source = 'escalation'.
  *
  * Everything decidable lives elsewhere and is tested:
  *
- *   * who is eligible — `auto_assign_candidates` (pgTAP, 130)
+ *   * who is eligible — `auto_assign_candidates` (pgTAP, 130); with
+ *     `p_escalation` it also gates anyone outside the escalation radius
+ *     (pgTAP, 591), so the radius is read from settings in SQL, not here
  *   * who to invite, in what order — `selectInvitees` in packages/domain
  *     (vitest), which is also what the event board ranks with, so the
  *     board and the engine cannot disagree about who is top of the list
@@ -80,8 +84,13 @@ Deno.serve((request) =>
     if (dueError) throw new Error(`auto_assign_due_shifts: ${dueError.message}`);
 
     for (const section of (due ?? []) as { shift_id: string; allocation: number }[]) {
+      // §3.4: the escalation pool is "every worker qualified for that role
+      // within a 3-mile radius of the venue" — the radius is
+      // settings.escalation_radius_miles, applied in SQL as the
+      // `outside_radius` gate, which selectInvitees skips like any other.
       const { data: pool, error: poolError } = await db.rpc('auto_assign_candidates', {
         p_shift: section.shift_id,
+        p_escalation: mode === 'escalation',
       });
       if (poolError) throw new Error(`auto_assign_candidates: ${poolError.message}`);
 
@@ -94,7 +103,9 @@ Deno.serve((request) =>
         const { data: result, error: inviteError } = await db.rpc('invite_worker', {
           p_shift: section.shift_id,
           p_staff: staffId,
-          p_source: 'auto',
+          // 'escalation' also makes invite_worker re-check the radius at
+          // the insert, and records how the replacement was found.
+          p_source: mode === 'escalation' ? 'escalation' : 'auto',
           // §3.4: escalation invites "ignoring the headcount + buffer cap".
           // Never set by the hourly round, which is what keeps the cap
           // meaningful before a shift starts.
