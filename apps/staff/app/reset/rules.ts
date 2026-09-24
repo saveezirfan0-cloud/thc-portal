@@ -1,38 +1,15 @@
 /**
  * Password rules for A3 — §10.2, wireframes/staff/auth.html.
  *
- * The wireframe shows them as a live checklist, so the rules have to be
- * readable by both the form (as the worker types) and the server action
- * (which is the one that actually decides). One function, used twice —
- * two copies drift and the server ends up rejecting a password the screen
- * ticked.
+ * The rules themselves live in `@thc/domain` (password.ts) since the Back
+ * Office and Client Portal gained their own A3: one definition for three
+ * apps, so no screen ticks a password another server refuses. This module
+ * keeps the names the Staff App already imports.
  */
-export interface PasswordChecks {
-  long: boolean;
-  hasNumber: boolean;
-  matches: boolean;
-}
-
-export const MIN_LENGTH = 10;
-
-export function checkPassword(password: string, confirm: string): PasswordChecks {
-  return {
-    long: password.length >= MIN_LENGTH,
-    hasNumber: /\d/.test(password),
-    // An empty pair is not a match: otherwise the checklist ticks green on
-    // an untouched form.
-    matches: password.length > 0 && password === confirm,
-  };
-}
-
-export function passwordOk(checks: PasswordChecks): boolean {
-  return checks.long && checks.hasNumber && checks.matches;
-}
-
-/** The one message for a password that fails the rules. */
-export function passwordError(checks: PasswordChecks): string | null {
-  if (!checks.matches) return 'Passwords don’t match.';
-  if (!checks.long) return `Use at least ${MIN_LENGTH} characters.`;
-  if (!checks.hasNumber) return 'Include at least one number.';
-  return null;
-}
+export {
+  PASSWORD_MIN_LENGTH as MIN_LENGTH,
+  checkPassword,
+  passwordError,
+  passwordOk,
+} from '@thc/domain';
+export type { PasswordChecks } from '@thc/domain';

@@ -2,7 +2,9 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { safeNextPath } from '@thc/db';
 import { createClient } from '@thc/db/server';
+import { SIGN_IN_REFUSED } from './messages';
 
 /**
  * Email + password sign-in (§1.4).
@@ -10,11 +12,20 @@ import { createClient } from '@thc/db/server';
  * The failure message never distinguishes a wrong email from a wrong
  * password: saying which one is wrong tells an attacker whether an account
  * exists. The wireframes word it that way deliberately.
+ *
+ * A Client Portal (or Staff) account signing in here is refused THE SAME
+ * WAY — `wireframes/backoffice/login.html`, error state: "A client-portal
+ * account signing in here is refused the same way (role-based routing,
+ * §1.4)". Admitting the session and letting middleware answer with the
+ * wrong-app page would tell whoever is typing that the password was right
+ * and which app the account belongs to. So the session is dropped here,
+ * before it is ever used, and the form shows the generic message.
  */
 export async function signIn(_prev: string | null, formData: FormData): Promise<string | null> {
   const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
-  const next = String(formData.get('next') ?? '') || '/dashboard';
+  // Only ever a path on this app (§1.4): see packages/db/src/redirect.ts.
+  const next = safeNextPath(formData.get('next'), '/dashboard');
 
   if (!email || !password) return 'Enter your email and password.';
 
@@ -24,7 +35,7 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
   }
 
   const supabase = createClient(await cookies());
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     // The visitor gets a message that reveals nothing; the real reason goes to
     // the server log, where an operator can see whether this was a genuine bad
@@ -35,8 +46,21 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
       code: error.code,
       message: error.message,
     });
-    return 'Email or password is incorrect. Try again or reset your password.';
+    return SIGN_IN_REFUSED;
   }
 
-  redirect(next.startsWith('/') ? next : '/dashboard');
+  // The same source the middleware reads: app_metadata, never user_metadata,
+  // which the user can write themselves.
+  const role = data?.user?.app_metadata?.['role'];
+  if (role !== 'admin') {
+    // Local scope: this browser's session only. A client signed in to the
+    // Client Portal elsewhere stays signed in there.
+    await supabase.auth.signOut({ scope: 'local' });
+    console.warn('[sign-in] refused a non-admin account at the Back Office', {
+      role: typeof role === 'string' ? role : null,
+    });
+    return SIGN_IN_REFUSED;
+  }
+
+  redirect(next);
 }

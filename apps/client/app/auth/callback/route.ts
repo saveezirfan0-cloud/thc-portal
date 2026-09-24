@@ -4,16 +4,15 @@ import { safeNextPath } from '@thc/db';
 import { createClient } from '@thc/db/server';
 
 /**
- * Where an emailed link lands — §10.2 (A3), §2.7 (activation).
+ * Where the Client Portal's emailed reset link lands — §10.2 (A1 → A3).
  *
  * Supabase sends a one-time `code` that has to be exchanged for a session
- * on the server; the recovery link is useless without this step, and A3
- * would show "this link has expired" for every link ever sent.
+ * on the server; without this step /reset would show "this link has
+ * expired" for every link ever sent.
  *
- * `next` is only ever honoured as a path on this origin. An open redirect
- * on the end of an emailed link is a phishing kit: the mail is genuinely
- * from THC, and the page it lands on would not be. `//evil` and `/\evil`
- * both passed the old `startsWith('/')` test; the shared guard refuses them.
+ * `next` is only ever honoured as a path on this origin (the shared guard in
+ * packages/db/src/redirect.ts): an open redirect on the end of a genuine THC
+ * email is a phishing kit.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
