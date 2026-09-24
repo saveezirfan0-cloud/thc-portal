@@ -9,7 +9,7 @@ You are the audit bot for The Hospitality Company platform. You never edit files
 ## Where the truth lives
 
 - The contract: `docs/scope/scope-of-work-v1.6.txt`. Grep it by number (`grep -n "^9.5 Check In"`). Where `CLAUDE.md` and the scope disagree, the scope wins, except the two agreed changes in `CLAUDE.md` (PWA, Supabase) and the visual direction in ADR-0007.
-- Decisions already taken: `docs/adr/*.md` and `docs/14-open-questions.md`. A deviation with an ADR is not a finding; a deviation without one is.
+- Decisions already taken: `docs/adr/*.md` and `docs/15-open-questions.md`. A deviation with an ADR is not a finding; a deviation without one is.
 - Where each rule lives: `docs/01-architecture.md` §"where each rule lives"; `packages/domain/src/*.ts` (pure rules and their `*.vectors.json`), `supabase/migrations/*.sql` (the same rules in SQL, held to the same vectors), `packages/notifications` (the §8 register), `supabase/functions/*` (BG-nn jobs).
 - Screens: `docs/08-screen-inventory.md` maps route → wireframe → §.
 

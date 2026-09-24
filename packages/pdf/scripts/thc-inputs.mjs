@@ -23,7 +23,7 @@
  *
  * Sources this content was written from: Scope of Work v1.6 Appendix B and
  * "Key decisions (summary)"; OWNER-TODO.md §4–§5; docs/14-handover.md §2
- * and §5; docs/14-open-questions.md Q1–Q6; ADR-0001, 0007, 0017, 0019,
+ * and §5; docs/15-open-questions.md Q1–Q6; ADR-0001, 0007, 0017, 0019,
  * 0021; docs/12-keys-and-assets.md; packages/notifications (E2b, CL1–CL6);
  * the quiz, contract, induction and privacy placeholders in the code.
  */
@@ -224,7 +224,7 @@ function std({ need, why, format, send, until, extra = [] }) {
   ];
 }
 
-/** A product question from docs/14-open-questions.md, as its own item. */
+/** A product question from docs/15-open-questions.md, as its own item. */
 function question({ ask, today, alternative, where }) {
   return [
     { heading: 'The question', blocks: [{ quote: ask, label: 'Ask' }] },

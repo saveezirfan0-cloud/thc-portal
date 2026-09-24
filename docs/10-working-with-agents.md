@@ -13,7 +13,11 @@ standing on each other, and when not to bother.
 | ~~**GitHub Action**~~                            | —                                               | **Removed 23.09.2026** (O8). `.github/workflows/claude.yml` is deleted, so `@claude` and the `domain:*` label do nothing on GitHub. Run the bots in-session instead.             |
 
 The unit of parallelism is **a branch**, not a bot. Two bots in one branch will collide.
-One bot in two branches is fine.
+One bot in two branches is fine. The exception is the three read-only briefs —
+`qa-reviewer`, `audit` and `security` — which can run beside anything, in any branch,
+because they edit nothing; `design-engine` does edit, and when the gap it finds is a
+missing component it follows the `packages/ui` hot-spot rule in §3 rather than the
+screen bot's ownership row.
 
 ## 2. The collision map
 

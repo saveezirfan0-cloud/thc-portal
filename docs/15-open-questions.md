@@ -1,4 +1,4 @@
-# 14 · Open questions, and what needs you
+# 15 · Open questions, and what needs you
 
 Two lists. The first is for THC: places where the Scope of Work does not decide
 something the code has to decide anyway. Each one is **already implemented** — the
@@ -665,13 +665,16 @@ that is not mine to do here:
    only, which is right for Back Office actions reached through a server action, so this
    half of O10 is closed. What is still missing is the screen (B8).
 
-5. **`request_p45()` and `declare_conviction()` are service-role only too, and for a
-   sharper reason.** Both take a staff id and neither checks that it is the *caller's* —
-   they are written for a server action holding the service key, which is how the Staff
-   App reaches every other write path. Granting either to `authenticated` as they stand
-   would let any signed-in worker retire a colleague or suspend them on a fabricated
-   declaration. Whoever builds S4 and S6 either keeps the server-action shape or adds the
-   self-check and the grant in the same commit — never the grant alone.
+5. ~~**`request_p45()` and `declare_conviction()` are service-role only too, and for a
+   sharper reason.**~~ — **CLOSED.** Both took a staff id and neither checked that it was
+   the *caller's*; granting either to `authenticated` as they stood would have let any
+   signed-in worker retire a colleague or suspend them on a fabricated declaration. The
+   shape asked for — the self-check and the grant in the same commit — is what landed:
+   `request_my_p45()` (`20260922180000_staff_self_service.sql`, S6) and
+   `declare_my_conviction()` (`20260923150000_staff_documents_hub.sql`, S4, §10.7) take
+   no staff id, read the caller from `auth.uid()`, and are the only forms granted to
+   `authenticated`; the id-taking originals stay service-role only and are called by the
+   self forms. The Staff App's `/documents/declare` runs the conviction one.
 
 None of these blocks the other work. They are recorded so that "compliance is built" is
 not read as "workers are being told", and so that the missing grants read as deliberate

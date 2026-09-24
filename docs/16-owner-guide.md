@@ -308,7 +308,7 @@ that is fine too as long as the same three parts are on.
 
 1. **Ruleset name** `main`; **Enforcement status** Active.
 2. **Target branches** → Add target → **Include default branch** (`main` has
-   been the default since 22.09, docs/14-open-questions O13).
+   been the default since 22.09, docs/15-open-questions O13).
 3. **Bypass list**: leave empty. Adding yourself defeats the point; if you
    ever need an emergency push, disable the rule for ten minutes and re-enable.
 4. **Rules**, tick:
@@ -364,7 +364,7 @@ any branch can read them.
 ### 2.3 The default branch, and two smaller settings
 
 - **Keep `main` as the default branch.** It was an agent branch until 22.09
-  (docs/14-open-questions O13), which silently disabled a `workflow_run`
+  (docs/15-open-questions O13), which silently disabled a `workflow_run`
   deploy for five merges. Rulesets targeting "default branch", the base a new
   pull request proposes, and any future `schedule`-triggered workflow all
   depend on it. Check: https://github.com/saveezirfan0-cloud/thc-portal/settings
