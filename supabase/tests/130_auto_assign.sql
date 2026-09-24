@@ -347,11 +347,14 @@ insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headc
                                 charge_rate, pay_rate, allocation_per_hour)
 values ('7e7e7e7e-0000-4000-8000-000000000007', :'evt', :'ro',
         timestamptz '2026-12-15 10:00Z', timestamptz '2026-12-15 18:00Z', 4, 0, 22.97, 14.00, 4);
+-- confirmed_at is a fixed instant before the deadline: since 20260927140300
+-- the cutoff releases only a booking confirmed before it, and now() would
+-- stop being "before" once the real clock passes 14 Dec 2026.
 insert into bookings (id, shift_id, staff_id, status, source, confirmed_at) values
   ('0e0e0e0e-0000-4000-8000-000000000001','7e7e7e7e-0000-4000-8000-000000000007', :'clean',
-   'confirmed','auto', now()),
+   'confirmed','auto', timestamptz '2026-12-01 10:00Z'),
   ('0e0e0e0e-0000-4000-8000-000000000002','7e7e7e7e-0000-4000-8000-000000000007', :'clean2',
-   'confirmed','auto', now());
+   'confirmed','auto', timestamptz '2026-12-01 10:00Z');
 update bookings set day_before_confirmed_at = now() where id = '0e0e0e0e-0000-4000-8000-000000000002';
 
 select is(release_unready_bookings(timestamptz '2026-12-14 11:59Z'), 0,

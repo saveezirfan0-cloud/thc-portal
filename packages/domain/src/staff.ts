@@ -40,6 +40,8 @@ export interface StaffBooking {
   status: StaffBookingStatus;
   startsAt: Date;
   endsAt: Date;
+  /** `bookings.confirmed_at` — decides whether the 12:00 deadline applies. */
+  confirmedAt: Date | null;
   dayBeforeConfirmedAt: Date | null;
   onDayConfirmedAt: Date | null;
   reconfirmRequired: boolean;
@@ -218,6 +220,7 @@ export function shiftCard(booking: StaffBooking, now: Date = new Date()): ShiftC
   if (civilDate(booking.startsAt) === civilDate(now)) return 'today';
   if (
     !booking.dayBeforeConfirmedAt &&
+    readyCutoffApplies(booking.confirmedAt, booking.startsAt) &&
     now.getTime() >= readyDeadlineWindowOpens(booking.startsAt)
   ) {
     return 'needs_ready';
@@ -232,6 +235,19 @@ export function shiftCard(booking: StaffBooking, now: Date = new Date()): ShiftC
  */
 function readyDeadlineWindowOpens(startsAt: Date): number {
   return readyDeadline(startsAt).getTime() - 12 * HOUR_MS;
+}
+
+/**
+ * Is this booking subject to the 12:00 "I'm ready" deadline at all (§3.5)?
+ * Only if it was confirmed before the deadline: a worker who accepted after
+ * noon the day before, or on the day itself (RULE-08), never had the chance
+ * to press it in time, so the 12:05 cutoff does not release them and the
+ * app must not ask. No `confirmedAt` is treated as not subject. The SQL
+ * half is `ready_cutoff_applies()` (20260927140300), which the cutoff and
+ * N6 both read.
+ */
+export function readyCutoffApplies(confirmedAt: Date | null, startsAt: Date): boolean {
+  return confirmedAt !== null && confirmedAt.getTime() < readyDeadline(startsAt).getTime();
 }
 
 /** True once the 12:05 cutoff would have released the booking (§3.5, N6b). */
