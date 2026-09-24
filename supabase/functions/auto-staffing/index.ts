@@ -97,6 +97,9 @@ Deno.serve((request) =>
       const invitees = selectInvitees((pool ?? []) as CandidateRow[], {
         allocation: section.allocation,
         weights,
+        // §3.4: after the start, "proximity to the venue matters more than
+        // the match score" — nearest first within each wave.
+        proximityFirst: mode === 'escalation',
       });
 
       for (const staffId of invitees) {

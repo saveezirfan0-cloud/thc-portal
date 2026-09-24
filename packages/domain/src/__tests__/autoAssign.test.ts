@@ -25,6 +25,25 @@ describe('selectInvitees — who one round invites (§3.4, §6)', () => {
     expect(selectInvitees(rows, { allocation: 2 })).toEqual(['near', 'middling']);
   });
 
+  it('escalation puts the nearest first within a wave, score only breaking ties (§3.4)', () => {
+    const rows = [
+      // Better on every other factor, but further away.
+      row({ staff_id: 'strong-far', distance_km: 4, rating: 5, reliability: 100 }),
+      row({ staff_id: 'weak-near', distance_km: 1, rating: 3, reliability: 70 }),
+      row({ staff_id: 'qualified-far', distance_km: 4.5, qualified: true }),
+    ];
+    expect(selectInvitees(rows, { allocation: 3 })).toEqual([
+      'qualified-far',
+      'strong-far',
+      'weak-near',
+    ]);
+    expect(selectInvitees(rows, { allocation: 3, proximityFirst: true })).toEqual([
+      'qualified-far',
+      'weak-near',
+      'strong-far',
+    ]);
+  });
+
   it('invites nobody when the allocation is zero or negative', () => {
     expect(selectInvitees([row()], { allocation: 0 })).toEqual([]);
     expect(selectInvitees([row()], { allocation: -1 })).toEqual([]);

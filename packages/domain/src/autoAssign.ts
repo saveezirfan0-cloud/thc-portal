@@ -48,6 +48,13 @@ export interface RoundOptions {
   /** `allocation_per_hour` for the section: the size of one round (§3.4). */
   allocation: number;
   weights?: ScoreWeights;
+  /**
+   * Same-day escalation (§3.4): once a shift has started, "proximity to the
+   * venue matters more than the match score". Within each wave the nearest
+   * worker goes first; the score only breaks a tie. Waves still come first —
+   * RULE-17's qualified-first holds in escalation too.
+   */
+  proximityFirst?: boolean;
 }
 
 /**
@@ -132,14 +139,22 @@ export function rankCandidateRows<R extends CandidateRow>(
  */
 export function selectInvitees(
   rows: readonly CandidateRow[],
-  { allocation, weights = DEFAULT_WEIGHTS }: RoundOptions,
+  { allocation, weights = DEFAULT_WEIGHTS, proximityFirst = false }: RoundOptions,
 ): string[] {
   if (allocation <= 0) return [];
   const open = rows.filter((row) => row.booking_status === null);
-  return rankPool(
-    open.map((row) => toCandidate(row, row.staff_id)),
+  const ranked = rankPool(
+    open.map((row) => toCandidate(row, row)),
     weights,
-  )
-    .slice(0, Math.trunc(allocation))
-    .map((ranked) => ranked.subject);
+  );
+  if (proximityFirst) {
+    // Array.prototype.sort is stable, so equal distances keep rankPool's
+    // score order.
+    ranked.sort((a, b) =>
+      a.wave !== b.wave
+        ? a.wave - b.wave
+        : candidateInput(a.subject).distanceKm - candidateInput(b.subject).distanceKm,
+    );
+  }
+  return ranked.slice(0, Math.trunc(allocation)).map((r) => r.subject.staff_id);
 }

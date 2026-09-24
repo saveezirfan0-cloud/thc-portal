@@ -551,6 +551,8 @@ describe('N6 / N7 render from the payload booking_tick writes', () => {
     for (const text of [entry.title, body(code), entry.deepLink ?? '']) {
       expect(render(text, payload), code).not.toMatch(/[{}]/);
     }
-    expect(render(entry.deepLink ?? '', payload)).toBe('/shifts/b1');
+    // The "I'm ready" / "Confirm today" buttons live on the /shifts card,
+    // so the push opens there, not on the shift detail screen.
+    expect(render(entry.deepLink ?? '', payload)).toBe('/shifts');
   });
 });

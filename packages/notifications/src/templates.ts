@@ -139,7 +139,10 @@ export const TEMPLATES = {
     body: "Confirm tomorrow's shift by 12:00 today — or you'll be removed from it",
     trigger: 'Day-before',
     timing: 'the day before (cutoff 12:00)',
-    deepLink: '/shifts/{bookingId}',
+    // The "I'm ready" button lives on the /shifts card, not the shift detail
+    // screen (wireframes: staff-app shifts vs shift-detail), so the push
+    // opens where the worker can act on it.
+    deepLink: '/shifts',
   },
   N6b: {
     code: 'N6b',
@@ -157,7 +160,8 @@ export const TEMPLATES = {
     body: "Confirm today's shift",
     trigger: 'On-the-day',
     timing: 'on the day of the shift',
-    deepLink: '/shifts/{bookingId}',
+    // As N6: "Confirm today" is on the /shifts card.
+    deepLink: '/shifts',
   },
 
   // Review outcomes.

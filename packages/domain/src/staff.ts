@@ -169,8 +169,11 @@ export const STATIC_SCREEN_COPY: Record<
   withdrawn: {
     badge: 'Withdrawn',
     tone: 'coral',
+    // No body line: the wireframe (shift-detail n2) and §10.4 give only the
+    // heading, and the same screen serves an office withdrawal AND the 12:05
+    // release (`ready_cutoff`), so a sentence naming the office would be
+    // untrue for half of its readers.
     title: 'You’ve been removed from this shift',
-    body: 'The office has withdrawn this booking. It no longer appears in your shifts.',
   },
   no_checkout: {
     badge: 'Awaiting the office',
