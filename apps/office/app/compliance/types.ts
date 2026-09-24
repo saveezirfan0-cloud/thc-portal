@@ -20,9 +20,15 @@ export type StaffStatus =
 
 export type BlockKind = 'auto_document' | 'manual' | 'conviction_review' | null;
 
-/** One item waiting on the office: a pending document or a pending Yes declaration (§4.1). */
+/**
+ * One item waiting on the office (§4.1): a pending document, a pending Yes
+ * declaration, or — `rtw_date` (20260926100400) — a share code report that
+ * was verified before the right-to-work date was required and still has
+ * none. That last one is keyed on the verified report; its `item_type` is
+ * `share_code_report`, so the document filter finds it.
+ */
 export interface QueueRow {
-  kind: 'document' | 'declaration';
+  kind: 'document' | 'declaration' | 'rtw_date';
   item_id: string;
   staff_id: string;
   display_name: string;
@@ -56,6 +62,8 @@ export interface QueueRow {
   completion_date_claimed: string | null;
   mime_type: string | null;
   size_bytes: number | null;
+  /** Why a row that is not a pending upload is here; null on document and declaration rows. */
+  review_reason: string | null;
 }
 
 export type RadarState = 'expired' | 'expiring' | 'valid';
