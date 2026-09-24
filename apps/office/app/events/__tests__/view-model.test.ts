@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { ukInstant } from '@thc/domain';
 import type { ListedEvent } from '../data';
-import { bucketByDay, fillTone, periodTotals, toEventRow, toEventRows } from '../view-model';
+import {
+  bucketByDay,
+  filterEventRows,
+  fillTone,
+  periodTotals,
+  scheduledWindowLines,
+  toEventRow,
+  toEventRows,
+} from '../view-model';
 
 const DATE = '2026-09-18';
 
@@ -10,6 +18,7 @@ function event(over: Partial<ListedEvent> = {}): ListedEvent {
     id: 'e1',
     title: 'Gala Dinner',
     date: DATE,
+    clientId: 'client-leonardo',
     clientName: 'Leonardo Hotel St Pauls',
     venueName: 'Leonardo Royal Hotel',
     venueAddress: '10 Godliman St, London EC4V 5AJ',
@@ -173,5 +182,74 @@ describe('the period totals under the list (§3.1)', () => {
       before,
     );
     expect(periodTotals(rows)).toEqual({ events: 2, open: 4 });
+  });
+});
+
+describe('the toolbar filters (§3.1)', () => {
+  const rows = toEventRows(
+    [
+      event({ id: 'a', clientId: 'c-1', clientName: 'Leonardo Hotel' }),
+      // A second client with the SAME display name: a hotel group's properties.
+      event({ id: 'b', clientId: 'c-2', clientName: 'Leonardo Hotel', title: 'Product Launch' }),
+      event({ id: 'c', clientId: 'c-3', clientName: 'Mandarin Oriental', poNumber: 'PO-77' }),
+    ],
+    before,
+  );
+
+  it('filters the client by id, never by name', () => {
+    expect(filterEventRows(rows, { clientId: 'c-2', status: '', q: '' }).map((r) => r.id)).toEqual([
+      'b',
+    ]);
+  });
+
+  it('returns everything with no filters, and searches title, client, venue and PO', () => {
+    expect(filterEventRows(rows, { clientId: '', status: '', q: '' })).toHaveLength(3);
+    expect(
+      filterEventRows(rows, { clientId: '', status: '', q: ' po-77 ' }).map((r) => r.id),
+    ).toEqual(['c']);
+    expect(
+      filterEventRows(rows, { clientId: '', status: '', q: 'launch' }).map((r) => r.id),
+    ).toEqual(['b']);
+  });
+
+  it('filters by status', () => {
+    expect(filterEventRows(rows, { clientId: '', status: 'completed', q: '' })).toEqual([]);
+    expect(filterEventRows(rows, { clientId: '', status: 'upcoming', q: '' })).toHaveLength(3);
+  });
+});
+
+describe('scheduled windows carry a "your time" line outside the UK (§1.8)', () => {
+  const start = ukInstant(DATE, '07:00');
+  const end = ukInstant('2026-09-19', '01:30');
+
+  it('is UK-only for a UK viewer', () => {
+    expect(scheduledWindowLines(start, end, 'Europe/London')).toEqual({
+      uk: '07:00 – 01:30',
+      local: null,
+    });
+  });
+
+  it('adds the viewer-zone line anywhere else', () => {
+    expect(scheduledWindowLines(start, end, 'Europe/Athens')).toEqual({
+      uk: '07:00 – 01:30',
+      local: '09:00 – 03:30 your time',
+    });
+    expect(scheduledWindowLines(start, end, 'America/New_York').local).toBe(
+      '02:00 – 20:30 your time',
+    );
+  });
+
+  it('a list row carries its window and each role window as instants for that line', () => {
+    const row = toEventRow(event(), before);
+    expect(row.windowIso).toEqual({
+      startsAt: ukInstant(DATE, '07:00').toISOString(),
+      endsAt: ukInstant(DATE, '23:30').toISOString(),
+    });
+    expect(row.roles.map((r) => [r.startsAt, r.endsAt])).toEqual([
+      [ukInstant(DATE, '07:00').toISOString(), ukInstant(DATE, '15:00').toISOString()],
+      [ukInstant(DATE, '09:00').toISOString(), ukInstant(DATE, '17:00').toISOString()],
+      [ukInstant(DATE, '17:00').toISOString(), ukInstant(DATE, '23:30').toISOString()],
+    ]);
+    expect(toEventRow(event({ roles: [] }), before).windowIso).toBeNull();
   });
 });

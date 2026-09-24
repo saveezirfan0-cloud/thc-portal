@@ -10,6 +10,7 @@ import {
 } from '@thc/domain';
 import { formatDayShort, weekdayIndex } from '../calendar';
 import { type DayBucket, type EventRow, fillTone } from '../view-model';
+import { ScheduledWindow } from './ScheduledWindow';
 
 const STATUS_TONE: Record<EventStatus, 'cyan' | 'green' | 'neutral'> = {
   upcoming: 'cyan',
@@ -91,7 +92,15 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                 <span className="sub">{row.venueName}</span>
               </td>
               <td className={classes('mono', 'sm', cancelled && 'muted')}>
-                {row.windowLabel}
+                {/* UK, plus "your time" for a reader outside the UK (§1.8). */}
+                {row.windowIso ? (
+                  <ScheduledWindow
+                    startsAt={row.windowIso.startsAt}
+                    endsAt={row.windowIso.endsAt}
+                  />
+                ) : (
+                  row.windowLabel
+                )}
                 {row.endsNextDay ? <span className="sub">ends next day</span> : null}
               </td>
               <td>
@@ -99,9 +108,11 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                   {row.roles.map((role, index) => (
                     <div className="r" key={`${row.id}-${index}`}>
                       <span className="chip">{role.roleName}</span>
-                      <span className="mono">
-                        {role.start}–{role.end}
-                      </span>
+                      <ScheduledWindow
+                        className="mono"
+                        startsAt={role.startsAt}
+                        endsAt={role.endsAt}
+                      />
                       <span className="mono">{formatAllocation(role.headcount, role.buffer)}</span>
                     </div>
                   ))}
@@ -300,7 +311,11 @@ export function DayView({ rows }: { rows: EventRow[] }) {
             className={classes('dayrow', row.status === 'cancelled' && 'cancelled')}
           >
             <span className="w">
-              {row.windowLabel}
+              {row.windowIso ? (
+                <ScheduledWindow startsAt={row.windowIso.startsAt} endsAt={row.windowIso.endsAt} />
+              ) : (
+                row.windowLabel
+              )}
               {row.endsNextDay ? <span className="sub">ends next day</span> : null}
             </span>
             <span>
