@@ -8,7 +8,7 @@ import { ClientModal } from '../ClientModal';
 import { ClientEvents } from './ClientEvents';
 import { QualifiedStaff } from './QualifiedStaff';
 import { RateCard } from './RateCard';
-import { marginTone } from './card';
+import { marginTone, newEventHref } from './card';
 import type { Client } from '../types';
 import type { ClientCardData } from './types';
 import './card.css';
@@ -43,6 +43,13 @@ export function ClientCard({ data }: { data: ClientCardData }) {
         <>
           <Link href="/clients">Clients</Link> / <b>{client.name}</b>
         </>
+      }
+      actions={
+        // The Shift Builder opens with this client picked, its rate card and
+        // on-site contact loaded (§9.7, §3.2).
+        <Link className="btn primary sm" href={newEventHref(client.id)}>
+          + New event for this client
+        </Link>
       }
     >
       <div className="stack">

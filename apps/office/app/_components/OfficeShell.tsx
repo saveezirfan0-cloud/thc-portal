@@ -1,5 +1,6 @@
-import Link from 'next/link';
-import { Content, Logo, ModeSwitch, Shell, Sidebar, SignOut, Topbar } from '@thc/ui';
+import { Content, Logo, ModeSwitch, Shell, SignOut, Topbar } from '@thc/ui';
+import type { NavItem } from '@thc/ui';
+import { OfficeSidebar } from './OfficeSidebar';
 import { SignedInAs } from './SignedInAs';
 import type { ReactNode } from 'react';
 
@@ -30,8 +31,12 @@ import type { ReactNode } from 'react';
  * The appearance switch is added to whatever the screen passes as actions,
  * not passed by the screen: ADR-0007 makes it part of the chrome, and one
  * screen forgetting it is how it ended up living only on /design-system.
+ *
+ * The counters (§4.1's Compliance "Needs review" number) are not here: the
+ * root layout reads them once and `OfficeSidebar` applies them from context,
+ * for the same reason the sidebar foot's name arrives that way.
  */
-const NAV = [
+export const NAV: readonly NavItem[] = [
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/onboarding', label: 'Onboarding' },
   { href: '/events', label: 'Scheduling' },
@@ -72,7 +77,7 @@ export function OfficeShell({
   return (
     <Shell
       sidebar={
-        <Sidebar
+        <OfficeSidebar
           items={NAV}
           activeHref={activeHref}
           brand={
@@ -84,11 +89,6 @@ export function OfficeShell({
               </div>
             </>
           }
-          renderLink={(item, className, body) => (
-            <Link href={item.href} className={className}>
-              {body}
-            </Link>
-          )}
           footer={
             <>
               <SignedInAs />

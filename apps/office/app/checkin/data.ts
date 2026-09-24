@@ -1,6 +1,7 @@
 import { acceptedLog } from '@thc/domain';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { signStaffPhotos } from '../_lib/photos';
 import type { MonitorRow, MonitorStatus, ViolationRow, ViolationType } from './types';
 
 /**
@@ -35,77 +36,45 @@ function ukDayBounds(now = new Date()): { from: string; to: string } {
   };
 }
 
-export async function loadMonitor(): Promise<MonitorPageData> {
-  if (!supabaseConfigured()) {
-    return {
-      rows: [],
-      violations: [],
-      problem:
-        'This environment has no Supabase project, so the live monitor cannot be read. See docs/04-setup-github-vercel-supabase.md.',
-    };
-  }
+/** The session client, as `createClient` returns it. */
+type SessionClient = ReturnType<typeof createClient>;
 
-  const supabase = createClient(await cookies());
-  const { from, to } = ukDayBounds();
+const VIOLATION_COLUMNS = `id, booking_id, type, detected_at, minutes_late, resolved, resolved_at,
+  resolution_note, actual_finish_at,
+  staff:staff_id ( first_name, last_name, photo_path, removed_at, employee_id ),
+  resolver:resolved_by ( full_name ),
+  booking:booking_id (
+    shift:shift_id (
+      starts_at, ends_at,
+      role:role_id ( name ),
+      event:event_id ( title, venue_name, payroll_exported_at )
+    ),
+    logs:check_logs ( check_in_at, check_out_at, manager_finish_at )
+  )`;
 
-  const [monitor, violations] = await Promise.all([
-    supabase
-      .from('checkin_monitor_v')
-      .select('*')
-      .gte('starts_at', from)
-      .lte('starts_at', to)
-      .order('starts_at', { ascending: true }),
-    supabase
-      .from('violations')
-      .select(
-        `id, booking_id, type, detected_at, minutes_late, resolved, resolved_at,
-         resolution_note, actual_finish_at,
-         staff:staff_id ( first_name, last_name, photo_path, removed_at, employee_id ),
-         resolver:resolved_by ( full_name ),
-         booking:booking_id (
-           shift:shift_id (
-             starts_at, ends_at,
-             role:role_id ( name ),
-             event:event_id ( title, venue_name, payroll_exported_at )
-           ),
-           logs:check_logs ( check_in_at, check_out_at, manager_finish_at )
-         )`,
-      )
-      .order('detected_at', { ascending: false })
-      .limit(100),
-  ]);
+/** A violation row before its photo path is turned into a URL. */
+type UnsignedViolation = Omit<ViolationRow, 'photoUrl'> & { photoPath: string | null };
 
-  if (monitor.error) {
-    return { rows: [], violations: [], problem: monitor.error.message };
-  }
-
-  // Same placeholder-types caveat as the RPC above: `checkin_monitor_v` is
-  // not in the generated `Database`, so the row shape is asserted here and
-  // has to match 20260922090000_ping_ingest_and_monitor.sql.
-  const monitorRows = (monitor.data ?? []) as unknown as Record<string, unknown>[];
-
-  const rows: MonitorRow[] = monitorRows.map((r) => ({
-    bookingId: r.booking_id as string,
-    staffId: r.staff_id as string,
-    eventId: r.event_id as string,
-    eventTitle: (r.event_title as string) ?? '',
-    roleName: (r.role_name as string) ?? '',
-    staffName: (r.staff_name as string) ?? '',
-    photoPath: (r.photo_path as string | null) ?? null,
-    startsAt: r.starts_at as string,
-    endsAt: r.ends_at as string,
-    checkInAt: (r.check_in_at as string | null) ?? null,
-    checkOutAt: (r.check_out_at as string | null) ?? null,
-    lastFixInside: (r.last_fix_inside as boolean | null) ?? null,
-    lastFixAt: (r.last_fix_at as string | null) ?? null,
-    breaksCount: (r.breaks_count as number | null) ?? null,
-    lastBreakAt: (r.last_break_at as string | null) ?? null,
-    lateCheckOut: Boolean(r.late_check_out),
-    status: r.status as MonitorStatus,
-  }));
+/**
+ * The violation log's read (§9.5), shared with the Shifts tab on
+ * /staff/:id: §9.6 says the profile's log and this one are "deliberately
+ * identical in behaviour", so both surfaces open the same detail window with
+ * the same fields, read by the same query. `staffId` scopes it to one
+ * person; without it this is the monitor's newest 100.
+ */
+async function queryViolations(
+  supabase: SessionClient,
+  scope: { staffId?: string } = {},
+): Promise<{ rows: UnsignedViolation[]; error: string | null }> {
+  let query = supabase.from('violations').select(VIOLATION_COLUMNS);
+  if (scope.staffId) query = query.eq('staff_id', scope.staffId);
+  const result = await query
+    .order('detected_at', { ascending: false })
+    .limit(scope.staffId ? 500 : 100);
+  if (result.error) return { rows: [], error: result.error.message };
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  const violationRows: ViolationRow[] = (violations.data ?? []).map((v: any) => {
+  const rows = ((result.data ?? []) as any[]).map((v: any): UnsignedViolation => {
     const shift = v.booking?.shift;
     // `acceptedLog`, not `[0]` (§1.5). check_logs holds one row per button
     // press: a RULE-15 turn-away and an out-of-radius refusal are logged
@@ -155,5 +124,98 @@ export async function loadMonitor(): Promise<MonitorPageData> {
   });
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
-  return { rows, violations: violationRows, problem: null };
+  return { rows, error: null };
+}
+
+/** Swap each row's storage path for its signed URL (or null → initials). */
+function withUrls<T extends { photoPath: string | null }>(
+  rows: readonly T[],
+  urls: ReadonlyMap<string, string>,
+): (Omit<T, 'photoPath'> & { photoUrl: string | null })[] {
+  return rows.map(({ photoPath, ...rest }) => ({
+    ...rest,
+    photoUrl: photoPath ? (urls.get(photoPath) ?? null) : null,
+  }));
+}
+
+/**
+ * One worker's violation log in the monitor's own shape, for the Shifts tab
+ * on /staff/:id, which opens the same `ResolveModal` (§9.6). The log there
+ * draws no avatars — the profile header already shows the face — so nothing
+ * is signed.
+ */
+export async function loadStaffViolationLog(
+  supabase: SessionClient,
+  staffId: string,
+): Promise<{ rows: ViolationRow[]; error: string | null }> {
+  const { rows, error } = await queryViolations(supabase, { staffId });
+  if (error) return { rows: [], error };
+  return { rows: withUrls(rows, new Map()), error: null };
+}
+
+export async function loadMonitor(): Promise<MonitorPageData> {
+  if (!supabaseConfigured()) {
+    return {
+      rows: [],
+      violations: [],
+      problem:
+        'This environment has no Supabase project, so the live monitor cannot be read. See docs/04-setup-github-vercel-supabase.md.',
+    };
+  }
+
+  const supabase = createClient(await cookies());
+  const { from, to } = ukDayBounds();
+
+  const [monitor, violations] = await Promise.all([
+    supabase
+      .from('checkin_monitor_v')
+      .select('*')
+      .gte('starts_at', from)
+      .lte('starts_at', to)
+      .order('starts_at', { ascending: true }),
+    queryViolations(supabase),
+  ]);
+
+  if (monitor.error) {
+    return { rows: [], violations: [], problem: monitor.error.message };
+  }
+
+  // Same placeholder-types caveat as the RPC above: `checkin_monitor_v` is
+  // not in the generated `Database`, so the row shape is asserted here and
+  // has to match 20260922090000_ping_ingest_and_monitor.sql.
+  const monitorRows = (monitor.data ?? []) as unknown as Record<string, unknown>[];
+
+  const unsigned = monitorRows.map((r) => ({
+    bookingId: r.booking_id as string,
+    staffId: r.staff_id as string,
+    eventId: r.event_id as string,
+    eventTitle: (r.event_title as string) ?? '',
+    roleName: (r.role_name as string) ?? '',
+    staffName: (r.staff_name as string) ?? '',
+    photoPath: (r.photo_path as string | null) ?? null,
+    startsAt: r.starts_at as string,
+    endsAt: r.ends_at as string,
+    checkInAt: (r.check_in_at as string | null) ?? null,
+    checkOutAt: (r.check_out_at as string | null) ?? null,
+    lastFixInside: (r.last_fix_inside as boolean | null) ?? null,
+    lastFixAt: (r.last_fix_at as string | null) ?? null,
+    breaksCount: (r.breaks_count as number | null) ?? null,
+    lastBreakAt: (r.last_break_at as string | null) ?? null,
+    lateCheckOut: Boolean(r.late_check_out),
+    status: r.status as MonitorStatus,
+  }));
+
+  // `photo_path` is a key in the private `photos` bucket, not a URL — the
+  // browser cannot fetch it. Both tables' paths are signed in one batch.
+  const urls = await signStaffPhotos([
+    ...unsigned.map((r) => r.photoPath),
+    ...violations.rows.map((v) => v.photoPath),
+  ]);
+
+  const rows: MonitorRow[] = withUrls(unsigned, urls);
+  const violationRows: ViolationRow[] = withUrls(violations.rows, urls);
+
+  // A failed violation read no longer passes silently as "No violations
+  // logged": the board still renders, with the reason above it.
+  return { rows, violations: violationRows, problem: violations.error };
 }
