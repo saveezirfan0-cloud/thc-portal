@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useActionState, useState } from 'react';
 import { Alert, Button, Input } from '@thc/ui';
 import { signIn } from './actions';
@@ -32,6 +33,13 @@ export function LoginForm({ next }: { next?: string }) {
         required
         error={error ? 'Check your password — it is case-sensitive.' : undefined}
       />
+      {/* A1 (§10.2). The wireframe keeps it with the password field at
+          every width, and in the error state, which is when it is needed. */}
+      <div className="row" style={{ justifyContent: 'flex-end' }}>
+        <Link href="/forgot" className="xs">
+          Forgot password?
+        </Link>
+      </div>
       <Button type="submit" tone="primary" size="lg" block disabled={pending}>
         {pending ? 'Signing in…' : 'Sign in'}
       </Button>

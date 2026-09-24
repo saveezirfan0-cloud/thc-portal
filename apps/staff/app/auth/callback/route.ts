@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { safeNextPath } from '@thc/db';
 import { createClient } from '@thc/db/server';
 
 /**
@@ -11,13 +12,13 @@ import { createClient } from '@thc/db/server';
  *
  * `next` is only ever honoured as a path on this origin. An open redirect
  * on the end of an emailed link is a phishing kit: the mail is genuinely
- * from THC, and the page it lands on would not be.
+ * from THC, and the page it lands on would not be. `//evil` and `/\evil`
+ * both passed the old `startsWith('/')` test; the shared guard refuses them.
  */
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
-  const requested = url.searchParams.get('next') ?? '/reset';
-  const next = requested.startsWith('/') && !requested.startsWith('//') ? requested : '/reset';
+  const next = safeNextPath(url.searchParams.get('next'), '/reset', url.origin);
 
   if (!code) {
     return NextResponse.redirect(new URL('/reset?error=missing', url.origin));

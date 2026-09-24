@@ -11,7 +11,9 @@ import { isRole, wrongAppBody } from '@thc/db';
  * which is what actually protects the data: a forged URL gets past nothing.
  */
 const ALLOWED_ROLE = 'admin' as const;
-const PUBLIC_PATHS = ['/login', '/auth', '/design-system'];
+// /forgot and /reset are A1–A3 (§10.2): nobody who needs them is signed in,
+// or they hold only the short-lived session /auth/callback just made.
+const PUBLIC_PATHS = ['/login', '/forgot', '/reset', '/auth', '/design-system'];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
@@ -107,6 +109,16 @@ export async function middleware(request: NextRequest) {
   // admitted a session whose role was missing from both places, because the
   // redirect only fired when the value parsed. Unknown role = not this app.
   if (!isRole(role) || role !== ALLOWED_ROLE) {
+    // A wrong-role session may still reach the public pages. They grant
+    // nothing an anonymous visitor does not already get, and /login is
+    // where the wireframe's refusal lives: `wireframes/backoffice/login.html`
+    // says a client-portal account "is refused the same way" as a wrong
+    // password — the generic message on the form, which signIn() gives
+    // after dropping the session (app/login/actions.ts). Without this, a
+    // client holding a session here could not even see the form: its POST
+    // is also a request to /login, and would get the page below instead.
+    if (isPublic(pathname)) return response;
+
     // Signed in, wrong app. This used to redirect to HOME_PATH[role], which
     // is a PATH — and the three apps are on three different hosts, so it
     // only ever bounced them to a local route that failed this same check

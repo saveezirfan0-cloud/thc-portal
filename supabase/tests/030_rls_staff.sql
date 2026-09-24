@@ -135,9 +135,12 @@ select throws_ok(
   '42501', null, 'worker cannot write feedback about themselves');
 
 -- ---- writes on the tables 0004_rls_gaps policed ------------------------
--- Bank & payroll: §2.10 and §10.1 both give the worker the write.
+-- Bank & payroll: §2.10 and §10.1 give the worker the write, but THROUGH
+-- staff_save_bank(), which validates and queues E5 in the same transaction.
+-- The direct self insert/update policies were dropped in 20260927120100
+-- (571 covers the RPC path), so a direct PATCH now touches nothing.
 with u as (update bank_details set sort_code = '12-34-56' where staff_id = :'staffa' returning 1)
-  select is((select count(*)::int from u), 1, 'worker updates their own bank details (§10.1 "Save changes")');
+  select is((select count(*)::int from u), 0, 'worker cannot update their own bank details directly — only through staff_save_bank() (§2.10 E5)');
 with u as (update bank_details set sort_code = '00-00-00' where staff_id = :'staffb' returning 1)
   select is((select count(*)::int from u), 0, 'worker cannot change another worker''s bank details');
 with u as (delete from bank_details where staff_id = :'staffa' returning 1)

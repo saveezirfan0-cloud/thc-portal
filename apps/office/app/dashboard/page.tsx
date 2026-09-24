@@ -90,12 +90,14 @@ export default async function Page() {
             label="Compliance blocks"
             tone="danger"
             value={kpis?.complianceBlocks ?? '—'}
-            // The wireframe hangs a "view radar →" link here and §9.1 wants
-            // one. It is plain text until /compliance is built, for the same
-            // reason OfficeShell renders an unbuilt route as text: a link
-            // that 404s reads as broken rather than as unfinished. Make it
-            // a <Link href="/compliance#tab=radar"> when B6 lands.
-            description="Blocked over documents · see the compliance radar"
+            // The wireframe hangs "view radar →" here and §9.1 wants it.
+            // A query, not the wireframe's #fragment: the page is rendered
+            // on the server, which never sees a fragment.
+            description={
+              <>
+                Blocked over documents <Link href="/compliance?tab=radar">view radar →</Link>
+              </>
+            }
           />
         </TileGrid>
 
@@ -111,10 +113,12 @@ export default async function Page() {
               <Pill tone="amber">Forecast for the period</Pill>
             </>
           }
-          // Same as the compliance tile: the wireframe's "Full report →"
-          // points at /reports (§9.9), which is not built yet, so it is a
-          // note rather than a dead link. Make it a <Link> when B12 lands.
-          actions={<span className="muted sm">Full report in Reports (§9.9)</span>}
+          // The wireframe's "Full report →", to the Financial reports (§9.9).
+          actions={
+            <Link className="sm" href="/reports">
+              Full report →
+            </Link>
+          }
         >
           {finance ? (
             <div className="dash-finance">
