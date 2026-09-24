@@ -1,7 +1,7 @@
 import { Avatar, Panel, Pill } from '@thc/ui';
 import {
-  DEFAULT_WEIGHTS,
   type EventStatus,
+  type ScoreWeights,
   UK_ZONE,
   appliedAgo,
   canCancelBooking,
@@ -12,27 +12,18 @@ import {
   sectionHours,
   showsCandidatePools,
 } from '@thc/domain';
-import type { BoardBooking, BoardSection, BoardUnavailable } from '../board-data';
+import type { BoardBooking, BoardSection } from '../board-data';
+import { type UnavailableEntry, canToggleAutoAssign, rateLine } from '../board-model';
+import { ScheduledWindow } from '../../_components/ScheduledWindow';
 import { ApplicationActions } from './ApplicationActions';
+import { AutoAssignSwitch } from './AutoAssignSwitch';
 import { BookingActions } from './BookingActions';
+import { PotentialPool } from './PotentialPool';
 
-const classes = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ');
-
-/** "blocked-compliance", not "blocked_compliance" (§3.3's own wording). */
-const GATE_LABEL: Record<string, string> = {
-  blocked: 'blocked — compliance',
-  booked_elsewhere: 'booked elsewhere',
-  hours_limit: 'hours limit reached',
-  rtw_expired: 'right to work expired',
-  self_cancelled: 'rejected — self-cancelled more than 72 h before the shift',
-  do_not_return: 'do not return at this client',
-  wrong_role: 'not signed off for this role',
-};
-
-function Person({ person, sub }: { person: BoardBooking | BoardUnavailable; sub: string }) {
+function Person({ person, sub }: { person: BoardBooking | UnavailableEntry; sub: string }) {
   return (
     <>
-      <Avatar name={person.name} />
+      <Avatar name={person.name} deleted={person.name.startsWith('Deleted account')} />
       <div className="who">
         <div className="n">{person.name}</div>
         <div className="s">{sub}</div>
@@ -46,18 +37,29 @@ function Person({ person, sub }: { person: BoardBooking | BoardUnavailable; sub:
  *
  * Sections are ordered by their own start time so the board reads like the
  * running order of the day, and the header counts CONFIRMED only: an
- * invitation fills nothing.
+ * invitation fills nothing. The header also carries the role's own window
+ * (UK, plus "your time" outside the UK — §1.8), its dress code, pay with
+ * the holiday-inclusive final rate and the margin (§9.8), and the role's
+ * auto-assign switch (§3.4).
  */
 export function RoleBoard({
   section,
   status,
   eventId,
+  clientName,
+  eventAutoAssign,
+  weights,
   payrollExported,
+  now = new Date(),
 }: {
   section: BoardSection;
   status: EventStatus;
   eventId: string;
+  clientName: string;
+  eventAutoAssign: boolean;
+  weights: ScoreWeights;
   payrollExported: boolean;
+  now?: Date;
 }) {
   const startsAt = new Date(section.startsAt);
   const endsAt = new Date(section.endsAt);
@@ -68,6 +70,11 @@ export function RoleBoard({
     buffer: section.buffer,
   };
   const showPools = showsCandidatePools(status, counts);
+  // §3.3 wireframe: no Unavailable on a Completed or Cancelled event either.
+  const live = status === 'upcoming' || status === 'ongoing';
+  const rate = rateLine(section.payRate, section.chargeRate);
+  // RULE-16: nothing is offered on a section that is over.
+  const canInvite = live && now < endsAt;
 
   return (
     <Panel
@@ -75,22 +82,40 @@ export function RoleBoard({
       title={
         <span className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
           <b>{section.roleName}</b>
-          <span className="mono sm muted">
-            {formatTimeIn(startsAt, UK_ZONE)} – {formatTimeIn(endsAt, UK_ZONE)} ·{' '}
-            {formatHours(sectionHours({ startsAt, endsAt }))}
-          </span>
-          {/* Absolute buffer, never the total (§3.2). */}
-          <Pill>{formatAllocationPair(section.headcount, section.buffer)}</Pill>
           <span className="mono sm">{roleBoardHeader(counts)}</span>
+          <ScheduledWindow
+            className="win mono sm"
+            lineClass="l2"
+            startsAt={section.startsAt}
+            endsAt={section.endsAt}
+            suffix={`UK time · ${formatHours(sectionHours({ startsAt, endsAt }))}`}
+          />
+          {section.dressCode ? (
+            <span className="sm muted">
+              Dress code: <b>{section.dressCode}</b>
+            </span>
+          ) : null}
+          {/* Base, then base + 12.07% holiday broken out (§9.8), then the margin. */}
+          <span className="rate sm muted">
+            Pay <b>{rate.pay}</b> · final {rate.final} · charge <b>{rate.charge}</b> ·{' '}
+            <span className={rate.marginTone}>{rate.margin}</span>
+          </span>
         </span>
       }
       actions={
         <span className="row sm muted" style={{ gap: 10 }}>
-          {section.dressCode ? <span>{section.dressCode}</span> : null}
-          <span className="mono">
-            £{section.payRate.toFixed(2)} pay · £{section.chargeRate.toFixed(2)} charge
+          {/* Absolute buffer, never the total (§3.2). */}
+          <Pill>{formatAllocationPair(section.headcount, section.buffer)}</Pill>
+          <span className="xs">
+            target {section.headcount + section.buffer} · allocation {section.allocationPerHour}/h
           </span>
-          {section.autoAssign ? <Pill tone="purple">Auto-assign</Pill> : null}
+          <AutoAssignSwitch
+            eventId={eventId}
+            shiftId={section.id}
+            checked={section.autoAssign}
+            disabled={!canToggleAutoAssign(status)}
+            label={eventAutoAssign ? 'Auto-assign' : 'Auto-assign (event switch off)'}
+          />
         </span>
       }
     >
@@ -108,7 +133,9 @@ export function RoleBoard({
             <div className="prow" key={booking.bookingId}>
               <Person person={booking} sub={confirmedLine(booking, section.roleName)} />
               {booking.qualified ? (
-                <Pill tone="cyan">Qualified — this client · {section.roleName}</Pill>
+                <Pill tone="cyan">
+                  Qualified — {clientName} · {section.roleName}
+                </Pill>
               ) : null}
               {booking.appliedAt ? <span className="applied">Applied</span> : null}
               {/* A no-show stays here, badged — never moved to its own list (§3.3). */}
@@ -145,7 +172,9 @@ export function RoleBoard({
               <div className="prow" key={booking.bookingId}>
                 <Person person={booking} sub={invitedLine(booking)} />
                 {booking.qualified ? (
-                  <Pill tone="cyan">Qualified — this client · {section.roleName}</Pill>
+                  <Pill tone="cyan">
+                    Qualified — {clientName} · {section.roleName}
+                  </Pill>
                 ) : null}
                 {/* Already invited and also self-applied: the marker shows
                     here rather than duplicating them into the pool (§3.3). */}
@@ -168,65 +197,64 @@ export function RoleBoard({
         </div>
       ) : null}
 
-      {showPools ? (
+      {showPools && section.pool ? (
+        <PotentialPool
+          eventId={eventId}
+          shiftId={section.id}
+          clientName={clientName}
+          roleName={section.roleName}
+          entries={section.pool}
+          weights={weights}
+          problem={null}
+          canInvite={canInvite}
+        />
+      ) : null}
+
+      {showPools && !section.pool ? (
+        // The candidates could not be computed: say so, and still offer the
+        // Radar applicants, who are known from their bookings alone.
         <div className="sub">
-          <div className="subh">
-            Potential pool
-            <span className="right muted sm">ranked · qualified first (RULE-17)</span>
+          <div className="subh">Potential pool</div>
+          <div className="prow coral sm" role="alert">
+            {section.poolProblem ?? 'The candidate pool could not be computed.'}
           </div>
-          <div className="legend">
-            <span>Score =</span>
-            <span>
-              <b>{Math.round(DEFAULT_WEIGHTS.show * 100)}%</b> show-rate
-            </span>
-            <span>
-              <b>{Math.round(DEFAULT_WEIGHTS.rating * 100)}%</b> client rating
-            </span>
-            <span>
-              <b>{Math.round(DEFAULT_WEIGHTS.proximity * 100)}%</b> proximity
-            </span>
-            <span>
-              <b>{Math.round(DEFAULT_WEIGHTS.fair * 100)}%</b> fair rotation
-            </span>
-            <span>
-              <b>{Math.round(DEFAULT_WEIGHTS.venue * 100)}%</b> venue history
-            </span>
-            <span className="muted">· weights editable in /settings (§6)</span>
-          </div>
-          {/* Radar self-applications (§3.3, §10.4): the "Applied" marker with
-              its relative time. Picking one confirms them and sends N10;
-              once the role is fully confirmed the rest get N10c. */}
           {section.applied.map((booking) => (
             <div className="prow" key={booking.bookingId}>
               <Person person={booking} sub={`${section.roleName} · self-applied via Radar`} />
-              {booking.qualified ? (
-                <Pill tone="cyan">Qualified — this client · {section.roleName}</Pill>
-              ) : null}
               <span className="applied">{appliedMarker(booking)}</span>
               <div className="right">
-                <ApplicationActions
-                  eventId={eventId}
-                  bookingId={booking.bookingId}
-                  name={booking.name}
-                />
+                {canInvite ? (
+                  <ApplicationActions
+                    eventId={eventId}
+                    bookingId={booking.bookingId}
+                    name={booking.name}
+                  />
+                ) : null}
               </div>
             </div>
           ))}
-          <div className="prow muted">
-            The ranked pool arrives with the auto-assign engine (§3.4), which is a separate change.
-            Its scoring, waves and hard gates already live in <code>@thc/domain</code>.
-          </div>
         </div>
       ) : null}
 
-      {section.unavailable.length > 0 ? (
+      {live && section.unavailable.length > 0 ? (
         <div className="sub">
           <div className="subh">
             Unavailable <span className="n">{section.unavailable.length}</span>
+            <span className="right muted sm">wrong-role never produces a row here (§6)</span>
           </div>
           {section.unavailable.map((person) => (
-            <div className={classes('prow', 'muted')} key={person.staffId + person.gate}>
-              <Person person={person} sub={GATE_LABEL[person.gate] ?? person.gate} />
+            <div className="prow" key={person.staffId}>
+              <Person
+                person={person}
+                sub={person.roles.length > 0 ? person.roles.join(' · ') : section.roleName}
+              />
+              {person.appliedAt ? (
+                <span className="applied">{appliedAgo(new Date(person.appliedAt))}</span>
+              ) : null}
+              <div className="right">
+                <Pill tone={person.tone}>{person.label}</Pill>
+                {person.detail ? <span className="muted xs">{person.detail}</span> : null}
+              </div>
             </div>
           ))}
         </div>

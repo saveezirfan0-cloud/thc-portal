@@ -14,6 +14,7 @@ import {
 } from '@thc/domain';
 import { TEMPLATES, outboxKey } from '@thc/notifications';
 import { eventsDb, supabaseConfigured } from '../db';
+import { inviteRefusal } from './board-model';
 
 export type ActionResult = { error: string } | { ok: true; warning?: string };
 
@@ -24,9 +25,10 @@ const NO_SUPABASE =
  * The manager's actions on the event board — Scope §3.3.
  *
  * There is deliberately no Confirm here: the WORKER confirms, in the app.
- * The manager can only withdraw, record a no-show, undo one, take a Radar
- * application forward (the applicant already said yes — §3.3, N10), or
- * cancel the whole event.
+ * The manager can only invite from the Potential pool, withdraw, record a
+ * no-show, undo one, take a Radar application forward (the applicant
+ * already said yes — §3.3, N10), switch auto-assign off and on, or cancel
+ * the whole event.
  */
 
 async function db() {
@@ -233,6 +235,113 @@ export async function acceptApplication(eventId: string, bookingId: string): Pro
         warning: `The role is now fully confirmed: ${closed} other ${closed === 1 ? 'applicant was' : 'applicants were'} told it filled (N10c).`,
       }
     : { ok: true };
+}
+
+/**
+ * §3.3 / §3.4. The manager's Invite on a Potential pool row.
+ *
+ * One RPC, `office_invite_worker()` (20260927100000): admin only; refuses a
+ * cancelled event, an ended section (RULE-16) and a fully confirmed role
+ * under the section lock; then `invite_worker(…, 'manual', …)` re-applies
+ * every hard gate, writes the `invited` booking and queues N5 exactly as an
+ * auto-assign round does. Unlike a round it is not held back by the
+ * invitations already out — §3.4: "the manager can always invite them by
+ * hand at any point".
+ */
+export async function inviteWorker(
+  eventId: string,
+  shiftId: string,
+  staffId: string,
+): Promise<ActionResult> {
+  if (!supabaseConfigured()) return { error: NO_SUPABASE };
+  const supabase = await db();
+
+  const { data, error } = await supabase.rpc('office_invite_worker', {
+    p_shift: shiftId,
+    p_staff: staffId,
+  });
+  if (error) {
+    // The rota guard trigger is the backstop underneath the gates.
+    const guard = /rota_guard_(rtw_expired|visa_cap|wtr_cap)/.exec(error.message)?.[1];
+    if (guard) {
+      return { error: inviteRefusal(guard === 'rtw_expired' ? 'rtw_expired' : 'hours_limit') };
+    }
+    if (/not_authorised/.test(error.message)) {
+      return { error: 'Only the office can invite workers to a shift.' };
+    }
+    return { error: `The invitation was not sent: ${error.message}` };
+  }
+  const result = (data ?? {}) as { invited?: boolean; reason?: string };
+  revalidatePath(`/events/${eventId}`);
+  if (result.invited !== true) return { error: inviteRefusal(String(result.reason ?? '')) };
+  return { ok: true };
+}
+
+/**
+ * §3.4. The auto-assign switch, event level. Both switches must be on for a
+ * round to reach a section (`auto_assign_due_shifts`), so turning this off
+ * stops the hourly rounds and the same-day escalation for every role at
+ * once; open invitations stay open (§3.6 — auto-assign never withdraws).
+ *
+ * Admin only: `events` carries an admin-only write policy, and an update
+ * that RLS filters away changes nothing and returns no error, so the
+ * returned row count is what tells a refusal from a success.
+ */
+export async function setEventAutoAssign(eventId: string, on: boolean): Promise<ActionResult> {
+  if (!supabaseConfigured()) return { error: NO_SUPABASE };
+  const supabase = await db();
+
+  const { data, error } = await supabase
+    .from('events')
+    .update({ auto_assign: on })
+    .eq('id', eventId)
+    .is('cancelled_at', null)
+    .select('id');
+  if (error) return { error: error.message };
+  if ((data ?? []).length === 0) {
+    return {
+      error: 'The switch was not changed: the event is cancelled, or you are not an admin.',
+    };
+  }
+  revalidatePath(`/events/${eventId}`);
+  return { ok: true };
+}
+
+/**
+ * §3.4. The same switch for one role section — "for example when the
+ * client asks for a specific person". Admin only, for the same reason.
+ */
+export async function setRoleAutoAssign(
+  eventId: string,
+  shiftId: string,
+  on: boolean,
+): Promise<ActionResult> {
+  if (!supabaseConfigured()) return { error: NO_SUPABASE };
+  const supabase = await db();
+
+  const { data: event, error: eventError } = await supabase
+    .from('events')
+    .select('cancelled_at')
+    .eq('id', eventId)
+    .maybeSingle();
+  if (eventError) return { error: eventError.message };
+  if (!event) return { error: 'That event no longer exists.' };
+  if ((event as { cancelled_at: string | null }).cancelled_at) {
+    return { error: 'This event is cancelled; auto-assign has stopped for it (§3.3).' };
+  }
+
+  const { data, error } = await supabase
+    .from('shift_requirements')
+    .update({ auto_assign: on })
+    .eq('id', shiftId)
+    .eq('event_id', eventId)
+    .select('id');
+  if (error) return { error: error.message };
+  if ((data ?? []).length === 0) {
+    return { error: 'The switch was not changed: the role is gone, or you are not an admin.' };
+  }
+  revalidatePath(`/events/${eventId}`);
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------------
