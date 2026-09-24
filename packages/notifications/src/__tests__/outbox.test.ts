@@ -106,6 +106,24 @@ describe('email rows', () => {
     expect(msg.kind === 'email' && msg.to).toEqual(['candidate@example.com']);
   });
 
+  it('sends E10, the self-cancel email, to admin@ from admin@ (§9.12)', () => {
+    const msg = messageFor(
+      email({
+        template: 'E10',
+        key: 'E10:booking:1',
+        recipient_emails: ['admin@thehospitalitycompany.co.uk'],
+        payload: { event: 'Gala Dinner', role: 'Waiting Staff', date: 'Fri 09 Oct 2026' },
+      }),
+    );
+    expect(msg.kind).toBe('email');
+    if (msg.kind !== 'email') return;
+    expect(msg.to).toEqual(['admin@thehospitalitycompany.co.uk']);
+    expect(msg.sender).toBe('admin');
+    expect(msg.subject).toBe(
+      'Confirmed worker self-cancelled — Gala Dinner · Waiting Staff · Fri 09 Oct 2026',
+    );
+  });
+
   it('refuses to send E1, which is Willo’s', () => {
     expect(() => messageFor(email({ template: 'E1', recipient_emails: ['a@b.c'] }))).toThrow(
       /not ours to send/,

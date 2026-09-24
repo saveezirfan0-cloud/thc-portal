@@ -442,3 +442,115 @@ describe('completion letter requirement §5', () => {
     expect(body('CL6')).toContain('{overCapWeeks}');
   });
 });
+
+/**
+ * E10 — §9.12: a worker's self-cancel of a confirmed booking "triggers an
+ * immediate email to admin@thehospitalitycompany.co.uk, flagging which
+ * event/role/shift lost a confirmed worker". §8 gives it no code, so it is
+ * an extension, and SCOPE_CODES above still says exactly what §8 says.
+ */
+describe('E10 — the self-cancel email to the office (§9.12)', () => {
+  /**
+   * The keys self_cancel_booking() writes (20260927140200). The same list
+   * is asserted on the SQL side by supabase/tests/592_self_cancel_office_email.sql,
+   * so a key renamed on either side fails one of the two suites.
+   */
+  const SELF_CANCEL_PAYLOAD_KEYS = [
+    'event',
+    'client',
+    'venue',
+    'role',
+    'date',
+    'dateTime',
+    'name',
+    'employeeId',
+    'cancelledAt',
+    'confirmed',
+    'headcount',
+    'buffer',
+    'autoAssign',
+  ];
+
+  const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+
+  it('is an extension, not a §8 code', () => {
+    expect(EXTENSION_CODES as readonly string[]).toContain('E10');
+    expect(SCOPE_CODES as readonly string[]).not.toContain('E10');
+    expect(template('E10').trigger).toMatch(/Not in §8/);
+    expect(template('E10').trigger).toContain('§9.12');
+  });
+
+  it('goes to admin@ from the admin@ sender, and nowhere else', () => {
+    const entry = template('E10');
+    expect(entry.channel).toBe('email');
+    expect(entry.sender).toBe('admin');
+    expect(entry.recipients).toEqual(['admin@thehospitalitycompany.co.uk']);
+    expect(entry.deepLink).toBeUndefined();
+  });
+
+  it('is immediate, as §9.12 says', () => {
+    expect(template('E10').timing).toMatch(/^immediately/);
+  });
+
+  it('names the event, the role and the shift that lost a confirmed worker', () => {
+    const copy = body('E10');
+    for (const key of ['event', 'role', 'dateTime', 'venue', 'client']) {
+      expect(placeholders(copy), key).toContain(key);
+    }
+    expect(placeholders(template('E10').title)).toEqual(['event', 'role', 'date']);
+  });
+
+  it('asks only for values the database writes', () => {
+    const asked = new Set([...placeholders(template('E10').title), ...placeholders(body('E10'))]);
+    for (const key of asked) expect(SELF_CANCEL_PAYLOAD_KEYS, key).toContain(key);
+  });
+
+  it('renders with no placeholder left, and shows the buffer as "+n", never added in', () => {
+    const values = {
+      event: 'Gala Dinner',
+      client: 'Leonardo Royal',
+      venue: 'Leonardo Royal London City',
+      role: 'Waiting Staff',
+      date: 'Fri 09 Oct 2026',
+      dateTime: 'Fri 09 Oct 2026 17:00–23:30',
+      name: 'Tom Reid',
+      employeeId: '10432',
+      cancelledAt: '24 Sep 2026 14:05',
+      confirmed: '5',
+      headcount: '6',
+      buffer: '1',
+      autoAssign: 'on',
+    };
+    const subject = render(template('E10').title, values);
+    const sent = render(body('E10'), values);
+    expect(subject).toBe(
+      'Confirmed worker self-cancelled — Gala Dinner · Waiting Staff · Fri 09 Oct 2026',
+    );
+    expect(sent).not.toMatch(/[{}]/);
+    expect(sent).toContain('Shift: Fri 09 Oct 2026 17:00–23:30 (UK time)');
+    expect(sent).toContain('Confirmed for this role now: 5 of 6 (+1)');
+  });
+});
+
+/**
+ * N6 and N7 are queued by booking_tick() (20260927140000) with the payload
+ * queue_booking_push() writes for N5/N6b. Their copy needs nothing from it;
+ * their deep link needs the booking.
+ */
+describe('N6 / N7 render from the payload booking_tick writes', () => {
+  const payload = {
+    bookingId: 'b1',
+    shiftId: 's1',
+    eventId: 'e1',
+    event: 'Gala Dinner',
+    window: '18:00–23:00',
+  };
+
+  it.each(['N6', 'N7'] as const)('%s leaves no placeholder in title, body or link', (code) => {
+    const entry = template(code);
+    for (const text of [entry.title, body(code), entry.deepLink ?? '']) {
+      expect(render(text, payload), code).not.toMatch(/[{}]/);
+    }
+    expect(render(entry.deepLink ?? '', payload)).toBe('/shifts/b1');
+  });
+});
