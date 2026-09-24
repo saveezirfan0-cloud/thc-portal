@@ -11,6 +11,7 @@ import {
   cancelDeadline,
   formatDistance,
   radarGroups,
+  readyCutoffApplies,
   readyDeadline,
   readyDeadlinePassed,
   shiftCard,
@@ -24,6 +25,7 @@ function booking(over: Partial<StaffBooking> = {}): StaffBooking {
     status: 'confirmed',
     startsAt: new Date('2026-09-19T17:00:00Z'),
     endsAt: new Date('2026-09-19T23:30:00Z'),
+    confirmedAt: new Date('2026-09-10T09:00:00Z'),
     dayBeforeConfirmedAt: null,
     onDayConfirmedAt: null,
     reconfirmRequired: false,
@@ -61,6 +63,23 @@ describe('readyDeadline (§3.5)', () => {
   });
 });
 
+describe('readyCutoffApplies (§3.5)', () => {
+  const startsAt = new Date('2026-09-19T17:00:00Z'); // deadline 2026-09-18T11:00Z (BST)
+
+  it('applies to a booking confirmed before the deadline, and not at or after it', () => {
+    expect(readyCutoffApplies(new Date('2026-09-18T10:59:00Z'), startsAt)).toBe(true);
+    expect(readyCutoffApplies(new Date('2026-09-18T11:00:00Z'), startsAt)).toBe(false);
+  });
+
+  it('does not apply to a same-day booking (RULE-08)', () => {
+    expect(readyCutoffApplies(new Date('2026-09-19T09:00:00Z'), startsAt)).toBe(false);
+  });
+
+  it('does not apply without a confirmedAt', () => {
+    expect(readyCutoffApplies(null, startsAt)).toBe(false);
+  });
+});
+
 describe('canCancelShift (RULE-04)', () => {
   const startsAt = new Date('2026-09-19T17:00:00Z');
 
@@ -83,6 +102,24 @@ describe('shiftCard (§10.4, §3.5)', () => {
 
   it('asks for "I\'m ready" from the start of the day before, not only at the deadline', () => {
     expect(shiftCard(booking(), new Date('2026-09-18T08:00:00Z'))).toBe('needs_ready');
+  });
+
+  // §3.5 / 20260927140300: the 12:05 cutoff only releases a booking
+  // confirmed before the deadline, so only those are asked.
+  it('does not ask a worker who accepted after 12:00 the day before', () => {
+    const b = booking({ confirmedAt: new Date('2026-09-18T14:00:00Z') });
+    expect(shiftCard(b, new Date('2026-09-18T15:00:00Z'))).toBe('confirmed');
+  });
+
+  it('still asks one who accepted that morning, before the deadline', () => {
+    const b = booking({ confirmedAt: new Date('2026-09-18T08:30:00Z') });
+    expect(shiftCard(b, new Date('2026-09-18T09:00:00Z'))).toBe('needs_ready');
+  });
+
+  it('does not ask a booking with no confirmedAt, which the cutoff never releases', () => {
+    expect(shiftCard(booking({ confirmedAt: null }), new Date('2026-09-18T08:00:00Z'))).toBe(
+      'confirmed',
+    );
   });
 
   it('stops asking once the worker has pressed it', () => {
