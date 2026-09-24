@@ -186,7 +186,11 @@ export function QualifiedStaff({
                           >
                             <td>
                               <div className="person">
-                                <Avatar name={row.display_name} size="sm" />
+                                <Avatar
+                                  name={row.display_name}
+                                  src={row.photo_url ?? undefined}
+                                  size="sm"
+                                />
                                 <div>
                                   <div className="n">
                                     <Link href={`/staff/${row.staff_id}`}>{row.display_name}</Link>

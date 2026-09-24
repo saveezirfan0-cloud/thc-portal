@@ -88,3 +88,11 @@ export function matchesEventFilter(row: ClientEventRow, filter: EventFilter): bo
 export function byMargin(a: RateCardRow, b: RateCardRow): number {
   return (b.margin_pct ?? -Infinity) - (a.margin_pct ?? -Infinity);
 }
+
+/**
+ * "+ New event for this client" (§9.7): the Shift Builder with this client
+ * already picked — `/events/new` reads the parameter (events/new/preselect.ts).
+ */
+export function newEventHref(clientId: string): string {
+  return `/events/new?client=${encodeURIComponent(clientId)}`;
+}

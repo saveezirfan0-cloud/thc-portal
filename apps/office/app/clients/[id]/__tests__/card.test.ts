@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { gbp, gbpRound, grantedHow, groupByRole, marginTone, matchesEventFilter } from '../card';
+import {
+  gbp,
+  gbpRound,
+  grantedHow,
+  groupByRole,
+  marginTone,
+  matchesEventFilter,
+  newEventHref,
+} from '../card';
 import type { ClientEventRow, QualifiedStaffRow } from '../types';
 
 const worker = (over: Partial<QualifiedStaffRow>): QualifiedStaffRow => ({
@@ -121,5 +129,12 @@ describe('the events filter (§9.7)', () => {
 
   it('keeps cancelled events reachable rather than hiding them', () => {
     expect(matchesEventFilter(event({ status: 'cancelled' }), 'cancelled')).toBe(true);
+  });
+});
+
+describe('+ New event for this client (§9.7)', () => {
+  it('opens the Shift Builder with this client picked', () => {
+    expect(newEventHref('c-123')).toBe('/events/new?client=c-123');
+    expect(newEventHref('a b&c')).toBe('/events/new?client=a%20b%26c');
   });
 });

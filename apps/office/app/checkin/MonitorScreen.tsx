@@ -8,6 +8,7 @@ import { createClient } from '@thc/db/browser';
 import { MonitorTable } from './MonitorTable';
 import { ResolveModal } from './ResolveModal';
 import { VIOLATION_LABEL, missingWorkers, needsAttention } from './status';
+import { violationRowProps } from './violationRow';
 import type { MonitorRow, ViolationRow } from './types';
 
 /**
@@ -138,10 +139,10 @@ export function MonitorScreen({
             </thead>
             <tbody>
               {shownViolations.map((v) => (
-                <tr key={v.id} style={v.resolved ? { opacity: 0.45 } : undefined}>
+                <tr key={v.id} {...violationRowProps(v, () => setOpen(v))}>
                   <td>
                     <div className="person">
-                      <Avatar name={v.staffName} src={v.photoPath ?? undefined} size="sm" />
+                      <Avatar name={v.staffName} src={v.photoUrl ?? undefined} size="sm" />
                       <div className="n">{v.staffName}</div>
                     </div>
                   </td>
@@ -165,7 +166,11 @@ export function MonitorScreen({
                     <Button
                       size="sm"
                       tone={v.resolved ? 'ghost' : 'default'}
-                      onClick={() => setOpen(v)}
+                      onClick={(event) => {
+                        // The row opens the same window; one open, not two.
+                        event.stopPropagation();
+                        setOpen(v);
+                      }}
                     >
                       Details
                     </Button>

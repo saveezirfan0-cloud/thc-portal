@@ -17,7 +17,8 @@ export interface MonitorRow {
   eventTitle: string;
   roleName: string;
   staffName: string;
-  photoPath: string | null;
+  /** A short-lived signed URL for the selfie (`_lib/photos.ts`); null → initials. */
+  photoUrl: string | null;
   /** The ROLE SECTION's window (RULE-18), never the event's. */
   startsAt: string;
   endsAt: string;
@@ -38,7 +39,8 @@ export interface ViolationRow {
   id: string;
   bookingId: string;
   staffName: string;
-  photoPath: string | null;
+  /** A short-lived signed URL for the selfie (`_lib/photos.ts`); null → initials. */
+  photoUrl: string | null;
   eventTitle: string;
   venueName: string;
   roleName: string;

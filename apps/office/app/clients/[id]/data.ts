@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../data';
+import { withPhotoUrls } from '../../_lib/photos';
 import type { Client } from '../types';
 import type {
   ClientCardData,
@@ -76,7 +77,8 @@ export async function loadClientCard(id: string): Promise<ClientCardData> {
   return {
     client: client.data ?? null,
     rateCard: rateCard.data ?? [],
-    qualified: qualified.data ?? [],
+    // The selfie is a private-bucket key; signed here, initials if not.
+    qualified: await withPhotoUrls(qualified.data ?? []),
     events: events.data ?? [],
     roles: roles.data ?? [],
     staff: staff.data ?? [],

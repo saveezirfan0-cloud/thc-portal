@@ -44,7 +44,7 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
           <tr key={row.bookingId}>
             <td>
               <div className="person">
-                <Avatar name={row.staffName} src={row.photoPath ?? undefined} />
+                <Avatar name={row.staffName} src={row.photoUrl ?? undefined} />
                 <div>
                   <div className="n">{row.staffName}</div>
                   <div className="s">{row.roleName}</div>

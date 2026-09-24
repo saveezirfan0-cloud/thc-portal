@@ -62,3 +62,10 @@
 .monitor-tbl .stamp {
   font-variant-numeric: tabular-nums;
 }
+
+/* The violation log's rows open the detail window from the keyboard too
+   (violationRow.ts), so a focused row has to be visible. */
+.tbl tr.clickable:focus-visible {
+  outline: 2px solid var(--focus-line);
+  outline-offset: -2px;
+}
