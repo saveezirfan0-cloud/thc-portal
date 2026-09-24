@@ -122,7 +122,7 @@ export function DocumentsStep({
         <div className="m">
           Do you have any <b>unspent</b> criminal convictions? This is a legal declaration. Spent
           convictions don’t need to be declared. You must also tell us about any conviction that
-          happens while you work for us (§10.7).
+          happens while you work for us.
         </div>
         <RadioGroup
           className="wiz-choices"
@@ -167,8 +167,8 @@ export function DocumentsStep({
 
       {allUploaded(rows) ? (
         <div className="xs muted">
-          Everything here goes to the office for review as one set (§2.10). You’ll see each item’s
-          status once you submit.
+          Everything here goes to the office for review as one set. You’ll see each item’s status
+          once you submit.
         </div>
       ) : null}
 

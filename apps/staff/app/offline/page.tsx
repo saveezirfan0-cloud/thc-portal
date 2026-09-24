@@ -8,9 +8,12 @@ export const metadata = { title: 'Offline · THC Staff' };
  *
  * Precached by the service worker and served for any navigation that
  * cannot reach the network. The copy is deliberately specific about what
- * still works: a worker outside a venue with no signal needs to know
- * whether their check-in went through, and "you're offline" alone does not
- * tell them.
+ * does NOT work: a worker outside a venue with no signal needs to know
+ * that their check-in did not go through. There is no offline queue — the
+ * scope does not ask for one, and every check-in and check-out is decided
+ * by the server at the moment of the press (§5.1) — so this page must not
+ * promise one: a worker who trusted it would walk in and become a No-show
+ * (docs/15).
  */
 export default function Page() {
   return (
@@ -24,8 +27,8 @@ export default function Page() {
             pull down to refresh.
           </p>
           <p className="xs muted">
-            If you were checking in, your attempt is saved on this phone and is sent the moment you
-            are back online — don’t check in twice.
+            Checking in and checking out need a connection — nothing is saved on this phone while
+            you’re offline. As soon as you’re back online, open your shift and try again.
           </p>
         </div>
       </AppBody>

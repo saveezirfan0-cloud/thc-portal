@@ -135,7 +135,7 @@ export function ReviewHub({
           <div
             className={`docrow ${declaration.status === 'verified' ? 'verified' : declaration.status}`}
           >
-            <span className="ico">{declaration.status === 'verified' ? '✓' : '§'}</span>
+            <span className="ico">{declaration.status === 'verified' ? '✓' : '…'}</span>
             <div>
               <div className="t">Criminal conviction declaration</div>
               <div className="m">
