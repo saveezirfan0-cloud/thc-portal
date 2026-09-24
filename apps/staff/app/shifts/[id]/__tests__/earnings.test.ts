@@ -23,6 +23,10 @@ const base: ShiftDetail = {
   checkInAt: '2026-06-14T15:52:00Z',
   checkOutAt: '2026-06-14T22:32:00Z',
   breaks: [],
+  eventDate: '2026-06-14',
+  eventCancelledAt: null,
+  cancelCause: null,
+  noCheckoutOpen: false,
 };
 
 describe('§5.1 the check-out confirmation', () => {

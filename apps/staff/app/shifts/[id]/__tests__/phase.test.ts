@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { checkInWindow, distanceM, formatDistance, shiftPhase } from '../phase';
+import {
+  checkInWindow,
+  distanceM,
+  formatDistance,
+  isStaticPhase,
+  shiftPhase,
+  shiftScreenReachable,
+} from '../phase';
 
 /** 17:00–23:30 UK on 14 June 2026 (BST). */
 const START = '2026-06-14T16:00:00Z';
@@ -12,6 +19,10 @@ const shift = (over: Partial<Parameters<typeof shiftPhase>[0]['shift']> = {}) =>
   confirmedAt: '2026-06-12T09:00:00Z',
   checkInAt: null,
   checkOutAt: null,
+  status: 'confirmed' as const,
+  cancelCause: null,
+  eventCancelledAt: null,
+  noCheckoutOpen: false,
   ...over,
 });
 
@@ -43,9 +54,9 @@ describe('§5.1 which state the shift screen is in', () => {
     const on = shift({ checkInAt: START });
     // 390 minutes is the shift; +240 is the RULE-02 boundary.
     expect(shiftPhase({ shift: on, openBreak: false, now: at(390 + 239) })).toBe('on_shift');
-    expect(shiftPhase({ shift: on, openBreak: false, now: at(390 + 240) })).toBe(
-      'check_out_locked',
-    );
+    expect(shiftPhase({ shift: on, openBreak: false, now: at(390 + 240) })).toBe('no_checkout');
+    // A break left running does not keep the check-out button alive.
+    expect(shiftPhase({ shift: on, openBreak: true, now: at(390 + 240) })).toBe('no_checkout');
   });
 
   it('is closed once a finish time exists, however it was recorded', () => {
@@ -57,6 +68,89 @@ describe('§5.1 which state the shift screen is in', () => {
     const { opens, locks } = checkInWindow(START);
     expect(opens.toISOString()).toBe('2026-06-14T15:30:00.000Z');
     expect(locks.toISOString()).toBe('2026-06-14T16:30:00.000Z');
+  });
+});
+
+describe('§10.4 the three dead ends replace the shift screen', () => {
+  it('opens the static screen for a cancelled event (N12), whatever the clock says', () => {
+    const cancelled = shift({
+      status: 'cancelled',
+      cancelCause: 'event_cancelled',
+      eventCancelledAt: '2026-06-13T09:00:00Z',
+    });
+    // Inside the check-in window, where the live screen would offer the button.
+    expect(shiftPhase({ shift: cancelled, openBreak: false, now: at(-10) })).toBe(
+      'event_cancelled',
+    );
+    expect(shiftPhase({ shift: cancelled, openBreak: false, now: at(-3000) })).toBe(
+      'event_cancelled',
+    );
+  });
+
+  it('opens it for a cancelled event even before the booking row has caught up', () => {
+    const cancelled = shift({ eventCancelledAt: '2026-06-13T09:00:00Z' });
+    expect(shiftPhase({ shift: cancelled, openBreak: false, now: at(-10) })).toBe(
+      'event_cancelled',
+    );
+  });
+
+  it('opens the static screen for an office withdrawal (N10b)', () => {
+    const withdrawn = shift({ status: 'cancelled', cancelCause: 'office_withdraw' });
+    expect(shiftPhase({ shift: withdrawn, openBreak: false, now: at(-10) })).toBe('withdrawn');
+  });
+
+  it('opens it for the 12:05 release too (N6b)', () => {
+    const released = shift({ status: 'cancelled', cancelCause: 'ready_cutoff' });
+    expect(shiftPhase({ shift: released, openBreak: false, now: at(-10) })).toBe('withdrawn');
+  });
+
+  it('opens it for a raised No check-out even though a finish was stamped (RULE-02)', () => {
+    // check_out() with no on-site fix stamps the check-in as the finish AND
+    // raises the violation; the worker must see the static screen, not
+    // "Shift complete" with a zero-length shift.
+    const raised = shift({
+      status: 'worked',
+      checkInAt: START,
+      checkOutAt: START,
+      noCheckoutOpen: true,
+    });
+    expect(shiftPhase({ shift: raised, openBreak: false, now: at(200) })).toBe('no_checkout');
+  });
+
+  it('marks exactly those three as static', () => {
+    expect(isStaticPhase('event_cancelled')).toBe(true);
+    expect(isStaticPhase('withdrawn')).toBe(true);
+    expect(isStaticPhase('no_checkout')).toBe(true);
+    for (const live of ['before_window', 'check_in', 'locked', 'on_shift', 'on_break', 'closed']) {
+      expect(isStaticPhase(live as Parameters<typeof isStaticPhase>[0])).toBe(false);
+    }
+  });
+});
+
+describe('which bookings /shifts/:id shows at all', () => {
+  it('shows a booked shift and the three dead ends', () => {
+    expect(shiftScreenReachable(shift())).toBe(true);
+    expect(shiftScreenReachable(shift({ status: 'worked' }))).toBe(true);
+    expect(
+      shiftScreenReachable(shift({ status: 'cancelled', cancelCause: 'office_withdraw' })),
+    ).toBe(true);
+    expect(
+      shiftScreenReachable(
+        shift({
+          status: 'cancelled',
+          cancelCause: 'event_cancelled',
+          eventCancelledAt: '2026-06-13T09:00:00Z',
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('shows nothing for the worker’s own cancel or a lapsed invitation', () => {
+    expect(shiftScreenReachable(shift({ status: 'cancelled', cancelCause: 'self_cancel' }))).toBe(
+      false,
+    );
+    expect(shiftScreenReachable(shift({ status: 'closed', cancelCause: 'declined' }))).toBe(false);
+    expect(shiftScreenReachable(shift({ status: 'applied' }))).toBe(false);
   });
 });
 
