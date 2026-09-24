@@ -49,8 +49,9 @@ select bag_eq(
             ('staff_transitions'),('storage_deletions'),
             ('venue_types'),('venues'),('violations'),
             ('payroll_export_lines'),('event_documents'),
-            ('onboarding_progress'),('quiz_questions'),('contract_versions') $$,
-  'RLS is enabled on all 39 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, and the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions)'
+            ('onboarding_progress'),('quiz_questions'),('contract_versions'),
+            ('apply_caller_attempts') $$,
+  'RLS is enabled on all 40 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), and apply_caller_attempts from the /apply per-caller limit (ADR-0024)'
 );
 
 -- ---------------------------------------------------------------------
@@ -269,8 +270,14 @@ select is_empty(
   $$ select c.relname::text
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
       where n.nspname = 'public' and c.relkind = 'r' and c.relrowsecurity
+        -- apply_caller_attempts is policy-less ON PURPOSE (ADR-0024): it
+        -- holds only salted hashes, is written and read solely by the
+        -- SECURITY DEFINER apply_caller_check(), and its grants are
+        -- revoked, so no PostgREST role has a use for a policy on it.
+        -- 520_apply_caller_throttle.sql pins that shape.
+        and c.relname <> 'apply_caller_attempts'
         and not exists (select 1 from pg_policy p where p.polrelid = c.oid) $$,
-  'every RLS table in public carries at least one policy; no table is deny-all by omission'
+  'every RLS table in public carries at least one policy; no table is deny-all by omission (apply_caller_attempts is the one deliberate exception, ADR-0024)'
 );
 
 -- ---------------------------------------------------------------------
