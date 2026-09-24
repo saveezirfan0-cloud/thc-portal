@@ -20,6 +20,8 @@ import {
   rankPool,
   type Candidate,
   type HardGate,
+  type RankedCandidate,
+  type ScoreInput,
   type ScoreWeights,
 } from './scoring.ts';
 
@@ -66,22 +68,52 @@ function num(value: number | string | null | undefined, fallback: number): numbe
 /** Far enough that proximityFactor clamps to zero, without being Infinity. */
 const NO_KNOWN_DISTANCE_KM = 1_000;
 
-function toCandidate(row: CandidateRow): Candidate<string> {
+/**
+ * The five §6 inputs for one row, with the least favourable fallback for
+ * anything missing. Exported so the event board can show the SAME figures
+ * the score was computed from, rather than re-reading the raw row.
+ */
+export function candidateInput(row: CandidateRow): ScoreInput {
   return {
-    subject: row.staff_id,
+    reliability: num(row.reliability, 0),
+    rating: num(row.rating, 0),
+    distanceKm: num(row.distance_km, NO_KNOWN_DISTANCE_KM),
+    // More future shifts scores lower, so unknown must mean "many".
+    futureShifts: num(row.future_shifts, 5),
+    venueTimes: num(row.venue_times, 0),
+  };
+}
+
+function toCandidate<T>(row: CandidateRow, subject: T): Candidate<T> {
+  return {
+    subject,
     qualifiedAtClientAndRole: row.qualified,
     // rankPool drops anything carrying a gate. The cast is safe because
     // rankPool only checks for presence; the value is SQL's own wording.
     ...(row.gate ? { gate: row.gate as HardGate } : {}),
-    input: {
-      reliability: num(row.reliability, 0),
-      rating: num(row.rating, 0),
-      distanceKm: num(row.distance_km, NO_KNOWN_DISTANCE_KM),
-      // More future shifts scores lower, so unknown must mean "many".
-      futureShifts: num(row.future_shifts, 5),
-      venueTimes: num(row.venue_times, 0),
-    },
+    input: candidateInput(row),
   };
+}
+
+/**
+ * The whole ranked pool for one section — wave 1 first, then wave 2, each
+ * by score — keeping each row as the subject so a screen can still read
+ * its name, booking status and factors.
+ *
+ * This is what the event board's Potential pool shows (§3.3), and it is
+ * the same ranking `selectInvitees` takes a round from, so the board and
+ * the engine cannot disagree about who is top of the list. Gated rows are
+ * dropped by `rankPool`; which booking statuses belong in the pool is the
+ * caller's decision (the board keeps Radar applicants, a round does not).
+ */
+export function rankCandidateRows<R extends CandidateRow>(
+  rows: readonly R[],
+  weights: ScoreWeights = DEFAULT_WEIGHTS,
+): RankedCandidate<R>[] {
+  return rankPool(
+    rows.map((row) => toCandidate(row, row)),
+    weights,
+  );
 }
 
 /**
@@ -104,7 +136,10 @@ export function selectInvitees(
 ): string[] {
   if (allocation <= 0) return [];
   const open = rows.filter((row) => row.booking_status === null);
-  return rankPool(open.map(toCandidate), weights)
+  return rankPool(
+    open.map((row) => toCandidate(row, row.staff_id)),
+    weights,
+  )
     .slice(0, Math.trunc(allocation))
     .map((ranked) => ranked.subject);
 }
