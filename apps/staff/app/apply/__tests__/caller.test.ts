@@ -1,6 +1,13 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it, vi } from 'vitest';
-import { DEFAULT_SALT, callerAddress, callerBucket, callerKey, hashCaller } from '../caller';
+import {
+  DEFAULT_SALT,
+  callerAddress,
+  callerBucket,
+  callerKey,
+  hashCaller,
+  isProductionRuntime,
+} from '../caller';
 
 /**
  * The per-caller key for the /apply throttle (ADR-0024): read from the
@@ -54,6 +61,29 @@ describe('callerKey', () => {
     expect(warn).toHaveBeenCalledTimes(1);
     expect(String(warn.mock.calls[0]?.[0])).toContain('APPLY_THROTTLE_SALT');
     warn.mockRestore();
+  });
+  it('in production, refuses the constant: no key, one error, never the guessable digest', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    expect(callerKey(h({ 'x-real-ip': '203.0.113.7' }), undefined, true)).toBeNull();
+    expect(callerKey(h({ 'x-real-ip': '203.0.113.8' }), ' ', true)).toBeNull();
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(String(error.mock.calls[0]?.[0])).toContain('APPLY_THROTTLE_SALT');
+    expect(warn).not.toHaveBeenCalled();
+    error.mockRestore();
+    warn.mockRestore();
+  });
+  it('in production, a configured salt is used as normal', () => {
+    expect(callerKey(h({ 'x-real-ip': '203.0.113.7' }), 'pepper', true)).toBe(
+      hashCaller('203.0.113.7', 'pepper'),
+    );
+  });
+  it('treats NODE_ENV=production and VERCEL_ENV=production as production', () => {
+    expect(isProductionRuntime({ NODE_ENV: 'production' } as NodeJS.ProcessEnv)).toBe(true);
+    expect(
+      isProductionRuntime({ NODE_ENV: 'test', VERCEL_ENV: 'production' } as NodeJS.ProcessEnv),
+    ).toBe(true);
+    expect(isProductionRuntime({ NODE_ENV: 'development' } as NodeJS.ProcessEnv)).toBe(false);
   });
   it('is null when the request carries no address (local development)', () => {
     expect(callerKey(h({}), 'pepper')).toBeNull();

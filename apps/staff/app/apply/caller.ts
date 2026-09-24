@@ -73,26 +73,52 @@ export function hashCaller(address: string, salt: string): string {
 }
 
 let warned = false;
+let refused = false;
 
 /**
- * The digest to send, or null when the request carries no address (local
- * development — on Vercel there always is one). The salt is
- * `APPLY_THROTTLE_SALT`; without it a constant is used and said so once,
- * because an unsalted digest of an IPv4 address can be reversed by trying
- * all four billion.
+ * A deployed build: `next build`/`next start` set NODE_ENV=production, and
+ * Vercel says so itself. Preview deployments count — they take real
+ * applications from anyone who has the URL.
+ */
+export function isProductionRuntime(env: NodeJS.ProcessEnv = process.env): boolean {
+  return env['NODE_ENV'] === 'production' || env['VERCEL_ENV'] === 'production';
+}
+
+/**
+ * The digest to send, or null when there is none to send.
+ *
+ * Null when the request carries no address (local development — on Vercel
+ * there always is one), and null in production when `APPLY_THROTTLE_SALT`
+ * is unset. That second case used to hash under a constant that is in this
+ * file, i.e. in the public repository: an unsalted-in-effect digest of an
+ * IPv4 address is reversed by trying all four billion (§1.7). Refusing is
+ * the honest outcome — `submit_application_as_caller` treats a null key as
+ * "no per-caller limit" and the per-email and per-mobile limits still apply
+ * — and it is logged as an error so the missing secret gets noticed.
+ * Development keeps the constant, with a one-time warning.
  */
 export function callerKey(
   headers: HeaderGetter,
   salt: string | undefined = process.env['APPLY_THROTTLE_SALT'],
+  production: boolean = isProductionRuntime(),
 ): string | null {
   const address = callerAddress(headers);
   if (!address) return null;
   let key = salt?.trim();
   if (!key) {
+    if (production) {
+      if (!refused) {
+        refused = true;
+        console.error(
+          '[apply] APPLY_THROTTLE_SALT is not set on this production deployment — the per-caller throttle is OFF (no caller hash is sent). Set it (any long random string) in the Vercel env vars.',
+        );
+      }
+      return null;
+    }
     if (!warned) {
       warned = true;
       console.warn(
-        '[apply] APPLY_THROTTLE_SALT is not set — the per-caller throttle is hashing with a built-in constant. Set it (any long random string) on this deployment.',
+        '[apply] APPLY_THROTTLE_SALT is not set — the per-caller throttle is hashing with a built-in constant. Fine for local development only; set it (any long random string) on every deployment.',
       );
     }
     key = DEFAULT_SALT;
