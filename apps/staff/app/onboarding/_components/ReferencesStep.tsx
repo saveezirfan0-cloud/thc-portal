@@ -149,7 +149,7 @@ export function ReferencesStep({ initial }: { initial: Referee[] }) {
 
       <div className="xs muted">
         References are stored on your profile as supporting information. The office may contact
-        them; there is no separate reference-check stage (§2.10).
+        them; there is no separate reference-check stage.
       </div>
       {sameTwice ? <Alert tone="amber">{sameTwice}</Alert> : null}
       {error ? <Alert tone="coral">{error}</Alert> : null}

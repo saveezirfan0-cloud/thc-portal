@@ -4,7 +4,9 @@ import {
   capMeter,
   explainLimit,
   APPLY_REFUSAL_COPY,
+  STATIC_SCREEN_ACTION,
   STATIC_SCREEN_CONTACT,
+  STATIC_SCREEN_COPY,
   SELF_CANCEL_WINDOW_HOURS,
   type StaffBooking,
   canCancelShift,
@@ -165,6 +167,24 @@ describe('staticScreenCase (§10.4)', () => {
     );
   });
 
+  it('treats the 12:05 release (N6b) as the office taking the shift back, per the wireframe', () => {
+    expect(staticScreenCase(booking({ status: 'cancelled', cancelCause: 'ready_cutoff' }))).toBe(
+      'withdrawn',
+    );
+  });
+
+  it('puts a cancelled event ahead of how the booking itself ended', () => {
+    expect(
+      staticScreenCase(
+        booking({
+          status: 'cancelled',
+          cancelCause: 'event_cancelled',
+          eventCancelledAt: new Date(),
+        }),
+      ),
+    ).toBe('event_cancelled');
+  });
+
   it('names an unresolved No check-out, whose card stays in the list (RULE-02)', () => {
     expect(staticScreenCase(booking({ status: 'worked', noCheckoutOpen: true }))).toBe(
       'no_checkout',
@@ -176,7 +196,20 @@ describe('staticScreenCase (§10.4)', () => {
   });
 
   it('carries the contact line the approved design fixes', () => {
-    expect(STATIC_SCREEN_CONTACT).toContain('admin@thehospitalitycompany.co.uk');
+    expect(STATIC_SCREEN_CONTACT).toBe(
+      'If you believe there has been an error, please contact us at: admin@thehospitalitycompany.co.uk',
+    );
+    expect(STATIC_SCREEN_ACTION).toBe('OK, I understand');
+  });
+
+  it('carries the three §10.4 sentences verbatim', () => {
+    expect(STATIC_SCREEN_COPY.event_cancelled.title).toBe('This event has been cancelled');
+    expect(STATIC_SCREEN_COPY.withdrawn.title).toBe('You’ve been removed from this shift');
+    // The No check-out sentence is ONE heading: the half after the dash is
+    // the part that tells the worker somebody is already on it.
+    expect(STATIC_SCREEN_COPY.no_checkout.title).toBe(
+      'We didn’t receive your check-out for this shift — the office is following up with you directly.',
+    );
   });
 });
 

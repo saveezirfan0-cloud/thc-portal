@@ -68,7 +68,7 @@ export default async function Page() {
       {meter ? (
         <div className="note xs">
           This week · <b>{meter}</b>. Your weekly limit is calculated from your verified documents
-          and is never typed by anyone (RULE-20, §4.4).
+          and is never typed by anyone.
         </div>
       ) : null}
       {empty ? (
@@ -91,8 +91,7 @@ export default async function Page() {
         <>
           <div className="grp">{RADAR_GROUP_LABEL.other}</div>
           <p className="xs muted">
-            Shown only once every worker qualified for this role at that client has been invited
-            (RULE-17).
+            Shown only once every worker qualified for this role at that client has been invited.
           </p>
           {groups.other.map((shift) => (
             <RadarCard key={shift.shiftId} shift={shift} />
@@ -129,7 +128,7 @@ function RadarCard({ shift, bookingId }: { shift: OpenShift; bookingId?: string 
       <div className="card-head">
         {applied ? <Pill tone="purple">Applied</Pill> : null}
         {!applied && shift.qualified ? <Pill tone="purple">Worked here before</Pill> : null}
-        {shift.hoursLimit ? <Pill tone="coral">Limit reached</Pill> : null}
+        {shift.hoursLimit ? <Pill tone="coral">Limit Reached</Pill> : null}
         <span className="right km">{formatDistance(shift.distanceKm)}</span>
       </div>
       <Link className="t" href={`/radar/${shift.shiftId}`}>

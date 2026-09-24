@@ -90,7 +90,7 @@ export function SelfieStep({
         <WizardTop
           step={3}
           heading="Your profile photo"
-          sub="Already on file from your previous time with us. It’s locked — changing it goes through the office (§10.1)."
+          sub="Already on file from your previous time with us. It’s locked — changing it goes through the office."
         />
         <div className="cam">
           {existingUrl ? <img src={existingUrl} alt={name} /> : <Avatar name={name} size="xl" />}
@@ -154,7 +154,7 @@ export function SelfieStep({
         {file}
         <div className="xs muted center-text">
           You’ll be able to check it before you continue. It’s set once — changing it later goes
-          through the office (§10.1).
+          through the office.
         </div>
         {error ? <Alert tone="coral">{error}</Alert> : null}
         <WizardFoot hint="Take a photo to continue">
@@ -192,7 +192,7 @@ export function SelfieStep({
         <Avatar name={name} src={preview} />
         <Avatar name={name} src={preview} size="sm" />
         <span className="xs muted">
-          How it appears in the app, the Back Office and on the timesheet (§1.6).
+          How it appears in the app, the Back Office and on the timesheet.
         </span>
       </div>
       {error ? <Alert tone="coral">{error}</Alert> : null}

@@ -1,151 +1,150 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * §5.1 · which check log the shift screen is allowed to read.
+ * §5.1, §10.4 · what the shift screen reads, and where from.
  *
- * `check_logs` is append-only and holds one row per BUTTON PRESS (§1.5):
- * a strict-buffer turn-away, an out-of-radius refusal and the accepted
- * check-in can all sit under one booking. Only the accepted press carries
- * `check_in_at`, and it is the row `check_out()` and `resolve_violation()`
- * update — so it is the only row whose times may reach the worker. Taking
- * the first element of the embedded array instead showed a worker who had
- * been turned away and then checked in no check-in at all, on the screen
- * they use to prove they are on shift and next to the RULE-01 pay window.
+ * docs/15 §2 blocker 1: this loader used to read `bookings` and EMBED
+ * shift_requirements, events, roles, check_logs and breaks. The staff role
+ * reads none of those tables (ADR-0004 — they carry the charge rate and
+ * other workers' records), so for a real worker every embed was null and
+ * the check-in screen had no times, venue or role. It now reads one
+ * `security definer` function, `staff_shift_detail()`, and no table at all;
+ * 560_staff_shift_detail.sql holds the function to the caller's own
+ * bookings and to columns with no charge rate in them.
  *
- * The loader is exercised through a stubbed PostgREST builder that does NOT
- * apply the filters, because an embedded array has no ordering guarantee:
- * the point of the test is that the answer holds whatever order the rows
- * arrive in.
+ * Which check log the screen gets — the ACCEPTED press, with a manager's
+ * finish preferred — is decided in that function's SQL now, the same
+ * lateral `payable_shifts_v` and `check_out()` use. What is tested here is
+ * that the loader asks for the right thing and maps what comes back.
  */
 
-const maybeSingle = vi.fn();
 const rpc = vi.fn();
-const calls: Record<string, unknown[][]> = {};
-
-function record(name: string) {
-  return (...args: unknown[]) => {
-    (calls[name] ??= []).push(args);
-    return builder;
-  };
-}
-
-const builder = {
-  select: record('select'),
-  eq: record('eq'),
-  not: record('not'),
-  order: record('order'),
-  limit: record('limit'),
-  maybeSingle: () => maybeSingle(),
-} as unknown as Record<string, unknown>;
+const from = vi.fn();
 
 vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
 vi.mock('@thc/db/server', () => ({
-  createClient: () => ({ from: () => builder, rpc: (...args: unknown[]) => rpc(...args) }),
+  createClient: () => ({
+    from: (...args: unknown[]) => from(...args),
+    rpc: (...args: unknown[]) => rpc(...args),
+  }),
 }));
 
 const { loadShift } = await import('../data');
-const { acceptedLog } = await import('@thc/domain');
 const { shiftPhase } = await import('../phase');
 
 const START = '2026-06-14T16:00:00Z'; // 17:00 UK
 const END = '2026-06-14T22:30:00Z'; // 23:30 UK
 
-/** The turn-away press first, the real check-in second — the order that broke it. */
-const booking = (logs: unknown[]) => ({
-  id: 'b1',
+const row = (over: Record<string, unknown> = {}) => ({
+  booking_id: 'b1',
   status: 'worked',
   confirmed_at: '2026-06-12T09:00:00Z',
-  logs,
-  breaks: [],
-  shift: {
-    starts_at: START,
-    ends_at: END,
-    pay_rate: 15,
-    dress_code: 'Black tie',
-    role: { name: 'Waiting Staff' },
-    event: {
-      title: 'Autumn Gala',
-      venue_name: 'Mandarin Oriental',
-      venue_address: '66 Knightsbridge',
-      notes: null,
-      onsite_contact: null,
-      geofence_radius_m: 150,
-      pays_breaks: false,
-    },
-  },
-});
-
-const TURN_AWAY = { check_in_at: null, check_out_at: null, manager_finish_at: null };
-const CHECKED_IN = {
+  cancel_cause: null,
+  starts_at: START,
+  ends_at: END,
+  pay_rate: 15,
+  dress_code: 'Black tie',
+  role: 'Waiting Staff',
+  event_title: 'Autumn Gala',
+  event_date: '2026-06-14',
+  venue_name: 'Mandarin Oriental',
+  venue_address: '66 Knightsbridge',
+  venue_lat: 51.502,
+  venue_lng: -0.16,
+  geofence_radius_m: 150,
+  onsite_contact: 'Priya on 07700 900999',
+  notes: null,
+  pays_breaks: false,
+  event_cancelled_at: null,
+  no_checkout_open: false,
   check_in_at: '2026-06-14T16:04:00Z',
   check_out_at: '2026-06-14T22:33:00Z',
-  manager_finish_at: null,
-};
+  breaks: [
+    { id: 'k2', startedAt: '2026-06-14T20:00:00Z', endedAt: '2026-06-14T20:15:00Z' },
+    { id: 'k1', startedAt: '2026-06-14T18:00:00Z', endedAt: '2026-06-14T18:20:00Z' },
+  ],
+  ...over,
+});
 
 beforeEach(() => {
   process.env.NEXT_PUBLIC_SUPABASE_URL = 'https://example.supabase.co';
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'anon';
-  for (const key of Object.keys(calls)) delete calls[key];
-  maybeSingle.mockReset();
   rpc.mockReset();
-  rpc.mockResolvedValue({ data: null, error: null });
+  from.mockReset();
 });
 
-describe('loadShift() reads the press that checked the worker in', () => {
-  it('shows the check-in, not the turn-away logged before it', async () => {
-    maybeSingle.mockResolvedValue({ data: booking([TURN_AWAY, CHECKED_IN]), error: null });
+describe('loadShift() reads the worker’s own shift through staff_shift_detail()', () => {
+  it('asks the definer function for this booking, and reads no table', async () => {
+    rpc.mockResolvedValue({ data: [row()], error: null });
+    await loadShift('b1');
 
+    expect(rpc).toHaveBeenCalledWith('staff_shift_detail', { p_booking: 'b1' });
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it('carries the times, venue and role the embed used to lose', async () => {
+    rpc.mockResolvedValue({ data: [row()], error: null });
+    const shift = await loadShift('b1');
+
+    expect(shift).toMatchObject({
+      bookingId: 'b1',
+      eventTitle: 'Autumn Gala',
+      roleName: 'Waiting Staff',
+      venueName: 'Mandarin Oriental',
+      venueAddress: '66 Knightsbridge',
+      startsAt: START,
+      endsAt: END,
+      payRate: 15,
+      venueLat: 51.502,
+      venueLng: -0.16,
+      geofenceRadiusM: 150,
+      onsiteContact: 'Priya on 07700 900999',
+      breaksLogged: true,
+    });
+  });
+
+  it('carries the accepted check-in and finish, so a worked shift reads as closed', async () => {
+    rpc.mockResolvedValue({ data: [row()], error: null });
     const shift = await loadShift('b1');
 
     expect(shift?.checkInAt).toBe('2026-06-14T16:04:00Z');
     expect(shift?.checkOutAt).toBe('2026-06-14T22:33:00Z');
-    // What the worker actually sees: a closed shift, not an open check-in
-    // button offering to check them in a second time.
     expect(
       shiftPhase({ shift: shift!, openBreak: false, now: new Date('2026-06-14T22:40:00Z') }),
     ).toBe('closed');
   });
 
-  it('is the same answer whichever order the rows arrive in', async () => {
-    maybeSingle.mockResolvedValue({ data: booking([CHECKED_IN, TURN_AWAY]), error: null });
-    expect((await loadShift('b1'))?.checkInAt).toBe('2026-06-14T16:04:00Z');
-  });
-
-  it('prefers the manager-entered finish on that same row (RULE-02)', async () => {
-    const resolved = { ...CHECKED_IN, manager_finish_at: '2026-06-14T22:15:00Z' };
-    maybeSingle.mockResolvedValue({ data: booking([TURN_AWAY, resolved]), error: null });
-    expect((await loadShift('b1'))?.checkOutAt).toBe('2026-06-14T22:15:00Z');
-  });
-
-  it('invents no check-in for a worker who was only ever turned away', async () => {
-    maybeSingle.mockResolvedValue({ data: booking([TURN_AWAY]), error: null });
-
+  it('lists breaks in the order they were taken', async () => {
+    rpc.mockResolvedValue({ data: [row()], error: null });
     const shift = await loadShift('b1');
-
-    expect(shift?.checkInAt).toBeNull();
-    expect(shift?.checkOutAt).toBeNull();
+    expect(shift?.breaks.map((b) => b.id)).toEqual(['k1', 'k2']);
   });
 
-  it('asks PostgREST for the same row the SQL lateral takes', async () => {
-    maybeSingle.mockResolvedValue({ data: booking([CHECKED_IN]), error: null });
-    await loadShift('b1');
-
-    expect(calls.not).toEqual([['logs.check_in_at', 'is', null]]);
-    expect(calls.order).toEqual([['check_in_at', { referencedTable: 'logs', ascending: true }]]);
-    expect(calls.limit).toEqual([[1, { referencedTable: 'logs' }]]);
-  });
-});
-
-describe('acceptedLog()', () => {
-  it('takes the earliest accepted press, as `order by check_in_at limit 1` does', () => {
-    const later = { check_in_at: '2026-06-14T17:00:00Z' };
-    const earlier = { check_in_at: '2026-06-14T16:04:00Z' };
-    expect(acceptedLog([TURN_AWAY, later, earlier])).toBe(earlier);
+  it('has no Breaks block where the client pays for breaks', async () => {
+    rpc.mockResolvedValue({ data: [row({ pays_breaks: true })], error: null });
+    expect((await loadShift('b1'))?.breaksLogged).toBe(false);
   });
 
-  it('returns null when nothing was ever accepted', () => {
-    expect(acceptedLog([TURN_AWAY, TURN_AWAY])).toBeNull();
-    expect(acceptedLog([])).toBeNull();
-    expect(acceptedLog(null)).toBeNull();
+  it('carries the static-screen inputs (§10.4)', async () => {
+    rpc.mockResolvedValue({
+      data: [
+        row({
+          status: 'cancelled',
+          cancel_cause: 'office_withdraw',
+          event_cancelled_at: null,
+          check_in_at: null,
+          check_out_at: null,
+        }),
+      ],
+      error: null,
+    });
+    const shift = await loadShift('b1');
+    expect(shift?.cancelCause).toBe('office_withdraw');
+    expect(shiftPhase({ shift: shift!, openBreak: false, now: new Date(START) })).toBe('withdrawn');
+  });
+
+  it('returns null for somebody else’s booking, which the function answers with no row', async () => {
+    rpc.mockResolvedValue({ data: [], error: null });
+    expect(await loadShift('someone-else')).toBeNull();
   });
 });

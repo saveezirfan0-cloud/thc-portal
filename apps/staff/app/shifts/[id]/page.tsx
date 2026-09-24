@@ -1,55 +1,61 @@
-import { notFound } from 'next/navigation';
-import { AppBody, AppHeader, Alert, BottomNav } from '@thc/ui';
+import Link from 'next/link';
+import { notFound, redirect } from 'next/navigation';
+import { Alert } from '@thc/ui';
+import { StaffShell } from '../../_components/StaffShell';
+import { loadBookings, openInvites } from '../../data';
 import { loadShift, supabaseConfigured } from './data';
+import { shiftScreenReachable } from './phase';
 import { ShiftScreen } from './ShiftScreen';
+import '../../staff-app.css';
 import './shift.css';
 
-export const metadata = { title: 'Shift · THC' };
+export const metadata = { title: 'Shift · THC Staff' };
 /** The shift screen is the state of right now; nothing may be cached. */
 export const dynamic = 'force-dynamic';
 
-// Invites and Radar exist now (§10.4), so they are links rather than the
-// `pending` text this carried while they did not. Documents and Profile
-// still do not, and Documents stays listed either way: it is the one tab an
-// auto-blocked worker keeps (§10.1).
-// The same four tabs in the same order as `_components/StaffShell`, which is
-// the wireframes' order: tapping into a shift must not reorder the tab bar
-// under the worker's thumb. Documents stays listed although it does not
-// exist yet — it is the one tab an auto-blocked worker keeps (§10.1).
-const NAV = [
-  { href: '/documents', label: 'Documents', pending: true },
-  { href: '/shifts', label: 'Shifts' },
-  { href: '/invites', label: 'Invites' },
-  { href: '/radar', label: 'Radar' },
-];
-
+/**
+ * `/shifts/:id` — §10.4, §5.1, `wireframes/staff/shift-detail.html`.
+ *
+ * Rendered through `StaffShell`, like every other working screen, so the
+ * §10.1 app lock stands in front of it: an auto-blocked worker sees the
+ * Documents-only screen, a held one the hold screen, a leaver the leaver
+ * screen — never a check-in button reached by a deep link or a stale push.
+ * The shell also owns the header and the four tabs, in the one order the
+ * rest of the app uses.
+ */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const back = <Link href="/shifts">‹ Shifts</Link>;
 
   if (!supabaseConfigured()) {
     return (
-      <>
-        <AppHeader title="Shift" />
-        <AppBody>
-          <Alert tone="coral">
-            This environment has no Supabase project, so the shift cannot be read. See
-            docs/04-setup-github-vercel-supabase.md.
-          </Alert>
-        </AppBody>
-        <BottomNav items={NAV} activeHref="/shifts" />
-      </>
+      <StaffShell title="Shift" sub={back} active="/shifts">
+        <Alert tone="coral">
+          This environment has no Supabase project, so the shift cannot be read. See
+          docs/04-setup-github-vercel-supabase.md.
+        </Alert>
+      </StaffShell>
     );
   }
 
-  // RLS decides this, not the route: `staff_self_bookings` means another
-  // worker's id returns nothing rather than their shift.
-  const shift = await loadShift(id);
+  // `staff_shift_detail()` answers for the caller's own bookings only:
+  // another worker's id returns nothing rather than their shift.
+  const [shift, bookings] = await Promise.all([loadShift(id), loadBookings()]);
   if (!shift) notFound();
 
+  // An invitation has its own screen, with Accept and Decline.
+  if (shift.status === 'invited') redirect(`/invites/${id}`);
+  if (!shiftScreenReachable(shift)) notFound();
+
   return (
-    <>
+    <StaffShell
+      title={`${shift.eventTitle} · ${shift.roleName}`}
+      sub={back}
+      active="/shifts"
+      shifts={bookings.filter((b) => b.status === 'confirmed' || b.status === 'worked').length}
+      invites={openInvites(bookings).length}
+    >
       <ShiftScreen shift={shift} />
-      <BottomNav items={NAV} activeHref="/shifts" />
-    </>
+    </StaffShell>
   );
 }
