@@ -418,6 +418,24 @@ export const TEMPLATES = {
     timing: 'immediately, not batched',
     mandatory: true,
   },
+  // §9.12 names this send and §8 does not: "A worker's self-cancel of a
+  // confirmed booking (RULE-04, §3.6) also triggers an immediate email to
+  // admin@thehospitalitycompany.co.uk, flagging which event/role/shift lost
+  // a confirmed worker so the office can follow up if auto-assign doesn't
+  // backfill it in time." E10 is the next free E-number, as REGISTER-NOTES
+  // pencilled in. The payload keys are held to self_cancel_booking()'s by
+  // supabase/tests/592_self_cancel_office_email.sql.
+  E10: {
+    code: 'E10',
+    channel: 'email',
+    sender: 'admin',
+    recipients: OFFICE,
+    title: 'Confirmed worker self-cancelled — {event} · {role} · {date}',
+    body: 'A worker has cancelled a confirmed shift from the app, more than 72 hours before it starts (RULE-04). They cannot be invited to this event again. The slot is open again — follow up if it is not refilled in time.\n\nEvent: {event}\nClient: {client}\nVenue: {venue}\nRole: {role}\nShift: {dateTime} (UK time)\n\nName: {name}\nEmployee ID: {employeeId}\nCancelled: {cancelledAt}\n\nConfirmed for this role now: {confirmed} of {headcount} (+{buffer})\nAuto-assign for this role: {autoAssign}',
+    trigger:
+      'A worker self-cancels a confirmed booking (RULE-04, §3.6). Not in §8: §9.12 says it "triggers an immediate email to admin@thehospitalitycompany.co.uk, flagging which event/role/shift lost a confirmed worker", but §8 gives it no code, so it takes the next free E-number (20260927140200)',
+    timing: 'immediately on the self-cancel, not batched (§9.12)',
+  },
 
   // ────────────────────────────────────────────────────────────────────────
   // UNIVERSITY COMPLETION LETTER REQUIREMENT §5 — not scope v1.6 §8, a later
@@ -553,12 +571,13 @@ export const REQUIREMENT_CODES = [
 ] as const satisfies readonly TemplateCode[];
 
 /**
- * Codes the register carries that §8 does not name. Each one exists because
- * §8's own copy would have been untrue where it was about to be sent, and
- * its `trigger` says so. Kept apart from SCOPE_CODES so the test can still
- * hold that list to the scope exactly.
+ * Codes the register carries that §8 does not name, each with its `trigger`
+ * saying why. E2b exists because §8's own copy would have been untrue where
+ * it was about to be sent; E10 because §9.12 requires a send §8 never lists.
+ * Kept apart from SCOPE_CODES so the test can still hold that list to the
+ * scope exactly.
  */
-export const EXTENSION_CODES = ['E2b'] as const satisfies readonly TemplateCode[];
+export const EXTENSION_CODES = ['E2b', 'E10'] as const satisfies readonly TemplateCode[];
 
 export function template(code: TemplateCode): Template {
   return TEMPLATES[code];
