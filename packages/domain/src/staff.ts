@@ -123,17 +123,23 @@ export type StaticScreenCase = 'event_cancelled' | 'withdrawn' | 'no_checkout';
  * stays visible in My shifts and shows this in place of the check-out
  * controls until a manager resolves the violation.
  *
- * NOT YET WIRED IN. `/shifts/:id` is the §5 on-shift screen, which already
- * renders the No check-out case in its own words. The other two need
- * `events.cancelled_at` and `bookings.cancel_cause` on that screen's
- * `ShiftDetail`, which is the `checkin` bot's loader — two columns and one
- * branch. This lives here, tested, so that change is a one-liner rather than
- * a second copy of the copy.
+ * `/shifts/:id` renders it (apps/staff/app/shifts/[id]): `shiftPhase()` asks
+ * this first, so a dead end outranks every button on the shift screen.
+ *
+ * `withdrawn` covers both ways the office takes a confirmed shift back: an
+ * office Withdraw (N10b) and the 12:05 release of a worker who missed the
+ * 12:00 "I'm ready" (N6b) — `wireframes/staff/shift-detail.html` (n2). The
+ * worker's own cancel is not a dead end they need explaining to them.
  */
-export function staticScreenCase(booking: StaffBooking): StaticScreenCase | null {
+export function staticScreenCase(
+  booking: Pick<StaffBooking, 'status' | 'cancelCause' | 'eventCancelledAt' | 'noCheckoutOpen'>,
+): StaticScreenCase | null {
   if (booking.eventCancelledAt) return 'event_cancelled';
   if (booking.noCheckoutOpen) return 'no_checkout';
-  if (booking.status === 'cancelled' && booking.cancelCause === 'office_withdraw') {
+  if (
+    booking.status === 'cancelled' &&
+    (booking.cancelCause === 'office_withdraw' || booking.cancelCause === 'ready_cutoff')
+  ) {
     return 'withdrawn';
   }
   return null;
@@ -141,23 +147,41 @@ export function staticScreenCase(booking: StaffBooking): StaticScreenCase | null
 
 export const SUPPORT_EMAIL = 'admin@thehospitalitycompany.co.uk';
 
-export const STATIC_SCREEN_COPY: Record<StaticScreenCase, { title: string; body: string }> = {
+/**
+ * The words on each screen. `title` is the §10.4 sentence verbatim — for No
+ * check-out that is the whole of "We didn't receive your check-out for this
+ * shift — the office is following up with you directly.", which the
+ * wireframe sets as the heading, so it has no separate body. `badge` and
+ * `tone` are the wireframe's pill above the heading.
+ */
+export const STATIC_SCREEN_COPY: Record<
+  StaticScreenCase,
+  { badge: string; tone: 'coral' | 'amber'; title: string; body?: string }
+> = {
   event_cancelled: {
+    badge: 'Cancelled',
+    tone: 'coral',
     title: 'This event has been cancelled',
     body: 'The office has cancelled this event. You are not expected at the venue.',
   },
   withdrawn: {
-    title: "You've been removed from this shift",
+    badge: 'Withdrawn',
+    tone: 'coral',
+    title: 'You’ve been removed from this shift',
     body: 'The office has withdrawn this booking. It no longer appears in your shifts.',
   },
   no_checkout: {
-    title: 'We didn’t receive your check-out for this shift',
-    body: 'The office is following up with you directly.',
+    badge: 'Awaiting the office',
+    tone: 'amber',
+    title:
+      'We didn’t receive your check-out for this shift — the office is following up with you directly.',
   },
 };
 
 /** Every static screen carries the same contact line and one button (§10.4). */
-export const STATIC_SCREEN_CONTACT = `If you believe there has been an error, please contact us at: ${SUPPORT_EMAIL}`;
+export const STATIC_SCREEN_CONTACT_LEAD =
+  'If you believe there has been an error, please contact us at:';
+export const STATIC_SCREEN_CONTACT = `${STATIC_SCREEN_CONTACT_LEAD} ${SUPPORT_EMAIL}`;
 export const STATIC_SCREEN_ACTION = 'OK, I understand';
 
 export type ShiftCard =
