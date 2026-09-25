@@ -18,6 +18,9 @@ import { loadBookings, loadOpenShifts, loadWeekMeter, openInvites, shiftsBadge }
 import type { OpenShift } from '../data';
 import { WeekMeter } from './WeekMeter';
 import { weekLabel } from './model';
+import { UP_FOR_GRABS, ukShortDateTime } from '../shifts/offers';
+import { loadOpenOffers } from '../shifts/offers-data';
+import type { OpenOffer } from '../shifts/offers-data';
 import '../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -44,10 +47,13 @@ export const metadata = { title: 'Radar · THC Staff' };
  * this week's hours under "This week".
  */
 export default async function Page() {
-  const [shifts, bookings, meter] = await Promise.all([
+  const [shifts, bookings, meter, offers] = await Promise.all([
     loadOpenShifts(),
     loadBookings(),
     loadWeekMeter(),
+    // ADR-0039: offered shifts this worker may take — RULE-17 visibility,
+    // decided in SQL, and never the offerer.
+    loadOpenOffers(),
   ]);
   const groups = radarGroups(shifts);
   const applications = new Map(
@@ -55,7 +61,10 @@ export default async function Page() {
   );
 
   const empty =
-    groups.qualified.length === 0 && groups.other.length === 0 && groups.applied.length === 0;
+    offers.length === 0 &&
+    groups.qualified.length === 0 &&
+    groups.other.length === 0 &&
+    groups.applied.length === 0;
 
   return (
     <StaffShell
@@ -79,6 +88,15 @@ export default async function Page() {
           <h3>Nothing open nearby</h3>
           Radar shows open shifts for your roles. New ones are added regularly.
         </EmptyState>
+      ) : null}
+
+      {offers.length > 0 ? (
+        <>
+          <div className="grp cyan">{UP_FOR_GRABS}</div>
+          {offers.map((offer) => (
+            <OfferCard key={offer.offerId} offer={offer} />
+          ))}
+        </>
       ) : null}
 
       {groups.qualified.length > 0 ? (
@@ -121,6 +139,36 @@ export default async function Page() {
         </>
       ) : null}
     </StaffShell>
+  );
+}
+
+/**
+ * One offered shift (ADR-0039, wireframes/staff/offer-shift.html (h)). A
+ * confirmed booking at once if taken, so it opens the offer's own detail,
+ * not the open shift's. The base rate only; never who offered it.
+ */
+function OfferCard({ offer }: { offer: OpenOffer }) {
+  return (
+    <div className="mcard">
+      <div className="card-head">
+        <Pill tone="cyan">{UP_FOR_GRABS}</Pill>
+        <span className="right km">{formatDistance(offer.distanceKm)}</span>
+      </div>
+      <Link className="t" href={`/radar/offers/${offer.offerId}`}>
+        {offer.eventTitle} · {offer.role}
+      </Link>
+      <div className="m">
+        {offer.venueName} · <ShiftTime startsAt={offer.startsAt} endsAt={offer.endsAt} withDate />
+      </div>
+      <div className="m">
+        £{offer.payRate.toFixed(2)}/h
+        {offer.dressCode ? ` · Dress code: ${offer.dressCode}` : ''} · open until{' '}
+        {ukShortDateTime(offer.expiresAt)}
+      </div>
+      <Link className="btn outline block" href={`/radar/offers/${offer.offerId}`}>
+        View &amp; take
+      </Link>
+    </div>
   );
 }
 

@@ -25,6 +25,9 @@ import { WeekMeter } from '../radar/WeekMeter';
 import { weekLabel } from '../radar/model';
 import { checkOutClosesAt, myShiftCard, myShifts } from './model';
 import type { MyShiftCard, ShiftGroup } from './model';
+import { COVER_CHIP, offeredCardLine } from './offers';
+import type { BookingOffer } from './offers';
+import { loadBookingOffers } from './offers-data';
 import '../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -55,10 +58,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
   const { tab } = await searchParams;
   const open = tab === 'open';
 
-  const [bookings, openShifts, meter] = await Promise.all([
+  const [bookings, openShifts, meter, offers] = await Promise.all([
     loadBookings(),
     loadOpenShifts(),
     loadWeekMeter(),
+    // ADR-0039: the open offer on each confirmed booking, for the chip.
+    loadBookingOffers(),
   ]);
   const now = new Date();
   // §10.4 names them — "Shifts for your roles: Waiting Staff · Bar Staff" —
@@ -185,6 +190,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
                     booking={booking}
                     group={group}
                     now={now}
+                    offer={offers.get(booking.bookingId) ?? null}
                   />
                 ))}
               </section>
@@ -214,12 +220,18 @@ function ShiftCardView({
   booking,
   group,
   now,
+  offer,
 }: {
   booking: BookingRow;
   group: ShiftGroup;
   now: Date;
+  /** ADR-0039: the open offer on this booking, if any. */
+  offer: BookingOffer | null;
 }) {
   const card = myShiftCard(booking, now);
+  // The worker is still booked while an offer is open; the chip says it
+  // is out there (wireframes/staff/offer-shift.html (d)).
+  const offered = offer?.offerId && booking.status === 'confirmed' ? offer : null;
   const tone =
     card === 'today'
       ? 'today'
@@ -242,6 +254,13 @@ function ShiftCardView({
         </span>
         <span className="chips">
           <CardChips card={card} />
+          {offered ? (
+            offered.mode === 'office' ? (
+              <Pill tone="amber">{COVER_CHIP}</Pill>
+            ) : (
+              <Pill tone="cyan">Offered</Pill>
+            )
+          ) : null}
         </span>
       </div>
 
@@ -260,6 +279,10 @@ function ShiftCardView({
         £{booking.payRate.toFixed(2)}/h
         {booking.dressCode ? ` · Dress code: ${booking.dressCode}` : ''}
       </div>
+
+      {offered && offered.mode !== 'office' && offered.expiresAt ? (
+        <p className="m">{offeredCardLine(offered.expiresAt)}</p>
+      ) : null}
 
       {card === 'no_checkout' ? <p className="m">{STATIC_SCREEN_COPY.no_checkout.title}</p> : null}
 

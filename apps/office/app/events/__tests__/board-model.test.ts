@@ -9,8 +9,11 @@ import {
   buildUnavailable,
   canToggleAutoAssign,
   factorChips,
+  handedOverLine,
   inviteAnywayPrompt,
   inviteRefusal,
+  offerChip,
+  offerOfficeRefusal,
   queryPool,
   rateLine,
   scoreBreakdownLines,
@@ -464,6 +467,40 @@ describe('Marked unavailable — the calendar on the board (ADR-0036)', () => {
       new Set(['omar']),
     );
     expect(pool.map((e) => e.applicationId)).toEqual(['b-omar']);
+  });
+});
+
+describe('Offered up and cover requests on the board (ADR-0039)', () => {
+  it('a pool offer is a chip on the Confirmed row with its UK close time', () => {
+    expect(
+      offerChip({
+        offerId: 'o1',
+        mode: 'pool',
+        expiresAt: '2026-09-20T15:00:00.000Z',
+        note: null,
+      }),
+    ).toEqual({ label: 'Offered up · until Sun 20 Sep, 16:00 UK', tone: 'cyan' });
+  });
+
+  it('a cover request carries the worker’s note', () => {
+    expect(
+      offerChip({ offerId: 'o2', mode: 'office', expiresAt: 'x', note: ' Exam moved ' }),
+    ).toEqual({ label: 'Asked for cover: Exam moved', tone: 'amber' });
+    expect(offerChip({ offerId: 'o3', mode: 'office', expiresAt: 'x', note: null }).label).toBe(
+      'Asked for cover',
+    );
+  });
+
+  it('a hand-over is one history line per section, UK date', () => {
+    expect(
+      handedOverLine({ fromName: 'Grace L.', toName: 'Tom R.', at: '2026-09-15T23:30:00.000Z' }),
+    ).toBe('Handed over: Grace L. → Tom R. · Wed 16 Sep');
+  });
+
+  it('turns the office refusals into the manager’s words', () => {
+    expect(offerOfficeRefusal('not_a_cover_request')).toMatch(/already offered/);
+    expect(offerOfficeRefusal('section_started')).toMatch(/escalation/);
+    expect(offerOfficeRefusal('mystery')).toBe('Nothing was changed (mystery).');
   });
 });
 

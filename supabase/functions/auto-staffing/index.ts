@@ -28,6 +28,11 @@
  *     which re-applies every gate at the moment of the insert and locks
  *     the section so two rounds cannot take the same last slot
  *   * whether it is the right UK minute — `is_uk_time` (pgTAP, 180)
+ *   * the offer rounds (hourly only, ADR-0039) — `lapse_shift_offers`,
+ *     `offer_rounds_due`, `offer_candidates`, `notify_offer_candidates`
+ *     (pgTAP 670–674); who is pushed is `selectOfferRecipients`, the
+ *     invitation ranking minus everyone already told, and the SQL re-checks
+ *     every gate, the calendar and RULE-17's wave order at the insert
  *   * who marked the section unavailable — `auto_assign_unavailable`
  *     (pgTAP, 656; ADR-0036), overlaid on the pool by `selectInvitees`'
  *     `unavailable` option; `invite_worker` refuses the same workers at
@@ -38,7 +43,11 @@
  */
 
 import { runJob } from '../_shared/job.ts';
-import { selectInvitees, type CandidateRow } from '../../../packages/domain/src/autoAssign.ts';
+import {
+  selectInvitees,
+  selectOfferRecipients,
+  type CandidateRow,
+} from '../../../packages/domain/src/autoAssign.ts';
 import { parseWeights } from '../../../packages/domain/src/scoring.ts';
 
 type Mode = 'hourly' | 'cutoff' | 'escalation';
@@ -192,6 +201,55 @@ Deno.serve((request) =>
       }
 
       counts.sections = (counts.sections as number) + 1;
+    }
+
+    // ADR-0039: the offer rounds, on the hourly run only (a first round for
+    // one new event has no offers yet). First the lapse — anything past its
+    // expiry closes and OF3 tells the worker they are still booked — then,
+    // for every open pool offer on a section with auto-assign on, one
+    // additive OF1 round of `allocation_per_hour`: wave 1 first, each by
+    // the §6 score, never anyone already told, never the offerer, a gated
+    // or an unavailable worker (ADR-0036).
+    if (mode === 'hourly' && onlyEvent === null) {
+      const { data: lapsed, error: lapseError } = await db.rpc('lapse_shift_offers');
+      if (lapseError) throw new Error(`lapse_shift_offers: ${lapseError.message}`);
+      counts.offersLapsed = lapsed ?? 0;
+      counts.offers = 0;
+      counts.offerPushes = 0;
+
+      const { data: offers, error: offersError } = await db.rpc('offer_rounds_due');
+      if (offersError) throw new Error(`offer_rounds_due: ${offersError.message}`);
+
+      for (const offer of (offers ?? []) as {
+        offer_id: string;
+        shift_id: string;
+        allocation: number;
+      }[]) {
+        const [pool, notices, away] = await Promise.all([
+          db.rpc('offer_candidates', { p_offer: offer.offer_id }),
+          db.from('shift_offer_notices').select('staff_id').eq('offer_id', offer.offer_id),
+          db.rpc('auto_assign_unavailable', { p_shift: offer.shift_id }),
+        ]);
+        if (pool.error) throw new Error(`offer_candidates: ${pool.error.message}`);
+        if (notices.error) throw new Error(`shift_offer_notices: ${notices.error.message}`);
+        if (away.error) throw new Error(`auto_assign_unavailable: ${away.error.message}`);
+
+        const recipients = selectOfferRecipients((pool.data ?? []) as CandidateRow[], {
+          allocation: offer.allocation,
+          notified: ((notices.data ?? []) as { staff_id: string }[]).map((n) => n.staff_id),
+          unavailable: ((away.data ?? []) as { staff_id: string }[]).map((r) => r.staff_id),
+          weights,
+        });
+        counts.offers = (counts.offers as number) + 1;
+        if (recipients.length === 0) continue;
+
+        const { data: pushed, error: pushError } = await db.rpc('notify_offer_candidates', {
+          p_offer: offer.offer_id,
+          p_staff: recipients,
+        });
+        if (pushError) throw new Error(`notify_offer_candidates: ${pushError.message}`);
+        counts.offerPushes = (counts.offerPushes as number) + Number(pushed ?? 0);
+      }
     }
 
     return counts;

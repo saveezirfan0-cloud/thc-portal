@@ -4,6 +4,7 @@ import { Alert } from '@thc/ui';
 import { StaffShell } from '../../_components/StaffShell';
 import { loadBookings, openInvites, shiftsBadge } from '../../data';
 import { loadShift, supabaseConfigured } from './data';
+import { loadBookingOffers } from '../offers-data';
 import { shiftScreenReachable } from './phase';
 import { ShiftScreen } from './ShiftScreen';
 import '../../staff-app.css';
@@ -40,7 +41,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   // `staff_shift_detail()` answers for the caller's own bookings only:
   // another worker's id returns nothing rather than their shift.
-  const [shift, bookings] = await Promise.all([loadShift(id), loadBookings()]);
+  const [shift, bookings, offers] = await Promise.all([
+    loadShift(id),
+    loadBookings(),
+    loadBookingOffers(),
+  ]);
   if (!shift) notFound();
 
   // An invitation has its own screen, with Accept and Decline.
@@ -55,7 +60,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       shifts={shiftsBadge(bookings)}
       invites={openInvites(bookings).length}
     >
-      <ShiftScreen shift={shift} />
+      <ShiftScreen shift={shift} offer={offers.get(id) ?? null} />
     </StaffShell>
   );
 }

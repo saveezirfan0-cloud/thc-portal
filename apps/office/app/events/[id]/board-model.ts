@@ -614,3 +614,68 @@ export function inviteRefusal(reason: string): string {
 export function canToggleAutoAssign(status: string): boolean {
   return status === 'upcoming' || status === 'ongoing';
 }
+
+// ---------------------------------------------------------------------
+// Offer up a shift (ADR-0039, docs/18 §4) — what the board shows
+// ---------------------------------------------------------------------
+
+/** An open offer on a confirmed booking, as the board reads `shift_offers`. */
+export interface BoardOffer {
+  offerId: string;
+  /** `pool` / `direct`: offered to workers. `office`: a cover request. */
+  mode: 'pool' | 'office' | 'direct';
+  expiresAt: string;
+  note: string | null;
+}
+
+/**
+ * The chip on a Confirmed row. The worker is still confirmed — fill, the
+ * buffer and the client's line-up are unchanged — so it is a chip, never a
+ * move to another list: "Offered up · until Sat 20 Sep, 16:00 UK", or
+ * "Asked for cover: {note}".
+ */
+export function offerChip(offer: BoardOffer): { label: string; tone: 'cyan' | 'amber' } {
+  if (offer.mode === 'office') {
+    const note = offer.note?.trim();
+    return { label: note ? `Asked for cover: ${note}` : 'Asked for cover', tone: 'amber' };
+  }
+  const at = new Date(offer.expiresAt);
+  const day = formatDateIn(at, UK_ZONE, { weekday: 'short' });
+  return { label: `Offered up · until ${day}, ${formatTimeIn(at, UK_ZONE)} UK`, tone: 'cyan' };
+}
+
+/** A completed hand-over on one role section. */
+export interface Handover {
+  fromName: string;
+  toName: string;
+  at: string;
+}
+
+/** "Handed over: Grace L. → Tom R. · Tue 23 Sep" — per section, UK date. */
+export function handedOverLine(handover: Handover): string {
+  const day = formatDateIn(new Date(handover.at), UK_ZONE, { weekday: 'short' });
+  return `Handed over: ${handover.fromName} → ${handover.toName} · ${day}`;
+}
+
+const OFFER_OFFICE_REFUSAL_COPY: Readonly<Record<string, string>> = {
+  event_cancelled: 'This event has been cancelled.',
+  offer_not_open:
+    'This request is no longer open — the worker withdrew it, it lapsed, or it was taken.',
+  not_a_cover_request: 'This is already offered to other workers, not a cover request.',
+  section_started: 'This shift has already started; the same-day escalation fills it now (§3.4).',
+  original_not_confirmed: 'The worker is no longer confirmed on this shift.',
+  note_too_long: 'Keep the note to 300 characters.',
+};
+
+/** `office_open_offer_to_pool` / `office_decline_cover` refusals, for the manager. */
+export function offerOfficeRefusal(reason: string): string {
+  return OFFER_OFFICE_REFUSAL_COPY[reason] ?? `Nothing was changed (${reason || 'unknown'}).`;
+}
+
+/** The prompt in front of Decline. The note is the office's own record. */
+export const DECLINE_COVER_PROMPT =
+  'Decline this cover request? The worker stays booked and is told the office has closed it (OF6). Add a note for the office record (optional):';
+
+/** The confirm in front of Open to pool. */
+export const OPEN_TO_POOL_CONFIRM =
+  'Open this shift to other workers? It stays theirs until someone takes it, up to the start of the shift.';

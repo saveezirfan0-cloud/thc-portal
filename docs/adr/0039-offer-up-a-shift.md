@@ -109,3 +109,34 @@ email — no slot is lost (Q18); the event board shows it.
 - **THC to confirm** (docs/15): Q15 — keep the event bar after a hand-over; Q16 — the
   72 h window; Q17 — peer-to-peer swaps; Q18 — office emails on hand-over / lapse; Q21 —
   the OF1–OF6 wording.
+
+## Amendment · as built (Phase 1, Agent A — `20260930110100_shift_offers.sql`)
+
+The decision above stands. Where the build had to choose, it chose this:
+
+1. **Three functions beyond docs/18's list.** `staff_booking_offers()` (worker: their
+   live confirmed bookings with the auto-assign switch and the open offer — what
+   `/shifts` and `/shifts/:id` need without restating `staff_bookings()`),
+   `offer_rounds_due()` (service: the open pool offers an hourly round serves) and
+   `queue_offer_notice()` (internal, not an RPC: the one writer of OF1–OF6).
+2. **OF1 pushes follow the auto-assign switches.** Pushing is something the machine does,
+   so, like every other round (§3.4), no OF1 goes out unless the event AND the role
+   switch are on — including for a cover request the office opened to the pool. Radar
+   still shows an open pool offer either way.
+3. **OF3 only for an offer that went to other workers.** A cover request the office never
+   opened lapses at the section start silently: nobody was asked, and the office already
+   had OF5.
+4. **RULE-17 is re-checked in SQL.** `notify_offer_candidates()` takes wave 1 first
+   whatever order it is given, and refuses a wave-2 push while a wave-1 worker is still
+   untold. `offer_wave1_exhausted()` leaves out wave-1 workers marked unavailable
+   (ADR-0036): the calendar keeps the pushes from them, so waiting for them to be told
+   would wait for ever.
+5. **Ask the office for cover** is offered inside 72 h, and also further out when
+   auto-assign is off (the wireframe's (a) note). More than 72 h out with auto-assign on,
+   `request_cover()` refuses `use_offer`.
+6. **The decline note is the office's record** (`closed_reason`), never sent: OF6 has no
+   note placeholder, and the worker is told only that the request is closed.
+7. **An unknown offer id reads `offer_not_open`**, so an id tells a caller nothing.
+8. **Take refusals reuse Radar's copy** (wireframe (j)): an offer taken, withdrawn,
+   lapsed or not yet visible to the worker reads as "Sorry, this shift is now full";
+   `overlap` as Radar's booked-elsewhere line; the gates by their Radar names.
