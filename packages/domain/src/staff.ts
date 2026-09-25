@@ -225,15 +225,6 @@ export function turnedAwayOnTime(turnAwayPayMin: number | null | undefined): boo
   return typeof turnAwayPayMin === 'number' && turnAwayPayMin > 0;
 }
 
-/**
- * RULE-15: what an on-time turn-away is paid, in minutes — the "4 hours" in
- * `TURNED_AWAY_COPY.onTime`. A flat figure of its own, not the RULE-14
- * shift floor: the two are both four hours today, but they are different
- * rules and one may move without the other. `turnedAwayMinutes()` in pay.ts
- * and SQL's `turned_away_minutes()` return this inside the grace.
- */
-export const TURN_AWAY_PAY_MIN = 4 * 60;
-
 /** The §3.2 turn-away message, with the second sentence only when on time. */
 export function turnedAwayMessage(turnAwayPayMin: number | null | undefined): string {
   const c = TURNED_AWAY_COPY;

@@ -20,6 +20,10 @@ import type { OnboardingState } from '../state';
 import '../onboarding.css';
 
 export const dynamic = 'force-dynamic';
+
+// The upload's document read runs in after() (ADR-0033) and counts against
+// the function's duration: 45 s per model call plus one retry and the download.
+export const maxDuration = 120;
 export const metadata = { title: 'Onboarding · THC Staff' };
 
 /**

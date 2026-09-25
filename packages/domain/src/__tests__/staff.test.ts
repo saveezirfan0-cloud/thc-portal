@@ -9,7 +9,6 @@ import {
   STATIC_SCREEN_COPY,
   SELF_CANCEL_WINDOW_HOURS,
   TURNED_AWAY_COPY,
-  TURN_AWAY_PAY_MIN,
   type StaffBooking,
   canCancelShift,
   cancelDeadline,
@@ -23,7 +22,7 @@ import {
   turnedAwayMessage,
   turnedAwayOnTime,
 } from '../staff';
-import { turnedAwayMinutes } from '../pay';
+import { TURN_AWAY_PAY_MIN, turnedAwayMinutes } from '../pay';
 
 const HOUR = 3_600_000;
 
