@@ -3,6 +3,8 @@ import { payableMinutes } from '@thc/domain';
 import { staffDb, supabaseConfigured } from '../db';
 import type { EarningsRow, EmergencyContact, StaffProfile } from './types';
 import { basePenceFor } from './payments/earnings';
+import { toChangeRequest } from './change-requests';
+import type { ChangeRequest } from './change-requests';
 
 /**
  * Everything the profile screens read — §10.1.
@@ -137,6 +139,19 @@ export async function loadEmergencyContact(): Promise<EmergencyContact | null | 
     relationship: (row['relationship'] as string) ?? '',
     phone: (row['phone'] as string) ?? '',
   };
+}
+
+/**
+ * The worker's own name / photo change requests (ADR-0038) — newest first,
+ * never `decided_by`. A failed read is an empty list: the status line is
+ * then absent and "Request a change" still works (the RPC refuses a second
+ * pending request by itself).
+ */
+export async function loadChangeRequests(): Promise<ChangeRequest[]> {
+  if (!supabaseConfigured()) return [];
+  const { data, error } = await staffDb(await cookies()).rpc('my_profile_change_requests', {});
+  if (error) return [];
+  return ((data ?? []) as Record<string, unknown>[]).map(toChangeRequest);
 }
 
 /** `staff.rejection_cause`, or null for anything `staff_me()` does not say. */

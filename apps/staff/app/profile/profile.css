@@ -396,3 +396,75 @@
 .ec-actions > .btn {
   flex: 1;
 }
+
+/* --- Request a change (ADR-0038, wireframes/staff/request-change.html) - */
+.req-status {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  font-size: var(--fs-12);
+}
+.req-status > :last-child {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.req-status.amber {
+  border-color: var(--amber-line);
+  background: var(--amber-dim);
+  color: var(--amber-ink);
+}
+.req-status.coral {
+  border-color: var(--coral-line);
+  background: var(--coral-dim);
+  color: var(--coral-ink);
+}
+.req-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+/* The evidence drop: a dashed well that is one button. */
+.req-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: var(--sp-14);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-card);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-12);
+  text-align: center;
+  cursor: pointer;
+}
+.req-upload .strong {
+  color: var(--text);
+}
+.req-cam {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--panel-2);
+}
+.req-cam-now {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-6);
+}
+.req-cam-shot {
+  width: 180px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: var(--r-avatar);
+}
