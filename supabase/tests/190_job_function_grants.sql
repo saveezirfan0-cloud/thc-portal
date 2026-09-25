@@ -62,7 +62,9 @@ select is_empty(
           'new_starter_export_rows', 'queue_finance_report_email',
           -- P2, the outbox drain (20260924100000). Without these the drain
           -- 500s on its first unsendable row and holds the whole batch.
-          'fail_outbox_send', 'release_outbox_claim'
+          'fail_outbox_send', 'release_outbox_claim',
+          -- The gov.uk share-code check's runner (20260928090000, ADR-0025).
+          'claim_rtw_check', 'record_rtw_check', 'fail_rtw_check'
         )
         and not has_function_privilege('service_role', p.oid, 'execute') $$,
   'the service role can execute every function the §7 jobs call'
@@ -91,7 +93,9 @@ select is_empty(
           'compliance_daily', 'block_worker', 'unblock_if_compliant',
           'request_p45', 'declare_conviction', 'released_shift_lines',
           'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
-          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion'
+          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion',
+          -- The share-code check hands out a share code and a date of birth.
+          'claim_rtw_check', 'record_rtw_check', 'fail_rtw_check', 'rerun_rtw_check', 'my_rtw_check'
         )
         and has_function_privilege('anon', p.oid, 'execute') $$,
   'anon can execute none of the job, engine, compliance or lifecycle write paths'
@@ -250,7 +254,8 @@ select is_empty(
         and p.proname in (
           'booking_tick', 'job_run_start', 'job_run_finish',
           'claim_outbox_batch', 'complete_outbox_send',
-          'release_unready_bookings', 'queue_booking_push', 'install_job_schedules'
+          'release_unready_bookings', 'queue_booking_push', 'install_job_schedules',
+          'claim_rtw_check', 'record_rtw_check', 'fail_rtw_check'
         )
         and has_function_privilege('authenticated', p.oid, 'execute') $$,
   'a signed-in worker cannot run a job, drain the outbox, release a booking or send a push'

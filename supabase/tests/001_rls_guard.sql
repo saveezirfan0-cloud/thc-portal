@@ -49,8 +49,9 @@ select bag_eq(
             ('staff_transitions'),('storage_deletions'),
             ('venue_types'),('venues'),('violations'),
             ('payroll_export_lines'),('event_documents'),
-            ('onboarding_progress'),('quiz_questions'),('contract_versions') $$,
-  'RLS is enabled on all 39 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, and the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions)'
+            ('onboarding_progress'),('quiz_questions'),('contract_versions'),
+            ('rtw_checks') $$,
+  'RLS is enabled on all 40 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, and the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), and rtw_checks from the gov.uk check (ADR-0025)'
 );
 
 -- ---------------------------------------------------------------------
@@ -119,7 +120,8 @@ select bag_eq(
             ('staff_references'),('staff_roles'),('staff_transitions'),('storage_deletions'),
             ('venue_types'),('venues'),('violations'),
             ('payroll_export_lines'),('event_documents'),
-            ('onboarding_progress'),('quiz_questions'),('contract_versions') $$,
+            ('onboarding_progress'),('quiz_questions'),('contract_versions'),
+            ('rtw_checks') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );
 
