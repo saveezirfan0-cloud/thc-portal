@@ -108,7 +108,9 @@ select throws_ok(
 -- could only ever take RULE-02's second trigger. With a real on-site fix
 -- it records that fix instead, and raises nothing.
 -- ---------------------------------------------------------------------
-update location_pings set at = now() - interval '2 hours'
+-- Twenty minutes ago: inside ADR-0032's 30 minutes of the press, so the
+-- fix is trusted as it stands. An older one is reviewed (D15, test 620).
+update location_pings set at = now() - interval '20 minutes'
  where booking_id = :'bk_on' and inside_geofence;
 -- Every role section is at least four hours (§3.2), so the window moves as a whole.
 update check_logs set check_in_at = now() - interval '4 hours 30 minutes' where booking_id = :'bk_on';
