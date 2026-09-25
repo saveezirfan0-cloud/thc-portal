@@ -9,6 +9,7 @@
  * record openable.
  */
 import type { RtwCheckRow } from '../../_lib/rtwCheck';
+import type { QueueRow } from '../../compliance/types';
 import type { CapBand, StaffRow } from '../types';
 import type { FeedbackEntry } from '../../feedback/types';
 import type { ViolationRow as DetailViolationRow } from '../../checkin/types';
@@ -177,6 +178,17 @@ export interface ProfileData {
   rtwChecks?: RtwCheckRow[];
   /** settings.rtw_check.enabled. */
   rtwCheckEnabled?: boolean;
+  /**
+   * This worker's rows of `compliance_review_queue_v` — the /compliance
+   * Needs review queue, filtered to them (§4.1). The Documents tab offers
+   * Verify / Reject on exactly these, through /compliance's own actions, so
+   * what is reviewable here is what is reviewable there: a Rejected or
+   * Removed worker has none, and a share code whose automated check is
+   * still running is not the office's yet (ADR-0025).
+   */
+  reviewQueue?: QueueRow[];
+  /** Why the queue could not be read; the tab says so instead of hiding the buttons silently. */
+  reviewQueueProblem?: string | null;
   qualifications: QualificationRow[];
   shifts: ShiftRow[];
   violations: ViolationRow[];

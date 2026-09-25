@@ -16,7 +16,7 @@ const state = vi.hoisted(() => ({
   middlewareUser: null as null | { app_metadata: Record<string, unknown> },
 }));
 
-vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
+vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
 vi.mock('next/navigation', () => ({
   redirect: (to: string) => {
     throw new Error(`REDIRECT:${to}`);

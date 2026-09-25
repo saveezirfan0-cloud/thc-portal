@@ -111,7 +111,7 @@ real environment to prove it in.
 3. **THC content, flagged as placeholders in the code:** the 10 quiz questions,
    the induction slides, the contract text (`contract_versions`), E2b and
    CL1–CL6 wording, the `/privacy` legal text, and sample completion letters for
-   the Gemini extractor.
+   the Claude extractor (ADR-0033).
 4. **Browser passes against the live project.** No new screen has been clicked
    through for real; coverage is render tests, view-model tests and pgTAP. A
    `qa-reviewer` pass per wireframe and Playwright journeys for the wizard,
@@ -139,15 +139,10 @@ real environment to prove it in.
    right-to-work evidence carries neither a date nor the settled no-time-limit
    flag, on every date, until the office confirms the date from the Needs
    review row (`20260927160000`); pgTAP `524` §B flipped and pins it.
-5. **Open in code: the Gemini provider.** `documentExtractor()` in
-   `apps/staff/app/onboarding/extractor.ts` returns `null` (ADR-0014 "STUBBED");
-   the provider behind `DocumentExtractor`, and its call from the wizard's
-   upload step and the Documents hub, are unwritten. Item 3's sample letters
-   are its input, not a substitute for it: with the samples and a
-   `GEMINI_API_KEY` in hand there is still a provider to write. Until then
-   every upload arrives flagged for manual review and the office reads the
-   dates off the document, which is §2.6's fallback — so nothing is broken,
-   but §2.6's automatic pre-fill does not exist.
+5. ~~**Open in code: the Gemini provider.**~~ **Built 25.09 with Claude
+   (ADR-0033)**, `apps/staff/app/onboarding/extractors/anthropic.ts`, off until
+   `ANTHROPIC_API_KEY` is set on the Staff App (OWNER-TODO §4b). THC still has to
+   confirm the switch from the scope's Gemini.
 6. **Nothing else is open in code** beyond §4's notes. The 25.09 round closed
    the last three gaps (below).
 

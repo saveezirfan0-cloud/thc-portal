@@ -26,7 +26,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/compliance/export` | Completion-letter audit trail (CSV download) | — | completion letter req. §4 | compliance |
 | `/checkin` | Live monitor + Violation log | `backoffice/checkin.html` | 9.5 | checkin |
 | `/staff` | Directory (All/Compliant/Blocked/Inactive/Removed, Student visa view) | `backoffice/staff.html` | 9.6, 4.5 | directory |
-| `/staff/:id` | Profile (Overview/Documents/Client qualification/Shifts/Feedback) | `backoffice/staff-profile.html` | 9.6 | directory, compliance |
+| `/staff/:id` | Profile (Overview/Documents/Client qualification/Shifts/Feedback). Documents: Verify / Reject on every document or Yes declaration this worker has on Needs review (Confirm date on an `rtw_date` row) — the `/compliance` actions and dialogs (`compliance/ReviewDialogs.tsx`), not a copy; none on a Rejected/Removed worker (§4.1) | `backoffice/staff-profile.html` | 9.6 | directory, compliance |
 | `/clients` | Directory + New client | `backoffice/clients.html` | 9.7 | directory |
 | `/clients/:id` | Client card (4 blocks) | `backoffice/client-card.html` | 9.7 | directory |
 | `/roles` | Roles & rates | `backoffice/roles.html` | 9.8 | directory |
@@ -50,7 +50,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/documents/opt-out` | 48-hour opt-out: sign / give notice | `staff/documents.html` | RULE-20, completion letter req. §2.4 | compliance |
 | `/documents/declare` | Declare a criminal conviction | `staff/documents.html` | 10.7 | compliance |
 | `/shifts` | My shifts · Open shifts | `staff/shifts.html` | 10.4, 3.5 | scheduling |
-| `/shifts/:id` | Shift detail, check-in/out, breaks, static screens | `staff/shift-detail.html` | 5.1–5.2b, 10.4 | checkin (see note) |
+| `/shifts/:id` | Shift detail, check-in/out, breaks, static screens, strict-buffer turn-away ("Thanks for coming", (m)) | `staff/shift-detail.html` | 5.1–5.2b, 10.4, 3.2 | checkin (see note) |
 | `/radar`, `/radar/:id` | Radar, and one shift's detail before applying | `staff/radar.html` | 10.4 | scheduling |
 | `/invites`, `/invites/:id` | Invites | `staff/invites.html` | 10.4, 3.4 | scheduling |
 | (sheet) | Profile sheet | `staff/profile.html` | 10.1 | staff-pwa |
@@ -69,6 +69,15 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 > approved copy for all three live in `packages/domain/src/staff.ts`
 > (`staticScreenCase`, `STATIC_SCREEN_COPY`), tested, so wiring them is a
 > two-column select and one branch rather than a second copy of the copy.
+>
+> The §3.2 strict-buffer turn-away is `checkin`'s too: a booking that
+> `attempt_check_in()` turned away shows "Thanks for coming" (wireframe (m),
+> `TurnedAwayScreen.tsx`) immediately after the press and on every visit
+> after it. The sentence "We've logged that you arrived on time and you'll
+> be paid for 4 hours." appears only when `staff_shift_detail()`'s
+> `turned_away_pay_min` (RULE-15, SQL's `turned_away_minutes()` over the
+> logged attempt) is 240; a late turn-away (0) never sees it. Copy and rule:
+> `TURNED_AWAY_COPY` / `turnedAwayMessage()` in `packages/domain/src/staff.ts`.
 
 ## Client Portal (`apps/client`)
 | Route | Screen | Wireframe | § | Bot |

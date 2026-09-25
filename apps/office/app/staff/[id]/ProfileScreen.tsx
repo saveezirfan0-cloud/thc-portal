@@ -407,6 +407,8 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             declarations={data.declarations}
             rtwChecks={data.rtwChecks}
             rtwCheckEnabled={data.rtwCheckEnabled}
+            reviewQueue={data.reviewQueue}
+            reviewQueueProblem={data.reviewQueueProblem}
           />
         ) : null}
         {tab === 'qualification' ? (

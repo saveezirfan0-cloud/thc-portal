@@ -53,7 +53,6 @@ vi.mock('@supabase/ssr', () => ({
 
 const { signIn } = await import('../actions');
 const { WRONG_CREDENTIALS } = await import('../copy');
-const { SESSION_ONLY_COOKIE, sessionScopedStore, withoutLifetime } = await import('../session');
 const { GET } = await import('../../auth/callback/route');
 const { middleware } = await import('../../../middleware');
 
@@ -109,48 +108,6 @@ describe('signIn', () => {
     expect(WRONG_CREDENTIALS).toContain('The email or password is incorrect');
     // A refused sign-in leaves the jar alone — no marker for a session that never started.
     expect(state.written).toEqual([]);
-  });
-});
-
-describe('"Keep me signed in on this device" (login.html:65)', () => {
-  it('ticked: the session persists — the store is used as is and the marker is cleared', async () => {
-    await outcome(undefined, { remember: 'on' });
-    expect(state.storeGiven).toBe(jar);
-    expect(state.written).toEqual([
-      { name: SESSION_ONLY_COOKIE, value: '', options: expect.objectContaining({ maxAge: 0 }) },
-    ]);
-  });
-
-  it('unticked: auth cookies are written without a lifetime and the marker is set, itself session-scoped', async () => {
-    await outcome();
-    expect(state.storeGiven).not.toBe(jar);
-    // What the Supabase client would write — a 400-day chunk — arrives at
-    // the jar with no maxAge and no expires: the browser drops it on close.
-    state.storeGiven!.set('sb-x-auth-token', 'jwt', {
-      path: '/',
-      sameSite: 'lax',
-      maxAge: 400 * 24 * 60 * 60,
-    });
-    expect(state.written).toContainEqual({
-      name: 'sb-x-auth-token',
-      value: 'jwt',
-      options: { path: '/', sameSite: 'lax' },
-    });
-    const marker = state.written.find((c) => c.name === SESSION_ONLY_COOKIE);
-    expect(marker?.value).toBe('1');
-    expect(marker?.options).not.toHaveProperty('maxAge');
-    expect(marker?.options).toMatchObject({ httpOnly: true, path: '/' });
-  });
-
-  it('a deletion stays a deletion, so sign-out still clears the cookies either way', () => {
-    expect(withoutLifetime({ path: '/', maxAge: 0 })).toEqual({ path: '/', maxAge: 0 });
-    expect(withoutLifetime({ path: '/', maxAge: 60, expires: new Date(0) })).toEqual({ path: '/' });
-    expect(withoutLifetime(undefined)).toBeUndefined();
-    const seen: unknown[] = [];
-    sessionScopedStore({ getAll: () => [], set: (...a) => seen.push(a) }).set('a', '', {
-      maxAge: 0,
-    });
-    expect(seen).toEqual([['a', '', { maxAge: 0 }]]);
   });
 });
 

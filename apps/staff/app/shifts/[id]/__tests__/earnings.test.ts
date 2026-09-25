@@ -27,6 +27,8 @@ const base: ShiftDetail = {
   eventCancelledAt: null,
   cancelCause: null,
   noCheckoutOpen: false,
+  turnedAwayAt: null,
+  turnedAwayPayMin: null,
 };
 
 describe('§5.1 the check-out confirmation', () => {

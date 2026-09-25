@@ -4,6 +4,7 @@
  * the components only lay it out.
  */
 import type { RtwCheckRow } from '../_lib/rtwCheck';
+import { rtwDateRule } from './rtw';
 import type { QueueRow, RadarRow, RadarState } from './types';
 
 const UK = 'Europe/London';
@@ -356,6 +357,46 @@ export function actionsFor(row: QueueRow): { verify: string; reject: boolean } {
   // ADR-0025: the check's document is already rejected; Mark reviewed is on its panel.
   if (row.kind === 'rtw_check') return { verify: 'Verify', reject: false };
   return { verify: 'Verify', reject: true };
+}
+
+/**
+ * What pressing Verify on a row does — the one decision every screen that
+ * verifies shares (/compliance and the /staff/:id Documents tab):
+ *   - `approve`: the completion letter, approved with its completion date
+ *     and visa expiry (requirement §2.2) — approve_completion_letter();
+ *   - `confirm_date`: a visa document, status document or share code
+ *     report, verified on the right-to-work date it carries (20260923200000),
+ *     or an rtw_date row, whose date alone is confirmed (20260927160000);
+ *   - `verify`: everything else, on the click.
+ */
+export type VerifyStep = 'approve' | 'confirm_date' | 'verify';
+
+export function verifyStep(row: QueueRow): VerifyStep {
+  if (row.item_type === 'university_completion_letter') return 'approve';
+  if (
+    (row.kind === 'document' || row.kind === 'rtw_date') &&
+    rtwDateRule(row.item_type, row.rtw_branch)
+  ) {
+    return 'confirm_date';
+  }
+  return 'verify';
+}
+
+/**
+ * One worker's queue rows keyed by the record they act on, for the
+ * /staff/:id Documents tab: a pending document, a pending Yes declaration,
+ * or a verified share code report whose right-to-work date is missing
+ * (`rtw_date`) — each keyed by that document's or declaration's id. The
+ * `rtw_check` item is keyed by the check, not a document, and is cleared
+ * from the check's own panel (Mark reviewed), so it is left out.
+ */
+export function queueByRecord(rows: readonly QueueRow[]): Map<string, QueueRow> {
+  const map = new Map<string, QueueRow>();
+  for (const row of rows) {
+    if (row.kind === 'rtw_check') continue;
+    map.set(row.item_id, row);
+  }
+  return map;
 }
 
 /** What pressing Verify will do, spelled out where it matters (§4.3, §4.5). */

@@ -9,7 +9,7 @@ import type { DocType, HmrcGender, StudentLoanPlan } from '@thc/domain';
 import { staffDb, supabaseConfigured } from '../db';
 import { geocodePostcode } from '../_lib/postcode';
 import { photoPathFor } from '../profile/photos';
-import { extractDocument } from '../../lib/extract';
+import { extractAfterResponse } from '../../lib/extract';
 import { NOT_CONFIGURED, reasonMessage } from './messages';
 import { documentPath, isOwnDocumentPath } from './paths';
 import type { Referee } from './state';
@@ -274,8 +274,9 @@ export async function finishDocumentUpload(input: {
   }
 
   // §2.6 — pre-fill, never verify (lib/extract.ts, shared with the
-  // Documents tab so a renewal is read the same way).
-  await extractDocument(admin, recorded.data.docId, input.docType, input.path, mime);
+  // Documents tab so a renewal is read the same way). The read runs after
+  // the response; the upload does not wait for it (ADR-0033).
+  await extractAfterResponse(admin, recorded.data.docId, input.docType, input.path, mime);
   return { ok: true };
 }
 
