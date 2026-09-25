@@ -126,7 +126,7 @@ export function DetailsForm({
         label="Home address"
         value={address}
         onChange={(event) => setAddress(event.target.value)}
-        hint="Used for venue distances. Changing it notifies the office (E7)."
+        hint="Used for venue distances. Changing it notifies the office."
       />
 
       {error ? <Alert tone="coral">{error}</Alert> : null}

@@ -12,6 +12,7 @@ import {
 import { StaffShell } from '../../_components/StaffShell';
 import { ShiftTime } from '../../_components/ShiftTime';
 import { ActionButton } from '../../_components/ActionButton';
+import { LoadProblem } from '../../_components/LoadProblem';
 import { applyForShift } from '../../actions';
 import { findOpenShift, loadBookings, openInvites } from '../../data';
 import '../../staff-app.css';
@@ -31,10 +32,20 @@ export const metadata = { title: 'Open shift · THC Staff' };
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const shift = await findOpenShift(id);
+  const [{ row: shift, problem }, { rows: bookings }] = await Promise.all([
+    findOpenShift(id),
+    loadBookings(),
+  ]);
+  // A failed read is not a 404 (audit D18).
+  if (problem) {
+    return (
+      <StaffShell title="Open shift" sub={<Link href="/radar">‹ Radar</Link>} active="/radar">
+        <LoadProblem what="this shift" />
+      </StaffShell>
+    );
+  }
   if (!shift) notFound();
 
-  const bookings = await loadBookings();
   const hours = sectionHours({ startsAt: shift.startsAt, endsAt: shift.endsAt });
   const open = openSlots({
     confirmed: shift.confirmedCount,

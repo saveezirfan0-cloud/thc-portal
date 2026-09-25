@@ -14,6 +14,7 @@ import {
 import { StaffShell } from '../_components/StaffShell';
 import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
+import { LoadProblem } from '../_components/LoadProblem';
 import { withdrawApplication } from '../actions';
 import { loadBookings, loadOpenShifts, openInvites } from '../data';
 import type { OpenShift } from '../data';
@@ -38,14 +39,18 @@ export const metadata = { title: 'Radar · THC Staff' };
  * (N10), or off Radar when the role fills without them (N10c).
  */
 export default async function Page() {
-  const [shifts, bookings] = await Promise.all([loadOpenShifts(), loadBookings()]);
+  const [{ rows: shifts, problem }, { rows: bookings, problem: bookingsProblem }] =
+    await Promise.all([loadOpenShifts(), loadBookings()]);
   const groups = radarGroups(shifts);
   const applications = new Map(
     bookings.filter((b) => b.status === 'applied').map((b) => [b.shiftId, b.bookingId] as const),
   );
 
   const empty =
-    groups.qualified.length === 0 && groups.other.length === 0 && groups.applied.length === 0;
+    !problem &&
+    groups.qualified.length === 0 &&
+    groups.other.length === 0 &&
+    groups.applied.length === 0;
   // §10.4's header strip: "This week (Mon 14 – Sun 20) · 8 h of 20 h". Any
   // row carries the figures for its own week; the soonest is this week's.
   const first = shifts[0];
@@ -62,9 +67,18 @@ export default async function Page() {
     <StaffShell
       title="Radar"
       active="/radar"
-      shifts={bookings.filter((b) => b.status === 'confirmed' || b.status === 'worked').length}
-      invites={openInvites(bookings).length}
+      {...(bookingsProblem
+        ? {}
+        : {
+            shifts: bookings.filter((b) => b.status === 'confirmed' || b.status === 'worked')
+              .length,
+            invites: openInvites(bookings).length,
+          })}
     >
+      {problem ? (
+        // Audit D18: a failed read is not "Nothing open nearby".
+        <LoadProblem what="open shifts" />
+      ) : null}
       {meter ? (
         <div className="note xs">
           This week · <b>{meter}</b>. Your weekly limit is calculated from your verified documents

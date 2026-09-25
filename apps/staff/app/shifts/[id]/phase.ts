@@ -4,6 +4,7 @@ import {
   NO_CHECK_OUT_AFTER_MIN,
   addMinutes,
   staticScreenCase,
+  turnedAwayMinutes,
 } from '@thc/domain';
 import type { StaticScreenCase } from '@thc/domain';
 import type { ShiftDetail } from './types';
@@ -33,13 +34,23 @@ export type ShiftPhase =
   | 'locked' // start+30 passed with no check-in (§5.1)
   | 'on_shift'
   | 'on_break'
-  | 'closed'; // checked out
+  | 'closed' // checked out
+  | 'turned_away'; // strict buffer, RULE-15 — "Thanks for coming" (§3.2)
 
 const STATIC_PHASES: readonly ShiftPhase[] = ['event_cancelled', 'withdrawn', 'no_checkout'];
 
 /** True for the three phases that replace the whole shift screen (§10.4). */
 export function isStaticPhase(phase: ShiftPhase): phase is StaticScreenCase {
   return STATIC_PHASES.includes(phase);
+}
+
+/**
+ * True for every phase with nothing live on it — the three §10.4 dead ends
+ * and the turn-away. None of them asks for the worker's location, draws the
+ * map or offers a button that talks to the server.
+ */
+export function isTerminalPhase(phase: ShiftPhase): boolean {
+  return isStaticPhase(phase) || phase === 'turned_away';
 }
 
 /**
@@ -96,6 +107,11 @@ export function shiftPhase({ shift, openBreak, now }: PhaseInput): ShiftPhase {
   });
   if (dead) return dead;
 
+  // Audit D19: a worker turned away is done with this shift. Before this,
+  // the phase fell through to the clock and a reload inside the window
+  // offered Check in again — to a booking `attempt_check_in` now refuses.
+  if (shift.status === 'turned_away') return 'turned_away';
+
   if (shift.checkOutAt) return 'closed';
 
   if (shift.checkInAt) {
@@ -107,21 +123,51 @@ export function shiftPhase({ shift, openBreak, now }: PhaseInput): ShiftPhase {
 
   if (now < addMinutes(startsAt, -CHECK_IN_OPENS_MIN)) return 'before_window';
 
-  // The lock, and its one exception: a booking confirmed AFTER the shift
-  // had already started keeps its button until the shift ends, because a
-  // window measured from a start they were not booked for means nothing.
-  const confirmedAfterStart = shift.confirmedAt !== null && new Date(shift.confirmedAt) > startsAt;
-  const locksAt = confirmedAfterStart ? endsAt : addMinutes(startsAt, CHECK_IN_GRACE_MIN);
-  return now >= locksAt ? 'locked' : 'check_in';
+  const { locks } = checkInWindow(shift);
+  return now >= locks ? 'locked' : 'check_in';
 }
 
-/** The check-in window the screen quotes back: "Check-in window 16:30 – 17:30". */
-export function checkInWindow(startsAt: string): { opens: Date; locks: Date } {
-  const start = new Date(startsAt);
+/**
+ * The check-in window the screen quotes back: "Check-in window 16:30 –
+ * 17:30". The lock, and its one exception: a booking confirmed AFTER the
+ * shift had already started keeps its button until the shift ends (§3.4),
+ * because a window measured from a start they were not booked for means
+ * nothing — so the screen must not quote start+30 to them either.
+ */
+export function checkInWindow(shift: Pick<ShiftDetail, 'startsAt' | 'endsAt' | 'confirmedAt'>): {
+  opens: Date;
+  locks: Date;
+  confirmedAfterStart: boolean;
+} {
+  const start = new Date(shift.startsAt);
+  const confirmedAfterStart = shift.confirmedAt !== null && new Date(shift.confirmedAt) > start;
   return {
     opens: addMinutes(start, -CHECK_IN_OPENS_MIN),
-    locks: addMinutes(start, CHECK_IN_GRACE_MIN),
+    locks: confirmedAfterStart ? new Date(shift.endsAt) : addMinutes(start, CHECK_IN_GRACE_MIN),
+    confirmedAfterStart,
   };
+}
+
+/**
+ * RULE-15: whether a turn-away is paid the flat 4 h. The logged attempt
+ * decides, not the reload; with no stamp (a database before 20260929130000)
+ * the screen cannot vouch for the pay and says only what is certain.
+ */
+export function turnAwayPaid(
+  shift: Pick<ShiftDetail, 'startsAt' | 'endsAt' | 'turnedAwayAt'>,
+): boolean {
+  if (!shift.turnedAwayAt) return false;
+  return (
+    turnedAwayMinutes(
+      { startsAt: new Date(shift.startsAt), endsAt: new Date(shift.endsAt) },
+      new Date(shift.turnedAwayAt),
+    ) > 0
+  );
+}
+
+/** The instant check-out locks and RULE-02 takes over: end + 4 h. */
+export function checkOutLocksAt(endsAt: string): Date {
+  return addMinutes(new Date(endsAt), NO_CHECK_OUT_AFTER_MIN);
 }
 
 /** Metres between two WGS-84 points — the same haversine the venue map uses. */
