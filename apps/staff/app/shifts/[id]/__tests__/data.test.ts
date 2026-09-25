@@ -177,6 +177,18 @@ describe('loadShift() reads the worker’s own shift through staff_shift_detail(
     expect(plain?.turnedAwayPayMin).toBeNull();
   });
 
+  it('carries a logged Left early, so the check-out prices RULE-14 as payroll does (D8)', async () => {
+    rpc.mockResolvedValue({ data: [row({ left_early: true })], error: null });
+    expect((await loadShift('b1'))?.leftEarly).toBe(true);
+
+    rpc.mockResolvedValue({ data: [row({ left_early: false })], error: null });
+    expect((await loadShift('b1'))?.leftEarly).toBe(false);
+
+    // A row without the column leaves it to earnings.ts to read the check-out.
+    rpc.mockResolvedValue({ data: [row()], error: null });
+    expect((await loadShift('b1'))?.leftEarly).toBeUndefined();
+  });
+
   it('returns null for somebody else’s booking, which the function answers with no row', async () => {
     rpc.mockResolvedValue({ data: [], error: null });
     expect(await loadShift('someone-else')).toBeNull();

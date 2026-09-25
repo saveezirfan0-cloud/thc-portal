@@ -66,6 +66,10 @@ export function toShiftDetail(row: Record<string, unknown>): ShiftDetail {
     eventCancelledAt: str('event_cancelled_at'),
     cancelCause: (row['cancel_cause'] as CancelCause | null) ?? null,
     noCheckoutOpen: row['no_checkout_open'] === true,
+    // RULE-14 (audit D8): a logged Left early, resolved or not, from
+    // staff_shift_detail() (20260930100100). Undefined only if the column is
+    // absent; earnings.ts then reads it from the check-out.
+    leftEarly: typeof row['left_early'] === 'boolean' ? row['left_early'] : undefined,
     turnedAwayAt: str('turned_away_at'),
     turnedAwayPayMin:
       row['turned_away_pay_min'] === null || row['turned_away_pay_min'] === undefined

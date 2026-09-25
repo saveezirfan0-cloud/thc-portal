@@ -92,4 +92,7 @@ const REASONS: Record<string, string> = {
   not_checked_in: 'You have not checked in yet.',
   already_checked_out: 'You have already checked out of this shift.',
   breaks_paid_by_client: 'This client pays for breaks, so there is nothing to log.',
+  // D16: only a compliant worker can start a shift; the database refuses it.
+  staff_not_compliant:
+    'Your account is not active for shifts at the moment, so you cannot check in. Please contact the office.',
 };
