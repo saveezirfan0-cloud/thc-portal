@@ -1,10 +1,14 @@
 'use server';
 
+import { randomUUID } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
-import { reviewErrorMessage } from './messages';
+import { createAdminClient } from '@thc/db/admin';
+import { evidenceFileProblem } from '@thc/domain';
+import { reviewErrorMessage, uploadRefusal } from './messages';
 import { supabaseConfigured } from './data';
+import { visaLimitProblem, visaLimitValue } from './conditions';
 import type { ActionResult } from './types';
 
 /**
@@ -23,7 +27,7 @@ const NOT_CONFIGURED =
   'This environment has no Supabase project, so this cannot be saved. See docs/04-setup-github-vercel-supabase.md.';
 
 /** See apps/office/app/staff/[id]/actions.ts: the generated types are a placeholder. */
-type RpcArguments = Record<string, string | null>;
+type RpcArguments = Record<string, string | number | boolean | null>;
 interface RpcClient {
   rpc(
     fn: string,
@@ -37,7 +41,8 @@ async function call(fn: string, args: RpcArguments): Promise<{ data: unknown } |
   const { data, error } = await supabase.rpc(fn, args);
   if (error) return { ok: false, message: reviewErrorMessage(error.message) };
   revalidatePath('/compliance');
-  revalidatePath('/staff');
+  revalidatePath('/staff', 'layout');
+  revalidatePath('/onboarding', 'layout');
   return { data };
 }
 
@@ -56,16 +61,55 @@ export interface VerifyDates {
   rightToWorkUntil?: string | null;
 }
 
+/**
+ * What the reviewer confirms beside the document (conditions.ts): the course
+ * level of a student (D32) or a work or dependant visa's weekly hours limit
+ * (D36). Saved after the Verify, each audited on its own.
+ */
+export interface VerifyConditions {
+  staffId: string;
+  belowDegreeLevel?: boolean;
+  /** Typed as the reviewer typed it: empty for "no limit on the visa". */
+  visaHourLimit?: string;
+}
+
 /** §4.1 Verify. Reports the §4.3 re-check's answer rather than hiding it. */
 export async function verifyDocument(
   docId: string,
   dates: VerifyDates = {},
+  conditions?: VerifyConditions,
 ): Promise<ActionResult> {
+  if (conditions?.visaHourLimit !== undefined) {
+    const problem = visaLimitProblem(conditions.visaHourLimit);
+    if (problem) return { ok: false, message: problem };
+  }
   const args: RpcArguments = { p_doc: docId };
   if (dates.expiry) args['p_expiry'] = dates.expiry;
   if (dates.rightToWorkUntil) args['p_right_to_work_until'] = dates.rightToWorkUntil;
   const result = await call('compliance_verify_document', args);
   if (isFailure(result)) return result;
+  const verified = verifiedMessage(result, dates);
+  const saved = conditions ? await saveConditions(conditions) : '';
+  return verified.ok
+    ? { ok: true, message: `${verified.message ?? 'Verified.'}${saved}` }
+    : verified;
+}
+
+async function saveConditions(conditions: VerifyConditions): Promise<string> {
+  const parts: string[] = [];
+  if (conditions.belowDegreeLevel !== undefined) {
+    const saved = await setBelowDegreeLevel(conditions.staffId, conditions.belowDegreeLevel);
+    parts.push(saved.ok ? (saved.message ?? '') : `Course level not saved: ${saved.message}`);
+  }
+  if (conditions.visaHourLimit !== undefined) {
+    const saved = await setVisaHourLimit(conditions.staffId, conditions.visaHourLimit);
+    parts.push(saved.ok ? (saved.message ?? '') : `Visa hours limit not saved: ${saved.message}`);
+  }
+  const text = parts.filter(Boolean).join(' ');
+  return text ? ` ${text}` : '';
+}
+
+function verifiedMessage(result: { data: unknown }, dates: VerifyDates): ActionResult {
   const data = (result.data ?? {}) as {
     unblocked?: boolean;
     status?: string;
@@ -87,6 +131,70 @@ export async function verifyDocument(
     };
   }
   return { ok: true, message: `Verified.${rtw}` };
+}
+
+/**
+ * The course level of a student (D32, ADR-0040): below degree level, the
+ * Student visa allows 10 hours a week in term time instead of 20.
+ */
+export async function setBelowDegreeLevel(staffId: string, below: boolean): Promise<ActionResult> {
+  const result = await call('compliance_set_below_degree_level', {
+    p_staff: staffId,
+    p_below: below,
+  });
+  if (isFailure(result)) return result;
+  const data = (result.data ?? {}) as { changed?: boolean };
+  if (!data.changed) return { ok: true, message: '' };
+  return {
+    ok: true,
+    message: below
+      ? 'Course recorded as below degree level: 10 h a week in term time.'
+      : 'Course recorded as degree level or above: 20 h a week in term time.',
+  };
+}
+
+/** A work or dependant visa's weekly hours limit (D36). Empty clears it. */
+export async function setVisaHourLimit(staffId: string, typed: string): Promise<ActionResult> {
+  const problem = visaLimitProblem(typed);
+  if (problem) return { ok: false, message: problem };
+  const hours = visaLimitValue(typed);
+  const result = await call('compliance_set_visa_hour_limit', { p_staff: staffId, p_hours: hours });
+  if (isFailure(result)) return result;
+  const data = (result.data ?? {}) as { changed?: boolean };
+  if (!data.changed) return { ok: true, message: '' };
+  return {
+    ok: true,
+    message:
+      hours === null
+        ? 'No hours limit on the visa.'
+        : `Visa hours limit recorded: ${hours} h a week — the 48-hour opt-out cannot lift it.`,
+  };
+}
+
+/**
+ * The NI check (D43): NI evidence verified before the number was entered,
+ * compared now that it has been. A mismatch needs a reason — the worker is
+ * sent it in N8 and asked to re-upload.
+ */
+export async function resolveNiCheck(
+  docId: string,
+  matches: boolean,
+  reason = '',
+): Promise<ActionResult> {
+  if (!matches && reason.trim() === '')
+    return { ok: false, message: 'Say what does not match — the worker is sent it.' };
+  const result = await call('compliance_resolve_ni_check', {
+    p_doc: docId,
+    p_matches: matches,
+    p_reason: matches ? null : reason.trim(),
+  });
+  if (isFailure(result)) return result;
+  return {
+    ok: true,
+    message: matches
+      ? 'Recorded: the NI number matches the evidence.'
+      : 'NI evidence rejected. The worker has been asked to re-upload.',
+  };
 }
 
 /** §4.1 Reject. The reason goes to the worker word for word in N8. */
@@ -197,6 +305,141 @@ export async function rejectDeclaration(
   });
   if (isFailure(result)) return result;
   return { ok: true, message: 'Rejected.' };
+}
+
+// ---------------------------------------------------------------------
+// The office's uploads (D47 completion letter, D31 gov.uk report)
+//
+// The documents bucket is service-role only, so an upload is two steps, as
+// in the Staff App: the service key issues a one-object signed upload for a
+// name THIS server chose — after checking the caller is the office — and the
+// browser sends the bytes straight to Storage (a server action takes 1 MB,
+// the rule allows 10). The RPC then judges what Storage recorded, through
+// the manager's own session, and refuses anything else.
+// ---------------------------------------------------------------------
+
+export type OfficeUploadFolder = 'completion-letter' | 'share-code-report';
+export type OfficeUploadSlot =
+  { ok: true; path: string; token: string } | { ok: false; message: string };
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+async function isOffice(): Promise<boolean> {
+  const supabase = createClient(await cookies());
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return false;
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', auth.user.id)
+    .maybeSingle<{ role: string }>();
+  return profile?.role === 'admin';
+}
+
+function serviceClient(): ReturnType<typeof createAdminClient> | null {
+  try {
+    return createAdminClient();
+  } catch {
+    return null;
+  }
+}
+
+const NO_SERVICE_KEY = 'Set SUPABASE_SERVICE_ROLE_KEY for the Back Office to upload documents.';
+
+export async function startOfficeUpload(
+  staffId: string,
+  folder: OfficeUploadFolder,
+  file: { name: string; type: string; size: number },
+): Promise<OfficeUploadSlot> {
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  if (!UUID.test(staffId)) return { ok: false, message: uploadRefusal('invalid_path') };
+  if (folder !== 'completion-letter' && folder !== 'share-code-report') {
+    return { ok: false, message: uploadRefusal('invalid_path') };
+  }
+  const problem = evidenceFileProblem(file);
+  if (problem) return { ok: false, message: uploadRefusal(problem) };
+  if (!(await isOffice())) return { ok: false, message: reviewErrorMessage('not_authorised') };
+  const admin = serviceClient();
+  if (!admin) return { ok: false, message: NO_SERVICE_KEY };
+
+  const ext = file.name.slice(file.name.lastIndexOf('.') + 1).toLowerCase();
+  const path = `${staffId}/${folder}/${randomUUID()}.${ext}`;
+  const { data, error } = await admin.storage.from('documents').createSignedUploadUrl(path);
+  if (error || !data) return { ok: false, message: uploadRefusal('invalid_path') };
+  return { ok: true, path: data.path, token: data.token };
+}
+
+/** Removes a refused upload — only a fresh object nothing references (evidence_path_discardable). */
+async function discard(staffId: string, path: string): Promise<void> {
+  const admin = serviceClient();
+  if (!admin) return;
+  const { data } = await admin.rpc(
+    'evidence_path_discardable' as never,
+    { p_staff: staffId, p_path: path } as never,
+  );
+  if (data === true) await admin.storage.from('documents').remove([path]);
+}
+
+export interface OfficeCompletionLetter {
+  staffId: string;
+  path: string;
+  completionDate: string;
+  form: 'letter' | 'transcript' | 'university_email';
+  institution?: string;
+}
+
+/** D47: the office's completion-letter upload. Lands pending — Approve confirms the dates. */
+export async function submitOfficeCompletionLetter(
+  input: OfficeCompletionLetter,
+): Promise<ActionResult> {
+  if (!input.path.startsWith(`${input.staffId}/completion-letter/`)) {
+    return { ok: false, message: uploadRefusal('invalid_path') };
+  }
+  if (!input.completionDate)
+    return { ok: false, message: uploadRefusal('completion_date_required') };
+  const result = await call('office_submit_completion_letter', {
+    p_staff: input.staffId,
+    p_file_path: input.path,
+    p_completion_date: input.completionDate,
+    p_evidence_form: input.form,
+    p_awarding_institution: input.institution?.trim() || null,
+  });
+  if (isFailure(result)) {
+    await discard(input.staffId, input.path);
+    return result;
+  }
+  const data = (result.data ?? {}) as { ok?: boolean; reason?: string };
+  if (!data.ok) {
+    await discard(input.staffId, input.path);
+    return { ok: false, message: uploadRefusal(data.reason) };
+  }
+  return {
+    ok: true,
+    message:
+      'Uploaded. It is waiting in Needs review: approve it there with the completion date and the visa expiry — the weekly limit changes only then.',
+  };
+}
+
+/** D31: the gov.uk report the office downloaded, attached to a hand-verified share code. */
+export async function attachRtwReport(
+  docId: string,
+  staffId: string,
+  path: string,
+): Promise<ActionResult> {
+  if (!path.startsWith(`${staffId}/share-code-report/`)) {
+    return { ok: false, message: uploadRefusal('invalid_path') };
+  }
+  const result = await call('compliance_attach_rtw_report', { p_doc: docId, p_path: path });
+  if (isFailure(result)) {
+    await discard(staffId, path);
+    return result;
+  }
+  const data = (result.data ?? {}) as { ok?: boolean; reason?: string };
+  if (!data.ok) {
+    await discard(staffId, path);
+    return { ok: false, message: uploadRefusal(data.reason) };
+  }
+  return { ok: true, message: 'gov.uk report attached to the share code.' };
 }
 
 function ukDate(iso: string | undefined): string {
