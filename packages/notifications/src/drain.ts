@@ -184,8 +184,15 @@ async function sendPush(
     };
   }
 
-  // The service worker (apps/staff/sw.ts) reads exactly these three fields.
-  const payload = { title: message.title, body: message.body, url: message.url ?? '/shifts' };
+  // The service worker (apps/staff/sw.ts) reads exactly these fields:
+  // title, body and url always; action and tag when the register gives them.
+  const payload = {
+    title: message.title,
+    body: message.body,
+    url: message.url ?? '/shifts',
+    ...(message.action ? { action: message.action } : {}),
+    ...(message.tag ? { tag: message.tag } : {}),
+  };
 
   const results = await Promise.all(
     subscriptions.map(async (subscription) => {
