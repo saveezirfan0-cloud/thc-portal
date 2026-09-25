@@ -13,6 +13,8 @@
  * there is nothing for this file to leak.
  */
 
+import { UK_ZONE, formatDateIn, formatTimeIn, ukToday } from '@thc/domain';
+
 export type EventStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
 
 export type Tab = 'upcoming' | 'past' | 'all';
@@ -205,9 +207,11 @@ export function groupByRole(
 /**
  * The Upcoming / Past / All segmented control (§11.1).
  *
- * "Upcoming & ongoing" is anything whose window has not yet ended, so an
- * event running right now stays in the tab the customer is looking at
- * rather than jumping to Past the moment it starts. A cancelled event is
+ * "Upcoming" is anything whose window has not yet ended — upcoming AND
+ * ongoing. The label was shortened so the three options fit a phone
+ * (ADR-0034); the rule was not. So an event running right now stays in the
+ * tab the customer is looking at rather than jumping to Past the moment it
+ * starts. A cancelled event is
  * neither upcoming nor past work: it is filed by its date like any other
  * row, because §11.1 keeps the row visible rather than hiding it.
  */
@@ -228,4 +232,214 @@ export function statusTone(status: EventStatus): 'green' | 'cyan' | 'neutral' {
   if (status === 'ongoing') return 'green';
   if (status === 'upcoming') return 'cyan';
   return 'neutral';
+}
+
+/**
+ * A worker removed under GDPR (§1.7): the view returns the anonymised name
+ * "Deleted account #id" and no photo. They keep their slot on the line-up
+ * so the headcount is not skewed, but there is nobody left to rate.
+ */
+export function isRemoved(row: Pick<LineupRow, 'name'>): boolean {
+  return row.name.startsWith('Deleted account');
+}
+
+/** One role's share of "N of M confirmed", for the list's breakdown line. */
+export interface RoleFill {
+  role: string;
+  confirmed: number;
+  headcount: number;
+  /** Fewer confirmed than booked: drawn in the amber the bar uses. */
+  short: boolean;
+}
+
+/**
+ * "Waiting 8/10 · Bar 5/7" under the list's fill bar (§11.1, ADR-0034).
+ *
+ * The same numbers `fillOf` adds up, split by role: confirmed only against
+ * the booked headcount, never the buffer (§3.2). Two sections of the same
+ * role (a lunch and a dinner shift of Waiting Staff) are one entry, because
+ * the customer booked "Waiting Staff", not two shift ids. Ordered by the
+ * role's own start (RULE-18) as the event page groups them, so the line and
+ * the page read in the same order.
+ */
+export function roleBreakdown(sections: readonly RoleSection[]): RoleFill[] {
+  const byRole = new Map<string, { startsAt: string; confirmed: number; headcount: number }>();
+  for (const s of sections) {
+    const seen = byRole.get(s.role);
+    if (seen) {
+      seen.confirmed += s.confirmed;
+      seen.headcount += s.headcount;
+      if (s.startsAt < seen.startsAt) seen.startsAt = s.startsAt;
+    } else {
+      byRole.set(s.role, { startsAt: s.startsAt, confirmed: s.confirmed, headcount: s.headcount });
+    }
+  }
+  return [...byRole.entries()]
+    .sort(([ra, a], [rb, b]) => a.startsAt.localeCompare(b.startsAt) || ra.localeCompare(rb))
+    .map(([role, f]) => ({
+      role,
+      confirmed: f.confirmed,
+      headcount: f.headcount,
+      short: f.confirmed < f.headcount,
+    }));
+}
+
+/**
+ * "Leave feedback · 5 of 13 to go" on a list row (§11.2, ADR-0034).
+ *
+ * Only once the event has started (the same `feedbackOpen` test the event
+ * page's buttons use) and only for an ongoing or completed event, so an
+ * upcoming row never carries the nudge even if the clock and the view's
+ * status briefly disagree. A removed worker cannot be rated (the event
+ * page disables their button), so they count on neither side. Null when
+ * there is nothing to nudge about: not started, cancelled, nobody to rate,
+ * or every rateable worker already has the customer's feedback.
+ */
+export function feedbackToGo(
+  event: Pick<PortalEvent, 'id' | 'status' | 'startsAt'>,
+  lineup: readonly LineupRow[],
+  now: Date,
+): { toGo: number; total: number } | null {
+  if (event.status !== 'ongoing' && event.status !== 'completed') return null;
+  if (!feedbackOpen(event, now)) return null;
+  const rateable = lineup.filter((l) => l.eventId === event.id && !isRemoved(l));
+  const toGo = rateable.filter((l) => !l.feedbackGiven).length;
+  return toGo === 0 ? null : { toGo, total: rateable.length };
+}
+
+/**
+ * Whether a completed event's signed timesheet is out yet (§11.3, ADR-0034).
+ *
+ * Read straight off `documentOffer`, so the words and the button cannot
+ * disagree: "ready" exactly when the button is a live download. An event
+ * that is not completed has no timesheet to wait for.
+ */
+export function timesheetStatus(
+  status: EventStatus,
+  issued: readonly DocumentKind[],
+): 'ready' | 'pending' | null {
+  if (status !== 'completed') return null;
+  const offer = documentOffer(status, issued);
+  if (!offer || offer.kind !== 'signout') return null;
+  return offer.available ? 'ready' : 'pending';
+}
+
+/**
+ * The list's filters, on top of the tab (ADR-0034). Dates are `yyyy-mm-dd`
+ * as an `<input type="date">` gives them, read as UK calendar days; an
+ * empty string means "no bound".
+ */
+export interface EventFilters {
+  query: string;
+  venue: string;
+  from: string;
+  to: string;
+}
+
+export const NO_FILTERS: EventFilters = { query: '', venue: '', from: '', to: '' };
+
+/** True when any filter is narrowing the list: what "Clear filters" undoes. */
+export function filtersActive(f: EventFilters): boolean {
+  return f.query.trim() !== '' || f.venue !== '' || f.from !== '' || f.to !== '';
+}
+
+/** The venue select's options: each venue once, A to Z. */
+export function venuesOf(events: readonly PortalEvent[]): string[] {
+  return [...new Set(events.map((e) => e.venueName))].sort((a, b) => a.localeCompare(b));
+}
+
+/**
+ * The search, venue and date range, combined (ADR-0034).
+ *
+ * The day an event is filed under is the UK calendar day it starts on, the
+ * day the list's Date column prints (`ukDateShort`), evaluated in
+ * Europe/London (§1.8) rather than as the UTC date of the timestamp. So an
+ * event at 23:30 UK on the "To" day is in, and one at 00:30 UK the day
+ * after is out, although in summer that is still the "To" day in UTC. Both
+ * bounds are inclusive. A "From" after the "To" matches nothing rather
+ * than being silently swapped; the empty state then names the filters as
+ * the reason.
+ */
+export function applyFilters(events: readonly PortalEvent[], f: EventFilters): PortalEvent[] {
+  const needle = f.query.trim().toLowerCase();
+  return events.filter((e) => {
+    if (
+      needle !== '' &&
+      !e.title.toLowerCase().includes(needle) &&
+      !e.venueName.toLowerCase().includes(needle) &&
+      !(e.poNumber ?? '').toLowerCase().includes(needle)
+    )
+      return false;
+    if (f.venue !== '' && e.venueName !== f.venue) return false;
+    if (f.from === '' && f.to === '') return true;
+    const day = ukToday(new Date(e.startsAt));
+    if (f.from !== '' && day < f.from) return false;
+    if (f.to !== '' && day > f.to) return false;
+    return true;
+  });
+}
+
+/**
+ * Why the list is empty, so the empty state can say so (ADR-0034): the
+ * customer has no events at all; the tab has none (so clearing the filters
+ * would not help); or the tab has some and the search and filters hid them
+ * all. Null when there are rows to show.
+ */
+export function emptyReason(
+  total: number,
+  inTab: number,
+  shown: number,
+): 'none' | 'tab' | 'filters' | null {
+  if (shown > 0) return null;
+  if (total === 0) return 'none';
+  if (inTab === 0) return 'tab';
+  return 'filters';
+}
+
+/**
+ * The "Next up" strip above the list (ADR-0034).
+ *
+ * An event running now wins ("Happening now"), the earliest-started first
+ * if several overlap; otherwise the soonest upcoming one. Cancelled and
+ * completed events never appear, and nothing is returned when there is
+ * nothing ahead. Status is the view's own `event_status()`, the same word
+ * the row's pill prints, so the strip and the list cannot disagree.
+ */
+export function nextUp(
+  events: readonly PortalEvent[],
+  now: Date,
+): { event: PortalEvent; live: boolean; when: string } | null {
+  const soonest = (status: EventStatus) =>
+    events
+      .filter((e) => e.status === status)
+      .sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.title.localeCompare(b.title))[0];
+
+  const live = soonest('ongoing');
+  if (live) return { event: live, live: true, when: `until ${ukMoment(live.endsAt, now, true)}` };
+  const next = soonest('upcoming');
+  return next ? { event: next, live: false, when: ukMoment(next.startsAt, now, false) } : null;
+}
+
+/**
+ * "today 07:00 UK", "tomorrow 07:00 UK", "Thu 1 Oct 07:00 UK": a scheduled
+ * time in UK time with the " UK" suffix (§1.8). The strip is a one-line
+ * pointer into the event, whose page carries the full dual-zone window.
+ * "Today" is judged on the UK calendar, like every rule. With `dropToday`
+ * the day is left off when it is today ("until 23:30 UK").
+ */
+function ukMoment(iso: string, now: Date, dropToday: boolean): string {
+  const at = new Date(iso);
+  const day = ukToday(at);
+  const today = ukToday(now);
+  const time = `${formatTimeIn(at, UK_ZONE)} UK`;
+  if (day === today) return dropToday ? time : `today ${time}`;
+  if (day === nextDay(today)) return `tomorrow ${time}`;
+  const year = day.slice(0, 4) !== today.slice(0, 4);
+  return `${formatDateIn(at, UK_ZONE, { weekday: 'short', year })} ${time}`;
+}
+
+/** The calendar day after a `yyyy-mm-dd`, with no clock involved. */
+function nextDay(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number) as [number, number, number];
+  return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
 }

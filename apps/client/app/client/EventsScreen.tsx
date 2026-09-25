@@ -1,23 +1,43 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import {
   Avatar,
   AvatarGroup,
   Button,
+  EmptyState,
+  Input,
   Panel,
   Pill,
   Progress,
   SearchInput,
   SegToggle,
+  Select,
 } from '@thc/ui';
 import { EventWindow } from './EventWindow';
 import { ukDateShort } from './format';
-import { byDateDescending, documentOffer, fillOf, filterByTab, statusTone } from './rules';
+import {
+  NO_FILTERS,
+  applyFilters,
+  byDateDescending,
+  documentOffer,
+  emptyReason,
+  feedbackToGo,
+  fillOf,
+  filterByTab,
+  filtersActive,
+  isRemoved,
+  nextUp,
+  roleBreakdown,
+  statusTone,
+  timesheetStatus,
+  venuesOf,
+} from './rules';
 import type {
   DocumentKind,
   DocumentOffer,
+  EventFilters,
   LineupRow,
   PortalEvent,
   RoleSection,
@@ -35,7 +55,12 @@ import type {
  * come from `client_events_v` and `client_role_sections_v`, neither of
  * which carries a rate (§11.1).
  *
- * A client component because the tabs, the search box and the viewer's own
+ * ADR-0034 adds presentation only, from the same rows: a "Next up" strip, a
+ * per-role breakdown under the fill bar, a feedback nudge, the signed
+ * timesheet's status, venue and date filters, and an empty state that says
+ * why it is empty. No new data, no editing, no money.
+ *
+ * A client component because the tabs, the filters and the viewer's own
  * time zone are all browser facts. The rows themselves were fetched on the
  * server, under the caller's session.
  */
@@ -49,6 +74,12 @@ const STATUS_LABEL: Record<PortalEvent['status'], string> = {
 };
 
 const DOC_LABEL = { allocation: '↓ Allocation sheet', signout: '↓ Signed timesheet' } as const;
+
+const TAB_EMPTY: Record<Tab, string> = {
+  upcoming: 'You have no upcoming or ongoing events.',
+  past: 'You have no past events yet.',
+  all: 'You have no events yet.',
+};
 
 export function EventsScreen({
   events,
@@ -68,7 +99,8 @@ export function EventsScreen({
   now: string;
 }) {
   const [tab, setTab] = useState<Tab>('upcoming');
-  const [query, setQuery] = useState('');
+  const [filters, setFilters] = useState<EventFilters>(NO_FILTERS);
+  const set = (patch: Partial<EventFilters>) => setFilters((f) => ({ ...f, ...patch }));
 
   const at = useMemo(() => new Date(now), [now]);
 
@@ -80,17 +112,13 @@ export function EventsScreen({
     [events, at],
   );
 
-  const rows = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    const filtered = filterByTab(events, tab, at).filter(
-      (e) =>
-        needle === '' ||
-        e.title.toLowerCase().includes(needle) ||
-        e.venueName.toLowerCase().includes(needle) ||
-        (e.poNumber ?? '').toLowerCase().includes(needle),
-    );
-    return byDateDescending(filtered);
-  }, [events, tab, at, query]);
+  const venues = useMemo(() => venuesOf(events), [events]);
+  const next = useMemo(() => nextUp(events, at), [events, at]);
+
+  const inTab = useMemo(() => filterByTab(events, tab, at), [events, tab, at]);
+  const rows = useMemo(() => byDateDescending(applyFilters(inTab, filters)), [inTab, filters]);
+  const filtering = filtersActive(filters);
+  const empty = emptyReason(events.length, inTab.length, rows.length);
 
   const sectionsFor = (id: string) => sections.filter((s) => s.eventId === id);
   const facesFor = (id: string) =>
@@ -104,21 +132,76 @@ export function EventsScreen({
           <div className="desc">Confirmed line-ups and timesheets · read-only</div>
         </div>
         <div className="actions">
+          {/* "Upcoming" is upcoming AND ongoing (filterByTab); the longer
+              label did not fit three options on a phone (ADR-0034). */}
           <SegToggle
             value={tab}
             onChange={(v) => setTab(v as Tab)}
             options={[
-              { value: 'upcoming', label: 'Upcoming & ongoing', count: counts.upcoming },
+              { value: 'upcoming', label: 'Upcoming', count: counts.upcoming },
               { value: 'past', label: 'Past', count: counts.past },
               { value: 'all', label: 'All' },
             ]}
           />
-          <SearchInput
-            placeholder="Search events"
-            value={query}
-            onChange={(e) => setQuery(e.currentTarget.value)}
-            className="ev-search"
+        </div>
+      </div>
+
+      {next ? <NextUp {...next} fill={fillOf(sectionsFor(next.event.id))} /> : null}
+
+      {/* The shared .toolbar phone rules (packages/ui) give the search its
+          own line and let the filters share the next one. */}
+      <div className="toolbar ev-filters">
+        <SearchInput
+          label="Search events"
+          placeholder="Search events"
+          value={filters.query}
+          onChange={(e) => set({ query: e.currentTarget.value })}
+          className="ev-search"
+        />
+        <div className="right">
+          {venues.length > 1 ? (
+            <Select
+              label="Venue"
+              className="ev-venue"
+              value={filters.venue}
+              onChange={(e) => set({ venue: e.currentTarget.value })}
+            >
+              <option value="">All venues</option>
+              {venues.map((v) => (
+                <option key={v} value={v}>
+                  {v}
+                </option>
+              ))}
+            </Select>
+          ) : null}
+          {/* Calendar days in the UK, inclusive (applyFilters): what the
+              Date column prints, not the viewer's own zone. */}
+          <Input
+            type="date"
+            label="From"
+            className="ev-date"
+            value={filters.from}
+            max={filters.to || undefined}
+            onChange={(e) => set({ from: e.currentTarget.value })}
           />
+          <Input
+            type="date"
+            label="To"
+            className="ev-date"
+            value={filters.to}
+            min={filters.from || undefined}
+            onChange={(e) => set({ to: e.currentTarget.value })}
+          />
+          {filtering ? (
+            <Button
+              size="sm"
+              tone="ghost"
+              className="ev-clear"
+              onClick={() => setFilters(NO_FILTERS)}
+            >
+              Clear filters
+            </Button>
+          ) : null}
         </div>
       </div>
 
@@ -128,10 +211,14 @@ export function EventsScreen({
         actions={<Pill>{rows.length === 1 ? '1 event' : `${rows.length} events`}</Pill>}
         flush
       >
-        {rows.length === 0 ? (
-          <p className="muted" style={{ padding: '18px 20px' }}>
-            No events to show here yet.
-          </p>
+        {empty ? (
+          <EmptyList
+            reason={empty}
+            tab={tab}
+            hidden={inTab.length}
+            onShowAll={() => setTab('all')}
+            onClearFilters={() => setFilters(NO_FILTERS)}
+          />
         ) : (
           <>
             <div className="table-wrap">
@@ -149,9 +236,12 @@ export function EventsScreen({
                 </thead>
                 <tbody>
                   {rows.map((e) => {
-                    const fill = fillOf(sectionsFor(e.id));
+                    const secs = sectionsFor(e.id);
+                    const fill = fillOf(secs);
                     const faces = facesFor(e.id);
                     const doc = documentOffer(e.status, documents[e.id] ?? []);
+                    const sheet = timesheetStatus(e.status, documents[e.id] ?? []);
+                    const nudge = feedbackToGo(e, faces, at);
                     const cancelled = e.status === 'cancelled';
 
                     return (
@@ -169,9 +259,12 @@ export function EventsScreen({
                           <EventWindow startsAt={e.startsAt} endsAt={e.endsAt} className="sub" />
                         </td>
                         <td>
-                          <Pill tone={statusTone(e.status)} dot={e.status === 'ongoing'}>
-                            {STATUS_LABEL[e.status]}
-                          </Pill>
+                          <div className="stack tight">
+                            <Pill tone={statusTone(e.status)} dot={e.status === 'ongoing'}>
+                              {STATUS_LABEL[e.status]}
+                            </Pill>
+                            {nudge ? <FeedbackNudge eventId={e.id} {...nudge} /> : null}
+                          </div>
                         </td>
                         <td>
                           {cancelled ? (
@@ -182,6 +275,7 @@ export function EventsScreen({
                                 <b>{fill.confirmed}</b> of {fill.headcount} confirmed
                               </span>
                               <Progress value={fill.percent} tone={fill.tone} />
+                              <RoleLine sections={secs} />
                             </div>
                           )}
                         </td>
@@ -195,6 +289,7 @@ export function EventsScreen({
                         <td>
                           <div className="stack tight">
                             <DocumentButton eventId={e.id} offer={doc} />
+                            {sheet ? <TimesheetStatus status={sheet} /> : null}
                             <Link className="sm" href={`/client/events/${e.id}`}>
                               Details →
                             </Link>
@@ -210,8 +305,12 @@ export function EventsScreen({
             {/* Same rows, no table. The phone drops no field (§1.2). */}
             <div className="cards" style={{ padding: 14 }}>
               {rows.map((e) => {
-                const fill = fillOf(sectionsFor(e.id));
+                const secs = sectionsFor(e.id);
+                const fill = fillOf(secs);
+                const faces = facesFor(e.id);
                 const doc = documentOffer(e.status, documents[e.id] ?? []);
+                const sheet = timesheetStatus(e.status, documents[e.id] ?? []);
+                const nudge = feedbackToGo(e, faces, at);
                 const cancelled = e.status === 'cancelled';
 
                 return (
@@ -231,16 +330,26 @@ export function EventsScreen({
                       {e.poNumber ? ` · PO ${e.poNumber}` : ''}
                     </div>
                     {cancelled ? null : (
-                      <div className="faces">
-                        <Faces people={facesFor(e.id)} photos={photos} />
-                        <span className="sm">
-                          <b>{fill.confirmed}</b> of {fill.headcount} confirmed
-                        </span>
+                      <div className="ev-fill">
+                        <div className="faces">
+                          <Faces people={faces} photos={photos} />
+                          <span className="sm">
+                            <b>{fill.confirmed}</b> of {fill.headcount} confirmed
+                          </span>
+                        </div>
+                        <Progress value={fill.percent} tone={fill.tone} />
+                        <RoleLine sections={secs} />
                       </div>
                     )}
+                    {nudge || sheet ? (
+                      <div className="ev-notes">
+                        {nudge ? <FeedbackNudge eventId={e.id} {...nudge} /> : null}
+                        {sheet ? <TimesheetStatus status={sheet} /> : null}
+                      </div>
+                    ) : null}
                     <div className="foot">
                       <DocumentButton eventId={e.id} offer={doc} />
-                      <Link className="ml-auto btn sm" href={`/client/events/${e.id}`}>
+                      <Link className="btn sm" href={`/client/events/${e.id}`}>
                         Details →
                       </Link>
                     </div>
@@ -256,16 +365,160 @@ export function EventsScreen({
 }
 
 /**
- * The row's document (§11.1, §11.3): a real download — an `<a href>` to the
- * PDF, so it can be saved or forwarded from a phone (§11.4) — once the
- * office has issued that kind; the same label, disabled, until it has; and
- * the wireframe's "No document" for a cancelled event.
+ * An empty list that says why (ADR-0034, reason from `emptyReason`): the
+ * customer has no events yet; this tab has none, which the filters cannot
+ * change, so the way out is another tab; or the search and filters hid
+ * every row of the tab, so the way out is "Clear filters".
+ */
+export function EmptyList({
+  reason,
+  tab,
+  hidden,
+  onShowAll,
+  onClearFilters,
+}: {
+  reason: 'none' | 'tab' | 'filters';
+  tab: Tab;
+  /** How many rows of this tab the filters are hiding. */
+  hidden: number;
+  onShowAll: () => void;
+  onClearFilters: () => void;
+}) {
+  return (
+    <div className="ev-empty">
+      {reason === 'none' ? (
+        <EmptyState>
+          <h3>No events yet</h3>
+          <p>When THC books staff for one of your events, it appears here.</p>
+        </EmptyState>
+      ) : reason === 'tab' ? (
+        <EmptyState>
+          <h3>Nothing here</h3>
+          <p>{TAB_EMPTY[tab]}</p>
+          <Button size="sm" className="mt-16" onClick={onShowAll}>
+            Show all events
+          </Button>
+        </EmptyState>
+      ) : (
+        <EmptyState>
+          <h3>No events match your filters</h3>
+          <p>
+            {hidden === 1
+              ? '1 event in this tab is hidden by your search and filters.'
+              : `${hidden} events in this tab are hidden by your search and filters.`}
+          </p>
+          <Button size="sm" className="mt-16" onClick={onClearFilters}>
+            Clear filters
+          </Button>
+        </EmptyState>
+      )}
+    </div>
+  );
+}
+
+/**
+ * "Next: Gala Dinner · today 07:00 UK · 13 of 17 confirmed", or "Happening
+ * now: …" while one is running (ADR-0034). A pointer into the event page,
+ * so one UK time with its " UK" label is enough here (§1.8); the page
+ * itself carries the dual-zone window. Independent of the tab and the
+ * filters: it answers "what is next for me", not "what is in this view".
+ */
+function NextUp({
+  event,
+  live,
+  when,
+  fill,
+}: {
+  event: PortalEvent;
+  live: boolean;
+  when: string;
+  fill: { confirmed: number; headcount: number };
+}) {
+  return (
+    <Link className={live ? 'ev-next live' : 'ev-next'} href={`/client/events/${event.id}`}>
+      <Pill tone={live ? 'green' : 'cyan'} dot={live}>
+        {live ? 'Happening now' : 'Next'}
+      </Pill>
+      <span className="ev-next-t">
+        <b>{event.title}</b>
+        <span> · {when}</span>
+        <span>
+          {' '}
+          · {fill.confirmed} of {fill.headcount} confirmed
+        </span>
+      </span>
+      <span className="ev-next-go" aria-hidden>
+        →
+      </span>
+    </Link>
+  );
+}
+
+/**
+ * The per-role split under the fill bar: "Waiting 8/10 · Bar 5/7" (§11.1,
+ * ADR-0034). Confirmed only, against the booked headcount (§3.2). A single
+ * role would only repeat "N of M confirmed", so it draws nothing then.
+ */
+function RoleLine({ sections }: { sections: RoleSection[] }) {
+  const roles = roleBreakdown(sections);
+  if (roles.length < 2) return null;
+  return (
+    <span className="ev-roles">
+      {/* The separator sits outside the role's own span, so a narrow cell
+          breaks between roles and never inside "Waiting Staff 8/10". */}
+      {roles.map((r, i) => (
+        <Fragment key={r.role}>
+          {i > 0 ? ' · ' : ''}
+          <span className={r.short ? 'short' : undefined}>
+            {r.role} {r.confirmed}/{r.headcount}
+          </span>
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * "Leave feedback · 5 of 13 to go" (§11.2, ADR-0034). A link to the event
+ * page, where the per-worker buttons are; the list itself writes nothing.
+ */
+function FeedbackNudge({ eventId, toGo, total }: { eventId: string; toGo: number; total: number }) {
+  return (
+    <Link className="ev-nudge" href={`/client/events/${eventId}`}>
+      Leave feedback · {toGo} of {total} to go
+    </Link>
+  );
+}
+
+/**
+ * A completed event's signed timesheet, said in words (§11.3, ADR-0034).
+ * Exported for its test: static rendering always opens on the Upcoming
+ * tab, where no completed event is listed.
+ */
+export function TimesheetStatus({ status }: { status: 'ready' | 'pending' }) {
+  return status === 'ready' ? (
+    <span className="ev-sheet ready">✓ Signed timesheet ready</span>
+  ) : (
+    <span className="ev-sheet">Timesheet not issued yet</span>
+  );
+}
+
+/**
+ * The row's document (§11.1, §11.3): a real download (an `<a href>` to the
+ * PDF, so it can be saved or forwarded from a phone, §11.4) once the office
+ * has issued that kind; the same label, disabled, until it has; and the
+ * wireframe's "No document" for a cancelled event.
+ *
+ * A live download is the row's primary action, filled (ADR-0034): next to
+ * the bordered "Details →" the plain `btn` read as greyed out. The disabled
+ * stub stays the plain, faded button, so a copy not yet issued still looks
+ * unavailable rather than like a primary that does nothing.
  */
 function DocumentButton({ eventId, offer }: { eventId: string; offer: DocumentOffer | null }) {
   if (!offer) return <span className="muted sm">No document</span>;
   if (offer.available) {
     return (
-      <a className="btn sm" href={`/client/events/${eventId}/document?kind=${offer.kind}`}>
+      <a className="btn sm primary" href={`/client/events/${eventId}/document?kind=${offer.kind}`}>
         {DOC_LABEL[offer.kind]}
       </a>
     );
@@ -295,7 +548,7 @@ function Faces({ people, photos }: { people: LineupRow[]; photos: Record<string,
           name={p.name}
           size="sm"
           src={p.photoPath ? photos[p.photoPath] : undefined}
-          deleted={p.name.startsWith('Deleted account')}
+          deleted={isRemoved(p)}
         />
       ))}
       {extra > 0 ? (

@@ -101,6 +101,127 @@
   width: 220px;
 }
 
+/* ---- the list's filters: search, venue, a UK date range (ADR-0034) ----
+   A .toolbar so the shared phone rules (packages/ui components.css) wrap
+   it: the search takes a line, the fields share the next. Bottom-aligned
+   because the fields carry a label above and the search does not. */
+.ev-filters,
+.ev-filters .right {
+  align-items: flex-end;
+}
+
+.ev-filters .ev-venue {
+  width: 200px;
+}
+
+.ev-filters .ev-date {
+  width: 150px;
+  min-width: 0;
+  /* The native picker's glyph follows the page's ground, not the OS. */
+  color-scheme: dark;
+}
+
+:root[data-theme='light'] .ev-filters .ev-date {
+  color-scheme: light;
+}
+
+/* ---- "Next: Gala Dinner · today 07:00 UK · 13 of 17 confirmed" ---- */
+.ev-next {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  padding: var(--sp-12) var(--sp-16);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+  box-shadow: var(--shadow-card);
+  color: var(--text);
+  font-size: var(--fs-13);
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+
+.ev-next:hover {
+  border-color: var(--cyan-line);
+}
+
+.ev-next.live {
+  border-color: var(--green-line);
+  background: var(--green-dim);
+}
+
+.ev-next-t {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ev-next-t > span {
+  color: var(--muted);
+}
+
+.ev-next-go {
+  margin-left: auto;
+  color: var(--cyan-ink);
+  font-weight: 600;
+}
+
+/* ---- the per-role split under the fill bar (ADR-0034) ---- */
+.ev-roles {
+  display: block;
+  font-size: var(--fs-12);
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+/* Wraps under the bar rather than widening the column and squeezing the
+   event's name onto three lines. */
+.fill-cell > .ev-roles {
+  max-width: 170px;
+  white-space: normal;
+}
+
+.ev-roles > span {
+  white-space: nowrap;
+}
+
+.ev-roles .short {
+  color: var(--amber-ink);
+}
+
+/* ---- the feedback nudge and the timesheet's status (ADR-0034) ---- */
+.ev-nudge {
+  font-size: var(--fs-12);
+  font-weight: 600;
+  color: var(--cyan-ink);
+}
+
+.tbl .ev-nudge {
+  max-width: 130px;
+}
+
+.ev-sheet {
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
+
+.ev-sheet.ready {
+  color: var(--green-ink);
+  font-weight: 600;
+}
+
+/* In a stacked table cell the pill keeps its own width, not the column's. */
+.tbl .stack > .pill {
+  align-self: flex-start;
+}
+
+.ev-empty {
+  padding: var(--sp-16);
+}
+
+.ev-empty .empty p {
+  margin: 0;
+}
+
 /* ---- the fill cell: "13 of 17 confirmed" over its bar (§11.1) ---- */
 .fill-cell {
   display: flex;
@@ -280,6 +401,30 @@
   border-top: 1px solid var(--line);
   padding-top: var(--sp-12);
   margin-top: 2px;
+}
+
+/* The download (filled) and Details (bordered) are a matched pair: equal
+   halves of the foot, so neither reads as the afterthought (ADR-0034). */
+.ecard .foot > * {
+  flex: 1 1 0;
+  min-width: 0;
+  justify-content: center;
+  text-align: center;
+}
+
+/* "13 of 17 confirmed", its bar and the role split, as on the desktop. */
+.ecard .ev-fill {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+
+.ecard .ev-notes {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-6) var(--sp-12);
 }
 
 .ecard .faces {
@@ -494,6 +639,33 @@
     width: 100%;
     justify-content: center;
     margin: 14px 0 8px;
+  }
+
+  /* The list's filters: the shared .toolbar rules already give the search
+     a line and pair the fields; the venue names are long, so the venue
+     takes a line of its own and From / To sit side by side under it. */
+  .ev-filters .right > .field:has(> .ev-venue) {
+    flex-basis: 100%;
+  }
+
+  /* iOS draws a date input at its own intrinsic width, wider than half a
+     390px line; without its native chrome it takes the field's width. */
+  @supports (-webkit-touch-callout: none) {
+    .ev-filters .ev-date {
+      -webkit-appearance: none;
+      appearance: none;
+    }
+  }
+
+  .ev-next {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    row-gap: var(--sp-6);
+  }
+
+  .ev-next-t {
+    flex-basis: 100%;
+    order: 1;
   }
 }
 
