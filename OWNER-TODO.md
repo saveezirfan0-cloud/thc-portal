@@ -5,7 +5,7 @@ below is a setting, a key, a deploy or content that a coding session cannot
 supply. Tick items off here as they are done. `docs/14-handover.md` §5 has the
 background for each.
 
-Last updated 26.09.2026. **§1 and §2 re-checked against the live project and
+Last updated 26.09.2026; §8 (the automated gov.uk check, ADR-0025) added after. **§1 and §2 re-checked against the live project and
 GitHub on 23.09** — both are still open, they are not stale entries.
 
 ## 1 · Supabase settings (dashboard)
@@ -98,6 +98,36 @@ Nothing is lost; it all sends once the keys exist.
       **thc-portal-client** Vercel projects. Both are currently
       `https://thc-portal-staff.vercel.app`.
 - [ ] Update the `STAFF_APP_URL` Supabase secret (Willo) to match.
+
+## 8 · The automated gov.uk right-to-work check (ADR-0025)
+
+Built and tested, and **switched off**. Until it is on, the office verifies share codes by
+hand as before (ADR-0018). THC has accepted that a passing check verifies a worker
+**without the Home Office photo match**, which may cost THC the statutory excuse
+(ADR-0025).
+
+- [ ] **Choose a right-to-work provider** (an IDSP / right-to-work checking service with an
+      API that returns the gov.uk result and its PDF). Sign up and get a sandbox key.
+- [ ] Give its API documentation to a session, to check ADR-0025's "Assumed" items 1–6
+      against it and change `apps/office/app/api/jobs/rtw-check/_lib/provider.config.ts` if
+      they differ.
+- [ ] **Confirm with THC** that gov.uk's terms of use allow our own browser check as the
+      fallback (ADR-0002 flagged it). If they do not, leave `RTW_GOVUK_ENABLED` unset:
+      provider only.
+- [ ] Vercel, **Back Office project**: `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` (plus
+      `RTW_PROVIDER_AUTH_HEADER` / `RTW_PROVIDER_AUTH_PREFIX` if the provider's differ),
+      `RTW_JOB_SECRET` (`openssl rand -base64 48`), and `RTW_GOVUK_ENABLED=true` if
+      allowed. Redeploy. Check the plan allows the route's `maxDuration = 300`.
+- [ ] SQL editor: set `settings.office_base_url` and create the vault secret
+      `rtw_job_secret` with the same value as `RTW_JOB_SECRET` (`docs/12`).
+- [ ] With the check still off, run **one** check by hand on a consenting worker's share
+      code. Ask a session to confirm ADR-0025's items 7–12 (gov.uk's pages and wording)
+      and item 13 (Chromium on Vercel).
+- [ ] `update settings set value = value || '{"enabled": true}' where key = 'rtw_check';`
+- [ ] Ask a session to **enable the `rtw-check` schedule**. That is a migration plus test
+      `190`, not a dashboard change. Then re-run `select install_job_schedules();`
+- [ ] Share codes filed before the switch have no check. Press **Run gov.uk check** on each
+      in Compliance → Needs review.
 
 ## Done
 

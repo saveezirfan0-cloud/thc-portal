@@ -1,6 +1,6 @@
 # ADR-0002 · gov.uk share-code check without a public API
 
-**Status:** Proposed — decide at kick-off
+**Status:** Superseded by ADR-0025 (25.09.2026). THC chose options 3 and 2 together: a right-to-work provider's API first, our own gov.uk browser check as the fallback, fully automatic. The `RightToWorkChecker` interface lives in `apps/office/app/api/jobs/rtw-check/_lib/checker.ts`, not in an Edge Function, because Chromium cannot run on Supabase's Deno runtime.
 
 ## Context
 §2.3/§2.6 say the system "queries gov.uk itself" with share code + DOB and stores the PDF report and the right-to-work-until date. The gov.uk employer service ("View a job applicant's right to work details") is a web form with no published API for employers.

@@ -146,6 +146,9 @@ Do not chase these now. Each is listed against the phase that first needs it.
 | `RESEND_API_KEY` | https://resend.com/api-keys — a **Sending access** key for the verified domain | P2, every email (`notify-drain`) — see below |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Generated, not obtained. Run `npx web-push generate-vapid-keys`; the subject is `mailto:admin@thehospitalitycompany.co.uk` | P2, every push (`notify-drain`) — see below |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | https://account.mapbox.com/access-tokens/ | Phase 2, the venues map |
+| `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` (+ optional `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX`, `RTW_PROVIDER_TIMEOUT_MS`) | The right-to-work provider THC signs up with (not chosen yet). **Vercel, Back Office only, server-side.** See "The automated right-to-work check" below | Switching on the gov.uk check (ADR-0025) |
+| `RTW_JOB_SECRET` | Generated, not obtained: `openssl rand -base64 48`. **Vercel, Back Office only**, and the same value in the Supabase vault as `rtw_job_secret` | Same |
+| `RTW_GOVUK_ENABLED` (+ optional `RTW_GOVUK_START_URL`, `RTW_GOVUK_TIMEOUT_MS`, `RTW_CHECK_BATCH`, and `RTW_CHROMIUM_EXECUTABLE_PATH` for local development only) | Not obtained. `true` turns on the gov.uk browser fallback. **Vercel, Back Office only** | Same |
 
 Anything used by a background function goes in Supabase rather than Vercel:
 
@@ -227,6 +230,50 @@ relative path (ADR-0020).
 'notify-drain' order by started_at desc limit 5;` — `counts` has `sent`, `retried`,
 `failed`, `unconfigured` and, while keys are missing, `notConfigured`. A single row's
 story is on `notification_outbox` (`attempts`, `error`, `sent_at`, `failed_at`).
+
+### The automated right-to-work check (ADR-0025)
+
+The gov.uk share-code check is a **Back Office route**, `POST /api/jobs/rtw-check`, not an
+Edge Function, because its gov.uk fallback drives a headless Chromium, which Supabase's
+Deno runtime cannot run. So its keys go on the **Back Office Vercel project**, not in
+Supabase secrets:
+
+| Variable | What it is | If it is missing |
+|---|---|---|
+| `RTW_JOB_SECRET` | At least 32 characters, random. pg_cron sends it as `Authorization: Bearer …` | The route refuses every call (503). Nothing is checked |
+| `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` | The provider's check endpoint and key. The request and response shape are assumed in `apps/office/app/api/jobs/rtw-check/_lib/provider.config.ts` — confirm against the provider's docs | The provider is skipped; the gov.uk fallback runs alone if enabled |
+| `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX` | Default `Authorization` / `Bearer `. An empty prefix is allowed | Defaults |
+| `RTW_GOVUK_ENABLED` | `true` to allow our own gov.uk browser check as the fallback | No fallback |
+| `RTW_CHECK_BATCH` | Checks per run, 1–10 (default 3) | 3 |
+| `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL` | Already set on the Back Office | The route answers 503 |
+
+With neither the provider nor `RTW_GOVUK_ENABLED`, the route claims nothing, so no
+attempt is spent while THC is still choosing.
+
+**In the database** (SQL editor):
+
+```sql
+-- The Back Office's public origin, which pg_cron and the share-code nudge post to.
+insert into settings (key, value) values ('office_base_url', '"https://office.thehospitalitycompany.co.uk"')
+on conflict (key) do update set value = excluded.value;
+
+-- The same value as RTW_JOB_SECRET on Vercel.
+select vault.create_secret('<RTW_JOB_SECRET>', 'rtw_job_secret');
+
+-- Last, once the keys work (one manual check done — OWNER-TODO §8):
+update settings set value = value || '{"enabled": true}' where key = 'rtw_check';
+```
+
+`settings.rtw_check` also holds `primary` (`provider`), `fallback` (`govuk`, or null for
+provider-only), `company_name` (what gov.uk is told is checking) and `max_attempts` (5).
+The `rtw-check` schedule (every 10 minutes) is registered **disabled**. Enabling it is a
+migration plus pgTAP 190, then `select install_job_schedules();`, which now also needs
+`office_base_url` and `rtw_job_secret` for that row.
+
+**Checking it works:** `select job, ok, counts, error from job_runs where job =
+'rtw-check' order by started_at desc limit 5;` — `counts` has `claimed`, `passed`,
+`rejected`, `needs_review`, `queued` (a retry) and `failed` (the document left review
+first), or `skipped: not_configured`. One check's story is on `rtw_checks`.
 
 ---
 

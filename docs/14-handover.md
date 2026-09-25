@@ -286,8 +286,12 @@ From the 23.09 build:
 - **Workers verified on a share code before 23.09 with no date still have
   none** — nothing to backfill from. Re-verify them; the query that finds them
   is in the header of `20260923200000`.
-- **The share-code date is confirmed by the office** until the extractor that
-  reads the gov.uk report exists; §2.3 says nobody types it (ADR-0018).
+- **The share-code date is confirmed by the office** while the automated
+  gov.uk check is switched off; §2.3 says nobody types it (ADR-0018). The
+  check itself is built (ADR-0025, 25.09): provider first, our own gov.uk
+  browser check as fallback, fully automatic. It waits for THC's provider
+  keys (OWNER-TODO §8), and once on, the office types a date only for a
+  check in needs_review.
 - **Unverified on real infrastructure:** the `finance-reports` Edge Function has
   not been run under Deno (ADR-0006's `../../../packages` import question); Storage
   image transforms may be off (photos then fall back to the original); GoTrue's
