@@ -149,3 +149,51 @@ describe('the Back Office phone menu', () => {
     expect(more).toContain('<span class="count alert">4</span>');
   });
 });
+
+const { SignedInAsProvider } = await import('../SignedInAs');
+
+/**
+ * ADR-0036: the menu leaves out what the signed-in office role cannot use.
+ * Presentation only — the pages say "Not available for your role" and the
+ * database refuses regardless — but a menu item that always errors reads
+ * as a broken product.
+ */
+describe('the Back Office menu per office role', () => {
+  const render = (officeRole?: 'owner' | 'manager' | 'scheduler') =>
+    renderToStaticMarkup(
+      <SignedInAsProvider user={{ name: 'Test User', ...(officeRole ? { officeRole } : {}) }}>
+        <OfficeShell activeHref="/dashboard" title="Dashboard">
+          <span />
+        </OfficeShell>
+      </SignedInAsProvider>,
+    );
+
+  it('shows an owner every section', () => {
+    const markup = render('owner');
+    for (const href of ['/reports', '/roles', '/settings', '/users']) {
+      expect(markup).toContain(`href="${href}"`);
+    }
+  });
+
+  it('drops Settings and Users & access for a manager', () => {
+    const markup = render('manager');
+    expect(markup).not.toContain('href="/settings"');
+    expect(markup).not.toContain('href="/users"');
+    expect(markup).toContain('href="/reports"');
+    expect(markup).toContain('href="/roles"');
+  });
+
+  it('also drops Reports and Roles & rates for a scheduler', () => {
+    const markup = render('scheduler');
+    for (const href of ['/reports', '/roles', '/settings', '/users']) {
+      expect(markup).not.toContain(`href="${href}"`);
+    }
+    for (const href of ['/events', '/staff', '/clients', '/venues', '/activity', '/account']) {
+      expect(markup).toContain(`href="${href}"`);
+    }
+  });
+
+  it('hides nothing when the role is unknown', () => {
+    expect(render()).toContain('href="/users"');
+  });
+});

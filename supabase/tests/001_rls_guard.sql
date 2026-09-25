@@ -25,10 +25,12 @@
 -- 20260928100000 (ADR-0025) added rtw_checks to assertions 1 and 3:
 -- admin-read, written by definer functions and the service role; the
 -- worker reads their own status through my_rtw_checks(), not a policy.
+-- 20260930110000 (ADR-0036) added assertions 10 and 10b: the office-role
+-- gates are restrictive policies, pinned by exact set.
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
-select plan(12);
+select plan(14);
 
 -- ---------------------------------------------------------------------
 -- 1. Tables with RLS enabled (0001_init.sql)
@@ -332,6 +334,49 @@ select is_empty(
       where p.polrelid = 'public.spatial_ref_sys'::regclass
         and p.polcmd <> 'r' $$,
   'no policy on spatial_ref_sys permits anything but SELECT'
+);
+
+-- ---------------------------------------------------------------------
+-- 10. The office-role gates (20260930110000, ADR-0036) are RESTRICTIVE
+--     policies: they narrow admin_all for a Back Office login without
+--     'settings' or 'finance' and grant nothing to anybody. Assertions 3
+--     to 5 key on permissive names and would not see one go missing, so
+--     the exact set is pinned here. Adding a restrictive policy is a
+--     change to who in the office can do what — update ADR-0036 with it.
+--     bank_details' WRITE gate is a trigger, not a policy, because
+--     571_bank_details_write_path pins admin_all as its only write policy.
+-- ---------------------------------------------------------------------
+select bag_eq(
+  $$ select c.relname::text || '.' || p.polname::text || ':' || p.polcmd::text
+       from pg_policy p join pg_class c on c.oid = p.polrelid
+       join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and not p.polpermissive $$,
+  $$ values ('settings.office_settings_insert:a'::text), ('settings.office_settings_update:w'),
+            ('settings.office_settings_delete:d'),
+            ('venue_types.office_settings_insert:a'), ('venue_types.office_settings_update:w'),
+            ('venue_types.office_settings_delete:d'),
+            ('roles.office_finance_insert:a'), ('roles.office_finance_update:w'),
+            ('roles.office_finance_delete:d'),
+            ('client_rate_cards.office_finance_insert:a'), ('client_rate_cards.office_finance_update:w'),
+            ('client_rate_cards.office_finance_delete:d'),
+            ('bank_details.office_finance_read:r'), ('payroll_export_lines.office_finance_read:r'),
+            ('report_sends.office_finance_read:r') $$,
+  'ADR-0036: exactly fifteen restrictive policies — settings writes on settings / venue_types, finance writes on roles / client_rate_cards, finance reads on bank_details / payroll_export_lines / report_sends'
+);
+
+-- 10b. And each of them asks office_can(), for a signed-in session only.
+--      A restrictive policy on anything else — or one reaching anon, who
+--      holds no permissive policy to narrow and no grant on office_can —
+--      would be a new rule hiding under this one's name.
+select is_empty(
+  $$ select c.relname::text || '.' || p.polname::text
+       from pg_policy p join pg_class c on c.oid = p.polrelid
+       join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public' and not p.polpermissive
+        and ((coalesce(pg_get_expr(p.polqual, p.polrelid), '')
+              || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')) !~ 'office_can\('
+          or p.polroles <> array['authenticated'::regrole::oid]) $$,
+  'ADR-0036: every restrictive policy asks office_can() and applies to authenticated only'
 );
 
 select * from finish();

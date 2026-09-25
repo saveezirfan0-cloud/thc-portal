@@ -8,12 +8,18 @@ import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
 import { officeOrigin } from '../login/origin';
 import {
-  explainAccountError,
+  explainAccountError as explainAccountCode,
   normaliseEmail,
   validateEmail,
   validateJobTitle,
   validateName,
 } from '../_lib/accounts';
+import {
+  DEFAULT_OFFICE_ROLE,
+  type OfficeRole,
+  explainOfficeError,
+  isOfficeRole,
+} from '../_lib/permissions';
 import {
   type InviteAdmin,
   type InviteRole,
@@ -25,11 +31,12 @@ import {
 import type { AccountRow } from './data';
 
 /**
- * /users — Users & access (ADR-0035).
+ * /users — Users & access (ADR-0035, ADR-0036).
  *
  * Every write is the database's decision, made as the signed-in manager:
- * `admin_register_account` and `admin_set_login_disabled` check the role
- * themselves and write the audit row. The service key is used for ONE
+ * `admin_register_account`, `admin_set_login_disabled` and
+ * `admin_set_office_role` check the role — and, since ADR-0036, that the
+ * caller is an owner — themselves and write the audit row. The service key is used for ONE
  * thing — minting the login and its one-time token through GoTrue — and
  * only after this file has checked the caller is an admin.
  */
@@ -41,6 +48,11 @@ const NOT_CONFIGURED =
   'This environment has no Supabase project, so this cannot be saved. See docs/04-setup-github-vercel-supabase.md.';
 const SERVICE_KEY =
   'The login could not be created — set SUPABASE_SERVICE_ROLE_KEY for the Back Office.';
+
+/** ADR-0036's refusals first, then ADR-0035's. */
+function explainAccountError(message: string): string {
+  return explainOfficeError(message) ?? explainAccountCode(message);
+}
 
 function session(store: Awaited<ReturnType<typeof cookies>>): SupabaseClient {
   return createClient(store) as unknown as SupabaseClient;
@@ -77,6 +89,8 @@ async function issue(
     fullName: string;
     clientId: string | null;
     jobTitle: string | null;
+    /** Applies to a NEW Back Office login; a re-invite keeps the existing role. */
+    officeRole: OfficeRole | null;
   },
 ): Promise<UsersResult> {
   const origin = originFor(input.role);
@@ -123,6 +137,9 @@ async function issue(
     p_full_name: input.fullName,
     p_client: input.clientId,
     p_job_title: input.jobTitle,
+    // The six-argument form (20260930110000): the office role is explicit,
+    // and null for a Client Portal login.
+    p_office_role: input.role === 'admin' ? input.officeRole : null,
   });
   if (error) return { ok: false, message: explainAccountError(error.message) };
 
@@ -141,8 +158,13 @@ export async function inviteUser(input: {
   role: InviteRole;
   clientId: string;
   jobTitle: string;
+  officeRole?: string;
 }): Promise<UsersResult> {
   const email = normaliseEmail(input.email);
+  const officeRole = input.officeRole ?? DEFAULT_OFFICE_ROLE;
+  if (input.role === 'admin' && !isOfficeRole(officeRole)) {
+    return { ok: false, message: explainAccountError('office_role_required') };
+  }
   const invalid =
     validateName(input.fullName) ??
     validateEmail(email) ??
@@ -164,6 +186,7 @@ export async function inviteUser(input: {
     fullName: input.fullName.trim(),
     clientId: input.role === 'client' ? input.clientId : null,
     jobTitle: input.role === 'admin' ? input.jobTitle.trim() || null : null,
+    officeRole: input.role === 'admin' && isOfficeRole(officeRole) ? officeRole : null,
   });
 }
 
@@ -196,7 +219,30 @@ export async function newInviteLink(userId: string): Promise<UsersResult> {
     fullName: row.full_name,
     clientId: row.client_id,
     jobTitle: row.job_title,
+    officeRole: row.role === 'admin' ? (row.office_role ?? DEFAULT_OFFICE_ROLE) : null,
   });
+}
+
+/**
+ * Change a Back Office login's office role (ADR-0036). The database
+ * refuses anyone but an owner, the caller's own login, and leaving no
+ * working owner, and writes `account.role_changed`.
+ */
+export async function changeOfficeRole(userId: string, officeRole: string): Promise<UsersResult> {
+  if (!isOfficeRole(officeRole)) {
+    return { ok: false, message: explainAccountError('office_role_required') };
+  }
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const supabase = session(await cookies());
+  const { data, error } = await supabase.rpc('admin_set_office_role', {
+    p_user: userId,
+    p_role: officeRole,
+  });
+  if (error) return { ok: false, message: explainAccountError(error.message) };
+  revalidatePath('/users');
+  revalidatePath('/activity');
+  const changed = (data as { changed?: boolean } | null)?.changed !== false;
+  return { ok: true, message: changed ? 'Role changed.' : 'That is already their role.' };
 }
 
 export async function setLoginDisabled(

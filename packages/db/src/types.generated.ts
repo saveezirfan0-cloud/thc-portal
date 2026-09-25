@@ -2378,6 +2378,7 @@ export type Database = {
           created_at: string;
           full_name: string;
           id: string;
+          office_role: Database['public']['Enums']['office_role'] | null;
           role: Database['public']['Enums']['app_role'];
         };
         Insert: {
@@ -2385,6 +2386,7 @@ export type Database = {
           created_at?: string;
           full_name: string;
           id: string;
+          office_role?: Database['public']['Enums']['office_role'] | null;
           role: Database['public']['Enums']['app_role'];
         };
         Update: {
@@ -2392,6 +2394,7 @@ export type Database = {
           created_at?: string;
           full_name?: string;
           id?: string;
+          office_role?: Database['public']['Enums']['office_role'] | null;
           role?: Database['public']['Enums']['app_role'];
         };
         Relationships: [];
@@ -8893,6 +8896,7 @@ export type Database = {
       feedback_author: 'client' | 'office';
       hmrc_statement: 'A' | 'B' | 'C';
       notification_channel: 'push' | 'email' | 'sms';
+      office_role: 'owner' | 'manager' | 'scheduler';
       review_status: 'pending' | 'verified' | 'rejected' | 'superseded';
       rtw_branch:
         'uk_irish' | 'eu_settled' | 'work_visa' | 'international_student' | 'dependant_other';
@@ -9082,6 +9086,7 @@ export const Constants = {
       feedback_author: ['client', 'office'],
       hmrc_statement: ['A', 'B', 'C'],
       notification_channel: ['push', 'email', 'sms'],
+      office_role: ['owner', 'manager', 'scheduler'],
       review_status: ['pending', 'verified', 'rejected', 'superseded'],
       rtw_branch: [
         'uk_irish',

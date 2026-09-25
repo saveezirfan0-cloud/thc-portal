@@ -20,7 +20,20 @@ import {
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { ROLE_LABEL } from '../_lib/accounts';
-import { type UsersResult, inviteUser, newInviteLink, setLoginDisabled } from './actions';
+import {
+  DEFAULT_OFFICE_ROLE,
+  OFFICE_ROLES,
+  OFFICE_ROLE_LABEL,
+  OFFICE_ROLE_SUMMARY,
+  type OfficeRole,
+} from '../_lib/permissions';
+import {
+  type UsersResult,
+  changeOfficeRole,
+  inviteUser,
+  newInviteLink,
+  setLoginDisabled,
+} from './actions';
 import type { AccountRow, UsersPageData } from './data';
 import { inviteMailto } from './invite';
 import '../account/account.css';
@@ -34,6 +47,11 @@ import '../account/account.css';
  * staff profile, so the Staff App tab lists them read-only with a link
  * through. What each kind of login can see is stated on the page, because
  * that — not a toggle here — is where the access rules live (RLS).
+ *
+ * Back Office logins carry an office role (ADR-0036): owner, manager or
+ * scheduler. The role is chosen on Invite and changed with Change role;
+ * both are the database's decision (`admin_register_account`,
+ * `admin_set_office_role`), and this whole page is an owner's.
  */
 
 type Tab = 'admin' | 'client' | 'staff';
@@ -43,7 +61,7 @@ const STAFF_LIMIT = 100;
 
 const ACCESS_NOTE: Record<Tab, string> = {
   admin:
-    'Back Office: everything — scheduling, compliance, staff, clients, money, reports and these settings. Every change is recorded in the activity log with the person’s name.',
+    'Back Office, by office role — Owner: everything. Manager: everything except Users & access and System settings. Scheduler: scheduling, onboarding, compliance, check-in, staff, clients, venues and feedback, without pay or charge rates, margins, payroll, reports or bank details. Every change is recorded in the activity log with the person’s name.',
   client:
     'Client Portal: only their own company’s events and line-up, and feedback. No pay rates, charges or totals, and no worker personal details beyond the line-up (§11.1).',
   staff:
@@ -65,6 +83,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
   const [query, setQuery] = useState('');
   const [inviting, setInviting] = useState(false);
   const [switching, setSwitching] = useState<AccountRow | null>(null);
+  const [reroling, setReroling] = useState<AccountRow | null>(null);
   const [issued, setIssued] = useState<{ account: AccountRow; link: string } | null>(null);
 
   const counts = useMemo(() => {
@@ -136,6 +155,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
                   <th aria-label="Avatar" />
                   <th>Name</th>
                   <th>Email</th>
+                  {tab === 'admin' ? <th>Office role</th> : null}
                   {tab === 'client' ? <th>Client</th> : null}
                   <th>Last signed in (UK time)</th>
                   <th>Status</th>
@@ -150,6 +170,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
                     tab={tab}
                     self={account.id === data.selfId}
                     onSwitch={() => setSwitching(account)}
+                    onChangeRole={() => setReroling(account)}
                     onIssued={(link) => setIssued({ account, link })}
                   />
                 ))}
@@ -165,13 +186,19 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
         ) : null}
       </Panel>
 
-      <Panel title="Finer permissions">
+      <Panel title="Office roles">
         <p className="sm muted users-plain">
-          Every Back Office login has the same full access today, and every change it makes is in
-          the <Link href="/activity">activity log</Link> under its name. Office roles with less
-          access — for example a scheduler who cannot see pay, or a read-only viewer — are written
-          up as a proposal in ADR-0035 and need the database rules (RLS) changed before a switch
-          here could mean anything.
+          Each Back Office login has an office role, and the database enforces it — a page hidden
+          from a role is also refused to it if opened another way. <b>Owner</b>:{' '}
+          {OFFICE_ROLE_SUMMARY.owner} <b>Manager</b>: {OFFICE_ROLE_SUMMARY.manager} <b>Scheduler</b>
+          : {OFFICE_ROLE_SUMMARY.scheduler} New logins are managers unless you choose otherwise.
+          Nobody can change their own role, and there is always at least one working owner. Role
+          changes are in the <Link href="/activity">activity log</Link> under the owner’s name.
+        </p>
+        <p className="sm muted users-plain">
+          Not hidden from a scheduler yet: the pay and charge rates on the event builder and event
+          board, which they need to build a role section. They cannot change them — a section they
+          add carries the catalogue rates (ADR-0036).
         </p>
       </Panel>
 
@@ -183,6 +210,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
         />
       ) : null}
       {switching ? <SwitchModal account={switching} onClose={() => setSwitching(null)} /> : null}
+      {reroling ? <RoleModal account={reroling} onClose={() => setReroling(null)} /> : null}
       {issued ? (
         <LinkModal
           name={issued.account.full_name}
@@ -201,12 +229,14 @@ function UserRow({
   tab,
   self,
   onSwitch,
+  onChangeRole,
   onIssued,
 }: {
   account: AccountRow;
   tab: Tab;
   self: boolean;
   onSwitch: () => void;
+  onChangeRole: () => void;
   onIssued: (link: string) => void;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -241,6 +271,17 @@ function UserRow({
       <td data-label="Email" className="sm">
         {account.email ?? '—'}
       </td>
+      {tab === 'admin' ? (
+        <td data-label="Office role">
+          {account.office_role ? (
+            <Pill tone={account.office_role === 'owner' ? 'cyan' : 'neutral'}>
+              {OFFICE_ROLE_LABEL[account.office_role]}
+            </Pill>
+          ) : (
+            '—'
+          )}
+        </td>
+      ) : null}
       {tab === 'client' ? <td data-label="Client">{account.client_name ?? '—'}</td> : null}
       <td data-label="Last signed in" className="mono sm">
         {ukStamp(account.last_sign_in_at)}
@@ -263,6 +304,12 @@ function UserRow({
             {!account.disabled && !account.last_sign_in_at ? (
               <Button size="sm" disabled={pending} onClick={reissue}>
                 {pending ? 'Creating…' : 'New invite link'}
+              </Button>
+            ) : null}
+            {/* Nobody changes their own role (admin_set_office_role). */}
+            {tab === 'admin' && !self ? (
+              <Button size="sm" tone="ghost" onClick={onChangeRole}>
+                Change role
               </Button>
             ) : null}
             {!self ? (
@@ -293,6 +340,7 @@ function InviteModal({
   const [email, setEmail] = useState('');
   const [jobTitle, setJobTitle] = useState('');
   const [clientId, setClientId] = useState('');
+  const [officeRole, setOfficeRole] = useState<OfficeRole>(DEFAULT_OFFICE_ROLE);
   const [result, setResult] = useState<UsersResult | null>(null);
   const [pending, start] = useTransition();
 
@@ -311,7 +359,7 @@ function InviteModal({
   const submit = () => {
     setResult(null);
     start(async () => {
-      const outcome = await inviteUser({ email, fullName, role, clientId, jobTitle });
+      const outcome = await inviteUser({ email, fullName, role, clientId, jobTitle, officeRole });
       setResult(outcome);
       if (outcome.ok) router.refresh();
     });
@@ -346,7 +394,7 @@ function InviteModal({
         />
         <p className="sm muted">
           {role === 'admin'
-            ? 'A THC manager. Full Back Office access.'
+            ? `Someone at THC. ${OFFICE_ROLE_LABEL[officeRole]}: ${OFFICE_ROLE_SUMMARY[officeRole]}`
             : 'Someone at a client. Sees only that client’s events and line-up — never money.'}{' '}
           Workers are not invited here: they get their login when accepted in Onboarding.
         </p>
@@ -363,6 +411,20 @@ function InviteModal({
           autoComplete="off"
           onChange={(event) => setEmail(event.target.value)}
         />
+        {role === 'admin' ? (
+          <Select
+            label="Office role"
+            value={officeRole}
+            onChange={(event) => setOfficeRole(event.target.value as OfficeRole)}
+          >
+            {OFFICE_ROLES.map((option) => (
+              <option key={option} value={option}>
+                {OFFICE_ROLE_LABEL[option]}
+                {option === DEFAULT_OFFICE_ROLE ? ' (default)' : ''}
+              </option>
+            ))}
+          </Select>
+        ) : null}
         {role === 'admin' ? (
           <Input
             label="Job title (optional)"
@@ -513,6 +575,74 @@ function SwitchModal({ account, onClose }: { account: AccountRow; onClose: () =>
             onChange={(event) => setReason(event.target.value)}
           />
         ) : null}
+        {result && !result.ok ? <Alert tone="coral">{result.message}</Alert> : null}
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * Change a Back Office login's office role (ADR-0036). The refusals —
+ * not an owner, their own login, the last working owner — are the
+ * database's, shown as it words them.
+ */
+function RoleModal({ account, onClose }: { account: AccountRow; onClose: () => void }) {
+  const router = useRouter();
+  const [officeRole, setOfficeRole] = useState<OfficeRole>(
+    account.office_role ?? DEFAULT_OFFICE_ROLE,
+  );
+  const [result, setResult] = useState<UsersResult | null>(null);
+  const [pending, start] = useTransition();
+
+  const submit = () => {
+    setResult(null);
+    start(async () => {
+      const outcome = await changeOfficeRole(account.id, officeRole);
+      setResult(outcome);
+      if (outcome.ok) {
+        router.refresh();
+        onClose();
+      }
+    });
+  };
+
+  return (
+    <Modal
+      open
+      title={`Change ${account.full_name}’s role`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button tone="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            tone="primary"
+            disabled={pending || officeRole === account.office_role}
+            onClick={submit}
+          >
+            {pending ? 'Saving…' : 'Change role'}
+          </Button>
+        </>
+      }
+    >
+      <div className="account-form">
+        <Select
+          label="Office role"
+          value={officeRole}
+          onChange={(event) => setOfficeRole(event.target.value as OfficeRole)}
+        >
+          {OFFICE_ROLES.map((option) => (
+            <option key={option} value={option}>
+              {OFFICE_ROLE_LABEL[option]}
+            </option>
+          ))}
+        </Select>
+        <p className="sm muted">{OFFICE_ROLE_SUMMARY[officeRole]}</p>
+        <p className="sm">
+          It applies from their next page load — no need to sign them out. The change is recorded in
+          the activity log.
+        </p>
         {result && !result.ok ? <Alert tone="coral">{result.message}</Alert> : null}
       </div>
     </Modal>

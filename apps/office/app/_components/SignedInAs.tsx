@@ -33,6 +33,15 @@ export function SignedInAsProvider({
   return <SignedInAsContext.Provider value={user}>{children}</SignedInAsContext.Provider>;
 }
 
+/**
+ * The signed-in operator for any client component under the root layout —
+ * the menu reads the office role from here (ADR-0036). Null outside the
+ * provider (the component tests) and when nobody is signed in.
+ */
+export function useOfficeUser(): OfficeUser | null {
+  return useContext(SignedInAsContext);
+}
+
 /** The identity half of the foot. Renders nothing when nobody is signed in. */
 export function SignedInAs() {
   const user = useContext(SignedInAsContext);

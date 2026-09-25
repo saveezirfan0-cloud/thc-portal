@@ -41,7 +41,16 @@ const STATUS_TONE: Record<EventStatus, 'cyan' | 'green' | 'neutral'> = {
   cancelled: 'neutral',
 };
 
-export function UpcomingTable({ events, today }: { events: UpcomingEvent[]; today: string }) {
+export function UpcomingTable({
+  events,
+  today,
+  showMargin = true,
+}: {
+  events: UpcomingEvent[];
+  today: string;
+  /** False for an office role without finance (ADR-0036): the view returns no rate either. */
+  showMargin?: boolean;
+}) {
   const router = useRouter();
   if (events.length === 0) {
     return <EmptyState>Nothing in the diary for the next ten days.</EmptyState>;
@@ -63,7 +72,9 @@ export function UpcomingTable({ events, today }: { events: UpcomingEvent[]; toda
           <th>Client · Venue</th>
           {/* Scheduled times, so the column names its zone (§1.8). */}
           <th>Window (UK time)</th>
-          <th>Roles · allocation · fill · margin/h</th>
+          <th>
+            {showMargin ? 'Roles · allocation · fill · margin/h' : 'Roles · allocation · fill'}
+          </th>
           <th>Status</th>
         </tr>
       </thead>
@@ -129,9 +140,11 @@ export function UpcomingTable({ events, today }: { events: UpcomingEvent[]; toda
                           </span>
                           <Pill tone={chip.tone}>{chip.label}</Pill>
                           {/* §9.1: charge − final pay, in green. */}
-                          <span className={`mono margin ${marginTone(role.marginPerHour)}`}>
-                            {formatMarginPerHour(role.marginPerHour)}
-                          </span>
+                          {showMargin ? (
+                            <span className={`mono margin ${marginTone(role.marginPerHour)}`}>
+                              {formatMarginPerHour(role.marginPerHour)}
+                            </span>
+                          ) : null}
                         </div>
                       );
                     })}
