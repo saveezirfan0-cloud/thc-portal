@@ -4,7 +4,7 @@ import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@thc/db/server';
 import { callerKey } from './caller';
-import { SENT_TO_COOKIE, toE164, validate } from './form';
+import { REFERRAL_FIELD, SENT_TO_COOKIE, referralCodeFrom, toE164, validate } from './form';
 import type { ApplicationValues, ApplyState } from './form';
 
 function read(formData: FormData): ApplicationValues {
@@ -40,10 +40,14 @@ interface RpcClient {
   rpc(fn: 'submit_application', args: ApplicationArgs): RpcAnswer;
 }
 
+/**
+ * `p_referral_code` is 20260930140000's 8th argument (ADR-0040). Typed by
+ * hand here, like the rest of this call, until the Phase 2 type regen.
+ */
 interface AdminRpcClient {
   rpc(
     fn: 'submit_application_as_caller',
-    args: ApplicationArgs & { p_caller_hash: string | null },
+    args: ApplicationArgs & { p_caller_hash: string | null; p_referral_code?: string },
   ): RpcAnswer;
 }
 
@@ -56,15 +60,32 @@ let warnedNoServiceKey = false;
  * it needs SUPABASE_SERVICE_ROLE_KEY. Without the key the form still
  * works through the anon `submit_application`, with the per-email and
  * per-mobile limits only, and says so once in the log.
+ *
+ * The referral code (ADR-0040) rides on the service-role path ONLY. The
+ * anon `submit_application` takes no code and is not changed, so a
+ * deployment without the key simply records no referral. The argument is
+ * sent only when there is a code, so a code-less call matches the function
+ * whichever migration the database is on; and if the database does not yet
+ * know the 8th argument (PostgREST's PGRST202, "no such function"), the
+ * application is sent again without it — a referral never costs anybody
+ * their application.
  */
-async function submit(args: ApplicationArgs, jar: Awaited<ReturnType<typeof cookies>>): RpcAnswer {
+async function submit(
+  args: ApplicationArgs,
+  jar: Awaited<ReturnType<typeof cookies>>,
+  referralCode: string | null,
+): RpcAnswer {
   if (process.env['SUPABASE_SERVICE_ROLE_KEY']) {
     const { createAdminClient } = await import('@thc/db/admin');
     const admin = createAdminClient() as unknown as AdminRpcClient;
-    return admin.rpc('submit_application_as_caller', {
-      ...args,
-      p_caller_hash: callerKey(await headers()),
+    const base = { ...args, p_caller_hash: callerKey(await headers()) };
+    if (!referralCode) return admin.rpc('submit_application_as_caller', base);
+    const answer = await admin.rpc('submit_application_as_caller', {
+      ...base,
+      p_referral_code: referralCode,
     });
+    if (answer.error?.code === 'PGRST202') return admin.rpc('submit_application_as_caller', base);
+    return answer;
   }
   if (!warnedNoServiceKey) {
     warnedNoServiceKey = true;
@@ -113,6 +134,8 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
       p_consent: values.consent,
     },
     jar,
+    // Shape-checked again here: the hidden field is as editable as any other.
+    referralCodeFrom(formData.get(REFERRAL_FIELD)),
   );
 
   if (error) {

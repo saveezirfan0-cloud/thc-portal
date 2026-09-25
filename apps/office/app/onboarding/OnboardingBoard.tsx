@@ -79,6 +79,27 @@ const STATUS_NOTE: Record<string, string> = {
 
 type Pending = { row: ReturningRow; action: 'reset' | 'reject' } | null;
 
+/** The "Referred" chip's lookups: candidates by staff id, returning cards by application. */
+interface Referred {
+  candidates: ReadonlySet<string>;
+  applications: ReadonlySet<string>;
+}
+
+/**
+ * ADR-0040: the person applied through a colleague's referral link. The
+ * name of the referrer is on the profile ("Referred by …"), not the card.
+ */
+function ReferredChip() {
+  return (
+    <Chip
+      tone="cyan"
+      title="Applied through a referral link — see the profile for who referred them"
+    >
+      Referred
+    </Chip>
+  );
+}
+
 /**
  * /onboarding (BO3): six columns, the Active / Rejected toggle, the
  * returning-applicant card.
@@ -103,6 +124,16 @@ export function OnboardingBoard({
   const [note, setNote] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, start] = useTransition();
+
+  // ADR-0040: who arrived through a referral link — a separate admin read,
+  // not a column of the pipeline view (data.ts).
+  const referred = useMemo<Referred>(
+    () => ({
+      candidates: new Set(data.referred?.candidates ?? []),
+      applications: new Set(data.referred?.applications ?? []),
+    }),
+    [data.referred],
+  );
 
   const counts = boardCounts(data.candidates, data.returning);
   const columns = boardColumns(data.candidates, data.returning, {
@@ -220,6 +251,7 @@ export function OnboardingBoard({
               column={column}
               filter={filter}
               now={at}
+              referred={referred}
               onOpen={open}
               onResolve={(row, action) => {
                 setProblem(null);
@@ -298,12 +330,14 @@ function Column({
   column,
   filter,
   now,
+  referred,
   onOpen,
   onResolve,
 }: {
   column: BoardColumn;
   filter: BoardFilter;
   now: Date;
+  referred: Referred;
   onOpen: (row: CandidateRow) => void;
   onResolve: (row: ReturningRow, action: 'reset' | 'reject') => void;
 }) {
@@ -322,14 +356,32 @@ function Column({
       ) : null}
 
       {column.returning.map((row) => (
-        <ReturningCard key={row.application_id} row={row} now={now} onResolve={onResolve} />
+        <ReturningCard
+          key={row.application_id}
+          row={row}
+          now={now}
+          referred={referred.applications.has(row.application_id)}
+          onResolve={onResolve}
+        />
       ))}
 
       {column.candidates.map((row) =>
         filter === 'rejected' ? (
-          <RejectedCard key={row.id} row={row} onOpen={onOpen} />
+          <RejectedCard
+            key={row.id}
+            row={row}
+            referred={referred.candidates.has(row.id)}
+            onOpen={onOpen}
+          />
         ) : (
-          <CandidateCard key={row.id} row={row} column={column.key} now={now} onOpen={onOpen} />
+          <CandidateCard
+            key={row.id}
+            row={row}
+            column={column.key}
+            now={now}
+            referred={referred.candidates.has(row.id)}
+            onOpen={onOpen}
+          />
         ),
       )}
 
@@ -354,13 +406,14 @@ function CardTop({ name, age, tone }: { name: string; age: string; tone?: string
   );
 }
 
-function RoleChips({ roles }: { roles: string[] }) {
-  if (roles.length === 0) return null;
+function RoleChips({ roles, referred = false }: { roles: string[]; referred?: boolean }) {
+  if (roles.length === 0 && !referred) return null;
   return (
     <div className="chips">
       {roles.map((role) => (
         <Chip key={role}>{role}</Chip>
       ))}
+      {referred ? <ReferredChip /> : null}
     </div>
   );
 }
@@ -369,11 +422,13 @@ function CandidateCard({
   row,
   column,
   now,
+  referred,
   onOpen,
 }: {
   row: CandidateRow;
   column: BoardColumn['key'];
   now: Date;
+  referred: boolean;
   onOpen: (row: CandidateRow) => void;
 }) {
   const age = stageAge(stageEnteredAt(row, column), now);
@@ -382,8 +437,9 @@ function CandidateCard({
   return (
     <KanbanCard onOpen={() => onOpen(row)}>
       <CardTop name={row.display_name} age={age.label} tone={age.tone} />
-      {/* Role chips from Documents onwards: picked right after the Willo acceptance (§2.4). */}
-      {interview ? null : <RoleChips roles={row.role_names} />}
+      {/* Role chips from Documents onwards: picked right after the Willo
+          acceptance (§2.4). "Referred" (ADR-0040) from the first column. */}
+      <RoleChips roles={interview ? [] : row.role_names} referred={referred} />
       {lines.slice(0, 1).map((line) => (
         <Meta key={line.text} line={line} />
       ))}
@@ -395,11 +451,19 @@ function CandidateCard({
   );
 }
 
-function RejectedCard({ row, onOpen }: { row: CandidateRow; onOpen: (row: CandidateRow) => void }) {
+function RejectedCard({
+  row,
+  referred,
+  onOpen,
+}: {
+  row: CandidateRow;
+  referred: boolean;
+  onOpen: (row: CandidateRow) => void;
+}) {
   return (
     <KanbanCard onOpen={() => onOpen(row)}>
       <CardTop name={row.display_name} age={row.rejected_at ? shortDay(row.rejected_at) : '—'} />
-      <RoleChips roles={row.role_names} />
+      <RoleChips roles={row.role_names} referred={referred} />
       <span>
         <Pill tone="coral">{rejectedPill(row)}</Pill>
       </span>
@@ -418,10 +482,13 @@ function RejectedCard({ row, onOpen }: { row: CandidateRow; onOpen: (row: Candid
 function ReturningCard({
   row,
   now,
+  referred,
   onResolve,
 }: {
   row: ReturningRow;
   now: Date;
+  /** THIS application came through a referral link (ADR-0040). */
+  referred: boolean;
   onResolve: (row: ReturningRow, action: 'reset' | 'reject') => void;
 }) {
   const age = stageAge(row.applied_at, now);
@@ -435,6 +502,12 @@ function ReturningCard({
       <CardTop name={row.applicant_name} age={age.days === 0 ? 'today' : age.label} tone="warn" />
       <span>
         <Pill tone="amber">Returning applicant</Pill>
+        {referred ? (
+          <>
+            {' '}
+            <ReferredChip />
+          </>
+        ) : null}
       </span>
       <div className="meta">
         Matches existing record{' '}

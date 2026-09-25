@@ -66,6 +66,11 @@ export default function Page() {
                 are passed to Willo, our video-interview provider, so it can send you the interview
                 invitation.
               </li>
+              {/* ADR-0040 (Refer a friend, proposed): the /apply?ref= link.
+                  Placeholder wording — THC's legal text is pending (Q20). The
+                  office sees who referred whom; the person who referred you
+                  sees a count only, never your name. */}
+              <li>If a friend referred you, we record who referred you.</li>
               {/* §2.5, §2.8, §2.10, §2.11, §4.5, §10.3 step order */}
               <li>
                 <b>While you onboard:</b> your right-to-work documents and the result of the gov.uk

@@ -18,9 +18,12 @@
  */
 import { STAFF_STATUSES, canTransitionStaff } from '@thc/domain';
 import type { StaffStatus as MachineStatus } from '@thc/domain';
-import { capReason } from '../staff/staff';
+import { capReason, employeeId } from '../staff/staff';
 import type {
+  CandidateReferral,
   CandidateRow,
+  ReferralRow,
+  ReferredOnBoard,
   RejectionCause,
   ReturningRow,
   ReviewStatus,
@@ -782,3 +785,55 @@ export const RTW_REQUIRED: Record<string, string> = {
     'passport + share code + University Term Dates Letter (+ Completion Letter after graduation, §4.5)',
   dependant_other: 'passport + share code + visa / status document with its expiry',
 };
+
+// ---------------------------------------------------------------------
+// Refer a friend (ADR-0040, docs/18 §5)
+//
+// Read from `application_referrals` by a separate admin query (data.ts),
+// never through `onboarding_candidates_v`. The office sees who referred
+// whom; the applicant never does, and the referrer sees a count only.
+// ---------------------------------------------------------------------
+
+/**
+ * The latest referral among `rows` (a person referred twice — a returning
+ * applicant who came back through another link — shows the one that
+ * brought them in most recently), or null.
+ */
+export function candidateReferral(rows: readonly ReferralRow[]): CandidateReferral | null {
+  const latest = [...rows].sort((a, b) => Date.parse(b.recorded_at) - Date.parse(a.recorded_at))[0];
+  if (!latest) return null;
+  const who = latest.referrer;
+  const employee = who?.employee_id ?? null;
+  // §1.7: a removed referrer's row is kept and reads "Deleted account #id".
+  if (who === null || who.removed_at !== null) {
+    return {
+      referrerId: latest.referrer_staff_id,
+      referrerName: employee === null ? 'Deleted account' : `Deleted account #${employee}`,
+      referrerEmployeeId: null,
+      recordedAt: latest.recorded_at,
+    };
+  }
+  return {
+    referrerId: latest.referrer_staff_id,
+    referrerName: `${who.first_name} ${who.last_name}`.trim(),
+    referrerEmployeeId: employee,
+    recordedAt: latest.recorded_at,
+  };
+}
+
+/** "Referred by Luca Moretti (THC-00701)" — the /onboarding/:id header line. */
+export function referredByLabel(referral: CandidateReferral): string {
+  return referral.referrerEmployeeId === null
+    ? `Referred by ${referral.referrerName}`
+    : `Referred by ${referral.referrerName} (${employeeId(referral.referrerEmployeeId)})`;
+}
+
+/** The ids the kanban's "Referred" chip reads, from the board's referral rows. */
+export function referredOnBoard(
+  rows: readonly Pick<ReferralRow, 'application_id' | 'candidate_staff_id'>[],
+): ReferredOnBoard {
+  return {
+    candidates: [...new Set(rows.map((row) => row.candidate_staff_id))],
+    applications: [...new Set(rows.map((row) => row.application_id))],
+  };
+}

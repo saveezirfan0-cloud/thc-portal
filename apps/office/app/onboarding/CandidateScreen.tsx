@@ -59,6 +59,7 @@ import {
   phaseIndex,
   phaseLabel,
   quizGate,
+  referredByLabel,
   stageAge,
   stageEnteredAt,
   studentLoanLabel,
@@ -461,6 +462,17 @@ function Facts({ row, data, phase }: { row: CandidateRow; data: CandidateData; p
     facts.push(
       <span key="addr">
         Address <b>{data.profile.home_address}</b>
+      </span>,
+    );
+  }
+  // ADR-0040: who referred them, on every phase — the office's to see,
+  // never the applicant's. The name opens the referrer's profile.
+  if (data.referral) {
+    facts.push(
+      <span key="referral">
+        <Link href={`/staff/${data.referral.referrerId}`} className="cyan">
+          <b>{referredByLabel(data.referral)}</b>
+        </Link>
       </span>,
     );
   }
