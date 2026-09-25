@@ -71,6 +71,20 @@ export interface Template {
    */
   action?: string;
   /**
+   * Routes the row's `link` payload value may pick instead of `deepLink`,
+   * for a push whose right landing depends on who receives it (N8: a
+   * candidate re-uploads in the onboarding wizard, a worker on the Documents
+   * hub). Anything else in `link` is ignored and `deepLink` is used: the
+   * payload never names an arbitrary URL.
+   */
+  deepLinkOptions?: readonly string[];
+  /**
+   * The notification's collapse tag, `{placeholder}` style. A second push
+   * with the same rendered tag replaces the first on the device. Absent, or
+   * left with an unfilled placeholder, the deep link is the tag.
+   */
+  tag?: string;
+  /**
    * One code, two halves. §8 gives N9 as a pair — the sender picks the half,
    * and the outbox key must carry the variant so the two do not collide.
    */
@@ -181,8 +195,15 @@ export const TEMPLATES = {
     body: 'Document rejected — {reason}. Re-upload.',
     trigger: 'Document rejected',
     timing: 'on reject',
+    // A worker re-uploads on the Documents hub; a candidate's app is locked
+    // to the onboarding wizard, which is where their re-upload is. The row
+    // says which (`link`, n8_link() in SQL, 20260930130200).
     deepLink: '/documents',
+    deepLinkOptions: ['/documents', '/onboarding'],
     action: 'Re-upload',
+    // One notification per rejected document: a second rejection of the
+    // same one replaces it, two documents stay two.
+    tag: 'N8:{documentId}',
   },
 
   // Check-in / check-out / breaks (§5).
@@ -382,7 +403,7 @@ export const TEMPLATES = {
     title: 'Your application to The Hospitality Company',
     body: 'Thank you for the time you have given to your application with The Hospitality Company. On this occasion we will not be taking your application further. We wish you the very best.',
     trigger:
-      'Rejected after the interview stage (documents, quiz stage, additional info), or a returning applicant declined. Not in §8: E2 thanks the candidate for completing their interview, which is untrue for these, so this is E2 without the interview (20260923170000)',
+      'Rejected before completing the interview (Interview requested, no Willo response) or after the interview stage (documents, quiz stage, additional info), or a returning applicant declined. Not in §8: E2 thanks the candidate for completing their interview, which is untrue for these, so this is E2 without the interview (20260923170000, 20260930130300)',
     timing: 'on the rejection decision',
     mandatory: true,
   },

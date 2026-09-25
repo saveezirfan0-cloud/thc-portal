@@ -4,6 +4,7 @@
  * the components only lay it out.
  */
 import type { RtwCheckRow } from '../_lib/rtwCheck';
+import { conditionFieldFor, formatNi, niEvidenceLine } from './conditions';
 import { rtwDateRule } from './rtw';
 import type { QueueRow, RadarRow, RadarState } from './types';
 
@@ -229,6 +230,10 @@ export function verifyAllowed(row: QueueRow): boolean {
 /** The wording of the 'rtw_date' row when the view sends none (it always does; this is the fallback). */
 export const RTW_DATE_MISSING = 'Right-to-work date missing — re-verify';
 
+/** The wording of the 'ni_check' row when the view sends none (D43). */
+export const NI_CHECK_REASON =
+  'NI number entered after the NI evidence was verified — compare them';
+
 /** The sub-line under the document name. */
 export function documentLine(row: QueueRow): string {
   if (row.kind === 'rtw_date') {
@@ -242,6 +247,11 @@ export function documentLine(row: QueueRow): string {
   if (row.kind === 'rtw_check') {
     return 'gov.uk returned no right to work — the worker has been asked to re-enter the share code (N8)';
   }
+  if (row.kind === 'ni_check') {
+    return [row.review_reason ?? NI_CHECK_REASON, 'compare the number with the evidence'].join(
+      ' · ',
+    );
+  }
   if (row.kind === 'declaration') {
     const source =
       row.declaration_source === 'in_employment' ? 'declared from the app (§10.7)' : 'onboarding';
@@ -253,6 +263,7 @@ export function documentLine(row: QueueRow): string {
     parts.push('optional document, International student branch');
   }
   if (row.awarding_institution) parts.push(row.awarding_institution);
+  if (row.item_type === 'ni_evidence') parts.push(niEvidenceLine(row.ni_number));
   const kind = fileKind(row.mime_type);
   const size = fileSize(row.size_bytes);
   if (kind || size) parts.push([kind, size].filter(Boolean).join(' '));
@@ -274,6 +285,15 @@ export function foundLine(row: QueueRow): {
     // No upload for an extractor to read: only a human can close this one.
     return {
       text: 'No right-to-work date on file — re-run the gov.uk check',
+      confidence: 'manual',
+    };
+  }
+  if (row.kind === 'ni_check') {
+    // The number, in full, beside the evidence it has to match (D43).
+    return {
+      text: row.ni_number
+        ? `NI number on the profile: ${formatNi(row.ni_number)}`
+        : 'No NI number on the profile',
       confidence: 'manual',
     };
   }
@@ -342,7 +362,9 @@ export function reviewFlag(row: QueueRow): { label: string; detail: string } | n
 /** The "Uploaded" cell's sub-line: how long it has waited, and for the rtw_date row, what the stamp is. */
 export function uploadedLine(row: QueueRow, now: Date = new Date()): string {
   const age = ageLabel(row.submitted_at, now);
-  return row.kind === 'rtw_date' ? `verified without a date · ${age}` : age;
+  if (row.kind === 'rtw_date') return `verified without a date · ${age}`;
+  if (row.kind === 'ni_check') return `verified before the NI number · ${age}`;
+  return age;
 }
 
 /**
@@ -356,6 +378,9 @@ export function actionsFor(row: QueueRow): { verify: string; reject: boolean } {
   if (row.kind === 'rtw_date') return { verify: 'Confirm date', reject: false };
   // ADR-0025: the check's document is already rejected; Mark reviewed is on its panel.
   if (row.kind === 'rtw_check') return { verify: 'Verify', reject: false };
+  // D43: the evidence is already verified; the question is whether the
+  // number matches it. Reject ("does not match") takes a reason (N8).
+  if (row.kind === 'ni_check') return { verify: 'Matches', reject: true };
   return { verify: 'Verify', reject: true };
 }
 
@@ -366,18 +391,31 @@ export function actionsFor(row: QueueRow): { verify: string; reject: boolean } {
  *     and visa expiry (requirement §2.2) — approve_completion_letter();
  *   - `confirm_date`: a visa document, status document or share code
  *     report, verified on the right-to-work date it carries (20260923200000),
- *     or an rtw_date row, whose date alone is confirmed (20260927160000);
+ *     or an rtw_date row, whose date alone is confirmed (20260927160000) —
+ *     with the course level or the visa's hours limit beside it where the
+ *     route has one (D32, D36);
+ *   - `confirm`: a document with no date but something to check beside it —
+ *     NI evidence against the NI number, shown in full (D43), or a
+ *     student's term letter with the course level (D32);
+ *   - `ni_match`: the ni_check row's "Matches", recorded on the click;
  *   - `verify`: everything else, on the click.
  */
-export type VerifyStep = 'approve' | 'confirm_date' | 'verify';
+export type VerifyStep = 'approve' | 'confirm_date' | 'confirm' | 'ni_match' | 'verify';
 
 export function verifyStep(row: QueueRow): VerifyStep {
+  if (row.kind === 'ni_check') return 'ni_match';
   if (row.item_type === 'university_completion_letter') return 'approve';
   if (
     (row.kind === 'document' || row.kind === 'rtw_date') &&
     rtwDateRule(row.item_type, row.rtw_branch)
   ) {
     return 'confirm_date';
+  }
+  if (
+    row.kind === 'document' &&
+    (row.item_type === 'ni_evidence' || conditionFieldFor(row.item_type, row.rtw_branch))
+  ) {
+    return 'confirm';
   }
   return 'verify';
 }
@@ -406,6 +444,9 @@ export function verifyHint(row: QueueRow): string | null {
   }
   if (row.kind === 'rtw_check') {
     return 'Act on it (contact the worker, block if needed), then Mark reviewed';
+  }
+  if (row.kind === 'ni_check') {
+    return 'Matches → recorded as compared · Reject → the evidence is rejected and the worker asked to re-upload (N8)';
   }
   if (row.item_type === 'share_code_report' && !verifyAllowed(row)) {
     return 'Verified by the automatic gov.uk check — run it again from here';

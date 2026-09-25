@@ -241,10 +241,13 @@ select results_eq(
   $$ select status::text, rejected_from::text, rejection_cause, rejection_reason, rejected_by::text from staff where id = '38000000-0000-4000-8000-000000000001' $$,
   $$ values ('rejected', 'interview_requested', 'manager', 'No show to the interview', '11111111-1111-1111-1111-111111111111') $$,
   'rejected, with the column it came from, the cause, the reason and who');
-select is((select count(*)::int from notification_outbox where template = 'E2' and recipient_emails = array['noor@onb.test']), 1,
-  'and E2 goes to the candidate (THC wording, §2.7)');
-select is((select payload ? 'reason' from notification_outbox where template = 'E2' and recipient_emails = array['noor@onb.test']), false,
-  'E2 never carries the office''s reason');
+-- Noor is still at Interview requested: she has not done the interview, so
+-- E2's "thank you for completing your interview" would be untrue. She gets
+-- E2b (D44, 20260930130300; 440 holds the rule).
+select is((select count(*)::int from notification_outbox where template = 'E2b' and recipient_emails = array['noor@onb.test']), 1,
+  'and E2b goes to the candidate — the interview was never done, so not E2 (D44)');
+select is((select payload ? 'reason' from notification_outbox where template = 'E2b' and recipient_emails = array['noor@onb.test']), false,
+  'the rejection email never carries the office''s reason');
 
 -- =====================================================================
 -- F · Documents (§2.3)

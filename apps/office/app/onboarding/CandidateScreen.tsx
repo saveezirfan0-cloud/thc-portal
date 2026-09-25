@@ -65,6 +65,16 @@ import {
 } from './view-model';
 import type { Period } from './view-model';
 import { rtwDateProblem, rtwDateRule, rtwDateValue } from '../compliance/rtw';
+import {
+  canAttachReport,
+  canUploadCompletionLetter,
+  niEvidenceLine,
+} from '../compliance/conditions';
+import {
+  CompletionLetterUpload,
+  RtwConditionsEditor,
+  RtwReportUpload,
+} from '../compliance/EvidenceUploads';
 import { RtwCheckPanel } from '../_components/RtwCheckPanel';
 import { checksByDocument, rtwCheckView } from '../_lib/rtwCheck';
 import type { RtwCheckRow } from '../_lib/rtwCheck';
@@ -166,6 +176,7 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
   const doc: DocHandlers = {
     readOnly,
     busy,
+    staffId: row.id,
     branch: row.rtw_branch,
     onVerify: (d: CandidateDocument, input: VerifyChoice = {}) =>
       run(() =>
@@ -344,7 +355,7 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
               onChange={(event) => setReason(event.target.value)}
               hint={
                 reject.kind === 'candidate'
-                  ? 'Kept for the office. The candidate receives E2 in THC’s wording, never this reason.'
+                  ? 'Kept for the office. The candidate receives THC’s rejection email — E2 once the interview is done, E2b before it — never this reason.'
                   : 'Sent to the worker word for word in push N8: “Document rejected — [reason]” with a Re-upload button. The new upload returns to review (§2.3, §4.1).'
               }
             />
@@ -429,8 +440,7 @@ function Facts({ row, data, phase }: { row: CandidateRow; data: CandidateData; p
   if (phase === 5 && row.employee_id !== null) {
     facts.push(
       <span key="emp">
-        Employee ID <b className="cyan">{employeeId(row.employee_id)}</b>{' '}
-        <span className="annot">generated at signature (§2.7)</span>
+        Employee ID <b className="cyan">{employeeId(row.employee_id)}</b>
       </span>,
     );
   }
@@ -491,8 +501,9 @@ function WilloButton({ url, primary }: { url: string | null; primary?: boolean }
   if (!url) {
     return (
       <Button
-        tone="outline"
+        tone="ghost"
         disabled
+        aria-disabled="true"
         title="Willo is not connected yet — the link appears once THC's Willo account is set up in Settings (§2.4)"
       >
         Review interview on Willo — not connected
@@ -672,9 +683,6 @@ function InterviewCompleted({
             <Button tone="danger" disabled={busy} onClick={onReject}>
               Reject (E2)
             </Button>
-            <span className="annot">
-              mirrors the Willo stage change; roles are mandatory before Accept
-            </span>
           </div>
           <Input
             label="Internal note (optional)"
@@ -736,6 +744,8 @@ interface VerifyChoice {
 interface DocHandlers {
   readOnly: boolean;
   busy: boolean;
+  /** Whose documents: the office's uploads go under this worker's folder. */
+  staffId: string;
   /** The candidate's right-to-work branch (§2.5): decides whether settled status may be confirmed. */
   branch: string | null;
   onVerify: (doc: CandidateDocument, input?: VerifyChoice) => void;
@@ -743,7 +753,7 @@ interface DocHandlers {
   onOpen: (docId: string, which: 'file' | 'report') => void;
 }
 
-function docMeta(doc: CandidateDocument, niMasked: string | null): ReactNode {
+function docMeta(doc: CandidateDocument, niNumber: string | null): ReactNode {
   const parts: string[] = [`Uploaded ${formatUkStamp(doc.uploaded_at)}`];
   if (doc.awarding_institution) parts.push(doc.awarding_institution);
   if (doc.doc_type === 'university_term_dates_letter') {
@@ -756,11 +766,10 @@ function docMeta(doc: CandidateDocument, niMasked: string | null): ReactNode {
     parts.push(`AI expiry ${formatUkDate(doc.expiry_date)}`);
   }
   if (doc.doc_type === 'ni_evidence') {
-    parts.push(
-      niMasked
-        ? `Profile NI: ${niMasked} — check the number on the document matches (§2.5 pt 7)`
-        : 'No NI number on the profile yet',
-    );
+    // D43: the full number beside the evidence it has to match — or, not
+    // entered yet, that it comes back to Needs review once it is.
+    parts.push(niEvidenceLine(niNumber));
+    if (doc.ni_recheck && niNumber) parts.push('waiting in Needs review to be compared');
   }
   if (doc.review_status === 'verified' && doc.reviewed_at) {
     parts.push(
@@ -776,12 +785,12 @@ function docMeta(doc: CandidateDocument, niMasked: string | null): ReactNode {
 function DocumentLine({
   doc,
   handlers,
-  niMasked,
+  niNumber,
   periods,
 }: {
   doc: CandidateDocument;
   handlers: DocHandlers;
-  niMasked: string | null;
+  niNumber: string | null;
   periods?: Period[] | null;
 }) {
   const badge = aiBadge(doc.ai_confidence, doc.needs_manual_review);
@@ -802,7 +811,7 @@ function DocumentLine({
           {badge ? <span className={`ai ${badge.tone}`}>{badge.label}</span> : null}
         </>
       }
-      meta={docMeta(doc, niMasked)}
+      meta={docMeta(doc, niNumber)}
       actions={
         <>
           <Pill tone={pill.tone}>{pill.label}</Pill>
@@ -991,11 +1000,10 @@ function ShareCodeCard({
               Reject
             </Button>
           ) : null}
-          <span className="annot">
-            {checkEnabled
-              ? 'a pass verifies by itself; only a check that needs review asks you for the date (ADR-0025)'
-              : 'automatic check switched off — confirm the date from the report (ADR-0018)'}
-          </span>
+          {!handlers.readOnly && canAttachReport(doc, check, checkEnabled) ? (
+            // The manual path's report (D31): the automated check stores its own.
+            <RtwReportUpload docId={doc.id} staffId={handlers.staffId} />
+          ) : null}
         </div>
       </div>
     </div>
@@ -1033,9 +1041,6 @@ function TermDates({
         <h4>Term dates read from the letter</h4>
         <span className="muted sm">
           Verify the dates against the letter — the manager confirms the dates, not the hours (§2.3)
-        </span>
-        <span className="ml-auto annot">
-          AI must confirm the dates are in the future — an expired letter is not accepted
         </span>
       </div>
       {periods.length === 0 ? (
@@ -1147,7 +1152,7 @@ function DocumentsPhase({
   const others = live.filter((d) => d.doc_type !== 'share_code_report');
   const declarations = data.declarations.filter((d) => !d.superseded);
   const gate = quizGate(row);
-  const niMasked = data.profile?.ni_number_masked ?? null;
+  const niNumber = data.facts?.niNumber ?? null;
   const capText = data.profile
     ? candidateCap(
         data.profile.weekly_cap_band,
@@ -1229,7 +1234,7 @@ function DocumentsPhase({
               <DocumentLine
                 doc={d}
                 handlers={doc}
-                niMasked={niMasked}
+                niNumber={niNumber}
                 periods={d.doc_type === 'university_term_dates_letter' ? periods : undefined}
               />
               {d.doc_type === 'university_term_dates_letter' ? (
@@ -1252,6 +1257,9 @@ function DocumentsPhase({
               checkEnabled={data.rtwCheckEnabled ?? false}
             />
           ))}
+          {!doc.readOnly && canUploadCompletionLetter(row, data.documents) ? (
+            <CompletionLetterUpload staffId={row.id} />
+          ) : null}
           {row.share_code && shareCode.length === 0 ? (
             <Note>
               Share code <span className="mono">{row.share_code}</span> entered by the candidate —
@@ -1290,6 +1298,31 @@ function DocumentsPhase({
           ) : null}
         </div>
       </Panel>
+
+      {row.rtw_branch === 'international_student' ||
+      row.rtw_branch === 'work_visa' ||
+      row.rtw_branch === 'dependant_other' ? (
+        <Panel
+          title={
+            row.rtw_branch === 'international_student'
+              ? 'Course level · weekly limit in term time'
+              : 'Hours limit on the visa'
+          }
+        >
+          <RtwConditionsEditor
+            staffId={row.id}
+            branch={row.rtw_branch}
+            belowDegreeLevel={data.facts?.belowDegreeLevel ?? false}
+            visaHourLimit={data.facts?.visaHourLimit ?? null}
+            checkTermLimit={
+              shareCode
+                .map((d) => checks.get(d.id)?.term_time_limit_hours ?? null)
+                .find((hours) => hours !== null) ?? null
+            }
+            readOnly={doc.readOnly}
+          />
+        </Panel>
+      ) : null}
 
       <Panel
         title="Criminal Record declaration"

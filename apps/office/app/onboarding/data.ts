@@ -8,6 +8,7 @@ import type {
   Application,
   BoardData,
   CandidateData,
+  CandidateFacts,
   CandidateDocument,
   CandidateMoney,
   CandidateRow,
@@ -81,7 +82,9 @@ export async function loadBoard(): Promise<BoardData> {
   const error = candidates.error ?? returning.error ?? roles.error;
   if (error) return { candidates: [], returning: [], roles: [], problem: error.message };
   return {
-    candidates: candidates.data ?? [],
+    // §2.7: the onboarding selfie follows them through the whole system —
+    // the card too, signed here as on every other office face.
+    candidates: await withPhotoUrls(candidates.data ?? []),
     returning: returning.data ?? [],
     roles: roles.data ?? [],
     problem: null,
@@ -103,6 +106,30 @@ const EMPTY: Omit<CandidateData, 'problem'> = {
   rtwCheckEnabled: false,
 };
 
+/**
+ * `staff.visa_weekly_hour_limit` is newer than the generated types (docs/14
+ * §4), so the facts are read through a narrow hand-written shape.
+ */
+interface FactsRead {
+  from(table: 'staff'): {
+    select(columns: string): {
+      eq(
+        column: 'id',
+        value: string,
+      ): {
+        maybeSingle(): PromiseLike<{
+          data: {
+            ni_number: string | null;
+            below_degree_level: boolean | null;
+            visa_weekly_hour_limit: number | null;
+          } | null;
+          error: { message: string } | null;
+        }>;
+      };
+    };
+  };
+}
+
 const MONEY_COLUMNS =
   'weekly_cap_hours, weekly_cap_band, weekly_cap_until, term_dates, ni_number_masked, ' +
   'bank_account_holder, bank_sort_code_masked, bank_account_masked, bank_updated_at, ' +
@@ -123,6 +150,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     application,
     roles,
     rtw,
+    facts,
   ] = await Promise.all([
     supabase.from('onboarding_candidates_v').select('*').eq('id', id).maybeSingle<CandidateRow>(),
     supabase
@@ -174,6 +202,12 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
     // The automated gov.uk check (ADR-0025); best-effort, never an error panel.
     loadRtwChecks(supabase, id),
+    // D43: the full NI number beside the NI evidence; D32/D36: the conditions.
+    (supabase as unknown as FactsRead)
+      .from('staff')
+      .select('ni_number, below_degree_level, visa_weekly_hour_limit')
+      .eq('id', id)
+      .maybeSingle(),
   ]);
 
   const error =
@@ -235,6 +269,19 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     roles: roles.data ?? [],
     rtwChecks: rtw.checks,
     rtwCheckEnabled: rtw.enabled,
+    facts: facts.error || !facts.data ? null : toFacts(facts.data),
     problem: null,
+  };
+}
+
+function toFacts(row: {
+  ni_number: string | null;
+  below_degree_level: boolean | null;
+  visa_weekly_hour_limit: number | null;
+}): CandidateFacts {
+  return {
+    niNumber: row.ni_number,
+    belowDegreeLevel: row.below_degree_level === true,
+    visaHourLimit: row.visa_weekly_hour_limit,
   };
 }
