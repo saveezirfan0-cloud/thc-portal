@@ -371,6 +371,13 @@ insert into bookings (id, shift_id, staff_id, status, source, confirmed_at) valu
   ('0e0e0e0e-0000-4000-8000-000000000002','7e7e7e7e-0000-4000-8000-000000000007', :'clean2',
    'confirmed','auto', timestamptz '2026-12-01 10:00Z');
 update bookings set day_before_confirmed_at = now() where id = '0e0e0e0e-0000-4000-8000-000000000002';
+-- Since 20260929100000 the cutoff releases only a booking that was sent N6
+-- for its current start, which booking_tick() queues from 08:00 UK the day
+-- before (590, 610). Both bookings here were.
+insert into notification_outbox (key, channel, template, recipient_staff_id)
+select booking_reminder_key('N6', b.id, sr.starts_at), 'push', 'N6', b.staff_id
+  from bookings b join shift_requirements sr on sr.id = b.shift_id
+ where b.id in ('0e0e0e0e-0000-4000-8000-000000000001', '0e0e0e0e-0000-4000-8000-000000000002');
 
 select is(release_unready_bookings(timestamptz '2026-12-14 11:59Z'), 0,
   'one minute before noon the day before, nobody is released');

@@ -72,9 +72,9 @@ select is(ready_cutoff_applies(null, '2027-02-12 17:00+00'), false,
 -- ---------------------------------------------------------------------
 select is((booking_tick('2027-02-11 08:30+00'))->>'n6', '1',
   'N6 at 08:30 the day before reaches one booking');
-select ok(exists (select 1 from notification_outbox where key = 'N6:booking:' || :'b_ok'),
+select ok(exists (select 1 from notification_outbox where key like 'N6:booking:' || :'b_ok' || ':%'),
   'the ordinary one');
-select ok(not exists (select 1 from notification_outbox where key = 'N6:booking:' || :'b_null'),
+select ok(not exists (select 1 from notification_outbox where key like 'N6:booking:' || :'b_null' || ':%'),
   'not the booking with no confirmed_at, which the cutoff will not release');
 
 -- ---------------------------------------------------------------------
