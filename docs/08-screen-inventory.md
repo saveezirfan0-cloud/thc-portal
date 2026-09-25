@@ -44,7 +44,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/login`, `/forgot`, `/forgot/sent`, `/reset` | A0–A3 | `staff/auth.html` | 10.2 | staff-pwa |
 | `/install`, `/notifications`, `/offline` | Install + push permission; offline fallback | `staff/auth.html` | 10.5 | staff-pwa |
 | `/onboarding`, `/onboarding/:step` | Wizard, 11 steps. `/onboarding` resolves where the worker is and sends them on; each step really is its own path segment (`apps/staff/app/onboarding/[step]/page.tsx`). | `staff/onboarding-1.html`, `-2`, `-3` | 10.3, 2.5–2.11 | onboarding |
-| `/documents` | Documents hub / tab | `staff/onboarding-3.html`, `staff/documents.html` | 10.4 | compliance |
+| `/documents` | Documents hub — reached from the Profile tab since ADR-0035 (URL unchanged for §8 deep links) | `staff/onboarding-3.html`, `staff/documents.html` | 10.4 | compliance |
 | `/documents/upload/:docType` | Upload / re-upload a document | `staff/documents.html` | 10.4 | compliance |
 | `/documents/completion-letter` | University completion letter (three forms) | `staff/documents.html` | completion letter req. §2.1 | compliance |
 | `/documents/opt-out` | 48-hour opt-out: sign / give notice | `staff/documents.html` | RULE-20, completion letter req. §2.4 | compliance |
@@ -53,7 +53,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/shifts/:id` | Shift detail, check-in/out, breaks, static screens, strict-buffer turn-away ("Thanks for coming", (m)) | `staff/shift-detail.html` | 5.1–5.2b, 10.4, 3.2 | checkin (see note) |
 | `/radar`, `/radar/:id` | Radar, and one shift's detail before applying | `staff/radar.html` | 10.4 | scheduling |
 | `/invites`, `/invites/:id` | Invites | `staff/invites.html` | 10.4, 3.4 | scheduling |
-| (sheet) | Profile sheet | `staff/profile.html` | 10.1 | staff-pwa |
+| (tab) | Profile tab — the §10.1 sheet as a screen, Documents first, Edit profile (ADR-0035) | `staff/profile.html` | 10.1 | staff-pwa |
 | `/profile`, `/profile/details`, `/profile/security`, `/profile/payments` | Profile sheet, Profile details, Security, Payment information | `staff/profile.html` | 10.1 | staff-pwa |
 | (flow) | Request my P45 → leaver screen | `staff/profile.html` | 10.6 | staff-pwa |
 | (lock) | Doc block · Manual hold · Quiz failed · Leaver | `staff/locks.html` | 10.1 | staff-pwa |

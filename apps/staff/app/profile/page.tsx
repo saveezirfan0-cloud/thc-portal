@@ -1,7 +1,7 @@
 import { Alert } from '@thc/ui';
 import { loadBookings } from '../data';
 import { ProfileShell } from './_components/ProfileShell';
-import { ProfileSheet } from './_components/ProfileSheet';
+import { ProfileHub } from './_components/ProfileHub';
 import { LockScreen } from './_components/LockScreen';
 import { appLock } from './lock';
 import { loadProfile, supabaseConfigured } from './data';
@@ -12,20 +12,19 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Profile · THC Staff' };
 
 /**
- * /profile — the profile sheet (§10.1), and the app lock that decides
- * whether the worker sees it at all.
+ * /profile — the Profile tab (§10.1's profile sheet, ADR-0035), and the
+ * app lock that decides whether the worker sees it at all.
  *
- * The sheet is a sheet, not a page: §10.1 opens it from the avatar over
- * whatever screen the worker was on, and tapping the dimmed backdrop
- * returns them there. Giving it a URL as well is what makes it linkable
- * from a push, from the leaver screen and from the three screens beneath
- * it, without a second implementation.
+ * It was a sheet over whatever screen the avatar was tapped on. Since
+ * ADR-0035 it is the fourth tab and the home of Documents, so it is a
+ * screen: the avatar still opens it, and so does the nav.
  *
  * Three of §10.1's four lock cases replace it entirely — and the fourth,
  * the documents auto-block, does not: a worker with an expired passport
- * still has a profile, still has bank details to correct and still has
- * earnings to look at. Only Shifts, Invites and Radar close for them
- * (§4.3), which is what `reachableTabs()` says and what the nav shows.
+ * still has a profile, still has bank details to correct, still has
+ * earnings to look at — and reaches Documents from here to fix the
+ * passport. Only Shifts, Invites and Radar close for them (§4.3), which is
+ * what `reachableTabs()` says and what the nav shows.
  */
 export default async function Page() {
   if (!supabaseConfigured()) return <NotConfigured />;
@@ -55,7 +54,7 @@ export default async function Page() {
 
   return (
     <ProfileShell title="Profile" lock={lock} name={name} photoUrl={photoUrl}>
-      <ProfileSheet profile={profile} photoUrl={photoUrl} futureShifts={futureShifts} />
+      <ProfileHub profile={profile} photoUrl={photoUrl} futureShifts={futureShifts} />
     </ProfileShell>
   );
 }

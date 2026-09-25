@@ -5,7 +5,8 @@ import { BottomTabs } from './BottomTabs';
 import { TabLockedScreen } from './DocumentsLock';
 import { PushStatus } from './PushStatus';
 import { LockScreen } from '../profile/_components/LockScreen';
-import { appLock, reachableTabs, showsBottomNav } from '../profile/lock';
+import { appLock, reachableTabs, showsBottomNav, STAFF_TABS } from '../profile/lock';
+import type { StaffTab } from '../profile/lock';
 import { loadProfile } from '../profile/data';
 import { signOwnPhoto } from '../profile/photos';
 import type { StaffProfile } from '../profile/types';
@@ -24,11 +25,12 @@ import type { StaffProfile } from '../profile/types';
  * /shifts, and §10.1 says "ONLY the Documents tab is available". The rule
  * is theirs; the app-wide gate is this.
  *
- * The four tabs are the ones §10.4 names, in the wireframes' order. Counts
- * are passed in rather than fetched here so the nav badge and the list it
- * points at can never disagree.
+ * The four tabs are `STAFF_TABS` — Shifts · Invites · Radar · Profile, with
+ * Documents inside Profile (ADR-0035). Counts are passed in rather than
+ * fetched here so the nav badge and the list it points at can never
+ * disagree.
  */
-export type StaffTab = '/shifts' | '/invites' | '/radar' | '/documents';
+export type { StaffTab };
 
 export async function StaffShell({
   title,
@@ -73,14 +75,21 @@ export async function StaffShell({
   const photoUrl = await signOwnPhoto(profile?.photoPath ?? null);
   const unlocked = reachableTabs(lock);
 
-  const items = [
-    // Documents is the compliance domain's screen (§10.4, §4.2) — and the
-    // one tab an auto-blocked worker keeps (§10.1).
-    { href: '/documents', label: 'Documents' },
-    { href: '/shifts', label: 'Shifts', ...(shifts ? { count: shifts } : {}) },
-    { href: '/invites', label: 'Invites', ...(invites ? { count: invites } : {}) },
-    { href: '/radar', label: 'Radar' },
-  ].map((item) => ({ ...item, locked: !unlocked.includes(item.href) }));
+  // Profile is the one tab an auto-blocked worker keeps (§10.1 case 1):
+  // Documents lives inside it now (ADR-0035).
+  const counts: Partial<Record<StaffTab, number | undefined>> = {
+    '/shifts': shifts,
+    '/invites': invites,
+  };
+  const items = STAFF_TABS.map((tab) => {
+    const count = counts[tab.href];
+    return {
+      href: tab.href,
+      label: tab.label,
+      ...(count ? { count } : {}),
+      locked: !unlocked.includes(tab.href),
+    };
+  });
 
   // `showsBottomNav` (#42): the leaver keeps the bar with all four closed,
   // because the wireframe does; a hold, a rejection and a removal get no

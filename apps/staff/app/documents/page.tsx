@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Alert } from '@thc/ui';
 import { StaffShell } from '../_components/StaffShell';
 import { DocumentsOnlyNotice } from '../_components/DocumentsLock';
@@ -17,11 +18,24 @@ export const metadata = { title: 'Documents · THC Staff' };
 /**
  * Documents — §10.4, §4.1–4.5, §10.7, `wireframes/staff/documents.html`.
  *
- * The one tab lock case 1 leaves open (§10.1): a worker blocked on an
+ * The one screen lock case 1 leaves open (§10.1): a worker blocked on an
  * expired document, or while a declaration is reviewed, lands here with the
  * reason at the top and the Upload beside the row that caused it. Every
  * other lock is the shell's to draw.
+ *
+ * It lives under the Profile tab (ADR-0035) — hence "‹ Profile" above the
+ * title and Profile lit in the nav — but keeps its own URL, because every
+ * §8 deep link about a document points here.
  */
+const HEADING = (
+  <>
+    <Link className="back-link" href="/profile">
+      ‹ Profile
+    </Link>
+    Documents
+  </>
+);
+
 const FLASH: Record<string, string> = {
   '1': 'Sent to the office for review. Nothing changes on your account until they verify it.',
   // A share code filed while the automated check is on (ADR-0025).
@@ -38,7 +52,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
 
   if (!supabaseConfigured()) {
     return (
-      <StaffShell title="Documents" active="/documents">
+      <StaffShell title={HEADING} active="/profile">
         <Alert tone="coral">
           This environment has no Supabase project, so your documents cannot be read. See
           docs/04-setup-github-vercel-supabase.md.
@@ -61,7 +75,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
   }).format(new Date());
 
   return (
-    <StaffShell title="Documents" active="/documents" ignoreLock={gate.ignoreLock}>
+    <StaffShell title={HEADING} active="/profile" ignoreLock={gate.ignoreLock}>
       <RefreshWhileChecking active={view?.checking ?? false} />
       {view ? (
         <DocumentsHub

@@ -13,12 +13,11 @@ import { AppHeader, Avatar, Logo, useCollapsedHeader } from '@thc/ui';
  * scroll listener, and the state has to live in a client component, which
  * is why the header sits here rather than in the server shell.
  *
- * The avatar is the only way into the profile (§10.1) — there is no
- * profile TAB, because the four tabs are Documents · Shifts · Invites ·
- * Radar and nothing else. It LINKS to /profile rather than opening a sheet
- * of its own: #42 built that sheet, with the real Profile details /
- * Security settings / Payment information links and the §10.6 P45 flow
- * behind it. A second sheet here would be a worse copy of it that drifts.
+ * The avatar opens the profile (§10.1). Since ADR-0035 the Profile tab
+ * does too — the tabs are Shifts · Invites · Radar · Profile, with
+ * Documents inside Profile — and the avatar stays because §10.1 and every
+ * worker's habit put it there. It LINKS to /profile rather than opening a
+ * sheet of its own: one profile screen, reached two ways, cannot drift.
  */
 export interface ChromeWorker {
   name: string;

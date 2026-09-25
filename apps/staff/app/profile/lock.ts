@@ -12,8 +12,9 @@ import type { StaffProfile } from './types';
  * chances to show a blocked worker the Documents tab.
  *
  *   documents   (1) Not compliant, or a document has expired (§4.3). ONLY
- *               Documents is reachable. The worker has something to fix,
- *               so they are shown it.
+ *               Documents is reachable — through the Profile tab since
+ *               ADR-0035. The worker has something to fix, so they are
+ *               shown it.
  *   hold        (2) A manager blocked them by hand (§9.6). There is
  *               nothing to fix, so Documents is not offered either — a
  *               static screen and the office's address, and never the
@@ -96,13 +97,42 @@ function locksCompliantWorker(blocker: string): boolean {
   return blocker.startsWith('document_expired:') || blocker === 'conviction_unreviewed';
 }
 
-/** Which of the four tabs a lock leaves reachable (§10.1). */
-export function reachableTabs(lock: AppLock): readonly string[] {
+/**
+ * The bottom navigation, in order — ADR-0035.
+ *
+ * §10.1 names Documents · Shifts · Invites · Radar. THC moved Documents
+ * into a Profile tab (25.09.2026): a worker opens Documents a few times a
+ * year and Shifts every day, and the profile — until then only behind the
+ * header avatar — was where workers looked for it. `/documents` keeps its
+ * URL (every §8 deep link points at it); it is simply reached from Profile
+ * now, and the Profile tab is the one lit while it is open.
+ *
+ * One list, used by `StaffShell` and `ProfileShell`, so the two chromes
+ * cannot disagree about the order.
+ */
+export const STAFF_TABS = [
+  { href: '/shifts', label: 'Shifts' },
+  { href: '/invites', label: 'Invites' },
+  { href: '/radar', label: 'Radar' },
+  { href: '/profile', label: 'Profile' },
+] as const;
+
+export type StaffTab = (typeof STAFF_TABS)[number]['href'];
+
+/**
+ * Which of the four tabs a lock leaves reachable (§10.1).
+ *
+ * Lock case 1 keeps Profile, and through it Documents: "ONLY the Documents
+ * tab is available" becomes "only Profile — where Documents now lives —
+ * is available" (ADR-0035). The worker still has exactly one thing to do
+ * and one place to do it, and Shifts, Invites and Radar stay closed.
+ */
+export function reachableTabs(lock: AppLock): readonly StaffTab[] {
   switch (lock) {
     case 'none':
-      return ['/documents', '/shifts', '/invites', '/radar'];
+      return STAFF_TABS.map((tab) => tab.href);
     case 'documents':
-      return ['/documents'];
+      return ['/profile'];
     default:
       // hold · quiz_failed · rejected · leaver · removed · onboarding:
       // a static screen with no navigation behind it.

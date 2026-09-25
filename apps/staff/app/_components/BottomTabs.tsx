@@ -1,8 +1,8 @@
 import Link from 'next/link';
 
 /**
- * The frosted bottom navigation — §10.1, Documents · Shifts · Invites ·
- * Radar.
+ * The frosted bottom navigation — §10.1, as ADR-0035 reorders it:
+ * Shifts · Invites · Radar · Profile (`STAFF_TABS` in profile/lock.ts).
  *
  * Why this is not `BottomNav` from packages/ui
  * -------------------------------------------

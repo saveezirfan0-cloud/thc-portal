@@ -154,11 +154,12 @@ describe('§10.1 the app lock stands in front of the shift screen', () => {
     expect(html).not.toContain('Check in');
   });
 
-  it('uses the shell’s tabs, Documents included as a real link', async () => {
+  it('uses the shell’s tabs, Profile — the home of Documents — included as a real link', async () => {
     profile.mockResolvedValue(worker());
     shift.mockResolvedValue(detail());
     const html = await render();
-    expect(html).toContain('href="/documents"');
+    // ADR-0035: Shifts · Invites · Radar · Profile.
+    expect(html).toContain('<a href="/profile"><span class="l">Profile</span></a>');
   });
 
   it('is a 404 for a booking that is not the worker’s', async () => {
