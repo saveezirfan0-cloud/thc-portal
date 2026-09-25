@@ -1,6 +1,8 @@
 -- =====================================================================
 -- 170 · The per-booking timers (§7 BG-01/02/02b/03/09/10)
---   booking_tick() from 20260921155908_booking_tick.sql
+--   booking_tick() from 20260921155908_booking_tick.sql, as restated by
+--   20260929100000 (N13 to the check-out lock; No-show at the end for a
+--   booking confirmed after its start)
 --
 -- Six rules that fire off one booking's own clock. What matters here is
 -- not that each one fires — that is the easy half — but that each one
@@ -140,13 +142,17 @@ select is(
 -- ---------------------------------------------------------------------
 -- BG-10 · The 6-hour break alert.
 --
--- The window bound is the part worth pinning. Without it this also caught
--- every worker six hours past check-in whose shift had already finished,
--- including one carrying a no_checkout violation, and told them to ask
--- their manager on site about a break hours after they had gone home.
+-- The window bound is the part worth pinning, and it is the check-out
+-- lock, not the scheduled end (20260929100000). §5.2b: the Breaks block
+-- "does not disable or disappear if the shift runs longer than planned",
+-- so a worker still checked in an hour into an overrun is prompted. This
+-- file pinned `< ends_at` until 29.09 — the wrong way round. What the
+-- bound still stops is the worker who went home without checking out:
+-- four hours past the end, No check-out raised, never told to ask a
+-- manager on site. 611 walks the overrun minute by minute.
 -- ---------------------------------------------------------------------
-select is((select counts->>'n13' from t_first), '2',
-  'BG-10 alerts both workers who are six hours in, still on shift, on an unpaid-break client');
+select is((select counts->>'n13' from t_first), '3',
+  'BG-10 alerts all three workers six hours in and still checked in on an unpaid-break client, one of them in an overrun');
 select ok(
   exists (select 1 from notification_outbox where key = 'N13:booking:b1000000-0000-4000-8000-000000000006'),
   'the worker seven hours into a ten-hour shift is prompted');
@@ -154,11 +160,11 @@ select ok(
   not exists (select 1 from notification_outbox where key = 'N13:booking:b1000000-0000-4000-8000-000000000007'),
   'a client who pays for breaks never triggers it (§5.2b)');
 select ok(
-  not exists (select 1 from notification_outbox where key = 'N13:booking:b1000000-0000-4000-8000-000000000003'),
-  'a shift that has already ended does not prompt anyone to ask about a break');
+  exists (select 1 from notification_outbox where key = 'N13:booking:b1000000-0000-4000-8000-000000000003'),
+  '§5.2b: a shift running an hour past its scheduled end, worker still checked in, is still prompted');
 select ok(
   not exists (select 1 from notification_outbox where key = 'N13:booking:b1000000-0000-4000-8000-000000000005'),
-  'nor does one four hours past its end and already flagged No check-out');
+  'but not one four hours past its end and already flagged No check-out');
 
 -- ---------------------------------------------------------------------
 -- The property the whole file exists for: the job runs every minute.

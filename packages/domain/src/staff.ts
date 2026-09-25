@@ -21,7 +21,7 @@
  *     No check-out one behaves differently from the other two: its card stays.
  */
 
-import { UK_ZONE, formatDateIn } from './time';
+import { UK_ZONE, formatDateIn, ukInstant } from './time';
 import type { BookingStatus, CancelCause } from './state';
 
 const HOUR_MS = 3_600_000;
@@ -63,40 +63,37 @@ function civilDate(instant: Date, zone: string = UK_ZONE): string {
 }
 
 /**
- * 12:00 UK on the day before the shift starts (§3.5).
- *
- * Built by walking back from the start rather than subtracting a fixed
- * number of hours, because "the day before" is a calendar fact: a shift
- * starting at 02:00 has its deadline 38 hours earlier, and one starting at
- * 23:00 has it 35. The SQL half is `ready_deadline()`, which builds the same
- * moment in Europe/London and casts back, so both survive the BST boundary.
+ * A `YYYY-MM-DD` civil date moved by whole calendar days. The arithmetic is
+ * done in UTC, where every day is 24 hours long, so a DST changeover in
+ * London cannot move it.
  */
-export function readyDeadline(startsAt: Date): Date {
-  const dayBefore = new Date(startsAt.getTime() - 24 * HOUR_MS);
-  const [y, m, d] = civilDate(dayBefore).split('-').map(Number);
-  // Noon has no DST ambiguity in the UK — the clocks move at 01:00 — so a
-  // single correction pass resolves it exactly.
-  const guess = Date.UTC(y!, m! - 1, d!, 12, 0, 0);
-  const offset = ukOffsetMs(new Date(guess));
-  return new Date(guess - offset);
+function addCivilDays(isoDate: string, days: number): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return new Date(Date.UTC(y!, m! - 1, d! + days)).toISOString().slice(0, 10);
 }
 
-function ukOffsetMs(instant: Date): number {
-  const asUk = new Date(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: UK_ZONE,
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: false,
-    })
-      .format(instant)
-      .replace(/(\d+)\/(\d+)\/(\d+), (\d+):(\d+):(\d+)/, '$3-$1-$2T$4:$5:$6Z'),
-  );
-  return asUk.getTime() - instant.getTime();
+/** The UK calendar day before the one the shift starts on (§3.5). */
+function ukDayBefore(startsAt: Date): string {
+  return addCivilDays(civilDate(startsAt), -1);
+}
+
+/**
+ * 12:00 UK on the day before the shift starts (§3.5).
+ *
+ * Built from the calendar, never by subtracting hours: take the UK civil
+ * date the shift starts on, go back one calendar day, then name 12:00
+ * Europe/London on that day. "The day before" is a calendar fact — a shift
+ * starting at 02:00 has its deadline 38 hours earlier, one at 23:00 has it
+ * 35 — and a fixed 24 h lands on the wrong day whenever a changeover sits in
+ * between: 23:30 GMT on 25 Oct 2026 minus 24 h is 00:30 BST on the 25th, and
+ * 00:30 BST on 30 Mar 2026 minus 24 h is 23:30 GMT on the 28th.
+ *
+ * The SQL half is `ready_deadline()`, which builds the same moment in
+ * Europe/London and casts back. readyDeadline.vectors.json holds both to the
+ * same cases (Vitest here, pgTAP 610 there).
+ */
+export function readyDeadline(startsAt: Date): Date {
+  return ukInstant(ukDayBefore(startsAt), READY_DEADLINE_UK);
 }
 
 /** RULE-04's boundary: the last moment Cancel shift is offered. */
@@ -235,9 +232,11 @@ export function shiftCard(booking: StaffBooking, now: Date = new Date()): ShiftC
  * When the "I'm ready for tomorrow" card starts asking. N6 goes out on the
  * morning of the day before (§8), so the card is live from the start of that
  * UK day — not from the deadline itself, which is when it is already too late.
+ * 00:00 UK on that calendar day, not "the deadline minus 12 h", which is
+ * 23:00 or 01:00 when the clocks change that night.
  */
 function readyDeadlineWindowOpens(startsAt: Date): number {
-  return readyDeadline(startsAt).getTime() - 12 * HOUR_MS;
+  return ukInstant(ukDayBefore(startsAt), '00:00').getTime();
 }
 
 /**
