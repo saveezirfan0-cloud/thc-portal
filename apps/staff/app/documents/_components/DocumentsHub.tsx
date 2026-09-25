@@ -118,6 +118,11 @@ function Row({ row }: { row: DocRowView }) {
       <div>
         <div className="t">{row.title}</div>
         <div className={row.metaTone ? `m ${row.metaTone}` : 'm'}>{row.meta}</div>
+        {row.note ? (
+          <div className="m" data-testid="rtw-check-line">
+            {row.note}
+          </div>
+        ) : null}
       </div>
       {row.action || row.pill ? (
         <div className="right">

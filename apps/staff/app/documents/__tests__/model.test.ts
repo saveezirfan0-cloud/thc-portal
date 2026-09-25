@@ -431,3 +431,106 @@ describe('the status line', () => {
     expect(formatDay('2026-12-31')).toBe('31.12.2026');
   });
 });
+
+describe('the gov.uk share-code check line (ADR-0025)', () => {
+  const CHECKING = { line: 'Checking with gov.uk…', checkedAt: null };
+  const CHECKED_AT = '2026-09-22T09:02:00+00:00';
+  const pendingShare = (over: Record<string, unknown> = {}) =>
+    data({
+      documents: [
+        doc({
+          docType: 'share_code_report',
+          label: 'Right to work · share code',
+          reviewStatus: 'pending',
+          shareCodeTail: '6XK',
+          hasFile: false,
+          uploadedAt: '2026-09-22T09:00:00+00:00',
+          isCountedVerified: false,
+          expiresOn: null,
+          ...over,
+        }),
+        doc({ id: 'pp' }),
+      ],
+    });
+  const shareRow = (view: ReturnType<typeof buildDocumentsView>) =>
+    rowOf(view.rows, 'share_code_report');
+
+  it('without a check, the share code row reads as it always did', () => {
+    const row = shareRow(buildDocumentsView(pendingShare()));
+    expect(row.meta).toBe('In review · new code ending 6XK entered 22.09.2026');
+    expect(row.note ?? null).toBeNull();
+    expect(shareRow(buildDocumentsView(pendingShare(), null)).note ?? null).toBeNull();
+  });
+
+  it.each([
+    ['queued / running', CHECKING],
+    [
+      'done · pass',
+      { line: 'Checked with gov.uk — the office is confirming it.', checkedAt: CHECKED_AT },
+    ],
+    [
+      'done · another outcome',
+      { line: 'Checked with gov.uk — the office is reviewing the result.', checkedAt: CHECKED_AT },
+    ],
+    [
+      'failed',
+      {
+        line: 'We couldn’t check with gov.uk automatically — the office will check it by hand.',
+        checkedAt: CHECKED_AT,
+      },
+    ],
+  ])('%s — the line sits under the pending share code, meta and pill unchanged', (_, check) => {
+    expect(shareRow(buildDocumentsView(pendingShare(), check))).toMatchObject({
+      state: 'in_review',
+      meta: 'In review · new code ending 6XK entered 22.09.2026',
+      note: check.line,
+      pill: { tone: 'amber', text: 'In review' },
+      action: null,
+    });
+  });
+
+  it('never on a verified or rejected share code — the existing row is the whole story', () => {
+    const verified = shareRow(
+      buildDocumentsView(
+        pendingShare({
+          reviewStatus: 'verified',
+          expiresOn: '2028-01-31',
+          isCountedVerified: true,
+        }),
+        CHECKING,
+      ),
+    );
+    expect(verified.meta).toBe('Verified · right to work until 31.01.2028 (gov.uk)');
+    expect(verified.note ?? null).toBeNull();
+
+    const rejected = shareRow(
+      buildDocumentsView(
+        pendingShare({ reviewStatus: 'rejected', rejectionReason: 'Code has expired' }),
+        CHECKING,
+      ),
+    );
+    expect(rejected).toMatchObject({
+      meta: 'Re-upload · “Code has expired”',
+      action: { label: 'Enter new code' },
+    });
+    expect(rejected.note ?? null).toBeNull();
+  });
+
+  it('never on any other document, even one in review', () => {
+    const view = buildDocumentsView(
+      data({
+        documents: [doc({ reviewStatus: 'pending', isCountedVerified: false, expiresOn: null })],
+      }),
+      CHECKING,
+    );
+    expect(rowOf(view.rows, 'passport').note ?? null).toBeNull();
+  });
+
+  it('a check finished before this code was entered is about an earlier code', () => {
+    const stale = {
+      line: 'Checked with gov.uk — the office is confirming it.',
+      checkedAt: '2026-09-01T12:00:00+00:00',
+    };
+    expect(shareRow(buildDocumentsView(pendingShare(), stale)).note ?? null).toBeNull();
+  });
+});

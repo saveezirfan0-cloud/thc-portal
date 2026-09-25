@@ -243,6 +243,73 @@ describe('4/11 Documents', () => {
     expect(html).toContain('Continue onboarding — locked');
   });
 
+  describe('the gov.uk share-code check line (ADR-0025)', () => {
+    const shareDoc = {
+      ...state.documents[0]!,
+      id: 'x',
+      docType: 'share_code_report' as const,
+      shareCode: 'W123AB4CD',
+      fileName: null,
+      uploadedAt: '2026-09-18T10:24:00Z',
+    };
+    const hub = (doc: typeof shareDoc, rtwCheck?: { line: string; checkedAt: string | null }) =>
+      renderToStaticMarkup(
+        <ReviewHub
+          rows={requirementRows(state)}
+          shareDoc={doc}
+          dob="2003-11-22"
+          declaration={null}
+          rtwCheck={rtwCheck}
+        />,
+      );
+
+    it.each([
+      ['queued / running', 'Checking with gov.uk…', null],
+      ['done · pass', 'Checked with gov.uk — the office is confirming it.', '2026-09-18T10:30:00Z'],
+      [
+        'done · another outcome',
+        'Checked with gov.uk — the office is reviewing the result.',
+        '2026-09-18T10:30:00Z',
+      ],
+      [
+        'failed',
+        'We couldn’t check with gov.uk automatically — the office will check it by hand.',
+        '2026-09-18T10:30:00Z',
+      ],
+    ])('%s: the line replaces "check running" on the pending row, nothing else', (_, line, at) => {
+      const html = hub(shareDoc, { line, checkedAt: at });
+      expect(html).toContain(line);
+      expect(html).not.toContain('gov.uk check running');
+      expect(html).not.toContain('DOB 22.11.2003');
+      expect(html).toContain('Right to work · share code W12 3AB 4CD');
+    });
+
+    it('no check (or an unreadable one): the row reads as before', () => {
+      expect(hub(shareDoc)).toContain('gov.uk check running · DOB 22.11.2003');
+    });
+
+    it('once verified, the verified row shows, not the check line', () => {
+      const html = hub(
+        { ...shareDoc, status: 'verified', rightToWorkUntil: '2028-01-31' },
+        { line: 'Checked with gov.uk — the office is confirming it.', checkedAt: null },
+      );
+      expect(html).toContain('Verified · right to work until 31.01.2028');
+      expect(html).not.toContain('the office is confirming it');
+    });
+  });
+
+  it('step 4 says the share code is checked automatically after submit (onboarding-1)', () => {
+    const html = renderToStaticMarkup(
+      <DocumentsStep
+        branchTitle="International student"
+        rows={requirementRows(state)}
+        shareCode="W123AB4CD"
+        today={TODAY}
+      />,
+    );
+    expect(html).toContain('Checked with gov.uk automatically after you submit');
+  });
+
   it('a rejected document: the reason and Re-upload (§2.3)', () => {
     const rejected = mapOnboardingState({
       ...state,

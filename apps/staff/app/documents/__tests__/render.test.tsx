@@ -129,6 +129,27 @@ describe('locked and not-locked', () => {
     expect(html).toContain('href="/documents/declare"');
   });
 
+  it('the gov.uk check line shows under a pending share code, and only there (ADR-0025)', () => {
+    const pending = data({
+      documents: [
+        doc({
+          docType: 'share_code_report',
+          label: 'Right to work · share code',
+          reviewStatus: 'pending',
+          hasFile: false,
+          isCountedVerified: false,
+          expiresOn: null,
+        }),
+      ],
+    });
+    const line = 'Checked with gov.uk — the office is reviewing the result.';
+    const html = renderToStaticMarkup(
+      <DocumentsHub view={buildDocumentsView(pending, { line, checkedAt: null })} locked={false} />,
+    );
+    expect(html).toContain(`<div class="m" data-testid="rtw-check-line">${line}</div>`);
+    expect(render({})).not.toContain('rtw-check-line');
+  });
+
   it('a manual hold has no Upload and no Declare — nothing to fix (§10.1 case 2)', () => {
     const html = render({
       status: 'blocked',

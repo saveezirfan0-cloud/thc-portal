@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { Alert, MobileList, MobileRow, Pill, StaticScreen } from '@thc/ui';
 import { QUIZ_ATTEMPTS, currentStep, wizardPhase } from '@thc/domain';
+import { loadRtwCheckLine } from '../_lib/rtwCheckLine';
 import { LockScreen } from '../profile/_components/LockScreen';
 import { loadProfile } from '../profile/data';
 import { appLock } from '../profile/lock';
@@ -116,6 +117,9 @@ export default async function Page() {
   }
 
   if (phase === 'awaiting_review') {
+    // The gov.uk share-code check's status (ADR-0025); null degrades to the
+    // row's usual "gov.uk check running".
+    const rtwCheck = shareCodeDoc(state) ? await loadRtwCheckLine() : null;
     return (
       <WizardFrame worker={worker} title="Documents">
         <ReviewHub
@@ -123,6 +127,7 @@ export default async function Page() {
           shareDoc={shareCodeDoc(state)}
           dob={state.dob}
           declaration={state.declaration}
+          rtwCheck={rtwCheck}
         />
       </WizardFrame>
     );

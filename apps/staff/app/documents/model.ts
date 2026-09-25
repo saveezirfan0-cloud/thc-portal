@@ -10,6 +10,8 @@ import {
   isDocType,
 } from '@thc/domain';
 import type { DocType, DocumentState } from '@thc/domain';
+import { rtwLineForDoc } from '../_lib/rtwCheck';
+import type { RtwCheckLine } from '../_lib/rtwCheck';
 import type { DeclarationRecord, DocumentRecord, DocumentsData } from './types';
 
 /**
@@ -56,6 +58,11 @@ export interface DocRowView {
   meta: string;
   /** Colours the meta line — coral for a rejection or an expiry. */
   metaTone: 'coral' | 'amber' | null;
+  /**
+   * A second line under the meta: today only the gov.uk check's status on a
+   * share code still in review (ADR-0025, `rtwCheckWorkerLine()`'s words).
+   */
+  note?: string | null;
   pill: { tone: 'green' | 'amber' | 'coral' | 'neutral'; text: string } | null;
   action: RowAction | null;
 }
@@ -215,6 +222,7 @@ function rowFor(
   records: readonly DocumentRecord[],
   data: DocumentsData,
   canUpload: boolean,
+  rtwCheck: RtwCheckLine | null,
 ): DocRowView | null {
   const current = records.find((r) => r.isCurrent);
   if (!current) return null;
@@ -246,6 +254,9 @@ function rowFor(
       icon: current.hasFile ? 'PDF' : '…',
       meta: what + tail,
       metaTone: null,
+      note: isShare
+        ? rtwLineForDoc(rtwCheck, { pending: true, uploadedAt: current.uploadedAt })
+        : null,
       pill: { tone: 'amber', text: 'In review' },
       action: null,
     };
@@ -570,7 +581,15 @@ function historyRows(data: DocumentsData): DocRowView[] {
 // The whole tab
 // ---------------------------------------------------------------------
 
-export function buildDocumentsView(data: DocumentsData): DocumentsView {
+/**
+ * `rtwCheck` is `my_rtw_check()`'s line (ADR-0025), read beside
+ * `staff_documents()` by the tab itself; absent or null, the tab reads
+ * exactly as it did before the gov.uk job existed.
+ */
+export function buildDocumentsView(
+  data: DocumentsData,
+  rtwCheck: RtwCheckLine | null = null,
+): DocumentsView {
   const canUpload = canActOnDocuments(data.status, data.blockKind);
 
   const byType = new Map<DocType, DocumentRecord[]>();
@@ -583,7 +602,7 @@ export function buildDocumentsView(data: DocumentsData): DocumentsView {
 
   const docRows: DocRowView[] = [];
   for (const [docType, records] of byType) {
-    const row = rowFor(docType, records, data, canUpload);
+    const row = rowFor(docType, records, data, canUpload, rtwCheck);
     if (row) docRows.push(row);
   }
   const present = new Set(docRows.map((r) => r.kind as string));

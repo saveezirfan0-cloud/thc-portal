@@ -108,7 +108,7 @@ export function DocumentsStep({
             <span className="ico">✓</span>
             <div>
               <div className="t">Share code · {formatShareCode(shareCode)}</div>
-              <div className="m">Checked with gov.uk after you submit</div>
+              <div className="m">Checked with gov.uk automatically after you submit</div>
             </div>
             <div className="right">
               <Pill>Entered</Pill>

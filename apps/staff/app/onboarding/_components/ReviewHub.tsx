@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { Alert, Button, Pill, Progress } from '@thc/ui';
 import { TOTAL_STEPS, formatShareCode } from '@thc/domain';
 import type { DocRequirement } from '@thc/domain';
+import { rtwLineForDoc } from '../../_lib/rtwCheck';
+import type { RtwCheckLine } from '../../_lib/rtwCheck';
 import { docIcon } from '../state';
 import type { DocStatus, RequirementRow, UploadedDoc } from '../state';
 import { UploadSheet } from './UploadSheet';
@@ -16,6 +18,10 @@ import { UploadSheet } from './UploadSheet';
  * pauses here: each item In review / Verified / Rejected with its reason
  * and a Re-upload (§2.3, N8). The office's Verify is what moves the
  * candidate on — by itself, the moment the last item is verified.
+ *
+ * The share code row carries the automated gov.uk check's status while it
+ * is pending (ADR-0025) — the domain's line only, never what gov.uk
+ * returned; without a check it reads as it always did.
  *
  * This is the wizard's own paused screen. The Documents TAB — the same
  * list for a working member of staff, the completion letter and the §10.7
@@ -59,13 +65,22 @@ export function ReviewHub({
   shareDoc,
   dob,
   declaration,
+  rtwCheck = null,
 }: {
   rows: RequirementRow[];
   shareDoc: UploadedDoc | null;
   dob: string | null;
   declaration: { answer: boolean; status: DocStatus; declaredAt: string } | null;
+  /** `my_rtw_check()`'s line; null when there is no check or it could not be read. */
+  rtwCheck?: RtwCheckLine | null;
 }) {
   const [sheet, setSheet] = useState<DocRequirement | null>(null);
+  const checkLine = shareDoc
+    ? rtwLineForDoc(rtwCheck, {
+        pending: shareDoc.status === 'pending',
+        uploadedAt: shareDoc.uploadedAt,
+      })
+    : null;
   const rejected =
     rows.some((r) => r.doc?.status === 'rejected') || declaration?.status === 'rejected';
 
@@ -121,7 +136,7 @@ export function ReviewHub({
               <div className="m">
                 {shareDoc.status === 'verified'
                   ? `Verified${shareDoc.rightToWorkUntil ? ` · right to work until ${fmtDate(shareDoc.rightToWorkUntil)}` : ''}`
-                  : `gov.uk check running${dob ? ` · DOB ${fmtDate(dob)}` : ''}`}
+                  : (checkLine ?? `gov.uk check running${dob ? ` · DOB ${fmtDate(dob)}` : ''}`)}
               </div>
             </div>
             <div className="right">

@@ -1,5 +1,6 @@
 import { Alert } from '@thc/ui';
 import { StaffShell } from '../_components/StaffShell';
+import { loadRtwCheckLine } from '../_lib/rtwCheckLine';
 import { DocumentsOnlyNotice } from '../_components/DocumentsLock';
 import { DocumentsHub } from './_components/DocumentsHub';
 import { PullToRefresh } from './_components/PullToRefresh';
@@ -43,8 +44,12 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
     );
   }
 
-  const data = gate.open ? await loadDocuments() : null;
-  const view = data ? buildDocumentsView(data) : null;
+  // The gov.uk check line (ADR-0025) beside the tab's own read; null on any
+  // failure, and the share code row reads as it did without the job.
+  const [data, rtwCheck] = gate.open
+    ? await Promise.all([loadDocuments(), loadRtwCheckLine()])
+    : [null, null];
+  const view = data ? buildDocumentsView(data, rtwCheck) : null;
   const locked = gate.lock === 'documents';
   const updatedAt = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/London',
