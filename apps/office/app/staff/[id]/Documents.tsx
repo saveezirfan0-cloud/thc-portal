@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, DocRow, Modal, Note, Panel, Pill, Textarea } from '@thc/ui';
@@ -13,6 +14,9 @@ import {
 } from './profile';
 import { documentLink } from '../../onboarding/actions';
 import { rejectDeclaration, verifyDeclaration } from '../../compliance/actions';
+import { canRerunRtwCheck } from '../../compliance/rtwCheck';
+import type { RtwCheckView } from '../../compliance/rtwCheck';
+import { RtwCheckPanel, RtwRerunButton } from '../../compliance/RtwCheckPanel';
 import type { DeclarationRow, DocumentRow, ProfileRow, ReviewStatus } from './types';
 
 /**
@@ -38,6 +42,12 @@ import type { DeclarationRow, DocumentRow, ProfileRow, ReviewStatus } from './ty
  *
  * The verification stamps are UK time whoever is reading (§1.8): they are
  * audit records, not scheduled times.
+ *
+ * A share code report carries the automated gov.uk check under its row
+ * (ADR-0025): the result, the photos side by side and "Run check again".
+ * Verify / Reject of a document is not on this tab (§9.6: statuses and
+ * download); a pending one links to the Compliance queue, where the date is
+ * confirmed.
  */
 function meta(row: DocumentRow): string {
   const parts: string[] = [];
@@ -79,10 +89,13 @@ export function Documents({
   profile,
   documents,
   declarations = [],
+  rtwChecks = {},
 }: {
   profile: ProfileRow;
   documents: DocumentRow[];
   declarations?: DeclarationRow[];
+  /** The gov.uk check per share code report, keyed by document id. */
+  rtwChecks?: Record<string, RtwCheckView>;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -169,21 +182,35 @@ export function Documents({
           <div className="empty">No documents on file.</div>
         ) : null}
 
-        {live.map((row) => (
-          <DocRow
-            key={row.id}
-            icon={row.gov_report_path && !row.file_path ? 'GOV' : 'PDF'}
-            title={row.doc_label}
-            meta={meta(row)}
-            state={STATE[row.review_status]}
-            actions={
-              <>
-                <StatusPill status={row.review_status} />
-                {downloads(row)}
-              </>
-            }
-          />
-        ))}
+        {live.map((row) => {
+          const check = row.doc_type === 'share_code_report' ? (rtwChecks[row.id] ?? null) : null;
+          const rerun = !profile.removed && canRerunRtwCheck(row);
+          return (
+            <div key={row.id} className="stack">
+              <DocRow
+                icon={row.gov_report_path && !row.file_path ? 'GOV' : 'PDF'}
+                title={row.doc_label}
+                meta={meta(row)}
+                state={STATE[row.review_status]}
+                actions={
+                  <>
+                    <StatusPill status={row.review_status} />
+                    {downloads(row)}
+                    {check && row.review_status === 'pending' ? (
+                      <Link className="btn sm" href="/compliance">
+                        Review in Compliance
+                      </Link>
+                    ) : null}
+                    {!check && rerun ? (
+                      <RtwRerunButton docId={row.id} label="Run gov.uk check" />
+                    ) : null}
+                  </>
+                }
+              />
+              {check ? <RtwCheckPanel docId={row.id} check={check} canRerun={rerun} /> : null}
+            </div>
+          );
+        })}
 
         {liveDeclarations.map((row) => (
           <DocRow

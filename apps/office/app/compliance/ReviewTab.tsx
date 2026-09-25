@@ -37,6 +37,10 @@ import {
 import type { WhoFilter } from './queue';
 import { rtwDateProblem, rtwDateRule, rtwDateValue } from './rtw';
 import type { RtwDateRule } from './rtw';
+import { canRerunRtwCheck, rtwPlanLabel, rtwRejectPrefill, rtwVerifyPlan } from './rtwCheck';
+import type { RtwCheckView } from './rtwCheck';
+import { RtwCheckPanel, RtwRerunButton } from './RtwCheckPanel';
+import { documentLink } from '../onboarding/actions';
 import type { ActionResult, QueueRow } from './types';
 
 /**
@@ -52,8 +56,20 @@ import type { ActionResult, QueueRow } from './types';
  * without both. So does the Verify of a visa document, a status document or
  * a share code report: the reviewer confirms the right-to-work date it
  * carries, because that date is the per-shift hard stop (20260923200000).
+ *
+ * A share code report carries the automated gov.uk check (ADR-0025): its
+ * result on the row, and in full — photos side by side, the report, "Run
+ * check again" — in the Verify and Reject dialogs. A passing check supplies
+ * the right-to-work-until read-only; only without one is it typed.
  */
-export function ReviewTab({ rows }: { rows: QueueRow[] }) {
+export function ReviewTab({
+  rows,
+  checks = {},
+}: {
+  rows: QueueRow[];
+  /** The gov.uk check per share code report, keyed by document id. */
+  checks?: Record<string, RtwCheckView>;
+}) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [who, setWho] = useState<WhoFilter>('all');
@@ -81,6 +97,20 @@ export function ReviewTab({ rows }: { rows: QueueRow[] }) {
         after?.();
         router.refresh();
       }
+    });
+  };
+
+  const checkOf = (row: QueueRow): RtwCheckView | null =>
+    row.kind === 'document' && row.item_type === 'share_code_report'
+      ? (checks[row.item_id] ?? null)
+      : null;
+
+  const openReport = (docId: string) => {
+    setResult(null);
+    start(async () => {
+      const link = await documentLink(docId, 'report');
+      if (link.ok && link.url) window.open(link.url, '_blank', 'noopener');
+      else if (!link.ok) setResult(link);
     });
   };
 
@@ -176,6 +206,7 @@ export function ReviewTab({ rows }: { rows: QueueRow[] }) {
                   <QueueLine
                     key={row.item_id}
                     row={row}
+                    check={checkOf(row)}
                     busy={pendingId === row.item_id}
                     onVerify={() => verify(row)}
                     onReject={() => setRejecting(row)}
@@ -199,6 +230,8 @@ export function ReviewTab({ rows }: { rows: QueueRow[] }) {
       {rejecting ? (
         <RejectModal
           row={rejecting}
+          check={checkOf(rejecting)}
+          onOpenReport={() => openReport(rejecting.item_id)}
           busy={pendingId === rejecting.item_id}
           onClose={() => setRejecting(null)}
           onReject={(reason) =>
@@ -218,6 +251,8 @@ export function ReviewTab({ rows }: { rows: QueueRow[] }) {
         <RightToWorkModal
           row={confirming}
           rule={rtwDateRule(confirming.item_type, confirming.rtw_branch)!}
+          check={checkOf(confirming)}
+          onOpenReport={() => openReport(confirming.item_id)}
           busy={pendingId === confirming.item_id}
           onClose={() => setConfirming(null)}
           onVerify={(field, value) =>
@@ -254,11 +289,13 @@ export function ReviewTab({ rows }: { rows: QueueRow[] }) {
 
 function QueueLine({
   row,
+  check,
   busy,
   onVerify,
   onReject,
 }: {
   row: QueueRow;
+  check: RtwCheckView | null;
   busy: boolean;
   onVerify: () => void;
   onReject: () => void;
@@ -319,6 +356,14 @@ function QueueLine({
             AI {Math.round((row.ai_confidence ?? 0) * 100)}%
           </span>
         ) : null}
+        {check ? (
+          <span className="sub">
+            <Pill tone={check.tone}>{check.headline}</Pill>
+            {check.reasons.length > 0 ? (
+              <span className="sub muted xs">{check.reasons.join(' ')}</span>
+            ) : null}
+          </span>
+        ) : null}
       </td>
       <td style={{ textAlign: 'right' }}>
         <Button size="sm" tone="green" onClick={onVerify} disabled={busy}>
@@ -340,16 +385,22 @@ function QueueLine({
  */
 function RejectModal({
   row,
+  check,
+  onOpenReport,
   busy,
   onClose,
   onReject,
 }: {
   row: QueueRow;
+  check: RtwCheckView | null;
+  onOpenReport: () => void;
   busy: boolean;
   onClose: () => void;
   onReject: (reason: string) => void;
 }) {
-  const [reason, setReason] = useState('');
+  // not_found / no_right_to_work start with a worker-facing reason (it goes
+  // out with N8), editable like any other.
+  const [reason, setReason] = useState(() => rtwRejectPrefill(check));
   const inEmployment = row.kind === 'declaration' && row.declaration_source === 'in_employment';
   return (
     <Modal
@@ -379,6 +430,18 @@ function RejectModal({
           uploaded {ukStamp(row.submitted_at)}
         </div>
       </div>
+      {check ? (
+        <RtwCheckPanel
+          docId={row.item_id}
+          check={check}
+          canRerun={canRerunRtwCheck({
+            doc_type: row.item_type,
+            review_status: 'pending',
+            share_code: row.share_code,
+          })}
+          onOpenReport={onOpenReport}
+        />
+      ) : null}
       <Textarea
         label={
           <>
@@ -508,21 +571,38 @@ function ApproveModal({
 function RightToWorkModal({
   row,
   rule,
+  check,
+  onOpenReport,
   busy,
   onClose,
   onVerify,
 }: {
   row: QueueRow;
   rule: RtwDateRule;
+  check: RtwCheckView | null;
+  onOpenReport: () => void;
   busy: boolean;
   onClose: () => void;
   onVerify: (field: RtwDateRule['field'], value: string) => void;
 }) {
+  // A passing gov.uk check supplies the date (or settled — no time limit)
+  // read-only; anything else is typed by the reviewer, as before.
+  const plan =
+    rule.field === 'right_to_work_until'
+      ? rtwVerifyPlan(check, row.rtw_branch, row.doc_right_to_work_until)
+      : null;
+  const fromGovUk = plan?.mode === 'govuk';
   const [date, setDate] = useState(
-    (rule.field === 'expiry' ? row.expiry_date : row.doc_right_to_work_until) ?? '',
+    plan
+      ? plan.date
+      : ((rule.field === 'expiry' ? row.expiry_date : row.doc_right_to_work_until) ?? ''),
   );
-  const [noTimeLimit, setNoTimeLimit] = useState(false);
-  const problem = rtwDateProblem(rule, date, noTimeLimit);
+  const [noTimeLimit, setNoTimeLimit] = useState(plan?.noTimeLimit ?? false);
+  // gov.uk's value is used as it stands now, not as it stood when the
+  // dialog opened: a re-run can change the result while it is open.
+  const value =
+    fromGovUk && plan ? { date: plan.date, noTimeLimit: plan.noTimeLimit } : { date, noTimeLimit };
+  const problem = rtwDateProblem(rule, value.date, value.noTimeLimit);
   return (
     <Modal
       open
@@ -537,7 +617,7 @@ function RightToWorkModal({
             tone="green"
             solid
             disabled={busy || problem !== null}
-            onClick={() => onVerify(rule.field, rtwDateValue(date, noTimeLimit))}
+            onClick={() => onVerify(rule.field, rtwDateValue(value.date, value.noTimeLimit))}
           >
             Verify
           </Button>
@@ -557,19 +637,50 @@ function RightToWorkModal({
           ) : null}
         </div>
       </div>
-      <Input
-        type="date"
-        label={
-          <>
-            {rule.label} <span className="coral">*</span>
-          </>
-        }
-        value={noTimeLimit ? '' : date}
-        disabled={noTimeLimit}
-        onChange={(event) => setDate(event.target.value)}
-        hint={rule.hint}
-      />
-      {rule.allowNoTimeLimit ? (
+      {check ? (
+        <RtwCheckPanel
+          docId={row.item_id}
+          check={check}
+          canRerun={canRerunRtwCheck({
+            doc_type: row.item_type,
+            review_status: 'pending',
+            share_code: row.share_code,
+          })}
+          hideUntil={fromGovUk}
+          onOpenReport={onOpenReport}
+        />
+      ) : row.item_type === 'share_code_report' &&
+        canRerunRtwCheck({
+          doc_type: row.item_type,
+          review_status: 'pending',
+          share_code: row.share_code,
+        }) ? (
+        <div className="row wrap">
+          <RtwRerunButton docId={row.item_id} label="Run gov.uk check" />
+        </div>
+      ) : null}
+      {fromGovUk && plan ? (
+        <div className="stack">
+          <div className="sm">
+            {rule.label}: <b>{rtwPlanLabel(plan)}</b> <Pill>from gov.uk · read-only</Pill>
+          </div>
+          <div className="muted xs">{rule.hint}</div>
+        </div>
+      ) : (
+        <Input
+          type="date"
+          label={
+            <>
+              {rule.label} <span className="coral">*</span>
+            </>
+          }
+          value={noTimeLimit ? '' : date}
+          disabled={noTimeLimit}
+          onChange={(event) => setDate(event.target.value)}
+          hint={rule.hint}
+        />
+      )}
+      {rule.allowNoTimeLimit && !fromGovUk ? (
         <label className="row sm">
           <input
             type="checkbox"

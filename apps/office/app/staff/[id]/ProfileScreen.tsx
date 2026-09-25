@@ -404,6 +404,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             profile={profile}
             documents={data.documents}
             declarations={data.declarations}
+            rtwChecks={data.rtwChecks}
           />
         ) : null}
         {tab === 'qualification' ? (

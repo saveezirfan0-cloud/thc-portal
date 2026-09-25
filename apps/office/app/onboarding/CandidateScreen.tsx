@@ -62,6 +62,14 @@ import {
 } from './view-model';
 import type { Period } from './view-model';
 import { rtwDateProblem, rtwDateRule, rtwDateValue } from '../compliance/rtw';
+import {
+  canRerunRtwCheck,
+  rtwPlanLabel,
+  rtwRejectPrefill,
+  rtwVerifyPlan,
+} from '../compliance/rtwCheck';
+import type { RtwCheckView } from '../compliance/rtwCheck';
+import { RtwCheckPanel, RtwRerunButton } from '../compliance/RtwCheckPanel';
 import type {
   ActionResult,
   CandidateData,
@@ -160,6 +168,7 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
     readOnly,
     busy,
     branch: row.rtw_branch,
+    checks: data.rtwChecks ?? {},
     onVerify: (d: CandidateDocument, input: VerifyChoice = {}) =>
       run(() =>
         verifyDocument(row.id, d.id, {
@@ -168,7 +177,9 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
         }),
       ),
     onReject: (d: CandidateDocument) => {
-      setReason('');
+      // A gov.uk "not found" / "no right to work" starts with a worker-facing
+      // reason (it goes out with N8); editable like any other.
+      setReason(d.doc_type === 'share_code_report' ? rtwRejectPrefill(data.rtwChecks?.[d.id]) : '');
       setReject({ kind: 'document', doc: d });
     },
     onOpen: open,
@@ -702,6 +713,8 @@ interface DocHandlers {
   busy: boolean;
   /** The candidate's right-to-work branch (§2.5): decides whether settled status may be confirmed. */
   branch: string | null;
+  /** The automated gov.uk check per share code report, keyed by document id (ADR-0025). */
+  checks: Record<string, RtwCheckView>;
   onVerify: (doc: CandidateDocument, input?: VerifyChoice) => void;
   onReject: (doc: CandidateDocument) => void;
   onOpen: (docId: string, which: 'file' | 'report') => void;
@@ -832,15 +845,28 @@ function DocumentLine({
  * confirms it — Verify is refused without it, because it is the worker's
  * right-to-work expiry and the last day they can be rostered. On the EU
  * settled branch, settled status is confirmed explicitly as no time limit.
+ *
+ * With the automated check (ADR-0025) a passing result supplies that date
+ * read-only — gov.uk's, not typed — and the card shows the result, the
+ * photos side by side and "Run check again". Without a passing check the
+ * date is typed exactly as before.
  */
 function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: DocHandlers }) {
   const pill = REVIEW_PILL[doc.review_status];
+  const check = handlers.checks[doc.id] ?? null;
   const manual = doc.needs_manual_review;
   const actionable = !handlers.readOnly && doc.review_status === 'pending';
+  const rerun = !handlers.readOnly && canRerunRtwCheck(doc);
   const rule = rtwDateRule(doc.doc_type, handlers.branch);
-  const [until, setUntil] = useState(doc.right_to_work_until ?? '');
-  const [noTimeLimit, setNoTimeLimit] = useState(false);
-  const problem = rtwDateProblem(rule, until, noTimeLimit);
+  const plan = rtwVerifyPlan(check, handlers.branch, doc.right_to_work_until);
+  const fromGovUk = plan.mode === 'govuk';
+  const [until, setUntil] = useState(plan.date);
+  const [noTimeLimit, setNoTimeLimit] = useState(plan.noTimeLimit);
+  // gov.uk's value as it stands now — a re-run can change it under the card.
+  const value = fromGovUk
+    ? { date: plan.date, noTimeLimit: plan.noTimeLimit }
+    : { date: until, noTimeLimit };
+  const problem = rtwDateProblem(rule, value.date, value.noTimeLimit);
   return (
     <div className="pdfcard">
       <div className="thumb">
@@ -851,10 +877,18 @@ function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: Do
       <div className="grow stack">
         <div className="row wrap">
           <b>gov.uk right-to-work report</b>
-          <Pill tone={manual ? 'coral' : pill.tone}>{manual ? 'Manual review' : pill.label}</Pill>
-          <span className={manual ? 'ai manual' : 'ai hi'}>
-            {manual ? 'needs manual review' : 'automatic check'}
-          </span>
+          {check ? (
+            <Pill tone={pill.tone}>{pill.label}</Pill>
+          ) : (
+            <>
+              <Pill tone={manual ? 'coral' : pill.tone}>
+                {manual ? 'Manual review' : pill.label}
+              </Pill>
+              <span className={manual ? 'ai manual' : 'ai hi'}>
+                {manual ? 'needs manual review' : 'automatic check'}
+              </span>
+            </>
+          )}
         </div>
         <div className="kv">
           <span className="k">Share code</span>
@@ -865,7 +899,15 @@ function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: Do
             </span>
           </span>
           <span className="k">Right to work until</span>
-          {actionable ? (
+          {actionable && fromGovUk ? (
+            <span>
+              <b>{rtwPlanLabel(plan)}</b> <Pill>from gov.uk · read-only</Pill>{' '}
+              <span className="muted sm">
+                — becomes the expiry used for reminders and the last day they can be rostered (§2.6,
+                §4.4)
+              </span>
+            </span>
+          ) : actionable ? (
             <span className="stack">
               <span className="row wrap">
                 <input
@@ -898,9 +940,21 @@ function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: Do
               <span className="muted sm">— becomes the expiry used for reminders (§2.6, §4.4)</span>
             </span>
           )}
-          <span className="k">Checked</span>
-          <span>{formatUkStamp(doc.uploaded_at)} · gov.uk/view-right-to-work</span>
+          {check ? null : (
+            <>
+              <span className="k">Checked</span>
+              <span>{formatUkStamp(doc.uploaded_at)} · gov.uk/view-right-to-work</span>
+            </>
+          )}
         </div>
+        {check ? (
+          <RtwCheckPanel
+            docId={doc.id}
+            check={check}
+            canRerun={rerun}
+            hideUntil={!actionable || fromGovUk}
+          />
+        ) : null}
         <div className="row wrap">
           {doc.gov_report_path ? (
             <Button size="sm" onClick={() => handlers.onOpen(doc.id, 'report')}>
@@ -914,7 +968,9 @@ function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: Do
                 tone="green"
                 disabled={handlers.busy || problem !== null}
                 title={problem ?? undefined}
-                onClick={() => handlers.onVerify(doc, { expiry: rtwDateValue(until, noTimeLimit) })}
+                onClick={() =>
+                  handlers.onVerify(doc, { expiry: rtwDateValue(value.date, value.noTimeLimit) })
+                }
               >
                 Verify
               </Button>
@@ -928,6 +984,7 @@ function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: Do
               </Button>
             </>
           ) : null}
+          {!check && rerun ? <RtwRerunButton docId={doc.id} label="Run gov.uk check" /> : null}
           <span className="annot">
             on failure or low confidence the check is flagged “manual review” instead of a date
           </span>

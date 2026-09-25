@@ -8,6 +8,7 @@
  * machine anything.
  */
 import type { StaffStatus } from '../staff/types';
+import type { RtwCheckView } from '../compliance/rtwCheck';
 
 export type { StaffStatus };
 
@@ -203,6 +204,8 @@ export interface CandidateData {
   hmrc: HmrcChecklist | null;
   application: Application | null;
   roles: RoleOption[];
+  /** The gov.uk check per share code report, keyed by document id (ADR-0025). */
+  rtwChecks?: Record<string, RtwCheckView>;
   problem: string | null;
 }
 

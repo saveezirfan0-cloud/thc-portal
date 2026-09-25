@@ -57,7 +57,7 @@ export function ComplianceScreen({
       </div>
 
       {tab === 'review' ? (
-        <ReviewTab rows={data.queue} />
+        <ReviewTab rows={data.queue} checks={data.rtwChecks ?? {}} />
       ) : (
         <RadarTab rows={data.radar} warnings={data.warnings} mode={data.rotaGuardMode} />
       )}

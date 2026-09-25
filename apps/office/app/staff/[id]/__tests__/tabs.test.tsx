@@ -11,10 +11,15 @@ vi.mock('../../../compliance/actions', () => ({
   rejectDeclaration: vi.fn(),
 }));
 vi.mock('../../../checkin/actions', () => ({ resolveViolation: vi.fn() }));
+vi.mock('../../../compliance/rtwCheckActions', () => ({
+  rerunRtwCheck: vi.fn(),
+  rtwCheckPhotos: vi.fn(async () => ({ ok: true, govPhotoUrl: null, selfieUrl: null })),
+}));
 
 const { Documents } = await import('../Documents');
 const { Shifts } = await import('../Shifts');
 const { declarationActionable, declarationMeta } = await import('../profile');
+const { rtwCheckView } = await import('../../../compliance/rtwCheck');
 
 const PROFILE = {
   id: 's1',
@@ -82,6 +87,102 @@ describe('Documents tab (§9.6)', () => {
       />,
     );
     expect(html).toContain('gov.uk report');
+  });
+
+  it('shows the gov.uk check under a share code report, with the photos and Run check again', () => {
+    const check = rtwCheckView({
+      document_id: 'd1',
+      staff_id: 's1',
+      status: 'done',
+      outcome: 'pass',
+      source: 'govuk',
+      finished_at: '2026-09-13T06:12:00Z',
+      holder_name: 'Amara Kofi',
+      right_to_work_until: '2028-03-31',
+      no_time_limit: false,
+      conditions: 'Student — max 20 h/week in term time',
+      report_path: 's1/rtw/report.pdf',
+      photo_path: 's1/rtw/photo.jpg',
+      result: { reasons: [], permissionType: 'Student visa' },
+    })!;
+    const html = renderToStaticMarkup(
+      <Documents
+        profile={PROFILE}
+        documents={[
+          doc({
+            doc_type: 'share_code_report',
+            doc_label: 'Share code',
+            review_status: 'pending',
+            share_code: 'W12345678',
+            gov_report_path: 's1/rtw/report.pdf',
+          }),
+        ]}
+        rtwChecks={{ d1: check }}
+      />,
+    );
+    expect(html).toContain('Passed — check the photo');
+    expect(html).toContain('gov.uk · automatic check');
+    expect(html).toContain('13/09/2026 07:12 UK time');
+    expect(html).toContain('31/03/2028');
+    expect(html).toContain('Student visa');
+    expect(html).toContain('Compare the photos before you verify');
+    expect(html).toContain('gov.uk photo');
+    expect(html).toContain('App selfie');
+    expect(html).toContain('Run check again');
+    expect(html).toContain('Review in Compliance');
+    expect(html).toContain('gov.uk report');
+  });
+
+  it('shows no check panel without a check, and offers to start one on a pending share code', () => {
+    const html = renderToStaticMarkup(
+      <Documents
+        profile={PROFILE}
+        documents={[
+          doc({
+            doc_type: 'share_code_report',
+            doc_label: 'Share code',
+            review_status: 'pending',
+            share_code: 'W12345678',
+          }),
+        ]}
+      />,
+    );
+    expect(html).not.toContain('gov.uk · automatic check');
+    expect(html).not.toContain('Compare the photos');
+    expect(html).toContain('Run gov.uk check');
+  });
+
+  it('a failed check says to check by hand, with no photos', () => {
+    const check = rtwCheckView({
+      document_id: 'd1',
+      staff_id: 's1',
+      status: 'failed',
+      outcome: null,
+      source: 'govuk',
+      finished_at: '2026-09-13T06:12:00Z',
+      holder_name: null,
+      right_to_work_until: null,
+      no_time_limit: false,
+      conditions: null,
+      report_path: null,
+      photo_path: null,
+      result: {},
+    })!;
+    const html = renderToStaticMarkup(
+      <Documents
+        profile={PROFILE}
+        documents={[
+          doc({
+            doc_type: 'share_code_report',
+            review_status: 'pending',
+            share_code: 'W12345678',
+          }),
+        ]}
+        rtwChecks={{ d1: check }}
+      />,
+    );
+    expect(html).toContain('check by hand');
+    expect(html).not.toContain('Compare the photos');
   });
 
   it('lists the criminal declaration, with Verify / Reject only on a Yes under review', () => {

@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import type { Database } from '@thc/db';
 import { supabaseConfigured } from '../staff/data';
+import { readRtwChecks } from '../compliance/rtwCheckData';
 import type {
   Application,
   BoardData,
@@ -95,6 +96,7 @@ const EMPTY: Omit<CandidateData, 'problem'> = {
   hmrc: null,
   application: null,
   roles: [],
+  rtwChecks: {},
 };
 
 const MONEY_COLUMNS =
@@ -116,6 +118,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     hmrc,
     application,
     roles,
+    rtwChecks,
   ] = await Promise.all([
     supabase.from('onboarding_candidates_v').select('*').eq('id', id).maybeSingle<CandidateRow>(),
     supabase
@@ -165,6 +168,8 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .limit(1)
       .maybeSingle<Application>(),
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
+    // The automated gov.uk share-code check (ADR-0025); none = the manual flow.
+    readRtwChecks(supabase, { staffId: id }),
   ]);
 
   const error =
@@ -197,6 +202,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     hmrc: hmrc.data ?? null,
     application: application.data ?? null,
     roles: roles.data ?? [],
+    rtwChecks,
     problem: null,
   };
 }

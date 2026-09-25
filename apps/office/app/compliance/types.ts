@@ -5,6 +5,7 @@
  * (admin_all on staff / compliance_docs / criminal_declarations, admin_read on
  * audit_log) is what keeps this screen the office's.
  */
+import type { RtwCheckView } from './rtwCheck';
 
 export type StaffStatus =
   | 'interview_requested'
@@ -122,6 +123,11 @@ export interface AuditRow {
 
 export interface CompliancePageData {
   queue: QueueRow[];
+  /**
+   * The gov.uk check on each share code report in the queue, keyed by
+   * document id (ADR-0025). Absent or missing a key = no check to show.
+   */
+  rtwChecks?: Record<string, RtwCheckView>;
   radar: RadarRow[];
   warnings: WarningRow[];
   rotaGuardMode: 'block' | 'warn';

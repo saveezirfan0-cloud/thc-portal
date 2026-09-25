@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { readRtwChecks } from './rtwCheckData';
 import type { AuditRow, CompliancePageData, QueueRow, RadarRow, WarningRow } from './types';
 
 /**
@@ -54,8 +55,16 @@ export async function loadCompliance(): Promise<CompliancePageData> {
   const problem = queue.error?.message ?? radar.error?.message ?? warnings.error?.message ?? null;
   if (problem) return { ...empty, problem };
 
+  // The gov.uk check on every share code report waiting here (ADR-0025).
+  const rtwChecks = await readRtwChecks(supabase, {
+    documentIds: (queue.data ?? [])
+      .filter((row) => row.kind === 'document' && row.item_type === 'share_code_report')
+      .map((row) => row.item_id),
+  });
+
   return {
     queue: queue.data ?? [],
+    rtwChecks,
     radar: radar.data ?? [],
     warnings: warnings.data ?? [],
     // Mirrors rota_guard_mode(): anything but an explicit 'warn' is block.

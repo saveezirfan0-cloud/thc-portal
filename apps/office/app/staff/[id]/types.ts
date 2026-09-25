@@ -11,6 +11,7 @@
 import type { CapBand, StaffRow } from '../types';
 import type { FeedbackEntry } from '../../feedback/types';
 import type { ViolationRow as DetailViolationRow } from '../../checkin/types';
+import type { RtwCheckView } from '../../compliance/rtwCheck';
 
 export type ReviewStatus = 'pending' | 'verified' | 'rejected' | 'superseded';
 export type ViolationType = 'no_show' | 'late' | 'left_early' | 'left_geofence' | 'no_checkout';
@@ -201,6 +202,8 @@ export interface ProfileData {
    * old location. Null/absent = not known, and nothing is shown.
    */
   locationStale?: boolean | null;
+  /** The automated gov.uk check per share code report, keyed by document id (ADR-0025). */
+  rtwChecks?: Record<string, RtwCheckView>;
   problem: string | null;
 }
 
