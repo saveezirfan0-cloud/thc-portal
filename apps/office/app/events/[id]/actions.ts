@@ -97,34 +97,38 @@ export async function markNoShow(eventId: string, bookingId: string): Promise<Ac
  * from No-show to Late, with minutes-late measured from the moment the
  * manager pressed it. It is the only way back in once the check-in button
  * has locked.
+ *
+ * One RPC, `get_back()` (20260929120000), which resolves the open No-show
+ * through `resolve_violation()` — the same action as Resolve in the §9.5
+ * log, as the scope says. It writes the arrival (a check log), moves the
+ * booking to `worked` and reclassifies the entry in one transaction. This
+ * used to delete the No-show and insert a Late from here: no arrival was
+ * ever recorded, so the shift paid £0, the worker stayed locked out, and
+ * the next booking_tick raised the No-show again (audit D4).
  */
 export async function getBack(eventId: string, bookingId: string): Promise<ActionResult> {
   if (!supabaseConfigured()) return { error: NO_SUPABASE };
   const supabase = await db();
 
-  const context = await bookingContext(supabase, bookingId);
-  if (!context) return { error: 'That booking no longer exists.' };
-
-  const now = new Date();
-  const minutesLate = Math.max(
-    0,
-    Math.round((now.getTime() - context.startsAt.getTime()) / 60_000),
-  );
-
-  // The no-show becomes a late: one violation replaces the other rather than
-  // both standing, or the worker is penalised twice for one arrival.
-  await supabase.from('violations').delete().eq('booking_id', bookingId).eq('type', 'no_show');
-  const { error } = await supabase.from('violations').insert({
-    staff_id: context.staffId,
-    booking_id: bookingId,
-    type: 'late',
-    minutes_late: minutesLate,
-  });
-  if (error) return { error: error.message };
+  const { data, error } = await supabase.rpc('get_back', { p_booking: bookingId });
+  if (error) return { error: GET_BACK_REASONS[error.message] ?? error.message };
 
   revalidatePath(`/events/${eventId}`);
-  return { ok: true, warning: payrollWarning('get_back', context.payrollExported) ?? undefined };
+  revalidatePath('/checkin');
+  // RULE-06, asked per booking by the database: a shift held from an export
+  // is still to be paid, so it warns nothing.
+  const exported = Boolean((data as { payrollExported?: boolean } | null)?.payrollExported);
+  return { ok: true, warning: payrollWarning('get_back', exported) ?? undefined };
 }
+
+/** `get_back()` / `resolve_violation()` refusals, in the manager's words. */
+const GET_BACK_REASONS: Record<string, string> = {
+  admins_only: 'Only a manager can get a worker back.',
+  no_open_no_show: 'There is no open No-show on this booking to get back.',
+  violation_not_found: 'That No-show no longer exists.',
+  arrived_at_required:
+    'This shift has ended, so the arrival cannot be the moment you press. Resolve the No-show from the Violation log on Check In / Out and enter when they arrived.',
+};
 
 /**
  * §3.3. Cancel event. The event stays visible, greyed out, for the record;
