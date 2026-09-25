@@ -96,6 +96,24 @@ describe('push (§8)', () => {
     );
   });
 
+  it('collapses by the payload tag when there is one (N8: per document), on /onboarding for a candidate', async () => {
+    await push({
+      title: 'Document rejected',
+      body: 'Document rejected — Photo is blurred. Re-upload.',
+      url: '/onboarding',
+      action: 'Re-upload',
+      tag: 'N8:doc-1',
+    });
+    expect(sw.showNotification).toHaveBeenCalledWith(
+      'Document rejected',
+      expect.objectContaining({
+        data: { url: '/onboarding' },
+        tag: 'N8:doc-1',
+        actions: [{ action: 'open', title: 'Re-upload' }],
+      }),
+    );
+  });
+
   it('draws no button on a push that names none', async () => {
     await push({ title: 'Your shift today', body: 'Time to check in', url: '/shifts/41' });
     const options = sw.showNotification.mock.calls[0]![1]!;
