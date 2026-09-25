@@ -10,6 +10,7 @@ import { loadBookings, openInvites, shiftsBadge } from '../../../data';
 import { RadarMap } from '../../RadarMap';
 import { TAKE_BUTTON, TAKE_NOTE, UP_FOR_GRABS, ukDateTime } from '../../../shifts/offers';
 import { loadOpenOffers } from '../../../shifts/offers-data';
+import { YourTimeAt } from '../../../shifts/YourTimeAt';
 import '../../../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -81,7 +82,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         </div>
         <div className="kv">
           <span className="k">Open until</span>
-          <span className="v">{ukDateTime(offer.expiresAt)} (UK time)</span>
+          <span className="v">
+            {ukDateTime(offer.expiresAt)} (UK time)
+            <YourTimeAt at={offer.expiresAt} />
+          </span>
         </div>
       </div>
 

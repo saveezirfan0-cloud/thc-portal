@@ -3,21 +3,26 @@
 --   20260930110100_shift_offers.sql
 --
 --   A · lapse_shift_offers(): past expiry → lapsed, OF3 for a pool offer,
---       silent for an unopened cover request; the worker stays booked
+--       silent for an unopened cover request and — since 20260930150000 —
+--       for any offer whose section has already started; the worker stays
+--       booked
 --   B · offer_rounds_due(): open pool offers with auto-assign on
 --   C · notify_offer_candidates(): additive (never twice), wave 1 first
 --       (RULE-17 re-checked in SQL), never the offerer, a gated or an
---       unavailable worker, never after expiry or with auto-assign off
+--       unavailable worker, never after expiry or with auto-assign off —
+--       and with auto-assign off wave 1 counts as exhausted at once, so
+--       Radar and the take are not held for pushes that never come
 --   D · who may run them: the service role only
 -- =====================================================================
 begin;
-select plan(30);
+select plan(33);
 \ir _shared/fixtures.psql
 
 \set ev    '67300000-0000-4000-8000-000000000001'
 \set s     '67310000-0000-4000-8000-000000000001'
 \set s_off '67310000-0000-4000-8000-000000000002'
 \set s_old '67310000-0000-4000-8000-000000000003'
+\set s_run '67310000-0000-4000-8000-000000000004'
 
 \set off   '67320000-0000-4000-8000-000000000001'
 \set q1    '67320000-0000-4000-8000-000000000002'
@@ -33,10 +38,12 @@ select plan(30);
 \set b_off2 '67340000-0000-4000-8000-000000000002'
 \set b_old  '67340000-0000-4000-8000-000000000003'
 \set b_cov  '67340000-0000-4000-8000-000000000004'
+\set b_run  '67340000-0000-4000-8000-000000000005'
 \set o      '67350000-0000-4000-8000-000000000001'
 \set o_off  '67350000-0000-4000-8000-000000000002'
 \set o_old  '67350000-0000-4000-8000-000000000003'
 \set o_cov  '67350000-0000-4000-8000-000000000004'
+\set o_run  '67350000-0000-4000-8000-000000000005'
 
 insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_branch, home_location,
                    reliability, rating) values
@@ -70,7 +77,10 @@ insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headc
                                 charge_rate, pay_rate, allocation_per_hour, auto_assign) values
   (:'s',     :'ev', :'role_id', now() + interval '15 days', now() + interval '15 days 6 hours', 3, 0, 20, 14, 2, true),
   (:'s_off', :'ev', :'role_id', now() + interval '17 days', now() + interval '17 days 6 hours', 3, 0, 20, 14, 2, false),
-  (:'s_old', :'ev', :'role_id', now() + interval '19 days', now() + interval '19 days 6 hours', 3, 0, 20, 14, 2, true);
+  (:'s_old', :'ev', :'role_id', now() + interval '19 days', now() + interval '19 days 6 hours', 3, 0, 20, 14, 2, true),
+  -- Started an hour ago: a cover request the office opened to the pool
+  -- runs to the start, so it lapses once the section is under way.
+  (:'s_run', :'ev', :'role_id', now() - interval '1 hour', now() + interval '5 hours', 3, 0, 20, 14, 2, true);
 
 -- Wave 1 at clientb + role: Quin First, Quin Second, Quin Away (and the
 -- fixture's own Staff Bravo). Una and Uma are wave 2.
@@ -85,20 +95,22 @@ insert into bookings (id, shift_id, staff_id, status, source, confirmed_at) valu
   (:'b_off',  :'s',     :'off',  'confirmed', 'auto', now()),
   (:'b_off2', :'s_off', :'off2', 'confirmed', 'auto', now()),
   (:'b_old',  :'s_old', :'off3', 'confirmed', 'auto', now()),
-  (:'b_cov',  :'s_old', :'off',  'confirmed', 'auto', now());
+  (:'b_cov',  :'s_old', :'off',  'confirmed', 'auto', now()),
+  (:'b_run',  :'s_run', :'off2', 'confirmed', 'auto', now() - interval '3 days');
 
 insert into shift_offers (id, booking_id, mode, expires_at) values
   (:'o',     :'b_off',  'pool', now() + interval '12 days'),
   (:'o_off', :'b_off2', 'pool', now() + interval '14 days'),
   -- Past its expiry: the lapse job's.
-  (:'o_old', :'b_old',  'pool', now() - interval '5 minutes');
+  (:'o_old', :'b_old',  'pool', now() - interval '5 minutes'),
+  (:'o_run', :'b_run',  'pool', now() - interval '1 hour');
 insert into shift_offers (id, booking_id, mode, expires_at, note) values
   (:'o_cov', :'b_cov', 'office', now() - interval '1 minute', null);
 
 -- =====================================================================
 -- A · lapse_shift_offers()
 -- =====================================================================
-select is(lapse_shift_offers(), 2, 'A: the two offers past their expiry lapse');
+select is(lapse_shift_offers(), 3, 'A: the three offers past their expiry lapse');
 select is((select array[status, closed_reason] from shift_offers where id = :'o_old'),
   array['lapsed', 'expired'], 'A: lapsed, expired');
 select is((select status::text from bookings where id = :'b_old'), 'confirmed', 'A: Oona is still booked');
@@ -106,6 +118,10 @@ select is((select recipient_staff_id from notification_outbox where key = 'OF3:o
   'A: OF3 tells her so');
 select is((select count(*)::int from notification_outbox where key = 'OF3:offer:' || :'o_cov'), 0,
   'A: a cover request the office never opened lapses silently');
+select is((select status from shift_offers where id = :'o_run'), 'lapsed',
+  'A: an offer on a section already under way lapses too');
+select is((select count(*)::int from notification_outbox where key = 'OF3:offer:' || :'o_run'), 0,
+  'A: but with no OF3 — once the section has started "you''re still booked" is news to nobody');
 select is((select status from shift_offers where id = :'o'), 'open', 'A: an offer still in date is untouched');
 select is(lapse_shift_offers(), 0, 'A: and a second run finds nothing — idempotent');
 
@@ -152,6 +168,8 @@ select is((select count(*)::int from notification_outbox where template = 'OF1' 
 
 select is(notify_offer_candidates(:'o_off', array[:'q1'::uuid]), 0,
   'C: with the role''s auto-assign off, nothing is pushed');
+select ok(offer_wave1_exhausted(:'o_off'),
+  'C: so wave 1 counts as exhausted at once (20260930150000) — nobody waits for pushes that never come');
 select is(notify_offer_candidates(:'o_old', array[:'q1'::uuid]), 0, 'C: nor for a lapsed offer');
 update shift_offers set expires_at = now() where id = :'o';
 select is(notify_offer_candidates(:'o', array[:'u1'::uuid]), 0, 'C: nor once the offer has reached its expiry');

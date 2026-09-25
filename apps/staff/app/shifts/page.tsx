@@ -28,6 +28,7 @@ import type { MyShiftCard, ShiftGroup } from './model';
 import { COVER_CHIP, offeredCardLine } from './offers';
 import type { BookingOffer } from './offers';
 import { loadBookingOffers } from './offers-data';
+import { YourTimeAt } from './YourTimeAt';
 import '../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -281,7 +282,10 @@ function ShiftCardView({
       </div>
 
       {offered && offered.mode !== 'office' && offered.expiresAt ? (
-        <p className="m">{offeredCardLine(offered.expiresAt)}</p>
+        <p className="m">
+          {offeredCardLine(offered.expiresAt)}
+          <YourTimeAt at={offered.expiresAt} />
+        </p>
       ) : null}
 
       {card === 'no_checkout' ? <p className="m">{STATIC_SCREEN_COPY.no_checkout.title}</p> : null}
@@ -290,6 +294,7 @@ function ShiftCardView({
         <p className="m">
           Not checked out yet? Do it on the shift screen before{' '}
           {formatTimeIn(checkOutClosesAt(booking), UK_ZONE)} (UK).
+          <YourTimeAt at={checkOutClosesAt(booking)} withDate={false} />
         </p>
       ) : null}
 

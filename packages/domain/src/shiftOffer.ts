@@ -91,6 +91,16 @@ export type TakerBookingStatus = BookingStatus | null;
 export interface TakeOfferInput {
   eventCancelled: boolean;
   offerStatus: ShiftOfferStatus;
+  /**
+   * `office` — a cover request the office has not opened — is never
+   * takeable (`offer_not_open`); `direct` only by its target while
+   * `settings.shift_offers_direct_enabled` is on (Q17: never, today).
+   */
+  mode: ShiftOfferMode;
+  /** A `direct` offer's one colleague. */
+  targetStaffId?: string | null;
+  /** `settings.shift_offers_direct_enabled` (default false). */
+  directEnabled?: boolean;
   expiresAt: Date;
   /** The offerer's booking — the one being handed over. */
   originalStatus: BookingStatus;
@@ -104,8 +114,13 @@ export interface TakeOfferInput {
   gate: string | null | undefined;
   /** Qualified at this client AND role (RULE-17 wave 1). */
   qualified: boolean;
-  /** `offer_wave1_exhausted(offer)`: every wave-1 candidate has been told. */
+  /** Every wave-1 candidate has been pushed the offer (`shift_offer_notices`). */
   wave1Exhausted: boolean;
+  /**
+   * Auto-assign ON for the event AND the role. Off, no OF1 is ever pushed,
+   * so wave 1 counts as exhausted at once (`offerWave1Exhausted()`).
+   */
+  autoAssign: boolean;
   takerBookingStatus: TakerBookingStatus;
 }
 
@@ -116,6 +131,18 @@ export type TakeOfferOutcome =
       takerFrom: 'none' | 'invited' | 'applied' | 'closed';
     }
   | { ok: false; reason: TakeOfferRefusal };
+
+/**
+ * RULE-17 for an offer — `offer_wave1_exhausted(offer)`. With the event's or
+ * the role's auto-assign OFF nobody is ever pushed an offer (OF1 follows the
+ * switches, §3.4), so waiting for wave 1 to be told would wait for ever: the
+ * office opening a cover request to the pool is the release, and wave 2 may
+ * see and take it at once. With both on, wave 1 is exhausted once every
+ * wave-1 candidate has been told.
+ */
+export function offerWave1Exhausted(autoAssign: boolean, allWave1Told: boolean): boolean {
+  return !autoAssign || allWave1Told;
+}
 
 /** Booking rows on this section that mean the taker cannot take it again. */
 const HAD_BOOKING: ReadonlySet<BookingStatus> = new Set([
@@ -131,10 +158,15 @@ const HAD_BOOKING: ReadonlySet<BookingStatus> = new Set([
  * `event_cancelled` › `offer_not_open` › `offer_expired` ›
  * `original_not_confirmed` › `own_offer` › `section_started` › the gate by
  * name (`booked_elsewhere` → `overlap`) › `already_had_booking` › `not_yet`.
+ * `offer_not_open` covers an office cover request nobody has opened and a
+ * direct offer to somebody else; `not_yet` applies to pool offers only, and
+ * never with auto-assign off.
  */
 export function takeOffer(input: TakeOfferInput, now: Date = new Date()): TakeOfferOutcome {
   if (input.eventCancelled) return { ok: false, reason: 'event_cancelled' };
-  if (input.offerStatus !== 'open') return { ok: false, reason: 'offer_not_open' };
+  if (input.offerStatus !== 'open' || !takeableMode(input)) {
+    return { ok: false, reason: 'offer_not_open' };
+  }
   if (now.getTime() >= input.expiresAt.getTime()) return { ok: false, reason: 'offer_expired' };
   if (input.originalStatus !== 'confirmed') return { ok: false, reason: 'original_not_confirmed' };
   if (input.taker === input.offeredBy) return { ok: false, reason: 'own_offer' };
@@ -149,12 +181,29 @@ export function takeOffer(input: TakeOfferInput, now: Date = new Date()): TakeOf
   if (input.takerBookingStatus !== null && HAD_BOOKING.has(input.takerBookingStatus)) {
     return { ok: false, reason: 'already_had_booking' };
   }
-  if (!input.qualified && !input.wave1Exhausted) return { ok: false, reason: 'not_yet' };
+  if (
+    !input.qualified &&
+    input.mode === 'pool' &&
+    !offerWave1Exhausted(input.autoAssign, input.wave1Exhausted)
+  ) {
+    return { ok: false, reason: 'not_yet' };
+  }
   const from = input.takerBookingStatus;
   return {
     ok: true,
     takerFrom: from === 'invited' || from === 'applied' || from === 'closed' ? from : 'none',
   };
+}
+
+/** `office` is never takeable; `direct` only by its target, and only while enabled. */
+function takeableMode(
+  input: Pick<TakeOfferInput, 'mode' | 'targetStaffId' | 'directEnabled' | 'taker'>,
+): boolean {
+  if (input.mode === 'pool') return true;
+  if (input.mode === 'direct') {
+    return input.directEnabled === true && input.targetStaffId === input.taker;
+  }
+  return false;
 }
 
 export interface OfferForViewer {
@@ -163,26 +212,43 @@ export interface OfferForViewer {
   expiresAt: Date;
   offeredBy: string;
   targetStaffId?: string | null;
+  /** Auto-assign ON for the event AND the role (see `offerWave1Exhausted()`). */
+  autoAssign: boolean;
 }
+
+/**
+ * The viewer's own booking on the offer's section. Only a worker with no
+ * row, or one still `invited` / `applied` / `closed`, can take it — anyone
+ * confirmed, worked, turned away or cancelled there never sees it.
+ */
+export type ViewerBookingStatus = BookingStatus | null;
 
 export interface OfferViewer {
   staffId: string;
   /** As `TakeOfferInput.gate`. */
   gate: string | null | undefined;
   qualified: boolean;
+  bookingStatus: ViewerBookingStatus;
 }
+
+/** The viewer's booking statuses that leave an offer visible (`staff_open_offers()`). */
+const MAY_SEE: ReadonlySet<BookingStatus> = new Set(['invited', 'applied', 'closed']);
 
 /**
  * Whether Radar's "Up for grabs" shows this offer to this worker (RULE-17
  * visibility, docs/18 §4). Never the offerer's own; never an `office`
  * cover request (the office has not opened it); a `direct` offer only to
  * its one colleague; a pool offer to wave 1 first and to everyone else once
- * wave 1 is exhausted. A gated worker never sees it — except for the
- * calendar gate, which does not stop a worker taking a shift.
+ * wave 1 is exhausted — at once when auto-assign is off
+ * (`offerWave1Exhausted()`). A gated worker never sees it — except for the
+ * calendar gate, which does not stop a worker taking a shift — and nor does
+ * one already booked on the section (only no row, `invited`, `applied` or
+ * `closed` may).
  */
 export function offerVisibleTo(
   offer: OfferForViewer,
   viewer: OfferViewer,
+  /** Every wave-1 candidate has been told (`shift_offer_notices`). */
   wave1Exhausted: boolean,
   now: Date = new Date(),
 ): boolean {
@@ -192,6 +258,7 @@ export function offerVisibleTo(
   if (offer.mode === 'office') return false;
   if (viewer.gate === undefined) return false;
   if (viewer.gate !== null && viewer.gate !== CALENDAR_GATE) return false;
+  if (viewer.bookingStatus !== null && !MAY_SEE.has(viewer.bookingStatus)) return false;
   if (offer.mode === 'direct') return viewer.staffId === offer.targetStaffId;
-  return viewer.qualified || wave1Exhausted;
+  return viewer.qualified || offerWave1Exhausted(offer.autoAssign, wave1Exhausted);
 }

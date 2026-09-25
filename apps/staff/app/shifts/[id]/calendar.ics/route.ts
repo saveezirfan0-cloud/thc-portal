@@ -1,4 +1,6 @@
 import { loadShift, supabaseConfigured } from '../data';
+import { loadProfile } from '../../../profile/data';
+import { appLock } from '../../../profile/lock';
 import { shiftScreenReachable, shiftPhase, isEndScreen } from '../phase';
 import { buildShiftIcs, icsFilename } from '../ics';
 
@@ -18,9 +20,16 @@ export const dynamic = 'force-dynamic';
  * (another worker's id returns nothing, so 404). What the screen would not
  * show as a live shift — an invitation, a §10.4 dead end, a turn-away — gets
  * no calendar entry either.
+ *
+ * Nor does a worker the app is closed to (§10.1): the shift screen sits
+ * behind `StaffShell`'s lock, and this URL must not be a way round it — a
+ * documents lock, a manual hold, a leaver, a rejected or removed account,
+ * or no profile at all is a 404, exactly as a booking that is not theirs.
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!supabaseConfigured()) return new Response('Not found', { status: 404 });
+  const profile = await loadProfile();
+  if (!profile || appLock(profile) !== 'none') return new Response('Not found', { status: 404 });
   const { id } = await params;
   const shift = await loadShift(id);
   if (!shift || shift.status === 'invited' || !shiftScreenReachable(shift)) {

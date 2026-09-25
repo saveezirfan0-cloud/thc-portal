@@ -5,6 +5,7 @@ import {
   canOfferShift,
   formatDateIn,
   formatTimeIn,
+  needsDualZone,
   offerExpiresAt,
 } from '@thc/domain';
 
@@ -58,9 +59,26 @@ export function offerDialogBody(startsAt: Date): string {
   return `We'll offer this shift to other workers. You stay booked until someone takes it — then it's theirs, and you can't be booked on this event again. Offers close ${ukDateTime(offerExpiresAt(startsAt))} (UK time), 72 hours before the start.`;
 }
 
-/** "Offered · open until Sat 20, 16:00" */
+/**
+ * §1.8's second line for one scheduled instant — an offer's close, the end
+ * of the check-out window — in the viewer's own zone: "Sat 20, 17:00 your
+ * time" (`withDate`), or "17:00 your time", led by the viewer's day
+ * ("Sun 21 · 01:00 your time") only when it is not the UK day. Null on UK
+ * time: there is no second line to draw. The first line is always UK and
+ * says so.
+ */
+export function yourTimeAt(at: Date, zone: string, withDate = true): string | null {
+  if (!needsDualZone(zone)) return null;
+  const [weekday = '', day = ''] = formatDateIn(at, zone, { weekday: 'short' }).split(' ');
+  const time = `${formatTimeIn(at, zone)} your time`;
+  if (withDate) return `${weekday} ${day}, ${time}`;
+  const sameDay = formatDateIn(at, zone) === formatDateIn(at, UK_ZONE);
+  return sameDay ? time : `${weekday} ${day} · ${time}`;
+}
+
+/** "Offered · open until Sat 20, 16:00 (UK time)" */
 export function offeredChip(expiresAt: Date): string {
-  return `Offered · open until ${ukShortDateTime(expiresAt)}`;
+  return `Offered · open until ${ukShortDateTime(expiresAt)} (UK time)`;
 }
 
 /** Wireframe (c): the still-booked line under the chip. */
@@ -70,7 +88,7 @@ export function offeredLine(expiresAt: Date): string {
 
 /** Wireframe (d): the line on the `/shifts` card. */
 export function offeredCardLine(expiresAt: Date): string {
-  return `Offered to other workers · open until ${ukShortDateTime(expiresAt)}`;
+  return `Offered to other workers · open until ${ukShortDateTime(expiresAt)} (UK time)`;
 }
 
 export const WITHDRAW_OFFER_BUTTON = 'Withdraw offer';
@@ -156,6 +174,10 @@ export const COVER_REFUSAL_COPY: Readonly<Record<string, Refusal>> = {
   already_offered: {
     title: 'The office already has this shift',
     body: 'There is already an open offer or cover request on it. You’re still booked.',
+  },
+  recently_requested: {
+    title: 'You asked for cover on this shift recently',
+    body: 'You withdrew a cover request for this shift in the last 24 hours. If you still can’t make it, contact the office. You’re still booked.',
   },
   section_started: APPLY_REFUSAL_COPY.shift_started,
   not_confirmed: NOT_YOURS,

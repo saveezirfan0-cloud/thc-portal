@@ -19,7 +19,7 @@
 -- the event afterwards. The calendar (ADR-0036) never refuses a take.
 -- =====================================================================
 begin;
-select plan(44);
+select plan(45);
 \ir _shared/fixtures.psql
 
 select cap_week_start(current_date) + 14 as w \gset
@@ -51,6 +51,7 @@ select cap_week_start(current_date) + 14 as w \gset
 \set t_had   '67120000-0000-4000-8000-000000000013'
 \set t_q2    '67120000-0000-4000-8000-000000000014'
 \set t_late  '67120000-0000-4000-8000-000000000015'
+\set t_gone  '67120000-0000-4000-8000-000000000016'
 
 \set b_off   '67140000-0000-4000-8000-000000000001'
 \set b_off2  '67140000-0000-4000-8000-000000000002'
@@ -68,10 +69,10 @@ select cap_week_start(current_date) + 14 as w \gset
 -- ---------------------------------------------------------------------
 insert into auth.users (id, email)
 select ('67130000-0000-4000-8000-0000000000' || lpad(n::text, 2, '0'))::uuid, 'u' || n || '@to671.test'
-  from generate_series(1, 15) n;
+  from generate_series(1, 16) n;
 insert into profiles (id, role, full_name)
 select ('67130000-0000-4000-8000-0000000000' || lpad(n::text, 2, '0'))::uuid, 'staff', 'Taker ' || n
-  from generate_series(1, 15) n;
+  from generate_series(1, 16) n;
 
 insert into venues (id, name, address, location, venue_type, geofence_radius_m) values
   (:'venue2', 'Across Town', '9 Far Road, London',
@@ -108,7 +109,10 @@ insert into staff (id, user_id, first_name, last_name, email, phone, dob, status
   (:'t_q2',    '67130000-0000-4000-8000-000000000014', 'Quin', 'Second',  'q2@to671.test',   '+447700967114', date '1995-01-14', 'compliant', 'uk_irish',
    st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography, null, null),
   (:'t_late',  '67130000-0000-4000-8000-000000000015', 'Lia',  'Late',    'lt@to671.test',   '+447700967115', date '1995-01-15', 'compliant', 'uk_irish',
-   st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography, null, null);
+   st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography, null, null),
+  -- Leaving recorded, status not yet moved on: out of the pool, not refused as a caller.
+  (:'t_gone',  '67130000-0000-4000-8000-000000000016', 'Gil',  'Gone',    'gn@to671.test',   '+447700967116', date '1995-01-16', 'compliant', 'uk_irish',
+   st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography, now(), null);
 update staff set term_dates = '{}' where id = :'t_cap';
 
 insert into staff_roles (staff_id, role_id)
@@ -204,7 +208,7 @@ end $$;
 -- =====================================================================
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select throws_ok(format($$ select take_offered_shift(%L) $$, :'offer'), '42501', 'not_a_worker',
+select throws_ok(format($$ select take_offered_shift(%L) $$, :'offer'), 'P0001', 'unknown_staff',
   'A: the office cannot take a shift for anybody');
 reset role;
 select set_config('request.jwt.claims', '', true);
@@ -215,7 +219,9 @@ select is(pg_temp.take_as(3, :'o_live'),   jsonb_build_object('ok', false, 'reas
 select is(pg_temp.take_as(3, gen_random_uuid()), jsonb_build_object('ok', false, 'reason', 'offer_not_open'),
   'A: an unknown offer reads as not open — the id tells nobody anything');
 select is(pg_temp.take_as(1, :'offer'),    jsonb_build_object('ok', false, 'reason', 'own_offer'),       'A: own_offer');
-select is(pg_temp.take_as(12, :'offer'),   jsonb_build_object('ok', false, 'reason', 'not_bookable'),    'A: not_bookable — a leaver has no candidate row (§10.6)');
+select throws_ok(format($$ select pg_temp.take_as(12, %L) $$, :'offer'), 'P0001', 'not_editable',
+  'A: a leaver (inactive) is refused as a caller before anything is read (20260930150000)');
+select is(pg_temp.take_as(16, :'offer'),   jsonb_build_object('ok', false, 'reason', 'not_bookable'),    'A: not_bookable — a worker whose leaving is recorded has no candidate row (§10.6)');
 select is(pg_temp.take_as(5, :'offer'),    jsonb_build_object('ok', false, 'reason', 'wrong_role'),      'A: wrong_role');
 select is(pg_temp.take_as(6, :'offer'),    jsonb_build_object('ok', false, 'reason', 'do_not_return'),   'A: do_not_return');
 select is(pg_temp.take_as(7, :'offer'),    jsonb_build_object('ok', false, 'reason', 'blocked'),         'A: blocked (RULE-12)');

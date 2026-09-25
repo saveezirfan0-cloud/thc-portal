@@ -922,5 +922,8 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/18 §6)', () => {
     // OF1 is once per offer per candidate: the staff id rides as the suffix.
     expect(outboxKey('OF1', 'offer', 'o1', 's9')).toBe('OF1:offer:o1:s9');
     expect(outboxKey('OF1', 'offer', 'o1', 's9')).not.toBe(outboxKey('OF1', 'offer', 'o1', 's8'));
+    // OF5 is keyed on the BOOKING (20260930150000): asking for cover, withdrawing
+    // and asking again on one booking emails admin@ once.
+    expect(outboxKey('OF5', 'booking', 'b1')).toBe('OF5:booking:b1');
   });
 });

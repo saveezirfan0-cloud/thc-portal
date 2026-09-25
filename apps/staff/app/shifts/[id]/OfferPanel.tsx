@@ -23,6 +23,7 @@ import {
   offerPanel,
 } from '../offers';
 import type { BookingOffer } from '../offers';
+import { YourTimeAt } from '../YourTimeAt';
 
 /**
  * Offer this shift / Withdraw offer / Ask the office for cover — ADR-0039,
@@ -75,7 +76,11 @@ export function OfferPanel({
   if (panel === 'offered' && offer?.offerId && offer.expiresAt) {
     return (
       <MobileCard badge={<Pill tone="cyan">{offeredChip(offer.expiresAt)}</Pill>}>
-        <p className="sm">{offeredLine(offer.expiresAt)}</p>
+        <p className="sm">
+          {offeredLine(offer.expiresAt)}
+          {/* §1.8: the close is scheduled UK time; a phone elsewhere gets its own clock too. */}
+          <YourTimeAt at={offer.expiresAt} lead="Open until " />
+        </p>
         <ActionButton
           label={WITHDRAW_OFFER_BUTTON}
           tone="ghost"

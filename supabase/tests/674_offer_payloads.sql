@@ -130,7 +130,7 @@ select is(pg_temp.asked('OF3:offer:' || :'o2', array['event', 'date', 'bookingId
   pg_temp.sorted(array['event', 'date', 'bookingId']), 'OF3: exactly its placeholders');
 select is(pg_temp.asked('OF4:offer:' || :'o1', array['event', 'date', 'bookingId']),
   pg_temp.sorted(array['event', 'date', 'bookingId']), 'OF4: exactly its placeholders');
-select is(pg_temp.asked('OF5:offer:' || :'o3', array['event', 'role', 'date', 'name', 'employeeId', 'client', 'venue',
+select is(pg_temp.asked('OF5:booking:' || :'b3', array['event', 'role', 'date', 'name', 'employeeId', 'client', 'venue',
                                                       'dateTime', 'note', 'confirmed', 'headcount', 'buffer', 'autoAssign']),
   pg_temp.sorted(array['event', 'role', 'date', 'name', 'employeeId', 'client', 'venue',
                        'dateTime', 'note', 'confirmed', 'headcount', 'buffer', 'autoAssign']),
@@ -154,7 +154,7 @@ select is((select recipient_staff_id from notification_outbox where key = 'OF3:o
   'OF3 to the offerer');
 select is((select recipient_staff_id from notification_outbox where key = 'OF4:offer:' || :'o1'), :'tk'::uuid,
   'OF4 to the taker');
-select is((select recipient_emails from notification_outbox where key = 'OF5:offer:' || :'o3'),
+select is((select recipient_emails from notification_outbox where key = 'OF5:booking:' || :'b3'),
   array['admin@thehospitalitycompany.co.uk'], 'OF5 to admin@ only');
 select is((select recipient_staff_id from notification_outbox where key = 'OF6:offer:' || :'o3'), :'cov'::uuid,
   'OF6 to the worker who asked');
@@ -178,13 +178,13 @@ select is((select payload ->> 'date' from notification_outbox where key = 'OF4:o
 select is(
   (select array[payload ->> 'name', payload ->> 'employeeId', payload ->> 'client', payload ->> 'venue',
                 payload ->> 'role', payload ->> 'dateTime', payload ->> 'date', payload ->> 'note']
-     from notification_outbox where key = 'OF5:offer:' || :'o3'),
+     from notification_outbox where key = 'OF5:booking:' || :'b3'),
   array['Cora Cover', '67404', 'RLS Fixture Client A', 'RLS Fixture Venue', 'RLS Fixture Role',
         :'when_s3', :'date_s3', '—'],
   'OF5: E10''s fields and dates; no note written as —');
 select is(
   (select array[payload ->> 'confirmed', payload ->> 'headcount', payload ->> 'buffer', payload ->> 'autoAssign']
-     from notification_outbox where key = 'OF5:offer:' || :'o3'),
+     from notification_outbox where key = 'OF5:booking:' || :'b3'),
   array['1', '2', '0', 'on'], 'OF5: the fill as confirmed of headcount (+buffer), buffer never added in');
 select ok(not exists (select 1 from notification_outbox
                        where template in ('OF1', 'OF2', 'OF3', 'OF4', 'OF6') and payload->>'eventId' = :'ev'

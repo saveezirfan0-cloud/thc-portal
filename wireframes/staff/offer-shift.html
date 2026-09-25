@@ -96,13 +96,15 @@
         <div class="statusbar"><span>14:34</span><span>●●● 5G ▮</span></div>
         <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Shifts</span>Awards Night · Waiting Staff</div><span class="avatar photo">AK</span></div>
         <div class="app-body" style="gap:10px;padding-bottom:24px">
-          <div class="row"><span class="pill green">Confirmed</span><span class="pill cyan">Offered · open until Sat 20, 16:00</span></div>
+          <div class="row"><span class="pill green">Confirmed</span><span class="pill cyan">Offered · open until Sat 20, 16:00 (UK time)</span></div>
           <div class="row"><span style="font-family:var(--font-head);font-size:24px;font-weight:600">16:00 – 02:00</span><span class="ml-auto mono sm">Tue 23 Sep</span></div>
           <div class="offerbox open">
             <div class="sm">You're still booked. If someone takes it before Sat 20, 16:00 (UK time), it's theirs and we'll let you know. If nobody does, you keep it.</div>
+            <div class="xs muted mono">Open until Sat 20, 17:00 your time</div>
             <button class="btn ghost block">Withdraw offer</button>
           </div>
           <div class="row"><span class="xs muted">Cancel available until Sat 20, 16:00</span><button class="btn ghost sm ml-auto coral">Cancel shift</button></div>
+          <span class="annot">the close is a scheduled time: UK, labelled "(UK time)", and a "your time" line only when the phone's zone differs (§1.8 — shown here for Madrid)</span>
           <span class="annot">fill (confirmed only), the buffer — still shown as 6 (+1), never 7 — and the client line-up are unchanged while the offer is open</span>
         </div>
       </div>
@@ -119,8 +121,9 @@
             <div class="h"><span class="pill green">Confirmed</span><span class="pill cyan">Offered</span><span class="ml-auto mono sm">Tue 23 · 16:00 – 02:00</span></div>
             <div class="t">Awards Night · Waiting Staff</div>
             <div class="m">The Dorchester, 53 Park Lane, W1K 1QA</div>
-            <div class="m">Offered to other workers · open until Sat 20, 16:00</div>
+            <div class="m">Offered to other workers · open until Sat 20, 16:00 (UK time)<br><span class="xs muted mono">Sat 20, 17:00 your time</span></div>
           </div>
+          <span class="annot">"your time" line only when the phone's zone differs (§1.8)</span>
         </div>
       </div>
     </div>
@@ -191,7 +194,7 @@
             <div class="h"><span class="pill cyan">Up for grabs</span><span class="ml-auto km">4.1 km</span></div>
             <div class="t">Awards Night · Waiting Staff</div>
             <div class="m">The Dorchester, W1K · Tue 23 · 16:00 – 02:00</div>
-            <div class="m">£14.00/h · Dress code: Black tie · open until Sat 20, 16:00</div>
+            <div class="m">£14.00/h · Dress code: Black tie · open until Sat 20, 16:00 (UK time)<br><span class="xs muted mono">Sat 20, 17:00 your time</span></div>
             <a class="btn outline block" href="#take">View &amp; take</a>
           </div>
           <span class="annot">RULE-17: qualified at client + role see it at once; others only once wave 1 is exhausted</span>
@@ -226,7 +229,7 @@
             <div class="kv"><span class="k">Venue</span><span class="v">The Dorchester, 53 Park Lane, London W1K 1QA</span></div>
             <div class="kv"><span class="k">Dress code</span><span class="v"><b>Black tie</b> — black suit, white shirt, black bow tie, polished black shoes</span></div>
             <div class="kv"><span class="k">Rate</span><span class="v">£14.00 per hour · base rate</span></div>
-            <div class="kv"><span class="k">Open until</span><span class="v">Sat 20 Sep, 16:00 (UK time)</span></div>
+            <div class="kv"><span class="k">Open until</span><span class="v">Sat 20 Sep, 16:00 (UK time)<br><span class="xs muted mono">Sat 20, 17:00 your time</span></span></div>
           </div>
           <div class="note xs">Taking it books you straight away — it's a confirmed shift, not an application.</div>
           <button class="btn primary block lg">Take this shift</button>
@@ -275,6 +278,6 @@
   </div>
 </div>
 
-<div class="wf-note note"><b>Behaviour notes.</b> Addition to Scope v1.6 (ADR-0039, proposed — awaiting THC; docs/18 §4). <b>Offer this shift</b> appears on a confirmed booking while more than 72 h remain (exactly the Cancel shift boundary, RULE-04), only while auto-assign is ON for the event and role, and only when no offer is open. The offerer <b>stays confirmed</b>: fill (confirmed only), buffer (shown as <code>6 (+1)</code>), the line-up the client sees and every rule that counts bookings are unchanged. The offer closes at start − 72 h; if nobody took it the worker is still booked (OF3). <b>Take this shift</b> (<code>/radar/offers/:id</code>) runs in one transaction under the slot lock: the taker passes every hard gate auto-assign applies plus Accept's overlap and weekly-cap re-reads; RULE-17 holds (an unqualified taker is refused until wave 1 is exhausted). On success the taker is confirmed (source <code>offer</code>), the offerer's booking becomes cancelled with cause <code>handed_over</code> and the offerer is barred from the event as after a self-cancel (Q15); OF2 + OF4 go out; the taker's overlapping invitations are withdrawn as on Accept. Marking yourself unavailable (ADR-0036) never stops a take. <b>Inside 72 h</b> the worker can only <b>Ask the office for cover</b> (optional note); OF5 emails admin@; the office opens it to the pool (until the section start), declines it (OF6) or withdraws the booking by hand. Any other exit from Confirmed (Withdraw, 12:05 cutoff, block, leave, GDPR, event cancelled, self-cancel) lapses the offer automatically. Radar's "Up for grabs" never names the offerer; the worker sees the base rate only. Peer-to-peer offers and swaps are designed but off (Q17). The client sees nothing new.</div>
+<div class="wf-note note"><b>Behaviour notes.</b> Addition to Scope v1.6 (ADR-0039, proposed — awaiting THC; docs/18 §4). <b>Offer this shift</b> appears on a confirmed booking while more than 72 h remain (exactly the Cancel shift boundary, RULE-04), only while auto-assign is ON for the event and role, and only when no offer is open. The offerer <b>stays confirmed</b>: fill (confirmed only), buffer (shown as <code>6 (+1)</code>), the line-up the client sees and every rule that counts bookings are unchanged. The offer closes at start − 72 h; if nobody took it the worker is still booked (OF3). <b>Take this shift</b> (<code>/radar/offers/:id</code>) runs in one transaction under the slot lock: the taker passes every hard gate auto-assign applies plus Accept's overlap and weekly-cap re-reads; RULE-17 holds (an unqualified taker is refused until wave 1 is exhausted — at once when auto-assign is off for the event or role, since no push ever goes out then). On success the taker is confirmed (source <code>offer</code>), the offerer's booking becomes cancelled with cause <code>handed_over</code> and the offerer is barred from the event as after a self-cancel (Q15); OF2 + OF4 go out; the taker's overlapping invitations are withdrawn as on Accept. Marking yourself unavailable (ADR-0036) never stops a take. <b>Inside 72 h</b> the worker can only <b>Ask the office for cover</b> (optional note); OF5 emails admin@ once per booking (asking again within 24 h of withdrawing a request is refused); the office opens it to the pool (until the section start), declines it (OF6) or withdraws the booking by hand. Any other exit from Confirmed (Withdraw, 12:05 cutoff, block, leave, GDPR, event cancelled, self-cancel) lapses the offer automatically. Radar's "Up for grabs" never names the offerer; the worker sees the base rate only. Every close time is a scheduled time: UK, labelled "(UK time)", with a "your time" line when the phone's zone differs (§1.8). Peer-to-peer offers and swaps are designed but off (Q17). The client sees nothing new.</div>
 </body>
 </html>

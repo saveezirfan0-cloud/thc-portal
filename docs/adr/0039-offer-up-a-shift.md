@@ -140,3 +140,50 @@ The decision above stands. Where the build had to choose, it chose this:
 8. **Take refusals reuse Radar's copy** (wireframe (j)): an offer taken, withdrawn,
    lapsed or not yet visible to the worker reads as "Sorry, this shift is now full";
    `overlap` as Radar's booked-elsewhere line; the gates by their Radar names.
+
+## Amendment · review fixes (`20260930150000_shift_offers_review_fixes.sql`)
+
+QA and the security review of the as-built slice. The decision stands; these change how
+it is held:
+
+1. **Auto-assign off releases wave 1 at once (QA S1).** OF1 follows the switches (as
+   built, 2), so with the event's or the role's auto-assign off nobody was ever told an
+   offer and `offer_wave1_exhausted()` never became true — a cover request the office
+   opened to the pool was invisible and untakeable for every unqualified worker.
+   `offer_wave1_exhausted()` is now true whenever `not (event.auto_assign and
+   section.auto_assign)`: on a hand-picked section the office opening it to the pool
+   is the release. With both switches on, RULE-17's order is unchanged. The TS twin is
+   `offerWave1Exhausted(autoAssign, allWave1Told)`, used by `takeOffer()` and
+   `offerVisibleTo()`.
+2. **Lock order (QA S2).** `take_offered_shift()` locks section → the offerer's booking
+   → the offer, the order every other exit from confirmed takes (it holds the booking,
+   then `bookings_offer_lapse` updates the offer). It reads the offer's booking id
+   unlocked first — safe, the state guard keeps it immutable — and re-checks the offer
+   under its own lock.
+3. **The caller (security #4).** `offer_shift`, `withdraw_shift_offer`, `request_cover`
+   and `take_offered_shift` resolve the caller with `staff_caller()` and refuse as
+   `20260930120000` does, all `P0001`: `unknown_staff` (no staff row — the office too;
+   this replaces `42501 not_a_worker`), `account_closed` (removed), `not_editable`
+   (inactive, rejected).
+4. **OF5 is keyed on the booking (security #1).** `OF5:booking:<booking>`, so asking,
+   withdrawing and asking again emails admin@ once per booking; and `request_cover()`
+   refuses `recently_requested` while a withdrawn cover request on the booking closed in
+   the last 24 hours. The register row's key changes with it; the copy does not.
+5. **The decline note is not audited (QA S4, part).** `office_decline_cover()` writes
+   `has_note` to `audit_log`, never the office's free text, whose one home stays
+   `shift_offers.closed_reason`. Scrubbing rows written before this is the platform's
+   GDPR job, not this migration's.
+6. **No OF3 after the start.** `lapse_shift_offers()` sends OF3 only while the section
+   has not started; after it "you're still booked" tells nobody anything.
+7. **Close times are scheduled times (QA S3, §1.8).** The "Offered · open until …"
+   chip, the `/shifts` card line and Radar's "open until …" say "(UK time)" and add a
+   "your time" line when the phone's zone differs (`yourTimeAt()`, `YourTimeAt`); so do
+   `/radar/offers/:id` and the `/shifts` "check out before …" line.
+8. **`/shifts/:id/calendar.ics` follows the app lock (security #2).** 404 unless
+   `loadProfile()` returns a profile and `appLock(profile) === 'none'`.
+9. **Domain twin.** `takeOffer()` takes the offer's `mode` (an unopened `office`
+   request, or a `direct` offer to someone else or while disabled, is
+   `offer_not_open`; `not_yet` applies to pool offers only) and `autoAssign`;
+   `offerVisibleTo()` takes the viewer's own booking status on the section — only none,
+   `invited`, `applied` or `closed` may see an offer, as `staff_open_offers()` filters.
+   Vectors in `shiftOffer.vectors.json`; pgTAP 670–674 hold the SQL side.
