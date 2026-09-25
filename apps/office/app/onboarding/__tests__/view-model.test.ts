@@ -530,7 +530,7 @@ describe('card lines the wireframe spells out (onboarding.html)', () => {
     });
     expect(rejectedLines(row).map((l) => l.text)).toEqual([
       'Reason: “Right to work could not be established”',
-      'Their 2 pending documents dropped out of Compliance → Needs review automatically (§4.1).',
+      'Their 2 pending documents dropped out of Compliance → Needs review automatically.',
     ]);
     expect(rejectedLines({ ...row, docs_pending: 0 })).toHaveLength(1);
   });

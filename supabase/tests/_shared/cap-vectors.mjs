@@ -25,6 +25,8 @@ const sqlText = (v) => `'${String(v).replace(/'/g, "''")}'`;
 /** Optional dated facts: absent means "not on file", which is SQL null. */
 const sqlDate = (v) => (v === undefined || v === null ? 'null' : `'${v}'::date`);
 const sqlOptBool = (v) => (v === undefined ? 'false' : sqlBool(v));
+/** Optional numbers: absent or null means "none recorded", which is SQL null. */
+const sqlOptInt = (v) => (v === undefined || v === null ? 'null' : String(v));
 
 /** The .psql file body for a parsed cap.vectors.json. Pure — no I/O. */
 export function renderCapVectors(vectors) {
@@ -41,6 +43,8 @@ export function renderCapVectors(vectors) {
       `${sqlDate(c.input.visaExpiry)},`,
       `${sqlDate(c.input.optOutCancelledFrom)},`,
       `${sqlOptBool(c.input.under18)},`,
+      `${sqlDate(c.input.verifiedOn)},`,
+      `${sqlOptInt(c.input.visaHourLimit)},`,
       `${sqlInt(c.expect.capHours)},`,
       `${sqlText(c.expect.band)})`,
     ].join(' '),
@@ -75,6 +79,10 @@ create temporary table cap_vectors (
   visa_expiry                date,
   optout_cancelled_from      date,
   under18                    boolean not null,
+  -- Fix round 29.09 (D35, D36): the day the completion letter was verified,
+  -- and a weekly hours limit written on a work or dependant visa.
+  verified_on                date,
+  visa_hour_limit            int,
   expect_cap_hours           int,               -- null = no ceiling
   expect_band                text    not null
 ) on commit drop;

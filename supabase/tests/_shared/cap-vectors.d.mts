@@ -11,6 +11,14 @@ export interface CapVectorCase {
     termState: string;
     completionLetterVerified: boolean;
     optOut48h: boolean;
+    weekStart?: string;
+    belowDegreeLevel?: boolean;
+    completionDate?: string;
+    visaExpiry?: string;
+    optOutCancelledFrom?: string;
+    under18?: boolean;
+    verifiedOn?: string;
+    visaHourLimit?: number | null;
   };
   expect: { capHours: number | null; band: string };
 }

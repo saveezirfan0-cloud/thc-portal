@@ -62,6 +62,26 @@ export interface Template {
   /** Where tapping the push should land the worker (routes: §08 inventory). */
   deepLink?: string;
   /**
+   * Routes the row's `link` payload value may pick instead of `deepLink`,
+   * for a push whose right landing depends on who receives it (N8: a
+   * candidate re-uploads in the onboarding wizard, a worker on the Documents
+   * hub). Anything else in `link` is ignored and `deepLink` is used: the
+   * payload never names an arbitrary URL.
+   */
+  deepLinkOptions?: readonly string[];
+  /**
+   * A button on the notification, where the platform draws one (Android,
+   * desktop). Tapping it opens the same deep link as tapping the body; iOS
+   * draws no buttons and opens the link, where the same action is on screen.
+   */
+  action?: string;
+  /**
+   * The notification's collapse tag, `{placeholder}` style. A second push
+   * with the same rendered tag replaces the first on the device. Absent, or
+   * left with an unfilled placeholder, the deep link is the tag.
+   */
+  tag?: string;
+  /**
    * One code, two halves. §8 gives N9 as a pair — the sender picks the half,
    * and the outbox key must carry the variant so the two do not collide.
    */
@@ -172,7 +192,15 @@ export const TEMPLATES = {
     body: 'Document rejected — {reason}. Re-upload.',
     trigger: 'Document rejected',
     timing: 'on reject',
+    // A worker re-uploads on the Documents hub; a candidate's app is locked
+    // to the onboarding wizard, which is where their re-upload is. The row
+    // says which (`link`, n8_link() in SQL, 20260929150200).
     deepLink: '/documents',
+    deepLinkOptions: ['/documents', '/onboarding'],
+    action: 'Re-upload',
+    // One notification per rejected document: a second rejection of the
+    // same one replaces it, two documents stay two.
+    tag: 'N8:{documentId}',
   },
 
   // Check-in / check-out / breaks (§5).

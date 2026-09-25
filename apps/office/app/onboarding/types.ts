@@ -126,6 +126,22 @@ export interface CandidateDocument {
   term_dates: string[] | null;
   completion_date: string | null;
   awarding_institution: string | null;
+  // 20260929150500 (optional: absent before it).
+  completion_date_claimed?: string | null;
+  evidence_form?: string | null;
+  /** NI evidence verified before the NI number was entered (D43). */
+  ni_recheck?: boolean | null;
+}
+
+/**
+ * What the reviewer needs beside the documents and the view does not carry:
+ * the full NI number (D43), the course level (D32) and a visa's hours limit
+ * (D36). Read off `staff` through the manager's session.
+ */
+export interface CandidateFacts {
+  niNumber: string | null;
+  belowDegreeLevel: boolean;
+  visaHourLimit: number | null;
 }
 
 export interface Declaration {
@@ -220,6 +236,8 @@ export interface CandidateData {
   rtwChecks?: RtwCheckRow[];
   /** settings.rtw_check.enabled. */
   rtwCheckEnabled?: boolean;
+  /** The NI number and the right-to-work conditions (20260929150100/150400). */
+  facts?: CandidateFacts | null;
   problem: string | null;
 }
 

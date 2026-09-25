@@ -31,6 +31,10 @@ export interface PushMessage {
   title: string;
   body: string;
   url?: string;
+  /** The one notification button, e.g. N8's "Re-upload". */
+  action?: string;
+  /** The collapse tag; the service worker falls back to the url. */
+  tag?: string;
 }
 
 export interface EmailMessage {
@@ -77,6 +81,16 @@ export function outboxBackoffMs(attempt: number): number {
  * Everything this rejects is a fault in the row rather than in the network,
  * so a caller should fail it outright rather than retry it six times.
  */
+/**
+ * Where a push lands: the row's `link` when the register lists it among the
+ * code's `deepLinkOptions`, otherwise the register's own deep link.
+ */
+export function pushLink(entry: Template, values: Record<string, string>): string | undefined {
+  const picked = values['link'];
+  if (picked && entry.deepLinkOptions?.includes(picked)) return picked;
+  return entry.deepLink ? render(entry.deepLink, values) : undefined;
+}
+
 export function messageFor(row: OutboxRow): OutboxMessage {
   const entry = templateFor(row.template);
 
@@ -105,12 +119,18 @@ export function messageFor(row: OutboxRow): OutboxMessage {
     } catch (cause) {
       throw new UnsendableRow(`${row.template}: ${(cause as Error).message}`);
     }
+    const url = pushLink(entry, values);
+    const tag = entry.tag ? render(entry.tag, values) : undefined;
     return {
       kind: 'push',
       staffId: row.recipient_staff_id,
       title: render(entry.title, values),
       body: render(copy, values),
-      ...(entry.deepLink ? { url: render(entry.deepLink, values) } : {}),
+      ...(url ? { url } : {}),
+      ...(entry.action ? { action: entry.action } : {}),
+      // An unfilled placeholder is not a tag: two different documents
+      // would collapse into one notification.
+      ...(tag && !/\{\w+\}/.test(tag) ? { tag } : {}),
     };
   }
 

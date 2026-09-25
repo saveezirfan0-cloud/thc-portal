@@ -25,6 +25,7 @@ export type TermState = 'none' | 'term' | 'holiday' | 'straddle';
 
 export type CapBand =
   | 'visa_expired_0'
+  | 'visa_limit'
   | 'student_term_10'
   | 'student_term_20'
   | 'student_holiday_48'
@@ -78,6 +79,23 @@ export interface CapInput {
   optOutCancelledFrom?: string;
   /** Under-18s cannot sign a 48-hour opt-out (requirement §2.4). */
   under18?: boolean;
+  /**
+   * The day the completion letter was verified (`staff.graduated_at`),
+   * `YYYY-MM-DD`. The release is never backdated before it, and it starts on
+   * a Monday: a letter verified on a Wednesday lifts the cap from the next
+   * Monday, so one Mon–Sun week is never half 20 h and half 48 h. Compared
+   * against `weekStart`, exactly as `weekly_cap_for()` compares
+   * `graduated_at` against `cap_week_start(date)`.
+   */
+  verifiedOn?: string;
+  /**
+   * A weekly hours limit written on a work or dependant visa, captured by the
+   * office when it verifies the right to work (`staff.visa_weekly_hour_limit`).
+   * It is an immigration condition, so the 48-hour opt-out cannot lift it.
+   * Only the work-visa and dependant branches carry one; a Student visa's
+   * limit is the term-time rule above.
+   */
+  visaHourLimit?: number | null;
 }
 
 export interface CapResult {
@@ -106,7 +124,11 @@ function weekEnd(weekStart: string): string {
  */
 function completionInForce(input: CapInput): boolean {
   if (!input.completionLetterVerified) return false;
-  if (!input.completionDate || !input.weekStart) return true;
+  if (!input.weekStart) return true;
+  // Never before the Monday on or after the verification: a week the letter
+  // was verified part-way through keeps the lower cap for all seven days.
+  if (input.verifiedOn && input.weekStart < input.verifiedOn) return false;
+  if (!input.completionDate) return true;
   return input.weekStart >= input.completionDate;
 }
 
@@ -145,6 +167,11 @@ export function weeklyCap(input: CapInput): CapResult {
     return input.belowDegreeLevel
       ? { capHours: 10, band: 'student_term_10' }
       : { capHours: 20, band: 'student_term_20' };
+  }
+  // 1b. A weekly hours limit written on a work or dependant visa: also an
+  //     immigration condition, so it too comes before the opt-out.
+  if (input.visaHourLimit !== undefined && input.visaHourLimit !== null) {
+    return { capHours: Math.min(input.visaHourLimit, 48), band: 'visa_limit' };
   }
   // 2. Everywhere else the opt-out removes the ceiling (§4.4 opt-out table).
   if (optOutInForce(input)) return { capHours: null, band: 'uncapped' };
@@ -272,6 +299,8 @@ export function explainCap(
       return input.visaExpiry
         ? `Cannot be rostered — right to work expired ${ukDate(input.visaExpiry)}`
         : 'Cannot be rostered — right to work expired';
+    case 'visa_limit':
+      return `${cap.capHours ?? 0} h/week — the hours limit on the visa`;
     case 'student_term_10':
       return `10 h/week — term time, below degree level${until}`;
     case 'student_term_20':

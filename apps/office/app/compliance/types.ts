@@ -21,7 +21,7 @@ export type StaffStatus =
 export type BlockKind = 'auto_document' | 'manual' | 'conviction_review' | null;
 
 /**
- * One item waiting on the office (§4.1): a pending document, a pending Yes
+ * One item waiting on the office: a pending document, a pending Yes
  * declaration, or — `rtw_date` (20260927160000) — a share code report that
  * was verified before the right-to-work date was required and still has
  * none. That one is keyed on the verified report; its `item_type` is
@@ -30,7 +30,7 @@ export type BlockKind = 'auto_document' | 'manual' | 'conviction_review' | null;
  * work, whose document is already rejected; `item_id` is the check's id.
  */
 export interface QueueRow {
-  kind: 'document' | 'declaration' | 'rtw_date' | 'rtw_check';
+  kind: 'document' | 'declaration' | 'rtw_date' | 'rtw_check' | 'ni_check';
   item_id: string;
   staff_id: string;
   display_name: string;
@@ -82,6 +82,17 @@ export interface QueueRow {
   rtw_check_report_path?: string | null;
   /** Share codes only: whether ADR-0018's hand-typed date is allowed now. */
   rtw_manual_allowed?: boolean | null;
+  // 20260929150400 (optional: absent before it).
+  /** The full NI number, on NI evidence and `ni_check` rows only (D43). */
+  ni_number?: string | null;
+  /** What the course-level field is set to now (D32). */
+  below_degree_level?: boolean | null;
+  /** A work or dependant visa's weekly hours limit on file (D36). */
+  visa_weekly_hour_limit?: number | null;
+  /** The weekly hours limit the automated check parsed — the pre-filled value. */
+  rtw_check_term_limit?: number | null;
+  /** A gov.uk report already on the share code document (D31). */
+  gov_report_path?: string | null;
 }
 
 export type RadarState = 'expired' | 'expiring' | 'valid';
@@ -127,7 +138,7 @@ export interface WarningRow {
 export interface AuditRow {
   id: number;
   at: string;
-  record_type: 'completion_letter' | 'wtr_optout';
+  record_type: 'completion_letter' | 'wtr_optout' | 'rtw' | 'rtw_check';
   event: string;
   document_id: string | null;
   staff_id: string | null;
@@ -144,6 +155,18 @@ export interface AuditRow {
   notice_days: number | null;
   effective_from: string | null;
   retain_until: string | null;
+  // 20260929150400 (AC7): right-to-work changes and decisions.
+  doc_type?: string | null;
+  branch_before?: string | null;
+  branch?: string | null;
+  rtw_until_before?: string | null;
+  rtw_until?: string | null;
+  rtw_no_time_limit?: boolean | null;
+  condition?: string | null;
+  below_degree_level?: boolean | null;
+  visa_hour_limit?: number | null;
+  check_source?: string | null;
+  check_outcome?: string | null;
 }
 
 export interface CompliancePageData {

@@ -64,13 +64,13 @@ export function RadarTab({
           tone="danger"
           label="Expired · blocking"
           value={counts.expired}
-          description="Auto-blocked on the expiry day (compliance_daily 05:00) · future bookings released · app locked to Documents (§4.3)"
+          description="Auto-blocked on the expiry day (compliance_daily 05:00) · future bookings released · app locked to Documents"
         />
         <KpiTile
           tone="warn"
           label="Expiring · ≤ 30 days"
           value={counts.expiring}
-          description="Push reminders at 1 month · 2 weeks · 1 week · expiry day — automatic, nothing to press (§4.2)"
+          description="Push reminders at 1 month · 2 weeks · 1 week · expiry day — automatic, nothing to press"
         />
         <KpiTile
           label="Term letters · expire 31 Dec"
@@ -131,9 +131,7 @@ export function RadarTab({
           ))}
         </Select>
         <div className="right">
-          <span className="muted sm">
-            no manual “Send reminder” — the ladder runs itself (§4.1)
-          </span>
+          <span className="muted sm">no manual “Send reminder” — the ladder runs itself</span>
         </div>
       </div>
 
@@ -228,10 +226,7 @@ export function RadarTab({
       </div>
 
       <div className="grid c2">
-        <Panel
-          title="Reminder ladder · push, not email"
-          actions={<Pill>§4.2 · BG-04 / BG-05</Pill>}
-        >
+        <Panel title="Reminder ladder · push, not email" actions={<Pill>automatic</Pill>}>
           <div className="ladder">
             <span className="k">1 month before</span>
             <span>N1 “Update your [document] — it expires on [date]”</span>
@@ -246,7 +241,7 @@ export function RadarTab({
             </span>
           </div>
         </Panel>
-        <Panel title="What the block does · automatically" actions={<Pill>§4.3</Pill>}>
+        <Panel title="What the block does · automatically">
           <div className="sm stack tight">
             <div>
               1. Status → <b>blocked</b> · 2. removed from ALL future confirmed shifts → slots
@@ -257,7 +252,7 @@ export function RadarTab({
               Unblock: the worker re-uploads → the office verifies in Needs review → the FULL
               compliance status is re-checked (every document in date + a Yes declaration verified)
               → unblocked automatically. No manual Unblock for an auto-block; a manual block needs
-              the manager’s Unblock on the profile (§9.6).
+              the manager’s Unblock on the profile.
             </div>
           </div>
         </Panel>

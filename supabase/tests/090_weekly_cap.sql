@@ -44,7 +44,8 @@ select results_eq(
                                      v.completion_letter_verified, v.optout_48h,
                                      v.week_start, v.below_degree_level,
                                      v.completion_date, v.visa_expiry,
-                                     v.optout_cancelled_from, v.under18) c
+                                     v.optout_cancelled_from, v.under18,
+                                     v.verified_on, v.visa_hour_limit) c
       order by v.name $$,
   $$ select name, expect_cap_hours, expect_band from cap_vectors order by name $$,
   'cap.vectors.json: SQL weekly_cap() gives the same cap AND band as TypeScript weeklyCap(), case for case'
