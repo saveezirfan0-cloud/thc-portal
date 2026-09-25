@@ -72,6 +72,6 @@ test('Cancel event demands a reason before it will run (§3.3)', async ({ page }
   // Say what it does before doing it: the bookings, the pushes and auto-assign.
   await expect(dialog).toContainText('N12');
   await expect(dialog).toContainText('auto-assign stops');
-  await dialog.getByRole('button', { name: 'Keep event' }).click();
+  await dialog.getByRole('button', { name: 'Keep the event' }).click();
   await expect(dialog).toBeHidden();
 });

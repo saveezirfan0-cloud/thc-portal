@@ -98,8 +98,13 @@ test('the event list offers the tabs the scope names, and each holds its own doc
 }) => {
   await openAsClient(page, '/client');
   for (const label of ['Upcoming & ongoing', 'Past', 'All']) {
-    // exact: "All" is also the start of "↓ Allocation sheet".
-    await expect(page.getByRole('button', { name: label, exact: true })).toBeVisible();
+    // Anchored at the start: the segment's accessible name carries its count
+    // ("All 2"), so not exact — but "↓ Allocation sheet" must not match "All".
+    await expect(
+      page.getByRole('button', {
+        name: new RegExp('^' + label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
+      }),
+    ).toBeVisible();
   }
   await expect(page.getByPlaceholder('Search events')).toBeVisible();
 
