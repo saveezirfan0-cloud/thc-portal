@@ -3,10 +3,13 @@ import {
   checkInWindow,
   distanceM,
   formatDistance,
+  isEndScreen,
   isStaticPhase,
   shiftPhase,
   shiftScreenReachable,
+  turnedAwayReply,
 } from '../phase';
+import { turnedAwayMessage } from '@thc/domain';
 
 /** 17:00–23:30 UK on 14 June 2026 (BST). */
 const START = '2026-06-14T16:00:00Z';
@@ -121,9 +124,68 @@ describe('§10.4 the three dead ends replace the shift screen', () => {
     expect(isStaticPhase('event_cancelled')).toBe(true);
     expect(isStaticPhase('withdrawn')).toBe(true);
     expect(isStaticPhase('no_checkout')).toBe(true);
-    for (const live of ['before_window', 'check_in', 'locked', 'on_shift', 'on_break', 'closed']) {
+    for (const live of [
+      'before_window',
+      'check_in',
+      'locked',
+      'turned_away',
+      'on_shift',
+      'on_break',
+      'closed',
+    ]) {
       expect(isStaticPhase(live as Parameters<typeof isStaticPhase>[0])).toBe(false);
     }
+  });
+});
+
+describe('§3.2 strict buffer: a turned-away booking gets "Thanks for coming"', () => {
+  const away = shift({ status: 'turned_away' });
+
+  it('replaces the shift from the moment the booking is turned away', () => {
+    // Inside the check-in window, where the live screen would offer the button.
+    expect(shiftPhase({ shift: away, openBreak: false, now: at(-5) })).toBe('turned_away');
+  });
+
+  it('and still on a revisit long after the lock, never the No-show screen', () => {
+    expect(shiftPhase({ shift: away, openBreak: false, now: at(45) })).toBe('turned_away');
+    expect(shiftPhase({ shift: away, openBreak: false, now: at(3000) })).toBe('turned_away');
+  });
+
+  it('is an end screen with nothing to press, and not one of §10.4’s three', () => {
+    expect(isEndScreen('turned_away')).toBe(true);
+    expect(isStaticPhase('turned_away')).toBe(false);
+    expect(isEndScreen('no_checkout')).toBe(true);
+    expect(isEndScreen('check_in')).toBe(false);
+  });
+
+  it('is reachable at /shifts/:id', () => {
+    expect(shiftScreenReachable(away)).toBe(true);
+  });
+
+  it('shows the screen straight from the RPC’s reply to the press, with its minutes', () => {
+    const onTime = turnedAwayReply({
+      decision: 'turned_away',
+      accepted: false,
+      turnAwayPayMin: 240,
+      messageKey: 'turned_away_paid',
+    });
+    expect(onTime).toEqual({ payMin: 240 });
+    expect(turnedAwayMessage(onTime!.payMin)).toContain('you’ll be paid for 4 hours');
+
+    const late = turnedAwayReply({ decision: 'turned_away', turnAwayPayMin: 0 });
+    expect(late).toEqual({ payMin: 0 });
+    expect(turnedAwayMessage(late!.payMin)).not.toContain('4 hours');
+  });
+
+  it('does not take any other reply for a turn-away', () => {
+    expect(turnedAwayReply({ decision: 'checked_in', turnAwayPayMin: null })).toBeNull();
+    expect(turnedAwayReply({ decision: 'out_of_radius' })).toBeNull();
+    expect(turnedAwayReply({ decision: 'locked' })).toBeNull();
+  });
+
+  it('gives way to a cancelled event, which is the newer news', () => {
+    const cancelled = shift({ status: 'turned_away', eventCancelledAt: '2026-06-14T17:00:00Z' });
+    expect(shiftPhase({ shift: cancelled, openBreak: false, now: at(90) })).toBe('event_cancelled');
   });
 });
 
