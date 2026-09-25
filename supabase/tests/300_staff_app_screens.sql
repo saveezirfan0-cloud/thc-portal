@@ -498,12 +498,15 @@ select is(apply_to_shift(:'s1', :'me')->>'ok', 'true',
   'and the same is true of a withdrawal — neither costs the worker the shift');
 delete from bookings where shift_id = :'s1' and staff_id = :'me';
 
--- A CANCELLED row is different and must stay a bar: RULE-04's self-cancel
--- and the office's withdraw both land there, and neither invites a retry.
+-- A CANCELLED row: §3.6 reserves the permanent bar for self-cancel alone
+-- ("Unlike the other cancelled triggers above, self-cancel permanently
+-- excludes the worker"), so an office withdrawal is reopened as an
+-- application (20260930110100, D33). The self-cancel case is asserted
+-- above (self_cancelled) and in 661.
 insert into bookings (shift_id, staff_id, status, source, cancelled_at, cancel_cause)
 values (:'s1', :'me', 'cancelled', 'auto', now(), 'office_withdraw');
-select is(apply_to_shift(:'s1', :'me')->>'reason', 'already_has_booking',
-  'a cancelled booking is NOT a closed one: an office withdrawal is not an invitation to re-apply');
+select is(apply_to_shift(:'s1', :'me')->>'ok', 'true',
+  'an office withdrawal is not RULE-04: the worker may apply again, reopening the row (§3.6, D33)');
 delete from bookings where shift_id = :'s1' and staff_id = :'me';
 
 -- =====================================================================

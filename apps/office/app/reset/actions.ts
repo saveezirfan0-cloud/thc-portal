@@ -9,7 +9,7 @@ import { createClient } from '@thc/db/server';
  * A3 Set new password — §10.2, `wireframes/public/activate.html` (reset,
  * the shared landing), reached from the Back Office's A1/A2.
  *
- * The emailed link lands on /auth/callback, which exchanges it for a
+ * The emailed link lands on /auth/confirm, which exchanges it for a
  * session before this runs. Without that session there is nothing to
  * update, and saying so plainly is the difference between asking for a new
  * link and giving up.

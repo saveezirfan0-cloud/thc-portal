@@ -52,7 +52,64 @@ describe('cap vectors are the same on both sides', () => {
       'student_term_20',
       'uncapped',
       'visa_expired_0',
+      'visa_limit',
     ]);
+  });
+});
+
+// Audit D35: a Mon–Sun week has ONE cap. A completion letter verified on a
+// Wednesday releases from the next Monday — the week it was verified in is a
+// term week for all seven days — and a Monday verification is its own week.
+describe('the completion letter releases whole weeks (D35)', () => {
+  const graduate = (weekStart: string, verifiedOn: string): CapInput => ({
+    visaLimited: true,
+    termState: 'term',
+    completionLetterVerified: true,
+    optOut48h: false,
+    completionDate: '2026-06-30',
+    verifiedOn,
+    weekStart,
+  });
+
+  it('keeps the week of a mid-week verification at the term cap', () => {
+    expect(weeklyCap(graduate(capWeekStart('2026-09-21'), '2026-09-23')).capHours).toBe(20);
+    expect(weeklyCap(graduate(capWeekStart('2026-09-27'), '2026-09-23')).capHours).toBe(20);
+  });
+
+  it('releases from the Monday after', () => {
+    expect(weeklyCap(graduate(capWeekStart('2026-09-28'), '2026-09-23')).capHours).toBe(48);
+  });
+
+  it('releases the same week when verified on its Monday', () => {
+    expect(weeklyCap(graduate('2026-09-21', '2026-09-21')).capHours).toBe(48);
+  });
+});
+
+// Audit D36: a work or dependant visa's own hours limit is an immigration
+// condition. It is applied ahead of the opt-out, and the expiry still wins.
+describe('a visa hours limit (D36)', () => {
+  const worker: CapInput = {
+    visaLimited: false,
+    termState: 'none',
+    completionLetterVerified: false,
+    optOut48h: true,
+    weekStart: '2026-09-21',
+  };
+
+  it('caps a worker whose visa carries a limit, opt-out or not', () => {
+    expect(weeklyCap({ ...worker, visaHourLimit: 20 })).toEqual({
+      capHours: 20,
+      band: 'visa_limit',
+    });
+  });
+
+  it('leaves the opt-out in charge when no limit is recorded', () => {
+    expect(weeklyCap({ ...worker, visaHourLimit: null }).band).toBe('uncapped');
+  });
+
+  it('explains the band on the profile line', () => {
+    const input = { ...worker, visaHourLimit: 20 };
+    expect(explainCap(input, weeklyCap(input))).toBe('20 h/week — the hours limit on the visa');
   });
 });
 

@@ -196,7 +196,7 @@ export function rtwCheckView(
       k: 'Right to work until',
       v: row.no_time_limit
         ? 'no time limit (settled status)'
-        : `${ukDateOnly(row.right_to_work_until)} — the expiry used for reminders (§2.6, §4.4)`,
+        : `${ukDateOnly(row.right_to_work_until)} — the expiry used for reminders`,
     });
   } else if (row.outcome === 'no_right_to_work') {
     lines.push({ k: 'gov.uk result', v: 'no right to work in the UK' });

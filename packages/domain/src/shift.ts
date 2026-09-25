@@ -168,6 +168,98 @@ export function reconfirmingChanges(changed: EditableField[]): ReconfirmField[] 
   return changed.filter(requiresReconfirmation);
 }
 
+/** What the section looked like before the save — the "was" in the reason. */
+export interface ReconfirmBefore {
+  startsAt: Date;
+  endsAt: Date;
+  dressCode: string | null;
+  venueAddress: string | null;
+}
+
+const UK_MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
+
+/** "Fri 19 Sep" in Europe/London — spelled out so ICU's "Sept" never leaks in. */
+export function ukDayLabel(instant: Date): string {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London',
+    weekday: 'short',
+    day: 'numeric',
+    month: 'numeric',
+  }).formatToParts(instant);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('weekday')} ${get('day')} ${UK_MONTHS[Number(get('month')) - 1] ?? ''}`;
+}
+
+function ukClock(instant: Date): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).format(instant);
+}
+
+/** "09:00–14:00" in UK time — a scheduled window (§1.8). */
+export function ukWindowLabel(startsAt: Date, endsAt: Date): string {
+  return `${ukClock(startsAt)}–${ukClock(endsAt)}`;
+}
+
+/**
+ * The line the worker's card shows under "Time Changed" (§3.5): what
+ * changed, in the office's words, with the old value — "Start time moved
+ * by the office (was 09:00–14:00)". Stored in `bookings.reconfirm_reason`
+ * and printed as-is by the Staff App, so it is a sentence, never field
+ * names. Times are the ROLE's own (RULE-18), in UK time (§1.8).
+ *
+ * A date move carries the times with it, so it is reported once, as the
+ * date, with the old day and window.
+ */
+export function reconfirmReason(
+  changed: readonly ReconfirmField[],
+  before: ReconfirmBefore,
+): string {
+  const has = (field: ReconfirmField) => changed.includes(field);
+  const window = ukWindowLabel(before.startsAt, before.endsAt);
+  const lines: string[] = [];
+
+  if (has('event_date')) {
+    lines.push(`Date moved by the office (was ${ukDayLabel(before.startsAt)} ${window})`);
+  } else if (has('starts_at') && has('ends_at')) {
+    lines.push(`Start and end time moved by the office (was ${window})`);
+  } else if (has('starts_at')) {
+    lines.push(`Start time moved by the office (was ${window})`);
+  } else if (has('ends_at')) {
+    lines.push(`End time moved by the office (was ${window})`);
+  }
+  if (has('venue_address')) {
+    lines.push(`Venue changed by the office (was ${before.venueAddress?.trim() || 'not set'})`);
+  }
+  if (has('dress_code')) {
+    lines.push(
+      `Dress code changed by the office (was ${before.dressCode?.trim() || 'not specified'})`,
+    );
+  }
+  return lines.join(' · ');
+}
+
+/** Whether a set of changes moved the role's time — N11 — or only its details. */
+export function reconfirmMovesTime(changed: readonly ReconfirmField[]): boolean {
+  return changed.some((f) => f === 'starts_at' || f === 'ends_at' || f === 'event_date');
+}
+
 // ---------------------------------------------------------------------
 // Forecast — the sticky summary panel
 // ---------------------------------------------------------------------

@@ -566,3 +566,43 @@ describe('N6 / N7 render from the payload booking_tick writes', () => {
     expect(render(entry.deepLink ?? '', payload)).toBe('/shifts');
   });
 });
+
+/**
+ * N10d and N11b — §8's trigger applies, §8's copy would be untrue (ADR-0037).
+ * N10d is queued by withdraw_booking() (20260930110300) with the same values
+ * as N10b; N11b by the office's event save with {change} and {bookingId}.
+ */
+describe('N10d / N11b — the extensions for a withdrawn invitation and a details change', () => {
+  const placeholders = (text: string) => [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+
+  it('are extensions, never §8 codes', () => {
+    for (const code of ['N10d', 'N11b'] as const) {
+      expect(EXTENSION_CODES as readonly string[]).toContain(code);
+      expect(SCOPE_CODES as readonly string[]).not.toContain(code);
+      expect(template(code).trigger).toMatch(/Not in §8/);
+      expect(template(code).channel).toBe('push');
+    }
+  });
+
+  it('N10d reads the values N10b does, and never says the worker was removed', () => {
+    expect(placeholders(body('N10d')).sort()).toEqual(placeholders(body('N10b')).sort());
+    expect(body('N10d')).not.toMatch(/removed/i);
+    expect(render(body('N10d'), { event: 'Gala Dinner', dateTime: 'Sat 19 Sep 17:00' })).toBe(
+      'Your invitation to Gala Dinner · Sat 19 Sep 17:00 has been withdrawn.',
+    );
+    expect(template('N10d').deepLink).toBe('/invites');
+  });
+
+  it('N11b does not claim the time changed', () => {
+    expect(body('N11b')).not.toMatch(/time/i);
+    expect(placeholders(body('N11b'))).toEqual(['change']);
+    expect(
+      render(body('N11b'), {
+        change: 'Dress code changed by the office (was Black & whites)',
+      }),
+    ).toBe(
+      'Shift details changed — Dress code changed by the office (was Black & whites). Please confirm in the app.',
+    );
+    expect(template('N11b').deepLink).toBe(template('N11').deepLink);
+  });
+});

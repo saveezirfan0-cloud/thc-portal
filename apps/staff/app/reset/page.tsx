@@ -12,7 +12,7 @@ export const metadata = { title: 'Set a new password · THC Staff' };
 /**
  * A3 Set new password — §10.2, wireframes/staff/auth.html.
  *
- * Reached two ways: from the emailed recovery link (via /auth/callback,
+ * Reached two ways: from the emailed recovery link (via /auth/confirm,
  * which exchanges the code for a session) and from an activation link. If
  * neither left a session behind, the link is spent — and this says so
  * here, before the worker types a password twice for nothing.
@@ -41,22 +41,26 @@ export default async function Page({
   // so they must not stack two coral alerts that say the same thing.
   const spent = Boolean(error) || (configured && !signedIn);
 
+  if (spent) {
+    // The expired-link variant, as the Back Office and Client Portal draw
+    // it: its own heading, one line of why, and the way on.
+    return (
+      <AuthCard product="Staff app" heading="This link has expired">
+        <Alert tone="coral">
+          {error
+            ? 'That link could not be opened. Reset links work once and for a limited time.'
+            : `This link has expired or has already been used. Reset links are valid for ${RESET_LINK_VALIDITY}.`}
+        </Alert>
+        <Link href="/forgot" className="btn block">
+          Request a new link
+        </Link>
+      </AuthCard>
+    );
+  }
+
   return (
     <AuthCard product="Staff app" heading="Set a new password">
-      {spent ? (
-        <>
-          <Alert tone="coral">
-            {error
-              ? 'That link could not be opened. Ask for a new one from the sign-in screen.'
-              : `This link has expired or has already been used. Reset links are valid for ${RESET_LINK_VALIDITY}.`}
-          </Alert>
-          <p className="sm muted">
-            <Link href="/forgot">Send me a new link</Link>
-          </p>
-        </>
-      ) : (
-        <ResetForm />
-      )}
+      <ResetForm />
     </AuthCard>
   );
 }

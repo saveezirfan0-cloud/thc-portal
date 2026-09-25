@@ -348,7 +348,7 @@ export const ACCEPT_REFUSAL_COPY: Record<AcceptRefusal, { title: string; body: s
   },
   self_cancelled: {
     title: 'This invitation is no longer open',
-    body: 'You cancelled a confirmed shift on this event, so you can’t rejoin it (§3.6).',
+    body: 'You cancelled a confirmed shift on this event, so you can’t rejoin it.',
   },
   overlap: {
     title: "You're already booked for an overlapping shift.",

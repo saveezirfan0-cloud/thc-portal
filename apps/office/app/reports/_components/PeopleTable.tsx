@@ -268,7 +268,7 @@ function ShiftRow({ line }: { line: PayrollLine }) {
                 {breakLabel(line.unpaid_break_min)} break
               </span>
             ) : null}
-            {line.floor_applied ? <span className="sub">4 h minimum (RULE-14)</span> : null}
+            {line.floor_applied ? <span className="sub">4 h minimum</span> : null}
           </>
         )}
       </td>
@@ -278,7 +278,7 @@ function ShiftRow({ line }: { line: PayrollLine }) {
           <>
             <Pill tone="coral">Pending</Pill>
             <span className="sub">
-              excluded from the CSV until resolved; rolls forward to the next Monday (BG-08)
+              excluded from the CSV until resolved; rolls forward to the next Monday
             </span>
           </>
         ) : (
@@ -307,7 +307,7 @@ function Actual({ line }: { line: PayrollLine }) {
         <span className="sub">
           strict buffer · attempt logged{' '}
           {line.attempted_at ? formatTimeIn(new Date(line.attempted_at), zone) : '—'},{' '}
-          {onTime ? 'on time → fixed 4 h, absorbed by THC (RULE-15)' : 'late → nothing (RULE-15)'}
+          {onTime ? 'on time → fixed 4 h, absorbed by THC' : 'late → nothing'}
         </span>
       </>
     );
@@ -316,7 +316,7 @@ function Actual({ line }: { line: PayrollLine }) {
     return (
       <>
         <Pill>Event cancelled on the day</Pill>
-        <span className="sub">full scheduled hours paid and billed (§3.3)</span>
+        <span className="sub">full scheduled hours paid and billed</span>
       </>
     );
   }
@@ -349,7 +349,7 @@ function Actual({ line }: { line: PayrollLine }) {
           {line.check_in_at &&
           new Date(line.check_in_at).getTime() - new Date(line.starts_at).getTime() < GRACE_MS
             ? `inside the 30-min grace, paid from ${formatTimeIn(new Date(line.starts_at), UK_ZONE)} UK`
-            : 'paid from arrival (RULE-01)'}
+            : 'paid from arrival'}
         </span>
       ) : line.early_check_out ? (
         <span className="sub rp-amber">early check-out — paid to the actual finish</span>

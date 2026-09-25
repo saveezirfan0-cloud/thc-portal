@@ -18,7 +18,14 @@ vi.mock('next/link', () => ({
 }));
 
 const profile = vi.fn<() => Promise<StaffProfile | null>>();
-vi.mock('../../profile/data', () => ({ loadProfile: () => profile() }));
+// The shell reads `readProfile()` (audit D16): no row here stands for an
+// environment with no project, where there is nothing to lock on or draw.
+vi.mock('../../profile/data', () => ({
+  readProfile: async () => {
+    const p = await profile();
+    return p ? { kind: 'ok', profile: p } : { kind: 'unconfigured' };
+  },
+}));
 
 const sign = vi.fn<(path: string | null) => Promise<string | null>>();
 vi.mock('../../profile/photos', () => ({ signOwnPhoto: (path: string | null) => sign(path) }));

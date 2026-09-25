@@ -94,8 +94,8 @@ export default async function Page({
         {source ? (
           <Alert tone="cyan">
             <b>Duplicating {source.title}.</b> The roles are copied — times, headcount, buffer,
-            rates, dress code — but <b>not the staff</b>: the new event starts filling from zero
-            (§3.2). Set the new date, then save.{' '}
+            rates, dress code — but <b>not the staff</b>: the new event starts filling from zero.
+            Set the new date, then save.{' '}
             <Link href={`/events/${source.id}`}>Back to the original</Link>
           </Alert>
         ) : null}

@@ -14,6 +14,24 @@ export const STATUS_LABEL: Record<MonitorStatus, string> = {
   due: 'Due',
 };
 
+/**
+ * The words on the Status pill. Two of them carry a time, and both are the
+ * VIEWER's clock with no zone suffix (§1.8): "Checked out 22:48" is an actual
+ * stamp, and "Due 17:00" is the one scheduled time §1.8 deliberately shows in
+ * local time only — the pill is too narrow for a label, and the Window column
+ * beside it already carries UK and local (audit D30).
+ */
+export function statusLabel(
+  row: Pick<MonitorRow, 'status' | 'checkOutAt' | 'startsAt'>,
+  local: (iso: string) => string,
+): string {
+  if (row.status === 'checked_out' && row.checkOutAt) {
+    return `${STATUS_LABEL.checked_out} ${local(row.checkOutAt)}`;
+  }
+  if (row.status === 'due') return `${STATUS_LABEL.due} ${local(row.startsAt)}`;
+  return STATUS_LABEL[row.status];
+}
+
 export type PillTone = 'green' | 'amber' | 'coral' | 'neutral';
 
 /**

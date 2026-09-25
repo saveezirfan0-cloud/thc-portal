@@ -116,9 +116,10 @@ as today.
 - [ ] **Office pin editor?** When a worker's postcode lookup fails, their
       profile shows "location out of date" until they re-save a findable
       address. Say if managers should be able to move the pin themselves.
-- [ ] **Close `/apply`'s last bypass?** Revoking anon from `submit_application`
-      makes the per-caller limit unbypassable, but then `/apply` depends on
-      `SUPABASE_SERVICE_ROLE_KEY` being set on the Staff App (it is today).
+- [x] ~~**Close `/apply`'s last bypass?**~~ **Done in the 25.09 audit fix round
+      (ADR-0039):** `submit_application` is service-role only and `/apply`
+      refuses in plain words without `SUPABASE_SERVICE_ROLE_KEY` on the Staff
+      App. The security advisor's anon-callable definer count drops by one.
 - [ ] **Gender at step 7** is asked as Male/Female because §9.9's New Starter
       report says "Gender (M/F)" (HMRC). Confirm with THC, or ask a session to
       remove it (ADR-0024).
@@ -160,6 +161,50 @@ hand as before (ADR-0018). THC has accepted that a passing check verifies a work
       `190`, not a dashboard change. Then re-run `select install_job_schedules();`
 - [ ] Share codes filed before the switch have no check. Press **Run gov.uk check** on each
       in Compliance → Needs review.
+
+## 9 · After the 25.09 audit fix round (`docs/18-audit-2026-09-25.md`)
+
+Settings the round depends on, and the choices it recorded as defaults.
+
+- [ ] **Supabase → Auth → Email Templates → Reset Password**: paste
+      `supabase/templates/recovery.html`. The link goes to
+      `/auth/confirm?token_hash=…`, so it works from any browser or mail app
+      (ADR-0039).
+- [ ] **Supabase → Auth → URL Configuration → Redirect URLs**: for each of the
+      three apps add `<url>/auth/callback**` **and** `<url>/auth/confirm**`.
+- [ ] **Supabase → Auth**: sign-ups **off**, minimum password length **10**
+      with letters and digits, **secure password change** on — the values in
+      `supabase/config.toml`.
+- [ ] **Vercel**, all three projects: `NEXT_PUBLIC_OFFICE_URL`,
+      `NEXT_PUBLIC_STAFF_URL`, `NEXT_PUBLIC_CLIENT_URL`. Forgot-password now
+      refuses in production rather than send a link to localhost.
+- [ ] **Vercel, thc-portal-staff**: keep `SUPABASE_SERVICE_ROLE_KEY` set —
+      `/apply` now needs it.
+- [ ] **Regenerate `packages/db/src/types.generated.ts`** once the round is
+      live; several new RPCs, columns and views are read through local casts.
+- [ ] **Before any real data**: change the six seed passwords (`password123`)
+      or delete the seed users on the live project.
+- [ ] **On the morning of a client walk-through**: re-run
+      `supabase/demo/review-data.sql` so the "today" event sits around the
+      current hour, and put a few sample files in Storage so document and photo
+      previews are not empty.
+- [ ] **THC decisions recorded as defaults** — confirm or change:
+      - ADR-0035 — Left early = a check-out more than 15 min before the
+        section's end (on or off site); an off-site check-out whose last
+        on-site fix is over 30 min old goes to review as No check-out, and
+        that review does not count against the show-rate.
+      - ADR-0036 — Staff App failure states (fail closed), the 8-second
+        check-out GPS reading, the schematic map.
+      - ADR-0037 — a checked-in (`worked`) booking counts as staffed;
+        automatic rounds never re-invite someone who declined, was withdrawn
+        or was released at 12:05; Radar stops offering at headcount (buffer
+        seats by invitation).
+      - ADR-0038 — "Hours this week" shows worked / cap with booked beneath;
+        the client line-up is grouped per role section.
+      - ADR-0039 — GDPR removal scope (including whether the payroll /
+        new-starter CSVs in the `reports` bucket are kept after a removal).
+      - ADR-0040 — the 10 h below-degree band (the completion-letter PDF wins
+        over the v1.5 changelog), visa hour limits, the NI number check.
 
 ## Done
 

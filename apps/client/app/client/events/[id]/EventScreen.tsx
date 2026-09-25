@@ -6,7 +6,7 @@ import { Alert, Avatar, Button, Panel, Pill } from '@thc/ui';
 import { UK_ZONE, formatDateTimeIn, formatTimeIn } from '@thc/domain';
 import { EventWindow } from '../../EventWindow';
 import { ukDateLong, ukDateShort } from '../../format';
-import { feedbackOpen, fillOf, groupByRole, headerDocuments, statusTone } from '../../rules';
+import { feedbackOpen, fillOf, groupBySection, headerDocuments, statusTone } from '../../rules';
 import type { DocumentKind, LineupRow, PortalEvent, RoleSection } from '../../rules';
 import { FeedbackModal } from './FeedbackModal';
 
@@ -54,7 +54,9 @@ export function EventScreen({
   const [rating, setRating] = useState<LineupRow | null>(null);
 
   const at = useMemo(() => new Date(now), [now]);
-  const groups = useMemo(() => groupByRole(lineup, sections), [lineup, sections]);
+  const groups = useMemo(() => groupBySection(lineup, sections), [lineup, sections]);
+  // Two sections of one role are two panels but still one role.
+  const roleCount = useMemo(() => new Set(groups.map((g) => g.role)).size, [groups]);
   const fill = useMemo(() => fillOf(sections), [sections]);
   const open = feedbackOpen(event, at);
   const cancelled = event.status === 'cancelled';
@@ -136,7 +138,7 @@ export function EventScreen({
             <div className="k">{completed ? 'Staff on the day' : 'Confirmed staff'}</div>
             <div className="v">
               <b>{fill.confirmed}</b> of {fill.headcount} ·{' '}
-              {groups.length === 1 ? '1 role' : `${groups.length} roles`}
+              {roleCount === 1 ? '1 role' : `${roleCount} roles`}
             </div>
           </div>
           {timesheet ? (
@@ -148,7 +150,7 @@ export function EventScreen({
                     the view carries no recipient count, so none is claimed. */}
                 Sign-out timesheet generated{' '}
                 {formatDateTimeIn(new Date(timesheet.issuedAt), UK_ZONE)}
-                <span className="sub">by email to the contacts on your client card (§11.4)</span>
+                <span className="sub">by email to the contacts on your client card</span>
               </div>
             </div>
           ) : null}
@@ -183,7 +185,7 @@ export function EventScreen({
         ? null
         : groups.map((group) => (
             <Panel
-              key={group.role}
+              key={group.key}
               className="role-panel"
               title={
                 <span className="role-title">

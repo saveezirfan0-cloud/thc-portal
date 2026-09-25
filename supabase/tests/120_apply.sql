@@ -1,9 +1,11 @@
 -- =====================================================================
 -- 120 · The public application form (§2.1, §2.12, §1.7)
 --
--- submit_application() is the only public write in the system: `anon` calls
--- it from an unauthenticated page on the open internet. Three things are
--- asserted here, and the third is the one that is easy to lose.
+-- submit_application() is the only public write in the system: the Staff
+-- App's /apply server action calls it for an unauthenticated visitor, with
+-- the service key (anon lost the grant in 20260930120200, ADR-0024).
+-- Three things are asserted here, and the third is the one that is easy
+-- to lose.
 --
 --   1. The rules the form shows are repeated on the server, because a form
 --      can be edited and the server cannot (§2.1 says both, explicitly).
@@ -26,7 +28,7 @@ select plan(73);
 -- 7010 range.
 -- ---------------------------------------------------------------------
 select set_config('request.jwt.claims', '', true);
-set local role anon;
+set local role service_role;
 -- Untrimmed, mixed case and spaced out on purpose: this is what a phone
 -- keyboard produces.
 select submit_application('Nadia', 'Testwood', '  Nadia.Testwood@RLS.test ', '+44 7010 000456', (current_date - interval '24 years')::date, true);
@@ -54,7 +56,7 @@ select is((select count(*)::int from audit_log where action = 'application_submi
 -- ---------------------------------------------------------------------
 -- The age gate (§2.1) — "checked both on the form and on the server"
 -- ---------------------------------------------------------------------
-set local role anon;
+set local role service_role;
 select throws_ok(
   $$ select submit_application('Kid','Young','kid@rls.test','+447700900801', (current_date - interval '18 years' + interval '1 day')::date, true) $$,
   '22023', 'You must be 18 or over to apply.',
@@ -96,7 +98,7 @@ select is((select count(*)::int from staff where email in ('kid@rls.test','nc@rl
 -- ---------------------------------------------------------------------
 -- The duplicate check (§2.12) — one person keeps one record
 -- ---------------------------------------------------------------------
-set local role anon;
+set local role service_role;
 -- Different case from the stored address, to prove the match is not literal.
 select submit_application('Staff','Alpha','STAFFA@rls.test','+447700900804', date '1995-01-01', true);
 reset role;
@@ -109,7 +111,7 @@ select is((select staff_id from applications where phone = '+447700900804'), :'s
 select is((select status::text from staff where id = :'staffa'), 'compliant',
   'the existing record is not touched by the application: the manager decides');
 
-set local role anon;
+set local role service_role;
 select submit_application('Someone','Else','brand.new@rls.test','+44 7700 900011', date '1995-01-01', true);
 reset role;
 select is((select outcome::text from applications where email = 'brand.new@rls.test'), 'returning_applicant',
@@ -121,7 +123,7 @@ select is((select count(*)::int from staff where email = 'brand.new@rls.test'), 
 -- submission only matches if the COLUMN is normalised too. Without that this
 -- whole half of §2.12 passes its own tests against tidy fixture data and
 -- matches nobody in the real table.
-set local role anon;
+set local role service_role;
 select submit_application('Someone','Newagain','someone.newagain@rls.test','+447700900108', date '1998-12-09', true);
 reset role;
 select is((select outcome::text from applications where email = 'someone.newagain@rls.test'), 'returning_applicant',
@@ -132,7 +134,7 @@ select is((select count(*)::int from staff where email = 'someone.newagain@rls.t
 -- ADR-0008: the mobile arm is mobile AND date of birth, not mobile alone.
 -- The same number with a different date is a different person — a recycled
 -- number, or a second person in one household — and must not be matched.
-set local role anon;
+set local role service_role;
 select submit_application('Not','Thesame','not.thesame@rls.test','+447700900108', (current_date - interval '55 years')::date, true);
 reset role;
 select is((select outcome::text from applications where email = 'not.thesame@rls.test'), 'candidate_created',
@@ -146,7 +148,7 @@ select is((select age_band from applications where email = 'not.thesame@rls.test
 -- A GDPR-removed worker (§1.7) is deliberately unmatchable: their record no
 -- longer describes them, so they apply as a genuinely new person.
 update staff set removed_at = now() where id = :'staffb';
-set local role anon;
+set local role service_role;
 select submit_application('Staff','Bravo','staffb@rls.test','+447700900805', date '1994-02-02', true);
 reset role;
 select is((select outcome::text from applications where phone = '+447700900805'), 'candidate_created',
@@ -159,12 +161,16 @@ select is(
   (select pg_get_function_result('public.submit_application(text,text,text,text,date,boolean)'::regprocedure)),
   'void',
   '§2.12 the caller learns nothing: an outcome in the return value would make this public endpoint an account-existence oracle');
-select ok(has_function_privilege('anon', 'public.submit_application(text,text,text,text,date,boolean)', 'execute'),
-  'anon may call it — /apply is a public URL with no registration (§2.1)');
-select ok(has_function_privilege('authenticated', 'public.submit_application(text,text,text,text,date,boolean)', 'execute'),
-  'a signed-in visitor may call it too: being logged in elsewhere is no reason to block an application');
-select ok(not has_function_privilege('public', 'public.submit_application(text,text,text,text,date,boolean)', 'execute'),
-  'the grant is named, not inherited from PUBLIC');
+-- 20260930120200: the Staff App's server action is the only caller, with
+-- the service key and through submit_application_as_caller(), which adds
+-- the per-caller limit (ADR-0024). The anon grant was the way round it.
+select ok(not has_function_privilege('anon', 'public.submit_application(text,text,text,text,date,boolean)', 'execute'),
+  'anon cannot call it straight through PostgREST: /apply reaches it only through the server action and its per-caller limit (ADR-0024)');
+select ok(not has_function_privilege('authenticated', 'public.submit_application(text,text,text,text,date,boolean)', 'execute'),
+  'nor can a signed-in session: the per-caller limit is not optional for anyone');
+select ok(has_function_privilege('service_role', 'public.submit_application(text,text,text,text,date,boolean)', 'execute')
+          and not has_function_privilege('public', 'public.submit_application(text,text,text,text,date,boolean)', 'execute'),
+  'the service role holds it, by a named grant, not inherited from PUBLIC');
 
 set local role anon;
 select throws_ok(
@@ -265,14 +271,14 @@ select doesnt_match(
 -- not depend on the caller's session timezone. Someone born exactly
 -- eighteen years ago by the London calendar is eighteen, whoever asks.
 set local timezone = 'Pacific/Kiritimati';
-set local role anon;
+set local role service_role;
 select lives_ok(
   $$ select submit_application('Dateline','East','dateline.east@rls.test','+447700900851',
        ((now() at time zone 'Europe/London')::date - interval '18 years')::date, true) $$,
   'a caller fourteen hours ahead of London gets the London answer');
 reset role;
 set local timezone = 'Pacific/Niue';
-set local role anon;
+set local role service_role;
 select lives_ok(
   $$ select submit_application('Dateline','West','dateline.west@rls.test','+447700900852',
        ((now() at time zone 'Europe/London')::date - interval '18 years')::date, true) $$,
@@ -312,7 +318,7 @@ insert into staff (first_name, last_name, email, phone, dob, status)
 values ('Was','Blocked','was.blocked@rls.test','+447700900861', date '1990-03-03', 'blocked'),
        ('Was','Rejected','was.rejected@rls.test','+447700900862', date '1990-04-04', 'rejected');
 
-set local role anon;
+set local role service_role;
 select submit_application('Was','Blocked','was.blocked@rls.test','+447700900871', date '1990-03-03', true);
 select submit_application('Was','Rejected','was.rejected@rls.test','+447700900872', date '1990-04-04', true);
 reset role;
@@ -328,7 +334,7 @@ select is((select outcome::text from applications where email = 'was.rejected@rl
 -- apps/staff/app/apply/form.ts. Only the TypeScript side had boundary
 -- vectors, so the two could drift at exactly the ages where a band changes.
 -- ---------------------------------------------------------------------
-set local role anon;
+set local role service_role;
 select submit_application('Band','Thirty','band30@rls.test','+447700900881', ((now() at time zone 'Europe/London')::date - interval '30 years')::date, true);
 select submit_application('Band','Thirtyone','band31@rls.test','+447700900882', ((now() at time zone 'Europe/London')::date - interval '31 years')::date, true);
 select submit_application('Band','Forty','band40@rls.test','+447700900883', ((now() at time zone 'Europe/London')::date - interval '40 years')::date, true);
@@ -355,7 +361,7 @@ select is(
 -- which is a day earlier, so dates in that one-year gap passed the form and
 -- came back as a server banner on a field the form had called fine.
 -- ---------------------------------------------------------------------
-set local role anon;
+set local role service_role;
 select lives_ok(
   $$ select submit_application('Exactly','Hundred','exactly100@rls.test','+447700900891',
        ((now() at time zone 'Europe/London')::date - interval '100 years')::date, true) $$,
@@ -384,7 +390,7 @@ reset role;
 -- Staff Alpha's real address, Staff Alpha's real mobile, somebody else's
 -- date of birth. Before the fix this matched on the email arm. ADR-0027
 -- records the deviation from §2.12's "email" arm and asks THC to confirm.
-set local role anon;
+set local role service_role;
 select submit_application('Mallory','Impostor','STAFFA@rls.test','+447700900011', date '1979-06-06', true);
 reset role;
 select is((select outcome::text from applications where email = 'staffa@rls.test' and dob = date '1979-06-06'), 'candidate_created',
@@ -410,7 +416,7 @@ select is((select value from settings where key = 'apply_throttle'),
   '{"per_email": 3, "per_msisdn": 3, "window_hours": 24}'::jsonb,
   'the limits are settings, not constants: an office running a recruitment day raises them without a release');
 
-set local role anon;
+set local role service_role;
 select lives_ok(
   $$ select submit_application('Rate','Limit','rate.limit@rls.test','+447700900901', date '1990-03-03', true) $$,
   'first submission from an address is accepted');
@@ -430,7 +436,7 @@ reset role;
 -- and the same message. Naming which of the two arms tripped would turn
 -- the endpoint back into the oracle §2.12 and 20260921150000's header both
 -- refuse, so the copy mentions neither.
-set local role anon;
+set local role service_role;
 select lives_ok(
   $$ select submit_application('One','Household','h1@rls.test','+447700900911', date '1991-04-04', true) $$,
   'a mobile may be used once');

@@ -107,7 +107,7 @@ test('the bare domain lands on the event list', async ({ page }) => {
 
 test('the portal serves its own shell: a top bar and no sidebar (§11.1)', async ({ page }) => {
   await openAsClient(page, '/client');
-  await expect(page.getByRole('heading', { name: 'Your events' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your events', exact: true })).toBeVisible();
   const top = page.locator('header.ctop');
   await expect(top).toBeVisible();
   await expect(top).toContainText('Client Portal');
@@ -166,6 +166,15 @@ test('the event list offers the tabs the scope names, and each holds its own doc
   for (const foreign of ['Product Launch', 'Awards Night', 'Wedding', 'Conference Lunch']) {
     await expect(rows.filter({ hasText: foreign })).toHaveCount(0);
   }
+});
+
+test('the list panel names the customer (§11.1)', async ({ page }) => {
+  // wireframes/client/events.html: "Events · Leonardo Hotel St Pauls",
+  // read from client_company_v under the customer's own session.
+  await openAsClient(page, '/client');
+  await expect(page.locator('section.panel h3').first()).toContainText(
+    'Events · Leonardo Hotel St Pauls',
+  );
 });
 
 test('a row is name · venue · date/time · "N of M confirmed" · faces · document · details (§11.1)', async ({

@@ -132,17 +132,18 @@ function addDays(isoDate: string, days: number): string {
 }
 
 /**
- * The first day an approved letter lifts the cap. `weeklyCap()` releases a
- * week only when it STARTS on or after the completion date (a straddling week
- * keeps the lower cap), and the database adds that nothing is backdated before
- * the verification. So: the later of the verification day and the first
- * Monday on or after the completion date. Mirrors
+ * The first day an approved letter lifts the cap: the first Monday on or after
+ * the LATER of the course completion date and the verification day — or that
+ * day itself when it is a Monday. `weeklyCap()` releases a week only when it
+ * STARTS on or after both (a straddling week keeps the lower cap), so the
+ * release always begins on a Monday and never splits a Mon–Sun week, whether
+ * the completion date is in the future or long past. Mirrors
  * `completion_effective_from()`.
  */
 export function completionEffectiveFrom(completionDate: string, verifiedOn: string): string {
-  const monday = capWeekStart(completionDate);
-  const firstFullWeek = monday === completionDate ? completionDate : addDays(monday, 7);
-  return firstFullWeek > verifiedOn ? firstFullWeek : verifiedOn;
+  const later = completionDate > verifiedOn ? completionDate : verifiedOn;
+  const monday = capWeekStart(later);
+  return monday === later ? later : addDays(monday, 7);
 }
 
 /**

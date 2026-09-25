@@ -21,4 +21,8 @@ describe('capReason — every band the database returns', () => {
   it('names an expired right to work as a hard stop (acceptance criterion 6)', () => {
     expect(capReason('visa_expired_0', 0)).toBe('0 h — right to work expired, cannot be rostered');
   });
+
+  it('names a work or dependant visa’s own hours limit (visa_limit, audit D36)', () => {
+    expect(capReason('visa_limit', 20)).toBe('20 h — the hours limit on the visa');
+  });
 });

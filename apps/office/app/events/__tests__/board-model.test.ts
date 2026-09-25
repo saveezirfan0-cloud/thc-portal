@@ -288,7 +288,7 @@ describe('Unavailable names the real reason (§3.3, §3.4, §9.6)', () => {
     ]);
   });
 
-  it('labels a cancelled booking by its cancel_cause — an office withdrawal is not a self-cancel', () => {
+  it('labels an ended booking by its cancel_cause when the pool cannot be read — an office withdrawal is not a self-cancel', () => {
     const ended: EndedBooking[] = [
       { staffId: 'zara', status: 'cancelled', cancelCause: 'office_withdraw', appliedAt: null },
       { staffId: 'ben', status: 'cancelled', cancelCause: 'ready_cutoff', appliedAt: null },
@@ -302,8 +302,12 @@ describe('Unavailable names the real reason (§3.3, §3.4, §9.6)', () => {
       { staffId: 'omar', status: 'closed', cancelCause: 'withdrawn_by_worker', appliedAt: 'x' },
       { staffId: 'priya', status: 'closed', cancelCause: 'declined', appliedAt: null },
     ];
-    const list = buildUnavailable([], ended, people, none);
+    // With the pool unreadable (null) nobody may silently disappear: every
+    // ended booking is listed by its cause. With the pool read, all six are
+    // invitable again and sit in the pool instead (D33, below).
+    const list = buildUnavailable(null, ended, people, none);
     const byName = Object.fromEntries(list.map((e) => [e.name, e.label]));
+    expect(buildUnavailable([], ended, people, none)).toEqual([]);
     expect(byName).toEqual({
       'Zara A.': 'Withdrawn',
       'Ben T.': 'Released at the cutoff',
@@ -349,7 +353,7 @@ describe('Unavailable names the real reason (§3.3, §3.4, §9.6)', () => {
 
   it('an unknown or missing cause says "Cancelled" rather than guessing', () => {
     const [zara] = buildUnavailable(
-      [],
+      null,
       [{ staffId: 'zara', status: 'cancelled', cancelCause: null, appliedAt: null }],
       people,
       none,
@@ -406,10 +410,14 @@ describe('the role header rate line (§3.3, §9.8)', () => {
 describe('manual invite and the switches', () => {
   it('turns every office_invite_worker refusal into the manager’s words', () => {
     expect(inviteRefusal('full')).toMatch(/fully confirmed/);
-    expect(inviteRefusal('event_ended')).toMatch(/RULE-16/);
-    expect(inviteRefusal('self_cancelled')).toMatch(/RULE-04/);
-    expect(inviteRefusal('already_has_booking')).toMatch(/already has a booking/);
-    expect(inviteRefusal('hours_limit')).toMatch(/RULE-20/);
+    expect(inviteRefusal('event_ended')).toMatch(/already ended/);
+    expect(inviteRefusal('self_cancelled')).toMatch(/cancelled off this event/);
+    // D33: an ended booking is reopened, so this is a LIVE one (or history).
+    expect(inviteRefusal('already_has_booking')).toMatch(/already holds this role/);
+    expect(inviteRefusal('already_has_booking')).not.toMatch(/released or closed/);
+    expect(inviteRefusal('target_met')).toMatch(/fully confirmed/);
+    expect(inviteRefusal('not_bookable')).toMatch(/not a worker/);
+    expect(inviteRefusal('hours_limit')).toMatch(/weekly hours limit/);
     expect(inviteRefusal('something_new')).toBe('The invitation was not sent (something_new).');
   });
 

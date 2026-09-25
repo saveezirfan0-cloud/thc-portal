@@ -115,8 +115,8 @@ export function ClientPolicies({
             <br />
             <span className="muted xs">
               {paysBreaks
-                ? 'Workers have no break buttons and log nothing (§5.2b).'
-                : 'Workers get Start / Finish break buttons; break time is deducted from pay and charge (§5.2b).'}
+                ? 'Workers have no break buttons and log nothing.'
+                : 'Workers get Start / Finish break buttons; break time is deducted from pay and charge.'}
             </span>
           </span>
         </label>
@@ -129,7 +129,7 @@ export function ClientPolicies({
             <span className="muted xs">
               {paysBuffer
                 ? 'Everyone accepted works and is paid normally.'
-                : 'Strict: past the headcount, later arrivals are turned away — a fixed 4 hours if on time, nothing if late (RULE-15).'}
+                : 'Strict: past the headcount, later arrivals are turned away — a fixed 4 hours if on time, nothing if late.'}
             </span>
           </span>
         </label>

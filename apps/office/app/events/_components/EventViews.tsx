@@ -29,6 +29,19 @@ export function StatusPill({ status }: { status: EventStatus }) {
 
 const classes = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ');
 
+/**
+ * The status pill, small, for a calendar chip (§3.2: "the same pill appears
+ * on each event's row in the List view and Calendar"). The chip's border
+ * already carries the fill colour, so the pill carries the words.
+ */
+function ChipStatus({ status }: { status: EventStatus }) {
+  return (
+    <span className={classes('st', status)} aria-label={`Status: ${EVENT_STATUS_LABEL[status]}`}>
+      {EVENT_STATUS_LABEL[status]}
+    </span>
+  );
+}
+
 /** The chip's fill word: "full", "4 open", or nothing once cancelled. */
 function chipFill(row: EventRow): string | null {
   if (row.status === 'cancelled') return null;
@@ -126,7 +139,11 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
               </td>
               <td data-label="Fill">
                 {cancelled ? (
-                  <span className="muted sm">excluded from financials</span>
+                  // §3.3: only a cancellation BEFORE the day is excluded; on
+                  // the day the scheduled hours are billed and paid in full.
+                  <span className="muted sm">
+                    {row.cancelledNote ?? 'excluded from financials'}
+                  </span>
                 ) : (
                   <>
                     <Pill tone={fillTone(row) === 'green' ? 'green' : 'amber'}>
@@ -234,10 +251,12 @@ function MonthChip({ row }: { row: EventRow }) {
         row.status !== 'cancelled' && tone === 'green' && 'full',
       )}
       href={`/events/${row.id}`}
-      title={`${row.title} · ${row.clientName}`}
+      title={`${row.title} · ${row.clientName} · ${EVENT_STATUS_LABEL[row.status]}`}
     >
       <span className="t">{row.window ? row.windowLabel.slice(0, 5) : '—'}</span>
       {row.title} · {row.clientName}
+      {/* §3.2: the status pill appears on the calendar as on the list. */}
+      <ChipStatus status={row.status} />
       {fill ? <span className="f">{fill}</span> : null}
     </Link>
   );
@@ -298,6 +317,7 @@ function WeekChip({ row }: { row: EventRow }) {
     >
       <span className="w">
         {row.windowLabel}
+        <ChipStatus status={row.status} />
         {row.status !== 'cancelled' ? <span className="f">{formatEventFill(row.fill)}</span> : null}
       </span>
       <span className="n">{row.title}</span>

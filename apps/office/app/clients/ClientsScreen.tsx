@@ -233,8 +233,8 @@ export function ClientsScreen({ clients, problem }: ClientsScreenProps) {
       </Panel>
 
       <Note>
-        A client record can be edited at any time but <b>never deleted</b> (§9.7). Charge rates and
-        dress codes are per client, per role — set on the client card, nowhere else.
+        A client record can be edited at any time but <b>never deleted</b>. Charge rates and dress
+        codes are per client, per role — set on the client card, nowhere else.
       </Note>
 
       {editing !== null ? (
