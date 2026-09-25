@@ -169,13 +169,26 @@ select is((select status from checkin_monitor_v where booking_id = :'bk_on'), 'n
   'RULE-02 four hours past the end with nothing recorded reads No check-out');
 
 -- The waiting states, on the worker who never checked in.
-update shift_requirements set starts_at = now() + interval '3 hours', ends_at = now() + interval '9 hours'
+-- The section must start later TODAY in London and more than 30 minutes
+-- away. now() + 3 h crossed UK midnight after 21:00, which made this pair
+-- fail every evening; the start is now capped at 23:59 London. In the last
+-- half hour before midnight no such start exists, so the pair is skipped.
+update shift_requirements
+   set starts_at = least(now() + interval '3 hours',
+                         (((now() at time zone 'Europe/London')::date + time '23:59') at time zone 'Europe/London')),
+       ends_at   = least(now() + interval '3 hours',
+                         (((now() at time zone 'Europe/London')::date + time '23:59') at time zone 'Europe/London'))
+                   + interval '6 hours'
  where id = :'sh_mon';
-select is((select status from checkin_monitor_v where booking_id = :'bk_due'), 'not_confirmed_today',
-  '§3.5 a worker who has not pressed the on-the-day confirmation is shown as such, not as Due');
+select case when (now() at time zone 'Europe/London')::time >= time '23:25'
+  then skip('no same-day start 30+ minutes away this close to UK midnight', 1)
+  else is((select status from checkin_monitor_v where booking_id = :'bk_due'), 'not_confirmed_today',
+  '§3.5 a worker who has not pressed the on-the-day confirmation is shown as such, not as Due') end;
 update bookings set on_day_confirmed_at = now() where id = :'bk_due';
-select is((select status from checkin_monitor_v where booking_id = :'bk_due'), 'due',
-  '§9.5 once they have, the row is simply Due');
+select case when (now() at time zone 'Europe/London')::time >= time '23:25'
+  then skip('no same-day start 30+ minutes away this close to UK midnight', 1)
+  else is((select status from checkin_monitor_v where booking_id = :'bk_due'), 'due',
+  '§9.5 once they have, the row is simply Due') end;
 
 -- §1.8: "today" on both sides in Europe/London. A section starting 00:30
 -- London TOMORROW is still tomorrow — before 20260927160600 the left side
