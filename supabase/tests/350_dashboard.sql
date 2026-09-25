@@ -1,5 +1,5 @@
 -- =====================================================================
--- 320 · The Dashboard's numbers (§9.1) — 20260922182000_dashboard_kpis.sql
+-- 350 · The Dashboard's numbers (§9.1) — 20260922182000_dashboard_kpis.sql
 --
 -- Four counters, one weekly money panel and a ten-day list, and every one
 -- of them is a place where a plausible-looking wrong number would go
@@ -30,7 +30,7 @@
 -- they are written as ordinary value comparisons instead.
 -- =====================================================================
 begin;
-select plan(34);
+select plan(41);
 \ir _shared/fixtures.psql
 
 \set week_event  '7a7a7a7a-0000-4000-8000-000000000001'
@@ -390,6 +390,68 @@ select is((select count(*)::int from dashboard_sections_v), 0,
 reset role;
 select ok(not has_table_privilege('anon', 'dashboard_upcoming_v', 'select'),
   'anon holds no privilege on the dashboard views: Supabase grants select on every new object in public, and 0009 is what that cost last time');
+
+-- ---------------------------------------------------------------------
+-- PHASE C · what the week's money counts and what it leaves out
+--
+--   sameday   today, cancelled NOW (§3.3 edge case): 1 (+1) x 4 h at
+--             £30.00 / £20.00 — billed and paid at scheduled hours, so
+--             IN the money: +£120.00 charge, +£89.64 pay
+--   over      today, 1 (+2) x 4 h with TWO confirmed: the second seat is
+--             a buffer seat — charge counts HEADCOUNT (+£120.00, not
+--             £240.00), open_positions is 0, never -1
+--   early     today, cancelled YESTERDAY: §3.3 point 4 — nothing
+--
+-- Baseline 3 is taken with every earlier event in place, so the deltas
+-- measure these three and nothing else.
+-- ---------------------------------------------------------------------
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select charge_total as d_charge, pay_total as d_pay, margin_total as d_margin
+  from dashboard_week_finance_v
+\gset
+reset role;
+
+insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location,
+                    geofence_radius_m, title, event_date, pays_breaks, pays_buffer, cancelled_at) values
+  ('7a7a7a7a-0000-4000-8000-000000000007', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+   st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Dashboard Same-day Cancel',
+   (now() at time zone 'Europe/London')::date, true, true, now()),
+  ('7a7a7a7a-0000-4000-8000-000000000008', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+   st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Dashboard Over-confirmed',
+   (now() at time zone 'Europe/London')::date, true, true, null),
+  ('7a7a7a7a-0000-4000-8000-000000000009', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+   st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Dashboard Early Cancel',
+   (now() at time zone 'Europe/London')::date, true, true, now() - interval '1 day');
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                charge_rate, pay_rate, dress_code, allocation_per_hour) values
+  ('7b7b7b7b-0000-4000-8000-000000000009', '7a7a7a7a-0000-4000-8000-000000000007', :'role_id',
+   now() + interval '2 hours', now() + interval '6 hours', 1, 1, 30.00, 20.00, 'Black tie', 2),
+  ('7b7b7b7b-0000-4000-8000-000000000010', '7a7a7a7a-0000-4000-8000-000000000008', :'role_id',
+   now() + interval '2 hours', now() + interval '6 hours', 1, 2, 30.00, 20.00, 'Black tie', 3),
+  ('7b7b7b7b-0000-4000-8000-000000000011', '7a7a7a7a-0000-4000-8000-000000000009', :'role_id',
+   now() + interval '2 hours', now() + interval '6 hours', 5, 0, 30.00, 20.00, 'Black tie', 5);
+insert into bookings (shift_id, staff_id, status, source, confirmed_at) values
+  ('7b7b7b7b-0000-4000-8000-000000000010', :'conf_a', 'confirmed', 'auto', now()),
+  ('7b7b7b7b-0000-4000-8000-000000000010', :'conf_b', 'confirmed', 'auto', now());
+
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select charge_total from dashboard_week_finance_v) - :d_charge, 240.00::numeric,
+  '§3.3: an event cancelled ON ITS DAY is billed at scheduled hours and stays in Chargeable (+£120), the over-confirmed section counts headcount not buffer seats (+£120), and the one cancelled the day before adds nothing');
+select is((select pay_total from dashboard_week_finance_v) - :d_pay, 179.28::numeric,
+  'and paid at scheduled hours: +£89.64 twice (final_rate(20.00) x 4 h), never the buffer');
+select is((select margin_total from dashboard_week_finance_v) - :d_margin, 60.72::numeric,
+  'so the margin moves by £30.36 twice');
+select is((select cancelled_on_day from dashboard_sections_v where shift_id = '7b7b7b7b-0000-4000-8000-000000000009'), true,
+  'the section carries the §3.3 edge-case flag, so the ten-day list can say "cancelled on the day · billed at scheduled hours" rather than "excluded from financials"');
+select is((select cancelled_on_day from dashboard_sections_v where shift_id = '7b7b7b7b-0000-4000-8000-000000000011'), false,
+  'while an event cancelled before its day is plain cancelled — excluded (§3.3 point 4)');
+select is((select open_positions from dashboard_upcoming_v where shift_id = '7b7b7b7b-0000-4000-8000-000000000010'), 0,
+  'an over-confirmed section has taken buffer seats, which is 0 open positions and never -1');
+select is((select cancelled_on_day from dashboard_upcoming_v where shift_id = '7b7b7b7b-0000-4000-8000-000000000009'), true,
+  'and the flag travels onto the ten-day list');
+reset role;
 
 select * from finish();
 rollback;

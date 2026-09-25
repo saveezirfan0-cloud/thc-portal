@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  canBlock,
   canReset,
   complianceSummary,
   documentOrder,
   feedbackState,
+  formatLocalStamp,
   formatUkStamp,
   formatUkWindow,
   hoursTone,
@@ -88,7 +90,7 @@ describe('the closing compliance line (§9.6)', () => {
     expect(
       complianceSummary({ status: 'compliant', contract_signed_at: '2026-07-12T13:42:00Z' }),
     ).toBe(
-      'Documents verified, quiz passed. Contract signed electronically: 12/07/2026 14:42 UK time',
+      'Documents verified, quiz passed. Contract signed electronically: 12.07.2026 14:42 UK time',
     );
   });
 
@@ -97,12 +99,26 @@ describe('the closing compliance line (§9.6)', () => {
     expect(line).toBe('Documents verified, quiz passed. Compliant and bookable.');
     expect(line).not.toMatch(/:\s*$/);
   });
+
+  it('opens with the real state, so a blocked worker is not "onboarding in progress"', () => {
+    expect(
+      complianceSummary({ status: 'blocked', contract_signed_at: '2026-07-12T13:42:00Z' }),
+    ).toBe(
+      'Blocked — see the reason above. Contract signed electronically: 12.07.2026 14:42 UK time',
+    );
+  });
+
+  it('never calls a candidate "compliant and bookable"', () => {
+    const line = complianceSummary({ status: 'documents', contract_signed_at: null });
+    expect(line).toBe('Onboarding in progress. Contract not yet signed.');
+    expect(line).not.toMatch(/bookable/);
+  });
 });
 
 describe('time zones (§1.8)', () => {
   it('states UK time on an audit stamp, and converts BST correctly', () => {
     // 13:42 UTC in July is 14:42 in London.
-    expect(formatUkStamp('2026-07-12T13:42:00Z')).toBe('12/07/2026 14:42 UK time');
+    expect(formatUkStamp('2026-07-12T13:42:00Z')).toBe('12.07.2026 14:42 UK time');
   });
 
   it('shows a scheduled window in UK time', () => {
@@ -112,6 +128,13 @@ describe('time zones (§1.8)', () => {
   it('renders a missing stamp as a dash rather than Invalid Date', () => {
     expect(formatUkStamp(null)).toBe('—');
     expect(formatUkStamp('not a date')).toBe('—');
+  });
+
+  it("stamps a violation in the viewer's own zone, as the monitor does (§9.5, §9.6)", () => {
+    // 16:03 UTC on Thu 17 Sep 2026 is 17:03 in London and 18:03 in Madrid.
+    expect(formatLocalStamp('2026-09-17T16:03:00Z', 'Europe/London')).toBe('Thu 17 Sep · 17:03');
+    expect(formatLocalStamp('2026-09-17T16:03:00Z', 'Europe/Madrid')).toBe('Thu 17 Sep · 18:03');
+    expect(formatLocalStamp(null, 'Europe/London')).toBe('—');
   });
 });
 
@@ -202,5 +225,14 @@ describe('the manager buttons (§9.6, §2.12, §1.7)', () => {
   it('offers nothing on a removed profile, which stays openable', () => {
     expect(isActionable('removed')).toBe(false);
     expect(isActionable('compliant')).toBe(true);
+  });
+
+  it('offers Block only where §2.12 has the edge — compliant, not a leaver or a candidate', () => {
+    expect(canBlock('compliant')).toBe(true);
+    expect(canBlock('inactive')).toBe(false);
+    expect(canBlock('rejected')).toBe(false);
+    expect(canBlock('documents')).toBe(false);
+    expect(canBlock('blocked')).toBe(false);
+    expect(canBlock('additional_info')).toBe(false);
   });
 });

@@ -20,9 +20,17 @@ export type StaffStatus =
 
 export type BlockKind = 'auto_document' | 'manual' | 'conviction_review' | null;
 
-/** One item waiting on the office: a pending document or a pending Yes declaration (§4.1). */
+/**
+ * One item waiting on the office (§4.1): a pending document, a pending Yes
+ * declaration, or — `rtw_date` (20260927160000) — a share code report that
+ * was verified before the right-to-work date was required and still has
+ * none. That one is keyed on the verified report; its `item_type` is
+ * `share_code_report`, so the document filter finds it. Or — kind
+ * `rtw_check` (ADR-0025) — an automated gov.uk check that found no right to
+ * work, whose document is already rejected; `item_id` is the check's id.
+ */
 export interface QueueRow {
-  kind: 'document' | 'declaration';
+  kind: 'document' | 'declaration' | 'rtw_date' | 'rtw_check';
   item_id: string;
   staff_id: string;
   display_name: string;
@@ -56,6 +64,24 @@ export interface QueueRow {
   completion_date_claimed: string | null;
   mime_type: string | null;
   size_bytes: number | null;
+  /** Why a row that is not a pending upload is here; null on document and declaration rows. */
+  review_reason: string | null;
+  // The latest automated right-to-work check (20260928100000, ADR-0025);
+  // null on every row that is not a share code (optional: absent before it).
+  rtw_check_id?: string | null;
+  rtw_check_status?:
+    'queued' | 'running' | 'passed' | 'rejected' | 'needs_review' | 'failed' | null;
+  rtw_check_source?: 'provider' | 'govuk' | null;
+  rtw_check_outcome?: string | null;
+  rtw_check_attempts?: number | null;
+  rtw_checked_at?: string | null;
+  rtw_check_reason?: string | null;
+  rtw_check_until?: string | null;
+  rtw_check_no_time_limit?: boolean | null;
+  rtw_check_conditions?: string[] | null;
+  rtw_check_report_path?: string | null;
+  /** Share codes only: whether ADR-0018's hand-typed date is allowed now. */
+  rtw_manual_allowed?: boolean | null;
 }
 
 export type RadarState = 'expired' | 'expiring' | 'valid';
@@ -125,6 +151,8 @@ export interface CompliancePageData {
   radar: RadarRow[];
   warnings: WarningRow[];
   rotaGuardMode: 'block' | 'warn';
+  /** settings.rtw_check.enabled — the automated gov.uk check (ADR-0025). */
+  rtwCheckEnabled: boolean;
   problem: string | null;
 }
 

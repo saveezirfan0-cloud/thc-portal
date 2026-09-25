@@ -20,7 +20,7 @@
 -- Every case pins a fixed instant so the arithmetic is readable.
 -- =====================================================================
 begin;
-select plan(37);
+select plan(40);
 \set now '2026-09-21 12:00:00+01'
 \ir _shared/fixtures.psql
 
@@ -225,6 +225,27 @@ select is(
   'blocked', 'a fresh declaration blocks again');
 select is((unblock_worker(:'declar', date '2026-09-21'))->>'blockers', '["conviction_unreviewed"]',
   'and a PENDING declaration still refuses the unblock — §4.3''s rule is about a declaration nobody has decided yet');
+
+-- ---------------------------------------------------------------------
+-- §2.12 on the ROW, for the stopped states (20260927160900). The RPCs
+-- always asserted; a plain update did not, so inactive → compliant,
+-- removed → compliant and removed → blocked went through unasserted.
+-- "There is no 'reactivate' that puts a leaver straight back to
+-- compliant", and removed is irreversible.
+-- ---------------------------------------------------------------------
+select throws_ok(
+  format($$ update staff set status = 'compliant' where id = %L $$, :'leaver'),
+  'P0001', 'illegal_staff_transition: inactive -> compliant',
+  '§2.12: a leaver cannot be put straight back to compliant on the row — Reset to candidate is the only way out of inactive');
+update staff set status = 'removed', removed_at = now() where id = :'leaver';
+select throws_ok(
+  format($$ update staff set status = 'compliant' where id = %L $$, :'leaver'),
+  'P0001', 'illegal_staff_transition: removed -> compliant',
+  '§1.7: removed is irreversible — not compliant again');
+select throws_ok(
+  format($$ update staff set status = 'blocked' where id = %L $$, :'leaver'),
+  'P0001', 'illegal_staff_transition: removed -> blocked',
+  'and not blocked either: a removed worker has nothing left to block');
 
 select * from finish();
 rollback;

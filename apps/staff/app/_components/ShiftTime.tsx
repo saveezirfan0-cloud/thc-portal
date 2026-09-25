@@ -1,6 +1,15 @@
 'use client';
 
-import { displayTime, formatHours, sectionHours } from '@thc/domain';
+import {
+  UK_ZONE,
+  displayTime,
+  formatDateIn,
+  formatHours,
+  formatTimeIn,
+  needsDualZone,
+  sectionHours,
+  ukToday,
+} from '@thc/domain';
 import { useViewerZone } from './useViewerZone';
 
 /**
@@ -11,25 +20,38 @@ import { useViewerZone } from './useViewerZone';
  * on an event whose kitchen starts at 07:00 and whose floor starts at 17:00,
  * a worker sees only their own hours, and their check-in, check-out and
  * reminder windows run off these.
+ *
+ * With a date, the wireframes (staff/shifts.html) put ONE prefix in front
+ * of the window — "Tomorrow · 18:00 – 01:00", "Sat 20 · 11:00 – 00:30" —
+ * never a date on each end. The prefix is the UK calendar day the shift
+ * starts on, relative to the UK's today, because the scheduled line is UK
+ * time; the "your time" line underneath keeps both dates, since an
+ * overnight shift can change day in the viewer's zone.
  */
 export function ShiftTime({
   startsAt,
   endsAt,
   withDate = false,
   withHours = false,
+  now,
 }: {
   startsAt: Date;
   endsAt: Date;
   withDate?: boolean;
   withHours?: boolean;
+  /** "Today" / "Tomorrow" are relative to this instant (default: now). */
+  now?: Date;
 }) {
   const zone = useViewerZone();
   const from = displayTime(startsAt, 'scheduled', zone, withDate);
   const to = displayTime(endsAt, 'scheduled', zone, withDate);
+  const primary = withDate
+    ? `${dayPrefix(startsAt, now)} · ${formatTimeIn(startsAt, UK_ZONE)} – ${formatTimeIn(endsAt, UK_ZONE)}${needsDualZone(zone) ? ' (UK)' : ''}`
+    : `${from.primary} – ${to.primary}`;
   return (
     <span className="shift-time">
       <span className="mono">
-        {from.primary} – {to.primary}
+        {primary}
         {withHours ? ` · ${formatHours(sectionHours({ startsAt, endsAt }))}` : null}
       </span>
       {from.secondary ? (
@@ -39,4 +61,15 @@ export function ShiftTime({
       ) : null}
     </span>
   );
+}
+
+/** "Today", "Tomorrow", else the UK weekday and day-of-month: "Sat 20". */
+export function dayPrefix(startsAt: Date, now: Date = new Date()): string {
+  const day = ukToday(startsAt);
+  if (day === ukToday(now)) return 'Today';
+  if (day === ukToday(new Date(now.getTime() + 24 * 60 * 60 * 1000))) return 'Tomorrow';
+  // formatDateIn, not Intl's format(): engines differ on the comma
+  // ("Sat, 20" / "Sat 20"), and a client component rendered on the server
+  // must print the same string in the browser.
+  return formatDateIn(startsAt, UK_ZONE, { weekday: 'short' }).split(' ').slice(0, 2).join(' ');
 }

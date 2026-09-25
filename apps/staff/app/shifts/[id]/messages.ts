@@ -1,0 +1,38 @@
+/**
+ * The message keys the check-in / check-out / break RPCs return, in the
+ * worker's language (§5.1 copy). One table, read by the shift screen and
+ * by the today card's check-in (§10.4).
+ */
+export const CHECK_IN_MESSAGES: Record<string, string> = {
+  checked_in: 'You’re checked in. Have a good shift.',
+  checked_in_late: 'You’re checked in, and marked as arriving late.',
+  out_of_radius: 'You’re not close enough to the venue yet.',
+  check_in_not_open: 'Check-in is not open yet.',
+  no_show_locked: 'Check-in has closed for this shift. Contact the office.',
+  turned_away_paid:
+    'Thanks for coming — this shift is already fully staffed, so you’re not needed today. We’ve logged that you arrived on time and you’ll be paid for 4 hours.',
+  turned_away_unpaid:
+    'Thanks for coming — this shift is already fully staffed, so you’re not needed today.',
+  already_checked_in: 'You’re already checked in.',
+};
+
+export const MESSAGES: Record<string, string> = {
+  ...CHECK_IN_MESSAGES,
+  checked_out: 'You’re checked out.',
+  no_check_out_office_confirms:
+    'We couldn’t confirm when you left the venue — the office will confirm your finish time with you.',
+  no_check_out_locked: 'Check-out has closed. The office will confirm your finish time with you.',
+  on_break: 'Break started.',
+  break_finished: 'Break finished — back to work.',
+  already_checked_out: 'You’ve already checked out.',
+};
+
+/**
+ * §5.1: "You checked out away from the venue — we've recorded your last
+ * time on site, 16:00". The time is the worker's own clock (§1.8, an actual
+ * stamp), formatted by the caller; without one the sentence still stands.
+ */
+export function checkedOutOffSiteMessage(lastOnSite: string | null): string {
+  const base = 'You checked out away from the venue — we’ve recorded your last time on site';
+  return lastOnSite ? `${base}, ${lastOnSite}.` : `${base}.`;
+}

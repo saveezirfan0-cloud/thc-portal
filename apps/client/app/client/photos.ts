@@ -11,11 +11,16 @@ import { createAdminClient } from '@thc/db/admin';
  * Why the service-role key, when everything else in this app deliberately
  * goes through the caller's own session:
  *
- *   Storage has no row-level security of its own here — there are no
- *   policies on `storage.objects` in `supabase/migrations/` yet — so the
- *   alternative to signing server-side would be opening the bucket, which
- *   would put every worker's selfie behind a guessable path for anyone,
- *   not just this customer.
+ *   The `photos` bucket IS covered by row-level security on
+ *   `storage.objects` (`20260922183015_storage_buckets_and_policies.sql`):
+ *   a worker may write and read their own selfie (`photos_worker_*_own`)
+ *   and an admin may read every one (`photos_admin_read`). There is no
+ *   client policy, and by ADR-0004 there must not be one — the client role
+ *   gets a policy only on a table carrying no worker personal data, and a
+ *   selfie is exactly that. So the customer's own session cannot sign or
+ *   fetch a photo, and the only alternative to signing server-side would
+ *   be opening the bucket, which would put every worker's selfie behind a
+ *   guessable path for anyone, not just this customer.
  *
  * The narrowness is what makes it safe, and it is worth stating exactly:
  * this function signs ONLY paths that `client_lineup_v` has already

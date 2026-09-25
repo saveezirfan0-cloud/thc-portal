@@ -19,7 +19,7 @@
 -- gap. This is the half of the contract that SQL can hold.
 -- =====================================================================
 begin;
-select plan(10);
+select plan(11);
 
 -- ---------------------------------------------------------------------
 -- 1. Everything the jobs call is callable by the service role.
@@ -62,7 +62,11 @@ select is_empty(
           'new_starter_export_rows', 'queue_finance_report_email',
           -- P2, the outbox drain (20260924100000). Without these the drain
           -- 500s on its first unsendable row and holds the whole batch.
-          'fail_outbox_send', 'release_outbox_claim'
+          'fail_outbox_send', 'release_outbox_claim',
+          -- The automated right-to-work check (20260928100000, ADR-0025),
+          -- a Back Office route on the service key rather than an Edge
+          -- Function. Without these every share code waits for ever.
+          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config'
         )
         and not has_function_privilege('service_role', p.oid, 'execute') $$,
   'the service role can execute every function the §7 jobs call'
@@ -91,7 +95,12 @@ select is_empty(
           'compliance_daily', 'block_worker', 'unblock_if_compliant',
           'request_p45', 'declare_conviction', 'released_shift_lines',
           'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
-          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion'
+          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion',
+          -- rtw_check_claim hands out share codes and dates of birth;
+          -- rtw_check_record verifies a worker's right to work. The two
+          -- *_as bodies take the reviewer as an argument.
+          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config',
+          'compliance_verify_document_as', 'compliance_reject_document_as'
         )
         and has_function_privilege('anon', p.oid, 'execute') $$,
   'anon can execute none of the job, engine, compliance or lifecycle write paths'
@@ -120,7 +129,13 @@ select is_empty(
           'compliance_daily', 'block_worker', 'unblock_if_compliant',
           'request_p45', 'declare_conviction', 'released_shift_lines',
           'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
-          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion'
+          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion',
+          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config',
+          'compliance_verify_document_as', 'compliance_reject_document_as',
+          -- rtw_check_manual_allowed is NOT here on purpose: the office's
+          -- security_invoker queue view calls it as `authenticated`, so it
+          -- checks its caller instead and answers a worker NULL (600 §I).
+          'rtw_check_enqueue', 'rtw_check_nudge', 'office_base_url'
         )
         and has_function_privilege('authenticated', p.oid, 'execute') $$,
   'nor can a signed-in worker block, retire, reset or remove anybody'
@@ -269,8 +284,35 @@ select bag_eq(
   $$ select job::text from job_schedules where enabled $$,
   $$ values ('booking-tick'::text), ('auto-staffing-hourly'),
             ('auto-staffing-cutoff'), ('auto-staffing-escalation'),
-            ('compliance-daily'), ('notify-drain'), ('finance-reports') $$,
-  'exactly the seven schedules whose Edge Function exists are enabled: notify-drain ships with P2 and re-enables finance-reports (20260924100000), which 20260923193100 paused until its email could go out'
+            ('compliance-daily'), ('notify-drain'), ('finance-reports'),
+            ('gdpr-purge') $$,
+  'exactly the eight schedules whose Edge Function exists are enabled: notify-drain ships with P2 and re-enables finance-reports (20260924100000), which 20260923193100 paused until its email could go out; gdpr-purge (20260927160400) drains the §1.7 Storage queue, which nothing had scheduled'
+);
+
+-- ---------------------------------------------------------------------
+-- 3 · No trigger function is an RPC.
+--
+--    20260922183013's rule: a trigger fires as part of the statement
+--    regardless of who holds EXECUTE, so a grant to a PostgREST role only
+--    publishes a definer on an RPC path. Asserted over every function in
+--    public that returns `trigger`, so the next one is caught without a
+--    name list (20260927161000 revoked the two that had slipped through).
+--    Extension-owned triggers are excluded, as assertion 8 excludes
+--    extension-owned definers: on Supabase, PostGIS's postgis_cache_bbox
+--    and checkauthtrigger carry the extension's own grants, are not ours
+--    to revoke, and fire only on PostGIS's own tables.
+-- ---------------------------------------------------------------------
+select is_empty(
+  $$ select p.proname::text
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.prorettype = 'trigger'::regtype
+        and not exists (select 1 from pg_depend d
+                         where d.classid = 'pg_proc'::regclass
+                           and d.objid = p.oid and d.deptype = 'e')
+        and (has_function_privilege('anon', p.oid, 'execute')
+          or has_function_privilege('authenticated', p.oid, 'execute')) $$,
+  'no trigger function in public is executable by anon or authenticated — a trigger needs no EXECUTE grant, and one that has it is a definer published as an RPC'
 );
 
 select * from finish();

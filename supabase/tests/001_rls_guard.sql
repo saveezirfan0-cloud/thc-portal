@@ -22,10 +22,13 @@
 -- worker read-only self policy), quiz_questions (admin only: it holds the
 -- answer key) and contract_versions (admin + any signed-in read, the
 -- venue_types shape) to assertions 1, 3 and 4.
+-- 20260928100000 (ADR-0025) added rtw_checks to assertions 1 and 3:
+-- admin-read, written by definer functions and the service role; the
+-- worker reads their own status through my_rtw_checks(), not a policy.
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
-select plan(11);
+select plan(12);
 
 -- ---------------------------------------------------------------------
 -- 1. Tables with RLS enabled (0001_init.sql)
@@ -49,8 +52,9 @@ select bag_eq(
             ('staff_transitions'),('storage_deletions'),
             ('venue_types'),('venues'),('violations'),
             ('payroll_export_lines'),('event_documents'),
-            ('onboarding_progress'),('quiz_questions'),('contract_versions') $$,
-  'RLS is enabled on all 39 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, and the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions)'
+            ('onboarding_progress'),('quiz_questions'),('contract_versions'),
+            ('rtw_checks') $$,
+  'RLS is enabled on all 40 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), and rtw_checks from the automated right-to-work check (ADR-0025)'
 );
 
 -- ---------------------------------------------------------------------
@@ -119,7 +123,8 @@ select bag_eq(
             ('staff_references'),('staff_roles'),('staff_transitions'),('storage_deletions'),
             ('venue_types'),('venues'),('violations'),
             ('payroll_export_lines'),('event_documents'),
-            ('onboarding_progress'),('quiz_questions'),('contract_versions') $$,
+            ('onboarding_progress'),('quiz_questions'),('contract_versions'),
+            ('rtw_checks') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );
 
@@ -161,12 +166,21 @@ select bag_eq(
 --    The public application migration added none either: `applications` is admin-only, and a customer
 --    has no business in the onboarding pipeline at all.
 -- ---------------------------------------------------------------------
-select bag_eq(
+--    20260927160100 (ADR-0026) dropped the last two — client_events on
+--    events read the Auto Invite toggle and the buffer-charging term
+--    (§11.2, §9.7), client_feedback_insert skipped submit_client_feedback's
+--    "started" and "confirmed line-up" gates — so the set is now EMPTY:
+--    every client read is a client_* view, the one write is the RPC.
+select is_empty(
   $$ select c.relname::text from pg_policy p join pg_class c on c.oid = p.polrelid
       where p.polname like 'client\_%' $$,
-  $$ values ('events'::text),('feedback') $$,
-  'clients reach only events (read) and feedback (insert) directly; no money-bearing table'
+  'ADR-0026: the client role holds no policy on any table — every read is a client_* view (owner rights + client_portal_visible()), the one write is submit_client_feedback()'
 );
+
+-- 5a. docs/14 §4: public.rls_auto_enable() existed on the live project
+--     and in no migration; 20260927161000 drops it wherever it is found.
+select hasnt_function('public', 'rls_auto_enable',
+  'no unowned rls_auto_enable() definer exists (20260927161000 drops the live-only one)');
 
 -- ---------------------------------------------------------------------
 -- 5b. The same rule, read from the PREDICATE instead of the name.

@@ -4,6 +4,7 @@ import { DOC_LABELS, isDocType, usesGenericUpload } from '@thc/domain';
 import { NotAvailable, SubScreen } from '../../_components/SubScreen';
 import { UploadForm } from '../../_components/UploadForm';
 import { buildDocumentsView, rowForType } from '../../model';
+import { loadRtwCheckEnabled } from '../../../_lib/rtwCheck';
 import '../../../staff-app.css';
 import '../../documents.css';
 
@@ -23,6 +24,7 @@ export default async function Page({ params }: { params: Promise<{ docType: stri
   if (!isDocType(docType)) notFound();
   if (!usesGenericUpload(docType)) notFound();
   const label = DOC_LABELS[docType];
+  const automaticCheck = docType === 'share_code_report' && (await loadRtwCheckEnabled());
 
   return (
     <SubScreen title={docType === 'share_code_report' ? 'New share code' : `Upload · ${label}`}>
@@ -55,7 +57,7 @@ export default async function Page({ params }: { params: Promise<{ docType: stri
                 <span className="xs">{row.meta}</span>
               </Alert>
             ) : null}
-            <UploadForm docType={docType} label={label} />
+            <UploadForm docType={docType} label={label} automaticCheck={automaticCheck} />
           </>
         );
       }}

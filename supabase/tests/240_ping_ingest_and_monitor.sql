@@ -14,7 +14,7 @@ begin;
 
 \ir _shared/fixtures.psql
 
-select plan(34);
+select plan(42);
 
 \set ev_mon   '9e9e9e9e-0000-4000-8000-000000000001'
 \set ev_paid  '9e9e9e9e-0000-4000-8000-000000000002'
@@ -80,6 +80,20 @@ select is(record_ping(:'bk_on', 51.5000, -0.1000)->>'decision', 'on_site', 'the 
 select is(record_ping(:'bk_on', 51.6000, -0.1000)->>'exitRecorded', 'true', 'and leaves a second time');
 select is((select count(*)::int from violations where booking_id = :'bk_on' and type = 'left_geofence'), 2,
   'which is a second exit, and a second row');
+
+-- Leaving AFTER the section's own end is going home, not "left the
+-- geofence during the shift" (BG-07, §9.5, RULE-18). The app pings on
+-- mount, so before 20260927160600 a worker who left at the scheduled end
+-- and opened the app on the bus to check out was flagged mid-shift.
+select is(record_ping(:'bk_on', 51.5000, -0.1000)->>'decision', 'on_site', 'the worker is back on site at the end');
+update shift_requirements set starts_at = now() - interval '5 hours', ends_at = now() - interval '1 minute'
+ where id = :'sh_mon';
+select is(record_ping(:'bk_on', 51.6000, -0.1000)->>'exitRecorded', 'false',
+  'BG-07: an off-site fix after the section''s end is not an exit during the shift');
+select is((select count(*)::int from violations where booking_id = :'bk_on' and type = 'left_geofence'), 2,
+  'so no third violation is raised; the ping itself is still stored as the trail');
+update shift_requirements set starts_at = now() - interval '10 minutes', ends_at = now() + interval '6 hours'
+ where id = :'sh_mon';
 
 select throws_ok(
   format('select record_ping(%L, 51.5, -0.1)', :'bk_due'),
@@ -152,6 +166,18 @@ update bookings set on_day_confirmed_at = now() where id = :'bk_due';
 select is((select status from checkin_monitor_v where booking_id = :'bk_due'), 'due',
   '§9.5 once they have, the row is simply Due');
 
+-- §1.8: "today" on both sides in Europe/London. A section starting 00:30
+-- London TOMORROW is still tomorrow — before 20260927160600 the left side
+-- was cast in the session zone (UTC), so during BST it read as today.
+update bookings set on_day_confirmed_at = null where id = :'bk_due';
+update shift_requirements
+   set starts_at = (((now() at time zone 'Europe/London')::date + 1) + time '00:30') at time zone 'Europe/London',
+       ends_at   = (((now() at time zone 'Europe/London')::date + 1) + time '04:30') at time zone 'Europe/London'
+ where id = :'sh_mon';
+select is((select status from checkin_monitor_v where booking_id = :'bk_due'), 'due',
+  '§1.8 a shift starting 00:30 London tomorrow is tomorrow''s, so it is Due and not "Not confirmed today"');
+update bookings set on_day_confirmed_at = now() where id = :'bk_due';
+
 update shift_requirements set starts_at = now() + interval '20 minutes', ends_at = now() + interval '6 hours'
  where id = :'sh_mon';
 select is((select status from checkin_monitor_v where booking_id = :'bk_due'), 'not_checked_in',
@@ -177,6 +203,24 @@ select is(
   (select starts_at from shift_requirements where id = :'sh_mon'),
   'RULE-18 the WINDOW column is the role section''s window, never the event''s'
 );
+
+-- RULE-02's SECOND trigger: check-out pressed off-site with no on-site
+-- fix after check-in. check_out() records the check-in stamp and raises
+-- No check-out at once; the monitor must read the violation, not the
+-- stamp (§9.5 "the row stays in this state until a manager resolves it").
+reset role;
+set local "request.jwt.claims" = '{"sub":"55555555-5555-5555-5555-555555555555","role":"authenticated"}';
+select is(attempt_check_in(:'bk_paid', 51.5000, -0.1000)->>'accepted', 'true', 'the second worker checks in on site');
+select ok((check_out(:'bk_paid', 51.6000, -0.1000)->>'decision') is not null,
+  'and presses check-out across town with no on-site fix in between');
+reset role;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select is((select status from checkin_monitor_v where booking_id = :'bk_paid'), 'no_check_out',
+  '§9.5 / RULE-02: the row reads No check-out while the violation is open, not "Checked out" at the check-in time');
+select resolve_violation((select id from violations where booking_id = :'bk_paid' and type = 'no_checkout'),
+                         'Left just now', now());
+select is((select status from checkin_monitor_v where booking_id = :'bk_paid'), 'checked_out',
+  'and reads Checked out only once a manager has resolved it with the actual finish');
 
 -- §11.1: no rate can leave through this view.
 reset role;

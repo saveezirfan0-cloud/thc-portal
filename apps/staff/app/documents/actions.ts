@@ -2,6 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@thc/db/admin';
 import {
   COMPLETION_EVIDENCE_FORMS,
@@ -20,6 +21,7 @@ import {
 } from '@thc/domain';
 import type { CompletionEvidenceForm, EvidenceFolder, StaffStatus } from '@thc/domain';
 import { staffDb, supabaseConfigured } from '../db';
+import { extractDocument } from '../../lib/extract';
 import type { ActionResult } from './types';
 
 /**
@@ -218,11 +220,26 @@ export async function finishDocumentUpload(
       message: reasonText(DOCUMENT_UPLOAD_REASONS, answer?.reason ?? error?.message),
     };
   }
+  await extractRecorded(answer, docType, path);
   refresh();
   return {
     ok: true,
     note: 'Sent to the office for review. Nothing changes on your account until they verify it.',
   };
+}
+
+/**
+ * §2.6 — "the AI reads EVERY uploaded document": a renewal from this tab
+ * and the completion letter (§4.5) are read the same way as the wizard's
+ * step 4, once the RPC has recorded the document. Pre-fill only; a missing
+ * service key or extractor leaves the row flagged for manual review, which
+ * is where it started.
+ */
+async function extractRecorded(answer: RpcAnswer, docType: string, path: string | null) {
+  if (!path || !answer.documentId || !isDocType(docType)) return;
+  if (!process.env['SUPABASE_SERVICE_ROLE_KEY']) return;
+  const admin = createAdminClient() as unknown as SupabaseClient;
+  await extractDocument(admin, answer.documentId, docType, path);
 }
 
 /**
@@ -257,6 +274,7 @@ export async function finishCompletionLetter(input: {
       message: reasonText(COMPLETION_UPLOAD_REASONS, answer?.reason ?? error?.message),
     };
   }
+  await extractRecorded(answer, 'university_completion_letter', input.path);
   refresh();
   return {
     ok: true,

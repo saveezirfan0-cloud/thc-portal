@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { AuthCard } from '@thc/ui';
 import { createAdminClient } from '@thc/db/admin';
 import { isActivationToken, parseActivationType } from '@thc/db/activation';
@@ -48,36 +49,60 @@ export default async function Page({
   }
 
   const person = await preview(token);
+  const footer = (
+    <>
+      {PERSONAL_NOTE} Expired? Write to <a href={`mailto:${HELP_EMAIL}`}>{HELP_EMAIL}</a>.
+    </>
+  );
+
+  // "The activation link is single-use; a second click shows the sign-in
+  // screen" (activate.html). Nothing is spent to learn this: the preview
+  // says whether the account already has a password, when it can.
+  if (person?.activated) {
+    return (
+      <AuthCard product="Account activation" heading="You’re already activated" footer={footer}>
+        <p className="sm muted">
+          This link has been used and your password is set. Sign in with it to carry on.
+        </p>
+        <Link href="/login" className="btn primary block lg">
+          Sign in
+        </Link>
+      </AuthCard>
+    );
+  }
+
   const heading = person?.firstName
     ? `Welcome, ${person.firstName} — set your password`
     : 'Welcome — set your password';
 
   return (
-    <AuthCard
-      product="Account activation"
+    <ActivateForm
+      token={token}
+      type={parseActivationType(type)}
+      person={person}
       heading={heading}
-      footer={
+      footer={footer}
+      lead={
         <>
-          {PERSONAL_NOTE} Expired? Write to <a href={`mailto:${HELP_EMAIL}`}>{HELP_EMAIL}</a>.
+          Your interview was accepted. Create a password to activate your account
+          {person?.email ? (
+            <>
+              {' '}
+              for <b className="mono">{person.email}</b>
+            </>
+          ) : null}
+          .
         </>
       }
-    >
-      <p className="sm muted">
-        Your interview was accepted. Create a password to activate your account
-        {person?.email ? (
-          <>
-            {' '}
-            for <b className="mono">{person.email}</b>
-          </>
-        ) : null}
-        .
-      </p>
-      <ActivateForm token={token} type={parseActivationType(type)} person={person} />
-    </AuthCard>
+    />
   );
 }
 
-/** Best-effort: null when the service key is absent or the lookup fails. */
+/**
+ * Best-effort: null when the service key is absent or the lookup fails.
+ * `activated` is read when `activation_preview` returns it (a spent link
+ * with the password already set); a preview without it is a form, as before.
+ */
 async function preview(token: string): Promise<Personal | null> {
   if (!process.env['SUPABASE_SERVICE_ROLE_KEY'] || !process.env['NEXT_PUBLIC_SUPABASE_URL']) {
     return null;
@@ -88,13 +113,23 @@ async function preview(token: string): Promise<Personal | null> {
         fn: 'activation_preview',
         args: { p_token_hash: string },
       ): PromiseLike<{
-        data: { firstName?: string; lastName?: string; email?: string } | null;
+        data: {
+          firstName?: string;
+          lastName?: string;
+          email?: string;
+          activated?: boolean;
+        } | null;
         error: { message: string } | null;
       }>;
     };
     const { data, error } = await admin.rpc('activation_preview', { p_token_hash: token });
     if (error || !data) return null;
-    return { firstName: data.firstName, lastName: data.lastName, email: data.email };
+    return {
+      firstName: data.firstName,
+      lastName: data.lastName,
+      email: data.email,
+      activated: data.activated === true,
+    };
   } catch {
     return null;
   }

@@ -1,8 +1,18 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useId, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Checkbox, Input, OptionRow, SegToggle, Select } from '@thc/ui';
+import {
+  Addon,
+  Alert,
+  Button,
+  Checkbox,
+  Input,
+  InputRow,
+  OptionRow,
+  SegToggle,
+  Select,
+} from '@thc/ui';
 import {
   BRANCH_HEADING,
   NI_EVIDENCE_ACCEPTED,
@@ -42,6 +52,10 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // Every hook runs before the branch picker's early return: a hook called
+  // only once a branch is chosen changes the hook count between renders,
+  // and React throws on the click that picks the branch.
+  const shareId = useId();
 
   const set = <K extends keyof RtwForm>(key: K, value: RtwForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -134,25 +148,42 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
       />
 
       {needsShareCode(branch) ? (
-        <Input
-          label={
-            <>
-              Share code <span className="coral">*</span>
-            </>
-          }
-          mono
-          autoCapitalize="characters"
-          autoComplete="off"
-          placeholder="W123AB4CD"
-          value={form.shareCode}
-          onChange={(e) => set('shareCode', e.target.value)}
-          error={showShareError ? errors.shareCode : undefined}
-          hint={
-            shareOk
-              ? '✓ 9 characters starting with W — pasted with spaces is fine.'
-              : 'Get it at gov.uk/prove-right-to-work · valid for about 90 days.'
-          }
-        />
+        // Hand-built rather than <Input>, for the wireframe's green ✓ addon
+        // welded to the field once the code is valid (onboarding-1.html,
+        // "share code valid").
+        <div className="field">
+          <label className="label" htmlFor={shareId}>
+            Share code <span className="coral">*</span>
+          </label>
+          <InputRow>
+            <input
+              id={shareId}
+              className={`input mono${showShareError ? ' err' : ''}`}
+              autoCapitalize="characters"
+              autoComplete="off"
+              placeholder="W123AB4CD"
+              aria-invalid={showShareError ? true : undefined}
+              value={form.shareCode}
+              onChange={(e) => set('shareCode', e.target.value)}
+            />
+            {shareOk ? (
+              <Addon>
+                <span className="green">✓</span>
+              </Addon>
+            ) : null}
+          </InputRow>
+          {showShareError ? (
+            <span className="error" role="alert">
+              {errors.shareCode}
+            </span>
+          ) : (
+            <span className="hint">
+              {shareOk
+                ? '9 characters starting with W, e.g. W123AB4CD — pasted with spaces is fine.'
+                : 'Get it at gov.uk/prove-right-to-work · valid for about 90 days.'}
+            </span>
+          )}
+        </div>
       ) : null}
 
       {needsVisaType(branch) ? (

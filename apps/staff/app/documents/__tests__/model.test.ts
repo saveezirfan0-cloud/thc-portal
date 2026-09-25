@@ -178,6 +178,64 @@ describe('document rows — every §4.4 state', () => {
     );
   });
 
+  describe('the automated gov.uk check (ADR-0025)', () => {
+    const pending = (id: string) =>
+      doc({
+        id,
+        docType: 'share_code_report',
+        reviewStatus: 'pending',
+        shareCodeTail: '6XK',
+        hasFile: false,
+        uploadedAt: '2026-09-22T09:00:00+00:00',
+        isCountedVerified: false,
+      });
+
+    it('says it is checking with gov.uk, and the page keeps re-reading', () => {
+      const base = data({ documents: [pending('sc1')] });
+      const view = buildDocumentsView({
+        ...base,
+        rtwChecks: { sc1: { status: 'running', workerReason: null } },
+      });
+      const row = rowOf(view.rows, 'share_code_report');
+      expect(row.meta).toBe('Checking with gov.uk… · code ending 6XK entered 22.09.2026');
+      expect(row.pill).toEqual({ tone: 'amber', text: 'Checking' });
+      expect(view.checking).toBe(true);
+    });
+
+    it('a check that could not decide is with the office — not the happy path', () => {
+      const base = data({ documents: [pending('sc1')] });
+      const view = buildDocumentsView({
+        ...base,
+        rtwChecks: { sc1: { status: 'needs_review', workerReason: null } },
+      });
+      expect(rowOf(view.rows, 'share_code_report').meta).toBe(
+        'In review · gov.uk’s result is with the office · code ending 6XK entered 22.09.2026',
+      );
+      expect(view.checking).toBe(false);
+    });
+
+    it('a code gov.uk did not recognise: the reason and Enter new code (N8)', () => {
+      const view = buildDocumentsView(
+        data({
+          documents: [
+            doc({
+              docType: 'share_code_report',
+              reviewStatus: 'rejected',
+              rejectionReason:
+                'gov.uk did not recognise this share code with your date of birth — check both and try again',
+              hasFile: false,
+              isCountedVerified: false,
+            }),
+          ],
+        }),
+      );
+      expect(rowOf(view.rows, 'share_code_report')).toMatchObject({
+        meta: 'Re-upload · “gov.uk did not recognise this share code with your date of birth — check both and try again”',
+        action: { label: 'Enter new code', href: '/documents/upload/share_code_report' },
+      });
+    });
+  });
+
   it('a graduate’s term letter is not needed rather than expired (§4.5)', () => {
     const view = buildDocumentsView(
       data({

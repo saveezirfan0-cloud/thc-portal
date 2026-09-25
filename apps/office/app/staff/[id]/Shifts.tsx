@@ -7,10 +7,11 @@ import { ResolveModal } from '../../checkin/ResolveModal';
 import { violationRowProps } from '../../checkin/violationRow';
 import type { ViolationRow as DetailViolationRow } from '../../checkin/types';
 import { formatUkDate } from '../staff';
+import { useViewerZone } from '../../dashboard/_components/useViewerZone';
 import {
   VIOLATION_LABEL,
+  formatLocalStamp,
   formatLocalTime,
-  formatUkStamp,
   formatUkWindow,
   payableHours,
   shiftOutcome,
@@ -45,6 +46,9 @@ export function Shifts({
   details?: DetailViolationRow[];
 }) {
   const router = useRouter();
+  // The Detected stamp is the monitor's: viewer-local (§1.8), because §9.6
+  // says this log and /checkin's are the same log for the same reader.
+  const zone = useViewerZone();
   const [showResolved, setShowResolved] = useState(true);
   const [open, setOpen] = useState<DetailViolationRow | null>(null);
   const shown = violations.filter((row) => showResolved || !row.resolved);
@@ -149,7 +153,7 @@ export function Shifts({
                 <tr>
                   <th>Event</th>
                   <th>Violation</th>
-                  <th>Time</th>
+                  <th>Time (your time)</th>
                   <th>Status</th>
                   <th />
                 </tr>
@@ -186,7 +190,7 @@ export function Shifts({
                           </span>
                         ) : null}
                       </td>
-                      <td className="mono sm">{formatUkStamp(row.detected_at)}</td>
+                      <td className="mono sm">{formatLocalStamp(row.detected_at, zone)}</td>
                       <td>
                         <Pill tone={row.resolved ? 'green' : 'coral'}>
                           {row.resolved ? 'Resolved' : 'Unresolved'}

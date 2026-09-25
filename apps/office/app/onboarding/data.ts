@@ -1,7 +1,9 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { loadRtwChecks } from '../_lib/rtwCheckData';
 import type { Database } from '@thc/db';
 import { supabaseConfigured } from '../staff/data';
+import { withPhotoUrls } from '../_lib/photos';
 import type {
   Application,
   BoardData,
@@ -9,6 +11,7 @@ import type {
   CandidateDocument,
   CandidateMoney,
   CandidateRow,
+  ContractVersion,
   Declaration,
   HmrcChecklist,
   QuizAttempt,
@@ -94,7 +97,10 @@ const EMPTY: Omit<CandidateData, 'problem'> = {
   attempts: [],
   hmrc: null,
   application: null,
+  contract: null,
   roles: [],
+  rtwChecks: [],
+  rtwCheckEnabled: false,
 };
 
 const MONEY_COLUMNS =
@@ -116,6 +122,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     hmrc,
     application,
     roles,
+    rtw,
   ] = await Promise.all([
     supabase.from('onboarding_candidates_v').select('*').eq('id', id).maybeSingle<CandidateRow>(),
     supabase
@@ -165,6 +172,8 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .limit(1)
       .maybeSingle<Application>(),
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
+    // The automated gov.uk check (ADR-0025); best-effort, never an error panel.
+    loadRtwChecks(supabase, id),
   ]);
 
   const error =
@@ -179,13 +188,39 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     roles.error;
   if (error) return { ...EMPTY, problem: error.message };
 
-  const row = candidate.data ?? null;
+  const raw = candidate.data ?? null;
   // §2.12 step 3: the previous period's attempts are history, not this
   // period's quiz. They stay in the database; the profile shows the live set.
   const live = (attempts.data ?? []).filter(
     (attempt) =>
-      row !== null && Date.parse(attempt.taken_at) >= Date.parse(row.onboarding_started_at),
+      raw !== null && Date.parse(attempt.taken_at) >= Date.parse(raw.onboarding_started_at),
   );
+
+  // §2.7: "the selfie avatar taken during onboarding follows them through
+  // the whole system" — the key in the private bucket becomes a short-lived
+  // URL here, the same way every other office face does (_lib/photos.ts).
+  const [row] = raw ? await withPhotoUrls([raw]) : [null];
+
+  // §2.11: the agreement the candidate read, so the reviewer sees the text
+  // they ticked, not a description of it. The table's admin policy gates it.
+  // Before signature it is the version in force now — what
+  // current_contract_version() hands the wizard (20260923120000).
+  let contract: ContractVersion | null = null;
+  if (row && (row.status === 'contract' || row.status === 'compliant')) {
+    const query = supabase
+      .from('contract_versions')
+      .select('version, title, body, is_placeholder')
+      .lte('published_at', new Date().toISOString());
+    const version = await (
+      row.contract_version
+        ? query.eq('version', row.contract_version)
+        : query.order('published_at', { ascending: false }).order('version', { ascending: false })
+    )
+      .limit(1)
+      .maybeSingle<ContractVersion>();
+    if (version.error) return { ...EMPTY, problem: version.error.message };
+    contract = version.data ?? null;
+  }
 
   return {
     candidate: row,
@@ -196,7 +231,10 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     attempts: live,
     hmrc: hmrc.data ?? null,
     application: application.data ?? null,
+    contract,
     roles: roles.data ?? [],
+    rtwChecks: rtw.checks,
+    rtwCheckEnabled: rtw.enabled,
     problem: null,
   };
 }

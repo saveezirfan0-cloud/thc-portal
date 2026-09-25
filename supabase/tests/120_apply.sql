@@ -143,7 +143,6 @@ select is((select dob from applications where email = 'not.thesame@rls.test'), (
 
 select is((select age_band from applications where email = 'not.thesame@rls.test'), '51_60',
   'and the §2.1 band is derived from it rather than asked for: 55 lands in the 51 – 60 band, not a bare year count (ADR-0008)');
-
 -- A GDPR-removed worker (§1.7) is deliberately unmatchable: their record no
 -- longer describes them, so they apply as a genuinely new person.
 update staff set removed_at = now() where id = :'staffb';
@@ -383,7 +382,8 @@ reset role;
 -- ---------------------------------------------------------------------
 
 -- Staff Alpha's real address, Staff Alpha's real mobile, somebody else's
--- date of birth. Before the fix this matched on the email arm.
+-- date of birth. Before the fix this matched on the email arm. ADR-0027
+-- records the deviation from §2.12's "email" arm and asks THC to confirm.
 set local role anon;
 select submit_application('Mallory','Impostor','STAFFA@rls.test','+447700900011', date '1979-06-06', true);
 reset role;

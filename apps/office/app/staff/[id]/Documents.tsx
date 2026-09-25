@@ -13,6 +13,9 @@ import {
 } from './profile';
 import { documentLink } from '../../onboarding/actions';
 import { rejectDeclaration, verifyDeclaration } from '../../compliance/actions';
+import { RtwCheckPanel } from '../../_components/RtwCheckPanel';
+import { checksByDocument } from '../../_lib/rtwCheck';
+import type { RtwCheckRow } from '../../_lib/rtwCheck';
 import type { DeclarationRow, DocumentRow, ProfileRow, ReviewStatus } from './types';
 
 /**
@@ -38,6 +41,12 @@ import type { DeclarationRow, DocumentRow, ProfileRow, ReviewStatus } from './ty
  *
  * The verification stamps are UK time whoever is reading (§1.8): they are
  * audit records, not scheduled times.
+ *
+ * A share code carries its automated gov.uk check (ADR-0025) under the row:
+ * status, source, date, right-to-work-until, conditions, "Download gov.uk
+ * report" and "Run check again" — the same panel as /onboarding/:id and
+ * /compliance. The hand-typed date for a check that needs review is entered
+ * on /compliance, where every other Verify is.
  */
 function meta(row: DocumentRow): string {
   const parts: string[] = [];
@@ -79,10 +88,14 @@ export function Documents({
   profile,
   documents,
   declarations = [],
+  rtwChecks = [],
+  rtwCheckEnabled = false,
 }: {
   profile: ProfileRow;
   documents: DocumentRow[];
   declarations?: DeclarationRow[];
+  rtwChecks?: RtwCheckRow[];
+  rtwCheckEnabled?: boolean;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -91,6 +104,7 @@ export function Documents({
   const [rejecting, setRejecting] = useState<DeclarationRow | null>(null);
   const [reason, setReason] = useState('');
 
+  const checks = checksByDocument(rtwChecks);
   const sorted = [...documents].sort(documentOrder);
   const live = sorted.filter((row) => !row.superseded);
   const superseded = sorted.filter((row) => row.superseded);
@@ -170,19 +184,28 @@ export function Documents({
         ) : null}
 
         {live.map((row) => (
-          <DocRow
-            key={row.id}
-            icon={row.gov_report_path && !row.file_path ? 'GOV' : 'PDF'}
-            title={row.doc_label}
-            meta={meta(row)}
-            state={STATE[row.review_status]}
-            actions={
-              <>
-                <StatusPill status={row.review_status} />
-                {downloads(row)}
-              </>
-            }
-          />
+          <div key={row.id} className="stack">
+            <DocRow
+              icon={row.gov_report_path && !row.file_path ? 'GOV' : 'PDF'}
+              title={row.doc_label}
+              meta={meta(row)}
+              state={STATE[row.review_status]}
+              actions={
+                <>
+                  <StatusPill status={row.review_status} />
+                  {downloads(row)}
+                </>
+              }
+            />
+            {row.doc_type === 'share_code_report' ? (
+              <RtwCheckPanel
+                row={checks.get(row.id) ?? null}
+                docId={row.id}
+                docStatus={row.review_status}
+                enabled={rtwCheckEnabled}
+              />
+            ) : null}
+          </div>
         ))}
 
         {liveDeclarations.map((row) => (

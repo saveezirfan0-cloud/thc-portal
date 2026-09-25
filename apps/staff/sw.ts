@@ -123,12 +123,19 @@ self.addEventListener('push', (event) => {
   let body = '';
   let url = HOME;
 
+  // §2.3: N8 is "Document rejected — [reason]" + a "Re-upload" button. The
+  // payload may name that button (`action`); where the platform draws
+  // notification buttons (Android, desktop) it appears, and iOS — which
+  // draws none — still opens the deep link on tap, where the button lives.
+  let action: string | null = null;
+
   if (raw) {
     try {
-      const data = raw.json() as { title?: string; body?: string; url?: string };
+      const data = raw.json() as { title?: string; body?: string; url?: string; action?: string };
       title = data.title ?? title;
       body = data.body ?? '';
       url = data.url ?? HOME;
+      action = typeof data.action === 'string' && data.action ? data.action : null;
     } catch {
       body = raw.text();
     }
@@ -143,13 +150,16 @@ self.addEventListener('push', (event) => {
       // front door. `tag` collapses a repeat of the same one.
       data: { url },
       tag: url,
-    }),
+      ...(action ? { actions: [{ action: 'open', title: action }] } : {}),
+    } as NotificationOptions),
   );
 });
 
 /**
  * Tapping one opens the deep link — reusing an open window if there is one,
  * so a worker mid-check-in is not thrown onto a second copy of the app.
+ * The one button a push may carry ("Re-upload", N8) does the same as a
+ * tap: the deep link is where that action lives.
  */
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();

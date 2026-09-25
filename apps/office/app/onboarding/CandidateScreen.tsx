@@ -23,7 +23,6 @@ import {
 import { OfficeShell } from '../_components/OfficeShell';
 import {
   RTW_LABEL,
-  capReason,
   employeeId,
   formatDateRange,
   formatUkDate,
@@ -47,9 +46,12 @@ import {
   QUIZ_MAX_ATTEMPTS,
   QUIZ_PASS_MARK,
   REVIEW_PILL,
+  RTW_BRANCH_NO,
+  RTW_REQUIRED,
   aiBadge,
   canResendActivation,
   candidateActions,
+  candidateCap,
   columnFor,
   orDash,
   parsePeriod,
@@ -62,11 +64,15 @@ import {
 } from './view-model';
 import type { Period } from './view-model';
 import { rtwDateProblem, rtwDateRule, rtwDateValue } from '../compliance/rtw';
+import { RtwCheckPanel } from '../_components/RtwCheckPanel';
+import { checksByDocument, rtwCheckView } from '../_lib/rtwCheck';
+import type { RtwCheckRow } from '../_lib/rtwCheck';
 import type {
   ActionResult,
   CandidateData,
   CandidateDocument,
   CandidateRow,
+  ContractVersion,
   Declaration,
 } from './types';
 import './onboarding.css';
@@ -200,7 +206,8 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
         ) : null}
 
         <div className="cand-head">
-          <Avatar size="xl" name={row.display_name} />
+          {/* §2.7: the onboarding selfie follows them through the whole system. */}
+          <Avatar size="xl" name={row.display_name} src={row.photo_url ?? undefined} />
           <div className="who">
             <div className="row wrap">
               <h2>{row.display_name}</h2>
@@ -286,7 +293,7 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
         ) : null}
         {column === 'quiz' ? <QuizPhase row={row} data={data} /> : null}
         {column === 'additional_info' ? <AdditionalInfo row={row} data={data} /> : null}
-        {column === 'contract' ? <ContractPhase row={row} /> : null}
+        {column === 'contract' ? <ContractPhase row={row} contract={data.contract} /> : null}
       </div>
 
       <Modal
@@ -384,10 +391,22 @@ function Facts({ row, data, phase }: { row: CandidateRow; data: CandidateData; p
           DOB <b>{formatUkDate(row.dob)}</b>
         </span>,
       );
+    // The wireframe's Additional info header leads with the quiz result.
+    const passed = phase === 4 ? data.attempts.find((attempt) => attempt.passed) : undefined;
+    if (passed) {
+      facts.push(
+        <span key="quiz">
+          Quiz <b className="green">passed {Math.round(passed.score)}%</b> (attempt{' '}
+          {passed.attempt_no})
+        </span>,
+      );
+    }
+    const branchNo = row.rtw_branch ? RTW_BRANCH_NO[row.rtw_branch] : undefined;
     facts.push(
       <span key="rtw">
         Right to Work{' '}
         <b>{row.rtw_branch ? (RTW_LABEL[row.rtw_branch] ?? row.rtw_branch) : 'not chosen yet'}</b>
+        {phase === 2 && branchNo ? ` (branch ${branchNo})` : ''}
         {row.right_to_work_until ? ` · until ${formatUkDate(row.right_to_work_until)}` : ''}
       </span>,
     );
@@ -397,7 +416,7 @@ function Facts({ row, data, phase }: { row: CandidateRow; data: CandidateData; p
       <span key="cap">
         Weekly limit{' '}
         <b>
-          {capReason(
+          {candidateCap(
             data.profile.weekly_cap_band,
             data.profile.weekly_cap_hours,
             data.profile.weekly_cap_until,
@@ -420,6 +439,10 @@ function Facts({ row, data, phase }: { row: CandidateRow; data: CandidateData; p
         <b>{row.email}</b>
       </span>,
     );
+  }
+  // The mobile stays through Quiz (candidate.html): the office may need to
+  // call about an attempt; from Additional info on it is on the profile.
+  if (phase <= 3) {
     facts.push(
       <span key="phone">
         <b>{row.phone}</b>
@@ -457,7 +480,7 @@ function WilloButton({ url, primary }: { url: string | null; primary?: boolean }
       <Button
         tone="outline"
         disabled
-        title="Set settings.willo_review_url_template once THC supplies the Willo account (§2.4)"
+        title="Willo is not connected yet — the link appears once THC's Willo account is set up in Settings (§2.4)"
       >
         Review interview on Willo — not connected
       </Button>
@@ -827,16 +850,31 @@ function DocumentLine({
 }
 
 /**
- * The gov.uk share-code report (§2.6): the worker typed the code; the date is
- * read off the report (the extractor pre-fills it, ADR-0002) and the manager
- * confirms it — Verify is refused without it, because it is the worker's
- * right-to-work expiry and the last day they can be rostered. On the EU
- * settled branch, settled status is confirmed explicitly as no time limit.
+ * The gov.uk share-code report (§2.3, §2.6): the worker typed the code with
+ * their DOB, and the automated check (ADR-0025) asks gov.uk — a pass
+ * verifies it by itself, with the right-to-work-until gov.uk returned and
+ * the PDF stored here. Only a check that needs review (or the automation
+ * switched off) puts the date in front of the manager to confirm — Verify is
+ * refused without it, because it is the worker's right-to-work expiry and
+ * the last day they can be rostered (ADR-0018). On the EU settled branch,
+ * settled status is confirmed explicitly as no time limit.
  */
-function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: DocHandlers }) {
-  const pill = REVIEW_PILL[doc.review_status];
-  const manual = doc.needs_manual_review;
+function ShareCodeCard({
+  doc,
+  handlers,
+  check,
+  checkEnabled,
+}: {
+  doc: CandidateDocument;
+  handlers: DocHandlers;
+  check: RtwCheckRow | null;
+  checkEnabled: boolean;
+}) {
+  const view = rtwCheckView(check, { docStatus: doc.review_status, enabled: checkEnabled });
+  const pill = view.status ?? REVIEW_PILL[doc.review_status];
+  const manual = check ? check.status === 'needs_review' : doc.needs_manual_review && !checkEnabled;
   const actionable = !handlers.readOnly && doc.review_status === 'pending';
+  const typing = actionable && view.manualAllowed;
   const rule = rtwDateRule(doc.doc_type, handlers.branch);
   const [until, setUntil] = useState(doc.right_to_work_until ?? '');
   const [noTimeLimit, setNoTimeLimit] = useState(false);
@@ -865,7 +903,7 @@ function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: Do
             </span>
           </span>
           <span className="k">Right to work until</span>
-          {actionable ? (
+          {typing ? (
             <span className="stack">
               <span className="row wrap">
                 <input
@@ -892,44 +930,58 @@ function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: Do
                 </label>
               ) : null}
             </span>
+          ) : actionable && view.inFlight ? (
+            <span className="muted sm">checking with gov.uk… — a pass fills this in by itself</span>
           ) : (
             <span>
               <b>{rtwUntilLabel(doc)}</b>{' '}
               <span className="muted sm">— becomes the expiry used for reminders (§2.6, §4.4)</span>
             </span>
           )}
-          <span className="k">Checked</span>
-          <span>{formatUkStamp(doc.uploaded_at)} · gov.uk/view-right-to-work</span>
+          {!check ? (
+            <>
+              <span className="k">Checked</span>
+              <span>{formatUkStamp(doc.uploaded_at)} · gov.uk/view-right-to-work</span>
+            </>
+          ) : null}
         </div>
+        <RtwCheckPanel
+          row={check}
+          docId={doc.id}
+          docStatus={handlers.readOnly ? 'read_only' : doc.review_status}
+          enabled={checkEnabled}
+        />
         <div className="row wrap">
-          {doc.gov_report_path ? (
+          {doc.gov_report_path && !check?.report_path ? (
             <Button size="sm" onClick={() => handlers.onOpen(doc.id, 'report')}>
-              Open PDF report
+              Download gov.uk report
+            </Button>
+          ) : null}
+          {typing ? (
+            <Button
+              size="sm"
+              tone="green"
+              disabled={handlers.busy || problem !== null}
+              title={problem ?? undefined}
+              onClick={() => handlers.onVerify(doc, { expiry: rtwDateValue(until, noTimeLimit) })}
+            >
+              Verify
             </Button>
           ) : null}
           {actionable ? (
-            <>
-              <Button
-                size="sm"
-                tone="green"
-                disabled={handlers.busy || problem !== null}
-                title={problem ?? undefined}
-                onClick={() => handlers.onVerify(doc, { expiry: rtwDateValue(until, noTimeLimit) })}
-              >
-                Verify
-              </Button>
-              <Button
-                size="sm"
-                tone="danger"
-                disabled={handlers.busy}
-                onClick={() => handlers.onReject(doc)}
-              >
-                Reject
-              </Button>
-            </>
+            <Button
+              size="sm"
+              tone="danger"
+              disabled={handlers.busy}
+              onClick={() => handlers.onReject(doc)}
+            >
+              Reject
+            </Button>
           ) : null}
           <span className="annot">
-            on failure or low confidence the check is flagged “manual review” instead of a date
+            {checkEnabled
+              ? 'a pass verifies by itself; only a check that needs review asks you for the date (ADR-0025)'
+              : 'automatic check switched off — confirm the date from the report (ADR-0018)'}
           </span>
         </div>
       </div>
@@ -969,6 +1021,9 @@ function TermDates({
         <span className="muted sm">
           Verify the dates against the letter — the manager confirms the dates, not the hours (§2.3)
         </span>
+        <span className="ml-auto annot">
+          AI must confirm the dates are in the future — an expired letter is not accepted
+        </span>
       </div>
       {periods.length === 0 ? (
         <div className="muted sm">No holiday periods — add any the letter shows.</div>
@@ -980,19 +1035,13 @@ function TermDates({
             <span className="label">From</span>
             <span />
             <span className="label">To</span>
+            <span className="label">Source</span>
             <span />
           </div>
           {periods.map((period, index) => (
             <div className="period" key={index}>
               <span className="mono muted">{index + 1}</span>
-              <span>
-                Holiday {index + 1}
-                {index < aiCount && badge ? (
-                  <span className={`ai ${badge.tone}`}>{badge.label}</span>
-                ) : (
-                  <span className="ai">added by hand</span>
-                )}
-              </span>
+              <span>Holiday {index + 1}</span>
               <input
                 className="input mono"
                 type="date"
@@ -1010,6 +1059,11 @@ function TermDates({
                 disabled={!editable}
                 onChange={(event) => update(index, { to: event.target.value })}
               />
+              {index < aiCount && badge ? (
+                <span className={`ai ${badge.tone}`}>{badge.label}</span>
+              ) : (
+                <span className="ai">added by hand</span>
+              )}
               {editable ? (
                 <button
                   type="button"
@@ -1076,12 +1130,13 @@ function DocumentsPhase({
     (termLetter?.term_dates ?? []).map(parsePeriod).filter((p): p is Period => p !== null),
   );
   const shareCode = live.filter((d) => d.doc_type === 'share_code_report');
+  const checks = checksByDocument(data.rtwChecks ?? []);
   const others = live.filter((d) => d.doc_type !== 'share_code_report');
   const declarations = data.declarations.filter((d) => !d.superseded);
   const gate = quizGate(row);
   const niMasked = data.profile?.ni_number_masked ?? null;
   const capText = data.profile
-    ? capReason(
+    ? candidateCap(
         data.profile.weekly_cap_band,
         data.profile.weekly_cap_hours,
         data.profile.weekly_cap_until,
@@ -1136,7 +1191,18 @@ function DocumentsPhase({
 
       <Panel
         title={`Right to Work · ${row.rtw_branch ? (RTW_LABEL[row.rtw_branch] ?? row.rtw_branch) : 'branch not chosen yet'}`}
-        actions={<span className="muted xs">PDF · JPG · PNG · HEIC · ≤10 MB</span>}
+        actions={
+          <>
+            {/* §2.5: which of the five branches, and the document set it collects. */}
+            {row.rtw_branch && RTW_BRANCH_NO[row.rtw_branch] ? (
+              <>
+                <Pill tone="cyan">Branch {RTW_BRANCH_NO[row.rtw_branch]} of 5</Pill>
+                <span className="muted sm">{RTW_REQUIRED[row.rtw_branch]}</span>
+              </>
+            ) : null}
+            <span className="muted xs">PDF · JPG · PNG · HEIC · ≤10 MB</span>
+          </>
+        }
       >
         <div className="stack">
           {live.length === 0 ? (
@@ -1165,7 +1231,13 @@ function DocumentsPhase({
             </div>
           ))}
           {shareCode.map((d) => (
-            <ShareCodeCard key={d.id} doc={d} handlers={doc} />
+            <ShareCodeCard
+              key={d.id}
+              doc={d}
+              handlers={doc}
+              check={checks.get(d.id) ?? null}
+              checkEnabled={data.rtwCheckEnabled ?? false}
+            />
           ))}
           {row.share_code && shareCode.length === 0 ? (
             <Note>
@@ -1173,6 +1245,21 @@ function DocumentsPhase({
               the gov.uk report appears here once the automatic check has run (§2.6).
             </Note>
           ) : null}
+
+          {/* §2.7: the selfie is part of the document set the wireframe lists. */}
+          <DocRow
+            icon="IMG"
+            title="Profile selfie"
+            meta={
+              row.photo_path
+                ? 'Taken in the app at wizard step 4 · becomes the avatar across the whole system · locked after onboarding'
+                : 'Not taken yet — the candidate takes it in the app at wizard step 4'
+            }
+            state={row.photo_path ? 'verified' : 'pending'}
+            actions={
+              row.photo_path ? <Pill tone="green">Set</Pill> : <Pill tone="amber">Not taken</Pill>
+            }
+          />
 
           {superseded.length > 0 ? (
             <div className="superseded-group stack">
@@ -1407,7 +1494,7 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
   const hmrc = data.hmrc;
   const money = data.profile;
   const capText = money
-    ? capReason(money.weekly_cap_band, money.weekly_cap_hours, money.weekly_cap_until)
+    ? candidateCap(money.weekly_cap_band, money.weekly_cap_hours, money.weekly_cap_until)
     : '—';
 
   return (
@@ -1572,22 +1659,51 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
 // ---------------------------------------------------------------------
 // 6 · Contract (§2.11)
 // ---------------------------------------------------------------------
-function ContractPhase({ row }: { row: CandidateRow }) {
+/**
+ * §2.11: "The scrollable text of the zero-hours agreement + a tick-box 'I
+ * agree' = the signature." The text shown is the version the candidate
+ * signed — or, before signature, the one in force now — never a
+ * description of it; the tick is drawn ticked only once the signature
+ * exists, and the reviewer cannot tick it.
+ */
+function ContractPhase({ row, contract }: { row: CandidateRow; contract: ContractVersion | null }) {
   const signed = row.contract_signed_at;
+  const version = row.contract_version ?? contract?.version ?? null;
   return (
     <div className="grid c2">
       <Panel title="Zero-hours agreement · T&C" actions={<Pill>§2.11 · step 10/11</Pill>}>
         <div className="stack">
           <div className="contract-text">
             <h4>
-              The Hospitality Company — Zero-hours worker agreement
-              {row.contract_version ? ` (${row.contract_version})` : ''}
+              {contract?.title ?? 'The Hospitality Company — Zero-hours worker agreement'}
+              {version ? ` (${version})` : ''}
             </h4>
-            The candidate reads the versioned agreement in the app and ticks “I agree”; the tick is
-            the signature. The agreement includes the ongoing duty to disclose any unspent criminal
-            conviction that arises during the engagement, using the declaration route in the app
-            (§10.7).
+            {contract ? (
+              contract.body
+                .split(/\n\s*\n/)
+                .filter((paragraph) => paragraph.trim() !== '')
+                .map((paragraph, index) => <p key={index}>{paragraph.trim()}</p>)
+            ) : (
+              <p>No published agreement could be read — see contract_versions (§2.11).</p>
+            )}
           </div>
+          {contract?.is_placeholder ? (
+            <Note>
+              Placeholder wording until THC supplies the agreement text (docs/17). Every version
+              carries the ongoing duty to disclose an unspent conviction (§10.7).
+            </Note>
+          ) : null}
+          <label className={signed ? 'check sel' : 'check'}>
+            <input
+              type="checkbox"
+              className="check-input"
+              checked={Boolean(signed)}
+              disabled
+              readOnly
+              aria-label="I agree — this timestamp is my signature"
+            />
+            <span className={signed ? 'box on' : 'box'} />I agree — this timestamp is my signature
+          </label>
           {signed ? (
             <Alert tone="green">
               <b>Signed electronically · {formatUkStamp(signed)}</b> — shown in UK time and never
@@ -1595,7 +1711,9 @@ function ContractPhase({ row }: { row: CandidateRow }) {
             </Alert>
           ) : (
             <Alert tone="amber">
-              Presented in the app {formatUkStamp(row.stage_entered_at)} · <b>not yet signed</b>.
+              Quiz passed {formatUkStamp(row.quiz_passed_at ?? row.stage_entered_at)} · additional
+              info complete · <b>not yet signed</b> — the agreement is in front of them at wizard
+              step 10.
             </Alert>
           )}
         </div>
@@ -1615,6 +1733,10 @@ function ContractPhase({ row }: { row: CandidateRow }) {
                 and printed on every timesheet (§9.9, §11.3)
               </div>
               <div>✓ Selfie avatar follows them through the whole system</div>
+              <div>
+                ✓ Wizard step 11 &ldquo;How it works&rdquo; shown in the app; Shifts · Radar ·
+                Invites unlocked
+              </div>
               <div>
                 ✓ Eligible for {row.role_names.join(' and ') || 'their roles’'} invitations from the
                 next auto-staffing round

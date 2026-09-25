@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
 import {
@@ -11,6 +12,7 @@ import {
   KanbanCard,
   KanbanColumn,
   Modal,
+  Note,
   Pill,
   SearchInput,
   SegToggle,
@@ -48,7 +50,7 @@ function WilloLink({ url }: { url: string | null }) {
     return (
       <span
         className="willo off"
-        title="Set settings.willo_review_url_template once THC supplies the Willo account"
+        title="Willo is not connected yet — the link appears once THC's Willo account is set up in Settings"
       >
         Review interview on Willo — not connected
       </span>
@@ -329,6 +331,14 @@ function Column({
           <CandidateCard key={row.id} row={row} column={column.key} now={now} onOpen={onOpen} />
         ),
       )}
+
+      {/* The wireframe's note under the Contract column: where a card goes when it leaves (§2.7). */}
+      {filter === 'active' && column.key === 'contract' ? (
+        <Note>
+          Signed → the card leaves the kanban, Employee ID is generated and the person appears in{' '}
+          <Link href="/staff">Staff</Link> as Compliant (§2.7).
+        </Note>
+      ) : null}
     </KanbanColumn>
   );
 }
@@ -427,9 +437,13 @@ function ReturningCard({
       </span>
       <div className="meta">
         Matches existing record{' '}
-        <b className="cyan">
-          {row.existing_name} · {employeeId(row.employee_id)}
-        </b>{' '}
+        {/* §2.12: the historical show-rate, feedback and violations are on
+            the profile — the name opens it. */}
+        <Link href={`/staff/${row.staff_id}`} className="cyan">
+          <b>
+            {row.existing_name} · {employeeId(row.employee_id)}
+          </b>
+        </Link>{' '}
         ({row.matched_on === 'email_dob' ? 'email + DOB' : 'mobile + DOB'}). Status:{' '}
         <span
           className={row.status === 'blocked' || row.status === 'rejected' ? 'coral' : undefined}

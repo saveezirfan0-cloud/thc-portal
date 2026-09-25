@@ -38,6 +38,32 @@ const MESSAGES: [RegExp, string][] = [
     'Only a share code showing EU settled status can be verified with no time limit (§2.5 pt 2).',
   ],
   [/^date_invalid/, 'That date is not a real calendar date.'],
+  // compliance_confirm_rtw_date (20260927160000)
+  [
+    /^not_a_share_code/,
+    'Only a share code report is re-verified for its date. A visa or status document is re-uploaded and verified with its expiry.',
+  ],
+  [
+    /^not_verified/,
+    'This report has not been verified yet — verify it, with its date, from the queue.',
+  ],
+  [
+    /^superseded_by_newer/,
+    'A newer share code report has been verified for this worker; the date on file comes from that one.',
+  ],
+  // The automated gov.uk check (ADR-0025).
+  [
+    /^rtw_check_required/,
+    'The automatic gov.uk check verifies this share code. Run the check again; a date is typed by hand only once a check is in Needs review.',
+  ],
+  [/^rtw_check_running/, 'The gov.uk check is already running for this share code.'],
+  [
+    /^rtw_check_disabled/,
+    'The automatic gov.uk check is switched off (settings.rtw_check.enabled) — verify the share code by hand.',
+  ],
+  [/^no_share_code/, 'There is no share code on this document to check.'],
+  [/^not_needs_review/, 'This check is not waiting for the office.'],
+  [/^rtw_check_not_found/, 'This check no longer exists — refresh the page.'],
   [/^(document|declaration)_not_found/, 'This item no longer exists — refresh the queue.'],
 ];
 

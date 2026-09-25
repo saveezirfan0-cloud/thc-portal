@@ -131,7 +131,7 @@ Constraints: one domain; no shared-package changes without a separate PR first.
 Done when: <acceptance from the build plan>. Then run qa-reviewer on the diff.
 ```
 
-`docs/14-open-questions.md` carries the questions THC still has to answer — each one
+`docs/15-open-questions.md` carries the questions THC still has to answer — each one
 already implemented one way, with what changes if they pick the other — and the short
 list of things that need the repository owner rather than a bot.
 

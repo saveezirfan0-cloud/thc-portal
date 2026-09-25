@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { loadRtwCheckEnabled } from '../_lib/rtwCheckData';
 import type { AuditRow, CompliancePageData, QueueRow, RadarRow, WarningRow } from './types';
 
 /**
@@ -22,12 +23,13 @@ export async function loadCompliance(): Promise<CompliancePageData> {
     radar: [],
     warnings: [],
     rotaGuardMode: 'block',
+    rtwCheckEnabled: false,
     problem: null,
   };
   if (!supabaseConfigured()) return { ...empty, problem: NOT_CONFIGURED };
 
   const supabase = createClient(await cookies());
-  const [queue, radar, warnings, mode] = await Promise.all([
+  const [queue, radar, warnings, mode, rtwCheckEnabled] = await Promise.all([
     supabase
       .from('compliance_review_queue_v')
       .select('*')
@@ -49,6 +51,7 @@ export async function loadCompliance(): Promise<CompliancePageData> {
       .select('value')
       .eq('key', 'rota_guard_mode')
       .maybeSingle<{ value: unknown }>(),
+    loadRtwCheckEnabled(supabase),
   ]);
 
   const problem = queue.error?.message ?? radar.error?.message ?? warnings.error?.message ?? null;
@@ -60,6 +63,7 @@ export async function loadCompliance(): Promise<CompliancePageData> {
     warnings: warnings.data ?? [],
     // Mirrors rota_guard_mode(): anything but an explicit 'warn' is block.
     rotaGuardMode: mode.data?.value === 'warn' ? 'warn' : 'block',
+    rtwCheckEnabled,
     problem: null,
   };
 }

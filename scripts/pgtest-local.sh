@@ -97,6 +97,8 @@ create function storage.filename(name text) returns text language sql immutable 
 create function storage.extension(name text) returns text language sql immutable as $$ select reverse(split_part(reverse(name), '.', 1)) $$;
 create table vault.secrets (id uuid default gen_random_uuid() primary key, name text, secret text);
 create view vault.decrypted_secrets as select id, name, secret, secret as decrypted_secret from vault.secrets;
+create function vault.create_secret(new_secret text, new_name text default null, new_description text default '', new_key_id uuid default null) returns uuid language sql as $vault$ insert into vault.secrets (name, secret) values (new_name, new_secret) returning id $vault$;
+create function vault.update_secret(secret_id uuid, new_secret text default null, new_name text default null, new_description text default null, new_key_id uuid default null) returns void language sql as $vault$ update vault.secrets set secret = coalesce(new_secret, secret), name = coalesce(new_name, name) where id = secret_id $vault$;
 grant usage on schema auth, storage, extensions to anon, authenticated, service_role;
 grant select, insert, update, delete on storage.objects, storage.buckets to anon, authenticated, service_role;
 grant all on auth.users to service_role;
@@ -111,5 +113,9 @@ for f in "$REPO"/supabase/migrations/*.sql; do
 done
 echo "migrations: $(ls "$REPO"/supabase/migrations/*.sql | wc -l) applied"
 [ -f "$REPO/supabase/seed.sql" ] && { $P -f "$REPO/supabase/seed.sql" >/dev/null 2>"$DIR/err" || { echo "SEED FAILED"; cat "$DIR/err"; exit 1; }; echo "seed: ok"; }
+# Not here: `supabase gen types --db-url` against this cluster. The CLI runs
+# pg-meta in a Docker image even for a plain --db-url, so it fails in the
+# same sandboxes this script exists for. Regenerate types after a deploy,
+# with `pnpm --filter @thc/db gen:types` against the linked project.
 cd "$REPO/supabase/tests"
 if [ -n "${TESTS:-}" ]; then pg_prove --ext .sql $TESTS; else pg_prove -r --ext .sql --ext .pg . ; fi

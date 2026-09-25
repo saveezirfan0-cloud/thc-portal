@@ -1,17 +1,20 @@
 import { isSafeRelativePath } from '@thc/db';
 import { AuthCard } from '@thc/ui';
 import { LoginForm } from './LoginForm';
+import './auth-tap.css';
 
 export const metadata = { title: 'Sign in · THC Staff' };
 
+/** A0 Login — §10.2, wireframes/staff/auth.html: "Staff app", and the footer verbatim. */
 export default async function Page({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
   const { next } = await searchParams;
   return (
     <AuthCard
-      product="Staff"
+      product="Staff app"
       footer={
         <>
-          New here? Use the personal link in your acceptance email to set a password, then sign in.
+          No account yet? Your login is created when the office accepts your interview — look for
+          the activation email from admin@thehospitalitycompany.co.uk.
         </>
       }
     >

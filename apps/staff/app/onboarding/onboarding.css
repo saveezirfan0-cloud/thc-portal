@@ -30,9 +30,22 @@
   gap: var(--sp-8);
 }
 
-/* An inline text action: "Change", "Edit", "Replace". */
+/* The Staff App's minimum touch target. Belongs in packages/ui tokens; until
+   it lands there it is derived from the spacing scale here, so no literal. */
+:root {
+  --tap-min: calc(var(--sp-28) + var(--sp-16));
+}
+
+/* An inline text action: "Change", "Edit", "Replace". It keeps the look of
+   a link, but the hit area is the Staff App's 44px minimum: the height comes
+   from min-height and the horizontal padding, and the negative margins give
+   the extra back so the row's layout does not move. */
 .linkbtn {
-  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  padding: 0 var(--sp-8);
+  margin: calc(-1 * var(--sp-12)) calc(-1 * var(--sp-8));
   border: 0;
   background: none;
   color: var(--cyan-ink);

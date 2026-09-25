@@ -24,13 +24,14 @@ import {
   formatRating,
   formatShowRate,
   formatUkDate,
+  statusLabel,
 } from '../staff';
 import { Documents } from './Documents';
 import { Feedback } from './Feedback';
 import { Overview } from './Overview';
 import { Qualifications } from './Qualifications';
 import { Shifts } from './Shifts';
-import { canReset, hoursTone, isActionable, noShowTone } from './profile';
+import { canBlock, canReset, hoursTone, isActionable, noShowTone } from './profile';
 import {
   addRole,
   blockWorker,
@@ -46,14 +47,6 @@ import './profile.css';
 
 type Tab = 'overview' | 'documents' | 'qualification' | 'shifts' | 'feedback';
 type Dialog = 'block' | 'reset' | 'remove' | null;
-
-const STATUS_TONE: Record<string, 'green' | 'coral' | 'amber' | 'neutral'> = {
-  compliant: 'green',
-  blocked: 'coral',
-  rejected: 'coral',
-  removed: 'neutral',
-  inactive: 'amber',
-};
 
 /**
  * /staff/:id — the worker profile (§9.6),
@@ -166,8 +159,9 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
           <div className="who">
             <div className="row wrap">
               <h2>{profile.display_name}</h2>
-              <Pill tone={STATUS_TONE[profile.status] ?? 'neutral'} large>
-                {profile.status}
+              {/* The wireframe's words ("Compliant", "Blocked"), never the raw enum. */}
+              <Pill tone={statusLabel(profile).tone} large>
+                {statusLabel(profile).label}
               </Pill>
               <span className="mono sm muted">
                 Employee ID <b className="cyan">{employeeId(profile.employee_id)}</b>
@@ -287,7 +281,14 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
                 <Button
                   size="sm"
                   tone="danger"
-                  disabled={!actionable || pending}
+                  // §2.12: only a compliant worker can be blocked; someone who
+                  // left, was rejected or is still a candidate cannot (§9.6).
+                  disabled={!actionable || !canBlock(profile.status) || pending}
+                  title={
+                    actionable && !canBlock(profile.status)
+                      ? 'Only a compliant worker can be blocked (§2.12) — a leaver or candidate is not'
+                      : undefined
+                  }
                   onClick={() => setDialog('block')}
                 >
                   Block
@@ -404,6 +405,8 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             profile={profile}
             documents={data.documents}
             declarations={data.declarations}
+            rtwChecks={data.rtwChecks}
+            rtwCheckEnabled={data.rtwCheckEnabled}
           />
         ) : null}
         {tab === 'qualification' ? (
