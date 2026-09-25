@@ -97,7 +97,7 @@ export function DeleteVenueModal({ venue, onClose, onDeleted }: DeleteVenueModal
       <div className="sm muted">
         Deleting removes it from venue selection when creating new events. Existing events keep
         their own address and geofence radius exactly as they were at the time they were built —
-        deleting a venue never breaks a past or already-scheduled event (§9.11).
+        deleting a venue never breaks a past or already-scheduled event.
       </div>
     </Modal>
   );

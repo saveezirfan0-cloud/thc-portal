@@ -94,17 +94,16 @@ export function FeedbackScreen({ data, query }: { data: FeedbackPageData; query:
             />
             <div className="right">
               <span className="muted xs">
-                read-only channel — arrives from the Client Portal (§11.2); cannot be replied to,
-                edited or deleted
+                read-only channel — arrives from the Client Portal; cannot be replied to, edited or
+                deleted
               </span>
             </div>
           </div>
 
           <Alert tone="cyan">
             <b>Rating impact:</b> a client entry feeds the worker&rsquo;s rating (25% of the
-            auto-assign score, §6) only once a manager presses <b>Mark as read</b> — submission
-            alone does not affect the rating. &ldquo;Mark as read&rdquo; exists only on this tab
-            (§9.10).
+            auto-assign score) only once a manager presses <b>Mark as read</b> — submission alone
+            does not affect the rating. &ldquo;Mark as read&rdquo; exists only on this tab.
           </Alert>
 
           <div className="fb-list" role="list" aria-label="Client feedback">
@@ -118,7 +117,7 @@ export function FeedbackScreen({ data, query }: { data: FeedbackPageData; query:
               <EmptyState>
                 {query.q || query.clientId || query.status !== 'all'
                   ? 'No client feedback matches these filters.'
-                  : 'No client feedback yet. It arrives from the Client Portal once an event has started (§11.2).'}
+                  : 'No client feedback yet. It arrives from the Client Portal once an event has started.'}
               </EmptyState>
             ) : (
               data.entries.map((entry) => (
@@ -263,7 +262,7 @@ function ClientRow({ entry, onDelete }: { entry: FeedbackEntry; onDelete: () => 
             </Button>
             <span className="note-line muted xs">
               the one exception to read-only: deleting a client entry to redact a name after GDPR
-              removal, if asked (§1.7)
+              removal, if asked
             </span>
           </>
         ) : null}

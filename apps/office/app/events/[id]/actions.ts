@@ -121,12 +121,12 @@ function noShowRefusal(raw: string): string {
   if (/admins_only/.test(raw)) return 'Only the office can record a no-show.';
   if (/booking_not_found/.test(raw)) return 'That booking no longer exists.';
   if (/booking_not_confirmed/.test(raw)) {
-    return 'Only a confirmed worker can be marked as a no-show (§3.3).';
+    return 'Only a confirmed worker can be marked as a no-show.';
   }
   if (/already_checked_in/.test(raw))
     return 'This worker has checked in, so they are not a no-show.';
   if (/outside_window/.test(raw)) {
-    return 'No-show can be recorded from the shift start until two weeks after it ends (§3.3).';
+    return 'No-show can be recorded from the shift start until two weeks after it ends.';
   }
   return raw;
 }
@@ -305,7 +305,7 @@ export async function setRoleAutoAssign(
   if (eventError) return { error: eventError.message };
   if (!event) return { error: 'That event no longer exists.' };
   if ((event as { cancelled_at: string | null }).cancelled_at) {
-    return { error: 'This event is cancelled; auto-assign has stopped for it (§3.3).' };
+    return { error: 'This event is cancelled; auto-assign has stopped for it.' };
   }
 
   const { data, error } = await supabase

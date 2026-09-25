@@ -104,7 +104,7 @@ describe('manual No-show (§3.3)', () => {
   it('maps the window refusal to the §3.3 sentence', async () => {
     state.rpc.mockResolvedValueOnce({ data: null, error: { message: 'outside_window' } });
     expect(await markNoShow('evt-1', 'bk-2')).toEqual({
-      error: 'No-show can be recorded from the shift start until two weeks after it ends (§3.3).',
+      error: 'No-show can be recorded from the shift start until two weeks after it ends.',
     });
   });
 

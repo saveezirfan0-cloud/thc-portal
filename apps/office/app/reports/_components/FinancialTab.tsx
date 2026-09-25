@@ -118,10 +118,10 @@ export function FinancialTab({
 
       <Alert tone="cyan">
         <b>Invoicing here is a revenue forecast for the period, not the PO-based invoices.</b> THC
-        has its own invoicing process; PO Numbers carry into the timesheet documents (§3.2, §11.3),
-        not into this figure. Payable hours = the intersection of check-in/out with the scheduled
-        window (RULE-01, §5.2); a section still to finish is forecast at headcount × its hours.
-        Cancelled events contribute nothing (§3.3).
+        has its own invoicing process; PO Numbers carry into the timesheet documents, not into this
+        figure. Payable hours = the intersection of check-in/out with the scheduled window; a
+        section still to finish is forecast at headcount × its hours. Cancelled events contribute
+        nothing.
       </Alert>
 
       <Panel

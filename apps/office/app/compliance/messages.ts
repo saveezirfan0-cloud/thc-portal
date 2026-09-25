@@ -8,21 +8,18 @@ const MESSAGES: [RegExp, string][] = [
   [/^reason_required/, 'A rejection needs a reason — the worker is sent it.'],
   [/^not_pending: verified/, 'This has already been verified.'],
   [/^not_pending: rejected/, 'This has already been rejected. The worker re-uploads.'],
-  [/^not_pending: superseded/, 'This belongs to a previous period and is read-only (§2.12).'],
+  [/^not_pending: superseded/, 'This belongs to a previous period and is read-only.'],
   [/^not_pending/, 'This is no longer waiting for review.'],
-  [
-    /^not_reviewable/,
-    'This person is Rejected or Removed; their documents no longer need review (§4.1).',
-  ],
+  [/^not_reviewable/, 'This person is Rejected or Removed; their documents no longer need review.'],
   [
     /^already_expired: (\d{4}-\d{2}-\d{2})/,
-    'This document has already expired ($1) and cannot be accepted — reject it and ask for a current one (§4.2).',
+    'This document has already expired ($1) and cannot be accepted — reject it and ask for a current one.',
   ],
   // compliance_verify_document on a term letter whose every holiday range
   // is past (20260928110300): "an already-expired letter is not accepted".
   [
     /^term_letter_expired/,
-    'This letter has expired: every term date on it is before today. Reject it and ask the worker for a current letter (§4.2).',
+    'This letter has expired: every term date on it is before today. Reject it and ask the worker for a current letter.',
   ],
   [
     /^use_approve_completion_letter/,
@@ -37,11 +34,11 @@ const MESSAGES: [RegExp, string][] = [
   [/^term_dates_invalid/, 'A holiday range needs both a start and an end date.'],
   [
     /^rtw_date_required/,
-    'Confirm the right-to-work date on this document before verifying it — the expiry of a visa or status document, or the date on the gov.uk report (§2.5, §2.6).',
+    'Confirm the right-to-work date on this document before verifying it — the expiry of a visa or status document, or the date on the gov.uk report.',
   ],
   [
     /^no_time_limit_not_allowed/,
-    'Only a share code showing EU settled status can be verified with no time limit (§2.5 pt 2).',
+    'Only a share code showing EU settled status can be verified with no time limit.',
   ],
   [/^date_invalid/, 'That date is not a real calendar date.'],
   // compliance_confirm_rtw_date (20260927160000)

@@ -150,7 +150,7 @@ export function EventScreen({
                     the view carries no recipient count, so none is claimed. */}
                 Sign-out timesheet generated{' '}
                 {formatDateTimeIn(new Date(timesheet.issuedAt), UK_ZONE)}
-                <span className="sub">by email to the contacts on your client card (§11.4)</span>
+                <span className="sub">by email to the contacts on your client card</span>
               </div>
             </div>
           ) : null}

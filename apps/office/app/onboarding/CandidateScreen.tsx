@@ -211,9 +211,9 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
             {row.rejection_cause === 'willo'
               ? ' — in Willo; the system rejected automatically and sent E2.'
               : row.rejection_cause === 'quiz_failed'
-                ? ' — Health & Safety quiz failed three times; E4 and the terminal screen in the app (§2.9).'
+                ? ' — Health & Safety quiz failed three times; E4 and the terminal screen in the app.'
                 : ` — by ${row.rejected_by_name ?? 'the office'}${row.rejection_reason ? `: “${row.rejection_reason}”` : ''}.`}{' '}
-            Final on this record: a new application routes here as a returning applicant (§2.12).
+            Final on this record: a new application routes here as a returning applicant.
           </Alert>
         ) : null}
 
@@ -247,7 +247,7 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
               <Button
                 tone="outline"
                 disabled={busy || resent}
-                title="A fresh personal link and a new E3, for a candidate whose link has expired (§2.7). Once every 10 minutes."
+                title="A fresh personal link and a new E3, for a candidate whose link has expired. Once every 10 minutes."
                 onClick={() =>
                   run(
                     () => resendActivationLink(row.id),
@@ -356,13 +356,13 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
               hint={
                 reject.kind === 'candidate'
                   ? 'Kept for the office. The candidate receives THC’s rejection email — E2 once the interview is done, E2b before it — never this reason.'
-                  : 'Sent to the worker word for word in push N8: “Document rejected — [reason]” with a Re-upload button. The new upload returns to review (§2.3, §4.1).'
+                  : 'Sent to the worker word for word in push N8: “Document rejected — [reason]” with a Re-upload button. The new upload returns to review.'
               }
             />
             {reject.kind === 'candidate' ? (
               <Note>
-                Rejecting a candidate is final — there is no un-reject on this record (§2.3). Their
-                pending documents drop out of Compliance → Needs review.
+                Rejecting a candidate is final — there is no un-reject on this record. Their pending
+                documents drop out of Compliance → Needs review.
               </Note>
             ) : (
               <Note>
@@ -504,7 +504,7 @@ function WilloButton({ url, primary }: { url: string | null; primary?: boolean }
         tone="ghost"
         disabled
         aria-disabled="true"
-        title="Willo is not connected yet — the link appears once THC's Willo account is set up in Settings (§2.4)"
+        title="Willo is not connected yet — the link appears once THC's Willo account is set up in Settings"
       >
         Review interview on Willo — not connected
       </Button>
@@ -529,7 +529,7 @@ function InterviewRequested({ row, data }: { row: CandidateRow; data: CandidateD
       : 'not started';
   return (
     <div className="grid c2">
-      <Panel title="Application" actions={<Pill>/apply · §2.1</Pill>}>
+      <Panel title="Application" actions={<Pill>/apply</Pill>}>
         <div className="kv">
           <span className="k">First name</span>
           <span>{row.first_name}</span>
@@ -555,8 +555,8 @@ function InterviewRequested({ row, data }: { row: CandidateRow; data: CandidateD
           <span className="k">Duplicate check</span>
           <span className="muted">
             {data.application?.outcome === 'returning_applicant'
-              ? 'Matched an existing record — reset to candidate on this record (§2.12)'
-              : 'No match on email or mobile + DOB → new record created (§2.12)'}
+              ? 'Matched an existing record — reset to candidate on this record'
+              : 'No match on email or mobile + DOB → new record created'}
           </span>
         </div>
       </Panel>
@@ -592,7 +592,7 @@ function InterviewRequested({ row, data }: { row: CandidateRow; data: CandidateD
           </div>
           <Note>
             No documents are held on this phase — the Documents panel appears only once the
-            candidate is accepted (§2.3).
+            candidate is accepted.
           </Note>
         </div>
       </Panel>
@@ -659,12 +659,11 @@ function InterviewCompleted({
           <Note>
             Rejected in Willo → the system rejects automatically and sends E2 (THC wording).
             Accepted in Willo → the profile advances to Documents by itself and E3 (activation +
-            password + &quot;download the app&quot;) goes out. The decision is not repeated here
-            (§2.4).
+            password + &quot;download the app&quot;) goes out. The decision is not repeated here.
           </Note>
         </div>
       </Panel>
-      <Panel title="Accept → qualified role type(s)" actions={<Pill>§2.4 · §9.6</Pill>}>
+      <Panel title="Accept → qualified role type(s)">
         <div className="stack">
           <p className="sm muted">
             On acceptance the manager selects the role(s) the candidate is qualified for — this is
@@ -759,7 +758,7 @@ function docMeta(doc: CandidateDocument, niNumber: string | null): ReactNode {
   if (doc.doc_type === 'university_term_dates_letter') {
     parts.push(`${(doc.term_dates ?? []).length} holiday range(s) found`);
     if (doc.expires_on)
-      parts.push(`Letter expires ${formatUkDate(doc.expires_on)} (calendar-year rule, §4.2)`);
+      parts.push(`Letter expires ${formatUkDate(doc.expires_on)} (calendar-year rule)`);
   } else if (doc.doc_type === 'university_completion_letter') {
     if (doc.completion_date) parts.push(`Course completion ${formatUkDate(doc.completion_date)}`);
   } else if (doc.expiry_date) {
@@ -938,7 +937,7 @@ function ShareCodeCard({
                 />
                 <span className="muted sm">
                   read off the report — becomes the expiry used for reminders and the last day they
-                  can be rostered (§2.6, §4.4)
+                  can be rostered
                 </span>
               </span>
               {rule?.allowNoTimeLimit ? (
@@ -948,7 +947,7 @@ function ShareCodeCard({
                     checked={noTimeLimit}
                     onChange={(event) => setNoTimeLimit(event.target.checked)}
                   />
-                  Settled status — no time limit (§2.5 pt 2). Pre-settled has an end date: enter it.
+                  Settled status — no time limit. Pre-settled has an end date: enter it.
                 </label>
               ) : null}
             </span>
@@ -957,7 +956,7 @@ function ShareCodeCard({
           ) : (
             <span>
               <b>{rtwUntilLabel(doc)}</b>{' '}
-              <span className="muted sm">— becomes the expiry used for reminders (§2.6, §4.4)</span>
+              <span className="muted sm">— becomes the expiry used for reminders</span>
             </span>
           )}
           {!check ? (
@@ -1040,7 +1039,7 @@ function TermDates({
       <div className="row wrap">
         <h4>Term dates read from the letter</h4>
         <span className="muted sm">
-          Verify the dates against the letter — the manager confirms the dates, not the hours (§2.3)
+          Verify the dates against the letter — the manager confirms the dates, not the hours
         </span>
       </div>
       {periods.length === 0 ? (
@@ -1116,9 +1115,9 @@ function TermDates({
           <b>{capText}</b> <Pill>read-only</Pill>
           <br />
           <span className="muted sm">
-            Derived live from the verified dates (RULE-20, §4.4); never typed, never stored; a
-            Mon–Sun week straddling term and holiday takes the lower cap. The 48 h opt-out does not
-            apply in term (visa condition).
+            Derived live from the verified dates; never typed, never stored; a Mon–Sun week
+            straddling term and holiday takes the lower cap. The 48 h opt-out does not apply in term
+            (visa condition).
           </span>
         </span>
       </div>
@@ -1173,7 +1172,7 @@ function DocumentsPhase({
           <div className="stack">
             <div className="sm muted">
               Accepted in Willo before any role was picked. Pick the role(s) the candidate is
-              qualified for — without one they receive no invitations later (§2.4, §6).
+              qualified for — without one they receive no invitations later.
             </div>
             <div className="row wrap">
               {unheld.map((role) => (
@@ -1196,9 +1195,8 @@ function DocumentsPhase({
           {verifiedItems} of {totalItems} items verified.
         </b>{' '}
         The quiz stays locked until every document <i>and</i> the Criminal Record declaration
-        (answered Yes) are verified — then the candidate advances to Quiz by themselves (§2.3,
-        RULE-10). The AI pre-fills and shows confidence; it never verifies — the final word is the
-        manager’s (§2.6).
+        (answered Yes) are verified — then the candidate advances to Quiz by themselves. The AI
+        pre-fills and shows confidence; it never verifies — the final word is the manager’s.
         {gate.outstanding.length > 0 ? (
           <>
             <br />
@@ -1263,7 +1261,7 @@ function DocumentsPhase({
           {row.share_code && shareCode.length === 0 ? (
             <Note>
               Share code <span className="mono">{row.share_code}</span> entered by the candidate —
-              the gov.uk report appears here once the automatic check has run (§2.6).
+              the gov.uk report appears here once the automatic check has run.
             </Note>
           ) : null}
 
@@ -1326,7 +1324,7 @@ function DocumentsPhase({
 
       <Panel
         title="Criminal Record declaration"
-        actions={<Pill>§2.10 · legal declaration, unspent convictions only</Pill>}
+        actions={<Pill>legal declaration, unspent convictions only</Pill>}
       >
         <div className="stack">
           {declarations.length === 0 ? (
@@ -1488,7 +1486,7 @@ function QuizPhase({ row, data }: { row: CandidateRow; data: CandidateData }) {
             <Note>
               Read-only for the manager: the quiz is taken in the app (wizard step 6/11 after the
               H&amp;S induction, step 5). Multiple choice; questions and answers come from THC’s own
-              document (§2.9). Passing moves the card to Additional info.
+              document. Passing moves the card to Additional info.
             </Note>
           </div>
         </Panel>
@@ -1501,7 +1499,7 @@ function QuizPhase({ row, data }: { row: CandidateRow; data: CandidateData }) {
           </EmptyState>
         </Panel>
       )}
-      <Panel title="Gate — why it is unlocked" actions={<Pill>RULE-10</Pill>}>
+      <Panel title="Gate — why it is unlocked">
         <div className="stack">
           {verified.map((d) => (
             <DocRow
@@ -1546,9 +1544,9 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
   return (
     <>
       <Alert tone="cyan">
-        Everything from wizard steps 7–9 lands here, in one place, without hunting through tabs
-        (§2.10): HMRC New Starter Checklist · Two references · Bank &amp; payroll · National
-        Insurance. None of these has a Verify / Reject action or a queue entry.
+        Everything from wizard steps 7–9 lands here, in one place, without hunting through tabs:
+        HMRC New Starter Checklist · Two references · Bank &amp; payroll · National Insurance. None
+        of these has a Verify / Reject action or a queue entry.
       </Alert>
       <div className="grid c2">
         <Panel
@@ -1583,7 +1581,7 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
             ))}
             <div className="muted xs" style={{ gridColumn: '1 / -1' }}>
               Collected and displayed only — not reviewed or verified; the office contacts a referee
-              off-system if it wants to (§2.10).
+              off-system if it wants to.
             </div>
           </div>
         </Panel>
@@ -1608,14 +1606,14 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
             <span className="k">Saved</span>
             <span>
               {money?.bank_updated_at
-                ? `${formatUkStamp(money.bank_updated_at)} · E5 sent to payroll (§8)`
+                ? `${formatUkStamp(money.bank_updated_at)} · E5 sent to payroll`
                 : 'Not saved yet'}
             </span>
             <span className="k">48h opt-out (WTR)</span>
             <span className="muted">
               {money?.wtr_optout ? 'Signed' : 'Not signed'}
               {row.rtw_branch === 'international_student'
-                ? ' — not effective in term: a visa condition an opt-out cannot lift (§4.4).'
+                ? ' — not effective in term: a visa condition an opt-out cannot lift.'
                 : ''}
             </span>
           </div>
@@ -1630,7 +1628,7 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
                   : 'Not submitted'}
               </Pill>
               <span className="muted sm">
-                step 7/11 · no P45 upload — every worker completes this form (§2.8)
+                step 7/11 · no P45 upload — every worker completes this form
               </span>
             </>
           }
@@ -1659,7 +1657,7 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
               <span>
                 <b>{hmrc.statement}</b> <Pill tone="cyan">derived</Pill>{' '}
                 <span className="muted sm">
-                  — the worker never sees the letter; it goes into the New Starter report (§9.9).
+                  — the worker never sees the letter; it goes into the New Starter report.
                 </span>
               </span>
               <span className="k">Student loan</span>
@@ -1676,7 +1674,7 @@ function AdditionalInfo({ row, data }: { row: CandidateRow; data: CandidateData 
             <div className="muted sm">The candidate has not submitted the checklist yet.</div>
           )}
         </Panel>
-        <Panel title="Term dates & weekly limit" actions={<Pill>read-only · RULE-20</Pill>}>
+        <Panel title="Term dates & weekly limit" actions={<Pill>read-only</Pill>}>
           <div className="stack">
             <div className="kv">
               <span className="k">Weekly limit</span>
@@ -1717,7 +1715,7 @@ function ContractPhase({ row, contract }: { row: CandidateRow; contract: Contrac
   const version = row.contract_version ?? contract?.version ?? null;
   return (
     <div className="grid c2">
-      <Panel title="Zero-hours agreement · T&C" actions={<Pill>§2.11 · step 10/11</Pill>}>
+      <Panel title="Zero-hours agreement · T&C" actions={<Pill>step 10/11</Pill>}>
         <div className="stack">
           <div className="contract-text">
             <h4>
@@ -1730,13 +1728,13 @@ function ContractPhase({ row, contract }: { row: CandidateRow; contract: Contrac
                 .filter((paragraph) => paragraph.trim() !== '')
                 .map((paragraph, index) => <p key={index}>{paragraph.trim()}</p>)
             ) : (
-              <p>No published agreement could be read — see contract_versions (§2.11).</p>
+              <p>No published agreement could be read — see contract_versions.</p>
             )}
           </div>
           {contract?.is_placeholder ? (
             <Note>
               Placeholder wording until THC supplies the agreement text (docs/17). Every version
-              carries the ongoing duty to disclose an unspent conviction (§10.7).
+              carries the ongoing duty to disclose an unspent conviction.
             </Note>
           ) : null}
           <label className={signed ? 'check sel' : 'check'}>
@@ -1753,7 +1751,7 @@ function ContractPhase({ row, contract }: { row: CandidateRow; contract: Contrac
           {signed ? (
             <Alert tone="green">
               <b>Signed electronically · {formatUkStamp(signed)}</b> — shown in UK time and never
-              converted: it is an audit record, not an operational time (§1.8).
+              converted: it is an audit record, not an operational time.
             </Alert>
           ) : (
             <Alert tone="amber">
@@ -1772,11 +1770,11 @@ function ContractPhase({ row, contract }: { row: CandidateRow; contract: Contrac
           >
             <div className="stack sm">
               <div>
-                ✓ Status <b>compliant</b> — the card left the onboarding kanban (§2.7)
+                ✓ Status <b>compliant</b> — the card left the onboarding kanban
               </div>
               <div>
                 ✓ Employee ID <b>{employeeId(row.employee_id)}</b> auto-generated — used in payroll
-                and printed on every timesheet (§9.9, §11.3)
+                and printed on every timesheet
               </div>
               <div>✓ Selfie avatar follows them through the whole system</div>
               <div>

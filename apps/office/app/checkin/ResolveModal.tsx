@@ -186,7 +186,7 @@ export function ResolveModal({
                 />
                 <span className="hint">
                   {wantsFinish
-                    ? 'Becomes the shift’s check-out for RULE-01. The four-hour floor applies again once this is resolved.'
+                    ? 'Becomes the shift’s check-out, and pay is worked out from it. The four-hour floor applies again once this is resolved.'
                     : 'Optional. Closes the shift now, so it is paid; left empty, the worker’s missing check-out is raised as a No check-out to resolve later.'}
                 </span>
               </label>

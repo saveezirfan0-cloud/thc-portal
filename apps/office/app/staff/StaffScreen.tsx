@@ -217,10 +217,10 @@ export function StaffScreen({
         <>
           {filter === 'inactive' ? (
             <Alert tone="cyan">
-              Everyone who left through the app (&ldquo;Request my P45&rdquo;, §10.6) — one place to
-              work through outstanding P45s and final pay. Leaving is not a punishment: show-rate,
-              rating and feedback are untouched. The only way back is <b>Reset to candidate</b> on
-              the profile (§2.12).
+              Everyone who left through the app (&ldquo;Request my P45&rdquo;) — one place to work
+              through outstanding P45s and final pay. Leaving is not a punishment: show-rate, rating
+              and feedback are untouched. The only way back is <b>Reset to candidate</b> on the
+              profile.
             </Alert>
           ) : null}
 
@@ -334,14 +334,14 @@ export function StaffScreen({
             </span>
             <span>
               &ldquo;Limit reached&rdquo; is a per-week condition, not a status — it never replaces
-              Compliant / Blocked / Removed (§9.6, RULE-20).
+              Compliant / Blocked / Removed.
             </span>
           </div>
 
           <Note>
-            A removed worker stays in the list as &ldquo;Deleted account #id&rdquo;: §1.7 anonymises
-            the person and keeps the history, so their roles and rating are still here (§1.7).
-            Blocking, unblocking and Reset to candidate live on the profile (§4.3, §2.12).
+            A removed worker stays in the list as &ldquo;Deleted account #id&rdquo;: removal
+            anonymises the person and keeps the history, so their roles and rating are still here.
+            Blocking, unblocking and Reset to candidate live on the profile.
           </Note>
         </>
       )}

@@ -364,13 +364,12 @@ function RejectModal({
           inEmployment ? (
             <>
               Kept on the profile: the block converts to a manual block with this reason, and only a
-              manager can lift it. The worker is not told through the app — the office calls them
-              (§10.7).
+              manager can lift it. The worker is not told through the app — the office calls them.
             </>
           ) : (
             <>
               Goes to the worker word for word in push N8 — “Document rejected — [reason]” — with a{' '}
-              <b>Re-upload</b> button. The new upload comes back to this queue (§4.1, §2.3).
+              <b>Re-upload</b> button. The new upload comes back to this queue.
             </>
           )
         }
@@ -557,8 +556,8 @@ function RightToWorkModal({
             checked={noTimeLimit}
             onChange={(event) => setNoTimeLimit(event.target.checked)}
           />
-          The gov.uk report shows <b>settled status</b> — no time limit (§2.5 pt 2). Pre-settled
-          status has an end date: enter it instead.
+          The gov.uk report shows <b>settled status</b> — no time limit. Pre-settled status has an
+          end date: enter it instead.
         </label>
       ) : null}
       {reverify ? null : conditions.fields}
@@ -574,7 +573,7 @@ function RightToWorkModal({
           right-to-work date on file: nothing stops a shift past their visa and the reminder ladder
           has nothing to count down from. Re-run the share code on gov.uk and confirm the date it
           shows. The report stays verified — nothing else on the profile changes. If the check no
-          longer passes, block the worker from their profile (§9.6).
+          longer passes, block the worker from their profile.
         </Note>
       ) : null}
       {row.staff_right_to_work_until ? (

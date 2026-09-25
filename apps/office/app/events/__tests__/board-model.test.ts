@@ -410,14 +410,14 @@ describe('the role header rate line (§3.3, §9.8)', () => {
 describe('manual invite and the switches', () => {
   it('turns every office_invite_worker refusal into the manager’s words', () => {
     expect(inviteRefusal('full')).toMatch(/fully confirmed/);
-    expect(inviteRefusal('event_ended')).toMatch(/RULE-16/);
-    expect(inviteRefusal('self_cancelled')).toMatch(/RULE-04/);
+    expect(inviteRefusal('event_ended')).toMatch(/already ended/);
+    expect(inviteRefusal('self_cancelled')).toMatch(/cancelled off this event/);
     // D33: an ended booking is reopened, so this is a LIVE one (or history).
     expect(inviteRefusal('already_has_booking')).toMatch(/already holds this role/);
     expect(inviteRefusal('already_has_booking')).not.toMatch(/released or closed/);
     expect(inviteRefusal('target_met')).toMatch(/fully confirmed/);
     expect(inviteRefusal('not_bookable')).toMatch(/not a worker/);
-    expect(inviteRefusal('hours_limit')).toMatch(/RULE-20/);
+    expect(inviteRefusal('hours_limit')).toMatch(/weekly hours limit/);
     expect(inviteRefusal('something_new')).toBe('The invitation was not sent (something_new).');
   });
 

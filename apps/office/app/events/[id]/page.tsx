@@ -179,7 +179,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                   <span className="mono">—</span>
                 )}
                 <span className="muted xs">
-                  {event.date} · earliest role start → latest role end (RULE-18)
+                  {event.date} · earliest role start → latest role end
                 </span>
               </Field>
             </div>
@@ -190,7 +190,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                 <b>Break policy</b> — {event.paysBreaks ? 'client pays' : 'client does not pay'}
               </span>
               <span>
-                <b>Buffer policy</b> — {event.paysBuffer ? 'client pays' : 'strict (RULE-15)'}
+                <b>Buffer policy</b> — {event.paysBuffer ? 'client pays' : 'strict'}
               </span>
               <span className="muted">Set at client level; read-only here.</span>
             </div>

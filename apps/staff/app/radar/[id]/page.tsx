@@ -145,8 +145,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
       {shift.hoursLimit ? (
         <Alert tone="coral">
-          <b>Limit Reached.</b> Applying is blocked for the Mon–Sun week this shift falls in
-          (RULE-20).
+          <b>Limit Reached.</b> Applying is blocked for the Mon–Sun week this shift falls in.
         </Alert>
       ) : (
         <p className="note xs">

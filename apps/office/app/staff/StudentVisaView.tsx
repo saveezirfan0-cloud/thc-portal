@@ -58,12 +58,12 @@ export function StudentVisaView({ students, query, capFilter = 'all' }: StudentV
         <div className="kpi">
           <span className="label">On the International student branch</span>
           <span className="v">{students.length}</span>
-          <span className="d">every worker on branch 4 (§2.5)</span>
+          <span className="d">every worker on this branch</span>
         </div>
         <div className="kpi warn">
           <span className="label">20 h · term time this week</span>
           <span className="v">{bands.term}</span>
-          <span className="d">hard-gated at 20 h Mon–Sun (RULE-20)</span>
+          <span className="d">hard-gated at 20 h Mon–Sun</span>
         </div>
         <div className="kpi ok">
           <span className="label">48 h · university holiday</span>
@@ -73,7 +73,7 @@ export function StudentVisaView({ students, query, capFilter = 'all' }: StudentV
         <div className="kpi accent">
           <span className="label">48 h · graduated</span>
           <span className="v">{bands.graduated}</span>
-          <span className="d">completion letter verified — term dates no longer apply (§4.5)</span>
+          <span className="d">completion letter verified — term dates no longer apply</span>
         </div>
       </div>
 
@@ -81,7 +81,7 @@ export function StudentVisaView({ students, query, capFilter = 'all' }: StudentV
         title="Student visa · caps and evidence"
         actions={
           <span className="muted sm">
-            the whole student population in one place, not one profile at a time (§4.5)
+            the whole student population in one place, not one profile at a time
           </span>
         }
         flush
@@ -90,7 +90,7 @@ export function StudentVisaView({ students, query, capFilter = 'all' }: StudentV
           {rows.length === 0 ? (
             <EmptyState>
               <h3>No student matches</h3>
-              <p>This view holds every worker on the International student branch (§2.5).</p>
+              <p>This view holds every worker on the International student branch.</p>
             </EmptyState>
           ) : (
             <table className="tbl card-rows">
@@ -160,11 +160,11 @@ export function StudentVisaView({ students, query, capFilter = 'all' }: StudentV
 
       <Note>
         The cap is never typed or stored — it is derived on the date it is evaluated from the
-        verified term dates (RULE-20, §4.4): 20 h in term (10 h below degree level), 48 h in a
-        holiday range, 48 h from the course completion date on an approved completion letter — never
-        before it, and never past the right-to-work expiry. The 48h opt-out cannot lift the in-term
-        visa limit. Push N14 tells the worker on the morning a band changes (§7). Completion letters
-        are approved in Compliance → Needs review.
+        verified term dates: 20 h in term (10 h below degree level), 48 h in a holiday range, 48 h
+        from the course completion date on an approved completion letter — never before it, and
+        never past the right-to-work expiry. The 48h opt-out cannot lift the in-term visa limit.
+        Push N14 tells the worker on the morning a band changes. Completion letters are approved in
+        Compliance → Needs review.
       </Note>
     </>
   );

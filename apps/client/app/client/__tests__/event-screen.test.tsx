@@ -171,7 +171,7 @@ describe('completed (event.html:247-273)', () => {
     expect(markup).toContain(
       `<div class="k">Timesheet</div><div class="v">Sign-out timesheet generated ${stamp}`,
     );
-    expect(markup).toContain('by email to the contacts on your client card (§11.4)');
+    expect(markup).toContain('by email to the contacts on your client card');
   });
 
   it('marks a row already rated "✓ Feedback sent" and leaves the others live', () => {

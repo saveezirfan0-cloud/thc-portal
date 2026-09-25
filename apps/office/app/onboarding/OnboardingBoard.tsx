@@ -209,7 +209,7 @@ export function OnboardingBoard({
             <b>No &quot;Applied&quot; stage.</b> Submitting /apply creates the candidate straight in{' '}
             <b>Interview requested</b> and Willo sends the interview invitation (E1) itself. Cards
             move between the first two columns on their own from the Willo webhook; the manager
-            decides <i>inside Willo</i> (§2.4).
+            decides <i>inside Willo</i>.
           </Alert>
         ) : null}
 
@@ -232,10 +232,10 @@ export function OnboardingBoard({
 
         {filter === 'rejected' ? (
           <Alert tone="neutral">
-            Rejection is final on this record — there is no &quot;un-reject&quot; (§2.3). If the
-            person applies again via /apply, the duplicate check (email, or mobile + DOB) routes
-            them to the office as a <b>Returning applicant</b> card in Interview requested, where
-            the manager presses <b>Reset to candidate</b> or rejects the application (§2.12).
+            Rejection is final on this record — there is no &quot;un-reject&quot;. If the person
+            applies again via /apply, the duplicate check (email, or mobile + DOB) routes them to
+            the office as a <b>Returning applicant</b> card in Interview requested, where the
+            manager presses <b>Reset to candidate</b> or rejects the application.
           </Alert>
         ) : null}
       </div>
@@ -272,13 +272,12 @@ export function OnboardingBoard({
               <div className="note">
                 Same record, same Employee ID. Status goes back to Interview requested; every
                 document, the share-code result, the HMRC checklist, the declaration, the quiz and
-                the contract are marked superseded and must be supplied again. History stays
-                (§2.12).
+                the contract are marked superseded and must be supplied again. History stays.
               </div>
             ) : (
               <div className="note">
-                The applicant receives E2. They are never told why a previous record was blocked
-                (§2.12). The existing record is not changed.
+                The applicant receives E2. They are never told why a previous record was blocked.
+                The existing record is not changed.
               </div>
             )}
             <Textarea
@@ -337,7 +336,7 @@ function Column({
       {filter === 'active' && column.key === 'contract' ? (
         <Note>
           Signed → the card leaves the kanban, Employee ID is generated and the person appears in{' '}
-          <Link href="/staff">Staff</Link> as Compliant (§2.7).
+          <Link href="/staff">Staff</Link> as Compliant.
         </Note>
       ) : null}
     </KanbanColumn>

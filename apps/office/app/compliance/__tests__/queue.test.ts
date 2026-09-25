@@ -206,7 +206,7 @@ describe('Needs review (§4.1)', () => {
     expect(foundLine(expired)).toEqual({ text: '2 holiday ranges', confidence: 'manual' });
     expect(reviewFlag(expired)).toEqual({
       label: 'Letter expired',
-      detail: 'every term date on it is in the past — not accepted (§4.2)',
+      detail: 'every term date on it is in the past — not accepted',
     });
     expect(verifyHint(expired)).toContain('Verify is refused');
     expect(verifyHint(expired)).toContain('Reject');

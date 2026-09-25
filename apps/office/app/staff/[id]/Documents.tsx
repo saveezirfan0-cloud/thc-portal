@@ -198,7 +198,7 @@ export function Documents({
     const hint = item
       ? verifyHint(item)
       : underReview && reviewClosed
-        ? 'No longer needs review — this person is Rejected or Removed (§4.1)'
+        ? 'No longer needs review — this person is Rejected or Removed'
         : null;
     if (!hint) return line;
     return (
@@ -237,7 +237,7 @@ export function Documents({
       title="Documents"
       actions={
         <span className="muted sm">
-          statuses + download · verification stamps in UK time (audit, §1.8)
+          statuses + download · verification stamps in UK time (audit)
         </span>
       }
     >
@@ -345,7 +345,7 @@ export function Documents({
             <div className="label">Superseded · read-only</div>
             <div className="muted sm">
               the record of what was held during a previous period — never used to satisfy the
-              current check (§2.12)
+              current check
             </div>
             {superseded.map((row) => (
               <DocRow

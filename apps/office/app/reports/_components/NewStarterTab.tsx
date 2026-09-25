@@ -68,9 +68,8 @@ export function NewStarterTab({
       <Alert tone="cyan">
         Only NEW workers who actually worked a shift last week — not every new starter, only those
         who need to be paid. Onboarded on a Friday, first shift two weeks later → they appear in
-        that Monday&apos;s report (§9.9). Columns and data are entirely different from
-        payroll&apos;s and are never merged. Role and a title / salutation field are explicitly
-        excluded.
+        that Monday&apos;s report. Columns and data are entirely different from payroll&apos;s and
+        are never merged. Role and a title / salutation field are explicitly excluded.
       </Alert>
 
       <Panel
@@ -82,8 +81,8 @@ export function NewStarterTab({
         }
         actions={
           <span className="muted sm">
-            HMRC Statement is the letter derived from the three routed questions (§2.8); the worker
-            never saw it
+            HMRC Statement is the letter derived from the three routed questions; the worker never
+            saw it
           </span>
         }
         flush
@@ -163,9 +162,7 @@ export function NewStarterTab({
       <Panel
         title="Send status · history"
         actions={
-          <span className="muted sm">
-            each tab shows the last-sent date/time and a status (§9.9)
-          </span>
+          <span className="muted sm">each tab shows the last-sent date/time and a status</span>
         }
       >
         <div className="rp-history">
