@@ -2,6 +2,7 @@ import { acceptedLog } from '@thc/domain';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { signStaffPhotos } from '../_lib/photos';
+import { type LogQuery, VIOLATION_PAGE_SIZE, flaggedAs, pageRange, ukDayBounds } from './log';
 import type { MonitorRow, MonitorStatus, ViolationRow, ViolationType } from './types';
 
 /**
@@ -18,22 +19,13 @@ export function supabaseConfigured(): boolean {
 
 export interface MonitorPageData {
   rows: MonitorRow[];
+  /** One page of the violation log, filtered in the query (audit D50). */
   violations: ViolationRow[];
+  /** Every unresolved violation, not just this page's. */
+  unresolvedCount: number;
+  /** There is an older page. */
+  hasMore: boolean;
   problem: string | null;
-}
-
-/** Today in UK terms — the monitor is the screen for the day of the event (§9.5, §1.8). */
-function ukDayBounds(now = new Date()): { from: string; to: string } {
-  const uk = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
-  const offset = now.getTime() - uk.getTime();
-  const start = new Date(uk);
-  start.setHours(0, 0, 0, 0);
-  // A shift that began yesterday evening and ends at 03:00 is still today's
-  // problem, so the window reaches back far enough to keep it on the board.
-  return {
-    from: new Date(start.getTime() + offset - 12 * 3600_000).toISOString(),
-    to: new Date(start.getTime() + offset + 36 * 3600_000).toISOString(),
-  };
 }
 
 /** The session client, as `createClient` returns it. */
@@ -60,21 +52,31 @@ type UnsignedViolation = Omit<ViolationRow, 'photoUrl'> & { photoPath: string | 
  * /staff/:id: §9.6 says the profile's log and this one are "deliberately
  * identical in behaviour", so both surfaces open the same detail window with
  * the same fields, read by the same query. `staffId` scopes it to one
- * person; without it this is the monitor's newest 100.
+ * person (all of theirs, newest first).
+ *
+ * The monitor's log is filtered and paged IN THE QUERY (audit D50): it used
+ * to fetch the newest 100 rows of every kind and hide the resolved ones in
+ * the browser, so an old unresolved No check-out — the one that holds a
+ * worker's pay — could fall off the end of the list. "Show resolved"
+ * unticked asks for `resolved = false` only; ticked, it asks for both.
  */
 async function queryViolations(
   supabase: SessionClient,
-  scope: { staffId?: string } = {},
-): Promise<{ rows: UnsignedViolation[]; error: string | null }> {
+  scope: { staffId?: string; log?: LogQuery } = {},
+): Promise<{ rows: UnsignedViolation[]; hasMore: boolean; error: string | null }> {
   let query = supabase.from('violations').select(VIOLATION_COLUMNS);
   if (scope.staffId) query = query.eq('staff_id', scope.staffId);
-  const result = await query
-    .order('detected_at', { ascending: false })
-    .limit(scope.staffId ? 500 : 100);
-  if (result.error) return { rows: [], error: result.error.message };
+  if (scope.log && !scope.log.showResolved) query = query.eq('resolved', false);
+  query = query.order('detected_at', { ascending: false }).order('id', { ascending: false });
+  const range = scope.log ? pageRange(scope.log.page) : null;
+  const result = await (range ? query.range(range.from, range.to) : query.limit(500));
+  if (result.error) return { rows: [], hasMore: false, error: result.error.message };
+  const data = (result.data ?? []) as unknown[];
+  const hasMore = range !== null && data.length > VIOLATION_PAGE_SIZE;
+  const page = hasMore ? data.slice(0, VIOLATION_PAGE_SIZE) : data;
 
   /* eslint-disable @typescript-eslint/no-explicit-any */
-  const rows = ((result.data ?? []) as any[]).map((v: any): UnsignedViolation => {
+  const rows = (page as any[]).map((v: any): UnsignedViolation => {
     const shift = v.booking?.shift;
     // `acceptedLog`, not `[0]` (§1.5). check_logs holds one row per button
     // press: a RULE-15 turn-away and an out-of-radius refusal are logged
@@ -105,6 +107,8 @@ async function queryViolations(
         : `${staff?.first_name ?? ''} ${staff?.last_name ?? ''}`.trim(),
       photoPath: staff?.removed_at ? null : (staff?.photo_path ?? null),
       eventTitle: shift?.event?.title ?? '',
+      // §9.5: the server composes the window's "Flagged as" line.
+      flaggedAs: flaggedAs(v.type as ViolationType, shift?.event?.title ?? ''),
       venueName: shift?.event?.venue_name ?? '',
       roleName: shift?.role?.name ?? '',
       startsAt: shift?.starts_at ?? '',
@@ -124,7 +128,7 @@ async function queryViolations(
   });
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
-  return { rows, error: null };
+  return { rows, hasMore, error: null };
 }
 
 /** Swap each row's storage path for its signed URL (or null → initials). */
@@ -153,11 +157,15 @@ export async function loadStaffViolationLog(
   return { rows: withUrls(rows, new Map()), error: null };
 }
 
-export async function loadMonitor(): Promise<MonitorPageData> {
+export async function loadMonitor(
+  log: LogQuery = { showResolved: false, page: 1 },
+): Promise<MonitorPageData> {
   if (!supabaseConfigured()) {
     return {
       rows: [],
       violations: [],
+      unresolvedCount: 0,
+      hasMore: false,
       problem:
         'This environment has no Supabase project, so the live monitor cannot be read. See docs/04-setup-github-vercel-supabase.md.',
     };
@@ -166,23 +174,32 @@ export async function loadMonitor(): Promise<MonitorPageData> {
   const supabase = createClient(await cookies());
   const { from, to } = ukDayBounds();
 
-  const [monitor, violations] = await Promise.all([
+  const [monitor, violations, unresolved] = await Promise.all([
+    // Every role section that overlaps today's UK day: today's, and last
+    // night's still running past midnight (log.ts).
     supabase
       .from('checkin_monitor_v')
       .select('*')
-      .gte('starts_at', from)
-      .lte('starts_at', to)
+      .lt('starts_at', to)
+      .gt('ends_at', from)
       .order('starts_at', { ascending: true }),
-    queryViolations(supabase),
+    queryViolations(supabase, { log }),
+    supabase.from('violations').select('id', { count: 'exact', head: true }).eq('resolved', false),
   ]);
 
   if (monitor.error) {
-    return { rows: [], violations: [], problem: monitor.error.message };
+    return {
+      rows: [],
+      violations: [],
+      unresolvedCount: 0,
+      hasMore: false,
+      problem: monitor.error.message,
+    };
   }
 
   // Same placeholder-types caveat as the RPC above: `checkin_monitor_v` is
   // not in the generated `Database`, so the row shape is asserted here and
-  // has to match 20260922090000_ping_ingest_and_monitor.sql.
+  // has to match 20260927160600_monitor_reads_no_checkout_and_the_uk_day.sql.
   const monitorRows = (monitor.data ?? []) as unknown as Record<string, unknown>[];
 
   const unsigned = monitorRows.map((r) => ({
@@ -217,5 +234,14 @@ export async function loadMonitor(): Promise<MonitorPageData> {
 
   // A failed violation read no longer passes silently as "No violations
   // logged": the board still renders, with the reason above it.
-  return { rows, violations: violationRows, problem: violations.error };
+  return {
+    rows,
+    violations: violationRows,
+    unresolvedCount:
+      unresolved.error || unresolved.count === null
+        ? violationRows.filter((v) => !v.resolved).length
+        : unresolved.count,
+    hasMore: violations.hasMore,
+    problem: violations.error ?? unresolved.error?.message ?? null,
+  };
 }
