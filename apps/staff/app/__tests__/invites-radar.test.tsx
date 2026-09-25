@@ -34,6 +34,10 @@ vi.mock('../actions', () => ({
   declineInvite: vi.fn(),
   applyForShift: vi.fn(),
   withdrawApplication: vi.fn(),
+  cancelShift: vi.fn(),
+  confirmToday: vi.fn(),
+  markReady: vi.fn(),
+  reconfirm: vi.fn(),
 }));
 vi.mock('../profile/photos', () => ({ signOwnPhoto: async () => null }));
 vi.mock('../profile/data', () => ({
@@ -79,6 +83,7 @@ const { default: InvitesPage } = await import('../invites/page');
 const { default: InvitePage } = await import('../invites/[id]/page');
 const { default: RadarPage } = await import('../radar/page');
 const { default: RadarDetailPage } = await import('../radar/[id]/page');
+const { default: ShiftsPage } = await import('../shifts/page');
 
 // Every fixture is placed against the real clock, because RULE-16 is.
 const NOW = Date.now();
@@ -181,6 +186,17 @@ const FIXTURE_BOOKINGS: BookingRow[] = [
     eventCancelledAt: hours(-1),
   }),
   booking({ bookingId: 'worked-1', status: 'worked', eventTitle: 'Board Lunch' }),
+  // The screenshot: a booking two weeks gone, still `confirmed` because
+  // nobody checked in (a No-show is a violation, not a status). It is
+  // history — in no badge, and under "Past shifts", not above today.
+  booking({
+    bookingId: 'stale',
+    status: 'confirmed',
+    confirmedAt: hours(-400),
+    eventTitle: 'Stale Lunch',
+    startsAt: hours(-14 * 24),
+    endsAt: hours(-14 * 24 + 5),
+  }),
   booking({
     bookingId: 'applied-1',
     status: 'applied',
@@ -282,10 +298,49 @@ describe('the Shifts badge is the same number on every tab (§10.1)', () => {
     ['/invites/:id', () => InvitePage({ params: Promise.resolve({ id: 'inv-launch' }) })],
     ['/radar', () => RadarPage()],
     ['/radar/:id', () => RadarDetailPage({ params: Promise.resolve({ id: 's-board' }) })],
-  ])('%s counts confirmed + worked (2) and the open invitations (3)', async (_route, page) => {
-    const html = await render(page());
-    expect(html).toContain('Shifts<span class="n">2</span>');
-    expect(html).toContain('Invites<span class="n">3</span>');
+    ['/shifts', () => ShiftsPage({ searchParams: Promise.resolve({}) })],
+  ])(
+    '%s counts upcoming confirmed + worked (2) and the open invitations (3)',
+    async (_route, page) => {
+      const html = await render(page());
+      expect(html).toContain('Shifts<span class="n">2</span>');
+      expect(html).toContain('Invites<span class="n">3</span>');
+    },
+  );
+});
+
+describe('/shifts — My shifts (§10.4, shifts.html)', () => {
+  it('groups upcoming shifts soonest first and keeps the past collapsed below them', async () => {
+    const html = await render(ShiftsPage({ searchParams: Promise.resolve({}) }));
+    const awards = html.indexOf('Awards Night · Waiting Staff');
+    const board = html.indexOf('Board Lunch');
+    const past = html.indexOf('Past shifts · 1');
+    const stale = html.indexOf('Stale Lunch');
+    // Board Lunch (hours 96–103) and the Awards Night (a week out).
+    expect(board).toBeGreaterThan(-1);
+    expect(awards).toBeGreaterThan(board);
+    expect(past).toBeGreaterThan(awards);
+    expect(stale).toBeGreaterThan(past);
+    expect(html).toContain('<details class="past-shifts">');
+  });
+
+  it('the stale booking reads "Not checked in", never "Confirmed"', async () => {
+    const html = await render(ShiftsPage({ searchParams: Promise.resolve({}) }));
+    const row = html.slice(html.indexOf('Stale Lunch'));
+    expect(row.slice(0, row.indexOf('</a>'))).toContain('Not checked in');
+  });
+
+  it('the venue name leads and the address sits under it', async () => {
+    const html = await render(ShiftsPage({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain(
+      '<span class="venue-name">The Dorchester</span><span class="venue-addr">53 Park Lane, W1K 1QA</span>',
+    );
+  });
+
+  it('carries the current week’s hours meter (RULE-20), the same as Radar', async () => {
+    const html = await render(ShiftsPage({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain('This week (Mon 14 – Sun 20)');
+    expect(html).toContain('8 h of 20 h');
   });
 });
 

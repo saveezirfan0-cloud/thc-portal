@@ -42,7 +42,11 @@ vi.mock('../../../profile/data', () => ({ loadProfile: () => profile() }));
 
 const shift = vi.fn<() => Promise<ShiftDetail | null>>();
 vi.mock('../data', () => ({ loadShift: () => shift(), supabaseConfigured: () => true }));
-vi.mock('../../../data', () => ({ loadBookings: async () => [], openInvites: () => [] }));
+vi.mock('../../../data', () => ({
+  loadBookings: async () => [],
+  openInvites: () => [],
+  shiftsBadge: () => 0,
+}));
 
 const { default: Page } = await import('../page');
 
@@ -240,6 +244,25 @@ describe('§5.1 / §5.2b the live screen, phase by phase', () => {
     expect(disabledButton(html, 'Start break')).toBe(true);
   });
 
+  it('counts down to the check-in window before it opens (start − 30 min)', async () => {
+    profile.mockResolvedValue(worker());
+    // Starts in 2 h 45 min: the window opens in 2 h 15 min.
+    shift.mockResolvedValue(detail({ startsAt: ahead(165), endsAt: ahead(600) }));
+    const html = await render();
+    expect(html).toMatch(/Check-in opens in 2 h 1[45] min/);
+  });
+
+  it('offers Directions, Add to calendar and a tap-to-call contact (§10.4)', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail({ startsAt: ahead(120), endsAt: ahead(600) }));
+    const html = await render();
+    expect(html).toContain(
+      'href="https://www.google.com/maps/dir/?api=1&amp;destination=51.502%2C-0.16"',
+    );
+    expect(html).toContain('href="/shifts/b1/calendar.ics"');
+    expect(html).toContain('Priya on <a href="tel:07700900999">07700 900999</a>');
+  });
+
   it('draws no Breaks block at all where the client pays for breaks', async () => {
     profile.mockResolvedValue(worker());
     shift.mockResolvedValue(detail({ breaksLogged: false }));
@@ -323,6 +346,8 @@ describe('§5.1 / §5.2b the live screen, phase by phase', () => {
     );
     expect(html).not.toContain('Check out');
     expect(html).not.toContain('12.07');
+    // A finished shift needs neither directions nor a diary entry.
+    expect(html).not.toContain('Add to calendar');
   });
 });
 
