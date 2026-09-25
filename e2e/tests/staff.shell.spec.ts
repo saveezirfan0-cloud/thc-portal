@@ -256,6 +256,9 @@ test.describe('The shell around a compliant worker (§10.1)', () => {
     // and none of them carries the locked state.
     await expect(nav.locator('> a')).toHaveCount(4);
     await expect(nav.locator('.locked')).toHaveCount(0);
+    // A named landmark, and the lit tab announced as the current page.
+    await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
+    await expect(nav.locator('[aria-current="page"]')).toHaveText(/Shifts/);
   });
 
   test('the avatar and the Profile tab both lead to the profile (§10.1, ADR-0035)', async ({
@@ -283,6 +286,7 @@ test.describe('The shell around a compliant worker (§10.1)', () => {
     await page.getByRole('link', { name: /^Documents/ }).click();
     await expect(page).toHaveURL(/\/documents$/);
     await expect(page.locator('nav.bottom-nav a.active')).toHaveText(/Profile/);
+    await expect(page.locator('nav.bottom-nav a.active')).toHaveAttribute('aria-current', 'page');
     await expect(page.getByRole('link', { name: '‹ Profile' })).toHaveAttribute('href', '/profile');
   });
 });

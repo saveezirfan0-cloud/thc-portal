@@ -106,6 +106,10 @@ export function requestHref(kind: ChangeKind): string {
 export const CHANGE_REASONS: Record<string, string> = {
   already_pending:
     'You already have a request with the office. Withdraw it first if you want to change it.',
+  // 20260930150100: at most three requests of a kind in any 24 hours, so a
+  // request/withdraw loop cannot flood admin@ with RC1 emails.
+  too_many_requests:
+    'You’ve sent three requests for this in the last 24 hours. Please try again tomorrow, or contact the office at admin@thehospitalitycompany.co.uk.',
   first_required: 'Enter your first name.',
   last_required: 'Enter your last name.',
   first_too_long: 'Keep your first name to 100 characters.',

@@ -113,6 +113,7 @@ describe('statusLine', () => {
   it('has a sentence for every refusal the RPC raises', () => {
     for (const code of [
       'already_pending',
+      'too_many_requests',
       'unchanged',
       'evidence_required',
       'file_not_found',
@@ -232,6 +233,13 @@ describe('the requests', () => {
       p_note: 'New haircut',
     });
     expect(result).toEqual({ ok: false, message: CHANGE_REASONS['already_pending'] });
+  });
+
+  it('says the 24-hour ceiling in words (20260930150100)', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: 'too_many_requests' } });
+    const result = await actions.requestPhotoChange('staff-1/selfie-3.jpg', '');
+    expect(result).toEqual({ ok: false, message: CHANGE_REASONS['too_many_requests'] });
+    expect(CHANGE_REASONS['too_many_requests']).toMatch(/24 hours/);
   });
 
   it('withdraws by id only', async () => {

@@ -59,6 +59,8 @@ export default async function Page() {
     {
       NEXT_PUBLIC_STAFF_URL: process.env['NEXT_PUBLIC_STAFF_URL'],
       VERCEL_URL: process.env['VERCEL_URL'],
+      VERCEL_ENV: process.env['VERCEL_ENV'],
+      NODE_ENV: process.env.NODE_ENV,
     },
     {
       host: head.get('x-forwarded-host') ?? head.get('host'),
@@ -74,7 +76,7 @@ export default async function Page() {
       name={name}
       photoUrl={photoUrl}
     >
-      {code && isReferralCode(code) ? (
+      {origin && code && isReferralCode(code) ? (
         <ReferScreen link={referralLink(origin, code)} applied={applied} />
       ) : (
         <Alert tone="coral">We couldn’t load your link. Please try again.</Alert>

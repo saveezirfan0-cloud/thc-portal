@@ -29,19 +29,39 @@ export function shareData(link: string): { title: string; text: string; url: str
   };
 }
 
+/** The environment `publicOrigin()` reads — passed in, so tests need no `process.env`. */
+export interface OriginEnv {
+  NEXT_PUBLIC_STAFF_URL?: string | undefined;
+  VERCEL_URL?: string | undefined;
+  VERCEL_ENV?: string | undefined;
+  NODE_ENV?: string | undefined;
+}
+
 /**
- * The public origin the link is built on (`{origin}/apply?ref={code}`).
+ * The public origin the link is built on (`{origin}/apply?ref={code}`), or
+ * null when there is none that can be trusted.
  *
- * The configured staff URL wins (docs/16 §3.1 — the address E3 was sent
- * with), then the request's own host (a preview deployment links to
- * itself), then Vercel's, then local dev on :3001.
+ * In production (`VERCEL_ENV=production`, or any `NODE_ENV=production`
+ * build) the ONLY source is the configured staff URL, `NEXT_PUBLIC_STAFF_URL`
+ * (docs/16 §3.1 — the address E3 was sent with). The request's Host and
+ * X-Forwarded-Host are the caller's to set, and a link a worker copies and
+ * texts to a friend must not be something a crafted request (or a poisoned
+ * cache) can point at another site. Unset in production → null, and the
+ * screen says the link could not be loaded rather than guessing — the same
+ * guard as the Back Office's E3 link (`staffOrigin()` in
+ * apps/office/app/onboarding/actions.ts).
+ *
+ * Outside production the configured URL still wins, then the request's own
+ * host (local dev on a LAN address links to itself), then Vercel's, then
+ * local dev on :3001.
  */
 export function publicOrigin(
-  env: { NEXT_PUBLIC_STAFF_URL?: string | undefined; VERCEL_URL?: string | undefined },
+  env: OriginEnv,
   request: { host?: string | null; proto?: string | null } = {},
-): string {
+): string | null {
   const explicit = env.NEXT_PUBLIC_STAFF_URL?.trim();
   if (explicit) return explicit.replace(/\/+$/, '');
+  if (env.VERCEL_ENV === 'production' || env.NODE_ENV === 'production') return null;
   if (request.host) {
     const proto = request.proto?.split(',')[0]?.trim() || 'https';
     return `${proto}://${request.host}`;
