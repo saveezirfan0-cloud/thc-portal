@@ -25,3 +25,7 @@ Separately, the platform sends the office and payroll a dozen kinds of email (E5
 - The one-time link sits in the outbox payload until the row is sent, like E3's activation link; only an admin can read the table.
 - Nothing re-sends from `/inbox`. A failed office email is re-queued where it was made (the event page, `/reports`).
 - `packages/db` generated types do not yet name `queued_at`; `/inbox` casts its rows, as `/activity` does. Regenerate with `pnpm --filter @thc/db gen:types`.
+
+## Update — set-up links are owners' only (20260930170000)
+
+The QA review found that an E11 row's `payload.link` was readable by every Back Office login through `notification_outbox`'s `admin_read`, so after ADR-0036 a manager or scheduler could take over a login an owner had just invited. A restrictive policy now shows E11 rows only to a session with `office_can('users')`, and a trigger removes the link from an E11 row once it is sent or has failed for good (`linkRedacted: true`). pgTAP 657.

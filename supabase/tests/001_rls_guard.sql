@@ -306,8 +306,8 @@ select is_empty(
 select bag_eq(
   $$ select p.polname::text || ':' || p.polcmd::text
        from pg_policy p where p.polrelid = 'notification_outbox'::regclass $$,
-  $$ values ('admin_read:r'::text) $$,
-  'notification_outbox carries exactly one policy: admin_read, select only, matching audit_log and report_sends'
+  $$ values ('admin_read:r'::text), ('office_users_invite_links:r') $$,
+  'notification_outbox carries admin_read (select only, matching audit_log and report_sends) and, since 20260930170000, the restrictive office_users_invite_links that keeps E11 set-up links to owners — still nothing that writes'
 );
 
 -- ---------------------------------------------------------------------
@@ -360,8 +360,9 @@ select bag_eq(
             ('client_rate_cards.office_finance_insert:a'), ('client_rate_cards.office_finance_update:w'),
             ('client_rate_cards.office_finance_delete:d'),
             ('bank_details.office_finance_read:r'), ('payroll_export_lines.office_finance_read:r'),
-            ('report_sends.office_finance_read:r') $$,
-  'ADR-0036: exactly fifteen restrictive policies — settings writes on settings / venue_types, finance writes on roles / client_rate_cards, finance reads on bank_details / payroll_export_lines / report_sends'
+            ('report_sends.office_finance_read:r'),
+            ('notification_outbox.office_users_invite_links:r') $$,
+  'ADR-0036: exactly sixteen restrictive policies (the sixteenth, 20260930170000, keeps E11 set-up links to owners) — settings writes on settings / venue_types, finance writes on roles / client_rate_cards, finance reads on bank_details / payroll_export_lines / report_sends'
 );
 
 -- 10b. And each of them asks office_can(), for a signed-in session only.
