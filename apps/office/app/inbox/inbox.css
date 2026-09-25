@@ -1,0 +1,44 @@
+/* /inbox — layout only (ADR-0038); every value is a token. */
+
+.inbox-filters > select.input {
+  width: auto;
+  flex: 0 1 220px;
+}
+
+.inbox-when {
+  white-space: nowrap;
+}
+.inbox-to {
+  max-width: 260px;
+  overflow-wrap: anywhere;
+}
+.inbox-status {
+  max-width: 320px;
+}
+.inbox-status .sub {
+  margin-top: var(--sp-4);
+  overflow-wrap: anywhere;
+}
+.tbl .sub.inbox-error {
+  color: var(--coral-ink);
+}
+
+.inbox-pager {
+  display: flex;
+  gap: var(--sp-8);
+  padding: var(--sp-12) var(--sp-16);
+  border-top: 1px solid var(--line);
+}
+.inbox-pager:empty {
+  display: none;
+}
+
+@media (max-width: 760px) {
+  .inbox-filters > select.input {
+    flex: 1 1 160px;
+  }
+  .inbox-to,
+  .inbox-status {
+    max-width: none;
+  }
+}
