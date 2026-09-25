@@ -6,6 +6,7 @@ import { loadStaffViolationLog } from '../../checkin/data';
 import { signStaffPhotos } from '../../_lib/photos';
 import { loadRtwChecks } from '../../_lib/rtwCheckData';
 import type { FeedbackEntry } from '../../feedback/types';
+import type { QueueRow } from '../../compliance/types';
 import type {
   ClientOption,
   DeclarationRow,
@@ -94,6 +95,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     location,
     violationDetails,
     rtw,
+    reviewQueue,
   ] = await Promise.all([
     supabase.from('staff_profile_v').select(PROFILE_COLUMNS).eq('id', id).maybeSingle<ProfileRow>(),
     supabase
@@ -164,6 +166,14 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     loadStaffViolationLog(supabase, id),
     // The automated gov.uk check on share codes (ADR-0025). Best-effort.
     loadRtwChecks(supabase, id),
+    // Needs review (§4.1), this worker's rows: the Documents tab's Verify /
+    // Reject act on exactly what /compliance lists, with the same columns.
+    supabase
+      .from('compliance_review_queue_v')
+      .select('*')
+      .eq('staff_id', id)
+      .order('submitted_at', { ascending: true })
+      .returns<QueueRow[]>(),
   ]);
 
   const error =
@@ -188,6 +198,10 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     documents: documents.data ?? [],
     rtwChecks: rtw.checks,
     rtwCheckEnabled: rtw.enabled,
+    // A failed read must not take the whole profile down; the tab says why
+    // there are no review buttons instead.
+    reviewQueue: reviewQueue.error ? [] : (reviewQueue.data ?? []),
+    reviewQueueProblem: reviewQueue.error ? reviewQueue.error.message : null,
     qualifications: qualifications.data ?? [],
     shifts: shifts.data ?? [],
     violations: violations.data ?? [],

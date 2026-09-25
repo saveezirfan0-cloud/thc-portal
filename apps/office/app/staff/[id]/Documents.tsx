@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, DocRow, Modal, Note, Panel, Pill, Textarea } from '@thc/ui';
+import { Alert, Button, DocRow, Panel, Pill } from '@thc/ui';
 import { SETTLED_NO_TIME_LIMIT, formatUkDate } from '../staff';
 import {
   complianceSummary,
@@ -12,7 +12,9 @@ import {
   formatUkStamp,
 } from './profile';
 import { documentLink } from '../../onboarding/actions';
-import { rejectDeclaration, verifyDeclaration } from '../../compliance/actions';
+import { useReviewDialogs } from '../../compliance/ReviewDialogs';
+import { actionsFor, queueByRecord, verifyAllowed, verifyHint } from '../../compliance/queue';
+import type { ActionResult, QueueRow } from '../../compliance/types';
 import { RtwCheckPanel } from '../../_components/RtwCheckPanel';
 import { checksByDocument } from '../../_lib/rtwCheck';
 import type { RtwCheckRow } from '../../_lib/rtwCheck';
@@ -27,11 +29,22 @@ import type { DeclarationRow, DocumentRow, ProfileRow, ReviewStatus } from './ty
  * signed is a document this manager can see, never a path the browser sent,
  * and the link lives for 60 seconds.
  *
+ * Verify / Reject (§4.1, §9.6). A document or a Yes declaration waiting on
+ * the office carries them — the wireframe's "Under review · Verify · Reject
+ * · Download" — and they are /compliance's, not a copy: the row they act on
+ * is this worker's row of the Needs review queue (`reviewQueue`), and the
+ * buttons, the dialogs and the server actions are `useReviewDialogs`, the
+ * same hook the queue uses. So the rules are the queue's by construction: a
+ * visa, status document or share code asks for its right-to-work date, the
+ * completion letter for its completion date and visa expiry, a Reject for
+ * the reason N8 sends the worker; a Rejected or Removed worker has nothing
+ * to review (§4.1); and the §4.3 re-check, the unblock, N8/N15 and the
+ * manual block on a rejected in-employment declaration all happen in the
+ * database, whichever screen pressed it. The RPCs run on the manager's
+ * session and refuse anyone who is not an admin (assert_reviewer).
+ *
  * The Criminal Record declaration is a row of this list, as the wireframe
- * draws it (DECL). A Yes still under review carries Verify / Reject, and
- * those are /compliance's own actions and RPCs (§4.1, §10.7) — the §4.3
- * re-check, the unblock and the manual block on a rejected in-employment
- * declaration all happen in the database, whichever screen pressed it.
+ * draws it (DECL).
  *
  * Superseded documents are a separate, dimmed group rather than a hidden
  * one. §2.12 keeps them "read-only, on the profile as the record of what
@@ -45,8 +58,11 @@ import type { DeclarationRow, DocumentRow, ProfileRow, ReviewStatus } from './ty
  * A share code carries its automated gov.uk check (ADR-0025) under the row:
  * status, source, date, right-to-work-until, conditions, "Download gov.uk
  * report" and "Run check again" — the same panel as /onboarding/:id and
- * /compliance. The hand-typed date for a check that needs review is entered
- * on /compliance, where every other Verify is.
+ * /compliance. While the check is on, Verify with a hand-typed date is
+ * offered only once the check needs review (rtw_check_manual_allowed(), via
+ * the queue row's `rtw_manual_allowed`); before that the check verifies it.
+ * A share code verified before the date was required carries "Confirm
+ * date" (the queue's `rtw_date` row, 20260927160000).
  */
 function meta(row: DocumentRow): string {
   const parts: string[] = [];
@@ -90,21 +106,25 @@ export function Documents({
   declarations = [],
   rtwChecks = [],
   rtwCheckEnabled = false,
+  reviewQueue = [],
+  reviewQueueProblem = null,
 }: {
   profile: ProfileRow;
   documents: DocumentRow[];
   declarations?: DeclarationRow[];
   rtwChecks?: RtwCheckRow[];
   rtwCheckEnabled?: boolean;
+  /** This worker's rows of the Needs review queue (§4.1). */
+  reviewQueue?: QueueRow[];
+  reviewQueueProblem?: string | null;
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [problem, setProblem] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [rejecting, setRejecting] = useState<DeclarationRow | null>(null);
-  const [reason, setReason] = useState('');
 
   const checks = checksByDocument(rtwChecks);
+  const queue = queueByRecord(reviewQueue);
   const sorted = [...documents].sort(documentOrder);
   const live = sorted.filter((row) => !row.superseded);
   const superseded = sorted.filter((row) => row.superseded);
@@ -120,10 +140,7 @@ export function Documents({
     });
   };
 
-  const review = (
-    work: () => Promise<{ ok: true; message?: string } | { ok: false; message: string }>,
-    after?: () => void,
-  ) => {
+  const run = (_id: string, work: () => Promise<ActionResult>, after?: () => void) => {
     setProblem(null);
     setNotice(null);
     start(async () => {
@@ -138,9 +155,47 @@ export function Documents({
     });
   };
 
-  const closeReject = () => {
-    setRejecting(null);
-    setReason('');
+  // /compliance's Verify / Reject: the same actions, the same dialogs.
+  const { verify, reject, dialogs } = useReviewDialogs({ run, busy: () => pending });
+
+  /** Verify / Reject on a record the queue lists, or nothing (§4.1). */
+  const reviewButtons = (item: QueueRow | undefined) => {
+    if (!item) return null;
+    const allowed = actionsFor(item);
+    return (
+      <>
+        {verifyAllowed(item) ? (
+          <Button size="sm" tone="green" disabled={pending} onClick={() => verify(item)}>
+            {allowed.verify}
+          </Button>
+        ) : null}
+        {allowed.reject ? (
+          <Button size="sm" tone="danger" disabled={pending} onClick={() => reject(item)}>
+            Reject
+          </Button>
+        ) : null}
+      </>
+    );
+  };
+
+  // §4.1: once someone is Rejected or Removed, what they left under review
+  // no longer needs it — the queue drops it, so there is nothing to press.
+  const reviewClosed = profile.status === 'rejected' || profile.status === 'removed';
+
+  /** The row's meta line, with what Verify will do where the queue spells it out. */
+  const withHint = (line: string, item: QueueRow | undefined, underReview = false) => {
+    const hint = item
+      ? verifyHint(item)
+      : underReview && reviewClosed
+        ? 'No longer needs review — this person is Rejected or Removed (§4.1)'
+        : null;
+    if (!hint) return line;
+    return (
+      <>
+        {line}
+        <span className="review-hint muted xs">{hint}</span>
+      </>
+    );
   };
 
   const downloads = (row: DocumentRow) => (
@@ -178,6 +233,12 @@ export function Documents({
       <div className="stack">
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
         {notice ? <Alert tone="green">{notice}</Alert> : null}
+        {reviewQueueProblem ? (
+          <Alert tone="amber">
+            Verify / Reject are unavailable here because the review queue could not be read (
+            {reviewQueueProblem}). Review from Compliance → Needs review.
+          </Alert>
+        ) : null}
 
         {live.length === 0 && liveDeclarations.length === 0 ? (
           <div className="empty">No documents on file.</div>
@@ -188,11 +249,15 @@ export function Documents({
             <DocRow
               icon={row.gov_report_path && !row.file_path ? 'GOV' : 'PDF'}
               title={row.doc_label}
-              meta={meta(row)}
+              meta={withHint(meta(row), queue.get(row.id), row.review_status === 'pending')}
               state={STATE[row.review_status]}
               actions={
                 <>
                   <StatusPill status={row.review_status} />
+                  {queue.get(row.id)?.kind === 'rtw_date' ? (
+                    <Pill tone="coral">re-verify</Pill>
+                  ) : null}
+                  {reviewButtons(queue.get(row.id))}
                   {downloads(row)}
                 </>
               }
@@ -213,31 +278,16 @@ export function Documents({
             key={row.id}
             icon="DECL"
             title={`Criminal Record declaration · ${row.answer ? 'Yes' : 'No'}`}
-            meta={declarationMeta(row)}
+            meta={withHint(
+              declarationMeta(row),
+              declarationActionable(row) ? queue.get(row.id) : undefined,
+              declarationActionable(row),
+            )}
             state={STATE[row.review_status]}
             actions={
               <>
                 <StatusPill status={row.review_status} />
-                {declarationActionable(row) ? (
-                  <>
-                    <Button
-                      size="sm"
-                      tone="green"
-                      disabled={pending}
-                      onClick={() => review(() => verifyDeclaration(row.id))}
-                    >
-                      Verify
-                    </Button>
-                    <Button
-                      size="sm"
-                      tone="danger"
-                      disabled={pending}
-                      onClick={() => setRejecting(row)}
-                    >
-                      Reject
-                    </Button>
-                  </>
-                ) : null}
+                {declarationActionable(row) ? reviewButtons(queue.get(row.id)) : null}
               </>
             }
           />
@@ -312,58 +362,10 @@ export function Documents({
       </div>
 
       {/*
-        Reject (§10.7, §4.1). The same RPC as the /compliance queue. An
-        in-employment declaration's reason becomes the manual block's and
-        the worker is not pushed; an onboarding one is a candidate's.
+        Verify with a date, Approve, and Reject with a reason (§4.1, §10.7):
+        the /compliance dialogs, not a copy of them.
       */}
-      <Modal
-        open={rejecting !== null}
-        title="Reject declaration"
-        onClose={closeReject}
-        footer={
-          <>
-            <Button tone="ghost" onClick={closeReject}>
-              Cancel
-            </Button>
-            <Button
-              tone="danger"
-              solid
-              disabled={pending || reason.trim() === ''}
-              onClick={() =>
-                rejecting && review(() => rejectDeclaration(rejecting.id, reason), closeReject)
-              }
-            >
-              Reject declaration
-            </Button>
-          </>
-        }
-      >
-        <Textarea
-          label={
-            <>
-              Reason <span className="coral">*</span>
-            </>
-          }
-          value={reason}
-          onChange={(event) => setReason(event.target.value)}
-          hint={
-            rejecting?.source === 'in_employment' ? (
-              <>
-                Kept on the profile: the block converts to a manual block with this reason, and only
-                a manager can lift it. The worker is not told through the app — the office calls
-                them (§10.7).
-              </>
-            ) : (
-              <>Kept on the declaration as the reason it was rejected (§2.10).</>
-            )
-          }
-        />
-        <Note>
-          {rejecting?.source === 'in_employment'
-            ? 'The block stands. Bookings released when they declared are not restored.'
-            : 'Nothing else on the profile changes — including the weekly hours cap.'}
-        </Note>
-      </Modal>
+      {dialogs}
     </Panel>
   );
 }

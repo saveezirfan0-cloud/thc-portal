@@ -26,7 +26,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/compliance/export` | Completion-letter audit trail (CSV download) | — | completion letter req. §4 | compliance |
 | `/checkin` | Live monitor + Violation log | `backoffice/checkin.html` | 9.5 | checkin |
 | `/staff` | Directory (All/Compliant/Blocked/Inactive/Removed, Student visa view) | `backoffice/staff.html` | 9.6, 4.5 | directory |
-| `/staff/:id` | Profile (Overview/Documents/Client qualification/Shifts/Feedback) | `backoffice/staff-profile.html` | 9.6 | directory, compliance |
+| `/staff/:id` | Profile (Overview/Documents/Client qualification/Shifts/Feedback). Documents: Verify / Reject on every document or Yes declaration this worker has on Needs review (Confirm date on an `rtw_date` row) — the `/compliance` actions and dialogs (`compliance/ReviewDialogs.tsx`), not a copy; none on a Rejected/Removed worker (§4.1) | `backoffice/staff-profile.html` | 9.6 | directory, compliance |
 | `/clients` | Directory + New client | `backoffice/clients.html` | 9.7 | directory |
 | `/clients/:id` | Client card (4 blocks) | `backoffice/client-card.html` | 9.7 | directory |
 | `/roles` | Roles & rates | `backoffice/roles.html` | 9.8 | directory |
