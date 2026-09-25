@@ -8,7 +8,7 @@
 
 .apply-page .auth-card {
   max-width: 460px;
-  gap: 14px;
+  gap: var(--sp-14);
 }
 
 /* The wireframe's brand row sits left with a rule under it, where the
@@ -17,18 +17,18 @@
   flex-direction: row;
   align-items: center;
   text-align: left;
-  padding-bottom: 14px;
+  padding-bottom: var(--sp-14);
   border-bottom: 1px solid var(--line);
 }
 
 .apply-page .auth-card h2 {
   text-align: left;
-  font-size: 20px;
+  font-size: var(--fs-20);
 }
 
 .apply-page .lead {
   color: var(--muted);
-  font-size: 13px;
+  font-size: var(--fs-13);
   margin: 0;
 }
 
@@ -69,9 +69,9 @@
 
 .apply-page .apply-consent .check .error {
   display: block;
-  font-size: 11.5px;
+  font-size: 11.5px; /* wireframe value (public/apply.html); no token */
   color: var(--coral-ink);
-  margin-top: 4px;
+  margin-top: var(--sp-4);
 }
 
 /* "Check your inbox" (§2.7) — the one confirmation screen, which a returning
@@ -94,12 +94,12 @@
 .apply-page .done .ico {
   width: 56px;
   height: 56px;
-  background: var(--cyan);
-  color: var(--bg);
+  background: var(--cyan-solid);
+  color: var(--on-cyan);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 28px;
+  font-size: 28px; /* the wireframe's tick size (public/apply.html); the scale has no 28 */
   font-weight: 700;
   /* --r-xs is not a token. It resolved to nothing, so the tick badge was the
      one square corner on a page of rounded ones. */
@@ -110,8 +110,8 @@
   width: 100%;
   border: 1px solid var(--line);
   background: var(--bg);
-  padding: 10px 12px;
-  font-size: 12.5px;
+  padding: var(--sp-10) var(--sp-12);
+  font-size: 12.5px; /* wireframe value (public/apply.html); no token */
   text-align: left;
   border-radius: var(--r-tile);
 }
@@ -119,7 +119,7 @@
 .apply-page .done .box .row {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--sp-12);
 }
 
 /* Phone browsers are where most applications are typed (§1.2). */

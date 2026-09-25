@@ -38,7 +38,7 @@
   font-family: var(--font-label);
   font-size: var(--label-size);
   letter-spacing: var(--label-track);
-  text-transform: uppercase;
+  text-transform: var(--label-case);
   color: var(--muted);
   flex: 0 0 84px;
   padding-top: 3px;
@@ -60,14 +60,15 @@
 
 /* Radar's km badge. */
 .km {
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
   font-size: var(--fs-10);
-  padding: 2px 6px;
+  padding: 2px var(--sp-6);
   border-radius: var(--r-pill);
   border: 1px solid var(--cyan-line);
-  color: var(--cyan);
+  color: var(--cyan-ink);
   background: var(--cyan-dim);
-  letter-spacing: 0.06em;
+  letter-spacing: var(--pill-track);
   white-space: nowrap;
 }
 
@@ -79,7 +80,7 @@
   font-family: var(--font-label);
   font-size: var(--label-size);
   letter-spacing: var(--label-track);
-  text-transform: uppercase;
+  text-transform: var(--label-case);
   color: var(--muted);
   margin-top: var(--sp-4);
 }
@@ -89,7 +90,7 @@
   border-top: 1px solid var(--line);
 }
 .grp.purple {
-  color: var(--purple);
+  color: var(--purple-ink);
 }
 
 /* The card's own action row: Decline / Accept, side by side and equal. */
@@ -108,7 +109,7 @@
   align-items: center;
   gap: var(--sp-8);
   flex-wrap: wrap;
-  margin-bottom: 6px;
+  margin-bottom: var(--sp-6);
 }
 .card-head .right {
   margin-left: auto;
@@ -172,7 +173,7 @@
   border: 1.5px solid var(--cyan-ink);
   background: var(--cyan-dim);
   transform: translate(-50%, -50%);
-  border-radius: 50%;
+  border-radius: 50%; /* a geofence is a circle in every style */
 }
 .map .me {
   position: absolute;
@@ -189,6 +190,6 @@
   font-size: var(--fs-10);
   color: var(--muted);
   background: var(--glass-strong);
-  padding: 2px 6px;
+  padding: 2px var(--sp-6);
   border-radius: var(--r-pill);
 }

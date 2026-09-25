@@ -26,7 +26,7 @@
 .tbl .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--sp-4);
 }
 
 /* The pager sits under the table, inside the panel. */
@@ -37,7 +37,7 @@
 .panel .pager .right {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-8);
 }
 
 /*
@@ -48,16 +48,20 @@
 .emails {
   display: flex;
   flex-wrap: wrap;
-  gap: 6px;
+  gap: var(--sp-6);
   align-items: center;
   border: 1px solid var(--line);
   background: var(--bg);
-  padding: 7px 8px;
+  padding: 7px var(--sp-8);
   min-height: var(--input-h);
   border-radius: var(--r-control);
 }
+/* The inner input is bare (outline: 0 below), so the wrapper wears the
+   focus ring — the same one .input:focus-visible draws in packages/ui. */
 .emails:focus-within {
-  border-color: var(--cyan-ink);
+  border-color: var(--focus-line);
+  outline: 2px solid var(--focus-line);
+  outline-offset: 1px;
 }
 .emails input {
   flex: 1;

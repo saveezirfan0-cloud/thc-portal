@@ -1,6 +1,6 @@
 'use client';
 
-import { Avatar, EmptyState, Note, Panel, Pill } from '@thc/ui';
+import { Avatar, EmptyState, Note, Panel, Pill, TableScroll } from '@thc/ui';
 import { capReason, employeeId, formatUkDate } from './staff';
 import type { StudentRow } from './types';
 
@@ -88,67 +88,69 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
               <p>This view holds every worker on the International student branch (§2.5).</p>
             </EmptyState>
           ) : (
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>Worker</th>
-                  <th>Current weekly cap</th>
-                  <th>Evidence set</th>
-                  <th>Right-to-work expiry</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row) => (
-                  <tr key={row.id}>
-                    <td>
-                      <div className="person">
-                        <Avatar
-                          name={row.display_name}
-                          src={row.photo_url ?? undefined}
-                          size="sm"
-                        />
-                        <div>
-                          <div className="n">{row.display_name}</div>
-                          <div className="s">{employeeId(row.employee_id)}</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`cap ${capClass(row)}`}>{capLabel(row)}</span>
-                      <span className="sub">
-                        {capReason(row.weekly_cap_band, row.weekly_cap_hours)}
-                        {row.weekly_booked_hours !== null
-                          ? ` · ${row.weekly_booked_hours} h booked this week`
-                          : null}
-                        {releaseLine(row)}
-                      </span>
-                    </td>
-                    <td className="sm">
-                      <Evidence row={row} />
-                    </td>
-                    <td className="mono sm">
-                      {row.right_to_work_until ? formatUkDate(row.right_to_work_until) : '—'}
-                      {row.rtw_days_left !== null && row.rtw_days_left <= 60 ? (
-                        <>
-                          {' '}
-                          <Pill tone={row.rtw_days_left <= 14 ? 'coral' : 'amber'}>
-                            {row.rtw_days_left} d
-                          </Pill>
-                        </>
-                      ) : null}
-                    </td>
-                    <td>
-                      {row.status === 'blocked' ? (
-                        <Pill tone="coral">Blocked</Pill>
-                      ) : (
-                        <Pill tone="green">Compliant</Pill>
-                      )}
-                    </td>
+            <TableScroll>
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>Worker</th>
+                    <th>Current weekly cap</th>
+                    <th>Evidence set</th>
+                    <th>Right-to-work expiry</th>
+                    <th>Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {rows.map((row) => (
+                    <tr key={row.id}>
+                      <td>
+                        <div className="person">
+                          <Avatar
+                            name={row.display_name}
+                            src={row.photo_url ?? undefined}
+                            size="sm"
+                          />
+                          <div>
+                            <div className="n">{row.display_name}</div>
+                            <div className="s">{employeeId(row.employee_id)}</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`cap ${capClass(row)}`}>{capLabel(row)}</span>
+                        <span className="sub">
+                          {capReason(row.weekly_cap_band, row.weekly_cap_hours)}
+                          {row.weekly_booked_hours !== null
+                            ? ` · ${row.weekly_booked_hours} h booked this week`
+                            : null}
+                          {releaseLine(row)}
+                        </span>
+                      </td>
+                      <td className="sm">
+                        <Evidence row={row} />
+                      </td>
+                      <td className="mono sm">
+                        {row.right_to_work_until ? formatUkDate(row.right_to_work_until) : '—'}
+                        {row.rtw_days_left !== null && row.rtw_days_left <= 60 ? (
+                          <>
+                            {' '}
+                            <Pill tone={row.rtw_days_left <= 14 ? 'coral' : 'amber'}>
+                              {row.rtw_days_left} d
+                            </Pill>
+                          </>
+                        ) : null}
+                      </td>
+                      <td>
+                        {row.status === 'blocked' ? (
+                          <Pill tone="coral">Blocked</Pill>
+                        ) : (
+                          <Pill tone="green">Compliant</Pill>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableScroll>
           )}
         </div>
       </Panel>

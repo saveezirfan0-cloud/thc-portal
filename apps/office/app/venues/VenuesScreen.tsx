@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, EmptyState, Note, Panel, Tabs } from '@thc/ui';
+import { Button, EmptyState, Note, Panel, TableScroll, Tabs } from '@thc/ui';
 import { VenueMap, markerLabel } from './VenueMap';
 import { VenueModal } from './VenueModal';
 import { DeleteVenueModal } from './DeleteVenueModal';
@@ -122,51 +122,53 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
                   </p>
                 </EmptyState>
               ) : (
-                <table className="tbl">
-                  <thead>
-                    <tr>
-                      <th>Venue</th>
-                      <th>Address</th>
-                      <th>Type</th>
-                      <th className="num">Geofence (m)</th>
-                      <th className="num">Events</th>
-                      <th className="actions">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((venue) => (
-                      <tr key={venue.id}>
-                        <td className="name">
-                          <button
-                            type="button"
-                            className="venue-name"
-                            onClick={() => setEditing(venue)}
-                          >
-                            {venue.name}
-                          </button>
-                          <span className="sub mono">{formatCoordinates(venue)}</span>
-                        </td>
-                        <td>{venue.address}</td>
-                        <td className="vt">{venue.venue_type_label}</td>
-                        <td className="num">
-                          {venue.geofence_radius_m}
-                          {venue.geofence_radius_m !== venue.default_radius_m ? (
-                            <span className="radius-note">default {venue.default_radius_m}</span>
-                          ) : null}
-                        </td>
-                        <td className="num">{venue.events_past}</td>
-                        <td className="actions">
-                          <Button size="sm" onClick={() => setEditing(venue)}>
-                            Edit
-                          </Button>
-                          <Button size="sm" tone="danger" onClick={() => setDeleting(venue)}>
-                            Delete
-                          </Button>
-                        </td>
+                <TableScroll>
+                  <table className="tbl">
+                    <thead>
+                      <tr>
+                        <th>Venue</th>
+                        <th>Address</th>
+                        <th>Type</th>
+                        <th className="num">Geofence (m)</th>
+                        <th className="num">Events</th>
+                        <th className="actions">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {filtered.map((venue) => (
+                        <tr key={venue.id}>
+                          <td className="name">
+                            <button
+                              type="button"
+                              className="venue-name"
+                              onClick={() => setEditing(venue)}
+                            >
+                              {venue.name}
+                            </button>
+                            <span className="sub mono">{formatCoordinates(venue)}</span>
+                          </td>
+                          <td>{venue.address}</td>
+                          <td className="vt">{venue.venue_type_label}</td>
+                          <td className="num">
+                            {venue.geofence_radius_m}
+                            {venue.geofence_radius_m !== venue.default_radius_m ? (
+                              <span className="radius-note">default {venue.default_radius_m}</span>
+                            ) : null}
+                          </td>
+                          <td className="num">{venue.events_past}</td>
+                          <td className="actions">
+                            <Button size="sm" onClick={() => setEditing(venue)}>
+                              Edit
+                            </Button>
+                            <Button size="sm" tone="danger" onClick={() => setDeleting(venue)}>
+                              Delete
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </TableScroll>
               )}
             </div>
           </Panel>

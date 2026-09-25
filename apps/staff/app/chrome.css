@@ -56,6 +56,6 @@
   font-family: var(--font-label);
   font-size: var(--label-size);
   letter-spacing: var(--label-track);
-  text-transform: uppercase;
+  text-transform: var(--label-case);
   color: var(--muted);
 }

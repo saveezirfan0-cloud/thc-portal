@@ -1009,7 +1009,7 @@ function TermDates({
       {periods.length === 0 ? (
         <div className="muted sm">No holiday periods — add any the letter shows.</div>
       ) : (
-        <div>
+        <div className="periods">
           <div className="period head">
             <span className="label">#</span>
             <span className="label">Period</span>

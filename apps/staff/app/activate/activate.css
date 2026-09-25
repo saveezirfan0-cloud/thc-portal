@@ -20,18 +20,18 @@
   font-family: var(--font-mono);
 }
 .act-rules li.ok {
-  color: var(--green);
+  color: var(--green-ink);
 }
 .act-rules li.ok::before {
   content: '✓ ';
-  color: var(--green);
+  color: var(--green-ink);
 }
 .act-rules li.bad {
-  color: var(--coral);
+  color: var(--coral-ink);
 }
 .act-rules li.bad::before {
   content: '✕ ';
-  color: var(--coral);
+  color: var(--coral-ink);
 }
 
 /* The "Show" addon is a real button. */
@@ -110,8 +110,8 @@
   font-family: var(--font-label);
   font-size: var(--label-size);
   letter-spacing: var(--label-track);
-  text-transform: uppercase;
-  color: var(--cyan);
+  text-transform: var(--label-case);
+  color: var(--cyan-ink);
 }
 .act-install ol {
   margin: 0;

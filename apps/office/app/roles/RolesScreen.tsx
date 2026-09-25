@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, EmptyState, Note, Panel, Pill } from '@thc/ui';
+import { Alert, Button, EmptyState, Note, Panel, Pill, TableScroll } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { RoleModal } from './RoleModal';
 import { DeleteRoleModal } from './DeleteRoleModal';
@@ -92,51 +92,58 @@ export function RolesScreen({ roles, problem }: RolesScreenProps) {
               </p>
             </EmptyState>
           ) : (
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>Role</th>
-                  <th>Description</th>
-                  <th className="money">Staff pay rate ✎</th>
-                  <th className="money">Holiday +12.07%</th>
-                  <th className="money">Final rate</th>
-                  <th>On rate cards</th>
-                  <th className="actions">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {roles.map((role) => (
-                  <tr key={role.id}>
-                    <td>
-                      <button type="button" className="role-name" onClick={() => setEditing(role)}>
-                        {role.name}
-                      </button>
-                    </td>
-                    <td className="sm muted desc">{role.description ?? '—'}</td>
-                    <td className="money">{formatPounds(toPence(role.pay_rate))}</td>
-                    <td className="money hol">{formatAddition(toPence(role.holiday_rate))}</td>
-                    <td className="money fin">{formatPounds(toPence(role.final_rate))}</td>
-                    <td className="sm">
-                      {role.rate_card_count === 0 ? (
-                        <span className="muted">0 clients</span>
-                      ) : (
-                        <>
-                          {role.rate_card_count} {role.rate_card_count === 1 ? 'client' : 'clients'}
-                        </>
-                      )}
-                    </td>
-                    <td className="actions">
-                      <Button size="sm" onClick={() => setEditing(role)}>
-                        Edit
-                      </Button>
-                      <Button size="sm" tone="danger" onClick={() => setDeleting(role)}>
-                        Delete
-                      </Button>
-                    </td>
+            <TableScroll>
+              <table className="tbl">
+                <thead>
+                  <tr>
+                    <th>Role</th>
+                    <th>Description</th>
+                    <th className="money">Staff pay rate ✎</th>
+                    <th className="money">Holiday +12.07%</th>
+                    <th className="money">Final rate</th>
+                    <th>On rate cards</th>
+                    <th className="actions">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {roles.map((role) => (
+                    <tr key={role.id}>
+                      <td>
+                        <button
+                          type="button"
+                          className="role-name"
+                          onClick={() => setEditing(role)}
+                        >
+                          {role.name}
+                        </button>
+                      </td>
+                      <td className="sm muted desc">{role.description ?? '—'}</td>
+                      <td className="money">{formatPounds(toPence(role.pay_rate))}</td>
+                      <td className="money hol">{formatAddition(toPence(role.holiday_rate))}</td>
+                      <td className="money fin">{formatPounds(toPence(role.final_rate))}</td>
+                      <td className="sm">
+                        {role.rate_card_count === 0 ? (
+                          <span className="muted">0 clients</span>
+                        ) : (
+                          <>
+                            {role.rate_card_count}{' '}
+                            {role.rate_card_count === 1 ? 'client' : 'clients'}
+                          </>
+                        )}
+                      </td>
+                      <td className="actions">
+                        <Button size="sm" onClick={() => setEditing(role)}>
+                          Edit
+                        </Button>
+                        <Button size="sm" tone="danger" onClick={() => setDeleting(role)}>
+                          Delete
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </TableScroll>
           )}
         </div>
       </Panel>

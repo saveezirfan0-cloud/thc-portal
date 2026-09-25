@@ -12,17 +12,17 @@
 .kcard .top {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-8);
 }
 .kcard .nm {
   font-weight: 600;
-  font-size: 13px;
+  font-size: var(--fs-13);
   line-height: 1.15;
 }
 .kcard .age {
   margin-left: auto;
   font-family: var(--font-num);
-  font-size: 10px;
+  font-size: var(--fs-10);
   color: var(--muted);
   white-space: nowrap;
 }
@@ -35,10 +35,10 @@
 .kcard .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--sp-4);
 }
 .kcard .meta {
-  font-size: 11px;
+  font-size: var(--fs-11);
   color: var(--muted);
 }
 .kcard .meta.amber {
@@ -55,7 +55,7 @@
 }
 .kcard .acts {
   display: flex;
-  gap: 6px;
+  gap: var(--sp-6);
   margin-top: 2px;
   flex-wrap: wrap;
 }
@@ -69,8 +69,8 @@
   color: var(--green-ink);
 }
 .kb .empty.small {
-  padding: 24px 10px;
-  font-size: 12px;
+  padding: 24px var(--sp-10);
+  font-size: var(--fs-12);
 }
 .toolbar .annot,
 .annot {
@@ -82,13 +82,13 @@
 /* ---- the candidate profile (BO4) ---- */
 .cand-head {
   display: flex;
-  gap: 16px;
+  gap: var(--sp-16);
   align-items: flex-start;
 }
 .cand-head .who {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-6);
   min-width: 0;
   flex: 1;
 }
@@ -98,7 +98,7 @@
 }
 .cand-head .facts {
   display: flex;
-  gap: 14px;
+  gap: var(--sp-14);
   flex-wrap: wrap;
   font-size: 12.5px;
   color: var(--muted);
@@ -115,19 +115,19 @@
 .kv {
   display: grid;
   grid-template-columns: 170px 1fr;
-  gap: 8px 14px;
-  font-size: 13px;
+  gap: var(--sp-8) var(--sp-14);
+  font-size: var(--fs-13);
   align-items: baseline;
 }
 .kv.narrow {
   grid-template-columns: 90px 1fr;
-  margin-top: 6px;
+  margin-top: var(--sp-6);
 }
 .kv .k {
   font-family: var(--font-label);
-  font-size: 10.5px;
+  font-size: var(--label-size);
   letter-spacing: var(--label-track);
-  text-transform: uppercase;
+  text-transform: var(--label-case);
   color: var(--muted);
 }
 
@@ -136,13 +136,13 @@
   align-items: center;
   gap: 5px;
   font-family: var(--font-num);
-  font-size: 10px;
+  font-size: var(--fs-10);
   letter-spacing: 0.06em;
-  padding: 1px 6px;
+  padding: 1px var(--sp-6);
   border: 1px solid var(--line);
   border-radius: var(--r-pill);
   color: var(--muted);
-  margin-left: 6px;
+  margin-left: var(--sp-6);
   vertical-align: middle;
 }
 .ai.hi {
@@ -162,9 +162,9 @@
   display: grid;
   /* # · Period · From · → · To · Source · remove (candidate.html) */
   grid-template-columns: 24px 1fr 150px 20px 150px 96px 60px;
-  gap: 8px;
+  gap: var(--sp-8);
   align-items: center;
-  padding: 8px 10px;
+  padding: var(--sp-8) var(--sp-10);
   border: 1px solid var(--line);
   background: var(--bg);
   font-size: 12.5px;
@@ -172,14 +172,24 @@
 .period + .period {
   border-top: 0;
 }
+/* Seven fixed tracks are wider than a phone. The list scrolls sideways
+   rather than folding, so a period's two dates stay on one line (§1.2). */
+@media (max-width: 760px) {
+  .periods {
+    overflow-x: auto;
+  }
+  .period {
+    min-width: 560px;
+  }
+}
 .period.head {
   background: transparent;
   border: 0;
-  padding: 0 10px 4px;
+  padding: 0 var(--sp-10) var(--sp-4);
 }
 .period .input {
   height: 30px;
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 .period .rm {
   background: none;
@@ -187,17 +197,17 @@
   color: var(--muted);
   cursor: pointer;
   font: inherit;
-  font-size: 11px;
+  font-size: var(--fs-11);
   text-decoration: underline;
 }
 
 .rolepick {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 8px;
+  gap: var(--sp-8);
 }
 .rolepick .check {
-  padding: 8px 10px;
+  padding: var(--sp-8) var(--sp-10);
   border: 1px solid var(--line);
   background: var(--bg);
   border-radius: var(--r-tile);
@@ -210,9 +220,9 @@
 .attempt {
   display: grid;
   grid-template-columns: 90px 1fr 90px 120px;
-  gap: 10px;
+  gap: var(--sp-10);
   align-items: center;
-  padding: 8px 10px;
+  padding: var(--sp-8) var(--sp-10);
   border: 1px solid var(--line);
   background: var(--bg);
   font-size: 12.5px;
@@ -223,7 +233,7 @@
 .attempt.head {
   background: transparent;
   border: 0;
-  padding: 0 10px 4px;
+  padding: 0 var(--sp-10) var(--sp-4);
 }
 
 .contract-text {
@@ -231,14 +241,14 @@
   overflow: auto;
   border: 1px solid var(--line);
   background: var(--bg);
-  padding: 14px 16px;
+  padding: var(--sp-14) var(--sp-16);
   font-size: 12.5px;
   color: var(--muted);
   line-height: 1.55;
   border-radius: var(--r-tile);
 }
 .contract-text p {
-  margin: 0 0 10px;
+  margin: 0 0 var(--sp-10);
   white-space: pre-wrap;
 }
 .contract-text p:last-child {
@@ -247,9 +257,9 @@
 
 .pdfcard {
   display: flex;
-  gap: 14px;
+  gap: var(--sp-14);
   align-items: flex-start;
-  padding: 12px 14px;
+  padding: var(--sp-12) var(--sp-14);
   border: 1px solid var(--line);
   background: var(--bg);
   border-radius: var(--r-tile);
@@ -262,7 +272,7 @@
   justify-content: center;
   text-align: center;
   font-family: var(--font-label);
-  font-size: 10px;
+  font-size: var(--fs-10);
   color: var(--muted);
   border: 1px solid var(--line);
   background: var(--panel);
@@ -270,7 +280,25 @@
 }
 
 .card.term {
-  border-left: 3px solid var(--amber);
+  --accent: var(--amber);
+  position: relative;
+  border-left: 3px solid var(--accent);
+}
+/* A 3px border on a --r-tile box is a crescent; the rounded look draws the
+   stripe inset, as packages/ui warm.css does for .card.accent. */
+:root[data-style='warm'] .card.term {
+  border-left: 1px solid var(--line);
+  padding-left: var(--sp-20);
+}
+:root[data-style='warm'] .card.term::before {
+  content: '';
+  position: absolute;
+  left: var(--sp-8);
+  top: var(--sp-10);
+  bottom: var(--sp-10);
+  width: 3px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
 }
 .superseded-group {
   opacity: 0.65;

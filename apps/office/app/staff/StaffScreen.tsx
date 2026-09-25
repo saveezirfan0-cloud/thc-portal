@@ -2,7 +2,18 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { Alert, Avatar, Chip, EmptyState, Note, Panel, Pill, SegToggle, Select } from '@thc/ui';
+import {
+  Alert,
+  Avatar,
+  Chip,
+  EmptyState,
+  Note,
+  Panel,
+  Pill,
+  SegToggle,
+  Select,
+  TableScroll,
+} from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { StudentVisaView } from './StudentVisaView';
 import {
@@ -219,46 +230,50 @@ export function StaffScreen({
                   works through: the last shift actually worked, the shifts
                   the leaving released (E8's list), and the P45 request.
                 */
-                <table className="tbl">
-                  <thead>
-                    <tr>
-                      <th />
-                      <th>Name</th>
-                      <th>Employee ID</th>
-                      <th>Left</th>
-                      <th>Reason given</th>
-                      <th>Role(s)</th>
-                      <th>Last completed shift</th>
-                      <th>Released shifts</th>
-                      <th>P45</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {shown.map((row) => (
-                      <InactiveTableRow key={row.id} row={row} />
-                    ))}
-                  </tbody>
-                </table>
+                <TableScroll>
+                  <table className="tbl">
+                    <thead>
+                      <tr>
+                        <th />
+                        <th>Name</th>
+                        <th>Employee ID</th>
+                        <th>Left</th>
+                        <th>Reason given</th>
+                        <th>Role(s)</th>
+                        <th>Last completed shift</th>
+                        <th>Released shifts</th>
+                        <th>P45</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shown.map((row) => (
+                        <InactiveTableRow key={row.id} row={row} />
+                      ))}
+                    </tbody>
+                  </table>
+                </TableScroll>
               ) : (
-                <table className="tbl">
-                  <thead>
-                    <tr>
-                      <th />
-                      <th>Name</th>
-                      <th>Employee ID</th>
-                      <th>Role(s)</th>
-                      <th>Rating</th>
-                      <th>Show-rate</th>
-                      <th>Compliance status</th>
-                      <th>Right to work</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {shown.map((row) => (
-                      <StaffTableRow key={row.id} row={row} />
-                    ))}
-                  </tbody>
-                </table>
+                <TableScroll>
+                  <table className="tbl">
+                    <thead>
+                      <tr>
+                        <th />
+                        <th>Name</th>
+                        <th>Employee ID</th>
+                        <th>Role(s)</th>
+                        <th>Rating</th>
+                        <th>Show-rate</th>
+                        <th>Compliance status</th>
+                        <th>Right to work</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shown.map((row) => (
+                        <StaffTableRow key={row.id} row={row} />
+                      ))}
+                    </tbody>
+                  </table>
+                </TableScroll>
               )}
             </div>
             {filtered.length > PAGE_SIZE ? (
