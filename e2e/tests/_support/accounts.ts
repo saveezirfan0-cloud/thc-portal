@@ -192,8 +192,13 @@ export async function inviteFromUsers(
   }
   await form.getByRole('button', { name: 'Create login' }).click();
 
-  const ready = page.getByRole('dialog', { name: 'Login ready — send the link' });
+  // E11 (ADR-0038) queues on the local stack, so the dialog normally says
+  // the invitation was emailed; it says "send the link" when it was not.
+  const ready = page.getByRole('dialog', {
+    name: /^Login ready — (invitation emailed|send the link)$/,
+  });
   await expect(ready).toBeVisible();
+  await expect(ready).toContainText(`Emailed to ${invitee.email}`);
   await expect(ready).toContainText(invitee.fullName);
   await expect(ready).toContainText(invitee.email);
   const link = await ready.getByLabel('Set-up link', { exact: true }).inputValue();

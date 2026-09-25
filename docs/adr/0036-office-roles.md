@@ -57,7 +57,7 @@ Stated plainly, because a claim of protection that is not there is worse than no
 3. **Client card** (`/clients/[id]`): margins show "—" and the rate card section is empty for a scheduler, but its Add / Edit / Remove role controls are still drawn and are refused by the database with an error when used. `ClientCard.tsx` / `RateCard.tsx` were out of this change's paths.
 4. **Staff profile**: the bank fields read as blank for a scheduler rather than as "hidden".
 5. **HMRC starter checklist** (`hmrc_checklists`) stays readable: it is tax status that onboarding reviews, not an amount. The New Starter report that exports it is finance-only.
-6. **Switched-off logins** keep an issued access token until it expires (ADR-0035 "Known limit"), and `office_can()` does not read `auth.users.banned_until` either. The last-owner guard counts only working owners, so a switched-off owner with a live token cannot use it to demote the last working one.
+6. ~~**Switched-off logins** keep an issued access token until it expires~~ — **closed by `20260930160000`**: `current_app_role()` gives a switched-off login no role, and `office_can()` goes through it. The last-owner guard counts only working owners, so a switched-off owner with a live token cannot use it to demote the last working one.
 
 ## Back Office
 

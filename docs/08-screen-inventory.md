@@ -17,10 +17,10 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/login/verify` | Two-step sign-in code step: after email + password, a login with a verified authenticator types its 6-digit code; `next` carried through. States: code form, wrong / expired code, too many attempts, no session (→ `/login`), already verified (→ `next`), a factor this screen cannot challenge, Not you? Sign out | — (ADR-0037) | 1.4 | platform |
 | `/login/forgot`, `/login/forgot/sent`, `/login/reset` | Forgot password → Reset link sent → Set new password (A1–A3, from `admin@`) | `backoffice/login.html#state=forgot`, `#state=sent` | 10.2, 9.12 | platform |
 | `/forgot`, `/forgot/sent`, `/reset` | A1 Forgot password → A2 Reset link sent → A3 Set new password (+ link expired) | `backoffice/login.html` (forgot, sent) · `public/activate.html` (reset) | 10.2 | platform |
-| `/dashboard` | Dashboard | `backoffice/dashboard.html` | 9.1 | reports |
+| `/dashboard` | Dashboard. Plus, below the KPI row, "Short-staffed — next 48 hours": role sections starting within 48 h with confirmed < headcount (`dashboard_short_staffed_v`); a scheduler sees no financial snapshot or margins (ADR-0036) | `backoffice/dashboard.html` (the short-staffed panel is not in the wireframe — ADR-0039) | 9.1 | reports |
 | `/onboarding` | Kanban (Active / Rejected) | `backoffice/onboarding.html` | 2.2 | onboarding |
 | `/onboarding/:id` | Candidate profile by phase | `backoffice/candidate.html` | 2.3 | onboarding |
-| `/events` | List · Calendar month/week/day | `backoffice/events.html` | 3.1 | scheduling |
+| `/events` | List · Calendar month/week/day. Filters live in the URL; "Save view" keeps named filter sets as chips, per browser (localStorage) — ADR-0039 | `backoffice/events.html` | 3.1 | scheduling |
 | `/events/new`, `/events/:id/edit` | Shift Builder (`/events/new?from=<id>` opens it as Duplicate: roles copied, no staff, date blank) | `backoffice/shift-builder.html` | 3.2 | scheduling |
 | `/events/:id` | Event board | `backoffice/event-board.html` | 3.3–3.5, 11.4 | scheduling |
 | `/compliance` | Needs review · Radar | `backoffice/compliance.html` | 4.1 | compliance |
@@ -37,10 +37,11 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/feedback` | Client · Office | `backoffice/feedback.html` | 9.10 | client-portal |
 | `/venues` | List · On map · modal | `backoffice/venues.html` | 9.11 | directory |
 | `/settings` | Scoring weights, Willo map, venue radii, senders (Django-Admin replacement) | — (simple form) | 6, 2.4, 9.11, 9.12 | platform |
-| `/users` | Users & access: every login by app, Invite a Back Office or Client Portal user (one-time set-up link), switch a login off/on, new invite link. States: empty tab, search with no match, invite link shown once, switch-off needs a reason, own row has no Switch off | — (ADR-0035) | 1.4, 1.7 | platform |
+| `/users` | Users & access: every login by app, Invite a Back Office (with office role) or Client Portal user — the one-time set-up link is emailed (E11, ADR-0038) and also shown to copy — switch a login off/on, new invite link. States: empty tab, search with no match, invite link shown once, switch-off needs a reason, own row has no Switch off | — (ADR-0035) | 1.4, 1.7 | platform |
 | `/activity` | Activity log: `audit_log` newest first with who / what / record / details, filters by area, person, text and period, paging by 50. States: empty period, no match, System entries | — (ADR-0035) | 1.7, 1.8 | platform |
 | `/activity/export` | Activity log as CSV (the "Export CSV" button on /activity): the same filters from the query string (not the page), newest first, BOM, When (UK time) · Who · Action · Area · Record · Details; stops at 10,000 rows and says so on the last line; 401/403 without an admin session | — (ADR-0035) | 1.7, 1.8 | platform |
 | `/inbox` | Inbox: the emails the platform sent to the office and payroll (E5–E10, CL3–CL6, the Monday payroll email) from `notification_outbox`, newest first — what (type + rendered subject), about whom (worker linked to their profile, or event / payroll week), to, queued (UK time), status with the sent/failed stamp and the error. Filters by type, status and period, paging by 50. Read-only. States: empty period, no match, failed-in-period banner, queued / held (no keys) / retrying / sent / failed, no Supabase project | — (ADR-0038) | 8, 1.8 | notifications |
+| `/auth/invite` (Back Office and Client Portal) | Set up your login: an invitee chooses a password; the one-time token is spent on submit, not on page load; refuses a token for the other app | — (ADR-0035) | 1.4, 10.2 | platform |
 | `/account` | My profile: name, job title, phone; sign-in email change (confirmation link); password change (current password checked); sign out other devices; appearance | — (ADR-0035) | 1.4, 10.2 | platform |
 | `/design-system` | Live component gallery (both token axes) | `design-system.html` | 1.6, 10.1 | design-system |
 
