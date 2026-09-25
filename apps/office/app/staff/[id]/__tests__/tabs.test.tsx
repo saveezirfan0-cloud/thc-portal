@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 import type { ViolationRow as DetailViolationRow } from '../../../checkin/types';
+import type { QueueRow } from '../../../compliance/types';
 import type { DeclarationRow, DocumentRow, ProfileRow, ShiftRow, ViolationRow } from '../types';
 
 // Outside Next there is no router and no server; neither is under test.
@@ -9,6 +10,10 @@ vi.mock('../../../onboarding/actions', () => ({ documentLink: vi.fn() }));
 vi.mock('../../../compliance/actions', () => ({
   verifyDeclaration: vi.fn(),
   rejectDeclaration: vi.fn(),
+  verifyDocument: vi.fn(),
+  rejectDocument: vi.fn(),
+  approveCompletionLetter: vi.fn(),
+  confirmRtwDate: vi.fn(),
 }));
 vi.mock('../../../checkin/actions', () => ({ resolveViolation: vi.fn() }));
 
@@ -85,6 +90,15 @@ describe('Documents tab (§9.6)', () => {
   });
 
   it('lists the criminal declaration, with Verify / Reject only on a Yes under review', () => {
+    // The Yes under review is on the Needs review queue (§4.1, §10.7) — the
+    // row the buttons act on, as they do on /compliance.
+    const queued = {
+      kind: 'declaration',
+      item_id: 'x2',
+      staff_id: 's1',
+      item_type: 'criminal_declaration',
+      declaration_source: 'in_employment',
+    } as QueueRow;
     const html = renderToStaticMarkup(
       <Documents
         profile={PROFILE}
@@ -93,6 +107,7 @@ describe('Documents tab (§9.6)', () => {
           decl({ id: 'x1', answer: false }),
           decl({ id: 'x2', answer: true, review_status: 'pending', source: 'in_employment' }),
         ]}
+        reviewQueue={[queued]}
       />,
     );
     expect(html).toContain('Criminal Record declaration · No');

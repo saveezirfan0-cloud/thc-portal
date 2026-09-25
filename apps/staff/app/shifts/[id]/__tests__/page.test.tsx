@@ -101,6 +101,8 @@ const detail = (over: Partial<ShiftDetail> = {}): ShiftDetail => ({
   eventCancelledAt: null,
   cancelCause: null,
   noCheckoutOpen: false,
+  turnedAwayAt: null,
+  turnedAwayPayMin: null,
   ...over,
 });
 
@@ -320,5 +322,89 @@ describe('§5.1 / §5.2b the live screen, phase by phase', () => {
     );
     expect(html).not.toContain('Check out');
     expect(html).not.toContain('12.07');
+  });
+});
+
+describe('§3.2 the strict-buffer turn-away screen (RULE-15)', () => {
+  const PAID = 'We’ve logged that you arrived on time and you’ll be paid for 4 hours.';
+  const OPENING =
+    'Thanks for coming — this shift is already fully staffed, so you’re not needed today.';
+  const CLOSING = 'Please check your app for other shifts.';
+
+  const noLiveControls = (html: string) => {
+    expect(html).not.toContain('Check in');
+    expect(html).not.toContain('Check out');
+    expect(html).not.toContain('Start break');
+    expect(html).not.toContain('from the venue');
+    expect(html).not.toContain('marked as not attended');
+  };
+
+  it('on time: the wireframe’s screen, with the four-hour sentence', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(
+      detail({ status: 'turned_away', turnedAwayAt: soon(), turnedAwayPayMin: 240 }),
+    );
+    const html = await render();
+    expect(html).toContain('data-static="turned_away"');
+    expect(html).toContain('Not needed today');
+    expect(html).toContain('<h2>Thanks for coming</h2>');
+    expect(html).toContain(`<p>${OPENING} ${PAID} ${CLOSING}</p>`);
+    expect(html).toContain('href="/shifts"');
+    expect(html).toContain('OK, I understand');
+    expect(html).toContain('href="/radar"');
+    expect(html).toContain('Open Radar');
+    noLiveControls(html);
+  });
+
+  it('late: the same screen, without the sentence — a late turn-away is paid nothing', async () => {
+    // Pressed 35 minutes after a start 40 minutes ago: past the grace, so
+    // RULE-15 gave the attempt 0.
+    const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(
+      detail({
+        status: 'turned_away',
+        startsAt: ago(40),
+        turnedAwayAt: ago(35),
+        turnedAwayPayMin: 0,
+      }),
+    );
+    const html = await render();
+    expect(html).toContain(`<p>${OPENING} ${CLOSING}</p>`);
+    expect(html).not.toContain(PAID);
+    expect(html).not.toContain('4 hours');
+    noLiveControls(html);
+  });
+
+  it('reads the database’s minutes, not the clock: late by the row even inside the window', async () => {
+    // The attempt is stamped ten minutes BEFORE the start, so the phone's
+    // clock would call it on time — but the row says RULE-15 paid 0, and
+    // the screen follows the row.
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(
+      detail({
+        status: 'turned_away',
+        turnedAwayAt: new Date().toISOString(),
+        turnedAwayPayMin: 0,
+      }),
+    );
+    const html = await render();
+    expect(html).toContain('Thanks for coming');
+    expect(html).toContain(`<p>${OPENING} ${CLOSING}</p>`);
+    expect(html).not.toContain(PAID);
+  });
+
+  it('with no RULE-15 decision on the row at all, still turns away but promises nothing', async () => {
+    // A turned_away booking whose attempt carries no minutes: the screen
+    // never promises four hours the payroll view would not pay.
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(
+      detail({ status: 'turned_away', turnedAwayAt: null, turnedAwayPayMin: null }),
+    );
+    const html = await render();
+    expect(html).toContain('Thanks for coming');
+    expect(html).toContain(`<p>${OPENING} ${CLOSING}</p>`);
+    expect(html).not.toContain(PAID);
+    noLiveControls(html);
   });
 });

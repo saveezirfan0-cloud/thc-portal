@@ -143,7 +143,8 @@ Do not chase these now. Each is listed against the phase that first needs it.
 | `WILLO_LOOKUP_PATH` | Optional (ADR-0024). The create-candidate sweep asks Willo by `external_id` before creating again; default `/interviews/{interviewKey}/candidates/?external_id={externalId}`, `off` disables the lookup | With the Willo keys |
 | `APPLY_THROTTLE_SALT` | Any long random string, per environment (ADR-0024). **Vercel, Staff App only, server-side.** `/apply` stores only an HMAC of the caller's address under it; rotating it resets the per-caller counters. **Set on `thc-portal-staff` 25.09.** In development a constant is used and a warning logged; in production (NODE_ENV or VERCEL_ENV `production`, which includes previews) a missing salt logs an error and the per-caller limit is skipped rather than hashed under a salt that is in the repository | `/apply` per-caller limit |
 | `NEXT_PUBLIC_OFFICE_URL`, `NEXT_PUBLIC_CLIENT_URL` | Each app's own public origin, e.g. `https://office.thehospitalitycompany.co.uk`. **Vercel, on the Back Office and the Client Portal respectively.** The Forgot password (A1) email links back to `<origin>/auth/callback?next=/reset`; without it Vercel's per-deployment `VERCEL_URL` is used, and outside Vercel in production the reset is refused. Add `<origin>/auth/callback**` (with the `**`, because the link carries `?next=/reset` and Supabase matches the whole URL) for all three apps to Supabase Auth → URL Configuration → Redirect URLs, or Supabase sends the link to the Site URL instead | Back Office / Client Portal password reset |
-| `GEMINI_API_KEY` | https://aistudio.google.com/apikey | Phase 1, reading dates off documents |
+| `ANTHROPIC_API_KEY` (+ optional `ANTHROPIC_MODEL`, `ANTHROPIC_EFFORT`, `DOCUMENT_EXTRACTOR`) | https://platform.claude.com/settings/keys — an API key on THC's Anthropic organisation. **Vercel, Staff App (`thc-portal-staff`) only, server-side — never `NEXT_PUBLIC_`, never Supabase.** See "Reading dates off documents" below | Switching on §2.6 document extraction (ADR-0033) |
+| ~~`GEMINI_API_KEY`~~ | **Replaced** by `ANTHROPIC_API_KEY` (ADR-0033, awaiting THC's confirmation). Do not create one; no code reads it | — |
 | `RESEND_API_KEY` | https://resend.com/api-keys — a **Sending access** key for the verified domain | P2, every email (`notify-drain`) — see below |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Generated, not obtained. Run `npx web-push generate-vapid-keys`; the subject is `mailto:admin@thehospitalitycompany.co.uk` | P2, every push (`notify-drain`) — see below |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | https://account.mapbox.com/access-tokens/ | Phase 2, the venues map |
@@ -154,7 +155,7 @@ Do not chase these now. Each is listed against the phase that first needs it.
 Anything used by a background function goes in Supabase rather than Vercel:
 
 ```
-supabase secrets set GEMINI_API_KEY=… WILLO_API_KEY=… RESEND_API_KEY=… VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=… VAPID_SUBJECT=…
+supabase secrets set WILLO_API_KEY=… RESEND_API_KEY=… VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=… VAPID_SUBJECT=…
 ```
 
 The Willo function is deployed without Supabase's JWT check, because Willo signs its own
@@ -231,6 +232,30 @@ relative path (ADR-0020).
 'notify-drain' order by started_at desc limit 5;` — `counts` has `sent`, `retried`,
 `failed`, `unconfigured` and, while keys are missing, `notConfigured`. A single row's
 story is on `notification_outbox` (`attempts`, `error`, `sent_at`, `failed_at`).
+
+### Reading dates off documents (§2.6, ADR-0033)
+
+The AI that pre-fills expiry dates, term-letter holidays and the completion date is
+Anthropic's Claude, not the scope's Gemini — a deviation **accepted by the product owner and
+awaiting THC's confirmation** (ADR-0033). It runs inside the Staff App's server actions
+(`apps/staff/lib/extract.ts` → `apps/staff/app/onboarding/extractors/anthropic.ts`), so its
+key goes on the **`thc-portal-staff` Vercel project**, server-side, for Production and
+Preview. It is not a Supabase secret and must never carry a `NEXT_PUBLIC_` prefix.
+
+| Variable | What it is | If it is missing |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | THC's Anthropic API key | **Extraction is off** — `documentExtractor()` returns null and every upload waits for a person, as today |
+| `ANTHROPIC_MODEL` | A model id from Anthropic's current list | `claude-sonnet-5` |
+| `ANTHROPIC_EFFORT` | `low`, `medium`, `high`, `xhigh`, `max`, or `off` for a model that takes no effort setting | `medium` |
+| `DOCUMENT_EXTRACTOR` | `anthropic`, or anything else (e.g. `off`) to switch extraction off while keeping the key | Claude, if the key is set |
+
+The AI only pre-fills; the office always verifies. A timeout (45 s), an API error, a HEIC
+photo or a photo over 5 MB leaves nothing pre-filled and the document flagged for manual
+review. **Checking it works:** upload a synthetic passport in a preview; the office's
+candidate screen shows the pre-filled expiry and a confidence, and
+`select ai_confidence, ai_extracted->>'error' from compliance_docs order by uploaded_at desc limit 5;`
+shows no `error`. Before switching it on for real workers, THC's privacy notice and
+sub-processor list must name Anthropic in place of Google (ADR-0033).
 
 ### The automated right-to-work check (ADR-0025)
 

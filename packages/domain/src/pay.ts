@@ -72,6 +72,15 @@ export const NO_CHECK_OUT_AFTER_MIN = 4 * 60;
 /** RULE-14 and RULE-15. The floor, and the flat turn-away payment, in minutes. */
 export const MINIMUM_SHIFT_MIN = 4 * 60;
 
+/**
+ * RULE-15: what an on-time turn-away is paid, in minutes — the "4 hours" in
+ * `TURNED_AWAY_COPY.onTime`. A flat figure of its own, not the RULE-14
+ * shift floor: the two are both four hours today, but they are different
+ * rules and one may move without the other. `turnedAwayMinutes()` below
+ * and SQL's `turned_away_minutes()` return this inside the grace.
+ */
+export const TURN_AWAY_PAY_MIN = 4 * 60;
+
 export interface ShiftWindow {
   /** Scheduled start of the ROLE SECTION, never the event window (RULE-18). */
   startsAt: Date;
@@ -134,7 +143,7 @@ export interface CheckInResult {
  */
 export function turnedAwayMinutes(shift: ShiftWindow, attemptAt: Date): number {
   const graceEnds = addMinutes(shift.startsAt, CHECK_IN_GRACE_MIN);
-  return attemptAt < graceEnds ? MINIMUM_SHIFT_MIN : 0;
+  return attemptAt < graceEnds ? TURN_AWAY_PAY_MIN : 0;
 }
 
 /**

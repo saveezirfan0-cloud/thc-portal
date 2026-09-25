@@ -32,7 +32,7 @@ Conventions on this page:
 | 8 | Verify `job_runs`, then the smoke test | §4.8–4.9 | 20 min | — |
 | 9 | Custom SMTP for Auth on Resend (after step 1 verifies) | §1.3 | 10 min | password reset for workers |
 | 10 | Willo, once THC sends the keys | §5 | 45 min | interviews, E1 |
-| 11 | Optional keys: Mapbox, Gemini, Firewall rule | §3.6, §6 | as needed | maps, document reading |
+| 11 | Optional keys: Mapbox, Anthropic (document reading), Firewall rule | §3.6, §6 | as needed | maps, document reading |
 | 12 | Answer the `rls_auto_enable()` question | §1.4 | 20 min | peace of mind |
 
 ### 0.2 What unblocks what
@@ -973,23 +973,24 @@ E1 from Willo.
 
 ## 6 · Other keys
 
-### 6.1 `GEMINI_API_KEY` — document reading (§2.6)
+### 6.1 `ANTHROPIC_API_KEY` — document reading (§2.6, ADR-0033)
 
-**Where it is read: nowhere yet.** `apps/staff/app/onboarding/extractor.ts` is
-the one provider seam and is **stubbed**: `documentExtractor()` returns `null`
-in every environment (ADR-0014). When the Gemini provider is written it is
-selected by `DOCUMENT_EXTRACTOR=gemini` with `GEMINI_API_KEY` set — as a
-**server-only** variable on `thc-portal-staff` if the call stays in the wizard's
-server action, or a Supabase secret if it moves to an Edge Function. Do not set
-it anywhere until that code exists; it would do nothing.
+**Where it is read:** `apps/staff/app/onboarding/extractors/anthropic.ts`, behind
+the one provider seam `documentExtractor()` in
+`apps/staff/app/onboarding/extractor.ts`. It replaces the scope's Gemini
+(ADR-0033: accepted by the product owner, **awaiting THC's confirmation**).
+**Server-only, on `thc-portal-staff`** — never `NEXT_PUBLIC_`, never a Supabase
+secret. Optional: `ANTHROPIC_MODEL` (default `claude-sonnet-5`),
+`ANTHROPIC_EFFORT`, `DOCUMENT_EXTRACTOR=anthropic`.
 
-**Without it:** every upload arrives flagged "needs manual review" and a manager
-reads the dates off the document, which is the §2.6 behaviour when the AI is
-unsure. Nothing is blocked.
+**Without it:** `documentExtractor()` returns `null`, every upload arrives
+flagged "needs manual review" and a manager reads the dates off the document,
+which is the §2.6 behaviour when the AI is unsure. Nothing is blocked.
 
-**Where it comes from:** https://aistudio.google.com/apikey. Building the
-provider needs THC's sample term-dates and completion letters (OWNER-TODO §5)
-for the prompt.
+**Where it comes from:** https://platform.claude.com/settings/keys, on an
+Anthropic organisation in THC's name. Before real workers use it, try two or
+three of THC's real term-dates and completion letters on a test account
+(OWNER-TODO §4b). `GEMINI_API_KEY` is not read anywhere; do not create one.
 
 ### 6.2 Mapbox
 
@@ -1241,4 +1242,4 @@ and what a session could confirm on 23.09.2026. Tick the last column in
 | Done | Live database caught up | §7.1 | 81 applied, newest `20260925100100` | [x] |
 | — | `/apply` salt on thc-portal-staff (ADR-0024) | §3.1 | Vercel holds `APPLY_THROTTLE_SALT`, and the code reads that name too — nothing to do | [x] |
 | — | `gdpr-purge` has no schedule row (found while writing this page) | §4.6 | a migration for a session | [ ] |
-| — | Optional: Mapbox tokens, Gemini key, Firewall rule | §6.2, §6.1, §3.6 | none set | [ ] |
+| — | Optional: Mapbox tokens, Anthropic key, Firewall rule | §6.2, §6.1, §3.6 | none set | [ ] |

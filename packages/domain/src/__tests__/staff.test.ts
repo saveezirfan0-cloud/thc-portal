@@ -8,6 +8,7 @@ import {
   STATIC_SCREEN_CONTACT,
   STATIC_SCREEN_COPY,
   SELF_CANCEL_WINDOW_HOURS,
+  TURNED_AWAY_COPY,
   type StaffBooking,
   canCancelShift,
   cancelDeadline,
@@ -18,7 +19,10 @@ import {
   readyDeadlinePassed,
   shiftCard,
   staticScreenCase,
+  turnedAwayMessage,
+  turnedAwayOnTime,
 } from '../staff';
+import { TURN_AWAY_PAY_MIN, turnedAwayMinutes } from '../pay';
 
 const HOUR = 3_600_000;
 
@@ -247,6 +251,60 @@ describe('staticScreenCase (§10.4)', () => {
     expect(STATIC_SCREEN_COPY.no_checkout.title).toBe(
       'We didn’t receive your check-out for this shift — the office is following up with you directly.',
     );
+  });
+});
+
+describe('the strict-buffer turn-away screen (§3.2, RULE-15)', () => {
+  // A 17:00 UK start (BST); the grace runs to 17:30.
+  const shift = {
+    startsAt: new Date('2026-06-14T16:00:00Z'),
+    endsAt: new Date('2026-06-14T22:30:00Z'),
+  };
+  const payFor = (iso: string) => turnedAwayMinutes(shift, new Date(iso));
+
+  const ON_TIME =
+    'Thanks for coming — this shift is already fully staffed, so you’re not needed today. We’ve logged that you arrived on time and you’ll be paid for 4 hours. Please check your app for other shifts.';
+  const LATE =
+    'Thanks for coming — this shift is already fully staffed, so you’re not needed today. Please check your app for other shifts.';
+
+  it('tells an on-time worker they are paid four hours, in the §3.2 words', () => {
+    expect(payFor('2026-06-14T15:58:00Z')).toBe(240);
+    expect(turnedAwayMessage(payFor('2026-06-14T15:58:00Z'))).toBe(ON_TIME);
+  });
+
+  it('keeps the four-hour sentence for an attempt late but inside the grace', () => {
+    // RULE-15 "on time" is the grace window, not the scheduled start.
+    expect(turnedAwayMessage(payFor('2026-06-14T16:29:00Z'))).toBe(ON_TIME);
+  });
+
+  it('drops the second sentence once the grace has elapsed — a late turn-away is paid nothing', () => {
+    expect(payFor('2026-06-14T16:30:00Z')).toBe(0);
+    const late = turnedAwayMessage(payFor('2026-06-14T16:30:00Z'));
+    expect(late).toBe(LATE);
+    expect(late).not.toContain('4 hours');
+    expect(late).not.toContain('on time');
+  });
+
+  it('pays the on-time turn-away TURN_AWAY_PAY_MIN, which is the "4 hours" in the copy', () => {
+    expect(TURN_AWAY_PAY_MIN).toBe(240);
+    expect(payFor('2026-06-14T15:58:00Z')).toBe(TURN_AWAY_PAY_MIN);
+    expect(turnedAwayMessage(TURN_AWAY_PAY_MIN)).toBe(ON_TIME);
+    expect(TURNED_AWAY_COPY.onTime).toContain(`${TURN_AWAY_PAY_MIN / 60} hours`);
+  });
+
+  it('never promises pay it has no decision for', () => {
+    expect(turnedAwayOnTime(null)).toBe(false);
+    expect(turnedAwayOnTime(undefined)).toBe(false);
+    expect(turnedAwayOnTime(0)).toBe(false);
+    expect(turnedAwayOnTime(240)).toBe(true);
+    expect(turnedAwayMessage(null)).toBe(LATE);
+  });
+
+  it('carries the wireframe’s pill, heading and second button', () => {
+    expect(TURNED_AWAY_COPY.badge).toBe('Not needed today');
+    expect(TURNED_AWAY_COPY.tone).toBe('amber');
+    expect(TURNED_AWAY_COPY.title).toBe('Thanks for coming');
+    expect(TURNED_AWAY_COPY.radar).toBe('Open Radar');
   });
 });
 

@@ -2,15 +2,17 @@
 
 import Link from 'next/link';
 import { useActionState, useState } from 'react';
+import { KEEP_SIGNED_IN_FIELD } from '@thc/db';
 import { Alert, Button, Checkbox, Input } from '@thc/ui';
 import { signIn } from './actions';
 import { REMEMBER_LABEL } from './copy';
-import { REMEMBER_FIELD } from './session';
 
 export function LoginForm({ next }: { next?: string }) {
   const [error, formAction, pending] = useActionState(signIn, null);
   const [email, setEmail] = useState('');
-  const [remember, setRemember] = useState(true);
+  // Ticked by default, as the wireframe draws it. Controlled so that a failed
+  // attempt (React resets an uncontrolled form after the action) keeps it.
+  const [keepSignedIn, setKeepSignedIn] = useState(true);
 
   return (
     <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -48,7 +50,15 @@ export function LoginForm({ next }: { next?: string }) {
           Forgot password?
         </Link>
       </div>
-      <Checkbox name={REMEMBER_FIELD} value="on" checked={remember} onChange={setRemember}>
+      {/* ADR-0032: ticked → the session survives closing the browser (30
+          days since last use); unticked → it ends with the browser. It only
+          changes the cookie lifetime on this device, nothing server-side. */}
+      <Checkbox
+        name={KEEP_SIGNED_IN_FIELD}
+        value="1"
+        checked={keepSignedIn}
+        onChange={setKeepSignedIn}
+      >
         {REMEMBER_LABEL}
       </Checkbox>
       <Button type="submit" tone="primary" size="lg" block disabled={pending}>

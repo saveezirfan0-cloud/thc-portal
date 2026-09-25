@@ -66,6 +66,11 @@ export function toShiftDetail(row: Record<string, unknown>): ShiftDetail {
     eventCancelledAt: str('event_cancelled_at'),
     cancelCause: (row['cancel_cause'] as CancelCause | null) ?? null,
     noCheckoutOpen: row['no_checkout_open'] === true,
+    turnedAwayAt: str('turned_away_at'),
+    turnedAwayPayMin:
+      row['turned_away_pay_min'] === null || row['turned_away_pay_min'] === undefined
+        ? null
+        : Number(row['turned_away_pay_min']),
   };
 }
 

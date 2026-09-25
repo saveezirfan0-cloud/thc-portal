@@ -21,7 +21,7 @@ import {
 } from '@thc/domain';
 import type { CompletionEvidenceForm, EvidenceFolder, StaffStatus } from '@thc/domain';
 import { staffDb, supabaseConfigured } from '../db';
-import { extractDocument } from '../../lib/extract';
+import { extractAfterResponse } from '../../lib/extract';
 import type { ActionResult } from './types';
 
 /**
@@ -231,15 +231,17 @@ export async function finishDocumentUpload(
 /**
  * §2.6 — "the AI reads EVERY uploaded document": a renewal from this tab
  * and the completion letter (§4.5) are read the same way as the wizard's
- * step 4, once the RPC has recorded the document. Pre-fill only; a missing
- * service key or extractor leaves the row flagged for manual review, which
- * is where it started.
+ * step 4, once the RPC has recorded the document. Pre-fill only, and after
+ * the response — the upload does not wait for the read (ADR-0033). With the
+ * extractor on, the row is flagged for manual review until the read lands;
+ * with it off (or no service key) the row stays as the RPC left it: pending,
+ * in the office's queue, unflagged.
  */
 async function extractRecorded(answer: RpcAnswer, docType: string, path: string | null) {
   if (!path || !answer.documentId || !isDocType(docType)) return;
   if (!process.env['SUPABASE_SERVICE_ROLE_KEY']) return;
   const admin = createAdminClient() as unknown as SupabaseClient;
-  await extractDocument(admin, answer.documentId, docType, path);
+  await extractAfterResponse(admin, answer.documentId, docType, path);
 }
 
 /**
