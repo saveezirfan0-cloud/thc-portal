@@ -43,7 +43,17 @@
     "",
     "A week straddling the completion date, or the end of an opt-out notice",
     "period, takes the LOWER cap - the same principle RULE-20 already applies",
-    "to a week straddling term and holiday."
+    "to a week straddling term and holiday.",
+    "",
+    "--- Fix round 29.09 (audit D35, D36) ---",
+    "  verifiedOn     - the day the completion letter was VERIFIED (graduated_at).",
+    "                   The release starts on the Monday on or after the later of",
+    "                   this and completionDate, so a letter verified mid-week",
+    "                   never splits a Mon-Sun week. weekly_cap_for() passes",
+    "                   graduated_at here and compares it with cap_week_start().",
+    "  visaHourLimit  - a weekly hours limit written on a work or dependant visa,",
+    "                   captured by the office at the right-to-work check. An",
+    "                   immigration condition: the opt-out cannot lift it."
   ],
   "cases": [
     {
@@ -421,6 +431,194 @@
       "expect": {
         "capHours": 48,
         "band": "standard_48"
+      }
+    },
+    {
+      "name": "Letter verified on a Wednesday: that week stays at the term cap",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": false,
+        "weekStart": "2026-09-21",
+        "verifiedOn": "2026-09-23",
+        "completionDate": "2026-06-30"
+      },
+      "expect": {
+        "capHours": 20,
+        "band": "student_term_20"
+      }
+    },
+    {
+      "name": "Letter verified on a Wednesday: released from the next Monday",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": false,
+        "weekStart": "2026-09-28",
+        "verifiedOn": "2026-09-23",
+        "completionDate": "2026-06-30"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "graduated_48"
+      }
+    },
+    {
+      "name": "Letter verified on a Monday releases that same week",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": false,
+        "weekStart": "2026-09-21",
+        "verifiedOn": "2026-09-21",
+        "completionDate": "2026-06-30"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "graduated_48"
+      }
+    },
+    {
+      "name": "Completion date long past, verified mid-week: no release before the next Monday, opt-out or not",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": true,
+        "weekStart": "2026-09-21",
+        "verifiedOn": "2026-09-24",
+        "completionDate": "2025-12-19"
+      },
+      "expect": {
+        "capHours": 20,
+        "band": "student_term_20"
+      }
+    },
+    {
+      "name": "Completion date already past when verified: 48 h from the Monday after verification",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": false,
+        "weekStart": "2026-09-28",
+        "verifiedOn": "2026-09-24",
+        "completionDate": "2025-12-19"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "graduated_48"
+      }
+    },
+    {
+      "name": "Future completion date still wins over an earlier verification",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": false,
+        "weekStart": "2026-10-05",
+        "verifiedOn": "2026-09-23",
+        "completionDate": "2026-10-07"
+      },
+      "expect": {
+        "capHours": 20,
+        "band": "student_term_20"
+      }
+    },
+    {
+      "name": "Future completion date: released from the first whole week after it",
+      "input": {
+        "visaLimited": true,
+        "termState": "term",
+        "completionLetterVerified": true,
+        "optOut48h": false,
+        "weekStart": "2026-10-12",
+        "verifiedOn": "2026-09-23",
+        "completionDate": "2026-10-07"
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "graduated_48"
+      }
+    },
+    {
+      "name": "Work visa with a 20-hour limit: capped at 20",
+      "input": {
+        "visaLimited": false,
+        "termState": "none",
+        "completionLetterVerified": false,
+        "optOut48h": false,
+        "weekStart": "2026-09-21",
+        "visaHourLimit": 20
+      },
+      "expect": {
+        "capHours": 20,
+        "band": "visa_limit"
+      }
+    },
+    {
+      "name": "Work visa hours limit: the opt-out cannot lift it",
+      "input": {
+        "visaLimited": false,
+        "termState": "none",
+        "completionLetterVerified": false,
+        "optOut48h": true,
+        "weekStart": "2026-09-21",
+        "visaHourLimit": 20
+      },
+      "expect": {
+        "capHours": 20,
+        "band": "visa_limit"
+      }
+    },
+    {
+      "name": "Dependant visa limit of 48: still a visa condition the opt-out cannot lift",
+      "input": {
+        "visaLimited": false,
+        "termState": "none",
+        "completionLetterVerified": false,
+        "optOut48h": true,
+        "weekStart": "2026-09-21",
+        "visaHourLimit": 48
+      },
+      "expect": {
+        "capHours": 48,
+        "band": "visa_limit"
+      }
+    },
+    {
+      "name": "Visa hours limit: an expired right to work still outranks it",
+      "input": {
+        "visaLimited": false,
+        "termState": "none",
+        "completionLetterVerified": false,
+        "optOut48h": false,
+        "weekStart": "2026-09-21",
+        "visaHourLimit": 20,
+        "visaExpiry": "2026-09-20"
+      },
+      "expect": {
+        "capHours": 0,
+        "band": "visa_expired_0"
+      }
+    },
+    {
+      "name": "Work visa with no hours limit recorded: the opt-out removes the ceiling",
+      "input": {
+        "visaLimited": false,
+        "termState": "none",
+        "completionLetterVerified": false,
+        "optOut48h": true,
+        "weekStart": "2026-09-21",
+        "visaHourLimit": null
+      },
+      "expect": {
+        "capHours": null,
+        "band": "uncapped"
       }
     }
   ]
