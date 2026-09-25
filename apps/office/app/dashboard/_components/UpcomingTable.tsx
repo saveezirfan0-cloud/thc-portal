@@ -104,7 +104,7 @@ export function UpcomingTable({ events, today }: { events: UpcomingEvent[]; toda
                 {/* The event window is derived: min start → max end (RULE-18). */}
                 <ScheduledWindow startsAt={event.startsAt} endsAt={event.endsAt} />
               </td>
-              <td data-label="Roles · allocation · fill · margin/h">
+              <td data-label="Roles · allocation · fill · margin/h" className="cell-wide">
                 {cancelled ? (
                   <span className="muted sm">
                     {event.roles.length} {event.roles.length === 1 ? 'role' : 'roles'} · excluded
@@ -119,17 +119,17 @@ export function UpcomingTable({ events, today }: { events: UpcomingEvent[]; toda
                           <span className="chip">{role.roleName}</span>
                           {/* The role's OWN window, never the event's (RULE-18). */}
                           <ScheduledWindow
-                            className="mono"
+                            className="mono win"
                             startsAt={role.startsAt}
                             endsAt={role.endsAt}
                           />
                           {/* "6 (+1)": the buffer is absolute, never folded in. */}
-                          <span className="mono">
+                          <span className="mono alloc">
                             {allocationLabel(role.headcount, role.buffer)}
                           </span>
                           <Pill tone={chip.tone}>{chip.label}</Pill>
                           {/* §9.1: charge − final pay, in green. */}
-                          <span className={`mono ${marginTone(role.marginPerHour)}`}>
+                          <span className={`mono margin ${marginTone(role.marginPerHour)}`}>
                             {formatMarginPerHour(role.marginPerHour)}
                           </span>
                         </div>

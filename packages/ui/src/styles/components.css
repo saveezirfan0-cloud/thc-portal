@@ -2713,6 +2713,22 @@ textarea.input {
     color: var(--muted);
     font-weight: var(--label-weight);
   }
+  /* A cell whose content is itself a list of lines (the role lines on the
+     dashboard and the events list) needs the card's whole width: in the
+     label gutter's ~200px its five columns were squeezed until a time
+     printed one character per line. The label goes above it instead. */
+  .tbl.card-rows td[data-label].cell-wide {
+    padding-left: 0;
+    padding-top: var(--sp-4);
+    padding-bottom: var(--sp-6);
+  }
+  .tbl.card-rows td[data-label].cell-wide::before {
+    float: none;
+    display: block;
+    width: auto;
+    margin: 0 0 var(--sp-6);
+    padding-top: 0;
+  }
   .tbl.card-rows td.num {
     font-family: var(--font-num);
   }
@@ -3132,4 +3148,16 @@ textarea.input {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+/* The signed-in name in the sidebar foot and the phone menu opens the
+   user's own profile (/account); it reads as the name, not as a link. */
+a.signed-in-as {
+  color: inherit;
+  text-decoration: none;
+  min-width: 0;
+}
+a.signed-in-as:hover .strong,
+a.signed-in-as:focus-visible .strong {
+  text-decoration: underline;
 }

@@ -108,17 +108,19 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                 )}
                 {row.endsNextDay ? <span className="sub">ends next day</span> : null}
               </td>
-              <td data-label="Roles · headcount (+buffer)">
+              <td data-label="Roles · headcount (+buffer)" className="cell-wide">
                 <div className="roles">
                   {row.roles.map((role, index) => (
                     <div className="r" key={`${row.id}-${index}`}>
                       <span className="chip">{role.roleName}</span>
                       <ScheduledWindow
-                        className="mono"
+                        className="mono win"
                         startsAt={role.startsAt}
                         endsAt={role.endsAt}
                       />
-                      <span className="mono">{formatAllocation(role.headcount, role.buffer)}</span>
+                      <span className="mono alloc">
+                        {formatAllocation(role.headcount, role.buffer)}
+                      </span>
                     </div>
                   ))}
                   {row.roles.length === 0 ? <span className="muted sm">No roles yet</span> : null}

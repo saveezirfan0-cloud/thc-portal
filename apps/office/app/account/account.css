@@ -1,0 +1,100 @@
+/*
+ * /account, /users and /activity — layout only (ADR-0035). Every colour,
+ * radius and space is a token from packages/ui; the blocks are its Panel,
+ * form, pill and table classes.
+ */
+
+.account-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-16);
+  padding: var(--sp-20);
+  flex-wrap: wrap;
+}
+.account-head .who {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+.account-head h2 {
+  margin: 0 0 var(--sp-4);
+  font-size: var(--fs-20);
+}
+.account-head .who .muted {
+  overflow-wrap: anywhere;
+}
+.account-head .facts {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-6);
+}
+
+.account-grid {
+  display: grid;
+  gap: var(--sp-16);
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  align-items: start;
+}
+
+/* A form inside a panel: fields in a column with air between them, the
+   button at its own width. */
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-14);
+}
+.account-form > p {
+  margin: 0;
+}
+.account-form > hr {
+  margin: 0;
+}
+.account-form > .btn {
+  align-self: flex-start;
+}
+
+@media (max-width: 760px) {
+  .account-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .account-head {
+    padding: var(--sp-16);
+  }
+  .account-head .facts {
+    align-items: flex-start;
+    flex: 1 1 100%;
+  }
+}
+
+/* ---- /users ---------------------------------------------------------- */
+.users-table td.cell-actions {
+  white-space: nowrap;
+  text-align: right;
+}
+.users-table td.cell-actions .btn + .btn {
+  margin-left: var(--sp-6);
+}
+.users-table td.cell-actions .sub {
+  white-space: normal;
+  text-align: left;
+}
+.users-table tr.muted td {
+  color: var(--muted);
+}
+.users-more {
+  margin: 0;
+  padding: var(--sp-12) var(--sp-16);
+  border-top: 1px solid var(--line);
+}
+.users-plain {
+  margin: 0;
+}
+.users-link-actions {
+  gap: var(--sp-8);
+  flex-wrap: wrap;
+}
+@media (max-width: 760px) {
+  .users-table td.cell-actions .btn + .btn {
+    margin-left: 0;
+  }
+}

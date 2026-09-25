@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
 import { Avatar } from '@thc/ui';
@@ -40,10 +41,11 @@ export function SignedInAs() {
   return (
     <>
       <Avatar name={user.name} size="sm" />
-      <div>
+      {/* The name opens the signed-in user's own profile (/account). */}
+      <Link href="/account" className="signed-in-as" title="My profile">
         <div className="sm strong">{user.name}</div>
         {user.role ? <div className="xs muted">{user.role}</div> : null}
-      </div>
+      </Link>
     </>
   );
 }

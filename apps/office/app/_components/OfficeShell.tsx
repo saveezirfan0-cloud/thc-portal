@@ -16,7 +16,9 @@ import type { ReactNode } from 'react';
  * visual contract (CLAUDE.md).
  *
  * `/settings` is in none of the wireframes' sidebars, so it hangs last,
- * below a divider, where it does not disturb their order. It is the
+ * below a divider, where it does not disturb their order — and the three
+ * account screens (`/users`, `/activity`, `/account`, ADR-0035) hang
+ * under it for the same reason. It is the
  * Django-Admin replacement (§9.11, §9.12) and without a link an admin could
  * only reach it by typing the URL.
  *
@@ -55,6 +57,9 @@ const ITEMS: readonly NavItem[] = [
   { href: '/feedback', label: 'Feedback' },
   { href: '/venues', label: 'Venues' },
   { href: '/settings', label: 'Settings', dividerBefore: true },
+  { href: '/users', label: 'Users & access', short: 'Users' },
+  { href: '/activity', label: 'Activity log', short: 'Activity' },
+  { href: '/account', label: 'My profile', short: 'Profile' },
 ];
 
 export const NAV: readonly NavItem[] = ITEMS.map((item) => ({
