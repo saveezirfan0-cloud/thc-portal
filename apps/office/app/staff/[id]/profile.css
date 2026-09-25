@@ -129,6 +129,12 @@
   border-left: 3px solid var(--purple);
 }
 
+/* What Verify will do, under a row waiting on the office (§4.1, §4.3). */
+.docrow .review-hint {
+  display: block;
+  margin-top: 2px;
+}
+
 /* Superseded documents stay visible and read-only (§2.12). */
 .superseded-group {
   opacity: 0.7;

@@ -8,6 +8,7 @@ import {
   filterQueue,
   filterRadar,
   foundLine,
+  queueByRecord,
   radarCounts,
   radarStatus,
   remindersLine,
@@ -15,6 +16,7 @@ import {
   ukStamp,
   uploadedLine,
   verifyHint,
+  verifyStep,
   whoLine,
 } from '../queue';
 import { reviewErrorMessage } from '../messages';
@@ -305,5 +307,31 @@ describe('what a refusal means to the manager', () => {
     expect(reviewErrorMessage('not_verified: pending')).toContain('not been verified yet');
     expect(reviewErrorMessage('superseded_by_newer')).toContain('newer share code report');
     expect(reviewErrorMessage('something new')).toBe('something new');
+  });
+});
+
+describe('what Verify does — shared by /compliance and the staff profile', () => {
+  it('asks for the right-to-work date on a visa, status document or share code', () => {
+    expect(verifyStep({ ...ROW, item_type: 'visa_document' })).toBe('confirm_date');
+    expect(verifyStep({ ...ROW, item_type: 'status_document' })).toBe('confirm_date');
+    expect(verifyStep({ ...ROW, item_type: 'share_code_report' })).toBe('confirm_date');
+    expect(verifyStep(RTW_DATE)).toBe('confirm_date');
+  });
+
+  it('approves a completion letter with its dates, and verifies anything else on the click', () => {
+    expect(verifyStep({ ...ROW, item_type: 'university_completion_letter' })).toBe('approve');
+    expect(verifyStep(ROW)).toBe('verify');
+    expect(verifyStep({ ...ROW, kind: 'declaration', item_type: 'criminal_declaration' })).toBe(
+      'verify',
+    );
+  });
+
+  it('keys a worker’s rows by the record they act on, leaving the check item out', () => {
+    const map = queueByRecord([
+      ROW,
+      RTW_DATE,
+      { ...ROW, kind: 'rtw_check', item_id: 'k1', item_type: 'share_code_report' },
+    ]);
+    expect([...map.keys()]).toEqual([ROW.item_id, RTW_DATE.item_id]);
   });
 });
