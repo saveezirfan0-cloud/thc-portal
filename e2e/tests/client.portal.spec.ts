@@ -107,7 +107,7 @@ test('the bare domain lands on the event list', async ({ page }) => {
 
 test('the portal serves its own shell: a top bar and no sidebar (§11.1)', async ({ page }) => {
   await openAsClient(page, '/client');
-  await expect(page.getByRole('heading', { name: 'Your events' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Your events', exact: true })).toBeVisible();
   const top = page.locator('header.ctop');
   await expect(top).toBeVisible();
   await expect(top).toContainText('Client Portal');
