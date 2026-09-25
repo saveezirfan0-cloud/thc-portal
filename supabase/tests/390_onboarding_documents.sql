@@ -162,6 +162,9 @@ select is_empty(
 -- =====================================================================
 select throws_ok($$ select onboarding_confirm_selfie() $$, 'P0001', 'photo_required',
   'Continue needs a photo');
+-- The upload (photos_worker_insert_own); staff_set_photo() requires the
+-- object to exist (20260929140200).
+insert into storage.objects (bucket_id, name) values ('photos', :'amara' || '/selfie-1.jpg');
 select lives_ok(
   format($$ select staff_set_photo(%L) $$, :'amara' || '/selfie-1.jpg'),
   'the photo goes through staff_set_photo(), which locks it once set (§10.1)');
@@ -340,6 +343,7 @@ select lives_ok(
   'Tom is UK / Irish, passport route, no share code');
 select is((select share_code from staff where id = :'tom'), null, 'no share code is stored in branch 1');
 select lives_ok($$ select onboarding_save_address('9 Other Road', 'London', 'N1 9GU', 51.53, -0.12) $$, 'address');
+insert into storage.objects (bucket_id, name) values ('photos', :'tom' || '/selfie-1.jpg');
 select lives_ok(format($$ select staff_set_photo(%L) $$, :'tom' || '/selfie-1.jpg'), 'photo');
 select lives_ok($$ select onboarding_confirm_selfie() $$, 'selfie');
 select lives_ok(

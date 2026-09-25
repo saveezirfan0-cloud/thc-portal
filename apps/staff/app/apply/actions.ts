@@ -2,9 +2,8 @@
 
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { createClient } from '@thc/db/server';
 import { callerKey } from './caller';
-import { SENT_TO_COOKIE, toE164, validate } from './form';
+import { APPLY_UNAVAILABLE, SENT_TO_COOKIE, toE164, validate } from './form';
 import type { ApplicationValues, ApplyState } from './form';
 
 function read(formData: FormData): ApplicationValues {
@@ -34,46 +33,39 @@ interface ApplicationArgs {
   p_consent: boolean;
 }
 
-type RpcAnswer = Promise<{ error: { message: string; code?: string } | null }>;
-
-interface RpcClient {
-  rpc(fn: 'submit_application', args: ApplicationArgs): RpcAnswer;
-}
+type RpcAnswer = { error: { message: string; code?: string } | null };
 
 interface AdminRpcClient {
   rpc(
     fn: 'submit_application_as_caller',
     args: ApplicationArgs & { p_caller_hash: string | null },
-  ): RpcAnswer;
+  ): Promise<RpcAnswer>;
 }
 
-let warnedNoServiceKey = false;
-
 /**
- * The write, with the per-caller limit when this deployment can apply it
- * (ADR-0024). `submit_application_as_caller` is service-role only — a
- * caller key anyone could send would be a limit anyone could dodge — so
- * it needs SUPABASE_SERVICE_ROLE_KEY. Without the key the form still
- * works through the anon `submit_application`, with the per-email and
- * per-mobile limits only, and says so once in the log.
+ * The write, always with the per-caller limit (ADR-0024).
+ *
+ * `submit_application_as_caller` is service-role only — a caller key anyone
+ * could send would be a limit anyone could dodge — and since
+ * 20260929140200 so is `submit_application` itself: its anon grant was the
+ * way round the limit. A deployment without SUPABASE_SERVICE_ROLE_KEY
+ * therefore cannot take an application at all, and says so (null) rather
+ * than failing inside the database. Every deployed project carries the key
+ * (docs/16, environment table); a developer's `supabase start` prints one.
  */
-async function submit(args: ApplicationArgs, jar: Awaited<ReturnType<typeof cookies>>): RpcAnswer {
-  if (process.env['SUPABASE_SERVICE_ROLE_KEY']) {
-    const { createAdminClient } = await import('@thc/db/admin');
-    const admin = createAdminClient() as unknown as AdminRpcClient;
-    return admin.rpc('submit_application_as_caller', {
-      ...args,
-      p_caller_hash: callerKey(await headers()),
-    });
-  }
-  if (!warnedNoServiceKey) {
-    warnedNoServiceKey = true;
-    console.warn(
-      '[apply] SUPABASE_SERVICE_ROLE_KEY is not set — /apply runs without the per-caller throttle (per-email and per-mobile limits still apply).',
+async function submit(args: ApplicationArgs): Promise<RpcAnswer | null> {
+  if (!process.env['SUPABASE_SERVICE_ROLE_KEY']) {
+    console.error(
+      '[apply] SUPABASE_SERVICE_ROLE_KEY is not set — /apply cannot reach submit_application_as_caller (ADR-0024).',
     );
+    return null;
   }
-  const supabase = createClient(jar) as unknown as RpcClient;
-  return supabase.rpc('submit_application', args);
+  const { createAdminClient } = await import('@thc/db/admin');
+  const admin = createAdminClient() as unknown as AdminRpcClient;
+  return admin.rpc('submit_application_as_caller', {
+    ...args,
+    p_caller_hash: callerKey(await headers()),
+  });
 }
 
 /**
@@ -101,20 +93,18 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
   }
 
   const email = values.email.trim().toLowerCase();
-  const jar = await cookies();
 
-  const { error } = await submit(
-    {
-      p_first_name: values.firstName.trim(),
-      p_last_name: values.lastName.trim(),
-      p_email: email,
-      p_phone: toE164(values.dialCode, values.mobile),
-      p_dob: values.dob.trim(),
-      p_consent: values.consent,
-    },
-    jar,
-  );
+  const answer = await submit({
+    p_first_name: values.firstName.trim(),
+    p_last_name: values.lastName.trim(),
+    p_email: email,
+    p_phone: toE164(values.dialCode, values.mobile),
+    p_dob: values.dob.trim(),
+    p_consent: values.consent,
+  });
+  if (!answer) return { errors: {}, values, failure: APPLY_UNAVAILABLE };
 
+  const { error } = answer;
   if (error) {
     // 22023 is the function's own validation, so its message is copy written
     // for the applicant. Anything else is ours to own, not theirs to read.
@@ -128,6 +118,7 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
   // The address is shown back on the next screen. It goes in a short-lived
   // cookie rather than the URL so it stays out of browser history, server
   // logs and the referrer sent to the privacy-notice link.
+  const jar = await cookies();
   jar.set(SENT_TO_COOKIE, email, {
     httpOnly: true,
     sameSite: 'lax',
