@@ -62,6 +62,15 @@ export interface Template {
   /** Where tapping the push should land the worker (routes: §08 inventory). */
   deepLink?: string;
   /**
+   * The one button §8 gives a push — "Re-upload" on N8 ("Document rejected
+   * — [reason]" + a Re-upload button, §2.3/§2.6). The service worker draws
+   * it where the platform draws notification buttons (Android, desktop);
+   * pressing it opens `deepLink`, the same as tapping the notification, and
+   * iOS — which draws no buttons — still lands on the deep link where the
+   * button lives.
+   */
+  action?: string;
+  /**
    * One code, two halves. §8 gives N9 as a pair — the sender picks the half,
    * and the outbox key must carry the variant so the two do not collide.
    */
@@ -173,6 +182,7 @@ export const TEMPLATES = {
     trigger: 'Document rejected',
     timing: 'on reject',
     deepLink: '/documents',
+    action: 'Re-upload',
   },
 
   // Check-in / check-out / breaks (§5).

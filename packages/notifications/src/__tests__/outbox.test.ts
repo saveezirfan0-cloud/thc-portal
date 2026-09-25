@@ -57,6 +57,24 @@ describe('push rows', () => {
     });
   });
 
+  it('carries the Re-upload button on N8, to the same place the tap goes', () => {
+    const msg = messageFor(
+      push({
+        key: 'N8:doc:d1',
+        template: 'N8',
+        payload: { reason: 'Photo is blurred', document: 'Passport' },
+      }),
+    );
+    expect(msg).toEqual({
+      kind: 'push',
+      staffId: 'staff-1',
+      title: 'Document rejected',
+      body: 'Document rejected — Photo is blurred. Re-upload.',
+      url: '/documents',
+      action: 'Re-upload',
+    });
+  });
+
   it('substitutes the payload into copy and deep link', () => {
     const msg = messageFor(
       push({

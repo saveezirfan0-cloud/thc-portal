@@ -2,7 +2,9 @@
 
 **Status:** Accepted, 21.09.2026. Supersedes the wording "client access goes only through
 `security_invoker` views" in `docs/01-architecture.md`, `docs/03-data-model.md` and
-`.claude/agents/platform.md`.
+`.claude/agents/platform.md`. **Amended** by `20260927160100` / ADR-0026 (26.09.2026): the
+client role now holds no table policy at all — the "today `events` and `feedback`" sentence
+below is history, and the view pattern is the whole of the client data path.
 
 ## Context
 

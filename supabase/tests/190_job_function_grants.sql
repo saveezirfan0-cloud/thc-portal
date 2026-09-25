@@ -19,7 +19,7 @@
 -- gap. This is the half of the contract that SQL can hold.
 -- =====================================================================
 begin;
-select plan(11);
+select plan(13);
 
 -- ---------------------------------------------------------------------
 -- 1. Everything the jobs call is callable by the service role.
@@ -91,10 +91,16 @@ select is_empty(
           'compliance_daily', 'block_worker', 'unblock_if_compliant',
           'request_p45', 'declare_conviction', 'released_shift_lines',
           'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
-          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion'
+          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion',
+          -- The §3.3/§3.4 pool and its radius (20260927140100, restated
+          -- 20260927180000) were created with PUBLIC's default EXECUTE
+          -- and never revoked; 20260927184000 closed that. Both are
+          -- invoker functions, so this is the name list catching the
+          -- grant, not a leak — 2f below catches the mechanism.
+          'auto_assign_candidates', 'escalation_radius_miles'
         )
         and has_function_privilege('anon', p.oid, 'execute') $$,
-  'anon can execute none of the job, engine, compliance or lifecycle write paths'
+  'anon can execute none of the job, engine, compliance or lifecycle write paths, nor the auto-assign pool or its radius'
 );
 
 -- ---------------------------------------------------------------------
@@ -236,6 +242,53 @@ select bag_eq(
         and has_function_privilege('anon', p.oid, 'execute') $$,
   $$ values ('current_app_role'::text), ('current_client_id'), ('submit_application') $$,
   'exactly three security definer functions in public are reachable by anon, and each is there on purpose'
+);
+
+-- ---------------------------------------------------------------------
+-- 2f. The mechanism behind 2e: no `security definer` in public holds
+--     EXECUTE for PUBLIC, the pseudo-role every new function is granted
+--     to by default and `create or replace` never takes away.
+--
+--     2e asks "can anon call it"; this asks "was it ever revoked at all".
+--     They differ for one function: submit_application is granted to
+--     anon by name (120_apply) and revoked from PUBLIC, which is the
+--     shape a deliberate publication has. A definer that reaches anon
+--     only because nobody wrote a revoke — 20260927140100's pool, had it
+--     been definer — has PUBLIC's grant and fails here by name.
+--
+--     The two policy helpers are the exceptions 2e already argues for:
+--     every RLS predicate in the schema calls them as the caller, so
+--     they stay PUBLIC. Extension-owned functions are excluded as in 2e.
+--     Invoker functions are NOT asserted: PostgreSQL grants PUBLIC on
+--     every one of them by default, and the ninety-odd pure helpers
+--     (final_rate, weekly_cap, …) carry it harmlessly — the two named
+--     in 2 and 2g are the ones whose comments promised otherwise.
+-- ---------------------------------------------------------------------
+select bag_eq(
+  $$ select p.proname::text
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public' and p.prosecdef
+        and not exists (select 1 from pg_depend d
+                         where d.classid = 'pg_proc'::regclass
+                           and d.objid = p.oid and d.deptype = 'e')
+        and has_function_privilege('public', p.oid, 'execute') $$,
+  $$ values ('current_app_role'::text), ('current_client_id') $$,
+  'no security definer function in public keeps PUBLIC''s default EXECUTE except the two policy helpers'
+);
+
+-- ---------------------------------------------------------------------
+-- 2g. And the two invoker functions 20260927184000 revoked stay revoked
+--     from PUBLIC while remaining callable by the office and the jobs.
+-- ---------------------------------------------------------------------
+select is_empty(
+  $$ select p.proname::text
+       from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname = 'public'
+        and p.proname in ('auto_assign_candidates', 'escalation_radius_miles')
+        and (has_function_privilege('public', p.oid, 'execute')
+          or not has_function_privilege('authenticated', p.oid, 'execute')
+          or not has_function_privilege('service_role', p.oid, 'execute')) $$,
+  'auto_assign_candidates and escalation_radius_miles hold no PUBLIC execute and are still granted to authenticated and service_role (20260927184000)'
 );
 
 -- ---------------------------------------------------------------------
