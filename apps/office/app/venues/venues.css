@@ -269,3 +269,10 @@
 .modal:has(.venue-form) .mb {
   overflow-y: auto;
 }
+
+/* The venue's name opens it; on a phone it is a finger target (§1.2). */
+@media (max-width: 760px) {
+  .tbl td.name .venue-name {
+    min-height: var(--tap-min);
+  }
+}

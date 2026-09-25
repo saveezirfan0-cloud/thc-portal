@@ -1,4 +1,7 @@
 /*
+ * Text on a panel takes the --*-ink tone of its colour, never the fill:
+ * amber on white is 3.6:1 as a fill and 5.4:1 as ink (contrast.test.ts).
+ *
  * /compliance — the five pieces of `wireframes/backoffice/compliance.html`'s
  * own <style> block that the design system does not already carry. Tokens
  * only: every colour and line is a `var(--…)` from packages/ui.
@@ -8,23 +11,25 @@
   align-items: center;
   gap: 5px;
   font-family: var(--font-num);
-  font-size: 10px;
+  font-size: var(--fs-10);
   letter-spacing: 0.06em;
-  padding: 1px 6px;
+  padding: 1px var(--sp-6);
   border: 1px solid var(--line);
+  /* A badge on a rounded page; square corners read as a leftover. */
+  border-radius: var(--r-pill);
   color: var(--muted);
   white-space: nowrap;
 }
 .compliance .ai.hi {
-  color: var(--green);
+  color: var(--green-ink);
   border-color: var(--green-line);
 }
 .compliance .ai.mid {
-  color: var(--amber);
+  color: var(--amber-ink);
   border-color: var(--amber-line);
 }
 .compliance .ai.manual {
-  color: var(--coral);
+  color: var(--coral-ink);
   border-color: var(--coral-line);
 }
 .compliance .tbl td .found {
@@ -36,13 +41,13 @@
   font-weight: 600;
 }
 .compliance .days.neg {
-  color: var(--coral);
+  color: var(--coral-ink);
 }
 .compliance .days.soon {
-  color: var(--amber);
+  color: var(--amber-ink);
 }
 .compliance .days.ok {
-  color: var(--green);
+  color: var(--green-ink);
 }
 .compliance .ladder {
   display: grid;
@@ -57,4 +62,16 @@
   text-transform: var(--label-case);
   color: var(--muted);
   font-weight: var(--label-weight);
+}
+
+/* The reminder ladder's 150px label column leaves a phone ~150px for the
+   push copy beside it; the labels go above their lines instead. */
+@media (max-width: 760px) {
+  .compliance .ladder {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--sp-4);
+  }
+  .compliance .ladder .k:not(:first-child) {
+    margin-top: var(--sp-8);
+  }
 }

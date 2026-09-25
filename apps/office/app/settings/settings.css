@@ -96,3 +96,22 @@
     grid-row: 2;
   }
 }
+
+/* The save bar's actions are the dirty blocks' own Save buttons, portalled
+   in (SettingsScreen's SaveAction); the slot itself draws nothing. */
+.settings-savebar-slot {
+  display: contents;
+}
+@media (max-width: 760px) {
+  .settings-savebar-slot > .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* A range input's hit area is its 16px track; on a phone the whole row
+   height takes the finger (§1.2). */
+@media (max-width: 760px) {
+  .radius-slider {
+    min-height: var(--tap-min);
+  }
+}

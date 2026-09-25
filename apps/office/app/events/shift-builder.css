@@ -13,6 +13,12 @@
   align-items: start;
 }
 
+/* The save bar spans both columns and sticks to the bottom of the screen
+   while the builder is on it (packages/ui SaveBar). */
+.builder > .savebar {
+  grid-column: 1 / -1;
+}
+
 .builder .side {
   position: sticky;
   top: calc(var(--topbar-h) + 16px);

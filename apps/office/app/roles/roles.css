@@ -86,3 +86,11 @@
     max-width: none;
   }
 }
+
+/* The role's name opens it for editing; on a phone the name is a finger
+   target, not a 19px line of text (§1.2). */
+@media (max-width: 760px) {
+  .tbl .role-name {
+    min-height: var(--tap-min);
+  }
+}

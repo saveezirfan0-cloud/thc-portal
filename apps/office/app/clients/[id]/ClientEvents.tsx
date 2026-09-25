@@ -89,7 +89,7 @@ export function ClientEvents({ rows }: { rows: ClientEventRow[] }) {
         </div>
       ) : (
         <TableScroll>
-          <table className="tbl">
+          <table className="tbl card-rows">
             <thead>
               <tr>
                 <th>Event</th>
@@ -104,13 +104,15 @@ export function ClientEvents({ rows }: { rows: ClientEventRow[] }) {
             <tbody>
               {slice.map((row) => (
                 <tr key={row.id} className={row.cancelled_at ? 'muted' : undefined}>
-                  <td>
+                  <td className="cell-title">
                     <Link href={`/events/${row.id}`}>
                       <b>{row.title}</b>
                     </Link>
                   </td>
-                  <td className="mono sm">{row.po_number ?? <span className="muted">—</span>}</td>
-                  <td className="mono sm">
+                  <td data-label="PO" className="mono sm">
+                    {row.po_number ?? <span className="muted">—</span>}
+                  </td>
+                  <td data-label="Date · window (UK time)" className="mono sm">
                     {formatUkDate(row.event_date)} · {formatUkWindow(row.starts_at, row.ends_at)}
                     {row.section_count > 1 ? (
                       <span className="sub">
@@ -118,9 +120,16 @@ export function ClientEvents({ rows }: { rows: ClientEventRow[] }) {
                       </span>
                     ) : null}
                   </td>
-                  <td className="sm">{row.venue_name}</td>
-                  <td className="sm">{row.roles_summary ?? '—'}</td>
-                  <td className={`right-align mono ${marginTone(row.margin_pct)}`}>
+                  <td data-label="Venue" className="sm">
+                    {row.venue_name}
+                  </td>
+                  <td data-label="Roles" className="sm">
+                    {row.roles_summary ?? '—'}
+                  </td>
+                  <td
+                    data-label="Margin"
+                    className={`right-align mono ${marginTone(row.margin_pct)}`}
+                  >
                     {gbpRound(row.margin_gbp)}
                     {row.margin_pct !== null ? (
                       <span className="sub muted">{row.margin_pct}%</span>
@@ -128,7 +137,7 @@ export function ClientEvents({ rows }: { rows: ClientEventRow[] }) {
                       <span className="sub muted">excluded</span>
                     )}
                   </td>
-                  <td>
+                  <td data-label="Status">
                     <Pill tone={STATUS_TONE[row.status]}>{row.status}</Pill>
                   </td>
                 </tr>
