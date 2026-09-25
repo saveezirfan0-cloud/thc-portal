@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260926110800 · every staff status change is an edge of
+-- Migration 20260926130800 · every staff status change is an edge of
 --                            staff_transitions (§2.12; CLAUDE.md
 --                            "illegal transitions are rejected in the DB")
 --

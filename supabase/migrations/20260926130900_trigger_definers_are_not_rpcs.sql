@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260926110900 · no trigger function is an RPC, and the
+-- Migration 20260926130900 · no trigger function is an RPC, and the
 --                            live-only rls_auto_enable() goes
 --                            (security brief Invariant 4; docs/14 §4)
 --

@@ -297,7 +297,7 @@ select is(decline_invite(:'inv')->>'reason', 'not_invited',
 delete from bookings where id = :'inv';
 
 -- Radar self-apply, and its live re-check. A write is the worker's OWN
--- (staff_writer, 20260926111000): the admin session this file has been
+-- (staff_writer, 20260926131000): the admin session this file has been
 -- using cannot apply in a worker's name — the office invites (§3.4) or
 -- accepts an application (ADR-0023) — so the calls below run as the worker.
 select throws_ok(

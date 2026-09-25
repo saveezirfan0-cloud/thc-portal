@@ -201,7 +201,7 @@ const GET_BACK_REASONS: Record<string, string> = {
  * Upcoming and Ongoing (the same-day escalation runs during the event).
  * Not a booking transition, so no `state.ts` edge: the flag is what the
  * hourly round and the escalation job read. `event_edit_lock_guard` leaves
- * this column editable after the start (20260926111100).
+ * this column editable after the start (20260926131100).
  */
 export async function setAutoAssign(
   eventId: string,

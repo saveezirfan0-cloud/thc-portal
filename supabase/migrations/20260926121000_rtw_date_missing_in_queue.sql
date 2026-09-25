@@ -109,7 +109,7 @@ select
   d.completion_date_claimed,
   d.mime_type,
   d.size_bytes,
-  -- Appended (20260926100400): why a row that is not a pending upload is
+  -- Appended (20260926121000): why a row that is not a pending upload is
   -- here. Null on document and declaration rows.
   null::text                                                 as review_reason
 from compliance_docs d
@@ -226,7 +226,7 @@ where d.doc_type = 'share_code_report'
                      and p.review_status = 'pending');
 
 comment on view compliance_review_queue_v is
-  '§4.1 Needs review: every pending document and every pending Yes declaration on a live profile (Rejected and Removed drop out), plus — kind ''rtw_date'' — every live non-UK worker whose latest verified share code report carries no right-to-work date and no settled-status confirmation while their own date is NULL (20260926100400, ADR-0018). Oldest first is the screen''s sort; review_reason says why a non-pending row is here. security_invoker: admin_all on the base tables is the gate.';
+  '§4.1 Needs review: every pending document and every pending Yes declaration on a live profile (Rejected and Removed drop out), plus — kind ''rtw_date'' — every live non-UK worker whose latest verified share code report carries no right-to-work date and no settled-status confirmation while their own date is NULL (20260926121000, ADR-0018). Oldest first is the screen''s sort; review_reason says why a non-pending row is here. security_invoker: admin_all on the base tables is the gate.';
 
 revoke all on compliance_review_queue_v from public, anon;
 grant select on compliance_review_queue_v to authenticated, service_role;
@@ -331,7 +331,7 @@ begin
 end $$;
 
 comment on function public.compliance_confirm_rtw_date(uuid, date) is
-  'The Needs review row "Right-to-work date missing — re-verify" (20260926100400): confirms the gov.uk right-to-work-until on a share code report that was verified without one. Verified, latest-for-the-worker reports on live profiles only; a future date, or ''infinity'' for settled status with no time limit (EU branch only). Restamps the reviewer, audits rtw.verified with reverified = true; staff.right_to_work_until follows through compliance_docs_rtw_until. A pending report goes through compliance_verify_document() instead.';
+  'The Needs review row "Right-to-work date missing — re-verify" (20260926121000): confirms the gov.uk right-to-work-until on a share code report that was verified without one. Verified, latest-for-the-worker reports on live profiles only; a future date, or ''infinity'' for settled status with no time limit (EU branch only). Restamps the reviewer, audits rtw.verified with reverified = true; staff.right_to_work_until follows through compliance_docs_rtw_until. A pending report goes through compliance_verify_document() instead.';
 
 revoke execute on function public.compliance_confirm_rtw_date(uuid, date) from public, anon;
 grant  execute on function public.compliance_confirm_rtw_date(uuid, date) to authenticated, service_role;

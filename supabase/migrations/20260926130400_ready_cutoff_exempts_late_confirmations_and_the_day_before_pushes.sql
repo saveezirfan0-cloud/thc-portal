@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260926110400 · the three-stage confirmation, as §3.5 and
+-- Migration 20260926130400 · the three-stage confirmation, as §3.5 and
 --                            §8 actually describe it
 --                            (§3.5, §8 N5/N6/N7/N13, BG-10; ADR-0029)
 --

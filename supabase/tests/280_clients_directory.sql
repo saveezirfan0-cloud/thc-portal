@@ -81,7 +81,7 @@ select is((select avg_margin_pct from clients_directory_v where id = :'clientb')
 
 -- An event still to come is not a margin, and neither is a cancelled one.
 -- The fixture moves a started event's date, which §3.2's edit lock
--- (20260926111100) refuses to a manager's session: the moves run as the
+-- (20260926131100) refuses to a manager's session: the moves run as the
 -- owner and the reads as the admin.
 reset role;
 update events set event_date = current_date + 7 where id = :'past_event';

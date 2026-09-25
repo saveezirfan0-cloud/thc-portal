@@ -146,7 +146,7 @@ select is((select do_not_return from clients_qualified_staff_v
             where client_id = :'clienta' and staff_id = :'staffa'), true,
   'barring through ONE role bars the worker across the whole row — the auto-assign gate is client-wide, and a mixed row would read as half a bar');
 
--- §1.7 reaches this list too. Inside a savepoint: §2.12 (20260926110800)
+-- §1.7 reaches this list too. Inside a savepoint: §2.12 (20260926130800)
 -- has no removed → compliant edge, so "putting them back" is a rollback,
 -- with the answer captured by \gset and asserted afterwards.
 savepoint removed_staffa;
@@ -194,7 +194,7 @@ select is((select status::text from clients_event_list_v where id = :'cancelled'
 -- Who reads the three clients_* views (§9.7, §11.1)
 --
 -- Everything above ran as the table owner. The office reads with the
--- manager's own session (role `authenticated`), and until 20260926110700
+-- manager's own session (role `authenticated`), and until 20260926130700
 -- clients_event_list_v failed for every admin: security_invoker over
 -- event_windows, which 0009 revoked from the PostgREST roles — so §9.7's
 -- fourth block never rendered. A customer and a worker read nothing:

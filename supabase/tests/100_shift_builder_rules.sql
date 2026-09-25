@@ -209,7 +209,7 @@ select is(event_status((select e from events e where e.id = '6f000000-0000-4000-
 
 -- ---------------------------------------------------------------------
 -- §3.2 "Once the event has started … editing is locked" — held in the
--- database for a manager's session (20260926111100), not only in the
+-- database for a manager's session (20260926131100), not only in the
 -- builder's TypeScript.
 -- ---------------------------------------------------------------------
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,

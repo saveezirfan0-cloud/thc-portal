@@ -3,15 +3,15 @@
 --       could not hold without a fixture of their own:
 --
 --   A · N15 when a conviction-review block is lifted LATER by a document
---       (§10.7, §4.3 — 20260926111000 §4)
+--       (§10.7, §4.3 — 20260926131000 §4)
 --   B · Referee 1 / Referee 2 keep the order they were entered in
---       (§2.10 — 20260926111000 §3)
+--       (§2.10 — 20260926131000 §3)
 --   C · A worker's evidence upload is the worker's own: an admin session
---       cannot file it in their name (Invariant 4 — 20260926111000 §1)
+--       cannot file it in their name (Invariant 4 — 20260926131000 §1)
 --   D · settings.edge_base_url can only be a Supabase Functions base
---       (Invariant 8 — 20260926110200)
+--       (Invariant 8 — 20260926130200)
 --   E · The wizard's NI entry queues no E6; the profile's still does
---       (§2.10 — 20260926111000 §2; 330 pins the profile route)
+--       (§2.10 — 20260926131000 §2; 330 pins the profile route)
 -- =====================================================================
 begin;
 select plan(16);
@@ -59,7 +59,7 @@ update compliance_docs set review_status = 'verified', reviewed_at = now() where
 select is((select status::text from staff where id = :'w_conv'), 'compliant',
   '§4.3 the verified document lifts the block through unblock_if_compliant()');
 select is((select count(*)::int from notification_outbox where key = 'N15:declaration:' || :'c_emp'), 1,
-  '§10.7 and N15 "your shifts are open again" goes out NOW, keyed on the accepted declaration — once (20260926111000)');
+  '§10.7 and N15 "your shifts are open again" goes out NOW, keyed on the accepted declaration — once (20260926131000)');
 select set_config('request.jwt.claims', '', true);
 
 -- =====================================================================

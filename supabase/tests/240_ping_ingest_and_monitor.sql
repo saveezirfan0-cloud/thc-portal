@@ -83,7 +83,7 @@ select is((select count(*)::int from violations where booking_id = :'bk_on' and 
 
 -- Leaving AFTER the section's own end is going home, not "left the
 -- geofence during the shift" (BG-07, §9.5, RULE-18). The app pings on
--- mount, so before 20260926110500 a worker who left at the scheduled end
+-- mount, so before 20260926130500 a worker who left at the scheduled end
 -- and opened the app on the bus to check out was flagged mid-shift.
 select is(record_ping(:'bk_on', 51.5000, -0.1000)->>'decision', 'on_site', 'the worker is back on site at the end');
 update shift_requirements set starts_at = now() - interval '5 hours', ends_at = now() - interval '1 minute'
@@ -167,7 +167,7 @@ select is((select status from checkin_monitor_v where booking_id = :'bk_due'), '
   '§9.5 once they have, the row is simply Due');
 
 -- §1.8: "today" on both sides in Europe/London. A section starting 00:30
--- London TOMORROW is still tomorrow — before 20260926110500 the left side
+-- London TOMORROW is still tomorrow — before 20260926130500 the left side
 -- was cast in the session zone (UTC), so during BST it read as today.
 update bookings set on_day_confirmed_at = null where id = :'bk_due';
 update shift_requirements

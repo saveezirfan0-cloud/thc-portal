@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260926110600 · the §9.1 week forecast counts an event
+-- Migration 20260926130600 · the §9.1 week forecast counts an event
 --                            cancelled on its day (§3.3 edge case)
 --
 -- §3.3: "if the client cancels on the day of the event, or after some

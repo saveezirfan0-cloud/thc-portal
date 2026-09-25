@@ -46,7 +46,7 @@ select is_empty(
 );
 
 -- 2a-2b. The buckets refuse at the door what §2.5 point 7 refuses after
---        the fact (20260926110100): 10 MB and PDF/JPG/PNG (+ HEIC) on
+--        the fact (20260926130100): 10 MB and PDF/JPG/PNG (+ HEIC) on
 --        documents, a 2 MB JPEG on photos.
 select is(
   (select file_size_limit::text || ' ' || array_to_string(allowed_mime_types, ',') from storage.buckets where id = 'documents'),
@@ -124,7 +124,7 @@ select bag_eq(
         and p.polname like 'photos\_%' $$,
   $$ values ('photos_worker_read_own:r'::text), ('photos_worker_insert_own:a'),
             ('photos_admin_read:r') $$,
-  'photos carries exactly a worker read/insert on their own folder and an admin read — no UPDATE (§10.1: the locked avatar''s bytes are locked too, 20260926110100) and no delete for anybody (§1.7 erasure is the storage_deletions queue)'
+  'photos carries exactly a worker read/insert on their own folder and an admin read — no UPDATE (§10.1: the locked avatar''s bytes are locked too, 20260926130100) and no delete for anybody (§1.7 erasure is the storage_deletions queue)'
 );
 
 select is_empty(
@@ -172,7 +172,7 @@ select is((select count(*)::int from storage.objects where bucket_id = 'photos')
 
 -- §10.1 the avatar is locked once set, and the lock covers the BYTES: an
 -- upsert onto the object the office, the client line-up and every issued
--- sheet read is refused (20260926110100 dropped photos_worker_update_own).
+-- sheet read is refused (20260926130100 dropped photos_worker_update_own).
 with u as (update storage.objects set metadata = '{}'::jsonb
             where bucket_id = 'photos' and name = :'staffa' || '/selfie.jpg' returning 1)
   select is((select count(*)::int from u), 0,

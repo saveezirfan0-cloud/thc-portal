@@ -63,7 +63,7 @@ insert into bookings (id, shift_id, staff_id, status, source, confirmed_at) valu
   -- tomorrow's shift, confirmed in good time: N6 is due the morning before
   ('b1000000-0000-4000-8000-000000000009','51000000-0000-4000-8000-000000000009',:'staffa','confirmed','auto','2026-09-20 10:00+00'),
   -- tomorrow's shift, confirmed AFTER the 12:00 UK deadline (11:00Z on 21 Sep):
-  -- exempt from the cutoff (20260926110400), so there is no deadline to warn about
+  -- exempt from the cutoff (20260926130400), so there is no deadline to warn about
   ('b1000000-0000-4000-8000-000000000010','51000000-0000-4000-8000-000000000010',:'staffb','confirmed','auto','2026-09-21 13:00+00');
 
 insert into check_logs (booking_id, outcome, attempted_at, check_in_at) values
@@ -161,7 +161,7 @@ select is(
 -- ---------------------------------------------------------------------
 -- BG-10 · The 6-hour break alert.
 --
--- The bound is the part worth pinning, and 20260926110400 moved it: §5.2b
+-- The bound is the part worth pinning, and 20260926130400 moved it: §5.2b
 -- says the breaks block "does not disable or disappear if the shift runs
 -- longer than planned", so a worker still checked in an hour past the
 -- scheduled end is still prompted. The bound is the CHECK-OUT LOCK
@@ -212,7 +212,7 @@ select ok(
   'keyed on the booking, once');
 select ok(
   not exists (select 1 from notification_outbox where key = 'N6:booking:b1000000-0000-4000-8000-000000000010'),
-  'a booking confirmed after the 12:00 deadline is never warned about a deadline it is exempt from (20260926110400)');
+  'a booking confirmed after the 12:00 deadline is never warned about a deadline it is exempt from (20260926130400)');
 
 -- A cancelled booking drops out entirely, whatever its clock says.
 update bookings set status = 'cancelled', cancelled_at = :'now'::timestamptz,

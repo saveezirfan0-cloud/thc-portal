@@ -229,7 +229,7 @@ select ok(not has_table_privilege('anon', 'client_event_documents_v', 'select'),
   'anon has no privilege on client_event_documents_v');
 -- ADR-0004 rule (d): SELECT to authenticated and nothing else. The view was
 -- revoked from public and anon only, so Supabase's default grant had left
--- INSERT/UPDATE/DELETE with authenticated (20260926110000 takes them back).
+-- INSERT/UPDATE/DELETE with authenticated (20260926130000 takes them back).
 select ok(not has_table_privilege('authenticated', 'client_event_documents_v', 'insert')
       and not has_table_privilege('authenticated', 'client_event_documents_v', 'update')
       and not has_table_privilege('authenticated', 'client_event_documents_v', 'delete'),

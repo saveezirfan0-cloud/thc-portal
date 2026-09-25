@@ -250,7 +250,7 @@ select is(invite_worker(:'sec', :'selfc')->>'reason', 'self_cancelled',
 -- either column. 20260921192246 closes it with `not found`.
 -- ---------------------------------------------------------------------
 -- Borrowed inside a savepoint: clean2 is the second worker in the
--- first-to-confirm and withdrawal cases below, and §2.12 (20260926110800)
+-- first-to-confirm and withdrawal cases below, and §2.12 (20260926130800)
 -- refuses removed → compliant on the row, so "putting them back" is a
 -- rollback, not an update. The answers are captured with \gset and
 -- asserted after the rollback, so the test counter is untouched by it.
@@ -384,7 +384,7 @@ select is(release_unready_bookings(timestamptz '2026-12-14 12:10Z'), 0,
 -- §3.5: a booking confirmed AFTER the day-before deadline — the
 -- replacement the 12:05 re-fill itself produced, or an invitation accepted
 -- that afternoon — was never given stage 2, and stage 3 never releases.
--- Before 20260926110400 this worker was released at 12:05 ON THE SHIFT DAY
+-- Before 20260926130400 this worker was released at 12:05 ON THE SHIFT DAY
 -- with N6b "…removed from your shift tomorrow…".
 insert into bookings (id, shift_id, staff_id, status, source, confirmed_at) values
   ('0e0e0e0e-0000-4000-8000-00000000ff01','7e7e7e7e-0000-4000-8000-000000000007', :'wrong',

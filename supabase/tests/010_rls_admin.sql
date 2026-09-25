@@ -156,7 +156,7 @@ select is((select count(*)::int from staff_transitions where from_status = 'comp
 select throws_ok(
   $$ insert into staff_transitions (from_status, to_status) values ('removed', 'compliant') $$,
   '42501', null,
-  'but cannot add an edge to it from a Back Office session: the machine is reference data written by migrations only (20260926110800)');
+  'but cannot add an edge to it from a Back Office session: the machine is reference data written by migrations only (20260926130800)');
 select is((select count(*)::int from storage_deletions where path = 'rls-probe/selfie.jpg'), 1,
   'admin reads the §1.7 erasure queue, so a purge that keeps failing is visible');
 select throws_ok(

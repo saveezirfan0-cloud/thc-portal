@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 524 · Right-to-work date missing → a row in Needs review
---   20260926100400_rtw_date_missing_in_queue.sql (§4.1, §2.5, §2.6,
+--   20260926121000_rtw_date_missing_in_queue.sql (§4.1, §2.5, §2.6,
 --   ADR-0018, docs/14 §4 "From the 23.09 build")
 --
 -- The gap: a share code report verified before 20260923200000 carries no

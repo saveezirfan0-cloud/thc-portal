@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260926110500 · the live monitor and background tracking,
+-- Migration 20260926130500 · the live monitor and background tracking,
 --                            three corrections (§9.5, §5.1, BG-07,
 --                            RULE-02, RULE-18, §1.8)
 --

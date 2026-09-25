@@ -1,6 +1,6 @@
 # ADR-0029 · Timing decisions the 26.09 audit round made in SQL
 
-Status: accepted · 26.09.2026 · 20260926110400, 20260926110500, 20260926111100
+Status: accepted · 26.09.2026 · 20260926130400, 20260926130500, 20260926131100
 
 Where §7 / §8 name a day but not an hour, or a bound the scope does not give,
 this records the choice so the next reader does not re-derive it.

@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260926110100 · the locked avatar is locked in Storage too,
+-- Migration 20260926130100 · the locked avatar is locked in Storage too,
 --                            and the buckets carry their own limits
 --                            (§10.1, §11.1, §2.5 point 7, §2.6)
 --

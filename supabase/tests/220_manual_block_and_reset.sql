@@ -68,7 +68,7 @@ select is((select block_kind::text from staff where id = :'clean'), 'manual',
 select is((select block_reason from staff where id = :'clean'), 'Conduct under review',
   'the reason is saved, and shows on the profile as "Blocked — <reason>"');
 -- §9.6 "they see the reason first": who, when and what was released is an
--- audit row (20260926110300 — before it Block wrote none, and the office's
+-- audit row (20260926130300 — before it Block wrote none, and the office's
 -- service-key call carried no actor).
 select is((select actor::text || ' ' || (data->>'reason') from audit_log
             where action = 'block_manual' and entity_id = :'clean'),
@@ -88,7 +88,7 @@ select is((select status::text || '/' || coalesce(block_kind::text, 'none') from
 select is((select actor::text || ' ' || (data->>'blockKind') from audit_log
             where action = 'unblock' and entity_id = :'clean'),
   :'admin_uid' || ' manual',
-  'the unblock is audited too — who lifted which kind of block (§9.6, 20260926110300)');
+  'the unblock is audited too — who lifted which kind of block (§9.6, 20260926130300)');
 
 select is((block_worker_manually(:'stale', 'Client asked us not to re-engage', :'now'::timestamptz))->>'status',
   'blocked', 'the second worker is blocked by hand too');

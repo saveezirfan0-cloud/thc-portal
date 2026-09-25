@@ -55,7 +55,7 @@ import type { ActionResult, QueueRow } from './types';
  * a share code report: the reviewer confirms the right-to-work date it
  * carries, because that date is the per-shift hard stop (20260923200000).
  *
- * The rtw_date row (20260926100400) is that same confirmation on a share
+ * The rtw_date row (20260926121000) is that same confirmation on a share
  * code report verified BEFORE the date was required: the report stays
  * verified, only the date is written — so no Reject, no re-check, no N8.
  */

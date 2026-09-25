@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260926110000 · the client role reads and writes ONLY
+-- Migration 20260926130000 · the client role reads and writes ONLY
 --                            through the ADR-0004 views and RPC
 --                            (§11.1, §11.2, §9.7, §11.5; ADR-0026)
 --
