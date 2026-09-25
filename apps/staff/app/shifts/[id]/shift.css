@@ -29,3 +29,22 @@
 .mobile-list .right {
   margin-left: auto;
 }
+
+/* Directions · Add to calendar, under the Where card (§10.4). */
+.shift-links {
+  display: flex;
+  gap: var(--sp-8);
+  margin-top: var(--sp-10);
+}
+.shift-links > .btn {
+  flex: 1;
+  text-decoration: none;
+}
+
+/* "Check-in opens in 2 h 15 min" (§5.1), above the fixed opening time. */
+.countdown {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  margin: 0;
+}

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { Alert } from '@thc/ui';
 import { StaffShell } from '../../_components/StaffShell';
-import { loadBookings, openInvites } from '../../data';
+import { loadBookings, openInvites, shiftsBadge } from '../../data';
 import { loadShift, supabaseConfigured } from './data';
 import { shiftScreenReachable } from './phase';
 import { ShiftScreen } from './ShiftScreen';
@@ -52,7 +52,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       title={`${shift.eventTitle} · ${shift.roleName}`}
       sub={back}
       active="/shifts"
-      shifts={bookings.filter((b) => b.status === 'confirmed' || b.status === 'worked').length}
+      shifts={shiftsBadge(bookings)}
       invites={openInvites(bookings).length}
     >
       <ShiftScreen shift={shift} />

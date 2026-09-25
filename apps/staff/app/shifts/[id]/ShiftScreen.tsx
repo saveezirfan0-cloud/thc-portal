@@ -16,6 +16,7 @@ import {
   shiftPhase,
   turnedAwayReply,
 } from './phase';
+import { checkInCountdown, directionsUrl, phoneFromContact } from './links';
 import { StaticShiftScreen } from './StaticShiftScreen';
 import { TurnedAwayScreen } from './TurnedAwayScreen';
 import type { GpsFix, ShiftDetail } from './types';
@@ -146,6 +147,8 @@ export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
   }
 
   const window_ = checkInWindow(shift.startsAt);
+  const countdown = phase === 'before_window' ? checkInCountdown(shift.startsAt, now) : null;
+  const directions = directionsUrl(shift);
   const earnings = shiftEarnings(shift, now);
   // §5.1: the ROLE section has started (RULE-18), so check-out is open.
   const started = now >= new Date(shift.startsAt);
@@ -197,7 +200,9 @@ export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
           {shift.onsiteContact ? (
             <div className="kv">
               <span className="k">On-site contact</span>
-              <span className="v">{shift.onsiteContact}</span>
+              <span className="v">
+                <OnsiteContact contact={shift.onsiteContact} />
+              </span>
             </div>
           ) : null}
           {shift.notes ? (
@@ -207,6 +212,24 @@ export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
             </div>
           ) : null}
         </div>
+        {/* Getting there and keeping it in the diary. Not on a closed
+            shift — by then neither is any use. */}
+        {phase !== 'closed' ? (
+          <div className="shift-links">
+            {directions ? (
+              <a className="btn outline sm" href={directions} target="_blank" rel="noreferrer">
+                Directions
+              </a>
+            ) : null}
+            {/* A plain <a>, not <Link>: the response is a text/calendar
+                file for the phone's calendar app, not a page. No `download`
+                attribute — on iOS it would save to Files instead of opening
+                the Add to Calendar sheet. */}
+            <a className="btn outline sm" href={`/shifts/${shift.bookingId}/calendar.ics`}>
+              Add to calendar
+            </a>
+          </div>
+        ) : null}
       </MobileCard>
 
       {gpsError ? <Alert tone="coral">{gpsError}</Alert> : null}
@@ -236,6 +259,7 @@ export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
           <Button block size="lg" tone="primary" disabled>
             Check in — verify GPS
           </Button>
+          {countdown ? <p className="sm countdown">{countdown}</p> : null}
           <p className="xs muted">
             Check-in opens at {uk(window_.opens.toISOString())} UK, within {shift.geofenceRadiusM} m
             of the venue.
@@ -448,6 +472,22 @@ function BreaksBlock({
         </ul>
       )}
     </MobileCard>
+  );
+}
+
+/**
+ * The on-site contact as the office typed it, with any phone number in it
+ * made a `tel:` link — the worker at the door needs to ring, not copy.
+ */
+function OnsiteContact({ contact }: { contact: string }) {
+  const phone = phoneFromContact(contact);
+  if (!phone) return <>{contact}</>;
+  return (
+    <>
+      {phone.before}
+      <a href={phone.href}>{phone.display}</a>
+      {phone.after}
+    </>
   );
 }
 
