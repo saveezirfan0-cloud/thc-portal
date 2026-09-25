@@ -2,10 +2,14 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { safeNextPath } from '@thc/db';
+import {
+  KEEP_SIGNED_IN_FIELD,
+  keepSignedInCookie,
+  persistenceFromForm,
+  safeNextPath,
+} from '@thc/db';
 import { createClient } from '@thc/db/server';
 import { WRONG_CREDENTIALS } from './copy';
-import { REMEMBER_FIELD, SESSION_ONLY_COOKIE, markerOptions, sessionScopedStore } from './session';
 
 /**
  * Email + password sign-in (§1.4).
@@ -21,9 +25,6 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
   // Only ever a path on this app (§1.4): see packages/db/src/redirect.ts.
   // /client is the portal's home; /events was never a route here.
   const next = safeNextPath(formData.get('next'), '/client');
-  // "Keep me signed in on this device": ticked by default, so the field is
-  // absent only when the person unticked it (see ./session.ts).
-  const remember = formData.get(REMEMBER_FIELD) !== null;
 
   if (!email || !password) return 'Enter your email and password.';
 
@@ -32,8 +33,13 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
     return 'Sign-in is not available yet — this environment has no Supabase project.';
   }
 
-  const store = await cookies();
-  const supabase = createClient(remember ? store : sessionScopedStore(store));
+  // "Keep me signed in on this device" (ADR-0032): ticked by default on the
+  // form; unticked, the auth cookies this sign-in writes are session cookies.
+  // Passed explicitly because the preference cookie is written below, after
+  // the sign-in succeeds, and so is not in this request's cookies yet.
+  const persistence = persistenceFromForm(formData.get(KEEP_SIGNED_IN_FIELD));
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore, { persistence });
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     // The visitor gets a message that reveals nothing; the real reason goes to
@@ -48,11 +54,10 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
     return WRONG_CREDENTIALS;
   }
 
-  // The marker tells the middleware to keep every refreshed cookie
-  // session-scoped too; clearing it on a ticked sign-in undoes an earlier
-  // unticked one on the same browser.
-  if (remember) store.set(SESSION_ONLY_COOKIE, '', { ...markerOptions(), maxAge: 0 });
-  else store.set(SESSION_ONLY_COOKIE, '1', markerOptions());
+  // Remembered for every later writer of the auth cookies: middleware's
+  // token refresh, route handlers, the browser client (packages/db/src/session.ts).
+  const preference = keepSignedInCookie(persistence);
+  cookieStore.set(preference.name, preference.value, preference.options);
 
   redirect(next);
 }

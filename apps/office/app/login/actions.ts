@@ -2,7 +2,12 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { safeNextPath } from '@thc/db';
+import {
+  KEEP_SIGNED_IN_FIELD,
+  keepSignedInCookie,
+  persistenceFromForm,
+  safeNextPath,
+} from '@thc/db';
 import { createClient } from '@thc/db/server';
 import { SIGN_IN_REFUSED } from './messages';
 
@@ -34,7 +39,13 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
     return 'Sign-in is not available yet — this environment has no Supabase project.';
   }
 
-  const supabase = createClient(await cookies());
+  // "Keep me signed in on this device" (ADR-0032): ticked by default on the
+  // form; unticked, the auth cookies this sign-in writes are session cookies.
+  // Passed explicitly because the preference cookie is written below, after
+  // the sign-in succeeds, and so is not in this request's cookies yet.
+  const persistence = persistenceFromForm(formData.get(KEEP_SIGNED_IN_FIELD));
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore, { persistence });
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     // The visitor gets a message that reveals nothing; the real reason goes to
@@ -61,6 +72,11 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
     });
     return SIGN_IN_REFUSED;
   }
+
+  // Remembered for every later writer of the auth cookies: middleware's
+  // token refresh, route handlers, the browser client (packages/db/src/session.ts).
+  const preference = keepSignedInCookie(persistence);
+  cookieStore.set(preference.name, preference.value, preference.options);
 
   redirect(next);
 }
