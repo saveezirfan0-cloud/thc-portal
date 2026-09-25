@@ -47,6 +47,21 @@ candidate_staff_id → staff, code, recorded_at, check referrer <> candidate)`. 
 `my_referral_code()` (compliant only) and `my_referral_summary() → {code, applied}`.
 Domain: `packages/domain/src/referral.ts` (`isReferralCode()`, `referralLink()`).
 
+### Implementation notes (onboarding, `20260930140000_apply_referral.sql`)
+
+- `record_application_referral` finds "the application just written" as the one for
+  this email stamped in the current transaction (`created_at = now()`) that carries no
+  referral yet — `submit_application()` returns void and is not changed, so it cannot
+  hand back the id. It is revoked from `service_role` as well as public/anon/
+  authenticated: only the definer that owns it can write a referral.
+- The 7-argument `submit_application_as_caller` is dropped, so `522_apply_caller_throttle`
+  names the 8-argument signature in its two grant assertions; its calls are unchanged.
+- `/apply` sends `p_referral_code` only when there is a code, and resends without it on
+  PostgREST's `PGRST202` (a database not yet on this migration) — a referral never costs
+  an application. The consent sentence is shown to every applicant, referred or not.
+- The kanban's "Referred" chip marks a candidate card by person and a returning-applicant
+  card by that application; rejected cards carry it too.
+
 ## Consequences
 
 - **What never changes.** No money: nothing reaches `packages/pdf`, reports or payroll.
