@@ -139,8 +139,10 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     // §1.5: declarations are a history, never overwritten — oldest first.
     // Through the admin-gated owner-rights view: review_note is not
     // selectable off the table by any PostgREST role (§10.7, 20260929140000).
+    // Same columns as the table, so it is typed as the table until the
+    // generated types are regenerated with the view in them.
     supabase
-      .from('criminal_declarations_office_v')
+      .from('criminal_declarations_office_v' as 'criminal_declarations')
       .select(
         'id, source, answer, details, conviction_date, review_status, declared_at, reviewed_at, review_note, superseded',
       )
