@@ -27,11 +27,15 @@
 --
 -- When it has rows
 -- ----------------
--- Only once the event has started (the earliest role start, event_windows,
--- is at or before now()), and never for a cancelled event. The gate lives
--- here rather than in the UI: before the day starts there is nothing to
--- count, and a view that hands "0 of 13 arrived" to anyone who asks is a
--- weaker rule than one that hands back no row. Every role section of a
+-- Only while the event is ongoing: from its earliest role start to its
+-- latest role end (event_windows), inclusive — the same `between` that
+-- event_status() uses for 'ongoing' — and never for a cancelled event. The
+-- gate lives here rather than in the UI. Before the day starts there is
+-- nothing to count. After it ends the rows must go: joined to
+-- client_lineup_v's names they would be a permanent per-worker attendance
+-- record (a one-person section reading 0 of 1 names a No-show), and the
+-- signed timesheet (§11.3) is the record of the day, not this view
+-- (security review 29.09). Every role section of a
 -- started event has a row, including a later section that has not begun
 -- yet (it reads 0 of N): per-role windows are the section's own (RULE-18)
 -- and the screen already shows them.
@@ -65,11 +69,11 @@ create view client_arrivals_v with (security_barrier = true) as
     join events e        on e.id = sr.event_id
     join event_windows w on w.event_id = e.id
    where e.cancelled_at is null
-     and w.starts_at <= now()
+     and now() between w.starts_at and w.ends_at
      and client_portal_visible(e.client_id);
 
 comment on view client_arrivals_v is
-  'On-the-day arrival COUNTS per role section for the customer ("11 of 13 arrived", ADR-0038). Owner rights + client_portal_visible() per ADR-0004. confirmed = the confirmed line-up (matches client_role_sections_v.confirmed); arrived = those of them with a check-in recorded (worker check-in or the office''s "Get back"). Turned-away (RULE-15) is in neither; a No-show is in confirmed only. Rows only once the event''s earliest role start has passed, never for a cancelled event. No names, no times, no per-person status, no location, no money.';
+  'On-the-day arrival COUNTS per role section for the customer ("11 of 13 arrived", ADR-0038). Owner rights + client_portal_visible() per ADR-0004. confirmed = the confirmed line-up (matches client_role_sections_v.confirmed); arrived = those of them with a check-in recorded (worker check-in or the office''s "Get back"). Turned-away (RULE-15) is in neither; a No-show is in confirmed only. Rows only while the event is ongoing (earliest role start to latest role end, inclusive), never for a cancelled event. No names, no times, no per-person status, no location, no money.';
 
 revoke all on client_arrivals_v from public, anon, authenticated;
 grant select on client_arrivals_v to authenticated;

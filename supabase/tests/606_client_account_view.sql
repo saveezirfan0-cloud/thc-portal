@@ -17,7 +17,7 @@
 --     still holds no table policy anywhere.
 -- =====================================================================
 begin;
-select plan(22);
+select plan(23);
 \ir _shared/fixtures.psql
 
 -- ---- shape ------------------------------------------------------------
@@ -119,6 +119,10 @@ select is((select count(*)::int
             where table_schema = 'public' and table_name = 'client_account_v'
               and column_name ~ '(rate|charge|margin|cost|amount|price|salary|payroll|pays_|phone|staff|worker)'),
   0, '§11.1 no money on the account page, and nothing about terms or workers');
+
+reset role;
+select table_privs_are('public', 'client_account_v', 'authenticated', array['SELECT'],
+  'authenticated holds SELECT on client_account_v and nothing else');
 
 select * from finish();
 rollback;

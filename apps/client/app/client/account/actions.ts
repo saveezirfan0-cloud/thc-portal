@@ -110,7 +110,17 @@ export async function changePassword(
   }
 
   // ---- 4. every other device --------------------------------------------
-  await supabase.auth.signOut({ scope: 'others' });
+  // The password has changed either way, so this is still a success — but
+  // the message must not claim the other devices are signed out when they
+  // are not (security review, 29.09).
+  const { error: othersError } = await supabase.auth.signOut({ scope: 'others' });
+  if (othersError) {
+    console.error('[account] sign-out of other devices failed', {
+      status: othersError.status,
+      code: othersError.code,
+    });
+    return { ok: true, message: PASSWORD_COPY.changedOthersKept, round: round + 1 };
+  }
 
   return { ok: true, message: PASSWORD_COPY.changed, round: round + 1 };
 }

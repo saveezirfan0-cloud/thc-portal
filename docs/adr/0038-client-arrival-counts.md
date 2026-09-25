@@ -25,8 +25,15 @@ Status: accepted · 25.09.2026 · a client-approved addition to §11.1/§11.2; f
    in its own body, SELECT to `authenticated` and nothing else to anybody. No
    policy is added to any table.
 2. **Four columns: `shift_id`, `event_id`, `confirmed`, `arrived`**, one row per
-   role section. The screen can sum a role or an event. It cannot name a person,
-   because the view has no person in it.
+   role section. The screen can sum a role or an event. The view has no person
+   in it, but that does not make it anonymous, and this ADR does not claim it
+   does. While the event is live, a caller who reads it next to
+   `client_lineup_v` can identify individuals in some sections: in a one-person
+   section, or one reading 0 of N or N of N, the count says who has arrived, and
+   polling it roughly dates a check-in. That is accepted as a residual risk,
+   because it is what the customer's host at the door can see for themselves on
+   the day. It is bounded to the live window by the end gate (4), so it never
+   becomes a record (security review, 29.09).
 3. **What an arrival is.** A booking on the confirmed line-up (`confirmed` or
    `worked`, the same set `client_lineup_v` returns) with a `check_logs` row
    whose outcome is `checked_in` and which has a `check_in_at`. That row is
@@ -36,15 +43,22 @@ Status: accepted · 25.09.2026 · a client-approved addition to §11.1/§11.2; f
      `client_role_sections_v.confirmed`. The denominator is never the headcount
      and never the buffer.
    - A worker turned away under the strict buffer policy (RULE-15) is
-     `turned_away`. They are off the line-up and in neither number, which is
-     also why the customer never learns that a buffer existed.
+     `turned_away`. They are off the line-up and in neither number. This view
+     adds nothing about the buffer. The customer can already see one in
+     `client_role_sections_v` when confirmed exceeds headcount (e.g. "7 of 6
+     confirmed"), and both counts drop by one when a buffer worker is turned
+     away. That was true before this ADR.
    - A No-show is in `confirmed` and not in `arrived`. The customer can infer
      "2 of 13 have not arrived", which is exactly the figure they asked for and
      no more.
    - An out-of-radius press is not an arrival, and repeated attempts count once.
-4. **The start gate is in the view, not the screen.** There is no row until the
-   event's earliest role start (`event_windows.starts_at <= now()`), and never a
-   row for a cancelled event. A later role section of a started event does have
+4. **Both gates are in the view, not the screen.** There are rows only while the
+   event is ongoing: from its earliest role start to its latest role end,
+   inclusive (`now() between event_windows.starts_at and ends_at`, the same
+   test `event_status()` uses for 'ongoing'). There is never a row for a
+   cancelled event. After the end, the rows go. Kept, they would join to the
+   line-up's names and become a permanent per-worker attendance history. The
+   signed timesheet (§11.3) is the record of the day. A later role section of a started event does have
    a row (reading 0 of N). The per-role pill additionally hides itself before
    that role's own start (RULE-18), which is a presentation choice on top of the
    database rule and not a replacement for it.
@@ -56,15 +70,16 @@ Status: accepted · 25.09.2026 · a client-approved addition to §11.1/§11.2; f
 
 ## Consequences
 
-- Rows remain after the event ends, so a completed event still reads, for
-  example, "12 of 13 arrived". That is the same fact the day showed. Whether to
-  display it after the event is a wiring choice on each screen.
+- Nothing is shown after the event ends. The screens also render the pill only
+  for an ongoing event, but that is presentation on top of the rule. The
+  database does not rely on it, because the list page's props reach the browser
+  whether or not a pill is drawn.
 - The admin passes `client_portal_visible()`, so the office can read the same
   figures through the same definition, as it can for the other `client_*`
   views.
 - `supabase/tests/607_client_arrivals_view.sql` pins the shape, the counts
   (arrived, not yet, out-of-radius, turned away, cancelled, invited, "Get
-  back"), the start gate at its boundary, the cancelled filter, tenancy for
+  back"), the start and end gates at their boundaries (for the admin too), the cancelled filter, tenancy for
   both clients, a worker, a client with no company and anon, and the empty
   client policy set.
 - A future request for "who is still missing" is a different decision. It

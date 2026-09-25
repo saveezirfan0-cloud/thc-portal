@@ -51,4 +51,6 @@ export const PASSWORD_COPY = {
   failed: 'We could not change your password. Try again in a moment.',
   changed:
     'Password changed. You are still signed in here; every other device has been signed out.',
+  changedOthersKept:
+    'Password changed, but we could not sign out your other devices. Sign out on them yourself, or contact the office.',
 } as const;

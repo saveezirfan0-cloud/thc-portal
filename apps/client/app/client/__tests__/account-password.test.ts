@@ -18,6 +18,7 @@ const state = vi.hoisted(() => ({
   },
   verifyError: null as AuthErr,
   updateError: null as AuthErr,
+  othersSignOutError: null as AuthErr,
   verifiedWith: [] as { email: string; password: string }[],
   verifierOptions: [] as unknown[],
   verifierSignOuts: [] as unknown[],
@@ -36,7 +37,7 @@ vi.mock('@thc/db/server', () => ({
       },
       signOut: async (opts: unknown) => {
         state.sessionSignOuts.push(opts);
-        return { error: null };
+        return { error: state.othersSignOutError };
       },
       // The cookie-bound client must never be the one that re-verifies:
       // signing in on it would replace this device's session cookies.
@@ -91,6 +92,7 @@ beforeEach(() => {
   state.user = { id: 'u1', email: 'hannah.brooks@leonardo-stpauls.co.uk' };
   state.verifyError = null;
   state.updateError = null;
+  state.othersSignOutError = null;
   state.verifiedWith = [];
   state.verifierOptions = [];
   state.verifierSignOuts = [];
@@ -177,6 +179,16 @@ describe('Change password · the change', () => {
     expect(state.updates).toEqual([{ password: GOOD }]);
     expect(state.verifierSignOuts).toEqual([{ scope: 'local' }]);
     expect(state.sessionSignOuts).toEqual([{ scope: 'others' }]);
+  });
+
+  it('does not claim the other devices are signed out when that call fails', async () => {
+    state.othersSignOutError = { status: 500, message: 'Database error' };
+    const out = await changePassword(null, valid());
+    // The password did change, so it is still a success…
+    expect(out).toEqual({ ok: true, message: PASSWORD_COPY.changedOthersKept, round: 1 });
+    // …but not the message that says every other device was signed out.
+    expect(out.message).not.toBe(PASSWORD_COPY.changed);
+    expect(state.updates).toEqual([{ password: GOOD }]);
   });
 
   it('counts successful rounds so the form clears after each one', async () => {

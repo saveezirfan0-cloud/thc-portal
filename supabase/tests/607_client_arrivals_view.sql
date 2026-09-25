@@ -17,7 +17,7 @@
 --     and check_logs / bookings stay closed to it.
 -- =====================================================================
 begin;
-select plan(29);
+select plan(33);
 \ir _shared/fixtures.psql
 
 -- ---- fixture rows of our own -------------------------------------------
@@ -238,6 +238,38 @@ select results_eq(
   $$ select confirmed, arrived from client_arrivals_v where shift_id = $$ || quote_literal(:'sh_s1'),
   $$ values (3, 3) $$,
   'a No-show the office gets back (§9.5 "registers the worker as arrived") becomes an arrival');
+
+-- ---- the end gate: on the day only (security review, 29.09) -------------
+-- After the event's latest role end the rows go. Kept, they would join to
+-- client_lineup_v's names and become a permanent per-worker attendance
+-- record — a one-person section reading 0 of 1 names a No-show. The gate is
+-- the same `between` event_status() uses for 'ongoing', so the view and the
+-- screen's status pill can never disagree.
+reset role;
+update shift_requirements set starts_at = now() - interval '8 hours', ends_at = now()
+ where event_id = :'event_a';
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from client_arrivals_v where event_id = :'event_a'), 1,
+  'at the latest role end the event is still ongoing, and its row is still there');
+
+reset role;
+update shift_requirements set ends_at = now() - interval '1 second' where event_id = :'event_a';
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from client_arrivals_v where event_id = :'event_a'), 0,
+  'one second after the latest role end: no row — the counts do not outlive the day');
+
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from client_arrivals_v where event_id = :'event_a'), 0,
+  'the end gate holds for the admin too: it is in the view, not the screen');
+
+-- ---- privileges, exactly -------------------------------------------------
+reset role;
+select table_privs_are('public', 'client_arrivals_v', 'authenticated', array['SELECT'],
+  'authenticated holds SELECT on client_arrivals_v and nothing else');
 
 -- ---- anon ----------------------------------------------------------------
 reset role;
