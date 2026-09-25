@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { Alert, Avatar, Button, Panel, Pill } from '@thc/ui';
 import { EventWindow } from '../../EventWindow';
 import { ukDateLong } from '../../format';
-import { feedbackOpen, fillOf, groupByRole, statusTone } from '../../rules';
+import { feedbackOpen, fillOf, groupBySection, statusTone } from '../../rules';
 import type { LineupRow, PortalEvent, RoleSection } from '../../rules';
 import { FeedbackModal } from './FeedbackModal';
 
@@ -46,8 +46,10 @@ export function EventScreen({
   const [rating, setRating] = useState<LineupRow | null>(null);
 
   const at = useMemo(() => new Date(now), [now]);
-  const groups = useMemo(() => groupByRole(lineup, sections), [lineup, sections]);
+  const groups = useMemo(() => groupBySection(lineup, sections), [lineup, sections]);
   const fill = useMemo(() => fillOf(sections), [sections]);
+  // Two sections of one role are two panels but still one role.
+  const roleCount = useMemo(() => new Set(groups.map((g) => g.role)).size, [groups]);
   const open = feedbackOpen(event, at);
   const cancelled = event.status === 'cancelled';
 
@@ -74,7 +76,9 @@ export function EventScreen({
 
           <div className="ml-auto row">
             {/* §11.2's header action: the §11.3 PDF, once the office has
-                produced one. Download only; sending is the office's (§11.4). */}
+                produced one. Download only; sending is the office's (§11.4).
+                After completion the allocation sheet stays downloadable
+                as history, beside the signed timesheet (wireframe). */}
             {cancelled
               ? null
               : (() => {
@@ -83,17 +87,31 @@ export function EventScreen({
                     kind === 'signout'
                       ? '↓ Download Signed Timesheet'
                       : '↓ Download Allocation Sheet';
-                  return documents.includes(kind) ? (
-                    <a
-                      className="btn primary"
-                      href={`/client/events/${event.id}/document?kind=${kind}`}
-                    >
-                      {label}
-                    </a>
-                  ) : (
-                    <Button tone="primary" disabled title="THC has not issued this document yet">
-                      {label}
-                    </Button>
+                  const history =
+                    kind === 'signout' && documents.includes('allocation') ? (
+                      <a
+                        className="btn"
+                        href={`/client/events/${event.id}/document?kind=allocation`}
+                      >
+                        ↓ Allocation Sheet
+                      </a>
+                    ) : null;
+                  return (
+                    <>
+                      {history}
+                      {documents.includes(kind) ? (
+                        <a
+                          className="btn primary"
+                          href={`/client/events/${event.id}/document?kind=${kind}`}
+                        >
+                          {label}
+                        </a>
+                      ) : (
+                        <Button tone="primary" disabled title="Not issued yet">
+                          {label}
+                        </Button>
+                      )}
+                    </>
                   );
                 })()}
           </div>
@@ -114,7 +132,7 @@ export function EventScreen({
             <div className="k">Confirmed staff</div>
             <div className="v">
               <b>{fill.confirmed}</b> of {fill.headcount} ·{' '}
-              {groups.length === 1 ? '1 role' : `${groups.length} roles`}
+              {roleCount === 1 ? '1 role' : `${roleCount} roles`}
             </div>
           </div>
           <div>
@@ -147,7 +165,7 @@ export function EventScreen({
         ? null
         : groups.map((group) => (
             <Panel
-              key={group.role}
+              key={group.key}
               title={
                 <>
                   {group.role}{' '}

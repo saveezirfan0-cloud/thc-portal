@@ -14,7 +14,7 @@ import {
 } from '@thc/ui';
 import { EventWindow } from './EventWindow';
 import { ukDateShort } from './format';
-import { byDateDescending, documentFor, fillOf, filterByTab, statusTone } from './rules';
+import { byDateDescending, documentLink, fillOf, filterByTab, statusTone } from './rules';
 import type { LineupRow, PortalEvent, RoleSection, Tab } from './rules';
 
 /**
@@ -47,12 +47,21 @@ export function EventsScreen({
   events,
   sections,
   lineup,
+  documents = {},
+  documentsLoaded = true,
+  company = null,
   photos,
   now,
 }: {
   events: PortalEvent[];
   sections: RoleSection[];
   lineup: LineupRow[];
+  /** Per event id, the document kinds `client_event_documents_v` returned. */
+  documents?: Record<string, ('allocation' | 'signout')[]>;
+  /** False when the documents could not be read at all. */
+  documentsLoaded?: boolean;
+  /** The caller's own company name (`client_company_v`). */
+  company?: string | null;
   photos: Record<string, string>;
   /** Fixed on the server so the first paint cannot disagree with hydration. */
   now: string;
@@ -91,7 +100,9 @@ export function EventsScreen({
       <div className="page-head">
         <div>
           <h1>Your events</h1>
-          <div className="desc">Confirmed line-ups and timesheets · read-only</div>
+          <div className="desc">
+            Confirmed line-ups and timesheets{company ? ` for ${company}` : ''} · read-only
+          </div>
         </div>
         <div className="actions">
           <SegToggle
@@ -113,7 +124,12 @@ export function EventsScreen({
       </div>
 
       <Panel
-        title="Events"
+        title={
+          <>
+            {company ? `Events · ${company}` : 'Events'}{' '}
+            <span className="muted sm">only your events · newest first</span>
+          </>
+        }
         actions={<Pill>{rows.length === 1 ? '1 event' : `${rows.length} events`}</Pill>}
         flush
       >
@@ -140,7 +156,7 @@ export function EventsScreen({
                   {rows.map((e) => {
                     const fill = fillOf(sectionsFor(e.id));
                     const faces = facesFor(e.id);
-                    const doc = documentFor(e.status);
+                    const doc = documentLink(e, documents[e.id] ?? []);
                     const cancelled = e.status === 'cancelled';
 
                     return (
@@ -184,13 +200,7 @@ export function EventsScreen({
                         <td>
                           <div className="stack tight">
                             {doc ? (
-                              <Button
-                                size="sm"
-                                disabled
-                                title="The timesheet documents arrive with §11.3"
-                              >
-                                {DOC_LABEL[doc]}
-                              </Button>
+                              <DocButton doc={doc} loaded={documentsLoaded} />
                             ) : (
                               <span className="muted sm">No document</span>
                             )}
@@ -210,7 +220,7 @@ export function EventsScreen({
             <div className="cards" style={{ padding: 14 }}>
               {rows.map((e) => {
                 const fill = fillOf(sectionsFor(e.id));
-                const doc = documentFor(e.status);
+                const doc = documentLink(e, documents[e.id] ?? []);
                 const cancelled = e.status === 'cancelled';
 
                 return (
@@ -239,13 +249,7 @@ export function EventsScreen({
                     )}
                     <div className="row">
                       {doc ? (
-                        <Button
-                          size="sm"
-                          disabled
-                          title="The timesheet documents arrive with §11.3"
-                        >
-                          {DOC_LABEL[doc]}
-                        </Button>
+                        <DocButton doc={doc} loaded={documentsLoaded} />
                       ) : (
                         <span className="sm muted">No document</span>
                       )}
@@ -261,6 +265,36 @@ export function EventsScreen({
         )}
       </Panel>
     </>
+  );
+}
+
+/**
+ * A row's download (§11.1): a live link to the document route once the
+ * office has issued that kind, otherwise the same button, disabled, saying
+ * plainly why.
+ */
+function DocButton({
+  doc,
+  loaded,
+}: {
+  doc: { kind: 'allocation' | 'signout'; href: string | null };
+  loaded: boolean;
+}) {
+  if (doc.href) {
+    return (
+      <a className="btn sm" href={doc.href}>
+        {DOC_LABEL[doc.kind]}
+      </a>
+    );
+  }
+  return (
+    <Button
+      size="sm"
+      disabled
+      title={loaded ? 'Not issued yet' : 'Documents cannot be loaded right now'}
+    >
+      {DOC_LABEL[doc.kind]}
+    </Button>
   );
 }
 

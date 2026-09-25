@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   byDateDescending,
   documentFor,
+  documentLink,
+  feedbackErrorMessage,
   feedbackOpen,
+  issuedByEvent,
   fillOf,
   filterByTab,
-  groupByRole,
+  groupBySection,
   statusTone,
 } from '../rules';
 import type { LineupRow, PortalEvent, RoleSection } from '../rules';
@@ -26,6 +29,7 @@ const person = (
 ): LineupRow => ({
   bookingId: `b-${over.name}`,
   eventId: 'ev-1',
+  shiftId: `shift-${over.role}`,
   startsAt: '2026-09-19T06:00:00Z',
   endsAt: '2026-09-19T14:00:00Z',
   photoPath: null,
@@ -149,11 +153,11 @@ describe('the line-up, grouped and ordered (§11.2, §11.3)', () => {
   ];
 
   it('orders role groups by the role window, not alphabetically (RULE-18)', () => {
-    expect(groupByRole(lineup, sections).map((g) => g.role)).toEqual(['Chef', 'Waiting Staff']);
+    expect(groupBySection(lineup, sections).map((g) => g.role)).toEqual(['Chef', 'Waiting Staff']);
   });
 
   it('orders people inside a role by surname, as the PDF does (§11.3)', () => {
-    const groups = groupByRole(lineup, sections);
+    const groups = groupBySection(lineup, sections);
     const chef = groups.find((g) => g.role === 'Chef');
     const waiting = groups.find((g) => g.role === 'Waiting Staff');
     expect(chef?.people.map((p) => p.name)).toEqual(['Luca Moretti', 'Daniel Okafor']);
@@ -161,7 +165,7 @@ describe('the line-up, grouped and ordered (§11.2, §11.3)', () => {
   });
 
   it('carries the role window and the confirmed count onto the group header', () => {
-    const chef = groupByRole(lineup, sections).find((g) => g.role === 'Chef');
+    const chef = groupBySection(lineup, sections).find((g) => g.role === 'Chef');
     expect(chef?.startsAt).toBe('2026-09-19T06:00:00Z');
     expect(chef?.confirmed).toBe(2);
   });
@@ -174,7 +178,7 @@ describe('the line-up, grouped and ordered (§11.2, §11.3)', () => {
       ...lineup,
       person({ name: 'Deleted account #1042', role: 'Chef', sortKey: 'zzzz-deleted-1042' }),
     ];
-    const chef = groupByRole(withRemoved, sections).find((g) => g.role === 'Chef');
+    const chef = groupBySection(withRemoved, sections).find((g) => g.role === 'Chef');
     expect(chef?.people.map((p) => p.name)).toEqual([
       'Luca Moretti',
       'Daniel Okafor',
@@ -185,7 +189,149 @@ describe('the line-up, grouped and ordered (§11.2, §11.3)', () => {
 
   it('does not drop a role that has no matching section row', () => {
     const orphan = [person({ name: 'Ada Byron', role: 'Mixologist', sortKey: 'byron' })];
-    expect(groupByRole(orphan, []).map((g) => g.role)).toEqual(['Mixologist']);
+    expect(groupBySection(orphan, []).map((g) => g.role)).toEqual(['Mixologist']);
+  });
+
+  // Two sections of one role are two groups, each under its own window,
+  // exactly as the PDF keys them by shift id. Grouping by role name merged
+  // them under the first section's window.
+  it('keeps two sections of one role apart, each with its own window', () => {
+    const twoShifts = [
+      section({
+        shiftId: 'ws-am',
+        role: 'Waiting Staff',
+        startsAt: '2026-09-19T06:00:00Z',
+        endsAt: '2026-09-19T14:00:00Z',
+      }),
+      section({
+        shiftId: 'ws-pm',
+        role: 'Waiting Staff',
+        startsAt: '2026-09-19T16:00:00Z',
+        endsAt: '2026-09-19T22:30:00Z',
+      }),
+    ];
+    const people = [
+      person({
+        name: 'Chloe Baptiste',
+        role: 'Waiting Staff',
+        sortKey: 'baptiste',
+        shiftId: 'ws-pm',
+      }),
+      person({
+        name: 'Ben Ashworth',
+        role: 'Waiting Staff',
+        sortKey: 'ashworth',
+        shiftId: 'ws-am',
+      }),
+      person({ name: 'Tom Reid', role: 'Waiting Staff', sortKey: 'reid', shiftId: 'ws-pm' }),
+    ];
+    const groups = groupBySection(people, twoShifts);
+    expect(groups.map((g) => [g.key, g.role, g.startsAt, g.confirmed])).toEqual([
+      ['ws-am', 'Waiting Staff', '2026-09-19T06:00:00Z', 1],
+      ['ws-pm', 'Waiting Staff', '2026-09-19T16:00:00Z', 2],
+    ]);
+    expect(groups[1]?.endsAt).toBe('2026-09-19T22:30:00Z');
+    expect(groups[1]?.people.map((p) => p.name)).toEqual(['Chloe Baptiste', 'Tom Reid']);
+  });
+
+  it('falls back to role + window when a row has no shift id, as the PDF does', () => {
+    const people = [
+      person({
+        name: 'Ben Ashworth',
+        role: 'Waiting Staff',
+        sortKey: 'ashworth',
+        shiftId: null,
+        startsAt: '2026-09-19T06:00:00Z',
+      }),
+      person({
+        name: 'Tom Reid',
+        role: 'Waiting Staff',
+        sortKey: 'reid',
+        shiftId: null,
+        startsAt: '2026-09-19T16:00:00Z',
+      }),
+    ];
+    expect(groupBySection(people, []).map((g) => g.startsAt)).toEqual([
+      '2026-09-19T06:00:00Z',
+      '2026-09-19T16:00:00Z',
+    ]);
+  });
+});
+
+describe('the list download links (§11.1)', () => {
+  it('links to the document route once the office has issued that kind', () => {
+    expect(documentLink(event({ id: 'ev-9' }), ['allocation'])).toEqual({
+      kind: 'allocation',
+      href: '/client/events/ev-9/document?kind=allocation',
+    });
+    expect(
+      documentLink(event({ id: 'ev-9', status: 'completed' }), ['allocation', 'signout']),
+    ).toEqual({
+      kind: 'signout',
+      href: '/client/events/ev-9/document?kind=signout',
+    });
+  });
+
+  it('offers the right kind but no link while nothing is issued', () => {
+    expect(documentLink(event(), [])).toEqual({ kind: 'allocation', href: null });
+    // An allocation sheet is not a stand-in for the signed timesheet.
+    expect(documentLink(event({ status: 'completed' }), ['allocation'])).toEqual({
+      kind: 'signout',
+      href: null,
+    });
+  });
+
+  it('offers nothing for a cancelled event, even if a document exists', () => {
+    expect(documentLink(event({ status: 'cancelled' }), ['allocation'])).toBeNull();
+  });
+
+  it('reads the documents view once and folds it per event', () => {
+    expect(
+      issuedByEvent([
+        { event_id: 'a', kind: 'allocation' },
+        { event_id: 'a', kind: 'signout' },
+        { event_id: 'b', kind: 'allocation' },
+        { event_id: 'b', kind: 'allocation' },
+        { event_id: 'c', kind: 'something-else' },
+      ]),
+    ).toEqual({ a: ['allocation', 'signout'], b: ['allocation'] });
+  });
+});
+
+describe('feedback refusals in the customer’s words (§11.5)', () => {
+  it('tells a bad rating apart from an event that has not started (both 22023)', () => {
+    expect(feedbackErrorMessage({ code: '22023', message: 'Rating must be between 1 and 5' })).toBe(
+      'Choose a rating between 1 and 5 stars.',
+    );
+    expect(
+      feedbackErrorMessage({ code: '22023', message: 'Feedback opens once the event has started' }),
+    ).toBe('Feedback opens once the event has started.');
+  });
+
+  it('does not guess when a 22023 says neither', () => {
+    expect(feedbackErrorMessage({ code: '22023', message: 'something else' })).toBe(
+      'That could not be saved.',
+    );
+  });
+
+  it('keeps the other refusals', () => {
+    expect(feedbackErrorMessage({ code: '23505' })).toMatch(/already been left/);
+    expect(feedbackErrorMessage({ code: '42501' })).toMatch(/not on one of your events/);
+    expect(feedbackErrorMessage({ code: 'XX000', message: 'boom' })).toBe(
+      'That could not be saved.',
+    );
+  });
+
+  it('never shows a section number or rule id to the customer', () => {
+    for (const code of ['22023', '23505', '42501', null]) {
+      for (const message of [
+        'Rating must be between 1 and 5',
+        'Feedback opens once the event has started',
+        'x',
+      ]) {
+        expect(feedbackErrorMessage({ code, message })).not.toMatch(/§|RULE-/);
+      }
+    }
   });
 });
 
