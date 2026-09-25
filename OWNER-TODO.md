@@ -106,4 +106,10 @@ Nothing is lost; it all sends once the keys exist.
 - [x] 24.09: `SUPABASE_SERVICE_ROLE_KEY` confirmed on Office and Staff.
 - [x] 24.09: `NEXT_PUBLIC_STAFF_URL` added to Office and Client.
 - [x] 24.09: the live database caught up; every migration is applied.
+- [x] 25.09: **Vercel SSO (deployment) protection turned off** on `office-thc`,
+      `thc-portal-staff` and `thc-portal-client`. It had been on with
+      `all_except_custom_domains`, and since no project has a custom domain that
+      covered every URL — anyone outside the Vercel team saw Vercel's login wall
+      instead of the app. Each app still gates itself, so only the sign-in screens
+      are public. Open one of the three URLs in a private window to confirm.
 - [x] 26.09: `APPLY_THROTTLE_SALT` set on the Staff Vercel project.
