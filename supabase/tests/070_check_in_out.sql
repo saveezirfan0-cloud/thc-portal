@@ -24,6 +24,7 @@ select plan(
   + (select count(*)::int from vec_check_out)
   + (select count(*)::int from vec_pay)
   + (select count(*)::int from vec_turn_away)
+  + (select count(*)::int from vec_breaks)
   + 35
 );
 
@@ -65,7 +66,8 @@ language sql immutable as $$
       case when jsonb_typeof(p_decision->'recordedAt') = 'null' then null
            else round(extract(epoch from ((p_decision->>'recordedAt')::timestamptz - p_base)) / 60)::int end,
     'violation', p_decision->>'violation',
-    'messageKey', p_decision->>'messageKey')
+    'messageKey', p_decision->>'messageKey',
+    'leftEarly', (p_decision->>'leftEarly')::boolean)
 $$;
 
 select is(
@@ -98,6 +100,21 @@ select is(
   (c.expect->>'payMin')::int,
   'turn-away · ' || c.name
 ) from vec_turn_away c, vbase v;
+
+-- §5.2b / D49: each break clipped to the paid window, then summed.
+select is(
+  (select coalesce(sum(break_window_minutes(
+            v.base,
+            v.base + (c.input->>'shiftMin')::int * interval '1 minute',
+            pg_temp.mins(v.base, c.input, 'checkInMinFromStart'),
+            pg_temp.mins(v.base, c.input, 'finishMinFromStart'),
+            v.base + (br->>0)::int * interval '1 minute',
+            case when jsonb_typeof(br->1) = 'null' then null
+                 else v.base + (br->>1)::int * interval '1 minute' end)), 0)::int
+     from jsonb_array_elements(c.input->'breaks') br),
+  (c.expect->>'unpaidBreakMin')::int,
+  'breaks · ' || c.name
+) from vec_breaks c, vbase v;
 
 -- ---------------------------------------------------------------------
 -- 2 · the RPCs end to end
