@@ -34,11 +34,16 @@ import type { DocumentExtractor, ExtractionInput, ExtractionResult } from '../ex
  * Claude Sonnet 5: the Sonnet tier's balance of accuracy, speed and cost,
  * with high-resolution vision (2576 px) — reading printed dates off a
  * scanned letter or a phone photo of a passport does not need Opus, and
- * the worker is waiting on the upload. Override with `ANTHROPIC_MODEL`.
+ * the document sits unread until the answer lands. Override with
+ * `ANTHROPIC_MODEL`.
  */
 export const DEFAULT_ANTHROPIC_MODEL = 'claude-sonnet-5';
 
-/** Per attempt. The worker's upload waits on this (lib/extract.ts). */
+/**
+ * Per attempt. The upload does not wait on it — lib/extract.ts reads after
+ * the response — but the deferred read still counts against the function's
+ * duration on the platform.
+ */
 export const DEFAULT_TIMEOUT_MS = 45_000;
 const MAX_RETRIES = 1;
 const MAX_TOKENS = 16_000;

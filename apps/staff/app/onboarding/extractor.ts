@@ -23,12 +23,17 @@ import { createAnthropicExtractor, parseEffort } from './extractors/anthropic';
  * thc-portal-staff Vercel project — docs/12) and `DOCUMENT_EXTRACTOR` is
  * unset or `anthropic`; any other `DOCUMENT_EXTRACTOR` value switches it
  * off. Otherwise it returns null, uploads arrive as the upload RPC left
- * them, and a manager reads the dates off the document.
+ * them (a wizard row flagged, a Documents-tab row unflagged — both pending
+ * and in the office's queue), and a manager reads the dates off the
+ * document.
  *
  * The write path is `record_document_extraction()` (lib/extract.ts, service
  * role only), which pre-fills and sets `needs_manual_review` from the
  * confidence against `settings.ai_confidence_threshold` — never
- * `review_status`. THC's sample term and completion letters (Appendix B)
+ * `review_status`. With the extractor on, lib/extract.ts flags the row
+ * first and reads it after the response (`after()`), so the upload never
+ * waits on the model and a read the platform cuts short leaves the row
+ * flagged. THC's sample term and completion letters (Appendix B)
  * are still wanted to tune the prompt against.
  */
 
