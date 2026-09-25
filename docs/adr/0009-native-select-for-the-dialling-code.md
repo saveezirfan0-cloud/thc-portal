@@ -1,6 +1,6 @@
 # ADR-0009 · /apply's dialling-code picker is a native `<select>`
 
-**Status:** Accepted for v1 — revisit when `packages/ui` has a combobox
+**Status:** Accepted for v1 — revisit when `packages/ui` has a combobox. **Amended** to record what shipped: the code has the wireframe's literal option 1 below, not the option 2 this ADR first chose. The option-2 design is kept as the follow-up.
 
 ## Context
 
@@ -15,17 +15,14 @@ With one label there are two honest choices, and both lose something:
 
 ## Decision
 
-Option 2, with the **dialling code first**, and the picker widened to 168px at 12px type (`apply.css`, `.apply-dial`).
+**What shipped is option 1** (`apps/staff/app/apply/ApplyForm.tsx`, `form.ts`): a native `<select>` labelled "Country code" in a 118px slot, one flat list from `DIAL_CODES` — the wireframe's nine countries first in its order, UK default, then the rest alphabetically by country name — each option reading `🇬🇧 +44`, and the option's **value is the dialling code** (`+44`), which is what the form stores and what `submit_application` normalises against the seeded records (§2.12). There are no `<optgroup>`s and no `.apply-dial` rule; the collapsed control is pixel-faithful to the wireframe.
 
-Putting `+44` before the flag and the name means the one piece of information the field exists to carry is the part that survives being clipped: the default reads `+44 🇬🇧 United…` rather than `🇬🇧 United Kingdo…`. `text-overflow: ellipsis` makes the clip look deliberate instead of broken.
+The trade-off accepted with it is the one option 1 was criticised for: type-ahead by country name does not work, and territories sharing a code are indistinguishable in the list. For the London hospitality workforce the form is aimed at, the nine common codes at the top of the list carry almost every applicant, which is why option 1 was kept when the wireframe and the usable list could not both be had.
 
-Two smaller decisions ride along:
+## Follow-up (the design this ADR first chose, not implemented)
 
-- The list is two `<optgroup>`s — "Common" (the nine the wireframe names, UK first) and "All countries" (everything else, alphabetical by country name). The groups are **disjoint**: a `<select>` with the same value twice renders the *last* match when collapsed, so a United Kingdom in both groups would silently display the wrong row.
-- The option's value is the ISO 3166-1 alpha-2 code, not the dialling code, because +44 belongs to four territories and +1 to more than twenty. Flags are derived from the ISO code rather than typed.
+Option 2 with the dialling code first — `+44 🇬🇧 United Kingdom` in a 168px control at 12px type (`.apply-dial`, `text-overflow: ellipsis`), two disjoint `<optgroup>`s ("Common" = the wireframe's nine, UK first; "All countries" = the rest alphabetically), and the option's value as the ISO 3166-1 alpha-2 code rather than the dialling code because +44 belongs to four territories and +1 to more than twenty. If it is adopted, `DIAL_CODES` and the submit path change together, because the stored mobile must still normalise to the same E.164 string. Better still is the `design-system` follow-up: a `CountrySelect` combobox in `packages/ui` — short trigger label, searchable list, keyboard navigation — after which /apply adopts it and this ADR is superseded; nothing outside `apps/staff/app/apply` has to change.
 
 ## Consequences
 
-The collapsed control is not pixel-identical to the wireframe, and the picker is 168px rather than 118px, which takes width from the number field beside it. At 390px the number field still comfortably fits a UK mobile.
-
-**Follow-up for `design-system`:** a `CountrySelect` combobox in `packages/ui` — a short trigger label, a searchable list, keyboard navigation. When it lands, /apply adopts it and this ADR is superseded; nothing outside `apps/staff/app/apply` has to change.
+The picker matches the wireframe and the list is the weakest part of the form. The form's unit tests (`apps/staff/app/apply/__tests__/form.test.ts`) assert the shipped values — `+44` as the default `dialCode` and `toE164()` over dialling-code values — so adopting the follow-up means changing them with it.
