@@ -18,6 +18,7 @@ import { ScheduledWindow } from '../../_components/ScheduledWindow';
 import { ApplicationActions } from './ApplicationActions';
 import { AutoAssignSwitch } from './AutoAssignSwitch';
 import { BookingActions } from './BookingActions';
+import { InviteAnyway } from './InviteAnyway';
 import { PotentialPool } from './PotentialPool';
 
 function Person({ person, sub }: { person: BoardBooking | UnavailableEntry; sub: string }) {
@@ -236,12 +237,19 @@ export function RoleBoard({
         </div>
       ) : null}
 
-      {live && section.unavailable.length > 0 ? (
+      {live && (section.unavailable.length > 0 || section.calendarProblem) ? (
         <div className="sub">
           <div className="subh">
             Unavailable <span className="n">{section.unavailable.length}</span>
             <span className="right muted sm">wrong-role never produces a row here (§6)</span>
           </div>
+          {section.calendarProblem ? (
+            // ADR-0036: without the calendar the pool above may list workers
+            // the engine will skip. Say so rather than show a quiet list.
+            <div className="prow coral sm" role="alert">
+              {section.calendarProblem}
+            </div>
+          ) : null}
           {section.unavailable.map((person) => (
             <div className="prow" key={person.staffId}>
               <Person
@@ -254,6 +262,16 @@ export function RoleBoard({
               <div className="right">
                 <Pill tone={person.tone}>{person.label}</Pill>
                 {person.detail ? <span className="muted xs">{person.detail}</span> : null}
+                {/* ADR-0036: the calendar holds back the machine, not the
+                    office — behind a confirm, the ordinary manual invite. */}
+                {person.inviteAnyway && canInvite && showPools ? (
+                  <InviteAnyway
+                    eventId={eventId}
+                    shiftId={section.id}
+                    staffId={person.staffId}
+                    name={person.name}
+                  />
+                ) : null}
               </div>
             </div>
           ))}

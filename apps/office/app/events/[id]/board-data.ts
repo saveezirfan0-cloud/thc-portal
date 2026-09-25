@@ -7,6 +7,7 @@ import {
   type EndedBooking,
   type PoolEntry,
   type UnavailableEntry,
+  type UnavailableWindow,
   buildPool,
   buildUnavailable,
   shortName,
@@ -70,6 +71,11 @@ export interface BoardSection {
   /** Why `pool` is null — shown on the section rather than hidden. */
   poolProblem: string | null;
   unavailable: UnavailableEntry[];
+  /**
+   * ADR-0036: set when `auto_assign_unavailable` could not be read. The
+   * pool is still shown, but it may list workers the engine will skip.
+   */
+  calendarProblem: string | null;
 }
 
 export interface BoardEvent {
@@ -117,6 +123,17 @@ interface StaffRow {
  * every proxy's limit and no single response meets the row cap.
  */
 const IN_CHUNK = 150;
+
+/** `auto_assign_unavailable` (20260930110000), not yet in the generated types. */
+interface UnavailableRpc {
+  rpc(
+    fn: 'auto_assign_unavailable',
+    args: { p_shift: string },
+  ): PromiseLike<{
+    data: { staff_id: string; starts_at: string; ends_at: string }[] | null;
+    error: { message: string } | null;
+  }>;
+}
 
 async function selectIn<T>(
   supabase: SupabaseClient,
@@ -186,8 +203,9 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
   );
   const sectionIds = sections.map((s) => s['id'] as string);
 
-  // Bookings, and the candidate pool per section — each computed now.
-  const [bookingRes, candidateRes] = await Promise.all([
+  // Bookings, the candidate pool and the availability calendar per
+  // section — each computed now.
+  const [bookingRes, candidateRes, awayRes] = await Promise.all([
     sectionIds.length
       ? supabase
           .from('bookings')
@@ -205,6 +223,13 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
         supabase
           .rpc('auto_assign_candidates', { p_shift: id })
           .or('gate.is.null,gate.neq.wrong_role'),
+      ),
+    ),
+    // ADR-0036: who marked each ROLE SECTION's window unavailable (RULE-18).
+    // A new RPC, typed locally until the Phase 2 type regeneration.
+    Promise.all(
+      sectionIds.map((id) =>
+        (supabase as unknown as UnavailableRpc).rpc('auto_assign_unavailable', { p_shift: id }),
       ),
     ),
   ]);
@@ -226,6 +251,30 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
               problem: `The candidate pool could not be computed: ${res.error.message}`,
             }
           : { rows: (res.data ?? []) as CandidateRow[], problem: null },
+      ];
+    }),
+  );
+
+  const away = new Map<
+    string,
+    { windows: Map<string, UnavailableWindow[]>; problem: string | null }
+  >(
+    sectionIds.map((id, i) => {
+      const res = awayRes[i]!;
+      const windows = new Map<string, UnavailableWindow[]>();
+      for (const row of res.data ?? []) {
+        const list = windows.get(row.staff_id) ?? [];
+        list.push({ startsAt: row.starts_at, endsAt: row.ends_at });
+        windows.set(row.staff_id, list);
+      }
+      return [
+        id,
+        {
+          windows,
+          problem: res.error
+            ? `The availability calendar could not be read: ${res.error.message}`
+            : null,
+        },
       ];
     }),
   );
@@ -357,6 +406,7 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
           .map((b) => toBooking(b, roleId))
           .sort((a, b) => (a.appliedAt ?? a.createdAt).localeCompare(b.appliedAt ?? b.createdAt));
         const { rows, problem } = candidates.get(id)!;
+        const calendar = away.get(id)!;
 
         // Everyone with a live booking here is listed in its own section.
         const live = new Set(
@@ -403,10 +453,12 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
                   createdAt: a.createdAt,
                 })),
                 weights,
+                new Set(calendar.windows.keys()),
               )
             : null,
           poolProblem: problem,
-          unavailable: buildUnavailable(rows, ended, people, live),
+          unavailable: buildUnavailable(rows, ended, people, live, calendar.windows),
+          calendarProblem: calendar.problem,
         };
       }),
     },

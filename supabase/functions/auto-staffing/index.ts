@@ -28,6 +28,10 @@
  *     which re-applies every gate at the moment of the insert and locks
  *     the section so two rounds cannot take the same last slot
  *   * whether it is the right UK minute — `is_uk_time` (pgTAP, 180)
+ *   * who marked the section unavailable — `auto_assign_unavailable`
+ *     (pgTAP, 656; ADR-0036), overlaid on the pool by `selectInvitees`'
+ *     `unavailable` option; `invite_worker` refuses the same workers at
+ *     the insert for the 'auto' and 'escalation' sources
  *
  * What is left here is a loop. That is the point: nothing in this repo
  * type-checks or runs this file (docs/14 O5).
@@ -92,7 +96,15 @@ Deno.serve((request) =>
       }
     }
 
-    const counts: Record<string, unknown> = { mode, sections: 0, invited: 0, released: 0 };
+    const counts: Record<string, unknown> = {
+      mode,
+      sections: 0,
+      invited: 0,
+      released: 0,
+      // ADR-0036: candidates the round skipped because their availability
+      // calendar overlaps the role section (never invited by the machine).
+      unavailableSkipped: 0,
+    };
     if (onlyEvent) counts.event = onlyEvent;
 
     if (mode === 'cutoff') {
@@ -135,12 +147,32 @@ Deno.serve((request) =>
       });
       if (poolError) throw new Error(`auto_assign_candidates: ${poolError.message}`);
 
-      const invitees = selectInvitees((pool ?? []) as CandidateRow[], {
+      // ADR-0036: the calendar is a hard gate on every round the machine
+      // runs — hourly, first round, cutoff refill and escalation alike —
+      // measured against this ROLE SECTION's window (RULE-18). It is not a
+      // sixth score: the §6 weights are untouched and the workers are
+      // simply skipped, like any other gate. A manager can still invite
+      // them by hand from the board.
+      const { data: away, error: awayError } = await db.rpc('auto_assign_unavailable', {
+        p_shift: section.shift_id,
+      });
+      if (awayError) throw new Error(`auto_assign_unavailable: ${awayError.message}`);
+      const unavailable = new Set(((away ?? []) as { staff_id: string }[]).map((r) => r.staff_id));
+      const rows = (pool ?? []) as CandidateRow[];
+      counts.unavailableSkipped =
+        (counts.unavailableSkipped as number) +
+        rows.filter(
+          (row) =>
+            row.gate === null && row.booking_status === null && unavailable.has(row.staff_id),
+        ).length;
+
+      const invitees = selectInvitees(rows, {
         allocation: section.allocation,
         weights,
         // §3.4: after the start, "proximity to the venue matters more than
         // the match score" — nearest first within each wave.
         proximityFirst: mode === 'escalation',
+        unavailable,
       });
 
       for (const staffId of invitees) {
