@@ -243,6 +243,65 @@ describe('4/11 Documents', () => {
     expect(html).toContain('Continue onboarding — locked');
   });
 
+  it('the automated gov.uk check (ADR-0025): Checking, then no manual-review wording on a pass', () => {
+    const share = {
+      ...state.documents[0]!,
+      id: 'x',
+      docType: 'share_code_report' as const,
+      shareCode: 'W123AB4CD',
+      fileName: null,
+    };
+    const checking = renderToStaticMarkup(
+      <ReviewHub
+        rows={requirementRows(state)}
+        shareDoc={share}
+        shareCheck={{ status: 'running' }}
+        dob="2003-11-22"
+        declaration={null}
+      />,
+    );
+    expect(checking).toContain('Checking with gov.uk… · DOB 22.11.2003');
+    expect(checking).toContain('>Checking<');
+
+    const passed = renderToStaticMarkup(
+      <ReviewHub
+        rows={requirementRows(state)}
+        shareDoc={{ ...share, status: 'verified', rightToWorkUntil: '2028-01-31' }}
+        shareCheck={{ status: 'passed' }}
+        dob="2003-11-22"
+        declaration={null}
+      />,
+    );
+    expect(passed).toContain('Verified · right to work until 31.01.2028');
+    expect(passed.toLowerCase()).not.toContain('manual');
+  });
+
+  it('a share code gov.uk did not recognise: the reason and Enter again', () => {
+    const html = renderToStaticMarkup(
+      <ReviewHub
+        rows={requirementRows(state)}
+        shareDoc={{
+          ...state.documents[0]!,
+          id: 'x',
+          docType: 'share_code_report',
+          shareCode: 'W123AB4CD',
+          fileName: null,
+          status: 'rejected',
+          rejectionReason:
+            'gov.uk did not recognise this share code with your date of birth — check both and try again',
+        }}
+        shareCheck={{ status: 'rejected' }}
+        dob="2003-11-22"
+        declaration={null}
+      />,
+    );
+    expect(html).toContain('One document needs your attention.');
+    expect(html).toContain(
+      'Enter again · “gov.uk did not recognise this share code with your date of birth — check both and try again”',
+    );
+    expect(html).toContain('>Enter again<');
+  });
+
   it('a rejected document: the reason and Re-upload (§2.3)', () => {
     const rejected = mapOnboardingState({
       ...state,

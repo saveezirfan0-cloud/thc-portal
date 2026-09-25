@@ -1,11 +1,13 @@
 import { redirect } from 'next/navigation';
 import { Alert, MobileList, MobileRow, Pill, StaticScreen } from '@thc/ui';
-import { QUIZ_ATTEMPTS, currentStep, wizardPhase } from '@thc/domain';
+import { QUIZ_ATTEMPTS, currentStep, rtwCheckInFlight, wizardPhase } from '@thc/domain';
 import { LockScreen } from '../profile/_components/LockScreen';
 import { loadProfile } from '../profile/data';
 import { appLock } from '../profile/lock';
 import { HELP_EMAIL } from '../profile/types';
 import { ReviewHub } from './_components/ReviewHub';
+import { RefreshWhileChecking } from '../_components/RefreshWhileChecking';
+import { loadMyRtwChecks } from '../_lib/rtwCheck';
 import { WizardFrame, workerFor } from './_components/Wizard';
 import { loadOnboarding, supabaseConfigured } from './data';
 import { requirementRows, shareCodeDoc, wizardFacts } from './state';
@@ -116,11 +118,18 @@ export default async function Page() {
   }
 
   if (phase === 'awaiting_review') {
+    const shareDoc = shareCodeDoc(state);
+    const checks = shareDoc ? await loadMyRtwChecks() : {};
+    const shareCheck = shareDoc ? (checks[shareDoc.id] ?? null) : null;
     return (
       <WizardFrame worker={worker} title="Documents">
+        <RefreshWhileChecking
+          active={shareDoc?.status === 'pending' && rtwCheckInFlight(shareCheck?.status)}
+        />
         <ReviewHub
           rows={requirementRows(state)}
-          shareDoc={shareCodeDoc(state)}
+          shareDoc={shareDoc}
+          shareCheck={shareCheck}
           dob={state.dob}
           declaration={state.declaration}
         />
