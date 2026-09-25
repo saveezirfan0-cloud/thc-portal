@@ -2,6 +2,16 @@ import { cookies } from 'next/headers';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
+import { verifiedTotp } from '../login/two-step';
+
+/** Two-step sign-in on this login (ADR-0037): the authenticator, if one is set up. */
+export interface MyTwoStep {
+  on: boolean;
+  /** The name given to the phone at set-up. */
+  deviceName: string | null;
+  /** When it was set up. An audit-style stamp: UK time only (§1.8). */
+  since: string | null;
+}
 
 /** The signed-in user's own account, as /account shows it. */
 export interface MyAccount {
@@ -14,6 +24,7 @@ export interface MyAccount {
   role: string;
   createdAt: string | null;
   lastSignInAt: string | null;
+  twoStep: MyTwoStep;
 }
 
 export interface AccountPageData {
@@ -65,7 +76,16 @@ export async function loadMyAccount(): Promise<AccountPageData> {
       role: data?.role ?? String(user.app_metadata?.['role'] ?? ''),
       createdAt: data?.created_at ?? user.created_at ?? null,
       lastSignInAt: user.last_sign_in_at ?? null,
+      twoStep: twoStepOf(user.factors),
     },
     problem: data ? null : 'This login has no profile yet, so the details below cannot be saved.',
   };
+}
+
+/** From `getUser()`'s factor list: GoTrue's answer, not the cookie's copy. */
+export function twoStepOf(factors: Parameters<typeof verifiedTotp>[0]): MyTwoStep {
+  const totp = verifiedTotp(factors);
+  return totp
+    ? { on: true, deviceName: totp.friendly_name ?? null, since: totp.created_at ?? null }
+    : { on: false, deviceName: null, since: null };
 }
