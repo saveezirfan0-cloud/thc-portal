@@ -211,8 +211,11 @@ select is((select qualified from auto_assign_candidates(:'sec') where staff_id =
 
 select ok((select distance_km from auto_assign_candidates(:'sec') where staff_id = :'clean') < 0.2,
   'the proximity input is the real distance from the worker home to the venue');
-select is((select reliability from auto_assign_candidates(:'sec') where staff_id = :'clean'), 98::numeric,
-  'the show-rate input comes off the worker, for scoring in TypeScript');
+-- The fixture row says 98, but the column is not read: the show-rate is
+-- staff_show_rate(), derived from bookings and violations (20260927180000,
+-- pinned in 596), and this worker has no history — so the §6 zero point.
+select is((select reliability from auto_assign_candidates(:'sec') where staff_id = :'clean'), 90::numeric,
+  'the show-rate input is derived from the worker''s history, not staff.reliability — no history is 90, for scoring in TypeScript');
 select is_empty(
   $$ select 1 from auto_assign_candidates('7e7e7e7e-0000-4000-8000-000000000001')
       where reliability is null or rating is null or distance_km is null $$,

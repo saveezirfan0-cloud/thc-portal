@@ -96,13 +96,46 @@ Removes and reduces are different numbers, and the show-rate is 30% of the auto-
 score (§6) — the heaviest single factor. A resolved No-show that still counts at half
 weight ranks a worker differently from one that does not count at all.
 
-**Today:** nothing depends on it yet. `staff.reliability` is materialised nightly and the
-job that computes it has not been built, so this is a question to settle **before** that
-job is written rather than after.
+**Today:** the show-rate is **derived**, not stored — `staff_show_rate(staff_id)` in
+migration `20260927180000`, mirrored by `showRate()` in `packages/domain/src/pay.ts` with
+shared vectors (`pay.vectors.json` → `showRate`, replayed by name in pgTAP 596). It is what
+`auto_assign_candidates` feeds the 30% show factor, so the event board's "show N%" chip and
+the engine's ranking read it. `staff.reliability` is still a column — seed-only, read by
+`staff_directory_v`, `staff_profile_v`, `clients_qualified_staff_v`,
+`onboarding_candidates_v` and `staff_me()` until their owners repoint them at the function
+(its column comment says so). There is no nightly job and none is planned.
 
-> **Ask:** once a manager resolves a violation with a note, should it stop counting
-> against that worker's reliability score completely, or still count — and if so, by how
-> much?
+The reading it encodes, pending the answer below:
+
+- Sample = shifts the worker was due at and the day came: `worked`, `turned_away`, and any
+  booking carrying an unresolved No-show (which stays `confirmed` in the roster, §3.3).
+- Shown = worked or turned away (a strict-buffer turn-away is paid under RULE-15 and is never
+  a mark against them).
+- Counts against while unresolved: No-show (BG-03 "show-rate penalty applied") and No
+  check-out (RULE-14 "the violation stops counting against the worker's show-rate" once
+  resolved). Resolving **removes** it — a resolved No-show is a Late arrival, a resolved No
+  check-out "ended to the client's satisfaction".
+- Weighs nothing: Late, Left early, Left the geofence — §9.5 says these three are "only ever
+  reviewed by the manager case by case, with no automatic consequence".
+- Self-cancel, Decline and Leaving never enter the sample (each promised "no show-rate
+  impact"). No history is NULL, which the candidates default to 90 — the §6 formula's own zero
+  point, unchanged from before.
+
+> **Ask:** "removes or reduces" (§9.5) is read as *removes*. If THC wants a resolved No-show
+> or No check-out to still count at some weight, say how much — that is one constant in
+> `staff_show_rate()` and `showRate()`, with the vectors to match.
+
+### Q4b · §9.5's "Flagged as" line was not carried into the resolve window (noted, no action)
+
+§9.5 records that the approved design's violation detail window "also carries a 'Flagged as'
+line that the server composes as the violation name plus the event name … Both values already
+appear in the window's own title and subtitle, so the line adds nothing; it is kept as-is for
+v1". The rebuilt window (`apps/office/app/checkin/ResolveModal.tsx`) has the title (violation —
+worker), the subtitle (event · venue · role) and the timestamp block, and **no "Flagged as"
+line**; `resolve_violation` and the log query compose no such string. This was deliberate: the
+scope itself calls the line redundant, and the sentence exists so nobody mistakes its absence
+for a defect — or adds it back. The wireframe (`checkin.html`, "Violation detail") still draws
+it with the annotation "kept as-is for v1"; that annotation describes the Django-era screen.
 
 ## Q5 · A term letter that arrives for next year, in December
 

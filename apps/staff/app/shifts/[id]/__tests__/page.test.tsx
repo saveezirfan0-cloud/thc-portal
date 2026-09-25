@@ -212,3 +212,113 @@ describe('§10.4 the static screens', () => {
     noLiveControls(html);
   });
 });
+
+describe('§5.1 / §5.2b the live screen, phase by phase', () => {
+  const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+  const ahead = (min: number) => new Date(Date.now() + min * 60_000).toISOString();
+  const disabledButton = (html: string, label: string) =>
+    new RegExp(`<button[^>]*\\bdisabled(?:=""|)[^>]*>${label}</button>`).test(html);
+
+  it('draws the Breaks block locked before check-in, with the hint (wireframe (e))', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail()); // the check-in window is open, nobody has pressed
+    const html = await render();
+    expect(html).toContain('Check in — verify GPS');
+    expect(html).toContain('Unlocks after check-in');
+    expect(disabledButton(html, 'Start break')).toBe(true);
+  });
+
+  it('and before the window opens too', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail({ startsAt: ahead(120), endsAt: ahead(600) }));
+    const html = await render();
+    expect(html).toContain('Check-in opens at');
+    expect(html).toContain('Unlocks after check-in');
+    expect(disabledButton(html, 'Start break')).toBe(true);
+  });
+
+  it('draws no Breaks block at all where the client pays for breaks', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail({ breaksLogged: false }));
+    const html = await render();
+    expect(html).not.toContain('Start break');
+    expect(html).not.toContain('Unlocks after check-in');
+  });
+
+  it('holds check-out until the section starts, and says when (§5.1)', async () => {
+    profile.mockResolvedValue(worker());
+    // Checked in during the 30 minutes before the start.
+    shift.mockResolvedValue(detail({ checkInAt: ago(5), startsAt: ahead(10), endsAt: ahead(490) }));
+    const html = await render();
+    expect(disabledButton(html, 'Check out')).toBe(true);
+    expect(html).toContain('Check-out opens at ');
+    // Start break is live now: check-in has happened.
+    expect(disabledButton(html, 'Start break')).toBe(false);
+    expect(html).not.toContain('Unlocks after check-in');
+  });
+
+  it('offers check-out once the section has started', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail({ checkInAt: ago(70), startsAt: ago(60), endsAt: ahead(420) }));
+    const html = await render();
+    expect(disabledButton(html, 'Check out')).toBe(false);
+    expect(html).not.toContain('Check-out opens at');
+  });
+
+  it('shows the >6 h break banner on shift where the client does not pay breaks (§5.2b)', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail({ checkInAt: ago(60), startsAt: ago(60), endsAt: ahead(360) }));
+    const html = await render();
+    expect(html).toContain(
+      'A break will be applied to all shifts over 6 hours — please check with your Manager on site',
+    );
+  });
+
+  it('and not on a shift of six hours or less', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail({ checkInAt: ago(60), startsAt: ago(60), endsAt: ahead(300) }));
+    const html = await render();
+    expect(html).not.toContain('A break will be applied');
+  });
+
+  it('on a break: the button reads Finish break and the chargeable timer is paused', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(
+      detail({
+        checkInAt: ago(60),
+        startsAt: ago(60),
+        endsAt: ahead(420),
+        breaks: [{ id: 'br1', startedAt: ago(10), endedAt: null }],
+      }),
+    );
+    const html = await render();
+    expect(html).toContain('Finish break — back to work');
+    expect(html).toContain('paused while you’re on a break');
+    expect(html).not.toContain('>Start break<');
+  });
+
+  it('closed: duration, the base rate, the emphasised total and the payroll sentence (§5.1)', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(
+      detail({
+        status: 'worked',
+        startsAt: ago(9 * 60),
+        endsAt: ago(60),
+        checkInAt: ago(9 * 60 + 5),
+        checkOutAt: ago(60),
+      }),
+    );
+    const html = await render();
+    expect(html).toContain('Shift complete');
+    expect(html).toContain('8 h');
+    expect(html).toContain('£15.00 / h');
+    expect(html).toContain('Total earnings for this shift');
+    expect(html).toContain('£120.00');
+    expect(html).toContain('before tax · base rate only');
+    expect(html).toContain(
+      'Your hours are sent to the office as a timesheet. You’re paid the Friday after the week you worked.',
+    );
+    expect(html).not.toContain('Check out');
+    expect(html).not.toContain('12.07');
+  });
+});

@@ -14,7 +14,7 @@ begin;
 
 \ir _shared/fixtures.psql
 
-select plan(42);
+select plan(43);
 
 \set ev_mon   '9e9e9e9e-0000-4000-8000-000000000001'
 \set ev_paid  '9e9e9e9e-0000-4000-8000-000000000002'
@@ -150,6 +150,15 @@ insert into location_pings (booking_id, at, location, inside_geofence) values
   (:'bk_on', now(), st_setsrid(st_makepoint(-0.1000, 51.6000), 4326)::geography, false);
 select is((select status from checkin_monitor_v where booking_id = :'bk_on'), 'off_site',
   '§9.5 and flips to Off-site the moment the last fix is outside the fence');
+
+-- §9.5: Off-site is "used only while the shift is still running, never as
+-- an end state". The same outside fix after the ROLE section's end
+-- (RULE-18) is going home; until RULE-02's four hours the row stays On
+-- shift (20260927180000).
+update shift_requirements set starts_at = now() - interval '7 hours', ends_at = now() - interval '1 hour'
+ where id = :'sh_mon';
+select is((select status from checkin_monitor_v where booking_id = :'bk_on'), 'on_shift',
+  '§9.5 an outside fix after the section''s end, inside the four hours, is not Off-site — the row stays On shift');
 
 -- RULE-02's end state.
 update shift_requirements set starts_at = now() - interval '9 hours 30 minutes', ends_at = now() - interval '5 hours'

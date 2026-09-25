@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Alert, Button, Modal, Note, Textarea } from '@thc/ui';
-import { UK_ZONE, formatDateTimeIn, ukInputLabel } from '@thc/domain';
+import { UK_ZONE, formatDateTimeIn, ukInputLabel, viewerZone } from '@thc/domain';
 import { resolveViolation } from './actions';
 import { VIOLATION_LABEL, needsActualFinish, reclassifiesToLate } from './status';
 import type { ViolationRow } from './types';
@@ -20,6 +20,12 @@ import type { ViolationRow } from './types';
  * the future. There is deliberately no upper bound against the scheduled
  * end: a worker may genuinely have finished later, and RULE-01 caps the
  * payable amount there regardless.
+ *
+ * Two zones on one window (§1.8). Detected, Checked in and Checked out are
+ * ACTUAL stamps, so they show the manager's own zone only — "your time",
+ * as the monitor's Check-in column beside them does. Resolved by and the
+ * finish the manager entered are AUDIT stamps, UK only; and the input is
+ * labelled "(UK time)" precisely because everything else here is not.
  */
 export function ResolveModal({
   violation,
@@ -36,6 +42,9 @@ export function ResolveModal({
 
   const wantsFinish = needsActualFinish(violation.type);
   const canSubmit = note.trim().length > 0 && (!wantsFinish || finish.length > 0) && !busy;
+  // Mounted on a click, so the reader's zone is already the browser's.
+  const zone = viewerZone();
+  const actual = (iso: string) => `${formatDateTimeIn(new Date(iso), zone)} your time`;
 
   async function submit() {
     setBusy(true);
@@ -68,24 +77,18 @@ export function ResolveModal({
         <div className="kvs">
           <div className="kv">
             <span className="k">Detected</span>
-            <span className="v mono">
-              {formatDateTimeIn(new Date(violation.detectedAt), UK_ZONE)} UK
-            </span>
+            <span className="v mono">{actual(violation.detectedAt)}</span>
           </div>
           <div className="kv">
             <span className="k">Checked in</span>
             <span className="v mono">
-              {violation.checkInAt
-                ? `${formatDateTimeIn(new Date(violation.checkInAt), UK_ZONE)} UK`
-                : 'never'}
+              {violation.checkInAt ? actual(violation.checkInAt) : 'never'}
             </span>
           </div>
           <div className="kv">
             <span className="k">Checked out</span>
             <span className="v mono">
-              {violation.checkOutAt
-                ? `${formatDateTimeIn(new Date(violation.checkOutAt), UK_ZONE)} UK`
-                : 'no check-out recorded'}
+              {violation.checkOutAt ? actual(violation.checkOutAt) : 'no check-out recorded'}
             </span>
           </div>
         </div>
