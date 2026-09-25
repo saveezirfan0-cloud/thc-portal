@@ -27,7 +27,7 @@ create temporary table cap_vectors (
   visa_expiry                date,
   optout_cancelled_from      date,
   under18                    boolean not null,
-  -- Fix round 29.09 (D35, D36): the day the completion letter was verified,
+  -- Audit 25.09 D35, D36 (20260930130100): the day the completion letter was verified,
   -- and a weekly hours limit written on a work or dependant visa.
   verified_on                date,
   visa_hour_limit            int,

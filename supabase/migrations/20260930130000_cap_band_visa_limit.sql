@@ -1,5 +1,5 @@
 -- =====================================================================
--- Fix round 29.09 · WP-F · the cap band for a visa's own hours limit
+-- Migration 20260930130000 · the cap band for a visa's own hours limit
 -- (audit D36; RULE-20, §2.5, docs/scope/university-completion-letter-
 -- requirement.pdf §7)
 --

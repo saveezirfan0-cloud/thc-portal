@@ -1,5 +1,5 @@
 -- =====================================================================
--- Fix round 29.09 · WP-F · E2 only once the interview is done
+-- Migration 20260930130300 · E2 only once the interview is done
 -- (audit D44; §2.7, §8 E2 / E2b; ADR-0017, amended by ADR-0040)
 --
 -- E2 is THC's interview-rejection wording: "Thank you for taking the time

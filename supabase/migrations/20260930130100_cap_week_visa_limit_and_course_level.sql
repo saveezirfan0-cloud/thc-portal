@@ -1,5 +1,5 @@
 -- =====================================================================
--- Fix round 29.09 · WP-F · RULE-20: the whole week, the visa's own limit,
+-- Migration 20260930130100 · RULE-20: the whole week, the visa's own limit,
 -- and the course level the office confirms
 -- (audit D35, D36, D32; ADR-0040;
 --  docs/scope/university-completion-letter-requirement.pdf §1, §2.3, §3, §7)

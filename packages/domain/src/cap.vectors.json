@@ -45,7 +45,7 @@
     "period, takes the LOWER cap - the same principle RULE-20 already applies",
     "to a week straddling term and holiday.",
     "",
-    "--- Fix round 29.09 (audit D35, D36) ---",
+    "--- Audit 25.09 D35, D36 (20260930130100) ---",
     "  verifiedOn     - the day the completion letter was VERIFIED (graduated_at).",
     "                   The release starts on the Monday on or after the later of",
     "                   this and completionDate, so a letter verified mid-week",

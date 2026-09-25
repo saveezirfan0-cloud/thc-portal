@@ -1,5 +1,5 @@
 -- =====================================================================
--- Fix round 29.09 · WP-F · N8 lands where the Re-upload is (audit D42;
+-- Migration 20260930130200 · N8 lands where the Re-upload is (audit D42;
 -- §2.3, §4.1, §8 N8, §10.1)
 --
 -- N8 "Document rejected — [reason]. Re-upload." carried the register's
