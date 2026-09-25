@@ -1,7 +1,19 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReactElement, ReactNode } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { BookingRow, Loaded, OpenShift } from '../data';
+
+// The fixtures place shifts hours from "now". After 22:00 UK that crossed
+// into the next London day and the today-only states ("Not confirmed today",
+// "Check-in opens at") failed every evening. Pin the clock to a UK
+// afternoon so the suite means the same thing at any hour it runs.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-09-25T13:00:00Z'));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 /**
  * /shifts, /invites and /radar against their wireframes, and against audit
