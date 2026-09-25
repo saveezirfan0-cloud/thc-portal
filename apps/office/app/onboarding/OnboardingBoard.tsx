@@ -45,12 +45,17 @@ function Meta({ line }: { line: Line }) {
   );
 }
 
-/** "Review interview on Willo ↗" — live once THC's Willo account is configured (§2.4). */
+/**
+ * "Review interview on Willo ↗" — live once THC's Willo account is configured
+ * (§2.4). Until then a neutral, disabled line: a fact about the set-up, not a
+ * warning about the candidate.
+ */
 function WilloLink({ url }: { url: string | null }) {
   if (!url) {
     return (
       <span
         className="willo off"
+        aria-disabled="true"
         title="Willo is not connected yet — the link appears once THC's Willo account is set up in Settings"
       >
         Review interview on Willo — not connected
@@ -164,11 +169,6 @@ export function OnboardingBoard({
             value={filter}
             onChange={setFilter}
           />
-          <span className="annot">
-            {filter === 'active'
-              ? 'same filter pattern as the Staff directory (§9.6) — rejected cards are hidden by default (§2.2)'
-              : 'rejected cards stay reachable without leaving this screen; they sit in the column where they were rejected'}
-          </span>
           <div className="right">
             <SearchInput
               aria-label="Search candidates"
@@ -344,10 +344,21 @@ function Column({
   );
 }
 
-function CardTop({ name, age, tone }: { name: string; age: string; tone?: string }) {
+function CardTop({
+  name,
+  age,
+  tone,
+  photo,
+}: {
+  name: string;
+  age: string;
+  tone?: string;
+  /** The onboarding selfie, signed on the server (_lib/photos.ts); initials until there is one. */
+  photo?: string | null;
+}) {
   return (
     <div className="top">
-      <Avatar size="sm" name={name} />
+      <Avatar size="sm" name={name} src={photo ?? undefined} />
       <div className="nm">{name}</div>
       <span className={tone && tone !== 'ok' ? `age ${tone}` : 'age'}>{age}</span>
     </div>
@@ -381,7 +392,7 @@ function CandidateCard({
   const interview = column === 'interview_requested' || column === 'interview_completed';
   return (
     <KanbanCard onOpen={() => onOpen(row)}>
-      <CardTop name={row.display_name} age={age.label} tone={age.tone} />
+      <CardTop name={row.display_name} age={age.label} tone={age.tone} photo={row.photo_url} />
       {/* Role chips from Documents onwards: picked right after the Willo acceptance (§2.4). */}
       {interview ? null : <RoleChips roles={row.role_names} />}
       {lines.slice(0, 1).map((line) => (
@@ -398,7 +409,11 @@ function CandidateCard({
 function RejectedCard({ row, onOpen }: { row: CandidateRow; onOpen: (row: CandidateRow) => void }) {
   return (
     <KanbanCard onOpen={() => onOpen(row)}>
-      <CardTop name={row.display_name} age={row.rejected_at ? shortDay(row.rejected_at) : '—'} />
+      <CardTop
+        name={row.display_name}
+        age={row.rejected_at ? shortDay(row.rejected_at) : '—'}
+        photo={row.photo_url}
+      />
       <RoleChips roles={row.role_names} />
       <span>
         <Pill tone="coral">{rejectedPill(row)}</Pill>
