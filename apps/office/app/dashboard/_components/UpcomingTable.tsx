@@ -100,11 +100,11 @@ export function UpcomingTable({ events, today }: { events: UpcomingEvent[]; toda
                 {event.clientName}
                 <span className="sub">{event.venueName}</span>
               </td>
-              <td data-label="Window (UK)" className={cancelled ? 'mono sm muted' : 'mono sm'}>
+              <td data-label="Window (UK time)" className={cancelled ? 'mono sm muted' : 'mono sm'}>
                 {/* The event window is derived: min start → max end (RULE-18). */}
                 <ScheduledWindow startsAt={event.startsAt} endsAt={event.endsAt} />
               </td>
-              <td data-label="Roles">
+              <td data-label="Roles · allocation · fill · margin/h">
                 {cancelled ? (
                   <span className="muted sm">
                     {event.roles.length} {event.roles.length === 1 ? 'role' : 'roles'} · excluded

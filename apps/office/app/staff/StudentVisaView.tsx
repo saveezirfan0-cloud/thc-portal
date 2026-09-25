@@ -114,7 +114,7 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
                         </div>
                       </div>
                     </td>
-                    <td data-label="Weekly cap">
+                    <td data-label="Current weekly cap">
                       <span className={`cap ${capClass(row)}`}>{capLabel(row)}</span>
                       <span className="sub">
                         {capReason(row.weekly_cap_band, row.weekly_cap_hours)}
@@ -124,10 +124,10 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
                         {releaseLine(row)}
                       </span>
                     </td>
-                    <td data-label="Evidence" className="sm">
+                    <td data-label="Evidence set" className="sm">
                       <Evidence row={row} />
                     </td>
-                    <td data-label="Right to work" className="mono sm">
+                    <td data-label="Right-to-work expiry" className="mono sm">
                       {row.right_to_work_until ? formatUkDate(row.right_to_work_until) : '—'}
                       {row.rtw_days_left !== null && row.rtw_days_left <= 60 ? (
                         <>

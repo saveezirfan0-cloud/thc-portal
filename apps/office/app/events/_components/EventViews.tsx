@@ -8,7 +8,7 @@ import {
   formatEventFill,
   formatOpen,
 } from '@thc/domain';
-import { formatDayShort, weekdayIndex } from '../calendar';
+import { formatDayLong, formatDayShort, weekdayIndex } from '../calendar';
 import { type DayBucket, type EventRow, fillTone } from '../view-model';
 import { ScheduledWindow } from './ScheduledWindow';
 
@@ -93,7 +93,10 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                 {row.clientName}
                 <span className="sub">{row.venueName}</span>
               </td>
-              <td data-label="Window (UK)" className={classes('mono', 'sm', cancelled && 'muted')}>
+              <td
+                data-label="Window (UK time)"
+                className={classes('mono', 'sm', cancelled && 'muted')}
+              >
                 {/* UK, plus "your time" for a reader outside the UK (§1.8). */}
                 {row.windowIso ? (
                   <ScheduledWindow
@@ -105,7 +108,7 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                 )}
                 {row.endsNextDay ? <span className="sub">ends next day</span> : null}
               </td>
-              <td data-label="Roles">
+              <td data-label="Roles · headcount (+buffer)">
                 <div className="roles">
                   {row.roles.map((role, index) => (
                     <div className="r" key={`${row.id}-${index}`}>
@@ -187,7 +190,11 @@ export function MonthView({
           >
             <div className="d">
               {dayHref ? (
-                <Link className="dlink" href={dayHref(cell.iso)} aria-label={`Open ${cell.iso}`}>
+                <Link
+                  className="dlink"
+                  href={dayHref(cell.iso)}
+                  aria-label={`Open ${formatDayLong(cell.iso)}`}
+                >
                   {cell.dayOfMonth}
                 </Link>
               ) : (

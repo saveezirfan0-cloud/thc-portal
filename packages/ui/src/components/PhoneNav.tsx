@@ -1,7 +1,7 @@
 'use client';
 
 import { clsx } from 'clsx';
-import { useEffect, useId, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { NavItem } from './Shell';
 
@@ -16,7 +16,15 @@ export interface PhoneNavProps {
    * Below 760px the sidebar is gone, so this sheet is where they live.
    */
   footer?: ReactNode;
-  /** Renders each item; apps pass their router's Link. */
+  /**
+   * Renders each item; apps pass their router's Link.
+   *
+   * Pass it ONLY from a client component. This file is `'use client'`, so a
+   * function prop from a server component cannot be serialised and the page
+   * answers 500 — the O15 crash `Mobile.tsx` describes for `BottomNav`. The
+   * Back Office passes it from `OfficeSidebar`, which is itself a client
+   * component; `OfficeShell` (a server component) passes only elements.
+   */
   renderLink?: (
     item: NavItem,
     className: string,
@@ -49,16 +57,56 @@ function groups(items: readonly NavItem[]): NavItem[][] {
  */
 export function PhoneNav({ items, activeHref, brand, footer, renderLink }: PhoneNavProps) {
   const [open, setOpen] = useState(false);
+  const [shownFor, setShownFor] = useState(activeHref);
   const sheetId = useId();
+  const sheetRef = useRef<HTMLDivElement>(null);
+  const moreRef = useRef<HTMLButtonElement>(null);
   const close = () => setOpen(false);
 
-  // The sheet is a menu, not a page: a route change or Escape dismisses it.
-  useEffect(() => setOpen(false), [activeHref]);
+  // The sheet is a menu, not a page: a route change dismisses it. Reset
+  // during render rather than in an effect, so the stale sheet never paints.
+  if (shownFor !== activeHref) {
+    setShownFor(activeHref);
+    setOpen(false);
+  }
+
+  // A modal sheet: focus moves into it on open, Tab cycles inside it,
+  // Escape closes it, and focus goes back to More when it closes.
   useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
+    const sheet = sheetRef.current;
+    if (!open || !sheet) return;
+    const more = moreRef.current;
+    const focusables = () => [
+      ...sheet.querySelectorAll<HTMLElement>('a[href], button:not([disabled])'),
+    ];
+    focusables()[0]?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setOpen(false);
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const list = focusables();
+      const first = list[0];
+      const last = list[list.length - 1];
+      if (!first || !last) return;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      // Only when focus is still in the sheet: a link that navigated away
+      // has already taken it somewhere that should keep it.
+      if (sheet.contains(document.activeElement) || document.activeElement === document.body) {
+        more?.focus();
+      }
+    };
   }, [open]);
 
   const primary = items.filter((item) => item.primary);
@@ -98,10 +146,46 @@ export function PhoneNav({ items, activeHref, brand, footer, renderLink }: Phone
 
   return (
     <div className="phone-nav">
+      <nav className="pnav-bar" aria-label="Main">
+        {primary.map((item) =>
+          link(
+            item,
+            clsx('pnav-tab', item.href === activeHref && 'active'),
+            item.short ?? item.label,
+          ),
+        )}
+        <button
+          type="button"
+          className={clsx('pnav-tab', (open || moreActive) && 'active')}
+          ref={moreRef}
+          aria-expanded={open}
+          aria-controls={open ? sheetId : undefined}
+          onClick={() => setOpen((v) => !v)}
+        >
+          <span className="ico">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M4 7h16M4 12h16M4 17h16" />
+            </svg>
+          </span>
+          <span className="l">More</span>
+          {hiddenCount > 0 ? (
+            <span className={clsx('count', hiddenAlert && 'alert')}>{hiddenCount}</span>
+          ) : null}
+        </button>
+      </nav>
+      {/* After the bar in the DOM, so reading order runs bar → sheet; the
+          sheet sits above the bar on screen through its fixed position. */}
       {open ? (
         <>
           <div className="sheet-back" onClick={close} aria-hidden="true" />
-          <div className="sheet pnav-sheet" id={sheetId} role="dialog" aria-label="Menu">
+          <div
+            ref={sheetRef}
+            className="sheet pnav-sheet"
+            id={sheetId}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu"
+          >
             <span className="grab" />
             {brand ? <div className="pnav-brand">{brand}</div> : null}
             <nav className="pnav-groups" aria-label="All sections">
@@ -117,32 +201,6 @@ export function PhoneNav({ items, activeHref, brand, footer, renderLink }: Phone
           </div>
         </>
       ) : null}
-      <nav className="pnav-bar" aria-label="Main">
-        {primary.map((item) =>
-          link(
-            item,
-            clsx('pnav-tab', item.href === activeHref && 'active'),
-            item.short ?? item.label,
-          ),
-        )}
-        <button
-          type="button"
-          className={clsx('pnav-tab', (open || moreActive) && 'active')}
-          aria-expanded={open}
-          aria-controls={sheetId}
-          onClick={() => setOpen((v) => !v)}
-        >
-          <span className="ico">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M4 7h16M4 12h16M4 17h16" />
-            </svg>
-          </span>
-          <span className="l">More</span>
-          {hiddenCount > 0 ? (
-            <span className={clsx('count', hiddenAlert && 'alert')}>{hiddenCount}</span>
-          ) : null}
-        </button>
-      </nav>
     </div>
   );
 }

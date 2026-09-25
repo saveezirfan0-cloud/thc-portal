@@ -351,7 +351,7 @@ function StaffTableRow({ row }: { row: StaffRow }) {
       <td data-label="Show-rate" className="mono">
         {formatShowRate(row.reliability)}
       </td>
-      <td data-label="Compliance" className="status">
+      <td data-label="Compliance status" className="status">
         <StatusPill row={row} />
         {atLimit ? (
           // A per-week condition, beside the status and never instead of it.

@@ -683,6 +683,24 @@ table.tbl {
 .btn.block {
   width: 100%;
 }
+/* A full-width button already has the whole line, so a label longer than
+   the line wraps inside the button rather than being cut off at both ends
+   (the activation page's "Write to admin@…" on a 390px phone). One line
+   stays exactly the height it was. */
+.btn.block {
+  white-space: normal;
+  text-align: center;
+  height: auto;
+  min-height: var(--btn-h);
+  padding-top: var(--sp-6);
+  padding-bottom: var(--sp-6);
+}
+.btn.block.lg {
+  min-height: var(--btn-h-lg);
+}
+.btn.block.sm {
+  min-height: var(--btn-h-sm);
+}
 .btn.icon {
   width: var(--btn-h);
   padding: 0;
@@ -2267,14 +2285,17 @@ textarea.input {
 }
 /* ---------------------------------------------------------------------
    11 · RESPONSIVE (§1.2)
-   Both web apps work on phone and tablet, not desktop only. The sidebar
-   narrows, then becomes a frosted bottom drawer; the KPI row wraps
-   4 → 2 → 1; wide tables scroll; the line-up grid steps 5 → 3 → 1.
+   Both web apps work on phone and tablet, not desktop only (ADR-0030).
+   At 1024px the sidebar narrows, the top bar may wrap and tables in panels
+   scroll inside their card. Below 760px the sidebar is replaced by the
+   phone tab bar and its More sheet (`PhoneNav`, styled at the end of this
+   section), grids stack, `.tbl.card-rows` lists become cards and every
+   other table scrolls. The KPI row wraps 4 → 2 → 1; the line-up grid steps
+   5 → 3 → 1.
 
-   The handoff suggests an icon-only rail between those two states. That
-   needs the icon set it calls for (Lucide) and the nav items to carry one;
-   until they do, a 64px rail of blank rows is worse than a narrow one, so
-   the rail is deliberately not built yet.
+   The handoff suggests an icon-only rail between desktop and phone. The
+   nav items carry icons now, so it could be built; the narrowed labelled
+   sidebar is kept for now because it reads better at tablet width.
    --------------------------------------------------------------------- */
 @media (max-width: 1180px) {
   .grid.c5,
@@ -2529,29 +2550,35 @@ textarea.input {
     padding: 0;
     border: 0;
     text-align: left;
+    /* A long email or reference has nowhere to scroll inside a card. */
+    overflow-wrap: anywhere;
   }
   .tbl.card-rows td:empty {
     display: none;
   }
+  /* The label floats in a reserved left gutter and the cell's own content —
+     text, tags, or the two mixed — flows beside it. A two-column grid did
+     this first and scrambled any cell that mixed them ("Breaks: paid ·
+     Buffer: strict"): grid placement reaches elements, so a bare text run
+     fell into the label column. `flow-root` contains the float, so a label
+     that wraps to two lines makes the cell taller rather than overlapping
+     the next one. */
   .tbl.card-rows td[data-label] {
-    display: grid;
-    grid-template-columns: minmax(88px, 34%) minmax(0, 1fr);
-    column-gap: var(--sp-10);
-    align-items: baseline;
-    justify-items: start;
+    display: flow-root;
+    padding-left: 118px;
   }
   .tbl.card-rows td[data-label]::before {
     content: attr(data-label);
+    float: left;
+    width: 108px;
+    margin-left: -118px;
+    padding-top: 0.15em;
     font-family: var(--font-label);
     font-size: var(--label-size);
     letter-spacing: var(--label-track);
     text-transform: var(--label-case);
     color: var(--muted);
     font-weight: var(--label-weight);
-  }
-  /* A cell holding several blocks keeps them in the value column. */
-  .tbl.card-rows td[data-label] > * {
-    grid-column: 2;
   }
   .tbl.card-rows td.num {
     font-family: var(--font-num);

@@ -193,7 +193,7 @@ export function RadarTab({
                           <span className="sub">31 Dec rule — the printed dates are ignored</span>
                         ) : null}
                       </td>
-                      <td data-label="Reminders" className="sm muted">
+                      <td data-label="Reminders sent" className="sm muted">
                         {remindersLine(row)}
                       </td>
                     </tr>
