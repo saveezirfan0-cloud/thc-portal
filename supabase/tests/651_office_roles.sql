@@ -212,20 +212,21 @@ select is((select actor from audit_log where action = 'account.role_changed' and
   :'admin_uid'::uuid, 'with the owner as actor');
 
 -- The last-owner guard. With the caller always an owner who cannot change
--- themselves, it is a second fence — reachable when the caller's login has
--- been switched off but their access token still runs (ADR-0035 "Known
--- limit"): a switched-off owner does not count as the owner who remains.
+-- themselves, it is a second fence. It used to be reachable by a caller
+-- whose login had been switched off while their access token still ran
+-- (ADR-0035 "Known limit"); since 20260930160000 such a caller has no role
+-- at all, which is the stronger guarantee these assertions now pin.
 -- (seed.sql's admins are owners too, so every owner but owner2 goes off.)
 update auth.users set banned_until = now() + interval '1 day'
  where id in (select id from profiles where office_role = 'owner' and id <> :'owner2');
 set local role authenticated;
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 select throws_ok(format('select admin_set_office_role(%L, %L)', :'owner2', 'manager'),
-  'P0001', 'last_owner', 'the last working owner cannot be demoted');
+  '42501', 'not_authorised', 'a switched-off owner''s live token cannot demote the last working owner — it has no role at all');
 select throws_ok(format('select admin_set_login_disabled(%L, true, %L)', :'owner2', 'Left'),
-  'P0001', 'last_owner', 'nor switched off');
-select lives_ok(format('select admin_set_office_role(%L, %L)', :'manager', 'scheduler'),
-  'demoting someone who is not an owner is unaffected');
+  '42501', 'not_authorised', 'nor switch them off');
+select throws_ok(format('select admin_set_office_role(%L, %L)', :'manager', 'scheduler'),
+  '42501', 'not_authorised', 'nor do anything else (20260930160000)');
 reset role;
 select is((select office_role::text from profiles where id = :'owner2'), 'owner', 'the owner is still an owner');
 -- 20260930100000's last_admin fence, still ahead of last_owner: every
@@ -234,7 +235,7 @@ update auth.users set banned_until = now() + interval '1 day'
  where id in (select id from profiles where role = 'admin' and id <> :'invitee1');
 set local role authenticated;
 select throws_ok(format('select admin_set_login_disabled(%L, true, %L)', :'invitee1', 'Left'),
-  'P0001', 'last_admin', 'preserved: the last working admin cannot be switched off');
+  '42501', 'not_authorised', 'a switched-off caller cannot switch off the last working admin either');
 reset role;
 update auth.users set banned_until = null where id in (select id from profiles where role = 'admin');
 update profiles set office_role = 'manager' where id = :'manager';

@@ -49,3 +49,8 @@ A dashboard reset writes no `audit_log` row. Note it by hand until the follow-up
 - New: `apps/office/app/login/two-step.ts` (pure rules), `two-step-session.ts`, `two-step.css`, `login/verify/**`, `account/TwoStepPanel.tsx`, `account/two-step-actions.ts`. Changed: `apps/office/middleware.ts`, `login/actions.ts`, `account/data.ts`, `account/AccountScreen.tsx`, `supabase/config.toml`.
 - One new public route, `/login/verify`, under the existing public `/login` prefix. No migration and no new environment variable.
 - The Client Portal and Staff App are unchanged. Neither app offers a set-up panel, and neither checks a factor if one was enrolled through the API directly.
+
+
+## Update — the database half (20260930160000)
+
+Decision 1's gap is closed: `current_app_role()` now answers NULL for a Back Office login that has a verified factor while its session is below `aal2`, so a stolen password plus the public anon key reads nothing through the API either. Client Portal and Staff App logins are unaffected. pgTAP 656 pins it.

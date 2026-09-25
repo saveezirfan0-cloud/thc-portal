@@ -59,6 +59,7 @@ const ITEMS: readonly NavItem[] = [
   { href: '/settings', label: 'Settings', dividerBefore: true },
   { href: '/users', label: 'Users & access', short: 'Users' },
   { href: '/activity', label: 'Activity log', short: 'Activity' },
+  { href: '/inbox', label: 'Inbox', short: 'Inbox' },
   { href: '/account', label: 'My profile', short: 'Profile' },
 ];
 

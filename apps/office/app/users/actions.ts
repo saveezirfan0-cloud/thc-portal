@@ -6,6 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@thc/db/admin';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
+import { queueInviteEmail } from '../_lib/inviteEmail';
 import { officeOrigin } from '../login/origin';
 import {
   explainAccountError as explainAccountCode,
@@ -42,7 +43,16 @@ import type { AccountRow } from './data';
  */
 
 export type UsersResult =
-  { ok: true; message?: string; link?: string; email?: string } | { ok: false; message: string };
+  | {
+      ok: true;
+      message?: string;
+      link?: string;
+      email?: string;
+      /** E11 was queued (ADR-0038); when false, `emailNote` says why. */
+      emailed?: boolean;
+      emailNote?: string;
+    }
+  | { ok: false; message: string };
 
 const NOT_CONFIGURED =
   'This environment has no Supabase project, so this cannot be saved. See docs/04-setup-github-vercel-supabase.md.';
@@ -143,12 +153,19 @@ async function issue(
   });
   if (error) return { ok: false, message: explainAccountError(error.message) };
 
+  const link = inviteLink(origin, minted.tokenHash, minted.type);
+  // E11 (ADR-0038): the invitation email, through the outbox. A refusal
+  // here never undoes the login — the link is still shown to copy.
+  const emailed = await queueInviteEmail(supabase, minted.userId, link);
+
   revalidatePath('/users');
   revalidatePath('/activity');
   return {
     ok: true,
     email: input.email,
-    link: inviteLink(origin, minted.tokenHash, minted.type),
+    link,
+    emailed: emailed.ok,
+    ...(emailed.ok ? {} : { emailNote: emailed.message }),
   };
 }
 

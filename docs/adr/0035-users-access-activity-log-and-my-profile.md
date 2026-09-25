@@ -27,9 +27,9 @@ Every Back Office login has full access today, and every RLS policy in the schem
 
 That is a change to the access rules the contract describes (§1.4 names three roles), so it needs THC's decision first.
 
-## Known limit
+## Known limit (closed)
 
-Switching a login off deletes its sessions and refresh tokens, but an access token already issued stays valid until it expires (Supabase's JWT lifetime, one hour by default), because `current_app_role()` reads `profiles` only. Closing that gap means `current_app_role()` also checking `auth.users.banned_until`, a change to the helper every RLS policy calls; it is left for its own change with its own performance check.
+Switching a login off deletes its sessions and refresh tokens, but an access token already issued used to stay valid until it expired (up to an hour), because `current_app_role()` read `profiles` only. **Closed by `20260930160000`:** `current_app_role()` now answers NULL for a login whose `banned_until` is in the future, so every policy and admin RPC refuses that token at once (pgTAP 656).
 
 ## Consequences
 

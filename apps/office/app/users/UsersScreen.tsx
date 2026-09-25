@@ -84,7 +84,12 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
   const [inviting, setInviting] = useState(false);
   const [switching, setSwitching] = useState<AccountRow | null>(null);
   const [reroling, setReroling] = useState<AccountRow | null>(null);
-  const [issued, setIssued] = useState<{ account: AccountRow; link: string } | null>(null);
+  const [issued, setIssued] = useState<{
+    account: AccountRow;
+    link: string;
+    emailed: boolean;
+    emailNote?: string;
+  } | null>(null);
 
   const counts = useMemo(() => {
     const out: Record<Tab, number> = { admin: 0, client: 0, staff: 0 };
@@ -171,7 +176,9 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
                     self={account.id === data.selfId}
                     onSwitch={() => setSwitching(account)}
                     onChangeRole={() => setReroling(account)}
-                    onIssued={(link) => setIssued({ account, link })}
+                    onIssued={(link, emailed, emailNote) =>
+                      setIssued({ account, link, emailed, ...(emailNote ? { emailNote } : {}) })
+                    }
                   />
                 ))}
               </tbody>
@@ -217,6 +224,8 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
           email={issued.account.email ?? ''}
           role={issued.account.role === 'client' ? 'client' : 'admin'}
           link={issued.link}
+          emailed={issued.emailed}
+          {...(issued.emailNote ? { emailNote: issued.emailNote } : {})}
           onClose={() => setIssued(null)}
         />
       ) : null}
@@ -237,7 +246,7 @@ function UserRow({
   self: boolean;
   onSwitch: () => void;
   onChangeRole: () => void;
-  onIssued: (link: string) => void;
+  onIssued: (link: string, emailed: boolean, emailNote?: string) => void;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
@@ -247,7 +256,8 @@ function UserRow({
     setError(null);
     start(async () => {
       const result = await newInviteLink(account.id);
-      if (result.ok && result.link) onIssued(result.link);
+      if (result.ok && result.link)
+        onIssued(result.link, Boolean(result.emailed), result.emailNote);
       else if (!result.ok) setError(result.message);
     });
   };
@@ -351,6 +361,8 @@ function InviteModal({
         email={result.email ?? email}
         role={role}
         link={result.link}
+        emailed={Boolean(result.emailed)}
+        {...(result.emailNote ? { emailNote: result.emailNote } : {})}
         onClose={onClose}
       />
     );
@@ -453,22 +465,25 @@ function InviteModal({
 }
 
 /**
- * The set-up link, once. It is shown rather than emailed by the platform:
- * an invitation email would be a new entry in the §8 register, which is
- * the contract's to add. Until then the manager sends it from their own
- * mail — one click — or copies it into a message.
+ * The set-up link, once. The platform emails it (E11, ADR-0038); the link
+ * is still shown so the manager can send it another way — a text message,
+ * or their own mail when the email was refused.
  */
 function LinkModal({
   name,
   email,
   role,
   link,
+  emailed,
+  emailNote,
   onClose,
 }: {
   name: string;
   email: string;
   role: 'admin' | 'client';
   link: string;
+  emailed: boolean;
+  emailNote?: string;
   onClose: () => void;
 }) {
   const [copied, setCopied] = useState(false);
@@ -483,7 +498,7 @@ function LinkModal({
   return (
     <Modal
       open
-      title="Login ready — send the link"
+      title={emailed ? 'Login ready — invitation emailed' : 'Login ready — send the link'}
       onClose={onClose}
       footer={
         <Button tone="primary" onClick={onClose}>
@@ -496,6 +511,15 @@ function LinkModal({
           <b>{name}</b> ({email}) has a {ROLE_LABEL[role]} login. They choose their own password
           with this link. It works once, and expires after 24 hours.
         </p>
+        {emailed ? (
+          <Alert tone="green">
+            Emailed to {email}. You can also copy the link and send it another way.
+          </Alert>
+        ) : (
+          <Alert tone="amber">
+            {emailNote ?? 'The invitation was not emailed.'} Send the link yourself below.
+          </Alert>
+        )}
         <Input
           label="Set-up link"
           value={link}

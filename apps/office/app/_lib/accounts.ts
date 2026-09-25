@@ -130,6 +130,8 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   'profile.updated': 'Updated own profile',
   'account.invited': 'Invited user',
   'account.reinvited': 'Re-sent user invite',
+  'account.invite_emailed': 'Emailed user invite',
+  'account.role_changed': 'Changed office role',
   'account.disabled': 'Switched login off',
   'account.enabled': 'Switched login on',
   'settings.insert': 'Added setting',
