@@ -69,11 +69,20 @@ describe('booking state machine (§3.6)', () => {
     expect(canTransitionBooking('invited', 'worked')).toBe(false);
   });
 
-  it('treats worked, turned_away and cancelled as terminal', () => {
-    for (const terminal of ['worked', 'turned_away', 'cancelled'] as const) {
+  it('treats worked and turned_away as terminal', () => {
+    for (const terminal of ['worked', 'turned_away'] as const) {
       for (const status of BOOKING_STATUSES) {
         if (status !== terminal) expect(canTransitionBooking(terminal, status)).toBe(false);
       }
+    }
+  });
+
+  it('lets cancelled leave only by a reopen — a fresh offer or application (ADR-0031)', () => {
+    for (const status of BOOKING_STATUSES) {
+      if (status === 'cancelled') continue;
+      expect(canTransitionBooking('cancelled', status)).toBe(
+        status === 'invited' || status === 'applied',
+      );
     }
   });
 

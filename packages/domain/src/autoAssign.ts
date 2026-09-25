@@ -24,6 +24,7 @@ import {
   type ScoreInput,
   type ScoreWeights,
 } from './scoring.ts';
+import { bookingReopenableBy } from './state.ts';
 
 /**
  * One row of `auto_assign_candidates`. Postgres `numeric` arrives as a
@@ -37,6 +38,12 @@ export interface CandidateRow {
   qualified: boolean;
   /** 'invited' | 'confirmed' | … when this worker already holds one. */
   booking_status: string | null;
+  /**
+   * That booking's `cancel_cause` once it has ended (20260929110000) — what
+   * tells a slot somebody else took from an invitation the worker declined.
+   * Optional so a row read before the column existed still parses.
+   */
+  booking_cause?: string | null;
   reliability: number | string | null;
   rating: number | string | null;
   distance_km: number | string | null;
@@ -124,13 +131,29 @@ export function rankCandidateRows<R extends CandidateRow>(
 }
 
 /**
+ * Whether an automatic round may invite this row at all, booking-wise: no
+ * booking on the section, or an ended one that ended by circumstance
+ * (`bookingReopenableBy` → 'anyone': a slot somebody else took, an
+ * overlap auto-withdrawal, a block or leave cascade). An ended row that a
+ * PERSON decided — declined, withdrawn by the worker or the office,
+ * released at the 12:05 cutoff — is reopened only by the office's manual
+ * invite or the worker's own application, never by a round (ADR-0031);
+ * a self-cancel never (RULE-04, and it is gated `self_cancelled` anyway).
+ */
+export function roundMayInvite(row: Pick<CandidateRow, 'booking_status' | 'booking_cause'>): boolean {
+  if (row.booking_status === null) return true;
+  return bookingReopenableBy(row.booking_status, row.booking_cause ?? null) === 'anyone';
+}
+
+/**
  * Who this round invites, best first.
  *
  * Two filters before the ranking, and the second is the one that matters:
  *
  *   * Gated candidates are dropped — `rankPool` does that, and a gated
  *     worker is never scored at all (§3.4).
- *   * Anyone already holding a booking on this section is dropped here.
+ *   * Anyone already holding a LIVE booking on this section, or an ended
+ *     one a round may not reopen (`roundMayInvite`), is dropped here.
  *     `invite_worker` would refuse them anyway with `already_has_booking`,
  *     so this is not about correctness — it is about the round not
  *     spending its allocation on refusals. A section whose pool is mostly
@@ -142,7 +165,7 @@ export function selectInvitees(
   { allocation, weights = DEFAULT_WEIGHTS, proximityFirst = false }: RoundOptions,
 ): string[] {
   if (allocation <= 0) return [];
-  const open = rows.filter((row) => row.booking_status === null);
+  const open = rows.filter(roundMayInvite);
   const ranked = rankPool(
     open.map((row) => toCandidate(row, row)),
     weights,

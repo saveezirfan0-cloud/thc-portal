@@ -51,8 +51,9 @@ select results_eq(
 
 select is_empty(
   $$ select from_status::text || '->' || to_status::text from booking_transitions()
-      where from_status in ('worked', 'turned_away', 'cancelled') $$,
-  'worked, turned_away and cancelled are terminal (§3.6: No check-out is a branch of worked, not a state)');
+      where from_status in ('worked', 'turned_away')
+         or (from_status = 'cancelled' and to_status not in ('invited', 'applied')) $$,
+  'worked and turned_away are terminal (§3.6: No check-out is a branch of worked, not a state); cancelled leaves only by a reopen to invited/applied, never a self-cancel (20260929110100, ADR-0031)');
 
 -- ---------------------------------------------------------------------
 -- 2 · The trigger, on a real row, for every pair
