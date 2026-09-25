@@ -11,6 +11,11 @@
  * register, §10.1 for E4, §10.6/§10.7 for E8/E9 — and every such case is listed
  * in `REGISTER-NOTES.md`.
  *
+ * Beyond §8 the register carries four more families, each in its own list:
+ * the completion letter requirement's CL codes (REQUIREMENT_CODES), two
+ * extensions §8 should have named (EXTENSION_CODES), and the Staff App
+ * additions RC and OF (ADDITION_CODES, ADR-0038/0039, docs/18).
+ *
  * Nothing here sends. The drain (`drain.ts`, run by the `notify-drain` Edge
  * Function) reads this copy; the sender ADDRESS for `sender: 'admin' |
  * 'timesheets'` comes from `settings.senders` at send time (`senders.ts`),
@@ -533,6 +538,130 @@ export const TEMPLATES = {
     trigger: 'A worker gives notice to cancel the 48-hour opt-out (requirement §2.4, §5)',
     timing: 'on notice',
   },
+
+  // ────────────────────────────────────────────────────────────────────────
+  // STAFF APP ADDITIONS — not scope v1.6 §8. Five features the product owner
+  // approved on 25.09.2026 (docs/18-staff-features-plan.md), each with its
+  // own ADR, status proposed — awaiting THC. Family prefixes, as `CL` does,
+  // so none can collide with an N- or E-number THC assigns to §8 later. The
+  // copy is ours and every row is "confirm with THC" (REGISTER-NOTES.md,
+  // docs/15 Q21). RF1 (refer a friend, ADR-0040) is proposed and deliberately
+  // NOT registered: it would tell one person another's employment status.
+  // ────────────────────────────────────────────────────────────────────────
+
+  // Request a change — name and photo (ADR-0038). Keys `RCn:request:<id>`.
+  RC1: {
+    code: 'RC1',
+    channel: 'email',
+    sender: 'admin',
+    recipients: OFFICE,
+    title: 'Profile change requested — {name}, Employee ID {employeeId}',
+    body: '{name} has asked the office to change their {change}.\n\nRequested: {requestedAt} (UK time)\nNow: {current}\nRequested: {proposed}\nNote: {note}\n\nReview it in Staff → Change requests.',
+    trigger:
+      'A worker asks the office to change their locked name or photo (request_profile_change, §10.1). Not in §8: an addition to scope v1.6, ADR-0038 (proposed — awaiting THC)',
+    timing: 'on request',
+  },
+  RC2: {
+    code: 'RC2',
+    channel: 'push',
+    title: 'Profile updated',
+    body: 'Your {change} has been updated.',
+    trigger:
+      'The office approves a name or photo change request (office_decide_profile_change). Not in §8: an addition to scope v1.6, ADR-0038 (proposed — awaiting THC)',
+    timing: 'on approve',
+    deepLink: '/profile/details',
+  },
+  RC3: {
+    code: 'RC3',
+    channel: 'push',
+    title: 'Change not made',
+    body: "We couldn't update your {change}: {reason}",
+    trigger:
+      'The office rejects a name or photo change request, with the reason the worker is shown (office_decide_profile_change). Not in §8: an addition to scope v1.6, ADR-0038 (proposed — awaiting THC)',
+    timing: 'on reject',
+    deepLink: '/profile/details',
+  },
+  RC4: {
+    code: 'RC4',
+    channel: 'email',
+    sender: 'admin',
+    // E7's recipients: a name change is a contact-details change payroll
+    // must hear about, and issued PDFs and exports are never rewritten.
+    recipients: OFFICE_AND_PAYROLL,
+    title: 'Name changed — {name}, Employee ID {employeeId}',
+    body: 'Previous name: {previousName}\nNew name: {name}\nApproved: {approvedAt} (UK time)',
+    trigger:
+      "The office approves a worker's name change (office_decide_profile_change); payroll is told as for E7. Not in §8: an addition to scope v1.6, ADR-0038 (proposed — awaiting THC)",
+    timing: 'on approving a name',
+  },
+
+  // Offer up a shift — release to the pool (ADR-0039). Keys
+  // `OFn:offer:<id>`, and `OF1:offer:<offer>:<staff>` per candidate.
+  OF1: {
+    code: 'OF1',
+    channel: 'push',
+    title: 'Shift up for grabs',
+    // Never names the offerer: Radar lists offers through an RPC that does
+    // not return them, and the push must not either.
+    body: '{role} · {event} · {dateTime} · {rate}/h — tap to take it.',
+    trigger:
+      'A confirmed worker offers their shift to the pool more than 72 hours before it starts, or the office opens a cover request to the pool (notify_offer_candidates, RULE-17 order). Not in §8: an addition to scope v1.6, ADR-0039 (proposed — awaiting THC)',
+    timing: 'hourly, `allocation_per_hour` per round, wave 1 first, never after expiry',
+    deepLink: '/radar/offers/{offerId}',
+  },
+  OF2: {
+    code: 'OF2',
+    channel: 'push',
+    title: 'Shift handed over',
+    body: "{event} · {dateTime} has been taken by another worker. You're no longer booked on it.",
+    trigger:
+      'Another worker takes the offered shift and the original booking is released (take_offered_shift). Not in §8: an addition to scope v1.6, ADR-0039 (proposed — awaiting THC)',
+    timing: 'on take',
+    deepLink: '/shifts',
+  },
+  OF3: {
+    code: 'OF3',
+    channel: 'push',
+    title: "You're still booked",
+    body: "Nobody took your {event} shift on {date} — you're still booked. If you can't make it, contact the office.",
+    trigger:
+      'An open offer reaches its expiry (start − 72 h for a pool offer) with no taker; the worker stays confirmed (lapse_shift_offers). Not in §8: an addition to scope v1.6, ADR-0039 (proposed — awaiting THC)',
+    // Not when the booking leaves confirmed for another cause: the
+    // bookings_offer_lapse trigger closes the offer silently then.
+    timing: 'on lapse by expiry only',
+    deepLink: '/shifts/{bookingId}',
+  },
+  OF4: {
+    code: 'OF4',
+    channel: 'push',
+    title: "You're booked!",
+    body: '{event} on {date} is yours. Tap to view your shift details.',
+    trigger:
+      'A worker takes an offered shift and is confirmed on it (take_offered_shift, Booking.source = offer). Not in §8: an addition to scope v1.6, ADR-0039 (proposed — awaiting THC)',
+    timing: 'on take',
+    deepLink: '/shifts/{bookingId}',
+  },
+  OF5: {
+    code: 'OF5',
+    channel: 'email',
+    sender: 'admin',
+    recipients: OFFICE,
+    title: 'Cover requested — {event} · {role} · {date}',
+    body: 'Name: {name}\nEmployee ID: {employeeId}\n\nEvent: {event}\nClient: {client}\nVenue: {venue}\nRole: {role}\nShift: {dateTime} (UK time)\nNote: {note}\n\nConfirmed for this role now: {confirmed} of {headcount} (+{buffer})\nAuto-assign for this role: {autoAssign}\n\nThey are still booked until you act.',
+    trigger:
+      'A confirmed worker asks the office for cover inside 72 hours of the start (request_cover); the booking is unchanged. Not in §8: an addition to scope v1.6, ADR-0039 (proposed — awaiting THC)',
+    timing: 'immediately',
+  },
+  OF6: {
+    code: 'OF6',
+    channel: 'push',
+    title: 'Cover request closed',
+    body: "The office has closed your cover request for {event} on {date}. You're still booked — contact the office if you can't make it.",
+    trigger:
+      "The office declines a worker's cover request (office_decline_cover). Not in §8: an addition to scope v1.6, ADR-0039 (proposed — awaiting THC)",
+    timing: 'on decline',
+    deepLink: '/shifts/{bookingId}',
+  },
 } as const satisfies Record<string, Template>;
 
 export type TemplateCode = keyof typeof TEMPLATES;
@@ -592,6 +721,26 @@ export const REQUIREMENT_CODES = [
  * scope exactly.
  */
 export const EXTENSION_CODES = ['E2b', 'E10'] as const satisfies readonly TemplateCode[];
+
+/**
+ * Codes for the Staff App additions (docs/18-staff-features-plan.md §6): RC
+ * for Request a change (ADR-0038), OF for Offer up a shift (ADR-0039). Not
+ * §8's, not the completion letter requirement's, and not a fix to either —
+ * new features, each `trigger` naming its ADR. RF1 (ADR-0040) is proposed
+ * only and is not in the register.
+ */
+export const ADDITION_CODES = [
+  'RC1',
+  'RC2',
+  'RC3',
+  'RC4',
+  'OF1',
+  'OF2',
+  'OF3',
+  'OF4',
+  'OF5',
+  'OF6',
+] as const satisfies readonly TemplateCode[];
 
 export function template(code: TemplateCode): Template {
   return TEMPLATES[code];
