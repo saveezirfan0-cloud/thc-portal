@@ -444,7 +444,7 @@ export function rejectedLines(row: CandidateRow): Line[] {
     case 'quiz_failed':
       return [
         {
-          text: `Best ${scoreLabel(row.quiz_best_score)} over ${row.quiz_attempts_used} attempts — automatic rejection after the third failure; email E4 + terminal screen in the app (§2.9).`,
+          text: `Best ${scoreLabel(row.quiz_best_score)} over ${row.quiz_attempts_used} attempts — automatic rejection after the third failure; email E4 + terminal screen in the app.`,
         },
       ];
     default: {
@@ -455,7 +455,7 @@ export function rejectedLines(row: CandidateRow): Line[] {
       // documents, so the card says what just left the queue.
       if (row.docs_pending > 0) {
         lines.push({
-          text: `${row.docs_pending === 1 ? 'Their 1 pending document' : `Their ${row.docs_pending} pending documents`} dropped out of Compliance → Needs review automatically (§4.1).`,
+          text: `${row.docs_pending === 1 ? 'Their 1 pending document' : `Their ${row.docs_pending} pending documents`} dropped out of Compliance → Needs review automatically.`,
         });
       }
       return lines;
@@ -739,6 +739,6 @@ export const RTW_REQUIRED: Record<string, string> = {
   eu_settled: 'passport / ID + share code · pre-settled carries an expiry',
   work_visa: 'passport + share code + visa document with its expiry',
   international_student:
-    'passport + share code + University Term Dates Letter (+ Completion Letter after graduation, §4.5)',
+    'passport + share code + University Term Dates Letter (+ Completion Letter after graduation)',
   dependant_other: 'passport + share code + visa / status document with its expiry',
 };
