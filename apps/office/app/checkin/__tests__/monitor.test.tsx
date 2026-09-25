@@ -1,9 +1,13 @@
+// @vitest-environment jsdom
+import { act } from 'react';
+import { createRoot } from 'react-dom/client';
 import { renderToStaticMarkup } from 'react-dom/server';
+import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import type { MonitorRow, ViolationRow } from '../types';
 
 // Outside Next there is no router, no server and no Supabase; none is under test.
-vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
+vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }) }));
 vi.mock('@thc/db/browser', () => ({ createClient: vi.fn() }));
 vi.mock('../actions', () => ({ resolveViolation: vi.fn() }));
 
@@ -15,6 +19,24 @@ vi.mock('@thc/domain', async (importOriginal) => ({
 }));
 
 const { MonitorScreen } = await import('../MonitorScreen');
+
+/**
+ * The monitor reads the reader's zone with `useViewerZone()` (audit D41):
+ * UK on the server render, the browser's zone once mounted. The §1.8 zone
+ * cases below are therefore MOUNTED renders — a static render would only
+ * ever show the UK first paint (zones.test.tsx pins that half).
+ */
+function mounted(node: ReactNode): string {
+  (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  act(() => root.render(node));
+  const html = container.innerHTML;
+  act(() => root.unmount());
+  container.remove();
+  return html;
+}
 const { ResolveModal } = await import('../ResolveModal');
 
 const VIOLATION: ViolationRow = {
@@ -82,7 +104,7 @@ describe('/checkin (§9.5)', () => {
 
   describe('§1.8 zones, read from Athens', () => {
     it('shows the Due pill in the viewer’s own zone with no suffix, beside the UK window', () => {
-      const html = renderToStaticMarkup(
+      const html = mounted(
         <MonitorScreen
           rows={[{ ...ROW, checkInAt: null, lastFixInside: null, lastFixAt: null, status: 'due' }]}
           violations={[]}
@@ -96,7 +118,7 @@ describe('/checkin (§9.5)', () => {
     });
 
     it('shows an actual check-in stamp in the viewer’s zone only', () => {
-      const html = renderToStaticMarkup(<MonitorScreen rows={[ROW]} violations={[]} />);
+      const html = mounted(<MonitorScreen rows={[ROW]} violations={[]} />);
       expect(html).toContain('class="stamp">14:21<');
     });
 

@@ -121,12 +121,8 @@ export function shiftPhase({ shift, openBreak, now }: PhaseInput): ShiftPhase {
 
   if (now < addMinutes(startsAt, -CHECK_IN_OPENS_MIN)) return 'before_window';
 
-  // The lock, and its one exception: a booking confirmed AFTER the shift
-  // had already started keeps its button until the shift ends, because a
-  // window measured from a start they were not booked for means nothing.
-  const confirmedAfterStart = shift.confirmedAt !== null && new Date(shift.confirmedAt) > startsAt;
-  const locksAt = confirmedAfterStart ? endsAt : addMinutes(startsAt, CHECK_IN_GRACE_MIN);
-  return now >= locksAt ? 'locked' : 'check_in';
+  const { locks } = checkInWindow(shift);
+  return now >= locks ? 'locked' : 'check_in';
 }
 
 /**
@@ -142,13 +138,30 @@ export function turnedAwayReply(reply: Record<string, unknown>): { payMin: numbe
   return { payMin: payMin === null || payMin === undefined ? null : Number(payMin) };
 }
 
-/** The check-in window the screen quotes back: "Check-in window 16:30 – 17:30". */
-export function checkInWindow(startsAt: string): { opens: Date; locks: Date } {
-  const start = new Date(startsAt);
+/**
+ * The check-in window the screen quotes back: "Check-in window 16:30 –
+ * 17:30". The lock, and its one exception: a booking confirmed AFTER the
+ * shift had already started keeps its button until the shift ends (§3.4),
+ * because a window measured from a start they were not booked for means
+ * nothing — so the screen must not quote start+30 to them either.
+ */
+export function checkInWindow(shift: Pick<ShiftDetail, 'startsAt' | 'endsAt' | 'confirmedAt'>): {
+  opens: Date;
+  locks: Date;
+  confirmedAfterStart: boolean;
+} {
+  const start = new Date(shift.startsAt);
+  const confirmedAfterStart = shift.confirmedAt !== null && new Date(shift.confirmedAt) > start;
   return {
     opens: addMinutes(start, -CHECK_IN_OPENS_MIN),
-    locks: addMinutes(start, CHECK_IN_GRACE_MIN),
+    locks: confirmedAfterStart ? new Date(shift.endsAt) : addMinutes(start, CHECK_IN_GRACE_MIN),
+    confirmedAfterStart,
   };
+}
+
+/** The instant check-out locks and RULE-02 takes over: end + 4 h. */
+export function checkOutLocksAt(endsAt: string): Date {
+  return addMinutes(new Date(endsAt), NO_CHECK_OUT_AFTER_MIN);
 }
 
 /** Metres between two WGS-84 points — the same haversine the venue map uses. */

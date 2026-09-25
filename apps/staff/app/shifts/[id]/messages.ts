@@ -17,11 +17,18 @@ export const CHECK_IN_MESSAGES: Record<string, string> = {
   already_checked_in: 'You’re already checked in.',
 };
 
+/**
+ * §5.1 / RULE-02 second trigger, word for word: off site, and no on-site
+ * fix after check-in. The full-screen state (FullScreens.tsx) and the
+ * message table say the same sentence.
+ */
+export const NO_ON_SITE_FIX =
+  'We couldn’t confirm when you left the venue — the office will confirm your finish time with you.';
+
 export const MESSAGES: Record<string, string> = {
   ...CHECK_IN_MESSAGES,
   checked_out: 'You’re checked out.',
-  no_check_out_office_confirms:
-    'We couldn’t confirm when you left the venue — the office will confirm your finish time with you.',
+  no_check_out_office_confirms: NO_ON_SITE_FIX,
   no_check_out_locked: 'Check-out has closed. The office will confirm your finish time with you.',
   // §5.1: check-out is enabled "once the shift has started" — a press
   // before the ROLE section's start (RULE-18) is refused by check_out().

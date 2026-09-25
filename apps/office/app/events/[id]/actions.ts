@@ -182,6 +182,11 @@ function noShowRefusal(raw: string): string {
 function getBackRefusal(raw: string): string {
   if (/admins_only/.test(raw)) return 'Only the office can get a worker back.';
   if (/no_open_no_show/.test(raw)) return 'This worker has no unresolved no-show to get back from.';
+  // D17 (20260930100000): after the section's end the press is not an
+  // arrival, and the board has no field for one.
+  if (/arrived_at_required/.test(raw)) {
+    return 'The shift has ended — use Resolve in the violation log to enter the arrival and finish.';
+  }
   return raw;
 }
 

@@ -262,7 +262,13 @@
       "start until four hours after the scheduled end, FROM ANYWHERE — the geofence",
       "only decides which timestamp is recorded and which message the worker sees.",
       "recordedMinFromStart is the timestamp RULE-01 then prices, so the off-site",
-      "press records the last on-site fix, never the press itself."
+      "press records the last on-site fix, never the press itself.",
+      "leftEarly (audit D5, ADR-0035): the press is more than 15 minutes before the",
+      "scheduled end and the check-out goes through, on site or off. It raises the",
+      "'Left early' violation (§9.5) that blocks RULE-14's floor, alongside whatever",
+      "`violation` says. A stale off-site fix (D15): more than 30 minutes before the",
+      "press AND before the end is still recorded, but raises No check-out for a",
+      "manager to confirm."
     ],
     "defaults": {
       "shiftMin": 480,
@@ -278,7 +284,8 @@
           "decision": "not_started",
           "recordedMinFromStart": null,
           "violation": "none",
-          "messageKey": "check_out_not_open"
+          "messageKey": "check_out_not_open",
+          "leftEarly": false
         }
       },
       {
@@ -288,7 +295,8 @@
           "decision": "recorded_on_site",
           "recordedMinFromStart": 480,
           "violation": "none",
-          "messageKey": "checked_out"
+          "messageKey": "checked_out",
+          "leftEarly": false
         }
       },
       {
@@ -298,17 +306,19 @@
           "decision": "recorded_on_site",
           "recordedMinFromStart": 300,
           "violation": "none",
-          "messageKey": "checked_out"
+          "messageKey": "checked_out",
+          "leftEarly": true
         }
       },
       {
-        "name": "off site records the last on-site fix, not the press (left 16:00, pressed 21:00)",
+        "name": "off site records the last on-site fix, not the press (left 16:00, pressed 21:00) — and a fix that old is reviewed",
         "input": { "atMinFromStart": 660, "insideGeofence": false, "lastOnSiteMinFromStart": 420 },
         "expect": {
           "decision": "recorded_last_on_site",
           "recordedMinFromStart": 420,
-          "violation": "none",
-          "messageKey": "checked_out_off_site"
+          "violation": "no_checkout",
+          "messageKey": "checked_out_off_site",
+          "leftEarly": false
         }
       },
       {
@@ -318,7 +328,8 @@
           "decision": "recorded_last_on_site",
           "recordedMinFromStart": 480,
           "violation": "none",
-          "messageKey": "checked_out_off_site"
+          "messageKey": "checked_out_off_site",
+          "leftEarly": false
         }
       },
       {
@@ -328,7 +339,8 @@
           "decision": "no_on_site_fix",
           "recordedMinFromStart": -8,
           "violation": "no_checkout",
-          "messageKey": "no_check_out_office_confirms"
+          "messageKey": "no_check_out_office_confirms",
+          "leftEarly": false
         }
       },
       {
@@ -338,7 +350,8 @@
           "decision": "locked",
           "recordedMinFromStart": null,
           "violation": "no_checkout",
-          "messageKey": "no_check_out_locked"
+          "messageKey": "no_check_out_locked",
+          "leftEarly": false
         }
       },
       {
@@ -348,7 +361,107 @@
           "decision": "locked",
           "recordedMinFromStart": null,
           "violation": "no_checkout",
-          "messageKey": "no_check_out_locked"
+          "messageKey": "no_check_out_locked",
+          "leftEarly": false
+        }
+      },
+      {
+        "name": "checking out on site 15 minutes before the end is not Left early",
+        "input": { "atMinFromStart": 465 },
+        "expect": {
+          "decision": "recorded_on_site",
+          "recordedMinFromStart": 465,
+          "violation": "none",
+          "messageKey": "checked_out",
+          "leftEarly": false
+        }
+      },
+      {
+        "name": "checking out on site 16 minutes before the end is Left early",
+        "input": { "atMinFromStart": 464 },
+        "expect": {
+          "decision": "recorded_on_site",
+          "recordedMinFromStart": 464,
+          "violation": "none",
+          "messageKey": "checked_out",
+          "leftEarly": true
+        }
+      },
+      {
+        "name": "a 14:00-22:00 shift checked out on site at 15:00 is Left early (audit D5)",
+        "input": { "atMinFromStart": 60 },
+        "expect": {
+          "decision": "recorded_on_site",
+          "recordedMinFromStart": 60,
+          "violation": "none",
+          "messageKey": "checked_out",
+          "leftEarly": true
+        }
+      },
+      {
+        "name": "an off-site press before the end is Left early too",
+        "input": { "atMinFromStart": 300, "insideGeofence": false, "lastOnSiteMinFromStart": 290 },
+        "expect": {
+          "decision": "recorded_last_on_site",
+          "recordedMinFromStart": 290,
+          "violation": "none",
+          "messageKey": "checked_out_off_site",
+          "leftEarly": true
+        }
+      },
+      {
+        "name": "a fix taken just after check-in and a press hours later is reviewed (audit D15)",
+        "input": { "atMinFromStart": 470, "insideGeofence": false, "lastOnSiteMinFromStart": -7 },
+        "expect": {
+          "decision": "recorded_last_on_site",
+          "recordedMinFromStart": -7,
+          "violation": "no_checkout",
+          "messageKey": "checked_out_off_site",
+          "leftEarly": false
+        }
+      },
+      {
+        "name": "a fix 30 minutes before the press is not stale",
+        "input": { "atMinFromStart": 400, "insideGeofence": false, "lastOnSiteMinFromStart": 370 },
+        "expect": {
+          "decision": "recorded_last_on_site",
+          "recordedMinFromStart": 370,
+          "violation": "none",
+          "messageKey": "checked_out_off_site",
+          "leftEarly": true
+        }
+      },
+      {
+        "name": "a fix within 30 minutes of the end is not stale, however late the press",
+        "input": { "atMinFromStart": 700, "insideGeofence": false, "lastOnSiteMinFromStart": 450 },
+        "expect": {
+          "decision": "recorded_last_on_site",
+          "recordedMinFromStart": 450,
+          "violation": "none",
+          "messageKey": "checked_out_off_site",
+          "leftEarly": false
+        }
+      },
+      {
+        "name": "a fix 31 minutes before both the press and the end is stale",
+        "input": { "atMinFromStart": 480, "insideGeofence": false, "lastOnSiteMinFromStart": 449 },
+        "expect": {
+          "decision": "recorded_last_on_site",
+          "recordedMinFromStart": 449,
+          "violation": "no_checkout",
+          "messageKey": "checked_out_off_site",
+          "leftEarly": false
+        }
+      },
+      {
+        "name": "off site with no fix, pressed early, is both No check-out and Left early",
+        "input": { "atMinFromStart": 120, "insideGeofence": false, "lastOnSiteMinFromStart": null },
+        "expect": {
+          "decision": "no_on_site_fix",
+          "recordedMinFromStart": -8,
+          "violation": "no_checkout",
+          "messageKey": "no_check_out_office_confirms",
+          "leftEarly": true
         }
       }
     ]
@@ -598,37 +711,151 @@
       "turned_away_minutes, RULE-15. A flat four hours, not half the shift and not",
       "tied to its length, decided by the logged attempt (CheckLog.attempted_at)."
     ],
-    "defaults": { "shiftMin": 480 },
+    "defaults": {
+      "shiftMin": 480
+    },
     "cases": [
       {
         "name": "on time is a fixed four hours",
         "input": { "attemptMinFromStart": 10 },
-        "expect": { "payMin": 240 }
+        "expect": {
+          "payMin": 240
+        }
       },
       {
         "name": "the last minute of the grace is still on time",
         "input": { "attemptMinFromStart": 29 },
-        "expect": { "payMin": 240 }
+        "expect": {
+          "payMin": 240
+        }
       },
       {
         "name": "at start+30 the grace has elapsed and nothing is paid",
         "input": { "attemptMinFromStart": 30 },
-        "expect": { "payMin": 0 }
+        "expect": {
+          "payMin": 0
+        }
       },
       {
         "name": "late is paid nothing",
         "input": { "attemptMinFromStart": 45 },
-        "expect": { "payMin": 0 }
+        "expect": {
+          "payMin": 0
+        }
       },
       {
         "name": "arriving before the start is on time",
         "input": { "attemptMinFromStart": -20 },
-        "expect": { "payMin": 240 }
+        "expect": {
+          "payMin": 240
+        }
       },
       {
         "name": "four hours flat on a ten-hour shift",
         "input": { "shiftMin": 600, "attemptMinFromStart": 0 },
-        "expect": { "payMin": 240 }
+        "expect": {
+          "payMin": 240
+        }
+      }
+    ]
+  },
+
+  "breaks": {
+    "$comment": [
+      "break_window_minutes / unpaid_break_minutes, §5.2b and audit D49. Every break is",
+      "clipped to the paid window [max(check-in, start), min(finish, end)] before it is",
+      "deducted: RULE-01 never paid minutes outside it, so taking them again as a break",
+      "would take them twice. finishMinFromStart is the manager-entered finish, the",
+      "recorded check-out, or now for a shift still running. A break with no end runs",
+      "to the finish. Each break is rounded to whole minutes, then summed."
+    ],
+    "defaults": {
+      "shiftMin": 480,
+      "checkInMinFromStart": 0,
+      "finishMinFromStart": 480
+    },
+    "cases": [
+      {
+        "name": "a break inside the window is deducted in full",
+        "input": { "breaks": [[180, 200]] },
+        "expect": {
+          "unpaidBreakMin": 20
+        }
+      },
+      {
+        "name": "several breaks are summed",
+        "input": {
+          "breaks": [
+            [120, 140],
+            [300, 315]
+          ]
+        },
+        "expect": {
+          "unpaidBreakMin": 35
+        }
+      },
+      {
+        "name": "a break before the scheduled start costs nothing",
+        "input": { "checkInMinFromStart": -30, "breaks": [[-25, -10]] },
+        "expect": {
+          "unpaidBreakMin": 0
+        }
+      },
+      {
+        "name": "a break straddling the start is clipped to the start",
+        "input": { "checkInMinFromStart": -30, "breaks": [[-10, 10]] },
+        "expect": {
+          "unpaidBreakMin": 10
+        }
+      },
+      {
+        "name": "a break before a late check-in costs nothing past it",
+        "input": { "checkInMinFromStart": 45, "breaks": [[40, 60]] },
+        "expect": {
+          "unpaidBreakMin": 15
+        }
+      },
+      {
+        "name": "a break after the scheduled end costs nothing",
+        "input": { "finishMinFromStart": 540, "breaks": [[490, 520]] },
+        "expect": {
+          "unpaidBreakMin": 0
+        }
+      },
+      {
+        "name": "a break straddling the end is clipped to the end",
+        "input": { "finishMinFromStart": 540, "breaks": [[470, 500]] },
+        "expect": {
+          "unpaidBreakMin": 10
+        }
+      },
+      {
+        "name": "a break still running ends at the finish",
+        "input": { "finishMinFromStart": 300, "breaks": [[280, null]] },
+        "expect": {
+          "unpaidBreakMin": 20
+        }
+      },
+      {
+        "name": "a break still running is clipped to the end as well",
+        "input": { "finishMinFromStart": 600, "breaks": [[460, null]] },
+        "expect": {
+          "unpaidBreakMin": 20
+        }
+      },
+      {
+        "name": "a break past an early finish costs nothing",
+        "input": { "finishMinFromStart": 200, "breaks": [[210, 230]] },
+        "expect": {
+          "unpaidBreakMin": 0
+        }
+      },
+      {
+        "name": "no breaks, nothing deducted",
+        "input": { "breaks": [] },
+        "expect": {
+          "unpaidBreakMin": 0
+        }
       }
     ]
   },
@@ -639,7 +866,8 @@
       "two decimals, null with no history (the candidates function defaults that to 90).",
       "Sample = worked + turned_away + any booking with an unresolved no_show (it stays",
       "confirmed in the roster, §3.3). Against while unresolved: no_show, no_checkout.",
-      "Weigh nothing: late, left_early, left_geofence (§9.5 'no automatic consequence').",
+      "Weigh nothing: late, left_early, left_geofence (§9.5 'no automatic consequence'),",
+      "and a no_checkout raised only to review a stale on-site fix (D15, ADR-0035).",
       "Not in the generated .psql: supabase/tests/596_show_rate_derived.sql replays these",
       "cases by name against real bookings and violations. Owned by the `checkin` bot."
     ],
@@ -709,6 +937,22 @@
           "bookings": [
             { "status": "worked", "violations": [] },
             { "status": "worked", "violations": [{ "type": "no_checkout", "resolved": true }] }
+          ]
+        },
+        "expect": { "rate": 100 }
+      },
+      {
+        "name": "a No check-out raised to review a stale on-site fix weighs nothing (D15)",
+        "input": {
+          "bookings": [
+            { "status": "worked", "violations": [] },
+            {
+              "status": "worked",
+              "violations": [
+                { "type": "no_checkout", "resolved": false, "staleFixReview": true },
+                { "type": "left_early", "resolved": false }
+              ]
+            }
           ]
         },
         "expect": { "rate": 100 }

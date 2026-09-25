@@ -21,3 +21,16 @@ export function supabaseConfigured(): boolean {
     process.env['NEXT_PUBLIC_SUPABASE_URL'] && process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'],
   );
 }
+
+/**
+ * A read the screen cannot go on without failed (audit D16, D18). Thrown
+ * into the nearest `error.tsx`, which says so and offers the retry — the
+ * alternative, returning null, is what used to render as an empty list, a
+ * 404 or an unlocked app.
+ */
+export class StaffLoadError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'StaffLoadError';
+  }
+}
