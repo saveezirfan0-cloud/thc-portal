@@ -1,0 +1,71 @@
+{
+  "description": "§3.5: 12:00 Europe/London on the UK calendar day before the role section starts. The contract between readyDeadline() in packages/domain/src/staff.ts and ready_deadline() in SQL. Every instant is UTC; the note says what it reads as in London. Regenerate the pgTAP half with: node supabase/tests/_shared/ready-deadline-vectors.mjs",
+  "cases": [
+    {
+      "name": "bst_evening",
+      "note": "18:00 BST Sat 19 Sep 2026 -> 12:00 BST Fri 18 Sep",
+      "startsAt": "2026-09-19T17:00:00.000Z",
+      "deadline": "2026-09-18T11:00:00.000Z"
+    },
+    {
+      "name": "gmt_evening",
+      "note": "17:00 GMT Sat 19 Dec 2026 -> 12:00 GMT Fri 18 Dec",
+      "startsAt": "2026-12-19T17:00:00.000Z",
+      "deadline": "2026-12-18T12:00:00.000Z"
+    },
+    {
+      "name": "bst_after_midnight",
+      "note": "02:00 BST Sun 20 Sep 2026 -> 12:00 BST Sat 19 Sep, 38 hours earlier",
+      "startsAt": "2026-09-20T01:00:00.000Z",
+      "deadline": "2026-09-19T11:00:00.000Z"
+    },
+    {
+      "name": "gmt_midnight_exactly",
+      "note": "00:00 GMT Wed 11 Nov 2026 -> 12:00 GMT Tue 10 Nov, 12 hours earlier",
+      "startsAt": "2026-11-11T00:00:00.000Z",
+      "deadline": "2026-11-10T12:00:00.000Z"
+    },
+    {
+      "name": "autumn_2330_gmt_on_the_changeover_day",
+      "note": "23:30 GMT Sun 25 Oct 2026 (clocks went back at 02:00 BST that morning) -> 12:00 BST Sat 24 Oct. A fixed 24 h lands on 00:30 BST on the 25th and gives the 25th",
+      "startsAt": "2026-10-25T23:30:00.000Z",
+      "deadline": "2026-10-24T11:00:00.000Z"
+    },
+    {
+      "name": "autumn_0130_bst_before_the_change",
+      "note": "01:30 BST Sun 25 Oct 2026, the first of the two 01:30s -> 12:00 BST Sat 24 Oct",
+      "startsAt": "2026-10-25T00:30:00.000Z",
+      "deadline": "2026-10-24T11:00:00.000Z"
+    },
+    {
+      "name": "autumn_day_after_the_change",
+      "note": "10:00 GMT Mon 26 Oct 2026 -> 12:00 GMT Sun 25 Oct, the changeover day itself",
+      "startsAt": "2026-10-26T10:00:00.000Z",
+      "deadline": "2026-10-25T12:00:00.000Z"
+    },
+    {
+      "name": "spring_0030_bst_the_day_after_the_change",
+      "note": "00:30 BST Mon 30 Mar 2026 (clocks went forward on Sun 29 Mar) -> 12:00 BST Sun 29 Mar. A fixed 24 h lands on 23:30 GMT on the 28th and gives the 28th",
+      "startsAt": "2026-03-29T23:30:00.000Z",
+      "deadline": "2026-03-29T11:00:00.000Z"
+    },
+    {
+      "name": "spring_0030_gmt_on_the_changeover_day",
+      "note": "00:30 GMT Sun 29 Mar 2026, before the change at 01:00 GMT -> 12:00 GMT Sat 28 Mar",
+      "startsAt": "2026-03-29T00:30:00.000Z",
+      "deadline": "2026-03-28T12:00:00.000Z"
+    },
+    {
+      "name": "spring_evening_on_the_changeover_day",
+      "note": "18:00 BST Sun 29 Mar 2026 -> 12:00 GMT Sat 28 Mar",
+      "startsAt": "2026-03-29T17:00:00.000Z",
+      "deadline": "2026-03-28T12:00:00.000Z"
+    },
+    {
+      "name": "new_year_rolls_the_month_and_year",
+      "note": "09:00 GMT Fri 1 Jan 2027 -> 12:00 GMT Thu 31 Dec 2026",
+      "startsAt": "2027-01-01T09:00:00.000Z",
+      "deadline": "2026-12-31T12:00:00.000Z"
+    }
+  ]
+}

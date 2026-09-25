@@ -63,16 +63,33 @@ Deno.serve((request) =>
     const onlyEvent = eventOf(request);
 
     // The 12:05 cutoff is registered as an every-5-minute entry because
-    // pg_cron is UTC and the deadline is UK wall-clock (§3.5). Without
-    // this gate the release runs 288 times a day, and each pass drops
-    // confirmed workers and sends them N6b.
+    // pg_cron is UTC and the deadline is UK wall-clock (§3.5). The run in
+    // the 12:05 UK window releases and re-fills. Every later run until UK
+    // midnight is a retry of it, so a failed 12:05 run is made good five
+    // minutes later instead of never (20260929100000, ADR-0034): it calls
+    // release_unready_bookings(), which is idempotent and never reaches a
+    // shift starting today, and goes on to re-fill only if it released
+    // somebody. Before 12:05 nothing runs.
     if (mode === 'cutoff') {
-      const { data: open, error } = await db.rpc('is_uk_time', {
-        p_now: new Date().toISOString(),
-        p_hhmm: '12:05',
-      });
-      if (error) throw new Error(`is_uk_time: ${error.message}`);
-      if (!open) return { mode, skipped: 'not the 12:05 UK window' };
+      const ukFrom1205 = async (window: string) => {
+        const { data, error } = await db.rpc('is_uk_time', {
+          p_now: new Date().toISOString(),
+          p_hhmm: '12:05',
+          p_window: window,
+        });
+        if (error) throw new Error(`is_uk_time: ${error.message}`);
+        return data === true;
+      };
+      if (!(await ukFrom1205('5 minutes'))) {
+        if (!(await ukFrom1205('11 hours 55 minutes'))) {
+          return { mode, skipped: 'before the 12:05 UK cutoff' };
+        }
+        const { data: retried, error } = await db.rpc('release_unready_bookings');
+        if (error) throw new Error(`release_unready_bookings: ${error.message}`);
+        if (!retried) return { mode, retry: true, released: 0 };
+        // Released by the retry, so the section has a gap: fall through to
+        // the re-fill. The release below is idempotent and finds nothing.
+      }
     }
 
     const counts: Record<string, unknown> = { mode, sections: 0, invited: 0, released: 0 };

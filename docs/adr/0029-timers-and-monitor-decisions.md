@@ -1,6 +1,6 @@
 # ADR-0029 · Timing decisions the 26.09 audit round made in SQL
 
-Status: accepted · 26.09.2026 · 20260927140000, 20260927140300, 20260927160500, 20260927160600, 20260927161200
+Status: accepted · 26.09.2026 · 20260927140000, 20260927140300, 20260927160500, 20260927160600, 20260927161200 · §1 and §3 amended 29.09.2026 by 20260929100000 (ADR-0034)
 
 Where §7 / §8 name a day but not an hour, or a bound the scope does not give,
 this records the choice so the next reader does not re-derive it.
@@ -13,15 +13,23 @@ first (#56, `20260927140000`, `n6_due_at()` / `n7_due_at()`) is the one the
 tree runs, and this round's restatement is withdrawn (its file is now
 `20260927160500`, N5 payload only — see its header):
 
-- **N6** from **08:00 Europe/London the day before** until the 12:00 deadline,
-  to a confirmed booking with no "I'm ready" that the cutoff can still touch
-  (§2 below).
+- **N6** from **08:00 Europe/London the day before** (`n6_due_at()`) until
+  the 12:00 deadline (`ready_deadline()`), exclusive, to a confirmed booking
+  with no "I'm ready" that the cutoff can still touch (§2 below).
 - **N7** from **09:00 Europe/London on the day, or two hours before the start
-  if that is earlier** (never before the UK day begins), until 30 minutes
-  before the start, where N9 takes over.
+  if that is earlier**, never before 00:00 UK that day (`n7_due_at()`), until
+  `n7_closes_at()`: 30 minutes before the start, where N9 takes over — but
+  never less than 30 minutes after it opened and never past the start, so a
+  section starting 00:01–00:59 UK is still reached. A section starting at
+  exactly 00:00 UK gets no N7 (ADR-0034 §2). Not to a booking already checked
+  in or already confirmed on the day.
+- Both are keyed `<code>:booking:<id>:<start epoch seconds>`
+  (`booking_reminder_key()`, 20260929100000): once per booking per start,
+  and again if the office moves the start.
 
-This round had N7 at 08:00; 09:00 is what the N7 gallery shows
-(`wireframes/staff/shifts.html`). Both hours are listed for THC to confirm in
+This round had N7 at 08:00 and open until the start; neither is in effect —
+09:00 is what the N7 gallery shows (`wireframes/staff/shifts.html`) and is
+what shipped. Both hours are listed for THC to confirm in
 `packages/notifications/REGISTER-NOTES.md`.
 
 ## 2 · The 12:05 cutoff exempts a late confirmation (§3.5) — decided in 20260927140300
@@ -34,18 +42,27 @@ replacements the 12:05 re-fill itself produced were released at 12:05 on the
 shift day with N6b "…removed from your shift tomorrow…". This round's
 `confirmed_at < ready_deadline()` clause said the same thing in the same
 function and is withdrawn in favour of the shared predicate; `@thc/domain`'s
-`readyDeadlinePassed()` / `shiftCard` mirror it.
+`readyDeadlinePassed()` / `shiftCard` mirror it. Since 20260929100000 the
+release also requires that N6 was queued for the booking's current start, and
+`mark_ready()` refuses a press at the deadline (ADR-0034 §3–4).
 
-## 3 · BG-10's bound stays the section's end (§5.2b) — decided in 20260927140300
+## 3 · BG-10 / N13 runs until the check-out lock (§5.2b) — decided in 20260929100000
 
-This round moved N13's upper bound to end + 4 h (the check-out lock), reading
-§5.2b's "does not disable or disappear if the shift runs longer than planned".
-The merged round kept `< ends_at` and recorded why in `20260927140300`: without
-the section bound the alert reached every worker six hours past check-in whose
-shift had already finished — one carrying a No check-out violation — telling
-them to ask a manager on site about a break hours after they had gone home.
-Main's version wins (docs/10 §3b); a worker whose shift genuinely runs over is
-the open question, listed for `checkin`.
+N13 goes to a worker on an unpaid-break client who has been checked in six
+hours with no break logged and has not checked out, **until end + 4 h** (the
+check-out lock, RULE-02), and never to a booking carrying a `no_checkout`
+violation. Once per booking (`N13:booking:<id>`).
+
+History, because the tree said two things. `20260927140300` bounded it by the
+section's end (`< ends_at`), and this ADR recorded that as the decision. That
+contradicts §5.2b — the Breaks block "is not tied to the shift's scheduled end
+time and does not disable or disappear if the shift runs longer than planned"
+— so a worker still on site in an overrun was never prompted (audit D1c,
+D27). The case the old bound was protecting against, a worker who went home
+without checking out, is the one the check-out lock already names: at end + 4 h
+BG-09 raises No check-out in the same run, and that violation also stops N13
+earlier when it is raised on the press. The withdrawn `20260926130400` had this
+bound; it never took effect, and `20260929100000` restates it.
 
 ## 4 · "Left the geofence" only during the section (BG-07, RULE-18)
 
