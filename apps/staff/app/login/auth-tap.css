@@ -3,13 +3,9 @@
    The secondary actions on these cards are text links — "Forgot password?",
    "‹ Back to sign in", "Send me a new link" — drawn at 12px, which the
    wireframe wants, but a link's box is its line of text. On the Staff App
-   every tappable thing is 44px, so the links keep their look and grow their
-   hit area: inline-flex, a minimum height, and horizontal padding. Tokens
-   only; the minimum is derived from the spacing scale until packages/ui
-   carries it as its own token. */
-:root {
-  --tap-min: calc(var(--sp-28) + var(--sp-16));
-}
+   every tappable thing is at least `--tap-min` (packages/ui tokens.css), so
+   the links keep their look and grow their hit area: inline-flex, a minimum
+   height, and horizontal padding. Tokens only. */
 
 .auth-card a.sm,
 .auth-card .row > a,

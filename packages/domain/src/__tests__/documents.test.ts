@@ -10,8 +10,12 @@ import {
   documentFolder,
   documentState,
   parseShareCode,
+  termLetterDatesVerdict,
+  termLetterExpired,
   usesGenericUpload,
 } from '../documents';
+import type { TermRange } from '../documents';
+import termLetterVectors from '../termLetter.vectors.json' with { type: 'json' };
 import { formatShareCode } from '../shareCode';
 import { evidenceObjectPath } from '../completionLetter';
 
@@ -120,5 +124,44 @@ describe('documentState — §4.4', () => {
     const letter = row({ docType: 'university_term_dates_letter', expiresOn: '2025-12-31' });
     expect(documentState(letter, today, false)).toBe('not_needed');
     expect(documentState(letter, today, true)).toBe('expired');
+  });
+});
+
+describe('§4.2 an already-expired term-dates letter is not accepted', () => {
+  it.each(termLetterVectors.cases)('$name', ({ today, ranges, expect: expected }) => {
+    expect(termLetterDatesVerdict(today, ranges as TermRange[] | null)).toBe(expected);
+  });
+
+  it('termLetterExpired is true for the refusal only, never for the uncertainty', () => {
+    expect(termLetterExpired('2026-09-25', [{ from: '2026-06-13', to: '2026-09-24' }])).toBe(true);
+    expect(termLetterExpired('2026-09-25', [{ from: '2026-06-13', to: '2026-09-25' }])).toBe(false);
+    expect(termLetterExpired('2026-09-25', [])).toBe(false);
+    expect(termLetterExpired('2026-09-25', null)).toBe(false);
+  });
+
+  it('is judged on the printed dates, not on the 31 December doc_expires_on() gives the letter', () => {
+    // Uploaded in September, so doc_expires_on() says 31 December this year
+    // and the ladder has not opened — but every date on it is last year's.
+    expect(
+      documentState(
+        {
+          docType: 'university_term_dates_letter',
+          reviewStatus: 'pending',
+          expiresOn: '2026-12-31',
+        },
+        '2026-09-25',
+      ),
+    ).toBe('in_review');
+    expect(termLetterExpired('2026-09-25', [{ from: '2025-06-14', to: '2025-09-21' }])).toBe(true);
+  });
+
+  it('the SQL twin refuses Verify and flags the extraction with the same rule (20260928110300)', () => {
+    const sql = readFileSync(
+      resolve(migrations, '20260928110300_term_letter_dates_in_the_future.sql'),
+      'utf8',
+    );
+    expect(sql).toContain('create or replace function public.term_letter_expired(');
+    expect(sql).toContain("raise exception 'term_letter_expired");
+    expect(sql).toContain("'letter expired'");
   });
 });

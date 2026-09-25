@@ -15,7 +15,7 @@
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(65);
+select plan(75);
 
 \ir _shared/overlap_vectors.psql
 
@@ -211,8 +211,11 @@ select is((select qualified from auto_assign_candidates(:'sec') where staff_id =
 
 select ok((select distance_km from auto_assign_candidates(:'sec') where staff_id = :'clean') < 0.2,
   'the proximity input is the real distance from the worker home to the venue');
-select is((select reliability from auto_assign_candidates(:'sec') where staff_id = :'clean'), 98::numeric,
-  'the show-rate input comes off the worker, for scoring in TypeScript');
+-- The fixture row says 98, but the column is not read: the show-rate is
+-- staff_show_rate(), derived from bookings and violations (20260928110100,
+-- pinned in 596), and this worker has no history — so the §6 zero point.
+select is((select reliability from auto_assign_candidates(:'sec') where staff_id = :'clean'), 90::numeric,
+  'the show-rate input is derived from the worker''s history, not staff.reliability — no history is 90, for scoring in TypeScript');
 select is_empty(
   $$ select 1 from auto_assign_candidates('7e7e7e7e-0000-4000-8000-000000000001')
       where reliability is null or rating is null or distance_km is null $$,
@@ -272,6 +275,70 @@ update staff set status = 'compliant', left_at = null, removed_at = null where i
 set local session_replication_role = origin;
 select is((select gate from auto_assign_candidates(:'sec') where staff_id = :'clean2'), null,
   'and they return to the pool cleanly, so the cases below are unaffected by having borrowed them');
+
+-- ---------------------------------------------------------------------
+-- 4b. The target is CONFIRMED, and a round adds `allocation` (§3.4)
+--
+-- "it adds allocation invites every hour … earlier invitations stay
+-- open … it keeps adding until headcount + buffer is filled". Fill counts
+-- only confirmed, so open invitations do not count against the target:
+-- with allocation = headcount + buffer, round two must still invite when
+-- nobody has confirmed (20260928110200). Its own section, so the fill
+-- of :'sec' above is untouched.
+-- ---------------------------------------------------------------------
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                charge_rate, pay_rate, allocation_per_hour)
+values ('7e7e7e7e-0000-4000-8000-0000000000b0', :'evt', :'ro',
+        now() + interval '12 days', now() + interval '12 days 8 hours', 1, 1, 22.97, 14.00, 2);
+insert into staff (id, first_name, last_name, email, phone, dob, status, rtw_branch, home_location,
+                   reliability, rating) values
+  ('7f7f7f7f-0000-4000-8000-0000000000b1','Round','One',  'r1@auto.test','+447700900231', date '1995-01-01','compliant','uk_irish',
+   st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography, 90, 4.5),
+  ('7f7f7f7f-0000-4000-8000-0000000000b2','Round','Two',  'r2@auto.test','+447700900232', date '1995-01-02','compliant','uk_irish',
+   st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography, 90, 4.5),
+  ('7f7f7f7f-0000-4000-8000-0000000000b3','Round','Three','r3@auto.test','+447700900233', date '1995-01-03','compliant','uk_irish',
+   st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography, 90, 4.5),
+  ('7f7f7f7f-0000-4000-8000-0000000000b4','Round','Four', 'r4@auto.test','+447700900234', date '1995-01-04','compliant','uk_irish',
+   st_setsrid(st_makepoint(-0.1010, 51.5000), 4326)::geography, 90, 4.5);
+insert into staff_roles (staff_id, role_id) values
+  ('7f7f7f7f-0000-4000-8000-0000000000b1', :'ro'), ('7f7f7f7f-0000-4000-8000-0000000000b2', :'ro'),
+  ('7f7f7f7f-0000-4000-8000-0000000000b3', :'ro'), ('7f7f7f7f-0000-4000-8000-0000000000b4', :'ro');
+
+select is((select allocation from auto_assign_due_shifts('hourly')
+            where shift_id = '7e7e7e7e-0000-4000-8000-0000000000b0'), 2,
+  'RULE-05: the hourly round reads allocation_per_hour as the number of invitations to add');
+select is((select still_short from auto_assign_due_shifts('hourly')
+            where shift_id = '7e7e7e7e-0000-4000-8000-0000000000b0'), 2,
+  'and still_short is the target (headcount + buffer) less CONFIRMED');
+
+-- Round one: allocation = 2 invitations, nobody confirmed.
+select is(invite_worker('7e7e7e7e-0000-4000-8000-0000000000b0', '7f7f7f7f-0000-4000-8000-0000000000b1')->>'invited', 'true',
+  'round one, first invitation');
+select is(invite_worker('7e7e7e7e-0000-4000-8000-0000000000b0', '7f7f7f7f-0000-4000-8000-0000000000b2')->>'invited', 'true',
+  'round one, second invitation — allocation reached with zero confirmed');
+select results_eq(
+  $$ select confirmed, invited from shift_fill('7e7e7e7e-0000-4000-8000-0000000000b0') $$,
+  $$ values (0, 2) $$,
+  'two open invitations, no fill');
+-- Round two, an hour later: nobody has answered. §3.4 says keep adding.
+select is(invite_worker('7e7e7e7e-0000-4000-8000-0000000000b0', '7f7f7f7f-0000-4000-8000-0000000000b3')->>'invited', 'true',
+  '§3.4: zero confirmed, allocation invited → the next round still invites (open invitations are not fill)');
+select isnt_empty(
+  $$ select 1 from auto_assign_due_shifts('hourly') where shift_id = '7e7e7e7e-0000-4000-8000-0000000000b0' $$,
+  'and the section stays due for the round after that');
+
+-- Once the target IS confirmed, the ceiling holds.
+update bookings set status = 'confirmed', confirmed_at = now()
+ where shift_id = '7e7e7e7e-0000-4000-8000-0000000000b0'
+   and staff_id in ('7f7f7f7f-0000-4000-8000-0000000000b1', '7f7f7f7f-0000-4000-8000-0000000000b2');
+select is(invite_worker('7e7e7e7e-0000-4000-8000-0000000000b0', '7f7f7f7f-0000-4000-8000-0000000000b4')->>'reason', 'target_met',
+  'target_met only once CONFIRMED reaches headcount + buffer');
+select is_empty(
+  $$ select 1 from auto_assign_due_shifts('hourly') where shift_id = '7e7e7e7e-0000-4000-8000-0000000000b0' $$,
+  'and a filled section is no longer due');
+select is((select status::text from bookings where shift_id = '7e7e7e7e-0000-4000-8000-0000000000b0'
+            and staff_id = '7f7f7f7f-0000-4000-8000-0000000000b3'), 'invited',
+  '§3.6: the third invitation is left open — auto-assign never withdraws');
 
 -- ---------------------------------------------------------------------
 -- 5. First-to-confirm and the automatic withdrawal (§3.4, §3.6)

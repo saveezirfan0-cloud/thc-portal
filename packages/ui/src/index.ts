@@ -60,6 +60,9 @@ export type { DocRowProps, DocState } from './components/DocRow';
 export { AuthCard } from './components/AuthCard';
 export type { AuthCardProps } from './components/AuthCard';
 
+export { ScheduledWindow, useViewerZone } from './components/ScheduledWindow';
+export type { ScheduledWindowProps } from './components/ScheduledWindow';
+
 export { SignOut } from './components/SignOut';
 export type { SignOutProps } from './components/SignOut';
 

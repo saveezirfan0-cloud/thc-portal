@@ -8,7 +8,8 @@
     "start": "next start --port 3001",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "gen:badge": "node scripts/gen-push-badge.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",
@@ -18,6 +19,7 @@
     "@thc/notifications": "workspace:*",
     "@thc/ui": "workspace:*",
     "next": "^15.5.4",
+    "qrcode": "^1.5.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
     "serwist": "^9.5.12"
@@ -25,9 +27,11 @@
   "devDependencies": {
     "@serwist/next": "^9.5.12",
     "@types/node": "^26.6.2",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "eslint": "^9.39.0",
+    "jsdom": "^30.1.1",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
   }

@@ -69,4 +69,26 @@ describe('the chrome that carries it', () => {
     );
     expect(markup).toContain('aria-label="Appearance"');
   });
+
+  it('is dropped from a public card whose wireframe draws none', () => {
+    // apply.html and activate.html: a card that reaches someone with no
+    // account yet has no app behind it to disagree with (ADR-0007).
+    const none = html(
+      <AuthCard product="Account activation" appearance="none">
+        <span />
+      </AuthCard>,
+    );
+    expect(none).not.toContain('aria-label="Appearance"');
+    expect(none).not.toContain('class="appearance"');
+    // `false` is the same request; `true` and `'corner'` are the default.
+    const card = (appearance: boolean | 'corner' | 'none') =>
+      html(
+        <AuthCard product="x" appearance={appearance}>
+          <span />
+        </AuthCard>,
+      ).includes('aria-label="Appearance"');
+    expect(card(false)).toBe(false);
+    expect(card('corner')).toBe(true);
+    expect(card(true)).toBe(true);
+  });
 });

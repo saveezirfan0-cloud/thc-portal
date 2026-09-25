@@ -55,6 +55,7 @@
   background: none;
   border: 0;
   padding: var(--sp-4) 0;
+  min-height: var(--tap-min);
   cursor: pointer;
   width: 100%;
   font-weight: var(--label-weight);
@@ -79,8 +80,10 @@
 
 /* The plain notice above a consequential submit (§10.7, §2.4). */
 .notice {
+  --accent: var(--cyan);
+  position: relative;
   border: 1px solid var(--line);
-  border-left: 3px solid var(--cyan);
+  border-left: 3px solid var(--accent);
   background: var(--glass);
   border-radius: var(--r-card);
   padding: var(--sp-10) var(--sp-12);
@@ -89,13 +92,32 @@
   flex-direction: column;
   gap: var(--sp-6);
 }
+/* On a rounded box a 3px left border renders as a crescent, so the rounded
+   look draws the accent inset — the same treatment packages/ui warm.css
+   gives .toast and .card.accent. */
+:root[data-style='warm'] .notice {
+  border-left: 1px solid var(--line);
+  padding-left: var(--sp-20);
+}
+:root[data-style='warm'] .notice::before {
+  content: '';
+  position: absolute;
+  left: var(--sp-8);
+  top: var(--sp-10);
+  bottom: var(--sp-10);
+  width: 3px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
+}
 
 /* Sub-screens: "‹ Documents" above the title. */
 .back-link {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
   font-family: var(--font-label);
   font-size: var(--fs-10);
-  color: var(--cyan);
+  color: var(--cyan-ink);
   letter-spacing: var(--label-track);
   text-transform: var(--label-case);
   margin-bottom: 1px;

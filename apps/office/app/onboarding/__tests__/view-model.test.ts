@@ -23,6 +23,7 @@ import {
   rejectedPill,
   returningActions,
   stageAge,
+  stageEnteredAt,
   ukDaysBetween,
 } from '../view-model';
 import type { CandidateRow, ReturningRow, StaffStatus } from '../types';
@@ -85,6 +86,9 @@ function candidate(over: Partial<CandidateRow> = {}): CandidateRow {
     rejection_cause: null,
     rejection_reason: null,
     rejected_by_name: null,
+    activated_at: null,
+    additional_info_done_at: null,
+    quiz_scores: [],
     ...over,
   };
 }
@@ -346,6 +350,29 @@ describe('the board', () => {
   });
 });
 
+describe('the instant a card counts its days from (ADR-0013)', () => {
+  const row = candidate({
+    status: 'contract',
+    stage_entered_at: '2026-09-15T09:00:00Z',
+    additional_info_done_at: '2026-09-21T16:30:00Z',
+    ...ALL_IN,
+  });
+
+  it('is the additional-info stamp for a Contract card, so "N d" restarts when the card moves', () => {
+    expect(stageEnteredAt(row, 'contract')).toBe('2026-09-21T16:30:00Z');
+    expect(stageAge(stageEnteredAt(row, 'contract'), NOW).label).toBe('2 d');
+    expect(stageAge(row.stage_entered_at, NOW).label).toBe('8 d');
+  });
+
+  it('is stage_entered_at for every other column, and for a Contract card with no stamp', () => {
+    expect(stageEnteredAt(row, 'additional_info')).toBe('2026-09-15T09:00:00Z');
+    expect(stageEnteredAt(row, 'quiz')).toBe('2026-09-15T09:00:00Z');
+    expect(stageEnteredAt({ ...row, additional_info_done_at: null }, 'contract')).toBe(
+      '2026-09-15T09:00:00Z',
+    );
+  });
+});
+
 describe('days in stage, in UK days (§1.8)', () => {
   it('counts calendar days in Europe/London, not 24-hour blocks', () => {
     // 23:30 UTC on 22 Sep is 00:30 BST on the 23rd: the same UK day as NOW.
@@ -498,6 +525,41 @@ describe('card lines the wireframe spells out (onboarding.html)', () => {
     expect(
       cardLines({ ...row, activated: false, docs_missing: null }, 'documents', NOW)[0]!.text,
     ).toBe('UK citizen · nothing uploaded yet · not activated');
+  });
+
+  it('dates the activation as the approved board does ("activated 17 Sep")', () => {
+    const row = candidate({
+      status: 'documents',
+      rtw_branch: 'uk_irish',
+      docs_missing: ['passport', 'ni_evidence', 'birth_certificate'],
+      activated: true,
+      activated_at: '2026-09-17T08:41:00Z',
+    });
+    expect(cardLines(row, 'documents', NOW)[0]!.text).toBe(
+      'UK citizen · 0 of 3 uploaded yet · activated 17 Sep',
+    );
+    // A date with no activation behind it is not printed: the view nulls
+    // activated_at until the password exists, and so does this.
+    expect(cardLines({ ...row, activated: false }, 'documents', NOW)[0]!.text).toBe(
+      'UK citizen · 0 of 3 uploaded yet · not activated',
+    );
+  });
+
+  it('lists every quiz attempt in order on the quiz-failed card (§2.9)', () => {
+    const row = candidate({
+      status: 'rejected',
+      rejection_cause: 'quiz_failed',
+      quiz_attempts_used: 3,
+      quiz_best_score: 75,
+      quiz_scores: [65, 75, 70],
+    });
+    expect(rejectedLines(row)[0]!.text).toBe(
+      'Attempts 65% · 75% · 70% — automatic rejection after the third failure; email E4 + terminal screen in the app (§2.9).',
+    );
+    // A row from before quiz_scores existed keeps the best-over-N line.
+    expect(rejectedLines({ ...row, quiz_scores: [] })[0]!.text).toMatch(
+      /^Best 75% over 3 attempts — automatic rejection/,
+    );
   });
 
   it('dates the automatic quiz unlock', () => {

@@ -3,13 +3,13 @@
 .evstrip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 10px;
+  gap: var(--sp-10);
 }
 .evcard {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 12px 14px;
+  gap: var(--sp-4);
+  padding: var(--sp-12) var(--sp-14);
   border: 1px solid var(--line);
   background: var(--panel);
   /* --radius is not a token, so this box had square corners on a page of
@@ -19,32 +19,32 @@
 .evcard .t {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--sp-8);
   font-family: var(--font-head);
   font-weight: 600;
 }
 .evcard .m {
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--muted);
 }
 .evcard .c {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  font-size: 12px;
+  gap: var(--sp-10);
+  font-size: var(--fs-12);
 }
 /* The flag is a border, not a fill: §9.5 keeps red on the pill. */
 .evcard.flag {
   border-color: var(--coral);
 }
 .evflag {
-  font-size: 11px;
+  font-size: var(--fs-11);
   /* --coral is the solid fill tone; --coral-ink / --coral-line are the two
      the system uses for danger text and its border on a panel, and they are
      what contrast.test.ts measures. */
   color: var(--coral-ink);
   border: 1px solid var(--coral-line);
-  padding: 1px 6px;
+  padding: 1px var(--sp-6);
   /* --radius-sm is not a token; a small inline flag takes the pill scale. */
   border-radius: var(--r-pill);
 }
@@ -56,7 +56,7 @@
   line-height: 1.3;
 }
 .win2 .l2 {
-  font-size: 11px;
+  font-size: var(--fs-11);
   color: var(--muted);
 }
 .monitor-tbl .stamp {

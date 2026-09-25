@@ -10,12 +10,12 @@
   justify-content: center;
   width: 20px;
   height: 20px;
-  margin-right: 8px;
+  margin-right: var(--sp-8);
   border-radius: var(--r-pill);
   background: var(--cyan-dim);
   color: var(--cyan-ink);
   font-family: var(--font-num);
-  font-size: 11px;
+  font-size: var(--fs-11);
 }
 
 /*
@@ -27,13 +27,13 @@
 .kv {
   display: grid;
   grid-template-columns: 170px 1fr;
-  gap: 8px 14px;
-  font-size: 13px;
+  gap: var(--sp-8) var(--sp-14);
+  font-size: var(--fs-13);
   align-items: baseline;
 }
 .kv .k {
   font-family: var(--font-label);
-  font-size: 10.5px;
+  font-size: var(--label-size);
   letter-spacing: var(--label-track);
   text-transform: var(--label-case);
   color: var(--muted);
@@ -48,7 +48,7 @@
 /* The dress-code list: chips plus the add row, on one line where it fits. */
 .dcs {
   display: flex;
-  gap: 6px;
+  gap: var(--sp-6);
   align-items: center;
   flex-wrap: wrap;
 }
@@ -58,12 +58,12 @@
   color: inherit;
   cursor: pointer;
   font: inherit;
-  padding: 0 0 0 4px;
+  padding: 0 0 0 var(--sp-4);
 }
 .dcs .input {
   height: 28px;
   width: 160px;
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 
 /* A role group in the qualified-staff block. */
@@ -73,10 +73,10 @@
 }
 .grp .gh {
   display: flex;
-  gap: 10px;
+  gap: var(--sp-10);
   align-items: baseline;
   width: 100%;
-  padding: 10px 14px;
+  padding: var(--sp-10) var(--sp-14);
   background: var(--panel-2);
   border: 0;
   border-radius: var(--r-card) var(--r-card) 0 0;
@@ -87,11 +87,11 @@
 }
 .grp .gh h4 {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--fs-13);
 }
 .grp .gh .cnt {
   font-family: var(--font-num);
-  font-size: 11px;
+  font-size: var(--fs-11);
   color: var(--cyan-ink);
 }
 
@@ -117,12 +117,12 @@
 .picker {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-6);
   max-height: 260px;
   overflow-y: auto;
   border: 1px solid var(--line);
   border-radius: var(--r-card);
-  padding: 10px 12px;
+  padding: var(--sp-10) var(--sp-12);
 }
 
 @media (max-width: 900px) {

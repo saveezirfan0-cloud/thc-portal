@@ -14,8 +14,15 @@ import {
 } from '@thc/ui';
 import { EventWindow } from './EventWindow';
 import { ukDateShort } from './format';
-import { byDateDescending, documentFor, fillOf, filterByTab, statusTone } from './rules';
-import type { LineupRow, PortalEvent, RoleSection, Tab } from './rules';
+import { byDateDescending, documentOffer, fillOf, filterByTab, statusTone } from './rules';
+import type {
+  DocumentKind,
+  DocumentOffer,
+  LineupRow,
+  PortalEvent,
+  RoleSection,
+  Tab,
+} from './rules';
 
 /**
  * §11.1 · the customer's event list.
@@ -48,12 +55,15 @@ export function EventsScreen({
   sections,
   lineup,
   photos,
+  documents = {},
   now,
 }: {
   events: PortalEvent[];
   sections: RoleSection[];
   lineup: LineupRow[];
   photos: Record<string, string>;
+  /** Which §11.3 PDFs the office has issued, per event (`client_event_documents_v`). */
+  documents?: Record<string, DocumentKind[]>;
   /** Fixed on the server so the first paint cannot disagree with hydration. */
   now: string;
 }) {
@@ -141,7 +151,7 @@ export function EventsScreen({
                   {rows.map((e) => {
                     const fill = fillOf(sectionsFor(e.id));
                     const faces = facesFor(e.id);
-                    const doc = documentFor(e.status);
+                    const doc = documentOffer(e.status, documents[e.id] ?? []);
                     const cancelled = e.status === 'cancelled';
 
                     return (
@@ -184,17 +194,7 @@ export function EventsScreen({
                         </td>
                         <td>
                           <div className="stack tight">
-                            {doc ? (
-                              <Button
-                                size="sm"
-                                disabled
-                                title="The timesheet documents arrive with §11.3"
-                              >
-                                {DOC_LABEL[doc]}
-                              </Button>
-                            ) : (
-                              <span className="muted sm">No document</span>
-                            )}
+                            <DocumentButton eventId={e.id} offer={doc} />
                             <Link className="sm" href={`/client/events/${e.id}`}>
                               Details →
                             </Link>
@@ -211,7 +211,7 @@ export function EventsScreen({
             <div className="cards" style={{ padding: 14 }}>
               {rows.map((e) => {
                 const fill = fillOf(sectionsFor(e.id));
-                const doc = documentFor(e.status);
+                const doc = documentOffer(e.status, documents[e.id] ?? []);
                 const cancelled = e.status === 'cancelled';
 
                 return (
@@ -239,17 +239,7 @@ export function EventsScreen({
                       </div>
                     )}
                     <div className="foot">
-                      {doc ? (
-                        <Button
-                          size="sm"
-                          disabled
-                          title="The timesheet documents arrive with §11.3"
-                        >
-                          {DOC_LABEL[doc]}
-                        </Button>
-                      ) : (
-                        <span className="sm muted">No document</span>
-                      )}
+                      <DocumentButton eventId={e.id} offer={doc} />
                       <Link className="ml-auto btn sm" href={`/client/events/${e.id}`}>
                         Details →
                       </Link>
@@ -262,6 +252,28 @@ export function EventsScreen({
         )}
       </Panel>
     </>
+  );
+}
+
+/**
+ * The row's document (§11.1, §11.3): a real download — an `<a href>` to the
+ * PDF, so it can be saved or forwarded from a phone (§11.4) — once the
+ * office has issued that kind; the same label, disabled, until it has; and
+ * the wireframe's "No document" for a cancelled event.
+ */
+function DocumentButton({ eventId, offer }: { eventId: string; offer: DocumentOffer | null }) {
+  if (!offer) return <span className="muted sm">No document</span>;
+  if (offer.available) {
+    return (
+      <a className="btn sm" href={`/client/events/${eventId}/document?kind=${offer.kind}`}>
+        {DOC_LABEL[offer.kind]}
+      </a>
+    );
+  }
+  return (
+    <Button size="sm" disabled title="THC has not issued this document yet">
+      {DOC_LABEL[offer.kind]}
+    </Button>
   );
 }
 

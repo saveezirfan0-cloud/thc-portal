@@ -30,6 +30,7 @@ import {
   documentLine,
   filterQueue,
   foundLine,
+  reviewFlag,
   queueRowCheck,
   ukDate,
   ukStamp,
@@ -296,6 +297,7 @@ function QueueLine({
 }) {
   const who = whoLine(row);
   const found = foundLine(row);
+  const flag = reviewFlag(row);
   const hint = verifyHint(row);
   const actions = actionsFor(row);
   return (
@@ -361,6 +363,16 @@ function QueueLine({
           <span className={`ai ${found.confidence}`}>
             AI {Math.round((row.ai_confidence ?? 0) * 100)}%
           </span>
+        ) : null}
+        {flag ? (
+          // The wireframe's flagged-document annotation: the badge, then a
+          // muted note. Expired is coral in the document pill vocabulary
+          // (docs/07) — the outcome here is Reject → re-upload.
+          <>
+            {' '}
+            <Pill tone="coral">{flag.label}</Pill>
+            <span className="sub muted xs">{flag.detail}</span>
+          </>
         ) : null}
       </td>
       <td className="right-align cell-actions">

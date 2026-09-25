@@ -22,11 +22,11 @@ screen it names is now built; what is left is listed in §2 and §4 below.
 ## 1 · What is genuinely built
 
 **Every screen in the product now exists.** Three Next.js apps on one Supabase
-database, **110 migrations**, **86 pgTAP files (2,945 assertions)**, **1,918 Vitest
-tests across 121 files** in eight packages, seven Edge Functions (`auto-staffing`,
+database, **120 migrations**, **94 pgTAP files (3,171 assertions)**, **2,202 Vitest
+tests across 147 files** in eight packages, seven Edge Functions (`auto-staffing`,
 `booking-tick`, `compliance-daily`, `finance-reports`, `gdpr-purge`,
-`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0029` (29 files;
-`0025`, the automated gov.uk check, landed with its branch after this count). CI runs
+`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0031` (31 files;
+`0025`, the automated gov.uk check, landed with #59). CI runs
 lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 `deploy-database` pushes migrations to the live project on merge to `main`.
 
@@ -34,10 +34,10 @@ lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 
 | Check | Result |
 |---|---|
-| All 110 migrations applied in order to an **empty** database | clean |
-| `scripts/pgtest-local.sh` — all 86 pgTAP files | 2,945 assertions, **2 failures**, both expected (below) |
-| `turbo test` | 11/11 tasks, 1,918 tests in 121 files; lint and typecheck were run per workspace this round (three fixers in one tree), not as one turbo pass |
-| Live Supabase project vs the repo | 95 applied through `20260927140300` (#56); the 26.09 fix round's 14 files and `20260927150000` deploy with the next merge to `main` (see §3, "The 26.09 fix round was refused by the live database") |
+| All 120 migrations applied in order to an **empty** database | clean |
+| `scripts/pgtest-local.sh` — all 94 pgTAP files | 3,171 assertions, **2 failures**, both expected (below) |
+| `turbo lint typecheck test build` | 29/29 tasks, 2,202 tests in 147 files (27.09, one pass on the final tree) |
+| Live Supabase project vs the repo | 112 applied through `20260928100100` (#59); the 27.09 round's ten files (`20260928110000`–`110900`, renumbered above #59's at the merge) deploy with the next merge to `main`, then `gen:types` |
 
 `002` assertions **6 and 7** fail in every local harness and **that pair is the
 clean baseline**: they record that on Supabase `anon` *can* write
@@ -116,21 +116,24 @@ real environment to prove it in.
    through for real; coverage is render tests, view-model tests and pgTAP. A
    `qa-reviewer` pass per wireframe and Playwright journeys for the wizard,
    activation and the drain are the next safety net.
-4b. **The 26.09 audit round is half done.** The three new briefs
-   (`.claude/agents/audit.md`, `security.md`, `design-engine.md`) and the
-   per-screen qa ran about half their slices before the session limits cut
-   them: un-audited are the office staff, staff profile, clients, roles,
-   reports, feedback, venues, settings and check-in screens; the Staff App
-   invites, radar, documents, profile and lock screens; every Client Portal
-   screen; scope §3.3–§4.5, §5.1–§5.2b, §7 BG-01–05, §9.6–§9.12, §10, §11 and
-   the RULE index; and all four design lenses. Of the 375 findings raised, the
-   fix round (`20260927160000`–`161300`, pgTAP `594`, ADR-0026–0029) closed
-   the database half and the events, check-in, shifts and login screens; still
-   open are the findings under office onboarding / staff / dashboard / clients
-   / settings / design-system, staff apply / onboarding / documents / profile /
-   activate / reset / notifications / install / privacy, the client app, docs
-   and e2e. The §4.1 menu counter in the office chrome was built and then
-   dropped at the merge with #52's `SignedInAs`; it wants rebuilding on that.
+4b. ~~**The 26.09 audit round is half done.**~~ **Closed on 27.09.** The slices
+   the session limits had cut — scope §3.3–§4.5, §5.1–§5.2b, §7 BG-01–05, the
+   office §9.5–§9.12 screens, the Staff App §10 screens, every Client Portal
+   screen, the RULE index, a security pass over `20260926100000`–`20260927161300`
+   and the four design lenses — all ran (43 findings: 1 blocker, 5 gaps, 24
+   drifts, the rest untested/doc/security notes; JSON per slice in the session's
+   `audit2/`), and every finding is fixed in the 27.09 round (§3 below) except
+   the ones that need a decision, now listed under §4: the `Awaiting` pill's
+   tone (docs/07 says neutral, the event-board wireframe draws amber), a
+   denied-permission toggle's tone, the meta `themeColor` (scope-dark today,
+   warm dark is `#0a0e18`), the N4 wording (`REGISTER-NOTES.md`), the resolved
+   No-check-out's weight in the show-rate (docs/15 Q4), and the Timesheet
+   line's recipient count (needs `sent_at` and a count on
+   `client_event_documents_v`). Two small follow-ups for their owners: the
+   shifts pages still inline the Shifts-badge expression `shiftsBadge()` now
+   provides, and `packages/ui` `.seg` should read a `--seg-h` token as
+   `thc.css` does. The fixers' `shared_change_needed` list from #58 is closed
+   (`20260928110000`, the packages/ui round in `679b8c3`).
 4c. ~~**ADR-0018's rota-guard gap.**~~ **Closed** by `20260927150000`:
    `can_roster_staff()` refuses a non-UK worker whose latest verified
    right-to-work evidence carries neither a date nor the settled no-time-limit
@@ -150,7 +153,45 @@ real environment to prove it in.
 
 ---
 
-## 3 · Closed on 26.09, the most recent round (the §4 clean-up)
+## 3 · Closed on 27.09 (the second audit round) and 26.09
+
+**27.09** — every slice of the audit that had not run, then its findings:
+
+- **Get back paid nothing** (§3.3, the round's one blocker): the office wrote
+  the Late violation itself and never registered the arrival; `get_back()` and
+  `office_mark_no_show()` now delegate to the SQL path (`20260928110200`,
+  pgTAP 597).
+- **The show-rate is derived** (BG-03 / RULE-14 / §6): `staff_show_rate()`
+  from attendance, read by auto-assign and every view (`20260928110100`,
+  `110700`; TS twin `showRate()`; pgTAP 596/603); `staff.reliability` is
+  seed-only.
+- **Auto-assign**: the hourly target counts confirmed only; a first round runs
+  at event creation; `allocation_per_hour` defaults in the database; the
+  Accept path re-reads the candidate gate and `block_worker()` withdraws
+  invitations on sections under way (`110200`, `110400`; 130 §4b, 597).
+- **Expired term letters** are flagged on extraction and refused on verify,
+  with the reason on the Needs review row (`110300`, `110900`; 598, 602).
+- **Security**: the four privileged staff actions carry the manager as
+  `p_actor` (604); `auto_assign_candidates` / `escalation_radius_miles` lose
+  PUBLIC execute and 190 guards the shape; `staff_update_contact_geocoded` is
+  service-role only with the session-resolved id (`110600`, 530); workers read
+  criminal declarations only through RPCs (ADR-0031, `110500`, 599).
+- **A real defect found by a new test**: E7 keyed on staff id + second
+  swallowed an email-change E7 in the same second as an address E7 (`110500`,
+  330).
+- **Screens**: the monitor and shift screen keep §1.8's zones and §5's copy;
+  Radar's week meter reads the current UK week and the detail draws the
+  meter and map; the header avatar is the selfie; the Client Portal's list
+  links to real documents, the completed state keeps both buttons, the login
+  has the reveal and a real "keep me signed in"; the feedback popup's copy;
+  the design lenses (tokens, both modes, focus/touch, tables at 390px).
+- **Deferred items from #58**: candidate/directory view columns,
+  `staff_me().rejectionCause`, `activation_preview.activated`, `--tap-min`,
+  `AuthCard appearance`, `ScheduledWindow` in packages/ui, the push badge, the
+  activation QR, N8's action (`110000`, 595; `679b8c3`; `7816f38`).
+- **Lint**: `react-hooks/rules-of-hooks` is an error on every TSX file.
+
+**26.09** — the §4 clean-up:
 
 - **Database types** are generated from the live project
   (`packages/db/src/types.generated.ts`); `gen:types` formats them.
@@ -297,12 +338,10 @@ real environment to prove it in.
   the next merge to `main` deploys all fifteen in order with no flag. Types
   (`packages/db/src/types.generated.ts`) are regenerated from the live project
   once they are applied — they do not yet know this round's RPCs.
-- **ESLint does not run `react-hooks/rules-of-hooks`.** The flat config loads
-  `@eslint/js` and `typescript-eslint` only, so a hook placed after an early
-  return (step 1's `useId()`, fixed in #58 after Playwright caught it) passes
-  lint and the render tests, and fails only in a browser. Adding
-  `eslint-plugin-react-hooks` is a dependency change for its own PR; expect
-  it to find more.
+- **ESLint runs `react-hooks/rules-of-hooks`** (error) and `exhaustive-deps`
+  (warning) on every TSX file since 27.09; the tree was clean under both the
+  day the rule landed. Step 1's `useId()` after an early return was the case
+  that got past lint and the render tests before it.
 - `supabase/config.toml` `otp_expiry` is 86400 (activation links last a day).
 - `scripts/pgtest-local.sh` — the Docker-free pgTAP harness §7 describes, as a
   script.
@@ -319,9 +358,9 @@ here so a reader can tell a deliberate finding from a new one.
 | Finding | Count | Verdict |
 |---|---|---|
 | Functions with a mutable `search_path` | **0** | closed 22.09 and held since, guarded by an invariant over `pg_proc` in `002` |
-| `SECURITY DEFINER` callable by `anon` | **6** | all deliberate: 3 are PostGIS's own `st_estimatedextent` overloads, plus `current_app_role`, `current_client_id` and `submit_application` — reasons in the migration headers |
+| `SECURITY DEFINER` callable by `anon` | **6** | all deliberate: 3 are PostGIS's own `st_estimatedextent` overloads, plus `current_app_role`, `current_client_id` and `submit_application` — reasons in the migration headers. Re-verified 27.09 on the tree: `190` 2e holds exactly those three of ours, and `190` 2f now also asserts no definer keeps PUBLIC's default EXECUTE (`20260928110800` closed the two invoker functions that did) |
 | `SECURITY DEFINER` callable by `authenticated` | **86** | the product's RPC surface; every one is guarded internally. It grew with the build and is not in itself a defect, but it is the number to watch |
-| `SECURITY DEFINER` views | **8** | the ADR-0004 owner-rights pattern — it is the mechanism that keeps money and worker data away from the client role, not a lapse |
+| `SECURITY DEFINER` views | **9** | the ADR-0004 owner-rights pattern — it is the mechanism that keeps money and worker data away from the client role, not a lapse. 9 since `20260927120000` added `client_company_v` (deliberate: two named columns, `current_client_id()` + `client_portal_visible()` in the body, pinned by `570`); the next one is a finding |
 | `spatial_ref_sys` without RLS | 1 | ADR-0010, known gap, needs `supabase_admin` |
 | **Leaked-password protection** | off | **still owed — see §5.** The only advisor finding that is nobody's design decision |
 

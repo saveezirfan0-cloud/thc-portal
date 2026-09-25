@@ -631,5 +631,124 @@
         "expect": { "payMin": 240 }
       }
     ]
+  },
+
+  "showRate": {
+    "$comment": [
+      "showRate / staff_show_rate, §6 show-rate (BG-03, RULE-14, §9.5). Percent 0–100,",
+      "two decimals, null with no history (the candidates function defaults that to 90).",
+      "Sample = worked + turned_away + any booking with an unresolved no_show (it stays",
+      "confirmed in the roster, §3.3). Against while unresolved: no_show, no_checkout.",
+      "Weigh nothing: late, left_early, left_geofence (§9.5 'no automatic consequence').",
+      "Not in the generated .psql: supabase/tests/596_show_rate_derived.sql replays these",
+      "cases by name against real bookings and violations. Owned by the `checkin` bot."
+    ],
+    "cases": [
+      {
+        "name": "no history is null, and the candidates default it to 90",
+        "input": { "bookings": [] },
+        "expect": { "rate": null }
+      },
+      {
+        "name": "one worked shift is 100",
+        "input": { "bookings": [{ "status": "worked", "violations": [] }] },
+        "expect": { "rate": 100 }
+      },
+      {
+        "name": "a turn-away counts as shown (RULE-15 pays it, §5.2 never marks it)",
+        "input": {
+          "bookings": [
+            { "status": "worked", "violations": [] },
+            { "status": "turned_away", "violations": [] }
+          ]
+        },
+        "expect": { "rate": 100 }
+      },
+      {
+        "name": "an unresolved No-show counts against, on its still-confirmed booking (BG-03)",
+        "input": {
+          "bookings": [
+            { "status": "worked", "violations": [] },
+            { "status": "confirmed", "violations": [{ "type": "no_show", "resolved": false }] }
+          ]
+        },
+        "expect": { "rate": 50 }
+      },
+      {
+        "name": "a No-show alone is zero, not null",
+        "input": {
+          "bookings": [
+            { "status": "confirmed", "violations": [{ "type": "no_show", "resolved": false }] }
+          ]
+        },
+        "expect": { "rate": 0 }
+      },
+      {
+        "name": "Get back reclassifies a No-show to Late, and it counts as shown (§9.5)",
+        "input": {
+          "bookings": [
+            { "status": "worked", "violations": [] },
+            { "status": "worked", "violations": [{ "type": "late", "resolved": true }] }
+          ]
+        },
+        "expect": { "rate": 100 }
+      },
+      {
+        "name": "an unresolved No check-out counts against (RULE-14)",
+        "input": {
+          "bookings": [
+            { "status": "worked", "violations": [] },
+            { "status": "worked", "violations": [{ "type": "no_checkout", "resolved": false }] }
+          ]
+        },
+        "expect": { "rate": 50 }
+      },
+      {
+        "name": "a resolved No check-out stops counting against (RULE-14)",
+        "input": {
+          "bookings": [
+            { "status": "worked", "violations": [] },
+            { "status": "worked", "violations": [{ "type": "no_checkout", "resolved": true }] }
+          ]
+        },
+        "expect": { "rate": 100 }
+      },
+      {
+        "name": "Late, Left early and Left the geofence weigh nothing, unresolved or not (§9.5)",
+        "input": {
+          "bookings": [
+            { "status": "worked", "violations": [{ "type": "late", "resolved": false }] },
+            { "status": "worked", "violations": [{ "type": "left_early", "resolved": false }] },
+            { "status": "worked", "violations": [{ "type": "left_geofence", "resolved": false }] }
+          ]
+        },
+        "expect": { "rate": 100 }
+      },
+      {
+        "name": "cancelled, closed, invited, applied and a plain confirmed booking are not in the sample",
+        "input": {
+          "bookings": [
+            { "status": "worked", "violations": [] },
+            { "status": "cancelled", "violations": [] },
+            { "status": "closed", "violations": [] },
+            { "status": "invited", "violations": [] },
+            { "status": "applied", "violations": [] },
+            { "status": "confirmed", "violations": [] }
+          ]
+        },
+        "expect": { "rate": 100 }
+      },
+      {
+        "name": "two decimals: two shown of three",
+        "input": {
+          "bookings": [
+            { "status": "worked", "violations": [] },
+            { "status": "worked", "violations": [] },
+            { "status": "confirmed", "violations": [{ "type": "no_show", "resolved": false }] }
+          ]
+        },
+        "expect": { "rate": 66.67 }
+      }
+    ]
   }
 }

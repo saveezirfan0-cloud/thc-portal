@@ -40,6 +40,10 @@ const WORKER: StaffRow = {
   weekly_cap_hours: 20,
   weekly_cap_band: 'student_term_20',
   weekly_booked_hours: 18,
+  weekly_cap_until: null,
+  last_shift_at: null,
+  released_shift_count: 0,
+  p45_requested_at: null,
 };
 
 const row = (overrides: Partial<StaffRow>): StaffRow => ({ ...WORKER, ...overrides });

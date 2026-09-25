@@ -31,6 +31,7 @@ import {
   returningActions,
   shortDay,
   stageAge,
+  stageEnteredAt,
 } from './view-model';
 import type { BoardColumn, BoardFilter, Line, ReasonFilter } from './view-model';
 import type { BoardData, CandidateRow, ReturningRow } from './types';
@@ -375,7 +376,7 @@ function CandidateCard({
   now: Date;
   onOpen: (row: CandidateRow) => void;
 }) {
-  const age = stageAge(row.stage_entered_at, now);
+  const age = stageAge(stageEnteredAt(row, column), now);
   const lines = cardLines(row, column, now);
   const interview = column === 'interview_requested' || column === 'interview_completed';
   return (

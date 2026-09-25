@@ -22,6 +22,9 @@ export const MESSAGES: Record<string, string> = {
   no_check_out_office_confirms:
     'We couldn’t confirm when you left the venue — the office will confirm your finish time with you.',
   no_check_out_locked: 'Check-out has closed. The office will confirm your finish time with you.',
+  // §5.1: check-out is enabled "once the shift has started" — a press
+  // before the ROLE section's start (RULE-18) is refused by check_out().
+  check_out_not_open: 'Check-out opens at the scheduled start of your shift.',
   on_break: 'Break started.',
   break_finished: 'Break finished — back to work.',
   already_checked_out: 'You’ve already checked out.',
@@ -35,4 +38,22 @@ export const MESSAGES: Record<string, string> = {
 export function checkedOutOffSiteMessage(lastOnSite: string | null): string {
   const base = 'You checked out away from the venue — we’ve recorded your last time on site';
   return lastOnSite ? `${base}, ${lastOnSite}.` : `${base}.`;
+}
+
+/**
+ * The sentence for one RPC result. Every key is a fixed string but one:
+ * `checked_out_off_site` quotes the time that was recorded — the RPC's
+ * `recordedAt`, the last on-site fix — and the caller formats it in the
+ * worker's own zone (§1.8: an actual stamp shows viewer-local only).
+ */
+export function rpcMessage(
+  result: Record<string, unknown>,
+  formatTime: (iso: string) => string,
+): string | null {
+  const key = String(result.messageKey ?? '');
+  if (key === 'checked_out_off_site') {
+    const at = result.recordedAt;
+    return checkedOutOffSiteMessage(typeof at === 'string' ? formatTime(at) : null);
+  }
+  return MESSAGES[key] ?? null;
 }

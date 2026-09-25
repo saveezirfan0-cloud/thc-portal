@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { Alert, Button, Modal, Textarea } from '@thc/ui';
+import { starsHint } from '../../rules';
 import { leaveFeedback } from './actions';
 
 /**
@@ -23,12 +24,19 @@ export function FeedbackModal({
   eventId,
   bookingId,
   personName,
+  role,
+  eventTitle,
+  eventDate,
   onClose,
 }: {
   open: boolean;
   eventId: string;
   bookingId: string;
   personName: string;
+  /** The subtitle: "Waiting Staff · Gala Dinner · Fri 19 Sep 2026". */
+  role: string;
+  eventTitle: string;
+  eventDate: string;
   onClose: () => void;
 }) {
   const [rating, setRating] = useState(0);
@@ -67,11 +75,15 @@ export function FeedbackModal({
             Cancel
           </Button>
           <Button tone="primary" onClick={submit} disabled={pending}>
-            {pending ? 'Sending…' : 'Send feedback'}
+            {pending ? 'Submitting…' : 'Submit feedback'}
           </Button>
         </>
       }
     >
+      <div className="xs muted" style={{ marginBottom: 14 }}>
+        {role} · {eventTitle} · {eventDate}
+      </div>
+
       {error ? <Alert tone="coral">{error}</Alert> : null}
 
       <fieldset className="stars-field">
@@ -92,16 +104,25 @@ export function FeedbackModal({
             </button>
           ))}
         </div>
+        <span className="hint">{starsHint(rating)}</span>
       </fieldset>
 
       <Textarea
         label="Comment"
-        hint="Optional. This goes to The Hospitality Company, not to the worker."
+        hint="Optional · free text · seen by The Hospitality Company office, not by the worker."
+        placeholder="What went well, what could be better?"
         rows={4}
         value={text}
         onChange={(e) => setText(e.currentTarget.value)}
         disabled={pending}
       />
+
+      {/* One entry per worker per event, and the portal has no edit or
+          delete (§11.5): said here, before the button, not after. */}
+      <div className="note sm" style={{ marginTop: 14 }}>
+        Once submitted, feedback cannot be edited or withdrawn from the portal. If something needs
+        correcting, contact the office.
+      </div>
     </Modal>
   );
 }

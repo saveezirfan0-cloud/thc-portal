@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { isRole, wrongAppBody } from '@thc/db';
+import { SESSION_ONLY_COOKIE, withoutLifetime } from './app/login/session';
 
 /**
  * Role routing for the client app (§1.4).
@@ -77,13 +78,19 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // An unticked "Keep me signed in" (./app/login/session.ts): a refreshed
+  // token must not be handed back with the library's 400-day lifetime, or
+  // the first refresh would quietly make the session persistent after all.
+  const sessionOnly = request.cookies.has(SESSION_ONLY_COOKIE);
+
   const supabase = createServerClient(url, anonKey, {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (toSet) => {
         for (const { name, value } of toSet) request.cookies.set(name, value);
         response = NextResponse.next({ request });
-        for (const { name, value, options } of toSet) response.cookies.set(name, value, options);
+        for (const { name, value, options } of toSet)
+          response.cookies.set(name, value, sessionOnly ? withoutLifetime(options) : options);
       },
     },
   });

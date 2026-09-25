@@ -3,10 +3,11 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Alert, Avatar, Button, Panel, Pill } from '@thc/ui';
+import { UK_ZONE, formatDateTimeIn, formatTimeIn } from '@thc/domain';
 import { EventWindow } from '../../EventWindow';
-import { ukDateLong } from '../../format';
-import { feedbackOpen, fillOf, groupByRole, statusTone } from '../../rules';
-import type { LineupRow, PortalEvent, RoleSection } from '../../rules';
+import { ukDateLong, ukDateShort } from '../../format';
+import { feedbackOpen, fillOf, groupByRole, headerDocuments, statusTone } from '../../rules';
+import type { DocumentKind, LineupRow, PortalEvent, RoleSection } from '../../rules';
 import { FeedbackModal } from './FeedbackModal';
 
 /**
@@ -27,6 +28,13 @@ const STATUS_LABEL: Record<PortalEvent['status'], string> = {
   cancelled: 'Cancelled',
 };
 
+/** One row of `client_event_documents_v`, as the page hands it over. */
+export interface IssuedDocument {
+  kind: DocumentKind;
+  /** When the office generated this copy (`issued_at`), ISO. */
+  issuedAt: string;
+}
+
 export function EventScreen({
   event,
   sections,
@@ -41,7 +49,7 @@ export function EventScreen({
   photos: Record<string, string>;
   now: string;
   /** Which §11.3 PDFs the office has produced for this event. */
-  documents?: ('allocation' | 'signout')[];
+  documents?: IssuedDocument[];
 }) {
   const [rating, setRating] = useState<LineupRow | null>(null);
 
@@ -50,6 +58,12 @@ export function EventScreen({
   const fill = useMemo(() => fillOf(sections), [sections]);
   const open = feedbackOpen(event, at);
   const cancelled = event.status === 'cancelled';
+  const completed = event.status === 'completed';
+  const downloads = headerDocuments(
+    event.status,
+    documents.map((d) => d.kind),
+  );
+  const timesheet = completed ? documents.find((d) => d.kind === 'signout') : undefined;
 
   return (
     <div className="stack" style={{ gap: 20 }}>
@@ -74,28 +88,36 @@ export function EventScreen({
 
           <div className="actions row">
             {/* §11.2's header action: the §11.3 PDF, once the office has
-                produced one. Download only; sending is the office's (§11.4). */}
-            {cancelled
-              ? null
-              : (() => {
-                  const kind = event.status === 'completed' ? 'signout' : 'allocation';
-                  const label =
-                    kind === 'signout'
-                      ? '↓ Download Signed Timesheet'
-                      : '↓ Download Allocation Sheet';
-                  return documents.includes(kind) ? (
-                    <a
-                      className="btn primary"
-                      href={`/client/events/${event.id}/document?kind=${kind}`}
-                    >
-                      {label}
-                    </a>
-                  ) : (
-                    <Button tone="primary" disabled title="THC has not issued this document yet">
-                      {label}
-                    </Button>
-                  );
-                })()}
+                produced one. Download only; sending is the office's (§11.4).
+                Completed: the signed timesheet takes the primary slot and the
+                allocation sheet stays beside it as history (event.html:247). */}
+            {downloads.map(({ kind, available }) => {
+              const label =
+                kind === 'signout'
+                  ? '↓ Download Signed Timesheet'
+                  : completed
+                    ? '↓ Allocation Sheet'
+                    : '↓ Download Allocation Sheet';
+              const primary = kind === 'signout' || !completed;
+              return available ? (
+                <a
+                  key={kind}
+                  className={primary ? 'btn primary' : 'btn'}
+                  href={`/client/events/${event.id}/document?kind=${kind}`}
+                >
+                  {label}
+                </a>
+              ) : (
+                <Button
+                  key={kind}
+                  tone={primary ? 'primary' : 'default'}
+                  disabled
+                  title="THC has not issued this document yet"
+                >
+                  {label}
+                </Button>
+              );
+            })}
           </div>
         </div>
 
@@ -111,12 +133,25 @@ export function EventScreen({
             </div>
           </div>
           <div>
-            <div className="k">Confirmed staff</div>
+            <div className="k">{completed ? 'Staff on the day' : 'Confirmed staff'}</div>
             <div className="v">
               <b>{fill.confirmed}</b> of {fill.headcount} ·{' '}
               {groups.length === 1 ? '1 role' : `${groups.length} roles`}
             </div>
           </div>
+          {timesheet ? (
+            <div>
+              <div className="k">Timesheet</div>
+              <div className="v">
+                {/* An audit stamp: UK-only, never dual (§1.8). The final copy
+                    goes to the contact emails on the client card (§11.4);
+                    the view carries no recipient count, so none is claimed. */}
+                Sign-out timesheet generated{' '}
+                {formatDateTimeIn(new Date(timesheet.issuedAt), UK_ZONE)}
+                <span className="sub">by email to the contacts on your client card (§11.4)</span>
+              </div>
+            </div>
+          ) : null}
           <div>
             <div className="k">Your on-site contact</div>
             <div className="v">
@@ -137,8 +172,9 @@ export function EventScreen({
           </Alert>
         ) : (
           <Alert tone="cyan">
-            Feedback opens once the event has started. Until then the &ldquo;Leave feedback&rdquo;
-            buttons are disabled.
+            Feedback opens once the event has started — from{' '}
+            {formatTimeIn(new Date(event.startsAt), UK_ZONE)} UK time on the day. Until then the
+            &ldquo;Leave feedback&rdquo; buttons are disabled.
           </Alert>
         )}
       </div>
@@ -155,7 +191,11 @@ export function EventScreen({
                   <EventWindow startsAt={group.startsAt} endsAt={group.endsAt} className="rw" />
                 </span>
               }
-              actions={<Pill tone="green">{group.confirmed} confirmed</Pill>}
+              actions={
+                <Pill tone={completed ? 'neutral' : 'green'}>
+                  {group.confirmed} {completed ? 'worked' : 'confirmed'}
+                </Pill>
+              }
               flush
             >
               <div className="wgrid">
@@ -205,6 +245,9 @@ export function EventScreen({
           eventId={event.id}
           bookingId={rating.bookingId}
           personName={rating.name}
+          role={rating.role}
+          eventTitle={event.title}
+          eventDate={ukDateShort(event.startsAt)}
           onClose={() => setRating(null)}
         />
       ) : null}

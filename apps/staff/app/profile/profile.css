@@ -14,7 +14,8 @@
   display: flex;
   align-items: center;
   gap: var(--sp-10);
-  padding: 11px 0;
+  min-height: var(--tap-min);
+  padding: var(--sp-10) 0;
   border-bottom: 1px solid var(--glass-line);
   font-weight: 500;
   font-size: var(--fs-13);
@@ -52,6 +53,11 @@
   padding: 0;
   cursor: pointer;
   font-family: inherit;
+  /* Quiet, but still a finger-sized target (§1.2). */
+  min-height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .p45-slot .p45-link[disabled] {
   opacity: 0.5;
@@ -71,7 +77,7 @@
 }
 .consq > div::before {
   content: '— ';
-  color: var(--coral);
+  color: var(--coral-ink);
 }
 
 /* --- Locked fields: name, NI, avatar (§10.1) -------------------------- */
@@ -94,7 +100,7 @@
 .code-row input {
   flex: 1;
   min-width: 0;
-  height: 44px;
+  height: var(--tap-min);
   border: 1px solid var(--line);
   background: var(--bg);
   color: var(--text);
@@ -106,8 +112,9 @@
      Inputs take the control radius. */
   border-radius: var(--r-control);
 }
+/* The border follows focus; the ring itself is the shared :focus-visible
+   rule in packages/ui base.css, which `outline: none` here used to remove. */
 .code-row input:focus {
-  outline: none;
   border-color: var(--focus-line);
 }
 
@@ -118,6 +125,9 @@
   border-bottom: 1px solid var(--line);
 }
 .mtabs a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
   padding: var(--sp-8) 0;
   color: var(--muted);
   font-weight: 700;
@@ -149,7 +159,7 @@
   font-family: var(--font-head);
   font-size: var(--fs-20);
   font-weight: 600;
-  color: var(--green);
+  color: var(--green-ink);
 }
 
 /* The profile-photo row: the avatar and what the worker may do with it. */

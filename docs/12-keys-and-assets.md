@@ -305,6 +305,7 @@ names the code already expects.
 | File | App | Why |
 |---|---|---|
 | `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` | `apps/staff/public/` | **Done.** All three exist at the right sizes, are the real mark on cyan, and the manifest is valid — the staff app is installable. (This line used to say they were missing; they were not.) |
+| `icons/badge-96.png` | `apps/staff/public/` | **Done.** The Web Push `badge` (`apps/staff/sw.ts`): Android draws it as a silhouette in the status bar, so it is the mark alone, white on transparent. Generated from `brand/thc-mark.svg` by `pnpm --filter @thc/staff gen:badge`; not hand-placed. |
 | `favicon.ico` and `apple-icon.png` | All three apps' `public/` | Browser tab and iOS home screen |
 | Brand mark | `packages/ui` | **Done.** `packages/ui/src/components/Logo.tsx` inlines `brand/thc-mark.svg` and is wired into all three sign-in cards, the Back Office sidebar, the Client Portal top bar and `/apply/submitted`. A test asserts the inlined paths still equal the source file, so a new logo must be regenerated rather than hand-edited. |
 

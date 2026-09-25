@@ -1,5 +1,7 @@
+'use client';
+
 import { clsx } from 'clsx';
-import { useId } from 'react';
+import { useId, useState } from 'react';
 import type {
   InputHTMLAttributes,
   ReactNode,
@@ -41,20 +43,54 @@ function Field({
 export interface InputProps extends InputHTMLAttributes<HTMLInputElement>, FieldShell {
   /** Tabular/monospaced value, for codes and reference numbers. */
   mono?: boolean;
+  /**
+   * A "Show" / "Hide" addon welded to a password field (§1.4,
+   * wireframes/client/login.html). Toggles the input between `password`
+   * and `text`; the value is never touched. The button's name is its
+   * visible text and it is `aria-pressed`, so a screen reader hears
+   * "Show, toggle button, not pressed" beside the field it controls.
+   */
+  reveal?: boolean;
 }
 
-export function Input({ label, hint, error, mono, className, id, ...rest }: InputProps) {
+export function Input({ label, hint, error, mono, reveal, className, id, ...rest }: InputProps) {
   const auto = useId();
   const fieldId = id ?? auto;
+  const inputProps = {
+    id: fieldId,
+    'aria-invalid': error ? true : undefined,
+    className: clsx('input', mono && 'mono', error && 'err', className),
+    ...rest,
+  };
   return (
     <Field id={fieldId} label={label} hint={hint} error={error}>
-      <input
-        id={fieldId}
-        aria-invalid={error ? true : undefined}
-        className={clsx('input', mono && 'mono', error && 'err', className)}
-        {...rest}
-      />
+      {reveal ? <RevealedInput {...inputProps} /> : <input {...inputProps} />}
     </Field>
+  );
+}
+
+/**
+ * The reveal state lives here, not in `Input`, so a plain field stays a
+ * stateless render and only a `reveal` field pays for the hook. The addon
+ * is a real button (the wireframe's `.addon` span with a pointer cursor),
+ * so it is in the Tab order and answers Space and Enter.
+ */
+function RevealedInput({ type = 'password', ...rest }: InputHTMLAttributes<HTMLInputElement>) {
+  const [shown, setShown] = useState(false);
+  return (
+    <div className="input-row">
+      <input type={shown ? 'text' : type} {...rest} />
+      <button
+        type="button"
+        className="addon"
+        style={{ cursor: 'pointer' }}
+        aria-pressed={shown}
+        aria-controls={rest.id}
+        onClick={() => setShown((v) => !v)}
+      >
+        {shown ? 'Hide' : 'Show'}
+      </button>
+    </div>
   );
 }
 

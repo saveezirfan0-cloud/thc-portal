@@ -29,11 +29,12 @@
   height: var(--btn-h-sm);
   width: 150px;
   font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
   font-size: var(--fs-12);
 }
 
 .rp-annot {
-  font-family: var(--font-num);
+  font-family: var(--font-label);
   font-size: var(--fs-11);
   color: var(--amber-ink);
 }
@@ -43,7 +44,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--sp-8);
-  font-family: var(--font-num);
+  font-family: var(--font-label);
   font-size: var(--fs-11);
   padding: var(--sp-4) var(--sp-10);
   border: 1px solid var(--line);
@@ -72,6 +73,7 @@
   flex-wrap: wrap;
   gap: var(--sp-14);
   font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
   font-size: var(--fs-11);
   margin-top: var(--sp-4);
 }

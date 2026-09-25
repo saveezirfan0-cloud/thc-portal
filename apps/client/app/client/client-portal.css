@@ -11,13 +11,13 @@
  */
 
 .ctop {
-  min-height: 56px;
+  min-height: 56px; /* the wireframe's own bar height (client/events.html); the office --topbar-h is 64 */
   border-bottom: 1px solid var(--line);
   background: var(--panel);
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 0 24px;
+  gap: var(--sp-16);
+  padding: 0 var(--gutter);
   position: sticky;
   top: 0;
   z-index: 30;
@@ -33,7 +33,7 @@
   flex-direction: column;
   line-height: 1.15;
   border-left: 1px solid var(--line);
-  padding-left: 16px;
+  padding-left: var(--sp-16);
   min-width: 0;
 }
 
@@ -41,7 +41,7 @@
 .ctop .menu-who .n {
   font-family: var(--font-head);
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--fs-14);
 }
 
 .ctop .who .l,
@@ -80,20 +80,21 @@
 }
 
 .ctop .tz {
-  font-family: var(--font-num);
-  font-size: 10.5px;
+  /* Same recipe as the office .topbar .tz (packages/ui components.css). */
+  font-family: var(--font-label);
+  font-size: var(--fs-11);
   color: var(--muted);
-  letter-spacing: 0.06em;
+  letter-spacing: var(--label-track);
 }
 
 .cwrap {
   max-width: 1280px;
   width: 100%;
   margin: 0 auto;
-  padding: 24px;
+  padding: var(--sp-26);
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: var(--sp-20);
 }
 
 .ev-search {
@@ -119,7 +120,8 @@
 /* ---- the dual-zone window cell (§1.8) ---- */
 .win {
   font-family: var(--font-num);
-  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-12);
   white-space: nowrap;
 }
 
@@ -170,20 +172,20 @@
 .ehead {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--sp-12);
 }
 
 .meta {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 16px;
+  gap: var(--sp-16);
   border-top: 1px solid var(--line);
-  padding-top: 16px;
+  padding-top: var(--sp-16);
 }
 
 .meta .k {
   font-family: var(--font-label);
-  font-size: 9.5px;
+  font-size: var(--label-size);
   letter-spacing: var(--label-track);
   text-transform: var(--label-case);
   color: var(--muted);
@@ -191,14 +193,14 @@
 }
 
 .meta .v {
-  font-size: 14px;
-  margin-top: 4px;
+  font-size: var(--fs-14);
+  margin-top: var(--sp-4);
 }
 
 .meta .v .sub {
   display: block;
   color: var(--muted);
-  font-size: 12px;
+  font-size: var(--fs-12);
 }
 
 /* Hairlines drawn by each cell rather than a 1px gap over a line-coloured
@@ -212,8 +214,8 @@
 .wrow {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: var(--sp-12);
+  padding: var(--sp-12) var(--sp-14);
   background: var(--panel);
   box-shadow:
     inset -1px 0 0 var(--line),
@@ -223,11 +225,11 @@
 .wrow .n {
   font-family: var(--font-head);
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--fs-14);
 }
 
 .wrow .s {
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--muted);
 }
 
@@ -244,10 +246,10 @@
   border: 1px solid var(--line);
   border-radius: var(--r-tile);
   box-shadow: var(--shadow-card);
-  padding: 16px;
+  padding: var(--sp-16);
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: var(--sp-10);
   color: inherit;
 }
 
@@ -255,12 +257,12 @@
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 10px;
+  gap: var(--sp-10);
 }
 
 .ecard .when .win {
   font-family: var(--font-num);
-  font-size: 12.5px;
+  font-size: 12.5px; /* half-pixel size from client/events.html; no token */
   white-space: normal;
   text-align: right;
   line-height: 1.35;
@@ -274,29 +276,29 @@
 .ecard .foot {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-10);
   border-top: 1px solid var(--line);
-  padding-top: 12px;
+  padding-top: var(--sp-12);
   margin-top: 2px;
 }
 
 .ecard .faces {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-12);
   flex-wrap: wrap;
 }
 
 .ecard .t {
   font-family: var(--font-head);
-  font-size: 17px;
+  font-size: var(--fs-17);
   font-weight: var(--head-weight);
   letter-spacing: var(--head-track);
   line-height: 1.2;
 }
 
 .ecard .m {
-  font-size: 12px;
+  font-size: var(--fs-12);
   color: var(--muted);
 }
 
@@ -322,13 +324,13 @@
 .cards {
   display: none;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--sp-12);
 }
 
 @media (max-width: 820px) {
   .cwrap {
-    padding: 16px;
-    gap: 16px;
+    padding: var(--sp-16);
+    gap: var(--sp-16);
   }
 
   /* The table folds away and the cards take over; both are rendered from
@@ -503,7 +505,7 @@
   align-items: center;
   justify-content: center;
   font-family: var(--font-num);
-  font-size: 9.5px;
+  font-size: var(--label-size);
   color: var(--muted);
   background: var(--panel-2);
   border: 2px solid var(--panel);
@@ -518,20 +520,20 @@
 .stars-field {
   border: 0;
   padding: 0;
-  margin: 0 0 14px;
+  margin: 0 0 var(--sp-14);
 }
 
 .stars-row {
   display: flex;
-  gap: 4px;
-  margin-top: 6px;
+  gap: var(--sp-4);
+  margin-top: var(--sp-6);
 }
 
 .star {
   background: none;
   border: 0;
-  padding: 2px 4px;
-  font-size: 26px;
+  padding: 2px var(--sp-4);
+  font-size: var(--fs-26);
   line-height: 1;
   cursor: pointer;
   color: var(--line);
@@ -547,7 +549,9 @@
 }
 
 .star:focus-visible {
-  outline: var(--focus-line);
+  /* `outline: <colour>` alone leaves outline-style at none, so the ring
+     never drew. Same ring as the shared rule in packages/ui base.css. */
+  outline: 2px solid var(--focus-line);
   outline-offset: 2px;
 }
 

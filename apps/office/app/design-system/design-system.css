@@ -74,3 +74,24 @@
   letter-spacing: var(--label-track);
   color: var(--muted);
 }
+
+/* Two sign-in cards side by side: the card's wrap is a full-height page
+   elsewhere, so here it is a tile. */
+.ds-auth .auth-wrap {
+  min-height: 0;
+  padding: var(--sp-20);
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+}
+
+/* A scheduled window and the zone it is shown in. */
+.ds-window {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+.ds-window .sub {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-12);
+}

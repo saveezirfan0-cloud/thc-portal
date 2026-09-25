@@ -11,7 +11,7 @@ export const metadata = { title: 'Activate your account · THC Staff' };
  */
 export default function Page() {
   return (
-    <AuthCard product="Account activation" heading="This link is incomplete">
+    <AuthCard product="Account activation" heading="This link is incomplete" appearance="none">
       <LinkSpent message="Use the personal link in your acceptance email — it is the long one ending in a code. If it doesn’t open, write to us and we’ll send you a new one." />
     </AuthCard>
   );

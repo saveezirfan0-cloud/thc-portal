@@ -16,6 +16,11 @@ import type { MonitorRow } from './types';
  *            show different hours.
  *   Check-in an ACTUAL stamp, so it shows the viewer's zone only — the
  *            manager wants to know what their own clock said.
+ *   Due      the start, in the viewer's zone with no suffix (checkin.html
+ *            "Due 17:00" for a 15:00 UK section seen from Athens): the pill
+ *            answers "how long until they are due" against the clock on the
+ *            wall, and the Window column beside it already carries the UK
+ *            figure.
  */
 export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
   const zone = viewerZone();
@@ -75,7 +80,7 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
                 {row.status === 'checked_out' && row.checkOutAt
                   ? `${STATUS_LABEL.checked_out} ${local(row.checkOutAt)}`
                   : row.status === 'due'
-                    ? `${STATUS_LABEL.due} ${uk(row.startsAt)}`
+                    ? `${STATUS_LABEL.due} ${local(row.startsAt)}`
                     : STATUS_LABEL[row.status]}
               </Pill>
             </td>

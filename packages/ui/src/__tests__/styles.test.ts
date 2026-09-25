@@ -94,6 +94,11 @@ describe('radius', () => {
     expect(/--r-logo:\s*50%/.test(scope)).toBe(true);
   });
 
+  it('carries the Staff App’s minimum touch target as its own token (§1.2, §10.1)', () => {
+    // 44px: what the app sheets used to derive as `--sp-28 + --sp-16`.
+    expect(token(':root', '--tap-min')).toBe('44px');
+  });
+
   it('follows the fluid scale in the warm style (ADR-0007)', () => {
     const warm = ":root[data-style='warm']";
     expect(token(warm, '--r-card')).toBe('28px');

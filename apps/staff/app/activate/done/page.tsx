@@ -15,7 +15,7 @@ export const metadata = {
  */
 export default function Page() {
   return (
-    <AuthCard product="Account activated" heading="You’re in — install the app">
+    <AuthCard product="Account activated" heading="You’re in — install the app" appearance="none">
       <ActivatedScreen />
     </AuthCard>
   );

@@ -2241,6 +2241,11 @@ textarea.input {
 .mrow:last-child {
   border-bottom: 0;
 }
+/* A bold title over a muted sub-line, as thc.css draws `.mrow .t`: the
+   install steps, the notification register, the settings rows. */
+.mrow .t {
+  font-weight: 600;
+}
 .mrow .s {
   font-size: var(--fs-12);
   color: var(--muted);

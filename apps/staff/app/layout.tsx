@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { AppearanceScript } from '@thc/ui';
 import '@thc/ui/styles.css';
+import './tap.css';
 import { ServiceWorkerRegistrar } from './_components/ServiceWorkerRegistrar';
 
 export const metadata: Metadata = {

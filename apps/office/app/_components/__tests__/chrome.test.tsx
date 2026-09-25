@@ -71,6 +71,34 @@ describe('the Back Office menu counters', () => {
     );
   });
 
+  it('paints the number the layout counted, whatever it is', () => {
+    // §4.1's "the menu counter is this number": three rows in
+    // compliance_review_queue_v are a 3, drawn the way the wireframe draws
+    // its 7 — one badge, on Compliance only, coral.
+    const markup = renderToStaticMarkup(
+      <NavCountsProvider counts={{ '/compliance': 3 }}>
+        <OfficeShell activeHref="/compliance" title="Compliance">
+          <span />
+        </OfficeShell>
+      </NavCountsProvider>,
+    );
+    expect(markup).toContain('<span class="count alert">3</span>');
+    // Once in the sidebar and once on the phone tab bar (ADR-0030).
+    expect(markup.match(/class="count/g)).toHaveLength(2);
+  });
+
+  it('hides the badge at zero — an empty queue draws no counter', () => {
+    const markup = renderToStaticMarkup(
+      <NavCountsProvider counts={{ '/compliance': 0 }}>
+        <OfficeShell activeHref="/compliance" title="Compliance">
+          <span />
+        </OfficeShell>
+      </NavCountsProvider>,
+    );
+    expect(markup).toContain('href="/compliance"');
+    expect(markup).not.toContain('class="count');
+  });
+
   it('shows nothing when the queue is empty or the count is unknown', () => {
     const markup = renderToStaticMarkup(
       <OfficeShell activeHref="/staff" title="Staff">

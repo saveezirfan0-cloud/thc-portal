@@ -6,7 +6,7 @@ import { StaffShell } from '../../_components/StaffShell';
 import { ShiftTime } from '../../_components/ShiftTime';
 import { ActionButton } from '../../_components/ActionButton';
 import { acceptInvite, declineInvite } from '../../actions';
-import { findBooking, loadBookings, openInvites } from '../../data';
+import { findBooking, loadBookings, openInvites, overlapWarning, shiftsBadge } from '../../data';
 import '../../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -35,13 +35,14 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         shiftHours: hours,
       })
     : null;
+  const overlap = overlapWarning(invite, all);
 
   return (
     <StaffShell
       title={`${invite.eventTitle} · ${invite.role}`}
       sub={<Link href="/invites">‹ Invites</Link>}
       active="/invites"
-      shifts={all.filter((b) => b.status === 'confirmed').length}
+      shifts={shiftsBadge(all)}
       invites={openInvites(all).length}
     >
       <div className="card-head">
@@ -93,6 +94,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           <span className="v">Shown after you accept</span>
         </div>
       </div>
+
+      {overlap ? <Alert tone="amber">{overlap}. Only your confirmed bookings count.</Alert> : null}
 
       {invite.hoursLimit ? (
         <Alert tone="coral">

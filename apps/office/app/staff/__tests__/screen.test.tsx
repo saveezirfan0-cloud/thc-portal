@@ -36,6 +36,10 @@ const WORKER: StaffRow = {
   weekly_cap_hours: 20,
   weekly_cap_band: 'student_term_20',
   weekly_booked_hours: 18,
+  weekly_cap_until: null,
+  last_shift_at: null,
+  released_shift_count: 0,
+  p45_requested_at: null,
 };
 
 describe('/staff directory (§9.6)', () => {
@@ -85,5 +89,58 @@ describe('/staff lists workers, and the Inactive tab as the wireframe draws it (
     expect(html).not.toContain('Dina F.');
     expect(html).toContain('<b>1 workers</b>');
     expect(html).not.toContain('pill amber">Onboarding');
+  });
+});
+
+describe('the Inactive tab carries what the office works through (§9.6, §10.6)', () => {
+  const LEAVER: StaffRow = {
+    ...WORKER,
+    id: 'l1',
+    display_name: 'Rosa T.',
+    status: 'inactive',
+    left_at: '2026-09-17T20:14:00Z',
+    leave_reason: 'Moving back to Spain in October',
+    last_shift_at: '2026-09-16T22:30:00Z',
+    released_shift_count: 2,
+    p45_requested_at: '2026-09-17T20:14:00Z',
+  };
+
+  it('shows the last completed shift, the released count and the P45 request', () => {
+    const html = renderToStaticMarkup(
+      <StaffScreen staff={[LEAVER]} students={[]} problem={null} initialFilter="inactive" />,
+    );
+    expect(html).toContain('<th>Last completed shift</th>');
+    expect(html).toContain('<th>Released shifts</th>');
+    expect(html).toContain('<th>P45</th>');
+    expect(html).toContain('16.09.2026');
+    expect(html).toContain('>2</td>');
+    expect(html).toContain('Requested');
+    expect(html).toContain('E8 sent 17.09.2026 21:14 UK time');
+  });
+
+  it('reads "— none worked" and no pill for a leaver who never worked or asked', () => {
+    const html = renderToStaticMarkup(
+      <StaffScreen
+        staff={[
+          { ...LEAVER, last_shift_at: null, released_shift_count: 0, p45_requested_at: null },
+        ]}
+        students={[]}
+        problem={null}
+        initialFilter="inactive"
+      />,
+    );
+    expect(html).toContain('— none worked');
+    expect(html).not.toContain('Requested');
+  });
+
+  it('dates the cap the worker is at the limit of (§9.6 "until 13.12.2026")', () => {
+    const html = renderToStaticMarkup(
+      <StaffScreen
+        staff={[{ ...WORKER, weekly_booked_hours: 20, weekly_cap_until: '2026-12-13' }]}
+        students={[]}
+        problem={null}
+      />,
+    );
+    expect(html).toContain('20 h — term time until 13.12.2026');
   });
 });

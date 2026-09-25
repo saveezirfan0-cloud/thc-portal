@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Alert, Button, GpsChip, MobileCard, Note, Pill, Timer } from '@thc/ui';
 import { UK_ZONE, formatTimeIn, needsDualZone, viewerZone } from '@thc/domain';
 import { checkIn, checkOut, finishBreak, recordPing, startBreak } from './actions';
+import { rpcMessage } from './messages';
 import { shiftEarnings, formatDuration, formatMoney, totalBreakMinutes } from './earnings';
 import { checkInWindow, distanceM, formatDistance, isStaticPhase, shiftPhase } from './phase';
 import { StaticShiftScreen } from './StaticShiftScreen';
@@ -122,12 +123,14 @@ export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
       setError(result.error);
       return;
     }
-    setMessage(MESSAGES[String(result.result.messageKey ?? '')] ?? null);
+    setMessage(rpcMessage(result.result, local));
     router.refresh();
   }
 
   const window_ = checkInWindow(shift.startsAt);
   const earnings = shiftEarnings(shift, now);
+  // §5.1: the ROLE section has started (RULE-18), so check-out is open.
+  const started = now >= new Date(shift.startsAt);
 
   if (isStaticPhase(phase)) {
     return <StaticShiftScreen kind={phase} shift={shift} localTime={local} />;
@@ -207,6 +210,7 @@ export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
             Check-in opens at {uk(window_.opens.toISOString())} UK, within {shift.geofenceRadiusM} m
             of the venue.
           </p>
+          {shift.breaksLogged ? <BreaksBlock shift={shift} locked formatTime={local} /> : null}
         </>
       ) : null}
 
@@ -227,6 +231,7 @@ export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
             {uk(shift.startsAt)} you’re marked Late; at {uk(window_.locks.toISOString())} check-in
             locks.
           </p>
+          {shift.breaksLogged ? <BreaksBlock shift={shift} locked formatTime={local} /> : null}
         </>
       ) : null}
 
@@ -276,11 +281,15 @@ export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
                 location off, no signal, a phone that never answers — the
                 press still goes to check_out() without coordinates, and the
                 server records the last on-site fix or, with none, raises
-                RULE-02. The button never waits on the GPS. */}
+                RULE-02. The button never waits on the GPS.
+
+                It does wait on the START: check-in opens 30 minutes before
+                it, check-out "once the shift has started", and check_out()
+                refuses a press in between (check_out_not_open). */}
           <Button
             block
             size="lg"
-            disabled={busy}
+            disabled={busy || !started}
             onClick={() =>
               run(async () => {
                 const at = fix ?? (await locate());
@@ -290,6 +299,12 @@ export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
           >
             {busy ? 'Checking out…' : 'Check out'}
           </Button>
+          {started ? null : (
+            <p className="xs muted">
+              Check-out opens at {local(shift.startsAt)}
+              {dual ? ` (${uk(shift.startsAt)} UK)` : ''}.
+            </p>
+          )}
         </>
       ) : null}
 
@@ -336,20 +351,30 @@ export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
   );
 }
 
-/** §5.2b. The block exists only where the client does not pay for breaks. */
+/**
+ * §5.2b. The block exists only where the client does not pay for breaks.
+ *
+ * Before check-in it is drawn locked — "Start break" disabled with the hint
+ * "Unlocks after check-in" (wireframe states (b), (c), (e)): you cannot be
+ * on a break for a shift you have not started, and start_break() refuses
+ * the press (not_checked_in). The >6 h banner shows either way, so the
+ * worker knows before the shift that a break is expected.
+ */
 function BreaksBlock({
   shift,
-  onBreak,
-  busy,
+  locked = false,
+  onBreak = false,
+  busy = false,
   onStart,
   onFinish,
   formatTime,
 }: {
   shift: ShiftDetail;
-  onBreak: boolean;
-  busy: boolean;
-  onStart: () => void;
-  onFinish: () => void;
+  locked?: boolean;
+  onBreak?: boolean;
+  busy?: boolean;
+  onStart?: () => void;
+  onFinish?: () => void;
   formatTime: (iso: string) => string;
 }) {
   const longShift =
@@ -367,12 +392,16 @@ function BreaksBlock({
         block
         size="lg"
         tone={onBreak ? 'primary' : 'outline'}
-        disabled={busy}
+        disabled={busy || locked}
         onClick={onBreak ? onFinish : onStart}
       >
         {onBreak ? 'Finish break — back to work' : 'Start break'}
       </Button>
-      {shift.breaks.length === 0 ? (
+      {locked ? (
+        <p className="xs muted" style={{ textAlign: 'center' }}>
+          Unlocks after check-in
+        </p>
+      ) : shift.breaks.length === 0 ? (
         <p className="xs muted">
           No breaks logged yet. Break time is deducted from your hours. You can take more than one.
         </p>
@@ -396,26 +425,3 @@ function sameUkDay(iso: string, now: Date): boolean {
   const fmt = (d: Date) => d.toLocaleDateString('en-GB', { timeZone: UK_ZONE });
   return fmt(new Date(iso)) === fmt(now);
 }
-
-/** The message keys the RPCs return, in the worker's language (§5.1 copy). */
-const MESSAGES: Record<string, string> = {
-  checked_in: 'You’re checked in. Have a good shift.',
-  checked_in_late: 'You’re checked in, and marked as arriving late.',
-  out_of_radius: 'You’re not close enough to the venue yet.',
-  check_in_not_open: 'Check-in is not open yet.',
-  no_show_locked: 'Check-in has closed for this shift. Contact the office.',
-  turned_away_paid:
-    'Thanks for coming — this shift is already fully staffed, so you’re not needed today. We’ve logged that you arrived on time and you’ll be paid for 4 hours.',
-  turned_away_unpaid:
-    'Thanks for coming — this shift is already fully staffed, so you’re not needed today.',
-  checked_out: 'You’re checked out.',
-  checked_out_off_site:
-    'You checked out away from the venue — we’ve recorded your last time on site.',
-  no_check_out_office_confirms:
-    'We couldn’t confirm when you left the venue — the office will confirm your finish time with you.',
-  no_check_out_locked: 'Check-out has closed. The office will confirm your finish time with you.',
-  on_break: 'Break started.',
-  break_finished: 'Break finished — back to work.',
-  already_checked_in: 'You’re already checked in.',
-  already_checked_out: 'You’ve already checked out.',
-};

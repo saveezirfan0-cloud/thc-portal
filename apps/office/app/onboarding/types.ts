@@ -72,6 +72,17 @@ export interface CandidateRow {
   rejection_cause: RejectionCause | null;
   rejection_reason: string | null;
   rejected_by_name: string | null;
+  // Appended by 20260928110000 (the 26.09 deferrals).
+  /** When the login was activated — null until the password is set (§2.7). */
+  activated_at: string | null;
+  /**
+   * When the last of HMRC, references and bank landed (ADR-0013): the
+   * derived move to Contract, which nothing else stamps. Null while any
+   * of the three is still open.
+   */
+  additional_info_done_at: string | null;
+  /** Every attempt's percentage this period, in attempt order (§2.9). */
+  quiz_scores: number[];
 }
 
 export interface ReturningRow {

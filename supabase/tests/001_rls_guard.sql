@@ -138,11 +138,15 @@ select bag_eq(
 select bag_eq(
   $$ select distinct c.relname::text from pg_policy p join pg_class c on c.oid = p.polrelid
       where p.polname like 'staff\_self%' or p.polname = 'profiles_self' $$,
-  $$ values ('staff'::text),('compliance_docs'),('bookings'),('criminal_declarations'),('profiles'),
+  $$ values ('staff'::text),('compliance_docs'),('bookings'),('profiles'),
             ('bank_details'),('staff_references'),('push_subscriptions'),('staff_roles'),
             ('quiz_attempts'),('location_pings'),('onboarding_progress') $$,
-  'workers hold a self policy on their own staff, docs, bookings, declarations, profile, bank details, references, push subscriptions, roles, quiz attempts, location pings and onboarding progress (read only — every wizard write is a definer RPC, 20260923120000)'
+  'workers hold a self policy on their own staff, docs, bookings, profile, bank details, references, push subscriptions, roles, quiz attempts, location pings and onboarding progress (read only — every wizard write is a definer RPC, 20260923120000)'
 );
+-- criminal_declarations is deliberately absent from that list too, since
+-- 20260928110500 (ADR-0031): the worker's only reads of a declaration are
+-- definer RPCs that withhold the text (§10.7), and a row policy would let
+-- the same session select `details` straight off the table.
 -- cap_band_notices is deliberately absent from that list. It records what
 -- N14 last told a worker their weekly cap was, which is a send receipt and
 -- not the cap: the cap is recalculated every time it is needed (RULE-20),

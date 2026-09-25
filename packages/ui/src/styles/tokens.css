@@ -72,6 +72,13 @@
   --on-amber: var(--bg);
   --on-coral: var(--bg);
 
+  /* --- a QR code is read by a camera, not an eye ------------------- */
+  /* Most scanners refuse an inverted code, so the activation screen's
+     QR (activate.html) is paper white and ink black in every style and
+     theme, and never inherits the ground. Nothing else may use these. */
+  --qr-paper: #ffffff;
+  --qr-ink: #000000;
+
   /* --- hover shades (read off the boards' style-hover attributes) --- */
   --cyan-hot: #7de9f4;
   --amber-hot: #ffcd63;
@@ -231,6 +238,11 @@
   --btn-h-sm: 28px;
   --btn-h-lg: 50px;
   --input-h: 40px;
+  /* The smallest thing a finger can hit (§1.2, §10.1): every tappable
+     control on the Staff App is at least this tall, including text links
+     and the Show/Hide addon, which grow their hit area to it. Same in both
+     styles — a rounded link is no easier to tap than a square one. */
+  --tap-min: 44px;
 }
 
 /* =====================================================================

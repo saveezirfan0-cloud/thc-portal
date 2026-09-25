@@ -31,6 +31,8 @@ export interface PushMessage {
   title: string;
   body: string;
   url?: string;
+  /** The button's label (N8 "Re-upload"); the button opens `url`. */
+  action?: string;
 }
 
 export interface EmailMessage {
@@ -111,6 +113,7 @@ export function messageFor(row: OutboxRow): OutboxMessage {
       title: render(entry.title, values),
       body: render(copy, values),
       ...(entry.deepLink ? { url: render(entry.deepLink, values) } : {}),
+      ...(entry.action ? { action: entry.action } : {}),
     };
   }
 
