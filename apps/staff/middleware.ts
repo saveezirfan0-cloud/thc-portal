@@ -149,6 +149,10 @@ export const config = {
   matcher: [
     // The service worker and its manifest are excluded: a 302 to /login in
     // answer to a request for sw.js means no offline shell and no push.
-    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|swe-worker-.*\\.js|workbox-.*\\.js|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)',
+    // Other static files are skipped only where public/ serves them: the
+    // top level and public/icons/ (the push badge). A nested page path
+    // that merely ENDS in an image extension (/shifts/x.png) is a page
+    // route and must pass the gate like any other (audit D52).
+    '/((?!_next/static|_next/image|(?:favicon\\.ico|manifest\\.webmanifest|sw\\.js)$|(?:swe-worker|workbox)-[^/]*\\.js$|(?:icons/)?[^/]+\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)',
   ],
 };
