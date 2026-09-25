@@ -34,7 +34,9 @@ const reason = { reason: 'The photo page is cut off', document: 'Passport', docu
 
 describe('N8 in the register', () => {
   it('keeps the copy word for word', () => {
-    expect(render(body('N8'), { reason: 'Expired' })).toBe('Document rejected — Expired. Re-upload.');
+    expect(render(body('N8'), { reason: 'Expired' })).toBe(
+      'Document rejected — Expired. Re-upload.',
+    );
   });
 
   it('names its button and its two landings', () => {
