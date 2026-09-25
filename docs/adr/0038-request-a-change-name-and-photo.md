@@ -84,3 +84,29 @@ Bodies are in `docs/18` §3 and `packages/notifications`. Every send is a
   already-decided refused; non-admin refused).
 - **THC to confirm** (docs/15): Q13 — must a name change trigger a fresh right-to-work
   check; Q14 — any limit on photo changes; Q21 — the RC1–RC4 wording.
+
+## Implementation notes (Phase 1, `directory` · `20260930130000_office_staff_additions.sql`)
+
+- `office_decide_profile_change(p_id, p_approve, p_reason)` locks the request, then
+  the worker; refuses `already_decided` (approved, rejected or withdrawn),
+  `request_not_found`, `reason_required` / `reason_too_long` on reject, and any
+  non-admin (`not_authorised`, 42501). It is called through the manager's session,
+  so `decided_by` and the audit actor are `auth.uid()`.
+- `previous_value` is snapshotted on reject as well as approve, so the Decided tab
+  always shows what the request was measured against. An approval stores no
+  `decision_reason` — that column is what the worker is shown.
+- The `audit_log` rows (`profile_change.approve` / `.reject`) carry the request id
+  and kind, not the names: the request row holds the values and is anonymised on
+  GDPR removal; `audit_log` is not.
+- Payloads carry exactly the register's placeholders: RC2 `{change}`, RC3
+  `{change, reason}`, RC4 `{name, employeeId, previousName, approvedAt}` with
+  `approvedAt` in UK time (`DD Mon YYYY HH24:MI`, E8's shape). `{change}` is
+  `name` or `photo`.
+- The evidence tick is enforced twice: the dialog's Approve stays disabled without
+  it, and the server action re-reads the request's kind and refuses a name
+  approval without it (the database cannot see a tick).
+- The queue and the banner read `office_profile_change_requests(p_staff, p_decided,
+  p_limit)`, which names the decider. Photos are signed with the manager's session
+  (`_lib/photos.ts`); the evidence is signed for 60 s after the session has read the
+  request (admin_read), as `/onboarding`'s document links are.
+- pgTAP 666 (and 661 A for the function shape and grants).

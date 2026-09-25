@@ -57,3 +57,22 @@ existing phone check, with `emergencyContact.vectors.json` also run against the 
 - **THC to confirm** (docs/15): Q11 — should it be mandatory, or asked during
   onboarding; Q12 — should it be deleted when a worker leaves (§10.6) rather than only
   on Remove.
+
+## Implementation notes (Phase 1, `directory` · `20260930130000_office_staff_additions.sql`)
+
+- `office_save_emergency_contact` / `office_clear_emergency_contact` are definers with
+  the admin check in their own body (the `office_invite_worker` pattern), called
+  through the manager's session, so `auth.uid()` is both `updated_by` and the audit
+  actor — no service-role door. A removed worker is refused (`staff_removed`); the
+  phone has its separators stripped before the E.164 check (`bad_phone`,
+  `bad_name`, `bad_relationship`, 22023).
+- **The audit row records which fields changed, never their values**
+  (`emergency_contact.office_save` → `{created, changed: [...]}`;
+  `emergency_contact.office_clear`). The contact is a third party's personal data;
+  the table row is deleted on GDPR removal, and `audit_log` is not.
+- The card reads through `office_emergency_contact(p_staff)`, which also says who
+  saved it last ("by the worker" / "by the office (name)") — an admin cannot read
+  another manager's `profiles` row directly.
+- Checked (read-only): `apps/office/app/api/documents/**`, `packages/pdf` and
+  `apps/client` contain no reference to `staff_emergency_contacts`.
+- pgTAP 661.

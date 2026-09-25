@@ -7,8 +7,12 @@ import { signStaffPhotos } from '../../_lib/photos';
 import { loadRtwChecks } from '../../_lib/rtwCheckData';
 import type { FeedbackEntry } from '../../feedback/types';
 import type { QueueRow } from '../../compliance/types';
+import { readChangeRequests } from '../requests/data';
 import type {
+  AvailabilityRow,
   ClientOption,
+  EmergencyContact,
+  Referrals,
   DeclarationRow,
   DocumentRow,
   ProfileData,
@@ -74,6 +78,28 @@ interface ActivatedRpc {
   ): PromiseLike<{ data: boolean | null; error: unknown }>;
 }
 
+/**
+ * The docs/18 office reads (20260930130000): definers with the admin check
+ * in their own body — the tables are admin_read, but the cards also name
+ * who saved or referred, from `profiles`/`staff`, which a plain select could
+ * not. Typed by hand until `gen:types` (docs/18 §8, Phase 2.1).
+ */
+type RpcError = { message: string } | null;
+interface AdditionsRpc {
+  rpc(
+    fn: 'office_emergency_contact',
+    args: { p_staff: string },
+  ): PromiseLike<{ data: EmergencyContact | null; error: RpcError }>;
+  rpc(
+    fn: 'office_staff_referrals',
+    args: { p_staff: string },
+  ): PromiseLike<{ data: Referrals | null; error: RpcError }>;
+  rpc(
+    fn: 'office_staff_unavailability',
+    args: { p_staff: string },
+  ): PromiseLike<{ data: AvailabilityRow[] | null; error: RpcError }>;
+}
+
 export async function loadProfile(id: string): Promise<ProfileData> {
   if (!supabaseConfigured()) return { ...EMPTY, problem: NOT_CONFIGURED };
 
@@ -96,6 +122,10 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     violationDetails,
     rtw,
     reviewQueue,
+    emergency,
+    referrals,
+    availability,
+    changeRequests,
   ] = await Promise.all([
     supabase.from('staff_profile_v').select(PROFILE_COLUMNS).eq('id', id).maybeSingle<ProfileRow>(),
     supabase
@@ -174,6 +204,12 @@ export async function loadProfile(id: string): Promise<ProfileData> {
       .eq('staff_id', id)
       .order('submitted_at', { ascending: true })
       .returns<QueueRow[]>(),
+    // docs/18 additions. Each fails on its own — a card that cannot be read
+    // says so; it never takes the profile down.
+    (supabase as unknown as AdditionsRpc).rpc('office_emergency_contact', { p_staff: id }),
+    (supabase as unknown as AdditionsRpc).rpc('office_staff_referrals', { p_staff: id }),
+    (supabase as unknown as AdditionsRpc).rpc('office_staff_unavailability', { p_staff: id }),
+    readChangeRequests(supabase, { staffId: id }),
   ]);
 
   const error =
@@ -214,6 +250,13 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     managerName: manager,
     activated: activated.error ? null : (activated.data ?? null),
     locationStale: location.error ? null : (location.data?.home_location_stale ?? null),
+    emergencyContact: emergency.error ? null : (emergency.data ?? null),
+    emergencyContactProblem: emergency.error ? emergency.error.message : null,
+    referrals: referrals.error ? null : (referrals.data ?? null),
+    referralsProblem: referrals.error ? referrals.error.message : null,
+    availability: availability.error ? [] : (availability.data ?? []),
+    availabilityProblem: availability.error ? availability.error.message : null,
+    changeRequests: changeRequests.rows,
     problem: null,
   };
 }

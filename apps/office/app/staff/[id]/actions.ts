@@ -4,6 +4,8 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { createAdminClient } from '@thc/db/admin';
+import { validateEmergencyContact } from '@thc/domain';
+import type { EmergencyContactInput } from '@thc/domain';
 import { supabaseConfigured } from '../data';
 import type { ActionResult } from './types';
 
@@ -206,4 +208,56 @@ export async function removeWorker(staffId: string, confirmation: string): Promi
     return { ok: false, message: 'Type REMOVE to confirm.' };
   }
   return callPrivilegedRpc('remove_worker', { p_staff: staffId }, staffId);
+}
+
+// ---------------------------------------------------------------------
+// Emergency contact (ADR-0037) — office-only, audited
+//
+// Both are definers with the admin check in their own body and auth.uid()
+// as the actor (20260930130000), so they go through the SESSION: the audit
+// row names the manager without anything being passed in, and there is no
+// service-role door to guard.
+// ---------------------------------------------------------------------
+const EMERGENCY_MESSAGES: Record<string, string> = {
+  bad_phone: 'Enter the number with its country code, for example +44 7700 900123.',
+  bad_name: 'Enter their name (up to 100 characters).',
+  bad_relationship: 'Say who they are to the worker, for example Parent (up to 40 characters).',
+  staff_removed: 'This worker was removed under §1.7; nothing personal can be added back.',
+  not_authorised: 'Only the office can do this.',
+};
+
+function emergencyMessage(result: ActionResult): ActionResult {
+  if (result.ok) return result;
+  const key = Object.keys(EMERGENCY_MESSAGES).find((code) => result.message.includes(code));
+  return key ? { ok: false, message: EMERGENCY_MESSAGES[key] as string } : result;
+}
+
+export async function saveEmergencyContact(
+  staffId: string,
+  input: EmergencyContactInput,
+): Promise<ActionResult> {
+  // The domain's own check (validateEmergencyContact), so the manager sees
+  // the same words the worker's form shows; the database checks again.
+  const checked = validateEmergencyContact(input);
+  if (!checked.ok) {
+    return { ok: false, message: Object.values(checked.errors).join(' ') };
+  }
+  return emergencyMessage(
+    await callRpc(
+      'office_save_emergency_contact',
+      {
+        p_staff: staffId,
+        p_name: checked.value.name,
+        p_relationship: checked.value.relationship,
+        p_phone: checked.value.phone,
+      },
+      staffId,
+    ),
+  );
+}
+
+export async function clearEmergencyContact(staffId: string): Promise<ActionResult> {
+  return emergencyMessage(
+    await callRpc('office_clear_emergency_contact', { p_staff: staffId }, staffId),
+  );
 }
