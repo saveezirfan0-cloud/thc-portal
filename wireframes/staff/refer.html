@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff App · Refer a friend — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+/* page-local helpers (wireframe only) */
+.app-body>*{flex-shrink:0}
+.title .back{display:block;font-family:var(--font-mono);font-size:9.5px;color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+.linkbox{display:flex;flex-direction:column;gap:6px;padding:12px 14px;border:1px solid var(--line);background:var(--panel-glass)}
+.linkbox .url{font-family:var(--font-mono);font-size:12px;word-break:break-all;color:var(--cyan-ink)}
+.qr{width:168px;height:168px;align-self:center;border:1px solid var(--line);background:var(--panel-2);display:grid;grid-template-columns:repeat(8,1fr);gap:2px;padding:10px}
+.qr span{background:var(--text)}
+.qr span.o{background:transparent}
+.count{display:flex;align-items:baseline;gap:8px;padding:12px 14px;border:1px solid var(--line);background:var(--panel-glass)}
+.count .v{font-family:var(--font-head);font-size:28px;font-weight:600}
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Refer a friend</span><span class="pill cyan">/profile/refer</span><span class="pill">§2.1 · §10.1 · §1.7 · ADR-0040 (proposed)</span>
+  <span class="spacer"></span>
+  <a href="offer-shift.html">Next: Offer up a shift →</a>
+</div>
+
+<div class="wf-section">
+  <h2>Refer a friend — a personal link to /apply, recorded, no reward<small>Stub (docs/18 §5, Phase 0-C) — to be refined by <b>staff-pwa</b> (this screen) and <b>onboarding</b> (the /apply side). Compliant workers only. The worker sees a count, never names; the applicant never sees who referred them. No reward copy anywhere (Q19).</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ Refer · with count ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Refer a friend · <b>Link, Share, Copy, QR, count</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:40</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Refer a friend</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:12px">
+          <p class="sm muted">Know someone who'd be good at this? Send them your link — they apply in the usual way, and we'll know you sent them.</p>
+          <div class="linkbox"><span class="label">Your link</span><span class="url">app.thehospitalitycompany.co.uk/apply?ref=K7M4Q2XP</span></div>
+          <div class="row"><button class="btn primary" style="flex:1">Share</button><button class="btn outline" style="flex:1">Copy link</button></div>
+          <div class="qr" aria-label="QR code for your link">
+            <span></span><span></span><span></span><span class="o"></span><span></span><span class="o"></span><span></span><span></span>
+            <span></span><span class="o"></span><span></span><span></span><span class="o"></span><span></span><span class="o"></span><span></span>
+            <span></span><span></span><span></span><span class="o"></span><span></span><span class="o"></span><span></span><span></span>
+            <span class="o"></span><span></span><span class="o"></span><span></span><span class="o"></span><span></span><span></span><span class="o"></span>
+            <span></span><span class="o"></span><span></span><span class="o"></span><span></span><span class="o"></span><span class="o"></span><span></span>
+            <span></span><span></span><span></span><span class="o"></span><span class="o"></span><span></span><span></span><span class="o"></span>
+            <span></span><span class="o"></span><span></span><span></span><span></span><span class="o"></span><span></span><span></span>
+            <span></span><span></span><span></span><span class="o"></span><span></span><span></span><span class="o"></span><span></span>
+          </div>
+          <div class="xs muted" style="text-align:center">Or let them scan this from your phone.</div>
+          <div class="count"><span class="v">3</span><span class="sm">people have applied with your link</span></div>
+          <span class="annot">a count only — no names, no outcomes (Q20) · Share = Web Share API; Copy is the fallback · QR = the existing activation QR component</span>
+        </div>
+        <nav class="bottom-nav">
+          <a href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+          <a class="active" href="profile.html"><span class="i"></span>Profile</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Refer · none yet ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Refer a friend · <b>No applications yet</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:40</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Refer a friend</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:12px;padding-bottom:24px">
+          <div class="linkbox"><span class="label">Your link</span><span class="url">app.thehospitalitycompany.co.uk/apply?ref=K7M4Q2XP</span></div>
+          <div class="row"><button class="btn primary" style="flex:1">Share</button><button class="btn outline" style="flex:1">Copy link</button></div>
+          <div class="toast green">Link copied</div>
+          <div class="empty" style="padding:24px"><h3>No one yet</h3>When someone applies with your link, you'll see the count here.</div>
+          <span class="annot">the code is minted the first time this screen opens and never changes (8 characters, no 0/O/1/I)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ /apply?ref= ============ -->
+    <div class="phone-wrap">
+      <div class="cap">/apply?ref=K7M4Q2XP · <b>The applicant's view — nothing about the referrer</b> (onboarding)</div>
+      <div class="phone short">
+        <div class="statusbar"><span>18:02</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Apply</div></div>
+        <div class="app-body" style="gap:12px;padding-bottom:24px">
+          <p class="sm muted">The application form exactly as <a href="../public/apply.html">/apply</a>, with the code in a hidden field.</p>
+          <label class="check sm"><span class="box on"></span>I agree to The Hospitality Company processing my details to assess my application. If a friend referred you, we record who referred you. <a href="#">Privacy notice</a></label>
+          <button class="btn primary block lg">Submit application</button>
+          <span class="annot">the response is identical with or without a code · a bad, revoked or own code records nothing and the application still goes through · consent / privacy sentence pending THC's legal text (Q20)</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> Addition to Scope v1.6 (ADR-0040, proposed — awaiting THC; docs/18 §5). The Profile row "Refer a friend" and this screen appear for <b>compliant</b> workers only. The link is <code>{origin}/apply?ref={code}</code>; the code is 8 characters from A–H, J–N, P–Z, 2–9, minted once and stable. <b>Share</b> uses the Web Share API; <b>Copy link</b> copies it; the QR is the existing activation QR component. The count is "N people have applied with your link" — never names or outcomes. <b>No reward copy</b>: THC has not decided one (Q19). A "your friend joined" push (RF1) is proposed, not built (Q20). On <code>/apply</code> the code travels in a hidden field on the service-role path only; the applicant never sees the referrer's name; the consent line and <code>/privacy</code> gain "If a friend referred you, we record who referred you." The office sees "Referred by {name} ({employeeId})" on <code>/onboarding/:id</code>, a "Referred" chip on the kanban card, and a Referrals card on <a href="../backoffice/change-requests.html#cr=overview">/staff/:id</a>. No money anywhere: nothing reaches PDFs, reports or payroll. The client sees nothing. On GDPR removal the code is revoked and the referral rows read "Deleted account #id".</div>
+</body>
+</html>
