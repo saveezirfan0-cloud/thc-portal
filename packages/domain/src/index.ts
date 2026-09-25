@@ -18,3 +18,4 @@ export * from './quiz';
 export * from './onboarding';
 export * from './documents';
 export * from './password';
+export * from './rtwCheck';
