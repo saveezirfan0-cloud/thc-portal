@@ -25,6 +25,8 @@ export {
   UserChip,
 } from './components/Shell';
 export type { NavItem, PageHeadProps, SidebarProps, TopbarProps } from './components/Shell';
+export { MenuButton } from './components/MenuButton';
+export type { MenuButtonProps } from './components/MenuButton';
 
 export { Alert, EmptyState, Note, Panel } from './components/Panel';
 export type { NoteTone, PanelProps } from './components/Panel';
@@ -94,6 +96,7 @@ export {
   MODE_STORAGE_KEY,
   applyMode,
   appearanceScript,
+  resolveMode,
   styleForMode,
   useAppearance,
 } from './components/Appearance';

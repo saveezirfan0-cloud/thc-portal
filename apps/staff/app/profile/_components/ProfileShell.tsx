@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import { AppBody, AppFrame, AppHeader, Avatar } from '@thc/ui';
+import { AppBody, AppFrame, AppHeader, Avatar, Logo } from '@thc/ui';
 import { BottomTabs } from '../../_components/BottomTabs';
 import { reachableTabs, showsBottomNav } from '../lock';
 import type { AppLock } from '../lock';
@@ -49,7 +49,7 @@ export function ProfileShell({
     <AppFrame>
       <AppHeader
         collapsed={Boolean(back)}
-        brand={<span className="logo round">🥂</span>}
+        brand={<Logo size="sm" label="The Hospitality Company" />}
         title={
           back ? (
             <>

@@ -8,6 +8,7 @@ import {
   daysBetween,
   documentState,
   isDocType,
+  rtwCheckInFlight,
 } from '@thc/domain';
 import type { DocType, DocumentState } from '@thc/domain';
 import type { DeclarationRecord, DocumentRecord, DocumentsData } from './types';
@@ -78,6 +79,8 @@ export interface DocumentsView {
   history: DocRowView[];
   canUpload: boolean;
   canDeclare: boolean;
+  /** A share code is being checked with gov.uk right now: the page re-reads itself. */
+  checking: boolean;
 }
 
 // ---------------------------------------------------------------------
@@ -229,8 +232,19 @@ function rowFor(
   if (state === 'in_review') {
     // The replacement is pending; the last verified one still counts until
     // it runs out (current_verified_docs()), so say which is which.
+    //
+    // A share code is checked with gov.uk automatically (ADR-0025): while
+    // that runs it says so, and nothing mentions a manual review — only a
+    // check that could not decide is "with the office".
+    const check = isShare ? data.rtwChecks?.[current.id] : undefined;
+    const checking = rtwCheckInFlight(check?.status);
+    const entered = `${shareCodeMeta(current)} entered ${formatDay(ukDay(current.uploadedAt))}`;
     const what = isShare
-      ? `In review · new ${shareCodeMeta(current)} entered ${formatDay(ukDay(current.uploadedAt))}`
+      ? checking
+        ? `Checking with gov.uk… · ${entered}`
+        : check?.status === 'needs_review'
+          ? `In review · gov.uk’s result is with the office · ${entered}`
+          : `In review · new ${entered}`
       : `In review · uploaded ${formatDay(ukDay(current.uploadedAt))}`;
     let tail = '';
     if (counted && counted.id !== current.id && counted.expiresOn) {
@@ -246,7 +260,7 @@ function rowFor(
       icon: current.hasFile ? 'PDF' : '…',
       meta: what + tail,
       metaTone: null,
-      pill: { tone: 'amber', text: 'In review' },
+      pill: { tone: 'amber', text: checking ? 'Checking' : 'In review' },
       action: null,
     };
   }
@@ -628,6 +642,7 @@ export function buildDocumentsView(data: DocumentsData): DocumentsView {
     history: historyRows(data),
     canUpload,
     canDeclare: canDeclareConviction(data.status, data.blockKind),
+    checking: Object.values(data.rtwChecks ?? {}).some((c) => rtwCheckInFlight(c.status)),
   };
 }
 

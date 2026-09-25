@@ -1,4 +1,4 @@
-import type { CompletionEvidenceForm, DocType, StaffStatus } from '@thc/domain';
+import type { CompletionEvidenceForm, DocType, RtwCheckStatus, StaffStatus } from '@thc/domain';
 
 /**
  * What `staff_documents()` (20260923150000) hands the Documents tab.
@@ -79,6 +79,12 @@ export interface DocumentsData {
   declarations: DeclarationRecord[];
   cap: CapNow | null;
   optOut: OptOutRecord;
+  /**
+   * The latest automated gov.uk check per share-code document, by document
+   * id (`my_rtw_checks()`, ADR-0025). Absent when the check is off or the
+   * read failed — the row then reads as it always did.
+   */
+  rtwChecks?: Record<string, { status: RtwCheckStatus; workerReason: string | null }>;
 }
 
 export type ActionResult = { ok: true; note?: string } | { ok: false; message: string };

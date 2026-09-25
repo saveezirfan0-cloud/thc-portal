@@ -4,6 +4,7 @@ import { supabaseConfigured } from '../data';
 import { ENTRY_COLUMNS, managerName } from '../../feedback/data';
 import { loadStaffViolationLog } from '../../checkin/data';
 import { signStaffPhotos } from '../../_lib/photos';
+import { loadRtwChecks } from '../../_lib/rtwCheckData';
 import type { FeedbackEntry } from '../../feedback/types';
 import type {
   ClientOption,
@@ -92,6 +93,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     activated,
     location,
     violationDetails,
+    rtw,
   ] = await Promise.all([
     supabase.from('staff_profile_v').select(PROFILE_COLUMNS).eq('id', id).maybeSingle<ProfileRow>(),
     supabase
@@ -160,6 +162,8 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     // The Shifts tab opens the /checkin detail window and Resolve (§9.6),
     // so it reads the entries through the monitor's own query.
     loadStaffViolationLog(supabase, id),
+    // The automated gov.uk check on share codes (ADR-0025). Best-effort.
+    loadRtwChecks(supabase, id),
   ]);
 
   const error =
@@ -182,6 +186,8 @@ export async function loadProfile(id: string): Promise<ProfileData> {
   return {
     profile: profile.data ? { ...profile.data, photo_url: photoUrl } : null,
     documents: documents.data ?? [],
+    rtwChecks: rtw.checks,
+    rtwCheckEnabled: rtw.enabled,
     qualifications: qualifications.data ?? [],
     shifts: shifts.data ?? [],
     violations: violations.data ?? [],

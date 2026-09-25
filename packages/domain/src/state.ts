@@ -5,6 +5,7 @@
  * The database repeats these rules in triggers, so an illegal transition is
  * rejected even if it never passes through this code (CLAUDE.md, docs/01 §3).
  */
+import type { RtwCheckStatus } from './rtwCheck';
 
 export const STAFF_STATUSES = [
   'interview_requested',
@@ -162,7 +163,7 @@ export function canCancelBooking(status: string): boolean {
 
 export class IllegalTransitionError extends Error {
   constructor(
-    readonly machine: 'staff' | 'booking',
+    readonly machine: 'staff' | 'booking' | 'rtw_check',
     readonly from: string,
     readonly to: string,
   ) {
@@ -177,6 +178,42 @@ export function assertStaffTransition(from: StaffStatus, to: StaffStatus): void 
 
 export function assertBookingTransition(from: BookingStatus, to: BookingStatus): void {
   if (!canTransitionBooking(from, to)) throw new IllegalTransitionError('booking', from, to);
+}
+
+/**
+ * The automated right-to-work check (§2.6, ADR-0025), one `rtw_checks` row
+ * per run. The database holds the same edges in `rtw_check_transitions()`
+ * and refuses any other status change in the `rtw_checks_state_guard`
+ * trigger (20260928100000); `rtwCheck.sql.test.ts` holds the two equal.
+ *
+ *   queued → running     claimed by the runner (`rtw_check_claim()`)
+ *   queued → failed      the document left review before it ran (verified or
+ *                        rejected by hand, superseded, the profile rejected)
+ *   running → queued     the check could not be completed; retry after the backoff
+ *   running → passed     verified through the one Verify, system actor
+ *   running → rejected   the worker re-enters (N8)
+ *   running → needs_review  the Compliance queue, with a reason
+ *   running → failed     the document left review while it ran
+ *
+ * `running → running` is a lease re-taken after a runner died mid-check;
+ * staying in a status is not a transition. The four outcomes are terminal:
+ * "Run check again" is a NEW row, so each run keeps its own record.
+ */
+export const RTW_CHECK_TRANSITIONS: Readonly<Record<RtwCheckStatus, readonly RtwCheckStatus[]>> = {
+  queued: ['running', 'failed'],
+  running: ['queued', 'passed', 'rejected', 'needs_review', 'failed'],
+  passed: [],
+  rejected: [],
+  needs_review: [],
+  failed: [],
+};
+
+export function canTransitionRtwCheck(from: RtwCheckStatus, to: RtwCheckStatus): boolean {
+  return from === to || RTW_CHECK_TRANSITIONS[from].includes(to);
+}
+
+export function assertRtwCheckTransition(from: RtwCheckStatus, to: RtwCheckStatus): void {
+  if (!canTransitionRtwCheck(from, to)) throw new IllegalTransitionError('rtw_check', from, to);
 }
 
 /**

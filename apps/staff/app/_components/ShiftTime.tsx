@@ -3,6 +3,7 @@
 import {
   UK_ZONE,
   displayTime,
+  formatDateIn,
   formatHours,
   formatTimeIn,
   needsDualZone,
@@ -67,9 +68,8 @@ export function dayPrefix(startsAt: Date, now: Date = new Date()): string {
   const day = ukToday(startsAt);
   if (day === ukToday(now)) return 'Today';
   if (day === ukToday(new Date(now.getTime() + 24 * 60 * 60 * 1000))) return 'Tomorrow';
-  return new Intl.DateTimeFormat('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    timeZone: UK_ZONE,
-  }).format(startsAt);
+  // formatDateIn, not Intl's format(): engines differ on the comma
+  // ("Sat, 20" / "Sat 20"), and a client component rendered on the server
+  // must print the same string in the browser.
+  return formatDateIn(startsAt, UK_ZONE, { weekday: 'short' }).split(' ').slice(0, 2).join(' ');
 }

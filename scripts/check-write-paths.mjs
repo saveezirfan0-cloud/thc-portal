@@ -25,7 +25,7 @@ import { fileURLToPath } from 'node:url';
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Written only by `security definer` RPCs and the service role. */
-const OWNED_BY_RPC = ['notification_outbox', 'audit_log', 'report_sends'];
+const OWNED_BY_RPC = ['notification_outbox', 'audit_log', 'report_sends', 'rtw_checks'];
 
 const sources = globSync(['apps/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}'], {
   cwd: REPO,

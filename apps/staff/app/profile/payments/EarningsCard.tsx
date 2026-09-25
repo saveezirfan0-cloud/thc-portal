@@ -1,6 +1,6 @@
 'use client';
 
-import { displayTime } from '@thc/domain';
+import { UK_ZONE, displayTime, formatDateIn } from '@thc/domain';
 import { Pill } from '@thc/ui';
 import { useViewerZone } from '../../_components/useViewerZone';
 import { formatMoney, formatWorked } from './earnings';
@@ -26,12 +26,7 @@ export function EarningsCard({ row }: { row: EarningsRow }) {
   const zone = useViewerZone();
   const from = displayTime(row.startsAt, 'scheduled', zone);
   const to = displayTime(row.endsAt, 'scheduled', zone);
-  const date = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/London',
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }).format(row.startsAt);
+  const date = formatDateIn(new Date(row.startsAt), UK_ZONE, { weekday: 'short' });
 
   return (
     <div className="mcard">

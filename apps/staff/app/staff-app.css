@@ -38,10 +38,11 @@
   font-family: var(--font-label);
   font-size: var(--label-size);
   letter-spacing: var(--label-track);
-  text-transform: uppercase;
+  text-transform: var(--label-case);
   color: var(--muted);
   flex: 0 0 84px;
   padding-top: 3px;
+  font-weight: var(--label-weight);
 }
 .kv .v {
   flex: 1;
@@ -60,7 +61,7 @@
 
 /* Radar's km badge. */
 .km {
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
   font-size: var(--fs-10);
   padding: 2px 6px;
   border-radius: var(--r-pill);
@@ -79,9 +80,10 @@
   font-family: var(--font-label);
   font-size: var(--label-size);
   letter-spacing: var(--label-track);
-  text-transform: uppercase;
+  text-transform: var(--label-case);
   color: var(--muted);
   margin-top: var(--sp-4);
+  font-weight: var(--label-weight);
 }
 .grp::after {
   content: '';

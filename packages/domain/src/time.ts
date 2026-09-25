@@ -26,20 +26,74 @@ export function needsDualZone(zone: string = viewerZone()): boolean {
 }
 
 const TIME_OPTS: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit', hour12: false };
-const DATE_TIME_OPTS: Intl.DateTimeFormatOptions = {
-  day: '2-digit',
-  month: 'short',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-};
 
 export function formatTimeIn(instant: Date, zone: string): string {
   return new Intl.DateTimeFormat('en-GB', { ...TIME_OPTS, timeZone: zone }).format(instant);
 }
 
+/** "05 Sep, 09:05" — the day and month words from `formatDateIn`, so the
+ *  server and Safari agree on "Sep" (Node's ICU writes "Sept"). */
 export function formatDateTimeIn(instant: Date, zone: string): string {
-  return new Intl.DateTimeFormat('en-GB', { ...DATE_TIME_OPTS, timeZone: zone }).format(instant);
+  const [d = '', m = ''] = formatDateIn(instant, zone).split(' ');
+  return `${d.padStart(2, '0')} ${m}, ${formatTimeIn(instant, zone)}`;
+}
+
+const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const MONTHS = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+export interface DateLabelOptions {
+  weekday?: 'short' | 'long';
+  month?: 'short' | 'long';
+  /** Defaults to true; false gives "Sep 2026". */
+  day?: boolean;
+  year?: boolean;
+}
+
+/**
+ * "Fri 25 Sep 2026" / "Friday 25 September 2026", the same in every engine.
+ *
+ * `Intl.DateTimeFormat('en-GB', { weekday, month: 'short' }).format()` is
+ * not: Node and Chrome say "Fri 25 Sept" or "Fri, 25 Sept", Safari says
+ * "Fri, 25 Sep". A string rendered on the server and again in the browser
+ * that differs by one comma is a hydration mismatch, and React answers one
+ * by re-rendering the page from scratch on the client. Only the numeric
+ * parts come from Intl here (they are what the zone decides); the words are
+ * ours.
+ */
+export function formatDateIn(instant: Date, zone: string, opts: DateLabelOptions = {}): string {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: zone,
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  }).formatToParts(instant);
+  const num = (type: 'year' | 'month' | 'day') => Number(parts.find((p) => p.type === type)?.value);
+  const y = num('year');
+  const m = num('month');
+  const d = num('day');
+  const month = MONTHS[m - 1] ?? '';
+  const out: string[] = [];
+  if (opts.weekday) {
+    const wd = WEEKDAYS[new Date(Date.UTC(y, m - 1, d)).getUTCDay()] ?? '';
+    out.push(opts.weekday === 'long' ? wd : wd.slice(0, 3));
+  }
+  if (opts.day !== false) out.push(String(d));
+  out.push(opts.month === 'long' ? month : month.slice(0, 3));
+  if (opts.year) out.push(String(y));
+  return out.join(' ');
 }
 
 /** The short zone name shown next to a dual-zone second line, e.g. "CEST". */

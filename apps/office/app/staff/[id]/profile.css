@@ -68,11 +68,12 @@
   align-items: baseline;
 }
 .kv .k {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
   color: var(--muted);
+  font-weight: var(--label-weight);
 }
 .kv.tight {
   grid-template-columns: 96px 1fr;
@@ -119,7 +120,7 @@
 }
 .fb .h .when {
   color: var(--muted);
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
   font-size: 11px;
 }
 .fb.client {

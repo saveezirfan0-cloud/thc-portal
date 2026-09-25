@@ -64,6 +64,9 @@ import {
 } from './view-model';
 import type { Period } from './view-model';
 import { rtwDateProblem, rtwDateRule, rtwDateValue } from '../compliance/rtw';
+import { RtwCheckPanel } from '../_components/RtwCheckPanel';
+import { checksByDocument, rtwCheckView } from '../_lib/rtwCheck';
+import type { RtwCheckRow } from '../_lib/rtwCheck';
 import type {
   ActionResult,
   CandidateData,
@@ -847,16 +850,31 @@ function DocumentLine({
 }
 
 /**
- * The gov.uk share-code report (§2.6): the worker typed the code; the date is
- * read off the report (the extractor pre-fills it, ADR-0002) and the manager
- * confirms it — Verify is refused without it, because it is the worker's
- * right-to-work expiry and the last day they can be rostered. On the EU
- * settled branch, settled status is confirmed explicitly as no time limit.
+ * The gov.uk share-code report (§2.3, §2.6): the worker typed the code with
+ * their DOB, and the automated check (ADR-0025) asks gov.uk — a pass
+ * verifies it by itself, with the right-to-work-until gov.uk returned and
+ * the PDF stored here. Only a check that needs review (or the automation
+ * switched off) puts the date in front of the manager to confirm — Verify is
+ * refused without it, because it is the worker's right-to-work expiry and
+ * the last day they can be rostered (ADR-0018). On the EU settled branch,
+ * settled status is confirmed explicitly as no time limit.
  */
-function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: DocHandlers }) {
-  const pill = REVIEW_PILL[doc.review_status];
-  const manual = doc.needs_manual_review;
+function ShareCodeCard({
+  doc,
+  handlers,
+  check,
+  checkEnabled,
+}: {
+  doc: CandidateDocument;
+  handlers: DocHandlers;
+  check: RtwCheckRow | null;
+  checkEnabled: boolean;
+}) {
+  const view = rtwCheckView(check, { docStatus: doc.review_status, enabled: checkEnabled });
+  const pill = view.status ?? REVIEW_PILL[doc.review_status];
+  const manual = check ? check.status === 'needs_review' : doc.needs_manual_review && !checkEnabled;
   const actionable = !handlers.readOnly && doc.review_status === 'pending';
+  const typing = actionable && view.manualAllowed;
   const rule = rtwDateRule(doc.doc_type, handlers.branch);
   const [until, setUntil] = useState(doc.right_to_work_until ?? '');
   const [noTimeLimit, setNoTimeLimit] = useState(false);
@@ -885,7 +903,7 @@ function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: Do
             </span>
           </span>
           <span className="k">Right to work until</span>
-          {actionable ? (
+          {typing ? (
             <span className="stack">
               <span className="row wrap">
                 <input
@@ -912,44 +930,58 @@ function ShareCodeCard({ doc, handlers }: { doc: CandidateDocument; handlers: Do
                 </label>
               ) : null}
             </span>
+          ) : actionable && view.inFlight ? (
+            <span className="muted sm">checking with gov.uk… — a pass fills this in by itself</span>
           ) : (
             <span>
               <b>{rtwUntilLabel(doc)}</b>{' '}
               <span className="muted sm">— becomes the expiry used for reminders (§2.6, §4.4)</span>
             </span>
           )}
-          <span className="k">Checked</span>
-          <span>{formatUkStamp(doc.uploaded_at)} · gov.uk/view-right-to-work</span>
+          {!check ? (
+            <>
+              <span className="k">Checked</span>
+              <span>{formatUkStamp(doc.uploaded_at)} · gov.uk/view-right-to-work</span>
+            </>
+          ) : null}
         </div>
+        <RtwCheckPanel
+          row={check}
+          docId={doc.id}
+          docStatus={handlers.readOnly ? 'read_only' : doc.review_status}
+          enabled={checkEnabled}
+        />
         <div className="row wrap">
-          {doc.gov_report_path ? (
+          {doc.gov_report_path && !check?.report_path ? (
             <Button size="sm" onClick={() => handlers.onOpen(doc.id, 'report')}>
-              Open PDF report
+              Download gov.uk report
+            </Button>
+          ) : null}
+          {typing ? (
+            <Button
+              size="sm"
+              tone="green"
+              disabled={handlers.busy || problem !== null}
+              title={problem ?? undefined}
+              onClick={() => handlers.onVerify(doc, { expiry: rtwDateValue(until, noTimeLimit) })}
+            >
+              Verify
             </Button>
           ) : null}
           {actionable ? (
-            <>
-              <Button
-                size="sm"
-                tone="green"
-                disabled={handlers.busy || problem !== null}
-                title={problem ?? undefined}
-                onClick={() => handlers.onVerify(doc, { expiry: rtwDateValue(until, noTimeLimit) })}
-              >
-                Verify
-              </Button>
-              <Button
-                size="sm"
-                tone="danger"
-                disabled={handlers.busy}
-                onClick={() => handlers.onReject(doc)}
-              >
-                Reject
-              </Button>
-            </>
+            <Button
+              size="sm"
+              tone="danger"
+              disabled={handlers.busy}
+              onClick={() => handlers.onReject(doc)}
+            >
+              Reject
+            </Button>
           ) : null}
           <span className="annot">
-            on failure or low confidence the check is flagged “manual review” instead of a date
+            {checkEnabled
+              ? 'a pass verifies by itself; only a check that needs review asks you for the date (ADR-0025)'
+              : 'automatic check switched off — confirm the date from the report (ADR-0018)'}
           </span>
         </div>
       </div>
@@ -1098,6 +1130,7 @@ function DocumentsPhase({
     (termLetter?.term_dates ?? []).map(parsePeriod).filter((p): p is Period => p !== null),
   );
   const shareCode = live.filter((d) => d.doc_type === 'share_code_report');
+  const checks = checksByDocument(data.rtwChecks ?? []);
   const others = live.filter((d) => d.doc_type !== 'share_code_report');
   const declarations = data.declarations.filter((d) => !d.superseded);
   const gate = quizGate(row);
@@ -1198,7 +1231,13 @@ function DocumentsPhase({
             </div>
           ))}
           {shareCode.map((d) => (
-            <ShareCodeCard key={d.id} doc={d} handlers={doc} />
+            <ShareCodeCard
+              key={d.id}
+              doc={d}
+              handlers={doc}
+              check={checks.get(d.id) ?? null}
+              checkEnabled={data.rtwCheckEnabled ?? false}
+            />
           ))}
           {row.share_code && shareCode.length === 0 ? (
             <Note>

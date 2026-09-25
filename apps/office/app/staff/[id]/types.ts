@@ -8,6 +8,7 @@
  * nulls as "—" rather than hiding the blocks, because §1.7 keeps the
  * record openable.
  */
+import type { RtwCheckRow } from '../../_lib/rtwCheck';
 import type { CapBand, StaffRow } from '../types';
 import type { FeedbackEntry } from '../../feedback/types';
 import type { ViolationRow as DetailViolationRow } from '../../checkin/types';
@@ -172,6 +173,10 @@ export interface ClientOption {
 export interface ProfileData {
   profile: ProfileRow | null;
   documents: DocumentRow[];
+  /** The latest automated gov.uk check per share-code document (ADR-0025). */
+  rtwChecks?: RtwCheckRow[];
+  /** settings.rtw_check.enabled. */
+  rtwCheckEnabled?: boolean;
   qualifications: QualificationRow[];
   shifts: ShiftRow[];
   violations: ViolationRow[];

@@ -28,12 +28,12 @@
 .daterange .input {
   height: var(--btn-h-sm);
   width: 150px;
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
   font-size: var(--fs-12);
 }
 
 .rp-annot {
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
   font-size: var(--fs-11);
   color: var(--amber-ink);
 }
@@ -43,7 +43,7 @@
   display: inline-flex;
   align-items: center;
   gap: var(--sp-8);
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
   font-size: var(--fs-11);
   padding: var(--sp-4) var(--sp-10);
   border: 1px solid var(--line);
@@ -71,7 +71,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-14);
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
   font-size: var(--fs-11);
   margin-top: var(--sp-4);
 }

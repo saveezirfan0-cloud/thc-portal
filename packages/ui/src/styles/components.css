@@ -361,6 +361,41 @@
 .hide-phone {
   display: contents;
 }
+
+/* The phone menu button (MenuButton) — the Client Portal's account menu.
+   Hidden until the 760px break shows it. */
+.menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: var(--btn-h);
+  height: var(--btn-h);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+.menu-btn:hover {
+  border-color: var(--cyan-line);
+  color: var(--cyan-ink);
+}
+.menu-btn[aria-expanded='true'] {
+  border-color: var(--cyan-line);
+  background: var(--cyan-dim);
+  color: var(--cyan-ink);
+}
+/* Behind an open menu: a tap here closes it. */
+.nav-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--scrim-soft);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
 .mt-8 {
   margin-top: var(--sp-8);
 }
@@ -2371,6 +2406,10 @@ textarea.input {
   .phone-nav {
     display: contents;
   }
+  /* The Client Portal's account-menu button (MenuButton) shows here too. */
+  .menu-btn {
+    display: inline-flex;
+  }
   .main {
     padding-bottom: calc(var(--pnav-h) + env(safe-area-inset-bottom));
     /* Belt and braces: one element that fails to wrap must not widen the
@@ -2503,6 +2542,90 @@ textarea.input {
     white-space: nowrap;
     padding-left: var(--sp-12);
     padding-right: var(--sp-12);
+  }
+
+  /* From the parallel phone pass (#62): search boxes in a page head take
+     their own line, and any filter row — a search and a select or two with
+     desktop widths set inline — wraps and shares the width. */
+  .page-head .actions .search,
+  .toolbar .search {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .page-head .actions .search .input,
+  .toolbar .search .input {
+    width: 100%;
+  }
+  .page-head h1 {
+    font-size: var(--fs-20);
+  }
+  /* A segmented control with more options than the phone has width scrolls
+     inside its own track instead of wrapping each label onto two lines and
+     pushing the last options off the page. */
+  .seg {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .seg::-webkit-scrollbar,
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs > button,
+  .tabs > a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .seg button,
+  .seg a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .toolbar > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+  /* Filter rows: a search box and a select or two, sized in px for a
+     desktop (several screens set the widths inline). On a phone the row
+     wraps and the fields share the width. The !important is for those
+     inline widths, and applies below this break only. */
+  .content :is(.row, .toolbar):has(> :is(.search, select.input, input.input)) {
+    flex-wrap: wrap;
+  }
+  .content :is(.row, .toolbar) > :is(.search, select.input, input.input) {
+    flex: 1 1 150px;
+    width: auto !important;
+    min-width: 0;
+  }
+  .content :is(.row, .toolbar) > .search > .input {
+    width: 100% !important;
+  }
+  .content :is(.row, .toolbar) > .search {
+    align-self: center;
+  }
+  .content :is(.row, .toolbar) > .search::before {
+    top: 50%;
+  }
+  .toolbar select.input,
+  .toolbar .input {
+    max-width: 100%;
+  }
+  /* The panel header's title and its right-hand controls wrap rather than
+     overlap: a role name, its window and a count pill do not fit one row. */
+  .panel-h {
+    flex-wrap: wrap;
+    padding: var(--sp-14) var(--sp-16);
+    row-gap: var(--sp-6);
+  }
+  .panel-h h3 {
+    min-width: 0;
+  }
+  .panel-b {
+    padding: var(--sp-16);
   }
 
   /* Tables. A wide one scrolls sideways inside its card. One marked

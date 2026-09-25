@@ -30,6 +30,12 @@ const REASONS: Record<string, string> = {
   file_too_large: 'That file is over 10 MB. Try a smaller photo or scan.',
   file_type: 'We take PDF, JPG, PNG or HEIC files only.',
   already_verified: 'This document is already verified.',
+  // Re-entering a share code after the gov.uk check (ADR-0025).
+  documents_not_submitted: 'Change your share code on step 1 before you submit.',
+  no_share_code_branch: 'Your right-to-work option has no share code.',
+  already_pending: 'Your share code is already being checked.',
+  too_many_attempts:
+    'You’ve entered a share code several times today. Please try again tomorrow, or contact the office.',
   not_rejected: 'Only a rejected document can be replaced now.',
   already_submitted: 'Your documents are already with the office.',
   missing_document: 'Upload every document on the list first.',
