@@ -22,7 +22,7 @@
 -- anonymised row and prints the new label with no code of its own.
 -- =====================================================================
 begin;
-select plan(28);
+select plan(32);
 \set now '2026-09-21 12:00:00+01'
 \ir _shared/fixtures.psql
 
@@ -81,7 +81,21 @@ insert into feedback (id, author_kind, author_id, staff_id, event_id, rating, te
 values ('d4000000-0000-4000-8000-000000000001','client', :'clienta_uid', :'gdpr',
         'a3000000-0000-4000-8000-000000000001', 5, 'Grace ran the floor brilliantly all night');
 
-create temporary table t_rm as select remove_worker(:'gdpr', :'now'::timestamptz) as r;
+create temporary table t_rm as select remove_worker(:'gdpr', :'now'::timestamptz, :'admin_uid') as r;
+
+-- ---------------------------------------------------------------------
+-- Login disabled (§1.7; wireframes/staff/auth.html "A GDPR-removed
+-- account cannot sign in at all"). Until 20260927160400 the row was only
+-- unlinked, and the old password still opened an unlocked staff shell.
+-- ---------------------------------------------------------------------
+select is((select r->>'loginDisabled' from t_rm), 'true',
+  '§1.7 "login disabled": the removal bans the auth account itself');
+select ok((select banned_until > now() + interval '50 years' from auth.users where id = :'gdpr_uid'),
+  'GoTrue refuses a sign-in while banned_until is in the future — a century out');
+select is((select user_id from staff where id = :'gdpr'), null,
+  'and the link is still broken afterwards, so no session can resolve to the row');
+select is((select actor from audit_log where action = 'gdpr_remove' and entity_id = :'gdpr'), :'admin_uid'::uuid,
+  'the audit row names the manager who pressed it (p_actor): the service key the office calls with carries no sub');
 
 -- ---------------------------------------------------------------------
 -- Anonymised.

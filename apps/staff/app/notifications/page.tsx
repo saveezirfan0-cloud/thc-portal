@@ -16,7 +16,7 @@ export const metadata = { title: 'Notifications · THC Staff' };
  */
 export default function Page() {
   return (
-    <StaffShell title="Notifications" ignoreLock>
+    <StaffShell title="Notifications" ignoreLock pushStatus={false}>
       <NotificationsScreen />
     </StaffShell>
   );

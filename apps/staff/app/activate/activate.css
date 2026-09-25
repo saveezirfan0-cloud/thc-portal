@@ -39,15 +39,28 @@
   cursor: pointer;
 }
 
-/* Activated: the tick beside the heading. */
+/* The form's own column, and the Show/Hide addon at the Staff App's 44px
+   minimum (derived from the spacing scale until packages/ui carries it). */
+.act-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-14);
+}
+.act-form .input-row > .addon {
+  min-height: calc(var(--sp-28) + var(--sp-16));
+  min-width: calc(var(--sp-28) + var(--sp-16));
+}
+
+/* Activated: the tick beside the heading. Sized off the spacing scale. */
 .act-done {
+  --act-ico: calc(var(--sp-28) * 2);
   display: flex;
   align-items: center;
   gap: var(--sp-12);
 }
 .act-done .ico {
-  width: 56px;
-  height: 56px;
+  width: var(--act-ico);
+  height: var(--act-ico);
   flex: 0 0 auto;
   border-radius: var(--r-avatar);
   background: var(--green);

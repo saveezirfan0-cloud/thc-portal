@@ -66,3 +66,24 @@ describe('/staff directory (§9.6)', () => {
     expect(html).not.toContain('newest leaver');
   });
 });
+
+describe('/staff lists workers, and the Inactive tab as the wireframe draws it (§9.6)', () => {
+  it('neither lists nor counts a candidate or a rejected applicant', () => {
+    const html = renderToStaticMarkup(
+      <StaffScreen
+        staff={[
+          WORKER,
+          { ...WORKER, id: 'c1', display_name: 'Hana K.', status: 'documents' },
+          { ...WORKER, id: 'r1', display_name: 'Dina F.', status: 'rejected' },
+        ]}
+        students={[]}
+        problem={null}
+      />,
+    );
+    expect(html).toContain('Amara K.');
+    expect(html).not.toContain('Hana K.');
+    expect(html).not.toContain('Dina F.');
+    expect(html).toContain('<b>1 workers</b>');
+    expect(html).not.toContain('pill amber">Onboarding');
+  });
+});

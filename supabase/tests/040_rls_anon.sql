@@ -4,8 +4,14 @@
 -- client-facing view must be empty for the `anon` PostgREST role.
 -- =====================================================================
 begin;
-select plan(45);
+select plan(53);
 \ir _shared/fixtures.psql
+
+-- A queued erasure and an issued timesheet copy to probe for (§1.7, §11.3).
+insert into storage_deletions (bucket, path, staff_id)
+  values ('photos', 'rls-probe/selfie.jpg', :'staffa');
+insert into event_documents (event_id, kind, storage_path, file_name, row_count, page_count)
+  values (:'event_a', 'allocation', :'event_a' || '/allocation/rls-probe.pdf', 'RLS probe.pdf', 1, 1);
 
 -- A cap-band notice to probe for. Created here rather than in the shared
 -- fixtures on purpose: 200_compliance_daily runs compliance_daily() over
@@ -113,6 +119,29 @@ with u as (update bank_details set sort_code = '00-00-00' where staff_id = :'sta
   select is((select count(*)::int from u), 0, 'anon cannot change a worker''s bank details');
 with u as (update venue_types set default_radius_m = 999 where key = 'rls_fixture_type' returning 1)
   select is((select count(*)::int from u), 0, 'anon cannot edit venue type defaults');
+
+-- The operational tables (§1.7 erasure queue, §7 jobs, §2.1 form, §11.3
+-- document copies): admin-read, service-role-write, nothing for anon.
+select is((select count(*)::int from storage_deletions where path = 'rls-probe/selfie.jpg'), 0,
+  'anon reads no erasure queue: it names removed workers'' passport and selfie paths');
+select throws_ok(
+  format($$ insert into storage_deletions (bucket, path, staff_id) values ('photos', 'forged/x.jpg', %L) $$, :'staffa'),
+  '42501', null, 'anon cannot forge a deletion');
+select is((select count(*)::int from job_runs), 0, 'anon reads no job runs (their error text is operational detail)');
+select is((select count(*)::int from job_schedules), 0, 'anon reads no cron registry');
+select throws_ok(
+  $$ insert into job_runs (job) values ('x') $$,
+  '42501', null, 'anon cannot write a job run');
+select throws_ok(
+  $$ insert into applications (first_name, last_name, email, phone, dob, age_band, consented_at)
+     values ('Forged', 'Row', 'forged@rls.test', '+447700900998', date '1990-01-01', '25-34', now()) $$,
+  '42501', null, '§2.1: anon cannot POST an application row and skip submit_application()''s throttle and DOB match');
+select is((select count(*)::int from event_documents where file_name = 'RLS probe.pdf'), 0,
+  'anon reads no event_documents row: a timesheet path carries names and pay lines (§11.3)');
+select throws_ok(
+  format($$ insert into event_documents (event_id, kind, storage_path, file_name, row_count, page_count)
+            values (%L, 'timesheet', 'forged/t.pdf', 'Forged.pdf', 1, 1) $$, :'event_a'),
+  '42501', null, 'anon cannot register a document copy');
 
 reset role;
 select * from finish();

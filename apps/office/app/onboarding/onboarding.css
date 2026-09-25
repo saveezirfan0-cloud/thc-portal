@@ -160,7 +160,8 @@
 
 .period {
   display: grid;
-  grid-template-columns: 24px 1fr 150px 20px 150px 60px;
+  /* # · Period · From · → · To · Source · remove (candidate.html) */
+  grid-template-columns: 24px 1fr 150px 20px 150px 96px 60px;
   gap: 8px;
   align-items: center;
   padding: 8px 10px;
@@ -235,6 +236,13 @@
   color: var(--muted);
   line-height: 1.55;
   border-radius: var(--r-tile);
+}
+.contract-text p {
+  margin: 0 0 10px;
+  white-space: pre-wrap;
+}
+.contract-text p:last-child {
+  margin-bottom: 0;
 }
 
 .pdfcard {

@@ -81,12 +81,14 @@ export default function Page() {
                 the expiry date (and, for students, term and completion dates) onto your profile. A
                 manager still checks every document.
               </li>
-              {/* §5 (check-in/out, background GPS during the shift), §9.10 feedback */}
+              {/* §5 (check-in/out, GPS during the shift), §9.10 feedback. ADR-0001:
+                  the PWA records a fix while the app is open (Option A); the
+                  background version ships only if THC confirms Option B, and this
+                  sentence must not claim it before then. */}
               <li>
                 <b>While you work:</b> the shifts you are offered, accept and work; your check-in
-                and check-out times; your GPS location while you are checked in to a shift,
-                including in the background, to show you were on site for the whole shift; and
-                ratings and feedback from our office and our clients.
+                and check-out times; your GPS location while the app is open during a shift, to show
+                you were on site; and ratings and feedback from our office and our clients.
               </li>
             </ul>
           </section>

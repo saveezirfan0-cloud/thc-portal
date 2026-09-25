@@ -32,7 +32,8 @@ export function ScheduledWindow({
 
   return (
     <span className={className}>
-      {uk} (UK)
+      {/* §1.8's own label: "06:15 – 23:00 UK time", never a bare "(UK)". */}
+      {uk} UK time
       <span className="sub">
         {formatTimeIn(start, zone)}–{formatTimeIn(end, zone)} your time
       </span>

@@ -173,8 +173,19 @@ function fileKind(mime: string | null): string | null {
   return null;
 }
 
+/** The wording of the 'rtw_date' row when the view sends none (it always does; this is the fallback). */
+export const RTW_DATE_MISSING = 'Right-to-work date missing — re-verify';
+
 /** The sub-line under the document name. */
 export function documentLine(row: QueueRow): string {
+  if (row.kind === 'rtw_date') {
+    // Verified before the date was required (20260923200000): the reason
+    // is the whole story, plus the share code the office re-runs on gov.uk.
+    return [
+      row.review_reason ?? RTW_DATE_MISSING,
+      row.share_code ? `share code ${row.share_code}` : 'no share code on file',
+    ].join(' · ');
+  }
   if (row.kind === 'declaration') {
     const source =
       row.declaration_source === 'in_employment' ? 'declared from the app (§10.7)' : 'onboarding';
@@ -203,6 +214,13 @@ export function foundLine(row: QueueRow): {
   confidence: 'hi' | 'mid' | 'manual' | null;
 } {
   if (row.kind === 'declaration') return { text: '— no AI extraction', confidence: null };
+  if (row.kind === 'rtw_date') {
+    // No upload for an extractor to read: only a human can close this one.
+    return {
+      text: 'No right-to-work date on file — re-run the gov.uk check',
+      confidence: 'manual',
+    };
+  }
   if (row.item_type === 'university_completion_letter') {
     return {
       text: row.completion_date_claimed
@@ -229,8 +247,29 @@ export function foundLine(row: QueueRow): {
   return { text: found.join(' · ') || '—', confidence };
 }
 
+/** The "Uploaded" cell's sub-line: how long it has waited, and for the rtw_date row, what the stamp is. */
+export function uploadedLine(row: QueueRow, now: Date = new Date()): string {
+  const age = ageLabel(row.submitted_at, now);
+  return row.kind === 'rtw_date' ? `verified without a date · ${age}` : age;
+}
+
+/**
+ * The buttons a row offers. Every pending item has Verify and Reject
+ * (§4.1). The rtw_date row is already verified — there is nothing to
+ * reject, and compliance_reject_document() would refuse it (not_pending) —
+ * so it offers only the date confirmation; if the gov.uk check no longer
+ * passes, the worker is blocked from the profile (§9.6).
+ */
+export function actionsFor(row: QueueRow): { verify: string; reject: boolean } {
+  if (row.kind === 'rtw_date') return { verify: 'Confirm date', reject: false };
+  return { verify: 'Verify', reject: true };
+}
+
 /** What pressing Verify will do, spelled out where it matters (§4.3, §4.5). */
 export function verifyHint(row: QueueRow): string | null {
+  if (row.kind === 'rtw_date') {
+    return 'Confirm the date off the gov.uk report → it becomes the worker’s right-to-work date: no shift after it can be rostered, and the reminder ladder counts down to it';
+  }
   if (row.item_type === 'university_completion_letter') {
     return 'Approve → confirm the completion date and visa expiry → 48 h/week from the completion date, never past the visa';
   }

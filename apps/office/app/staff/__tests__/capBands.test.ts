@@ -14,7 +14,7 @@ describe('capReason — every band the database returns', () => {
 
   it('names the below-degree-level term band (completion letter requirement §1)', () => {
     expect(capReason('student_term_10', 10, '2026-12-13')).toBe(
-      '10 h — term time, below degree level until 13/12/2026',
+      '10 h — term time, below degree level until 13.12.2026',
     );
   });
 

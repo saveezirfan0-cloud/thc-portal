@@ -9,6 +9,7 @@ import {
   validateSenders,
   validateWeights,
   validateWillo,
+  validateWilloReviewUrlTemplate,
   weightTotal,
 } from '../validate';
 import type { ScoringWeights } from '../types';
@@ -196,5 +197,26 @@ describe('auto-assign limits (§3.4)', () => {
   it('refuses zero or a nationwide radius', () => {
     expect(validateEscalationRadius(0)).not.toBeNull();
     expect(validateEscalationRadius(500)).toContain('not a local escalation');
+  });
+});
+
+describe('the Willo review link template (§2.4)', () => {
+  it('accepts blank — Willo is not connected yet — and an https URL carrying {id}', () => {
+    expect(validateWilloReviewUrlTemplate('')).toBeNull();
+    expect(validateWilloReviewUrlTemplate('   ')).toBeNull();
+    expect(
+      validateWilloReviewUrlTemplate('https://app.willo.video/thc/candidates/{id}'),
+    ).toBeNull();
+  });
+
+  it('refuses a template that would send every card to the same page', () => {
+    expect(validateWilloReviewUrlTemplate('https://app.willo.video/thc/candidates')).toMatch(
+      /\{id\}/,
+    );
+  });
+
+  it('refuses a non-URL and a plain http link', () => {
+    expect(validateWilloReviewUrlTemplate('willo {id}')).toMatch(/not a valid URL/);
+    expect(validateWilloReviewUrlTemplate('http://app.willo.video/{id}')).toMatch(/https/);
   });
 });

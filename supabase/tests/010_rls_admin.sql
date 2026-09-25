@@ -6,8 +6,17 @@
 -- that are admin-READ and service-role-write (audit_log, report_sends).
 -- =====================================================================
 begin;
-select plan(64);
+select plan(69);
 \ir _shared/fixtures.psql
+
+-- Rows to probe for on the two tables no earlier admin assertion read as
+-- the admin role (cap_band_notices, storage_deletions). Created here, not
+-- in the shared fixtures: 200_compliance_daily counts N14 sends over the
+-- whole cap_band_notices table.
+insert into cap_band_notices (staff_id, band, cap_hours, notified_on)
+  values (:'staffa', 'standard_48', 48, current_date - 1);
+insert into storage_deletions (bucket, path, staff_id)
+  values ('photos', 'rls-probe/selfie.jpg', :'staffa');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
@@ -138,6 +147,21 @@ select throws_ok(
   '42501', null,
   'admin cannot enqueue a notification directly; the outbox is admin-READ and the jobs write it on the service key (§8)'
 );
+
+-- ---- the tables no admin assertion had read as the admin role -----------
+select is((select count(*)::int from cap_band_notices where staff_id = :'staffa'), 1,
+  'admin reads the N14 history: which cap a worker was last told (§4.4)');
+select is((select count(*)::int from staff_transitions where from_status = 'compliant' and to_status = 'blocked'), 1,
+  'admin reads the §2.12 machine');
+select throws_ok(
+  $$ insert into staff_transitions (from_status, to_status) values ('removed', 'compliant') $$,
+  '42501', null,
+  'but cannot add an edge to it from a Back Office session: the machine is reference data written by migrations only (20260927160900)');
+select is((select count(*)::int from storage_deletions where path = 'rls-probe/selfie.jpg'), 1,
+  'admin reads the §1.7 erasure queue, so a purge that keeps failing is visible');
+select throws_ok(
+  format($$ insert into storage_deletions (bucket, path, staff_id) values ('photos', 'forged/x.jpg', %L) $$, :'staffb'),
+  '42501', null, 'admin cannot queue a deletion by hand: remove_worker() and the service role write it');
 
 reset role;
 select * from finish();

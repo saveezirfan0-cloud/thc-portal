@@ -1,4 +1,4 @@
-# 14 · Open questions, and what needs you
+# 15 · Open questions, and what needs you
 
 Two lists. The first is for THC: places where the Scope of Work does not decide
 something the code has to decide anyway. Each one is **already implemented** — the
@@ -182,6 +182,48 @@ piece of work (B5/S2) rather than the compliance sweep's.
 
 > **Ask:** nothing for THC here — this is a note for whoever builds §2.5's document sets,
 > so that `compliance_blockers()` gains a `document_missing:` arm at the same time.
+
+---
+
+## Q8 · A rejected candidate comes back: §2.12 governs, not the §2.3 sentence
+
+**Where:** §2.3 against §2.12.
+
+The scope says two different things about a person THC rejected and later wants to
+reconsider. §2.3: "Rejecting a candidate is final — there is no 'un-reject' action on this
+record. If THC wants to reconsider them, the person applies again via /apply (§2.1), which
+creates a brand-new candidate record and runs the full onboarding process from scratch."
+§2.12: "A match against an existing record does not create a second candidate", and "A
+Reset to candidate action is available on a blocked or rejected profile in the Back Office
+(§9.6)".
+
+Both cannot hold: a second /apply from the same person either creates a new record or it
+does not.
+
+**Today: §2.12 wins, everywhere.** `submit_application()` matches a rejected record like
+any other (pgTAP `120_apply`: "and so is a rejected one"), so the re-application becomes a
+**Returning applicant** card in Interview requested instead of a second candidate, and the
+manager presses **Reset to candidate** or rejects the application on that card.
+`reset_to_candidate()` accepts `rejected` as well as `blocked` and `inactive`
+(`20260923100100`), and `/staff/:id` offers it (`canReset()`). What §2.3 keeps is the
+"no un-reject" half: the rejected candidate's own profile on `/onboarding/:id` offers no
+action at all, so a rejection is left only by the person applying again or by the office
+going to `/staff/:id` — the record is the same, the Employee ID is the same, and every
+document, the share-code result, the checklist, the declaration, the quiz and the contract
+are marked superseded and supplied again. History stays.
+
+**The alternative:** the literal §2.3 — a brand-new record per re-application. It was
+rejected because it is the thing §2.12's duplicate check exists to prevent: two records for
+one person means two Employee IDs, a split history and a do-not-return list that no longer
+finds them.
+
+**What changes if THC prefers the §2.3 reading:** the duplicate check would have to skip
+rejected records and `reset_to_candidate()` refuse them — one branch in each, plus their
+pgTAP vectors — and the Rejected view's alert on `/onboarding` would be rewritten.
+
+> **Ask:** please strike the "creates a brand-new candidate record" sentence from §2.3 in
+> the next scope revision, so the two sections agree with what is built. If THC actually
+> wants a fresh record per re-application, say so and the change above is small.
 
 ---
 

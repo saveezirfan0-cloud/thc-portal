@@ -1,4 +1,4 @@
-import { UK_ZONE, formatAllocation } from '@thc/domain';
+import { UK_ZONE, formatAllocationPair } from '@thc/domain';
 import type { Tone } from '@thc/ui';
 
 /**
@@ -12,7 +12,7 @@ import type { Tone } from '@thc/ui';
  * It is a separate file from `data.ts` so it can be unit-tested: `data.ts`
  * imports `next/headers`, which only exists inside a request.
  *
- * `formatAllocation` is imported rather than re-written because "6 (+1)"
+ * `formatAllocationPair` is imported rather than re-written because "6 (+1)"
  * is a rule, not a layout choice: the buffer is absolute and is never
  * collapsed into the headcount (§3.2).
  */
@@ -335,7 +335,11 @@ export function fillChip(confirmed: number, headcount: number): FillChip {
   return { label, tone: confirmed / headcount > 0.5 ? 'amber' : 'coral' };
 }
 
-/** "6 (+1)" — the allocation, with the buffer always beside it, never in it. */
+/**
+ * "6 (+1)" — the allocation, with the buffer always beside it, never in it,
+ * and spelled out even at zero: §3.2 says "headcount reads 'N (+buffer)'"
+ * and dashboard.html draws "2 (+0)" for a role with no cover.
+ */
 export function allocationLabel(headcount: number, buffer: number): string {
-  return formatAllocation(headcount, buffer);
+  return formatAllocationPair(headcount, buffer);
 }

@@ -13,7 +13,13 @@ export default function manifest(): MetadataRoute.Manifest {
     scope: '/',
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#F6F4EF',
+    // The splash ground is the LIGHT ground the app ships (`--bg` on the
+    // light axis in packages/ui tokens.css, ADR-0007), not the wireframe
+    // sheet's cream. A manifest can only carry a literal.
+    background_color: '#FAF7F4',
+    // Paired with `viewport.themeColor` in app/layout.tsx: a browser that
+    // finds the two disagreeing paints the status bar one colour and the
+    // splash another, so the two change together.
     theme_color: '#04080F',
     icons: [
       { src: '/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },

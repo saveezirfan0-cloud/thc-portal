@@ -65,6 +65,13 @@ export interface PushCopy {
   detail: string;
   /** Whether a "Turn on notifications" button can do anything at all. */
   actionable: boolean;
+  /**
+   * Where "Show me how" goes, when there is somewhere to go. Separate from
+   * `actionable`: a denied permission cannot be asked for again, but the
+   * worker can still be walked through their phone's settings (auth.html,
+   * "Notifications blocked").
+   */
+  link?: '/notifications' | '/install';
 }
 
 /**
@@ -86,13 +93,15 @@ export function pushCopy(state: PushState): PushCopy {
         detail:
           'Shift invitations, the 12:00 “I’m ready” reminder and check-in alerts are notifications — without them you will miss shifts.',
         actionable: true,
+        link: '/notifications',
       };
     case 'denied':
       return {
         headline: 'Notifications are off.',
         detail:
-          'You will not get shift invitations, the 12:00 “I’m ready” reminder or check-in reminders. Turn them back on in Settings → Notifications → The Hospitality Company.',
+          'You won’t get shift invitations, the 12:00 “I’m ready” reminder or check-in reminders. Settings → Notifications → The Hospitality Company → Allow.',
         actionable: false,
+        link: '/notifications',
       };
     case 'needs-install':
       return {
@@ -100,6 +109,7 @@ export function pushCopy(state: PushState): PushCopy {
         detail:
           'On iPhone, notifications only work from the installed app, not from a Safari tab. It takes three taps.',
         actionable: true,
+        link: '/install',
       };
     case 'unconfigured':
       return {

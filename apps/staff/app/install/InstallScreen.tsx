@@ -23,8 +23,13 @@ interface InstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-export function InstallScreen() {
-  const [platform, setPlatform] = useState<Platform>('unknown');
+export function InstallScreen({
+  initialPlatform = 'unknown',
+}: {
+  /** The platform to open on — for rendering each state without a browser. */
+  initialPlatform?: Platform;
+} = {}) {
+  const [platform, setPlatform] = useState<Platform>(initialPlatform);
   const [deferred, setDeferred] = useState<InstallPromptEvent | null>(null);
   const [outcome, setOutcome] = useState<string | null>(null);
 
@@ -84,7 +89,7 @@ export function InstallScreen() {
         <Link href="/notifications" className="btn primary block lg">
           Turn on notifications
         </Link>
-        <Link href="/shifts" className="btn ghost block">
+        <Link href="/shifts" className="btn ghost block lg">
           Open the app
         </Link>
       </>
@@ -107,13 +112,13 @@ export function InstallScreen() {
 
       {outcome ? <Alert tone="cyan">{outcome}</Alert> : null}
 
-      {platform === 'ios' || platform === 'unknown' || platform === 'other' ? (
+      {platform === 'ios' ? (
         <div className="steps">
-          <Step n={1} title="Tap the Share button">
-            The square with an arrow out of it, in Safari’s toolbar at the bottom.
+          <Step n={1} title="Tap the Share button below">
+            The square with an arrow, in Safari’s toolbar.
           </Step>
           <Step n={2} title="Choose “Add to Home Screen”">
-            Scroll the list if you don’t see it straight away.
+            Scroll the list if you don’t see it.
           </Step>
           <Step n={3} title="Tap “Add”, then open it from your home screen">
             Sign in once — you’ll stay signed in.
@@ -123,11 +128,26 @@ export function InstallScreen() {
 
       {platform === 'android' ? (
         <div className="steps">
-          <Step n={1} title="Tap Install">
-            Or use the ⋮ menu → “Add to Home screen” if no banner appears.
+          {/* While this screen holds Chrome's prompt (preventDefault above)
+              the banner is not showing, so the step points at the button. */}
+          <Step n={1} title={deferred ? 'Tap “Install app” below' : 'Tap “Install” on the banner'}>
+            Or use ⋮ → “Add to Home screen”.
           </Step>
           <Step n={2} title="Open it from your home screen">
-            It opens full-screen, without the browser bar.
+            It opens full-screen without the browser bar.
+          </Step>
+        </div>
+      ) : null}
+
+      {platform === 'other' || platform === 'unknown' ? (
+        // A desktop browser, or a phone not yet detected: Safari's Share
+        // button would be the wrong instruction, so the step is neutral.
+        <div className="steps">
+          <Step n={1} title="Open this address on your phone">
+            In Safari on iPhone or Chrome on Android — the steps for your phone appear here.
+          </Step>
+          <Step n={2} title="Use the browser’s Install or “Add to Home screen” menu">
+            The app opens full-screen, without the browser bar.
           </Step>
         </div>
       ) : null}
@@ -136,6 +156,13 @@ export function InstallScreen() {
         <Button type="button" tone="primary" size="lg" block onClick={() => void install()}>
           Install app
         </Button>
+      ) : null}
+
+      {platform === 'android' ? (
+        <div className="xs muted" style={{ textAlign: 'center' }}>
+          Uses the browser’s own install prompt where it’s available; otherwise the ⋮ menu route
+          above.
+        </div>
       ) : null}
 
       {platform === 'ios' ? (

@@ -28,16 +28,19 @@ export function QuizStep({
   firstName,
   questions,
   previous,
+  initialResult = null,
 }: {
   firstName: string;
   questions: QuizQuestion[];
   previous: Attempt[];
+  /** A result to open on — the three result states, renderable without a submit. */
+  initialResult?: QuizResult | null;
 }) {
   const router = useRouter();
   const [attempts, setAttempts] = useState<Attempt[]>(previous);
   const [index, setIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, number>>({});
-  const [result, setResult] = useState<QuizResult | null>(null);
+  const [result, setResult] = useState<QuizResult | null>(initialResult);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
@@ -109,7 +112,9 @@ export function QuizStep({
           </p>
         </div>
         {!passed && result.outcome === 'retry' ? (
-          <Alert tone="amber">
+          // Neutral, as the wireframe draws it: amber on this screen is
+          // already "You have N attempts left."
+          <Alert tone="neutral">
             After three unsuccessful attempts your application can’t continue.
           </Alert>
         ) : null}

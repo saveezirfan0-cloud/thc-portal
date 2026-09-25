@@ -117,6 +117,29 @@ export function validateWillo(map: WilloStageMap): string | null {
   return null;
 }
 
+/**
+ * §2.4's "Review interview on Willo" link template. Blank is allowed — it
+ * means "not connected yet" and the button says so. Anything else must be
+ * an https URL carrying `{id}`, because that is the only substitution the
+ * view performs: a template without it would send every card to the same
+ * page.
+ */
+export function validateWilloReviewUrlTemplate(value: string): string | null {
+  const template = value.trim();
+  if (template === '') return null;
+  if (!template.includes('{id}')) {
+    return 'The template must contain {id} where Willo’s candidate id goes.';
+  }
+  let url: URL;
+  try {
+    url = new URL(template.replace('{id}', 'x'));
+  } catch {
+    return 'The template is not a valid URL.';
+  }
+  if (url.protocol !== 'https:') return 'The Willo link must be https.';
+  return null;
+}
+
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 /**

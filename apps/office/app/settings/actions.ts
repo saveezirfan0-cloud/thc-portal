@@ -11,6 +11,7 @@ import {
   validateSenders,
   validateWeights,
   validateWillo,
+  validateWilloReviewUrlTemplate,
 } from './validate';
 import type { ActionResult, RotaGuardMode, ScoringWeights, Senders, WilloStageMap } from './types';
 
@@ -61,6 +62,28 @@ export async function saveWilloMap(map: WilloStageMap): Promise<ActionResult> {
   const invalid = validateWillo(map);
   if (invalid) return { ok: false, message: invalid };
   return put('willo_stage_map', map);
+}
+
+/**
+ * §2.4: the "Review interview on Willo" link, the one B1 input the office
+ * enters once THC's Willo account exists. Blank clears it: the row is
+ * deleted rather than set to a JSON null, because `settings.value` is NOT
+ * NULL and PostgREST turns a JSON null into a SQL one; with no row the
+ * view's `jsonb_typeof(...) = 'string'` test is false and the link reads
+ * "not connected", which is the truth.
+ */
+export async function saveWilloReviewUrlTemplate(value: string): Promise<ActionResult> {
+  const invalid = validateWilloReviewUrlTemplate(value);
+  if (invalid) return { ok: false, message: invalid };
+  const template = value.trim();
+  if (template !== '') return put('willo_review_url_template', template);
+
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const supabase = settingsDb(await cookies());
+  const { error } = await supabase.from('settings').delete().eq('key', 'willo_review_url_template');
+  if (error) return { ok: false, message: error.message };
+  revalidatePath('/settings');
+  return { ok: true };
 }
 
 /** §9.12. Exactly two addresses, both reply-able. */

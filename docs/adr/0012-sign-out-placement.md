@@ -1,6 +1,6 @@
 # ADR-0012 · Where sign out sits
 
-**Status:** Accepted. All three deviations are closed (the last by ADR-0025) · **Wireframes:** `wireframes/backoffice/*.html` `.foot`, `wireframes/client/events.html`, `wireframes/staff/profile.html` · **§1.4, §10.1, §10.6**
+**Status:** Accepted. All three deviations are closed (the last by ADR-0030) · **Wireframes:** `wireframes/backoffice/*.html` `.foot`, `wireframes/client/events.html`, `wireframes/staff/profile.html` · **§1.4, §10.1, §10.6**
 
 ## Context
 
@@ -29,7 +29,7 @@ The Staff App already had one in the right place. `#42`/`#43` built `/profile`, 
 |---|---|---|
 | ~~the sidebar foot shows no name or role~~ | the shell is rendered from client components on seven screens as well as fourteen server pages, so it cannot read `next/headers` itself | **Closed.** Not by threading a prop through twenty-one call sites — the one someone forgot would be a screen that silently lost its name — but by reading the operator once in the root layout and providing it through `SignedInAsProvider`. The foot asks context, so every screen gets the same answer without being told. |
 | ~~the foot renders a pill where the wireframes draw a text link~~ | `ButtonTone` had no link variant, and hard-coding a style outside the token system is worse drift than the pill was | **Closed.** `ButtonTone` gains `link`: text, no border, no height, inherited size, so `.xs` beside it wins and the foot matches `dashboard.html:38`. In the gallery, because a tone nobody can see is a tone the next person re-invents. |
-| ~~a second, phone-only copy in the topbar~~ | below 760px `components.css` hides `.sidebar .foot` and the rail becomes a bottom bar, which would take the only sign-out with it | **Closed** (ADR-0025). The phone menu's More sheet carries the foot (name, sign-out) and the appearance switch, so the topbar copy is gone. |
+| ~~a second, phone-only copy in the topbar~~ | below 760px `components.css` hides `.sidebar .foot` and the rail becomes a bottom bar, which would take the only sign-out with it | **Closed** (ADR-0030). The phone menu's More sheet carries the foot (name, sign-out) and the appearance switch, so the topbar copy is gone. |
 
 ## Consequences
 

@@ -11,12 +11,16 @@ import {
   formatRating,
   formatShowRate,
   formatUkDate,
+  isWorker,
   limitReached,
   matchesFilter,
   matchesQuery,
   ratingTone,
+  sortRows,
+  statusLabel,
 } from './staff';
-import type { Filter } from './staff';
+import type { Filter, Sort } from './staff';
+import { formatUkStamp } from './[id]/profile';
 import type { StaffRow, StudentRow } from './types';
 import './staff.css';
 
@@ -28,7 +32,6 @@ export interface StaffScreenProps {
   initialView?: 'directory' | 'student';
 }
 
-type Sort = 'name' | 'rating' | 'show' | 'newest';
 const PAGE_SIZE = 15;
 
 /**
@@ -46,7 +49,7 @@ const PAGE_SIZE = 15;
  * Staff.status machine (§2.12), and the filter tabs treat it that way.
  */
 export function StaffScreen({
-  staff,
+  staff: everyone,
   students,
   problem,
   initialView = 'directory',
@@ -57,6 +60,11 @@ export function StaffScreen({
   const [sort, setSort] = useState<Sort>('name');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
+
+  // §9.6 lists workers. Candidates and rejected applicants come through the
+  // same view but belong to /onboarding, so they are neither counted nor
+  // listed here (`isWorker`).
+  const staff = useMemo(() => everyone.filter(isWorker), [everyone]);
 
   const counts = useMemo(
     () => ({
@@ -78,15 +86,9 @@ export function StaffScreen({
         matchesQuery(row, query) &&
         (role === '' || row.role_names.includes(role)),
     );
-    const sorted = [...rows];
-    if (sort === 'rating') sorted.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
-    else if (sort === 'show') sorted.sort((a, b) => (b.reliability ?? -1) - (a.reliability ?? -1));
-    // §9.6: the Inactive tab is newest first, so the office can work
-    // through outstanding P45s and final pay in the order they arrived.
-    else if (sort === 'newest' || filter === 'inactive') {
-      sorted.sort((a, b) => (b.left_at ?? '').localeCompare(a.left_at ?? ''));
-    } else sorted.sort((a, b) => a.display_name.localeCompare(b.display_name));
-    return sorted;
+    // §9.6: the Inactive tab is newest first whatever the sort says
+    // (`sortRows`), so the office works through P45s in arrival order.
+    return sortRows(rows, filter, sort);
   }, [staff, filter, query, role, sort]);
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
@@ -206,6 +208,31 @@ export function StaffScreen({
                   <h3>No worker matches</h3>
                   <p>Search runs over the name, the Employee ID and the worker&rsquo;s roles.</p>
                 </EmptyState>
+              ) : filter === 'inactive' ? (
+                /*
+                  §9.6: "showing the date they left and the reason they gave"
+                  — the wireframe's Inactive tab is its own table, with the
+                  leaver's stamp beside the reason. Its last three columns
+                  (last completed shift, released shifts, P45) need columns
+                  staff_directory_v does not carry yet.
+                */
+                <table className="tbl card-rows">
+                  <thead>
+                    <tr>
+                      <th />
+                      <th>Name</th>
+                      <th>Employee ID</th>
+                      <th>Left</th>
+                      <th>Reason given</th>
+                      <th>Role(s)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shown.map((row) => (
+                      <InactiveTableRow key={row.id} row={row} />
+                    ))}
+                  </tbody>
+                </table>
               ) : (
                 <table className="tbl card-rows">
                   <thead>
@@ -356,12 +383,45 @@ function StaffTableRow({ row }: { row: StaffRow }) {
   );
 }
 
+/** The wireframe's Inactive tab row: who, when they left, and the reason they gave. */
+function InactiveTableRow({ row }: { row: StaffRow }) {
+  return (
+    <tr>
+      <td className="cell-lead">
+        <Avatar name={row.display_name} src={row.photo_url ?? undefined} size="sm" />
+      </td>
+      <td className="name cell-title">
+        <Link href={`/staff/${row.id}`} className="staff-name">
+          {row.display_name}
+        </Link>
+      </td>
+      <td data-label="Employee ID" className="mono sm">
+        {employeeId(row.employee_id)}
+      </td>
+      <td data-label="Left" className="mono sm">
+        {formatUkStamp(row.left_at)}
+      </td>
+      <td data-label="Reason given">
+        {row.leave_reason ? (
+          `“${row.leave_reason}”`
+        ) : (
+          <span className="muted">— no reason given</span>
+        )}
+      </td>
+      <td data-label="Role(s)">
+        <div className="chips">
+          {row.role_names.map((name) => (
+            <Chip key={name}>{name}</Chip>
+          ))}
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 function StatusPill({ row }: { row: StaffRow }) {
-  if (row.removed) return <Pill>Removed</Pill>;
-  if (row.status === 'blocked') return <Pill tone="coral">Blocked</Pill>;
-  if (row.status === 'inactive') return <Pill>Inactive</Pill>;
-  if (row.status === 'compliant') return <Pill tone="green">Compliant</Pill>;
-  return <Pill tone="amber">Onboarding</Pill>;
+  const { label, tone } = statusLabel(row);
+  return <Pill tone={tone === 'neutral' ? undefined : tone}>{label}</Pill>;
 }
 
 const BRANCH_LABEL: Record<string, string> = {

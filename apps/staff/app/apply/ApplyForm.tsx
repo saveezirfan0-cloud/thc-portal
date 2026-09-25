@@ -4,7 +4,7 @@ import { useActionState, useState } from 'react';
 import { Alert, Button, Checkbox, Input, InputRow } from '@thc/ui';
 import { apply } from './actions';
 import { DIAL_CODES, INITIAL_STATE, ageOn, errorBanner, parseDob, validate } from './form';
-import type { ApplicationValues, FieldErrors } from './form';
+import type { ApplicationField, ApplicationValues, FieldErrors } from './form';
 
 /**
  * The public application form (§2.1), matching
@@ -34,6 +34,16 @@ export function ApplyForm() {
   // follow what the person types. The server's answer seeds the first pass.
   const checked = validate(values);
   const errors: FieldErrors = { ...(touched ? checked : state.errors) };
+
+  // A refusal only the server made must not vanish behind a client that
+  // thinks the field is fine: it stays while the value it judged is
+  // unchanged. Otherwise a submit the server refused would render nothing —
+  // no banner, no redirect — and read as a dead button.
+  if (touched) {
+    for (const [field, message] of Object.entries(state.errors) as [ApplicationField, string][]) {
+      if (!errors[field] && values[field] === state.values[field]) errors[field] = message;
+    }
+  }
 
   // ...except for the two fields that hold the button down. `blocked`
   // disables submit, so in exactly those states the first submit never
@@ -101,7 +111,8 @@ export function ApplyForm() {
           Mobile
         </span>
         <InputRow>
-          <div style={{ flex: '0 0 118px' }}>
+          {/* `.caret` draws the wireframe's ▾ from a token (apply.css). */}
+          <div className="caret" style={{ flex: '0 0 118px' }}>
             <select
               className="input"
               name="dialCode"
@@ -177,9 +188,13 @@ export function ApplyForm() {
         </Checkbox>
       </div>
 
-      <Button type="submit" tone="primary" size="lg" block disabled={pending || blocked}>
-        {pending ? 'Sending…' : 'Submit application'}
-      </Button>
+      {/* Sticky at phone width (apply.css): "full-width and sticky-bottom
+          in product" — the fields scroll under it. */}
+      <div className="apply-submit">
+        <Button type="submit" tone="primary" size="lg" block disabled={pending || blocked}>
+          {pending ? 'Sending…' : 'Submit application'}
+        </Button>
+      </div>
 
       <div className="xs muted" style={{ textAlign: 'center' }}>
         Questions?{' '}

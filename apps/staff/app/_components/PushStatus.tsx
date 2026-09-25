@@ -30,7 +30,9 @@ import { savePushSubscription } from '../notifications/actions';
  *      the app for exactly this, because a silent failure here looks
  *      identical to a quiet week and costs the worker shifts.
  *
- * It renders nothing when everything is fine.
+ * It renders nothing when everything is fine. /notifications, whose whole
+ * body is this message, leaves it out (`StaffShell pushStatus={false}`):
+ * a banner saying "Show me how" would point at the page it is on.
  */
 export function PushStatus() {
   const [state, setState] = useState<PushState | null>(null);
@@ -95,10 +97,7 @@ export function PushStatus() {
       <b>{copy.headline}</b>
       <br />
       <span className="xs">
-        {copy.detail}{' '}
-        {copy.actionable ? (
-          <Link href={state === 'needs-install' ? '/install' : '/notifications'}>Show me how</Link>
-        ) : null}
+        {copy.detail} {copy.link ? <Link href={copy.link}>Show me how</Link> : null}
       </span>
     </Alert>
   );

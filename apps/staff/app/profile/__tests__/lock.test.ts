@@ -10,7 +10,10 @@ import {
 } from '../lock';
 import type { StaffProfile } from '../types';
 
-type LockInput = Pick<StaffProfile, 'status' | 'blockKind' | 'quizAttempts' | 'blockers'> & {
+type LockInput = Pick<
+  StaffProfile,
+  'status' | 'blockKind' | 'quizAttempts' | 'blockers' | 'rejectionCause'
+> & {
   checkedIn: boolean;
 };
 
@@ -19,6 +22,7 @@ const base: LockInput = {
   blockKind: null,
   quizAttempts: 0,
   blockers: [],
+  rejectionCause: null,
   checkedIn: false,
 };
 
@@ -184,5 +188,33 @@ describe('describeBlockers', () => {
     const text = describeBlockers(['conviction_unreviewed']);
     expect(text).toContain('reviews your declaration');
     expect(text).not.toContain('conviction');
+  });
+});
+
+describe('appLock — which rejection (§2.9 quiz vs §2.3 manager / Willo)', () => {
+  it('a third failed attempt is the quiz screen (E4 wording) when the cause says so', () => {
+    expect(
+      appLock(worker({ status: 'rejected', quizAttempts: 3, rejectionCause: 'quiz_failed' })),
+    ).toBe('quiz_failed');
+  });
+
+  it('a candidate who passed on the third attempt and was rejected later is NOT told they failed the quiz', () => {
+    // Three attempts on the row, the last one a pass; the manager pressed
+    // Reject candidate at Contract (E2b). The count alone would say E4.
+    expect(
+      appLock(worker({ status: 'rejected', quizAttempts: 3, rejectionCause: 'manager' })),
+    ).toBe('rejected');
+    expect(appLock(worker({ status: 'rejected', quizAttempts: 3, rejectionCause: 'willo' }))).toBe(
+      'rejected',
+    );
+  });
+
+  it('falls back to the attempt count while staff_me() does not expose the cause', () => {
+    expect(appLock(worker({ status: 'rejected', quizAttempts: 3, rejectionCause: null }))).toBe(
+      'quiz_failed',
+    );
+    expect(appLock(worker({ status: 'rejected', quizAttempts: 1, rejectionCause: null }))).toBe(
+      'rejected',
+    );
   });
 });
