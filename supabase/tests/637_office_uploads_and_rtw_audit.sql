@@ -5,7 +5,7 @@
 --   20260929150400_ni_check_office_uploads_and_rtw_audit.sql
 -- =====================================================================
 begin;
-select plan(24);
+select plan(25);
 \ir _shared/fixtures.psql
 
 \set stu    '63700000-0000-4000-8000-000000000001'
@@ -78,6 +78,12 @@ select results_eq(
       where action = 'completion_letter.uploaded' and data ->> 'staffId' = '63700000-0000-4000-8000-000000000001' $$,
   $$ values ('11111111-1111-1111-1111-111111111111', 'Gisela M.') $$,
   'D47: the upload is audited with the admin as the uploader');
+select results_eq(
+  $$ select completion_date_claimed, evidence_form from staff_documents_v
+      where staff_id = '63700000-0000-4000-8000-000000000001'
+        and doc_type = 'university_completion_letter' $$,
+  $$ values (date '2026-06-30', 'letter') $$,
+  'item 8: the profile''s Documents list carries what its Approve confirms (20260929150500)');
 select is((select kind from compliance_review_queue_v
             where staff_id = :'stu' and item_type = 'university_completion_letter'), 'document',
   'D47: and waits in Needs review for the Approve that confirms the dates');

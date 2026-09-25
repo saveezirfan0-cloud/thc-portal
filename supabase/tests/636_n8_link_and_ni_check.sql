@@ -5,7 +5,7 @@
 --   20260929150400_ni_check_office_uploads_and_rtw_audit.sql
 -- =====================================================================
 begin;
-select plan(27);
+select plan(28);
 \ir _shared/fixtures.psql
 
 \set cand    '63600000-0000-4000-8000-000000000001'
@@ -89,6 +89,8 @@ select results_eq(
       where id = '63610000-0000-4000-8000-000000000004' $$,
   $$ values (true, true) $$,
   'D43: verified with no number on file — flagged for a re-check');
+select is((select ni_recheck from staff_documents_v where id = :'ni_late'), true,
+  'D43: the profile''s Documents list says the NI evidence is waiting to be compared (20260929150500)');
 select is_empty($$ select 1 from compliance_review_queue_v where kind = 'ni_check'
                     and item_id = '63610000-0000-4000-8000-000000000004' $$,
   'D43: nothing to compare yet, so nothing in the queue');
