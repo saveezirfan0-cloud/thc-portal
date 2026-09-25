@@ -338,20 +338,33 @@ describe('/onboarding — the "Referred" chip', () => {
     );
   const chips = (html: string) => (html.match(/>Referred</g) ?? []).length;
 
-  it('marks exactly the referred candidate and the referred returning application', () => {
-    const html = board({ candidates: ['c-1', 's-9'], applications: ['a-9'] });
-    expect(chips(html)).toBe(2);
-    // One card per segment: the chip is on Hana's and the returning card,
-    // not on Tom's.
-    const cards = html.split(/class="kcard/).slice(1);
-    const card = (name: string) => cards.find((segment) => segment.includes(name)) ?? '';
-    expect(card('Hana Kowalska')).toContain('>Referred<');
-    expect(card('Tom Price')).not.toContain('>Referred<');
-    expect(card('Returning applicant')).toContain('>Referred<');
+  // One card per segment.
+  const card = (html: string, name: string) =>
+    html
+      .split(/class="kcard/)
+      .slice(1)
+      .find((segment) => segment.includes(name)) ?? '';
+
+  it('marks exactly the referred candidate', () => {
+    // What the database writes since 20260930150300: a referral row for a
+    // new candidate's application only (ADR-0040, security finding #5).
+    const html = board({ candidates: ['c-1'], applications: ['a-1'] });
+    expect(chips(html)).toBe(1);
+    expect(card(html, 'Hana Kowalska')).toContain('>Referred<');
+    expect(card(html, 'Tom Price')).not.toContain('>Referred<');
+    expect(card(html, 'Returning applicant')).not.toContain('>Referred<');
   });
 
   it('marks a returning card by ITS application, not by the person', () => {
+    // s-9 was referred on an earlier, candidate_created application; their
+    // returning application recorded nothing, so its card carries no chip.
     expect(chips(board({ candidates: ['s-9'], applications: ['a-old'] }))).toBe(0);
+  });
+
+  it('still marks a returning card for a row recorded before 20260930150300', () => {
+    const html = board({ candidates: ['s-9'], applications: ['a-9'] });
+    expect(chips(html)).toBe(1);
+    expect(card(html, 'Returning applicant')).toContain('>Referred<');
   });
 
   it('draws no chip when there are no referrals, or the read failed', () => {

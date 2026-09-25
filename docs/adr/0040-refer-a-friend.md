@@ -47,20 +47,31 @@ candidate_staff_id → staff, code, recorded_at, check referrer <> candidate)`. 
 `my_referral_code()` (compliant only) and `my_referral_summary() → {code, applied}`.
 Domain: `packages/domain/src/referral.ts` (`isReferralCode()`, `referralLink()`).
 
-### Implementation notes (onboarding, `20260930140000_apply_referral.sql`)
+### Implementation notes (onboarding, `20260930140000_apply_referral.sql`, `20260930150300_referral_new_candidates_only.sql`)
 
 - `record_application_referral` finds "the application just written" as the one for
   this email stamped in the current transaction (`created_at = now()`) that carries no
   referral yet — `submit_application()` returns void and is not changed, so it cannot
   hand back the id. It is revoked from `service_role` as well as public/anon/
   authenticated: only the definer that owns it can write a referral.
+- **New candidates only** (`20260930150300`, security finding #5). The lookup is limited
+  to `outcome = 'candidate_created'`. A §2.12 match (`returning_applicant`) records
+  nothing: the person was already on file, so nobody referred them — and since the
+  match is on email/mobile + DOB, recording it let anyone who knew an existing
+  worker's details pin "Referred by X" on that worker and inflate X's count. The
+  application itself is still written with its usual outcome, and the response is
+  identical with or without a code (the applicant cannot tell whether it counted).
+  Rows written before that migration are left as they are.
 - The 7-argument `submit_application_as_caller` is dropped, so `522_apply_caller_throttle`
   names the 8-argument signature in its two grant assertions; its calls are unchanged.
 - `/apply` sends `p_referral_code` only when there is a code, and resends without it on
   PostgREST's `PGRST202` (a database not yet on this migration) — a referral never costs
   an application. The consent sentence is shown to every applicant, referred or not.
 - The kanban's "Referred" chip marks a candidate card by person and a returning-applicant
-  card by that application; rejected cards carry it too.
+  card by that application; rejected cards carry it too. Since `20260930150300` no new
+  returning application is referred, so a returning card carries the chip only for a
+  row recorded before it; a candidate referred on their first application who later
+  returns shows the chip on their candidate card, never on the returning one.
 
 ## Consequences
 
@@ -70,8 +81,8 @@ Domain: `packages/domain/src/referral.ts` (`isReferralCode()`, `referralLink()`)
 - GDPR removal revokes the removed worker's code; referral rows are kept and the
   referrer reads "Deleted account #id" (pgTAP 652).
 - pgTAP 650, 652, 680 (code minted once and stable, compliant only, summary is a count),
-  681 (valid code recorded for both `candidate_created` and `returning_applicant`; bad /
-  revoked / self code records nothing and the application still succeeds; anon path
-  records nothing; identical response with or without a code).
+  681 (valid code recorded for `candidate_created` only; a `returning_applicant` match,
+  a bad / revoked / self code all record nothing and the application still succeeds;
+  anon path records nothing; identical response with or without a code, matched or not).
 - **THC to confirm** (docs/15): Q19 — what reward, if any, earned by what; Q20 — may a
   referrer be told their friend joined (RF1), and the privacy wording.
