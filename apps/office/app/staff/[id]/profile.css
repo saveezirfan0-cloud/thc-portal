@@ -160,6 +160,11 @@
   .phead .acts {
     align-items: flex-start;
   }
+  /* Block, Reset to candidate and Remove (GDPR) are one row that is wider
+     than a 360px phone. */
+  .phead .acts .row {
+    flex-wrap: wrap;
+  }
   .kv,
   .two {
     grid-template-columns: 1fr;

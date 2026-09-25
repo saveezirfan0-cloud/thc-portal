@@ -145,7 +145,7 @@ export function RadarTab({
               <p>Every verified document with an expiry date on a live worker is listed here.</p>
             </EmptyState>
           ) : (
-            <table className="tbl">
+            <table className="tbl card-rows">
               <thead>
                 <tr>
                   <th>Who</th>
@@ -161,7 +161,7 @@ export function RadarTab({
                   const status = radarStatus(row);
                   return (
                     <tr key={row.doc_id}>
-                      <td>
+                      <td className="cell-title">
                         <div className="person">
                           <Avatar name={row.display_name} size="sm" />
                           <div>
@@ -174,14 +174,16 @@ export function RadarTab({
                           </div>
                         </div>
                       </td>
-                      <td>{row.doc_label}</td>
-                      <td className="mono">{ukDate(row.expires_on)}</td>
-                      <td>
+                      <td data-label="Document">{row.doc_label}</td>
+                      <td data-label="Expiry date" className="mono">
+                        {ukDate(row.expires_on)}
+                      </td>
+                      <td data-label="Days left">
                         <span className={`days ${daysTone(row.state)}`}>
                           {daysLabel(row.days_left)}
                         </span>
                       </td>
-                      <td>
+                      <td data-label="Status">
                         <Pill tone={status.tone}>{status.label}</Pill>
                         {row.replacement_in_review ? (
                           <span className="sub">a newer one is in Needs review</span>
@@ -191,7 +193,9 @@ export function RadarTab({
                           <span className="sub">31 Dec rule — the printed dates are ignored</span>
                         ) : null}
                       </td>
-                      <td className="sm muted">{remindersLine(row)}</td>
+                      <td data-label="Reminders" className="sm muted">
+                        {remindersLine(row)}
+                      </td>
                     </tr>
                   );
                 })}
@@ -292,7 +296,7 @@ function RotaGuardPanel({ warnings, mode }: { warnings: WarningRow[]; mode: 'blo
           right-to-work expiry are always refused, whatever the setting.
         </p>
       ) : (
-        <table className="tbl">
+        <table className="tbl card-rows">
           <thead>
             <tr>
               <th>When</th>
@@ -304,15 +308,17 @@ function RotaGuardPanel({ warnings, mode }: { warnings: WarningRow[]; mode: 'blo
           <tbody>
             {warnings.map((w) => (
               <tr key={w.id}>
-                <td className="mono sm">{ukStamp(w.at)}</td>
-                <td>
+                <td data-label="When" className="mono sm">
+                  {ukStamp(w.at)}
+                </td>
+                <td className="cell-title">
                   <Link href={`/staff/${w.staff_id}`}>{w.worker}</Link>
                 </td>
-                <td className="sm">
+                <td data-label="Shift" className="sm">
                   {w.event_title ?? '—'}
                   {w.starts_at ? <span className="sub">{ukStamp(w.starts_at)} (UK)</span> : null}
                 </td>
-                <td className="mono sm">
+                <td data-label="Hours that week" className="mono sm">
                   {Number(w.booked_hours ?? 0) + Number(w.shift_hours ?? 0)} h of{' '}
                   {w.cap_hours ?? '—'} h
                 </td>

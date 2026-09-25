@@ -190,6 +190,17 @@
   color: var(--muted);
 }
 
+/* The status pill and the date · window share a line while they fit; the
+   window is mono and nowrap in the table, which on a 390px card ran it off
+   the right edge. Here it wraps under the pill instead. */
+.ecard .row {
+  flex-wrap: wrap;
+}
+.ecard .win {
+  white-space: normal;
+  min-width: 0;
+}
+
 .ecard.cancelled {
   opacity: 0.55;
 }

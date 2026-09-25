@@ -1,5 +1,6 @@
 import { Content, Logo, ModeSwitch, Shell, SignOut, Topbar } from '@thc/ui';
 import type { NavItem } from '@thc/ui';
+import { NAV_ICONS } from './navIcons';
 import { OfficeSidebar } from './OfficeSidebar';
 import { SignedInAs } from './SignedInAs';
 import type { ReactNode } from 'react';
@@ -35,13 +36,18 @@ import type { ReactNode } from 'react';
  * The counters (§4.1's Compliance "Needs review" number) are not here: the
  * root layout reads them once and `OfficeSidebar` applies them from context,
  * for the same reason the sidebar foot's name arrives that way.
+ *
+ * On a phone (below 760px) the sidebar is replaced by `PhoneNav`: the four
+ * `primary` items are tabs — the day-of-operations screens a manager opens
+ * from a phone — and everything else, with the sign-out and the appearance
+ * switch, is one tap away under More.
  */
-export const NAV: readonly NavItem[] = [
-  { href: '/dashboard', label: 'Dashboard' },
+const ITEMS: readonly NavItem[] = [
+  { href: '/dashboard', label: 'Dashboard', primary: true },
   { href: '/onboarding', label: 'Onboarding' },
-  { href: '/events', label: 'Scheduling' },
-  { href: '/compliance', label: 'Compliance' },
-  { href: '/checkin', label: 'Check In / Out' },
+  { href: '/events', label: 'Scheduling', primary: true },
+  { href: '/compliance', label: 'Compliance', primary: true },
+  { href: '/checkin', label: 'Check In / Out', short: 'Check-in', primary: true },
   { href: '/staff', label: 'Staff', dividerBefore: true },
   { href: '/clients', label: 'Clients' },
   { href: '/roles', label: 'Roles' },
@@ -50,6 +56,11 @@ export const NAV: readonly NavItem[] = [
   { href: '/venues', label: 'Venues' },
   { href: '/settings', label: 'Settings', dividerBefore: true },
 ];
+
+export const NAV: readonly NavItem[] = ITEMS.map((item) => ({
+  ...item,
+  icon: NAV_ICONS[item.href],
+}));
 
 export interface OfficeShellProps {
   /** Which nav item is lit. Use the section's root, e.g. `/events` for `/events/new`. */
@@ -98,6 +109,15 @@ export function OfficeShell({
               <SignOut tone="link" size="md" className="ml-auto xs" />
             </>
           }
+          phoneFooter={
+            <>
+              <div className="row">
+                <SignedInAs />
+                <SignOut className="ml-auto" />
+              </div>
+              <ModeSwitch small />
+            </>
+          }
         />
       }
     >
@@ -108,12 +128,10 @@ export function OfficeShell({
         actions={
           <>
             {actions}
-            <ModeSwitch small />
-            {/* The sidebar foot is `display: none` below 760px, where the rail
-                becomes a bottom bar — so on a phone the button above is gone
-                and this is the only sign-out left. */}
-            <span className="only-phone">
-              <SignOut />
+            {/* Below 760px the switch moves into the phone menu's More
+                sheet with the sign-out, so the top bar keeps one row. */}
+            <span className="hide-phone">
+              <ModeSwitch small />
             </span>
           </>
         }

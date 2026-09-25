@@ -28,7 +28,7 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
   }
 
   return (
-    <table className="tbl monitor-tbl">
+    <table className="tbl card-rows monitor-tbl">
       <thead>
         <tr>
           <th>Staff</th>
@@ -42,7 +42,7 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
       <tbody>
         {rows.map((row) => (
           <tr key={row.bookingId}>
-            <td>
+            <td className="cell-title">
               <div className="person">
                 <Avatar name={row.staffName} src={row.photoUrl ?? undefined} />
                 <div>
@@ -51,10 +51,10 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
                 </div>
               </div>
             </td>
-            <td>
+            <td data-label="Event">
               <b>{row.eventTitle}</b>
             </td>
-            <td>
+            <td data-label="Window">
               <span className="win2">
                 {uk(row.startsAt)} – {uk(row.endsAt)} UK time
                 {dual ? (
@@ -64,11 +64,13 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
                 ) : null}
               </span>
             </td>
-            <td className="stamp">
+            <td data-label="Check-in" className="stamp">
               {row.checkInAt ? local(row.checkInAt) : <span className="muted">—</span>}
             </td>
-            <td className="mono sm">{breaksCell(row, local)}</td>
-            <td>
+            <td data-label="Breaks" className="mono sm">
+              {breaksCell(row, local)}
+            </td>
+            <td data-label="Status">
               <Pill tone={statusTone(row)}>
                 {row.status === 'checked_out' && row.checkOutAt
                   ? `${STATUS_LABEL.checked_out} ${local(row.checkOutAt)}`

@@ -127,7 +127,7 @@ export function MonitorScreen({
               : 'Nothing unresolved. Tick “Show resolved” to see closed entries.'}
           </p>
         ) : (
-          <table className="tbl">
+          <table className="tbl card-rows">
             <thead>
               <tr>
                 <th>Staff</th>
@@ -140,19 +140,19 @@ export function MonitorScreen({
             <tbody>
               {shownViolations.map((v) => (
                 <tr key={v.id} {...violationRowProps(v, () => setOpen(v))}>
-                  <td>
+                  <td className="cell-title">
                     <div className="person">
                       <Avatar name={v.staffName} src={v.photoUrl ?? undefined} size="sm" />
                       <div className="n">{v.staffName}</div>
                     </div>
                   </td>
-                  <td>
+                  <td data-label="Event">
                     {v.eventTitle}
                     <span className="sub">
                       {v.venueName} · {v.roleName}
                     </span>
                   </td>
-                  <td>
+                  <td data-label="Violation">
                     <b>{VIOLATION_LABEL[v.type]}</b>
                     {v.resolved ? (
                       <>
@@ -161,8 +161,10 @@ export function MonitorScreen({
                       </>
                     ) : null}
                   </td>
-                  <td className="mono sm">{local(v.detectedAt)}</td>
-                  <td style={{ textAlign: 'right' }}>
+                  <td data-label="Time" className="mono sm">
+                    {local(v.detectedAt)}
+                  </td>
+                  <td className="right-align cell-actions">
                     <Button
                       size="sm"
                       tone={v.resolved ? 'ghost' : 'default'}

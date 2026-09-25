@@ -158,10 +158,19 @@
   display: flex;
   align-items: center;
   gap: var(--sp-16);
-  padding: 0 var(--gutter);
+  /* One line whenever it fits. When it does not (the event board's five
+     actions beside the appearance switch overflowed even at 1280px) the
+     actions wrap under the title instead of running off the edge. */
+  flex-wrap: wrap;
+  row-gap: var(--sp-8);
+  padding: var(--sp-10) var(--gutter);
   position: sticky;
   top: 0;
   z-index: 5;
+}
+.topbar > .row {
+  flex-wrap: wrap;
+  min-width: 0;
 }
 .topbar h1 {
   font-size: var(--fs-20);
@@ -343,11 +352,14 @@
 .signout {
   display: contents;
 }
-/* Below 760px the sidebar becomes a bottom bar and its foot is hidden, which
-   takes the Back Office's only sign-out with it. Screens that keep a control
-   in the foot pair it with an `.only-phone` copy somewhere that survives. */
-.only-phone {
+/* The phone menu (`PhoneNav`) exists only below 760px, where the sidebar
+   hides; `.hide-phone` wraps chrome that moves into it there. Both sit up
+   here, ahead of the responsive block that flips them. */
+.phone-nav {
   display: none;
+}
+.hide-phone {
+  display: contents;
 }
 .mt-8 {
   margin-top: var(--sp-8);
@@ -2297,61 +2309,53 @@ textarea.input {
     gap: var(--sp-20);
   }
   .topbar {
-    padding: 0 var(--sp-20);
+    padding: var(--sp-10) var(--sp-20);
+  }
+  /* At tablet width a long crumb line has to give way, or it pushes the
+     appearance switch off the right edge (it did at 820px). */
+  .topbar .crumbs {
+    flex: 1 1 220px;
+    min-width: 0;
+  }
+  .panel-h .row {
+    flex-wrap: wrap;
+    min-width: 0;
+  }
+  /* A table wider than its card scrolls inside the card instead of being
+     cut off by it (the card clips its corners, so it clips its content). */
+  :is(.panel, .panel-b):has(> table.tbl),
+  .table-scroll {
+    overflow-x: auto;
+  }
+  :is(.panel, .panel-b) > table.tbl {
+    min-width: 720px;
   }
 }
 @media (max-width: 760px) {
-  /* Below the tablet break the sidebar becomes a frosted bottom drawer so
-     the content gets the full width. Labels stay: they are the only thing
-     distinguishing the items until icons land. */
+  /* Below the tablet break the sidebar is replaced by the phone tab bar
+     (`PhoneNav`): four primary tabs plus More, which opens a sheet with the
+     whole menu, who is signed in, sign out and the appearance switch. It
+     used to become a single sideways-scrolling row of all twelve items,
+     half of them off the right edge with nothing to say they were there. */
   .shell {
     grid-template-columns: minmax(0, 1fr);
   }
-  .sidebar {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    top: auto;
-    height: auto;
-    flex-direction: row;
-    border-right: 0;
-    border-top: 1px solid var(--glass-line);
-    z-index: 20;
-    background: var(--glass-nav);
-    backdrop-filter: blur(var(--blur)) saturate(140%);
-    -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
-  }
-  .sidebar .brand,
-  .sidebar .foot,
-  .sidebar nav .divider {
+  .sidebar,
+  .hide-phone {
     display: none;
   }
-  /* The foot goes with it, so anything that lived only there — sign out —
-     has to reappear where this breakpoint can still reach it. */
-  .only-phone {
+  /* `contents`, not `block`: the wrapper would otherwise be a row of the
+     shell grid, and on a short page the grid stretches that row into a
+     blank band above the top bar. Its children are all fixed. */
+  .phone-nav {
     display: contents;
   }
-  .sidebar nav {
-    flex-direction: row;
-    padding: var(--sp-6) var(--sp-10);
-    gap: var(--sp-4);
-    overflow-x: auto;
-    width: 100%;
-  }
-  .sidebar nav :is(a, .pending) {
-    border-left: 0;
-    border-bottom: var(--nav-bar) solid transparent;
-    white-space: nowrap;
-    padding: var(--sp-10) var(--sp-12);
-    margin: 0;
-  }
-  .sidebar nav a.active {
-    border-left-color: transparent;
-    border-bottom-color: var(--cyan-ink);
-  }
   .main {
-    padding-bottom: 68px;
+    padding-bottom: calc(var(--pnav-h) + env(safe-area-inset-bottom));
+    /* Belt and braces: one element that fails to wrap must not widen the
+       whole page, which makes a phone zoom out and leaves the top bar and
+       every panel short of the right edge. */
+    overflow-x: clip;
   }
   .grid.c2,
   .grid.c3,
@@ -2362,34 +2366,44 @@ textarea.input {
   }
   .content {
     padding: var(--sp-16) var(--gutter-mobile) var(--sp-26);
+    gap: var(--sp-16);
   }
-  /* The top bar is one non-wrapping row of title + zone note + actions +
-     user chip, which at 390px ran the appearance switch off the right edge
-     and put the avatar on top of it. Below the tablet break it becomes two
-     rows: title and identity, then the zone note and whatever actions the
-     screen passes. Nothing is hidden — §1.8 requires the zone note to be
-     readable, and an action a phone cannot reach is an action a phone
-     cannot perform. */
+  /* The top bar is one row — title, then the screen's own actions — with
+     the crumbs and the zone note on full-width lines under it. Nothing is
+     hidden (§1.8 requires the zone note to be readable); the appearance
+     switch and sign-out moved to the phone menu. It stops being sticky:
+     three lines of chrome pinned over a phone's content is a third of the
+     screen gone. */
   .topbar {
-    padding: var(--sp-10) var(--gutter-mobile);
+    position: static;
+    padding: var(--sp-12) var(--gutter-mobile);
     flex-wrap: wrap;
-    row-gap: var(--sp-8);
+    row-gap: var(--sp-4);
     column-gap: var(--sp-10);
     align-items: center;
+    min-height: 0;
   }
   .topbar h1 {
-    font-size: var(--fs-17);
+    font-size: var(--fs-20);
     min-width: 0;
+    flex: 1 1 auto;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+  .topbar .spacer {
+    display: none;
+  }
+  .topbar .crumbs {
+    order: 1;
+    flex: 1 1 100%;
   }
   .topbar .tz {
     order: 2;
     flex: 1 1 100%;
   }
-  .topbar .crumbs {
-    flex: 1 1 100%;
+  .topbar .btn {
+    flex: 0 0 auto;
   }
   .userchip {
     max-width: 45vw;
@@ -2397,16 +2411,194 @@ textarea.input {
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+
+  /* Filter rows: every control takes a share of the line and wraps, the
+     search takes a line of its own. Screens size these controls with an
+     inline `style={{ width }}` for the desktop toolbar, so the override has
+     to be important to reach them. */
+  .toolbar {
+    gap: var(--sp-8);
+  }
+  .toolbar .right {
+    margin-left: 0;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+  .toolbar :is(.right, .row) {
+    flex-wrap: wrap;
+  }
+  .toolbar .right > .row {
+    flex: 1 1 100%;
+  }
+  .toolbar :is(.right, .row) > :is(.field, .input, select, .btn) {
+    flex: 1 1 140px;
+    min-width: 0;
+  }
+  .toolbar .search {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .toolbar .input {
+    width: 100% !important;
+    min-width: 0;
+  }
+  .toolbar .datenav {
+    flex: 1 1 auto;
+  }
+  .datenav .lbl {
+    min-width: 0;
+    flex: 1;
+  }
+  .panel-h {
+    flex-wrap: wrap;
+    padding: var(--sp-14) var(--sp-16);
+  }
+  .panel-h .right {
+    flex-wrap: wrap;
+  }
+  .panel-b {
+    padding: var(--sp-16);
+  }
+  .page-head .actions {
+    margin-left: 0;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  /* A segmented control or tab strip wider than the phone scrolls inside
+     itself rather than pushing the page wider or squashing its labels. */
+  .seg:not(.block),
+  .tabs {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .seg::-webkit-scrollbar,
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .tabs :is(button, a) {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding-left: var(--sp-12);
+    padding-right: var(--sp-12);
+  }
+
+  /* Tables. A wide one scrolls sideways inside its card. One marked
+     `.card-rows` — a list whose every row is a thing you open (events, staff,
+     the review queue, the live monitor) — becomes a stack of cards: the
+     first cell is the card's title and every other cell prints its column
+     name from `data-label`. */
   .table-scroll {
     overflow-x: auto;
   }
   .table-scroll .tbl {
     min-width: 640px;
   }
-  .page-head .actions {
-    margin-left: 0;
+  .tbl th {
+    padding: var(--sp-10) var(--sp-12);
+  }
+  .tbl td {
+    padding: var(--sp-12);
+  }
+  .table-scroll .tbl.card-rows,
+  :is(.panel, .panel-b) > table.tbl.card-rows {
+    min-width: 0;
+  }
+  .tbl.card-rows,
+  .tbl.card-rows tbody,
+  .tbl.card-rows tr,
+  .tbl.card-rows td {
+    display: block;
     width: 100%;
   }
+  .tbl.card-rows thead {
+    display: none;
+  }
+  .tbl.card-rows tr {
+    padding: var(--sp-14) var(--sp-16);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-4);
+  }
+  .tbl.card-rows tr:last-child {
+    border-bottom: 0;
+  }
+  .tbl.card-rows td {
+    padding: 0;
+    border: 0;
+    text-align: left;
+  }
+  .tbl.card-rows td:empty {
+    display: none;
+  }
+  .tbl.card-rows td[data-label] {
+    display: grid;
+    grid-template-columns: minmax(88px, 34%) minmax(0, 1fr);
+    column-gap: var(--sp-10);
+    align-items: baseline;
+    justify-items: start;
+  }
+  .tbl.card-rows td[data-label]::before {
+    content: attr(data-label);
+    font-family: var(--font-label);
+    font-size: var(--label-size);
+    letter-spacing: var(--label-track);
+    text-transform: var(--label-case);
+    color: var(--muted);
+    font-weight: var(--label-weight);
+  }
+  /* A cell holding several blocks keeps them in the value column. */
+  .tbl.card-rows td[data-label] > * {
+    grid-column: 2;
+  }
+  .tbl.card-rows td.num {
+    font-family: var(--font-num);
+  }
+  /* The cell that names the row heads the card, wherever its column sits. */
+  .tbl.card-rows td.cell-title {
+    order: -1;
+    font-size: var(--fs-15);
+  }
+  /* A lead cell (the avatar) sits on the title's line, left of it. */
+  .tbl.card-rows tr:has(> td.cell-lead) {
+    flex-flow: row wrap;
+    align-items: center;
+    column-gap: var(--sp-10);
+  }
+  .tbl.card-rows tr:has(> td.cell-lead) > td {
+    flex: 1 1 100%;
+  }
+  .tbl.card-rows tr:has(> td.cell-lead) > td.cell-lead {
+    order: -2;
+    flex: 0 0 auto;
+    width: auto;
+  }
+  .tbl.card-rows tr:has(> td.cell-lead) > td.cell-title {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+  .tbl.card-rows tr.violation td:first-child {
+    border-left: 0;
+  }
+  .tbl.card-rows tr.violation {
+    border-left: 3px solid var(--coral-ink);
+  }
+  .tbl.card-rows td.cell-actions {
+    text-align: left;
+    white-space: normal;
+  }
+  .tbl.card-rows .cell-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-8);
+    padding-top: var(--sp-4);
+  }
+  .tbl.card-rows .cell-actions > .sub {
+    flex-basis: 100%;
+  }
+
   .phone {
     width: 100%;
     max-width: 390px;
@@ -2414,6 +2606,215 @@ textarea.input {
   .modal-back {
     padding: var(--sp-12);
   }
+  .modal {
+    max-height: calc(100dvh - var(--sp-26));
+    overflow-y: auto;
+  }
+  .modal .mf {
+    flex-wrap: wrap;
+  }
+}
+
+/* ---------------------------------------------------------------------
+   PHONE NAV — the Back Office menu below 760px (`PhoneNav`).
+   A frosted tab bar pinned to the bottom (four primary tabs + More) and a
+   frosted sheet above it with the whole menu. Hidden above the break,
+   where the sidebar is the menu.
+   --------------------------------------------------------------------- */
+.pnav-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 20;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: var(--sp-4);
+  padding: var(--sp-6) var(--sp-6) calc(var(--sp-6) + env(safe-area-inset-bottom));
+  background: var(--glass-nav);
+  backdrop-filter: blur(var(--blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
+  border-top: 1px solid var(--glass-line);
+}
+.pnav-slot {
+  display: contents;
+}
+.pnav-tab {
+  position: relative;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: var(--sp-4) 2px;
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: var(--fs-11);
+  font-weight: 500;
+  cursor: pointer;
+  text-decoration: none;
+}
+.pnav-tab:hover {
+  color: var(--text);
+  text-decoration: none;
+}
+.pnav-tab .ico {
+  width: 52px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-pill);
+  transition: background 0.15s;
+}
+.pnav-tab svg,
+.pnav-item svg {
+  width: 20px;
+  height: 20px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+.pnav-tab .l {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pnav-tab.active {
+  color: var(--cyan-ink);
+  font-weight: 600;
+}
+.pnav-tab.active .ico {
+  background: var(--cyan-dim-soft);
+}
+.pnav-tab .count {
+  position: absolute;
+  top: 2px;
+  left: calc(50% + var(--sp-8));
+  min-width: 18px;
+  font-family: var(--font-num);
+  font-size: var(--fs-10);
+  line-height: 1.5;
+  text-align: center;
+  padding: 0 var(--sp-4);
+  background: var(--line);
+  color: var(--text);
+  font-weight: 700;
+  border-radius: var(--r-pill);
+}
+.pnav-tab .count.alert,
+.pnav-item .count.alert {
+  background: var(--coral-solid);
+  color: var(--on-coral);
+}
+.pnav-sheet {
+  position: fixed;
+  z-index: 19;
+  bottom: calc(var(--pnav-h) + env(safe-area-inset-bottom));
+  max-height: calc(100dvh - var(--pnav-h) - var(--sp-44));
+  overflow-y: auto;
+  gap: var(--sp-14);
+  padding-bottom: var(--sp-20);
+}
+.phone-nav .sheet-back {
+  position: fixed;
+  z-index: 18;
+}
+.pnav-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+}
+.pnav-brand .name {
+  font-family: var(--font-head);
+  font-weight: 600;
+  font-size: var(--fs-14);
+}
+.pnav-brand .sub {
+  font-size: var(--fs-11);
+  color: var(--muted);
+}
+.pnav-groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+.pnav-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-6);
+}
+.pnav-grid + .pnav-grid {
+  border-top: 1px solid var(--line);
+  padding-top: var(--sp-10);
+}
+.pnav-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  min-width: 0;
+  padding: var(--sp-10) var(--sp-12);
+  border-radius: var(--r-control);
+  color: var(--text);
+  font-family: var(--font-body);
+  font-size: var(--fs-13);
+  font-weight: 500;
+  text-decoration: none;
+}
+.pnav-item:hover {
+  background: var(--hover);
+  text-decoration: none;
+}
+.pnav-item.active {
+  background: var(--cyan-dim-soft);
+  color: var(--cyan-ink);
+  font-weight: 600;
+}
+.pnav-item .ico {
+  display: inline-flex;
+  color: var(--muted);
+}
+.pnav-item.active .ico {
+  color: var(--cyan-ink);
+}
+.pnav-item .l {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.pnav-item .count {
+  margin-left: auto;
+  font-family: var(--font-num);
+  font-size: var(--fs-10);
+  padding: 1px var(--sp-6);
+  background: var(--line);
+  font-weight: 700;
+  border-radius: var(--r-pill);
+}
+.pnav-item.pending {
+  opacity: 0.55;
+}
+.pnav-item .soon {
+  margin-left: auto;
+  font-size: var(--fs-10);
+  color: var(--muted);
+}
+.pnav-foot {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  border-top: 1px solid var(--line);
+  padding-top: var(--sp-14);
+}
+.pnav-foot > .seg {
+  align-self: flex-start;
 }
 
 /* ---------------------------------------------------------------------

@@ -161,7 +161,7 @@ export function ReviewTab({ rows }: { rows: QueueRow[] }) {
               </p>
             </EmptyState>
           ) : (
-            <table className="tbl">
+            <table className="tbl card-rows">
               <thead>
                 <tr>
                   <th>Who</th>
@@ -268,7 +268,7 @@ function QueueLine({
   const hint = verifyHint(row);
   return (
     <tr>
-      <td>
+      <td className="cell-title">
         <div className="person">
           <Avatar name={row.display_name} size="sm" />
           <div>
@@ -287,7 +287,7 @@ function QueueLine({
           </div>
         </div>
       </td>
-      <td>
+      <td data-label="Document">
         <b>{row.item_label}</b>{' '}
         {row.kind === 'declaration' && row.declaration_source === 'in_employment' ? (
           <Pill tone="purple">in-employment</Pill>
@@ -300,11 +300,11 @@ function QueueLine({
           ) : null}
         </span>
       </td>
-      <td className="mono sm">
+      <td data-label="Uploaded" className="mono sm">
         {ukStamp(row.submitted_at)}
         <span className="sub">{ageLabel(row.submitted_at)}</span>
       </td>
-      <td>
+      <td data-label="AI found">
         <span
           className={
             found.confidence === null && row.kind === 'declaration' ? 'found muted' : 'found'
@@ -320,7 +320,7 @@ function QueueLine({
           </span>
         ) : null}
       </td>
-      <td style={{ textAlign: 'right' }}>
+      <td className="right-align cell-actions">
         <Button size="sm" tone="green" onClick={onVerify} disabled={busy}>
           Verify
         </Button>{' '}

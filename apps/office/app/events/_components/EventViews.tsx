@@ -48,8 +48,10 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
     );
   }
 
+  // `card-rows`: below 760px each event is a card, titled by the event, with
+  // every other column printed against its `data-label`.
   return (
-    <table className="tbl">
+    <table className="tbl card-rows">
       <thead>
         <tr>
           <th>Date</th>
@@ -69,13 +71,13 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
           const open = formatOpen(row.fill);
           return (
             <tr key={row.id} className={cancelled ? undefined : 'clickable'}>
-              <td>
+              <td data-label="Date">
                 <b className={row.date === today ? 'cyan' : undefined}>
                   {formatDayShort(row.date)}
                 </b>
                 {row.date === today ? <span className="sub">today</span> : null}
               </td>
-              <td className={cancelled ? 'muted' : undefined}>
+              <td className={classes('cell-title', cancelled && 'muted')}>
                 {cancelled ? (
                   <s>{row.title}</s>
                 ) : (
@@ -87,11 +89,11 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                   <span className="sub">{row.cancelReason}</span>
                 ) : null}
               </td>
-              <td className={cancelled ? 'muted' : undefined}>
+              <td data-label="Client · Venue" className={cancelled ? 'muted' : undefined}>
                 {row.clientName}
                 <span className="sub">{row.venueName}</span>
               </td>
-              <td className={classes('mono', 'sm', cancelled && 'muted')}>
+              <td data-label="Window (UK)" className={classes('mono', 'sm', cancelled && 'muted')}>
                 {/* UK, plus "your time" for a reader outside the UK (§1.8). */}
                 {row.windowIso ? (
                   <ScheduledWindow
@@ -103,7 +105,7 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                 )}
                 {row.endsNextDay ? <span className="sub">ends next day</span> : null}
               </td>
-              <td>
+              <td data-label="Roles">
                 <div className="roles">
                   {row.roles.map((role, index) => (
                     <div className="r" key={`${row.id}-${index}`}>
@@ -119,7 +121,7 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                   {row.roles.length === 0 ? <span className="muted sm">No roles yet</span> : null}
                 </div>
               </td>
-              <td>
+              <td data-label="Fill">
                 {cancelled ? (
                   <span className="muted sm">excluded from financials</span>
                 ) : (
@@ -134,10 +136,10 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                   </>
                 )}
               </td>
-              <td>
+              <td data-label="Status">
                 <StatusPill status={row.status} />
               </td>
-              <td className={classes('mono', 'sm', !row.poNumber && 'muted')}>
+              <td data-label="PO" className={classes('mono', 'sm', !row.poNumber && 'muted')}>
                 {row.poNumber || '—'}
               </td>
             </tr>
@@ -158,10 +160,16 @@ export function MonthView({
   cells,
   buckets,
   today,
+  dayHref,
 }: {
   cells: { iso: string; dayOfMonth: number; inMonth: boolean }[];
   buckets: Map<string, DayBucket>;
   today: string;
+  /**
+   * The Day view of a date. On a phone the grid is too narrow for chips, so
+   * each event is a dot and the whole cell opens its day (events.css).
+   */
+  dayHref?: (iso: string) => string;
 }) {
   return (
     <div className="cal">
@@ -178,7 +186,13 @@ export function MonthView({
             className={classes('day', !cell.inMonth && 'other', cell.iso === today && 'today')}
           >
             <div className="d">
-              {cell.dayOfMonth}
+              {dayHref ? (
+                <Link className="dlink" href={dayHref(cell.iso)} aria-label={`Open ${cell.iso}`}>
+                  {cell.dayOfMonth}
+                </Link>
+              ) : (
+                cell.dayOfMonth
+              )}
               {bucket && bucket.count > 0 ? (
                 <span className="cnt">
                   {bucket.allCancelled

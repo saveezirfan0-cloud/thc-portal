@@ -88,7 +88,7 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
               <p>This view holds every worker on the International student branch (§2.5).</p>
             </EmptyState>
           ) : (
-            <table className="tbl">
+            <table className="tbl card-rows">
               <thead>
                 <tr>
                   <th>Worker</th>
@@ -101,7 +101,7 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
               <tbody>
                 {rows.map((row) => (
                   <tr key={row.id}>
-                    <td>
+                    <td className="cell-title">
                       <div className="person">
                         <Avatar
                           name={row.display_name}
@@ -114,7 +114,7 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
                         </div>
                       </div>
                     </td>
-                    <td>
+                    <td data-label="Weekly cap">
                       <span className={`cap ${capClass(row)}`}>{capLabel(row)}</span>
                       <span className="sub">
                         {capReason(row.weekly_cap_band, row.weekly_cap_hours)}
@@ -124,10 +124,10 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
                         {releaseLine(row)}
                       </span>
                     </td>
-                    <td className="sm">
+                    <td data-label="Evidence" className="sm">
                       <Evidence row={row} />
                     </td>
-                    <td className="mono sm">
+                    <td data-label="Right to work" className="mono sm">
                       {row.right_to_work_until ? formatUkDate(row.right_to_work_until) : '—'}
                       {row.rtw_days_left !== null && row.rtw_days_left <= 60 ? (
                         <>
@@ -138,7 +138,7 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
                         </>
                       ) : null}
                     </td>
-                    <td>
+                    <td data-label="Status">
                       {row.status === 'blocked' ? (
                         <Pill tone="coral">Blocked</Pill>
                       ) : (

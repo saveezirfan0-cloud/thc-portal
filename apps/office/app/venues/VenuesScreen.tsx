@@ -122,7 +122,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
                   </p>
                 </EmptyState>
               ) : (
-                <table className="tbl">
+                <table className="tbl card-rows">
                   <thead>
                     <tr>
                       <th>Venue</th>
@@ -136,7 +136,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
                   <tbody>
                     {filtered.map((venue) => (
                       <tr key={venue.id}>
-                        <td className="name">
+                        <td className="name cell-title">
                           <button
                             type="button"
                             className="venue-name"
@@ -146,16 +146,20 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
                           </button>
                           <span className="sub mono">{formatCoordinates(venue)}</span>
                         </td>
-                        <td>{venue.address}</td>
-                        <td className="vt">{venue.venue_type_label}</td>
-                        <td className="num">
+                        <td data-label="Address">{venue.address}</td>
+                        <td data-label="Type" className="vt">
+                          {venue.venue_type_label}
+                        </td>
+                        <td data-label="Geofence (m)" className="num">
                           {venue.geofence_radius_m}
                           {venue.geofence_radius_m !== venue.default_radius_m ? (
                             <span className="radius-note">default {venue.default_radius_m}</span>
                           ) : null}
                         </td>
-                        <td className="num">{venue.events_past}</td>
-                        <td className="actions">
+                        <td data-label="Events" className="num">
+                          {venue.events_past}
+                        </td>
+                        <td className="actions cell-actions">
                           <Button size="sm" onClick={() => setEditing(venue)}>
                             Edit
                           </Button>
