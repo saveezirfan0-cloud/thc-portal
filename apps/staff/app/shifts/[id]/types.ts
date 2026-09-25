@@ -34,7 +34,11 @@ export interface ShiftDetail {
   noCheckoutOpen: boolean;
   /**
    * §3.2 strict buffer policy: the logged turn-away attempt
-   * (`check_logs.attempted_at`), null where there was none.
+   * (`check_logs.attempted_at`), null where there was none. The screen
+   * does not read it — on time or late is `turnedAwayPayMin`, the
+   * database's decision, never a clock comparison here — but it is the
+   * stamp that decision was made from, and data.test.ts / page.test.tsx
+   * pin it alongside the minutes.
    */
   turnedAwayAt: string | null;
   /**

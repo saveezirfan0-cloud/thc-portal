@@ -357,9 +357,17 @@ describe('§3.2 the strict-buffer turn-away screen (RULE-15)', () => {
   });
 
   it('late: the same screen, without the sentence — a late turn-away is paid nothing', async () => {
+    // Pressed 35 minutes after a start 40 minutes ago: past the grace, so
+    // RULE-15 gave the attempt 0.
+    const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
     profile.mockResolvedValue(worker());
     shift.mockResolvedValue(
-      detail({ status: 'turned_away', turnedAwayAt: soon(), turnedAwayPayMin: 0 }),
+      detail({
+        status: 'turned_away',
+        startsAt: ago(40),
+        turnedAwayAt: ago(35),
+        turnedAwayPayMin: 0,
+      }),
     );
     const html = await render();
     expect(html).toContain(`<p>${OPENING} ${CLOSING}</p>`);
@@ -369,15 +377,34 @@ describe('§3.2 the strict-buffer turn-away screen (RULE-15)', () => {
   });
 
   it('reads the database’s minutes, not the clock: late by the row even inside the window', async () => {
-    // The shift starts in ten minutes, so the phone's clock would call any
-    // press "on time" — but the row says RULE-15 paid nothing, and the
-    // screen follows the row.
+    // The attempt is stamped ten minutes BEFORE the start, so the phone's
+    // clock would call it on time — but the row says RULE-15 paid 0, and
+    // the screen follows the row.
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(
+      detail({
+        status: 'turned_away',
+        turnedAwayAt: new Date().toISOString(),
+        turnedAwayPayMin: 0,
+      }),
+    );
+    const html = await render();
+    expect(html).toContain('Thanks for coming');
+    expect(html).toContain(`<p>${OPENING} ${CLOSING}</p>`);
+    expect(html).not.toContain(PAID);
+  });
+
+  it('with no RULE-15 decision on the row at all, still turns away but promises nothing', async () => {
+    // A turned_away booking whose attempt carries no minutes: the screen
+    // never promises four hours the payroll view would not pay.
     profile.mockResolvedValue(worker());
     shift.mockResolvedValue(
       detail({ status: 'turned_away', turnedAwayAt: null, turnedAwayPayMin: null }),
     );
     const html = await render();
     expect(html).toContain('Thanks for coming');
+    expect(html).toContain(`<p>${OPENING} ${CLOSING}</p>`);
     expect(html).not.toContain(PAID);
+    noLiveControls(html);
   });
 });

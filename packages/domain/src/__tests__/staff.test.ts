@@ -9,6 +9,7 @@ import {
   STATIC_SCREEN_COPY,
   SELF_CANCEL_WINDOW_HOURS,
   TURNED_AWAY_COPY,
+  TURN_AWAY_PAY_MIN,
   type StaffBooking,
   canCancelShift,
   cancelDeadline,
@@ -283,6 +284,13 @@ describe('the strict-buffer turn-away screen (§3.2, RULE-15)', () => {
     expect(late).toBe(LATE);
     expect(late).not.toContain('4 hours');
     expect(late).not.toContain('on time');
+  });
+
+  it('pays the on-time turn-away TURN_AWAY_PAY_MIN, which is the "4 hours" in the copy', () => {
+    expect(TURN_AWAY_PAY_MIN).toBe(240);
+    expect(payFor('2026-06-14T15:58:00Z')).toBe(TURN_AWAY_PAY_MIN);
+    expect(turnedAwayMessage(TURN_AWAY_PAY_MIN)).toBe(ON_TIME);
+    expect(TURNED_AWAY_COPY.onTime).toContain(`${TURN_AWAY_PAY_MIN / 60} hours`);
   });
 
   it('never promises pay it has no decision for', () => {

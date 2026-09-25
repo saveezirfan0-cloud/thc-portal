@@ -1,4 +1,4 @@
-import { MINIMUM_SHIFT_MIN, turnedAwayMessage } from '@thc/domain';
+import { TURN_AWAY_PAY_MIN, turnedAwayMessage } from '@thc/domain';
 
 /**
  * The message keys the check-in / check-out / break RPCs return, in the
@@ -12,7 +12,7 @@ export const CHECK_IN_MESSAGES: Record<string, string> = {
   check_in_not_open: 'Check-in is not open yet.',
   no_show_locked: 'Check-in has closed for this shift. Contact the office.',
   // §3.2, RULE-15: the copy is @thc/domain's, not restated here.
-  turned_away_paid: turnedAwayMessage(MINIMUM_SHIFT_MIN),
+  turned_away_paid: turnedAwayMessage(TURN_AWAY_PAY_MIN),
   turned_away_unpaid: turnedAwayMessage(0),
   already_checked_in: 'You’re already checked in.',
 };
