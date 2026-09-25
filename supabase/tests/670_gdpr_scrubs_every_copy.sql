@@ -31,10 +31,12 @@ select plan(40);
 insert into auth.users (id, email, phone, raw_user_meta_data, recovery_token)
 values (:'gdpr_uid', 'grace.l@example.com', '+447700906301',
         '{"full_name":"Grace Lindqvist","phone":"+447700906301"}', 'a-live-recovery-token');
-insert into auth.identities (provider_id, user_id, identity_data, provider, email)
+-- No `email` in the column list: on hosted Supabase auth.identities.email is
+-- a generated column (from identity_data) and refuses an explicit value.
+insert into auth.identities (provider_id, user_id, identity_data, provider)
 values (:'gdpr_uid', :'gdpr_uid',
         jsonb_build_object('sub', :'gdpr_uid', 'email', 'grace.l@example.com', 'name', 'Grace Lindqvist'),
-        'email', 'grace.l@example.com');
+        'email');
 insert into profiles (id, role, full_name) values (:'gdpr_uid', 'staff', 'Grace Lindqvist');
 
 insert into staff (id, user_id, employee_id, first_name, last_name, email, phone, dob, status,
