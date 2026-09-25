@@ -12,14 +12,15 @@ export function isRole(value: unknown): value is Role {
  * three apps are on three different hosts, so this cannot send anyone
  * across apps and must never be used to try.
  *
- * Every one of these pointed at a route that did not exist — `/dashboard`,
- * `/events`, `/shifts` are all still unbuilt — which turned the wrong-app
- * redirect into an infinite loop. Keep them on a route that exists.
+ * Never `/`. Each app's root page REDIRECTS to its home, so a home of `/`
+ * is a page redirecting to itself — the Staff App did exactly that
+ * (`redirect(HOME_PATH.staff)` from `/`) and every visitor got Safari's
+ * "cannot follow more than 20 redirections". Keep each on a real screen.
  */
 export const HOME_PATH: Readonly<Record<Role, string>> = {
-  admin: '/',
-  client: '/',
-  staff: '/',
+  admin: '/dashboard',
+  client: '/client',
+  staff: '/shifts',
 };
 
 /**
