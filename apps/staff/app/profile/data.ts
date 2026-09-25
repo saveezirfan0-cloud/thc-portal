@@ -1,8 +1,10 @@
 import { cookies } from 'next/headers';
 import { payableMinutes } from '@thc/domain';
 import { staffDb, supabaseConfigured } from '../db';
-import type { EarningsRow, StaffProfile } from './types';
+import type { EarningsRow, EmergencyContact, StaffProfile } from './types';
 import { basePenceFor } from './payments/earnings';
+import { toChangeRequest } from './change-requests';
+import type { ChangeRequest } from './change-requests';
 
 /**
  * Everything the profile screens read — §10.1.
@@ -118,6 +120,38 @@ export async function loadEarnings(): Promise<EarningsRow[]> {
       basePence: payableMin === null ? null : basePenceFor(payableMin, payRate),
     };
   });
+}
+
+/**
+ * The emergency contact (ADR-0037) — `my_emergency_contact()`, a separate
+ * read because `staff_me()` is frozen in Phase 1 (docs/18 §0.6). Null when
+ * none is saved; `undefined` when the read failed, so the Profile hub can
+ * leave its "not set" nudge off rather than nag on a network error.
+ */
+export async function loadEmergencyContact(): Promise<EmergencyContact | null | undefined> {
+  if (!supabaseConfigured()) return undefined;
+  const { data, error } = await staffDb(await cookies()).rpc('my_emergency_contact', {});
+  if (error) return undefined;
+  if (!data) return null;
+  const row = data as Record<string, unknown>;
+  return {
+    name: (row['name'] as string) ?? '',
+    relationship: (row['relationship'] as string) ?? '',
+    phone: (row['phone'] as string) ?? '',
+  };
+}
+
+/**
+ * The worker's own name / photo change requests (ADR-0038) — newest first,
+ * never `decided_by`. A failed read is an empty list: the status line is
+ * then absent and "Request a change" still works (the RPC refuses a second
+ * pending request by itself).
+ */
+export async function loadChangeRequests(): Promise<ChangeRequest[]> {
+  if (!supabaseConfigured()) return [];
+  const { data, error } = await staffDb(await cookies()).rpc('my_profile_change_requests', {});
+  if (error) return [];
+  return ((data ?? []) as Record<string, unknown>[]).map(toChangeRequest);
 }
 
 /** `staff.rejection_cause`, or null for anything `staff_me()` does not say. */

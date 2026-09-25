@@ -54,6 +54,7 @@ const worker = (over: Partial<StaffProfile> = {}): StaffProfile => ({
 const render = (profile: StaffProfile) =>
   renderToStaticMarkup(<ProfileHub profile={profile} photoUrl={null} futureShifts={0} />);
 
+const html = (profile: StaffProfile) => render(profile);
 const hrefs = (html: string) => [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
 
 describe('the Profile tab (ADR-0035)', () => {
@@ -63,6 +64,8 @@ describe('the Profile tab (ADR-0035)', () => {
       '/profile/details', // Edit profile
       '/documents',
       '/profile/details',
+      '/profile/availability',
+      '/profile/refer',
       '/profile/payments',
       '/profile/security',
       '/notifications',
@@ -88,6 +91,27 @@ describe('the Profile tab (ADR-0035)', () => {
     expect(hrefs(html)).toContain('/documents');
     expect(html).toContain('Action needed');
     expect(html).not.toContain('Up to date');
+  });
+
+  it('offers Availability only when nothing locks the app (ADR-0036)', () => {
+    expect(hrefs(render(worker()))).toContain('/profile/availability');
+    expect(html(worker({ blockers: ['document_expired:passport'] }))).not.toContain(
+      '/profile/availability',
+    );
+    expect(html(worker({ status: 'documents', employeeId: null }))).not.toContain(
+      '/profile/availability',
+    );
+  });
+
+  it('offers Refer a friend to a compliant worker only, with no reward copy (ADR-0040)', () => {
+    expect(hrefs(render(worker()))).toContain('/profile/refer');
+    expect(html(worker({ blockers: ['document_expired:passport'] }))).not.toContain(
+      '/profile/refer',
+    );
+    expect(html(worker({ status: 'blocked', blockKind: 'auto_document' }))).not.toContain(
+      '/profile/refer',
+    );
+    expect(html(worker()).toLowerCase()).not.toMatch(/reward|bonus|£/);
   });
 
   it('gives a candidate still in the wizard neither Documents nor Edit profile', () => {

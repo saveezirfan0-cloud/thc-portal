@@ -1,10 +1,15 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Alert, Avatar, Button } from '@thc/ui';
 import { createClient } from '@thc/db/browser';
 import { finishPhotoUpload, startPhotoUpload } from '../actions';
+import { SELFIE_MIME as MIME, squareJpeg } from './selfie';
+import { requestHref } from '../change-requests';
+import type { StatusLine } from '../change-requests';
+import { ChangeStatus } from './ChangeStatus';
 
 /**
  * The profile photo (§1.6, §10.1).
@@ -30,19 +35,20 @@ import { finishPhotoUpload, startPhotoUpload } from '../actions';
  * uploading the original would cost a worker on 4G their data for nothing.
  */
 
-/** Long edge of the stored image. Generous for a 72 px avatar on a 3× screen. */
-const MAX_EDGE = 512;
-const MIME = 'image/jpeg';
-const QUALITY = 0.85;
-
 export function PhotoField({
   name,
   photoUrl,
   locked,
+  canRequestChange = true,
+  status = null,
 }: {
   name: string;
   photoUrl: string | null;
   locked: boolean;
+  /** ADR-0038: false while a photo change request is pending. */
+  canRequestChange?: boolean;
+  /** The pending / rejected line for the newest photo request. */
+  status?: StatusLine;
 }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -50,17 +56,26 @@ export function PhotoField({
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
+  // Locked (§10.1): the photo is not editable here, but it can be asked
+  // for — "Request a change" opens the office's queue (ADR-0038), hidden
+  // while a request is already with them.
   if (locked) {
     return (
-      <div className="photo-row">
-        <Avatar name={name} {...(photoUrl ? { src: photoUrl } : {})} size="xl" />
-        <div className="photo-copy">
-          <div className="sm strong">Profile photo · locked</div>
-          <div className="xs muted">
-            Set once at onboarding — it’s printed on timesheets. To change it, contact the office.
+      <>
+        <div className="photo-row">
+          <Avatar name={name} {...(photoUrl ? { src: photoUrl } : {})} size="xl" />
+          <div className="photo-copy">
+            <div className="sm strong">Profile photo · locked</div>
+            <div className="xs muted">Set once at onboarding — it’s printed on timesheets.</div>
+            {canRequestChange && status?.state !== 'rejected' ? (
+              <Link className="btn ghost sm" href={requestHref('photo')}>
+                Request a change
+              </Link>
+            ) : null}
           </div>
         </div>
-      </div>
+        <ChangeStatus kind="photo" line={status} />
+      </>
     );
   }
 
@@ -142,44 +157,4 @@ export function PhotoField({
       </div>
     </div>
   );
-}
-
-/**
- * Centre-crop to a square and downscale to `MAX_EDGE`, as JPEG.
- *
- * Square because the avatar is square in the scope rendering and circular
- * in the warm one, and a circle is a square with a radius: cropping here
- * means neither ground has to guess which part of a portrait to show, and
- * the same file works on a timesheet.
- */
-async function squareJpeg(file: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
-  const edge = Math.min(bitmap.width, bitmap.height);
-  const size = Math.min(edge, MAX_EDGE);
-
-  const canvas = document.createElement('canvas');
-  canvas.width = size;
-  canvas.height = size;
-  const context = canvas.getContext('2d');
-  if (!context) throw new Error('no 2d context');
-  context.drawImage(
-    bitmap,
-    (bitmap.width - edge) / 2,
-    (bitmap.height - edge) / 2,
-    edge,
-    edge,
-    0,
-    0,
-    size,
-    size,
-  );
-  bitmap.close();
-
-  return new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error('encode failed'))),
-      MIME,
-      QUALITY,
-    );
-  });
 }

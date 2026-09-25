@@ -4,7 +4,7 @@ import { ProfileShell } from './_components/ProfileShell';
 import { ProfileHub } from './_components/ProfileHub';
 import { LockScreen } from './_components/LockScreen';
 import { appLock, canReachProfileDetails } from './lock';
-import { loadEarnings, loadProfile, supabaseConfigured } from './data';
+import { loadEarnings, loadEmergencyContact, loadProfile, supabaseConfigured } from './data';
 import { signOwnPhoto } from './photos';
 import { expiringDocument } from './document-expiry';
 import { nextPay } from './payments/earnings';
@@ -52,13 +52,15 @@ export default async function Page() {
   // only for a worker who has the Documents and Payment rows at all, and
   // either read failing costs its line, never the page.
   const working = canReachProfileDetails(lock);
-  const [photoUrl, bookings, earnings, documents] = await Promise.all([
+  const [photoUrl, bookings, earnings, documents, contact] = await Promise.all([
     signOwnPhoto(profile.photoPath),
     // The real number the §10.6 sheet quotes: confirmed bookings whose
     // shift has not started, exactly the set `request_p45()` releases.
     loadBookings(),
     working ? loadEarnings().catch(() => []) : Promise.resolve([]),
     working ? loadDocuments().catch(() => null) : Promise.resolve(null),
+    // ADR-0037: only to decide the "Emergency contact not set" nudge.
+    working ? loadEmergencyContact().catch(() => undefined) : Promise.resolve(undefined),
   ]);
   const now = Date.now();
   const futureShifts = bookings.filter(
@@ -73,6 +75,7 @@ export default async function Page() {
         futureShifts={futureShifts}
         nextPay={nextPay(earnings)}
         expiring={documents ? expiringDocument(documents) : null}
+        emergencyContactSet={contact === undefined ? null : contact !== null}
       />
     </ProfileShell>
   );

@@ -254,3 +254,265 @@
   color: var(--amber-ink);
   font-weight: 600;
 }
+
+/* --- Availability (ADR-0036, wireframes/staff/availability.html) ------- */
+.avail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+}
+.avail-week {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+}
+/* "Week of Mon 22 Sep" with the rule running out to the edge. */
+.avail-grp {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  font-family: var(--font-label);
+  font-size: var(--fs-10);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-top: var(--sp-4);
+}
+.avail-grp::after {
+  content: '';
+  flex: 1;
+  border-top: 1px solid var(--line);
+}
+.avail-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  padding: var(--sp-10) var(--sp-12);
+  border: 1px solid var(--line);
+  background: var(--card-glass);
+  border-radius: var(--r-card);
+}
+.avail-row .avail-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+.avail-row .t {
+  font-weight: 600;
+  font-size: var(--fs-13);
+}
+.avail-row .s {
+  font-size: var(--fs-12);
+  color: var(--muted);
+}
+/* Saved over a confirmed shift — warned, never cancelled. */
+.avail-conf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  padding: var(--sp-10) var(--sp-12);
+  border: 1px solid var(--amber-line);
+  background: var(--amber-dim);
+  border-radius: var(--r-card);
+  font-size: var(--fs-12);
+}
+.avail-conf .mcard {
+  margin: 0;
+}
+.avail-pair {
+  gap: var(--sp-10);
+}
+.avail-pair > .field {
+  flex: 1;
+  min-width: 0;
+}
+.sheet-title {
+  font-family: var(--font-head);
+  font-size: var(--fs-17);
+  font-weight: 600;
+}
+
+/* --- Emergency contact (ADR-0037, request-change.html#emergency) ------ */
+.ec-sec {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+  padding-top: var(--sp-16);
+  border-top: 1px solid var(--line);
+}
+.ec-sec h3 {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  margin: 0;
+  font-family: var(--font-head);
+  font-size: var(--fs-15);
+  font-weight: 600;
+}
+.ec-rel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+.ec-suggest {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-6);
+}
+/* The chip is the look; the button is the target (§1.2: finger-sized). */
+.ec-chip {
+  background: none;
+  border: 0;
+  padding: 0;
+  min-height: var(--tap-min);
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+  font: inherit;
+}
+.ec-dial {
+  position: relative;
+  flex: 0 0 118px;
+}
+.ec-dial select.input {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: var(--sp-28);
+}
+.ec-dial::after {
+  content: '▾';
+  position: absolute;
+  right: var(--sp-12);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+.ec-actions {
+  gap: var(--sp-8);
+}
+.ec-actions > .btn {
+  flex: 1;
+}
+
+/* --- Request a change (ADR-0038, wireframes/staff/request-change.html) - */
+.req-status {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  font-size: var(--fs-12);
+}
+.req-status > :last-child {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.req-status.amber {
+  border-color: var(--amber-line);
+  background: var(--amber-dim);
+  color: var(--amber-ink);
+}
+.req-status.coral {
+  border-color: var(--coral-line);
+  background: var(--coral-dim);
+  color: var(--coral-ink);
+}
+.req-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+/* The evidence drop: a dashed well that is one button. */
+.req-upload {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: var(--sp-14);
+  border: 1px dashed var(--line);
+  border-radius: var(--r-card);
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: var(--fs-12);
+  text-align: center;
+  cursor: pointer;
+}
+.req-upload .strong {
+  color: var(--text);
+}
+.req-cam {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--panel-2);
+}
+.req-cam-now {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-6);
+}
+.req-cam-shot {
+  width: 180px;
+  height: 180px;
+  object-fit: cover;
+  border-radius: var(--r-avatar);
+}
+
+/* --- Refer a friend (ADR-0040, wireframes/staff/refer.html) ----------- */
+.refer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+.refer-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  padding: var(--sp-10) var(--sp-12);
+  border: 1px solid var(--line);
+  background: var(--card-glass);
+  border-radius: var(--r-card);
+}
+.refer-link .url {
+  font-size: var(--fs-12);
+  word-break: break-all;
+  user-select: all;
+}
+.refer-actions {
+  gap: var(--sp-8);
+}
+.refer-actions > .btn {
+  flex: 1;
+}
+.refer-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-6);
+  text-align: center;
+}
+.refer-count {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-8);
+  padding: var(--sp-12) var(--sp-14);
+  border: 1px solid var(--line);
+  background: var(--card-glass);
+  border-radius: var(--r-card);
+}
+.refer-count .v {
+  font-family: var(--font-head);
+  font-size: var(--fs-26);
+  font-weight: 600;
+}
