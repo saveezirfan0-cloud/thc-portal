@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 import { openAsClient } from './_support/session';
 import { databaseUnreachable, lit, sql } from './_support/db';
 
@@ -68,6 +68,33 @@ async function bodyText(page: Page): Promise<string> {
   return (await page.locator('body').innerText()).toLowerCase();
 }
 
+/**
+ * The row's document button (§11.1, §11.3): a real `<a href>` to
+ * /client/events/:id/document once the office has issued that kind, the
+ * same label disabled until then — never a dead button dressed as a link.
+ * The seed issues no PDF, but the office project's outbox journey may have
+ * sent the Gala Dinner's allocation sheet a moment ago, so both are
+ * legitimate; when it is a link, following it must reach the store.
+ */
+async function expectDocument(
+  page: Page,
+  row: Locator,
+  kind: 'allocation' | 'signout',
+  label: string,
+): Promise<void> {
+  const link = row.locator(`a.btn[href$="/document?kind=${kind}"]`);
+  const stub = row.getByRole('button', { name: label, disabled: true });
+  await expect(link.or(stub)).toBeVisible();
+  await expect(link.or(stub)).toHaveText(label);
+  if ((await link.count()) > 0) {
+    const href = (await link.getAttribute('href'))!;
+    const response = await page.request.get(href, { maxRedirects: 0 });
+    expect(response.status(), href).toBe(302);
+    expect(response.headers()['location']).toContain('/storage/v1/object/sign/timesheets/');
+    expect(response.headers()['cache-control']).toBe('no-store');
+  }
+}
+
 test.beforeEach(async ({ page }) => {
   await skipUnlessServing(page);
 });
@@ -113,13 +140,23 @@ test('the event list offers the tabs the scope names, and each holds its own doc
   const rows = page.locator('table.tbl tbody tr');
   await expect(rows.filter({ hasText: 'Gala Dinner' })).toHaveCount(1);
   await expect(rows.filter({ hasText: 'Lunch Service' })).toHaveCount(0);
-  await expect(rows.filter({ hasText: 'Gala Dinner' })).toContainText('Allocation sheet');
+  await expectDocument(
+    page,
+    rows.filter({ hasText: 'Gala Dinner' }),
+    'allocation',
+    '↓ Allocation sheet',
+  );
 
   // Past: the Lunch Service, whose document is now the signed timesheet.
   await page.getByRole('button', { name: /Past/i }).click();
   await expect(rows.filter({ hasText: 'Lunch Service' })).toHaveCount(1);
   await expect(rows.filter({ hasText: 'Gala Dinner' })).toHaveCount(0);
-  await expect(rows.filter({ hasText: 'Lunch Service' })).toContainText('Signed timesheet');
+  await expectDocument(
+    page,
+    rows.filter({ hasText: 'Lunch Service' }),
+    'signout',
+    '↓ Signed timesheet',
+  );
 
   // All: both — and nothing of another customer's (Product Launch, Awards
   // Night, Wedding, Conference Lunch are all elsewhere in the seed).
@@ -217,7 +254,11 @@ test('the event page shows confirmed staff only, by role, with the role window (
 
 test('feedback is locked before the event starts, and says so (§11.2)', async ({ page }) => {
   await openAsClient(page, `/client/events/${GALA_DINNER}`);
-  await expect(page.getByRole('status')).toContainText('Feedback opens once the event has started');
+  // event.html:89 — with the opening time, UK-labelled: the event window's
+  // start, which is what feedbackOpen() and submit_client_feedback() test.
+  await expect(page.getByRole('status')).toContainText(
+    /Feedback opens once the event has started — from \d{2}:\d{2} UK time on the day\./,
+  );
   const buttons = page.getByRole('button', { name: 'Leave feedback' });
   expect(await buttons.count()).toBeGreaterThan(0);
   for (const button of await buttons.all()) {
@@ -268,17 +309,21 @@ test.describe('feedback on a started event (§11.2, §11.5)', () => {
     await row.getByRole('button', { name: 'Leave feedback' }).click();
     const dialog = page.getByRole('dialog', { name: `Feedback · ${person}` });
     await expect(dialog).toBeVisible();
+    // event.html:223 — subtitled role · event · date.
+    await expect(dialog).toContainText(/Waiting Staff · Lunch Service · \w{3} \d{1,2} \w{3} \d{4}/);
+    await expect(dialog).toContainText('cannot be edited or withdrawn from the portal');
 
     // Stars are required; the comment is optional (§11.2 "stars + comment").
-    await dialog.getByRole('button', { name: 'Send feedback' }).click();
+    await dialog.getByRole('button', { name: 'Submit feedback' }).click();
     await expect(dialog.getByRole('status')).toContainText('Choose a rating');
     await dialog.getByRole('radio', { name: '4 stars' }).click();
     await expect(dialog.getByRole('radio', { name: '4 stars' })).toHaveAttribute(
       'aria-checked',
       'true',
     );
+    await expect(dialog).toContainText('4 of 5 — tap a star');
     await dialog.getByLabel('Comment').fill('Calm under pressure, great with the top table.');
-    await dialog.getByRole('button', { name: 'Send feedback' }).click();
+    await dialog.getByRole('button', { name: 'Submit feedback' }).click();
 
     await expect(dialog).toBeHidden();
     // The row re-reads from client_lineup_v.feedback_given, not from
@@ -313,5 +358,31 @@ test("another customer's event and a nonexistent one are the same not-found (§1
     const response = await page.goto(`/client/events/${id}`, { waitUntil: 'domcontentloaded' });
     expect(response?.status(), `/client/events/${id}`).toBe(404);
     await expect(page.getByText('Product Launch')).toHaveCount(0);
+    // And so is the download: client_event_documents_v returns no row for
+    // either, so the route cannot tell them apart and answers alike (§11.3).
+    for (const kind of ['allocation', 'signout']) {
+      const download = await page.request.get(`/client/events/${id}/document?kind=${kind}`, {
+        maxRedirects: 0,
+      });
+      expect(download.status(), `/client/events/${id}/document?kind=${kind}`).toBe(404);
+    }
   }
+});
+
+test('the sign-in card has the "Show" reveal and "Keep me signed in", ticked (§1.4)', async ({
+  page,
+}) => {
+  // wireframes/client/login.html:64-65. A fresh context holds no session,
+  // so /login renders rather than bouncing to the list.
+  await page.goto('/login');
+  const password = page.getByLabel('Password');
+  await expect(password).toHaveAttribute('type', 'password');
+  await page.getByRole('button', { name: 'Show' }).click();
+  await expect(password).toHaveAttribute('type', 'text');
+  await page.getByRole('button', { name: 'Hide' }).click();
+  await expect(password).toHaveAttribute('type', 'password');
+  await expect(
+    page.getByRole('checkbox', { name: 'Keep me signed in on this device' }),
+  ).toBeChecked();
+  await expect(page.getByText('case-sensitive')).toHaveCount(0);
 });

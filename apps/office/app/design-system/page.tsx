@@ -589,7 +589,8 @@ export default function Page() {
           <div className="ds-grid-2 ds-auth mt-8">
             <AuthCard product="Back Office" footer="Trouble signing in? Contact the office.">
               <Input label="Email" type="email" defaultValue="gisela@thehospitalitycompany.co.uk" />
-              <Input label="Password" type="password" defaultValue="••••••••" />
+              {/* `reveal`: the "Show" addon of wireframes/client/login.html (§1.4). */}
+              <Input label="Password" type="password" defaultValue="••••••••" reveal />
               <Button tone="primary" block>
                 Sign in
               </Button>

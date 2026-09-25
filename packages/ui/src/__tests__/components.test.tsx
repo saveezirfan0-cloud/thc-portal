@@ -243,9 +243,23 @@ describe('Input', () => {
             <Addon>/h</Addon>
           </InputRow>
           <Slider value={250} min={100} max={3000} onChange={noop} label="Geofence radius" />
+          <Input id="h" label="Password" type="password" reveal />
         </div>,
       ),
     ).toMatchSnapshot();
+  });
+
+  it('welds a "Show" toggle to a password field and keeps it a password until pressed (§1.4)', () => {
+    // wireframes/client/login.html:64 — `.input-row` with the addon on the
+    // right. The first paint is the masked field: revealing is the reader's
+    // act, never the default.
+    const markup = html(<Input id="pw" label="Password" type="password" reveal />);
+    expect(markup).toContain(
+      '<div class="input-row"><input type="password" id="pw" class="input"/>',
+    );
+    expect(markup).toContain(
+      '<button type="button" class="addon" style="cursor:pointer" aria-pressed="false" aria-controls="pw">Show</button>',
+    );
   });
 });
 

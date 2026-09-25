@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   byDateDescending,
   documentFor,
+  documentOffer,
   feedbackOpen,
   fillOf,
   filterByTab,
   groupByRole,
+  headerDocuments,
+  starsHint,
   statusTone,
 } from '../rules';
 import type { LineupRow, PortalEvent, RoleSection } from '../rules';
@@ -243,5 +246,71 @@ describe('status pills', () => {
     expect(statusTone('upcoming')).toBe('cyan');
     expect(statusTone('completed')).toBe('neutral');
     expect(statusTone('cancelled')).toBe('neutral');
+  });
+});
+
+describe("the list's document button is a real download only once issued (§11.1, §11.3)", () => {
+  it('offers the allocation sheet before and during, live only when the office has issued one', () => {
+    expect(documentOffer('upcoming', [])).toEqual({ kind: 'allocation', available: false });
+    expect(documentOffer('upcoming', ['allocation'])).toEqual({
+      kind: 'allocation',
+      available: true,
+    });
+    expect(documentOffer('ongoing', ['allocation'])).toEqual({
+      kind: 'allocation',
+      available: true,
+    });
+  });
+
+  it('switches to the signed timesheet once completed — and a final copy is what makes it live', () => {
+    // client_event_documents_v withholds an unsent sign-out copy drawn
+    // before the window ended, so "completed + allocation only" is the
+    // normal state for the first hours after an event.
+    expect(documentOffer('completed', ['allocation'])).toEqual({
+      kind: 'signout',
+      available: false,
+    });
+    expect(documentOffer('completed', ['allocation', 'signout'])).toEqual({
+      kind: 'signout',
+      available: true,
+    });
+  });
+
+  it('offers nothing on a cancelled event, whatever was issued before', () => {
+    expect(documentOffer('cancelled', ['allocation', 'signout'])).toBeNull();
+  });
+});
+
+describe('the event page header draws both downloads once completed (§11.2, event.html:247)', () => {
+  it('is the one allocation button before and during', () => {
+    expect(headerDocuments('upcoming', [])).toEqual([{ kind: 'allocation', available: false }]);
+    expect(headerDocuments('ongoing', ['allocation'])).toEqual([
+      { kind: 'allocation', available: true },
+    ]);
+  });
+
+  it('keeps the allocation sheet as history beside the signed timesheet', () => {
+    expect(headerDocuments('completed', ['allocation', 'signout'])).toEqual([
+      { kind: 'allocation', available: true },
+      { kind: 'signout', available: true },
+    ]);
+    // The timesheet is drawn disabled until a final copy exists; the
+    // allocation sheet is not drawn at all if none was ever issued.
+    expect(headerDocuments('completed', ['allocation'])).toEqual([
+      { kind: 'allocation', available: true },
+      { kind: 'signout', available: false },
+    ]);
+    expect(headerDocuments('completed', [])).toEqual([{ kind: 'signout', available: false }]);
+  });
+
+  it('draws nothing on a cancelled event', () => {
+    expect(headerDocuments('cancelled', ['allocation'])).toEqual([]);
+  });
+});
+
+describe("the star picker's readout (event.html:225)", () => {
+  it('reads "4 of 5 — tap a star" once a star is on, and asks for one before', () => {
+    expect(starsHint(4)).toBe('4 of 5 — tap a star');
+    expect(starsHint(0)).toBe('Tap a star — 1 to 5, required');
   });
 });
