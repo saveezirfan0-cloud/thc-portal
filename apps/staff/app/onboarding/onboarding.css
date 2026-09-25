@@ -90,7 +90,7 @@
 .wiz-list .docrow .ico {
   width: 30px;
   height: 30px;
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
   font-size: var(--fs-10);
 }
 .wiz-list .docrow.off {
@@ -225,8 +225,9 @@
   font-family: var(--font-label);
   font-size: var(--fs-10);
   letter-spacing: var(--label-track);
-  text-transform: uppercase;
+  text-transform: var(--label-case);
   color: var(--muted);
+  font-weight: var(--label-weight);
 }
 .cam img,
 .cam video {
@@ -336,7 +337,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
   font-size: var(--fs-11);
 }
 .quiz-opt.sel {
@@ -414,7 +415,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
   font-size: var(--fs-12);
 }
 .tut .t {

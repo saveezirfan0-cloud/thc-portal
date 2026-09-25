@@ -14,7 +14,7 @@
   border-radius: var(--r-pill);
   background: var(--cyan-dim);
   color: var(--cyan-ink);
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
   font-size: 11px;
 }
 
@@ -32,11 +32,12 @@
   align-items: baseline;
 }
 .kv .k {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
   color: var(--muted);
+  font-weight: var(--label-weight);
 }
 
 /* Money never wraps: "+£7.28/h" split over two lines reads as two figures. */
@@ -89,7 +90,7 @@
   font-size: 13px;
 }
 .grp .gh .cnt {
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
   font-size: 11px;
   color: var(--cyan-ink);
 }

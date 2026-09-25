@@ -99,7 +99,7 @@
   background: var(--bg);
   color: var(--text);
   text-align: center;
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
   font-size: var(--fs-19);
   /* `--r-input`/`--r` are not tokens this design system defines, so the
      declaration was dropped and the field was square on a rounded page.

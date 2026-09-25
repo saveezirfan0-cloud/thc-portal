@@ -38,9 +38,10 @@
   font-family: var(--font-label);
   font-size: var(--label-size);
   letter-spacing: var(--label-track);
-  text-transform: uppercase;
+  text-transform: var(--label-case);
   color: var(--muted);
   margin-top: var(--sp-12);
+  font-weight: var(--label-weight);
 }
 
 /* "↓ Pull to refresh" */
@@ -49,13 +50,14 @@
   font-family: var(--font-label);
   font-size: var(--fs-10);
   letter-spacing: var(--label-track);
-  text-transform: uppercase;
+  text-transform: var(--label-case);
   color: var(--muted);
   background: none;
   border: 0;
   padding: var(--sp-4) 0;
   cursor: pointer;
   width: 100%;
+  font-weight: var(--label-weight);
 }
 
 /* §10.7: "at the foot of the list, set apart from the document rows". */
@@ -95,8 +97,9 @@
   font-size: var(--fs-10);
   color: var(--cyan);
   letter-spacing: var(--label-track);
-  text-transform: uppercase;
+  text-transform: var(--label-case);
   margin-bottom: 1px;
+  font-weight: var(--label-weight);
 }
 
 .docs-form {

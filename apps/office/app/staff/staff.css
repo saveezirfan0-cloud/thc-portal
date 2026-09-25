@@ -50,7 +50,7 @@
   display: inline-block;
   font-family: var(--font-label);
   font-size: 9.5px;
-  text-transform: uppercase;
+  text-transform: var(--label-case);
   letter-spacing: var(--label-track);
   color: var(--amber-ink);
   border: 1px dashed var(--amber-ink);
@@ -58,6 +58,7 @@
   margin-left: 6px;
   cursor: help;
   border-radius: var(--r-pill);
+  font-weight: var(--label-weight);
 }
 
 .tbl .chips {

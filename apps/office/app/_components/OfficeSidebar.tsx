@@ -5,6 +5,7 @@ import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
 import { Sidebar } from '@thc/ui';
 import type { NavItem } from '@thc/ui';
+import { OFFICE_NAV_ID, useOfficeNav } from './OfficeNav';
 
 /**
  * The menu counters (§4.1: "A counter in the menu — so the manager can see
@@ -54,13 +55,16 @@ export function OfficeSidebar({
   footer: ReactNode;
 }) {
   const counts = useContext(NavCountsContext);
+  const { open, setOpen } = useOfficeNav();
   return (
     <Sidebar
+      id={OFFICE_NAV_ID}
+      className={open ? 'open' : undefined}
       items={withCounts(items, counts)}
       activeHref={activeHref}
       brand={brand}
       renderLink={(item, className, body) => (
-        <Link href={item.href} className={className}>
+        <Link href={item.href} className={className} onClick={() => setOpen(false)}>
           {body}
         </Link>
       )}
