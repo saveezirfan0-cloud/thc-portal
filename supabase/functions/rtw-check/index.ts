@@ -31,7 +31,10 @@ Deno.serve((request) =>
   runJob('rtw-check', request, async () => {
     const base = Deno.env.get('OFFICE_BASE_URL') ?? '';
     const secret = Deno.env.get('RTW_JOB_SECRET') ?? '';
-    if (!/^https:\/\/[^/\s]+$/.test(base) && !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)) {
+    if (
+      !/^https:\/\/[^/\s]+$/.test(base) &&
+      !/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(base)
+    ) {
       throw new Error('OFFICE_BASE_URL must be https://<host> with no path');
     }
     if (secret.length < 32) throw new Error('RTW_JOB_SECRET is not set (32+ characters)');
