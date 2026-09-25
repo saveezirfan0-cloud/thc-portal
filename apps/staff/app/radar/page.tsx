@@ -3,7 +3,6 @@ import { EmptyState, Pill } from '@thc/ui';
 import {
   RADAR_GROUP_LABEL,
   UK_ZONE,
-  capMeter,
   explainLimit,
   formatDateTimeIn,
   formatDistance,
@@ -15,8 +14,10 @@ import { StaffShell } from '../_components/StaffShell';
 import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
 import { withdrawApplication } from '../actions';
-import { loadBookings, loadOpenShifts, openInvites } from '../data';
+import { loadBookings, loadOpenShifts, loadWeekMeter, openInvites, shiftsBadge } from '../data';
 import type { OpenShift } from '../data';
+import { WeekMeter } from './WeekMeter';
+import { weekLabel } from './model';
 import '../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -36,9 +37,18 @@ export const metadata = { title: 'Radar · THC Staff' };
  * An applied shift does not disappear. It leaves its wave group and joins
  * "Applied", and stays there until it resolves: into Shifts once confirmed
  * (N10), or off Radar when the role fills without them (N10c).
+ *
+ * The strip at the top is the CURRENT Mon–Sun week in Europe/London —
+ * `staff_week_meter()` — not the week of whichever shift happens to be
+ * listed first. A worker with nothing open until next week still reads
+ * this week's hours under "This week".
  */
 export default async function Page() {
-  const [shifts, bookings] = await Promise.all([loadOpenShifts(), loadBookings()]);
+  const [shifts, bookings, meter] = await Promise.all([
+    loadOpenShifts(),
+    loadBookings(),
+    loadWeekMeter(),
+  ]);
   const groups = radarGroups(shifts);
   const applications = new Map(
     bookings.filter((b) => b.status === 'applied').map((b) => [b.shiftId, b.bookingId] as const),
@@ -46,30 +56,23 @@ export default async function Page() {
 
   const empty =
     groups.qualified.length === 0 && groups.other.length === 0 && groups.applied.length === 0;
-  // §10.4's header strip: "This week (Mon 14 – Sun 20) · 8 h of 20 h". Any
-  // row carries the figures for its own week; the soonest is this week's.
-  const first = shifts[0];
-  const meter = first
-    ? capMeter({
-        weekStart: first.weekStart,
-        bookedHours: first.bookedHours,
-        capHours: first.capHours,
-        shiftHours: 0,
-      })
-    : null;
 
   return (
     <StaffShell
       title="Radar"
       active="/radar"
-      shifts={bookings.filter((b) => b.status === 'confirmed' || b.status === 'worked').length}
+      shifts={shiftsBadge(bookings)}
       invites={openInvites(bookings).length}
     >
       {meter ? (
-        <div className="note xs">
-          This week · <b>{meter}</b>. Your weekly limit is calculated from your verified documents
-          and is never typed by anyone.
-        </div>
+        <WeekMeter
+          label={`This week (${weekLabel(meter.weekStart, meter.weekEnd)})`}
+          bookedHours={meter.bookedHours}
+          capHours={meter.capHours}
+          {...(meter.roles.length > 0
+            ? { above: <span className="xs muted">{meter.roles.join(' · ')}</span> }
+            : {})}
+        />
       ) : null}
       {empty ? (
         <EmptyState>
@@ -180,6 +183,12 @@ function RadarCard({ shift, bookingId }: { shift: OpenShift; bookingId?: string 
             />
           ) : null}
         </>
+      ) : shift.hoursLimit ? (
+        // RULE-20: the wireframe's disabled button, not a live link. The
+        // title above still opens the detail and its arithmetic.
+        <button type="button" className="btn block" disabled>
+          Limit Reached
+        </button>
       ) : (
         <Link className="btn outline block" href={`/radar/${shift.shiftId}`}>
           View &amp; apply

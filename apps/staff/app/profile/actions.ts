@@ -2,6 +2,8 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@thc/db/admin';
 import { staffDb, supabaseConfigured } from '../db';
 import { addressSavedNote, locateAddress } from './geocode';
 import { photoPathFor } from './photos';
@@ -21,6 +23,9 @@ import type { ActionResult } from './types';
 
 const NOT_CONFIGURED =
   'This environment has no Supabase project, so nothing can be saved. See docs/04-setup-github-vercel-supabase.md.';
+
+/** The service key is missing from this deployment (docs/12): say so, never 500. */
+const TRY_AGAIN = 'That didn’t go through. Please try again.';
 
 /**
  * The reason codes the RPCs raise, as sentences. Anything unmapped falls
@@ -104,15 +109,35 @@ function noteFor(fn: string, data: Rpc): { note?: string } {
  * came from, and the RPC ignores it unless the address actually changed. A
  * failed lookup still saves the address; the RPC keeps the old pin and
  * flags it stale, which the office sees on the worker's profile.
+ *
+ * The RPC is service-role only (20260927182100): the worker is resolved
+ * from THEIR session (`staff_me()`, no id to forge), the point is this
+ * function's lookup and never the browser's, and the save goes through the
+ * service key with that id. A worker's own session cannot name a point,
+ * because a point the caller chose is a proximity score the caller chose.
  */
 export async function saveContactDetails(
   phone: string,
   homeAddress: string,
 ): Promise<ActionResult> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
-  const location = await locateAddress(homeAddress);
   const supabase = await db();
-  const { data, error } = await supabase.rpc('staff_update_contact_geocoded', {
+  const { data: meRow } = await supabase.rpc('staff_me');
+  const me = meRow as Record<string, unknown> | null;
+  if (!me?.['staffId']) return { ok: false, message: REASONS['unknown_staff'] as string };
+
+  const location = await locateAddress(homeAddress);
+  let admin: SupabaseClient;
+  try {
+    admin = createAdminClient() as unknown as SupabaseClient;
+  } catch {
+    // SUPABASE_SERVICE_ROLE_KEY missing from this deployment. Never fall
+    // back to the worker's own session: it holds no grant on this RPC by
+    // design, and that is the point.
+    return { ok: false, message: TRY_AGAIN };
+  }
+  const { data, error } = await admin.rpc('staff_update_contact_geocoded', {
+    p_staff: me['staffId'] as string,
     p_phone: phone,
     p_home_address: homeAddress,
     p_lat: location.located ? location.lat : null,

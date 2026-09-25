@@ -30,7 +30,7 @@
 -- same 9xxxx convention; keep to it.
 -- =====================================================================
 begin;
-select plan(42);
+select plan(47);
 
 \set cl       'b1b1b1b1-0000-4000-8000-000000000001'
 \set ro       'b2b2b2b2-0000-4000-8000-000000000001'
@@ -143,6 +143,24 @@ select isnt_empty(
   $$ select 1 from notification_outbox where template = 'E7'
       and payload->>'employeeId' = '93301' and payload->>'changed' = 'home address' $$,
   'which DOES queue E7, in the same transaction as the save (§10.1, §8)');
+
+-- The email path. Auth has verified the code and swapped the address on
+-- auth.users; staff_sync_email() reads it off THERE — never off an
+-- argument — moves staff.email, and queues E7 naming what changed.
+update auth.users set email = 'amara.new@selfservice.test' where id = :'me_uid';
+select is(staff_sync_email()->>'changed', 'true',
+  'a verified new address on auth.users is picked up by staff_sync_email()');
+select is((select email from staff where id = :'me'), 'amara.new@selfservice.test',
+  'and staff.email moves to it — only now, after the code, never before (§10.1)');
+select isnt_empty(
+  $$ select 1 from notification_outbox where template = 'E7'
+      and payload->>'employeeId' = '93301' and payload->>'changed' = 'email address' $$,
+  'which queues E7 saying the email address changed (§8)');
+select is(staff_sync_email()->>'changed', 'false',
+  'a second call with nothing new is a no-op');
+select is((select count(*)::int from notification_outbox where template = 'E7'
+            and payload->>'employeeId' = '93301' and payload->>'changed' = 'email address'), 1,
+  'and queues no second E7 for it');
 
 -- =====================================================================
 -- 3. NI number — set once, E6 on the way in

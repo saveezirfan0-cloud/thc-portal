@@ -2,9 +2,10 @@
 -- 030 · RLS for the staff role (Staff PWA) — §1.4, §10.x
 --
 -- The rule under test: a worker may only ever reach their OWN rows in
--- staff, bookings, compliance_docs, check_logs, breaks, violations and
--- criminal_declarations, and never another worker's anything, never a
--- charge rate and never internal configuration.
+-- staff, bookings, compliance_docs, check_logs, breaks and violations, and
+-- never another worker's anything, never a charge rate and never internal
+-- configuration. criminal_declarations is deny-all for a worker since
+-- 20260927182000: their reads go through definer RPCs (§10.7).
 --
 -- Where 0001_init.sql has no worker policy at all the table is deny-all;
 -- those assertions are marked KNOWN GAP and are listed in the Phase 0
@@ -42,7 +43,11 @@ select is((select count(*)::int from bookings where id = :'booking_a'), 1, 'work
 select is((select count(*)::int from bookings where id = :'booking_b'), 0, 'worker cannot read another worker''s booking');
 select is((select count(*)::int from compliance_docs where id = :'doc_a'), 1, 'worker reads their own compliance docs');
 select is((select count(*)::int from compliance_docs where id = :'doc_b'), 0, 'worker cannot read another worker''s compliance docs');
-select is((select count(*)::int from criminal_declarations where id = :'decl_a'), 1, 'worker reads their own criminal declaration');
+-- 20260927182000 (ADR-0031): the worker's row policy on declarations is
+-- gone. Every read the app makes is a definer RPC that withholds the text
+-- (staff_documents, onboarding_state), so the direct path had one use —
+-- reading `details` back — and §10.7 forbids exactly that.
+select is((select count(*)::int from criminal_declarations where id = :'decl_a'), 0, 'worker reaches no declaration row directly, their own included — reads go through staff_documents()/onboarding_state(), which withhold the text (§10.7)');
 select is((select count(*)::int from criminal_declarations where id = :'decl_b'), 0, 'worker cannot read another worker''s criminal declaration');
 select is((select count(*)::int from profiles where id = :'staffa_uid'), 1, 'worker reads their own profile');
 select is((select count(*)::int from profiles where id in (:'staffb_uid', :'admin_uid', :'clienta_uid')), 0, 'worker cannot read other profiles');
