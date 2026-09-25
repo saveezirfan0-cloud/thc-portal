@@ -374,7 +374,7 @@ export const TEMPLATES = {
     title: 'Your application to The Hospitality Company',
     body: 'Thank you for the time you have given to your application with The Hospitality Company. On this occasion we will not be taking your application further. We wish you the very best.',
     trigger:
-      'Rejected after the interview stage (documents, quiz stage, additional info), or a returning applicant declined. Not in §8: E2 thanks the candidate for completing their interview, which is untrue for these, so this is E2 without the interview (20260923170000)',
+      'Rejected before completing the interview (Interview requested, no Willo response) or after the interview stage (documents, quiz stage, additional info), or a returning applicant declined. Not in §8: E2 thanks the candidate for completing their interview, which is untrue for these, so this is E2 without the interview (20260923170000, 20260930130300)',
     timing: 'on the rejection decision',
     mandatory: true,
   },
