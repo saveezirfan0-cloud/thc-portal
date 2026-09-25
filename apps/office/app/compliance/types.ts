@@ -21,13 +21,16 @@ export type StaffStatus =
 export type BlockKind = 'auto_document' | 'manual' | 'conviction_review' | null;
 
 /**
- * One item waiting on the office: a pending document, a pending Yes
- * declaration (§4.1), or — kind `rtw_check` — an automated gov.uk check in
- * needs_review whose document has already been rejected (no right to work;
- * ADR-0025), where `item_id` is the check's id.
+ * One item waiting on the office (§4.1): a pending document, a pending Yes
+ * declaration, or — `rtw_date` (20260927160000) — a share code report that
+ * was verified before the right-to-work date was required and still has
+ * none. That one is keyed on the verified report; its `item_type` is
+ * `share_code_report`, so the document filter finds it. Or — kind
+ * `rtw_check` (ADR-0025) — an automated gov.uk check that found no right to
+ * work, whose document is already rejected; `item_id` is the check's id.
  */
 export interface QueueRow {
-  kind: 'document' | 'declaration' | 'rtw_check';
+  kind: 'document' | 'declaration' | 'rtw_date' | 'rtw_check';
   item_id: string;
   staff_id: string;
   display_name: string;
@@ -61,6 +64,8 @@ export interface QueueRow {
   completion_date_claimed: string | null;
   mime_type: string | null;
   size_bytes: number | null;
+  /** Why a row that is not a pending upload is here; null on document and declaration rows. */
+  review_reason: string | null;
   // The latest automated right-to-work check (20260928100000, ADR-0025);
   // null on every row that is not a share code (optional: absent before it).
   rtw_check_id?: string | null;

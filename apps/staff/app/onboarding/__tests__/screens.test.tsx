@@ -113,6 +113,11 @@ describe('1/11 Right to work', () => {
     );
     expect(html).toContain('Visa type');
     expect(html).toContain('Visa — photo or PDF (BRP / eVisa)');
+    // A valid share code gets the wireframe's green ✓ addon on the field and its hint.
+    expect(html).toMatch(/<span class="addon"><span class="green">✓<\/span><\/span>/);
+    expect(html).toContain(
+      '9 characters starting with W, e.g. W123AB4CD — pasted with spaces is fine.',
+    );
     expect(footer(html).disabled).toBe(false);
   });
 
@@ -177,9 +182,13 @@ describe('3/11 Profile selfie', () => {
     expect(html).toContain('capture="user"');
     expect(html).toContain('Take a photo to continue');
   });
-  it('a returning worker confirms the locked photo', () => {
+  it('a photo on file is locked, with the §10.1 sentence and no claim about a previous time', () => {
+    // Steps 1–4 stay open until Submit (canEditStep), so a first-timer who
+    // took the selfie a minute ago lands here too: the copy must be true
+    // for them as well as for a §2.12 returner.
     const html = renderToStaticMarkup(<SelfieStep name="Amara Kalu" existingUrl={null} locked />);
-    expect(html).toContain('locked');
+    expect(html).toContain('locked — changing it goes through the office');
+    expect(html).not.toContain('previous time');
     expect(footer(html).disabled).toBe(false);
   });
 });
@@ -215,7 +224,10 @@ describe('4/11 Documents', () => {
     );
     expect(html).toContain('passport_amara.jpg · 2.1 MB');
     expect(html).toContain('Share code · W12 3AB 4CD');
+    expect(html).toContain('Checked with gov.uk automatically after you submit');
     expect(html).toContain('Criminal conviction declaration');
+    // The note explains the choice before it is made (onboarding-1.html 4/11).
+    expect(html).toContain('“No” is recorded as verified straight away');
     expect(html).toContain('Upload your University Term Dates Letter to continue');
     expect(footer(html)).toEqual({ label: 'Submit documents', disabled: true });
   });
@@ -350,6 +362,66 @@ describe('5/11 and 6/11', () => {
     expect(html).toContain('Attempt 2 of 3');
     expect(html).toContain('Your answers are checked at the end, not one by one.');
   });
+
+  const question = {
+    id: 'q1',
+    n: 1,
+    prompt: 'You discover a small fire in the kitchen. What should you do first?',
+    options: ['A', 'B', 'C', 'D'],
+  };
+  const quizResult = (over: Partial<Parameters<typeof QuizStep>[0]['initialResult'] & object>) =>
+    renderToStaticMarkup(
+      <QuizStep
+        firstName="Amara"
+        questions={[question]}
+        previous={[{ attemptNo: 1, correct: 7, total: 10, passed: false }]}
+        initialResult={{
+          attemptNo: 1,
+          correct: 7,
+          total: 10,
+          percent: 70,
+          passed: false,
+          outcome: 'retry',
+          attemptsLeft: 2,
+          ...over,
+        }}
+      />,
+    );
+
+  it('result — passed: the pass mark, "saved on your profile", Continue enabled', () => {
+    const html = quizResult({
+      correct: 9,
+      percent: 90,
+      passed: true,
+      outcome: 'passed',
+      attemptsLeft: 2,
+    });
+    expect(html).toContain('Passed');
+    expect(html).toContain('Well done, Amara');
+    expect(html).toContain('9 of 10 correct');
+    expect(html).toContain('the pass mark is 80%. Your result is saved on your profile.');
+    expect(footer(html)).toEqual({ label: 'Continue', disabled: false });
+  });
+
+  it('result — not passed (70%), 2 attempts left: retry, the neutral §2.9 line, review link', () => {
+    const html = quizResult({});
+    expect(html).toContain('Not quite this time');
+    expect(html).toContain('You have 2 attempts left.');
+    // Neutral, not amber: amber is already "attempts left" on this screen.
+    expect(html).toMatch(
+      /<div class="alert" role="status">After three unsuccessful attempts your application can’t continue\./,
+    );
+    expect(footer(html)).toEqual({ label: 'Try again — attempt 2 of 3', disabled: false });
+    expect(html).toContain('href="/onboarding/5"');
+    expect(html).toContain('Review the induction slides');
+  });
+
+  it('result — third failure: nothing to continue to', () => {
+    const html = quizResult({ attemptNo: 3, outcome: 'rejected', attemptsLeft: 0 });
+    expect(html).toContain('Not passed');
+    expect(html).not.toContain('After three unsuccessful attempts');
+    expect(footer(html)).toEqual({ label: 'Continue', disabled: true });
+  });
 });
 
 describe('7/11 HMRC', () => {
@@ -368,6 +440,16 @@ describe('7/11 HMRC', () => {
     expect(html).toContain('Answer question 3 and tick the declaration to continue');
     expect(html).not.toMatch(/Statement [ABC]\b/);
     expect(html).toContain('Postgraduate Loan');
+    // The wireframe's hint shows what "masked" will look like.
+    expect(html).toContain('shown masked (●●●●●●●6B) and locked');
+  });
+  it('joins three missing things as a sentence — "a, b and c" — not "a and b and c"', () => {
+    const html = renderToStaticMarkup(
+      <HmrcStep initial={{ ...form, q3Since6April: null, studentLoan: null }} niMasked={null} />,
+    );
+    expect(html).toContain(
+      'Answer question 3, answer the student loan question and tick the declaration to continue',
+    );
   });
   it('Q1 = Yes hides Q2 and Q3; a locked NI number is shown masked', () => {
     const html = renderToStaticMarkup(

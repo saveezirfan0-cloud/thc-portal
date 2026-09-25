@@ -12,6 +12,7 @@ import {
   saveVenueRadius,
   saveWeights,
   saveWilloMap,
+  saveWilloReviewUrlTemplate,
 } from './actions';
 import { MAX_RADIUS_M, MIN_RADIUS_M, WEIGHT_FIELDS, weightTotal } from './validate';
 import { KANBAN_STAGES } from './types';
@@ -54,8 +55,8 @@ export function SettingsScreen({ data }: { data: SettingsData }) {
           escalationMiles={data.escalationRadiusMiles}
         />
         <RotaGuardBlock mode={data.rotaGuardMode} />
-        <WilloBlock map={data.willo} />
-        <SendersBlock senders={data.senders} payroll={data.payrollRecipients} />
+        <WilloBlock map={data.willo} reviewUrlTemplate={data.willoReviewUrlTemplate} />
+        <SendersBlock senders={data.senders} recipients={data.recipients} />
         <RadiiBlock types={data.venueTypes} />
       </div>
     </OfficeShell>
@@ -252,8 +253,16 @@ function RotaGuardBlock({ mode }: { mode: RotaGuardMode }) {
 }
 
 /** §2.4, Appendix B: Willo's stage names → the onboarding kanban's. */
-function WilloBlock({ map }: { map: WilloStageMap }) {
+function WilloBlock({
+  map,
+  reviewUrlTemplate,
+}: {
+  map: WilloStageMap;
+  reviewUrlTemplate: string | null;
+}) {
   const [draft, setDraft] = useState<WilloStageMap>(map);
+  const [template, setTemplate] = useState(reviewUrlTemplate ?? '');
+  const link = useSave();
   const { note, error, pending, run } = useSave();
 
   const rows: { key: keyof WilloStageMap; label: string; hint: string }[] = [
@@ -298,12 +307,38 @@ function WilloBlock({ map }: { map: WilloStageMap }) {
       <Button tone="primary" disabled={pending} onClick={() => run(() => saveWilloMap(draft))}>
         {pending ? 'Saving…' : 'Save stage map'}
       </Button>
+      <hr />
+      {/* §2.4: "The candidate profile carries a direct 'Review interview on
+          Willo' link" — the template is the one B1 input, entered here so
+          connecting Willo needs no release. */}
+      <Input
+        label="Review interview on Willo — link template"
+        type="url"
+        value={template}
+        placeholder="https://app.willo.video/…/{id}"
+        hint="THC’s Willo account URL with {id} where the candidate id goes. Blank until Willo is connected: the cards then say “not connected”."
+        onChange={(event) => setTemplate(event.target.value)}
+      />
+      <Feedback note={link.note} error={link.error} />
+      <Button
+        tone="primary"
+        disabled={link.pending}
+        onClick={() => link.run(() => saveWilloReviewUrlTemplate(template))}
+      >
+        {link.pending ? 'Saving…' : 'Save Willo link'}
+      </Button>
     </Block>
   );
 }
 
 /** §9.12. Two addresses, and no others are used anywhere. */
-function SendersBlock({ senders, payroll }: { senders: Senders; payroll: string[] }) {
+function SendersBlock({
+  senders,
+  recipients,
+}: {
+  senders: Senders;
+  recipients: SettingsData['recipients'];
+}) {
   const [draft, setDraft] = useState<Senders>(senders);
   const { note, error, pending, run } = useSave();
 
@@ -325,8 +360,9 @@ function SendersBlock({ senders, payroll }: { senders: Senders; payroll: string[
       />
       <Note>
         Replies to both go to a monitored THC mailbox — no-reply addresses are not used, and this
-        form refuses one. Payroll notifications (E5, E6, E7) are sent TO <b>{payroll.join(', ')}</b>
-        .
+        form refuses one. The office and payroll notifications go to fixed §8 addresses, not a
+        setting: E5 and E6 to <b>{recipients.e5e6.join(', ')}</b>; E7 to{' '}
+        <b>{recipients.e7.join(', ')}</b>.
       </Note>
       <Feedback note={note} error={error} />
       <Button tone="primary" disabled={pending} onClick={() => run(() => saveSenders(draft))}>

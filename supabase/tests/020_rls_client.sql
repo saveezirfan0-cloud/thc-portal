@@ -7,7 +7,7 @@
 -- Every money-bearing table is asserted unreachable, in both directions.
 -- =====================================================================
 begin;
-select plan(63);
+select plan(69);
 \ir _shared/fixtures.psql
 
 -- A cap-band notice to probe for. Created here rather than in the shared
@@ -16,12 +16,20 @@ select plan(63);
 -- fixture worker would change what that file is measuring.
 insert into cap_band_notices (staff_id, band, cap_hours, notified_on)
   values (:'staffa', 'standard_48', 48, current_date - 1);
+-- A queued erasure to probe for: the queue names a removed worker's
+-- passport and selfie paths (§1.7) and is admin-read, service-role-write.
+insert into storage_deletions (bucket, path, staff_id)
+  values ('photos', 'rls-probe/selfie.jpg', :'staffa');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 
 -- ---- own events, and only own events ---------------------------------
-select is((select count(*)::int from events where id = :'event_a'), 1, 'client reads its own event');
+-- ADR-0026: the client_events policy is gone — the row carried the Auto
+-- Invite toggle, the buffer-charging term and the office's notes (§11.2,
+-- §9.7). The portal reads client_events_v, asserted below.
+select is((select count(*)::int from events where id = :'event_a'), 0,
+  '§11.2 a client reads its event only through client_events_v, never the events row (auto_assign, pays_buffer, notes stay internal — ADR-0026)');
 select is((select count(*)::int from events where id = :'event_b'), 0, 'client cannot read another client''s event');
 select is((select count(*)::int from profiles where id = :'clienta_uid'), 1, 'client reads its own profile');
 select is((select count(*)::int from profiles where id in (:'clientb_uid', :'staffa_uid', :'admin_uid')), 0, 'client cannot read other profiles');
@@ -182,23 +190,23 @@ select throws_ok(
   '42501', null, 'client cannot grant or revoke a clearance itself — do-not-return is a back-office action (§9.6)');
 
 -- ---- feedback is the one thing a client may write (§11.2) --------------
--- The shared fixtures already leave a client entry on (staffa, event_a),
--- and 20260921140000_client_portal made that one entry per worker per
--- event (§11.5). So the write goes to the worker who has none, and the
--- rule itself is asserted straight after rather than left to surprise the
--- next person who reads this file.
-select lives_ok(
+-- …and only through submit_client_feedback() (160_client_portal). ADR-0026
+-- dropped the direct INSERT policy: it let a customer rate a worker before
+-- the event started or one who is not on the confirmed line-up, with a
+-- staff id read off client_lineup_v.photo_path. The RPC checks both.
+select throws_ok(
   format($$ insert into feedback (author_kind, author_id, staff_id, event_id, rating, text)
             values ('client', %L, %L, %L, 5, 'Great team') $$,
          :'clienta_uid', :'staffb', :'event_a'),
-  'client can leave feedback on a worker at its own event');
+  '42501', null,
+  'ADR-0026: a client cannot INSERT feedback directly, even on its own event — submit_client_feedback() is the only write, and it checks the event has started and the worker is on the confirmed line-up (§11.2)');
 
 select throws_ok(
   format($$ insert into feedback (author_kind, author_id, staff_id, event_id, rating, text)
             values ('client', %L, %L, %L, 4, 'Second thoughts') $$,
          :'clienta_uid', :'staffa', :'event_a'),
-  '23505', null,
-  '§11.5 one client entry per worker per event: the fixtures already left one on this pair');
+  '42501', null,
+  'nor a second entry on the pair the fixtures already rated (§11.5 is the RPC''s 23505; the table refuses the client before it gets there)');
 
 select throws_ok(
   format($$ insert into feedback (author_kind, author_id, staff_id, event_id, rating, text)
@@ -214,6 +222,23 @@ select throws_ok(
 
 with u as (update feedback set rating = 1 where id = :'feedback_a' returning 1)
   select is((select count(*)::int from u), 0, 'client cannot edit feedback once submitted');
+
+-- ---- the operational tables (§1.7, §7, §2.1) ---------------------------
+select is((select count(*)::int from storage_deletions where path = 'rls-probe/selfie.jpg'), 0,
+  'client reads no erasure queue: it names a removed worker''s passport and selfie paths (§1.7)');
+select throws_ok(
+  format($$ insert into storage_deletions (bucket, path, staff_id) values ('photos', 'forged/x.jpg', %L) $$, :'staffb'),
+  '42501', null, 'client cannot forge a deletion of another worker''s evidence');
+select is((select count(*)::int from job_runs), 0, 'client reads no job runs (§7)');
+select is((select count(*)::int from job_schedules), 0,
+  'client reads no cron registry: edge_base_url and the schedule are operational detail');
+select throws_ok(
+  $$ insert into job_runs (job) values ('x') $$,
+  '42501', null, 'client cannot write a job run');
+select throws_ok(
+  $$ insert into applications (first_name, last_name, email, phone, dob, age_band, consented_at)
+     values ('Forged', 'Row', 'forged@rls.test', '+447700900998', date '1990-01-01', '25-34', now()) $$,
+  '42501', null, '§2.1: a client cannot insert an application row and skip the throttle and DOB match — submit_application() is the only door');
 
 reset role;
 select * from finish();

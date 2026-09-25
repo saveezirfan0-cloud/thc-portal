@@ -26,6 +26,8 @@ export interface CandidateRow {
   age: number | null;
   applied_age_band: string | null;
   photo_path: string | null;
+  /** Short-lived signed URL for the selfie, set on the server (_lib/photos.ts). */
+  photo_url?: string | null;
   status: StaffStatus;
   stage_entered_at: string;
   onboarding_started_at: string;
@@ -187,6 +189,14 @@ export interface CandidateMoney {
   wtr_optout: boolean;
 }
 
+/** One published §2.11 agreement (contract_versions), as the candidate read it. */
+export interface ContractVersion {
+  version: string;
+  title: string;
+  body: string;
+  is_placeholder: boolean;
+}
+
 export interface Application {
   created_at: string;
   consented_at: string;
@@ -203,6 +213,8 @@ export interface CandidateData {
   attempts: QuizAttempt[];
   hmrc: HmrcChecklist | null;
   application: Application | null;
+  /** The agreement text by `candidate.contract_version`; null before the contract phase. */
+  contract: ContractVersion | null;
   roles: RoleOption[];
   /** The latest automated gov.uk check per share-code document (ADR-0025). */
   rtwChecks?: RtwCheckRow[];

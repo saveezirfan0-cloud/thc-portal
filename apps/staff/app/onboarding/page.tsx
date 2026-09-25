@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
 import { Alert, MobileList, MobileRow, Pill, StaticScreen } from '@thc/ui';
-import { QUIZ_ATTEMPTS, currentStep, rtwCheckInFlight, wizardPhase } from '@thc/domain';
+import { currentStep, rtwCheckInFlight, wizardPhase } from '@thc/domain';
 import { LockScreen } from '../profile/_components/LockScreen';
 import { loadProfile } from '../profile/data';
 import { appLock } from '../profile/lock';
+import { signOwnPhoto } from '../profile/photos';
 import { HELP_EMAIL } from '../profile/types';
 import { ReviewHub } from './_components/ReviewHub';
 import { RefreshWhileChecking } from '../_components/RefreshWhileChecking';
@@ -56,7 +57,7 @@ export default async function Page() {
     );
   }
 
-  const worker = workerFor(state.firstName, state.lastName);
+  const worker = workerFor(state.firstName, state.lastName, await signOwnPhoto(state.photoPath));
   const lock = appLock(profile);
 
   if (
@@ -68,25 +69,30 @@ export default async function Page() {
   ) {
     return (
       <WizardFrame worker={worker} title="The Hospitality Company" center>
-        <LockScreen lock={lock} leftAt={profile.leftAt} />
-        {lock === 'quiz_failed' && state.quiz.length > 0 ? (
-          <MobileList>
-            {state.quiz.map((a) => (
-              <MobileRow
-                key={a.attemptNo}
-                right={
-                  <span className="mono sm coral">
-                    {a.correct} / {a.total}
-                  </span>
-                }
-              >
-                <span className="sm muted">
-                  Attempt {a.attemptNo} of {QUIZ_ATTEMPTS}
-                </span>
-              </MobileRow>
-            ))}
-          </MobileList>
-        ) : null}
+        <LockScreen
+          lock={lock}
+          leftAt={profile.leftAt}
+          detail={
+            // The wireframe's terminal screen: "Attempt 1 · 7 / 10" rows
+            // between the contact line and Sign out (onboarding-2.html).
+            lock === 'quiz_failed' && state.quiz.length > 0 ? (
+              <MobileList>
+                {state.quiz.map((a) => (
+                  <MobileRow
+                    key={a.attemptNo}
+                    right={
+                      <span className="mono sm coral">
+                        {a.correct} / {a.total}
+                      </span>
+                    }
+                  >
+                    <span className="sm muted">Attempt {a.attemptNo}</span>
+                  </MobileRow>
+                ))}
+              </MobileList>
+            ) : null
+          }
+        />
       </WizardFrame>
     );
   }

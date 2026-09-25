@@ -275,6 +275,39 @@ create trigger rtw_checks_forget_report
   for each row execute function rtw_checks_forget_report();
 
 -- ---------------------------------------------------------------------
+-- 3b · What a prefix purge must keep (§1.7, ADR-0019).
+--
+-- retained_storage_paths() from 20260927160400, unchanged, plus the
+-- reports of checks on a document that is held (retain_until). No share
+-- code report is held today — ADR-0019 holds only the completion letter —
+-- but if THC extends the hold (OWNER-TODO §5), the gov.uk reports of every
+-- run go with their document instead of being swept with the folder.
+-- ---------------------------------------------------------------------
+create or replace function public.retained_storage_paths(p_staff uuid)
+returns setof text
+language sql
+stable
+security definer
+set search_path = public, extensions
+as $$
+  select d.file_path from compliance_docs d
+   where d.staff_id = p_staff and d.retain_until is not null and d.file_path is not null
+  union
+  select d.gov_report_path from compliance_docs d
+   where d.staff_id = p_staff and d.retain_until is not null and d.gov_report_path is not null
+  union
+  select c.report_path from rtw_checks c
+    join compliance_docs d on d.id = c.compliance_doc_id
+   where d.staff_id = p_staff and d.retain_until is not null and c.report_path is not null
+$$;
+
+comment on function public.retained_storage_paths(uuid) is
+  '§1.7 + ADR-0019: the Storage paths of a removed worker that a prefix purge must keep — evidence rows carrying retain_until, and the automated-check reports on them (ADR-0025). Service role only.';
+
+revoke execute on function public.retained_storage_paths(uuid) from public, anon, authenticated;
+grant  execute on function public.retained_storage_paths(uuid) to service_role;
+
+-- ---------------------------------------------------------------------
 -- 4 · Backoff. RTW_CHECK_BACKOFF_MINUTES in packages/domain, the same
 --     literal: 30 min, 2 h, 6 h, 16 h — five attempts over about a day.
 -- ---------------------------------------------------------------------
@@ -710,6 +743,69 @@ comment on function public.compliance_reject_document(uuid, text) is
 -- 7 · Enqueue.
 -- ---------------------------------------------------------------------
 
+-- Where the job route lives. The same three layers as edge_base_url
+-- (20260927160300): the rule, a write-time guard on settings, and a reader
+-- that re-checks at run time. The bearer posted there is rtw_job_secret,
+-- never the service key — it only authenticates this route — but an admin
+-- session still must not be able to point it at an arbitrary host over
+-- plain http, or at a path of their choosing. An origin only: https, or a
+-- local development one.
+create or replace function public.is_office_base_url(p_url text)
+returns boolean
+language sql
+immutable
+set search_path = public, extensions
+as $$
+  select p_url is not null and (
+       p_url ~ '^https://[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+(:[0-9]+)?/?$'
+    or p_url ~ '^http://(127\.0\.0\.1|localhost|host\.docker\.internal)(:[0-9]+)?/?$'
+  )
+$$;
+
+comment on function public.is_office_base_url(text) is
+  'True for the Back Office origin the rtw-check job is posted to: https://<host>[:port] (no path), or a local development origin (ADR-0025).';
+
+create or replace function public.settings_office_base_url_guard()
+returns trigger
+language plpgsql
+set search_path = public, extensions
+as $$
+begin
+  if new.key = 'office_base_url' and not is_office_base_url(new.value #>> '{}') then
+    raise exception 'office_base_url_invalid: % — must be the Back Office origin, https://<host>',
+      coalesce(new.value #>> '{}', 'null')
+      using errcode = '22023';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists settings_office_base_url_guard on settings;
+create trigger settings_office_base_url_guard
+  before insert or update on settings
+  for each row execute function public.settings_office_base_url_guard();
+
+create or replace function public.office_base_url()
+returns text
+language plpgsql
+stable
+security definer
+set search_path = public, extensions
+as $$
+declare v_base text;
+begin
+  select value #>> '{}' into v_base from public.settings where key = 'office_base_url';
+  if coalesce(v_base, '') = '' then
+    return null;
+  end if;
+  if not is_office_base_url(v_base) then
+    raise exception 'office_base_url_invalid: %', v_base using errcode = '22023';
+  end if;
+  return rtrim(v_base, '/');
+end $$;
+
+comment on function public.office_base_url() is
+  'settings.office_base_url without a trailing slash, or null when unset; raises office_base_url_invalid for anything but a Back Office origin. The rtw-check cron command and nudge read the base through this (ADR-0025).';
+
 -- Wake the runner now rather than at the next 10-minute tick, so the
 -- worker sees the outcome while they are still looking. A no-op without
 -- settings.office_base_url and the vault secret rtw_job_secret, and it can
@@ -724,8 +820,8 @@ declare
   v_base   text;
   v_secret text;
 begin
-  select value #>> '{}' into v_base from public.settings where key = 'office_base_url';
-  if coalesce(v_base, '') = '' then
+  v_base := office_base_url();
+  if v_base is null then
     return;
   end if;
   select decrypted_secret into v_secret from vault.decrypted_secrets where name = 'rtw_job_secret';
@@ -733,7 +829,7 @@ begin
     return;
   end if;
   perform net.http_post(
-    url     := rtrim(v_base, '/') || '/api/jobs/rtw-check',
+    url     := v_base || '/api/jobs/rtw-check',
     body    := jsonb_build_object('job', 'rtw-check'),
     params  := '{}'::jsonb,
     headers := jsonb_build_object('Content-Type', 'application/json',
@@ -1247,7 +1343,9 @@ grant select on rtw_checks_latest_v to authenticated, service_role;
 -- ---------------------------------------------------------------------
 -- 12 · Needs review (§4.1), with the check.
 --
--- As 20260923210000 plus:
+-- Restated from its LATEST definition, 20260927160000 (the third kind of
+-- row, 'rtw_date', and review_reason appended), every column and
+-- predicate carried. Added here:
 --   · a share-code document whose check is queued or running is not
 --     listed while the check is switched on — it is not the office's yet
 --     (§2.6: only failures are flagged for manual review) — unless the
@@ -1259,8 +1357,10 @@ grant select on rtw_checks_latest_v to authenticated, service_role;
 --   · kind 'rtw_check': a check whose outcome is no_right_to_work, in
 --     needs_review, whose document is no longer pending — the worker has
 --     been asked to re-enter — until the office marks it reviewed, or
---     decides the document by hand (which stamps reviewed_at).
--- The new columns are appended, so the view keeps its existing ones.
+--     decides the document by hand (which stamps reviewed_at). Its
+--     review_reason is the check's.
+-- The new columns are appended AFTER review_reason, so the view keeps
+-- every column it has on the live project, in order.
 -- ---------------------------------------------------------------------
 create or replace view compliance_review_queue_v with (security_invoker = true) as
 select
@@ -1303,6 +1403,9 @@ select
   d.completion_date_claimed,
   d.mime_type,
   d.size_bytes,
+  -- 20260927160000: why a row that is not a pending upload is here.
+  null::text                                                 as review_reason,
+  -- 20260928100000 (ADR-0025): the latest automated check.
   k.check_id                                                 as rtw_check_id,
   k.status                                                   as rtw_check_status,
   k.source                                                   as rtw_check_source,
@@ -1364,6 +1467,7 @@ select
   null::date,
   null::text,
   null::bigint,
+  null::text,
   null::uuid,
   null::text,
   null::text,
@@ -1383,6 +1487,82 @@ where c.answer
   and not c.superseded
   and s.status not in ('rejected', 'removed')
   and s.removed_at is null
+union all
+-- 20260927160000, unchanged: a share code verified with no date (before
+-- 20260923200000). Keyed on the report so the screen's Verify has
+-- something to confirm the date on (compliance_confirm_rtw_date). It has
+-- no automated check to carry: the check runs on PENDING reports only.
+select
+  'rtw_date'::text,
+  d.id,
+  s.id,
+  s.first_name || ' ' || s.last_name,
+  s.employee_id,
+  s.status,
+  s.status in ('interview_requested', 'interview_completed', 'documents', 'quiz', 'contract'),
+  s.block_kind,
+  (select r.block_reason from public.staff_block_reason_v r where r.staff_id = s.id) as block_reason,
+  s.rtw_branch,
+  s.photo_path,
+  d.doc_type::text,
+  doc_label(d.doc_type),
+  coalesce(d.reviewed_at, d.uploaded_at),
+  d.file_path,
+  null::numeric,
+  true,
+  null::date,
+  null::daterange[],
+  d.right_to_work_until,
+  coalesce(d.share_code, s.share_code),
+  null::text,
+  false,
+  null::text,
+  null::text,
+  null::text,
+  null::date,
+  s.right_to_work_until,
+  null::text,
+  null::date,
+  d.mime_type,
+  d.size_bytes,
+  'Right-to-work date missing — re-verify'::text,
+  null::uuid,
+  null::text,
+  null::text,
+  null::text,
+  null::int,
+  null::timestamptz,
+  null::text,
+  null::date,
+  null::boolean,
+  null::jsonb,
+  null::text,
+  null::boolean
+from compliance_docs d
+join staff s on s.id = d.staff_id
+where d.doc_type = 'share_code_report'
+  and d.review_status = 'verified'
+  and d.right_to_work_until is null
+  and not d.rtw_no_time_limit
+  -- The latest verified report is the one rtw_evidence_until() reads
+  -- (same order: newest upload first, id as the tie-break).
+  and d.id = (select l.id from compliance_docs l
+               where l.staff_id = d.staff_id
+                 and l.doc_type = 'share_code_report'
+                 and l.review_status = 'verified'
+               order by l.uploaded_at desc, l.id
+               limit 1)
+  -- The header query of 20260923200000: non-UK, live, no date on the worker.
+  and s.rtw_branch is not null
+  and s.rtw_branch <> 'uk_irish'
+  and s.right_to_work_until is null
+  and s.status in ('documents', 'quiz', 'contract', 'compliant', 'blocked')
+  and s.removed_at is null
+  -- A new report already waiting in this queue closes the gap on its own Verify.
+  and not exists (select 1 from compliance_docs p
+                   where p.staff_id = d.staff_id
+                     and p.doc_type = 'share_code_report'
+                     and p.review_status = 'pending')
 union all
 select
   'rtw_check'::text,
@@ -1417,6 +1597,7 @@ select
   null::date,
   null::text,
   null::bigint,
+  k.review_reason,
   k.check_id,
   k.status,
   k.source,
@@ -1440,7 +1621,10 @@ where k.status = 'needs_review'
   and s.removed_at is null;
 
 comment on view compliance_review_queue_v is
-  '§4.1 Needs review: every pending document and every pending Yes criminal declaration, candidates and staff alike, excluding Rejected and Removed profiles — and, with the automated right-to-work check on (ADR-0025), not a share code whose check is still running; plus kind rtw_check, a needs-review check whose document is no longer pending. Each document row carries its latest check. security_invoker.';
+  '§4.1 Needs review: every pending document and every pending Yes declaration on a live profile (Rejected and Removed drop out); kind ''rtw_date'', every live non-UK worker whose latest verified share code report carries no right-to-work date while their own date is NULL (20260927160000, ADR-0018); and, with the automated right-to-work check on (ADR-0025), not a share code whose check is still running (unless stuck), plus kind ''rtw_check'', a no-right-to-work check whose document is no longer pending. Each document row carries its latest check; review_reason says why a non-pending row is here. security_invoker.';
+
+revoke all on compliance_review_queue_v from public, anon;
+grant select on compliance_review_queue_v to authenticated, service_role;
 
 -- ---------------------------------------------------------------------
 -- 13 · The wizard's way back after a rejected share code.
@@ -1587,6 +1771,10 @@ revoke execute on function public.compliance_verify_document_as(uuid, uuid, date
 revoke execute on function public.compliance_reject_document_as(uuid, uuid, text)     from public, anon, authenticated, service_role;
 revoke execute on function public.rtw_check_manual_allowed(uuid)                      from public, anon;
 revoke execute on function public.rtw_check_nudge()                                   from public, anon, authenticated;
+revoke execute on function public.is_office_base_url(text)                            from public, anon, authenticated;
+revoke execute on function public.office_base_url()                                   from public, anon, authenticated;
+revoke execute on function public.settings_office_base_url_guard()                    from public, anon, authenticated;
+grant  execute on function public.office_base_url()                                   to service_role;
 revoke execute on function public.rtw_check_enqueue(uuid, uuid)                       from public, anon, authenticated;
 revoke execute on function public.compliance_docs_rtw_check_enqueue()                 from public, anon, authenticated;
 revoke execute on function public.rtw_check_claim(int, int)                           from public, anon, authenticated;

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isIos, pushCopy, pushState, urlBase64ToUint8Array } from '../../lib/push';
+import { isIos, pushCopy, pushState, serialise, urlBase64ToUint8Array } from '../../lib/push';
 import type { PushEnvironment } from '../../lib/push';
 
 /**
@@ -70,5 +70,41 @@ describe('VAPID key decoding', () => {
     expect(Array.from(urlBase64ToUint8Array('aGk='))).toEqual([104, 105]);
     // '-' and '_' are the URL-safe substitutions for '+' and '/'.
     expect(urlBase64ToUint8Array('-_8').length).toBe(2);
+  });
+});
+
+describe('the copy for a blocked permission (wireframes/staff/auth.html, "Notifications blocked")', () => {
+  it('ends the settings path with "→ Allow." and still offers "Show me how"', () => {
+    const denied = pushCopy('denied');
+    expect(denied.detail).toContain('Settings → Notifications → The Hospitality Company → Allow.');
+    expect(denied.actionable).toBe(false);
+    expect(denied.link).toBe('/notifications');
+  });
+
+  it('sends the iPhone-in-Safari case to /install, and the unasked case to /notifications', () => {
+    expect(pushCopy('needs-install').link).toBe('/install');
+    expect(pushCopy('default').link).toBe('/notifications');
+    expect(pushCopy('granted').link).toBeUndefined();
+    expect(pushCopy('unsupported').link).toBeUndefined();
+  });
+});
+
+describe('serialise', () => {
+  const json = { endpoint: 'https://push.example/abc', keys: { p256dh: 'p', auth: 'a' } };
+
+  it('keeps the endpoint and both keys, and the user agent', () => {
+    expect(serialise(json, 'UA')).toEqual({
+      endpoint: json.endpoint,
+      p256dh: 'p',
+      auth: 'a',
+      userAgent: 'UA',
+    });
+    expect(serialise(json, 'UA', 'old')).toMatchObject({ replaces: 'old' });
+  });
+
+  it('is null for a subscription missing its keys — never a half record', () => {
+    expect(serialise({ endpoint: json.endpoint, keys: {} }, 'UA')).toBeNull();
+    expect(serialise({ endpoint: json.endpoint }, 'UA')).toBeNull();
+    expect(serialise({ keys: json.keys }, 'UA')).toBeNull();
   });
 });

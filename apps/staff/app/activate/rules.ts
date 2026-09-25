@@ -18,6 +18,8 @@ export interface Personal {
   firstName?: string | null;
   lastName?: string | null;
   email?: string | null;
+  /** The account already has a password: the link is spent (§2.7). */
+  activated?: boolean;
 }
 
 export interface ActivationChecks extends PasswordChecks {

@@ -62,7 +62,7 @@ export function HmrcStep({ initial, niMasked }: { initial: HmrcForm; niMasked: s
   const missing = hmrcMissing(form, Boolean(niMasked));
   const hint =
     missing.length > 0
-      ? `${missing.join(' and ').replace(/^./, (c) => c.toUpperCase())} to continue`
+      ? `${listInProse(missing).replace(/^./, (c) => c.toUpperCase())} to continue`
       : null;
   const niBad = form.niNumber.trim() !== '' && !isValidNiNumber(form.niNumber);
   const nextQuestion =
@@ -180,7 +180,7 @@ export function HmrcStep({ initial, niMasked }: { initial: HmrcForm; niMasked: s
               ? 'That doesn’t look like an NI number. It should look like AB123456C.'
               : undefined
           }
-          hint="Leave blank if you don’t have one yet — you can still be onboarded and paid; add it in Profile details once HMRC issues it. Once saved it’s shown masked and locked."
+          hint="Leave blank if you don’t have one yet — you can still be onboarded and paid; add it in Profile details once HMRC issues it. Once saved it’s shown masked (●●●●●●●6B) and locked."
         />
       )}
 
@@ -204,4 +204,10 @@ export function HmrcStep({ initial, niMasked }: { initial: HmrcForm; niMasked: s
       </WizardFoot>
     </>
   );
+}
+
+/** "a", "a and b", "a, b and c" — the footer hint reads as a sentence. */
+function listInProse(items: string[]): string {
+  if (items.length <= 1) return items.join('');
+  return `${items.slice(0, -1).join(', ')} and ${items[items.length - 1]}`;
 }

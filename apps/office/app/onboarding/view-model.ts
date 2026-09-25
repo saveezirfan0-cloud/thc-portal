@@ -18,6 +18,7 @@
  */
 import { STAFF_STATUSES, canTransitionStaff } from '@thc/domain';
 import type { StaffStatus as MachineStatus } from '@thc/domain';
+import { capReason } from '../staff/staff';
 import type {
   CandidateRow,
   RejectionCause,
@@ -311,7 +312,12 @@ export function cardLines(row: CandidateRow, column: ColumnKey, now: Date): Line
 
   switch (column) {
     case 'interview_requested': {
-      const bits = [`Applied ${shortDay(row.applied_at)}`];
+      // "Applied today 11:20" on the day itself (board, Interview requested).
+      const applied =
+        ukDaysBetween(row.applied_at, now) === 0
+          ? `Applied today ${ukTime(row.applied_at)}`
+          : `Applied ${shortDay(row.applied_at)}`;
+      const bits = [applied];
       if (row.age !== null) bits.push(`age ${row.age}`);
       bits.push(row.phone);
       lines.push({ text: bits.join(' · ') });
@@ -330,8 +336,17 @@ export function cardLines(row: CandidateRow, column: ColumnKey, now: Date): Line
         ? (RTW_SHORT[row.rtw_branch] ?? row.rtw_branch)
         : 'Right to work not chosen yet';
       if (row.docs_total === 0) {
+        // "UK citizen · 0 of 3 uploaded yet · activated" — the branch's
+        // required set is what onboarding_documents_missing() lists while
+        // nothing is in. The activation DATE the wireframe adds needs an
+        // `activated_at` the view does not carry yet.
+        const required = row.docs_missing?.length ?? 0;
         lines.push({
-          text: `${branch} · nothing uploaded yet${row.activated ? '' : ' · not activated'}`,
+          text: [
+            branch,
+            required > 0 ? `0 of ${required} uploaded yet` : 'nothing uploaded yet',
+            row.activated ? 'activated' : 'not activated',
+          ].join(' · '),
         });
       } else {
         const parts = [branch, `${row.docs_verified} of ${row.docs_total} verified`];
@@ -355,7 +370,11 @@ export function cardLines(row: CandidateRow, column: ColumnKey, now: Date): Line
     case 'quiz': {
       const used = row.quiz_attempts_used;
       if (used === 0) {
-        lines.push({ text: `All documents verified → quiz unlocked automatically` });
+        // Entry to `quiz` IS the automatic unlock (20260923110000), so the
+        // stage stamp is the date the last document was verified.
+        lines.push({
+          text: `All documents verified ${shortDay(row.stage_entered_at)} → quiz unlocked automatically`,
+        });
         lines.push({ text: `Attempts 0 / ${QUIZ_MAX_ATTEMPTS} · not started` });
       } else {
         lines.push({
@@ -384,8 +403,12 @@ export function cardLines(row: CandidateRow, column: ColumnKey, now: Date): Line
       break;
     }
     case 'contract': {
+      // `stage_entered_at` is the quiz pass (ADR-0013: the move from
+      // Additional info to Contract is derived, and nothing re-stamps it),
+      // so the line says what that date IS rather than claiming it is when
+      // the contract was presented.
       lines.push({
-        text: `Contract presented in the app ${shortDay(row.stage_entered_at)} · not yet signed`,
+        text: `Quiz passed ${shortDay(row.quiz_passed_at ?? row.stage_entered_at)} · additional info complete · contract not yet signed`,
       });
       break;
     }
@@ -424,8 +447,19 @@ export function rejectedLines(row: CandidateRow): Line[] {
           text: `Best ${scoreLabel(row.quiz_best_score)} over ${row.quiz_attempts_used} attempts — automatic rejection after the third failure; email E4 + terminal screen in the app (§2.9).`,
         },
       ];
-    default:
-      return row.rejection_reason ? [{ text: `Reason: “${row.rejection_reason}”` }] : [];
+    default: {
+      const lines: Line[] = row.rejection_reason
+        ? [{ text: `Reason: “${row.rejection_reason}”` }]
+        : [];
+      // §4.1: compliance_review_queue_v drops a rejected person's pending
+      // documents, so the card says what just left the queue.
+      if (row.docs_pending > 0) {
+        lines.push({
+          text: `${row.docs_pending === 1 ? 'Their 1 pending document' : `Their ${row.docs_pending} pending documents`} dropped out of Compliance → Needs review automatically (§4.1).`,
+        });
+      }
+      return lines;
+    }
   }
 }
 
@@ -671,3 +705,40 @@ export function studentLoanLabel(plan: string, postgraduate: boolean): string {
 export function orDash(value: string | null | undefined): string {
   return value && value.trim() !== '' ? value : '—';
 }
+
+// ---------------------------------------------------------------------
+// The weekly limit and the branch, as §2.3 words them
+// ---------------------------------------------------------------------
+
+/**
+ * §2.3's form of the cap: "20 h/week — term time until 13.12.2026". §9.6
+ * writes the same sentence without "/week" for the staff profile, and
+ * `capReason` follows §9.6; the candidate profile and candidate.html follow
+ * §2.3, so the unit is added here rather than changed everywhere.
+ */
+export function candidateCap(
+  band: Parameters<typeof capReason>[0],
+  capHours: number | null,
+  until?: string | null,
+): string {
+  return capReason(band, capHours, until).replace(/^(\d+) h — /, '$1 h/week — ');
+}
+
+/** §2.5's five branches, numbered as the scope numbers them. */
+export const RTW_BRANCH_NO: Record<string, number> = {
+  uk_irish: 1,
+  eu_settled: 2,
+  work_visa: 3,
+  international_student: 4,
+  dependant_other: 5,
+};
+
+/** §2.5 pts 1–5: the document set each branch collects, as the panel header reads it. */
+export const RTW_REQUIRED: Record<string, string> = {
+  uk_irish: 'passport, or birth certificate + NI evidence · no share code',
+  eu_settled: 'passport / ID + share code · pre-settled carries an expiry',
+  work_visa: 'passport + share code + visa document with its expiry',
+  international_student:
+    'passport + share code + University Term Dates Letter (+ Completion Letter after graduation, §4.5)',
+  dependant_other: 'passport + share code + visa / status document with its expiry',
+};

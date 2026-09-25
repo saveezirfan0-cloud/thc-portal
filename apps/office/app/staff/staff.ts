@@ -1,4 +1,4 @@
-import type { CapBand, StaffRow } from './types';
+import type { CapBand, StaffRow, StaffStatus } from './types';
 
 /**
  * The directory's presentation rules (§9.6). Pure, so the three that are
@@ -177,12 +177,87 @@ export function formatRating(rating: number | null): string {
 export function formatUkDate(iso: string): string {
   const at = new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso);
   if (Number.isNaN(at.getTime())) return '—';
-  return new Intl.DateTimeFormat('en-GB', {
+  return ukNumericDate(at);
+}
+
+/**
+ * "13.12.2026" — the office's date shape. §9.6 and §2.3 both write their
+ * examples with dots ("Contract signed electronically: 12.07.2026 14:42",
+ * "20 h — term time until 13.12.2026") and every backoffice wireframe
+ * follows them; `en-GB`'s own slashes were drift, and the feedback and
+ * compliance screens already print dots.
+ */
+export function ukNumericDate(at: Date): string {
+  const parts = new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
     timeZone: 'Europe/London',
-  }).format(at);
+  }).formatToParts(at);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((entry) => entry.type === type)?.value ?? '';
+  return `${part('day')}.${part('month')}.${part('year')}`;
+}
+
+/**
+ * The status pill's words (§9.6). The directory and the profile header
+ * share this so the same person never reads "compliant" on one screen and
+ * "Compliant" on the other — and so the raw enum (`interview_requested`)
+ * is never printed at all.
+ */
+export function statusLabel(row: { status: StaffStatus; removed: boolean }): {
+  label: string;
+  tone: 'green' | 'coral' | 'amber' | 'neutral';
+} {
+  if (row.removed || row.status === 'removed') return { label: 'Removed', tone: 'neutral' };
+  switch (row.status) {
+    case 'blocked':
+      return { label: 'Blocked', tone: 'coral' };
+    case 'inactive':
+      return { label: 'Inactive', tone: 'neutral' };
+    case 'compliant':
+      return { label: 'Compliant', tone: 'green' };
+    case 'rejected':
+      return { label: 'Rejected', tone: 'coral' };
+    default:
+      return { label: 'Onboarding', tone: 'amber' };
+  }
+}
+
+/**
+ * §9.6's directory lists WORKERS — the wireframe's crumb is "1,012 workers
+ * · 934 compliant · 9 blocked · 61 inactive · 8 removed", and those four
+ * add up to the total. A candidate still in the pipeline belongs to
+ * /onboarding, and a rejected applicant to its Rejected view; neither is a
+ * worker yet, so neither is counted or listed here. Their profiles stay
+ * reachable at /staff/:id (Reset to candidate lives there, §9.6).
+ */
+export function isWorker(row: Pick<StaffRow, 'status' | 'removed'>): boolean {
+  return (
+    row.removed ||
+    row.status === 'compliant' ||
+    row.status === 'blocked' ||
+    row.status === 'inactive' ||
+    row.status === 'removed'
+  );
+}
+
+export type Sort = 'name' | 'rating' | 'show' | 'newest';
+
+/**
+ * The directory's order. §9.6: "The Inactive tab lists everyone who has
+ * left through the app (§10.6), newest first" — so on that tab the leaver's
+ * stamp wins whatever the sort control says, and the office works through
+ * P45s in the order they arrived.
+ */
+export function sortRows(rows: readonly StaffRow[], filter: Filter, sort: Sort): StaffRow[] {
+  const sorted = [...rows];
+  if (sort === 'newest' || filter === 'inactive') {
+    sorted.sort((a, b) => (b.left_at ?? '').localeCompare(a.left_at ?? ''));
+  } else if (sort === 'rating') sorted.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
+  else if (sort === 'show') sorted.sort((a, b) => (b.reliability ?? -1) - (a.reliability ?? -1));
+  else sorted.sort((a, b) => a.display_name.localeCompare(b.display_name));
+  return sorted;
 }
 
 /** What a verified settled-status share code says instead of a date (§2.5 pt 2). */

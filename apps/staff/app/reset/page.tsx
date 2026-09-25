@@ -2,7 +2,9 @@ import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { Alert, AuthCard } from '@thc/ui';
 import { createClient } from '@thc/db/server';
+import { RESET_LINK_VALIDITY } from '../forgot/copy';
 import { ResetForm } from './ResetForm';
+import '../login/auth-tap.css';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Set a new password · THC Staff' };
@@ -33,17 +35,20 @@ export default async function Page({
     signedIn = !!user;
   }
 
+  // One message per state, as the wireframe shows it. A callback failure
+  // (`?error=`) and "no session" are the same event seen twice — the
+  // callback redirects here with `error` exactly when it made no session —
+  // so they must not stack two coral alerts that say the same thing.
+  const spent = Boolean(error) || (configured && !signedIn);
+
   return (
-    <AuthCard product="Staff" heading="Set a new password">
-      {error ? (
-        <Alert tone="coral">
-          That link could not be opened. Ask for a new one from the sign-in screen.
-        </Alert>
-      ) : null}
-      {configured && !signedIn ? (
+    <AuthCard product="Staff app" heading="Set a new password">
+      {spent ? (
         <>
           <Alert tone="coral">
-            This link has expired or has already been used. Reset links are valid for 60 minutes.
+            {error
+              ? 'That link could not be opened. Ask for a new one from the sign-in screen.'
+              : `This link has expired or has already been used. Reset links are valid for ${RESET_LINK_VALIDITY}.`}
           </Alert>
           <p className="sm muted">
             <Link href="/forgot">Send me a new link</Link>

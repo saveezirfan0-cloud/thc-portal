@@ -1,14 +1,14 @@
 # ADR-0025 · The automated gov.uk right-to-work check: provider first, our own gov.uk check as fallback, fully automatic
 
 **Status:** Accepted, 25.09.2026 — built and tested; **switched off until THC chooses a provider and the keys exist** (OWNER-TODO §8)
-**Supersedes:** ADR-0002 (gov.uk share-code check without a public API) · **Amends:** ADR-0018 (the right-to-work date is confirmed on Verify) · **Builds on:** ADR-0019 (retention), ADR-0021 (building on an assumed, configurable API)
+**Supersedes:** ADR-0002 (gov.uk share-code check without a public API — its option 1, the assisted check, is what runs while this is switched off) · **Amends:** ADR-0018 (the right-to-work date is confirmed on Verify) · **Builds on:** ADR-0019 (retention), ADR-0021 (building on an assumed, configurable API), and the 26.09 round's `20260927150000` (the rota guard refuses a non-UK worker whose verified right to work has no date), `20260927160000` (the Needs review `rtw_date` row), `20260927160300` (the guarded `edge_base_url`) and `20260927160400` (the prefix purge)
 **Scope:** §2.3, §2.5, §2.6, §4.4 · **Code:** migrations `20260928100000_rtw_check.sql`, `20260928100100_rtw_check_schedule.sql`; pgTAP `600`, `601` (and the lists in `001`, `190`); `packages/domain/src/rtwCheck.ts`; `apps/office/app/api/jobs/rtw-check/`; the office and Staff App screens below
 
 ## Context
 
 §2.3 and §2.6 say the system itself asks gov.uk: "Share code + DOB → gov.uk/view-right-to-work → right-to-work-until date → PDF report stored on the profile; that date becomes the expiry used for reminders. On failure or low confidence → flagged for manual review". Nobody types the date.
 
-That was never built. ADR-0002 left three options open. ADR-0018 then made the office confirm the right-to-work date by hand on Verify, as a stopgap, and the 24.09 audit (`docs/15`, §3) listed the check as not built.
+That was never built. ADR-0002 chose option 1, the assisted check: the office runs gov.uk by hand and confirms the date on Verify (ADR-0018), a deviation from §2.3's "nobody types the date". The 24.09 audit (`docs/15`, §3) listed the automated check as not built.
 
 THC's product owner decided two things, and both are binding here:
 
@@ -238,6 +238,13 @@ Nothing below has been seen working against the real service. Each assumption is
 - **The wizard.** `staff/onboarding-3.html` shows "gov.uk check running · DOB …". That wording is kept for a share code with no automated check. While a check runs it reads "Checking with gov.uk…", as the brief asks. "Enter again" and its sheet (code + DOB) are not in the wireframe.
 
 ## Consequences
+
+- **With the 26.09 round (merged 26.09).** The two migrations here sort after `20260927150000`–`161300` and restate, from those LATEST bodies, what they touch:
+  - `compliance_review_queue_v` keeps `20260927160000`'s `rtw_date` row and its `review_reason` column in place; the check columns are appended after it, and the `rtw_check` item fills `review_reason` with the check's reason. The automated check never touches an `rtw_date` row: it runs on pending reports only, and `compliance_confirm_rtw_date()` stays the office's way to date a report verified before 23.09.
+  - `install_job_schedules()` keeps `20260927160300`'s run-time `edge_base_url()` reader for every Edge Function row. `settings.office_base_url` gets the same three layers (`is_office_base_url`, a write-time guard, the `office_base_url()` reader), and a check constraint keeps the service key to Edge Function rows only.
+  - `retained_storage_paths()` (`20260927160400`) also keeps a held document's check reports out of the prefix purge.
+  - The trigger functions here are revoked from `anon` and `authenticated`, as `20260927161000` requires of every trigger (pgTAP 190 §3).
+  - The rota guard (`20260927150000`) and a passing check agree: a pass writes either the gov.uk date or the settled no-time-limit flag through the one Verify, so the worker is never left dateless.
 
 - Once switched on, a candidate's share code is verified without anyone at THC looking at it, **including the photograph**. See the risk above.
 - The office types a right-to-work date only for a check in needs_review, or with the automation off.

@@ -18,6 +18,9 @@
 | `client-portal` | `apps/client`, feedback | §11.1–11.5, §9.10 | `client/*.html`, `backoffice/feedback.html` |
 | `staff-pwa` | `apps/staff` shell: PWA manifest, service worker, offline, push subscription, camera, geolocation, app-lock routing, profile sheet, P45 | §10.1–10.2, §10.5–10.6 | `staff/profile.html`, `staff/locks.html`, `staff/auth.html` |
 | `qa-reviewer` | read-only: reviews every PR against the scope and wireframes, runs tests, reports drift | all | all |
+| `audit` | read-only: takes one § / RULE / BG / N / E slice and checks every sentence of it against code, DB and tests; reports gaps with the owning bot named | all | — |
+| `security` | read-only: the ten invariants in its brief — RLS + grants, `SECURITY DEFINER` surface, the client data path (ADR-0004), public routes, Storage paths, Edge Function auth, secrets, GDPR removal | §1.4, §1.7, §2.1, §2.12, ADR-0004 | — |
+| `design-engine` | design QA that fixes: walks a screen against its wireframe and the token axes (ADR-0007), corrects literals, missing states, copy, contrast, focus and responsive faults; may add to `packages/ui` with a story and a snapshot | §1.6, §10.1, ADR-0007 | all |
 
 ## How to run a bot in Claude Code
 

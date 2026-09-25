@@ -27,7 +27,7 @@
 -- Every gov.uk / provider result here is SYNTHETIC (ADR-0025).
 -- =====================================================================
 begin;
-select plan(104);
+select plan(108);
 \ir _shared/fixtures.psql
 
 \set u1 'c6000000-0000-4000-8000-0000000000a1'
@@ -487,6 +487,27 @@ select set_config('request.jwt.claims', json_build_object('sub', :'u6', 'role', 
 select throws_like($$ select onboarding_reenter_share_code('W60000062', null) $$, '%too_many_attempts%',
   'L: the second is refused (settings.rtw_check.reenter_per_day)');
 reset role;
+
+-- =====================================================================
+-- M · Restated on main's latest bodies (merge of 26.09 main)
+-- =====================================================================
+select is(
+  (select array_agg(attname::text order by attnum) from pg_attribute
+    where attrelid = 'compliance_review_queue_v'::regclass and attnum > 0
+      and attname in ('size_bytes', 'review_reason', 'rtw_check_id', 'rtw_manual_allowed')),
+  array['size_bytes', 'review_reason', 'rtw_check_id', 'rtw_manual_allowed'],
+  'M: the queue keeps 20260927160000''s review_reason where the live view has it, the check columns after');
+select ok(pg_get_viewdef('compliance_review_queue_v'::regclass) like '%rtw_date%',
+  'M: and keeps its rtw_date row');
+savepoint m_held;
+update compliance_docs set retain_until = :'today'::date + 700 where id = :'d4';
+update rtw_checks set report_path = :'w3' || '/share-code-report/rtw-check-held.pdf'
+ where compliance_doc_id = :'d4';
+select ok(:'w3' || '/share-code-report/rtw-check-held.pdf' in (select retained_storage_paths(:'w3')),
+  'M: a held document keeps its checks'' reports out of the prefix purge (retained_storage_paths)');
+rollback to savepoint m_held;
+select ok(pg_get_functiondef('install_job_schedules()'::regprocedure) like '%edge_base_url()%',
+  'M: install_job_schedules still reads the edge base through edge_base_url() (20260927160300)');
 
 -- =====================================================================
 -- J · GDPR removal

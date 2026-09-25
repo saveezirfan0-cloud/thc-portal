@@ -27,7 +27,7 @@
 -- employee_id is left null: candidates have none until they sign (§2.7).
 -- =====================================================================
 begin;
-select plan(90);
+select plan(94);
 
 \set cl        'c3900000-0000-4000-8000-000000000001'
 \set amara     'c3910000-0000-4000-8000-000000000001'
@@ -409,6 +409,10 @@ select is((select count(*)::int from onboarding_progress
   2, 'admin: sees every candidate''s progress');
 select ok((select count(*)::int from quiz_questions where position = 900) = 1,
   'admin: reads and maintains the quiz');
+select lives_ok(
+  $$ insert into contract_versions (version, title, body)
+     values ('rls-probe-2', 'Probe 2', 'You must declare any unspent criminal conviction (§2.11).') $$,
+  'admin: publishes a contract version — the §2.11 duty text is the office''s to maintain');
 reset role;
 
 -- Client: none of it but the contract text.
@@ -416,6 +420,10 @@ set local "request.jwt.claims" = '{"sub":"c3920000-0000-4000-8000-000000000004",
 set local role authenticated;
 select is((select count(*)::int from onboarding_progress), 0, 'client: no onboarding data');
 select is((select count(*)::int from quiz_questions), 0, 'client: no quiz');
+select ok((select count(*)::int from contract_versions) >= 1,
+  'client: reads the contract text — the deliberate any-signed-in-role read (20260923120000), carrying no person and no money');
+with u as (update contract_versions set title = 'x' where version = 'rls-probe' returning 1)
+  select is((select count(*)::int from u), 0, 'client: cannot change it');
 reset role;
 
 -- Anon: nothing.
@@ -423,6 +431,7 @@ set local "request.jwt.claims" = '{"role":"anon"}';
 set local role anon;
 select is((select count(*)::int from onboarding_progress), 0, 'anon: no onboarding data');
 select is((select count(*)::int from contract_versions), 0, 'anon: not even the contract text');
+select is((select count(*)::int from quiz_questions), 0, 'anon: not the answer key, from the public /apply origin or anywhere else (§2.9)');
 reset role;
 
 select ok(

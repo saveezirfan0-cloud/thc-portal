@@ -22,7 +22,7 @@
 -- dashboard.
 -- =====================================================================
 begin;
-select plan(68);
+select plan(74);
 \ir _shared/fixtures.psql
 
 \set r_wait '41000000-0000-4000-8000-000000000001'
@@ -438,6 +438,35 @@ select is((select row(state, payable_min, base)::text from payroll_export_lines 
   'W4''s resolved shift goes out with the following Monday''s run, priced from the manager-entered finish (BG-08)');
 select is((select (r->>'newStarters')::int from run2), 1,
   'W4 is a new starter in the run that first pays them, not the one that held them');
+
+-- =====================================================================
+-- Who reads payroll_export_lines — the record of exactly what money was
+-- sent to finance (§9.9, §11.1). Everything above ran as the owner.
+-- =====================================================================
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select ok((select count(*) from payroll_export_lines) > 0, 'an admin reads the export lines (§9.9)');
+with u as (update payroll_export_lines set base = 0 returning 1)
+  select is((select count(*)::int from u), 0,
+    'but cannot correct one after the fact: BG-08 output is never corrected retroactively — warnings, not edits');
+select throws_ok(
+  $$ insert into payroll_export_lines (report_send_id, booking_id, state, payable_min, base, holiday)
+     select report_send_id, booking_id, state, payable_min, base, holiday from payroll_export_lines limit 1 $$,
+  '42501', null, 'nor insert one: only prepare_finance_reports() on the service role writes them');
+reset role;
+
+select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from payroll_export_lines), 0, 'a worker reads no export lines — every worker''s pay is in them');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from payroll_export_lines), 0, '§11.1 a client reads no export lines — money');
+reset role;
+select set_config('request.jwt.claims', '', true);
+set local role anon;
+select is((select count(*)::int from payroll_export_lines), 0, 'anon reads none');
+reset role;
 
 select * from finish();
 rollback;

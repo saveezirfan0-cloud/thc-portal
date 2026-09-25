@@ -91,15 +91,21 @@ export function ActivatedScreen() {
           Install the app
         </Button>
       ) : null}
-      <Link href={WIZARD_PATH} className={deferred ? 'btn block' : 'btn primary block lg'}>
+      {/* Primary in every branch, as the wireframe draws it (activate.html). */}
+      <Link href={WIZARD_PATH} className="btn primary block lg">
         Open the app
       </Link>
 
       {platform === 'desktop' ? (
-        <p className="sm muted" style={{ margin: 0 }}>
-          On your phone, open <b className="mono">{origin}</b>. One account, one app — no app-store
-          download.
-        </p>
+        <div className="stack">
+          <span className="label">On your phone, open</span>
+          <a className="mono sm" href={`https://${origin}`}>
+            {origin}
+          </a>
+          <p className="xs muted" style={{ margin: 0 }}>
+            Sent to you by email as well (E3). One account, one app — no app-store download.
+          </p>
+        </div>
       ) : null}
 
       {showIos || showAndroid ? (
@@ -135,8 +141,19 @@ export function ActivatedScreen() {
                     Open the link in <b>Chrome</b>
                   </li>
                 ) : null}
+                {/* While this screen holds Chrome's prompt (preventDefault
+                    above), the native sheet is not showing: the step points
+                    at the screen's own button instead. */}
                 <li>
-                  Tap <b>Install</b> in the prompt at the bottom
+                  {deferred ? (
+                    <>
+                      Tap <b>Install the app</b> above
+                    </>
+                  ) : (
+                    <>
+                      Tap <b>Install</b> in the prompt at the bottom
+                    </>
+                  )}
                 </li>
                 <li>
                   No prompt?{' '}

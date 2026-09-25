@@ -107,6 +107,70 @@ test.describe('Shifts (§10.4, §3.5)', () => {
     await expect(page.getByText('self-apply is an extra channel')).toBeVisible();
     await expect(page.locator('.mcard').first()).toContainText('open');
   });
+
+  // The five cards `shiftCard()` resolves — Today · Time changed/Awaiting ·
+  // Needs confirmation · Confirmed (· past, not listed) — are asserted as
+  // vectors in @thc/domain. What the screen owes is one pill per card, the
+  // badge on the segment, and the three-stage copy. Which card Tom's Gala
+  // Dinner is depends on how far away next Friday is, so these assert the
+  // page against itself rather than against a date.
+  test('every booked shift carries exactly one state pill (§3.5, §10.4)', async ({ page }) => {
+    const cards = page.locator('.mcard');
+    const count = await cards.count();
+    expect(count).toBeGreaterThan(0);
+    for (let i = 0; i < count; i += 1) {
+      const head = cards.nth(i).locator('.card-head');
+      await expect(head.getByText(/^(Today|Needs confirmation|Confirmed)$/)).toHaveCount(1);
+      // "Time changed" always travels with "Awaiting" (§3.5).
+      const changed = await head.getByText('Time changed', { exact: true }).count();
+      await expect(head.getByText('Awaiting', { exact: true })).toHaveCount(changed);
+    }
+  });
+
+  test('the My shifts badge counts the cards awaiting the worker, and only those', async ({
+    page,
+  }) => {
+    const awaiting =
+      (await page.getByText('Needs confirmation', { exact: true }).count()) +
+      (await page.getByText('Time changed', { exact: true }).count());
+    const badge = page.getByRole('tab', { name: /My shifts/ }).locator('.n.alert');
+    if (awaiting === 0) {
+      await expect(badge).toHaveCount(0);
+    } else {
+      await expect(badge).toHaveText(`${awaiting}!`);
+    }
+  });
+
+  test('a card awaiting confirmation names the 12:00 deadline and the consequence (§3.5)', async ({
+    page,
+  }) => {
+    const card = page.locator('.mcard.needs', { hasText: 'Needs confirmation' });
+    test.skip((await card.count()) === 0, 'Tom’s shifts are not in the day-before window today.');
+    await expect(card.first()).toContainText('Confirm by');
+    await expect(card.first()).toContainText('12:00');
+    await expect(card.first()).toContainText('(UK time)');
+    await expect(card.first()).toContainText('you’ll be removed from this shift');
+    await expect(
+      card.first().getByRole('button', { name: 'I’m ready for tomorrow' }),
+    ).toBeVisible();
+  });
+
+  test('Cancel is offered only with the 72-hour rule stated beside it (RULE-04, §10.4)', async ({
+    page,
+  }) => {
+    const cancel = page.getByRole('button', { name: 'Cancel shift' });
+    const rows = await cancel.count();
+    // Every Cancel sits next to its deadline; a deadline never appears alone.
+    await expect(
+      page.getByText(/Cancel available until .* \(UK\), 72 h before the start/),
+    ).toHaveCount(rows);
+    test.skip(rows === 0, 'No shift more than 72 hours away today.');
+    await cancel.first().click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog).toContainText('won’t be able to take any shift on this event again');
+    await dialog.getByRole('button', { name: 'Keep my shift' }).click();
+    await expect(dialog).toBeHidden();
+  });
 });
 
 test.describe('Radar (§10.4, RULE-17)', () => {

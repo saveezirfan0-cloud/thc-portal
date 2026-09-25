@@ -111,5 +111,9 @@ for f in "$REPO"/supabase/migrations/*.sql; do
 done
 echo "migrations: $(ls "$REPO"/supabase/migrations/*.sql | wc -l) applied"
 [ -f "$REPO/supabase/seed.sql" ] && { $P -f "$REPO/supabase/seed.sql" >/dev/null 2>"$DIR/err" || { echo "SEED FAILED"; cat "$DIR/err"; exit 1; }; echo "seed: ok"; }
+# Not here: `supabase gen types --db-url` against this cluster. The CLI runs
+# pg-meta in a Docker image even for a plain --db-url, so it fails in the
+# same sandboxes this script exists for. Regenerate types after a deploy,
+# with `pnpm --filter @thc/db gen:types` against the linked project.
 cd "$REPO/supabase/tests"
 if [ -n "${TESTS:-}" ]; then pg_prove --ext .sql $TESTS; else pg_prove -r --ext .sql --ext .pg . ; fi
