@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Button } from '@thc/ui';
+import { Button, Modal } from '@thc/ui';
 import { acceptApplication } from '../actions';
 
 /**
@@ -15,6 +15,11 @@ import { acceptApplication } from '../actions';
  * There is no Decline: the scope ends an application only by N10, by N10c
  * when the role fills without it, by the worker withdrawing it, or by the
  * event being cancelled (ADR-0023).
+ *
+ * The "book them?" question is asked in the design system's Modal, as the
+ * payroll warnings in BookingActions are — never `window.confirm`, which
+ * blocks the page, ignores the theme and cannot be read by a screen
+ * reader as a dialog of this app.
  */
 export function ApplicationActions({
   eventId,
@@ -28,9 +33,10 @@ export function ApplicationActions({
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [asking, setAsking] = useState(false);
 
   const accept = () => {
-    if (!window.confirm(`Book ${name} onto this shift? They are notified at once (N10).`)) return;
+    setAsking(false);
     setError(null);
     setNote(null);
     startTransition(async () => {
@@ -48,9 +54,25 @@ export function ApplicationActions({
         </span>
       ) : null}
       {note ? <span className="muted sm">{note}</span> : null}
-      <Button size="sm" tone="outline" disabled={pending} onClick={accept}>
+      <Button size="sm" tone="outline" disabled={pending} onClick={() => setAsking(true)}>
         {pending ? 'Accepting…' : 'Accept application'}
       </Button>
+
+      <Modal
+        open={asking}
+        title="Accept application"
+        onClose={() => setAsking(false)}
+        footer={
+          <>
+            <Button onClick={() => setAsking(false)}>Cancel</Button>
+            <Button tone="primary" disabled={pending} onClick={accept}>
+              Book {name}
+            </Button>
+          </>
+        }
+      >
+        <p>Book {name} onto this shift? They are notified at once (N10).</p>
+      </Modal>
     </>
   );
 }

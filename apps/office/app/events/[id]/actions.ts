@@ -2,18 +2,10 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
-import {
-  UK_ZONE,
-  acceptApplicationRefusal,
-  cancelEventRefusal,
-  canCancelBooking,
-  displayTime,
-  payrollWarning,
-  type CancelCause,
-} from '@thc/domain';
-import { TEMPLATES, outboxKey } from '@thc/notifications';
+import { acceptApplicationRefusal, cancelEventRefusal, payrollWarning } from '@thc/domain';
+import { adminRefusal } from '../admin';
 import { eventsDb, supabaseConfigured } from '../db';
-import { inviteRefusal } from './board-model';
+import { inviteRefusal, withdrawRefusal } from './board-model';
 
 export type ActionResult = { error: string } | { ok: true; warning?: string };
 
@@ -36,72 +28,33 @@ async function db() {
 
 /**
  * Withdraw removes a worker from the shift (§3.3). An invitation withdrawn
- * and a confirmation withdrawn are the same transition — `cancelled` with a
- * cause — so the slot reopens and auto-assign can top it up (§3.6).
+ * and a confirmation withdrawn are the same transition — `cancelled`,
+ * cause `office_withdraw` — so the slot reopens and auto-assign can top it
+ * up (§3.6).
+ *
+ * One RPC, `withdraw_booking()` (20260930110300). It decides from the row
+ * itself, under the section lock, and queues the push in the same
+ * transaction: N10b for a confirmed worker, N10d for an invitee. This used
+ * to be a direct UPDATE plus a second call keyed on a `wasConfirmed` flag
+ * the page supplied — a stale page withdrew a worker who had just
+ * confirmed without telling them, and a failed second call told nobody
+ * (audit D38).
  */
-export async function withdraw(
-  eventId: string,
-  bookingId: string,
-  wasConfirmed: boolean,
-): Promise<ActionResult> {
+export async function withdraw(eventId: string, bookingId: string): Promise<ActionResult> {
   if (!supabaseConfigured()) return { error: NO_SUPABASE };
   const supabase = await db();
+  const refused = await adminRefusal(supabase);
+  if (refused) return { error: refused };
 
-  // The §8 register renders N10b from `{event}` and `{dateTime}`, so the
-  // values have to be read before the booking is cancelled.
-  const { data: booking } = await supabase
-    .from('bookings')
-    .select('id, staff_id, status, shift_id, shift_requirements(starts_at, events(title))')
-    .eq('id', bookingId)
-    .maybeSingle();
-  if (!booking) return { error: 'That booking no longer exists.' };
-  // §3.6: a worked or turned-away booking has no edge to cancelled, and the
-  // database would refuse the update (bookings_state_guard). Say why.
-  if (!canCancelBooking((booking as { status: string }).status)) {
-    return {
-      error:
-        'This worker has already checked in (or been turned away), so the booking cannot be withdrawn (§3.6).',
-    };
+  const { data, error } = await supabase.rpc('withdraw_booking', { p_booking: bookingId });
+  if (error) {
+    if (/booking_not_found/.test(error.message)) return { error: 'That booking no longer exists.' };
+    return { error: `The worker was not withdrawn: ${error.message}` };
   }
-
-  const shift = (
-    booking as { shift_requirements?: { starts_at?: string; events?: { title?: string } } }
-  ).shift_requirements;
-  const eventTitle = shift?.events?.title ?? 'your shift';
-  const when = shift?.starts_at
-    ? displayTime(new Date(shift.starts_at), 'scheduled', UK_ZONE, true).primary
-    : '';
-
-  const { error } = await supabase
-    .from('bookings')
-    .update({
-      status: 'cancelled',
-      cancelled_at: new Date().toISOString(),
-      // The §3.6 vocabulary (CANCEL_CAUSES, bookings_cancel_cause_check).
-      // This used to write 'withdraw', which nothing read: the Staff App's
-      // "You've been removed from this shift" screen keys on office_withdraw.
-      cancel_cause: 'office_withdraw' satisfies CancelCause,
-    })
-    .eq('id', bookingId);
-  if (error) return { error: error.message };
-
-  // N10b only where there was something to lose: a confirmed worker had the
-  // shift, an invited one merely had the offer.
-  let queueFailed: string | null = null;
-  if (wasConfirmed) {
-    queueFailed = await enqueue(
-      supabase,
-      'N10b',
-      bookingId,
-      (booking as { staff_id: string }).staff_id,
-      { event: eventTitle, dateTime: when },
-    );
-  }
-
+  const result = (data ?? {}) as { ok?: boolean; reason?: string };
   revalidatePath(`/events/${eventId}`);
-  return queueFailed
-    ? { ok: true, warning: `Withdrawn, but the worker could not be notified: ${queueFailed}` }
-    : { ok: true };
+  if (result.ok !== true) return { error: withdrawRefusal(String(result.reason ?? '')) };
+  return { ok: true };
 }
 
 /**
@@ -271,6 +224,10 @@ export async function inviteWorker(
 ): Promise<ActionResult> {
   if (!supabaseConfigured()) return { error: NO_SUPABASE };
   const supabase = await db();
+  // The server-side check in front of the database one (claim 2b): the
+  // action is a public endpoint; office_invite_worker's own check stays.
+  const refused = await adminRefusal(supabase);
+  if (refused) return { error: refused };
 
   const { data, error } = await supabase.rpc('office_invite_worker', {
     p_shift: shiftId,
@@ -358,45 +315,4 @@ export async function setRoleAutoAssign(
   }
   revalidatePath(`/events/${eventId}`);
   return { ok: true };
-}
-
-// ---------------------------------------------------------------------
-
-/**
- * One outbox row, keyed so a repeat press does not queue a second push (§8).
- *
- * `payload` is the VALUES map, not rendered copy. The drain renders from the
- * register itself — `render(entry.title, values)` in
- * `packages/notifications/src/outbox.ts` — and ignores any title or body a
- * row carries. Sending pre-rendered text therefore delivered the literal
- * "Shift time changed — now {window}" to the worker. `queue_booking_push`
- * (20260921141500) has always written values for exactly this reason.
- */
-async function enqueue(
-  supabase: Awaited<ReturnType<typeof db>>,
-  code: 'N10b',
-  bookingId: string,
-  staffId: string,
-  values: Record<string, string>,
-): Promise<string | null> {
-  const template = TEMPLATES[code];
-  if (!template) return null;
-  // Through the RPC, never straight at the table: `notification_outbox`
-  // carries only `admin_read` (001_rls_guard assertion 8), so a direct
-  // insert reaches RLS, finds no INSERT policy and is rejected every time.
-  const { error } = await supabase.rpc('queue_office_notifications', {
-    p_rows: [
-      {
-        key: outboxKey(code, 'booking', bookingId),
-        channel: template.channel,
-        template: code,
-        recipient_staff_id: staffId,
-        payload: { ...values, bookingId },
-      },
-    ],
-  });
-  // supabase-js returns `{ data, error }` and never throws. Not reading it is
-  // how the original defect stayed invisible: the write failed, the action
-  // returned ok, and the manager was told the opposite of what happened.
-  return error ? error.message : null;
 }
