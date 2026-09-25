@@ -33,7 +33,14 @@ const withSerwist = withSerwistInit({
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   transpilePackages: ['@thc/ui', '@thc/domain', '@thc/db', '@thc/notifications'],
-  env: { APP_TZ: process.env.APP_TZ ?? 'Europe/London' },
+  env: {
+    APP_TZ: process.env.APP_TZ ?? 'Europe/London',
+    // ADR-0032: the Staff App has no "Keep me signed in" box, so a device
+    // with no preference keeps @supabase/ssr's own cookie lifetime. Read by
+    // the server and browser Supabase clients (packages/db/src/session.ts);
+    // leaving it out caps workers at the Back Office's 30 days, not worse.
+    THC_AUTH_COOKIE_FALLBACK: 'library',
+  },
 };
 
 export default withSerwist(nextConfig);

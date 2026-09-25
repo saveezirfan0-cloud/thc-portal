@@ -2,7 +2,7 @@ import { createBrowserClient } from '@supabase/ssr';
 import type { CookieOptions } from '@supabase/ssr';
 import { supabaseAnonKey, supabaseUrl } from './env';
 import { withSessionPersistence } from './session';
-import type { CookieToSet } from './session';
+import type { CookieToSet, SessionFallback } from './session';
 import type { Database } from './types.generated';
 
 /**
@@ -14,10 +14,16 @@ import type { Database } from './types.generated';
  * the built-in adapter would write the auth cookies back with a 400-day
  * `Max-Age`, undoing an unticked "Keep me signed in" (ADR-0032). These go
  * through the same `withSessionPersistence` as the server and middleware.
+ *
+ * `fallback` (no preference on the device) defaults to the app's build-time
+ * setting: 30 days in the Back Office, the library's options in the Staff App.
  */
-export function createClient() {
+export function createClient(options: { fallback?: SessionFallback } = {}) {
   return createBrowserClient<Database>(supabaseUrl(), supabaseAnonKey(), {
-    cookies: withSessionPersistence({ getAll: readDocumentCookies, setAll: writeDocumentCookies }),
+    cookies: withSessionPersistence(
+      { getAll: readDocumentCookies, setAll: writeDocumentCookies },
+      { fallback: options.fallback },
+    ),
   });
 }
 

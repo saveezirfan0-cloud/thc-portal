@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import {
   KEEP_SIGNED_IN_FIELD,
+  clearLegacySessionOnlyCookie,
   keepSignedInCookie,
   persistenceFromForm,
   safeNextPath,
@@ -58,6 +59,10 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
   // token refresh, route handlers, the browser client (packages/db/src/session.ts).
   const preference = keepSignedInCookie(persistence);
   cookieStore.set(preference.name, preference.value, preference.options);
+  // LEGACY (remove with LEGACY_SESSION_ONLY_COOKIE): #65's marker, replaced
+  // by the preference above.
+  const legacy = clearLegacySessionOnlyCookie();
+  cookieStore.set(legacy.name, legacy.value, legacy.options);
 
   redirect(next);
 }

@@ -133,7 +133,8 @@ describe('signIn obeys the box', () => {
     const pref = state.jar.get(KEEP_SIGNED_IN_COOKIE);
     expect(pref?.value).toBe('0');
     expect(pref?.options).not.toHaveProperty('maxAge');
-    expect(pref?.options).toMatchObject({ sameSite: 'lax', secure: true, path: '/' });
+    // Secure in production only, so plain-http `next dev` keeps it (vitest is NODE_ENV=test).
+    expect(pref?.options).toMatchObject({ sameSite: 'lax', secure: false, path: '/' });
   });
 });
 
@@ -145,9 +146,13 @@ describe('middleware token refresh keeps the choice', () => {
   };
 
   async function refreshWith(pref: string) {
+    return refreshWithCookies(`${KEEP_SIGNED_IN_COOKIE}=${pref}; sb-abc-auth-token=base64-old`);
+  }
+
+  async function refreshWithCookies(cookie: string) {
     state.refreshWrites = [refreshed];
     const request = new NextRequest('http://127.0.0.1:3000/dashboard', {
-      headers: { cookie: `${KEEP_SIGNED_IN_COOKIE}=${pref}; sb-abc-auth-token=base64-old` },
+      headers: { cookie },
     });
     const response = await middleware(request);
     return response.headers.get('set-cookie') ?? '';
@@ -162,6 +167,13 @@ describe('middleware token refresh keeps the choice', () => {
   it('ticked: the refreshed cookie gets a fresh 30 days', async () => {
     const header = await refreshWith('1');
     expect(header).toContain(`Max-Age=${KEEP_SIGNED_IN_MAX_AGE}`);
+  });
+
+  it('no preference on the device (a session from before ADR-0032): 30 days, never the 400', async () => {
+    const header = await refreshWithCookies('sb-abc-auth-token=base64-old');
+    expect(header).toContain('sb-abc-auth-token=base64-fresh');
+    expect(header).toContain(`Max-Age=${KEEP_SIGNED_IN_MAX_AGE}`);
+    expect(header).not.toContain(`Max-Age=${400 * 24 * 60 * 60}`);
   });
 });
 

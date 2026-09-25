@@ -56,8 +56,9 @@ Nothing is lost; it all sends once the keys exist.
 - [x] 25.09: every Edge Function deployed to the live project (booking-tick,
       compliance-daily, gdpr-purge, auto-staffing, finance-reports, notify-drain
       with JWT verification; willo-webhook without, it checks Willo's signature
-      and answers 503 until `WILLO_WEBHOOK_SECRET` exists). Redeploy one after
-      changing it with `supabase functions deploy <name>`.
+      and answers 503 until `WILLO_WEBHOOK_SECRET` exists). CI's
+      `deploy-database` job redeploys all seven on every push to `main` (#63),
+      so they stay in step with the code.
 - [x] 25.09: `settings.edge_base_url` set to
       `https://dgxtqvalfiisfpbwodew.supabase.co/functions/v1` (the guard accepts it).
 - [ ] SQL editor: add the **service role key** to the Vault, which a session

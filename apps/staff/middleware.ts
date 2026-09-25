@@ -92,17 +92,21 @@ export async function middleware(request: NextRequest) {
   }
 
   // The token refresh below rewrites the auth cookies. They keep the
-  // lifetime this device chose at sign-in ("Keep me signed in", ADR-0032):
-  // without the wrapper every refresh would make them persistent again.
+  // lifetime this device chose at sign-in ("Keep me signed in", ADR-0032).
+  // The Staff App has no box, so there is no choice to keep: `fallback: null`
+  // passes the library's options through and a worker stays signed in.
   const supabase = createServerClient(url, anonKey, {
-    cookies: withSessionPersistence({
-      getAll: () => request.cookies.getAll(),
-      setAll: (toSet) => {
-        for (const { name, value } of toSet) request.cookies.set(name, value);
-        response = NextResponse.next({ request });
-        for (const { name, value, options } of toSet) response.cookies.set(name, value, options);
+    cookies: withSessionPersistence(
+      {
+        getAll: () => request.cookies.getAll(),
+        setAll: (toSet) => {
+          for (const { name, value } of toSet) request.cookies.set(name, value);
+          response = NextResponse.next({ request });
+          for (const { name, value, options } of toSet) response.cookies.set(name, value, options);
+        },
       },
-    }),
+      { fallback: null },
+    ),
   });
 
   const {

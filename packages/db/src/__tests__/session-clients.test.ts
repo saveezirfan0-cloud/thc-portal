@@ -1,5 +1,9 @@
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { KEEP_SIGNED_IN_COOKIE, KEEP_SIGNED_IN_MAX_AGE } from '../session';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  KEEP_SIGNED_IN_COOKIE,
+  KEEP_SIGNED_IN_MAX_AGE,
+  LEGACY_SESSION_ONLY_COOKIE,
+} from '../session';
 import type { CookieToSet } from '../session';
 
 /**
@@ -51,6 +55,11 @@ afterAll(() => {
   process.env = saved;
   vi.unstubAllGlobals();
 });
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
+
+const LIBRARY_MAX_AGE = 400 * 24 * 60 * 60;
 
 describe('server client (server actions, route handlers such as /auth/callback)', () => {
   function jar(pref: string | null) {
@@ -74,6 +83,38 @@ describe('server client (server actions, route handlers such as /auth/callback)'
   it('ticked device: a refresh writes the 30-day Max-Age', () => {
     const { store, set } = jar('1');
     createServer(store);
+    (captured.server as Methods).setAll(refresh());
+    expect(set.mock.calls[0]?.[2]).toMatchObject({ maxAge: KEEP_SIGNED_IN_MAX_AGE });
+  });
+
+  it('no preference (/auth/callback on a fresh device, a pre-ADR session), Back Office / Client Portal: 30 days', () => {
+    vi.stubEnv('THC_AUTH_COOKIE_FALLBACK', '');
+    const { store, set } = jar(null);
+    createServer(store);
+    (captured.server as Methods).setAll(refresh());
+    expect(set.mock.calls[0]?.[2]).toMatchObject({ maxAge: KEEP_SIGNED_IN_MAX_AGE });
+  });
+
+  it('no preference, Staff App (THC_AUTH_COOKIE_FALLBACK=library): unchanged, the library 400 days', () => {
+    vi.stubEnv('THC_AUTH_COOKIE_FALLBACK', 'library');
+    const { store, set } = jar(null);
+    createServer(store);
+    (captured.server as Methods).setAll(refresh());
+    expect(set.mock.calls[0]?.[2]).toMatchObject({ maxAge: LIBRARY_MAX_AGE });
+  });
+
+  it("#65's legacy marker: a session cookie", () => {
+    const set = vi.fn();
+    createServer({ getAll: () => [{ name: LEGACY_SESSION_ONLY_COOKIE, value: '1' }], set });
+    (captured.server as Methods).setAll(refresh());
+    expect(set.mock.calls[0]?.[2]).not.toHaveProperty('maxAge');
+    expect(set.mock.calls[0]?.[2]).not.toHaveProperty('expires');
+  });
+
+  it('an explicit fallback beats the app setting', () => {
+    vi.stubEnv('THC_AUTH_COOKIE_FALLBACK', 'library');
+    const { store, set } = jar(null);
+    createServer(store, { fallback: 'persistent' });
     (captured.server as Methods).setAll(refresh());
     expect(set.mock.calls[0]?.[2]).toMatchObject({ maxAge: KEEP_SIGNED_IN_MAX_AGE });
   });
@@ -119,6 +160,21 @@ describe('browser client (a long-open page refreshing its own token)', () => {
     createBrowser();
     (captured.browser as Methods).setAll(refresh());
     expect(written[0]).toContain(`Max-Age=${KEEP_SIGNED_IN_MAX_AGE}`);
+  });
+
+  it('no preference, Back Office (the check-in monitor): 30 days', () => {
+    vi.stubEnv('THC_AUTH_COOKIE_FALLBACK', '');
+    cookieHeader = 'sb-abc-auth-token=base64-old';
+    createBrowser();
+    (captured.browser as Methods).setAll(refresh());
+    expect(written[0]).toContain(`Max-Age=${KEEP_SIGNED_IN_MAX_AGE}`);
+  });
+
+  it('no preference, Staff App (THC_AUTH_COOKIE_FALLBACK=library): unchanged', () => {
+    vi.stubEnv('THC_AUTH_COOKIE_FALLBACK', 'library');
+    createBrowser();
+    (captured.browser as Methods).setAll(refresh());
+    expect(written[0]).toContain(`Max-Age=${LIBRARY_MAX_AGE}`);
   });
 
   it('reads document.cookie the way the library adapter does', () => {

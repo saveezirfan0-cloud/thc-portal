@@ -5,7 +5,7 @@ import 'server-only';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAnonKey, supabaseUrl } from './env';
 import { withSessionPersistence } from './session';
-import type { SessionPersistence } from './session';
+import type { SessionFallback, SessionPersistence } from './session';
 import type { Database } from './types.generated';
 
 export interface CookieStore {
@@ -21,6 +21,13 @@ export interface CreateClientOptions {
    * choice (`thc-keep-signed-in`) is read from the cookies.
    */
   persistence?: SessionPersistence;
+  /**
+   * No preference on the device (an invite or reset link on a fresh device at
+   * /auth/callback, a session from before ADR-0032). Left out, the app's
+   * build-time default: 30 days in the Back Office and Client Portal, the
+   * library's options in the Staff App (`defaultSessionFallback`).
+   */
+  fallback?: SessionFallback;
 }
 
 /**
@@ -46,7 +53,7 @@ export function createClient(cookies: CookieStore, options: CreateClientOptions 
           }
         },
       },
-      options.persistence,
+      { persistence: options.persistence, fallback: options.fallback },
     ),
   });
 }

@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { NextRequest } from 'next/server';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
-import { KEEP_SIGNED_IN_COOKIE, KEEP_SIGNED_IN_MAX_AGE } from '@thc/db';
+import { KEEP_SIGNED_IN_COOKIE, KEEP_SIGNED_IN_MAX_AGE, LEGACY_SESSION_ONLY_COOKIE } from '@thc/db';
 
 /**
  * "Keep me signed in on this device" on the Client Portal sign-in
@@ -127,13 +127,23 @@ describe('signIn obeys the box', () => {
     expect(state.jar.get(KEEP_SIGNED_IN_COOKIE)?.value).toBe('1');
   });
 
+  it("replaces #65's legacy marker: the sign-in deletes it", async () => {
+    state.jar.set(LEGACY_SESSION_ONLY_COOKIE, { value: '1' });
+    expect(await submit(true)).toBe('REDIRECT:/client');
+    expect(state.jar.get(LEGACY_SESSION_ONLY_COOKIE)).toMatchObject({
+      value: '',
+      options: { maxAge: 0, path: '/' },
+    });
+  });
+
   it('unticked: session cookies, and the preference is a session cookie too', async () => {
     expect(await submit(false)).toBe('REDIRECT:/client');
     expect(state.createClientOptions).toEqual([{ persistence: 'session' }]);
     const pref = state.jar.get(KEEP_SIGNED_IN_COOKIE);
     expect(pref?.value).toBe('0');
     expect(pref?.options).not.toHaveProperty('maxAge');
-    expect(pref?.options).toMatchObject({ sameSite: 'lax', secure: true, path: '/' });
+    // Secure in production only, so plain-http `next dev` keeps it (vitest is NODE_ENV=test).
+    expect(pref?.options).toMatchObject({ sameSite: 'lax', secure: false, path: '/' });
   });
 });
 
@@ -145,9 +155,13 @@ describe('middleware token refresh keeps the choice', () => {
   };
 
   async function refreshWith(pref: string) {
+    return refreshWithCookies(`${KEEP_SIGNED_IN_COOKIE}=${pref}; sb-abc-auth-token=base64-old`);
+  }
+
+  async function refreshWithCookies(cookie: string) {
     state.refreshWrites = [refreshed];
     const request = new NextRequest('http://127.0.0.1:3002/client', {
-      headers: { cookie: `${KEEP_SIGNED_IN_COOKIE}=${pref}; sb-abc-auth-token=base64-old` },
+      headers: { cookie },
     });
     const response = await middleware(request);
     return response.headers.get('set-cookie') ?? '';
@@ -163,6 +177,28 @@ describe('middleware token refresh keeps the choice', () => {
     const header = await refreshWith('1');
     expect(header).toContain(`Max-Age=${KEEP_SIGNED_IN_MAX_AGE}`);
   });
+
+  it('no preference on the device (a session from before ADR-0032): 30 days, never the 400', async () => {
+    const header = await refreshWithCookies('sb-abc-auth-token=base64-old');
+    expect(header).toContain('sb-abc-auth-token=base64-fresh');
+    expect(header).toContain(`Max-Age=${KEEP_SIGNED_IN_MAX_AGE}`);
+    expect(header).not.toContain(`Max-Age=${400 * 24 * 60 * 60}`);
+  });
+
+  it("#65's legacy marker (an unticked sign-in from before the deploy) stays a session cookie", async () => {
+    const header = await refreshWithCookies(
+      `${LEGACY_SESSION_ONLY_COOKIE}=1; sb-abc-auth-token=base64-old`,
+    );
+    expect(header).toContain('sb-abc-auth-token=base64-fresh');
+    expect(header).not.toMatch(/Max-Age|Expires/i);
+  });
+
+  it('the new preference outranks the legacy marker', async () => {
+    const header = await refreshWithCookies(
+      `${KEEP_SIGNED_IN_COOKIE}=1; ${LEGACY_SESSION_ONLY_COOKIE}=1; sb-abc-auth-token=base64-old`,
+    );
+    expect(header).toContain(`Max-Age=${KEEP_SIGNED_IN_MAX_AGE}`);
+  });
 });
 
 describe('sign-out', () => {
@@ -172,5 +208,14 @@ describe('sign-out', () => {
     const pref = state.jar.get(KEEP_SIGNED_IN_COOKIE);
     expect(pref?.value).toBe('');
     expect(pref?.options).toMatchObject({ maxAge: 0, path: '/' });
+  });
+
+  it("clears #65's legacy marker too", async () => {
+    state.jar.set(LEGACY_SESSION_ONLY_COOKIE, { value: '1' });
+    await signOut(new Request('http://127.0.0.1:3002/auth/signout', { method: 'POST' }));
+    expect(state.jar.get(LEGACY_SESSION_ONLY_COOKIE)).toMatchObject({
+      value: '',
+      options: { maxAge: 0, path: '/' },
+    });
   });
 });
