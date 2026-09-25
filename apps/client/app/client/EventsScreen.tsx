@@ -14,7 +14,14 @@ import {
 } from '@thc/ui';
 import { EventWindow } from './EventWindow';
 import { ukDateShort } from './format';
-import { byDateDescending, documentOffer, fillOf, filterByTab, statusTone } from './rules';
+import {
+  byDateDescending,
+  documentOffer,
+  eventsPanelTitle,
+  fillOf,
+  filterByTab,
+  statusTone,
+} from './rules';
 import type {
   DocumentKind,
   DocumentOffer,
@@ -56,6 +63,7 @@ export function EventsScreen({
   lineup,
   photos,
   documents = {},
+  company = null,
   now,
 }: {
   events: PortalEvent[];
@@ -64,6 +72,8 @@ export function EventsScreen({
   photos: Record<string, string>;
   /** Which §11.3 PDFs the office has issued, per event (`client_event_documents_v`). */
   documents?: Record<string, DocumentKind[]>;
+  /** The caller's own company (`client_company_v`): "Events · <client>". */
+  company?: string | null;
   /** Fixed on the server so the first paint cannot disagree with hydration. */
   now: string;
 }) {
@@ -101,7 +111,9 @@ export function EventsScreen({
       <div className="page-head">
         <div>
           <h1>Your events</h1>
-          <div className="desc">Confirmed line-ups and timesheets · read-only</div>
+          <div className="desc">
+            Confirmed line-ups and timesheets{company ? ` for ${company}` : ''} · read-only
+          </div>
         </div>
         <div className="actions">
           <SegToggle
@@ -124,7 +136,12 @@ export function EventsScreen({
 
       <Panel
         className="events-panel"
-        title="Events"
+        title={
+          <>
+            {eventsPanelTitle(company)}{' '}
+            <span className="muted sm">only your events · newest first</span>
+          </>
+        }
         actions={<Pill>{rows.length === 1 ? '1 event' : `${rows.length} events`}</Pill>}
         flush
       >
