@@ -30,6 +30,14 @@ export interface StaffProfile {
   /** Show-rate, as a percentage. */
   reliability: number | null;
   quizAttempts: number;
+  /**
+   * Why a `rejected` row is rejected — `staff.rejection_cause`. The reason
+   * itself stays internal (20260923220000); the cause picks the screen:
+   * only `quiz_failed` carries E4's wording (§10.1 case 3). Null until
+   * `staff_me()` exposes the column, when `appLock` falls back to counting
+   * attempts. Optional so a profile built elsewhere need not carry it.
+   */
+  rejectionCause?: 'willo' | 'manager' | 'quiz_failed' | null;
   roles: string[];
   /** `compliance_blockers()` reasons, e.g. `document_expired:passport`. */
   blockers: string[];

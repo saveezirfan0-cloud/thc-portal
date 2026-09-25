@@ -32,15 +32,33 @@
   margin: 0;
 }
 
-/* Native select with the wireframe's caret. Drawn as a background mark so it
-   needs no wrapper element and cannot drift out of position. */
+/* Native select with the wireframe's caret, drawn exactly as apply.html
+   draws it: a `.caret` wrapper whose ::after is a ▾ in `--muted`, so it
+   follows the theme like every other mark. (A caret baked into a
+   data-URL SVG carried a hex colour the token grep could not see.) */
 .apply-page select.input {
   appearance: none;
   -webkit-appearance: none;
-  padding-right: 28px;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' fill='none' stroke='%238aa0b8' stroke-width='1.5' stroke-linecap='round'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 11px center;
+  padding-right: var(--sp-28);
+}
+.apply-page .caret {
+  position: relative;
+}
+.apply-page .caret::after {
+  content: '▾';
+  position: absolute;
+  right: var(--sp-12);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+/* The public card draws no appearance switch in any state (apply.html);
+   the shared AuthCard carries one for sign-in (ADR-0007), so it is hidden
+   here and /apply/submitted, which never had it, agrees. */
+.apply-page .auth-card .appearance {
+  display: none;
 }
 
 /* The consent tick (§1.7) is the shared `Checkbox` from packages/ui (D1).
@@ -115,5 +133,16 @@
 @media (max-width: 480px) {
   .apply-page .grid.c2 {
     grid-template-columns: 1fr;
+  }
+
+  /* "The submit button is full-width and sticky-bottom in product"
+     (apply.html, 390px): the fields scroll under it on the card's own
+     ground, so the disabled state still reads against the panel. */
+  .apply-page .apply-submit {
+    position: sticky;
+    bottom: 0;
+    z-index: 1;
+    padding: var(--sp-8) 0 max(var(--sp-8), env(safe-area-inset-bottom));
+    background: var(--panel);
   }
 }

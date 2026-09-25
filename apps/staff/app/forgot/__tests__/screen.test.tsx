@@ -53,7 +53,9 @@ describe('A1 Forgot password (wireframes/staff/auth.html)', () => {
     expect(back).toBeGreaterThan(-1);
     expect(back).toBeLessThan(copy);
     expect(copy).toBeLessThan(smallPrint);
-    expect(markup).toMatch(/<a href="\/login" class="sm" style="[^"]*min-height:var\(--tap-min\)/);
+    // Its 44px hit area comes from app/login/auth-tap.css (`.auth-card .row > a`),
+    // not an inline style, so the link keeps the wireframe's `sm` look.
+    expect(markup).toMatch(/<div class="row"><a href="\/login" class="sm">/);
   });
 
   it('says the link is valid for the project OTP expiry, and names the §9.12 sender', () => {

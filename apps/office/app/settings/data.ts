@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { TEMPLATES } from '@thc/notifications';
 import { readWeights } from './validate';
 import type { SettingsData, Senders, VenueTypeRadius, WilloStageMap } from './types';
 
@@ -33,20 +34,22 @@ const DEFAULT_SENDERS: Senders = {
   admin: 'admin@thehospitalitycompany.co.uk',
 };
 
-const DEFAULT_PAYROLL = [
-  'gisela@thehospitalitycompany.co.uk',
-  'thc_payroll@topsourceworldwide.com',
-];
-
 const NOT_CONFIGURED =
   'This environment has no Supabase project, so system settings cannot be read. See docs/04-setup-github-vercel-supabase.md.';
+
+/** E5/E6 go to payroll and Gisela, E7 to admin@ and payroll (§8) — from the register itself. */
+const RECIPIENTS = {
+  e5e6: [...(TEMPLATES.E5.recipients ?? [])],
+  e7: [...(TEMPLATES.E7.recipients ?? [])],
+};
 
 export async function loadSettings(): Promise<SettingsData> {
   const empty: SettingsData = {
     weights: readWeights(null),
     willo: DEFAULT_WILLO,
+    willoReviewUrlTemplate: null,
     senders: DEFAULT_SENDERS,
-    payrollRecipients: DEFAULT_PAYROLL,
+    recipients: RECIPIENTS,
     bookedElsewhereGapMinutes: 120,
     escalationRadiusMiles: 3,
     venueTypes: [],
@@ -85,10 +88,14 @@ export async function loadSettings(): Promise<SettingsData> {
   return {
     weights: readWeights(byKey.get('scoring_weights')),
     willo: object('willo_stage_map', DEFAULT_WILLO),
+    // The view substitutes only a JSON string (jsonb_typeof = 'string'), so
+    // anything else — the seeded JSON null, a missing row — is "not set".
+    willoReviewUrlTemplate:
+      typeof byKey.get('willo_review_url_template') === 'string'
+        ? (byKey.get('willo_review_url_template') as string)
+        : null,
     senders: object('senders', DEFAULT_SENDERS),
-    payrollRecipients: Array.isArray(byKey.get('payroll_recipients'))
-      ? (byKey.get('payroll_recipients') as string[])
-      : DEFAULT_PAYROLL,
+    recipients: RECIPIENTS,
     bookedElsewhereGapMinutes: number('booked_elsewhere_gap_minutes', 120),
     escalationRadiusMiles: number('escalation_radius_miles', 3),
     venueTypes: venueTypes.data ?? [],

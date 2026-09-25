@@ -161,7 +161,7 @@ select bag_eq(
 --    The public application migration added none either: `applications` is admin-only, and a customer
 --    has no business in the onboarding pipeline at all.
 -- ---------------------------------------------------------------------
---    20260926130000 (ADR-0026) dropped the last two — client_events on
+--    20260927160100 (ADR-0026) dropped the last two — client_events on
 --    events read the Auto Invite toggle and the buffer-charging term
 --    (§11.2, §9.7), client_feedback_insert skipped submit_client_feedback's
 --    "started" and "confirmed line-up" gates — so the set is now EMPTY:
@@ -173,9 +173,9 @@ select is_empty(
 );
 
 -- 5a. docs/14 §4: public.rls_auto_enable() existed on the live project
---     and in no migration; 20260926130900 drops it wherever it is found.
+--     and in no migration; 20260927161000 drops it wherever it is found.
 select hasnt_function('public', 'rls_auto_enable',
-  'no unowned rls_auto_enable() definer exists (20260926130900 drops the live-only one)');
+  'no unowned rls_auto_enable() definer exists (20260927161000 drops the live-only one)');
 
 -- ---------------------------------------------------------------------
 -- 5b. The same rule, read from the PREDICATE instead of the name.

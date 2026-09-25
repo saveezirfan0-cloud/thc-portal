@@ -4,6 +4,7 @@ import { AuthCard } from '@thc/ui';
 import { RESET_LINK_VALIDITY, SENT_TO_COOKIE } from '../copy';
 import { ResendButton } from './ResendButton';
 import { mailAppHref } from './resend';
+import '../../login/auth-tap.css';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Check your inbox · THC Staff' };
@@ -31,7 +32,7 @@ export default async function Page() {
   const mailApp = mailAppHref((await headers()).get('user-agent'));
 
   return (
-    <AuthCard product="Staff" heading="Check your inbox">
+    <AuthCard product="Staff app" heading="Check your inbox">
       <p className="sm muted">
         If <b className="cyan">{to}</b> is registered, we’ve sent a link to set a new password. It
         expires in {RESET_LINK_VALIDITY}.

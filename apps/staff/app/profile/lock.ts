@@ -49,14 +49,22 @@ const ONBOARDING: ReadonlySet<string> = new Set([
 ]);
 
 export function appLock(
-  profile: Pick<StaffProfile, 'status' | 'blockKind' | 'quizAttempts' | 'blockers'>,
+  profile: Pick<
+    StaffProfile,
+    'status' | 'blockKind' | 'quizAttempts' | 'blockers' | 'rejectionCause'
+  >,
 ): AppLock {
   if (profile.status === 'removed') return 'removed';
   if (profile.status === 'inactive') return 'leaver';
 
   if (profile.status === 'rejected') {
     // §2.9's rejection and a manager's rejection are the same status but
-    // not the same screen: only the quiz one carries E4's copy.
+    // not the same screen: only the quiz one carries E4's copy. The cause
+    // the database stamped decides; the attempt count is the fallback for
+    // a `staff_me()` that does not expose it yet — and it is wrong for the
+    // candidate who passed on the third attempt and was rejected later.
+    if (profile.rejectionCause)
+      return profile.rejectionCause === 'quiz_failed' ? 'quiz_failed' : 'rejected';
     return profile.quizAttempts >= QUIZ_MAX_ATTEMPTS ? 'quiz_failed' : 'rejected';
   }
 

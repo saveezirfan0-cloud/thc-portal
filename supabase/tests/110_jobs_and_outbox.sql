@@ -200,7 +200,7 @@ select is(
 -- RLS, so the role has to be switched for these four to mean anything.
 -- ---------------------------------------------------------------------
 -- §1.7: the Storage half of removal is a queue drained by a job, and until
--- 20260926130300 no schedule named that job — every removed worker's
+-- 20260927160400 no schedule named that job — every removed worker's
 -- passport scan and selfie stayed in Storage for ever.
 select is((select cron_expression || ' ' || edge_path from job_schedules where job = 'gdpr-purge' and enabled),
   '*/5 * * * * gdpr-purge',

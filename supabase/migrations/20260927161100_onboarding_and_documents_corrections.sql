@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260926131000 · five corrections on the worker's own
+-- Migration 20260927161100 · five corrections on the worker's own
 --                            writes (§2.6, §2.10, §8 E6/N15, §10.4,
 --                            §10.7, §4.3; security brief Invariant 4)
 --

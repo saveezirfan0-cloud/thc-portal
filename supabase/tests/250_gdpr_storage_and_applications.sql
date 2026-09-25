@@ -67,7 +67,7 @@ select bag_eq(
             ('documents/documents/95101/gov-report.pdf'),
             ('photos/photos/95101/selfie.jpg') $$,
   'named individually, with their bucket — a path this function does not capture is one nothing can ever find again');
--- …and, since 20260926130300, the worker's two FOLDERS as prefixes: an
+-- …and, since 20260927160400, the worker's two FOLDERS as prefixes: an
 -- object that reached a bucket without a row (an upload whose finish…()
 -- never ran, a selfie whose staff_set_photo() raised) is erased by the
 -- prefix sweep, which nothing named could have found.

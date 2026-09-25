@@ -42,6 +42,12 @@ export async function StaffShell({
    * says. The NAVIGATION still reflects it.
    */
   ignoreLock,
+  /**
+   * The push-health banner above the content. /notifications turns it off:
+   * its whole body IS that message, and a banner saying "Show me how" would
+   * point at the page it is on (wireframes/staff/auth.html, pre-prompt).
+   */
+  pushStatus = true,
   children,
 }: {
   title: ReactNode;
@@ -51,6 +57,7 @@ export async function StaffShell({
   invites?: number;
   below?: ReactNode;
   ignoreLock?: boolean;
+  pushStatus?: boolean;
   children: ReactNode;
 }) {
   const profile = await loadProfile();
@@ -87,7 +94,7 @@ export async function StaffShell({
       <AppBody className={open ? undefined : 'center'}>
         {open ? (
           <>
-            <PushStatus />
+            {pushStatus ? <PushStatus /> : null}
             {children}
           </>
         ) : (

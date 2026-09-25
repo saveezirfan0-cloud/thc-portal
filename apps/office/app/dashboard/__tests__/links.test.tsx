@@ -42,3 +42,14 @@ describe('dashboard links (§9.1)', () => {
     expect(html).toMatch(/<a[^>]*href="\/reports"[^>]*>Full report →<\/a>/);
   });
 });
+
+describe('dashboard tiles and copy (§9.1, dashboard.html)', () => {
+  it('draws Open positions as the accent tile with the wireframe sublines', async () => {
+    const html = renderToStaticMarkup(await Page());
+    expect(html).toMatch(/class="kpi accent"[\s\S]*?Open positions/);
+    expect(html).toContain('Sold but not staffed — all events, any date');
+    expect(html).toContain('Checked in and on site this minute');
+    expect(html).toContain('Compliant workers, not booked or blocked');
+    expect(html).toContain('Event window = earliest role start → latest role end (RULE-18)');
+  });
+});

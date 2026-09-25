@@ -227,7 +227,7 @@ select is((unblock_worker(:'declar', date '2026-09-21'))->>'blockers', '["convic
   'and a PENDING declaration still refuses the unblock — §4.3''s rule is about a declaration nobody has decided yet');
 
 -- ---------------------------------------------------------------------
--- §2.12 on the ROW, for the stopped states (20260926130800). The RPCs
+-- §2.12 on the ROW, for the stopped states (20260927160900). The RPCs
 -- always asserted; a plain update did not, so inactive → compliant,
 -- removed → compliant and removed → blocked went through unasserted.
 -- "There is no 'reactivate' that puts a leaver straight back to

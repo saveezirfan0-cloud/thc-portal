@@ -56,10 +56,11 @@ import './design-system.css';
  * The live design system. This route is the acceptance reference for
  * `packages/ui`: if something looks wrong here it is wrong everywhere.
  *
- * It is derived from the four boards in `design-handoff/`. Light renders the
- * softened v2 look on the warm ground; dark renders the scope §1.6 look
- * (ADR-0003, settled by ADR-0007). Every element below reads tokens only — no page in this repo may
- * hard-code a colour or a radius.
+ * It is derived from the four boards in `design-handoff/`. Light and dark
+ * both render the rounded look — light on the warm ground, dark on navy
+ * (ADR-0007). The §1.6 literal rendering is `data-style="scope"`, set by
+ * hand, never by the switch. Every element below reads tokens only — no
+ * page in this repo may hard-code a colour or a radius.
  */
 const TONES = ['cyan', 'green', 'amber', 'coral', 'purple'] as const;
 
@@ -277,16 +278,20 @@ export default function Page() {
           <hr />
           <span className="label">In use</span>
           <div className="toolbar mt-8">
-            <Pill tone="green">12 of 12 (+2)</Pill>
-            <Pill tone="amber">3 of 5 (+1)</Pill>
-            <Pill tone="coral">9 of 18 (+3)</Pill>
-            <Pill tone="cyan">Upcoming</Pill>
-            <Pill tone="coral" solid>
-              No show
+            {/* design-system.html:97 — the fill counts are the solid ones,
+                statuses stay tinted (docs/07 vocabulary). */}
+            <Pill tone="green" solid>
+              12 of 12 (+2)
             </Pill>
             <Pill tone="amber" solid>
-              Needs confirmation
+              3 of 5 (+1)
             </Pill>
+            <Pill tone="coral" solid>
+              9 of 18 (+3)
+            </Pill>
+            <Pill tone="cyan">Upcoming</Pill>
+            <Pill tone="coral">No show</Pill>
+            <Pill tone="amber">Needs confirmation</Pill>
           </div>
           <hr />
           <div className="toolbar">
@@ -336,8 +341,8 @@ export default function Page() {
             <KpiTile
               label="Open positions"
               value="47"
-              description="Across all events · sold, not staffed"
-              tone="warn"
+              description="Sold but not staffed — all events, any date"
+              tone="accent"
             />
             <KpiTile
               label="On shift now"
@@ -362,7 +367,8 @@ export default function Page() {
             <table className="tbl">
               <thead>
                 <tr>
-                  <th>Date · window</th>
+                  <th>Date</th>
+                  <th>Window</th>
                   <th>Client</th>
                   <th>Role</th>
                   <th>Fill</th>
@@ -374,7 +380,13 @@ export default function Page() {
                 <tr className="clickable">
                   <td>
                     <b>Tue 22 Sep</b>
-                    <span className="sub">17:00 – 23:30</span>
+                  </td>
+                  {/* §1.8: a scheduled window is never a single unlabelled clock —
+                      the UK line, then "your time" when the reader's zone differs
+                      (design-system.html §7). */}
+                  <td className="mono sm">
+                    17:00 – 23:30<span className="sub">UK time</span>19:00 – 01:30
+                    <span className="sub">your time</span>
                   </td>
                   <td>Mandarin Oriental</td>
                   <td>Waiting Staff</td>

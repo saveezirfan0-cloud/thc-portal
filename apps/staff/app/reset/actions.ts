@@ -43,9 +43,13 @@ export async function setPassword(
   if (error) {
     console.error('[reset] update failed', { status: error.status, message: error.message });
     // Supabase rejects a password it has seen in a breach corpus when leaked
-    // password protection is on; that reason IS useful to the worker.
-    return error.message.toLowerCase().includes('weak') ||
-      error.message.toLowerCase().includes('pwned')
+    // password protection is on, and one identical to the current password
+    // (`same_password`); both reasons ARE useful to the worker.
+    const text = error.message.toLowerCase();
+    if (error.code === 'same_password' || text.includes('different from the old')) {
+      return 'That is the password you use now. Choose a different one.';
+    }
+    return text.includes('weak') || text.includes('pwned')
       ? 'That password has appeared in a known data breach. Choose a different one.'
       : 'We could not set that password. Try again, or ask for a new link.';
   }

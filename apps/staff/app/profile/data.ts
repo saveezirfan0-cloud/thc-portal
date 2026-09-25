@@ -44,6 +44,7 @@ export async function loadProfile(): Promise<StaffProfile | null> {
     rating: row['rating'] === null ? null : Number(row['rating']),
     reliability: row['reliability'] === null ? null : Number(row['reliability']),
     quizAttempts: Number(row['quizAttempts'] ?? 0),
+    rejectionCause: rejectionCause(row['rejectionCause']),
     roles: (row['roles'] as string[]) ?? [],
     blockers: (row['blockers'] as string[]) ?? [],
     checkedIn: Boolean(row['checkedIn']),
@@ -117,4 +118,9 @@ export async function loadEarnings(): Promise<EarningsRow[]> {
       basePence: payableMin === null ? null : basePenceFor(payableMin, payRate),
     };
   });
+}
+
+/** `staff.rejection_cause`, or null for anything `staff_me()` does not say. */
+function rejectionCause(value: unknown): StaffProfile['rejectionCause'] {
+  return value === 'willo' || value === 'manager' || value === 'quiz_failed' ? value : null;
 }

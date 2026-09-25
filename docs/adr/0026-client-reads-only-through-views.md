@@ -23,7 +23,7 @@ Status: accepted · 26.09.2026 · amends ADR-0004's "today `events` and `feedbac
 
 ## Decision
 
-1. **No table carries a client policy.** 20260926130000 drops `client_events`
+1. **No table carries a client policy.** 20260927160100 drops `client_events`
    and `client_feedback_insert`. Every client read is a `client_*` view; the one
    client write is `submit_client_feedback()`. `001_rls_guard` assertion 5 now
    pins the empty set, and `020_rls_client` asserts the events row is

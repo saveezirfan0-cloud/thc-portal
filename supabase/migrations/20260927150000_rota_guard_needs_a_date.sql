@@ -9,7 +9,7 @@
 -- verified on a share code before the date was required. Until now
 -- can_roster_staff() read that NULL as "no expiry recorded" (20260922093100)
 -- and the office could book them on any date; the Needs review row
--- (20260926121000) surfaces them, and this makes the booking wait for
+-- (20260927160000) surfaces them, and this makes the booking wait for
 -- the office to confirm the date there.
 --
 -- Scope of the refusal, deliberately narrow: a worker on a branch that
@@ -48,4 +48,4 @@ as $$
 $$;
 
 comment on function public.can_roster_staff(uuid, date) is
-  'can_roster() for a worker on a date, reading staff.right_to_work_until. True when no expiry is recorded — except a non-UK worker whose latest verified right-to-work evidence carries neither a date nor the settled no-time-limit flag (ADR-0018): refused until the office confirms the date from the Needs review row (20260926121000).';
+  'can_roster() for a worker on a date, reading staff.right_to_work_until. True when no expiry is recorded — except a non-UK worker whose latest verified right-to-work evidence carries neither a date nor the settled no-time-limit flag (ADR-0018): refused until the office confirms the date from the Needs review row (20260927160000).';

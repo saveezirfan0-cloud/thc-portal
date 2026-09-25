@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { Pill, SignOut } from '@thc/ui';
+import { QUIZ_FAILED_COPY, QUIZ_FAILED_TITLE } from '@thc/domain';
 import { HELP_EMAIL } from '../types';
 import type { AppLock } from '../lock';
 
@@ -15,9 +16,10 @@ import type { AppLock } from '../lock';
  *               manager's reason is internal and is NEVER shown, so it is
  *               not passed to this component and `staff_me()` does not
  *               return it. There is no prop here to leak it through.
- *   quiz_failed THC's own wording, identical to email E4 (§8). Reproduced
- *               verbatim rather than paraphrased: the worker has the email
- *               in their inbox and the two must match.
+ *   quiz_failed THC's own wording, identical to email E4 (§8). One string,
+ *               `QUIZ_FAILED_COPY` from @thc/domain, which E4's template is
+ *               also held to — the worker has the email in their inbox and
+ *               the two cannot drift apart.
  *   leaver      §10.6 step 7, with the one live action a leaver keeps —
  *               Payment information, so their earnings history stays
  *               available to them after they leave.
@@ -26,21 +28,18 @@ import type { AppLock } from '../lock';
  * paragraph, then the actions.
  */
 
-const QUIZ_COPY =
-  "Unfortunately, you haven't passed the Health & Safety assessment after three attempts, " +
-  'which is the maximum number permitted at this stage. As passing this assessment is a ' +
-  "required part of onboarding, we're unable to progress your application any further at " +
-  'this time.';
-
 function Static({
   badge,
   title,
   children,
+  detail,
   actions,
 }: {
   badge?: ReactNode;
   title: ReactNode;
   children: ReactNode;
+  /** Between the copy and the actions — the quiz screen's attempt list. */
+  detail?: ReactNode;
   actions?: ReactNode;
 }) {
   return (
@@ -48,12 +47,26 @@ function Static({
       {badge}
       <h2>{title}</h2>
       <p>{children}</p>
+      {detail}
       {actions}
     </div>
   );
 }
 
-export function LockScreen({ lock, leftAt }: { lock: AppLock; leftAt?: string | null }) {
+export function LockScreen({
+  lock,
+  leftAt,
+  detail,
+}: {
+  lock: AppLock;
+  leftAt?: string | null;
+  /**
+   * Rendered ahead of the actions, where the wireframe puts the quiz
+   * attempts (onboarding-2.html, "Terminal — failed 3 times"): contact
+   * line, the three attempts, then Sign out.
+   */
+  detail?: ReactNode;
+}) {
   if (lock === 'leaver') {
     return (
       <Static
@@ -82,17 +95,18 @@ export function LockScreen({ lock, leftAt }: { lock: AppLock; leftAt?: string | 
             Application closed
           </Pill>
         }
-        title="Health &amp; Safety Assessment — Unsuccessful"
-        actions={
+        title={QUIZ_FAILED_TITLE}
+        detail={
           <>
             <p className="sm muted">
               If you have any questions, please contact us at: <b className="cyan">{HELP_EMAIL}</b>
             </p>
-            <SignOut size="md" block />
+            {detail}
           </>
         }
+        actions={<SignOut size="md" block />}
       >
-        {QUIZ_COPY}
+        {QUIZ_FAILED_COPY}
       </Static>
     );
   }

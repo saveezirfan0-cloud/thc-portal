@@ -16,7 +16,7 @@
  * object is actually gone, so a failed purge is visible and retried
  * rather than silently dropped.
  *
- * Two kinds of row (20260926130300):
+ * Two kinds of row (20260927160400):
  *   · a named object — removed by path, as before;
  *   · a PREFIX (`<staff_id>/`) — the worker's whole folder in that bucket,
  *     listed recursively and removed, EXCEPT the paths

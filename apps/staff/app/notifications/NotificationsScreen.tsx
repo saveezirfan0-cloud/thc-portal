@@ -3,9 +3,16 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { Alert, Button, MobileList, MobileRow, Pill } from '@thc/ui';
-import { enablePush, pushCopy, pushState, readEnvironment } from '../../lib/push';
+import {
+  currentSubscription,
+  enablePush,
+  pushCopy,
+  pushState,
+  readEnvironment,
+} from '../../lib/push';
 import type { PushState } from '../../lib/push';
 import { savePushSubscription } from './actions';
+import './notifications.css';
 
 /**
  * "Turn on notifications" — §10.5, wireframes/staff/auth.html.
@@ -25,27 +32,47 @@ const REGISTER = [
   {
     code: 'N6',
     title: '“I’m ready” — the 12:00 deadline',
-    detail: 'Miss it and you are removed from the shift.',
+    detail: 'Miss it and you’re removed from the shift.',
   },
   {
     code: 'N9',
     title: 'Time to check in / check out',
-    detail: '30 minutes before your start and your end.',
+    detail: '30 minutes before start and end.',
   },
   {
     code: 'N1',
     title: 'Document expiry warnings',
-    detail: 'A month, 2 weeks and 1 week before — and on the day.',
+    detail: 'A month, 2 weeks, 1 week before — and on the day.',
   },
 ];
 
-export function NotificationsScreen() {
-  const [state, setState] = useState<PushState | null>(null);
+export function NotificationsScreen({
+  initialState = null,
+}: {
+  /** The state to open on — for rendering each state without a browser. */
+  initialState?: PushState | null;
+} = {}) {
+  const [state, setState] = useState<PushState | null>(initialState);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ tone: 'coral' | 'green'; text: string } | null>(null);
 
   useEffect(() => {
-    setState(pushState(readEnvironment()));
+    let cancelled = false;
+    const read = async () => {
+      const current = pushState(readEnvironment());
+      if (!cancelled) setState(current);
+      // A permission that says "granted" with no subscription behind it is
+      // the state iOS leaves behind when it revokes one (PushStatus makes
+      // the same call). Shown as "turn these on" — the button re-subscribes
+      // — rather than as working.
+      if (current === 'granted' && !(await currentSubscription()) && !cancelled) {
+        setState('default');
+      }
+    };
+    void read();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const turnOn = async () => {
@@ -76,6 +103,14 @@ export function NotificationsScreen() {
 
   return (
     <>
+      {/* The wireframe's hero: the bell on purple, then the screen's name. */}
+      <div className="auth-hero notif-hero">
+        <span className="logo lg" aria-hidden="true">
+          🔔
+        </span>
+        <h2 className="name">Turn on notifications</h2>
+      </div>
+
       {message ? <Alert tone={message.tone}>{message.text}</Alert> : null}
 
       {state === 'granted' ? (
@@ -109,19 +144,50 @@ export function NotificationsScreen() {
         closed:
       </p>
 
-      <MobileList>
-        {REGISTER.map((item) => (
-          <MobileRow key={item.code}>
-            <span className="row" style={{ gap: 'var(--sp-8)', alignItems: 'flex-start' }}>
-              <Pill tone="purple">{item.code}</Pill>
-              <span>
-                <span className="t">{item.title}</span>
-                <span className="s">{item.detail}</span>
+      <div className="notif-register">
+        <MobileList>
+          {REGISTER.map((item) => (
+            <MobileRow key={item.code}>
+              <span className="row" style={{ gap: 'var(--sp-8)', alignItems: 'flex-start' }}>
+                <Pill tone="purple">{item.code}</Pill>
+                <span>
+                  <div className="t">{item.title}</div>
+                  <div className="s">{item.detail}</div>
+                </span>
               </span>
-            </span>
-          </MobileRow>
-        ))}
-      </MobileList>
+            </MobileRow>
+          ))}
+        </MobileList>
+      </div>
+
+      {state === 'denied' ? (
+        // The one state the app cannot ask its way out of: the switch is in
+        // the phone's settings, so this is the walkthrough "Show me how"
+        // promised (auth.html, "Notifications blocked").
+        <div className="steps" aria-label="Turn notifications back on">
+          <div className="step">
+            <Pill tone="cyan">1</Pill>
+            <div>
+              <div className="t">iPhone: Settings → Notifications → The Hospitality Company</div>
+              <div className="s">Switch on Allow Notifications.</div>
+            </div>
+          </div>
+          <div className="step">
+            <Pill tone="cyan">2</Pill>
+            <div>
+              <div className="t">Android: Settings → Apps → The Hospitality Company</div>
+              <div className="s">Notifications → Allow.</div>
+            </div>
+          </div>
+          <div className="step">
+            <Pill tone="cyan">3</Pill>
+            <div>
+              <div className="t">Then come back to this screen</div>
+              <div className="s">The button below works again once the phone allows it.</div>
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <Button
         type="button"

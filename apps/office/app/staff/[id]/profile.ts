@@ -1,3 +1,6 @@
+import { STAFF_STATUSES, canTransitionStaff, formatTimeIn } from '@thc/domain';
+import type { StaffStatus as MachineStatus } from '@thc/domain';
+import { ukNumericDate } from '../staff';
 import type {
   DeclarationRow,
   DocumentRow,
@@ -6,6 +9,11 @@ import type {
   ShiftRow,
   ViolationRow,
 } from './types';
+
+/** The database's enum is wider than the §2.12 machine (ADR-0013); narrow before asking it. */
+function isStaffStatus(status: string): status is MachineStatus {
+  return (STAFF_STATUSES as readonly string[]).includes(status);
+}
 
 /**
  * The profile's presentation rules (§9.6). Pure, so the ones that are easy
@@ -47,38 +55,84 @@ export function noShowTone(count: number): 'danger' | 'default' {
 export function complianceSummary(profile: {
   status: string;
   contract_signed_at: string | null;
+  removed?: boolean;
 }): string {
-  const opening =
-    profile.status === 'compliant' ? 'Documents verified, quiz passed.' : 'Onboarding in progress.';
+  // The opening clause is the person's real state. "Onboarding in progress"
+  // on a blocked worker with a signed contract, or "Compliant and bookable"
+  // after "Onboarding in progress", each contradict the banner above them.
+  const opening = profile.removed
+    ? 'Removed under §1.7.'
+    : profile.status === 'compliant'
+      ? 'Documents verified, quiz passed.'
+      : profile.status === 'blocked'
+        ? 'Blocked — see the reason above.'
+        : profile.status === 'inactive'
+          ? 'Left through the app (§10.6).'
+          : profile.status === 'rejected'
+            ? 'Application rejected.'
+            : 'Onboarding in progress.';
 
   if (profile.contract_signed_at) {
     return `${opening} Contract signed electronically: ${formatUkStamp(profile.contract_signed_at)}`;
   }
-  return `${opening} Compliant and bookable.`;
+  return profile.status === 'compliant'
+    ? `${opening} Compliant and bookable.`
+    : `${opening} Contract not yet signed.`;
 }
 
 /**
  * An audit stamp in UK time, labelled as such (§1.8). Never the viewer's
  * zone: a contract signature and a verification are records of when
- * something happened in the business's own time.
+ * something happened in the business's own time. Dotted date, as §9.6
+ * writes it: "12.07.2026 14:42".
  */
 export function formatUkStamp(iso: string | null): string {
   if (!iso) return '—';
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return '—';
-  const date = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/London',
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(at);
   const time = new Intl.DateTimeFormat('en-GB', {
     timeZone: 'Europe/London',
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
   }).format(at);
-  return `${date} ${time} UK time`;
+  return `${ukNumericDate(at)} ${time} UK time`;
+}
+
+/**
+ * When a violation was detected, in the VIEWER's zone — "Wed 17 Sep · 17:03".
+ *
+ * The monitor (§9.5) prints this stamp viewer-local, and §9.6 says the
+ * profile's log is the same log; the two must show the same instant in
+ * the same clock to the same reader. The zone is a parameter so the test
+ * can pin it — the hook that reads the browser lives on the screen.
+ */
+export function formatLocalStamp(iso: string | null, zone: string): string {
+  if (!iso) return '—';
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '—';
+  const day = new Intl.DateTimeFormat('en-GB', {
+    timeZone: zone,
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+  }).formatToParts(at);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    day.find((entry) => entry.type === type)?.value ?? '';
+  // ICU prints "Sept" in newer builds; the wireframe says "Sep".
+  const month = part('month').slice(0, 3);
+  return `${part('weekday')} ${part('day')} ${month} · ${formatTimeIn(at, zone)}`;
+}
+
+/**
+ * §2.12 allows compliant ⇄ blocked and nothing else into `blocked`. §9.6:
+ * "A manual Block is not the route for someone who has simply left". The
+ * database refuses the rest (`staff_transitions`), so this is the button's
+ * enabled state, asked of the same machine — a manager should not fill in
+ * a reason and then read "illegal_staff_transition: inactive -> blocked".
+ */
+export function canBlock(status: ProfileRow['status']): boolean {
+  return isStaffStatus(status) && canTransitionStaff(status, 'blocked');
 }
 
 /** A scheduled window, in UK time — RULE-18's role section, never the event's. */

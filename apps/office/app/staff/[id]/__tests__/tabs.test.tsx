@@ -126,7 +126,7 @@ describe('declaration rows', () => {
 
   it('stamps in UK time and never offers a file', () => {
     const line = declarationMeta(decl({}));
-    expect(line).toContain('Onboarding · declared 09/07/2026 18:12 UK time');
+    expect(line).toContain('Onboarding · declared 09.07.2026 18:12 UK time');
     expect(line).toContain('auto-verified on submission');
     expect(line).toContain('no file to download');
   });

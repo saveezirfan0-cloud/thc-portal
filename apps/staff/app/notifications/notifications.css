@@ -1,0 +1,14 @@
+/* "Turn on notifications" — wireframes/staff/auth.html (pre-prompt).
+
+   The register rows are a bold title over a muted sub-line, as thc.css
+   draws `.mrow .t`; packages/ui carries `.mrow .s` but not the title rule,
+   so it is scoped here until the design system does. Tokens only. */
+.notif-register .mrow .t {
+  font-weight: 600;
+}
+
+/* The hero's bell tile: the brand tile's shape on the register's purple. */
+.notif-hero .logo {
+  background: var(--purple);
+  color: var(--on-cyan);
+}

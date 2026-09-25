@@ -265,7 +265,7 @@ select is(invite_worker(:'sec', :'clean2')->>'reason', 'not_bookable',
 -- Put them back: clean2 is the second worker in the first-to-confirm and
 -- withdrawal cases below, and borrowing them here must not change those.
 -- removed → compliant is not an edge of the §2.12 machine and the guard
--- (20260926130800) refuses it to everyone; this is a fixture, not a
+-- (20260927160900) refuses it to everyone; this is a fixture, not a
 -- transition, so it writes with user triggers off for the one statement.
 set local session_replication_role = replica;
 update staff set status = 'compliant', left_at = null, removed_at = null where id = :'clean2';

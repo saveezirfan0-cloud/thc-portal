@@ -56,7 +56,7 @@ const ROW: QueueRow = {
   review_reason: null,
 };
 
-/** A share code verified before 23.09 with no date (20260926121000). */
+/** A share code verified before 23.09 with no date (20260927160000). */
 const RTW_DATE: QueueRow = {
   ...ROW,
   kind: 'rtw_date',
@@ -150,7 +150,7 @@ describe('Needs review (§4.1)', () => {
     expect(verifyHint(letter)).toContain('confirm the completion date and visa expiry');
   });
 
-  it('lists a share code verified without a right-to-work date, and says why (20260926121000)', () => {
+  it('lists a share code verified without a right-to-work date, and says why (20260927160000)', () => {
     expect(documentLine(RTW_DATE)).toBe(
       'Right-to-work date missing — re-verify · share code W52400001',
     );
