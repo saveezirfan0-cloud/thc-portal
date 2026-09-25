@@ -142,7 +142,7 @@ None of these loosens an existing rule.
 | OF2 | push · offerer | `Shift handed over` | `{event} · {dateTime} has been taken by another worker. You're no longer booked on it.` → `/shifts` | on take · `OF2:offer:<id>` |
 | OF3 | push · offerer | `You're still booked` | `Nobody took your {event} shift on {date} — you're still booked. If you can't make it, contact the office.` → `/shifts/{bookingId}` | on lapse by expiry only · `OF3:offer:<id>` |
 | OF4 | push · taker | `You're booked!` | `{event} on {date} is yours. Tap to view your shift details.` → `/shifts/{bookingId}` | on take · `OF4:offer:<id>` |
-| OF5 | email · admin@ | `Cover requested — {event} · {role} · {date}` | worker, Employee ID, event, client, venue, role, UK window, note, `{confirmed} of {headcount} (+{buffer})`, auto-assign on/off, "They are still booked until you act." | immediately · `OF5:offer:<id>` |
+| OF5 | email · admin@ | `Cover requested — {event} · {role} · {date}` | worker, Employee ID, event, client, venue, role, UK window, note, `{confirmed} of {headcount} (+{buffer})`, auto-assign on/off, "They are still booked until you act." | immediately · `OF5:booking:<booking id>` (one per booking; review fix `20260930150000`) |
 | OF6 | push · offerer | `Cover request closed` | `The office has closed your cover request for {event} on {date}. You're still booked — contact the office if you can't make it.` → `/shifts/{bookingId}` | on decline · `OF6:offer:<id>` |
 
 A pool hand-over sends no office email — no slot is lost (Q18); the board shows it.

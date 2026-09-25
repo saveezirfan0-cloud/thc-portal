@@ -596,7 +596,7 @@ export const TEMPLATES = {
   },
 
   // Offer up a shift — release to the pool (ADR-0039). Keys
-  // `OFn:offer:<id>`, and `OF1:offer:<offer>:<staff>` per candidate.
+  // `OFn:offer:<id>` (OF5: `OF5:booking:<booking id>`, one cover email per booking — 20260930150000), and `OF1:offer:<offer>:<staff>` per candidate.
   OF1: {
     code: 'OF1',
     channel: 'push',
