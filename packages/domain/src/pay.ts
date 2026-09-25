@@ -478,7 +478,7 @@ export interface ShowRateBooking {
 
 /**
  * The §6 "Show-rate (reliability)" input, 0–100, from a worker's history.
- * Postgres repeats this as `staff_show_rate(uuid)` (20260927180000), which
+ * Postgres repeats this as `staff_show_rate(uuid)` (20260928110100), which
  * is what `auto_assign_candidates` feeds the 30% show factor; the cases in
  * `pay.vectors.json` → `showRate` are replayed by name in
  * supabase/tests/596_show_rate_derived.sql so the two cannot drift.

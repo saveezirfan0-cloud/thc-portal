@@ -2,18 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import {
-  Alert,
-  Avatar,
-  Chip,
-  EmptyState,
-  Note,
-  Panel,
-  Pill,
-  SegToggle,
-  Select,
-  TableScroll,
-} from '@thc/ui';
+import { Alert, Avatar, Chip, EmptyState, Note, Panel, Pill, SegToggle, Select } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { StudentVisaView } from './StudentVisaView';
 import {
@@ -230,50 +219,46 @@ export function StaffScreen({
                   works through: the last shift actually worked, the shifts
                   the leaving released (E8's list), and the P45 request.
                 */
-                <TableScroll>
-                  <table className="tbl">
-                    <thead>
-                      <tr>
-                        <th />
-                        <th>Name</th>
-                        <th>Employee ID</th>
-                        <th>Left</th>
-                        <th>Reason given</th>
-                        <th>Role(s)</th>
-                        <th>Last completed shift</th>
-                        <th>Released shifts</th>
-                        <th>P45</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {shown.map((row) => (
-                        <InactiveTableRow key={row.id} row={row} />
-                      ))}
-                    </tbody>
-                  </table>
-                </TableScroll>
+                <table className="tbl card-rows">
+                  <thead>
+                    <tr>
+                      <th />
+                      <th>Name</th>
+                      <th>Employee ID</th>
+                      <th>Left</th>
+                      <th>Reason given</th>
+                      <th>Role(s)</th>
+                      <th>Last completed shift</th>
+                      <th>Released shifts</th>
+                      <th>P45</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shown.map((row) => (
+                      <InactiveTableRow key={row.id} row={row} />
+                    ))}
+                  </tbody>
+                </table>
               ) : (
-                <TableScroll>
-                  <table className="tbl">
-                    <thead>
-                      <tr>
-                        <th />
-                        <th>Name</th>
-                        <th>Employee ID</th>
-                        <th>Role(s)</th>
-                        <th>Rating</th>
-                        <th>Show-rate</th>
-                        <th>Compliance status</th>
-                        <th>Right to work</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {shown.map((row) => (
-                        <StaffTableRow key={row.id} row={row} />
-                      ))}
-                    </tbody>
-                  </table>
-                </TableScroll>
+                <table className="tbl card-rows">
+                  <thead>
+                    <tr>
+                      <th />
+                      <th>Name</th>
+                      <th>Employee ID</th>
+                      <th>Role(s)</th>
+                      <th>Rating</th>
+                      <th>Show-rate</th>
+                      <th>Compliance status</th>
+                      <th>Right to work</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shown.map((row) => (
+                      <StaffTableRow key={row.id} row={row} />
+                    ))}
+                  </tbody>
+                </table>
               )}
             </div>
             {filtered.length > PAGE_SIZE ? (
@@ -336,14 +321,14 @@ function StaffTableRow({ row }: { row: StaffRow }) {
 
   return (
     <tr>
-      <td>
+      <td className="cell-lead">
         <Avatar
           name={row.removed ? '#' : row.display_name}
           src={row.removed ? undefined : (row.photo_url ?? undefined)}
           size="sm"
         />
       </td>
-      <td className="name">
+      <td className="name cell-title">
         {/*
           §9.6: "The name is clickable → the profile." A removed worker's
           is too — §1.7 keeps the record openable with its non-personal
@@ -356,19 +341,23 @@ function StaffTableRow({ row }: { row: StaffRow }) {
           {row.display_name}
         </Link>
       </td>
-      <td className="mono sm">{employeeId(row.employee_id)}</td>
-      <td>
+      <td data-label="Employee ID" className="mono sm">
+        {employeeId(row.employee_id)}
+      </td>
+      <td data-label="Role(s)">
         <div className="chips">
           {row.role_names.map((name) => (
             <Chip key={name}>{name}</Chip>
           ))}
         </div>
       </td>
-      <td>
+      <td data-label="Rating">
         <span className={`rating ${tone}`}>★ {formatRating(row.rating)}</span>
       </td>
-      <td className="mono">{formatShowRate(row.reliability)}</td>
-      <td className="status">
+      <td data-label="Show-rate" className="mono">
+        {formatShowRate(row.reliability)}
+      </td>
+      <td data-label="Compliance status" className="status">
         <StatusPill row={row} />
         {atLimit ? (
           // A per-week condition, beside the status and never instead of it.
@@ -393,7 +382,9 @@ function StaffTableRow({ row }: { row: StaffRow }) {
           <span className="sub">Left: {row.leave_reason}</span>
         ) : null}
       </td>
-      <td className="sm muted">{describeRightToWork(row)}</td>
+      <td data-label="Right to work" className="sm muted">
+        {describeRightToWork(row)}
+      </td>
     </tr>
   );
 }
@@ -407,39 +398,45 @@ function StaffTableRow({ row }: { row: StaffRow }) {
 function InactiveTableRow({ row }: { row: StaffRow }) {
   return (
     <tr>
-      <td>
+      <td className="cell-lead">
         <Avatar name={row.display_name} src={row.photo_url ?? undefined} size="sm" />
       </td>
-      <td className="name">
+      <td className="name cell-title">
         <Link href={`/staff/${row.id}`} className="staff-name">
           {row.display_name}
         </Link>
       </td>
-      <td className="mono sm">{employeeId(row.employee_id)}</td>
-      <td className="mono sm">{formatUkStamp(row.left_at)}</td>
-      <td>
+      <td data-label="Employee ID" className="mono sm">
+        {employeeId(row.employee_id)}
+      </td>
+      <td data-label="Left" className="mono sm">
+        {formatUkStamp(row.left_at)}
+      </td>
+      <td data-label="Reason given">
         {row.leave_reason ? (
           `“${row.leave_reason}”`
         ) : (
           <span className="muted">— no reason given</span>
         )}
       </td>
-      <td>
+      <td data-label="Role(s)">
         <div className="chips">
           {row.role_names.map((name) => (
             <Chip key={name}>{name}</Chip>
           ))}
         </div>
       </td>
-      <td className="sm">
+      <td data-label="Last completed shift" className="sm">
         {row.last_shift_at ? (
           formatUkDate(row.last_shift_at)
         ) : (
           <span className="muted">— none worked</span>
         )}
       </td>
-      <td className="sm mono">{row.released_shift_count}</td>
-      <td>
+      <td data-label="Released shifts" className="sm mono">
+        {row.released_shift_count}
+      </td>
+      <td data-label="P45">
         {row.p45_requested_at ? (
           <>
             <Pill tone="amber">Requested</Pill>

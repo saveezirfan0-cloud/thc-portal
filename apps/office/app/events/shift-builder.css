@@ -56,6 +56,7 @@
   letter-spacing: var(--label-track);
   text-transform: var(--label-case);
   color: var(--muted);
+  font-weight: var(--label-weight);
 }
 .rolesec .rh .right {
   margin-left: auto;

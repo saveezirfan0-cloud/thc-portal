@@ -110,7 +110,7 @@ function noteFor(fn: string, data: Rpc): { note?: string } {
  * failed lookup still saves the address; the RPC keeps the old pin and
  * flags it stale, which the office sees on the worker's profile.
  *
- * The RPC is service-role only (20260927182100): the worker is resolved
+ * The RPC is service-role only (20260928110600): the worker is resolved
  * from THEIR session (`staff_me()`, no id to forge), the point is this
  * function's lookup and never the browser's, and the save goes through the
  * service key with that id. A worker's own session cannot name a point,

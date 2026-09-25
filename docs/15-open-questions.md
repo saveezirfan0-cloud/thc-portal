@@ -97,7 +97,7 @@ score (§6) — the heaviest single factor. A resolved No-show that still counts
 weight ranks a worker differently from one that does not count at all.
 
 **Today:** the show-rate is **derived**, not stored — `staff_show_rate(staff_id)` in
-migration `20260927180000`, mirrored by `showRate()` in `packages/domain/src/pay.ts` with
+migration `20260928110100`, mirrored by `showRate()` in `packages/domain/src/pay.ts` with
 shared vectors (`pay.vectors.json` → `showRate`, replayed by name in pgTAP 596). It is what
 `auto_assign_candidates` feeds the 30% show factor, so the event board's "show N%" chip and
 the engine's ranking read it. `staff.reliability` is still a column — seed-only, read by

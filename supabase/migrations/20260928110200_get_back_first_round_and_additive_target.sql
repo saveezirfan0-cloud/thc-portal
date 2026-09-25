@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260927181000 · three §3.3 / §3.4 corrections from the
+-- Migration 20260928110200 · three §3.3 / §3.4 corrections from the
 --                            26.09 scope audit (scheduling half)
 --
 -- 1 · "Get back" registers the arrival (§3.3, RULE-01).
@@ -250,10 +250,10 @@ begin
 end $$;
 
 comment on function public.invite_worker(uuid, uuid, booking_source, boolean) is
-  'Writes one invitation, re-applying every §3.3/§3.4 gate at the insert — with p_source = ''escalation'', the §3.4 radius too (20260927140100). target_met only once CONFIRMED >= headcount + buffer: open invitations are not fill, so an hourly round keeps adding `allocation` while nobody has confirmed (20260927181000). An absent candidate row means removed (§1.7) or left (§10.6) and is refused as not_bookable — auto_assign_candidates filters those two out entirely, so their absence must not read as "no gate applies".';
+  'Writes one invitation, re-applying every §3.3/§3.4 gate at the insert — with p_source = ''escalation'', the §3.4 radius too (20260927140100). target_met only once CONFIRMED >= headcount + buffer: open invitations are not fill, so an hourly round keeps adding `allocation` while nobody has confirmed (20260928110200). An absent candidate row means removed (§1.7) or left (§10.6) and is refused as not_bookable — auto_assign_candidates filters those two out entirely, so their absence must not read as "no gate applies".';
 
 comment on function public.office_invite_worker(uuid, uuid) is
-  'The manager''s Invite from the event board''s Potential pool (§3.3, §3.4). Admin only. Refuses event_cancelled / event_ended (RULE-16) / full (confirmed >= headcount + buffer), then delegates to invite_worker(…, ''manual'', true): every hard gate by name, not_bookable, already_has_booking, the invited insert and N5. Since 20260927181000 the rounds'' own ceiling is the same confirmed count, so p_ignore_target here only skips a check the section-level `full` refusal has already made.';
+  'The manager''s Invite from the event board''s Potential pool (§3.3, §3.4). Admin only. Refuses event_cancelled / event_ended (RULE-16) / full (confirmed >= headcount + buffer), then delegates to invite_worker(…, ''manual'', true): every hard gate by name, not_bookable, already_has_booking, the invited insert and N5. Since 20260928110200 the rounds'' own ceiling is the same confirmed count, so p_ignore_target here only skips a check the section-level `full` refusal has already made.';
 
 -- ---------------------------------------------------------------------
 -- 3 · auto_assign_first_round(): one hourly round for a new event, now

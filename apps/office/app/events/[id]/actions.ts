@@ -109,7 +109,7 @@ export async function withdraw(
  * check does not cover. The worker stays in Confirmed, badged — this writes
  * the violation, it does not move them.
  *
- * One RPC, `office_mark_no_show()` (20260927181000): admin only, locked on
+ * One RPC, `office_mark_no_show()` (20260928110200): admin only, locked on
  * the booking; confirmed with no check-in, inside the §3.3 window (the same
  * one `canMarkNoShow` shows), one open no-show per booking. This used to
  * insert straight into `violations` from here with none of those guards.
@@ -137,7 +137,7 @@ export async function markNoShow(eventId: string, bookingId: string): Promise<Ac
  * manager pressed it. It is the only way back in once the check-in button
  * has locked.
  *
- * One RPC, `get_back()` (20260927181000), which finds the booking's open
+ * One RPC, `get_back()` (20260928110200), which finds the booking's open
  * no-show and delegates to `resolve_violation()` — the Violation log's
  * Resolve on the same entry (§9.5). That is what writes the check-in at the
  * press, moves the booking to `worked` and reclassifies the violation in

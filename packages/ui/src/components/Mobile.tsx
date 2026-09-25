@@ -141,6 +141,11 @@ export interface BottomNavItem {
  * `'use client'`. The two are indistinguishable at the call site, so copying
  * the Office pattern into the Staff App wrote a 500 that built clean.
  *
+ * `PhoneNav` (the Back Office's phone tab bar) is the exception that proves
+ * it: it IS `'use client'` and does take a `renderLink`, which is safe only
+ * because its one caller, `OfficeSidebar`, is a client component too. From
+ * a server component it would be this same 500.
+ *
  * A caller that needs `next/link`, or needs a locked tab to be an unpressable
  * span rather than a styled anchor, passes DATA to
  * `apps/staff/app/_components/BottomTabs.tsx` instead: only strings cross the

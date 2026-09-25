@@ -25,8 +25,8 @@ screen it names is now built; what is left is listed in §2 and §4 below.
 database, **120 migrations**, **94 pgTAP files (3,171 assertions)**, **2,202 Vitest
 tests across 147 files** in eight packages, seven Edge Functions (`auto-staffing`,
 `booking-tick`, `compliance-daily`, `finance-reports`, `gdpr-purge`,
-`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0031` (29 files;
-there is no `0025`). CI runs
+`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0031` (31 files;
+`0025`, the automated gov.uk check, landed with #59). CI runs
 lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 `deploy-database` pushes migrations to the live project on merge to `main`.
 
@@ -37,7 +37,7 @@ lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 | All 120 migrations applied in order to an **empty** database | clean |
 | `scripts/pgtest-local.sh` — all 94 pgTAP files | 3,171 assertions, **2 failures**, both expected (below) |
 | `turbo lint typecheck test build` | 29/29 tasks, 2,202 tests in 147 files (27.09, one pass on the final tree) |
-| Live Supabase project vs the repo | 110 applied through `20260927161300` (#58); the 27.09 round's ten files (`20260927170000`–`185000`) deploy with the next merge to `main`, then `gen:types` |
+| Live Supabase project vs the repo | 112 applied through `20260928100100` (#59); the 27.09 round's ten files (`20260928110000`–`110900`, renumbered above #59's at the merge) deploy with the next merge to `main`, then `gen:types` |
 
 `002` assertions **6 and 7** fail in every local harness and **that pair is the
 clean baseline**: they record that on Supabase `anon` *can* write
@@ -119,7 +119,7 @@ real environment to prove it in.
 4b. ~~**The 26.09 audit round is half done.**~~ **Closed on 27.09.** The slices
    the session limits had cut — scope §3.3–§4.5, §5.1–§5.2b, §7 BG-01–05, the
    office §9.5–§9.12 screens, the Staff App §10 screens, every Client Portal
-   screen, the RULE index, a security pass over `20260926100000`–`20260927170000`
+   screen, the RULE index, a security pass over `20260926100000`–`20260927161300`
    and the four design lenses — all ran (43 findings: 1 blocker, 5 gaps, 24
    drifts, the rest untested/doc/security notes; JSON per slice in the session's
    `audit2/`), and every finding is fixed in the 27.09 round (§3 below) except
@@ -133,7 +133,7 @@ real environment to prove it in.
    shifts pages still inline the Shifts-badge expression `shiftsBadge()` now
    provides, and `packages/ui` `.seg` should read a `--seg-h` token as
    `thc.css` does. The fixers' `shared_change_needed` list from #58 is closed
-   (`20260927170000`, the packages/ui round in `679b8c3`).
+   (`20260928110000`, the packages/ui round in `679b8c3`).
 4c. ~~**ADR-0018's rota-guard gap.**~~ **Closed** by `20260927150000`:
    `can_roster_staff()` refuses a non-UK worker whose latest verified
    right-to-work evidence carries neither a date nor the settled no-time-limit
@@ -159,25 +159,25 @@ real environment to prove it in.
 
 - **Get back paid nothing** (§3.3, the round's one blocker): the office wrote
   the Late violation itself and never registered the arrival; `get_back()` and
-  `office_mark_no_show()` now delegate to the SQL path (`20260927181000`,
+  `office_mark_no_show()` now delegate to the SQL path (`20260928110200`,
   pgTAP 597).
 - **The show-rate is derived** (BG-03 / RULE-14 / §6): `staff_show_rate()`
-  from attendance, read by auto-assign and every view (`20260927180000`,
-  `183000`; TS twin `showRate()`; pgTAP 596/600); `staff.reliability` is
+  from attendance, read by auto-assign and every view (`20260928110100`,
+  `110700`; TS twin `showRate()`; pgTAP 596/603); `staff.reliability` is
   seed-only.
 - **Auto-assign**: the hourly target counts confirmed only; a first round runs
   at event creation; `allocation_per_hour` defaults in the database; the
   Accept path re-reads the candidate gate and `block_worker()` withdraws
-  invitations on sections under way (`181000`, `181200`; 130 §4b, 597).
+  invitations on sections under way (`110200`, `110400`; 130 §4b, 597).
 - **Expired term letters** are flagged on extraction and refused on verify,
-  with the reason on the Needs review row (`181100`, `185000`; 598, 602).
+  with the reason on the Needs review row (`110300`, `110900`; 598, 602).
 - **Security**: the four privileged staff actions carry the manager as
-  `p_actor` (601); `auto_assign_candidates` / `escalation_radius_miles` lose
+  `p_actor` (604); `auto_assign_candidates` / `escalation_radius_miles` lose
   PUBLIC execute and 190 guards the shape; `staff_update_contact_geocoded` is
-  service-role only with the session-resolved id (`182100`, 530); workers read
-  criminal declarations only through RPCs (ADR-0031, `182000`, 599).
+  service-role only with the session-resolved id (`110600`, 530); workers read
+  criminal declarations only through RPCs (ADR-0031, `110500`, 599).
 - **A real defect found by a new test**: E7 keyed on staff id + second
-  swallowed an email-change E7 in the same second as an address E7 (`182000`,
+  swallowed an email-change E7 in the same second as an address E7 (`110500`,
   330).
 - **Screens**: the monitor and shift screen keep §1.8's zones and §5's copy;
   Radar's week meter reads the current UK week and the detail draws the
@@ -188,7 +188,7 @@ real environment to prove it in.
 - **Deferred items from #58**: candidate/directory view columns,
   `staff_me().rejectionCause`, `activation_preview.activated`, `--tap-min`,
   `AuthCard appearance`, `ScheduledWindow` in packages/ui, the push badge, the
-  activation QR, N8's action (`170000`, 595; `679b8c3`; `7816f38`).
+  activation QR, N8's action (`110000`, 595; `679b8c3`; `7816f38`).
 - **Lint**: `react-hooks/rules-of-hooks` is an error on every TSX file.
 
 **26.09** — the §4 clean-up:
@@ -358,7 +358,7 @@ here so a reader can tell a deliberate finding from a new one.
 | Finding | Count | Verdict |
 |---|---|---|
 | Functions with a mutable `search_path` | **0** | closed 22.09 and held since, guarded by an invariant over `pg_proc` in `002` |
-| `SECURITY DEFINER` callable by `anon` | **6** | all deliberate: 3 are PostGIS's own `st_estimatedextent` overloads, plus `current_app_role`, `current_client_id` and `submit_application` — reasons in the migration headers. Re-verified 27.09 on the tree: `190` 2e holds exactly those three of ours, and `190` 2f now also asserts no definer keeps PUBLIC's default EXECUTE (`20260927184000` closed the two invoker functions that did) |
+| `SECURITY DEFINER` callable by `anon` | **6** | all deliberate: 3 are PostGIS's own `st_estimatedextent` overloads, plus `current_app_role`, `current_client_id` and `submit_application` — reasons in the migration headers. Re-verified 27.09 on the tree: `190` 2e holds exactly those three of ours, and `190` 2f now also asserts no definer keeps PUBLIC's default EXECUTE (`20260928110800` closed the two invoker functions that did) |
 | `SECURITY DEFINER` callable by `authenticated` | **86** | the product's RPC surface; every one is guarded internally. It grew with the build and is not in itself a defect, but it is the number to watch |
 | `SECURITY DEFINER` views | **9** | the ADR-0004 owner-rights pattern — it is the mechanism that keeps money and worker data away from the client role, not a lapse. 9 since `20260927120000` added `client_company_v` (deliberate: two named columns, `current_client_id()` + `client_portal_visible()` in the body, pinned by `570`); the next one is a finding |
 | `spatial_ref_sys` without RLS | 1 | ADR-0010, known gap, needs `supabase_admin` |
@@ -376,8 +376,12 @@ From the 23.09 build:
 - **Workers verified on a share code before 23.09 with no date still have
   none** — nothing to backfill from. Re-verify them; the query that finds them
   is in the header of `20260923200000`.
-- **The share-code date is confirmed by the office** until the extractor that
-  reads the gov.uk report exists; §2.3 says nobody types it (ADR-0018).
+- **The share-code date is confirmed by the office** while the automated
+  gov.uk check is switched off; §2.3 says nobody types it (ADR-0018). The
+  check itself is built (ADR-0025, 25.09): provider first, our own gov.uk
+  browser check as fallback, fully automatic. It waits for THC's provider
+  keys (OWNER-TODO §8), and once on, the office types a date only for a
+  check in needs_review.
 - **Unverified on real infrastructure:** the `finance-reports` Edge Function has
   not been run under Deno (ADR-0006's `../../../packages` import question); Storage
   image transforms may be off (photos then fall back to the original); GoTrue's

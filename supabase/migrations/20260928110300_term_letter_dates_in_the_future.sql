@@ -1,12 +1,13 @@
 -- =====================================================================
--- Migration 20260927181100 · §4.2: an already-expired University Term
+-- Migration 20260928110300 · §4.2: an already-expired University Term
 --                            Dates Letter is not accepted
 --
 -- "The AI must verify that the dates found in the document are in the
 -- future, not the past — an already-expired letter is not accepted."
 --
 -- Nothing checked it. record_document_extraction() pre-filled the ranges
--- and a confidence; compliance_verify_document() accepted any pending
+-- and a confidence; Verify (compliance_verify_document_as(), behind
+-- compliance_verify_document()) accepted any pending
 -- row whose doc_expires_on() was still ahead — and for a term letter that
 -- is 31 December of the upload year whatever the letter prints
 -- (ADR-0011), so a letter for a year that has already finished sailed
@@ -33,18 +34,30 @@
 --      "letter expired" (new column manual_review_reason), whatever the
 --      confidence — a confident read of last year's letter is exactly
 --      the case the sentence is about.
---   2. compliance_verify_document(): refuses to verify a term letter whose
---      effective ranges (the reviewer's p_term_dates, else the row's) are
---      all past — term_letter_expired (P0001) with a hint — before any
+--   2. compliance_verify_document_as(), the one body of Verify since
+--      20260928100000 (ADR-0025: the office wrapper passes
+--      assert_reviewer(), the automated gov.uk check passes NULL):
+--      refuses to verify a term letter whose effective ranges (the
+--      reviewer's p_term_dates, else the row's) are all past —
+--      term_letter_expired (P0001) with a hint — before any
 --      staff.term_dates write. The reviewer rejects it and the worker
---      uploads the current one (§4.1 N8).
+--      uploads the current one (§4.1 N8). Restated verbatim from
+--      20260928100000 with only that check added; the public
+--      compliance_verify_document() wrapper and the _as revoke are
+--      main's, the wrapper untouched and the revoke repeated here.
+--
+-- Merge note: this file first landed restating the monolithic
+-- compliance_verify_document() of 20260923200000. It is renumbered above
+-- 20260928100000 and now restates that migration's _as body instead, so
+-- the rtw_check_required gate, the reviewed_at stamp on a waiting
+-- rtw_checks row and the system-actor audit name all survive.
 -- =====================================================================
 
 alter table public.compliance_docs
   add column if not exists manual_review_reason text;
 
 comment on column public.compliance_docs.manual_review_reason is
-  'Why the extraction set needs_manual_review beyond the confidence threshold — "letter expired" for a term letter whose dates are all past (§4.2, 20260927181100). Null when the flag is confidence only.';
+  'Why the extraction set needs_manual_review beyond the confidence threshold — "letter expired" for a term letter whose dates are all past (§4.2, 20260928110300). Null when the flag is confidence only.';
 
 -- ---------------------------------------------------------------------
 -- 1 · The rule
@@ -146,13 +159,23 @@ begin
 end $$;
 
 comment on function public.record_document_extraction(uuid, date, daterange[], date, text, numeric, jsonb) is
-  '§2.6 AI seam, service role only: pre-fills, never verifies. p_expiry is the expiry — or, on a share code report, the right-to-work-until read off the gov.uk report (ADR-0002). The term letter keeps its 31 December expiry (§4.2) and, when every extracted range is already past, is flagged needs_manual_review with manual_review_reason "letter expired" (§4.2, 20260927181100). Pending rows only (20260923200000).';
+  '§2.6 AI seam, service role only: pre-fills, never verifies. p_expiry is the expiry — or, on a share code report, the right-to-work-until read off the gov.uk report (ADR-0002). The term letter keeps its 31 December expiry (§4.2) and, when every extracted range is already past, is flagged needs_manual_review with manual_review_reason "letter expired" (§4.2, 20260928110300). Pending rows only (20260923200000).';
 
 -- ---------------------------------------------------------------------
--- 3 · compliance_verify_document(), from 20260923200000, refusing the
---     expired letter. Otherwise unchanged.
+-- 3 · compliance_verify_document_as(), from 20260928100000 (ADR-0025),
+--     refusing the expired letter. Otherwise unchanged.
+--
+-- 20260928100000 moved the body of Verify into
+-- compliance_verify_document_as(p_reviewer, …) so the automated gov.uk
+-- check (reviewer NULL) and a manager's click (assert_reviewer()) run
+-- exactly one body. The rule goes into that body — and only there:
+-- the public compliance_verify_document() wrapper (rtw_check_required
+-- gate + assert_reviewer()) is NOT restated, so main's refactor stands
+-- as written. The refusal sits where it did in the monolithic version:
+-- after the term_dates_invalid check, before any staff.term_dates write.
 -- ---------------------------------------------------------------------
-create or replace function public.compliance_verify_document(
+create or replace function public.compliance_verify_document_as(
+  p_reviewer            uuid,
   p_doc                 uuid,
   p_expiry              date        default null,
   p_term_dates          daterange[] default null,
@@ -163,7 +186,7 @@ security definer
 set search_path = public, extensions
 as $$
 declare
-  v_reviewer uuid := assert_reviewer();
+  v_reviewer uuid := p_reviewer;
   d          compliance_docs;
   s          staff;
   v_today    date := (now() at time zone 'Europe/London')::date;
@@ -181,9 +204,6 @@ begin
     raise exception 'document_not_found' using errcode = 'P0002';
   end if;
   if d.doc_type = 'university_completion_letter' then
-    -- The requirement (§2.2) makes the reviewer confirm the completion
-    -- date and the visa expiry on this one, so it is approved through the
-    -- function that asks for both.
     raise exception 'use_approve_completion_letter' using errcode = 'P0001';
   end if;
   if d.review_status <> 'pending' then
@@ -192,7 +212,6 @@ begin
 
   select * into s from staff where id = d.staff_id for update;
   if s.status in ('rejected', 'removed') or s.removed_at is not null then
-    -- §4.1: their outstanding documents "no longer need review".
     raise exception 'not_reviewable: %', s.status using errcode = 'P0001';
   end if;
   if p_term_dates is not null and exists (
@@ -202,7 +221,8 @@ begin
 
   -- §4.2: "an already-expired letter is not accepted". Judged on the
   -- ranges the reviewer is confirming (else the ones on the row), not on
-  -- the 31 December doc_expires_on() gives every term letter.
+  -- the 31 December doc_expires_on() gives every term letter
+  -- (20260928110300).
   if d.doc_type = 'university_term_dates_letter' then
     v_ranges := coalesce(p_term_dates, d.term_dates);
     if term_letter_expired(v_ranges, v_today) then
@@ -250,9 +270,6 @@ begin
     update staff set share_code = d.share_code where id = s.id;
   end if;
 
-  -- The flip. compliance_docs_rtw_until() writes the worker's date, then
-  -- compliance_docs_verified() runs the §4.3 full re-check; nothing here
-  -- second-guesses either.
   update compliance_docs
      set review_status = 'verified',
          reviewed_by = v_reviewer,
@@ -262,6 +279,14 @@ begin
          right_to_work_until = v_rtw,
          rtw_no_time_limit = v_no_limit
    where id = d.id;
+
+  -- A person decided the document: a check that was waiting on the office
+  -- for it has its answer, and must not linger in Needs review.
+  if v_reviewer is not null then
+    update rtw_checks
+       set reviewed_at = now(), reviewed_by = v_reviewer
+     where compliance_doc_id = d.id and status = 'needs_review' and reviewed_at is null;
+  end if;
 
   if v_is_rtw then
     insert into audit_log (at, actor, action, entity, entity_id, data)
@@ -275,7 +300,9 @@ begin
               'noTimeLimit',      v_no_limit,
               'staffUntilBefore', s.right_to_work_until,
               'staffUntilAfter',  (select right_to_work_until from staff where id = s.id),
-              'actorName',        (select full_name from profiles where id = v_reviewer))));
+              'actorName',        coalesce((select full_name from profiles where id = v_reviewer),
+                                           case when v_reviewer is null
+                                                then 'Automatic gov.uk check' end))));
   end if;
 
   select array_agg(reason order by reason) into v_blockers
@@ -292,8 +319,13 @@ begin
     'blockers', coalesce(to_jsonb(v_blockers), '[]'::jsonb));
 end $$;
 
-comment on function public.compliance_verify_document(uuid, date, daterange[], date) is
-  '§4.1 Verify, the only one (verify_document() wraps it). Pending documents of live profiles only; an already-expired one is refused (§4.2) — for a term letter, term_letter_expired when every holiday range (the reviewer''s, else the row''s) ended before today (20260927181100). A visa document, status document or share code report needs its right-to-work date (p_expiry / p_right_to_work_until, or already on the row); ''infinity'' as p_right_to_work_until confirms settled status with no time limit, share code report on the EU branch only. The flip sets staff.right_to_work_until to the earliest date across current verified RTW evidence (compliance_docs_rtw_until) and runs the §4.3 re-check. Not for the completion letter: approve_completion_letter().';
+comment on function public.compliance_verify_document_as(uuid, uuid, date, daterange[], date) is
+  'The body of §4.1 Verify with the reviewer passed in (NULL = the automated gov.uk check, ADR-0025). Internal: compliance_verify_document() passes assert_reviewer(), rtw_check_record() passes NULL. Otherwise exactly 20260923200000''s compliance_verify_document() — plus, since 20260928110300, the §4.2 refusal: a University Term Dates Letter whose every holiday range (the reviewer''s p_term_dates, else the row''s) ended before today raises term_letter_expired (P0001) before any staff.term_dates write.';
+
+-- Internal, as 20260928100000 leaves it: callable only from inside the
+-- security definer functions that wrap it, by no role directly.
+revoke execute on function public.compliance_verify_document_as(uuid, uuid, date, daterange[], date)
+                                                                                      from public, anon, authenticated, service_role;
 
 -- term_letter_expired is a pure rule; anyone who can read a row may ask it.
 grant execute on function public.term_letter_expired(daterange[], date) to authenticated, service_role;

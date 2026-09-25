@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260927181200 · RULE-12 on the Accept path, and RULE-05's
+-- Migration 20260928110400 · RULE-12 on the Accept path, and RULE-05's
 --                            default (RULE index audit, 26.09)
 --
 -- 1 · RULE-12 (§4.4): "a non-compliant / blocked worker cannot be
@@ -83,7 +83,7 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'taken');
   end if;
 
-  -- RULE-12, re-read at the moment of Accept (20260927181200) — the same
+  -- RULE-12, re-read at the moment of Accept (20260928110400) — the same
   -- read accept_application() makes, judged against the escalation pool
   -- for an escalation invitation so the §3.4 radius holds here too. An
   -- absent row is a leaver or a removed account (not_bookable). After the
@@ -144,7 +144,7 @@ begin
 end $$;
 
 comment on function accept_invite(uuid) is
-  'First-to-confirm (§3.4): event_ended / not_bookable / the RULE-12 gates by name (blocked, do_not_return, self_cancelled, wrong_role, outside_radius — 20260927181200) / taken / overlap / rtw_expired / hours_limit / ok. Re-checks RULE-16, the hard gates, the slot, the booked-elsewhere gap, the right to work and the RULE-20 weekly cap; withdraws the worker''s other intersecting invitations; closes the role''s pending applications with N10c once it is fully confirmed (20260925100000).';
+  'First-to-confirm (§3.4): event_ended / not_bookable / the RULE-12 gates by name (blocked, do_not_return, self_cancelled, wrong_role, outside_radius — 20260928110400) / taken / overlap / rtw_expired / hours_limit / ok. Re-checks RULE-16, the hard gates, the slot, the booked-elsewhere gap, the right to work and the RULE-20 weekly cap; withdraws the worker''s other intersecting invitations; closes the role''s pending applications with N10c once it is fully confirmed (20260925100000).';
 
 -- ---------------------------------------------------------------------
 -- 1b · block_worker(), from 20260921192246: every open invitation and
@@ -204,7 +204,7 @@ begin
   -- EVERY open invitation and application, whether or not the section has
   -- started: an invitation is never under way, and an escalation
   -- invitation on a section already running (§3.4) is exactly the one a
-  -- blocked worker could otherwise still accept (RULE-12, 20260927181200).
+  -- blocked worker could otherwise still accept (RULE-12, 20260928110400).
   with withdrawn as (
     update bookings b
        set status = 'cancelled', cancelled_at = p_now, cancel_cause = p_cause || '_invite'
@@ -224,7 +224,7 @@ begin
 end $$;
 
 comment on function public.block_worker(uuid, block_kind, text, timestamptz, staff_status, text) is
-  'The one exit from compliant to blocked / inactive / removed (§4.3, §10.6, §1.7): sets the status and its reason, releases FUTURE confirmed bookings with p_cause, and withdraws EVERY open invitation and application with p_cause || ''_invite'' — started sections included since 20260927181200 (RULE-12). Service role only; the office routes go through block_worker_manually() and the leaving / removal functions.';
+  'The one exit from compliant to blocked / inactive / removed (§4.3, §10.6, §1.7): sets the status and its reason, releases FUTURE confirmed bookings with p_cause, and withdraws EVERY open invitation and application with p_cause || ''_invite'' — started sections included since 20260928110400 (RULE-12). Service role only; the office routes go through block_worker_manually() and the leaving / removal functions.';
 
 -- ---------------------------------------------------------------------
 -- 2 · RULE-05: allocation_per_hour defaults to headcount + buffer
@@ -244,7 +244,7 @@ begin
 end $$;
 
 comment on function public.shift_requirements_default_allocation() is
-  'BEFORE INSERT on shift_requirements: allocation_per_hour := headcount + buffer when the insert leaves it null (§3.4 RULE-05, 20260927181200). The NOT NULL constraint still holds behind it.';
+  'BEFORE INSERT on shift_requirements: allocation_per_hour := headcount + buffer when the insert leaves it null (§3.4 RULE-05, 20260928110400). The NOT NULL constraint still holds behind it.';
 
 drop trigger if exists shift_requirements_default_allocation on public.shift_requirements;
 create trigger shift_requirements_default_allocation
@@ -252,6 +252,6 @@ create trigger shift_requirements_default_allocation
   for each row execute function public.shift_requirements_default_allocation();
 
 comment on column public.shift_requirements.allocation_per_hour is
-  'How many invitations one hourly auto-assign round adds (§3.4). Defaults to headcount + buffer at insert (shift_requirements_default_allocation, 20260927181200); editable per role.';
+  'How many invitations one hourly auto-assign round adds (§3.4). Defaults to headcount + buffer at insert (shift_requirements_default_allocation, 20260928110400); editable per role.';
 
 revoke execute on function public.shift_requirements_default_allocation() from public, anon, authenticated;

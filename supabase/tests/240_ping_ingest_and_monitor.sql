@@ -154,7 +154,7 @@ select is((select status from checkin_monitor_v where booking_id = :'bk_on'), 'o
 -- §9.5: Off-site is "used only while the shift is still running, never as
 -- an end state". The same outside fix after the ROLE section's end
 -- (RULE-18) is going home; until RULE-02's four hours the row stays On
--- shift (20260927180000).
+-- shift (20260928110100).
 update shift_requirements set starts_at = now() - interval '7 hours', ends_at = now() - interval '1 hour'
  where id = :'sh_mon';
 select is((select status from checkin_monitor_v where booking_id = :'bk_on'), 'on_shift',

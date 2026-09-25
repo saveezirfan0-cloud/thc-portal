@@ -19,7 +19,7 @@ const MESSAGES: [RegExp, string][] = [
     'This document has already expired ($1) and cannot be accepted — reject it and ask for a current one (§4.2).',
   ],
   // compliance_verify_document on a term letter whose every holiday range
-  // is past (20260927181100): "an already-expired letter is not accepted".
+  // is past (20260928110300): "an already-expired letter is not accepted".
   [
     /^term_letter_expired/,
     'This letter has expired: every term date on it is before today. Reject it and ask the worker for a current letter (§4.2).',
@@ -57,6 +57,19 @@ const MESSAGES: [RegExp, string][] = [
     /^superseded_by_newer/,
     'A newer share code report has been verified for this worker; the date on file comes from that one.',
   ],
+  // The automated gov.uk check (ADR-0025).
+  [
+    /^rtw_check_required/,
+    'The automatic gov.uk check verifies this share code. Run the check again; a date is typed by hand only once a check is in Needs review.',
+  ],
+  [/^rtw_check_running/, 'The gov.uk check is already running for this share code.'],
+  [
+    /^rtw_check_disabled/,
+    'The automatic gov.uk check is switched off (settings.rtw_check.enabled) — verify the share code by hand.',
+  ],
+  [/^no_share_code/, 'There is no share code on this document to check.'],
+  [/^not_needs_review/, 'This check is not waiting for the office.'],
+  [/^rtw_check_not_found/, 'This check no longer exists — refresh the page.'],
   [/^(document|declaration)_not_found/, 'This item no longer exists — refresh the queue.'],
 ];
 

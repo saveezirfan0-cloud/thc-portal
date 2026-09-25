@@ -1,6 +1,6 @@
 # ADR-0031 · A worker reads criminal declarations through RPCs only
 
-Status: accepted · 27.09.2026 · 20260927182000 · Refines ADR-0004 (owner-rights views), follows 20260923090000 (block_reason) and 20260923220000 (rejection_reason)
+Status: accepted · 27.09.2026 · 20260928110500 · Refines ADR-0004 (owner-rights views), follows 20260923090000 (block_reason) and 20260923220000 (rejection_reason)
 
 ## Context
 
@@ -42,7 +42,7 @@ the stated mechanism and it was bypassable (audit 27.09, staff-10).
 
 ## Decision
 
-Option 2. `20260927182000` drops `staff_self_decl`. RLS stays enabled, so the
+Option 2. `20260928110500` drops `staff_self_decl`. RLS stays enabled, so the
 table is deny-all for a worker: `030_rls_staff` now asserts a worker reaches
 no declaration row, `001_rls_guard` takes the table out of the self-policy
 list, and `599` pins that `select details` returns nothing while

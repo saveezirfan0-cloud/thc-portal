@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260927180000 · the show-rate is derived, and Off-site
+-- Migration 20260928110100 · the show-rate is derived, and Off-site
 --                            ends with the section (§6, BG-03, RULE-14,
 --                            §9.5, RULE-18)
 --
@@ -95,12 +95,12 @@ as $$
 $$;
 
 comment on function public.staff_show_rate(uuid) is
-  '§6 show-rate (reliability), percent 0–100, derived: shifts worked or turned away plus unresolved No-shows form the sample; an unresolved No-show (BG-03) or No check-out (RULE-14) counts against; resolving lifts it; Late / Left early / Left the geofence weigh nothing (§9.5 "no automatic consequence"). NULL with no history — callers default to 90, the §6 zero point (20260927180000). TypeScript twin: showRate() in packages/domain/src/pay.ts.';
+  '§6 show-rate (reliability), percent 0–100, derived: shifts worked or turned away plus unresolved No-shows form the sample; an unresolved No-show (BG-03) or No check-out (RULE-14) counts against; resolving lifts it; Late / Left early / Left the geofence weigh nothing (§9.5 "no automatic consequence"). NULL with no history — callers default to 90, the §6 zero point (20260928110100). TypeScript twin: showRate() in packages/domain/src/pay.ts.';
 
 grant execute on function public.staff_show_rate(uuid) to authenticated, service_role;
 
 comment on column public.staff.reliability is
-  'Stored show-rate %, written only by seed.sql. NOT read by auto-assign since 20260927180000 — staff_show_rate(id) is the derived §6 figure. Still surfaced by staff_directory_v, staff_profile_v, clients_qualified_staff_v, onboarding_candidates_v and staff_me() until their owners repoint them.';
+  'Stored show-rate %, written only by seed.sql. NOT read by auto-assign since 20260928110100 — staff_show_rate(id) is the derived §6 figure. Still surfaced by staff_directory_v, staff_profile_v, clients_qualified_staff_v, onboarding_candidates_v and staff_me() until their owners repoint them.';
 
 -- ---------------------------------------------------------------------
 -- 2 · The pool — 20260927140100 verbatim but for the reliability term
@@ -176,7 +176,7 @@ as $$
                and cq.role_id = sec.role_id and not cq.do_not_return) as qualified,
     (select b.status::text from bookings b
       where b.shift_id = sec.shift_id and b.staff_id = s.id) as booking_status,
-    -- §6 show-rate, derived from the worker's history (20260927180000);
+    -- §6 show-rate, derived from the worker's history (20260928110100);
     -- 90 with no history is the formula's zero point, as before.
     coalesce(staff_show_rate(s.id), 90)::numeric,
     coalesce(s.rating, 4.0)::numeric,
@@ -192,7 +192,7 @@ as $$
 $$;
 
 comment on function public.auto_assign_candidates(uuid, boolean) is
-  'The §3.3/§3.4 pool for one role section, computed fresh: gate, wave and the five §6 factor inputs — reliability is staff_show_rate() (20260927180000), never the stored column. Gates: wrong_role, do_not_return, blocked, self_cancelled, booked_elsewhere, rtw_expired (20260924130100), hours_limit (RULE-20), and — only with p_escalation — outside_radius: home not within escalation_radius_miles() of the venue (§3.4 same-day escalation, 20260927140100). Scoring itself is packages/domain/scoring.ts.';
+  'The §3.3/§3.4 pool for one role section, computed fresh: gate, wave and the five §6 factor inputs — reliability is staff_show_rate() (20260928110100), never the stored column. Gates: wrong_role, do_not_return, blocked, self_cancelled, booked_elsewhere, rtw_expired (20260924130100), hours_limit (RULE-20), and — only with p_escalation — outside_radius: home not within escalation_radius_miles() of the venue (§3.4 same-day escalation, 20260927140100). Scoring itself is packages/domain/scoring.ts.';
 
 -- ---------------------------------------------------------------------
 -- 4 · checkin_monitor_v — 20260927160600 verbatim but for the off_site arm
@@ -266,4 +266,4 @@ where e.cancelled_at is null
   and b.status in ('confirmed', 'worked');
 
 comment on view checkin_monitor_v is
-  '§9.5 live monitor. One row per booking with the Status column resolved in SQL: an unresolved No check-out violation (RULE-02, either trigger) reads no_check_out ahead of anything check_out() recorded; Off-site only while the ROLE section is running, never after its end (20260927180000); "today" is Europe/London on both sides (§1.8); breaks read NULL, never 0, where the client pays for them.';
+  '§9.5 live monitor. One row per booking with the Status column resolved in SQL: an unresolved No check-out violation (RULE-02, either trigger) reads no_check_out ahead of anything check_out() recorded; Off-site only while the ROLE section is running, never after its end (20260928110100); "today" is Europe/London on both sides (§1.8); breaks read NULL, never 0, where the client pays for them.';

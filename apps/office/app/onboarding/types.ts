@@ -8,6 +8,7 @@
  * machine anything.
  */
 import type { StaffStatus } from '../staff/types';
+import type { RtwCheckRow } from '../_lib/rtwCheck';
 
 export type { StaffStatus };
 
@@ -71,7 +72,7 @@ export interface CandidateRow {
   rejection_cause: RejectionCause | null;
   rejection_reason: string | null;
   rejected_by_name: string | null;
-  // Appended by 20260927170000 (the 26.09 deferrals).
+  // Appended by 20260928110000 (the 26.09 deferrals).
   /** When the login was activated — null until the password is set (§2.7). */
   activated_at: string | null;
   /**
@@ -226,6 +227,10 @@ export interface CandidateData {
   /** The agreement text by `candidate.contract_version`; null before the contract phase. */
   contract: ContractVersion | null;
   roles: RoleOption[];
+  /** The latest automated gov.uk check per share-code document (ADR-0025). */
+  rtwChecks?: RtwCheckRow[];
+  /** settings.rtw_check.enabled. */
+  rtwCheckEnabled?: boolean;
   problem: string | null;
 }
 

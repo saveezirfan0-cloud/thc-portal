@@ -21,7 +21,7 @@
  *     No check-out one behaves differently from the other two: its card stays.
  */
 
-import { UK_ZONE } from './time';
+import { UK_ZONE, formatDateIn } from './time';
 import type { BookingStatus, CancelCause } from './state';
 
 const HOUR_MS = 3_600_000;
@@ -275,7 +275,7 @@ export type AcceptRefusal =
   | 'not_invited'
   | 'event_cancelled'
   | 'event_ended'
-  /** RULE-12, re-read at Accept (20260927181200): not compliant. */
+  /** RULE-12, re-read at Accept (20260928110400): not compliant. */
   | 'blocked'
   /** A leaver or a removed account (§10.6, §1.7) — no candidate row at all. */
   | 'not_bookable'
@@ -495,10 +495,5 @@ function formatHoursShort(hours: number): string {
 function formatWeekStart(isoDate: string): string {
   const [y, m, d] = isoDate.split('-').map(Number);
   const at = new Date(Date.UTC(y!, m! - 1, d!));
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'UTC',
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }).format(at);
+  return formatDateIn(at, 'UTC', { weekday: 'short' });
 }

@@ -11,7 +11,7 @@
  *                     of the venue (§3.4), as source = 'escalation'.
  *   &event=<uuid>     optional — only that event's sections. The office's
  *                     save posts `?mode=hourly&event=…` through
- *                     auto_assign_first_round() (20260927181000) so a new
+ *                     auto_assign_first_round() (20260928110200) so a new
  *                     event gets its first round "from the moment the
  *                     event is created" (§3.4) instead of at :17, without
  *                     handing every other open section an extra round.

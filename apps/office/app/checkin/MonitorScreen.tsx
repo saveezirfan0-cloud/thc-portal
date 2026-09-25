@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Avatar, Button, Checkbox, Panel, Pill, SegToggle, Select, TableScroll } from '@thc/ui';
+import { Avatar, Button, Checkbox, Panel, Pill, SegToggle, Select } from '@thc/ui';
 import { UK_ZONE, formatDateTimeIn, formatTimeIn, viewerZone } from '@thc/domain';
 import { createClient } from '@thc/db/browser';
 import { MonitorTable } from './MonitorTable';
@@ -127,60 +127,60 @@ export function MonitorScreen({
               : 'Nothing unresolved. Tick “Show resolved” to see closed entries.'}
           </p>
         ) : (
-          <TableScroll>
-            <table className="tbl">
-              <thead>
-                <tr>
-                  <th>Staff</th>
-                  <th>Event</th>
-                  <th>Violation</th>
-                  <th>Time</th>
-                  <th />
+          <table className="tbl card-rows">
+            <thead>
+              <tr>
+                <th>Staff</th>
+                <th>Event</th>
+                <th>Violation</th>
+                <th>Time</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {shownViolations.map((v) => (
+                <tr key={v.id} {...violationRowProps(v, () => setOpen(v))}>
+                  <td className="cell-title">
+                    <div className="person">
+                      <Avatar name={v.staffName} src={v.photoUrl ?? undefined} size="sm" />
+                      <div className="n">{v.staffName}</div>
+                    </div>
+                  </td>
+                  <td data-label="Event">
+                    {v.eventTitle}
+                    <span className="sub">
+                      {v.venueName} · {v.roleName}
+                    </span>
+                  </td>
+                  <td data-label="Violation">
+                    <b>{VIOLATION_LABEL[v.type]}</b>
+                    {v.resolved ? (
+                      <>
+                        {' '}
+                        <Pill tone="green">Resolved</Pill>
+                      </>
+                    ) : null}
+                  </td>
+                  <td data-label="Time" className="mono sm">
+                    {local(v.detectedAt)}
+                  </td>
+                  <td className="right-align cell-actions">
+                    <Button
+                      size="sm"
+                      tone={v.resolved ? 'ghost' : 'default'}
+                      onClick={(event) => {
+                        // The row opens the same window; one open, not two.
+                        event.stopPropagation();
+                        setOpen(v);
+                      }}
+                    >
+                      Details
+                    </Button>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {shownViolations.map((v) => (
-                  <tr key={v.id} {...violationRowProps(v, () => setOpen(v))}>
-                    <td>
-                      <div className="person">
-                        <Avatar name={v.staffName} src={v.photoUrl ?? undefined} size="sm" />
-                        <div className="n">{v.staffName}</div>
-                      </div>
-                    </td>
-                    <td>
-                      {v.eventTitle}
-                      <span className="sub">
-                        {v.venueName} · {v.roleName}
-                      </span>
-                    </td>
-                    <td>
-                      <b>{VIOLATION_LABEL[v.type]}</b>
-                      {v.resolved ? (
-                        <>
-                          {' '}
-                          <Pill tone="green">Resolved</Pill>
-                        </>
-                      ) : null}
-                    </td>
-                    <td className="mono sm">{local(v.detectedAt)}</td>
-                    <td style={{ textAlign: 'right' }}>
-                      <Button
-                        size="sm"
-                        tone={v.resolved ? 'ghost' : 'default'}
-                        onClick={(event) => {
-                          // The row opens the same window; one open, not two.
-                          event.stopPropagation();
-                          setOpen(v);
-                        }}
-                      >
-                        Details
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </TableScroll>
+              ))}
+            </tbody>
+          </table>
         )}
       </Panel>
 

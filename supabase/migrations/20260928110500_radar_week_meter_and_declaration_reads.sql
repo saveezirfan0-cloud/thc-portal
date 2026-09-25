@@ -231,4 +231,4 @@ comment on function public.queue_contact_change(uuid, text) is
 drop policy if exists staff_self_decl on public.criminal_declarations;
 
 comment on table public.criminal_declarations is
-  'Criminal-conviction declarations, onboarding and in-employment (§2.3, §10.7). History, never edited (§1.5). Office reads through admin_all; a worker has NO direct policy since 20260927182000 — every worker-facing read is a definer RPC that withholds details and conviction_date (ADR-0031).';
+  'Criminal-conviction declarations, onboarding and in-employment (§2.3, §10.7). History, never edited (§1.5). Office reads through admin_all; a worker has NO direct policy since 20260928110500 — every worker-facing read is a definer RPC that withholds details and conviction_date (ADR-0031).';

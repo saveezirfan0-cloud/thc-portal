@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Chip, EmptyState, Note, Panel, Select, TableScroll } from '@thc/ui';
+import { Alert, Button, Chip, EmptyState, Note, Panel, Select } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { ClientModal } from './ClientModal';
 import type { Client } from './types';
@@ -134,69 +134,71 @@ export function ClientsScreen({ clients, problem }: ClientsScreenProps) {
               </p>
             </EmptyState>
           ) : (
-            <TableScroll>
-              <table className="tbl">
-                <thead>
-                  <tr>
-                    <th>Client</th>
-                    <th>Contact</th>
-                    <th>Phone</th>
-                    <th>Rate card roles</th>
-                    <th>Policies</th>
-                    <th className="num">Events</th>
-                    <th className="num">Avg margin</th>
+            <table className="tbl card-rows">
+              <thead>
+                <tr>
+                  <th>Client</th>
+                  <th>Contact</th>
+                  <th>Phone</th>
+                  <th>Rate card roles</th>
+                  <th>Policies</th>
+                  <th className="num">Events</th>
+                  <th className="num">Avg margin</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shown.map((client) => (
+                  <tr key={client.id}>
+                    <td className="name cell-title">
+                      {/*
+                        The name opens the card (§9.7), not the edit modal:
+                        the card is where the rate card, the qualified pool
+                        and this client's events live, and Edit is one
+                        button on it.
+                      */}
+                      <Link href={`/clients/${client.id}`} className="client-name">
+                        {client.name}
+                      </Link>
+                      <span className="sub">{client.staff_contact_point}</span>
+                    </td>
+                    <td data-label="Contact">
+                      {client.contact_name}
+                      <span className="sub">{describeEmails(client.contact_emails)}</span>
+                    </td>
+                    <td data-label="Phone" className="mono sm">
+                      {client.phone}
+                    </td>
+                    <td data-label="Rate card roles">
+                      {client.rate_card_roles.length === 0 ? (
+                        <span className="muted sm">no rate card yet</span>
+                      ) : (
+                        <div className="chips">
+                          {client.rate_card_roles.map((role) => (
+                            <Chip key={role}>{role}</Chip>
+                          ))}
+                        </div>
+                      )}
+                    </td>
+                    <td data-label="Policies" className="sm">
+                      <span className="muted">Breaks:</span>{' '}
+                      {client.pays_breaks ? 'paid' : 'unpaid'} ·{' '}
+                      <span className="muted">Buffer:</span>{' '}
+                      {client.pays_buffer ? 'paid' : 'strict'}
+                    </td>
+                    <td data-label="Events" className="num">
+                      {client.event_count}
+                    </td>
+                    <td data-label="Avg margin" className="num margin">
+                      {client.avg_margin_pct === null ? (
+                        <span className="muted">—</span>
+                      ) : (
+                        `${client.avg_margin_pct.toFixed(1)}%`
+                      )}
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {shown.map((client) => (
-                    <tr key={client.id}>
-                      <td className="name">
-                        {/*
-                          The name opens the card (§9.7), not the edit modal:
-                          the card is where the rate card, the qualified pool
-                          and this client's events live, and Edit is one
-                          button on it.
-                        */}
-                        <Link href={`/clients/${client.id}`} className="client-name">
-                          {client.name}
-                        </Link>
-                        <span className="sub">{client.staff_contact_point}</span>
-                      </td>
-                      <td>
-                        {client.contact_name}
-                        <span className="sub">{describeEmails(client.contact_emails)}</span>
-                      </td>
-                      <td className="mono sm">{client.phone}</td>
-                      <td>
-                        {client.rate_card_roles.length === 0 ? (
-                          <span className="muted sm">no rate card yet</span>
-                        ) : (
-                          <div className="chips">
-                            {client.rate_card_roles.map((role) => (
-                              <Chip key={role}>{role}</Chip>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                      <td className="sm">
-                        <span className="muted">Breaks:</span>{' '}
-                        {client.pays_breaks ? 'paid' : 'unpaid'} ·{' '}
-                        <span className="muted">Buffer:</span>{' '}
-                        {client.pays_buffer ? 'paid' : 'strict'}
-                      </td>
-                      <td className="num">{client.event_count}</td>
-                      <td className="num margin">
-                        {client.avg_margin_pct === null ? (
-                          <span className="muted">—</span>
-                        ) : (
-                          `${client.avg_margin_pct.toFixed(1)}%`
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </TableScroll>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
         {filtered.length > PAGE_SIZE ? (

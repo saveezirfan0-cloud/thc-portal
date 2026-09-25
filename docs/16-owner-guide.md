@@ -396,7 +396,7 @@ only; values are never read). "P" = Production, "Pv" = Preview.
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | set, P+Pv | set, P+Pv | set, **P only** | browser | The public key; RLS is what protects the data (§1.4). |
 | `SUPABASE_SERVICE_ROLE_KEY` | set, P+Pv | set, P+Pv | set, P+Pv | **server only** | Server actions that must bypass RLS on purpose (Accept creates a login, Storage writes, admin-only tables). Never under a `NEXT_PUBLIC_` name. |
 | `APP_TZ` | set, P+Pv | set, P+Pv | set, P+Pv | server | Always `Europe/London` (§1.8); `next.config.ts` defaults it, the variable pins it. |
-| `NEXT_PUBLIC_STAFF_URL` | set, P+Pv | **add** | set, P+Pv | browser | Office: the origin E3's `/activate/:token` link is built on (`apps/office/app/onboarding/actions.ts` refuses Accept in production without it) and the `/privacy` link. Client: the `/privacy` link. **Staff: the origin password-reset links come back to** (`apps/staff/app/forgot/actions.ts`); without it the app falls back to `VERCEL_URL`, the deployment's unique hostname, which Vercel's deployment protection puts behind a login wall. Value today: `https://thc-portal-staff.vercel.app`. |
+| `NEXT_PUBLIC_STAFF_URL` | set, P+Pv | **add** | set, P+Pv | browser | Office: the origin E3's `/activate/:token` link is built on (`apps/office/app/onboarding/actions.ts` refuses Accept in production without it) and the `/privacy` link. Client: the `/privacy` link. **Staff: the origin password-reset links come back to** (`apps/staff/app/forgot/actions.ts`); without it the app falls back to `VERCEL_URL`, the deployment's unique per-build hostname. That used to mean a Vercel login wall; SSO protection was turned off on 25.09, so now it means something worse in one respect — the link resolves, but it points at one specific build, so it rots as soon as the next deploy lands. Set it. Value today: `https://thc-portal-staff.vercel.app`. |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | — | **add in §4.5** | — | browser | The key the browser subscribes with (`apps/staff/lib/push.ts`). Absent, the app reports "Notifications are not available yet" and never asks permission. Must equal the Supabase `VAPID_PUBLIC_KEY`. |
 | `APPLY_CALLER_SALT` (or `APPLY_THROTTLE_SALT`) | — | **set** — present as `APPLY_THROTTLE_SALT`, P+Pv (23.09); either name is read | — | **server only** | HMAC salt for `/apply`'s per-caller limit (ADR-0024, §2.1, docs/14 §4 "unthrottled per caller"), read by `apps/staff/lib/callerKey.ts`. Only a hash of the caller's address is stored; rotating it resets the counters. See the note below. |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | optional | optional | — | browser | Raster tiles under the venue map (`apps/office/app/venues/VenueMap.tsx`) and the home-address pin (`apps/staff/app/onboarding/_components/PinMap.tsx`). Without it the maps draw their own surface with no tiles (ADR-0005). §6.2. |
@@ -1045,9 +1045,24 @@ payroll recipients from `settings.payroll_recipients`, not from the environment.
 | `NEXT_PUBLIC_STAFF_URL` | `apps/office/app/onboarding/actions.ts`, `apps/office/app/login/page.tsx`, `apps/office/app/onboarding/page.tsx`, `apps/client/app/login/page.tsx`, `apps/staff/app/forgot/actions.ts` | §3.1 |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | `apps/staff/lib/push.ts` | §4.5 |
 | `APPLY_CALLER_SALT` | `apps/staff/lib/callerKey.ts` (ADR-0024) | §3.1; falls back to a built-in salt with a logged warning |
-| *(no variable)* | `apps/staff/lib/postcodes.ts` (ADR-0025) | the home-address postcode is looked up at `api.postcodes.io` — open data, no key; unreachable means the address saves without a location |
+| *(no variable)* | `apps/staff/lib/postcodes.ts` (ADR-0014) | the home-address postcode is looked up at `api.postcodes.io` — open data, no key; unreachable means the address saves without a location |
 | `NEXT_PUBLIC_MAPBOX_TOKEN`, `MAPBOX_TOKEN` | §6.2 | optional |
 | `VERCEL_URL` | `apps/staff/app/forgot/actions.ts` | Vercel's own; only a fallback |
+| `RTW_JOB_SECRET`, `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` (+ `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX`, `RTW_PROVIDER_TIMEOUT_MS`, `RTW_GOVUK_ENABLED`, `RTW_GOVUK_START_URL`, `RTW_GOVUK_TIMEOUT_MS`, `RTW_CHECK_BATCH`) | `apps/office/app/api/jobs/rtw-check/` (ADR-0025) | **Back Office only.** The automated gov.uk right-to-work check, shipped switched off; §6.5 |
+
+### 6.5 The automated gov.uk right-to-work check (ADR-0025)
+
+Built, and switched off until THC chooses a provider. It is a Back Office route, not an
+Edge Function, so its keys go on the **office** Vercel project, and pg_cron reaches it at
+the Vault secret `office_base_url` (an https origin; kept out of `settings`, which an admin
+session can write, because whoever sets it receives the bearer) with its own Vault secret
+`rtw_job_secret`, never the service key. Commands:
+`select vault.create_secret('https://<office origin>', 'office_base_url');` and
+`select vault.create_secret('<RTW_JOB_SECRET>', 'rtw_job_secret');`. The
+full list of variables, the SQL and the switch-on order are in
+`docs/12-keys-and-assets.md` ("The automated right-to-work check") and `OWNER-TODO.md`
+§8. THC has accepted that a passing check verifies a worker without the Home Office photo
+match (ADR-0025).
 
 ---
 
@@ -1066,12 +1081,14 @@ payroll recipients from `settings.payroll_recipients`, not from the environment.
   which shows as a red `ci` run whose tests all passed — read which job went red
   before treating it as a failure (the comment in `ci.yml`). No migration is
   lost: the newest run applies whatever is pending.
+- **The Edge Functions** (since 25.09): the same job then deploys all seven by
+  name, `willo-webhook` with `--no-verify-jwt`. §4.6's commands are now only
+  for deploying by hand between merges.
 
 ### 7.2 What never deploys itself
 
 | Thing | How | When |
 |---|---|---|
-| Edge Functions | `supabase functions deploy <name>` from the repo root (§4.6, §5.2) | after any change under `supabase/functions/`, `packages/notifications/`, `packages/db/src/{willo,provision,activation}.ts` or `packages/pdf/src/csv.ts` — anything a function imports. A pull request that touches these should say "redeploy X"; hold the session to that. |
 | Schedules | `select public.install_job_schedules();` (§4.7) | after any migration that inserts into or updates `job_schedules` |
 | Supabase secrets | `supabase secrets set` | when a key changes |
 | Auth settings, SMTP, templates, URL configuration | dashboard (§1) | manual, once |

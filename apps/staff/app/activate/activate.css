@@ -112,6 +112,7 @@
   letter-spacing: var(--label-track);
   text-transform: var(--label-case);
   color: var(--cyan-ink);
+  font-weight: var(--label-weight);
 }
 .act-install ol {
   margin: 0;

@@ -309,7 +309,7 @@ describe('refusal copy', () => {
     // The body is only the wireframe's explanation of where the invite went.
     expect(ACCEPT_REFUSAL_COPY.taken.body).toContain('moved to Closed');
     expect(ACCEPT_REFUSAL_COPY.taken.body).not.toContain('confirmed first');
-    // RULE-12 re-read at Accept (20260927181200): a blocked worker is told
+    // RULE-12 re-read at Accept (20260928110400): a blocked worker is told
     // where to look, never told they are over their hours.
     expect(ACCEPT_REFUSAL_COPY.blocked.body).toContain('Documents');
     expect(ACCEPT_REFUSAL_COPY.blocked.title).not.toBe(ACCEPT_REFUSAL_COPY.hours_limit.title);

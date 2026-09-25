@@ -1,9 +1,9 @@
 -- =====================================================================
 -- 530 · A worker's home location follows their address (§10.1, §6)
 --       — 20260926110000_home_location_follows_address.sql
---       — 20260927182100_home_pin_is_service_role_only.sql (section A)
+--       — 20260928110600_home_pin_is_service_role_only.sql (section A)
 --
---   A. Who can reach it (20260927182100): nobody but the service role —
+--   A. Who can reach it (20260928110600): nobody but the service role —
 --      not anon, not a worker naming themselves, not the office — so the
 --      point only ever comes from the server action that geocoded it; the
 --      office reads every worker's stale flag, a worker only their own, a

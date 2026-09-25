@@ -80,7 +80,9 @@
   .calc {
     grid-template-columns: 1fr;
   }
+  /* A phone draws the list as cards, where the description has the card's
+     width to itself. */
   .tbl td.desc {
-    max-width: 20ch;
+    max-width: none;
   }
 }

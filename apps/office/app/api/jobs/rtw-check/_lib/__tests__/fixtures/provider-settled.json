@@ -1,0 +1,7 @@
+{
+  "_synthetic": "invented to match provider.config.ts — not a real provider response",
+  "result": { "outcome": "right_to_work" },
+  "person": { "first_name": "Marta", "last_name": "Villanueva" },
+  "permission_type": "indefinite",
+  "report_url": "https://provider.example/reports/SYNTH-1.pdf"
+}

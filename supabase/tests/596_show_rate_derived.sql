@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 596 · The show-rate is derived (§6, BG-03, RULE-14, §9.5)
---       — 20260927180000_show_rate_derived_and_monitor_off_site.sql
+--       — 20260928110100_show_rate_derived_and_monitor_off_site.sql
 --
 -- staff_show_rate() replays, BY NAME, the `showRate` cases of
 -- packages/domain/src/pay.vectors.json (Vitest runs them against

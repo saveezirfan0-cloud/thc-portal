@@ -209,7 +209,7 @@ select
   (select r.rejection_reason from public.staff_rejection_reason_v r
     where r.staff_id = s.id)                                   as rejection_reason,
   p.full_name                                                                      as rejected_by_name,
-  -- ---- appended 20260927170000 ----------------------------------------
+  -- ---- appended 20260928110000 ----------------------------------------
   -- §2.7: the date beside "activated" on the Documents card and the
   -- "Activated dd.mm.yyyy (E3)" fact on the profile.
   staff_account_activated_at(s.id)                                                 as activated_at,
@@ -230,7 +230,7 @@ left join profiles p on p.id = s.rejected_by
 where s.removed_at is null;
 
 comment on view onboarding_candidates_v is
-  'The §2.3 onboarding board row. security_invoker, so `staff`''s own RLS decides which candidates a caller sees. rejection_reason is read through the owner-rights staff_rejection_reason_v: §2.9''s reason is the office''s and ADR-0017 keeps it out of every rejection email. activated_at, additional_info_done_at and quiz_scores appended 20260927170000.';
+  'The §2.3 onboarding board row. security_invoker, so `staff`''s own RLS decides which candidates a caller sees. rejection_reason is read through the owner-rights staff_rejection_reason_v: §2.9''s reason is the office''s and ADR-0017 keeps it out of every rejection email. activated_at, additional_info_done_at and quiz_scores appended 20260928110000.';
 
 revoke all on onboarding_candidates_v from public, anon;
 grant select on onboarding_candidates_v to authenticated;
@@ -282,7 +282,7 @@ select
   weekly_cap_hours(s.id, (now() at time zone 'Europe/London')::date)   as weekly_cap_hours,
   weekly_cap_band(s.id, (now() at time zone 'Europe/London')::date)    as weekly_cap_band,
   weekly_booked_hours(s.id, (now() at time zone 'Europe/London')::date) as weekly_booked_hours,
-  -- ---- appended 20260927170000 ----------------------------------------
+  -- ---- appended 20260928110000 ----------------------------------------
   -- §9.6 / §4.4: the Sunday the band holds until, for the three bands the
   -- term calendar moves (N14 asks the same question, 20260924130200).
   -- graduated_48, standard_48 and uncapped have no end: null.
@@ -306,7 +306,7 @@ from staff s
 left join staff_block_reason_v br on br.staff_id = s.id;
 
 comment on view public.staff_directory_v is
-  '§9.6 directory row. security_invoker; §1.7 anonymisation applied here; block_reason through the owner-rights staff_block_reason_v (§10.1). weekly_cap_until, last_shift_at, released_shift_count and p45_requested_at appended 20260927170000 for the Inactive tab and the "Limit reached … until" line.';
+  '§9.6 directory row. security_invoker; §1.7 anonymisation applied here; block_reason through the owner-rights staff_block_reason_v (§10.1). weekly_cap_until, last_shift_at, released_shift_count and p45_requested_at appended 20260928110000 for the Inactive tab and the "Limit reached … until" line.';
 
 revoke all on public.staff_directory_v from public, anon;
 grant select on public.staff_directory_v to authenticated;

@@ -332,3 +332,31 @@ describe('focus', () => {
     expect(token(':root', '--focus-line')).toBe('var(--cyan-ink)');
   });
 });
+
+describe('a table row drawn as a card on a phone (ADR-0030)', () => {
+  const rule = (selector: string) => {
+    const css = stripComments(sheets['components.css']!);
+    const start = css.indexOf(`${selector} {`);
+    expect(start, `missing ${selector}`).toBeGreaterThan(-1);
+    return css.slice(start, css.indexOf('}', start));
+  };
+
+  it('keeps a mixed text-and-tag cell in its value column', () => {
+    // The first cut laid a labelled cell out as a two-column grid and moved
+    // its children to column 2. Grid placement reaches elements only, so a
+    // bare text run in a cell like "Breaks: paid · Buffer: strict" fell into
+    // the label column and the policies read scrambled. The label floats in
+    // a reserved gutter instead, and the cell contains the float.
+    const cell = rule('.tbl.card-rows td[data-label]');
+    expect(cell).not.toMatch(/display:\s*grid/);
+    expect(cell).toMatch(/display:\s*flow-root/);
+    expect(cell).toMatch(/padding-left:/);
+
+    const label = rule('.tbl.card-rows td[data-label]::before');
+    expect(label).toContain('content: attr(data-label)');
+    expect(label).toMatch(/float:\s*left/);
+    expect(stripComments(sheets['components.css']!)).not.toMatch(
+      /\.tbl\.card-rows td\[data-label\] > \*/,
+    );
+  });
+});

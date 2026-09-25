@@ -62,7 +62,11 @@ select is_empty(
           'new_starter_export_rows', 'queue_finance_report_email',
           -- P2, the outbox drain (20260924100000). Without these the drain
           -- 500s on its first unsendable row and holds the whole batch.
-          'fail_outbox_send', 'release_outbox_claim'
+          'fail_outbox_send', 'release_outbox_claim',
+          -- The automated right-to-work check (20260928100000, ADR-0025),
+          -- a Back Office route on the service key rather than an Edge
+          -- Function. Without these every share code waits for ever.
+          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config'
         )
         and not has_function_privilege('service_role', p.oid, 'execute') $$,
   'the service role can execute every function the §7 jobs call'
@@ -93,11 +97,16 @@ select is_empty(
           'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
           'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion',
           -- The §3.3/§3.4 pool and its radius (20260927140100, restated
-          -- 20260927180000) were created with PUBLIC's default EXECUTE
-          -- and never revoked; 20260927184000 closed that. Both are
+          -- 20260928110100) were created with PUBLIC's default EXECUTE
+          -- and never revoked; 20260928110800 closed that. Both are
           -- invoker functions, so this is the name list catching the
           -- grant, not a leak — 2f below catches the mechanism.
-          'auto_assign_candidates', 'escalation_radius_miles'
+          'auto_assign_candidates', 'escalation_radius_miles',
+          -- rtw_check_claim hands out share codes and dates of birth;
+          -- rtw_check_record verifies a worker's right to work. The two
+          -- *_as bodies take the reviewer as an argument.
+          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config',
+          'compliance_verify_document_as', 'compliance_reject_document_as'
         )
         and has_function_privilege('anon', p.oid, 'execute') $$,
   'anon can execute none of the job, engine, compliance or lifecycle write paths, nor the auto-assign pool or its radius'
@@ -126,7 +135,13 @@ select is_empty(
           'compliance_daily', 'block_worker', 'unblock_if_compliant',
           'request_p45', 'declare_conviction', 'released_shift_lines',
           'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
-          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion'
+          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion',
+          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config',
+          'compliance_verify_document_as', 'compliance_reject_document_as',
+          -- rtw_check_manual_allowed is NOT here on purpose: the office's
+          -- security_invoker queue view calls it as `authenticated`, so it
+          -- checks its caller instead and answers a worker NULL (600 §I).
+          'rtw_check_enqueue', 'rtw_check_nudge', 'office_base_url'
         )
         and has_function_privilege('authenticated', p.oid, 'execute') $$,
   'nor can a signed-in worker block, retire, reset or remove anybody'
@@ -277,7 +292,7 @@ select bag_eq(
 );
 
 -- ---------------------------------------------------------------------
--- 2g. And the two invoker functions 20260927184000 revoked stay revoked
+-- 2g. And the two invoker functions 20260928110800 revoked stay revoked
 --     from PUBLIC while remaining callable by the office and the jobs.
 -- ---------------------------------------------------------------------
 select is_empty(
@@ -288,7 +303,7 @@ select is_empty(
         and (has_function_privilege('public', p.oid, 'execute')
           or not has_function_privilege('authenticated', p.oid, 'execute')
           or not has_function_privilege('service_role', p.oid, 'execute')) $$,
-  'auto_assign_candidates and escalation_radius_miles hold no PUBLIC execute and are still granted to authenticated and service_role (20260927184000)'
+  'auto_assign_candidates and escalation_radius_miles hold no PUBLIC execute and are still granted to authenticated and service_role (20260928110800)'
 );
 
 -- ---------------------------------------------------------------------

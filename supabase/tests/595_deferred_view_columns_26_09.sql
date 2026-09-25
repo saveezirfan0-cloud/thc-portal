@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 595 · The database half of the 26.09 "shared_change_needed" deferrals
---       — 20260927170000_deferred_view_columns_26_09.sql
+--       — 20260928110000_deferred_view_columns_26_09.sql
 --
 --   A. Both office views stay security_invoker (ADR-0004).
 --   B. The office reads every appended column, and each one says what

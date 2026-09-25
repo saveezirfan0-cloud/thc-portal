@@ -11,39 +11,72 @@
  */
 
 .ctop {
-  height: 56px; /* the wireframe's own bar height (client/events.html); the office --topbar-h is 64 */
+  min-height: 56px; /* the wireframe's own bar height (client/events.html); the office --topbar-h is 64 */
   border-bottom: 1px solid var(--line);
   background: var(--panel);
   display: flex;
   align-items: center;
   gap: var(--sp-16);
   padding: 0 var(--gutter);
+  position: sticky;
+  top: 0;
+  z-index: 30;
 }
 
-.ctop .who {
+.ctop .brand .sub.co {
+  display: none;
+}
+
+.ctop .who,
+.ctop .menu-who {
   display: flex;
   flex-direction: column;
   line-height: 1.15;
   border-left: 1px solid var(--line);
   padding-left: var(--sp-16);
+  min-width: 0;
 }
 
-.ctop .who .n {
+.ctop .who .n,
+.ctop .menu-who .n {
   font-family: var(--font-head);
   font-weight: 600;
   font-size: var(--fs-14);
 }
 
-.ctop .who .l {
+.ctop .who .l,
+.ctop .menu-who .l,
+.ctop .mode .l {
   font-family: var(--font-label);
   font-size: var(--label-size);
   letter-spacing: var(--label-track);
   text-transform: var(--label-case);
+  font-weight: var(--label-weight);
   color: var(--muted);
 }
 
 .ctop .spacer {
   flex: 1;
+}
+
+/* The account end of the bar (AccountMenu). On a desktop it is simply
+   more of the bar; the phone rules below turn it into a panel. */
+.ctop-menu {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.ctop-menu .menu-who,
+.ctop-menu .mode .l {
+  display: none;
+}
+
+.ctop-menu .me,
+.ctop-menu .mode {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .ctop .tz {
@@ -62,6 +95,10 @@
   display: flex;
   flex-direction: column;
   gap: var(--sp-20);
+}
+
+.ev-search {
+  width: 220px;
 }
 
 /* ---- the fill cell: "13 of 17 confirmed" over its bar (§11.1) ---- */
@@ -89,6 +126,7 @@
 }
 
 .win .sub {
+  font-family: var(--font-num);
   display: block;
   color: var(--muted);
 }
@@ -104,6 +142,33 @@
 }
 
 /* ---- the event page ---- */
+
+/* A role section's title: the role, then its window as a second line. Two
+   inline spans ran together as "UK time11:00" and, on a phone, under the
+   count pill. */
+.role-title {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.role-title .rw {
+  font-family: var(--font-num);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 8px;
+}
+
+.role-title .rw .sub::before {
+  content: '· ';
+}
+
+.ehead .actions {
+  margin-left: auto;
+}
 .ehead {
   display: flex;
   flex-direction: column;
@@ -124,6 +189,7 @@
   letter-spacing: var(--label-track);
   text-transform: var(--label-case);
   color: var(--muted);
+  font-weight: var(--label-weight);
 }
 
 .meta .v {
@@ -137,11 +203,12 @@
   font-size: var(--fs-12);
 }
 
+/* Hairlines drawn by each cell rather than a 1px gap over a line-coloured
+   ground: a short last row left that ground showing as a grey slab. */
 .wgrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 1px;
-  background: var(--line);
+  margin: 0 -1px -1px 0;
 }
 
 .wrow {
@@ -150,6 +217,9 @@
   gap: var(--sp-12);
   padding: var(--sp-12) var(--sp-14);
   background: var(--panel);
+  box-shadow:
+    inset -1px 0 0 var(--line),
+    inset 0 -1px 0 var(--line);
 }
 
 .wrow .n {
@@ -176,21 +246,71 @@
   border: 1px solid var(--line);
   border-radius: var(--r-tile);
   box-shadow: var(--shadow-card);
-  padding: var(--sp-12) var(--sp-14);
+  padding: var(--sp-16);
   display: flex;
   flex-direction: column;
-  gap: var(--sp-8);
+  gap: var(--sp-10);
+  color: inherit;
+}
+
+.ecard .when {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-10);
+}
+
+.ecard .when .win {
+  font-family: var(--font-num);
+  font-size: 12.5px; /* half-pixel size from client/events.html; no token */
+  white-space: normal;
+  text-align: right;
+  line-height: 1.35;
+}
+
+.ecard .when .win b {
+  display: block;
+  font-weight: 600;
+}
+
+.ecard .foot {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  border-top: 1px solid var(--line);
+  padding-top: var(--sp-12);
+  margin-top: 2px;
+}
+
+.ecard .faces {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  flex-wrap: wrap;
 }
 
 .ecard .t {
   font-family: var(--font-head);
-  font-size: var(--fs-15);
-  font-weight: 600;
+  font-size: var(--fs-17);
+  font-weight: var(--head-weight);
+  letter-spacing: var(--head-track);
+  line-height: 1.2;
 }
 
 .ecard .m {
   font-size: var(--fs-12);
   color: var(--muted);
+}
+
+/* The status pill and the date · window share a line while they fit; the
+   window is mono and nowrap in the table, which on a 390px card ran it off
+   the right edge. Here it wraps under the pill instead. */
+.ecard .row {
+  flex-wrap: wrap;
+}
+.ecard .win {
+  white-space: normal;
+  min-width: 0;
 }
 
 .ecard.cancelled {
@@ -209,28 +329,14 @@
 
 @media (max-width: 820px) {
   .cwrap {
-    padding: var(--sp-14);
-  }
-
-  /* The bar is one row of brand + company + viewer + the appearance switch
-     + sign out. At 390px that ran the last of them off the right edge, so
-     below the tablet break it wraps: brand and company first, identity and
-     controls underneath. Nothing is hidden — a customer with several venues
-     reads the company name to know whose events these are (§11.1), and a
-     control a phone cannot reach is a control a phone has not got. */
-  .ctop {
-    height: auto;
-    flex-wrap: wrap;
-    padding: var(--sp-10) var(--sp-14);
-    gap: var(--sp-10);
-  }
-
-  .ctop .spacer {
-    flex: 1 0 100%;
+    padding: var(--sp-16);
+    gap: var(--sp-16);
   }
 
   /* The table folds away and the cards take over; both are rendered from
-     the same rows, so the phone drops no field (§1.2, §11.1). */
+     the same rows, so the phone drops no field (§1.2, §11.1). The panel
+     that frames the table on a desktop would be a card around cards here,
+     so it steps back to a plain heading. */
   .table-wrap {
     display: none;
   }
@@ -239,8 +345,155 @@
     display: flex;
   }
 
+  .events-panel {
+    background: none;
+    border: 0;
+    box-shadow: none;
+    overflow: visible;
+  }
+
+  .events-panel > .panel-h {
+    padding: 0 2px 4px;
+    border-bottom: 0;
+  }
+
+  .events-panel .cards {
+    padding: 0 !important;
+  }
+
   .wgrid {
     grid-template-columns: 1fr;
+  }
+
+  .wrow {
+    padding: 12px 16px;
+  }
+
+  .role-panel > .panel-h {
+    flex-wrap: nowrap;
+    align-items: flex-start;
+  }
+
+  .role-panel > .panel-h h3 {
+    flex: 1 1 0;
+  }
+
+  .role-title .rw .sub {
+    flex-basis: 100%;
+  }
+
+  .role-title .rw .sub::before {
+    content: none;
+  }
+
+  .ehead h1 {
+    font-size: 26px;
+  }
+
+  .ehead .actions {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .ehead .actions .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px 16px;
+  }
+}
+
+/* ---- phone: the bar becomes brand + menu (§1.2) ----
+   One row: logo, the company, and the menu button. Who is signed in, the
+   appearance switch and sign out open in a panel under the bar, rather than
+   wrapping into three ragged rows that pushed the page down. The company
+   stays in view on the bar itself — a customer with several venues reads it
+   to know whose events these are (§11.1). */
+@media (max-width: 760px) {
+  .ctop {
+    min-height: 60px;
+    padding: 8px 16px;
+    gap: 12px;
+  }
+
+  .ctop .who {
+    display: none;
+  }
+
+  /* Above the scrim, so the bar stays readable and the button that
+     opened the menu is the one that closes it. */
+  .ctop .brand,
+  .ctop .menu-btn {
+    position: relative;
+    z-index: 46;
+  }
+
+  .ctop .brand .sub.co {
+    display: block;
+    font-family: var(--font-body);
+    font-size: 12px;
+    letter-spacing: 0;
+    text-transform: none;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .ctop .brand .sub:has(+ .sub.co) {
+    display: none;
+  }
+
+  .ctop-menu {
+    display: none;
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 12px;
+    right: 12px;
+    z-index: 45;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 6px 16px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--r-card);
+    box-shadow: var(--shadow-card);
+  }
+
+  .ctop-menu.open {
+    display: flex;
+  }
+
+  .ctop-menu > * {
+    padding: 14px 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .ctop-menu > :last-child {
+    border-bottom: 0;
+  }
+
+  .ctop-menu .menu-who {
+    display: flex;
+    border-left: 0;
+    padding-left: 0;
+    gap: 4px;
+  }
+
+  .ctop-menu .mode {
+    justify-content: space-between;
+  }
+
+  .ctop-menu .mode .l {
+    display: inline;
+  }
+
+  .ctop-menu .signout .btn {
+    width: 100%;
+    justify-content: center;
+    margin: 14px 0 8px;
   }
 }
 

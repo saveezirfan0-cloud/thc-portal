@@ -213,7 +213,7 @@ export function documentState(
  * reviewer enter it): inclusive ISO dates, `from` ≤ `to`. Postgres stores
  * the half-open `[from, to + 1 day)` (toDaterangeLiteral in the Staff App's
  * extractor), so "the last day is before today" reads `to < today` here and
- * `upper(range) <= today` in `term_letter_expired()` (20260927181100).
+ * `upper(range) <= today` in `term_letter_expired()` (20260928110300).
  */
 export interface TermRange {
   from: string;

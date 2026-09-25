@@ -212,7 +212,7 @@ select is((select qualified from auto_assign_candidates(:'sec') where staff_id =
 select ok((select distance_km from auto_assign_candidates(:'sec') where staff_id = :'clean') < 0.2,
   'the proximity input is the real distance from the worker home to the venue');
 -- The fixture row says 98, but the column is not read: the show-rate is
--- staff_show_rate(), derived from bookings and violations (20260927180000,
+-- staff_show_rate(), derived from bookings and violations (20260928110100,
 -- pinned in 596), and this worker has no history — so the §6 zero point.
 select is((select reliability from auto_assign_candidates(:'sec') where staff_id = :'clean'), 90::numeric,
   'the show-rate input is derived from the worker''s history, not staff.reliability — no history is 90, for scoring in TypeScript');
@@ -283,7 +283,7 @@ select is((select gate from auto_assign_candidates(:'sec') where staff_id = :'cl
 -- open … it keeps adding until headcount + buffer is filled". Fill counts
 -- only confirmed, so open invitations do not count against the target:
 -- with allocation = headcount + buffer, round two must still invite when
--- nobody has confirmed (20260927181000). Its own section, so the fill
+-- nobody has confirmed (20260928110200). Its own section, so the fill
 -- of :'sec' above is untouched.
 -- ---------------------------------------------------------------------
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,

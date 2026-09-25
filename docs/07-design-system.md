@@ -39,4 +39,4 @@ Web/Sidebar `.sidebar` → `<Sidebar>` · Web/Topbar `.topbar` → `<Topbar>` ·
 - Rating colour: < 3.0 `coral` · 3.0–3.9 `amber` · ≥ 4.0 `green`.
 
 ## Responsive
-Back Office and Client Portal collapse the sidebar under 820px (hamburger in the topbar) and stack grids; tables scroll horizontally. Staff app is designed at 390×844 and scales up to tablet as a centred column.
+Back Office: below 760px the sidebar gives way to a bottom tab bar (Dashboard · Scheduling · Compliance · Check-in · More) whose More sheet holds the rest of the menu, sign-out and the appearance switch; grids stack; list tables marked `.card-rows` become cards and every other table scrolls inside its card (ADR-0030). From 1024px down the top bar wraps and tables in panels scroll. Client Portal swaps its table for cards under 820px. Staff app is designed at 390×844 and scales up to tablet as a centred column.

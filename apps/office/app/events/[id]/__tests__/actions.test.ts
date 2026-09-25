@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * The board's two roster corrections go through the database (§3.3,
- * 20260927181000). Get back used to delete the no-show and insert a `late`
+ * 20260928110200). Get back used to delete the no-show and insert a `late`
  * row from here — no check-in, booking still `confirmed`, payable_shifts_v
  * paying 0. These pin the wiring: one RPC each, nothing written to
  * `violations` directly, refusals mapped to words.

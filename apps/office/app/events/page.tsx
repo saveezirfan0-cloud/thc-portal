@@ -10,7 +10,7 @@ import {
 } from './calendar';
 import { loadEventsInRange, loadReferenceData } from './data';
 import { OfficeShell } from '../_components/OfficeShell';
-import { EventToolbar, type ToolbarQuery } from './_components/EventToolbar';
+import { EventToolbar, hrefFor, type ToolbarQuery } from './_components/EventToolbar';
 import { DayView, ListView, MonthView, WeekView } from './_components/EventViews';
 import { bucketByDay, filterEventRows, periodTotals, toEventRows } from './view-model';
 import './shift-builder.css';
@@ -115,6 +115,7 @@ export default async function Page({
               monthGrid(date).map((cell) => cell.iso),
             )}
             today={today}
+            dayHref={(iso) => hrefFor({ ...query, view: 'day', date: iso })}
           />
         ) : null}
 

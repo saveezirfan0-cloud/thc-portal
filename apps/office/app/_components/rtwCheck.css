@@ -1,0 +1,50 @@
+/*
+ * The automated gov.uk right-to-work check, wherever the office sees it
+ * (ADR-0025): the candidate profile, the staff profile's Documents tab and
+ * the Compliance queue. Tokens only.
+ */
+.rtwcheck {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+  background: var(--panel);
+  font-size: 13px;
+}
+.rtwcheck.compact {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+}
+.rtwcheck-kv {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 4px 12px;
+  margin: 0;
+  align-items: baseline;
+}
+.rtwcheck.compact .rtwcheck-kv {
+  grid-template-columns: 110px 1fr;
+}
+.rtwcheck-line {
+  display: contents;
+}
+.rtwcheck-kv dt {
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
+  color: var(--muted);
+  font-weight: var(--label-weight);
+}
+.rtwcheck-kv dd {
+  margin: 0;
+  color: var(--text);
+}
+.rtwcheck-reason {
+  color: var(--coral-ink);
+  border-left: 3px solid var(--coral-line);
+  padding-left: 8px;
+}

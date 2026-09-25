@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 599 · Staff App audit fixes, 27.09
---       — 20260927182000_radar_week_meter_and_declaration_reads.sql
+--       — 20260928110500_radar_week_meter_and_declaration_reads.sql
 --
 --   A. staff_week_meter() describes the CURRENT Mon–Sun week in
 --      Europe/London: its Monday, its Sunday, the hours booked in it, the

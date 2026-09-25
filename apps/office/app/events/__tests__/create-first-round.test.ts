@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 /**
  * §3.4: "from the moment the event is created it adds allocation invites
  * every hour". The cron fires at :17, so the save itself posts the first
- * round through auto_assign_first_round() (20260927181000) — after the
+ * round through auto_assign_first_round() (20260928110200) — after the
  * sections exist, before the redirect, and never in a way that can fail
  * a save that has already happened.
  */

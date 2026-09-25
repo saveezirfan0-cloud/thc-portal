@@ -1,6 +1,6 @@
 -- =====================================================================
--- 597 · The 26.09 scope audit, scheduling half (20260927181000 and
---       20260927181200):
+-- 597 · The 26.09 scope audit, scheduling half (20260928110200 and
+--       20260928110400):
 --
 --   A · get_back() — the event board's Get back goes through
 --       resolve_violation(): arrival registered, booking → worked, the

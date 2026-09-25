@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 598 · §4.2: an already-expired University Term Dates Letter is not
---       accepted (20260927181100)
+--       accepted (20260928110300)
 --
 --   A · term_letter_expired() agrees with termLetterDatesVerdict()
 --       (packages/domain/src/termLetter.vectors.json), case for case.

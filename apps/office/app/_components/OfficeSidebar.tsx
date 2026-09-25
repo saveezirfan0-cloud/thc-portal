@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
-import { Sidebar } from '@thc/ui';
+import { PhoneNav, Sidebar } from '@thc/ui';
 import type { NavItem } from '@thc/ui';
 
 /**
@@ -42,29 +42,51 @@ export function withCounts(items: readonly NavItem[], counts: NavCounts): NavIte
   });
 }
 
+/**
+ * The sidebar, and the phone tab bar that replaces it below 760px. CSS picks
+ * which one shows; both get the same items and counters, so the two menus
+ * cannot drift apart.
+ */
 export function OfficeSidebar({
   items,
   activeHref,
   brand,
   footer,
+  phoneFooter,
 }: {
   items: readonly NavItem[];
   activeHref: string;
   brand: ReactNode;
   footer: ReactNode;
+  /** The More sheet's foot: identity, sign out and the appearance switch. */
+  phoneFooter?: ReactNode;
 }) {
   const counts = useContext(NavCountsContext);
+  const counted = withCounts(items, counts);
   return (
-    <Sidebar
-      items={withCounts(items, counts)}
-      activeHref={activeHref}
-      brand={brand}
-      renderLink={(item, className, body) => (
-        <Link href={item.href} className={className}>
-          {body}
-        </Link>
-      )}
-      footer={footer}
-    />
+    <>
+      <Sidebar
+        items={counted}
+        activeHref={activeHref}
+        brand={brand}
+        renderLink={(item, className, body) => (
+          <Link href={item.href} className={className}>
+            {body}
+          </Link>
+        )}
+        footer={footer}
+      />
+      <PhoneNav
+        items={counted}
+        activeHref={activeHref}
+        brand={brand}
+        footer={phoneFooter ?? footer}
+        renderLink={(item, className, body, onNavigate) => (
+          <Link href={item.href} className={className} onClick={onNavigate}>
+            {body}
+          </Link>
+        )}
+      />
+    </>
   );
 }

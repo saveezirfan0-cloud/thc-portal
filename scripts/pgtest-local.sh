@@ -97,6 +97,8 @@ create function storage.filename(name text) returns text language sql immutable 
 create function storage.extension(name text) returns text language sql immutable as $$ select reverse(split_part(reverse(name), '.', 1)) $$;
 create table vault.secrets (id uuid default gen_random_uuid() primary key, name text, secret text);
 create view vault.decrypted_secrets as select id, name, secret, secret as decrypted_secret from vault.secrets;
+create function vault.create_secret(new_secret text, new_name text default null, new_description text default '', new_key_id uuid default null) returns uuid language sql as $vault$ insert into vault.secrets (name, secret) values (new_name, new_secret) returning id $vault$;
+create function vault.update_secret(secret_id uuid, new_secret text default null, new_name text default null, new_description text default null, new_key_id uuid default null) returns void language sql as $vault$ update vault.secrets set secret = coalesce(new_secret, secret), name = coalesce(new_name, name) where id = secret_id $vault$;
 grant usage on schema auth, storage, extensions to anon, authenticated, service_role;
 grant select, insert, update, delete on storage.objects, storage.buckets to anon, authenticated, service_role;
 grant all on auth.users to service_role;

@@ -61,7 +61,7 @@ export interface StaffRow {
   weekly_cap_hours: number | null;
   weekly_cap_band: CapBand | null;
   weekly_booked_hours: number | null;
-  // Appended by 20260927170000 (the 26.09 deferrals).
+  // Appended by 20260928110000 (the 26.09 deferrals).
   /** The Sunday the current cap band holds until; null when nothing on the calendar ends it (§4.4). */
   weekly_cap_until: string | null;
   /** The end of the last WORKED shift (§10.6, E8's lastShiftDate). */

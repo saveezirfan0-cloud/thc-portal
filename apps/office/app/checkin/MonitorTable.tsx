@@ -1,6 +1,6 @@
 'use client';
 
-import { Avatar, Pill, TableScroll } from '@thc/ui';
+import { Avatar, Pill } from '@thc/ui';
 import { UK_ZONE, formatTimeIn, needsDualZone, viewerZone } from '@thc/domain';
 import { STATUS_LABEL, breaksCell, statusTone } from './status';
 import type { MonitorRow } from './types';
@@ -33,60 +33,60 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
   }
 
   return (
-    <TableScroll>
-      <table className="tbl monitor-tbl">
-        <thead>
-          <tr>
-            <th>Staff</th>
-            <th>Event</th>
-            <th>Window</th>
-            <th>Check-in</th>
-            <th>Breaks</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => (
-            <tr key={row.bookingId}>
-              <td>
-                <div className="person">
-                  <Avatar name={row.staffName} src={row.photoUrl ?? undefined} />
-                  <div>
-                    <div className="n">{row.staffName}</div>
-                    <div className="s">{row.roleName}</div>
-                  </div>
+    <table className="tbl card-rows monitor-tbl">
+      <thead>
+        <tr>
+          <th>Staff</th>
+          <th>Event</th>
+          <th>Window</th>
+          <th>Check-in</th>
+          <th>Breaks</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {rows.map((row) => (
+          <tr key={row.bookingId}>
+            <td className="cell-title">
+              <div className="person">
+                <Avatar name={row.staffName} src={row.photoUrl ?? undefined} />
+                <div>
+                  <div className="n">{row.staffName}</div>
+                  <div className="s">{row.roleName}</div>
                 </div>
-              </td>
-              <td>
-                <b>{row.eventTitle}</b>
-              </td>
-              <td>
-                <span className="win2">
-                  {uk(row.startsAt)} – {uk(row.endsAt)} UK time
-                  {dual ? (
-                    <span className="l2">
-                      {local(row.startsAt)} – {local(row.endsAt)} your time
-                    </span>
-                  ) : null}
-                </span>
-              </td>
-              <td className="stamp">
-                {row.checkInAt ? local(row.checkInAt) : <span className="muted">—</span>}
-              </td>
-              <td className="mono sm">{breaksCell(row, local)}</td>
-              <td>
-                <Pill tone={statusTone(row)}>
-                  {row.status === 'checked_out' && row.checkOutAt
-                    ? `${STATUS_LABEL.checked_out} ${local(row.checkOutAt)}`
-                    : row.status === 'due'
-                      ? `${STATUS_LABEL.due} ${local(row.startsAt)}`
-                      : STATUS_LABEL[row.status]}
-                </Pill>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </TableScroll>
+              </div>
+            </td>
+            <td data-label="Event">
+              <b>{row.eventTitle}</b>
+            </td>
+            <td data-label="Window">
+              <span className="win2">
+                {uk(row.startsAt)} – {uk(row.endsAt)} UK time
+                {dual ? (
+                  <span className="l2">
+                    {local(row.startsAt)} – {local(row.endsAt)} your time
+                  </span>
+                ) : null}
+              </span>
+            </td>
+            <td data-label="Check-in" className="stamp">
+              {row.checkInAt ? local(row.checkInAt) : <span className="muted">—</span>}
+            </td>
+            <td data-label="Breaks" className="mono sm">
+              {breaksCell(row, local)}
+            </td>
+            <td data-label="Status">
+              <Pill tone={statusTone(row)}>
+                {row.status === 'checked_out' && row.checkOutAt
+                  ? `${STATUS_LABEL.checked_out} ${local(row.checkOutAt)}`
+                  : row.status === 'due'
+                    ? `${STATUS_LABEL.due} ${local(row.startsAt)}`
+                    : STATUS_LABEL[row.status]}
+              </Pill>
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }

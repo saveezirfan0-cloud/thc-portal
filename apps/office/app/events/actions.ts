@@ -158,7 +158,7 @@ export async function createEvent(input: EventInput): Promise<SaveResult> {
  * §3.4: "from the moment the event is created it adds allocation invites
  * every hour". The hourly cron fires at :17, so without this an event saved
  * at 09:20 waited until 10:17 for its first invitations.
- * `auto_assign_first_round()` (20260927181000) posts one hourly-mode round
+ * `auto_assign_first_round()` (20260928110200) posts one hourly-mode round
  * for this event's due sections — both switches on, not started, short of
  * headcount + buffer — to the auto-staffing Edge Function, exactly as the
  * cron command does. It reports rather than raises when nothing is due

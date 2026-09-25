@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 
 /**
  * saveContactDetails() — §10.1 Profile details, §6 proximity (security
- * audit 27.09, invariant 4; 20260927182100).
+ * audit 27.09, invariant 4; 20260928110600).
  *
  * The rule under test is WHO says where the pin goes:
  *

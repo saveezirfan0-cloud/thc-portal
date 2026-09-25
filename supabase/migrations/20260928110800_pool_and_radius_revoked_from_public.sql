@@ -1,11 +1,11 @@
 -- =====================================================================
--- Migration 20260927184000 · auto_assign_candidates(uuid, boolean) and
+-- Migration 20260928110800 · auto_assign_candidates(uuid, boolean) and
 --                            escalation_radius_miles() are revoked from
 --                            PUBLIC and anon, like their neighbours
 --                            (security audit 27.09, invariant 4)
 --
 -- 20260927140100 dropped auto_assign_candidates(uuid) and created the
--- (uuid, boolean) overload; 20260927180000 restated it. Both wrote only
+-- (uuid, boolean) overload; 20260928110100 restated it. Both wrote only
 -- `grant execute … to authenticated, service_role`, and neither took back
 -- the EXECUTE that PostgreSQL gives PUBLIC on every new function.
 -- escalation_radius_miles() (20260927140100 §1) was never revoked either.

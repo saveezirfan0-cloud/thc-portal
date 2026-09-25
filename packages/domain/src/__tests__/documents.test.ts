@@ -155,9 +155,9 @@ describe('§4.2 an already-expired term-dates letter is not accepted', () => {
     expect(termLetterExpired('2026-09-25', [{ from: '2025-06-14', to: '2025-09-21' }])).toBe(true);
   });
 
-  it('the SQL twin refuses Verify and flags the extraction with the same rule (20260927181100)', () => {
+  it('the SQL twin refuses Verify and flags the extraction with the same rule (20260928110300)', () => {
     const sql = readFileSync(
-      resolve(migrations, '20260927181100_term_letter_dates_in_the_future.sql'),
+      resolve(migrations, '20260928110300_term_letter_dates_in_the_future.sql'),
       'utf8',
     );
     expect(sql).toContain('create or replace function public.term_letter_expired(');

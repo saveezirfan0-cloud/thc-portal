@@ -30,7 +30,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-GB" suppressHydrationWarning>
+    <html lang="en-GB" data-style="warm" suppressHydrationWarning>
       <head>
         <AppearanceScript />
       </head>

@@ -42,6 +42,7 @@
   color: var(--muted);
   flex: 0 0 84px;
   padding-top: 3px;
+  font-weight: var(--label-weight);
 }
 .kv .v {
   flex: 1;
@@ -83,6 +84,7 @@
   text-transform: var(--label-case);
   color: var(--muted);
   margin-top: var(--sp-4);
+  font-weight: var(--label-weight);
 }
 .grp::after {
   content: '';

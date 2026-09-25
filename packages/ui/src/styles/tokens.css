@@ -211,6 +211,9 @@
   --gutter: 28px;
   --gutter-mobile: 20px;
   --gap: 16px;
+  /* The Back Office phone tab bar's height, without the home-indicator
+     inset: the content well and the More sheet both clear it. */
+  --pnav-h: 62px;
 
   /* =================================================================
      Radius — v1 is 0 everywhere. The logo is the only exception (§1.6).

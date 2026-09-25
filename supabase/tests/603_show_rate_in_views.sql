@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 600 · The views show the show-rate the engine uses (§6, §9.6, §9.7,
---       §10.1, §2.12) — 20260927183000_show_rate_in_views.sql
+--       §10.1, §2.12) — 20260928110700_show_rate_in_views.sql
 --
 -- 596 proved staff_show_rate() and that auto_assign_candidates reads it.
 -- This file is about the people-facing readers: the directory, the
@@ -111,7 +111,7 @@ select col_type_is('public', 'staff_directory_v', 'reliability', 'numeric(5,2)',
 select matches(col_description('public.staff'::regclass, (select attnum from pg_attribute
                                                            where attrelid = 'public.staff'::regclass
                                                              and attname = 'reliability')),
-  'not by any view or RPC since 20260927183000',
+  'not by any view or RPC since 20260928110700',
   'the column comment says nobody reads it');
 
 -- ---------------------------------------------------------------------

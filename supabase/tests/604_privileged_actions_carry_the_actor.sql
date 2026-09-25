@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 601 · The office's four privileged buttons name the manager who
 --       pressed them (§1.7, §9.6 — 20260927160400 §4), and the pool
---       and radius are closed to PUBLIC (20260927184000)
+--       and radius are closed to PUBLIC (20260928110800)
 --
 -- Block, Unblock, Reset to candidate and Remove are service-role-only
 -- definers; the office reaches them through the service key, whose JWT
@@ -100,7 +100,7 @@ select is((select actor_name is null and actor is null from staff_block_audit_v 
   'without p_actor and without a JWT sub the audit row has no actor — the service key alone cannot name a manager');
 
 -- ---------------------------------------------------------------------
--- 6 · 20260927184000: the pool and its radius are revoked from PUBLIC
+-- 6 · 20260928110800: the pool and its radius are revoked from PUBLIC
 --     and anon, and still callable by the office and the jobs.
 -- ---------------------------------------------------------------------
 select ok(

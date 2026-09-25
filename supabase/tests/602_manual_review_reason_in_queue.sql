@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 602 · The Needs review queue carries why the extractor flagged a
---       document (20260927185000, §4.1, §4.2)
+--       document (20260928110900, §4.1, §4.2)
 --
 --   A · The column: appended last on compliance_review_queue_v, text,
 --       still security_invoker, grants unchanged.

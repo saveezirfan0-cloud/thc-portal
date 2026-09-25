@@ -191,7 +191,7 @@ describe('Needs review (§4.1)', () => {
     ).toEqual(['r1']);
   });
 
-  it('says why the extractor flagged a term letter whose dates are all past (§4.2, 20260927185000)', () => {
+  it('says why the extractor flagged a term letter whose dates are all past (§4.2, 20260928110900)', () => {
     // Last year's letter, read with total confidence: the badge alone would
     // say "needs manual review" and nothing about why.
     const expired: QueueRow = {

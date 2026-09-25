@@ -372,7 +372,7 @@ export function cardLines(row: CandidateRow, column: ColumnKey, now: Date): Line
         // "UK citizen · 0 of 3 uploaded yet · activated 17 Sep" — the
         // branch's required set is what onboarding_documents_missing()
         // lists while nothing is in; the date is when the password was set
-        // (activated_at, 20260927170000).
+        // (activated_at, 20260928110000).
         const required = row.docs_missing?.length ?? 0;
         lines.push({
           text: [

@@ -55,7 +55,7 @@ export function UpcomingTable({ events, today }: { events: UpcomingEvent[]; toda
   };
 
   return (
-    <table className="tbl dash-upcoming">
+    <table className="tbl card-rows dash-upcoming">
       <thead>
         <tr>
           <th>Date</th>
@@ -82,11 +82,11 @@ export function UpcomingTable({ events, today }: { events: UpcomingEvent[]; toda
               className={cancelled ? undefined : 'clickable'}
               onClick={cancelled ? undefined : openEvent(event.eventId)}
             >
-              <td>
+              <td data-label="Date">
                 <b className={relative ? 'cyan' : undefined}>{formatDayLabel(event.eventDate)}</b>
                 {relative ? <span className="sub">{relative}</span> : null}
               </td>
-              <td className={cancelled ? 'muted' : undefined}>
+              <td className={cancelled ? 'cell-title muted' : 'cell-title'}>
                 {cancelled ? (
                   <s>{event.title}</s>
                 ) : (
@@ -96,15 +96,15 @@ export function UpcomingTable({ events, today }: { events: UpcomingEvent[]; toda
                 )}
                 <span className="sub">PO {event.poNumber || '—'}</span>
               </td>
-              <td className={cancelled ? 'muted' : undefined}>
+              <td data-label="Client · Venue" className={cancelled ? 'muted' : undefined}>
                 {event.clientName}
                 <span className="sub">{event.venueName}</span>
               </td>
-              <td className={cancelled ? 'mono sm muted' : 'mono sm'}>
+              <td data-label="Window (UK time)" className={cancelled ? 'mono sm muted' : 'mono sm'}>
                 {/* The event window is derived: min start → max end (RULE-18). */}
                 <ScheduledWindow startsAt={event.startsAt} endsAt={event.endsAt} />
               </td>
-              <td>
+              <td data-label="Roles · allocation · fill · margin/h">
                 {cancelled ? (
                   <span className="muted sm">
                     {event.roles.length} {event.roles.length === 1 ? 'role' : 'roles'} · excluded
@@ -138,7 +138,7 @@ export function UpcomingTable({ events, today }: { events: UpcomingEvent[]; toda
                   </div>
                 )}
               </td>
-              <td>
+              <td data-label="Status">
                 <Pill tone={STATUS_TONE[status]} dot={status === 'ongoing'}>
                   {EVENT_STATUS_LABEL[status]}
                 </Pill>

@@ -1,8 +1,8 @@
 -- =====================================================================
--- Migration 20260927183000 · the views show the show-rate the engine
+-- Migration 20260928110700 · the views show the show-rate the engine
 --                            uses (§6, §9.6, §9.7, §10.1, §2.12)
 --
--- 20260927180000 made the §6 show-rate a derived figure,
+-- 20260928110100 made the §6 show-rate a derived figure,
 -- staff_show_rate(uuid), and pointed auto_assign_candidates at it.
 -- `staff.reliability` became a seed-only column that scoring ignores —
 -- but every screen that draws a show-rate to a person still read the
@@ -12,7 +12,7 @@
 --
 -- What is restated, and what is not
 --
---   • staff_directory_v — 20260927170000's body byte for byte, with ONE
+--   • staff_directory_v — 20260928110000's body byte for byte, with ONE
 --     term changed: `s.reliability` → `staff_show_rate(s.id)::numeric(5,2)`.
 --     The cast keeps the column's declared type exactly what the stored
 --     column had (numeric(5,2)); `create or replace view` refuses a typmod
@@ -25,14 +25,14 @@
 --     reads `d.reliability` from it. Both therefore carry the derived
 --     figure from this migration on, with nothing restated: their own
 --     bodies never touched `staff.reliability`. 600 asserts both.
---   • onboarding_candidates_v (latest 20260927170000) was named in
---     20260927180000's header, but it has never carried a show-rate.
+--   • onboarding_candidates_v (latest 20260928110000) was named in
+--     20260928110100's header, but it has never carried a show-rate.
 --     The onboarding view that does is onboarding_returning_v — the
 --     §2.12 "Matches existing record … History: 41 shifts · show-rate
 --     96%" line on wireframes/backoffice/onboarding.html — so that one
 --     (latest 20260924150000) is restated instead, with the same single
 --     term changed and the same cast.
---   • staff_me() — 20260927170000's body byte for byte, with
+--   • staff_me() — 20260928110000's body byte for byte, with
 --     `'reliability', s.reliability` → `'reliability', staff_show_rate(v_id)`.
 --     The key stays `reliability`: apps/staff/app/profile/data.ts reads it.
 --
@@ -59,7 +59,7 @@
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- 1 · staff_directory_v — 20260927170000 verbatim but for the
+-- 1 · staff_directory_v — 20260928110000 verbatim but for the
 --     reliability term
 -- ---------------------------------------------------------------------
 create or replace view public.staff_directory_v with (security_invoker = true) as
@@ -74,9 +74,9 @@ select
   end                                                        as display_name,
   case when s.removed_at is null then s.photo_path end       as photo_path,
   s.rating,
-  -- §6 show-rate, derived from the worker's history (20260927180000):
+  -- §6 show-rate, derived from the worker's history (20260928110100):
   -- the figure auto-assign ranks by, never the stored column. NULL with
-  -- no history — the screen draws "—" (20260927183000).
+  -- no history — the screen draws "—" (20260928110700).
   staff_show_rate(s.id)::numeric(5,2)                        as reliability,
   s.block_kind,
   -- The reason for a manual block is internal and is never shown to the
@@ -109,7 +109,7 @@ select
   weekly_cap_hours(s.id, (now() at time zone 'Europe/London')::date)   as weekly_cap_hours,
   weekly_cap_band(s.id, (now() at time zone 'Europe/London')::date)    as weekly_cap_band,
   weekly_booked_hours(s.id, (now() at time zone 'Europe/London')::date) as weekly_booked_hours,
-  -- ---- appended 20260927170000 ----------------------------------------
+  -- ---- appended 20260928110000 ----------------------------------------
   -- §9.6 / §4.4: the Sunday the band holds until, for the three bands the
   -- term calendar moves (N14 asks the same question, 20260924130200).
   -- graduated_48, standard_48 and uncapped have no end: null.
@@ -133,7 +133,7 @@ from staff s
 left join staff_block_reason_v br on br.staff_id = s.id;
 
 comment on view public.staff_directory_v is
-  '§9.6 directory row. security_invoker; §1.7 anonymisation applied here; block_reason through the owner-rights staff_block_reason_v (§10.1). weekly_cap_until, last_shift_at, released_shift_count and p45_requested_at appended 20260927170000 for the Inactive tab and the "Limit reached … until" line. reliability is staff_show_rate() since 20260927183000 — the derived §6 figure, null with no history — never the stored column; staff_profile_v, clients_qualified_staff_v and student_visa_v read it from here.';
+  '§9.6 directory row. security_invoker; §1.7 anonymisation applied here; block_reason through the owner-rights staff_block_reason_v (§10.1). weekly_cap_until, last_shift_at, released_shift_count and p45_requested_at appended 20260928110000 for the Inactive tab and the "Limit reached … until" line. reliability is staff_show_rate() since 20260928110700 — the derived §6 figure, null with no history — never the stored column; staff_profile_v, clients_qualified_staff_v and student_visa_v read it from here.';
 
 revoke all on public.staff_directory_v from public, anon;
 grant select on public.staff_directory_v to authenticated;
@@ -156,7 +156,7 @@ select
   (select r.block_reason from public.staff_block_reason_v r where r.staff_id = s.id) as block_reason,
   s.rating,
   -- §2.12 "History: … show-rate 96%": the derived §6 figure
-  -- (20260927183000), null with no history.
+  -- (20260928110700), null with no history.
   staff_show_rate(s.id)::numeric(5,2)                          as reliability,
   (select count(*) from bookings b
     where b.staff_id = s.id and b.status = 'worked')::int as shifts_worked
@@ -170,7 +170,7 @@ revoke all on onboarding_returning_v from public, anon;
 grant select on onboarding_returning_v to authenticated;
 
 -- ---------------------------------------------------------------------
--- 3 · staff_me() — 20260927170000 verbatim but for the reliability term
+-- 3 · staff_me() — 20260928110000 verbatim but for the reliability term
 -- ---------------------------------------------------------------------
 create or replace function public.staff_me()
 returns jsonb
@@ -247,7 +247,7 @@ begin
                       end,
     'hasNiNumber',    s.ni_number is not null,
     'rating',         s.rating,
-    -- §10.1 "Show-rate 97%" pill: the derived §6 figure (20260927183000);
+    -- §10.1 "Show-rate 97%" pill: the derived §6 figure (20260928110700);
     -- null with no history, and the sheet hides the pill.
     'reliability',    staff_show_rate(v_id),
     'quizAttempts',   s.quiz_attempts,
@@ -258,7 +258,7 @@ begin
 end $$;
 
 comment on function public.staff_me() is
-  'The worker''s own profile for the §10.1 profile sheet, plus the app-lock inputs. Never returns block_reason or rejection_reason; rejectionCause (willo / manager / quiz_failed) decides which terminal screen shows. reliability is staff_show_rate() since 20260927183000, null with no history.';
+  'The worker''s own profile for the §10.1 profile sheet, plus the app-lock inputs. Never returns block_reason or rejection_reason; rejectionCause (willo / manager / quiz_failed) decides which terminal screen shows. reliability is staff_show_rate() since 20260928110700, null with no history.';
 
 revoke execute on function public.staff_me() from public, anon;
 grant  execute on function public.staff_me() to authenticated;
@@ -267,4 +267,4 @@ grant  execute on function public.staff_me() to authenticated;
 -- 4 · The column stays; its comment now says nobody reads it
 -- ---------------------------------------------------------------------
 comment on column public.staff.reliability is
-  'Stored show-rate %, written only by seed.sql. NOT read by auto-assign since 20260927180000, and not by any view or RPC since 20260927183000 — staff_show_rate(id) is the derived §6 figure everywhere a show-rate is shown. Kept so seed.sql and the fixtures that set it keep loading.';
+  'Stored show-rate %, written only by seed.sql. NOT read by auto-assign since 20260928110100, and not by any view or RPC since 20260928110700 — staff_show_rate(id) is the derived §6 figure everywhere a show-rate is shown. Kept so seed.sql and the fixtures that set it keep loading.';
