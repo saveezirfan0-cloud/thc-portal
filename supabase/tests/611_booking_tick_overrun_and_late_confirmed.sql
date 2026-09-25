@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 611 · booking_tick(): the overrunning shift, the late-confirmed
 --       No-show and the accepted check-in
---   20260929100000_confirmation_timers_restated.sql (ADR-0032;
+--   20260929100000_confirmation_timers_restated.sql (ADR-0034;
 --   audit D1c/D27, D48 and the _tick nit)
 --
 --   1. BG-10 / N13 is bounded by the check-out lock (end + 4 h), not the

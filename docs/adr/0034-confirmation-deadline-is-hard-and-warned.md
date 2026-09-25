@@ -1,4 +1,4 @@
-# ADR-0032 · The 12:00 "I'm ready" deadline is hard, retried and warned; the reminders follow the start
+# ADR-0034 · The 12:00 "I'm ready" deadline is hard, retried and warned; the reminders follow the start
 
 Status: accepted · 29.09.2026 · 20260929100000; amends ADR-0029 §1–3 · raise §3 with THC (docs/15)
 

@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 610 · The 12:00 day-before deadline, in both languages, and at the button
 --   ready_deadline() (20260921141500), mark_ready() and the auto-staffing
---   cutoff gate's window (20260929100000; ADR-0032; audit D24, D25)
+--   cutoff gate's window (20260929100000; ADR-0034; audit D24, D25)
 --
 --   1. ready_deadline() gives the same instant as the TypeScript
 --      readyDeadline() for every case in

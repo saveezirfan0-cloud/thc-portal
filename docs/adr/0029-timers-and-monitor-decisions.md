@@ -1,6 +1,6 @@
 # ADR-0029 · Timing decisions the 26.09 audit round made in SQL
 
-Status: accepted · 26.09.2026 · 20260927140000, 20260927140300, 20260927160500, 20260927160600, 20260927161200 · §1 and §3 amended 29.09.2026 by 20260929100000 (ADR-0032)
+Status: accepted · 26.09.2026 · 20260927140000, 20260927140300, 20260927160500, 20260927160600, 20260927161200 · §1 and §3 amended 29.09.2026 by 20260929100000 (ADR-0034)
 
 Where §7 / §8 name a day but not an hour, or a bound the scope does not give,
 this records the choice so the next reader does not re-derive it.
@@ -21,7 +21,7 @@ tree runs, and this round's restatement is withdrawn (its file is now
   `n7_closes_at()`: 30 minutes before the start, where N9 takes over — but
   never less than 30 minutes after it opened and never past the start, so a
   section starting 00:01–00:59 UK is still reached. A section starting at
-  exactly 00:00 UK gets no N7 (ADR-0032 §2). Not to a booking already checked
+  exactly 00:00 UK gets no N7 (ADR-0034 §2). Not to a booking already checked
   in or already confirmed on the day.
 - Both are keyed `<code>:booking:<id>:<start epoch seconds>`
   (`booking_reminder_key()`, 20260929100000): once per booking per start,
@@ -44,7 +44,7 @@ shift day with N6b "…removed from your shift tomorrow…". This round's
 function and is withdrawn in favour of the shared predicate; `@thc/domain`'s
 `readyDeadlinePassed()` / `shiftCard` mirror it. Since 20260929100000 the
 release also requires that N6 was queued for the booking's current start, and
-`mark_ready()` refuses a press at the deadline (ADR-0032 §3–4).
+`mark_ready()` refuses a press at the deadline (ADR-0034 §3–4).
 
 ## 3 · BG-10 / N13 runs until the check-out lock (§5.2b) — decided in 20260929100000
 

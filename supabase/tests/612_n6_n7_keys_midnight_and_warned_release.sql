@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 612 · N6 / N7 per start, N7 just after midnight, and no release
 --       without N6
---   20260929100000_confirmation_timers_restated.sql (ADR-0032; audit D26,
+--   20260929100000_confirmation_timers_restated.sql (ADR-0034; audit D26,
 --   D25's retry)
 --
 --   1. The key is <code>:booking:<id>:<start epoch>: one row per booking
@@ -49,7 +49,7 @@ select is(n7_closes_at('2026-02-12 00:15+00'), '2026-02-12 00:15+00'::timestampt
 select is(n7_closes_at('2026-09-24 00:20+01'), '2026-09-24 00:20+01'::timestamptz,
   'and in BST, off the UK day');
 select is(n7_closes_at('2026-02-12 00:00+00'), n7_due_at('2026-02-12 00:00+00'),
-  'a section starting at exactly 00:00 has no N7 window: no moment of its UK day comes before it (ADR-0032)');
+  'a section starting at exactly 00:00 has no N7 window: no moment of its UK day comes before it (ADR-0034)');
 
 -- ---------------------------------------------------------------------
 -- The world

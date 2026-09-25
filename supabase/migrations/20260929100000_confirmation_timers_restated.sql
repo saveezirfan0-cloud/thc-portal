@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Migration 20260929100000 · the confirmation timers, restated once
 --                            (§3.5, §5.1, §5.2b, §7 BG-03/BG-10, §8 N6/N7/N13;
---                             ADR-0029, ADR-0032)
+--                             ADR-0029, ADR-0034)
 --
 -- booking_tick() is restated ONCE here, from its latest body
 -- (20260927140300), carrying every change of the 29.09 fix round, and the
@@ -38,7 +38,7 @@
 --     n7_closes_at(): start − 30 min, but never less than 30 minutes after
 --     it opened and never after the start. A section starting at exactly
 --     00:00 UK still gets none: there is no moment "on the day" before it,
---     and confirm_on_day() refuses before the UK day begins (ADR-0032).
+--     and confirm_on_day() refuses before the UK day begins (ADR-0034).
 --
 -- 4 · Nobody is released at 12:05 who was not sent N6 (D26).
 --     N6 goes out from booking_tick() — every minute, 08:00 UK the day
@@ -113,7 +113,7 @@ as $$
 $$;
 
 comment on function public.n7_closes_at(timestamptz) is
-  'N7 (§3.5, §8): the end of its window. 30 minutes before the start, where N9 takes over — but never less than 30 minutes after n7_due_at() and never after the start, so a section starting 00:01–00:59 UK is still reminded. 00:00 exactly has no window (ADR-0032; 20260929100000).';
+  'N7 (§3.5, §8): the end of its window. 30 minutes before the start, where N9 takes over — but never less than 30 minutes after n7_due_at() and never after the start, so a section starting 00:01–00:59 UK is still reminded. 00:00 exactly has no window (ADR-0034; 20260929100000).';
 
 revoke execute on function public.n7_closes_at(timestamptz) from public, anon;
 grant  execute on function public.n7_closes_at(timestamptz) to authenticated, service_role;

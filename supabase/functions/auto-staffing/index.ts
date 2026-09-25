@@ -66,7 +66,7 @@ Deno.serve((request) =>
     // pg_cron is UTC and the deadline is UK wall-clock (§3.5). The run in
     // the 12:05 UK window releases and re-fills. Every later run until UK
     // midnight is a retry of it, so a failed 12:05 run is made good five
-    // minutes later instead of never (20260929100000, ADR-0032): it calls
+    // minutes later instead of never (20260929100000, ADR-0034): it calls
     // release_unready_bookings(), which is idempotent and never reaches a
     // shift starting today, and goes on to re-fill only if it released
     // somebody. Before 12:05 nothing runs.
