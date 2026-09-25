@@ -14,8 +14,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | Route | Screen | Wireframe | § | Bot |
 |---|---|---|---|---|
 | `/login` | Login (a non-admin account gets the generic refusal) | `backoffice/login.html` | 1.4 | platform |
-| `/login/forgot`, `/login/forgot/sent`, `/login/reset` | Forgot password → Reset link sent → Set new password (A1–A3, from `admin@`) | `backoffice/login.html#state=forgot`, `#state=sent` | 10.2, 9.12 | platform |
-| `/forgot`, `/forgot/sent`, `/reset` | A1 Forgot password → A2 Reset link sent → A3 Set new password (+ link expired) | `backoffice/login.html` (forgot, sent) · `public/activate.html` (reset) | 10.2 | platform |
+| `/forgot`, `/forgot/sent`, `/reset` (+ `/auth/confirm`, `/auth/callback` handlers) | A1 Forgot password → A2 Reset link sent → A3 Set new password (+ link expired). The one office reset flow; the `/login/*` duplicate was removed (ADR-0035) | `backoffice/login.html` (forgot, sent) · `public/activate.html` (reset) | 10.2 | platform |
 | `/dashboard` | Dashboard | `backoffice/dashboard.html` | 9.1 | reports |
 | `/onboarding` | Kanban (Active / Rejected) | `backoffice/onboarding.html` | 2.2 | onboarding |
 | `/onboarding/:id` | Candidate profile by phase | `backoffice/candidate.html` | 2.3 | onboarding |
