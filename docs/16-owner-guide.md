@@ -1081,12 +1081,14 @@ match (ADR-0025).
   which shows as a red `ci` run whose tests all passed — read which job went red
   before treating it as a failure (the comment in `ci.yml`). No migration is
   lost: the newest run applies whatever is pending.
+- **The Edge Functions** (since 25.09): the same job then deploys all seven by
+  name, `willo-webhook` with `--no-verify-jwt`. §4.6's commands are now only
+  for deploying by hand between merges.
 
 ### 7.2 What never deploys itself
 
 | Thing | How | When |
 |---|---|---|
-| Edge Functions | `supabase functions deploy <name>` from the repo root (§4.6, §5.2) | after any change under `supabase/functions/`, `packages/notifications/`, `packages/db/src/{willo,provision,activation}.ts` or `packages/pdf/src/csv.ts` — anything a function imports. A pull request that touches these should say "redeploy X"; hold the session to that. |
 | Schedules | `select public.install_job_schedules();` (§4.7) | after any migration that inserts into or updates `job_schedules` |
 | Supabase secrets | `supabase secrets set` | when a key changes |
 | Auth settings, SMTP, templates, URL configuration | dashboard (§1) | manual, once |
