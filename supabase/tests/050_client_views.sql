@@ -62,8 +62,8 @@ select bag_eq(
   $$ select column_name::text from information_schema.columns
       where table_schema = 'public' and table_name = 'client_lineup_v' $$,
   $$ values ('booking_id'::text),('event_id'),('role'),('starts_at'),('ends_at'),('name'),('photo_path'),
-            ('sort_key'),('feedback_given') $$,
-  'client_lineup_v exposes the §11.2 columns plus its §11.3 sort key and the §11.2 feedback flag — and no staff id, because submit_client_feedback() takes a booking id');
+            ('sort_key'),('feedback_given'),('shift_id') $$,
+  'client_lineup_v exposes the §11.2 columns plus its §11.3 sort key, the §11.2 feedback flag and its section key (20260929160000) — and no staff id, because submit_client_feedback() takes a booking id');
 
 -- headcount and confirmed, never buffer: the buffer is THC's own
 -- over-booking, and §11.1 shows the customer "N of M confirmed".

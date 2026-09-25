@@ -1,12 +1,22 @@
 'use client';
 
 import { Avatar, EmptyState, Note, Panel, Pill } from '@thc/ui';
-import { capReason, employeeId, formatUkDate } from './staff';
+import {
+  capReason,
+  employeeId,
+  formatUkDate,
+  hoursText,
+  matchesCapFilter,
+  statusLabel,
+} from './staff';
+import type { CapFilter } from './staff';
 import type { StudentRow } from './types';
 
 export interface StudentVisaViewProps {
   students: StudentRow[];
   query: string;
+  /** The toolbar's cap filter (wireframe: All caps · 20 h · 48 h · Blocked). */
+  capFilter?: CapFilter;
 }
 
 /**
@@ -28,15 +38,15 @@ export interface StudentVisaViewProps {
  * dates" — evidence status including a letter under review or rejected,
  * and the days left on the visa once it is inside the 60-day alert window.
  */
-export function StudentVisaView({ students, query }: StudentVisaViewProps) {
+export function StudentVisaView({ students, query, capFilter = 'all' }: StudentVisaViewProps) {
   const needle = query.trim().toLowerCase();
-  const rows = needle
-    ? students.filter(
-        (row) =>
-          row.display_name.toLowerCase().includes(needle) ||
-          employeeId(row.employee_id).toLowerCase().includes(needle),
-      )
-    : students;
+  const rows = students.filter(
+    (row) =>
+      matchesCapFilter(row, capFilter) &&
+      (needle === '' ||
+        row.display_name.toLowerCase().includes(needle) ||
+        employeeId(row.employee_id).toLowerCase().includes(needle)),
+  );
 
   const bands = {
     term: students.filter(
@@ -53,12 +63,12 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
         <div className="kpi">
           <span className="label">On the International student branch</span>
           <span className="v">{students.length}</span>
-          <span className="d">every worker on branch 4 (§2.5)</span>
+          <span className="d">every worker on the International student branch</span>
         </div>
         <div className="kpi warn">
           <span className="label">20 h · term time this week</span>
           <span className="v">{bands.term}</span>
-          <span className="d">hard-gated at 20 h Mon–Sun (RULE-20)</span>
+          <span className="d">hard-gated at 20 h Mon–Sun</span>
         </div>
         <div className="kpi ok">
           <span className="label">48 h · university holiday</span>
@@ -68,7 +78,7 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
         <div className="kpi accent">
           <span className="label">48 h · graduated</span>
           <span className="v">{bands.graduated}</span>
-          <span className="d">completion letter verified — term dates no longer apply (§4.5)</span>
+          <span className="d">completion letter verified — term dates no longer apply</span>
         </div>
       </div>
 
@@ -76,7 +86,7 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
         title="Student visa · caps and evidence"
         actions={
           <span className="muted sm">
-            the whole student population in one place, not one profile at a time (§4.5)
+            the whole student population in one place, not one profile at a time
           </span>
         }
         flush
@@ -85,7 +95,7 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
           {rows.length === 0 ? (
             <EmptyState>
               <h3>No student matches</h3>
-              <p>This view holds every worker on the International student branch (§2.5).</p>
+              <p>This view holds every worker on the International student branch.</p>
             </EmptyState>
           ) : (
             <table className="tbl">
@@ -117,9 +127,13 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
                     <td>
                       <span className={`cap ${capClass(row)}`}>{capLabel(row)}</span>
                       <span className="sub">
-                        {capReason(row.weekly_cap_band, row.weekly_cap_hours)}
+                        {capReason(
+                          row.weekly_cap_band,
+                          row.weekly_cap_hours,
+                          row.weekly_cap_until ?? null,
+                        )}
                         {row.weekly_booked_hours !== null
-                          ? ` · ${row.weekly_booked_hours} h booked this week`
+                          ? ` · ${hoursText(row.weekly_booked_hours)} h booked this week`
                           : null}
                         {releaseLine(row)}
                       </span>
@@ -139,11 +153,9 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
                       ) : null}
                     </td>
                     <td>
-                      {row.status === 'blocked' ? (
-                        <Pill tone="coral">Blocked</Pill>
-                      ) : (
-                        <Pill tone="green">Compliant</Pill>
-                      )}
+                      {/* The directory's own words: an inactive student is
+                          not "Compliant" just because they are not blocked. */}
+                      <StudentStatus row={row} />
                     </td>
                   </tr>
                 ))}
@@ -155,14 +167,19 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
 
       <Note>
         The cap is never typed or stored — it is derived on the date it is evaluated from the
-        verified term dates (RULE-20, §4.4): 20 h in term (10 h below degree level), 48 h in a
-        holiday range, 48 h from the course completion date on an approved completion letter — never
-        before it, and never past the right-to-work expiry. The 48h opt-out cannot lift the in-term
-        visa limit. Push N14 tells the worker on the morning a band changes (§7). Completion letters
-        are approved in Compliance → Needs review.
+        verified term dates: 20 h in term (10 h below degree level), 48 h in a holiday range, 48 h
+        from the course completion date on an approved completion letter — never before it, and
+        never past the right-to-work expiry. The 48h opt-out cannot lift the in-term visa limit. A
+        push tells the worker on the morning a band changes. Completion letters are approved in
+        Compliance → Needs review.
       </Note>
     </>
   );
+}
+
+function StudentStatus({ row }: { row: StudentRow }) {
+  const { label, tone } = statusLabel({ status: row.status, removed: false });
+  return <Pill tone={tone === 'neutral' ? undefined : tone}>{label}</Pill>;
 }
 
 /** No ceiling: `uncapped` is the enum's own word, `opted_out_none` the older one. */

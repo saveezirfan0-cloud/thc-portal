@@ -131,6 +131,40 @@ test('the event list offers the tabs the scope names, and each holds its own doc
   }
 });
 
+test('the list download is a live link once a document is issued (§11.1)', async ({ page }) => {
+  // The office issues the §11.3 PDF; here a row stands in for it, written
+  // straight to event_documents (superuser, test setup only), so the list
+  // has something the customer's own session can see through
+  // client_event_documents_v. Removed afterwards by its own id.
+  test.skip(Boolean(databaseUnreachable()), databaseUnreachable() ?? '');
+  const path = `e2e/${GALA_DINNER}/allocation-${Date.now()}.pdf`;
+  const id = sql(
+    `insert into event_documents (event_id, kind, storage_path, file_name, row_count, page_count)
+     values (${lit(GALA_DINNER)}, 'allocation', ${lit(path)}, 'Gala Dinner.pdf', 1, 1)
+     returning id`,
+  );
+  try {
+    await openAsClient(page, '/client');
+    const row = page.locator('table.tbl tbody tr').filter({ hasText: 'Gala Dinner' });
+    const link = row.getByRole('link', { name: '↓ Allocation sheet' });
+    await expect(link).toBeVisible();
+    await expect(link).toHaveAttribute(
+      'href',
+      `/client/events/${GALA_DINNER}/document?kind=allocation`,
+    );
+    await expect(row.getByRole('button', { name: '↓ Allocation sheet' })).toHaveCount(0);
+  } finally {
+    sql(`delete from event_documents where id = ${lit(id)}`);
+  }
+});
+
+test('the list panel names the customer (§11.1)', async ({ page }) => {
+  await openAsClient(page, '/client');
+  await expect(page.locator('section.panel h3').first()).toContainText(
+    'Events · Leonardo Hotel St Pauls',
+  );
+});
+
 test('a row is name · venue · date/time · "N of M confirmed" · faces · document · details (§11.1)', async ({
   page,
 }) => {

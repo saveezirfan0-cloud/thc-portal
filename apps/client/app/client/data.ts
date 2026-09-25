@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
-import type { LineupRow, PortalEvent, RoleSection } from './rules';
+import { issuedByEvent } from './rules';
+import type { IssuedDocuments, LineupRow, PortalEvent, RoleSection } from './rules';
 
 /**
  * Reads for the Client Portal (§11.1, §11.2).
@@ -30,7 +31,7 @@ const EVENT_COLUMNS =
   'id, title, venue_name, venue_address, event_date, po_number, onsite_contact, starts_at, ends_at, status';
 const SECTION_COLUMNS = 'shift_id, event_id, role, starts_at, ends_at, headcount, confirmed';
 const LINEUP_COLUMNS =
-  'booking_id, event_id, role, starts_at, ends_at, name, photo_path, sort_key, feedback_given';
+  'booking_id, event_id, shift_id, role, starts_at, ends_at, name, photo_path, sort_key, feedback_given';
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- the generated types
    predate these views; regenerating them is `pnpm --filter @thc/db gen:types`
@@ -68,6 +69,7 @@ function toLineup(r: Row): LineupRow {
   return {
     bookingId: r.booking_id,
     eventId: r.event_id,
+    shiftId: r.shift_id ?? null,
     role: r.role,
     startsAt: r.starts_at,
     endsAt: r.ends_at,
@@ -82,32 +84,48 @@ export interface EventListData {
   events: PortalEvent[];
   sections: RoleSection[];
   lineup: LineupRow[];
+  /** Per event id, the document kinds the office has issued (§11.3). */
+  documents: IssuedDocuments;
+  /** False when `client_event_documents_v` could not be read. */
+  documentsLoaded: boolean;
+  /** The caller's own company, from `client_company_v`, for the panel title. */
+  company: string | null;
   problem: string | null;
 }
 
 /** §11.1 · every event this customer has, with its counts and its faces. */
 export async function loadEventList(): Promise<EventListData> {
+  const empty = { events: [], sections: [], lineup: [], documents: {}, company: null };
   if (!supabaseConfigured()) {
-    return { events: [], sections: [], lineup: [], problem: NO_PROJECT };
+    return { ...empty, documentsLoaded: false, problem: NO_PROJECT };
   }
 
   const supabase = createClient(await cookies()) as any;
 
-  const [events, sections, lineup] = await Promise.all([
+  // One read per view for the whole list: the documents are fetched for
+  // every listed event at once, never one request per row.
+  const [events, sections, lineup, documents, company] = await Promise.all([
     supabase.from('client_events_v').select(EVENT_COLUMNS),
     supabase.from('client_role_sections_v').select(SECTION_COLUMNS),
     supabase.from('client_lineup_v').select(LINEUP_COLUMNS),
+    supabase.from('client_event_documents_v').select('event_id, kind'),
+    supabase.from('client_company_v').select('name').maybeSingle(),
   ]);
 
   const failed = [events, sections, lineup].find((r) => r.error);
   if (failed?.error) {
-    return { events: [], sections: [], lineup: [], problem: failed.error.message };
+    return { ...empty, documentsLoaded: false, problem: failed.error.message };
   }
 
+  // The documents and the company name decorate the list; neither failing
+  // is a reason to withhold the events themselves.
   return {
     events: (events.data ?? []).map(toEvent),
     sections: (sections.data ?? []).map(toSection),
     lineup: (lineup.data ?? []).map(toLineup),
+    documents: documents.error ? {} : issuedByEvent(documents.data ?? []),
+    documentsLoaded: !documents.error,
+    company: company.error ? null : (company.data?.name ?? null),
     problem: null,
   };
 }

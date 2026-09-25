@@ -198,3 +198,53 @@ describe('Shifts tab violation log (§9.6 = §9.5)', () => {
     expect(html).not.toContain('Details');
   });
 });
+
+describe('Shifts tab history (§9.6, §1.8, wireframe)', () => {
+  const shift = (over: Partial<ShiftRow>): ShiftRow => ({
+    booking_id: 'b1',
+    booking_status: 'worked',
+    cancel_cause: null,
+    self_cancelled: false,
+    starts_at: '2026-09-17T16:00:00Z',
+    ends_at: '2026-09-17T22:30:00Z',
+    role_name: 'Waiting Staff',
+    event_id: 'e1',
+    event_title: 'Gala Dinner',
+    event_date: '2026-09-17',
+    client_name: 'Leonardo Hotel St Pauls',
+    venue_name: 'Leonardo Royal Hotel',
+    check_in_at: null,
+    check_out_at: null,
+    kind: 'worked',
+    pay: null,
+    violation_count: 0,
+    unresolved_violation_count: 0,
+    ...over,
+  });
+  const now = new Date('2026-09-25T12:00:00Z');
+  const rows = [
+    shift({}),
+    shift({
+      booking_id: 'b-old',
+      event_title: 'Spring Ball',
+      starts_at: '2026-04-01T16:00:00Z',
+      ends_at: '2026-04-01T22:00:00Z',
+      event_date: '2026-04-01',
+    }),
+  ];
+
+  it('offers Last 90 days / All, and hides older shifts by default', () => {
+    const html = renderToStaticMarkup(<Shifts shifts={rows} violations={[]} now={now} />);
+    expect(html).toContain('>Last 90 days</option>');
+    expect(html).toContain('>All</option>');
+    expect(html).toContain('Gala Dinner');
+    expect(html).not.toContain('Spring Ball');
+  });
+
+  it('prints the scheduled window as a UK window, with no section numbers', () => {
+    const html = renderToStaticMarkup(<Shifts shifts={rows} violations={[]} now={now} />);
+    // 16:00Z in September is 17:00 in London.
+    expect(html).toContain('17:00–23:30');
+    expect(html.replace(/<[^>]+>/g, ' ')).not.toMatch(/§|RULE-/);
+  });
+});

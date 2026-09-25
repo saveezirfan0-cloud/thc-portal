@@ -2,20 +2,22 @@
 
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Button, Checkbox, Chip, Panel, Pill, TableScroll } from '@thc/ui';
+import { Button, Checkbox, Chip, Panel, Pill, Select, TableScroll } from '@thc/ui';
 import { ResolveModal } from '../../checkin/ResolveModal';
 import { violationRowProps } from '../../checkin/violationRow';
 import type { ViolationRow as DetailViolationRow } from '../../checkin/types';
 import { formatUkDate } from '../staff';
+import { ScheduledWindow } from '../../dashboard/_components/ScheduledWindow';
 import { useViewerZone } from '../../dashboard/_components/useViewerZone';
 import {
   VIOLATION_LABEL,
   formatLocalStamp,
   formatLocalTime,
-  formatUkWindow,
   payableHours,
   shiftOutcome,
+  shiftsInRange,
 } from './profile';
+import type { ShiftRange } from './profile';
 import type { ShiftRow, ViolationRow } from './types';
 
 /**
@@ -39,17 +41,26 @@ export function Shifts({
   shifts,
   violations,
   details,
+  now,
 }: {
   shifts: ShiftRow[];
   violations: ViolationRow[];
   /** The same entries in the monitor's shape; absent when that read failed. */
   details?: DetailViolationRow[];
+  /** The clock the 90-day range is measured from; the render's own by default. */
+  now?: Date;
 }) {
   const router = useRouter();
   // The Detected stamp is the monitor's: viewer-local (§1.8), because §9.6
   // says this log and /checkin's are the same log for the same reader.
   const zone = useViewerZone();
   const [showResolved, setShowResolved] = useState(true);
+  // Wireframe: "Last 90 days / All", 90 days by default.
+  const [range, setRange] = useState<ShiftRange>('90');
+  const listed = useMemo(
+    () => shiftsInRange(shifts, range, now ?? new Date()),
+    [shifts, range, now],
+  );
   const [open, setOpen] = useState<DetailViolationRow | null>(null);
   const shown = violations.filter((row) => showResolved || !row.resolved);
   const byId = useMemo(() => new Map((details ?? []).map((row) => [row.id, row])), [details]);
@@ -65,15 +76,27 @@ export function Shifts({
       <Panel
         title="Shift history"
         actions={
-          <span className="muted sm">
-            scheduled in UK time · actual stamps in your own zone (§1.8) · payable = intersection
-            (RULE-01)
-          </span>
+          <>
+            <span className="muted sm">
+              scheduled vs actual · actual stamps in your own zone · payable = intersection
+            </span>
+            <Select
+              value={range}
+              onChange={(event) => setRange(event.target.value as ShiftRange)}
+              aria-label="Shift history range"
+              style={{ height: 28, width: 150, fontSize: 12 }}
+            >
+              <option value="90">Last 90 days</option>
+              <option value="all">All</option>
+            </Select>
+          </>
         }
         flush
       >
-        {shifts.length === 0 ? (
-          <div className="empty">No shifts yet.</div>
+        {listed.length === 0 ? (
+          <div className="empty">
+            {shifts.length === 0 ? 'No shifts yet.' : 'No shifts in the last 90 days.'}
+          </div>
         ) : (
           <TableScroll>
             <table className="tbl">
@@ -83,14 +106,14 @@ export function Shifts({
                   <th>Event</th>
                   <th>Client · Venue</th>
                   <th>Role</th>
-                  <th>Scheduled (UK)</th>
+                  <th>Scheduled</th>
                   <th>Check in / out</th>
                   <th>Payable</th>
                   <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {shifts.map((row) => (
+                {listed.map((row) => (
                   <tr key={row.booking_id}>
                     <td className="mono sm">{formatUkDate(row.event_date)}</td>
                     <td>{row.event_title}</td>
@@ -101,7 +124,11 @@ export function Shifts({
                     <td>
                       <Chip>{row.role_name}</Chip>
                     </td>
-                    <td className="mono sm">{formatUkWindow(row.starts_at, row.ends_at)}</td>
+                    <td className="mono sm">
+                      {/* §1.8: a scheduled window is UK time, plus "your
+                          time" when the reader is elsewhere. */}
+                      <ScheduledWindow startsAt={row.starts_at} endsAt={row.ends_at} />
+                    </td>
                     <td className="mono sm">
                       {row.check_in_at || row.check_out_at ? (
                         <>
@@ -133,7 +160,7 @@ export function Shifts({
         actions={
           <>
             <span className="muted sm">
-              the same entries and the same detail window as /checkin — scoped to one person (§9.6)
+              the same entries and the same detail window as /checkin — scoped to one person
             </span>
             <Checkbox checked={showResolved} onChange={setShowResolved}>
               Show resolved
@@ -175,7 +202,8 @@ export function Shifts({
                       <td>
                         {row.event_title} — {row.client_name}
                         <span className="sub">
-                          {row.role_name} · {formatUkWindow(row.starts_at, row.ends_at)} UK time
+                          {row.role_name} ·{' '}
+                          <ScheduledWindow startsAt={row.starts_at} endsAt={row.ends_at} />
                         </span>
                       </td>
                       <td>

@@ -136,9 +136,15 @@ export function matchesFilter(row: StaffRow, filter: Filter): boolean {
 }
 
 /**
- * Search runs over the name, the Employee ID and the phone (§9.6). The
- * phone is not on the directory row — it is personal data the list does
- * not print — so what is searchable here is the name and the ID.
+ * Search runs over the name, the Employee ID and the phone
+ * (`wireframes/backoffice/staff.html`: "Search name, Employee ID, phone"),
+ * and the roles as well, which cost nothing to keep. The phone arrives on
+ * the row for this and is never printed in the list; a removed worker's
+ * is null in the view (§1.7), so they cannot be found by it.
+ *
+ * A phone is matched on its digits, so "07700 900 602", "+44 7700900602"
+ * and "900602" all find the same person; a national 0 also matches the
+ * +44 form.
  */
 export function matchesQuery(row: StaffRow, query: string): boolean {
   const needle = query.trim().toLowerCase();
@@ -147,7 +153,160 @@ export function matchesQuery(row: StaffRow, query: string): boolean {
   if (row.employee_id !== null && employeeId(row.employee_id).toLowerCase().includes(needle)) {
     return true;
   }
+  if (phoneMatches(row.phone ?? null, needle)) return true;
   return row.role_names.some((role) => role.toLowerCase().includes(needle));
+}
+
+function phoneMatches(phone: string | null, needle: string): boolean {
+  if (!phone) return false;
+  const wanted = needle.replace(/\D/g, '');
+  // Fewer than four digits would match half the directory on "07".
+  if (wanted.length < 4) return false;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.includes(wanted)) return true;
+  return wanted.startsWith('0') && digits.includes(`44${wanted.slice(1)}`);
+}
+
+/**
+ * The Student visa view's cap filter (wireframe: All caps · 20 h · term
+ * time · 48 h · holiday · 48 h · graduated · Blocked).
+ *
+ * Blocked is its own answer: a blocked student has no cap to calculate and
+ * cannot be booked, so they are never also listed under a band. The 10 h
+ * below-degree band is term time too. A student with no ceiling at all
+ * (the opt-out, outside term) is filed where the opt-out applies — under
+ * graduated once a completion letter has lifted the term limit, otherwise
+ * under the holiday band it can only exist in.
+ */
+export type CapFilter = 'all' | 'term' | 'holiday' | 'graduated' | 'blocked';
+
+export const CAP_FILTER_LABEL: Record<CapFilter, string> = {
+  all: 'All caps',
+  term: '20 h · term time',
+  holiday: '48 h · holiday',
+  graduated: '48 h · graduated',
+  blocked: 'Blocked',
+};
+
+export function matchesCapFilter(
+  row: { status: StaffStatus; weekly_cap_band: CapBand | null; graduated_at: string | null },
+  filter: CapFilter,
+): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'blocked') return row.status === 'blocked';
+  if (row.status === 'blocked') return false;
+  const band = row.weekly_cap_band;
+  const uncapped = band === 'uncapped' || band === 'opted_out_none';
+  switch (filter) {
+    case 'term':
+      return band === 'student_term_20' || band === 'student_term_10';
+    case 'holiday':
+      return band === 'student_holiday_48' || (uncapped && row.graduated_at === null);
+    case 'graduated':
+      return band === 'graduated_48' || (uncapped && row.graduated_at !== null);
+    default:
+      return true;
+  }
+}
+
+/** "19 Sep", UK calendar day — the wireframe's shape for a shift in a list. */
+export function ukDayMonth(iso: string): string {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return '—';
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    timeZone: 'Europe/London',
+  }).formatToParts(at);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((entry) => entry.type === type)?.value ?? '';
+  // ICU prints "Sept" in newer builds; the wireframe says "Sep".
+  return `${part('day')} ${part('month').slice(0, 3)}`;
+}
+
+/** "21:14", UK clock (§1.8: an audit stamp is UK time whoever reads it). */
+function ukClock(iso: string): string {
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/London',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(iso));
+}
+
+/**
+ * The Inactive tab's "Last completed shift" (§9.6, wireframe):
+ * "Corporate Lunch · The Dorchester · 16 Sep".
+ */
+export function lastShiftLine(
+  row: Pick<StaffRow, 'last_worked_event' | 'last_worked_venue' | 'last_worked_at'>,
+): string | null {
+  if (!row.last_worked_event || !row.last_worked_at) return null;
+  const venue = row.last_worked_venue ? ` · ${row.last_worked_venue}` : '';
+  return `${row.last_worked_event}${venue} · ${ukDayMonth(row.last_worked_at)}`;
+}
+
+/**
+ * The Inactive tab's "Released shifts": the count, and while there are any,
+ * which — "2 — Gala Dinner 19 Sep, Awards Night 23 Sep" — so the office
+ * sees at once whether a big event just lost somebody (§10.6).
+ */
+export function releasedLine(row: Pick<StaffRow, 'released_shifts'>): string {
+  const shifts = row.released_shifts ?? [];
+  if (shifts.length === 0) return '0';
+  return `${shifts.length} — ${shifts
+    .map((shift) => `${shift.title} ${ukDayMonth(shift.startsAt)}`)
+    .join(', ')}`;
+}
+
+/**
+ * The Inactive tab's P45 column.
+ *
+ * §10.6: "The system does not produce the P45 itself. A P45 is issued by
+ * payroll" — so the platform holds no "issued" fact to show, and every
+ * leaver reads Requested (ADR-0038). What it does know is whether the
+ * request reached the office: E8, from the outbox.
+ */
+export function p45Status(row: Pick<StaffRow, 'p45_notice_sent_at' | 'p45_notice_failed_at'>): {
+  label: string;
+  tone: 'amber' | 'coral';
+  note: string;
+} {
+  if (row.p45_notice_failed_at) {
+    return { label: 'Requested', tone: 'coral', note: 'E8 failed to send — check the outbox' };
+  }
+  if (row.p45_notice_sent_at) {
+    return {
+      label: 'Requested',
+      tone: 'amber',
+      note: `E8 sent ${ukDayMonth(row.p45_notice_sent_at)} ${ukClock(row.p45_notice_sent_at)}`,
+    };
+  }
+  return { label: 'Requested', tone: 'amber', note: 'E8 queued' };
+}
+
+/**
+ * The "Limit reached" hover (§9.6): the cap and its reason, with the date
+ * a student's band holds until — "20 h — term time until 13.12.2026" —
+ * then the hours booked against it this week.
+ */
+export function limitHover(
+  row: Pick<
+    StaffRow,
+    'weekly_cap_band' | 'weekly_cap_hours' | 'weekly_cap_until' | 'weekly_booked_hours'
+  >,
+): string {
+  return `${capReason(row.weekly_cap_band, row.weekly_cap_hours, row.weekly_cap_until ?? null)} · ${hoursText(
+    row.weekly_booked_hours,
+  )} h booked this week`;
+}
+
+/** Hours as the office reads them: "18", "7.5" — never "18.0000". */
+export function hoursText(hours: number | string | null | undefined): string {
+  const value = Number(hours ?? 0);
+  if (!Number.isFinite(value)) return '0';
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
 }
 
 /** "THC-00873" — the form the wireframe prints and a manager would type. */

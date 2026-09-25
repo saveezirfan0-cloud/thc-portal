@@ -6,7 +6,7 @@ import { signLineupPhotos } from './photos';
 /**
  * §11.1 · the Client Portal's event list.
  *
- * Read on the server under the caller's own session, so the three views'
+ * Read on the server under the caller's own session, so the views'
  * tenancy predicate decides what exists before anything reaches the browser
  * (ADR-0004).
  */
@@ -17,7 +17,8 @@ export const metadata = { title: 'Your events · THC Client Portal' };
 export const dynamic = 'force-dynamic';
 
 export default async function ClientEventsPage() {
-  const { events, sections, lineup, problem } = await loadEventList();
+  const { events, sections, lineup, documents, documentsLoaded, company, problem } =
+    await loadEventList();
   const signed = await signLineupPhotos(lineup.map((l) => l.photoPath));
 
   return (
@@ -27,6 +28,9 @@ export default async function ClientEventsPage() {
         events={events}
         sections={sections}
         lineup={lineup}
+        documents={documents}
+        documentsLoaded={documentsLoaded}
+        company={company}
         photos={Object.fromEntries(signed)}
         now={new Date().toISOString()}
       />

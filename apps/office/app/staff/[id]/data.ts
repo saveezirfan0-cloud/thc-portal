@@ -59,7 +59,7 @@ const PROFILE_COLUMNS =
   'rtw_branch, right_to_work_until, graduated_at, wtr_optout, left_at, leave_reason, role_names, ' +
   'unresolved_violations, do_not_return_clients, weekly_cap_hours, weekly_cap_band, weekly_booked_hours, ' +
   'email, phone, dob, home_address, share_code, ni_number_masked, has_ni_number, term_dates, ' +
-  'weekly_cap_until, ' +
+  'weekly_cap_until, weekly_worked_hours, ' +
   'contract_signed_at, contract_version, joined_at, quiz_attempts, bank_account_holder, ' +
   'bank_sort_code_masked, bank_account_masked, bank_updated_at, hmrc_statement, hmrc_student_loan, ' +
   'hmrc_postgraduate_loan, hmrc_declared_at, shifts_worked, no_shows, feedback_count, ' +
