@@ -57,7 +57,7 @@ async function callRpc(fn: string, args: RpcArguments, staffId: string): Promise
  * caller's own identity being read and `profiles`' own policy that
  * answers — never a claim the browser sent.
  */
-async function asAdmin(): Promise<{ ok: true } | { ok: false; message: string }> {
+async function asAdmin(): Promise<{ ok: true; userId: string } | { ok: false; message: string }> {
   const supabase = createClient(await cookies());
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, message: 'Sign in to do this.' };
@@ -71,10 +71,18 @@ async function asAdmin(): Promise<{ ok: true } | { ok: false; message: string }>
   if (profile?.role !== 'admin') {
     return { ok: false, message: 'Only the office can do this.' };
   }
-  return { ok: true };
+  return { ok: true, userId: auth.user.id };
 }
 
-/** The service-role client: RLS is bypassed, so `asAdmin()` is the gate. */
+/**
+ * The service-role client: RLS is bypassed, so `asAdmin()` is the gate.
+ *
+ * `p_actor` is the manager `asAdmin()` just established, from the session —
+ * never an argument the browser could supply. The four RPCs write it to
+ * audit_log.actor (20260927160400); without it every Remove, Block,
+ * Unblock and Reset was recorded with no actor, because the service key's
+ * JWT carries no sub for `auth.uid()` to fall back on (§9.6, §1.7).
+ */
 async function callPrivilegedRpc(
   fn: string,
   args: RpcArguments,
@@ -86,7 +94,7 @@ async function callPrivilegedRpc(
   if (!gate.ok) return gate;
 
   const admin = createAdminClient() as unknown as RpcClient;
-  const { error } = await admin.rpc(fn, args);
+  const { error } = await admin.rpc(fn, { ...args, p_actor: gate.userId });
   if (error) return { ok: false, message: error.message };
   return done(staffId);
 }
