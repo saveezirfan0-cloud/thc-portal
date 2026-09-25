@@ -46,12 +46,17 @@ describe("'server-only' marker", () => {
     expect(firstStatement(src(file))).toBe("import 'server-only';");
   });
 
-  it.each(['provision.ts', 'willo.ts', 'browser.ts', 'roles.ts', 'activation.ts', 'env.ts'])(
-    'is absent from %s (shared with Deno or the browser)',
-    (file) => {
-      expect(src(file)).not.toMatch(/['"]server-only['"]/);
-    },
-  );
+  it.each([
+    'provision.ts',
+    'willo.ts',
+    'browser.ts',
+    'roles.ts',
+    'activation.ts',
+    'env.ts',
+    'session.ts',
+  ])('is absent from %s (shared with Deno or the browser)', (file) => {
+    expect(src(file)).not.toMatch(/['"]server-only['"]/);
+  });
 
   // Outside a react-server build the package's `default` export condition
   // throws on load — which is exactly what a client bundle would hit. A test

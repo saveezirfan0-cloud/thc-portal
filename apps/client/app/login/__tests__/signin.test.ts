@@ -10,7 +10,7 @@ const state = vi.hoisted(() => ({
   exchangeError: null as null | { status: number; message: string },
 }));
 
-vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
+vi.mock('next/headers', () => ({ cookies: async () => ({ getAll: () => [], set: () => {} }) }));
 vi.mock('next/navigation', () => ({
   redirect: (to: string) => {
     throw new Error(`REDIRECT:${to}`);
