@@ -1,9 +1,11 @@
 import Link from 'next/link';
 import { Alert, KpiTile, Panel, Pill, TableScroll, TileGrid } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
+import { ShortStaffedPanel } from './_components/ShortStaffedPanel';
 import { UpcomingTable } from './_components/UpcomingTable';
 import { ViewerZone } from './_components/ViewerZone';
 import { loadDashboard } from './data';
+import { loadShortStaffed } from './short-staffed-data';
 import {
   formatAsOf,
   formatHours,
@@ -38,7 +40,10 @@ export const dynamic = 'force-dynamic';
  * would be the second.
  */
 export default async function Page() {
-  const { kpis, finance, upcoming, problem } = await loadDashboard();
+  const [{ kpis, finance, upcoming, problem }, shortStaffed] = await Promise.all([
+    loadDashboard(),
+    loadShortStaffed(),
+  ]);
   const asOf = kpis ? formatAsOf(new Date(kpis.asOf)) : null;
   const today = todayInUk();
 
@@ -100,6 +105,9 @@ export default async function Page() {
             }
           />
         </TileGrid>
+
+        {/* ---- role sections starting in 48 h below headcount -------- */}
+        <ShortStaffedPanel roles={shortStaffed.roles} problem={shortStaffed.problem} />
 
         {/* ---- the current week, Mon–Sun (§9.1) ---------------------- */}
         <Panel

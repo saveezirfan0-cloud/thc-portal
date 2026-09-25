@@ -2,22 +2,13 @@ import Link from 'next/link';
 import { type CalendarView, periodLabel, shiftPeriod, todayInUk } from '../calendar';
 import { EventFilters } from './EventFilters';
 import type { ClientOption } from '../data';
+import { type EventQuery, eventsHref } from '../_lib/filters';
 
-export interface ToolbarQuery {
-  view: CalendarView;
-  date: string;
-  q: string;
-  clientId: string;
-  status: string;
-}
+/** The screen's state — one definition, in `_lib/filters.ts`. */
+export type ToolbarQuery = EventQuery;
 
-export function hrefFor(query: Partial<ToolbarQuery> & { view: CalendarView; date: string }) {
-  const params = new URLSearchParams({ view: query.view, date: query.date });
-  if (query.q) params.set('q', query.q);
-  if (query.clientId) params.set('client', query.clientId);
-  if (query.status) params.set('status', query.status);
-  return `/events?${params.toString()}`;
-}
+/** The URL of a state of this screen. Kept under its old name for callers. */
+export const hrefFor = eventsHref;
 
 /**
  * The one toolbar — Scope §3.1.
@@ -84,7 +75,9 @@ export function EventToolbar({ query, clients }: { query: ToolbarQuery; clients:
       </Link>
 
       <div className="right">
-        <EventFilters query={query} clients={clients} />
+        {/* Keyed on the search so a saved view or the back button that
+            changes it also resets the box, which holds its own draft. */}
+        <EventFilters key={query.q} query={query} clients={clients} />
       </div>
     </div>
   );

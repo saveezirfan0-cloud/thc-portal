@@ -283,3 +283,24 @@
     display: none;
   }
 }
+
+/* ---- saved views: a chip row between the toolbar and the list ---------
+   Each chip is a link (apply) and a × (delete); the chip keeps its own
+   colours, the link only inherits them. */
+.saved-views {
+  align-items: center;
+  gap: var(--sp-8);
+  min-height: var(--btn-h-sm);
+}
+.saved-views .lbl {
+  font-family: var(--font-label);
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
+}
+.saved-views .chip a {
+  color: inherit;
+  text-decoration: none;
+}
+.saved-views .chip a:hover {
+  text-decoration: underline;
+}

@@ -1,17 +1,12 @@
 import Link from 'next/link';
 import { Alert, Panel } from '@thc/ui';
-import {
-  type CalendarView,
-  isCalendarView,
-  monthGrid,
-  periodRange,
-  todayInUk,
-  weekDays,
-} from './calendar';
+import { monthGrid, periodRange, todayInUk, weekDays } from './calendar';
 import { loadEventsInRange, loadReferenceData } from './data';
 import { OfficeShell } from '../_components/OfficeShell';
-import { EventToolbar, hrefFor, type ToolbarQuery } from './_components/EventToolbar';
+import { EventToolbar, hrefFor } from './_components/EventToolbar';
 import { DayView, ListView, MonthView, WeekView } from './_components/EventViews';
+import { parseEventQuery } from './_lib/filters';
+import { SavedViewsBar } from './_lib/SavedViewsBar';
 import { bucketByDay, filterEventRows, periodTotals, toEventRows } from './view-model';
 import './shift-builder.css';
 import './events.css';
@@ -21,13 +16,11 @@ export const dynamic = 'force-dynamic';
 
 export const metadata = { title: 'Scheduling · THC Back Office' };
 
-const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
 /**
  * /events — List and Calendar, Scope §3.1.
  *
- * The view, the period and the filters all live in the URL, so every state of
- * this screen is a link and the browser's own back button does what a manager
+ * The view, the period and the filters all live in the URL (`_lib/filters.ts`),
+ * so every state of this screen is a link and the browser's own back button does what a manager
  * expects. The period arrows step a day, a week or a month depending on the
  * view, and work in List too — past events are browsable there, not only in
  * the calendar.
@@ -37,25 +30,10 @@ export default async function Page({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const params = await searchParams;
-  const single = (key: string) => {
-    const value = params[key];
-    return (Array.isArray(value) ? value[0] : value) ?? '';
-  };
-
-  const view: CalendarView = isCalendarView(single('view'))
-    ? (single('view') as CalendarView)
-    : 'list';
   const today = todayInUk();
-  const date = ISO_DATE.test(single('date')) ? single('date') : today;
-
-  const query: ToolbarQuery = {
-    view,
-    date,
-    q: single('q'),
-    clientId: single('client'),
-    status: single('status'),
-  };
+  // One parser for the URL, shared with the toolbar and the saved views.
+  const query = parseEventQuery(await searchParams, today);
+  const { view, date } = query;
 
   const { from, to } = periodRange(view, date);
   const [reference, { events, problem }] = await Promise.all([
@@ -89,6 +67,9 @@ export default async function Page({
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
 
         <EventToolbar query={query} clients={reference.clients} />
+
+        {/* Named filter sets, kept in this browser (localStorage). */}
+        <SavedViewsBar query={query} clients={reference.clients} />
 
         {!problem && view === 'list' ? (
           <Panel flush className="stack" actions={null}>

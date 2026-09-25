@@ -32,6 +32,9 @@ vi.mock('../_components/UpcomingTable', () => ({ UpcomingTable: () => null }));
 vi.mock('../data', () => ({
   loadDashboard: async () => ({ kpis: null, finance: null, upcoming: [], problem: null }),
 }));
+vi.mock('../short-staffed-data', () => ({
+  loadShortStaffed: async () => ({ roles: [], problem: null }),
+}));
 
 const { default: Page } = await import('../page');
 
