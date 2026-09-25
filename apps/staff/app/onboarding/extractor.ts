@@ -1,4 +1,5 @@
 import type { DocType } from '@thc/domain';
+import { createAnthropicExtractor, parseEffort } from './extractors/anthropic';
 
 /**
  * The document extractor — §2.6, the one provider interface.
@@ -11,16 +12,24 @@ import type { DocType } from '@thc/domain';
  *    shows its confidence level … Where the AI is unsure, the document is
  *    flagged as 'needs manual review'."
  *
- * STUBBED. What is built is the seam: the interface, the result shape, and
- * the write path (`record_document_extraction()`, service role only, which
- * pre-fills and sets `needs_manual_review` from the confidence against
- * `settings.ai_confidence_threshold` — never `review_status`). What is NOT
- * built is the Gemini call itself: it needs a key (GEMINI_API_KEY, an Edge
- * Function / Vercel secret, never in code — docs/12) and THC's sample term
- * and completion letters to build the prompt against (Appendix B). Until
- * then `documentExtractor()` returns null, uploads arrive flagged for manual
- * review, and a manager reads the dates off the document — which is the
- * behaviour §2.6 asks for when the AI is unsure.
+ * The provider is Anthropic's Claude, not Gemini — ADR-0033, a deviation
+ * from §2.6 accepted by the product owner and AWAITING THC's CONFIRMATION.
+ * The swap is exactly the one the scope's interface was written for:
+ * `extractors/anthropic.ts` implements `DocumentExtractor`, and nothing in
+ * the wizard, the Documents tab or the office changes.
+ *
+ * SWITCHED OFF until a key exists. `documentExtractor()` returns the Claude
+ * provider only when `ANTHROPIC_API_KEY` is set (server-only, the
+ * thc-portal-staff Vercel project — docs/12) and `DOCUMENT_EXTRACTOR` is
+ * unset or `anthropic`; any other `DOCUMENT_EXTRACTOR` value switches it
+ * off. Otherwise it returns null, uploads arrive as the upload RPC left
+ * them, and a manager reads the dates off the document.
+ *
+ * The write path is `record_document_extraction()` (lib/extract.ts, service
+ * role only), which pre-fills and sets `needs_manual_review` from the
+ * confidence against `settings.ai_confidence_threshold` — never
+ * `review_status`. THC's sample term and completion letters (Appendix B)
+ * are still wanted to tune the prompt against.
  */
 
 export interface ExtractionInput {
@@ -51,13 +60,27 @@ export interface DocumentExtractor {
 }
 
 /**
- * The configured extractor, or null. Returns null today in every
- * environment — see the header. When the Gemini provider is written it is
- * selected here by `DOCUMENT_EXTRACTOR=gemini` with `GEMINI_API_KEY` set,
- * and nothing else in the wizard changes.
+ * The configured extractor, or null (ADR-0033).
+ *
+ *   ANTHROPIC_API_KEY    required; without it this returns null.
+ *   DOCUMENT_EXTRACTOR   optional; unset or `anthropic` selects Claude,
+ *                        anything else (e.g. `off`) switches extraction off.
+ *   ANTHROPIC_MODEL      optional; default `DEFAULT_ANTHROPIC_MODEL`.
+ *   ANTHROPIC_EFFORT     optional; `low` … `max`, default `medium`, `off`
+ *                        for a model that takes no effort setting.
  */
-export function documentExtractor(): DocumentExtractor | null {
-  return null;
+export function documentExtractor(
+  env: Record<string, string | undefined> = process.env,
+): DocumentExtractor | null {
+  const choice = (env['DOCUMENT_EXTRACTOR'] ?? '').trim().toLowerCase();
+  if (choice && choice !== 'anthropic') return null;
+  const apiKey = (env['ANTHROPIC_API_KEY'] ?? '').trim();
+  if (!apiKey) return null;
+  return createAnthropicExtractor({
+    apiKey,
+    model: env['ANTHROPIC_MODEL'],
+    effort: parseEffort(env['ANTHROPIC_EFFORT']),
+  });
 }
 
 /** `[from, to]` inclusive → the half-open range literal Postgres stores. */

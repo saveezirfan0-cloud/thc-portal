@@ -12,6 +12,7 @@
     "gen:badge": "node scripts/gen-push-badge.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.58.0",
     "@thc/db": "workspace:*",
@@ -22,6 +23,7 @@
     "qrcode": "^1.5.4",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "server-only": "0.0.1",
     "serwist": "^9.5.12"
   },
   "devDependencies": {
