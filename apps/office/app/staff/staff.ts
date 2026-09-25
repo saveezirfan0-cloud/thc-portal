@@ -150,6 +150,56 @@ export function matchesQuery(row: StaffRow, query: string): boolean {
   return row.role_names.some((role) => role.toLowerCase().includes(needle));
 }
 
+/**
+ * The Student visa view's cap filter (wireframe: All caps · 20 h · term
+ * time · 48 h · holiday · 48 h · graduated · Blocked).
+ *
+ * Blocked is its own answer: a blocked student has no cap to calculate and
+ * cannot be booked, so they are never also listed under a band. The 10 h
+ * below-degree band is term time too. A student with no ceiling at all
+ * (the opt-out, outside term) is filed where the opt-out applies — under
+ * graduated once a completion letter has lifted the term limit, otherwise
+ * under the holiday band it can only exist in.
+ */
+export type CapFilter = 'all' | 'term' | 'holiday' | 'graduated' | 'blocked';
+
+export const CAP_FILTER_LABEL: Record<CapFilter, string> = {
+  all: 'All caps',
+  term: '20 h · term time',
+  holiday: '48 h · holiday',
+  graduated: '48 h · graduated',
+  blocked: 'Blocked',
+};
+
+export function matchesCapFilter(
+  row: { status: StaffStatus; weekly_cap_band: CapBand | null; graduated_at: string | null },
+  filter: CapFilter,
+): boolean {
+  if (filter === 'all') return true;
+  if (filter === 'blocked') return row.status === 'blocked';
+  if (row.status === 'blocked') return false;
+  const band = row.weekly_cap_band;
+  const uncapped = band === 'uncapped' || band === 'opted_out_none';
+  switch (filter) {
+    case 'term':
+      return band === 'student_term_20' || band === 'student_term_10';
+    case 'holiday':
+      return band === 'student_holiday_48' || (uncapped && row.graduated_at === null);
+    case 'graduated':
+      return band === 'graduated_48' || (uncapped && row.graduated_at !== null);
+    default:
+      return true;
+  }
+}
+
+/** Hours as the office reads them: "18", "7.5" — never "18.0000". */
+export function hoursText(hours: number | string | null | undefined): string {
+  const value = Number(hours ?? 0);
+  if (!Number.isFinite(value)) return '0';
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(1);
+}
+
 /** "THC-00873" — the form the wireframe prints and a manager would type. */
 export function employeeId(id: number | null): string {
   return id === null ? '—' : `THC-${String(id).padStart(5, '0')}`;

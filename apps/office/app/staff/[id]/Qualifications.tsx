@@ -85,7 +85,7 @@ export function Qualifications({
           <>
             <span className="muted sm">
               which client + role combinations this worker is cleared for — auto-assign&rsquo;s
-              first wave (RULE-17)
+              first wave
             </span>
             <Button
               size="sm"
@@ -101,7 +101,7 @@ export function Qualifications({
       >
         {qualifications.length === 0 ? (
           <div className="empty">
-            Not cleared at any client yet. A clean shift adds the first entry by itself (§9.6).
+            Not cleared at any client yet. A clean shift adds the first entry by itself.
           </div>
         ) : (
           <TableScroll>
@@ -168,7 +168,7 @@ export function Qualifications({
                         disabled={pending || row.do_not_return || profile.removed}
                         title={
                           row.do_not_return
-                            ? 'Switch Do not return off first — removing the row would un-bar this worker (§9.6)'
+                            ? 'Switch Do not return off first — removing the row would un-bar this worker'
                             : undefined
                         }
                         onClick={() =>
@@ -191,14 +191,14 @@ export function Qualifications({
 
       <div className="grid c2">
         <Note>
-          <b>Add client:</b> pick a client, then one of this worker&rsquo;s roles; each entry can
-          carry an internal note. The same list is editable from the client card (§9.7).
+          <b>Add client:</b> pick a client, then one or more of this worker&rsquo;s roles; each
+          entry can carry an internal note. The same list is editable from the client card.
         </Note>
         <Note tone="coral">
           <b>Removing ≠ barring.</b> Removing an automatic grant does not stop it being re-granted
           by the next clean shift. To keep someone away from a client, switch <b>Do not return</b>{' '}
           on: not invited in either wave, never on their Radar, cannot be invited manually — the
-          only hard gate on this tab (§9.6).
+          only hard gate on this tab.
         </Note>
       </div>
 
@@ -275,8 +275,8 @@ export function Qualifications({
             </div>
           )}
           <span className="hint">
-            One or more of the roles this worker already holds (§9.6) — a qualification for any
-            other role is a row auto-assign never reads.
+            One or more of the roles this worker already holds — a qualification for any other role
+            is a row auto-assign never reads.
           </span>
         </div>
         <div className="field">
@@ -330,8 +330,8 @@ export function Qualifications({
             placeholder="e.g. Client complaint 02.09.2026, service attitude"
           />
           <span className="hint">
-            Shown under Unavailable → Do not return on this client&rsquo;s events (§9.6). It is kept
-            if the flag is ever switched off, because it is what the next decision rests on.
+            Shown under Unavailable → Do not return on this client&rsquo;s events. It is kept if the
+            flag is ever switched off, because it is what the next decision rests on.
           </span>
         </div>
       </Modal>

@@ -8,7 +8,7 @@
 -- 17:00–23:30) showed one "Waiting Staff" panel under the morning
 -- window with the evening staff inside it. The §11.3 PDF keys its
 -- sections by shift id (packages/pdf/src/sheet.ts `sectionKey`), so the
--- screen and the document disagreed.
+-- screen and the document disagreed (ADR-0038).
 --
 -- client_lineup_v now names the section each booking is on. The shift id
 -- is an opaque key that client_role_sections_v already returns to the
