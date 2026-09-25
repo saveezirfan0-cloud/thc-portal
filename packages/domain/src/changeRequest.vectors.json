@@ -1,0 +1,186 @@
+{
+  "description": "ADR-0038 request a change (docs/18 §3). The contract between CHANGE_REQUEST_TRANSITIONS / validateNameChange / validateDecision in packages/domain and profile_change_transitions(), the profile_change_requests_state_guard trigger and the profile_change_requests CHECKs in 20260930100100_staff_additions_schema.sql. Every pair of distinct statuses NOT listed under edges is illegal; staying in the same status is not a transition. Regenerate the pgTAP half with: node packages/domain/scripts/gen-vectors-sql.mjs",
+  "statuses": ["pending", "approved", "rejected", "withdrawn"],
+  "edges": [
+    {
+      "from": "pending",
+      "to": "approved",
+      "ref": "ADR-0038 the office approves (office_decide_profile_change); RC2, and RC4 for a name"
+    },
+    {
+      "from": "pending",
+      "to": "rejected",
+      "ref": "ADR-0038 the office rejects with a reason the worker is shown; RC3"
+    },
+    {
+      "from": "pending",
+      "to": "withdrawn",
+      "ref": "ADR-0038 the worker withdraws it (withdraw_profile_change); §1.7 GDPR removal withdraws what is pending"
+    }
+  ],
+  "current": {
+    "first": "Maria",
+    "last": "Lopez"
+  },
+  "names": [
+    {
+      "name": "new_surname",
+      "input": {
+        "first": "Maria",
+        "last": "Lopez-Garcia"
+      },
+      "expect": {
+        "first": "Maria",
+        "last": "Lopez-Garcia"
+      }
+    },
+    {
+      "name": "trimmed",
+      "input": {
+        "first": " Maria ",
+        "last": " Garcia "
+      },
+      "expect": {
+        "first": "Maria",
+        "last": "Garcia"
+      }
+    },
+    {
+      "name": "an_accent_is_a_change",
+      "input": {
+        "first": "Maria",
+        "last": "López"
+      },
+      "expect": {
+        "first": "Maria",
+        "last": "López"
+      }
+    },
+    {
+      "name": "capitals_are_a_change",
+      "input": {
+        "first": "MARIA",
+        "last": "Lopez"
+      },
+      "expect": {
+        "first": "MARIA",
+        "last": "Lopez"
+      }
+    },
+    {
+      "name": "first_name_of_100_characters",
+      "input": {
+        "first": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+        "last": "Lopez"
+      },
+      "expect": {
+        "first": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+        "last": "Lopez"
+      }
+    },
+    {
+      "name": "blank_first_name",
+      "input": {
+        "first": "  ",
+        "last": "Garcia"
+      },
+      "expect": {
+        "refusal": "first_required"
+      }
+    },
+    {
+      "name": "blank_last_name",
+      "input": {
+        "first": "Maria",
+        "last": ""
+      },
+      "expect": {
+        "refusal": "last_required"
+      }
+    },
+    {
+      "name": "first_name_of_101_characters",
+      "input": {
+        "first": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN",
+        "last": "Lopez"
+      },
+      "expect": {
+        "refusal": "first_too_long"
+      }
+    },
+    {
+      "name": "last_name_of_101_characters",
+      "input": {
+        "first": "Maria",
+        "last": "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN"
+      },
+      "expect": {
+        "refusal": "last_too_long"
+      }
+    },
+    {
+      "name": "the_name_on_file",
+      "input": {
+        "first": "Maria",
+        "last": "Lopez"
+      },
+      "expect": {
+        "refusal": "unchanged"
+      }
+    },
+    {
+      "name": "the_name_on_file_with_spaces",
+      "input": {
+        "first": " Maria",
+        "last": "Lopez "
+      },
+      "expect": {
+        "refusal": "unchanged"
+      }
+    }
+  ],
+  "decisions": [
+    {
+      "name": "approve_without_reason",
+      "approve": true,
+      "reason": null,
+      "expect": null
+    },
+    {
+      "name": "approve_with_a_note",
+      "approve": true,
+      "reason": "Matches the passport",
+      "expect": null
+    },
+    {
+      "name": "reject_without_reason",
+      "approve": false,
+      "reason": null,
+      "expect": "reason_required"
+    },
+    {
+      "name": "reject_with_a_blank_reason",
+      "approve": false,
+      "reason": "   ",
+      "expect": "reason_required"
+    },
+    {
+      "name": "reject_with_a_reason",
+      "approve": false,
+      "reason": "The document shows a different surname.",
+      "expect": null
+    },
+    {
+      "name": "reject_with_300_characters",
+      "approve": false,
+      "reason": "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR",
+      "expect": null
+    },
+    {
+      "name": "reject_with_301_characters",
+      "approve": false,
+      "reason": "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR",
+      "expect": "reason_too_long"
+    }
+  ]
+}

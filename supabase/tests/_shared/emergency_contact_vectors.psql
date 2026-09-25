@@ -1,0 +1,60 @@
+-- =====================================================================
+-- GENERATED FILE — do not edit.
+--
+-- Source: packages/domain/src/emergencyContact.vectors.json
+-- Regenerate: pnpm --filter @thc/domain gen:vectors
+--
+-- ADR-0037: the staff_emergency_contacts CHECKs against the cases
+-- emergencyContact.ts is held to. `storable`: the raw string passes the
+-- phone CHECK as it is. `normalised`: what the form stores (null = refused).
+-- Included with \ir from supabase/tests/650_staff_additions_rls.sql; the .psql
+-- extension keeps pg_prove from running it as a test of its own.
+-- =====================================================================
+
+create temporary table emergency_phone_vectors (
+  name text primary key,
+  input text not null,
+  storable boolean not null,
+  normalised text
+) on commit drop;
+
+insert into emergency_phone_vectors values
+  ('uk_mobile_e164', '+447700900123', true, '+447700900123'),
+  ('french_mobile_e164', '+33612345678', true, '+33612345678'),
+  ('seven_digits_is_the_minimum', '+1234567', true, '+1234567'),
+  ('six_digits_is_too_short', '+123456', false, null),
+  ('fifteen_digits_is_the_maximum', '+123456789012345', true, '+123456789012345'),
+  ('sixteen_digits_is_too_long', '+1234567890123456', false, null),
+  ('spaces_are_stripped', '+44 7700 900123', false, '+447700900123'),
+  ('dashes_and_brackets_are_stripped', '+44 (7700) 900-123', false, '+447700900123'),
+  ('surrounding_spaces_are_trimmed', '  +447700900123  ', false, '+447700900123'),
+  ('national_number_without_country_code_is_refused', '07700900123', false, null),
+  ('country_code_without_plus_is_refused', '447700900123', false, null),
+  ('zero_after_plus_is_refused', '+0447700900123', false, null),
+  ('letters_are_refused', '+44 7700 9OO123', false, null),
+  ('empty_is_refused', '', false, null);
+
+create temporary table emergency_contact_vectors (
+  name text primary key,
+  contact_name text not null,
+  relationship text not null,
+  phone text not null,
+  stored_phone text,
+  valid boolean not null
+) on commit drop;
+
+insert into emergency_contact_vectors values
+  ('ok', 'Maria Lopez', 'Parent', '+447700900123', '+447700900123', true),
+  ('ok_trimmed_and_normalised', ' Maria Lopez ', ' Partner ', '+44 7700 900123', '+447700900123', true),
+  ('name_of_100_characters', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'Friend', '+447700900123', '+447700900123', true),
+  ('name_of_101_characters', 'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA', 'Friend', '+447700900123', '+447700900123', false),
+  ('blank_name', '   ', 'Friend', '+447700900123', '+447700900123', false),
+  ('relationship_of_40_characters', 'Maria Lopez', 'RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR', '+447700900123', '+447700900123', true),
+  ('relationship_of_41_characters', 'Maria Lopez', 'RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR', '+447700900123', '+447700900123', false),
+  ('blank_relationship', 'Maria Lopez', '', '+447700900123', '+447700900123', false),
+  ('missing_phone', 'Maria Lopez', 'Sibling', '', null, false),
+  ('phone_without_country_code', 'Maria Lopez', 'Sibling', '07700900123', null, false),
+  ('everything_missing', '', '', '', null, false);
+
+\set emergency_phone_count 14
+\set emergency_contact_count 11
