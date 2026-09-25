@@ -1,13 +1,18 @@
 -- =====================================================================
 -- 681 · /apply?ref= records who referred whom — and changes nothing else
---   20260930140000_apply_referral.sql, ADR-0040, docs/18 §5
+--   20260930140000_apply_referral.sql,
+--   20260930150300_referral_new_candidates_only.sql, ADR-0040, docs/18 §5
 --
 --   A. The grants: the restated submit_application_as_caller is still
 --      service-role only, and there is exactly one of it (the 7-argument
 --      one is gone, not left beside it). record_application_referral is
 --      owner-only. The anon submit_application is unchanged.
---   B. A valid code records one row — for a new candidate
---      (candidate_created) and for a matched record (returning_applicant).
+--   B. A valid code records one row for a new candidate
+--      (candidate_created) — and NOTHING for a matched record
+--      (returning_applicant, security finding #5): knowing a worker's
+--      email + DOB must not pin a referrer on them or inflate anyone's
+--      count. That application still goes through, answering exactly as
+--      without a code.
 --   C. A malformed, unknown, revoked or own code records nothing, and the
 --      application still goes through, exactly as without a code.
 --   D. Every earlier gate of the restated function, TOGETHER, with a code
@@ -18,7 +23,7 @@
 --      without a code.
 -- =====================================================================
 begin;
-select plan(56);
+select plan(63);
 \ir _shared/fixtures.psql
 
 -- staffa refers; staffb's code is revoked (as GDPR removal leaves it).
@@ -93,7 +98,7 @@ select throws_ok(
 reset role;
 
 -- =====================================================================
--- B · a valid code is recorded, for both outcomes
+-- B · a valid code is recorded for a new candidate — and only for one
 -- =====================================================================
 set local role service_role;
 set local "request.jwt.claims" = '{"role":"service_role"}';
@@ -115,11 +120,21 @@ select is(
   row('candidate_created', :'staffa'::uuid, 'K7M4Q2XP', true)::text,
   'B: candidate_created — one row: referrer staffa, the code, the new candidate');
 select is(
-  (select row(a.outcome::text, r.referrer_staff_id, r.candidate_staff_id, r.code)::text
-     from applications a join application_referrals r on r.application_id = a.id
+  (select row(a.outcome::text, a.staff_id)::text
+     from applications a
+    where a.email = 'staffb@rls.test' and a.phone = '+447700968102'),
+  row('returning_applicant', :'staffb'::uuid)::text,
+  'B: returning_applicant — the application is still written, filed against the matched record');
+select is(
+  (select count(*)::int from application_referrals r join applications a on a.id = r.application_id
     where a.email = 'staffb@rls.test'),
-  row('returning_applicant', :'staffa'::uuid, :'staffb'::uuid, 'K7M4Q2XP')::text,
-  'B: returning_applicant — one row against the matched record, the code normalised');
+  0, 'B: returning_applicant — and records NO referral: an existing worker was not referred (finding #5)');
+select is(
+  (select count(*)::int from application_referrals where candidate_staff_id = :'staffb'),
+  0, 'B: nothing pins "Referred by" on the existing worker');
+select is(
+  (select count(*)::int from application_referrals where referrer_staff_id = :'staffa'),
+  1, 'B: and the referrer''s count is the one new candidate, not inflated by the match');
 select is(
   (select count(*)::int from private.apply_caller_hits
     where caller_hash = '1111111111111111111111111111111111111111111111111111111111111111'),
@@ -173,6 +188,14 @@ select lives_ok($$ select record_application_referral('nobody@t681.test', 'K7M4Q
   'C: a code with no application behind it — nothing, no error');
 select lives_ok($$ select record_application_referral('nia@t681.test', 'K7M4Q2XP') $$,
   'C: an application already referred — on conflict, nothing, no error');
+-- The helper handed a returning application written in this transaction,
+-- directly, as the owner: still nothing (the lookup is candidate_created
+-- only, not a check in the caller).
+select lives_ok($$ select record_application_referral('staffb@rls.test', 'K7M4Q2XP') $$,
+  'C: a returning-applicant application handed to the helper directly — nothing, no error');
+select is(
+  (select count(*)::int from application_referrals where candidate_staff_id = :'staffb'),
+  0, 'C: and still no row against the existing worker');
 select is(
   (select count(*)::int from application_referrals r join applications a on a.id = r.application_id
     where a.email = 'nia@t681.test'),
@@ -282,7 +305,19 @@ select is(
   (select submit_application_as_caller('Same', 'Bad', 'same3@t681.test', '+447700968413', date '1995-01-01', true, null, 'R3VW8NTB')::text),
   (select submit_application_as_caller('Same', 'Null', 'same4@t681.test', '+447700968414', date '1995-01-01', true, null, null)::text),
   'E: and a revoked code answers exactly as no code');
+-- A §2.12 match with a valid code answers exactly as without one — the
+-- applicant cannot tell from the response that the code did not count.
+select is(
+  (select submit_application_as_caller('Staff', 'Bravo', 'staffb@rls.test', '+447700968421', date '1994-02-02', true, null, 'K7M4Q2XP')::text),
+  (select submit_application_as_caller('Same', 'Plain', 'same5@t681.test', '+447700968422', date '1995-01-01', true, null)::text),
+  'E: a returning applicant with a valid code answers exactly as a new applicant with none');
 reset role;
+select is(
+  (select row(count(*), count(r.application_id))::text
+     from applications a left join application_referrals r on r.application_id = a.id
+    where a.email = 'staffb@rls.test'),
+  row(2, 0)::text,
+  'E: both of staffb''s applications were written, and neither recorded a referral');
 
 select * from finish();
 rollback;
