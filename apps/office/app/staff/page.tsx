@@ -1,4 +1,7 @@
-import { loadStaff } from './data';
+import { cookies } from 'next/headers';
+import { createClient } from '@thc/db/server';
+import { loadStaff, supabaseConfigured } from './data';
+import { countPendingChangeRequests } from './requests/data';
 import { StaffScreen } from './StaffScreen';
 
 export const metadata = { title: 'Staff · THC Back Office' };
@@ -12,7 +15,13 @@ export const metadata = { title: 'Staff · THC Back Office' };
  * GDPR removal was meant to retire.
  */
 export default async function Page({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
-  const { staff, students, problem } = await loadStaff();
+  const [{ staff, students, problem }, pendingRequests] = await Promise.all([
+    loadStaff(),
+    // ADR-0038: "Change requests (N)". A failed count reads 0, never an error.
+    supabaseConfigured()
+      ? cookies().then((jar) => countPendingChangeRequests(createClient(jar)))
+      : Promise.resolve(0),
+  ]);
   // `/staff?view=student` opens the Student visa view directly — the link
   // /compliance uses for the completion letter requirement's §4 report.
   const { view } = await searchParams;
@@ -22,6 +31,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ v
       students={students}
       problem={problem}
       initialView={view === 'student' ? 'student' : 'directory'}
+      pendingRequests={pendingRequests}
     />
   );
 }

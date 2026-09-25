@@ -113,12 +113,6 @@
   margin-left: auto;
 }
 
-/* The /staff directory's link to the queue. */
-.cr-queue-link {
-  display: flex;
-  justify-content: flex-end;
-}
-
 @media (max-width: 860px) {
   .cr-sides {
     grid-template-columns: 1fr;

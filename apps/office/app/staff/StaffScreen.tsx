@@ -32,6 +32,8 @@ export interface StaffScreenProps {
   initialView?: 'directory' | 'student';
   /** The tab to open on — the Inactive tab is its own table (§9.6). */
   initialFilter?: Filter;
+  /** Pending name/photo change requests (ADR-0038) — "Change requests (N)". */
+  pendingRequests?: number;
 }
 
 const PAGE_SIZE = 15;
@@ -56,6 +58,7 @@ export function StaffScreen({
   problem,
   initialView = 'directory',
   initialFilter = 'all',
+  pendingRequests = 0,
 }: StaffScreenProps) {
   const [view, setView] = useState<'directory' | 'student'>(initialView);
   const [filter, setFilter] = useState<Filter>(initialFilter);
@@ -118,6 +121,13 @@ export function StaffScreen({
       }
     >
       {problem ? <Alert tone="coral">{problem}</Alert> : null}
+
+      {/* ADR-0038: the office's queue for the name and photo §10.1 locks. */}
+      <div className="staff-requests-link">
+        <Link href="/staff/requests" className="btn sm ghost">
+          Change requests ({pendingRequests})
+        </Link>
+      </div>
 
       <div className="toolbar">
         <SegToggle
