@@ -140,7 +140,9 @@ export function rankCandidateRows<R extends CandidateRow>(
  * invite or the worker's own application, never by a round (ADR-0031);
  * a self-cancel never (RULE-04, and it is gated `self_cancelled` anyway).
  */
-export function roundMayInvite(row: Pick<CandidateRow, 'booking_status' | 'booking_cause'>): boolean {
+export function roundMayInvite(
+  row: Pick<CandidateRow, 'booking_status' | 'booking_cause'>,
+): boolean {
   if (row.booking_status === null) return true;
   return bookingReopenableBy(row.booking_status, row.booking_cause ?? null) === 'anyone';
 }

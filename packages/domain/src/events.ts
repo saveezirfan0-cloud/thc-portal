@@ -33,6 +33,34 @@ export function eventStatus(
   return now <= window.endsAt ? 'ongoing' : 'completed';
 }
 
+/**
+ * §3.3 Cancel event, and its resolved edge case: a cancellation BEFORE the
+ * day of the event is excluded from the financial reports; one on the day
+ * (or after it) bills the scheduled hours to the client in full and pays
+ * every affected worker their scheduled hours. "The day" is the event date
+ * in Europe/London (§1.8) — the rule the payroll export and the dashboard
+ * already apply (`uk_local(cancelled_at)::date >= event_date`,
+ * 20260923130000, 20260927160700).
+ */
+export function cancelledOnTheDay(cancelledAt: Date | string, eventDate: string): boolean {
+  const at = typeof cancelledAt === 'string' ? new Date(cancelledAt) : cancelledAt;
+  // en-CA formats as YYYY-MM-DD, which compares as a string.
+  const ukDay = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/London',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(at);
+  return ukDay >= eventDate;
+}
+
+/** The finance line for a cancelled event, for the list and the board (§3.3, §9.9). */
+export function cancelledFinanceNote(cancelledAt: Date | string, eventDate: string): string {
+  return cancelledOnTheDay(cancelledAt, eventDate)
+    ? 'cancelled on the day — scheduled hours billed and paid'
+    : 'excluded from financials';
+}
+
 export const EVENT_STATUS_LABEL: Record<EventStatus, string> = {
   upcoming: 'Upcoming',
   ongoing: 'Ongoing',

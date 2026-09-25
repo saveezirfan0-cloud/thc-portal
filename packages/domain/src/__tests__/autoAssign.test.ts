@@ -111,7 +111,11 @@ describe('selectInvitees — who one round invites (§3.4, §6)', () => {
           booking_cause: 'ready_cutoff',
         }),
         // Also gated self_cancelled in SQL; dropped here even without it.
-        row({ staff_id: 'self-cancelled', booking_status: 'cancelled', booking_cause: 'self_cancel' }),
+        row({
+          staff_id: 'self-cancelled',
+          booking_status: 'cancelled',
+          booking_cause: 'self_cancel',
+        }),
       ];
       expect(selectInvitees(rows, { allocation: 10 }).sort()).toEqual(
         ['lost-the-slot', 'overlap-withdrawn'].sort(),
