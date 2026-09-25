@@ -2,7 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { safeNextPath } from '@thc/db';
+import { SESSION_ONLY_COOKIE, SESSION_ONLY_COOKIE_OPTIONS, safeNextPath } from '@thc/db';
 import { createClient } from '@thc/db/server';
 
 /**
@@ -18,6 +18,8 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
   // Only ever a path on this app (§1.4): see packages/db/src/redirect.ts.
   // /client is the portal's home; /events was never a route here.
   const next = safeNextPath(formData.get('next'), '/client');
+  // client/login.html, ticked by default. Unticked: session cookies (ADR-0035).
+  const remember = formData.get('remember') === '1';
 
   if (!email || !password) return 'Enter your email and password.';
 
@@ -26,7 +28,8 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
     return 'Sign-in is not available yet — this environment has no Supabase project.';
   }
 
-  const supabase = createClient(await cookies());
+  const jar = await cookies();
+  const supabase = createClient(jar, { sessionOnly: !remember });
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) {
     // The visitor gets a message that reveals nothing; the real reason goes to
@@ -41,5 +44,22 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
     return 'Email or password is incorrect. Try again or reset your password.';
   }
 
+  rememberChoice(jar, remember);
   redirect(next);
+}
+
+/**
+ * The marker every later token refresh reads (middleware, server client,
+ * browser client — packages/db/src/session.ts), so an unticked sign-in
+ * stays a session-cookie sign-in until the browser closes.
+ */
+function rememberChoice(jar: Awaited<ReturnType<typeof cookies>>, remember: boolean): void {
+  if (remember) {
+    jar.delete(SESSION_ONLY_COOKIE);
+    return;
+  }
+  jar.set(SESSION_ONLY_COOKIE, '1', {
+    ...SESSION_ONLY_COOKIE_OPTIONS,
+    secure: process.env.NODE_ENV === 'production',
+  });
 }

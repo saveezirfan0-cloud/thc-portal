@@ -1,13 +1,25 @@
 'use client';
 
 import Link from 'next/link';
-import { useActionState, useState } from 'react';
-import { Alert, Button, Input } from '@thc/ui';
+import { useActionState, useId, useState } from 'react';
+import { Alert, Button, Checkbox, Input } from '@thc/ui';
 import { signIn } from './actions';
+import { PASSWORD_HINT, REMEMBER_LABEL } from './copy';
 
+/**
+ * A0 Sign in — `wireframes/backoffice/login.html` (§1.4, §10.2).
+ *
+ * The password has a Show toggle, and "Keep me signed in on this device"
+ * sits under it, ticked by default (login.html:39). Unticked, the session
+ * cookies end with the browser (ADR-0035).
+ */
 export function LoginForm({ next }: { next?: string }) {
   const [error, formAction, pending] = useActionState(signIn, null);
   const [email, setEmail] = useState('');
+  const [shown, setShown] = useState(false);
+  const [remember, setRemember] = useState(true);
+  const passwordId = useId();
+  const hintId = useId();
 
   return (
     <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -25,19 +37,48 @@ export function LoginForm({ next }: { next?: string }) {
         onChange={(event) => setEmail(event.target.value)}
         error={error ? ' ' : undefined}
       />
-      <Input
-        label="Password"
-        name="password"
-        type="password"
-        autoComplete="current-password"
-        required
-        error={error ? 'Check your password — it is case-sensitive.' : undefined}
-      />
-      {/* A1 (§10.2). Under the password field, where the wireframe hangs it,
-          and still there in the error state — that is when it is needed. */}
-      <Link href="/forgot" className="sm">
-        Forgot password?
-      </Link>
+      <div className="field">
+        <label className="label" htmlFor={passwordId}>
+          Password
+        </label>
+        <div className="input-row">
+          <input
+            id={passwordId}
+            className={`input${error ? ' err' : ''}`}
+            name="password"
+            type={shown ? 'text' : 'password'}
+            autoComplete="current-password"
+            required
+            aria-invalid={error ? true : undefined}
+            aria-describedby={error ? hintId : undefined}
+          />
+          {/* Its name is its text, "Show" / "Hide", so it never also answers
+              to the field's label. */}
+          <button
+            type="button"
+            className="addon"
+            style={{ cursor: 'pointer' }}
+            aria-pressed={shown}
+            aria-controls={passwordId}
+            onClick={() => setShown((s) => !s)}
+          >
+            {shown ? 'Hide' : 'Show'}
+          </button>
+        </div>
+        {error ? (
+          <span id={hintId} className="error" role="alert">
+            {PASSWORD_HINT}
+          </span>
+        ) : null}
+        {/* A1 (§10.2). Under the password field, where the wireframe hangs it,
+            and still there in the error state — that is when it is needed. */}
+        <span className="hint">
+          <Link href="/forgot">Forgot password?</Link>
+        </span>
+      </div>
+      <Checkbox name="remember" value="1" checked={remember} onChange={setRemember}>
+        {REMEMBER_LABEL}
+      </Checkbox>
       <Button type="submit" tone="primary" size="lg" block disabled={pending}>
         {pending ? 'Signing in…' : 'Sign in'}
       </Button>

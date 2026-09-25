@@ -8,7 +8,7 @@ import { checkPassword, passwordError, passwordOk } from './rules';
 /**
  * A3 Set new password — §10.2.
  *
- * Reached from the emailed recovery link, which /auth/callback exchanges
+ * Reached from the emailed recovery link, which /auth/confirm exchanges
  * for a session before this runs. Without that session there is nothing to
  * update, and saying so plainly ("the link has expired") is the difference
  * between a worker asking for a new link and a worker giving up.

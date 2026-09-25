@@ -2,6 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { appOrigin, recoveryRedirect } from '@thc/db';
 import { createClient } from '@thc/db/server';
 import { SENT_TO_COOKIE, SENT_TO_MAX_AGE } from './copy';
 
@@ -15,7 +16,7 @@ import { SENT_TO_COOKIE, SENT_TO_MAX_AGE } from './copy';
  * the same reason A0's error never says which field was wrong).
  *
  * The email itself is Supabase Auth's recovery mail, which lands on
- * /auth/callback and hands off to A3. §9.12's sender (admin@) is therefore
+ * /auth/confirm and hands off to A3. §9.12's sender (admin@) is therefore
  * Auth's SMTP sender, a project setting this code cannot assert: the owner
  * step is docs/16-owner-guide.md §1.3b (custom SMTP through Resend, sender
  * admin@thehospitalitycompany.co.uk / "The Hospitality Company"). Until it is
@@ -37,10 +38,21 @@ export async function requestReset(
     return 'Password reset is not available yet — this environment has no Supabase project.';
   }
 
+  // The link must come back to THIS app. Unset in production there is no
+  // safe answer — not VERCEL_URL, not localhost (audit D13) — so say so.
+  const origin = appOrigin(process.env['NEXT_PUBLIC_STAFF_URL'], 'http://127.0.0.1:3001');
+  if (!origin) {
+    console.error('[reset] NEXT_PUBLIC_STAFF_URL is not set; cannot build the reset link');
+    return 'Password reset is not available on this deployment yet. Email admin@thehospitalitycompany.co.uk.';
+  }
+
   const jar = await cookies();
   const supabase = createClient(jar);
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${appOrigin()}/auth/callback?next=/reset`,
+    // /auth/confirm takes the token_hash link (any browser, any device —
+    // the PWA's mail opens in another browser on iOS) and the PKCE code
+    // alike (supabase/templates/recovery.html, ADR-0035).
+    redirectTo: recoveryRedirect(origin),
   });
 
   if (error) {
@@ -61,17 +73,4 @@ export async function requestReset(
   });
 
   redirect('/forgot/sent');
-}
-
-/**
- * Where the emailed link must come back to. Vercel sets VERCEL_URL without
- * a scheme; locally the app is on :3001. Getting this wrong sends workers
- * to a link that opens the wrong app.
- */
-function appOrigin(): string {
-  const explicit = process.env['NEXT_PUBLIC_STAFF_URL'];
-  if (explicit) return explicit.replace(/\/$/, '');
-  const vercel = process.env['VERCEL_URL'];
-  if (vercel) return `https://${vercel}`;
-  return 'http://127.0.0.1:3001';
 }
