@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Alert, Panel } from '@thc/ui';
+import { ukDayLabel, ukInstant } from '@thc/domain';
 import {
   type CalendarView,
   isCalendarView,
@@ -75,7 +76,12 @@ export default async function Page({
     <OfficeShell
       activeHref="/events"
       title="Scheduling"
-      crumbs={null}
+      // The wireframe's "events · Thu 18 Sep 2026": the period being read.
+      crumbs={
+        <>
+          events · <b>{`${ukDayLabel(ukInstant(date, '12:00'))} ${date.slice(0, 4)}`}</b>
+        </>
+      }
       actions={
         // §3.1: the same place in every view, not in a sub-toolbar.
         <Link className="btn primary sm" href="/events/new">
