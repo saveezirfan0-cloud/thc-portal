@@ -5,6 +5,8 @@ import { createContext, useContext } from 'react';
 import type { ReactNode } from 'react';
 import { PhoneNav, Sidebar } from '@thc/ui';
 import type { NavItem } from '@thc/ui';
+import { visibleNav } from '../_lib/permissions';
+import { useOfficeUser } from './SignedInAs';
 
 /**
  * The menu counters (§4.1: "A counter in the menu — so the manager can see
@@ -46,6 +48,12 @@ export function withCounts(items: readonly NavItem[], counts: NavCounts): NavIte
  * The sidebar, and the phone tab bar that replaces it below 760px. CSS picks
  * which one shows; both get the same items and counters, so the two menus
  * cannot drift apart.
+ *
+ * Items the signed-in office role cannot use are left out (ADR-0036:
+ * Reports and Roles & rates for a scheduler; Settings and Users & access
+ * for a manager or scheduler). That is presentation only — opened by URL,
+ * those pages say "Not available for your role", and the database refuses
+ * regardless.
  */
 export function OfficeSidebar({
   items,
@@ -62,7 +70,8 @@ export function OfficeSidebar({
   phoneFooter?: ReactNode;
 }) {
   const counts = useContext(NavCountsContext);
-  const counted = withCounts(items, counts);
+  const user = useOfficeUser();
+  const counted = withCounts(visibleNav(items, user?.officeRole), counts);
   return (
     <>
       <Sidebar

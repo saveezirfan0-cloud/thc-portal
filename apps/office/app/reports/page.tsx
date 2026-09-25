@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { Alert } from '@thc/ui';
+import { NotAvailable } from '../_components/NotAvailable';
 import { OfficeShell } from '../_components/OfficeShell';
+import { currentOfficeRole } from '../_components/officeUser';
+import { officeCan } from '../_lib/permissions';
 import { FinancialTab } from './_components/FinancialTab';
 import { NewStarterTab } from './_components/NewStarterTab';
 import { PayrollTab } from './_components/PayrollTab';
@@ -39,6 +42,13 @@ export default async function Page({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
+  // ADR-0036: money only. The report RPCs refuse a scheduler anyway
+  // (assert_finance_caller); this says so before three of them are asked.
+  const role = await currentOfficeRole();
+  if (role && !officeCan(role, 'finance')) {
+    return <NotAvailable activeHref="/reports" title="Reports" role={role} needs="finance" />;
+  }
+
   const today = todayInUk();
   const view = parseReportView(await searchParams, today);
   const data = await loadReports(view);
