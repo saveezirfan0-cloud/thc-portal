@@ -1,6 +1,7 @@
 -- =====================================================================
 -- 652 · GDPR removal reaches the staff additions (§1.7)
---   staff_removed_purge_additions · 20260930100100 · docs/18 §0.7
+--   staff_removed_purge_additions · 20260930100100, restated in
+--   20260930150200 (outbox payloads, decline note) · docs/18 §0.7
 --
 -- remove_worker() is not restated: a trigger after update of removed_at
 -- on staff does the additions' half of the erasure.
@@ -12,10 +13,15 @@
 --      code is revoked; referral rows are kept and the removed referrer
 --      reads "Deleted account #id"; open offers by or to the worker lapse
 --      and their notes go; offer notices are kept.
+--   D. (20260930150200) The outbox copies: RC1 / RC3 / RC4 / OF5 (both
+--      key shapes) lose their free text, names read "Deleted account
+--      #id", unsent rows are failed gdpr_removed and sent ones keep
+--      sent_at; the office's free-text decline note becomes 'gdpr'.
+--      audit_log is append-only and is not rewritten.
 --   C. Nobody else's rows are touched, and a second removal is a no-op.
 -- =====================================================================
 begin;
-select plan(24);
+select plan(36);
 \ir _shared/fixtures.psql
 
 \set app_b      '65200000-0000-4000-8000-0000000000b1'
@@ -27,6 +33,9 @@ select plan(24);
 \set off_to_a   '65220000-0000-4000-8000-000000000002'
 \set off_b      '65220000-0000-4000-8000-000000000003'
 \set booking_b2 '65230000-0000-4000-8000-000000000001'
+\set decl_a     '65220000-0000-4000-8000-000000000004'
+\set decl_a2    '65220000-0000-4000-8000-000000000005'
+\set decl_b     '65220000-0000-4000-8000-000000000006'
 
 -- ---------------------------------------------------------------------
 -- Staff Alpha (removed below) and Staff Bravo (must be untouched).
@@ -72,13 +81,56 @@ insert into application_referrals (application_id, referrer_staff_id, candidate_
 -- Bravo also has a pool offer on a second booking that nothing touches.
 insert into bookings (id, shift_id, staff_id, status, source, confirmed_at)
 values (:'booking_b2', :'shift_a', :'staffb', 'confirmed', 'manual', now());
+-- Earlier cover requests the office declined: two of Alpha's (one with a
+-- note that names them, one with the default) and one of Bravo's.
+insert into shift_offers (id, booking_id, mode, expires_at, note) values
+  (:'decl_a', :'booking_a', 'office', now() + interval '3 days', 'Hospital appointment');
+update shift_offers
+   set status = 'cancelled', closed_reason = 'Sorry Mariana, we cannot cover your hospital appointment'
+ where id = :'decl_a';
+insert into shift_offers (id, booking_id, mode, expires_at) values
+  (:'decl_a2', :'booking_a', 'office', now() + interval '3 days');
+update shift_offers set status = 'cancelled', closed_reason = 'declined by the office' where id = :'decl_a2';
+insert into shift_offers (id, booking_id, mode, expires_at) values
+  (:'decl_b', :'booking_b2', 'office', now() + interval '3 days');
+update shift_offers set status = 'cancelled', closed_reason = 'Bravo is covered by phone' where id = :'decl_b';
+
 insert into shift_offers (id, booking_id, mode, target_staff_id, expires_at, note) values
-  (:'off_a',    :'booking_a',  'pool',   null,      now() + interval '3 days', 'Exam that day'),
+  (:'off_a',   :'booking_a',  'pool',   null,      now() + interval '3 days', 'Exam that day'),
   (:'off_to_a', :'booking_b',  'direct', :'staffa', now() + interval '3 days', null),
   (:'off_b',    :'booking_b2', 'pool',   null,      now() + interval '3 days', 'Clash');
 insert into shift_offer_notices (offer_id, staff_id) values
   (:'off_b', :'staffa'),
   (:'off_a', :'staffb');
+
+-- The outbox copies, as request_profile_change / office_decide_profile_change
+-- / queue_offer_notice write them. Alpha: an unsent RC1, a sent RC3 and RC4,
+-- a sent OF5 on the offer key and an unsent one on the booking key
+-- (20260930150000's shape). Bravo: an unsent RC1 and OF5 that stay as they are.
+insert into notification_outbox (key, channel, template, recipient_staff_id, recipient_emails, payload, sent_at) values
+  ('RC1:request:' || :'pcr_name', 'email', 'RC1', null, array['admin@thehospitalitycompany.co.uk'],
+   jsonb_build_object('name', 'Staff Alpha', 'employeeId', '90001', 'change', 'name',
+                      'requestedAt', '01 Oct 2026 10:00', 'current', 'Staff Alpha',
+                      'proposed', 'Mariana Alpha-Smith', 'note', 'I got married'), null),
+  ('RC3:request:' || :'pcr_photo', 'push', 'RC3', :'staffa', null,
+   jsonb_build_object('change', 'photo', 'reason', 'Mariana, the photo is too dark.'), now()),
+  ('RC4:request:' || :'pcr_old', 'email', 'RC4', null,
+   array['admin@thehospitalitycompany.co.uk', 'thc_payroll@topsourceworldwide.com'],
+   jsonb_build_object('name', 'Stafford Alpha', 'employeeId', '90001',
+                      'previousName', 'Staff Alpha', 'approvedAt', '01 Oct 2026 10:00'), now()),
+  ('OF5:offer:' || :'decl_a', 'email', 'OF5', null, array['admin@thehospitalitycompany.co.uk'],
+   jsonb_build_object('offerId', :'decl_a', 'bookingId', :'booking_a', 'event', 'Fixture Event A',
+                      'name', 'Staff Alpha', 'employeeId', '90001', 'note', 'Hospital appointment'), now()),
+  ('OF5:booking:' || :'booking_a', 'email', 'OF5', null, array['admin@thehospitalitycompany.co.uk'],
+   jsonb_build_object('offerId', :'decl_a2', 'bookingId', :'booking_a', 'event', 'Fixture Event A',
+                      'name', 'Staff Alpha', 'employeeId', '90001', 'note', 'Exam that day'), null),
+  ('RC1:request:' || :'pcr_b', 'email', 'RC1', null, array['admin@thehospitalitycompany.co.uk'],
+   jsonb_build_object('name', 'Staff Bravo', 'employeeId', '90002', 'change', 'photo',
+                      'requestedAt', '01 Oct 2026 10:00', 'current', 'The current profile photo',
+                      'proposed', 'A new photo', 'note', 'New glasses'), null),
+  ('OF5:booking:' || :'booking_b2', 'email', 'OF5', null, array['admin@thehospitalitycompany.co.uk'],
+   jsonb_build_object('offerId', :'decl_b', 'bookingId', :'booking_b2', 'event', 'Fixture Event A',
+                      'name', 'Staff Bravo', 'employeeId', '90002', 'note', 'Clash'), null);
 
 -- =====================================================================
 -- A · The trigger
@@ -175,8 +227,84 @@ select is((select count(*)::int from shift_offer_notices where offer_id in (:'of
   'B: offer notices are kept — who was pushed what carries no personal data');
 
 -- =====================================================================
+-- D · The outbox copies and the decline note (20260930150200)
+-- =====================================================================
+select results_eq(
+  format($$ select payload->>'name', payload ? 'current', payload ? 'proposed', payload ? 'note',
+                   payload->>'employeeId', payload->>'change'
+              from notification_outbox where key = %L $$, 'RC1:request:' || :'pcr_name'),
+  $$ values ('Deleted account #90001'::text, false, false, false, '90001'::text, 'name'::text) $$,
+  'D: RC1 loses what they asked for and why; the name reads "Deleted account #90001"');
+
+select results_eq(
+  format($$ select sent_at is null, failed_at is not null, error like 'gdpr_removed%%'
+              from notification_outbox where key = %L $$, 'RC1:request:' || :'pcr_name'),
+  $$ values (true, true, true) $$,
+  'D: and, not yet sent, it is failed gdpr_removed — the drain never claims it');
+
+select results_eq(
+  format($$ select payload ? 'reason', payload->>'change', sent_at is not null, failed_at is null, error
+              from notification_outbox where key = %L $$, 'RC3:request:' || :'pcr_photo'),
+  $$ values (false, 'photo'::text, true, true, null::text) $$,
+  'D: RC3 loses the office''s reason (it named them); a sent row keeps sent_at and is not failed');
+
+select results_eq(
+  format($$ select payload->>'name', payload->>'previousName', payload->>'approvedAt',
+                   sent_at is not null, failed_at is null
+              from notification_outbox where key = %L $$, 'RC4:request:' || :'pcr_old'),
+  $$ values ('Deleted account #90001'::text, 'Deleted account #90001'::text,
+             '01 Oct 2026 10:00'::text, true, true) $$,
+  'D: RC4''s new and previous names both read "Deleted account #90001"; sent history stays sent');
+
+select results_eq(
+  format($$ select payload->>'name', payload ? 'note', payload->>'event', payload->>'bookingId',
+                   sent_at is not null, failed_at is null
+              from notification_outbox where key = %L $$, 'OF5:offer:' || :'decl_a'),
+  format($$ values ('Deleted account #90001'::text, false, 'Fixture Event A'::text, %L::text, true, true) $$,
+         :'booking_a'),
+  'D: OF5 keyed on the offer loses the cover note and the name; the event and ids stay');
+
+select results_eq(
+  format($$ select payload->>'name', payload ? 'note', sent_at is null, failed_at is not null,
+                   error like 'gdpr_removed%%'
+              from notification_outbox where key = %L $$, 'OF5:booking:' || :'booking_a'),
+  $$ values ('Deleted account #90001'::text, false, true, true, true) $$,
+  'D: OF5 keyed on the booking (20260930150000) is scrubbed too, and, unsent, is failed');
+
+select is_empty(
+  format($$ select key from notification_outbox
+             where key in (%L, %L, %L, %L, %L)
+               and payload::text ~* 'mariana|stafford|married|staff alpha|too dark|hospital|exam' $$,
+         'RC1:request:' || :'pcr_name', 'RC3:request:' || :'pcr_photo', 'RC4:request:' || :'pcr_old',
+         'OF5:offer:' || :'decl_a', 'OF5:booking:' || :'booking_a'),
+  'D: no word of theirs, or about them, survives in any of their outbox payloads');
+
+select results_eq(
+  format($$ select status, closed_reason from shift_offers where id = %L $$, :'decl_a'),
+  $$ values ('cancelled'::text, 'gdpr'::text) $$,
+  'D: the office''s free-text decline note on their cover request becomes gdpr; the offer stays cancelled');
+
+select is((select closed_reason from shift_offers where id = :'decl_a2'), 'declined by the office',
+  'D: the default decline reason names nobody and is kept');
+
+-- =====================================================================
 -- C · Nobody else, and only once
 -- =====================================================================
+select results_eq(
+  format($$ select payload->>'name', payload->>'note', payload->>'proposed', failed_at is null, error
+              from notification_outbox where key = %L $$, 'RC1:request:' || :'pcr_b'),
+  $$ values ('Staff Bravo'::text, 'New glasses'::text, 'A new photo'::text, true, null::text) $$,
+  'C: another worker''s unsent RC1 is untouched and still queued');
+
+select results_eq(
+  format($$ select payload->>'name', payload->>'note', failed_at is null
+              from notification_outbox where key = %L $$, 'OF5:booking:' || :'booking_b2'),
+  $$ values ('Staff Bravo'::text, 'Clash'::text, true) $$,
+  'C: and their unsent OF5');
+
+select is((select closed_reason from shift_offers where id = :'decl_b'), 'Bravo is covered by phone',
+  'C: and the office''s decline note on their cover request');
+
 select is((select count(*)::int from staff_unavailability where staff_id = :'staffb'), 1,
   'C: another worker''s availability is untouched');
 
