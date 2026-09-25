@@ -15,7 +15,7 @@
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(65);
+select plan(67);
 
 \ir _shared/overlap_vectors.psql
 
@@ -454,6 +454,29 @@ select throws_ok(
   $$ select accept_invite('0e0e0e0e-0000-4000-8000-000000000005') $$,
   '42501', 'not_your_booking',
   'and cannot accept somebody else''s, which is the whole reason these are definer functions');
+
+-- auto_assign_candidates has no caller guard: it is `security invoker`
+-- (190 pins that), so RLS on staff and shift_requirements is what decides
+-- who sees the pool. Asserted under the real `authenticated` role — the
+-- rest of this file runs as the table owner, which RLS does not bind.
+-- A worker gets at most their own row; a customer gets nothing (the client
+-- role holds no policy on any table, 20260927160100). anon is refused
+-- EXECUTE outright (190, 20260928110000).
+set local role authenticated;
+select ok(
+  (select coalesce(bool_and(staff_id = :'clean'), true) from auto_assign_candidates(:'sec')),
+  'a worker calling auto_assign_candidates sees at most their own row, never the pool');
+reset role;
+
+\set client_uid '8a8a8a8a-0000-4000-8000-000000000003'
+insert into auth.users (id, email) values (:'client_uid', 'client@auto.test');
+insert into profiles (id, role, full_name, client_id)
+values (:'client_uid', 'client', 'Auto Fixture Customer', :'cl');
+set local "request.jwt.claims" = '{"sub":"8a8a8a8a-0000-4000-8000-000000000003","role":"authenticated"}';
+set local role authenticated;
+select is_empty($$ select 1 from auto_assign_candidates('7e7e7e7e-0000-4000-8000-000000000001') $$,
+  'a customer calling auto_assign_candidates on their own event''s section gets no rows (§11.2: selection stays internal)');
+reset role;
 
 -- ---------------------------------------------------------------------
 -- 9. The weekly cap is re-read at the moment of Accept (§10.4, RULE-20)

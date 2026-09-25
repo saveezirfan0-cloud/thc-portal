@@ -3,14 +3,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 /**
  * The office's one way from a private `photos` path to something an
  * `<img>` can load (audit 2026-09-24: photos never displayed in the office).
- * Three things are held here: the service key is reached only for an
- * admin, the signing is ONE batch per page, and every failure degrades to
+ * Three things are held here: the signing goes through the signed-in
+ * manager's own session (Storage's `photos_admin_read` decides, never the
+ * service key), it is ONE batch per page, and every failure degrades to
  * "no URL" — initials — rather than a broken screen.
  */
 
 const state = vi.hoisted(() => ({
-  role: 'admin' as string | null,
-  user: { id: 'u-admin' } as { id: string } | null,
   signed: [] as { path: string | null; signedUrl: string; error: string | null }[],
   signError: null as { message: string } | null,
   throws: false,
@@ -23,35 +22,26 @@ const createSignedUrls = vi.fn(async (paths: string[], ttl: number) => {
   return { data: state.signError ? null : state.signed, error: state.signError };
 });
 const from = vi.fn(() => ({ createSignedUrls }));
-const createAdminClient = vi.fn(() => ({ storage: { from } }));
+const createClient = vi.fn(() => ({ storage: { from } }));
+const createAdminClient = vi.fn(() => {
+  throw new Error('the service key must not sign office photos');
+});
 
 vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
 vi.mock('@thc/db/admin', () => ({ createAdminClient }));
-vi.mock('@thc/db/server', () => ({
-  createClient: () => ({
-    auth: { getUser: async () => ({ data: { user: state.user } }) },
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: async () => ({ data: state.role ? { role: state.role } : null }),
-        }),
-      }),
-    }),
-  }),
-}));
+vi.mock('@thc/db/server', () => ({ createClient }));
 
 const { PHOTO_URL_TTL_SECONDS, signStaffPhotos, withPhotoUrls } = await import('../photos');
 
 const ENV = {
   NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
   NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon',
-  SUPABASE_SERVICE_ROLE_KEY: 'service',
 };
 
 beforeEach(() => {
   for (const [key, value] of Object.entries(ENV)) vi.stubEnv(key, value);
-  state.role = 'admin';
-  state.user = { id: 'u-admin' };
+  // No service key anywhere: the office must sign without one.
+  vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '');
   state.signed = [
     { path: 'a/selfie.jpg', signedUrl: 'https://signed/a', error: null },
     { path: 'b/selfie.jpg', signedUrl: 'https://signed/b', error: null },
@@ -59,6 +49,7 @@ beforeEach(() => {
   state.signError = null;
   state.throws = false;
   createSignedUrls.mockClear();
+  createClient.mockClear();
   createAdminClient.mockClear();
   from.mockClear();
 });
@@ -80,30 +71,28 @@ describe('signStaffPhotos', () => {
     expect(urls.get('b/selfie.jpg')).toBe('https://signed/b');
   });
 
+  it('signs through the caller’s own session, never the service-role key', async () => {
+    await signStaffPhotos(['a/selfie.jpg']);
+    expect(createClient).toHaveBeenCalledTimes(1);
+    expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
   it('keeps links short-lived', () => {
     expect(PHOTO_URL_TTL_SECONDS).toBeLessThanOrEqual(15 * 60);
   });
 
-  it('never reaches for the service key for someone who is not an admin', async () => {
-    state.role = 'staff';
-    expect((await signStaffPhotos(['a/selfie.jpg'])).size).toBe(0);
-    state.user = null;
-    expect((await signStaffPhotos(['a/selfie.jpg'])).size).toBe(0);
-    expect(createAdminClient).not.toHaveBeenCalled();
-  });
-
   it('asks nothing when there is nothing to sign', async () => {
     expect((await signStaffPhotos([null, undefined])).size).toBe(0);
-    expect(createAdminClient).not.toHaveBeenCalled();
+    expect(createClient).not.toHaveBeenCalled();
   });
 
-  it('signs nothing without a service key (every developer environment)', async () => {
-    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '');
+  it('asks nothing without a configured project', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '');
     expect((await signStaffPhotos(['a/selfie.jpg'])).size).toBe(0);
-    expect(createAdminClient).not.toHaveBeenCalled();
+    expect(createClient).not.toHaveBeenCalled();
   });
 
-  it('drops only the path that failed, not the page', async () => {
+  it('drops only the path Storage refused or could not find, not the page', async () => {
     state.signed = [
       { path: 'a/selfie.jpg', signedUrl: 'https://signed/a', error: null },
       { path: 'gone.jpg', signedUrl: '', error: 'Object not found' },

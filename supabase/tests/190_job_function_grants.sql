@@ -19,7 +19,7 @@
 -- gap. This is the half of the contract that SQL can hold.
 -- =====================================================================
 begin;
-select plan(11);
+select plan(13);
 
 -- ---------------------------------------------------------------------
 -- 1. Everything the jobs call is callable by the service role.
@@ -158,6 +158,31 @@ select is_empty(
         and has_function_privilege('anon', p.oid, 'execute') $$,
   'anon can execute none of the worker-facing booking RPCs either'
 );
+
+-- ---------------------------------------------------------------------
+-- 2b'. The candidate pool (§3.3/§3.4) is not an anon RPC either.
+--
+--      20260927140100 recreated auto_assign_candidates with a second
+--      parameter, and a new function picks up Supabase's default grant
+--      to anon by name; 20260928110000 takes it back. Pinned by exact
+--      signature, because the name list in 2 would also pass if the
+--      function were dropped and re-added under another overload.
+--
+--      It has no caller guard of its own: it is `security invoker`, so
+--      RLS bounds every table it reads (130 section 8 holds what a worker
+--      and a client see). That makes "not security definer" the second
+--      half of the contract — as a definer with no guard it would hand
+--      the whole workforce's gates, ratings and distances to any
+--      signed-in caller.
+-- ---------------------------------------------------------------------
+select ok(
+  not has_function_privilege('anon', 'public.auto_assign_candidates(uuid, boolean)', 'execute'),
+  'anon cannot execute auto_assign_candidates(uuid, boolean)');
+
+select ok(
+  not (select p.prosecdef from pg_proc p
+        where p.oid = 'public.auto_assign_candidates(uuid, boolean)'::regprocedure),
+  'auto_assign_candidates runs as its caller (no security definer), so RLS is its caller guard');
 
 -- ---------------------------------------------------------------------
 -- 2c. The three worker-facing ones stay reachable by a signed-in worker,
