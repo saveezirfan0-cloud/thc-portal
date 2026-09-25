@@ -1045,9 +1045,24 @@ payroll recipients from `settings.payroll_recipients`, not from the environment.
 | `NEXT_PUBLIC_STAFF_URL` | `apps/office/app/onboarding/actions.ts`, `apps/office/app/login/page.tsx`, `apps/office/app/onboarding/page.tsx`, `apps/client/app/login/page.tsx`, `apps/staff/app/forgot/actions.ts` | §3.1 |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | `apps/staff/lib/push.ts` | §4.5 |
 | `APPLY_CALLER_SALT` | `apps/staff/lib/callerKey.ts` (ADR-0024) | §3.1; falls back to a built-in salt with a logged warning |
-| *(no variable)* | `apps/staff/lib/postcodes.ts` (ADR-0025) | the home-address postcode is looked up at `api.postcodes.io` — open data, no key; unreachable means the address saves without a location |
+| *(no variable)* | `apps/staff/lib/postcodes.ts` (ADR-0014) | the home-address postcode is looked up at `api.postcodes.io` — open data, no key; unreachable means the address saves without a location |
 | `NEXT_PUBLIC_MAPBOX_TOKEN`, `MAPBOX_TOKEN` | §6.2 | optional |
 | `VERCEL_URL` | `apps/staff/app/forgot/actions.ts` | Vercel's own; only a fallback |
+| `RTW_JOB_SECRET`, `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` (+ `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX`, `RTW_PROVIDER_TIMEOUT_MS`, `RTW_GOVUK_ENABLED`, `RTW_GOVUK_START_URL`, `RTW_GOVUK_TIMEOUT_MS`, `RTW_CHECK_BATCH`) | `apps/office/app/api/jobs/rtw-check/` (ADR-0025) | **Back Office only.** The automated gov.uk right-to-work check, shipped switched off; §6.5 |
+
+### 6.5 The automated gov.uk right-to-work check (ADR-0025)
+
+Built, and switched off until THC chooses a provider. It is a Back Office route, not an
+Edge Function, so its keys go on the **office** Vercel project, and pg_cron reaches it at
+the Vault secret `office_base_url` (an https origin; kept out of `settings`, which an admin
+session can write, because whoever sets it receives the bearer) with its own Vault secret
+`rtw_job_secret`, never the service key. Commands:
+`select vault.create_secret('https://<office origin>', 'office_base_url');` and
+`select vault.create_secret('<RTW_JOB_SECRET>', 'rtw_job_secret');`. The
+full list of variables, the SQL and the switch-on order are in
+`docs/12-keys-and-assets.md` ("The automated right-to-work check") and `OWNER-TODO.md`
+§8. THC has accepted that a passing check verifies a worker without the Home Office photo
+match (ADR-0025).
 
 ---
 

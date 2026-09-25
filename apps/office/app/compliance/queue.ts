@@ -3,6 +3,7 @@
  * screen shows lives here, so it is tested without a database or a browser;
  * the components only lay it out.
  */
+import type { RtwCheckRow } from '../_lib/rtwCheck';
 import type { QueueRow, RadarRow, RadarState } from './types';
 
 const UK = 'Europe/London';
@@ -173,6 +174,57 @@ function fileKind(mime: string | null): string | null {
   return null;
 }
 
+// ---------------------------------------------------------------------
+// The automated gov.uk check (ADR-0025)
+// ---------------------------------------------------------------------
+
+/** The latest check on a queue row, in the shape the shared panel reads. */
+export function queueRowCheck(row: QueueRow): RtwCheckRow | null {
+  if (!row.rtw_check_id || !row.rtw_check_status) return null;
+  return {
+    check_id: row.rtw_check_id,
+    document_id: row.kind === 'document' ? row.item_id : '',
+    staff_id: row.staff_id,
+    status: row.rtw_check_status,
+    source: row.rtw_check_source ?? null,
+    outcome: row.rtw_check_outcome ?? null,
+    attempts: row.rtw_check_attempts ?? 0,
+    max_attempts: 5,
+    next_attempt_at: null,
+    created_at: row.rtw_checked_at ?? row.submitted_at,
+    started_at: null,
+    finished_at: row.rtw_checked_at ?? null,
+    right_to_work_until: row.rtw_check_until ?? null,
+    no_time_limit: row.rtw_check_no_time_limit === true,
+    conditions: row.rtw_check_conditions ?? [],
+    term_time_limit_hours: null,
+    record_name: null,
+    reference_number: null,
+    review_reason: row.rtw_check_reason ?? null,
+    worker_reason: null,
+    error: null,
+    report_path: row.rtw_check_report_path ?? null,
+    reviewed_at: null,
+    // In flight, yet the database allows the hand-typed date: stuck.
+    stuck:
+      row.rtw_manual_allowed === true &&
+      (row.rtw_check_status === 'queued' || row.rtw_check_status === 'running'),
+  };
+}
+
+/**
+ * Whether Verify may be pressed on this row with a hand-typed date. While the
+ * automated check is on, a share code is verified by the check itself, and by
+ * hand only once its check is in needs_review — the database refuses anything
+ * else (rtw_check_required). The kind `rtw_check` item has no Verify at all:
+ * its document is already decided.
+ */
+export function verifyAllowed(row: QueueRow): boolean {
+  if (row.kind === 'rtw_check') return false;
+  if (row.item_type !== 'share_code_report') return true;
+  return row.rtw_manual_allowed !== false;
+}
+
 /** The wording of the 'rtw_date' row when the view sends none (it always does; this is the fallback). */
 export const RTW_DATE_MISSING = 'Right-to-work date missing — re-verify';
 
@@ -185,6 +237,9 @@ export function documentLine(row: QueueRow): string {
       row.review_reason ?? RTW_DATE_MISSING,
       row.share_code ? `share code ${row.share_code}` : 'no share code on file',
     ].join(' · ');
+  }
+  if (row.kind === 'rtw_check') {
+    return 'gov.uk returned no right to work — the worker has been asked to re-enter the share code (N8)';
   }
   if (row.kind === 'declaration') {
     const source =
@@ -219,6 +274,18 @@ export function foundLine(row: QueueRow): {
     return {
       text: 'No right-to-work date on file — re-run the gov.uk check',
       confidence: 'manual',
+    };
+  }
+  if (row.item_type === 'share_code_report' && row.rtw_check_status) {
+    // The automated check replaces the AI here: the panel beside it says
+    // what gov.uk returned and why it is waiting on the office.
+    return {
+      text: row.rtw_check_until
+        ? `gov.uk: right to work until ${ukDate(row.rtw_check_until)}`
+        : row.rtw_check_no_time_limit
+          ? 'gov.uk: no time limit'
+          : 'gov.uk check',
+      confidence: row.rtw_check_status === 'needs_review' ? 'manual' : null,
     };
   }
   if (row.item_type === 'university_completion_letter') {
@@ -262,6 +329,8 @@ export function uploadedLine(row: QueueRow, now: Date = new Date()): string {
  */
 export function actionsFor(row: QueueRow): { verify: string; reject: boolean } {
   if (row.kind === 'rtw_date') return { verify: 'Confirm date', reject: false };
+  // ADR-0025: the check's document is already rejected; Mark reviewed is on its panel.
+  if (row.kind === 'rtw_check') return { verify: 'Verify', reject: false };
   return { verify: 'Verify', reject: true };
 }
 
@@ -269,6 +338,12 @@ export function actionsFor(row: QueueRow): { verify: string; reject: boolean } {
 export function verifyHint(row: QueueRow): string | null {
   if (row.kind === 'rtw_date') {
     return 'Confirm the date off the gov.uk report → it becomes the worker’s right-to-work date: no shift after it can be rostered, and the reminder ladder counts down to it';
+  }
+  if (row.kind === 'rtw_check') {
+    return 'Act on it (contact the worker, block if needed), then Mark reviewed';
+  }
+  if (row.item_type === 'share_code_report' && !verifyAllowed(row)) {
+    return 'Verified by the automatic gov.uk check — run it again from here';
   }
   if (row.item_type === 'university_completion_letter') {
     return 'Approve → confirm the completion date and visa expiry → 48 h/week from the completion date, never past the visa';

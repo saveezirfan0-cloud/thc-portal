@@ -25,8 +25,8 @@ screen it names is now built; what is left is listed in §2 and §4 below.
 database, **110 migrations**, **86 pgTAP files (2,945 assertions)**, **1,918 Vitest
 tests across 121 files** in eight packages, seven Edge Functions (`auto-staffing`,
 `booking-tick`, `compliance-daily`, `finance-reports`, `gdpr-purge`,
-`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0029` (28 files;
-there is no `0025`). CI runs
+`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0029` (29 files;
+`0025`, the automated gov.uk check, landed with its branch after this count). CI runs
 lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 `deploy-database` pushes migrations to the live project on merge to `main`.
 
@@ -337,8 +337,12 @@ From the 23.09 build:
 - **Workers verified on a share code before 23.09 with no date still have
   none** — nothing to backfill from. Re-verify them; the query that finds them
   is in the header of `20260923200000`.
-- **The share-code date is confirmed by the office** until the extractor that
-  reads the gov.uk report exists; §2.3 says nobody types it (ADR-0018).
+- **The share-code date is confirmed by the office** while the automated
+  gov.uk check is switched off; §2.3 says nobody types it (ADR-0018). The
+  check itself is built (ADR-0025, 25.09): provider first, our own gov.uk
+  browser check as fallback, fully automatic. It waits for THC's provider
+  keys (OWNER-TODO §8), and once on, the office types a date only for a
+  check in needs_review.
 - **Unverified on real infrastructure:** the `finance-reports` Edge Function has
   not been run under Deno (ADR-0006's `../../../packages` import question); Storage
   image transforms may be off (photos then fall back to the original); GoTrue's

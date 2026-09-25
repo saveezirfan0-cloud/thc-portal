@@ -1,6 +1,6 @@
 # ADR-0018 · The right-to-work date is confirmed on Verify, and one Verify serves both screens
 
-**Status:** Accepted (migration `20260923200000`, pgTAP 460–461) · **Builds on:** ADR-0002 (gov.uk share-code check), ADR-0019 (completion letter and rota guard), ADR-0014 (wizard seams)
+**Status:** Accepted (migration `20260923200000`, pgTAP 460–461) · **Amended by:** ADR-0025 — while the automated gov.uk check is switched on (`settings.rtw_check.enabled`), a share code report is verified by that check, and the hand-typed date below applies to it only when its check is in needs_review (`rtw_check_required`, migration `20260928100000`). Visa and status documents are unchanged. · **Builds on:** ADR-0002 (gov.uk share-code check, now superseded by ADR-0025), ADR-0019 (completion letter and rota guard), ADR-0014 (wizard seams)
 
 ## Context
 `/onboarding/:id` and `/compliance` each had their own Verify on the same pending documents. The onboarding one verified expired documents and those of Rejected / Removed profiles, and neither put a right-to-work date on the worker: nothing copied a visa or status document's expiry onto `staff.right_to_work_until`, the extractor seam skipped the share code report, and neither screen asked for the date. `can_roster_staff()` reads a NULL date as "no expiry recorded", so for every non-UK worker the per-shift hard stop, the `rtw_daily` CL4 alerts and the rota guard's `rtw_expired` never fired.

@@ -86,6 +86,19 @@ export async function saveRightToWork(input: {
   });
 }
 
+/**
+ * After submitting step 4: a share code gov.uk did not recognise (or the
+ * office rejected) is entered again, with the date of birth corrected if
+ * that was the problem — `onboarding_reenter_share_code()` (ADR-0025). The
+ * new code is checked with gov.uk at once.
+ */
+export async function reenterShareCode(input: { shareCode: string; dob: string }): Promise<Result> {
+  return call('onboarding_reenter_share_code', {
+    p_share_code: input.shareCode,
+    p_dob: input.dob || null,
+  });
+}
+
 // ---------------------------------------------------------------------
 // 2/11 Home address
 // ---------------------------------------------------------------------

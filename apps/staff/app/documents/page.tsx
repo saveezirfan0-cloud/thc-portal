@@ -3,6 +3,8 @@ import { StaffShell } from '../_components/StaffShell';
 import { DocumentsOnlyNotice } from '../_components/DocumentsLock';
 import { DocumentsHub } from './_components/DocumentsHub';
 import { PullToRefresh } from './_components/PullToRefresh';
+import { RefreshWhileChecking } from '../_components/RefreshWhileChecking';
+import { loadMyRtwChecks } from '../_lib/rtwCheck';
 import { loadDocuments, supabaseConfigured } from './data';
 import { documentsGate } from './gate';
 import { buildDocumentsView } from './model';
@@ -22,6 +24,8 @@ export const metadata = { title: 'Documents · THC Staff' };
  */
 const FLASH: Record<string, string> = {
   '1': 'Sent to the office for review. Nothing changes on your account until they verify it.',
+  // A share code filed while the automated check is on (ADR-0025).
+  share: 'Checking your share code with gov.uk. The result appears here in a minute or two.',
   completion:
     'Completion letter received. Your weekly limit does not change until the office approves it.',
   optout: 'Opt-out signed. The office has been told.',
@@ -43,7 +47,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
     );
   }
 
-  const data = gate.open ? await loadDocuments() : null;
+  const [loaded, rtwChecks] = gate.open
+    ? await Promise.all([loadDocuments(), loadMyRtwChecks()])
+    : [null, {}];
+  const data = loaded ? { ...loaded, rtwChecks } : null;
   const view = data ? buildDocumentsView(data) : null;
   const locked = gate.lock === 'documents';
   const updatedAt = new Intl.DateTimeFormat('en-GB', {
@@ -55,6 +62,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
 
   return (
     <StaffShell title="Documents" active="/documents" ignoreLock={gate.ignoreLock}>
+      <RefreshWhileChecking active={view?.checking ?? false} />
       {view ? (
         <DocumentsHub
           view={view}
