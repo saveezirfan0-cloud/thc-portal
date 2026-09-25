@@ -5,7 +5,7 @@ below is a setting, a key, a deploy or content that a coding session cannot
 supply. Tick items off here as they are done. `docs/14-handover.md` §5 has the
 background for each.
 
-Last updated 25.09.2026 (after #59): §3's keys, deploys and base URL done by a session; §4b (Claude document reading) added; the old-system import dropped. **§1 and §2 re-checked against the live project and
+Last updated 25.09.2026 (after #59, #65 and #66): §3's keys, deploys and base URL done by a session; §4b (Claude document reading) added; the old-system import dropped. **§1 and §2 re-checked against the live project and
 GitHub on 23.09** — both are still open, they are not stale entries.
 
 ## 1 · Supabase settings (dashboard)
@@ -85,8 +85,9 @@ Nothing is lost; it all sends once the keys exist.
 
 ## 4b · Document reading with Claude (ADR-0033)
 
-Built and **switched off**; until a key exists every upload is flagged for a
-manager to read, as today.
+Built and **switched off**; until a key exists nothing is pre-filled and a
+manager reads the dates off each pending upload in Compliance → Needs review,
+as today.
 
 - [ ] **THC confirms** Anthropic (Claude) instead of the scope's Gemini, and the
       privacy notice names Anthropic as the processor (`docs/17`).
