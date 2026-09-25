@@ -51,11 +51,12 @@
   flex-wrap: wrap;
 }
 .rolesec .rh .n {
-  font-family: var(--font-mono);
+  font-family: var(--font-label);
   font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
   color: var(--muted);
+  font-weight: var(--label-weight);
 }
 .rolesec .rh .right {
   margin-left: auto;
@@ -120,7 +121,7 @@
   border-bottom: 0;
 }
 .sumrow .v {
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
   white-space: nowrap;
 }
 

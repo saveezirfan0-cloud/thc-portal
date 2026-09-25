@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { Avatar, Logo, ModeSwitch, SignOut } from '@thc/ui';
+import { AccountMenu } from './AccountMenu';
 import { supabaseConfigured } from './data';
 import './client-portal.css';
 
@@ -63,6 +64,9 @@ export default async function ClientPortalLayout({ children }: { children: React
           <span>
             <span className="name">The Hospitality Company</span>
             <span className="sub">Client Portal</span>
+            {/* On a phone the company takes this line, so whose events these
+                are is visible without opening the menu (§11.1). */}
+            {company ? <span className="sub co">{company}</span> : null}
           </span>
         </Link>
 
@@ -73,20 +77,27 @@ export default async function ClientPortalLayout({ children }: { children: React
           </span>
         ) : null}
 
-        {/* The rule lives in client-portal.css so the phone breakpoint can
-            turn it into a line break; an inline `flex: 1` would outrank it. */}
         <span className="spacer" />
 
-        {person ? (
-          <>
-            <Avatar name={person} size="sm" />
-            <span className="sm">{person}</span>
-          </>
-        ) : null}
-
-        <ModeSwitch small />
-
-        <SignOut />
+        <AccountMenu>
+          {company ? (
+            <span className="menu-who">
+              <span className="l">Signed in as</span>
+              <span className="n">{company}</span>
+            </span>
+          ) : null}
+          {person ? (
+            <span className="me">
+              <Avatar name={person} size="sm" />
+              <span className="sm">{person}</span>
+            </span>
+          ) : null}
+          <span className="mode">
+            <span className="l">Appearance</span>
+            <ModeSwitch small />
+          </span>
+          <SignOut />
+        </AccountMenu>
       </header>
 
       <div className="cwrap">{children}</div>
