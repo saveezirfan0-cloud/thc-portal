@@ -31,11 +31,35 @@ export const AUDIT_COLUMNS: { header: string; value: (row: AuditRow) => string }
   },
   { header: 'Ceiling returns from', value: (r) => r.effective_from ?? '' },
   { header: 'Retained until', value: (r) => r.retain_until ?? '' },
+  // Right-to-work changes and decisions (20260929150400).
+  { header: 'Document type', value: (r) => r.doc_type ?? '' },
+  { header: 'Route before', value: (r) => r.branch_before ?? '' },
+  { header: 'Route', value: (r) => r.branch ?? '' },
+  { header: 'Right to work until (before)', value: (r) => r.rtw_until_before ?? '' },
+  { header: 'Right to work until', value: (r) => r.rtw_until ?? '' },
+  { header: 'No time limit', value: (r) => yesNo(r.rtw_no_time_limit) },
+  { header: 'Condition set', value: (r) => r.condition ?? '' },
+  { header: 'Below degree level', value: (r) => yesNo(r.below_degree_level) },
+  {
+    header: 'Visa hours limit',
+    value: (r) =>
+      r.visa_hour_limit === null || r.visa_hour_limit === undefined
+        ? ''
+        : String(r.visa_hour_limit),
+  },
+  { header: 'Check source', value: (r) => r.check_source ?? '' },
+  { header: 'Check outcome', value: (r) => r.check_outcome ?? '' },
 ];
+
+function yesNo(value: boolean | null | undefined): string {
+  return value === true ? 'yes' : value === false ? 'no' : '';
+}
 
 const RECORD_LABEL: Record<string, string> = {
   completion_letter: 'Completion letter',
   wtr_optout: '48-hour opt-out',
+  rtw: 'Right to work',
+  rtw_check: 'Automated gov.uk check',
 };
 
 /** `2026-09-23 14:05` in Europe/London. */
