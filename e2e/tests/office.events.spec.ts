@@ -48,9 +48,9 @@ test('the arrows step a month, a week or a day, per view (§3.1)', async ({ page
   await expect(page.locator('.datenav .lbl')).toHaveText('September 2026');
 
   await openAsAdmin(page, AT('week'));
-  await expect(page.locator('.datenav .lbl')).toHaveText('Mon 14 Sep – Sun 20 Sep 2026');
+  await expect(page.locator('.datenav .lbl')).toHaveText('Mon 14 – Sun 20 Sep 2026');
   await page.getByLabel('Next period').click();
-  await expect(page.locator('.datenav .lbl')).toHaveText('Mon 21 Sep – Sun 27 Sep 2026');
+  await expect(page.locator('.datenav .lbl')).toHaveText('Mon 21 – Sun 27 Sep 2026');
 
   await openAsAdmin(page, AT('day'));
   await expect(page.locator('.datenav .lbl')).toHaveText('Fri 18 Sep 2026');

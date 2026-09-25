@@ -97,31 +97,17 @@ test('a candidate lands on step 1 of 11, and no later step will open first (§10
   }
 });
 
-test('step 1 needs Male or Female before Continue, and moves on to 2/11 (20260926100300, §9.9)', async ({
+test('step 1 takes the right-to-work branch and moves on to 2/11 (§2.5, §10.3)', async ({
   page,
 }) => {
   await openAs(page, '/onboarding/1', candidate!.email, PASSWORD);
   await page.getByRole('radio', { name: 'UK or Irish citizen' }).click();
   await expect(page.getByRole('heading', { name: 'UK / Irish citizen' })).toBeVisible();
 
+  // The date of birth came in on /apply (ADR-0008) and Gender (M/F) is
+  // asked on the HMRC step (ADR-0024), so a UK/Irish citizen has nothing
+  // else to type here: the branch alone opens Continue.
   const next = page.getByRole('button', { name: 'Continue' });
-  await expect(next).toBeDisabled();
-  await expect(page.getByText('Date of birth and gender are required')).toBeVisible();
-
-  await page.getByLabel(/Date of birth/).fill('1998-05-04');
-  // The date alone used to be enough; the HMRC New Starter report takes
-  // Gender (M/F), so the step now holds until it has one.
-  await expect(next).toBeDisabled();
-  await expect(page.getByText('Gender is required')).toBeVisible();
-
-  const gender = page.getByRole('group', { name: 'Gender' });
-  await expect(gender.getByRole('button', { name: 'Male' })).toBeVisible();
-  await expect(gender.getByRole('button', { name: 'Female' })).toBeVisible();
-  await gender.getByRole('button', { name: 'Male' }).click();
-  await expect(gender.getByRole('button', { name: 'Male' })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
   await expect(next).toBeEnabled();
 
   await next.click();
@@ -129,12 +115,10 @@ test('step 1 needs Male or Female before Continue, and moves on to 2/11 (2026092
   await expect(page.getByText('2/11 · Home address')).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Where do you live?' })).toBeVisible();
 
-  // Written by the RPC, as M, not merely held on the screen.
-  expect(
-    sql(
-      `select gender || ':' || rtw_branch::text from staff where id = ${lit(candidate!.staffId)}`,
-    ),
-  ).toBe('M:uk_irish');
+  // Written by the RPC, not merely held on the screen.
+  expect(sql(`select rtw_branch::text from staff where id = ${lit(candidate!.staffId)}`)).toBe(
+    'uk_irish',
+  );
   expect(
     sql(
       `select rtw_at is not null from onboarding_progress where staff_id = ${lit(candidate!.staffId)}`,

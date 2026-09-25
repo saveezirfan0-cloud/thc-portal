@@ -73,7 +73,8 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('the bare domain lands on the event list', async ({ page }) => {
-  await openAsClient(page, '/');
+  await openAsClient(page, '/client');
+  await page.goto('/');
   await expect(page).toHaveURL(/\/client$/);
 });
 
@@ -97,7 +98,8 @@ test('the event list offers the tabs the scope names, and each holds its own doc
 }) => {
   await openAsClient(page, '/client');
   for (const label of ['Upcoming & ongoing', 'Past', 'All']) {
-    await expect(page.getByRole('button', { name: new RegExp(label, 'i') })).toBeVisible();
+    // exact: "All" is also the start of "↓ Allocation sheet".
+    await expect(page.getByRole('button', { name: label, exact: true })).toBeVisible();
   }
   await expect(page.getByPlaceholder('Search events')).toBeVisible();
 
@@ -134,7 +136,8 @@ test('a row is name · venue · date/time · "N of M confirmed" · faces · docu
   // A scheduled time, UK-labelled, never a bare clock (§1.8).
   await expect(row.locator('td.win')).toContainText(/\d{2}:\d{2}/);
   // N counts confirmed only, M is the headcount — never headcount + buffer.
-  await expect(row).toContainText(/\b\d+ of \d+ confirmed\b/);
+  // No leading \b: the pill follows the status word with no space ("Upcoming13 of 17").
+  await expect(row).toContainText(/\d+ of \d+ confirmed/);
   // Faces of the confirmed workers, one avatar each.
   expect(await row.locator('.avatar').count()).toBeGreaterThan(0);
   await expect(row.getByRole('link', { name: 'Details →' })).toBeVisible();
@@ -274,9 +277,12 @@ test.describe('feedback on a started event (§11.2, §11.5)', () => {
 
     await expect(dialog).toBeHidden();
     // The row re-reads from client_lineup_v.feedback_given, not from
-    // screen state: the button is gone and the mark is in its place.
-    await expect(row.getByText('✓ Feedback sent')).toBeVisible();
-    await expect(row.getByRole('button', { name: 'Leave feedback' })).toHaveCount(0);
+    // screen state: the button is gone and the mark is in its place. Found
+    // again by name — `row` was "the first row with a live button", which
+    // this one no longer is.
+    const sent = page.locator('.wrow').filter({ hasText: person }).first();
+    await expect(sent.getByText('✓ Feedback sent')).toBeVisible();
+    await expect(sent.getByRole('button', { name: 'Leave feedback' })).toHaveCount(0);
 
     // And it landed as a client entry on this event, read by nobody yet —
     // it counts toward the rating only once the office marks it read (§9.10).

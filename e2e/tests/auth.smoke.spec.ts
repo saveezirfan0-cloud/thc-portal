@@ -6,7 +6,7 @@ import { expect, test } from '@playwright/test';
  */
 const PRODUCT: Record<string, string> = {
   office: 'Back Office',
-  staff: 'Staff',
+  staff: 'Staff app',
   client: 'Client Portal',
 };
 

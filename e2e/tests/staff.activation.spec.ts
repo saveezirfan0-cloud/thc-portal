@@ -77,8 +77,17 @@ function previewName(token: string): string {
   return sql(`select coalesce(activation_preview(${lit(token)}) ->> 'firstName', '')`);
 }
 
+/**
+ * "Activated" is what staff_account_activated() means — the login has a
+ * password (20260924110000) — read here from auth.users directly, because
+ * that function answers null to any caller who is not the office, the
+ * service role or the person, and psql is none of those.
+ */
 function activated(staffId: string): string {
-  return sql(`select coalesce(staff_account_activated(${lit(staffId)}), false)`);
+  return sql(
+    `select coalesce((select coalesce(u.encrypted_password, '') <> '' from auth.users u
+        join staff s on s.user_id = u.id where s.id = ${lit(staffId)}), false)`,
+  );
 }
 
 async function fillAndSubmit(page: Page): Promise<void> {
