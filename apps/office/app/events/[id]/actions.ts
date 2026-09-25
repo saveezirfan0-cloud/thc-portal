@@ -7,7 +7,6 @@ import {
   acceptApplicationRefusal,
   cancelEventRefusal,
   canCancelBooking,
-  canMarkNoShow,
   displayTime,
   payrollWarning,
   type CancelCause,
@@ -109,30 +108,27 @@ export async function withdraw(
  * §3.3. Marking a no-show by hand, for the cases the automatic 30-minute
  * check does not cover. The worker stays in Confirmed, badged — this writes
  * the violation, it does not move them.
+ *
+ * One RPC, `office_mark_no_show()` (20260927181000): admin only, locked on
+ * the booking; confirmed with no check-in, inside the §3.3 window (the same
+ * one `canMarkNoShow` shows), one open no-show per booking. This used to
+ * insert straight into `violations` from here with none of those guards.
  */
 export async function markNoShow(eventId: string, bookingId: string): Promise<ActionResult> {
   if (!supabaseConfigured()) return { error: NO_SUPABASE };
   const supabase = await db();
 
-  const context = await bookingContext(supabase, bookingId);
-  if (!context) return { error: 'That booking no longer exists.' };
-
-  if (!canMarkNoShow({ startsAt: context.startsAt, endsAt: context.endsAt })) {
-    return {
-      error: 'No-show can be recorded from the shift start until two weeks after it ends (§3.3).',
-    };
-  }
-
-  const { error } = await supabase.from('violations').insert({
-    staff_id: context.staffId,
-    booking_id: bookingId,
-    type: 'no_show',
-  });
-  if (error) return { error: error.message };
+  const { data, error } = await supabase.rpc('office_mark_no_show', { p_booking: bookingId });
+  if (error) return { error: noShowRefusal(error.message) };
+  const result = (data ?? {}) as { ok?: boolean; payrollExported?: boolean };
+  if (result.ok !== true) return { error: 'The no-show was not recorded.' };
 
   revalidatePath(`/events/${eventId}`);
   // The money is corrected in THC's own finance process, outside the app.
-  return { ok: true, warning: payrollWarning('no_show', context.payrollExported) ?? undefined };
+  return {
+    ok: true,
+    warning: payrollWarning('no_show', Boolean(result.payrollExported)) ?? undefined,
+  };
 }
 
 /**
@@ -140,33 +136,53 @@ export async function markNoShow(eventId: string, bookingId: string): Promise<Ac
  * from No-show to Late, with minutes-late measured from the moment the
  * manager pressed it. It is the only way back in once the check-in button
  * has locked.
+ *
+ * One RPC, `get_back()` (20260927181000), which finds the booking's open
+ * no-show and delegates to `resolve_violation()` — the Violation log's
+ * Resolve on the same entry (§9.5). That is what writes the check-in at the
+ * press, moves the booking to `worked` and reclassifies the violation in
+ * place. This used to delete the no-show and insert a `late` row from here,
+ * which left the booking without a check-in and payable_shifts_v paying 0.
  */
 export async function getBack(eventId: string, bookingId: string): Promise<ActionResult> {
   if (!supabaseConfigured()) return { error: NO_SUPABASE };
   const supabase = await db();
 
-  const context = await bookingContext(supabase, bookingId);
-  if (!context) return { error: 'That booking no longer exists.' };
-
-  const now = new Date();
-  const minutesLate = Math.max(
-    0,
-    Math.round((now.getTime() - context.startsAt.getTime()) / 60_000),
-  );
-
-  // The no-show becomes a late: one violation replaces the other rather than
-  // both standing, or the worker is penalised twice for one arrival.
-  await supabase.from('violations').delete().eq('booking_id', bookingId).eq('type', 'no_show');
-  const { error } = await supabase.from('violations').insert({
-    staff_id: context.staffId,
-    booking_id: bookingId,
-    type: 'late',
-    minutes_late: minutesLate,
-  });
-  if (error) return { error: error.message };
+  const { data, error } = await supabase.rpc('get_back', { p_booking: bookingId });
+  if (error) return { error: getBackRefusal(error.message) };
+  const result = (data ?? {}) as { decision?: string; payrollExported?: boolean };
+  if (result.decision === 'already_resolved') {
+    return { error: 'This no-show has already been resolved.' };
+  }
+  if (result.decision !== 'resolved') return { error: 'The worker was not got back.' };
 
   revalidatePath(`/events/${eventId}`);
-  return { ok: true, warning: payrollWarning('get_back', context.payrollExported) ?? undefined };
+  return {
+    ok: true,
+    warning: payrollWarning('get_back', Boolean(result.payrollExported)) ?? undefined,
+  };
+}
+
+/** What each refusal from `office_mark_no_show()` means to the manager. */
+function noShowRefusal(raw: string): string {
+  if (/admins_only/.test(raw)) return 'Only the office can record a no-show.';
+  if (/booking_not_found/.test(raw)) return 'That booking no longer exists.';
+  if (/booking_not_confirmed/.test(raw)) {
+    return 'Only a confirmed worker can be marked as a no-show (§3.3).';
+  }
+  if (/already_checked_in/.test(raw))
+    return 'This worker has checked in, so they are not a no-show.';
+  if (/outside_window/.test(raw)) {
+    return 'No-show can be recorded from the shift start until two weeks after it ends (§3.3).';
+  }
+  return raw;
+}
+
+/** What each refusal from `get_back()` means to the manager. */
+function getBackRefusal(raw: string): string {
+  if (/admins_only/.test(raw)) return 'Only the office can get a worker back.';
+  if (/no_open_no_show/.test(raw)) return 'This worker has no unresolved no-show to get back from.';
+  return raw;
 }
 
 /**
@@ -345,53 +361,6 @@ export async function setRoleAutoAssign(
 }
 
 // ---------------------------------------------------------------------
-
-interface BookingContext {
-  staffId: string;
-  startsAt: Date;
-  endsAt: Date;
-  payrollExported: boolean;
-}
-
-/** The shift behind a booking, and whether its payroll has already gone out. */
-async function bookingContext(
-  supabase: Awaited<ReturnType<typeof db>>,
-  bookingId: string,
-): Promise<BookingContext | null> {
-  const { data: booking } = await supabase
-    .from('bookings')
-    .select('staff_id, shift_id')
-    .eq('id', bookingId)
-    .maybeSingle();
-  if (!booking) return null;
-  const { staff_id: staffId, shift_id: shiftId } = booking as {
-    staff_id: string;
-    shift_id: string;
-  };
-
-  const { data: section } = await supabase
-    .from('shift_requirements')
-    .select('starts_at, ends_at, event_id')
-    .eq('id', shiftId)
-    .maybeSingle();
-  if (!section) return null;
-  const shift = section as { starts_at: string; ends_at: string; event_id: string };
-
-  const { data: event } = await supabase
-    .from('events')
-    .select('payroll_exported_at')
-    .eq('id', shift.event_id)
-    .maybeSingle();
-
-  return {
-    staffId,
-    startsAt: new Date(shift.starts_at),
-    endsAt: new Date(shift.ends_at),
-    payrollExported: Boolean(
-      (event as { payroll_exported_at?: string } | null)?.payroll_exported_at,
-    ),
-  };
-}
 
 /**
  * One outbox row, keyed so a repeat press does not queue a second push (§8).

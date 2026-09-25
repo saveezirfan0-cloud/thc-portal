@@ -9,6 +9,12 @@
  *                     still short, ignoring the headcount + buffer cap,
  *                     inviting only within settings.escalation_radius_miles
  *                     of the venue (§3.4), as source = 'escalation'.
+ *   &event=<uuid>     optional — only that event's sections. The office's
+ *                     save posts `?mode=hourly&event=…` through
+ *                     auto_assign_first_round() (20260927181000) so a new
+ *                     event gets its first round "from the moment the
+ *                     event is created" (§3.4) instead of at :17, without
+ *                     handing every other open section an extra round.
  *
  * Everything decidable lives elsewhere and is tested:
  *
@@ -41,9 +47,20 @@ function modeOf(request: Request): Mode {
   throw new Error(`mode must be one of ${MODES.join(', ')}; got ${JSON.stringify(raw)}`);
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/** The one event a first round is scoped to, or null for the whole due list. */
+function eventOf(request: Request): string | null {
+  const raw = new URL(request.url).searchParams.get('event');
+  if (raw === null || raw === '') return null;
+  if (!UUID.test(raw)) throw new Error(`event must be a uuid; got ${JSON.stringify(raw)}`);
+  return raw.toLowerCase();
+}
+
 Deno.serve((request) =>
   runJob('auto-staffing', request, async (db) => {
     const mode = modeOf(request);
+    const onlyEvent = eventOf(request);
 
     // The 12:05 cutoff is registered as an every-5-minute entry because
     // pg_cron is UTC and the deadline is UK wall-clock (§3.5). Without
@@ -59,6 +76,7 @@ Deno.serve((request) =>
     }
 
     const counts: Record<string, unknown> = { mode, sections: 0, invited: 0, released: 0 };
+    if (onlyEvent) counts.event = onlyEvent;
 
     if (mode === 'cutoff') {
       const { data: released, error } = await db.rpc('release_unready_bookings');
@@ -83,7 +101,13 @@ Deno.serve((request) =>
     });
     if (dueError) throw new Error(`auto_assign_due_shifts: ${dueError.message}`);
 
-    for (const section of (due ?? []) as { shift_id: string; allocation: number }[]) {
+    // A first round (auto_assign_first_round) is one event's sections only;
+    // the other open sections keep their hourly cadence.
+    const sections = (
+      (due ?? []) as { shift_id: string; event_id: string; allocation: number }[]
+    ).filter((section) => onlyEvent === null || section.event_id === onlyEvent);
+
+    for (const section of sections) {
       // §3.4: the escalation pool is "every worker qualified for that role
       // within a 3-mile radius of the venue" — the radius is
       // settings.escalation_radius_miles, applied in SQL as the

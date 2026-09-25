@@ -299,7 +299,20 @@ describe('formatDistance', () => {
 
 describe('refusal copy', () => {
   it('tells a worker whose invitation is gone that it is gone, and one who is blocked that it is not', () => {
-    expect(ACCEPT_REFUSAL_COPY.taken.title).toBe('Sorry, this shift has been taken');
+    // RULE-03 (§3.4): the scope's sentence, verbatim, is what the popup says.
+    expect(ACCEPT_REFUSAL_COPY.taken.title).toBe(
+      'Sorry, this shift has been taken — someone confirmed first.',
+    );
+    expect(`${ACCEPT_REFUSAL_COPY.taken.title} ${ACCEPT_REFUSAL_COPY.taken.body}`).toContain(
+      'Sorry, this shift has been taken — someone confirmed first.',
+    );
+    // The body is only the wireframe's explanation of where the invite went.
+    expect(ACCEPT_REFUSAL_COPY.taken.body).toContain('moved to Closed');
+    expect(ACCEPT_REFUSAL_COPY.taken.body).not.toContain('confirmed first');
+    // RULE-12 re-read at Accept (20260927181200): a blocked worker is told
+    // where to look, never told they are over their hours.
+    expect(ACCEPT_REFUSAL_COPY.blocked.body).toContain('Documents');
+    expect(ACCEPT_REFUSAL_COPY.blocked.title).not.toBe(ACCEPT_REFUSAL_COPY.hours_limit.title);
     expect(ACCEPT_REFUSAL_COPY.overlap.title).toContain('overlapping');
     expect(ACCEPT_REFUSAL_COPY.hours_limit.title).toBe('Limit Reached');
   });

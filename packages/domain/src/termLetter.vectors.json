@@ -1,0 +1,69 @@
+{
+  "$comment": "§4.2: an already-expired University Term Dates Letter is not accepted. Shared by packages/domain/src/__tests__/documents.test.ts (termLetterDatesVerdict) and supabase/tests/598_term_letter_dates_in_the_future.sql (term_letter_expired). Ranges are inclusive ISO dates as the letter prints them; the SQL side receives the half-open daterange [from, to + 1 day).",
+  "cases": [
+    {
+      "name": "§4.2 every range before today → expired",
+      "today": "2026-09-25",
+      "ranges": [
+        { "from": "2025-12-13", "to": "2026-01-05" },
+        { "from": "2026-03-21", "to": "2026-04-19" },
+        { "from": "2026-06-13", "to": "2026-09-20" }
+      ],
+      "expect": "expired"
+    },
+    {
+      "name": "§4.2 last day was yesterday → expired",
+      "today": "2026-09-25",
+      "ranges": [{ "from": "2026-06-13", "to": "2026-09-24" }],
+      "expect": "expired"
+    },
+    {
+      "name": "§4.2 last day is today → still current (a range ending today has a day left)",
+      "today": "2026-09-25",
+      "ranges": [{ "from": "2026-06-13", "to": "2026-09-25" }],
+      "expect": "current"
+    },
+    {
+      "name": "§4.2 one past range and one to come → current, the rule is about all of them",
+      "today": "2026-09-25",
+      "ranges": [
+        { "from": "2026-06-13", "to": "2026-09-20" },
+        { "from": "2026-12-12", "to": "2027-01-10" }
+      ],
+      "expect": "current"
+    },
+    {
+      "name": "§4.2 next year's letter, every range ahead → current",
+      "today": "2026-09-25",
+      "ranges": [
+        { "from": "2026-12-12", "to": "2027-01-10" },
+        { "from": "2027-03-27", "to": "2027-04-25" }
+      ],
+      "expect": "current"
+    },
+    {
+      "name": "§4.2 a range that starts before today and ends after it → current",
+      "today": "2026-12-20",
+      "ranges": [{ "from": "2026-12-12", "to": "2027-01-10" }],
+      "expect": "current"
+    },
+    {
+      "name": "§4.2 no ranges found → no_dates, not expired (ADR-0014: the human still reviews)",
+      "today": "2026-09-25",
+      "ranges": [],
+      "expect": "no_dates"
+    },
+    {
+      "name": "§4.2 ranges absent → no_dates",
+      "today": "2026-09-25",
+      "ranges": null,
+      "expect": "no_dates"
+    },
+    {
+      "name": "§4.2 a range typed backwards is judged on its later end",
+      "today": "2026-09-25",
+      "ranges": [{ "from": "2027-01-10", "to": "2026-12-12" }],
+      "expect": "current"
+    }
+  ]
+}
