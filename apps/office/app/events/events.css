@@ -181,6 +181,46 @@
   font-size: var(--fs-12);
 }
 
+/* On a phone (the list is a stack of cards there) each role line is the
+   role and its allocation on one line with the window, and §1.8's "your
+   time", below — in one row the window was squeezed to a character wide. */
+@media (max-width: 760px) {
+  .tbl.card-rows .roles {
+    gap: 0;
+  }
+  .tbl.card-rows .roles .r {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'role alloc'
+      'win win';
+    row-gap: var(--sp-4);
+    column-gap: var(--sp-10);
+    align-items: center;
+    padding: var(--sp-8) 0;
+    border-top: 1px solid var(--line);
+    font-size: var(--fs-13);
+  }
+  .tbl.card-rows .roles .r:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+  .tbl.card-rows .roles .r:last-child {
+    padding-bottom: 0;
+  }
+  .tbl.card-rows .roles .r > .chip {
+    grid-area: role;
+    justify-self: start;
+    min-width: 0;
+  }
+  .tbl.card-rows .roles .r > .win {
+    grid-area: win;
+  }
+  .tbl.card-rows .roles .r > .alloc {
+    grid-area: alloc;
+  }
+}
+
 @media (max-width: 1200px) {
   .dayrow {
     grid-template-columns: 120px 1fr 1fr;

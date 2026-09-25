@@ -36,6 +36,9 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/feedback` | Client · Office | `backoffice/feedback.html` | 9.10 | client-portal |
 | `/venues` | List · On map · modal | `backoffice/venues.html` | 9.11 | directory |
 | `/settings` | Scoring weights, Willo map, venue radii, senders (Django-Admin replacement) | — (simple form) | 6, 2.4, 9.11, 9.12 | platform |
+| `/users` | Users & access: every login by app, Invite a Back Office or Client Portal user (one-time set-up link), switch a login off/on, new invite link. States: empty tab, search with no match, invite link shown once, switch-off needs a reason, own row has no Switch off | — (ADR-0035) | 1.4, 1.7 | platform |
+| `/activity` | Activity log: `audit_log` newest first with who / what / record / details, filters by area, person, text and period, paging by 50. States: empty period, no match, System entries | — (ADR-0035) | 1.7, 1.8 | platform |
+| `/account` | My profile: name, job title, phone; sign-in email change (confirmation link); password change (current password checked); sign out other devices; appearance | — (ADR-0035) | 1.4, 10.2 | platform |
 | `/design-system` | Live component gallery (both token axes) | `design-system.html` | 1.6, 10.1 | design-system |
 
 ## Staff App PWA (`apps/staff`)
