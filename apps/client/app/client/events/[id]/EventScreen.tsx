@@ -8,7 +8,14 @@ import type { EventArrivals } from '../../arrivals';
 import { UK_ZONE, formatDateTimeIn, formatTimeIn } from '@thc/domain';
 import { EventWindow } from '../../EventWindow';
 import { ukDateLong, ukDateShort } from '../../format';
-import { feedbackOpen, fillOf, groupByRole, headerDocuments, statusTone } from '../../rules';
+import {
+  feedbackOpen,
+  fillOf,
+  groupByRole,
+  headerDocuments,
+  isRemoved,
+  statusTone,
+} from '../../rules';
 import type { DocumentKind, LineupRow, PortalEvent, RoleSection } from '../../rules';
 import { CalendarButton } from './CalendarButton';
 import { FeedbackModal } from './FeedbackModal';
@@ -220,7 +227,7 @@ export function EventScreen({
             >
               <div className="wgrid">
                 {group.people.map((p) => {
-                  const removed = p.name.startsWith('Deleted account');
+                  const removed = isRemoved(p);
                   return (
                     <div className="wrow" key={p.bookingId}>
                       <Avatar

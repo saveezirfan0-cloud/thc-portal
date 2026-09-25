@@ -14,7 +14,9 @@ import {
   SearchInput,
   SegToggle,
   Select,
+  useViewerZone,
 } from '@thc/ui';
+import { needsDualZone } from '@thc/domain';
 import { Arrivals } from './ArrivalsPill';
 import type { ArrivalsByEvent } from './arrivals';
 import { EventWindow } from './EventWindow';
@@ -30,6 +32,7 @@ import {
   filterByTab,
   filtersActive,
   isRemoved,
+  momentIn,
   nextUp,
   roleBreakdown,
   statusTone,
@@ -151,7 +154,7 @@ export function EventsScreen({
         </div>
       </div>
 
-      {next ? <NextUp {...next} fill={fillOf(sectionsFor(next.event.id))} /> : null}
+      {next ? <NextUp {...next} now={at} fill={fillOf(sectionsFor(next.event.id))} /> : null}
 
       {/* The shared .toolbar phone rules (packages/ui) give the search its
           own line and let the filters share the next one. */}
@@ -183,7 +186,7 @@ export function EventsScreen({
               Date column prints, not the viewer's own zone. */}
           <Input
             type="date"
-            label="From"
+            label="From (UK date)"
             className="ev-date"
             value={filters.from}
             max={filters.to || undefined}
@@ -191,7 +194,7 @@ export function EventsScreen({
           />
           <Input
             type="date"
-            label="To"
+            label="To (UK date)"
             className="ev-date"
             value={filters.to}
             min={filters.from || undefined}
@@ -426,23 +429,32 @@ export function EmptyList({
 }
 
 /**
- * "Next: Gala Dinner · today 07:00 UK · 13 of 17 confirmed", or "Happening
- * now: …" while one is running (ADR-0034). A pointer into the event page,
- * so one UK time with its " UK" label is enough here (§1.8); the page
- * itself carries the dual-zone window. Independent of the tab and the
- * filters: it answers "what is next for me", not "what is in this view".
+ * "Next · Gala Dinner · today 07:00 UK time · 13 of 17 confirmed", or
+ * "Happening now: …" while one is running (ADR-0034). Independent of the tab
+ * and the filters: it answers "what is next for me", not "what is in this
+ * view". A scheduled time, so dual zone (§1.8): the UK line is rendered on
+ * the server, and the viewer's own "your time" is added once mounted, only
+ * when their zone differs — the same hydration rule as `EventWindow`.
  */
 function NextUp({
   event,
   live,
   when,
+  at,
+  dropToday,
+  now,
   fill,
 }: {
   event: PortalEvent;
   live: boolean;
   when: string;
+  at: string;
+  dropToday: boolean;
+  now: Date;
   fill: { confirmed: number; headcount: number };
 }) {
+  const zone = useViewerZone();
+  const mine = needsDualZone(zone) ? momentIn(at, now, dropToday, zone) : null;
   return (
     <Link className={live ? 'ev-next live' : 'ev-next'} href={`/client/events/${event.id}`}>
       <Pill tone={live ? 'green' : 'cyan'} dot={live}>
@@ -451,6 +463,7 @@ function NextUp({
       <span className="ev-next-t">
         <b>{event.title}</b>
         <span> · {when}</span>
+        {mine ? <span className="muted"> ({live ? `until ${mine}` : mine} your time)</span> : null}
         <span>
           {' '}
           · {fill.confirmed} of {fill.headcount} confirmed

@@ -14,6 +14,7 @@
  */
 
 import { UK_ZONE, formatDateIn, formatTimeIn, ukToday } from '@thc/domain';
+import { daysLaterIn } from './format';
 
 export type EventStatus = 'upcoming' | 'ongoing' | 'completed' | 'cancelled';
 
@@ -408,38 +409,56 @@ export function emptyReason(
 export function nextUp(
   events: readonly PortalEvent[],
   now: Date,
-): { event: PortalEvent; live: boolean; when: string } | null {
+): { event: PortalEvent; live: boolean; when: string; at: string; dropToday: boolean } | null {
   const soonest = (status: EventStatus) =>
     events
       .filter((e) => e.status === status)
       .sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.title.localeCompare(b.title))[0];
 
   const live = soonest('ongoing');
-  if (live) return { event: live, live: true, when: `until ${ukMoment(live.endsAt, now, true)}` };
+  if (live) {
+    return {
+      event: live,
+      live: true,
+      when: `until ${momentIn(live.endsAt, now, true, UK_ZONE)} UK time`,
+      at: live.endsAt,
+      dropToday: true,
+    };
+  }
   const next = soonest('upcoming');
-  return next ? { event: next, live: false, when: ukMoment(next.startsAt, now, false) } : null;
+  return next
+    ? {
+        event: next,
+        live: false,
+        when: `${momentIn(next.startsAt, now, false, UK_ZONE)} UK time`,
+        at: next.startsAt,
+        dropToday: false,
+      }
+    : null;
 }
 
 /**
- * "today 07:00 UK", "tomorrow 07:00 UK", "Thu 1 Oct 07:00 UK": a scheduled
- * time in UK time with the " UK" suffix (§1.8). The strip is a one-line
- * pointer into the event, whose page carries the full dual-zone window.
- * "Today" is judged on the UK calendar, like every rule. With `dropToday`
- * the day is left off when it is today ("until 23:30 UK").
+ * "today 07:00", "tomorrow 07:00", "Thu 1 Oct 07:00": a scheduled time on
+ * the wall clock and calendar of `zone`. The strip writes it twice, as §1.8
+ * requires of every scheduled time: in UK time (`nextUp().when`, safe on the
+ * server) and, once mounted, in the viewer's own zone when that differs
+ * ("your time"). "Today" is judged on that zone's own calendar, so a reader
+ * in Dubai at 01:00 sees their today, not London's. With `dropToday` the day
+ * is left off when it is today ("until 23:30").
  */
-function ukMoment(iso: string, now: Date, dropToday: boolean): string {
+export function momentIn(iso: string, now: Date, dropToday: boolean, zone: string): string {
   const at = new Date(iso);
-  const day = ukToday(at);
-  const today = ukToday(now);
-  const time = `${formatTimeIn(at, UK_ZONE)} UK`;
-  if (day === today) return dropToday ? time : `today ${time}`;
-  if (day === nextDay(today)) return `tomorrow ${time}`;
-  const year = day.slice(0, 4) !== today.slice(0, 4);
-  return `${formatDateIn(at, UK_ZONE, { weekday: 'short', year })} ${time}`;
+  const time = formatTimeIn(at, zone);
+  const ahead = daysLaterIn(now, at, zone);
+  if (ahead === 0) return dropToday ? time : `today ${time}`;
+  if (ahead === 1) return `tomorrow ${time}`;
+  const year = dayOf(at, zone).slice(0, 4) !== dayOf(now, zone).slice(0, 4);
+  return `${formatDateIn(at, zone, { weekday: 'short', year })} ${time}`;
 }
 
-/** The calendar day after a `yyyy-mm-dd`, with no clock involved. */
-function nextDay(isoDate: string): string {
-  const [y, m, d] = isoDate.split('-').map(Number) as [number, number, number];
-  return new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10);
+/** `yyyy-mm-dd` of `instant` on `zone`'s calendar. */
+function dayOf(instant: Date, zone: string): string {
+  return zone === UK_ZONE
+    ? ukToday(instant)
+    : new Intl.DateTimeFormat('en-CA', { timeZone: zone }).format(instant);
 }

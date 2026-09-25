@@ -11,6 +11,7 @@ import {
   roleBreakdown,
   timesheetStatus,
   venuesOf,
+  momentIn,
 } from '../rules';
 import type { LineupRow, PortalEvent, RoleSection } from '../rules';
 
@@ -286,23 +287,23 @@ describe('the "Next up" strip (ADR-0034)', () => {
     const next = nextUp([later, event()], morning);
     expect(next?.event.id).toBe('ev-1');
     expect(next?.live).toBe(false);
-    expect(next?.when).toBe('today 07:00 UK');
+    expect(next?.when).toBe('today 07:00 UK time');
   });
 
   it('says "tomorrow" by the UK calendar, and names any later day', () => {
     const tomorrow = event({ startsAt: '2026-09-20T06:00:00Z' });
-    expect(nextUp([tomorrow], morning)?.when).toBe('tomorrow 07:00 UK');
+    expect(nextUp([tomorrow], morning)?.when).toBe('tomorrow 07:00 UK time');
     const october = event({ startsAt: '2026-10-01T06:00:00Z' });
-    expect(nextUp([october], morning)?.when).toBe('Thu 1 Oct 07:00 UK');
+    expect(nextUp([october], morning)?.when).toBe('Thu 1 Oct 07:00 UK time');
     const january = event({ startsAt: '2027-01-08T09:00:00Z' });
-    expect(nextUp([january], morning)?.when).toBe('Fri 8 Jan 2027 09:00 UK');
+    expect(nextUp([january], morning)?.when).toBe('Fri 8 Jan 2027 09:00 UK time');
   });
 
   it('judges "today" in the UK, not in UTC', () => {
     // 00:30 BST on Sunday the 20th is 23:30Z on Saturday the 19th.
     const justAfterMidnight = new Date('2026-09-19T23:30:00Z');
     const sunday = event({ startsAt: '2026-09-20T06:00:00Z' });
-    expect(nextUp([sunday], justAfterMidnight)?.when).toBe('today 07:00 UK');
+    expect(nextUp([sunday], justAfterMidnight)?.when).toBe('today 07:00 UK time');
   });
 
   it('prefers an event running now, with its end time', () => {
@@ -310,12 +311,12 @@ describe('the "Next up" strip (ADR-0034)', () => {
     const next = nextUp([event({ startsAt: '2026-09-19T16:00:00Z' }), running], morning);
     expect(next?.event.id).toBe('ev-now');
     expect(next?.live).toBe(true);
-    expect(next?.when).toBe('until 23:30 UK');
+    expect(next?.when).toBe('until 23:30 UK time');
   });
 
   it('names the day an overnight event ends on', () => {
     const overnight = event({ status: 'ongoing', endsAt: '2026-09-20T01:00:00Z' });
-    expect(nextUp([overnight], morning)?.when).toBe('until tomorrow 02:00 UK');
+    expect(nextUp([overnight], morning)?.when).toBe('until tomorrow 02:00 UK time');
   });
 
   it('is empty with nothing ahead: completed and cancelled never count', () => {
@@ -323,5 +324,27 @@ describe('the "Next up" strip (ADR-0034)', () => {
     expect(
       nextUp([event({ status: 'completed' }), event({ id: 'ev-c', status: 'cancelled' })], morning),
     ).toBeNull();
+  });
+});
+
+describe('momentIn · the strip\'s "your time" (§1.8)', () => {
+  // 20:00 BST on Sat 19 Sep is already 23:00 in Dubai and 12:00 in LA.
+  const evening = new Date('2026-09-19T19:00:00Z');
+
+  it("writes the same instant on the viewer's own clock", () => {
+    expect(momentIn('2026-09-19T20:30:00Z', evening, false, 'Asia/Dubai')).toBe('tomorrow 00:30');
+    expect(momentIn('2026-09-19T20:30:00Z', evening, false, 'Europe/London')).toBe('today 21:30');
+    expect(momentIn('2026-09-19T20:30:00Z', evening, false, 'America/Los_Angeles')).toBe(
+      'today 13:30',
+    );
+  });
+
+  it('judges "today" on the viewer\'s calendar, and drops it for an "until" today', () => {
+    expect(momentIn('2026-09-19T19:45:00Z', evening, true, 'Asia/Dubai')).toBe('23:45');
+    expect(momentIn('2026-09-19T20:30:00Z', evening, true, 'Asia/Dubai')).toBe('tomorrow 00:30');
+  });
+
+  it("names a later day in the viewer's zone", () => {
+    expect(momentIn('2026-09-24T21:00:00Z', evening, false, 'Asia/Dubai')).toBe('Fri 25 Sep 01:00');
   });
 });

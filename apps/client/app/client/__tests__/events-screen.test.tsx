@@ -146,7 +146,7 @@ describe('the "Next up" strip (ADR-0034)', () => {
     const strip = markup.slice(markup.indexOf(open), markup.indexOf('ev-filters'));
     expect(strip).toContain('Happening now');
     expect(strip).toContain('<b>Gala Dinner</b>');
-    expect(strip).toContain('until 23:30 UK');
+    expect(strip).toContain('until 23:30 UK time');
     expect(strip).toContain('13 of 17 confirmed');
   });
 
@@ -154,7 +154,7 @@ describe('the "Next up" strip (ADR-0034)', () => {
     const markup = render([launch, lunch]);
     expect(markup).toContain('class="ev-next"');
     expect(markup).toContain('>Next<');
-    expect(markup).toContain('Sat 26 Sep 18:00 UK');
+    expect(markup).toContain('Sat 26 Sep 18:00 UK time');
   });
 
   it('is absent when nothing is upcoming or ongoing', () => {
@@ -238,8 +238,8 @@ describe('the filters (ADR-0034)', () => {
   it('offers From and To dates and the search', () => {
     const markup = render([gala, launch]);
     expect(markup.match(/type="date"/g)).toHaveLength(2);
-    expect(markup).toContain('>From</label>');
-    expect(markup).toContain('>To</label>');
+    expect(markup).toContain('>From (UK date)</label>');
+    expect(markup).toContain('>To (UK date)</label>');
     expect(markup).toContain('placeholder="Search events"');
   });
 

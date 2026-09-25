@@ -1361,8 +1361,11 @@ textarea.input {
      several screens and stretches to its row, which dropped the glyph
      below the field. */
   top: calc(var(--input-h) / 2);
-  width: 16px;
-  height: 16px;
+  /* Sized in em off the type token the glyph used to be set in, so the
+     icon still follows --fs-16 rather than carrying a literal. */
+  font-size: var(--fs-16);
+  width: 1em;
+  height: 1em;
   transform: translateY(-50%);
   background-color: var(--muted);
   -webkit-mask: var(--search-glyph) center / contain no-repeat;
