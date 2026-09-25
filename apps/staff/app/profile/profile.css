@@ -248,3 +248,9 @@
   margin-top: var(--sp-4);
   flex-wrap: wrap;
 }
+
+/* A sub-line that needs the worker soon — "Passport expires in 12 days". */
+.hub-row .s.amber {
+  color: var(--amber-ink);
+  font-weight: 600;
+}

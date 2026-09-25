@@ -7,6 +7,10 @@ import type { Tone } from '@thc/ui';
 import { appLock, canReachProfileDetails, p45Availability } from '../lock';
 import { HELP_EMAIL } from '../types';
 import type { StaffProfile } from '../types';
+import { expiryLine } from '../document-expiry';
+import type { ExpiringDocument } from '../document-expiry';
+import { formatMoney } from '../payments/earnings';
+import { formatPayDate } from '../payments/pay-date';
 import { P45Flow } from './P45Flow';
 
 /**
@@ -35,10 +39,16 @@ export function ProfileHub({
   profile,
   photoUrl,
   futureShifts,
+  nextPay = null,
+  expiring = null,
 }: {
   profile: StaffProfile;
   photoUrl: string | null;
   futureShifts: number;
+  /** `nextPay()` — the soonest Friday still owed, base pay only. Null hides the line. */
+  nextPay?: { payDate: string; totalPence: number } | null;
+  /** `expiringDocument()` — a verified document inside §4.2's first reminder rung. */
+  expiring?: ExpiringDocument | null;
 }) {
   const [leaving, setLeaving] = useState(false);
   const name = `${profile.firstName} ${profile.lastName}`.trim();
@@ -82,7 +92,8 @@ export function ProfileHub({
           <HubRow
             href="/documents"
             title="Documents"
-            sub="Right to work, ID, declarations"
+            sub={expiring ? expiryLine(expiring) : 'Right to work, ID, declarations'}
+            subTone={expiring ? 'amber' : null}
             status={documents}
           />
         ) : null}
@@ -90,7 +101,7 @@ export function ProfileHub({
         <HubRow
           href="/profile/payments"
           title="Payment information"
-          sub="Earnings history, bank details"
+          sub={nextPayLine(nextPay) ?? 'Earnings history, bank details'}
         />
         <HubRow
           href="/profile/security"
@@ -136,18 +147,21 @@ function HubRow({
   href,
   title,
   sub,
+  subTone = null,
   status,
 }: {
   href: string;
   title: string;
   sub: string;
+  /** Amber for something that needs the worker soon (a document expiring). */
+  subTone?: 'amber' | null;
   status?: DocumentsStatus | null;
 }) {
   return (
     <Link className="hub-row" href={href}>
       <span className="hub-copy">
         <span className="t">{title}</span>
-        <span className="s">{sub}</span>
+        <span className={subTone ? `s ${subTone}` : 's'}>{sub}</span>
       </span>
       <span className="right">
         {status ? (
@@ -204,6 +218,19 @@ export function documentsStatus(
     return { tone: 'green', text: 'Up to date' };
   }
   return null;
+}
+
+/**
+ * "Next pay Fri 2 Oct · £123.45" — the Payment information row's sub-line,
+ * from the same base figures Earnings history shows (holiday pay is never
+ * blended in, §9.8). Null when nothing is owed, and the row keeps its usual
+ * description.
+ */
+export function nextPayLine(
+  next: { payDate: string; totalPence: number } | null | undefined,
+): string | null {
+  if (!next || next.totalPence <= 0) return null;
+  return `Next pay ${formatPayDate(next.payDate)} · ${formatMoney(next.totalPence)}`;
 }
 
 /**

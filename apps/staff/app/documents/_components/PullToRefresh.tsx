@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { displayTime, viewerZone } from '@thc/domain';
 
 /**
  * "↓ Pull to refresh" (§10.4).
@@ -11,6 +12,13 @@ import { useRouter } from 'next/navigation';
  * threshold re-runs the page's server read (`router.refresh()`); the line
  * is also a button, because a pull gesture is invisible to a keyboard and
  * to a desktop browser.
+ *
+ * "updated 19:53" is when the server read the documents — an ACTUAL
+ * instant, so §1.8 says the worker's own clock and nothing else: no UK
+ * line, no zone label. Only the browser knows that clock, so the server
+ * sends the instant (ISO) and the time appears once mounted; rendering it
+ * on the server would print UK time to a phone in UTC+5 and then fail to
+ * hydrate.
  */
 const THRESHOLD_PX = 70;
 
@@ -18,7 +26,15 @@ export function PullToRefresh({ updatedAt }: { updatedAt: string }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [armed, setArmed] = useState(false);
+  const [stamp, setStamp] = useState<string | null>(null);
   const startY = useRef<number | null>(null);
+
+  useEffect(() => {
+    const instant = new Date(updatedAt);
+    setStamp(
+      Number.isNaN(instant.getTime()) ? null : displayTime(instant, 'actual', viewerZone()).primary,
+    );
+  }, [updatedAt]);
 
   useEffect(() => {
     function onStart(event: TouchEvent) {
@@ -50,7 +66,7 @@ export function PullToRefresh({ updatedAt }: { updatedAt: string }) {
         ? 'Refreshing…'
         : armed
           ? '↑ Release to refresh'
-          : `↓ Pull to refresh · updated ${updatedAt}`}
+          : `↓ Pull to refresh${stamp ? ` · updated ${stamp}` : ''}`}
     </button>
   );
 }

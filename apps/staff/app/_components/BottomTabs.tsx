@@ -1,4 +1,6 @@
 import Link from 'next/link';
+import type { ReactNode } from 'react';
+import '../chrome.css';
 
 /**
  * The frosted bottom navigation — §10.1, as ADR-0035 reorders it:
@@ -44,11 +46,19 @@ export function BottomTabs({ tabs, active }: { tabs: Tab[]; active?: string }) {
           [tab.href === active && 'active', tab.locked && 'locked', tab.pending && 'pending']
             .filter(Boolean)
             .join(' ') || undefined;
+        const icon = TAB_ICONS[tab.href];
         const body = (
-          <span className="l">
-            {tab.label}
-            {tab.count ? <span className="n">{tab.count}</span> : null}
-          </span>
+          <>
+            {icon ? (
+              <span className="ico" aria-hidden="true">
+                {icon}
+              </span>
+            ) : null}
+            <span className="l">
+              {tab.label}
+              {tab.count ? <span className="n">{tab.count}</span> : null}
+            </span>
+          </>
         );
 
         // A locked tab (§10.1) and an unbuilt one are both un-pressable,
@@ -67,3 +77,63 @@ export function BottomTabs({ tabs, active }: { tabs: Tab[]; active?: string }) {
     </nav>
   );
 }
+
+/**
+ * One glyph per tab, in the wireframe's `.i` slot (`.ico` in packages/ui,
+ * 20 px). Drawn like the header's sun/moon (ModeSwitch): 24-unit box,
+ * `currentColor` stroke at 1.8, round caps — so a tab's icon takes the
+ * tab's colour (muted, active cyan, locked faded) with nothing restated.
+ * `aria-hidden`: the label is the accessible name, and "calendar Shifts"
+ * would be a worse one.
+ */
+function Glyph({ children }: { children: ReactNode }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      {children}
+    </svg>
+  );
+}
+
+const TAB_ICONS: Record<string, ReactNode> = {
+  // Calendar.
+  '/shifts': (
+    <Glyph>
+      <rect x="3.5" y="5" width="17" height="15.5" rx="2.5" />
+      <path d="M3.5 10h17M8 3v4M16 3v4" />
+    </Glyph>
+  ),
+  // Envelope.
+  '/invites': (
+    <Glyph>
+      <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
+      <path d="M3.5 7.5l8.5 6 8.5-6" />
+    </Glyph>
+  ),
+  // Radar: rings and a sweep.
+  '/radar': (
+    <Glyph>
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="4.5" />
+      <path d="M12 12l5.5-5.5" />
+      <circle cx="12" cy="12" r="0.8" />
+    </Glyph>
+  ),
+  // Person.
+  '/profile': (
+    <Glyph>
+      <circle cx="12" cy="8" r="4" />
+      <path d="M4.5 20.5a7.5 7.5 0 0 1 15 0" />
+    </Glyph>
+  ),
+};

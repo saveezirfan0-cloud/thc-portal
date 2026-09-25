@@ -3,9 +3,12 @@ import { loadBookings } from '../data';
 import { ProfileShell } from './_components/ProfileShell';
 import { ProfileHub } from './_components/ProfileHub';
 import { LockScreen } from './_components/LockScreen';
-import { appLock } from './lock';
-import { loadProfile, supabaseConfigured } from './data';
+import { appLock, canReachProfileDetails } from './lock';
+import { loadEarnings, loadProfile, supabaseConfigured } from './data';
 import { signOwnPhoto } from './photos';
+import { expiringDocument } from './document-expiry';
+import { nextPay } from './payments/earnings';
+import { loadDocuments } from '../documents/data';
 import './profile.css';
 
 export const dynamic = 'force-dynamic';
@@ -34,9 +37,9 @@ export default async function Page() {
 
   const lock = appLock(profile);
   const name = `${profile.firstName} ${profile.lastName}`.trim();
-  const photoUrl = await signOwnPhoto(profile.photoPath);
 
   if (lock !== 'none' && lock !== 'documents' && lock !== 'onboarding') {
+    const photoUrl = await signOwnPhoto(profile.photoPath);
     return (
       <ProfileShell title="The Hospitality Company" lock={lock} name={name} photoUrl={photoUrl}>
         <LockScreen lock={lock} leftAt={profile.leftAt} />
@@ -44,9 +47,19 @@ export default async function Page() {
     );
   }
 
-  // The real number the §10.6 sheet quotes: confirmed bookings whose shift
-  // has not started, which is exactly the set `request_p45()` releases.
-  const bookings = await loadBookings();
+  // Everything after the profile is independent of everything else, so it
+  // is read at once. The two sub-lines (next pay, a document expiring) are
+  // only for a worker who has the Documents and Payment rows at all, and
+  // either read failing costs its line, never the page.
+  const working = canReachProfileDetails(lock);
+  const [photoUrl, bookings, earnings, documents] = await Promise.all([
+    signOwnPhoto(profile.photoPath),
+    // The real number the §10.6 sheet quotes: confirmed bookings whose
+    // shift has not started, exactly the set `request_p45()` releases.
+    loadBookings(),
+    working ? loadEarnings().catch(() => []) : Promise.resolve([]),
+    working ? loadDocuments().catch(() => null) : Promise.resolve(null),
+  ]);
   const now = Date.now();
   const futureShifts = bookings.filter(
     (booking) => booking.status === 'confirmed' && booking.startsAt.getTime() > now,
@@ -54,7 +67,13 @@ export default async function Page() {
 
   return (
     <ProfileShell title="Profile" lock={lock} name={name} photoUrl={photoUrl}>
-      <ProfileHub profile={profile} photoUrl={photoUrl} futureShifts={futureShifts} />
+      <ProfileHub
+        profile={profile}
+        photoUrl={photoUrl}
+        futureShifts={futureShifts}
+        nextPay={nextPay(earnings)}
+        expiring={documents ? expiringDocument(documents) : null}
+      />
     </ProfileShell>
   );
 }
