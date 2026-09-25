@@ -27,7 +27,7 @@
 -- Every gov.uk / provider result here is SYNTHETIC (ADR-0025).
 -- =====================================================================
 begin;
-select plan(82);
+select plan(84);
 \ir _shared/fixtures.psql
 
 \set u1 'c6000000-0000-4000-8000-0000000000a1'
@@ -350,6 +350,18 @@ select throws_like(
                                    '{"action":"reject","workerReason":"x"}'::jsonb, 'someone-else/share-code-report/x.pdf') $$,
          (select check_id from claim5 where document_id = :'d6')),
   '%rtw_report_path_invalid%', 'I: the report must be under the worker''s own folder');
+select is(
+  rtw_check_record(
+    (select check_id from claim5 where document_id = :'d6'),
+    jsonb_build_object('outcome', 'right_to_work', 'source', 'provider', 'fullName', 'Olu Ade',
+                       'rightToWorkUntil', (:'today'::date + 300)::text, 'conditions', '[]'::jsonb),
+    jsonb_build_object('action', 'verify', 'rightToWorkUntil', (:'today'::date + 300)::text)) ->> 'status',
+  'queued', 'I: a pass with no report stored is not complete (§2.6): it is retried');
+select results_eq(
+  format($$ select c.error, d.review_status::text from rtw_checks c join compliance_docs d on d.id = c.compliance_doc_id
+             where c.id = %L $$, (select check_id from claim5 where document_id = :'d6')),
+  $$ values ('report_missing'::text, 'pending'::text) $$,
+  'I: saying why, with the document untouched');
 select throws_like(
   format($$ update rtw_checks set status = 'queued' where id = %L $$, (select check_id from claimed where document_id = :'d4')),
   '%illegal_rtw_check_transition%', 'I: a passed check cannot be re-queued (terminal)');
