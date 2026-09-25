@@ -51,7 +51,7 @@ Status: accepted · 25.09.2026 · a client-approved addition to §11.1/§11.2; f
 5. **The portal reads it like everything else.** `apps/client/app/client/arrivals.ts`
    uses the caller's own session with no tenancy filter in code, and returns an
    empty map when there is no project, on error, or on a throw, so the addition
-   can never break the page. `Arrivals.tsx` is a green-dot Pill
+   can never break the page. `ArrivalsPill.tsx` (named apart from `arrivals.ts` so the two cannot collide on a case-insensitive disk) is a green-dot Pill
    ("11 of 13 arrived") that renders nothing when there is nothing to count.
 
 ## Consequences

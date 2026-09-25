@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { Alert, Avatar, Button, Panel, Pill } from '@thc/ui';
+import { Arrivals } from '../../ArrivalsPill';
+import type { EventArrivals } from '../../arrivals';
 import { UK_ZONE, formatDateTimeIn, formatTimeIn } from '@thc/domain';
 import { EventWindow } from '../../EventWindow';
 import { ukDateLong, ukDateShort } from '../../format';
@@ -43,6 +45,7 @@ export function EventScreen({
   photos,
   now,
   documents = [],
+  arrivals,
 }: {
   event: PortalEvent;
   sections: RoleSection[];
@@ -51,6 +54,8 @@ export function EventScreen({
   now: string;
   /** Which §11.3 PDFs the office has produced for this event. */
   documents?: IssuedDocument[];
+  /** On-the-day check-in counts (ADR-0038); counts only, never who. */
+  arrivals?: EventArrivals;
 }) {
   const [rating, setRating] = useState<LineupRow | null>(null);
 
@@ -60,6 +65,9 @@ export function EventScreen({
   const open = feedbackOpen(event, at);
   const cancelled = event.status === 'cancelled';
   const completed = event.status === 'completed';
+  // "On the day" (ADR-0038): the count is live information about the shift in
+  // progress. Once the event is over the signed timesheet is the record.
+  const live = event.status === 'ongoing' ? arrivals : undefined;
   const downloads = headerDocuments(
     event.status,
     documents.map((d) => d.kind),
@@ -85,6 +93,7 @@ export function EventScreen({
           <Pill tone={statusTone(event.status)} large dot={event.status === 'ongoing'}>
             {STATUS_LABEL[event.status]}
           </Pill>
+          <Arrivals counts={live} large />
           {event.poNumber ? <Pill large>PO Number · {event.poNumber}</Pill> : null}
 
           <div className="actions row">
@@ -195,9 +204,17 @@ export function EventScreen({
                 </span>
               }
               actions={
-                <Pill tone={completed ? 'neutral' : 'green'}>
-                  {group.confirmed} {completed ? 'worked' : 'confirmed'}
-                </Pill>
+                <>
+                  <Pill tone={completed ? 'neutral' : 'green'}>
+                    {group.confirmed} {completed ? 'worked' : 'confirmed'}
+                  </Pill>
+                  <Arrivals
+                    counts={live}
+                    shiftIds={sections.filter((s) => s.role === group.role).map((s) => s.shiftId)}
+                    startsAt={group.startsAt}
+                    now={at}
+                  />
+                </>
               }
               flush
             >

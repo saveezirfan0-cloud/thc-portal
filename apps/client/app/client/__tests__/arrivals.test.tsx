@@ -53,7 +53,7 @@ vi.mock('@thc/db/server', () => ({
 }));
 
 const { groupArrivals, loadArrivals } = await import('../arrivals');
-const { Arrivals, arrivalsFor } = await import('../Arrivals');
+const { Arrivals, arrivalsFor } = await import('../ArrivalsPill');
 
 const EV = '70000000-0000-4000-8000-000000000001';
 const EV2 = '70000000-0000-4000-8000-000000000002';
