@@ -80,13 +80,22 @@ select is((select avg_margin_pct from clients_directory_v where id = :'clientb')
   'a client with nothing delivered has no margin — null, never 0%');
 
 -- An event still to come is not a margin, and neither is a cancelled one.
+-- The fixture moves a started event's date, which §3.2's edit lock
+-- (20260926131100) refuses to a manager's session: the moves run as the
+-- owner and the reads as the admin.
+reset role;
 update events set event_date = current_date + 7 where id = :'past_event';
+set local role authenticated;
 select is((select avg_margin_pct from clients_directory_v where id = :'clienta'), null,
   'an event that has not happened yet is not in the margin');
+reset role;
 update events set event_date = current_date - 14, cancelled_at = now() where id = :'past_event';
+set local role authenticated;
 select is((select avg_margin_pct from clients_directory_v where id = :'clienta'), null,
   'nor is a cancelled one');
+reset role;
 update events set cancelled_at = null where id = :'past_event';
+set local role authenticated;
 
 select is((select event_count from clients_directory_v where id = :'clienta'), 2,
   'the Events column counts every event that was not cancelled');

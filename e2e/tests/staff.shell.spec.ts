@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { databaseUnreachable, lit, sql } from './_support/db';
 
 /**
  * The Staff App's PWA shell — Scope §10.1, §10.2, §10.5.
@@ -65,6 +66,22 @@ async function setStaff(fields: Record<string, unknown>): Promise<void> {
     method: 'PATCH',
     body: JSON.stringify(fields),
   });
+}
+
+/**
+ * The same, for a state the §2.12 machine refuses to enter directly —
+ * compliant → rejected is not an edge, and since 20260926130800 the
+ * database says so to the service role too. A fixture is not a transition,
+ * so this one writes as the superuser with user triggers off, and is the
+ * only way `rejected` is set or undone in this file.
+ */
+function forceStaff(fields: Record<string, string | number | null>): void {
+  const set = Object.entries(fields)
+    .map(([k, v]) => `${k} = ${v === null ? 'null' : typeof v === 'number' ? v : lit(v)}`)
+    .join(', ');
+  sql(
+    `set session_replication_role = replica; update staff set ${set} where id = ${lit(AMARA_STAFF_ID)}`,
+  );
 }
 
 /** A passport that expired yesterday, for the §4.3 re-check. */
@@ -275,6 +292,9 @@ test.describe('App lock — the four cases (§10.1)', () => {
   });
 
   test.afterEach(async () => {
+    // `rejected` has no edge back to compliant either; the superuser undoes
+    // it the way it was set, then the ordinary reset covers the rest.
+    if (!databaseUnreachable()) forceStaff({ status: 'compliant', quiz_attempts: 0 });
     if (serviceKey && supabaseUrl) await setStaff(COMPLIANT);
   });
 
@@ -339,7 +359,11 @@ test.describe('App lock — the four cases (§10.1)', () => {
   });
 
   test('3 · three quiz failures end in THC’s own wording (§2.9)', async ({ page }) => {
-    await setStaff({ status: 'rejected', block_kind: null, quiz_attempts: 3 });
+    test.skip(
+      Boolean(databaseUnreachable()),
+      'The quiz-failed state is not an edge of the §2.12 machine; only psql can set it.',
+    );
+    forceStaff({ status: 'rejected', block_kind: null, quiz_attempts: 3 });
     await page.goto('/shifts');
 
     await expect(

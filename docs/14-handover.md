@@ -6,7 +6,7 @@
 > Duplicate on the event board, N6/N7 never queued, and an open redirect at every login.
 > Read §2–§5 there before trusting §2 below.
 
-Figures re-verified on the 26.09 round (the branch that follows `dbd0227`). This is the honest state, not
+Figures re-measured on the audit-fix round that follows `3a4aea4` (main's #56 merged in). This is the honest state, not
 the plan — every number below was produced by running something, not by counting
 what a previous revision claimed. Where something looks finished but is not, it
 says so.
@@ -22,10 +22,11 @@ screen it names is now built; what is left is listed in §2 and §4 below.
 ## 1 · What is genuinely built
 
 **Every screen in the product now exists.** Three Next.js apps on one Supabase
-database, **86 migrations**, **75 pgTAP files (2,590 assertions)**, **1,643 Vitest
-tests across 98 files** in eight packages, seven Edge Functions (`auto-staffing`,
+database, **110 migrations**, **86 pgTAP files (2,945 assertions)**, **1,918 Vitest
+tests across 121 files** in eight packages, seven Edge Functions (`auto-staffing`,
 `booking-tick`, `compliance-daily`, `finance-reports`, `gdpr-purge`,
-`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0024`. CI runs
+`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0029` (28 files;
+there is no `0025`). CI runs
 lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 `deploy-database` pushes migrations to the live project on merge to `main`.
 
@@ -33,10 +34,10 @@ lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 
 | Check | Result |
 |---|---|
-| All 86 migrations applied in order to an **empty** database | clean |
-| `scripts/pgtest-local.sh` — all 75 pgTAP files | 2,590 assertions, **2 failures**, both expected (below) |
-| `turbo lint typecheck test` | 29/29 tasks |
-| Live Supabase project vs the repo | all 81 applied at `dbd0227`; the 26.09 round's 5 deploy on merge |
+| All 110 migrations applied in order to an **empty** database | clean |
+| `scripts/pgtest-local.sh` — all 86 pgTAP files | 2,945 assertions, **2 failures**, both expected (below) |
+| `turbo test` | 11/11 tasks, 1,918 tests in 121 files; lint and typecheck were run per workspace this round (three fixers in one tree), not as one turbo pass |
+| Live Supabase project vs the repo | all 81 applied at `dbd0227` (26.09); everything since deploys on merge to `main` — not re-checked this round |
 
 `002` assertions **6 and 7** fail in every local harness and **that pair is the
 clean baseline**: they record that on Supabase `anon` *can* write
@@ -115,7 +116,36 @@ real environment to prove it in.
    through for real; coverage is render tests, view-model tests and pgTAP. A
    `qa-reviewer` pass per wireframe and Playwright journeys for the wizard,
    activation and the drain are the next safety net.
-5. **Nothing else is open in code** beyond §4's notes. The 25.09 round closed
+4b. **The 26.09 audit round is half done.** The three new briefs
+   (`.claude/agents/audit.md`, `security.md`, `design-engine.md`) and the
+   per-screen qa ran about half their slices before the session limits cut
+   them: un-audited are the office staff, staff profile, clients, roles,
+   reports, feedback, venues, settings and check-in screens; the Staff App
+   invites, radar, documents, profile and lock screens; every Client Portal
+   screen; scope §3.3–§4.5, §5.1–§5.2b, §7 BG-01–05, §9.6–§9.12, §10, §11 and
+   the RULE index; and all four design lenses. Of the 375 findings raised, the
+   fix round (`20260926130000`–`131200`, pgTAP `550`, ADR-0026–0029) closed
+   the database half and the events, check-in, shifts and login screens; still
+   open are the findings under office onboarding / staff / dashboard / clients
+   / settings / design-system, staff apply / onboarding / documents / profile /
+   activate / reset / notifications / install / privacy, the client app, docs
+   and e2e. The §4.1 menu counter in the office chrome was built and then
+   dropped at the merge with #52's `SignedInAs`; it wants rebuilding on that.
+4c. ~~**ADR-0018's rota-guard gap.**~~ **Closed** by `20260927150000`:
+   `can_roster_staff()` refuses a non-UK worker whose latest verified
+   right-to-work evidence carries neither a date nor the settled no-time-limit
+   flag, on every date, until the office confirms the date from the Needs
+   review row (`20260926121000`); pgTAP `524` §B flipped and pins it.
+5. **Open in code: the Gemini provider.** `documentExtractor()` in
+   `apps/staff/app/onboarding/extractor.ts` returns `null` (ADR-0014 "STUBBED");
+   the provider behind `DocumentExtractor`, and its call from the wizard's
+   upload step and the Documents hub, are unwritten. Item 3's sample letters
+   are its input, not a substitute for it: with the samples and a
+   `GEMINI_API_KEY` in hand there is still a provider to write. Until then
+   every upload arrives flagged for manual review and the office reads the
+   dates off the document, which is §2.6's fallback — so nothing is broken,
+   but §2.6's automatic pre-fill does not exist.
+6. **Nothing else is open in code** beyond §4's notes. The 25.09 round closed
    the last three gaps (below).
 
 ---

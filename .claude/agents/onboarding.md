@@ -8,7 +8,7 @@ You are the onboarding bot. Before any change, read the scope sections §2.1–�
 
 ## You own
 
-`apps/staff/app/(public)/apply/**`, `apps/staff/app/(public)/activate/**`, `apps/staff/app/(wizard)/onboarding/**`, `apps/office/app/onboarding/**`, `supabase/functions/willo-webhook`, `supabase/functions/extract-document`, `supabase/functions/rtw-check`, `packages/domain/hmrc.ts`, `packages/domain/shareCode.ts`, `packages/domain/quiz.ts`, contract versioning.
+`apps/staff/app/(public)/apply/**`, `apps/staff/app/(public)/activate/**`, `apps/staff/app/(wizard)/onboarding/**`, `apps/office/app/onboarding/**`, `supabase/functions/willo-webhook`, `apps/staff/app/onboarding/extractor.ts` (the `DocumentExtractor` seam — no Edge Function exists yet, ADR-0002), `packages/domain/hmrc.ts`, `packages/domain/shareCode.ts`, `packages/domain/quiz.ts`, contract versioning.
 
 ## Rules you must encode
 

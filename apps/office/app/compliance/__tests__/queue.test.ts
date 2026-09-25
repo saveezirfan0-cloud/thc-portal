@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  RTW_DATE_MISSING,
+  actionsFor,
   ageLabel,
   daysLabel,
   documentLine,
@@ -11,6 +13,7 @@ import {
   remindersLine,
   ukDate,
   ukStamp,
+  uploadedLine,
   verifyHint,
   whoLine,
 } from '../queue';
@@ -50,6 +53,29 @@ const ROW: QueueRow = {
   completion_date_claimed: null,
   mime_type: 'application/pdf',
   size_bytes: 1_258_291,
+  review_reason: null,
+};
+
+/** A share code verified before 23.09 with no date (20260926121000). */
+const RTW_DATE: QueueRow = {
+  ...ROW,
+  kind: 'rtw_date',
+  item_id: 'r1',
+  status: 'compliant',
+  is_candidate: false,
+  rtw_branch: 'work_visa',
+  item_type: 'share_code_report',
+  item_label: 'Right to work · share code',
+  submitted_at: '2026-08-20T09:30:00Z',
+  ai_confidence: null,
+  needs_manual_review: true,
+  term_dates: null,
+  share_code: 'W52400001',
+  awarding_institution: null,
+  staff_right_to_work_until: null,
+  mime_type: null,
+  size_bytes: null,
+  review_reason: RTW_DATE_MISSING,
 };
 
 describe('Needs review (§4.1)', () => {
@@ -122,6 +148,44 @@ describe('Needs review (§4.1)', () => {
       'Official university email · optional document, International student branch · PNG 88 KB',
     );
     expect(verifyHint(letter)).toContain('confirm the completion date and visa expiry');
+  });
+
+  it('lists a share code verified without a right-to-work date, and says why (20260926121000)', () => {
+    expect(documentLine(RTW_DATE)).toBe(
+      'Right-to-work date missing — re-verify · share code W52400001',
+    );
+    expect(foundLine(RTW_DATE)).toEqual({
+      text: 'No right-to-work date on file — re-run the gov.uk check',
+      confidence: 'manual',
+    });
+    expect(uploadedLine(RTW_DATE, new Date('2026-09-18T10:00:00Z'))).toBe(
+      'verified without a date · 29 days ago',
+    );
+    expect(uploadedLine(ROW, new Date('2026-09-18T10:00:00Z'))).toBe('3 days ago');
+    expect(verifyHint(RTW_DATE)).toContain('no shift after it can be rostered');
+    expect(whoLine(RTW_DATE).text).toBe('Staff · Compliant · Work visa');
+  });
+
+  it('offers the rtw_date row only the date confirmation — the report is already verified', () => {
+    expect(actionsFor(RTW_DATE)).toEqual({ verify: 'Confirm date', reject: false });
+    expect(actionsFor(ROW)).toEqual({ verify: 'Verify', reject: true });
+    expect(actionsFor({ ...ROW, kind: 'declaration', item_type: 'criminal_declaration' })).toEqual({
+      verify: 'Verify',
+      reject: true,
+    });
+  });
+
+  it('counts and filters the rtw_date row like any other item', () => {
+    const rows = [ROW, RTW_DATE];
+    const all = filterQueue(rows, { query: '', who: 'all', document: 'any' });
+    expect(all).toHaveLength(2);
+    expect(all[0]!.item_id).toBe('r1'); // oldest first: it has waited since 20 Aug
+    expect(
+      filterQueue(rows, { query: '', who: 'all', document: 'rtw' }).map((r) => r.item_id),
+    ).toEqual(['r1']);
+    expect(
+      filterQueue(rows, { query: '', who: 'staff', document: 'any' }).map((r) => r.item_id),
+    ).toEqual(['r1']);
   });
 
   it('marks a re-upload with the reason the last one was rejected', () => {
@@ -235,6 +299,11 @@ describe('what a refusal means to the manager', () => {
     );
     expect(reviewErrorMessage('not_pending: verified')).toBe('This has already been verified.');
     expect(reviewErrorMessage('completion_letter_needs_approval')).toContain('visa expiry');
+    expect(reviewErrorMessage('not_a_share_code: visa_document')).toContain(
+      'Only a share code report',
+    );
+    expect(reviewErrorMessage('not_verified: pending')).toContain('not been verified yet');
+    expect(reviewErrorMessage('superseded_by_newer')).toContain('newer share code report');
     expect(reviewErrorMessage('something new')).toBe('something new');
   });
 });

@@ -25,7 +25,7 @@
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
-select plan(11);
+select plan(12);
 
 -- ---------------------------------------------------------------------
 -- 1. Tables with RLS enabled (0001_init.sql)
@@ -161,12 +161,21 @@ select bag_eq(
 --    The public application migration added none either: `applications` is admin-only, and a customer
 --    has no business in the onboarding pipeline at all.
 -- ---------------------------------------------------------------------
-select bag_eq(
+--    20260926130000 (ADR-0026) dropped the last two — client_events on
+--    events read the Auto Invite toggle and the buffer-charging term
+--    (§11.2, §9.7), client_feedback_insert skipped submit_client_feedback's
+--    "started" and "confirmed line-up" gates — so the set is now EMPTY:
+--    every client read is a client_* view, the one write is the RPC.
+select is_empty(
   $$ select c.relname::text from pg_policy p join pg_class c on c.oid = p.polrelid
       where p.polname like 'client\_%' $$,
-  $$ values ('events'::text),('feedback') $$,
-  'clients reach only events (read) and feedback (insert) directly; no money-bearing table'
+  'ADR-0026: the client role holds no policy on any table — every read is a client_* view (owner rights + client_portal_visible()), the one write is submit_client_feedback()'
 );
+
+-- 5a. docs/14 §4: public.rls_auto_enable() existed on the live project
+--     and in no migration; 20260926130900 drops it wherever it is found.
+select hasnt_function('public', 'rls_auto_enable',
+  'no unowned rls_auto_enable() definer exists (20260926130900 drops the live-only one)');
 
 -- ---------------------------------------------------------------------
 -- 5b. The same rule, read from the PREDICATE instead of the name.

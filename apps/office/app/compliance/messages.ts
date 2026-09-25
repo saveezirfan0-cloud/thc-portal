@@ -38,6 +38,19 @@ const MESSAGES: [RegExp, string][] = [
     'Only a share code showing EU settled status can be verified with no time limit (§2.5 pt 2).',
   ],
   [/^date_invalid/, 'That date is not a real calendar date.'],
+  // compliance_confirm_rtw_date (20260926121000)
+  [
+    /^not_a_share_code/,
+    'Only a share code report is re-verified for its date. A visa or status document is re-uploaded and verified with its expiry.',
+  ],
+  [
+    /^not_verified/,
+    'This report has not been verified yet — verify it, with its date, from the queue.',
+  ],
+  [
+    /^superseded_by_newer/,
+    'A newer share code report has been verified for this worker; the date on file comes from that one.',
+  ],
   [/^(document|declaration)_not_found/, 'This item no longer exists — refresh the queue.'],
 ];
 

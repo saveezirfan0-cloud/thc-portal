@@ -85,9 +85,9 @@ select is((select statement::text from hmrc_checklists where staff_id = :'chloe'
 select is((select count(*)::int from hmrc_checklists where staff_id = :'chloe'), 1,
   'one current checklist, edited in place, not four');
 select is((select ni_number from staff where id = :'chloe'), 'AB123456C', 'the NI number is stored normalised');
-select isnt_empty(
+select is_empty(
   $$ select 1 from notification_outbox where template = 'E6' and key = 'E6:staff:c3960000-0000-4000-8000-000000000001' $$,
-  'and entering it queues E6 to payroll (§2.10)');
+  '§2.10 / §8: entering it at onboarding queues NO E6 — that email is for "a worker who joined without an NI number" entering one later on the profile (330 pins that route), not for every candidate who has one');
 select throws_ok($$ select submit_hmrc_checklist(false, false, false, 'none', false, 'CD 65 43 21 A', true) $$,
   'P0001', 'ni_locked', 'once entered it is locked — corrections go through the office');
 select ok(

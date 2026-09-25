@@ -141,6 +141,34 @@ export async function approveCompletionLetter(
   };
 }
 
+/**
+ * The "Right-to-work date missing — re-verify" row (20260926121000): the
+ * share code report is already verified, only the date was never written
+ * down. The reviewer re-runs the gov.uk check and confirms the date it
+ * shows — or `NO_TIME_LIMIT` for settled status on the EU branch, and
+ * nowhere else. The status does not change, so no re-check and no N8; the
+ * worker's date follows through the same trigger Verify uses.
+ */
+export async function confirmRtwDate(
+  docId: string,
+  rightToWorkUntil: string,
+): Promise<ActionResult> {
+  if (!rightToWorkUntil) return { ok: false, message: 'Confirm the right-to-work date.' };
+  const result = await call('compliance_confirm_rtw_date', {
+    p_doc: docId,
+    p_right_to_work_until: rightToWorkUntil,
+  });
+  if (isFailure(result)) return result;
+  const data = (result.data ?? {}) as { noTimeLimit?: boolean; rightToWorkUntil?: string | null };
+  if (data.noTimeLimit) {
+    return { ok: true, message: 'Confirmed: settled status, no time limit on the right to work.' };
+  }
+  return {
+    ok: true,
+    message: `Confirmed. Right to work until ${ukDate(data.rightToWorkUntil ?? rightToWorkUntil)} — no shift after it can be rostered, and the reminder ladder counts down to it.`,
+  };
+}
+
 /** §10.7 Verify on a Yes declaration. */
 export async function verifyDeclaration(declarationId: string): Promise<ActionResult> {
   const result = await call('compliance_verify_declaration', {

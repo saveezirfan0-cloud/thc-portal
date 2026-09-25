@@ -18,7 +18,8 @@
 -- `supabase start` give you. Everything below rolls back.
 -- =====================================================================
 begin;
-select plan(11);
+select plan(19);
+\ir _shared/fixtures.psql
 
 -- A Europe/London wall-clock time, stored as timestamptz — the same helper
 -- supabase/seed.sql uses, and the SQL twin of `ukInstant` (§1.8).
@@ -34,7 +35,8 @@ from (values
   ('6f000000-0000-4000-8000-000000000001','Vector · rejected sections',  date '2026-09-18'),
   ('6f000000-0000-4000-8000-000000000002','Vector · accepted sections',  date '2026-09-18'),
   ('6f000000-0000-4000-8000-000000000003','Vector · derived window',     date '2026-09-18'),
-  ('6f000000-0000-4000-8000-000000000004','Vector · after midnight',     date '2026-09-18')
+  ('6f000000-0000-4000-8000-000000000004','Vector · after midnight',     date '2026-09-18'),
+  ('6f000000-0000-4000-8000-000000000005','Vector · not yet started',    (now() at time zone 'Europe/London')::date + 3)
 ) as e(id, title, event_date)
 cross join (select id from clients where name = 'Leonardo Hotel St Pauls') c
 cross join (select id, name, address, location, geofence_radius_m
@@ -163,6 +165,69 @@ select is(
   1,
   'the Waiting Staff section still runs 17:00-23:30, not the event window'
 );
+
+-- ---------------------------------------------------------------------
+-- The two roleSections vectors the SQL half had not asserted
+-- ---------------------------------------------------------------------
+select lives_ok(
+  $$ insert into shift_requirements (event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                     charge_rate, pay_rate, allocation_per_hour)
+     select '6f000000-0000-4000-8000-000000000002', r.id,
+            pg_temp.uk(date '2026-03-28', time '23:00'),
+            pg_temp.uk(date '2026-03-29', time '04:00'),
+            1, 0, 26.83, 16.00, 1
+       from roles r where r.name = 'Host' $$,
+  'BST starts overnight: 23:00-04:00 is exactly four real hours, so it is allowed');
+
+select throws_ok(
+  $$ insert into shift_requirements (event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                     charge_rate, pay_rate, allocation_per_hour)
+     select '6f000000-0000-4000-8000-000000000001', r.id,
+            pg_temp.uk(date '2026-09-18', time '18:00'),
+            pg_temp.uk(date '2026-09-18', time '23:00'),
+            0, 0, 26.83, 16.00, 1
+       from roles r where r.name = 'Host' $$,
+  '23514', null, 'headcount below one is rejected');
+
+-- ---------------------------------------------------------------------
+-- event_status (§1.5, §3.2): computed from the derived window, except
+-- Cancelled. The SQL twin of events.test.ts, on explicit windows.
+-- ---------------------------------------------------------------------
+select is(event_status((select e from events e where e.id = '6f000000-0000-4000-8000-000000000003'),
+                       now() + interval '1 hour', now() + interval '5 hours')::text,
+  'upcoming', 'before the window starts the event is Upcoming');
+select is(event_status((select e from events e where e.id = '6f000000-0000-4000-8000-000000000003'),
+                       now() - interval '1 hour', now() + interval '3 hours')::text,
+  'ongoing', 'inside the window it is Ongoing');
+select is(event_status((select e from events e where e.id = '6f000000-0000-4000-8000-000000000003'),
+                       now() - interval '5 hours', now() - interval '1 hour')::text,
+  'completed', 'after the window it is Completed');
+update events set cancelled_at = now() where id = '6f000000-0000-4000-8000-000000000004';
+select is(event_status((select e from events e where e.id = '6f000000-0000-4000-8000-000000000004'),
+                       now() + interval '1 hour', now() + interval '5 hours')::text,
+  'cancelled', 'and a cancelled event is Cancelled whatever the clock says');
+
+-- ---------------------------------------------------------------------
+-- §3.2 "Once the event has started … editing is locked" — held in the
+-- database for a manager's session (20260926131100), not only in the
+-- builder's TypeScript.
+-- ---------------------------------------------------------------------
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                charge_rate, pay_rate, allocation_per_hour)
+select '6f100000-0000-4000-8000-000000000001', '6f000000-0000-4000-8000-000000000005', r.id,
+       now() + interval '3 days', now() + interval '3 days 6 hours', 2, 0, 26.83, 16.00, 2
+  from roles r where r.name = 'Host';
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select lives_ok(
+  $$ update shift_requirements set headcount = 3 where id = '6f100000-0000-4000-8000-000000000001' $$,
+  '§3.2 a manager edits a section of an event that has not started');
+select throws_ok(
+  $$ update shift_requirements set headcount = 3
+      where event_id = '6f000000-0000-4000-8000-000000000003' and starts_at < now() $$,
+  'P0001', 'event_started_editing_locked',
+  '§3.2 and cannot change a section once the event''s derived window has started — the lock is held in the database, not only on the screen');
+reset role;
 
 select * from finish();
 rollback;

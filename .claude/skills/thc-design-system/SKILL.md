@@ -1,6 +1,6 @@
 ---
 name: thc-design-system
-description: Apply The Hospitality Company design system (deep navy, cyan accent, zero radius, Space Grotesk/Inter/IBM Plex Mono, square avatars, glass mobile chrome) when building or reviewing any screen or component in this repo. Use whenever writing UI, CSS, or wireframes.
+description: Apply The Hospitality Company design system — tokens only across two axes (data-style warm/scope, data-theme light/dark; ADR-0007 renders warm in both modes, scope is the §1.6 literal), the fixed palette meaning, square-cornered avatars, glass mobile chrome — when building or reviewing any screen or component in this repo. Use whenever writing UI, CSS, or wireframes.
 ---
 
 # THC design system

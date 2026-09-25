@@ -111,7 +111,8 @@ asserts the new enabled list. Deploy order is unchanged: functions, then
 - A new Edge Function that needs workspace code imports it by relative path with `.ts`, and
   should be `deno check`ed the way section 1 describes — `tsc` in the package is not the
   same compiler and missed a real error here.
-- `D1`/`D2`/`BG08` bodies still sign off with the literal `timesheets@`/`admin@` address in
-  their text (`documents.ts`). If `/settings` changes a sender, the From line follows and
-  the signature line does not; making the signature a placeholder is a copy change for
-  the documents owner.
+- `D1`/`D2`/`BG08` bodies sign off with the literal `timesheets@`/`admin@` address in
+  their text (`documents.ts`), so THC's wording stays readable in the register. If
+  `/settings` changes a sender, the From line follows **and so does the signature line**:
+  `signedBy()` in `drain.ts` swaps the seeded address for the configured one at send time,
+  on every email (`drain.test.ts` pins it). The copy itself needs no placeholder.

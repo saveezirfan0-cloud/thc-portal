@@ -1,3 +1,7 @@
+// Build-time fence (security.md Invariant 8): Next refuses to bundle this
+// module into a Client Component, so the service-role key can never reach a
+// browser bundle. The `window` check below is the runtime belt to this brace.
+import 'server-only';
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { supabaseServiceRoleKey, supabaseUrl } from './env';
 import type { Database } from './types.generated';

@@ -17,6 +17,7 @@ import {
 } from '@thc/ui';
 import {
   approveCompletionLetter,
+  confirmRtwDate,
   rejectDeclaration,
   rejectDocument,
   verifyDeclaration,
@@ -25,12 +26,13 @@ import {
 import {
   DOCUMENT_FILTERS,
   EVIDENCE_FORM_LABEL,
-  ageLabel,
+  actionsFor,
   documentLine,
   filterQueue,
   foundLine,
   ukDate,
   ukStamp,
+  uploadedLine,
   verifyHint,
   whoLine,
 } from './queue';
@@ -52,6 +54,10 @@ import type { ActionResult, QueueRow } from './types';
  * without both. So does the Verify of a visa document, a status document or
  * a share code report: the reviewer confirms the right-to-work date it
  * carries, because that date is the per-shift hard stop (20260923200000).
+ *
+ * The rtw_date row (20260926121000) is that same confirmation on a share
+ * code report verified BEFORE the date was required: the report stays
+ * verified, only the date is written — so no Reject, no re-check, no N8.
  */
 export function ReviewTab({ rows }: { rows: QueueRow[] }) {
   const router = useRouter();
@@ -89,7 +95,10 @@ export function ReviewTab({ rows }: { rows: QueueRow[] }) {
       setApproving(row);
       return;
     }
-    if (row.kind === 'document' && rtwDateRule(row.item_type, row.rtw_branch)) {
+    if (
+      (row.kind === 'document' || row.kind === 'rtw_date') &&
+      rtwDateRule(row.item_type, row.rtw_branch)
+    ) {
       setConfirming(row);
       return;
     }
@@ -143,7 +152,9 @@ export function ReviewTab({ rows }: { rows: QueueRow[] }) {
         <b>Why this tab exists:</b> a current worker who re-uploads after an expiry or a rejection
         never reappears on the onboarding kanban. Every profile with a document — or a Criminal
         Record declaration answered Yes (onboarding or in-employment, §10.7) — in the “under review”
-        state lands here, candidates and staff alike (§4.1).
+        state lands here, candidates and staff alike (§4.1). So does a share code verified before
+        the right-to-work date was required — “Right-to-work date missing — re-verify” — until the
+        date off the gov.uk report is confirmed (§2.6, §4.4).
       </Alert>
 
       {result ? (
@@ -224,10 +235,12 @@ export function ReviewTab({ rows }: { rows: QueueRow[] }) {
             run(
               confirming.item_id,
               () =>
-                verifyDocument(
-                  confirming.item_id,
-                  field === 'expiry' ? { expiry: value } : { rightToWorkUntil: value },
-                ),
+                confirming.kind === 'rtw_date'
+                  ? confirmRtwDate(confirming.item_id, value)
+                  : verifyDocument(
+                      confirming.item_id,
+                      field === 'expiry' ? { expiry: value } : { rightToWorkUntil: value },
+                    ),
               () => setConfirming(null),
             )
           }
@@ -266,6 +279,7 @@ function QueueLine({
   const who = whoLine(row);
   const found = foundLine(row);
   const hint = verifyHint(row);
+  const actions = actionsFor(row);
   return (
     <tr>
       <td>
@@ -293,6 +307,7 @@ function QueueLine({
           <Pill tone="purple">in-employment</Pill>
         ) : null}
         {row.is_reupload ? <Pill tone="amber">re-upload</Pill> : null}
+        {row.kind === 'rtw_date' ? <Pill tone="coral">re-verify</Pill> : null}
         <span className="sub">
           {documentLine(row)}
           {row.kind === 'declaration' && row.declaration_details ? (
@@ -302,7 +317,7 @@ function QueueLine({
       </td>
       <td className="mono sm">
         {ukStamp(row.submitted_at)}
-        <span className="sub">{ageLabel(row.submitted_at)}</span>
+        <span className="sub">{uploadedLine(row)}</span>
       </td>
       <td>
         <span
@@ -322,11 +337,16 @@ function QueueLine({
       </td>
       <td style={{ textAlign: 'right' }}>
         <Button size="sm" tone="green" onClick={onVerify} disabled={busy}>
-          Verify
-        </Button>{' '}
-        <Button size="sm" tone="danger" onClick={onReject} disabled={busy}>
-          Reject
+          {actions.verify}
         </Button>
+        {actions.reject ? (
+          <>
+            {' '}
+            <Button size="sm" tone="danger" onClick={onReject} disabled={busy}>
+              Reject
+            </Button>
+          </>
+        ) : null}
         {hint ? <span className="sub muted xs">{hint}</span> : null}
       </td>
     </tr>
@@ -523,10 +543,11 @@ function RightToWorkModal({
   );
   const [noTimeLimit, setNoTimeLimit] = useState(false);
   const problem = rtwDateProblem(rule, date, noTimeLimit);
+  const reverify = row.kind === 'rtw_date';
   return (
     <Modal
       open
-      title={`Verify ${row.item_label}`}
+      title={reverify ? 'Confirm right-to-work date' : `Verify ${row.item_label}`}
       onClose={onClose}
       footer={
         <>
@@ -539,7 +560,7 @@ function RightToWorkModal({
             disabled={busy || problem !== null}
             onClick={() => onVerify(rule.field, rtwDateValue(date, noTimeLimit))}
           >
-            Verify
+            {reverify ? 'Confirm date' : 'Verify'}
           </Button>
         </>
       }
@@ -547,8 +568,8 @@ function RightToWorkModal({
       <div className="row">
         <Avatar name={row.display_name} size="sm" />
         <div className="sm">
-          {row.display_name} · {row.is_candidate ? 'Candidate' : 'Staff'} · {row.item_label} ·
-          uploaded {ukStamp(row.submitted_at)}
+          {row.display_name} · {row.is_candidate ? 'Candidate' : 'Staff'} · {row.item_label} ·{' '}
+          {reverify ? 'verified without a date' : 'uploaded'} {ukStamp(row.submitted_at)}
           {row.share_code ? (
             <>
               {' '}
@@ -579,6 +600,15 @@ function RightToWorkModal({
           The gov.uk report shows <b>settled status</b> — no time limit (§2.5 pt 2). Pre-settled
           status has an end date: enter it instead.
         </label>
+      ) : null}
+      {reverify ? (
+        <Note>
+          This report was verified before the date was required (23.09), so the worker has no
+          right-to-work date on file: nothing stops a shift past their visa and the reminder ladder
+          has nothing to count down from. Re-run the share code on gov.uk and confirm the date it
+          shows. The report stays verified — nothing else on the profile changes. If the check no
+          longer passes, block the worker from their profile (§9.6).
+        </Note>
       ) : null}
       {row.staff_right_to_work_until ? (
         <Note>

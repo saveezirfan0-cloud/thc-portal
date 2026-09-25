@@ -14,7 +14,7 @@
 -- them is wrong and the drain retries on a schedule nobody chose.
 -- =====================================================================
 begin;
-select plan(42);
+select plan(43);
 \ir _shared/fixtures.psql
 
 -- ---------------------------------------------------------------------
@@ -199,6 +199,13 @@ select is(
 -- client-facing. Everything above ran as the table owner, which bypasses
 -- RLS, so the role has to be switched for these four to mean anything.
 -- ---------------------------------------------------------------------
+-- §1.7: the Storage half of removal is a queue drained by a job, and until
+-- 20260926130300 no schedule named that job — every removed worker's
+-- passport scan and selfie stayed in Storage for ever.
+select is((select cron_expression || ' ' || edge_path from job_schedules where job = 'gdpr-purge' and enabled),
+  '*/5 * * * * gdpr-purge',
+  'the gdpr-purge job is registered and enabled, so storage_deletions is actually drained (§1.7)');
+
 select set_config('request.jwt.claims',
   json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;

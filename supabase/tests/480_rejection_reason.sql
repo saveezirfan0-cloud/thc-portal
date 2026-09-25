@@ -36,6 +36,11 @@ select plan(20);
 
 -- The candidate under test was rejected by the office with exactly the
 -- kind of note §2.3's board invites and ADR-0017 keeps out of the email.
+-- Reached by the §2.12 edges (20260926130800 asserts every change on the
+-- row): a compliant worker is blocked, reset to candidate, and rejected
+-- at the interview stage — the only path from compliant to rejected.
+update staff set status = 'blocked', block_kind = 'manual', block_reason = 'Reset pending' where id = :'staffa';
+update staff set status = 'interview_requested' where id = :'staffa';
 update staff
    set status           = 'rejected',
        rejection_reason = 'Internal: turned up to the interview an hour late, do not progress'

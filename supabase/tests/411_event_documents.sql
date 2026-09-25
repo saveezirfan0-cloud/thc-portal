@@ -10,7 +10,7 @@
 -- Portal's owner-rights view (ADR-0004).
 -- =====================================================================
 begin;
-select plan(35);
+select plan(40);
 \ir _shared/fixtures.psql
 
 \set ev      '41200000-0000-4000-8000-000000000001'
@@ -227,6 +227,31 @@ reset role;
 
 select ok(not has_table_privilege('anon', 'client_event_documents_v', 'select'),
   'anon has no privilege on client_event_documents_v');
+-- ADR-0004 rule (d): SELECT to authenticated and nothing else. The view was
+-- revoked from public and anon only, so Supabase's default grant had left
+-- INSERT/UPDATE/DELETE with authenticated (20260926130000 takes them back).
+select ok(not has_table_privilege('authenticated', 'client_event_documents_v', 'insert')
+      and not has_table_privilege('authenticated', 'client_event_documents_v', 'update')
+      and not has_table_privilege('authenticated', 'client_event_documents_v', 'delete'),
+  '§11.1 read-only: nobody writes through client_event_documents_v — the privilege itself is absent, not merely the view non-updatable');
+
+set local role anon;
+select is((select count(*)::int from event_documents where event_id in (:'ev', :'ev_b')), 0,
+  'anon reads no event_documents row from the table: a timesheet path carries names and pay lines (§11.3)');
+select throws_ok(
+  format($$ insert into event_documents (event_id, kind, storage_path, file_name, row_count, page_count)
+            values (%L, 'timesheet', 'forged/t.pdf', 'Forged.pdf', 1, 1) $$, :'ev'),
+  '42501', null, 'and cannot register a copy');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(
+  format($$ insert into event_documents (event_id, kind, storage_path, file_name, row_count, page_count)
+            values (%L, 'timesheet', 'forged/t.pdf', 'Forged.pdf', 1, 1) $$, :'ev'),
+  '42501', null, 'a client cannot register a copy of its own event''s sheet either — the send job writes them');
+with u as (update event_documents set file_name = 'x' returning 1)
+  select is((select count(*)::int from u), 0, 'nor rename one');
+reset role;
 select bag_eq(
   $$ select column_name::text from information_schema.columns
       where table_schema = 'public' and table_name = 'client_event_documents_v' $$,
