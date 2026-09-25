@@ -31,6 +31,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/roles` | Roles & rates | `backoffice/roles.html` | 9.8 | directory |
 | `/reports`, `/reports/export` | Financial · Payroll · New Starter, CSV export | `backoffice/reports.html` | 9.9 | reports |
 | `/api/documents/:eventId`, `/api/documents/:eventId/send` | Allocation sheet / sign-out timesheet PDF: Download and Send are two handlers | `client/timesheet.html` | 11.3–11.4 | reports |
+| `/api/jobs/rtw-check` | Not a screen: the automated gov.uk right-to-work check job, POSTed by pg_cron with a bearer secret (ADR-0025). Its outcomes show on `/onboarding/:id`, `/staff/:id` Documents and `/compliance` | — | 2.3, 2.6 | compliance |
 | `/feedback` | Client · Office | `backoffice/feedback.html` | 9.10 | client-portal |
 | `/venues` | List · On map · modal | `backoffice/venues.html` | 9.11 | directory |
 | `/settings` | Scoring weights, Willo map, venue radii, senders (Django-Admin replacement) | — (simple form) | 6, 2.4, 9.11, 9.12 | platform |
