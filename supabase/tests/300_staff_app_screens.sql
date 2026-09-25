@@ -128,8 +128,18 @@ insert into client_qualifications (client_id, role_id, staff_id) values
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
                                 charge_rate, pay_rate, allocation_per_hour)
 values ('a5a5a5a5-0000-4000-8000-00000000000a', :'ev2', :'ro',
-        date_trunc('week', (now() + interval '10 days')) + interval '1 hour',
-        date_trunc('week', (now() + interval '10 days')) + interval '17 hours',
+        -- Same Mon–Sun UK week as s1, but at least two days away from it: Friday
+        -- when s1 falls Mon–Wed, else Monday. Pinning it to Monday 01:00 made the
+        -- fixture OVERLAP s1 whenever the run was ten days before a Monday small
+        -- hour, and the overlap gate then answered before the hours gate.
+        (date_trunc('week', (now() + interval '10 days') at time zone 'Europe/London')
+         + case when extract(isodow from (now() + interval '10 days') at time zone 'Europe/London') <= 3
+                then interval '4 days' else interval '0 days' end
+         + interval '1 hour') at time zone 'Europe/London',
+        (date_trunc('week', (now() + interval '10 days') at time zone 'Europe/London')
+         + case when extract(isodow from (now() + interval '10 days') at time zone 'Europe/London') <= 3
+                then interval '4 days' else interval '0 days' end
+         + interval '17 hours') at time zone 'Europe/London',
         9, 0, 22.97, 14.00, 9);
 insert into bookings (shift_id, staff_id, status, source, confirmed_at)
 values ('a5a5a5a5-0000-4000-8000-00000000000a', :'capped', 'confirmed', 'manual', now());

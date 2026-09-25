@@ -160,8 +160,18 @@ update staff set term_dates = '{}' where id = :'capped';
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
                                 charge_rate, pay_rate, allocation_per_hour)
 values ('7e7e7e7e-0000-4000-8000-000000000003', :'evt2', :'ro',
-        date_trunc('week', (now() + interval '10 days')) + interval '1 hour',
-        date_trunc('week', (now() + interval '10 days')) + interval '17 hours',
+        -- Same Mon–Sun UK week as the fixture section, but at least two days away from it: Friday
+        -- when the fixture section falls Mon–Wed, else Monday. Pinning it to Monday 01:00 made the
+        -- fixture OVERLAP the fixture section whenever the run was ten days before a Monday small
+        -- hour, and the overlap gate then answered before the hours gate.
+        (date_trunc('week', (now() + interval '10 days') at time zone 'Europe/London')
+         + case when extract(isodow from (now() + interval '10 days') at time zone 'Europe/London') <= 3
+                then interval '4 days' else interval '0 days' end
+         + interval '1 hour') at time zone 'Europe/London',
+        (date_trunc('week', (now() + interval '10 days') at time zone 'Europe/London')
+         + case when extract(isodow from (now() + interval '10 days') at time zone 'Europe/London') <= 3
+                then interval '4 days' else interval '0 days' end
+         + interval '17 hours') at time zone 'Europe/London',
         9, 0, 22.97, 14.00, 9);
 insert into bookings (shift_id, staff_id, status, source, confirmed_at)
 values ('7e7e7e7e-0000-4000-8000-000000000003', :'capped', 'confirmed', 'manual', now());
