@@ -29,4 +29,41 @@ describe('the appearance pairing (ADR-0007)', () => {
     expect(appearanceScript).toContain("setAttribute('data-theme'");
     expect(appearanceScript).toContain("setAttribute('data-style'");
   });
+
+  // Safari throws on localStorage when site data is blocked. The script used
+  // to wrap the read and both setAttribute calls in one try, so that throw
+  // left <html> bare and the phone rendered the square base tokens.
+  it('still sets both axes when storage throws', () => {
+    const attrs: Record<string, string> = {};
+    const document = {
+      documentElement: { setAttribute: (k: string, v: string) => (attrs[k] = v) },
+    };
+    const window = { matchMedia: () => ({ matches: true }) };
+    const localStorage = {
+      getItem: () => {
+        throw new Error('SecurityError');
+      },
+    };
+    new Function('document', 'window', 'localStorage', appearanceScript)(
+      document,
+      window,
+      localStorage,
+    );
+    expect(attrs).toEqual({ 'data-theme': 'dark', 'data-style': 'warm' });
+  });
+
+  it('ignores a stored value that is not a mode', () => {
+    const attrs: Record<string, string> = {};
+    const document = {
+      documentElement: { setAttribute: (k: string, v: string) => (attrs[k] = v) },
+    };
+    const window = { matchMedia: () => ({ matches: false }) };
+    const localStorage = { getItem: () => 'scope' };
+    new Function('document', 'window', 'localStorage', appearanceScript)(
+      document,
+      window,
+      localStorage,
+    );
+    expect(attrs).toEqual({ 'data-theme': 'light', 'data-style': 'warm' });
+  });
 });

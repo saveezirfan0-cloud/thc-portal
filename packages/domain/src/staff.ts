@@ -21,7 +21,7 @@
  *     No check-out one behaves differently from the other two: its card stays.
  */
 
-import { UK_ZONE } from './time';
+import { UK_ZONE, formatDateIn } from './time';
 import type { BookingStatus, CancelCause } from './state';
 
 const HOUR_MS = 3_600_000;
@@ -469,10 +469,5 @@ function formatHoursShort(hours: number): string {
 function formatWeekStart(isoDate: string): string {
   const [y, m, d] = isoDate.split('-').map(Number);
   const at = new Date(Date.UTC(y!, m! - 1, d!));
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'UTC',
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }).format(at);
+  return formatDateIn(at, 'UTC', { weekday: 'short' });
 }
