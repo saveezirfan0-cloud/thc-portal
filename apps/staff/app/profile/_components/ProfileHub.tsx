@@ -116,6 +116,10 @@ export function ProfileHub({
         {lock === 'none' ? (
           <HubRow href="/profile/availability" title="Availability" sub="Days you can’t work" />
         ) : null}
+        {/* ADR-0040: compliant workers only — no reward copy (Q19). */}
+        {lock === 'none' && profile.status === 'compliant' ? (
+          <HubRow href="/profile/refer" title="Refer a friend" sub="Share your link to apply" />
+        ) : null}
         <HubRow
           href="/profile/payments"
           title="Payment information"
