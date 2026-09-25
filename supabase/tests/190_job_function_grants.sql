@@ -217,7 +217,7 @@ select is(
 --     "which of these is anon allowed to call" is the one question worth
 --     asking structurally rather than per feature.
 --
---     The three exceptions, and why each is not a hole:
+--     The two exceptions, and why each is not a hole:
 --
 --     · current_app_role() / current_client_id() — called inside the
 --       predicate of essentially every policy in the schema, which is
@@ -228,11 +228,12 @@ select is(
 --       no profile, which is exactly how anon is kept out of
 --       venue_types and staff_transitions. 20260921123503's triage
 --       reached the same conclusion.
---     · submit_application() — the public form (§2.1) is anonymous by
---       definition. It is bounded instead: validation, two advisory
---       locks, a per-email and per-mobile throttle
---       (20260922183012), and a void return so it cannot be used as an
---       account-existence oracle. 120_apply holds that.
+--     · submit_application() is NOT one any more. The public form
+--       (§2.1) is anonymous, but the Staff App's server action calls it
+--       with the service key through submit_application_as_caller(),
+--       which adds the per-caller limit (ADR-0024); the anon grant was
+--       the way round that limit and went in 20260929140200. 120_apply
+--       holds it.
 --
 --     Extension-owned functions are excluded: PostGIS's
 --     st_estimatedextent overloads are definer and are not ours.
@@ -249,8 +250,8 @@ select bag_eq(
                          where d.classid = 'pg_proc'::regclass
                            and d.objid = p.oid and d.deptype = 'e')
         and has_function_privilege('anon', p.oid, 'execute') $$,
-  $$ values ('current_app_role'::text), ('current_client_id'), ('submit_application') $$,
-  'exactly three security definer functions in public are reachable by anon, and each is there on purpose'
+  $$ values ('current_app_role'::text), ('current_client_id') $$,
+  'exactly two security definer functions in public are reachable by anon, and each is there on purpose — submit_application is service-role only (20260929140200)'
 );
 
 -- ---------------------------------------------------------------------

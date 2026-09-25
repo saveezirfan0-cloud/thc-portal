@@ -9,7 +9,7 @@ import { createClient } from '@thc/db/server';
  * A3 Set new password — §10.2, `wireframes/public/activate.html` (reset,
  * the shared landing), reached from the Client Portal's A1/A2.
  *
- * /auth/callback exchanged the emailed code for a session before this
+ * /auth/confirm (or /auth/callback) made a session from the emailed link before this
  * runs; without it there is nothing to update. Every other device is
  * signed out afterwards. Then routed by role (§1.4): a client lands on the
  * portal; anybody else who reset through this app has a new password for

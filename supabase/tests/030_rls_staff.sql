@@ -150,13 +150,16 @@ with u as (update bank_details set sort_code = '00-00-00' where staff_id = :'sta
 with u as (delete from bank_details where staff_id = :'staffa' returning 1)
   select is((select count(*)::int from u), 0, 'worker cannot delete their bank details — removal is GDPR, through a definer routine (§1.7)');
 
--- Two references: collected, never reviewed, so the wizard writes directly.
+-- Two references (§2.10): written through onboarding_save_references(),
+-- which validates the pair and checks the stage. The direct self insert
+-- and update policies were dropped in 20260929140200, as bank_details'
+-- were in 20260927120100, so a direct write touches nothing.
 with u as (update staff_references set phone = '+447700900041' where id = :'ref_a' returning 1)
-  select is((select count(*)::int from u), 1, 'worker corrects their own referee');
-select lives_ok(
+  select is((select count(*)::int from u), 0, 'worker cannot correct a referee directly — only through onboarding_save_references() (§2.10)');
+select throws_ok(
   format($$ insert into staff_references (staff_id, name, relationship, phone, email)
             values (%L, 'Referee Charlie', 'Lecturer', '+447700900042', 'ref-c@rls.test') $$, :'staffa'),
-  'worker adds their own referee (§2.10 step 8/11)');
+  '42501', null, 'worker cannot add a referee of their own directly either (§2.10 step 8/11 is an RPC)');
 select throws_ok(
   format($$ insert into staff_references (staff_id, name, relationship, phone, email)
             values (%L, 'Planted', 'Tutor', '+447700900043', 'planted@rls.test') $$, :'staffb'),
@@ -164,13 +167,16 @@ select throws_ok(
 with u as (delete from staff_references where id = :'ref_a' returning 1)
   select is((select count(*)::int from u), 0, 'worker cannot delete a referee — two are always required (§2.10)');
 
--- Push subscriptions: the device registers and deregisters itself (§8).
-select lives_ok(
+-- Push subscriptions (§8): the device registers and deregisters itself
+-- through save_push_subscription() / forget_push_subscription() (340).
+-- The direct write policy went in 20260929140200; the worker still reads
+-- their own rows.
+select throws_ok(
   format($$ insert into push_subscriptions (staff_id, endpoint, p256dh, auth)
             values (%L, 'https://push.rls.test/fixture-a2', 'p256dh-a2', 'auth-a2') $$, :'staffa'),
-  'worker registers their own push endpoint');
+  '42501', null, 'worker cannot insert a push endpoint directly — only through save_push_subscription()');
 with u as (delete from push_subscriptions where id = :'push_a' returning 1)
-  select is((select count(*)::int from u), 1, 'worker deregisters their own push endpoint');
+  select is((select count(*)::int from u), 0, 'worker cannot delete a push endpoint directly — only through forget_push_subscription()');
 select throws_ok(
   format($$ insert into push_subscriptions (staff_id, endpoint, p256dh, auth)
             values (%L, 'https://push.rls.test/stolen', 'p256dh-x', 'auth-x') $$, :'staffb'),

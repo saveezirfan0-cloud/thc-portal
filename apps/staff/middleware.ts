@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import { isRole, wrongAppBody } from '@thc/db';
+import { isRole, isSessionOnly, sessionCookieOptions, wrongAppBody } from '@thc/db';
 
 /**
  * Role routing for the staff app (§1.4).
@@ -87,6 +87,15 @@ export async function middleware(request: NextRequest) {
     return response;
   }
 
+  // A reset link GoTrue built on the Site URL — it does that when an app's
+  // redirectTo is not on the allow-list — arrives at "/" with the token.
+  // /auth/confirm is where a token is spent (ADR-0035).
+  if (request.nextUrl.pathname === '/' && request.nextUrl.searchParams.has('token_hash')) {
+    const confirm = request.nextUrl.clone();
+    confirm.pathname = '/auth/confirm';
+    return NextResponse.redirect(confirm);
+  }
+
   if (request.nextUrl.pathname === SIGN_OUT_PATH && request.method === 'POST') {
     return response;
   }
@@ -95,9 +104,14 @@ export async function middleware(request: NextRequest) {
     cookies: {
       getAll: () => request.cookies.getAll(),
       setAll: (toSet) => {
+        // "Keep me signed in" unticked: a refresh keeps the auth cookies as
+        // session cookies (ADR-0035). A deletion is left a deletion.
+        const sessionOnly = isSessionOnly(request.cookies.getAll());
         for (const { name, value } of toSet) request.cookies.set(name, value);
         response = NextResponse.next({ request });
-        for (const { name, value, options } of toSet) response.cookies.set(name, value, options);
+        for (const { name, value, options } of toSet) {
+          response.cookies.set(name, value, sessionCookieOptions(options, sessionOnly));
+        }
       },
     },
   });
@@ -139,9 +153,13 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // Static files are skipped only at the top level, where public/ serves
+  // them (favicon, icons). `[^/]+`, not `.*`: a nested path that merely
+  // ENDS in an image extension — /staff/x.png — is a page route and must
+  // pass the gate like any other (audit D52).
   matcher: [
     // The service worker and its manifest are excluded: a 302 to /login in
     // answer to a request for sw.js means no offline shell and no push.
-    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|swe-worker-.*\\.js|workbox-.*\\.js|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)',
+    '/((?!_next/static|_next/image|(?:favicon\\.ico|manifest\\.webmanifest|sw\\.js)$|(?:swe-worker|workbox)-[^/]*\\.js$|[^/]+\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)',
   ],
 };

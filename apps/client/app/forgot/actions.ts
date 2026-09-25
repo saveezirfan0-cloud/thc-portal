@@ -2,6 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { appOrigin, recoveryRedirect } from '@thc/db';
 import { createClient } from '@thc/db/server';
 
 /**
@@ -12,7 +13,7 @@ import { createClient } from '@thc/db/server';
  * contacts have a portal login (§1.7).
  *
  * The email is Supabase Auth's recovery mail, which lands on this app's
- * /auth/callback and hands off to A3 (/reset). The sender, admin@ (§9.12),
+ * /auth/confirm and hands off to A3 (/reset). The sender, admin@ (§9.12),
  * is a project setting.
  */
 export async function requestReset(
@@ -29,7 +30,7 @@ export async function requestReset(
     return 'Password reset is not available yet — this environment has no Supabase project.';
   }
 
-  const origin = appOrigin();
+  const origin = appOrigin(process.env['NEXT_PUBLIC_CLIENT_URL'], 'http://127.0.0.1:3002');
   if (!origin) {
     console.error('[reset] NEXT_PUBLIC_CLIENT_URL is not set; cannot build the reset link');
     return 'Password reset is not available on this deployment yet. Email admin@thehospitalitycompany.co.uk.';
@@ -37,7 +38,9 @@ export async function requestReset(
 
   const supabase = createClient(await cookies());
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback?next=/reset`,
+    // /auth/confirm takes the token_hash link (any browser, any device) and
+    // the PKCE code alike (supabase/templates/recovery.html, ADR-0035).
+    redirectTo: recoveryRedirect(origin),
   });
 
   if (error) {
@@ -46,18 +49,4 @@ export async function requestReset(
   }
 
   redirect(`/forgot/sent?to=${encodeURIComponent(email)}`);
-}
-
-/**
- * Where the emailed link must come back to: this app. Vercel sets
- * VERCEL_URL without a scheme; locally the portal is on :3002. With
- * neither in production there is no safe answer, so none.
- */
-function appOrigin(): string | null {
-  const explicit = process.env['NEXT_PUBLIC_CLIENT_URL'];
-  if (explicit) return explicit.replace(/\/$/, '');
-  const vercel = process.env['VERCEL_URL'];
-  if (vercel) return `https://${vercel}`;
-  if (process.env.NODE_ENV === 'production') return null;
-  return 'http://127.0.0.1:3002';
 }

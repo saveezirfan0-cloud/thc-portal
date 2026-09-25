@@ -95,11 +95,32 @@ describe('requestReset (A1 → A2)', () => {
     expect(SENT_TO_MAX_AGE).toBe(600);
   });
 
-  it('asks Auth for the recovery mail with the app callback that hands off to A3', async () => {
+  it('asks Auth for the recovery mail landing on /auth/confirm, which hands off to A3', async () => {
     await run('amara.k@example.com');
+    // No query of its own: recovery.html appends ?token_hash=…&type=recovery&next=/reset.
     expect(mocks.resetPasswordForEmail).toHaveBeenCalledWith('amara.k@example.com', {
-      redirectTo: 'https://staff.example.com/auth/callback?next=/reset',
+      redirectTo: 'https://staff.example.com/auth/confirm',
     });
+  });
+
+  it('refuses in words in production without NEXT_PUBLIC_STAFF_URL — never VERCEL_URL, never localhost (D13)', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+    delete process.env['NEXT_PUBLIC_STAFF_URL'];
+    process.env['VERCEL_URL'] = 'thc-staff-abc123.vercel.app';
+    vi.stubEnv('NODE_ENV', 'production');
+    try {
+      const { redirectedTo, result } = await run('amara.k@example.com');
+      expect(redirectedTo).toBeNull();
+      expect(result).toBe(
+        'Password reset is not available on this deployment yet. Email admin@thehospitalitycompany.co.uk.',
+      );
+      expect(mocks.resetPasswordForEmail).not.toHaveBeenCalled();
+      expect(mocks.setCookie).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllEnvs();
+      delete process.env['VERCEL_URL'];
+      error.mockRestore();
+    }
   });
 
   it('looks identical when Auth refuses — the same redirect and the same cookie (§1.7)', async () => {
