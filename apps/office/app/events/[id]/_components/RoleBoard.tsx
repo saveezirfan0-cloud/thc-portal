@@ -13,11 +13,18 @@ import {
   showsCandidatePools,
 } from '@thc/domain';
 import type { BoardBooking, BoardSection } from '../board-data';
-import { type UnavailableEntry, canToggleAutoAssign, rateLine } from '../board-model';
+import {
+  type UnavailableEntry,
+  canToggleAutoAssign,
+  handedOverLine,
+  offerChip,
+  rateLine,
+} from '../board-model';
 import { ScheduledWindow } from '../../_components/ScheduledWindow';
 import { ApplicationActions } from './ApplicationActions';
 import { AutoAssignSwitch } from './AutoAssignSwitch';
 import { BookingActions } from './BookingActions';
+import { InviteAnyway } from './InviteAnyway';
 import { PotentialPool } from './PotentialPool';
 
 function Person({ person, sub }: { person: BoardBooking | UnavailableEntry; sub: string }) {
@@ -126,6 +133,13 @@ export function RoleBoard({
             the worker confirms in the app — no Confirm button here, only Withdraw
           </span>
         </div>
+        {/* ADR-0039: who handed this section's shift to whom. The line-up
+            changed only when the booking did, as for a Withdraw and re-fill. */}
+        {section.handovers.map((handover) => (
+          <div className="prow muted sm" key={`${handover.at}:${handover.toName}`}>
+            {handedOverLine(handover)}
+          </div>
+        ))}
         {section.confirmed.length === 0 ? (
           <div className="prow muted">Nobody has confirmed yet.</div>
         ) : (
@@ -141,6 +155,10 @@ export function RoleBoard({
               {/* A no-show stays here, badged — never moved to its own list (§3.3). */}
               {booking.noShow ? <Pill tone="coral">No show</Pill> : null}
               {booking.reconfirmRequired ? <Pill tone="amber">Awaiting re-confirm</Pill> : null}
+              {/* ADR-0039: still confirmed, still counted — only a chip. */}
+              {booking.offer ? (
+                <Pill tone={offerChip(booking.offer).tone}>{offerChip(booking.offer).label}</Pill>
+              ) : null}
               <div className="right">
                 <BookingActions
                   eventId={eventId}
@@ -150,6 +168,7 @@ export function RoleBoard({
                   payrollExported={payrollExported}
                   // Checked in = `worked`, which §3.6 never cancels.
                   withdrawable={canCancelBooking(booking.status)}
+                  offer={live ? booking.offer : null}
                 />
               </div>
             </div>
@@ -236,12 +255,19 @@ export function RoleBoard({
         </div>
       ) : null}
 
-      {live && section.unavailable.length > 0 ? (
+      {live && (section.unavailable.length > 0 || section.calendarProblem) ? (
         <div className="sub">
           <div className="subh">
             Unavailable <span className="n">{section.unavailable.length}</span>
             <span className="right muted sm">wrong-role never produces a row here (§6)</span>
           </div>
+          {section.calendarProblem ? (
+            // ADR-0036: without the calendar the pool above may list workers
+            // the engine will skip. Say so rather than show a quiet list.
+            <div className="prow coral sm" role="alert">
+              {section.calendarProblem}
+            </div>
+          ) : null}
           {section.unavailable.map((person) => (
             <div className="prow" key={person.staffId}>
               <Person
@@ -254,6 +280,16 @@ export function RoleBoard({
               <div className="right">
                 <Pill tone={person.tone}>{person.label}</Pill>
                 {person.detail ? <span className="muted xs">{person.detail}</span> : null}
+                {/* ADR-0036: the calendar holds back the machine, not the
+                    office — behind a confirm, the ordinary manual invite. */}
+                {person.inviteAnyway && canInvite && showPools ? (
+                  <InviteAnyway
+                    eventId={eventId}
+                    shiftId={section.id}
+                    staffId={person.staffId}
+                    name={person.name}
+                  />
+                ) : null}
               </div>
             </div>
           ))}
@@ -276,6 +312,8 @@ function confirmedLine(booking: BoardBooking, roleName: string): string {
       : "I'm ready — not yet",
   );
   if (booking.source === 'self') parts.push('self-applied via Radar');
+  // ADR-0039: booked by taking a shift another worker offered up.
+  if (booking.source === 'offer') parts.push('took an offered shift');
   return parts.join(' · ');
 }
 

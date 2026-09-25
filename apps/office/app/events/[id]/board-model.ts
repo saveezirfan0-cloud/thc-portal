@@ -11,13 +11,17 @@
 
 import {
   ACCEPT_APPLICATION_REFUSAL_COPY,
+  CALENDAR_GATE,
   type CandidateRow,
   type ScoreBreakdown,
   type ScoreInput,
   type ScoreWeights,
+  UK_ZONE,
   type Wave,
   candidateInput,
   finalHourlyPence,
+  formatDateIn,
+  formatTimeIn,
   marginPerHourPence,
   rankCandidateRows,
 } from '@thc/domain';
@@ -96,13 +100,21 @@ export function buildPool(
   people: ReadonlyMap<string, BoardPersonName>,
   applications: readonly PendingApplication[],
   weights: ScoreWeights,
+  /**
+   * ADR-0036: staff marked unavailable for this section
+   * (`auto_assign_unavailable`). The engine never invites them, so they
+   * are not in the ranked pool either — they sit under Unavailable with
+   * "Invite anyway". A Radar applicant stays: applying was their choice.
+   */
+  unavailable: ReadonlySet<string> = new Set(),
 ): PoolEntry[] {
   const applied = new Map(applications.map((a) => [a.staffId, a]));
   const eligible = rows.filter(
     (row) =>
       row.gate === null &&
-      (row.booking_status === null ||
-        (row.booking_status === 'applied' && applied.has(row.staff_id))),
+      (row.booking_status === null
+        ? !unavailable.has(row.staff_id)
+        : row.booking_status === 'applied' && applied.has(row.staff_id)),
   );
 
   return rankCandidateRows(eligible, weights).map((ranked, index) => {
@@ -240,12 +252,21 @@ export function weightPercent(weight: number): string {
 export type UnavailableTone = 'coral' | 'amber' | 'neutral';
 
 export interface UnavailableEntry extends BoardPersonName {
-  /** A live gate from auto_assign_candidates, or the booking's cancel_cause. */
+  /**
+   * A live gate from auto_assign_candidates, `unavailable` for a calendar
+   * entry (ADR-0036), or the booking's cancel_cause.
+   */
   reason: string;
   label: string;
   detail: string;
   tone: UnavailableTone;
   appliedAt: string | null;
+  /**
+   * ADR-0036: the one row the manager may still invite from — the worker
+   * passes every hard gate and holds no booking here; only their calendar
+   * keeps the machine away. The board asks before it sends.
+   */
+  inviteAnyway: boolean;
 }
 
 interface ReasonCopy {
@@ -290,6 +311,14 @@ export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
     detail: 'marked Do not return at this client (§9.6)',
     tone: 'coral',
   },
+  // ADR-0036. The label carries the window (`unavailableLabel`); this is
+  // the fallback when the window could not be read.
+  [CALENDAR_GATE]: {
+    label: 'Marked unavailable',
+    detail:
+      'marked themselves unavailable for this time — auto-assign skips them; you can still invite by hand (ADR-0036)',
+    tone: 'amber',
+  },
 };
 
 /**
@@ -309,6 +338,14 @@ export const CAUSE_COPY: Readonly<Record<string, ReasonCopy>> = {
     tone: 'amber',
   },
   self_cancel: GATE_COPY['self_cancelled']!,
+  // ADR-0039: offered the shift up and a confirmed replacement took it.
+  // Barred from the event like a self-cancel (Q15), but not the same act.
+  handed_over: {
+    label: 'Handed over',
+    detail:
+      'offered this shift up and another worker took it · excluded from this event, as after a self-cancel (ADR-0039, RULE-04)',
+    tone: 'neutral',
+  },
   // §3.4: overlapping invitations withdrawn at an Accept "move to
   // Unavailable → Booked elsewhere on the event board".
   overlap_auto_withdraw: {
@@ -370,7 +407,53 @@ const REASON_ORDER = [
   'rtw_expired',
   'self_cancelled',
   'do_not_return',
+  CALENDAR_GATE,
 ];
+
+/** One availability entry overlapping the section (`auto_assign_unavailable`). */
+export interface UnavailableWindow {
+  startsAt: string;
+  endsAt: string;
+}
+
+function isUkMidnight(instant: Date): boolean {
+  return formatTimeIn(instant, UK_ZONE) === '00:00';
+}
+
+/**
+ * One entry in UK time (§1.8 — the office reads UK): "Thu 12 Oct · all day",
+ * "Thu 12 Oct – Sat 14 Oct · all day", "Thu 12 Oct 06:00–09:00 UK",
+ * "Thu 12 Oct 22:00 – Fri 13 Oct 02:00 UK". The range is half-open, so an
+ * all-day entry's last day is the day before its end.
+ */
+export function ukWindowLabel(window: UnavailableWindow): string {
+  const start = new Date(window.startsAt);
+  const end = new Date(window.endsAt);
+  const day = (d: Date) => formatDateIn(d, UK_ZONE, { weekday: 'short' });
+  if (isUkMidnight(start) && isUkMidnight(end)) {
+    const last = new Date(end.getTime() - 1);
+    const first = day(start);
+    const final = day(last);
+    return first === final ? `${first} · all day` : `${first} – ${final} · all day`;
+  }
+  const from = formatTimeIn(start, UK_ZONE);
+  const to = formatTimeIn(end, UK_ZONE);
+  return day(start) === day(end)
+    ? `${day(start)} ${from}–${to} UK`
+    : `${day(start)} ${from} – ${day(end)} ${to} UK`;
+}
+
+/** "Marked unavailable · Thu 12 Oct 06:00–09:00 UK" (ADR-0036, docs/18 §1). */
+export function unavailableLabel(windows: readonly UnavailableWindow[]): string {
+  if (windows.length === 0) return GATE_COPY[CALENDAR_GATE]!.label;
+  const sorted = [...windows].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  return `Marked unavailable · ${sorted.map(ukWindowLabel).join('; ')}`;
+}
+
+/** The confirm in front of Invite anyway, in the spirit of RULE-17's override. */
+export function inviteAnywayPrompt(name: string): string {
+  return `${name} marked themselves unavailable for this time. Invite anyway?`;
+}
 
 export interface EndedBooking {
   staffId: string;
@@ -400,6 +483,8 @@ export function buildUnavailable(
   ended: readonly EndedBooking[],
   people: ReadonlyMap<string, BoardPersonName>,
   listedElsewhere: ReadonlySet<string>,
+  /** ADR-0036: `auto_assign_unavailable(section)`, by worker. */
+  away: ReadonlyMap<string, readonly UnavailableWindow[]> = new Map(),
 ): UnavailableEntry[] {
   const out = new Map<string, UnavailableEntry>();
   const endedByStaff = new Map(ended.map((b) => [b.staffId, b]));
@@ -407,12 +492,37 @@ export function buildUnavailable(
   for (const row of rows ?? []) {
     if (!row.gate || row.gate === 'wrong_role') continue;
     if (listedElsewhere.has(row.staff_id)) continue;
-    const copy = GATE_COPY[row.gate] ?? { label: row.gate, detail: '', tone: 'neutral' };
+    // A completed hand-over sets the same event-wide bar as a self-cancel
+    // (ADR-0039); where this section's booking says so, say what happened.
+    const handedOver =
+      row.gate === 'self_cancelled' &&
+      endedByStaff.get(row.staff_id)?.cancelCause === 'handed_over';
+    const copy = handedOver
+      ? CAUSE_COPY['handed_over']!
+      : (GATE_COPY[row.gate] ?? { label: row.gate, detail: '', tone: 'neutral' as const });
     out.set(row.staff_id, {
       ...personFor(people, row.staff_id),
-      reason: row.gate,
+      reason: handedOver ? 'handed_over' : row.gate,
       ...copy,
       appliedAt: endedByStaff.get(row.staff_id)?.appliedAt ?? null,
+      inviteAnyway: false,
+    });
+  }
+
+  // ADR-0036: ungated, unbooked, and away. Every hard gate is the truer
+  // reason, so the calendar only labels a worker nothing else holds back.
+  for (const row of rows ?? []) {
+    if (row.gate !== null || row.booking_status !== null) continue;
+    if (listedElsewhere.has(row.staff_id) || out.has(row.staff_id)) continue;
+    const windows = away.get(row.staff_id);
+    if (!windows) continue;
+    out.set(row.staff_id, {
+      ...personFor(people, row.staff_id),
+      reason: CALENDAR_GATE,
+      ...GATE_COPY[CALENDAR_GATE]!,
+      label: unavailableLabel(windows),
+      appliedAt: null,
+      inviteAnyway: true,
     });
   }
 
@@ -425,6 +535,7 @@ export function buildUnavailable(
       reason: cause || booking.status,
       ...copy,
       appliedAt: null,
+      inviteAnyway: false,
     });
   }
 
@@ -503,3 +614,68 @@ export function inviteRefusal(reason: string): string {
 export function canToggleAutoAssign(status: string): boolean {
   return status === 'upcoming' || status === 'ongoing';
 }
+
+// ---------------------------------------------------------------------
+// Offer up a shift (ADR-0039, docs/18 §4) — what the board shows
+// ---------------------------------------------------------------------
+
+/** An open offer on a confirmed booking, as the board reads `shift_offers`. */
+export interface BoardOffer {
+  offerId: string;
+  /** `pool` / `direct`: offered to workers. `office`: a cover request. */
+  mode: 'pool' | 'office' | 'direct';
+  expiresAt: string;
+  note: string | null;
+}
+
+/**
+ * The chip on a Confirmed row. The worker is still confirmed — fill, the
+ * buffer and the client's line-up are unchanged — so it is a chip, never a
+ * move to another list: "Offered up · until Sat 20 Sep, 16:00 UK", or
+ * "Asked for cover: {note}".
+ */
+export function offerChip(offer: BoardOffer): { label: string; tone: 'cyan' | 'amber' } {
+  if (offer.mode === 'office') {
+    const note = offer.note?.trim();
+    return { label: note ? `Asked for cover: ${note}` : 'Asked for cover', tone: 'amber' };
+  }
+  const at = new Date(offer.expiresAt);
+  const day = formatDateIn(at, UK_ZONE, { weekday: 'short' });
+  return { label: `Offered up · until ${day}, ${formatTimeIn(at, UK_ZONE)} UK`, tone: 'cyan' };
+}
+
+/** A completed hand-over on one role section. */
+export interface Handover {
+  fromName: string;
+  toName: string;
+  at: string;
+}
+
+/** "Handed over: Grace L. → Tom R. · Tue 23 Sep" — per section, UK date. */
+export function handedOverLine(handover: Handover): string {
+  const day = formatDateIn(new Date(handover.at), UK_ZONE, { weekday: 'short' });
+  return `Handed over: ${handover.fromName} → ${handover.toName} · ${day}`;
+}
+
+const OFFER_OFFICE_REFUSAL_COPY: Readonly<Record<string, string>> = {
+  event_cancelled: 'This event has been cancelled.',
+  offer_not_open:
+    'This request is no longer open — the worker withdrew it, it lapsed, or it was taken.',
+  not_a_cover_request: 'This is already offered to other workers, not a cover request.',
+  section_started: 'This shift has already started; the same-day escalation fills it now (§3.4).',
+  original_not_confirmed: 'The worker is no longer confirmed on this shift.',
+  note_too_long: 'Keep the note to 300 characters.',
+};
+
+/** `office_open_offer_to_pool` / `office_decline_cover` refusals, for the manager. */
+export function offerOfficeRefusal(reason: string): string {
+  return OFFER_OFFICE_REFUSAL_COPY[reason] ?? `Nothing was changed (${reason || 'unknown'}).`;
+}
+
+/** The prompt in front of Decline. The note is the office's own record. */
+export const DECLINE_COVER_PROMPT =
+  'Decline this cover request? The worker stays booked and is told the office has closed it (OF6). Add a note for the office record (optional):';
+
+/** The confirm in front of Open to pool. */
+export const OPEN_TO_POOL_CONFIRM =
+  'Open this shift to other workers? It stays theirs until someone takes it, up to the start of the shift.';

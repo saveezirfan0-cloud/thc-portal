@@ -29,7 +29,7 @@ vi.mock('../../db', () => ({
   supabaseConfigured: () => true,
 }));
 
-const { getBack, markNoShow } = await import('../actions');
+const { declineCover, getBack, markNoShow, openOfferToPool } = await import('../actions');
 
 beforeEach(() => {
   state.rpc.mockReset();
@@ -113,5 +113,45 @@ describe('manual No-show (§3.3)', () => {
     state.rpc.mockResolvedValueOnce({ data: { ok: true, payrollExported: true }, error: null });
     const result = await markNoShow('evt-1', 'bk-2');
     expect((result as { warning?: string }).warning).toMatch(/payroll/i);
+  });
+});
+
+describe('cover requests (ADR-0039)', () => {
+  it('Open to pool is one RPC, office_open_offer_to_pool()', async () => {
+    state.rpc.mockResolvedValueOnce({ data: { ok: true, expiresAt: 'x' }, error: null });
+    expect(await openOfferToPool('evt-1', 'off-1')).toEqual({ ok: true });
+    expect(state.rpc).toHaveBeenCalledWith('office_open_offer_to_pool', { p_offer: 'off-1' });
+    expect(state.from).not.toHaveBeenCalled();
+    expect(state.revalidated).toEqual(['/events/evt-1']);
+  });
+
+  it('says why when the request is no longer open', async () => {
+    state.rpc.mockResolvedValueOnce({ data: { ok: false, reason: 'offer_not_open' }, error: null });
+    expect(await openOfferToPool('evt-1', 'off-1')).toEqual({
+      error: 'This request is no longer open — the worker withdrew it, it lapsed, or it was taken.',
+    });
+  });
+
+  it('Decline sends the trimmed note, or none, through office_decline_cover()', async () => {
+    state.rpc.mockResolvedValueOnce({ data: { ok: true }, error: null });
+    expect(await declineCover('evt-1', 'off-2', '  Covered in-house  ')).toEqual({ ok: true });
+    expect(state.rpc).toHaveBeenCalledWith('office_decline_cover', {
+      p_offer: 'off-2',
+      p_note: 'Covered in-house',
+    });
+    state.rpc.mockResolvedValueOnce({ data: { ok: true }, error: null });
+    await declineCover('evt-1', 'off-2', '   ');
+    expect(state.rpc).toHaveBeenLastCalledWith('office_decline_cover', {
+      p_offer: 'off-2',
+      p_note: null,
+    });
+    expect(state.from).not.toHaveBeenCalled();
+  });
+
+  it('a non-admin is told so', async () => {
+    state.rpc.mockResolvedValueOnce({ data: null, error: { message: 'not_authorised' } });
+    expect(await declineCover('evt-1', 'off-2', '')).toEqual({
+      error: 'Only the office can act on a cover request.',
+    });
   });
 });

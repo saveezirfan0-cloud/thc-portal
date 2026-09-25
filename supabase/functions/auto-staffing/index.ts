@@ -28,13 +28,26 @@
  *     which re-applies every gate at the moment of the insert and locks
  *     the section so two rounds cannot take the same last slot
  *   * whether it is the right UK minute — `is_uk_time` (pgTAP, 180)
+ *   * the offer rounds (hourly only, ADR-0039) — `lapse_shift_offers`,
+ *     `offer_rounds_due`, `offer_candidates`, `notify_offer_candidates`
+ *     (pgTAP 670–674); who is pushed is `selectOfferRecipients`, the
+ *     invitation ranking minus everyone already told, and the SQL re-checks
+ *     every gate, the calendar and RULE-17's wave order at the insert
+ *   * who marked the section unavailable — `auto_assign_unavailable`
+ *     (pgTAP, 656; ADR-0036), overlaid on the pool by `selectInvitees`'
+ *     `unavailable` option; `invite_worker` refuses the same workers at
+ *     the insert for the 'auto' and 'escalation' sources
  *
  * What is left here is a loop. That is the point: nothing in this repo
  * type-checks or runs this file (docs/14 O5).
  */
 
 import { runJob } from '../_shared/job.ts';
-import { selectInvitees, type CandidateRow } from '../../../packages/domain/src/autoAssign.ts';
+import {
+  selectInvitees,
+  selectOfferRecipients,
+  type CandidateRow,
+} from '../../../packages/domain/src/autoAssign.ts';
 import { parseWeights } from '../../../packages/domain/src/scoring.ts';
 
 type Mode = 'hourly' | 'cutoff' | 'escalation';
@@ -92,7 +105,15 @@ Deno.serve((request) =>
       }
     }
 
-    const counts: Record<string, unknown> = { mode, sections: 0, invited: 0, released: 0 };
+    const counts: Record<string, unknown> = {
+      mode,
+      sections: 0,
+      invited: 0,
+      released: 0,
+      // ADR-0036: candidates the round skipped because their availability
+      // calendar overlaps the role section (never invited by the machine).
+      unavailableSkipped: 0,
+    };
     if (onlyEvent) counts.event = onlyEvent;
 
     if (mode === 'cutoff') {
@@ -135,12 +156,32 @@ Deno.serve((request) =>
       });
       if (poolError) throw new Error(`auto_assign_candidates: ${poolError.message}`);
 
-      const invitees = selectInvitees((pool ?? []) as CandidateRow[], {
+      // ADR-0036: the calendar is a hard gate on every round the machine
+      // runs — hourly, first round, cutoff refill and escalation alike —
+      // measured against this ROLE SECTION's window (RULE-18). It is not a
+      // sixth score: the §6 weights are untouched and the workers are
+      // simply skipped, like any other gate. A manager can still invite
+      // them by hand from the board.
+      const { data: away, error: awayError } = await db.rpc('auto_assign_unavailable', {
+        p_shift: section.shift_id,
+      });
+      if (awayError) throw new Error(`auto_assign_unavailable: ${awayError.message}`);
+      const unavailable = new Set(((away ?? []) as { staff_id: string }[]).map((r) => r.staff_id));
+      const rows = (pool ?? []) as CandidateRow[];
+      counts.unavailableSkipped =
+        (counts.unavailableSkipped as number) +
+        rows.filter(
+          (row) =>
+            row.gate === null && row.booking_status === null && unavailable.has(row.staff_id),
+        ).length;
+
+      const invitees = selectInvitees(rows, {
         allocation: section.allocation,
         weights,
         // §3.4: after the start, "proximity to the venue matters more than
         // the match score" — nearest first within each wave.
         proximityFirst: mode === 'escalation',
+        unavailable,
       });
 
       for (const staffId of invitees) {
@@ -160,6 +201,55 @@ Deno.serve((request) =>
       }
 
       counts.sections = (counts.sections as number) + 1;
+    }
+
+    // ADR-0039: the offer rounds, on the hourly run only (a first round for
+    // one new event has no offers yet). First the lapse — anything past its
+    // expiry closes and OF3 tells the worker they are still booked — then,
+    // for every open pool offer on a section with auto-assign on, one
+    // additive OF1 round of `allocation_per_hour`: wave 1 first, each by
+    // the §6 score, never anyone already told, never the offerer, a gated
+    // or an unavailable worker (ADR-0036).
+    if (mode === 'hourly' && onlyEvent === null) {
+      const { data: lapsed, error: lapseError } = await db.rpc('lapse_shift_offers');
+      if (lapseError) throw new Error(`lapse_shift_offers: ${lapseError.message}`);
+      counts.offersLapsed = lapsed ?? 0;
+      counts.offers = 0;
+      counts.offerPushes = 0;
+
+      const { data: offers, error: offersError } = await db.rpc('offer_rounds_due');
+      if (offersError) throw new Error(`offer_rounds_due: ${offersError.message}`);
+
+      for (const offer of (offers ?? []) as {
+        offer_id: string;
+        shift_id: string;
+        allocation: number;
+      }[]) {
+        const [pool, notices, away] = await Promise.all([
+          db.rpc('offer_candidates', { p_offer: offer.offer_id }),
+          db.from('shift_offer_notices').select('staff_id').eq('offer_id', offer.offer_id),
+          db.rpc('auto_assign_unavailable', { p_shift: offer.shift_id }),
+        ]);
+        if (pool.error) throw new Error(`offer_candidates: ${pool.error.message}`);
+        if (notices.error) throw new Error(`shift_offer_notices: ${notices.error.message}`);
+        if (away.error) throw new Error(`auto_assign_unavailable: ${away.error.message}`);
+
+        const recipients = selectOfferRecipients((pool.data ?? []) as CandidateRow[], {
+          allocation: offer.allocation,
+          notified: ((notices.data ?? []) as { staff_id: string }[]).map((n) => n.staff_id),
+          unavailable: ((away.data ?? []) as { staff_id: string }[]).map((r) => r.staff_id),
+          weights,
+        });
+        counts.offers = (counts.offers as number) + 1;
+        if (recipients.length === 0) continue;
+
+        const { data: pushed, error: pushError } = await db.rpc('notify_offer_candidates', {
+          p_offer: offer.offer_id,
+          p_staff: recipients,
+        });
+        if (pushError) throw new Error(`notify_offer_candidates: ${pushError.message}`);
+        counts.offerPushes = (counts.offerPushes as number) + Number(pushed ?? 0);
+      }
     }
 
     return counts;

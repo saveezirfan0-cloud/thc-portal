@@ -19,6 +19,8 @@ import {
 import { checkInCountdown, directionsUrl, phoneFromContact } from './links';
 import { StaticShiftScreen } from './StaticShiftScreen';
 import { TurnedAwayScreen } from './TurnedAwayScreen';
+import { OfferPanel } from './OfferPanel';
+import type { BookingOffer } from '../offers';
 import type { GpsFix, ShiftDetail } from './types';
 
 /**
@@ -35,7 +37,17 @@ import type { GpsFix, ShiftDetail } from './types';
  * are `StaffShell`'s, which the page wraps this in — so a blocked, on-hold
  * or leaver worker opening a deep link never gets this far.
  */
-export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
+export function ShiftScreen({
+  shift,
+  offer = null,
+}: {
+  shift: ShiftDetail;
+  /**
+   * ADR-0039: the booking's open offer and the auto-assign switch
+   * (`staff_booking_offers()`), for Offer this shift / Ask the office.
+   */
+  offer?: BookingOffer | null;
+}) {
   const router = useRouter();
   // `shift` is read straight from props, not copied into state: after a
   // press, `router.refresh()` hands down the booking as the server now has
@@ -265,6 +277,16 @@ export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
             of the venue.
           </p>
           {shift.breaksLogged ? <BreaksBlock shift={shift} locked formatTime={local} /> : null}
+          {/* ADR-0039: offer it up, or ask the office for cover. Only
+              before the shift: once check-in opens it is too late for
+              either, and the escalation job owns the section. */}
+          <OfferPanel
+            bookingId={shift.bookingId}
+            startsAt={shift.startsAt}
+            status={shift.status}
+            offer={offer}
+            now={now}
+          />
         </>
       ) : null}
 

@@ -26,8 +26,16 @@ import type { ShiftDetail } from './types';
  * button locks at end+4h, before the job has written the violation, so the
  * screen never shows a live check-out the server would refuse.
  */
+/**
+ * The static screens: §10.4's three dead ends, and a shift the worker
+ * handed over to someone else (ADR-0039 — `cancel_cause = 'handed_over'`).
+ * The fourth lives here rather than in `staticScreenCase()`, which Phase 0
+ * left unchanged on purpose (docs/18 §8): it is this screen's case only.
+ */
+export type StaticPhase = StaticScreenCase | 'handed_over';
+
 export type ShiftPhase =
-  | StaticScreenCase // 'event_cancelled' | 'withdrawn' | 'no_checkout' — static (§10.4)
+  | StaticPhase // 'event_cancelled' | 'withdrawn' | 'no_checkout' | 'handed_over' — static
   | 'before_window' // too early to check in
   | 'check_in' // the window is open
   | 'locked' // start+30 passed with no check-in (§5.1)
@@ -36,11 +44,24 @@ export type ShiftPhase =
   | 'on_break'
   | 'closed'; // checked out
 
-const STATIC_PHASES: readonly ShiftPhase[] = ['event_cancelled', 'withdrawn', 'no_checkout'];
+const STATIC_PHASES: readonly ShiftPhase[] = [
+  'event_cancelled',
+  'withdrawn',
+  'no_checkout',
+  'handed_over',
+];
 
-/** True for the three phases that replace the whole shift screen (§10.4). */
-export function isStaticPhase(phase: ShiftPhase): phase is StaticScreenCase {
+/**
+ * True for the phases that replace the whole shift screen: §10.4's three
+ * and the hand-over (ADR-0039).
+ */
+export function isStaticPhase(phase: ShiftPhase): phase is StaticPhase {
   return STATIC_PHASES.includes(phase);
+}
+
+/** ADR-0039: the worker offered this shift up and somebody took it. */
+function handedOver(shift: Pick<ShiftDetail, 'status' | 'cancelCause'>): boolean {
+  return shift.status === 'cancelled' && shift.cancelCause === 'handed_over';
 }
 
 /**
@@ -66,6 +87,8 @@ export function shiftScreenReachable(
   if (shift.status === 'confirmed' || shift.status === 'worked' || shift.status === 'turned_away') {
     return true;
   }
+  // A stale OF2 push, or the worker's own history: say what happened to it.
+  if (handedOver(shift)) return true;
   return (
     staticScreenCase({
       status: shift.status,
@@ -104,6 +127,7 @@ export function shiftPhase({ shift, openBreak, now }: PhaseInput): ShiftPhase {
     noCheckoutOpen: shift.noCheckoutOpen,
   });
   if (dead) return dead;
+  if (handedOver(shift)) return 'handed_over';
 
   // §3.2 strict buffer: the attempt was turned away and the booking is
   // terminal. "Thanks for coming" replaces the shift, however late the

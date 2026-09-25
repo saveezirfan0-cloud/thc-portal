@@ -9,11 +9,17 @@ import {
   buildUnavailable,
   canToggleAutoAssign,
   factorChips,
+  handedOverLine,
+  inviteAnywayPrompt,
   inviteRefusal,
+  offerChip,
+  offerOfficeRefusal,
   queryPool,
   rateLine,
   scoreBreakdownLines,
   shortName,
+  ukWindowLabel,
+  unavailableLabel,
   weightPercent,
 } from '../[id]/board-model';
 
@@ -363,6 +369,7 @@ describe('Unavailable names the real reason (§3.3, §3.4, §9.6)', () => {
       'office_withdraw',
       'ready_cutoff',
       'self_cancel',
+      'handed_over',
       'overlap_auto_withdraw',
       'event_cancelled',
       'blocked',
@@ -377,6 +384,135 @@ describe('Unavailable names the real reason (§3.3, §3.4, §9.6)', () => {
     ]) {
       expect(CAUSE_COPY[cause], cause).toBeDefined();
     }
+  });
+});
+
+// ---------------------------------------------------------------------
+
+describe('Marked unavailable — the calendar on the board (ADR-0036)', () => {
+  const none = new Set<string>();
+  // Thursday 15 Oct 2026, BST (UTC+1).
+  const allDay = { startsAt: '2026-10-14T23:00:00.000Z', endsAt: '2026-10-15T23:00:00.000Z' };
+  const morning = { startsAt: '2026-10-15T05:00:00.000Z', endsAt: '2026-10-15T08:00:00.000Z' };
+  const overnight = { startsAt: '2026-10-15T21:00:00.000Z', endsAt: '2026-10-16T01:00:00.000Z' };
+  const threeDays = { startsAt: '2026-10-14T23:00:00.000Z', endsAt: '2026-10-17T23:00:00.000Z' };
+
+  it('reads each entry in UK time, half-open', () => {
+    expect(ukWindowLabel(allDay)).toBe('Thu 15 Oct · all day');
+    expect(ukWindowLabel(threeDays)).toBe('Thu 15 Oct – Sat 17 Oct · all day');
+    expect(ukWindowLabel(morning)).toBe('Thu 15 Oct 06:00–09:00 UK');
+    expect(ukWindowLabel(overnight)).toBe('Thu 15 Oct 22:00 – Fri 16 Oct 02:00 UK');
+    // 25 Oct 2026 is the autumn change: UK midnight to UK midnight is 25 h.
+    expect(
+      ukWindowLabel({ startsAt: '2026-10-24T23:00:00.000Z', endsAt: '2026-10-26T00:00:00.000Z' }),
+    ).toBe('Sun 25 Oct · all day');
+  });
+
+  it('labels the row "Marked unavailable · {UK window}", earliest entry first', () => {
+    expect(unavailableLabel([morning, allDay])).toBe(
+      'Marked unavailable · Thu 15 Oct · all day; Thu 15 Oct 06:00–09:00 UK',
+    );
+    expect(unavailableLabel([])).toBe('Marked unavailable');
+  });
+
+  it('asks before inviting anyway, in the ADR’s words', () => {
+    expect(inviteAnywayPrompt('Priya S.')).toBe(
+      'Priya S. marked themselves unavailable for this time. Invite anyway?',
+    );
+  });
+
+  it('moves an away worker from the pool to Unavailable, with Invite anyway', () => {
+    const rows = [row('priya', { qualified: true }), row('ella'), row('ben')];
+    const away = new Map([['priya', [morning]]]);
+    const pool = buildPool(rows, people, [], DEFAULT_WEIGHTS, new Set(away.keys()));
+    expect(pool.map((e) => e.name)).toEqual(['Ella F.', 'Ben T.']);
+    // Wave 1 is empty once Priya is away, exactly as the engine sees it.
+    expect(pool.every((e) => e.wave === 2)).toBe(true);
+
+    const [priya, ...rest] = buildUnavailable(rows, [], people, none, away);
+    expect(rest).toEqual([]);
+    expect(priya).toMatchObject({
+      name: 'Priya S.',
+      reason: 'unavailable',
+      label: 'Marked unavailable · Thu 15 Oct 06:00–09:00 UK',
+      tone: 'amber',
+      inviteAnyway: true,
+    });
+  });
+
+  it('a hard gate is the truer reason, and never offers Invite anyway', () => {
+    const away = new Map([
+      ['jonah', [allDay]],
+      ['ben', [allDay]],
+    ]);
+    const list = buildUnavailable(
+      [row('jonah', { gate: 'blocked' }), row('ben', { booking_status: 'invited' })],
+      [],
+      people,
+      new Set(['ben']),
+      away,
+    );
+    expect(list.map((e) => [e.name, e.label, e.inviteAnyway])).toEqual([
+      ['Jonah W.', 'Blocked — compliance', false],
+    ]);
+  });
+
+  it('keeps an away Radar applicant in the pool — applying was their own choice', () => {
+    const rows = [row('omar', { booking_status: 'applied' })];
+    const pool = buildPool(
+      rows,
+      people,
+      [{ staffId: 'omar', bookingId: 'b-omar', appliedAt: '2026-10-01T10:00:00Z', createdAt: 'x' }],
+      DEFAULT_WEIGHTS,
+      new Set(['omar']),
+    );
+    expect(pool.map((e) => e.applicationId)).toEqual(['b-omar']);
+  });
+});
+
+describe('Offered up and cover requests on the board (ADR-0039)', () => {
+  it('a pool offer is a chip on the Confirmed row with its UK close time', () => {
+    expect(
+      offerChip({
+        offerId: 'o1',
+        mode: 'pool',
+        expiresAt: '2026-09-20T15:00:00.000Z',
+        note: null,
+      }),
+    ).toEqual({ label: 'Offered up · until Sun 20 Sep, 16:00 UK', tone: 'cyan' });
+  });
+
+  it('a cover request carries the worker’s note', () => {
+    expect(
+      offerChip({ offerId: 'o2', mode: 'office', expiresAt: 'x', note: ' Exam moved ' }),
+    ).toEqual({ label: 'Asked for cover: Exam moved', tone: 'amber' });
+    expect(offerChip({ offerId: 'o3', mode: 'office', expiresAt: 'x', note: null }).label).toBe(
+      'Asked for cover',
+    );
+  });
+
+  it('a hand-over is one history line per section, UK date', () => {
+    expect(
+      handedOverLine({ fromName: 'Grace L.', toName: 'Tom R.', at: '2026-09-15T23:30:00.000Z' }),
+    ).toBe('Handed over: Grace L. → Tom R. · Wed 16 Sep');
+  });
+
+  it('turns the office refusals into the manager’s words', () => {
+    expect(offerOfficeRefusal('not_a_cover_request')).toMatch(/already offered/);
+    expect(offerOfficeRefusal('section_started')).toMatch(/escalation/);
+    expect(offerOfficeRefusal('mystery')).toBe('Nothing was changed (mystery).');
+  });
+});
+
+describe('Handed over (ADR-0039)', () => {
+  it('names a hand-over, not a self-cancel, though both bar the worker from the event', () => {
+    const [kai] = buildUnavailable(
+      [row('kai', { gate: 'self_cancelled', booking_status: 'cancelled' })],
+      [{ staffId: 'kai', status: 'cancelled', cancelCause: 'handed_over', appliedAt: null }],
+      people,
+      new Set(),
+    );
+    expect(kai).toMatchObject({ reason: 'handed_over', label: 'Handed over', inviteAnyway: false });
   });
 });
 
