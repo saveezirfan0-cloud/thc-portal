@@ -6,14 +6,11 @@ import {
   formatDayShort,
   isCalendarView,
   monthGrid,
-  monthName,
   periodLabel,
   periodRange,
-  relativeDayLabel,
   shiftPeriod,
   startOfWeek,
   todayInUk,
-  ukDateOf,
   weekDays,
   weekdayIndex,
 } from '../calendar';
@@ -136,29 +133,8 @@ describe('the period label between the arrows', () => {
   it('names the month, the week span or the day', () => {
     expect(periodLabel('month', '2026-09-18')).toBe('September 2026');
     expect(periodLabel('list', '2026-09-18')).toBe('September 2026');
-    // A week inside one month names it once (events.html:251).
-    expect(periodLabel('week', '2026-09-18')).toBe('Mon 14 – Sun 20 Sep 2026');
+    expect(periodLabel('week', '2026-09-18')).toBe('Mon 14 Sep – Sun 20 Sep 2026');
     expect(periodLabel('day', '2026-09-18')).toBe('Fri 18 Sep 2026');
-  });
-
-  it('spells both months for a week that straddles them', () => {
-    expect(periodLabel('week', '2026-09-30')).toBe('Mon 28 Sep – Sun 4 Oct 2026');
-  });
-
-  it('says "· today" on the day view when it is (events.html:312)', () => {
-    expect(periodLabel('day', '2026-09-18', '2026-09-18')).toBe('Fri 18 Sep 2026 · today');
-    expect(periodLabel('day', '2026-09-19', '2026-09-18')).toBe('Sat 19 Sep 2026');
-  });
-
-  it('names the month for the list footer', () => {
-    expect(monthName('2026-09-18')).toBe('September');
-  });
-
-  it('describes a day relative to today, for the builder banners', () => {
-    expect(relativeDayLabel('2026-09-18', '2026-09-18')).toBe('today');
-    expect(relativeDayLabel('2026-09-19', '2026-09-18')).toBe('tomorrow');
-    expect(relativeDayLabel('2026-09-17', '2026-09-18')).toBe('yesterday');
-    expect(relativeDayLabel('2026-09-25', '2026-09-18')).toBe('on Fri 25 Sep');
   });
 
   it('formats a day the way the list column reads it', () => {
@@ -170,7 +146,6 @@ describe('today is today in the UK, whatever the server is set to (§1.8)', () =
   it('reads a late-evening UTC instant as the UK date', () => {
     // 23:30 UTC on 18 June is 00:30 on the 19th in London (BST).
     expect(todayInUk(new Date('2026-06-18T23:30:00Z'))).toBe('2026-06-19');
-    expect(ukDateOf(new Date('2026-06-18T23:30:00Z'))).toBe('2026-06-19');
     // In winter the two coincide.
     expect(todayInUk(new Date('2026-12-18T23:30:00Z'))).toBe('2026-12-18');
   });

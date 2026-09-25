@@ -14,10 +14,8 @@ describe('buffer display (§3.2)', () => {
     expect(formatAllocation(6, 1)).not.toBe('7');
   });
 
-  it('spells out a zero buffer — "N (+buffer)" in the list and calendar (§3.2)', () => {
-    // events.html list rows: "1 (+0)", "4 (+0)", "2 (+0)"; dashboard.html: "2 (+0)".
-    expect(formatAllocation(6, 0)).toBe('6 (+0)');
-    expect(formatAllocation(6, 0)).not.toBe('6');
+  it('omits the buffer when there is none', () => {
+    expect(formatAllocation(6, 0)).toBe('6');
   });
 
   it('still seats headcount plus buffer', () => {

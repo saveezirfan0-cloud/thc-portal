@@ -13,13 +13,14 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 ## Back Office (`apps/office`)
 | Route | Screen | Wireframe | § | Bot |
 |---|---|---|---|---|
-| `/login` | Login | `backoffice/login.html` | 1.4 | platform |
+| `/login` | Login (a non-admin account gets the generic refusal) | `backoffice/login.html` | 1.4 | platform |
 | `/login/forgot`, `/login/forgot/sent`, `/login/reset` | Forgot password → Reset link sent → Set new password (A1–A3, from `admin@`) | `backoffice/login.html#state=forgot`, `#state=sent` | 10.2, 9.12 | platform |
+| `/forgot`, `/forgot/sent`, `/reset` | A1 Forgot password → A2 Reset link sent → A3 Set new password (+ link expired) | `backoffice/login.html` (forgot, sent) · `public/activate.html` (reset) | 10.2 | platform |
 | `/dashboard` | Dashboard | `backoffice/dashboard.html` | 9.1 | reports |
 | `/onboarding` | Kanban (Active / Rejected) | `backoffice/onboarding.html` | 2.2 | onboarding |
 | `/onboarding/:id` | Candidate profile by phase | `backoffice/candidate.html` | 2.3 | onboarding |
 | `/events` | List · Calendar month/week/day | `backoffice/events.html` | 3.1 | scheduling |
-| `/events/new`, `/events/:id/edit` | Shift Builder | `backoffice/shift-builder.html` | 3.2 | scheduling |
+| `/events/new`, `/events/:id/edit` | Shift Builder (`/events/new?from=<id>` opens it as Duplicate: roles copied, no staff, date blank) | `backoffice/shift-builder.html` | 3.2 | scheduling |
 | `/events/:id` | Event board | `backoffice/event-board.html` | 3.3–3.5, 11.4 | scheduling |
 | `/compliance` | Needs review · Radar | `backoffice/compliance.html` | 4.1 | compliance |
 | `/compliance/export` | Completion-letter audit trail (CSV download) | — | completion letter req. §4 | compliance |
@@ -72,6 +73,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | Route | Screen | Wireframe | § | Bot |
 |---|---|---|---|---|
 | `/login` | Login | `client/login.html` | 1.4 | platform |
+| `/forgot`, `/forgot/sent`, `/reset` | A1 Forgot password → A2 Reset link sent → A3 Set new password (+ link expired). The wireframe's address bar says `/forgot-password`; `/forgot` matches the other two apps | `client/login.html` (forgot) · `public/activate.html` (reset) | 10.2 | platform |
 | `/client` | Event list | `client/events.html` | 11.1 | client-portal |
 | `/client/events/:id` | Event page + feedback popup | `client/event.html` | 11.2, 11.5 | client-portal |
 | `/client/events/:id/document` | Allocation sheet · Sign-out timesheet (latest final copy, ADR-0004) | `client/timesheet.html` | 11.3 | reports |

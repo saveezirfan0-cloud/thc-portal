@@ -1,4 +1,4 @@
-import type { CapBand, StaffRow, StaffStatus } from './types';
+import type { CapBand, StaffRow } from './types';
 
 /**
  * The directory's presentation rules (§9.6). Pure, so the three that are
@@ -81,21 +81,6 @@ export function capReason(
 }
 
 /**
- * The same sentence in §2.3's form — "20 h/week — term time until
- * 13.12.2026" — which the candidate profile (§2.3, candidate.html) prints.
- * §9.6's directory hover drops the "/week"; the two sections of the scope
- * differ on exactly that word, so each screen gets its own section's form
- * from one rule rather than two.
- */
-export function capReasonPerWeek(
-  band: CapBand | null,
-  capHours: number | null,
-  until?: string | null,
-): string {
-  return capReason(band, capHours, until).replace(/^(\d+) h —/, '$1 h/week —');
-}
-
-/**
  * §2.5's branches, as the office reads them. The enum is never printed:
  * nobody has an `international_student`, they are an International
  * student — the same reason doc_label() exists in SQL.
@@ -134,70 +119,6 @@ export function formatDateRange(range: string): string {
 
 /** The five §9.6 filter tabs. Removed rows are shown, never hidden (§1.7). */
 export type Filter = 'all' | 'compliant' | 'blocked' | 'inactive' | 'removed';
-
-/**
- * Who the directory lists. §9.6: "A list of workers" with the tabs All ·
- * Compliant · Blocked · Inactive · Removed, and the wireframe's crumb adds
- * up — 934 + 9 + 61 + 8 = 1,012 — so All is exactly those four. A
- * candidate still in the pipeline belongs to /onboarding, and a rejected
- * applicant to its Rejected column; both keep their /staff/:id page (§9.6
- * Reset to candidate needs one), they are just not workers yet.
- */
-export const DIRECTORY_STATUSES: readonly StaffStatus[] = [
-  'compliant',
-  'blocked',
-  'inactive',
-  'removed',
-];
-
-export function isWorker(row: Pick<StaffRow, 'status' | 'removed'>): boolean {
-  return row.removed || DIRECTORY_STATUSES.includes(row.status);
-}
-
-/**
- * The status pill, one vocabulary for the directory and the profile
- * header (staff.html, staff-profile.html): never the raw enum. A removed
- * row reads Removed whatever `status` still says.
- */
-export type StatusTone = 'green' | 'coral' | 'amber' | 'neutral';
-
-export function statusPill(row: Pick<StaffRow, 'status' | 'removed'>): {
-  label: string;
-  tone: StatusTone;
-} {
-  if (row.removed || row.status === 'removed') return { label: 'Removed', tone: 'neutral' };
-  switch (row.status) {
-    case 'blocked':
-      return { label: 'Blocked', tone: 'coral' };
-    case 'inactive':
-      return { label: 'Inactive', tone: 'neutral' };
-    case 'compliant':
-      return { label: 'Compliant', tone: 'green' };
-    case 'rejected':
-      return { label: 'Rejected', tone: 'coral' };
-    default:
-      return { label: 'Onboarding', tone: 'amber' };
-  }
-}
-
-export type Sort = 'name' | 'rating' | 'show' | 'newest';
-
-/**
- * The directory's order. §9.6: "The Inactive tab lists everyone who has
- * left through the app, newest first" — so that tab ignores the sort
- * control and the office works through P45s in the order they arrived.
- * A pure function so the rule is pinned by a test rather than living in
- * a component's useMemo.
- */
-export function sortRows(rows: readonly StaffRow[], filter: Filter, sort: Sort): StaffRow[] {
-  const sorted = [...rows];
-  if (filter === 'inactive' || sort === 'newest') {
-    sorted.sort((a, b) => (b.left_at ?? '').localeCompare(a.left_at ?? ''));
-  } else if (sort === 'rating') sorted.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
-  else if (sort === 'show') sorted.sort((a, b) => (b.reliability ?? -1) - (a.reliability ?? -1));
-  else sorted.sort((a, b) => a.display_name.localeCompare(b.display_name));
-  return sorted;
-}
 
 export function matchesFilter(row: StaffRow, filter: Filter): boolean {
   switch (filter) {
@@ -243,11 +164,7 @@ export function formatRating(rating: number | null): string {
 }
 
 /**
- * §1.8: every date the office reads is a UK date, and it is spelled
- * `dd.mm.yyyy` — the scope's own examples ("13.12.2026", "12.07.2026
- * 14:42") and every date in staff.html, staff-profile.html and
- * candidate.html use dots, as does /compliance's `ukDate`. Intl's en-GB
- * would print slashes, so the parts are joined here.
+ * §1.8: every date the office reads is a UK date.
  *
  * Both shapes reach this. A `date` column arrives as `2026-07-12`, which
  * has no instant at all until one is chosen, and midday UTC is the choice
@@ -260,50 +177,12 @@ export function formatRating(rating: number | null): string {
 export function formatUkDate(iso: string): string {
   const at = new Date(iso.length === 10 ? `${iso}T12:00:00Z` : iso);
   if (Number.isNaN(at.getTime())) return '—';
-  const parts = ukParts(at);
-  return `${parts.day}.${parts.month}.${parts.year}`;
-}
-
-// A fixed table rather than Intl's `month: 'short'`: newer ICU builds write
-// September as "Sept" in en-GB and the wireframes write "Sep".
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/**
- * The Inactive tab's "Left" column (staff.html: "Wed 17 Sep 21:14"). A
- * leaver's stamp is the record of a decision already taken, so it is UK
- * time whoever reads it (§1.8) and the column header says so.
- */
-export function formatLeftAt(iso: string | null): string {
-  if (!iso) return '—';
-  const at = new Date(iso);
-  if (Number.isNaN(at.getTime())) return '—';
-  const parts = ukParts(at);
-  return `${parts.weekday} ${parts.day} ${MONTHS[Number(parts.month) - 1]} ${parts.hour}:${parts.minute}`;
-}
-
-function ukParts(
-  at: Date,
-): Record<'weekday' | 'day' | 'month' | 'year' | 'hour' | 'minute', string> {
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/London',
-    weekday: 'short',
+  return new Intl.DateTimeFormat('en-GB', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(at);
-  const get = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
-  return {
-    // "Sept"-style variance is a month problem; weekdays are stable in en-GB.
-    weekday: get('weekday'),
-    day: get('day'),
-    month: get('month'),
-    year: get('year'),
-    hour: get('hour'),
-    minute: get('minute'),
-  };
+    timeZone: 'Europe/London',
+  }).format(at);
 }
 
 /** What a verified settled-status share code says instead of a date (§2.5 pt 2). */

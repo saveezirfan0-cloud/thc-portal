@@ -16,23 +16,39 @@ import {
   eventFill,
   eventStatus,
   formatTimeIn,
+  needsDualZone,
   ukRoleWindow,
 } from '@thc/domain';
 import type { ListedEvent } from './data';
-import { formatDayShort, ukDateOf } from './calendar';
+
+/**
+ * A scheduled window as §1.8 displays it: UK time always, and a second
+ * "your time" line only when the viewer is not in Europe/London. The same
+ * helpers the dashboard and the check-in monitor use (`formatTimeIn`,
+ * `needsDualZone`); this only fixes the separator the /events screens use.
+ */
+export function scheduledWindowLines(
+  startsAt: Date,
+  endsAt: Date,
+  zone: string,
+): { uk: string; local: string | null } {
+  const uk = `${formatTimeIn(startsAt, UK_ZONE)} – ${formatTimeIn(endsAt, UK_ZONE)}`;
+  if (!needsDualZone(zone)) return { uk, local: null };
+  return { uk, local: `${formatTimeIn(startsAt, zone)} – ${formatTimeIn(endsAt, zone)} your time` };
+}
+
+/** A role on a list row, with its own window as instants for the zone line (§1.8). */
+export type EventRowRole = ListedEvent['roles'][number] & { startsAt: string; endsAt: string };
 
 export interface EventRow {
   id: string;
   title: string;
   date: string;
+  clientId: string;
   clientName: string;
   venueName: string;
   venueAddress: string;
-  geofenceRadiusM: number | null;
   poNumber: string;
-  onsiteContact: string;
-  /** When the event was cancelled, or null. The list prints its UK date. */
-  cancelledAt: string | null;
   cancelReason: string;
   status: EventStatus;
   fill: EventFill;
@@ -40,18 +56,11 @@ export interface EventRow {
   window: RoleSectionWindow | null;
   /** "07:00 – 23:30" in UK time, or "—". */
   windowLabel: string;
-  /** Set when the window runs past midnight, in Europe/London (§3.2). */
+  /** The derived window as ISO instants, for the "your time" line; null without roles. */
+  windowIso: { startsAt: string; endsAt: string } | null;
+  /** Set when the window runs past midnight: "ends Sat 20". */
   endsNextDay: boolean;
-  /** "ends Sat 20" — the list sub-line, named after the UK day (events.html). */
-  endsLabel: string | null;
-  roles: ListedEvent['roles'];
-}
-
-/** "cancelled by client 16 Sep — "event postponed to Q1"" (events.html). */
-export function cancelledLine(row: Pick<EventRow, 'cancelledAt' | 'cancelReason'>): string | null {
-  if (!row.cancelledAt) return null;
-  const day = formatDayShort(ukDateOf(new Date(row.cancelledAt)));
-  return row.cancelReason ? `cancelled ${day} — "${row.cancelReason}"` : `cancelled ${day}`;
+  roles: EventRowRole[];
 }
 
 /** Sort key: events within a day read in window order (§3.1 week view). */
@@ -62,19 +71,16 @@ function startedAt(row: EventRow): number {
 export function toEventRow(event: ListedEvent, now: Date = new Date()): EventRow {
   const sections = event.roles.map((role) => ukRoleWindow(event.date, role.start, role.end));
   const window = derivedEventWindow(sections);
-  const endDate = window ? ukDateOf(window.endsAt) : null;
 
   return {
     id: event.id,
     title: event.title,
     date: event.date,
+    clientId: event.clientId,
     clientName: event.clientName,
     venueName: event.venueName,
     venueAddress: event.venueAddress,
-    geofenceRadiusM: event.geofenceRadiusM,
     poNumber: event.poNumber,
-    onsiteContact: event.onsiteContact,
-    cancelledAt: event.cancelledAt,
     cancelReason: event.cancelReason,
     status: eventStatus(window, event.cancelledAt, now),
     fill: eventFill(event.roles),
@@ -82,20 +88,55 @@ export function toEventRow(event: ListedEvent, now: Date = new Date()): EventRow
     windowLabel: window
       ? `${formatTimeIn(window.startsAt, UK_ZONE)} – ${formatTimeIn(window.endsAt, UK_ZONE)}`
       : '—',
+    windowIso: window
+      ? { startsAt: window.startsAt.toISOString(), endsAt: window.endsAt.toISOString() }
+      : null,
     // The window is stored as instants, so "past midnight" is a comparison
-    // of LONDON civil dates against the event's own date (§1.8, §3.2). The
-    // UTC date was wrong at both BST edges: a 23:30–00:30 window was not
-    // flagged and a 00:30–08:00 one was.
-    endsNextDay: endDate !== null && endDate > event.date,
-    endsLabel: endDate !== null && endDate > event.date ? `ends ${formatDayShort(endDate)}` : null,
-    roles: event.roles,
+    // against the event's own date rather than a clock reading (§3.2).
+    endsNextDay: window
+      ? window.endsAt.toISOString().slice(0, 10) > utcDayOf(window.startsAt)
+      : false,
+    roles: event.roles.map((role, index) => ({
+      ...role,
+      startsAt: sections[index]!.startsAt.toISOString(),
+      endsAt: sections[index]!.endsAt.toISOString(),
+    })),
   };
+}
+
+function utcDayOf(instant: Date): string {
+  return instant.toISOString().slice(0, 10);
 }
 
 export function toEventRows(events: ListedEvent[], now: Date = new Date()): EventRow[] {
   return events
     .map((event) => toEventRow(event, now))
     .sort((a, b) => (a.date === b.date ? startedAt(a) - startedAt(b) : a.date < b.date ? -1 : 1));
+}
+
+export interface EventFilters {
+  /** `clients.id`, from the toolbar's Client select; '' for all. */
+  clientId: string;
+  status: string;
+  q: string;
+}
+
+/**
+ * The toolbar's filters (§3.1). Client matches on the id: two clients may
+ * share a display name (a hotel group's properties often do), and a match
+ * on the name showed both clients' events under either.
+ */
+export function filterEventRows(rows: EventRow[], filters: EventFilters): EventRow[] {
+  const needle = filters.q.trim().toLowerCase();
+  return rows.filter((row) => {
+    if (filters.clientId && row.clientId !== filters.clientId) return false;
+    if (filters.status && row.status !== filters.status) return false;
+    if (!needle) return true;
+    return [row.title, row.clientName, row.venueName, row.poNumber]
+      .join(' ')
+      .toLowerCase()
+      .includes(needle);
+  });
 }
 
 export interface DayBucket {

@@ -189,7 +189,7 @@ function shareCodeMeta(record: DocumentRecord): string {
 function verifiedMeta(record: DocumentRecord, state: DocumentState, today: string): string {
   const expires = record.expiresOn;
   if (state === 'not_needed') {
-    return 'No longer needed — your completion letter is approved (§4.5)';
+    return 'No longer needed — your completion letter is approved';
   }
   if (!expires) return 'Verified';
   if (state === 'expired') return `Expired ${formatDay(expires)}`;

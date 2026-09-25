@@ -35,26 +35,21 @@ async function signedInAs(): Promise<{ company: string | null; person: string | 
   const { data: auth } = await supabase.auth.getUser();
   if (!auth?.user) return { company: null, person: null };
 
-  // profiles carries the client's own row (full_name + client_id) and
-  // clients carries the company name. Both are readable by this role;
-  // neither carries money (§11.1).
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('full_name, client_id')
-    .eq('id', auth.user.id)
-    .maybeSingle();
+  // The person comes from their own profiles row (profiles_self). The
+  // company name comes from client_company_v, NOT from `clients`: the client
+  // role holds no policy on that table and must not be given one (ADR-0004),
+  // so reading it here always came back null (audit 24.09 §2.2). The view
+  // runs with owner rights and returns the caller's own company only
+  // (20260927120000, supabase/tests/570_client_company_view.sql).
+  const [{ data: profile }, { data: company }] = await Promise.all([
+    supabase.from('profiles').select('full_name').eq('id', auth.user.id).maybeSingle(),
+    supabase.from('client_company_v').select('name').maybeSingle(),
+  ]);
 
-  let company: string | null = null;
-  if (profile?.client_id) {
-    const { data: client } = await supabase
-      .from('clients')
-      .select('name')
-      .eq('id', profile.client_id)
-      .maybeSingle();
-    company = client?.name ?? null;
-  }
-
-  return { company, person: profile?.full_name ?? auth.user.email ?? null };
+  return {
+    company: company?.name ?? null,
+    person: profile?.full_name ?? auth.user.email ?? null,
+  };
 }
 
 export default async function ClientPortalLayout({ children }: { children: React.ReactNode }) {

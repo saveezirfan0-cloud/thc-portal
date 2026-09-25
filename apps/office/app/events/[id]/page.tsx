@@ -8,20 +8,19 @@ import {
   formatEventFill,
   formatOpen,
   isEditLocked,
+  isNotifiedOnCancel,
   orderSections,
 } from '@thc/domain';
 import { OfficeShell } from '../../_components/OfficeShell';
-import { formatDayLong } from '../calendar';
 import { ViewerZone } from '../_components/ViewerZone';
-import { ScheduledWindow } from '../_components/ScheduledWindow';
 import { StatusPill } from '../_components/EventViews';
+import { ScheduledWindow } from '../_components/ScheduledWindow';
 import { loadBoard } from './board-data';
-import { canToggleAutoAssign, cancelCounts, eventResult, formatResult } from './board-rules';
-import { RoleBoard } from './_components/RoleBoard';
+import { canToggleAutoAssign } from './board-model';
 import { AutoAssignSwitch } from './_components/AutoAssignSwitch';
+import { RoleBoard } from './_components/RoleBoard';
 import { CancelEvent } from './_components/CancelEvent';
 import { DocumentActions } from './_components/DocumentActions';
-import { DuplicateEvent } from './_components/DuplicateEvent';
 import '../shift-builder.css';
 import '../event-board.css';
 
@@ -40,10 +39,26 @@ export const metadata = { title: 'Event board · THC Back Office' };
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const event = await loadBoard(id);
+  const { event, problem } = await loadBoard(id);
+  // A read that FAILED is not a missing event: say what went wrong instead
+  // of a 404 that tells the manager the event does not exist.
+  if (problem) {
+    return (
+      <OfficeShell
+        activeHref="/events"
+        title="Event board"
+        crumbs={
+          <>
+            <Link href="/events">Scheduling</Link> / <b>Event board</b>
+          </>
+        }
+      >
+        <Alert tone="coral">{problem}</Alert>
+      </OfficeShell>
+    );
+  }
   if (!event) notFound();
 
-  const now = new Date();
   const sections = orderSections(
     event.sections.map((section) => ({ ...section, startsAt: new Date(section.startsAt) })),
   );
@@ -52,7 +67,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     endsAt: new Date(section.endsAt),
   }));
   const window = derivedEventWindow(windows);
-  const status = eventStatus(window, event.cancelledAt, now);
+  const status = eventStatus(window, event.cancelledAt);
   const fill = eventFill(
     event.sections.map((section) => ({
       headcount: section.headcount,
@@ -61,27 +76,23 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     })),
   );
   const open = formatOpen(fill);
-  const locked = isEditLocked(windows, now);
-  const dateLabel = formatDayLong(event.date);
-  const counts = cancelCounts(event.sections);
-  const result = status === 'completed' ? eventResult({ sections: event.sections }) : null;
+  const locked = isEditLocked(windows);
+  // Everyone Cancel event reaches (CANCEL_NOTIFIES): confirmed, invited and
+  // pending Radar applicants. A checked-in (`worked`) booking is not
+  // cancelled (§3.6), so it is not counted.
+  const attached = event.sections.reduce(
+    (sum, section) =>
+      sum +
+      section.confirmed.filter((b) => isNotifiedOnCancel(b.status)).length +
+      section.invited.length +
+      section.applied.length,
+    0,
+  );
 
   return (
     <OfficeShell
       activeHref="/events"
-      // event-board.html:119 — the status pill and the PO chip sit beside the h1.
-      title={
-        <span className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
-          {event.title}
-          <StatusPill status={status} />
-          {event.poNumber ? (
-            <span className="pochip">
-              <span className="k">PO number</span>
-              <span className="v">{event.poNumber}</span>
-            </span>
-          ) : null}
-        </span>
-      }
+      title={event.title}
       crumbs={
         <>
           <Link href="/events">Scheduling</Link> / <b>Event board</b>
@@ -89,32 +100,25 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       }
       timezone={<ViewerZone />}
       actions={
-        <span className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
-          {/* Editing is allowed only up to the event's start (§3.2); the
-              button stays, disabled, so the lock is visible (event-board.html:243). */}
-          {status === 'cancelled' ? null : locked ? (
-            <button className="btn sm" type="button" disabled title="editing locked at event start">
-              Edit
-            </button>
-          ) : (
+        <span className="row" style={{ gap: 8 }}>
+          {/* Editing is allowed only up to the event's start (§3.2). */}
+          {locked || status === 'cancelled' ? null : (
             <Link className="btn sm" href={`/events/${event.id}/edit`}>
               Edit
             </Link>
           )}
-          {/* §3.2: multi-day = separate events via Duplicate; a cancelled
-              event is re-run this way too (ShiftBuilder's own note). */}
-          <DuplicateEvent eventId={event.id} title={event.title} date={event.date} />
+          {/* §3.2: multi-day = separate events via Duplicate — roles, not staff. */}
+          <Link className="btn sm" href={`/events/new?from=${event.id}`}>
+            Duplicate
+          </Link>
           {/* §11.4. No document at all for a cancelled event (§3.3). */}
-          {status === 'cancelled' ? null : <DocumentActions eventId={event.id} status={status} />}
           {status === 'cancelled' ? null : (
-            <CancelEvent
+            <DocumentActions
               eventId={event.id}
-              title={event.title}
-              dateLabel={dateLabel}
-              counts={counts}
-              disabled={status === 'completed'}
+              started={status === 'ongoing' || status === 'completed'}
             />
           )}
+          {status === 'cancelled' ? null : <CancelEvent eventId={event.id} affected={attached} />}
         </span>
       }
     >
@@ -130,17 +134,17 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         <Panel
           title="Event"
           actions={
-            <span className="row" style={{ gap: 8, flexWrap: 'wrap' }}>
+            <span className="row" style={{ gap: 8 }}>
+              <StatusPill status={status} />
               <Pill tone={fill.open === 0 ? 'green' : 'amber'}>{formatEventFill(fill)}</Pill>
               {open ? <span className="muted sm">{open}</span> : null}
-              {/* §3.4: the event-level switch, through the Ongoing state. */}
-              {canToggleAutoAssign(status) ? (
-                <AutoAssignSwitch
-                  eventId={event.id}
-                  checked={event.autoAssign}
-                  label="Auto-assign · event level"
-                />
-              ) : null}
+              {/* §3.4: purple, default ON; both switches must be on for a round. */}
+              <AutoAssignSwitch
+                eventId={event.id}
+                checked={event.autoAssign}
+                disabled={!canToggleAutoAssign(status)}
+                label="Auto-assign · event level"
+              />
             </span>
           }
         >
@@ -149,49 +153,44 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               <Field label="Client">{event.clientName}</Field>
               <Field label="Venue">
                 {event.venueName}
-                <span className="sub">
-                  {event.venueAddress}
-                  {event.geofenceRadiusM ? ` · geofence ${event.geofenceRadiusM} m` : ''}
-                </span>
+                <span className="sub">{event.venueAddress}</span>
               </Field>
               <Field label="Event window">
-                {/* Scheduled, so both zones for a reader outside the UK (§1.8). */}
-                <span className="mono evwin">
-                  {window ? (
-                    <ScheduledWindow startsAt={window.startsAt} endsAt={window.endsAt} labelled />
-                  ) : (
-                    '—'
-                  )}
-                </span>
-                <span className="sub">
-                  {dateLabel} · earliest role start → latest role end (RULE-18)
+                {window ? (
+                  <ScheduledWindow
+                    className="win mono"
+                    lineClass="l2"
+                    startsAt={window.startsAt.toISOString()}
+                    endsAt={window.endsAt.toISOString()}
+                    suffix="UK time"
+                  />
+                ) : (
+                  <span className="mono">—</span>
+                )}
+                <span className="muted xs">
+                  {event.date} · earliest role start → latest role end (RULE-18)
                 </span>
               </Field>
-              <Field label="On-site contact">{event.onsiteContact || '—'}</Field>
+              <Field label="PO number">
+                <span className="mono">{event.poNumber || '—'}</span>
+              </Field>
             </div>
 
-            {/* §3.2's read-only checkmarks, kept visible after creation (§3.3). */}
+            {/* §3.2, kept visible after creation by §3.3. */}
             <div className="policies">
-              <span className="label">Client policies</span>
-              <span className="check">
-                <span className={`box ${event.paysBreaks ? 'on' : 'off'}`} />
-                Break policy —{' '}
-                {event.paysBreaks
-                  ? 'client pays breaks'
-                  : 'client does not pay breaks (staff log breaks)'}
+              <span>
+                <b>Break policy</b> — {event.paysBreaks ? 'client pays' : 'client does not pay'}
               </span>
-              <span className="check">
-                <span className={`box ${event.paysBuffer ? 'on' : 'off'}`} />
-                Buffer policy —{' '}
-                {event.paysBuffer
-                  ? 'client pays for the buffer'
-                  : 'strict: surplus turned away at check-in (RULE-15)'}
+              <span>
+                <b>Buffer policy</b> — {event.paysBuffer ? 'client pays' : 'strict (RULE-15)'}
               </span>
               <span className="muted">Set at client level; read-only here.</span>
             </div>
 
-            {result ? <Field label="Result">{formatResult(result)}</Field> : null}
-            {event.notes ? <Field label="Notes for staff">{event.notes}</Field> : null}
+            {event.onsiteContact ? (
+              <Field label="On-site contact">{event.onsiteContact}</Field>
+            ) : null}
+            {event.notes ? <Field label="Notes">{event.notes}</Field> : null}
           </div>
         </Panel>
 
@@ -206,11 +205,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               section={event.sections.find((s) => s.id === section.id)!}
               status={status}
               eventId={event.id}
-              eventTitle={event.title}
-              eventDateLabel={dateLabel}
               clientName={event.clientName}
-              escalationRadiusMiles={event.escalationRadiusMiles}
-              now={now}
+              eventAutoAssign={event.autoAssign}
+              weights={event.weights}
+              payrollExported={Boolean(event.payrollExportedAt)}
             />
           ))
         )}

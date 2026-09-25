@@ -61,16 +61,18 @@ begin
   if p_staff is null or p_staff = v_self then
     return v_self;
   end if;
-  -- Only the platform itself (a job, an Edge Function) may act for a
-  -- named worker; an admin session may look (staff_caller) but not act.
-  if coalesce(auth.role(), '') = 'service_role' then
+  -- Only the platform itself may act for a named worker: a job or an Edge
+  -- Function (the service role), or a direct database connection with no
+  -- PostgREST role at all (a migration, a fixture, an operator at psql).
+  -- An admin session may look (staff_caller) but not act.
+  if coalesce(auth.role(), '') = 'service_role' or auth.role() is null then
     return p_staff;
   end if;
   raise exception 'not_your_worker' using errcode = '42501';
 end $$;
 
 comment on function public.staff_writer(uuid) is
-  'The subject of a worker-initiated WRITE: the caller''s own staff row, or p_staff for the service role only. An admin may read a worker''s screens through staff_caller() but never act as them (Invariant 4).';
+  'The subject of a worker-initiated WRITE: the caller''s own staff row; p_staff for the service role or a direct connection only. A signed-in caller naming another worker — an admin included — is refused (Invariant 4); apply_to_shift() is the one exception, argued in its own comment.';
 
 revoke execute on function public.staff_writer(uuid) from public, anon, authenticated;
 
@@ -78,7 +80,13 @@ create or replace function apply_to_shift(p_shift uuid, p_staff uuid default nul
 returns jsonb language plpgsql security definer
 set search_path = public, extensions as $$
 declare
-  v_me     uuid := staff_writer(p_staff);
+  v_me     uuid := case when p_staff is not null and current_app_role() = 'admin'
+                        -- §3.3: the office lodges an application from the event
+                        -- board on a worker's behalf (20260927100000); the row
+                        -- still lands as applied, never confirmed, so nothing is
+                        -- decided for the worker. Evidence uploads below stay
+                        -- the worker's own (Invariant 4).
+                        then p_staff else staff_writer(p_staff) end;
   sr       shift_requirements;
   ev       events;
   v_gate   text;
@@ -141,7 +149,7 @@ begin
 end $$;
 
 comment on function apply_to_shift(uuid, uuid) is
-  '§10.4 Radar self-application. The caller''s OWN row (staff_writer): an admin cannot apply in a worker''s name — the office invites (§3.4) or accepts an application (ADR-0023). Full is measured against headcount; every refusal is a reason, never an exception.';
+  '§10.4 Radar self-application. The caller''s OWN row (staff_writer), or a worker named by the office from the event board (§3.3); any other caller naming another worker is refused. Full is measured against headcount; every refusal is a reason, never an exception.';
 
 create or replace function public.submit_document_upload(
   p_doc_type   text,

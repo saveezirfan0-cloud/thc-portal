@@ -95,7 +95,7 @@ export function ContractStep({
           </div>
           <div className="xs muted">
             A copy of the signed agreement is kept on your profile. The timestamp is always shown in
-            UK time, wherever you are (§1.8).
+            UK time, wherever you are.
           </div>
         </>
       ) : null}

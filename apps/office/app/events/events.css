@@ -130,38 +130,11 @@
   border-radius: var(--r-pill);
   white-space: nowrap;
 }
-/* Green only when nothing is open: an ongoing event with a re-opened slot
-   ("9 of 10", §3.3) stays amber — the wireframe's ongoing chip is green
-   because it is "10 of 10", not because it is ongoing. The cyan accent bar
-   above is what marks ongoing. */
-.wchip.full .f {
+.wchip.full .f,
+.wchip.ongoing .f {
   border-color: var(--green-line);
   color: var(--green-ink);
   background: var(--green-dim);
-}
-/* The ongoing pill inside the name line, at the chip's scale (events.html:271). */
-.wchip .n {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-6);
-  flex-wrap: wrap;
-}
-.wchip .n .pill {
-  height: 16px;
-  font-size: 9px;
-  padding: 0 var(--sp-6);
-}
-/* The "your time" second line under a window (§1.8). */
-.wchip .w .l2,
-.dayrow .w .l2,
-.tbl .l2 {
-  display: block;
-  color: var(--muted);
-  font-size: 10px;
-}
-.wchip .w > span:first-child {
-  display: flex;
-  flex-direction: column;
 }
 
 /* ---- day: one wide row per event ------------------------------------ */
@@ -184,32 +157,6 @@
 }
 .dayrow.cancelled {
   opacity: 0.5;
-}
-/* The label row above the day rows (events.html:210): same columns, no box. */
-.dayrow.head {
-  background: transparent;
-  border: 0;
-  padding: 0 14px 6px;
-}
-.dayrow.head + .dayrow {
-  border-top: 1px solid var(--line);
-}
-.dayrow .sub {
-  display: block;
-  font-size: 11px;
-  color: var(--muted);
-}
-.dayrow .roleline {
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-/* The month toolbar's legend chips are a key, not links. */
-.toolbar .legend-chips {
-  gap: 6px;
-}
-.toolbar .legend-chips .evchip {
-  pointer-events: none;
 }
 .dayrow .w {
   font-family: var(--font-num);

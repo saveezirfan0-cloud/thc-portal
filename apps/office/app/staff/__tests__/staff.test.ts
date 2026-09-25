@@ -173,18 +173,18 @@ describe('the formats the wireframe prints', () => {
 
 describe('formatUkDate (§1.8)', () => {
   it('reads a date column, which has no instant of its own', () => {
-    expect(formatUkDate('2026-07-12')).toBe('12.07.2026');
+    expect(formatUkDate('2026-07-12')).toBe('12/07/2026');
   });
 
   it('reads a timestamp too — the profile passes joined_at and granted_at', () => {
     // Appending a second time to an ISO instant built
     // "2026-07-12T09:00:00ZT12:00:00Z" and crashed the page on render.
-    expect(formatUkDate('2026-07-12T09:00:00Z')).toBe('12.07.2026');
+    expect(formatUkDate('2026-07-12T09:00:00Z')).toBe('12/07/2026');
   });
 
   it('keeps the UK calendar day across midnight UTC', () => {
     // 23:30 UTC on 11 July is 00:30 on 12 July in London (BST).
-    expect(formatUkDate('2026-07-11T23:30:00Z')).toBe('12.07.2026');
+    expect(formatUkDate('2026-07-11T23:30:00Z')).toBe('12/07/2026');
   });
 
   it('gives a dash rather than Invalid Date for something unparseable', () => {
@@ -197,15 +197,15 @@ describe('formatDateRange (§9.6 term dates)', () => {
     // [2026-12-13,2027-01-10) excludes the upper bound, so the holiday
     // ends on the 9th — printing the 10th would give the worker a day of
     // 48h cap they do not have.
-    expect(formatDateRange('[2026-12-13,2027-01-10)')).toBe('13.12.2026 – 09.01.2027');
+    expect(formatDateRange('[2026-12-13,2027-01-10)')).toBe('13/12/2026 – 09/01/2027');
   });
 
   it('reads an inclusive upper bound as itself', () => {
-    expect(formatDateRange('[2026-12-13,2027-01-10]')).toBe('13.12.2026 – 10.01.2027');
+    expect(formatDateRange('[2026-12-13,2027-01-10]')).toBe('13/12/2026 – 10/01/2027');
   });
 
   it('reads an exclusive lower bound as the day after', () => {
-    expect(formatDateRange('(2026-12-13,2027-01-10]')).toBe('14.12.2026 – 10.01.2027');
+    expect(formatDateRange('(2026-12-13,2027-01-10]')).toBe('14/12/2026 – 10/01/2027');
   });
 
   it('hands back anything it cannot parse rather than inventing dates', () => {
@@ -217,7 +217,7 @@ describe('formatDateRange (§9.6 term dates)', () => {
 describe('capReason with the date the band ends (§9.6, §8)', () => {
   it('names the date a term cap holds until', () => {
     expect(capReason('student_term_20', 20, '2026-12-13')).toBe(
-      '20 h — term time until 13.12.2026',
+      '20 h — term time until 13/12/2026',
     );
   });
 
@@ -233,7 +233,7 @@ describe('capReason with the date the band ends (§9.6, §8)', () => {
 describe('rtwUntilLabel (§2.5 pt 2)', () => {
   it('prints the date read off the gov.uk report', () => {
     expect(rtwUntilLabel({ right_to_work_until: '2027-03-31', rtw_no_time_limit: false })).toBe(
-      '31.03.2027',
+      '31/03/2027',
     );
   });
 

@@ -20,7 +20,7 @@ supabase gen types typescript --linked > packages/db/src/types.ts
 Dashboard steps (one-off):
 - Enable extensions: `postgis`, `pg_cron`, `pg_net` (Database → Extensions).
 - ~~Storage buckets (private): `documents`, `photos`, `reports`, `timesheets`.~~ **No longer a manual step.** `20260922183015_storage_buckets_and_policies.sql` creates all four with `public = false` and re-asserts that on every deploy, so a bucket flipped public in the dashboard is flipped back. `320_storage.sql` fails if any bucket in the project is public — `documents` holds passport scans and right-to-work evidence, and a public Supabase bucket serves every object from an unauthenticated URL. Only `photos` carries a policy for a user JWT (a worker writes and reads their own `<staff_id>/…` folder, an admin reads any); `documents`, `reports` and `timesheets` are deny-all and are reached only by server code holding the service key.
-- Auth: enable Email provider, disable sign-ups (workers are invited; admins/clients are created by an admin), set Site URL per app, add redirect URLs for `/activate` and `/auth/reset`.
+- Auth: enable Email provider, disable sign-ups (workers are invited; admins/clients are created by an admin), set Site URL per app, add redirect URLs for `/activate` and each app's `/auth/callback**` — the `**` matters, the link carries `?next=/reset` (Staff App, Back Office and Client Portal all send a reset link that lands there, then on `/reset`).
 - Integrations → GitHub: connect the repo and turn on **Supabase Branching** so every PR gets a preview database with migrations applied.
 - Edge Function secrets: `supabase secrets set GEMINI_API_KEY=… WILLO_API_KEY=… WILLO_WEBHOOK_SECRET=… RESEND_API_KEY=… VAPID_PUBLIC_KEY=… VAPID_PRIVATE_KEY=… MAPBOX_TOKEN=…`
 - Cron: applied by migration `0002_cron.sql` using `cron.schedule(...)` + `net.http_post` to the function URLs with the service-role key stored in Vault.
@@ -36,7 +36,7 @@ vercel link --project thc-office   # cwd apps/office
 vercel link --project thc-staff    # cwd apps/staff
 vercel link --project thc-client   # cwd apps/client
 ```
-Per project env vars (Production + Preview): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server only), `NEXT_PUBLIC_MAPBOX_TOKEN`, `RESEND_API_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `APP_TZ=Europe/London`.
+Per project env vars (Production + Preview): `NEXT_PUBLIC_OFFICE_URL` (office) / `NEXT_PUBLIC_CLIENT_URL` (client) for the reset link, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` (server only), `NEXT_PUBLIC_MAPBOX_TOKEN`, `RESEND_API_KEY`, `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `APP_TZ=Europe/London`.
 - Vercel → Integrations → **Supabase**: links preview deployments to Supabase branches automatically (env vars swapped per PR).
 - Domains: `office.` / `app.` / `clients.` on THC's domain; `app.` must be HTTPS with a valid cert for PWA install + push (Vercel does this).
 - The Vercel MCP connector in Claude (`list_projects`, `deploy_to_vercel`, `get_deployment_build_logs`) works once the Vercel account is connected in claude.ai → Connectors; same for the Supabase connector (`apply_migration`, `execute_sql`, `deploy_edge_function`). After connecting, a Claude session can run migrations and read build logs directly.

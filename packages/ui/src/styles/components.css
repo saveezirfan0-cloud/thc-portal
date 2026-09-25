@@ -833,7 +833,7 @@ table.tbl {
 .seg button,
 .seg a {
   padding: 0 var(--sp-16);
-  height: var(--seg-h);
+  height: 32px;
   display: inline-flex;
   align-items: center;
   gap: var(--sp-6);
@@ -887,7 +887,7 @@ table.tbl {
 }
 .seg.sm button,
 .seg.sm a {
-  height: var(--seg-h-sm);
+  height: 28px;
   padding: 0 var(--sp-12);
   font-size: var(--fs-12);
 }
@@ -1551,11 +1551,9 @@ textarea.input {
 .kcard:hover {
   border-color: var(--cyan-line);
 }
-/* §2.12 duplicate check: a returning applicant is flagged in amber, the same
-   tone as the "Returning applicant" pill the card carries — purple is
-   reserved for Applied / Auto-Assign (docs/07). */
+/* §2.12 duplicate check: a returning applicant is flagged in purple. */
 .kcard.returning {
-  border-color: var(--amber-ink);
+  border-color: var(--purple-line);
 }
 
 .modal-back {
@@ -1897,31 +1895,6 @@ textarea.input {
   min-height: 100dvh;
   display: flex;
   flex-direction: column;
-}
-/* Touch targets (§1.2, the design-engine brief): on the Staff App every
-   control is at least --tap-min tall. The frame every in-app screen sits in,
-   the gallery mock of it, and a document that names itself the Staff App
-   (`<html data-app="staff">`, for the public pages that render outside the
-   frame) re-point the metric tokens, so a button, an input, a segment and
-   the small button keep their type and padding and only grow to the finger.
-   `.check` has no height of its own, so it takes the floor as symmetric
-   padding: the box still sits on the first line of a multi-line label, and
-   the transparent native input moves down with it. */
-.app-frame,
-.phone,
-[data-app='staff'] {
-  --btn-h: var(--tap-min);
-  --btn-h-sm: var(--tap-min);
-  --input-h: var(--tap-min);
-  --seg-h: var(--tap-min);
-  --seg-h-sm: var(--tap-min);
-}
-:is(.app-frame, .phone, [data-app='staff']) .check {
-  min-height: var(--tap-min);
-  padding-block: calc((var(--tap-min) - 18px) / 2);
-}
-:is(.app-frame, .phone, [data-app='staff']) .check .check-input {
-  top: calc((var(--tap-min) - 18px) / 2);
 }
 .statusbar {
   display: flex;

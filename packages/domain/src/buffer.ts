@@ -15,26 +15,21 @@ export interface RoleSectionCounts {
   invited: number;
 }
 
-/**
- * "6 (+1)" — and "2 (+0)" when there is no buffer, never a bare "2".
- *
- * §3.2: 'In the list / calendar, headcount reads "N (+buffer)"', and the
- * list rows on `events.html` (Host 1 (+0), Chef 2 (+0)) and the dashboard
- * (`dashboard.html`, Chef 2 (+0)) spell the zero out, so a manager can tell
- * "2 with no cover" from a number that has not been set. Never the total.
- */
+/** "6 (+1)", or plain "6" when there is no buffer. */
 export function formatAllocation(headcount: number, buffer: number): string {
-  return `${headcount} (+${buffer})`;
+  return buffer > 0 ? `${headcount} (+${buffer})` : String(headcount);
 }
 
 /**
- * The same pair, kept under the name the Shift Builder uses (§3.2,
- * `shift-builder.html`), where headcount and buffer are edited side by side.
- * It is one rendering everywhere; the two names exist so a caller says which
- * screen it is on.
+ * The same pair with the buffer always spelled out, even at zero: "2 (+0)".
+ *
+ * The Shift Builder shows this form (§3.2, `shift-builder.html`) because the
+ * manager is editing headcount and buffer side by side and needs to see which
+ * number is which. Lists and the calendar use `formatAllocation`, which drops
+ * a zero buffer. Neither ever renders the total.
  */
 export function formatAllocationPair(headcount: number, buffer: number): string {
-  return formatAllocation(headcount, buffer);
+  return `${headcount} (+${buffer})`;
 }
 
 /** "3 (+1) = 4" — what auto-assign fills up to, with the sum kept visible. */

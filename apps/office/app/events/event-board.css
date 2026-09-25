@@ -101,105 +101,108 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* A scheduled window: UK on the first line, "your time" under it (§1.8). */
+.win {
+  display: inline-block;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+.win .l2 {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-11);
+}
+
+/* "Pay £19.00 · final £21.29 · charge £30.69 · +£9.40/h" (§3.3, §9.8). */
+.rate b {
+  color: var(--text);
+  font-weight: 500;
+  font-family: var(--font-mono);
+}
+
+/* The Radar "Applied 2h ago" marker (§3.3). */
+.applied {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--fs-10);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 1px var(--sp-6);
+  border: 1px solid var(--purple-line);
+  border-radius: var(--r-pill);
+  color: var(--purple-ink);
+  background: var(--purple-dim);
+  white-space: nowrap;
+}
+
+/* The pool's search, application-status filter and sort. */
+.pooltools {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  flex-wrap: wrap;
+}
+.pooltools .search .input,
+.pooltools select.input {
+  height: 28px;
+  font-size: var(--fs-12);
+}
+.pooltools .search .input {
+  width: 200px;
+}
+.pooltools select.input {
+  width: 160px;
+}
+
+/* Where wave 1 ends and wave 2 begins (RULE-17). */
+.prow.wave-break {
+  border-top: 1px dashed var(--purple);
+}
+
+/* A score and its per-factor breakdown on hover or focus (§3.3, §6). */
+.score-tip {
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dotted var(--muted);
+}
+.score-tip:focus-visible {
+  outline: 2px solid var(--focus-line);
+  outline-offset: 2px;
+}
+.score-tip .tipbox {
+  display: none;
+  position: absolute;
+  right: 0;
+  top: calc(100% + var(--sp-6));
+  z-index: 20;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-8) var(--sp-12);
+  background: var(--panel);
+  border: 1px dashed var(--purple-line);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-card);
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  color: var(--text);
+  white-space: nowrap;
+}
+.score-tip .tipbox .k {
+  color: var(--purple-ink);
+}
+.score-tip:hover .tipbox,
+.score-tip:focus .tipbox,
+.score-tip:focus-within .tipbox {
+  display: flex;
+}
+
 /* The event header's read-only policy checkmarks (§3.2, kept visible §3.3). */
 .policies {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
   font-size: 12px;
-}
-.policies .check {
-  cursor: default;
-  align-items: center;
-}
-.policies .box.off {
-  border-color: var(--line);
-  background: var(--panel-2);
-}
-
-/* The PO chip beside the title (event-board.html:119). */
-.pochip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  border: 1px solid var(--cyan-line);
-  background: var(--cyan-dim);
-  padding: 3px 10px;
-  font-family: var(--font-num);
-  font-size: 11px;
-  letter-spacing: 0.08em;
-  border-radius: var(--r-pill);
-}
-.pochip .k {
-  text-transform: uppercase;
-  color: var(--muted);
-  font-size: 9.5px;
-}
-.pochip .v {
-  color: var(--cyan-ink);
-  font-weight: 600;
-}
-
-/* A no-show row is tinted (event-board.html:50); a removed worker's row
-   keeps its place, italic and muted (§1.7). */
-.prow.noshow {
-  background: var(--coral-dim);
-}
-.prow.deleted .who .n {
-  color: var(--muted);
-  font-style: italic;
-}
-
-/* The "Applied" marker — docs/07: Applied is purple, mono, uppercase. */
-.applied {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-family: var(--font-num);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  padding: 1px 6px;
-  border: 1px solid var(--purple-line);
-  color: var(--purple-ink);
-  background: var(--purple-dim);
-  text-transform: uppercase;
-  border-radius: var(--r-pill);
-  white-space: nowrap;
-}
-
-/* Check-in / check-out stamps and the payable line on a row (RULE-01). */
-.stamp {
-  font-family: var(--font-num);
-  font-size: 11.5px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-.stamp b {
-  color: var(--text);
-  font-weight: 600;
-}
-
-/* A role header's scheduled window carries its "your time" line (§1.8). */
-.rsh-win .l2,
-.evwin .l2 {
-  display: block;
-  color: var(--muted);
-  font-size: 10.5px;
-}
-.rsh-rate b {
-  color: var(--text);
-  font-weight: 500;
-  font-family: var(--font-num);
-}
-
-/* The Cancel event modal's numbered consequences (event-board.html:360). */
-.consq {
-  margin: 0;
-  padding-left: 22px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 12.5px;
 }
 
 @media (max-width: 900px) {

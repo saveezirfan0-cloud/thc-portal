@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { checkInWindow, distanceM, formatDistance, shiftPhase } from '../phase';
+import {
+  checkInWindow,
+  distanceM,
+  formatDistance,
+  isStaticPhase,
+  shiftPhase,
+  shiftScreenReachable,
+} from '../phase';
 
 /** 17:00–23:30 UK on 14 June 2026 (BST). */
 const START = '2026-06-14T16:00:00Z';
@@ -7,12 +14,14 @@ const END = '2026-06-14T22:30:00Z';
 const at = (minFromStart: number) => new Date(Date.parse(START) + minFromStart * 60_000);
 
 const shift = (over: Partial<Parameters<typeof shiftPhase>[0]['shift']> = {}) => ({
-  status: 'confirmed',
   startsAt: START,
   endsAt: END,
   confirmedAt: '2026-06-12T09:00:00Z',
   checkInAt: null,
   checkOutAt: null,
+  status: 'confirmed' as const,
+  cancelCause: null,
+  eventCancelledAt: null,
   noCheckoutOpen: false,
   ...over,
 });
@@ -36,69 +45,112 @@ describe('§5.1 which state the shift screen is in', () => {
   });
 
   it('shows the on-shift screen once checked in, and the break state while away', () => {
-    const on = shift({ status: 'worked', checkInAt: START });
+    const on = shift({ checkInAt: START });
     expect(shiftPhase({ shift: on, openBreak: false, now: at(120) })).toBe('on_shift');
     expect(shiftPhase({ shift: on, openBreak: true, now: at(120) })).toBe('on_break');
   });
 
   it('locks check-out four hours after the end, where RULE-02 takes over', () => {
-    const on = shift({ status: 'worked', checkInAt: START });
+    const on = shift({ checkInAt: START });
     // 390 minutes is the shift; +240 is the RULE-02 boundary.
     expect(shiftPhase({ shift: on, openBreak: false, now: at(390 + 239) })).toBe('on_shift');
-    expect(shiftPhase({ shift: on, openBreak: false, now: at(390 + 240) })).toBe(
-      'check_out_locked',
-    );
+    expect(shiftPhase({ shift: on, openBreak: false, now: at(390 + 240) })).toBe('no_checkout');
+    // A break left running does not keep the check-out button alive.
+    expect(shiftPhase({ shift: on, openBreak: true, now: at(390 + 240) })).toBe('no_checkout');
   });
 
   it('is closed once a finish time exists, however it was recorded', () => {
-    const done = shift({ status: 'worked', checkInAt: START, checkOutAt: END });
+    const done = shift({ checkInAt: START, checkOutAt: END });
     expect(shiftPhase({ shift: done, openBreak: false, now: at(1000) })).toBe('closed');
-  });
-
-  /**
-   * RULE-02's second trigger: check-out pressed off-site with no on-site
-   * fix. `check_out()` writes `check_out_at` = the check-in and raises the
-   * violation on the press, so the row LOOKS closed — and rendered the
-   * confirmation with nothing on it. The unresolved violation outranks the
-   * stamp: the worker sees the "we didn't receive your check-out" screen
-   * until a manager enters the real finish, and the card stays (§10.4).
-   */
-  it('shows the No check-out screen while the violation is unresolved, stamp or no stamp', () => {
-    const secondTrigger = shift({
-      status: 'worked',
-      checkInAt: START,
-      checkOutAt: START,
-      noCheckoutOpen: true,
-    });
-    expect(shiftPhase({ shift: secondTrigger, openBreak: false, now: at(400) })).toBe(
-      'check_out_locked',
-    );
-    // Resolved: the manager's finish is the check-out and the shift is closed.
-    const resolved = shift({
-      status: 'worked',
-      checkInAt: START,
-      checkOutAt: END,
-      noCheckoutOpen: false,
-    });
-    expect(shiftPhase({ shift: resolved, openBreak: false, now: at(1000) })).toBe('closed');
-  });
-
-  /**
-   * RULE-15: `attempt_check_in` moved the booking to `turned_away` and
-   * logged no check-in. Read from the time alone the screen was back in
-   * `check_in` on the next render, offering a button the RPC then refused
-   * ("This shift is not confirmed"). The status is terminal.
-   */
-  it('is a terminal turn-away once the strict buffer sent the worker home', () => {
-    const away = shift({ status: 'turned_away' });
-    expect(shiftPhase({ shift: away, openBreak: false, now: at(-2) })).toBe('turned_away');
-    expect(shiftPhase({ shift: away, openBreak: false, now: at(60) })).toBe('turned_away');
   });
 
   it('quotes the window the worker is told about', () => {
     const { opens, locks } = checkInWindow(START);
     expect(opens.toISOString()).toBe('2026-06-14T15:30:00.000Z');
     expect(locks.toISOString()).toBe('2026-06-14T16:30:00.000Z');
+  });
+});
+
+describe('§10.4 the three dead ends replace the shift screen', () => {
+  it('opens the static screen for a cancelled event (N12), whatever the clock says', () => {
+    const cancelled = shift({
+      status: 'cancelled',
+      cancelCause: 'event_cancelled',
+      eventCancelledAt: '2026-06-13T09:00:00Z',
+    });
+    // Inside the check-in window, where the live screen would offer the button.
+    expect(shiftPhase({ shift: cancelled, openBreak: false, now: at(-10) })).toBe(
+      'event_cancelled',
+    );
+    expect(shiftPhase({ shift: cancelled, openBreak: false, now: at(-3000) })).toBe(
+      'event_cancelled',
+    );
+  });
+
+  it('opens it for a cancelled event even before the booking row has caught up', () => {
+    const cancelled = shift({ eventCancelledAt: '2026-06-13T09:00:00Z' });
+    expect(shiftPhase({ shift: cancelled, openBreak: false, now: at(-10) })).toBe(
+      'event_cancelled',
+    );
+  });
+
+  it('opens the static screen for an office withdrawal (N10b)', () => {
+    const withdrawn = shift({ status: 'cancelled', cancelCause: 'office_withdraw' });
+    expect(shiftPhase({ shift: withdrawn, openBreak: false, now: at(-10) })).toBe('withdrawn');
+  });
+
+  it('opens it for the 12:05 release too (N6b)', () => {
+    const released = shift({ status: 'cancelled', cancelCause: 'ready_cutoff' });
+    expect(shiftPhase({ shift: released, openBreak: false, now: at(-10) })).toBe('withdrawn');
+  });
+
+  it('opens it for a raised No check-out even though a finish was stamped (RULE-02)', () => {
+    // check_out() with no on-site fix stamps the check-in as the finish AND
+    // raises the violation; the worker must see the static screen, not
+    // "Shift complete" with a zero-length shift.
+    const raised = shift({
+      status: 'worked',
+      checkInAt: START,
+      checkOutAt: START,
+      noCheckoutOpen: true,
+    });
+    expect(shiftPhase({ shift: raised, openBreak: false, now: at(200) })).toBe('no_checkout');
+  });
+
+  it('marks exactly those three as static', () => {
+    expect(isStaticPhase('event_cancelled')).toBe(true);
+    expect(isStaticPhase('withdrawn')).toBe(true);
+    expect(isStaticPhase('no_checkout')).toBe(true);
+    for (const live of ['before_window', 'check_in', 'locked', 'on_shift', 'on_break', 'closed']) {
+      expect(isStaticPhase(live as Parameters<typeof isStaticPhase>[0])).toBe(false);
+    }
+  });
+});
+
+describe('which bookings /shifts/:id shows at all', () => {
+  it('shows a booked shift and the three dead ends', () => {
+    expect(shiftScreenReachable(shift())).toBe(true);
+    expect(shiftScreenReachable(shift({ status: 'worked' }))).toBe(true);
+    expect(
+      shiftScreenReachable(shift({ status: 'cancelled', cancelCause: 'office_withdraw' })),
+    ).toBe(true);
+    expect(
+      shiftScreenReachable(
+        shift({
+          status: 'cancelled',
+          cancelCause: 'event_cancelled',
+          eventCancelledAt: '2026-06-13T09:00:00Z',
+        }),
+      ),
+    ).toBe(true);
+  });
+
+  it('shows nothing for the worker’s own cancel or a lapsed invitation', () => {
+    expect(shiftScreenReachable(shift({ status: 'cancelled', cancelCause: 'self_cancel' }))).toBe(
+      false,
+    );
+    expect(shiftScreenReachable(shift({ status: 'closed', cancelCause: 'declined' }))).toBe(false);
+    expect(shiftScreenReachable(shift({ status: 'applied' }))).toBe(false);
   });
 });
 

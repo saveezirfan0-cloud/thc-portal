@@ -16,7 +16,7 @@
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(74);
+select plan(73);
 
 -- ---------------------------------------------------------------------
 -- Fixtures
@@ -127,16 +127,19 @@ insert into client_qualifications (client_id, role_id, staff_id) values
 -- and already holds 16 h in the same Mon–Sun week as s1. s1 is 8 h.
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
                                 charge_rate, pay_rate, allocation_per_hour)
--- The 16 h sit on the Monday of s1's week — unless s1 IS that Monday (a run
--- on a Friday), when they move to the Tuesday so the two never overlap:
--- an overlap would trip booked_elsewhere first and hide the cap.
 values ('a5a5a5a5-0000-4000-8000-00000000000a', :'ev2', :'ro',
-        date_trunc('week', (now() + interval '10 days'))
-          + (case when (now() + interval '10 days')::date = date_trunc('week', (now() + interval '10 days'))::date
-                  then interval '1 day' else interval '0 day' end) + interval '1 hour',
-        date_trunc('week', (now() + interval '10 days'))
-          + (case when (now() + interval '10 days')::date = date_trunc('week', (now() + interval '10 days'))::date
-                  then interval '1 day' else interval '0 day' end) + interval '17 hours',
+        -- Same Mon–Sun UK week as s1, but at least two days away from it: Friday
+        -- when s1 falls Mon–Wed, else Monday. Pinning it to Monday 01:00 made the
+        -- fixture OVERLAP s1 whenever the run was ten days before a Monday small
+        -- hour, and the overlap gate then answered before the hours gate.
+        (date_trunc('week', (now() + interval '10 days') at time zone 'Europe/London')
+         + case when extract(isodow from (now() + interval '10 days') at time zone 'Europe/London') <= 3
+                then interval '4 days' else interval '0 days' end
+         + interval '1 hour') at time zone 'Europe/London',
+        (date_trunc('week', (now() + interval '10 days') at time zone 'Europe/London')
+         + case when extract(isodow from (now() + interval '10 days') at time zone 'Europe/London') <= 3
+                then interval '4 days' else interval '0 days' end
+         + interval '17 hours') at time zone 'Europe/London',
         9, 0, 22.97, 14.00, 9);
 insert into bookings (shift_id, staff_id, status, source, confirmed_at)
 values ('a5a5a5a5-0000-4000-8000-00000000000a', :'capped', 'confirmed', 'manual', now());
@@ -296,15 +299,7 @@ select is(decline_invite(:'inv')->>'reason', 'not_invited',
 
 delete from bookings where id = :'inv';
 
--- Radar self-apply, and its live re-check. A write is the worker's OWN
--- (staff_writer, 20260926131000): the admin session this file has been
--- using cannot apply in a worker's name — the office invites (§3.4) or
--- accepts an application (ADR-0023) — so the calls below run as the worker.
-select throws_ok(
-  format('select apply_to_shift(%L, %L)', :'s1', :'me'),
-  '42501', 'not_your_worker',
-  'an admin cannot lodge a Radar application in a worker''s name — the office''s route onto a shift is invite_worker()');
-set local "request.jwt.claims" = '{"sub":"a7a7a7a7-0000-4000-8000-000000000002","role":"authenticated"}';
+-- Radar self-apply, and its live re-check.
 select is(apply_to_shift(:'s1', :'me')->>'ok', 'true', '§10.4: a worker applies for an open shift');
 select is((select status::text from bookings where shift_id = :'s1' and staff_id = :'me'), 'applied',
   'applying records an application, never a confirmation — the office still decides');
@@ -341,12 +336,8 @@ select is(apply_to_shift(:'s1', :'me')->>'reason', 'full',
   '"Sorry, this shift is now full" — measured against headcount, never headcount + buffer');
 delete from bookings where shift_id = :'s1' and staff_id in (:'mate', :'blk');
 
--- `capped` has no login of their own; the platform (service role) is the
--- one caller staff_writer lets act for a named worker.
-set local "request.jwt.claims" = '{"role":"service_role"}';
 select is(apply_to_shift(:'s1', :'capped')->>'reason', 'hours_limit',
   'RULE-20 blocks Apply the same way it blocks Accept, with the reason the "Limit Reached" label reads');
-set local "request.jwt.claims" = '{"sub":"a7a7a7a7-0000-4000-8000-000000000002","role":"authenticated"}';
 
 -- Stage 3 (§3.5) and the N11 re-confirmation.
 insert into bookings (id, shift_id, staff_id, status, source, confirmed_at, day_before_confirmed_at)
@@ -443,8 +434,6 @@ select ok(
   'both of the event''s sections are on Radar before anything bars the worker');
 
 -- RULE-04: self-cancelling off ONE section takes the whole EVENT away.
--- (Applying is the worker's own act — staff_writer — so as the worker.)
-set local "request.jwt.claims" = '{"sub":"a7a7a7a7-0000-4000-8000-000000000002","role":"authenticated"}';
 insert into bookings (shift_id, staff_id, status, source, cancelled_at, cancel_cause, self_cancelled)
 values (:'s1', :'me', 'cancelled', 'auto', now(), 'self_cancel', true);
 select is_empty(
@@ -516,7 +505,6 @@ values (:'s1', :'me', 'cancelled', 'auto', now(), 'office_withdraw');
 select is(apply_to_shift(:'s1', :'me')->>'reason', 'already_has_booking',
   'a cancelled booking is NOT a closed one: an office withdrawal is not an invitation to re-apply');
 delete from bookings where shift_id = :'s1' and staff_id = :'me';
-set local "request.jwt.claims" = '{"sub":"a7a7a7a7-0000-4000-8000-000000000001","role":"authenticated"}';
 
 -- =====================================================================
 -- 7. RULE-20 at the moment of Accept (§10.4)

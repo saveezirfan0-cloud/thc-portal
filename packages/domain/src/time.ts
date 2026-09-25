@@ -51,14 +51,6 @@ export function zoneLabel(instant: Date, zone: string): string {
   return parts.find((p) => p.type === 'timeZoneName')?.value ?? zone;
 }
 
-/**
- * The two zone labels, in the scope's words (§1.8: "06:15 – 23:00 UK time"
- * on the first line, "08:15 – 01:00 your time" on the second). Never the
- * bare abbreviation "(UK)" — every wireframe prints the words.
- */
-export const UK_ZONE_LABEL = 'UK time';
-export const VIEWER_ZONE_LABEL = 'your time';
-
 export interface DisplayedTime {
   /** The line every viewer sees. */
   primary: string;
@@ -69,11 +61,6 @@ export interface DisplayedTime {
 /**
  * Renders one instant according to §1.8, given what kind of time it is.
  * `withDate` switches from "18:00" to "14 Jun, 18:00".
- *
- * A scheduled time always carries "UK time" on its first line, for a UK
- * viewer too — "never a single unlabelled clock that the reader could
- * mistake for their own" (§1.8); what the UK viewer loses is only the
- * second line. An audit stamp reads "… UK time" wherever it is opened.
  */
 export function displayTime(
   instant: Date,
@@ -90,34 +77,12 @@ export function displayTime(
 
   if (kind === 'audit') {
     // Signature and verification stamps are UK-only, always.
-    return { primary: `${fmt(instant, UK_ZONE)} ${UK_ZONE_LABEL}` };
+    return { primary: `${fmt(instant, UK_ZONE)} (UK)` };
   }
 
-  const primary = `${fmt(instant, UK_ZONE)} ${UK_ZONE_LABEL}`;
+  const primary = fmt(instant, UK_ZONE);
   if (!needsDualZone(zone)) return { primary };
-  return { primary, secondary: `${fmt(instant, zone)} ${VIEWER_ZONE_LABEL}` };
-}
-
-/**
- * A scheduled window as one labelled range per line — "17:00 – 23:30 UK
- * time" and, for a viewer outside the UK, "19:00 – 01:30 your time" — so a
- * screen never prints the label twice ("17:00 UK time – 23:30 UK time").
- * This is the WINDOW column of §9.5 and every event card, list and report
- * row (§1.8, ADR 0058).
- */
-export function displayTimeRange(
-  startsAt: Date,
-  endsAt: Date,
-  zone: string = viewerZone(),
-  withDate = false,
-): DisplayedTime {
-  const fmt = withDate ? formatDateTimeIn : formatTimeIn;
-  const primary = `${fmt(startsAt, UK_ZONE)} – ${fmt(endsAt, UK_ZONE)} ${UK_ZONE_LABEL}`;
-  if (!needsDualZone(zone)) return { primary };
-  return {
-    primary,
-    secondary: `${fmt(startsAt, zone)} – ${fmt(endsAt, zone)} ${VIEWER_ZONE_LABEL}`,
-  };
+  return { primary: `${primary} (UK)`, secondary: `${fmt(instant, zone)} your time` };
 }
 
 /** The label a manager-typed time input must carry (§1.8). */

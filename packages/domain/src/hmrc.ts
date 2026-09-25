@@ -89,17 +89,11 @@ export function storedHmrcAnswers(a: HmrcAnswers): HmrcAnswers {
 }
 
 /**
- * The tax code HMRC attaches to each starter-checklist statement — for
- * reference only. §2.8 says the system "records the tax code that
- * corresponds to the derived statement", but the New Starter report's
- * confirmed column list (§9.9, 28.07.2026) carries "HMRC Statement (A/B/C)"
- * and no tax code, so the report reads the LETTER: `new_starter_rows()`
- * returns `statement`, `NEW_STARTER_CSV_COLUMNS` (packages/pdf) prints it,
- * and the office tab shows it. Nothing outside the tests reads this table.
- * "The code itself is defined by HMRC — the system does not invent it":
- * these are the 2026/27 codes, when the personal allowance code is 1257L.
- * If THC ever wants the code on the CSV, add a column mapped from the
- * statement in packages/pdf/src/csv.ts and confirm that year's codes here.
+ * The tax code HMRC attaches to each statement for the New Starter report
+ * (§9.9). "The code itself is defined by HMRC — the system does not invent
+ * it": these are HMRC's starter-checklist codes for tax year 2026/27, when
+ * the personal allowance code is 1257L. The report reads them from here;
+ * they are not stored, so a new tax year is a one-line change.
  */
 export const HMRC_TAX_CODE: Readonly<Record<HmrcStatement, string>> = {
   A: '1257L',

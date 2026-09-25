@@ -1,7 +1,6 @@
 import { cookies } from 'next/headers';
 import { UK_ZONE, formatTimeIn } from '@thc/domain';
 import { eventsDb, supabaseConfigured } from './db';
-import { FILL_BOOKING_STATUSES, tallyFill } from './fill';
 
 /**
  * Everything the Shift Builder reads — Scope §3.2.
@@ -98,6 +97,18 @@ export async function loadReferenceData(): Promise<ReferenceData> {
     supabase.from('venue_types').select('key, label'),
     supabase.from('roles').select('id, name, pay_rate').order('name'),
   ]);
+
+  // A failed read is reported, not rendered as "no clients" — the builder
+  // would otherwise offer an empty picker with no explanation.
+  const failed = [clients, rateCards, venues, venueTypes, roles].find((r) => r.error)?.error;
+  if (failed) {
+    return {
+      clients: [],
+      venues: [],
+      roles: [],
+      unavailable: `Clients, venues and roles could not be loaded: ${failed.message}`,
+    };
+  }
 
   const typeLabels = new Map(
     ((venueTypes.data ?? []) as { key: string; label: string }[]).map((t) => [t.key, t.label]),
@@ -207,8 +218,6 @@ interface SectionRow {
 /** A booking that still ties a worker to the shift (§3.6). */
 export const LIVE_BOOKING_STATUSES = ['invited', 'confirmed', 'applied', 'worked'] as const;
 
-export { FILL_BOOKING_STATUSES, countsTowardsFill, tallyFill } from './fill';
-
 /** Reads a Europe/London wall-clock "HH:MM" back out of a stored timestamptz. */
 function ukTime(iso: string): string {
   return formatTimeIn(new Date(iso), UK_ZONE);
@@ -219,41 +228,47 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
 
   const supabase = eventsDb(await cookies());
 
-  const { data } = await supabase
+  // A failed read throws rather than returning null: null is "no such
+  // event" and becomes a 404, which is the wrong answer to a DB error — and
+  // zero booking counts would let the builder offer to delete a staffed
+  // section.
+  const { data, error } = await supabase
     .from('events')
     .select(
       'id, client_id, venue_id, title, event_date, po_number, onsite_contact, notes, auto_assign, cancelled_at',
     )
     .eq('id', id)
     .maybeSingle();
+  if (error) throw new Error(`The event could not be read: ${error.message}`);
   const event = data as EventRow | null;
   if (!event) return null;
 
-  const { data: sectionData } = await supabase
+  const { data: sectionData, error: sectionError } = await supabase
     .from('shift_requirements')
     .select(
       'id, role_id, starts_at, ends_at, headcount, buffer, charge_rate, pay_rate, dress_code, auto_assign, allocation_per_hour',
     )
     .eq('event_id', id)
     .order('starts_at');
+  if (sectionError) throw new Error(`The event could not be read: ${sectionError.message}`);
   const sections = (sectionData ?? []) as SectionRow[];
 
   const ids = sections.map((s) => s.id);
-  let confirmed = new Map<string, number>();
+  const confirmed = new Map<string, number>();
   const booked = new Map<string, number>();
   if (ids.length > 0) {
-    const { data: bookings } = await supabase
+    const { data: bookings, error: bookingError } = await supabase
       .from('bookings')
       .select('shift_id, status')
       .in('shift_id', ids)
       .in('status', LIVE_BOOKING_STATUSES);
-    const rows = (bookings ?? []) as { shift_id: string; status: string }[];
-    for (const row of rows) {
+    if (bookingError) throw new Error(`The event could not be read: ${bookingError.message}`);
+    for (const row of (bookings ?? []) as { shift_id: string; status: string }[]) {
       booked.set(row.shift_id, (booked.get(row.shift_id) ?? 0) + 1);
+      if (row.status === 'confirmed') {
+        confirmed.set(row.shift_id, (confirmed.get(row.shift_id) ?? 0) + 1);
+      }
     }
-    // Confirmed AND worked: a worker who has checked in still re-confirms
-    // nothing, but they hold the slot the builder's counts describe (§3.2).
-    confirmed = tallyFill(rows);
   }
 
   return {
@@ -303,13 +318,12 @@ export interface ListedEvent {
   title: string;
   /** The event's own date. Which calendar cell it sits in. */
   date: string;
+  /** The Client filter matches on this, never on the name (two clients may share one). */
+  clientId: string;
   clientName: string;
   venueName: string;
   venueAddress: string;
-  /** The venue's radius, for the day view's "· geofence 150 m" (§3.1). */
-  geofenceRadiusM: number | null;
   poNumber: string;
-  onsiteContact: string;
   cancelledAt: string | null;
   cancelReason: string;
   roles: ListedRole[];
@@ -321,9 +335,7 @@ interface ListedEventRow {
   event_date: string;
   venue_name: string;
   venue_address: string;
-  geofence_radius_m: number | null;
   po_number: string | null;
-  onsite_contact: string | null;
   cancelled_at: string | null;
   cancel_reason: string | null;
   client_id: string;
@@ -336,25 +348,39 @@ interface ListedEventRow {
  * Filtered on `event_date`, not on the derived window: an event that runs to
  * 01:00 belongs in the cell of the day it started, which is what the manager
  * looks for it under.
+ *
+ * A failed query comes back as `problem`, which the page shows in an
+ * Alert. It used to be read as "no rows", so a database error rendered as
+ * "No events in this period" — a calendar that looked empty on a day with
+ * fifteen events on it.
  */
-export async function loadEventsInRange(from: string, to: string): Promise<ListedEvent[]> {
-  if (!supabaseConfigured()) return [];
+export interface EventsInRange {
+  events: ListedEvent[];
+  problem: string | null;
+}
+
+export async function loadEventsInRange(from: string, to: string): Promise<EventsInRange> {
+  // No project is reported by loadReferenceData's `unavailable`, once.
+  if (!supabaseConfigured()) return { events: [], problem: null };
 
   const supabase = eventsDb(await cookies());
 
-  const { data: eventData } = await supabase
+  const { data: eventData, error: eventError } = await supabase
     .from('events')
     .select(
-      'id, title, event_date, venue_name, venue_address, geofence_radius_m, po_number, onsite_contact, cancelled_at, cancel_reason, client_id',
+      'id, title, event_date, venue_name, venue_address, po_number, cancelled_at, cancel_reason, client_id',
     )
     .gte('event_date', from)
     .lte('event_date', to)
     .order('event_date');
+  if (eventError) {
+    return { events: [], problem: `Events could not be loaded: ${eventError.message}` };
+  }
   const events = (eventData ?? []) as ListedEventRow[];
-  if (events.length === 0) return [];
+  if (events.length === 0) return { events: [], problem: null };
 
   const eventIds = events.map((e) => e.id);
-  const [{ data: sectionData }, { data: clientData }, { data: roleData }] = await Promise.all([
+  const [sectionRes, clientRes, roleRes] = await Promise.all([
     supabase
       .from('shift_requirements')
       .select('id, event_id, role_id, starts_at, ends_at, headcount, buffer')
@@ -363,8 +389,12 @@ export async function loadEventsInRange(from: string, to: string): Promise<Liste
     supabase.from('clients').select('id, name'),
     supabase.from('roles').select('id, name'),
   ]);
+  const listError = sectionRes.error ?? clientRes.error ?? roleRes.error;
+  if (listError) {
+    return { events: [], problem: `Events could not be loaded: ${listError.message}` };
+  }
 
-  const sections = (sectionData ?? []) as {
+  const sections = (sectionRes.data ?? []) as {
     id: string;
     event_id: string;
     role_id: string;
@@ -374,26 +404,30 @@ export async function loadEventsInRange(from: string, to: string): Promise<Liste
     buffer: number;
   }[];
 
-  let confirmed = new Map<string, number>();
+  const confirmed = new Map<string, number>();
   if (sections.length > 0) {
-    // `confirmed` and `worked` both hold the slot (FILL_BOOKING_STATUSES):
-    // reading `confirmed` alone emptied every Ongoing and Completed row.
-    const { data: bookings } = await supabase
+    const { data: bookings, error: bookingError } = await supabase
       .from('bookings')
-      .select('shift_id, status')
-      .in('status', FILL_BOOKING_STATUSES)
+      .select('shift_id')
+      .eq('status', 'confirmed')
       .in(
         'shift_id',
         sections.map((s) => s.id),
       );
-    confirmed = tallyFill((bookings ?? []) as { shift_id: string; status: string }[]);
+    // Without the counts every fill chip would read "0 confirmed".
+    if (bookingError) {
+      return { events: [], problem: `Events could not be loaded: ${bookingError.message}` };
+    }
+    for (const booking of (bookings ?? []) as { shift_id: string }[]) {
+      confirmed.set(booking.shift_id, (confirmed.get(booking.shift_id) ?? 0) + 1);
+    }
   }
 
   const clientNames = new Map(
-    ((clientData ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]),
+    ((clientRes.data ?? []) as { id: string; name: string }[]).map((c) => [c.id, c.name]),
   );
   const roleNames = new Map(
-    ((roleData ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]),
+    ((roleRes.data ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]),
   );
 
   const byEvent = new Map<string, ListedRole[]>();
@@ -410,18 +444,18 @@ export async function loadEventsInRange(from: string, to: string): Promise<Liste
     byEvent.set(section.event_id, list);
   }
 
-  return events.map((event) => ({
+  const listed = events.map((event) => ({
     id: event.id,
     title: event.title,
     date: event.event_date,
+    clientId: event.client_id,
     clientName: clientNames.get(event.client_id) ?? 'Client',
     venueName: event.venue_name,
     venueAddress: event.venue_address,
-    geofenceRadiusM: event.geofence_radius_m,
     poNumber: event.po_number ?? '',
-    onsiteContact: event.onsite_contact ?? '',
     cancelledAt: event.cancelled_at,
     cancelReason: event.cancel_reason ?? '',
     roles: byEvent.get(event.id) ?? [],
   }));
+  return { events: listed, problem: null };
 }

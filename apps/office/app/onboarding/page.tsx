@@ -14,6 +14,18 @@ export const dynamic = 'force-dynamic';
  */
 export default async function Page() {
   const data = await loadBoard();
-  const applyUrl = `${(process.env['NEXT_PUBLIC_STAFF_URL'] ?? 'http://127.0.0.1:3001').replace(/\/$/, '')}/apply`;
-  return <OnboardingBoard data={data} now={new Date().toISOString()} applyUrl={applyUrl} />;
+  return <OnboardingBoard data={data} now={new Date().toISOString()} applyUrl={applyUrl()} />;
+}
+
+/**
+ * The public /apply form lives on the Staff App, a different deployment, so
+ * its origin is configuration (NEXT_PUBLIC_STAFF_URL) — the same guard as
+ * `staffOrigin()` in ./actions.ts. Unset in production means no button,
+ * not a button to 127.0.0.1 on the manager's own machine.
+ */
+function applyUrl(): string | null {
+  const explicit = process.env['NEXT_PUBLIC_STAFF_URL'];
+  if (explicit) return `${explicit.replace(/\/$/, '')}/apply`;
+  if (process.env.NODE_ENV === 'production') return null;
+  return 'http://127.0.0.1:3001/apply';
 }

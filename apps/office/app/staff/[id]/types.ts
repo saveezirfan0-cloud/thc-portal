@@ -10,6 +10,7 @@
  */
 import type { CapBand, StaffRow } from '../types';
 import type { FeedbackEntry } from '../../feedback/types';
+import type { ViolationRow as DetailViolationRow } from '../../checkin/types';
 
 export type ReviewStatus = 'pending' | 'verified' | 'rejected' | 'superseded';
 export type ViolationType = 'no_show' | 'late' | 'left_early' | 'left_geofence' | 'no_checkout';
@@ -51,6 +52,8 @@ export interface DocumentRow {
   review_status: ReviewStatus;
   superseded: boolean;
   file_path: string | null;
+  /** The gov.uk share-code report, stored beside the share code (§2.6). */
+  gov_report_path?: string | null;
   uploaded_at: string;
   expiry_date: string | null;
   expires_on: string | null;
@@ -60,8 +63,6 @@ export interface DocumentRow {
   reviewed_at: string | null;
   reviewed_by_name: string | null;
   share_code: string | null;
-  /** The gov.uk right-to-work report saved beside a share code (§2.6), downloadable too. */
-  gov_report_path: string | null;
   right_to_work_until: string | null;
   /** The reviewer confirmed settled status: no date, by design (20260923200000). */
   rtw_no_time_limit: boolean;
@@ -116,10 +117,7 @@ export interface ViolationRow {
   resolved: boolean;
   resolved_at: string | null;
   resolution_note: string | null;
-  /** The finish a manager entered when resolving a No check-out (§9.5). */
-  actual_finish_at: string | null;
   resolved_by_name: string | null;
-  event_id: string;
   starts_at: string;
   ends_at: string;
   role_name: string;
@@ -177,6 +175,12 @@ export interface ProfileData {
   qualifications: QualificationRow[];
   shifts: ShiftRow[];
   violations: ViolationRow[];
+  /**
+   * The same entries in the /checkin violation log's own shape, so the
+   * Shifts tab opens the same detail window and Resolve (§9.6). Keyed by id
+   * against `violations`; absent when the read failed.
+   */
+  violationDetails?: DetailViolationRow[];
   /** `feedback_entries_v` — the same rows /feedback reads (§9.10). */
   feedback: FeedbackEntry[];
   references: ReferenceRow[];

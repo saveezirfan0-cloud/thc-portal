@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { ukInstant } from '@thc/domain';
 import type { ListedEvent } from '../data';
-import { FILL_BOOKING_STATUSES, countsTowardsFill, tallyFill } from '../fill';
 import {
   bucketByDay,
-  cancelledLine,
+  filterEventRows,
   fillTone,
   periodTotals,
+  scheduledWindowLines,
   toEventRow,
   toEventRows,
 } from '../view-model';
@@ -18,12 +18,11 @@ function event(over: Partial<ListedEvent> = {}): ListedEvent {
     id: 'e1',
     title: 'Gala Dinner',
     date: DATE,
+    clientId: 'client-leonardo',
     clientName: 'Leonardo Hotel St Pauls',
     venueName: 'Leonardo Royal Hotel',
     venueAddress: '10 Godliman St, London EC4V 5AJ',
-    geofenceRadiusM: 150,
     poNumber: '4471-A',
-    onsiteContact: 'Marco V.',
     cancelledAt: null,
     cancelReason: '',
     roles: [
@@ -76,35 +75,6 @@ describe('a row carries the derived window, not the typed one (RULE-18)', () => 
 
   it('does not flag a window that ends the same evening', () => {
     expect(toEventRow(event(), before).endsNextDay).toBe(false);
-    expect(toEventRow(event(), before).endsLabel).toBeNull();
-  });
-
-  it('names the UK day the window ends on, as the list sub-line does', () => {
-    const late = event({ roles: [role('18:00', '01:00')] });
-    expect(toEventRow(late, before).endsLabel).toBe('ends Sat 19 Sep');
-  });
-
-  // §1.8: the "ends next day" question is a London one. In BST the UTC day
-  // turns at 01:00 London, so a comparison of UTC dates was wrong at both
-  // edges of the night.
-  it('flags 23:30–00:30 in BST, which crosses midnight in London but not in UTC', () => {
-    const row = toEventRow(event({ roles: [role('23:30', '00:30')] }), before);
-    expect(row.endsNextDay).toBe(true);
-    expect(row.endsLabel).toBe('ends Sat 19 Sep');
-  });
-
-  it('does not flag 00:30–08:00 in BST, which starts and ends on the same London day', () => {
-    const row = toEventRow(event({ roles: [role('00:30', '08:00')] }), before);
-    expect(row.endsNextDay).toBe(false);
-  });
-
-  it('flags 23:30–00:30 in GMT too, where the two calendars agree', () => {
-    const row = toEventRow(
-      event({ date: '2026-12-18', roles: [role('23:30', '00:30')] }),
-      ukInstant('2026-12-18', '06:00'),
-    );
-    expect(row.endsNextDay).toBe(true);
-    expect(row.endsLabel).toBe('ends Sat 19 Dec');
   });
 
   it('has no window, and reads Upcoming, before the first role exists', () => {
@@ -135,78 +105,6 @@ describe('the fill chip (§3.1)', () => {
     const cancelled = toEventRow(event({ cancelledAt: '2026-09-16T10:00:00Z' }), before);
     expect(cancelled.status).toBe('cancelled');
     expect(fillTone(cancelled)).toBe('neutral');
-  });
-
-  // §3.1 / §3.2: check-in moves a booking confirmed → worked, and the worker
-  // still holds the slot. An Ongoing event with everyone on site is
-  // "10 of 10" green, never "0 of 10 · 10 open" — the loader counts both.
-  it('counts worked bookings as filling the slot, like every SQL fill', () => {
-    expect([...FILL_BOOKING_STATUSES]).toEqual(['confirmed', 'worked']);
-    expect(countsTowardsFill('worked')).toBe(true);
-    expect(countsTowardsFill('confirmed')).toBe(true);
-    expect(countsTowardsFill('invited')).toBe(false);
-    expect(countsTowardsFill('applied')).toBe(false);
-    expect(countsTowardsFill('cancelled')).toBe(false);
-    expect(countsTowardsFill('turned_away')).toBe(false);
-
-    const tally = tallyFill([
-      { shift_id: 's1', status: 'worked' },
-      { shift_id: 's1', status: 'worked' },
-      { shift_id: 's1', status: 'confirmed' },
-      { shift_id: 's1', status: 'invited' },
-      { shift_id: 's2', status: 'applied' },
-    ]);
-    expect(tally.get('s1')).toBe(3);
-    expect(tally.get('s2')).toBeUndefined();
-
-    // A Completed section whose six workers all checked in reads "6 of 6".
-    const worked = event({
-      roles: [
-        {
-          roleName: 'Waiting Staff',
-          start: '06:00',
-          end: '11:00',
-          headcount: 6,
-          buffer: 1,
-          confirmed: 6,
-        },
-      ],
-    });
-    const row = toEventRow(worked, ukInstant(DATE, '12:00'));
-    expect(row.status).toBe('completed');
-    expect(row.fill.open).toBe(0);
-    expect(fillTone(row)).toBe('green');
-  });
-});
-
-describe('status is inclusive of the last minute (§1.5)', () => {
-  const single = event({ roles: [role('17:00', '23:00')] });
-
-  it('is upcoming before the start, ongoing from the start, completed after the end', () => {
-    expect(toEventRow(single, ukInstant(DATE, '16:59')).status).toBe('upcoming');
-    expect(toEventRow(single, ukInstant(DATE, '17:00')).status).toBe('ongoing');
-    expect(toEventRow(single, ukInstant(DATE, '23:00')).status).toBe('ongoing');
-    expect(toEventRow(single, new Date(ukInstant(DATE, '23:00').getTime() + 1000)).status).toBe(
-      'completed',
-    );
-  });
-});
-
-describe('the cancelled sub-line (§3.3)', () => {
-  it('names the UK day and quotes the reason', () => {
-    expect(
-      cancelledLine({ cancelledAt: '2026-09-16T10:00:00Z', cancelReason: 'event postponed to Q1' }),
-    ).toBe('cancelled Wed 16 Sep — "event postponed to Q1"');
-  });
-
-  it('reads the day in London, not UTC', () => {
-    expect(cancelledLine({ cancelledAt: '2026-09-16T23:30:00Z', cancelReason: '' })).toBe(
-      'cancelled Thu 17 Sep',
-    );
-  });
-
-  it('is nothing for a live event', () => {
-    expect(cancelledLine({ cancelledAt: null, cancelReason: '' })).toBeNull();
   });
 });
 
@@ -284,5 +182,74 @@ describe('the period totals under the list (§3.1)', () => {
       before,
     );
     expect(periodTotals(rows)).toEqual({ events: 2, open: 4 });
+  });
+});
+
+describe('the toolbar filters (§3.1)', () => {
+  const rows = toEventRows(
+    [
+      event({ id: 'a', clientId: 'c-1', clientName: 'Leonardo Hotel' }),
+      // A second client with the SAME display name: a hotel group's properties.
+      event({ id: 'b', clientId: 'c-2', clientName: 'Leonardo Hotel', title: 'Product Launch' }),
+      event({ id: 'c', clientId: 'c-3', clientName: 'Mandarin Oriental', poNumber: 'PO-77' }),
+    ],
+    before,
+  );
+
+  it('filters the client by id, never by name', () => {
+    expect(filterEventRows(rows, { clientId: 'c-2', status: '', q: '' }).map((r) => r.id)).toEqual([
+      'b',
+    ]);
+  });
+
+  it('returns everything with no filters, and searches title, client, venue and PO', () => {
+    expect(filterEventRows(rows, { clientId: '', status: '', q: '' })).toHaveLength(3);
+    expect(
+      filterEventRows(rows, { clientId: '', status: '', q: ' po-77 ' }).map((r) => r.id),
+    ).toEqual(['c']);
+    expect(
+      filterEventRows(rows, { clientId: '', status: '', q: 'launch' }).map((r) => r.id),
+    ).toEqual(['b']);
+  });
+
+  it('filters by status', () => {
+    expect(filterEventRows(rows, { clientId: '', status: 'completed', q: '' })).toEqual([]);
+    expect(filterEventRows(rows, { clientId: '', status: 'upcoming', q: '' })).toHaveLength(3);
+  });
+});
+
+describe('scheduled windows carry a "your time" line outside the UK (§1.8)', () => {
+  const start = ukInstant(DATE, '07:00');
+  const end = ukInstant('2026-09-19', '01:30');
+
+  it('is UK-only for a UK viewer', () => {
+    expect(scheduledWindowLines(start, end, 'Europe/London')).toEqual({
+      uk: '07:00 – 01:30',
+      local: null,
+    });
+  });
+
+  it('adds the viewer-zone line anywhere else', () => {
+    expect(scheduledWindowLines(start, end, 'Europe/Athens')).toEqual({
+      uk: '07:00 – 01:30',
+      local: '09:00 – 03:30 your time',
+    });
+    expect(scheduledWindowLines(start, end, 'America/New_York').local).toBe(
+      '02:00 – 20:30 your time',
+    );
+  });
+
+  it('a list row carries its window and each role window as instants for that line', () => {
+    const row = toEventRow(event(), before);
+    expect(row.windowIso).toEqual({
+      startsAt: ukInstant(DATE, '07:00').toISOString(),
+      endsAt: ukInstant(DATE, '23:30').toISOString(),
+    });
+    expect(row.roles.map((r) => [r.startsAt, r.endsAt])).toEqual([
+      [ukInstant(DATE, '07:00').toISOString(), ukInstant(DATE, '15:00').toISOString()],
+      [ukInstant(DATE, '09:00').toISOString(), ukInstant(DATE, '17:00').toISOString()],
+      [ukInstant(DATE, '17:00').toISOString(), ukInstant(DATE, '23:30').toISOString()],
+    ]);
+    expect(toEventRow(event({ roles: [] }), before).windowIso).toBeNull();
   });
 });

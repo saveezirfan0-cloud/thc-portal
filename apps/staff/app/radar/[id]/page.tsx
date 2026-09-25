@@ -103,8 +103,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             shiftHours: hours,
           }) ??
             `This ${formatHours(hours)} shift would take you over your weekly hours limit for that Mon–Sun week.`}{' '}
-          The limit is calculated from your verified documents and cannot be changed in the app
-          (RULE-20, §4.4).
+          The limit is calculated from your verified documents and cannot be changed in the app.
         </Alert>
       ) : (
         <p className="note xs">

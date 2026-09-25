@@ -170,3 +170,10 @@
 .span-2 {
   grid-column: 1 / -1;
 }
+
+/* The Shifts tab's violation log opens the /checkin detail window from the
+   keyboard too (checkin/violationRow.ts), so a focused row has to show. */
+.tbl tr.clickable:focus-visible {
+  outline: 2px solid var(--focus-line);
+  outline-offset: -2px;
+}

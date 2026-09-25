@@ -4,13 +4,16 @@ import {
   capMeter,
   explainLimit,
   APPLY_REFUSAL_COPY,
+  STATIC_SCREEN_ACTION,
   STATIC_SCREEN_CONTACT,
+  STATIC_SCREEN_COPY,
   SELF_CANCEL_WINDOW_HOURS,
   type StaffBooking,
   canCancelShift,
   cancelDeadline,
   formatDistance,
   radarGroups,
+  readyCutoffApplies,
   readyDeadline,
   readyDeadlinePassed,
   shiftCard,
@@ -24,6 +27,7 @@ function booking(over: Partial<StaffBooking> = {}): StaffBooking {
     status: 'confirmed',
     startsAt: new Date('2026-09-19T17:00:00Z'),
     endsAt: new Date('2026-09-19T23:30:00Z'),
+    confirmedAt: new Date('2026-09-10T09:00:00Z'),
     dayBeforeConfirmedAt: null,
     onDayConfirmedAt: null,
     reconfirmRequired: false,
@@ -61,6 +65,23 @@ describe('readyDeadline (§3.5)', () => {
   });
 });
 
+describe('readyCutoffApplies (§3.5)', () => {
+  const startsAt = new Date('2026-09-19T17:00:00Z'); // deadline 2026-09-18T11:00Z (BST)
+
+  it('applies to a booking confirmed before the deadline, and not at or after it', () => {
+    expect(readyCutoffApplies(new Date('2026-09-18T10:59:00Z'), startsAt)).toBe(true);
+    expect(readyCutoffApplies(new Date('2026-09-18T11:00:00Z'), startsAt)).toBe(false);
+  });
+
+  it('does not apply to a same-day booking (RULE-08)', () => {
+    expect(readyCutoffApplies(new Date('2026-09-19T09:00:00Z'), startsAt)).toBe(false);
+  });
+
+  it('does not apply without a confirmedAt', () => {
+    expect(readyCutoffApplies(null, startsAt)).toBe(false);
+  });
+});
+
 describe('canCancelShift (RULE-04)', () => {
   const startsAt = new Date('2026-09-19T17:00:00Z');
 
@@ -83,6 +104,24 @@ describe('shiftCard (§10.4, §3.5)', () => {
 
   it('asks for "I\'m ready" from the start of the day before, not only at the deadline', () => {
     expect(shiftCard(booking(), new Date('2026-09-18T08:00:00Z'))).toBe('needs_ready');
+  });
+
+  // §3.5 / 20260927140300: the 12:05 cutoff only releases a booking
+  // confirmed before the deadline, so only those are asked.
+  it('does not ask a worker who accepted after 12:00 the day before', () => {
+    const b = booking({ confirmedAt: new Date('2026-09-18T14:00:00Z') });
+    expect(shiftCard(b, new Date('2026-09-18T15:00:00Z'))).toBe('confirmed');
+  });
+
+  it('still asks one who accepted that morning, before the deadline', () => {
+    const b = booking({ confirmedAt: new Date('2026-09-18T08:30:00Z') });
+    expect(shiftCard(b, new Date('2026-09-18T09:00:00Z'))).toBe('needs_ready');
+  });
+
+  it('does not ask a booking with no confirmedAt, which the cutoff never releases', () => {
+    expect(shiftCard(booking({ confirmedAt: null }), new Date('2026-09-18T08:00:00Z'))).toBe(
+      'confirmed',
+    );
   });
 
   it('stops asking once the worker has pressed it', () => {
@@ -165,6 +204,24 @@ describe('staticScreenCase (§10.4)', () => {
     );
   });
 
+  it('treats the 12:05 release (N6b) as the office taking the shift back, per the wireframe', () => {
+    expect(staticScreenCase(booking({ status: 'cancelled', cancelCause: 'ready_cutoff' }))).toBe(
+      'withdrawn',
+    );
+  });
+
+  it('puts a cancelled event ahead of how the booking itself ended', () => {
+    expect(
+      staticScreenCase(
+        booking({
+          status: 'cancelled',
+          cancelCause: 'event_cancelled',
+          eventCancelledAt: new Date(),
+        }),
+      ),
+    ).toBe('event_cancelled');
+  });
+
   it('names an unresolved No check-out, whose card stays in the list (RULE-02)', () => {
     expect(staticScreenCase(booking({ status: 'worked', noCheckoutOpen: true }))).toBe(
       'no_checkout',
@@ -176,7 +233,20 @@ describe('staticScreenCase (§10.4)', () => {
   });
 
   it('carries the contact line the approved design fixes', () => {
-    expect(STATIC_SCREEN_CONTACT).toContain('admin@thehospitalitycompany.co.uk');
+    expect(STATIC_SCREEN_CONTACT).toBe(
+      'If you believe there has been an error, please contact us at: admin@thehospitalitycompany.co.uk',
+    );
+    expect(STATIC_SCREEN_ACTION).toBe('OK, I understand');
+  });
+
+  it('carries the three §10.4 sentences verbatim', () => {
+    expect(STATIC_SCREEN_COPY.event_cancelled.title).toBe('This event has been cancelled');
+    expect(STATIC_SCREEN_COPY.withdrawn.title).toBe('You’ve been removed from this shift');
+    // The No check-out sentence is ONE heading: the half after the dash is
+    // the part that tells the worker somebody is already on it.
+    expect(STATIC_SCREEN_COPY.no_checkout.title).toBe(
+      'We didn’t receive your check-out for this shift — the office is following up with you directly.',
+    );
   });
 });
 

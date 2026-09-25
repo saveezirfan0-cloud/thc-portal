@@ -7,15 +7,16 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { eventsDb, supabaseConfigured } from './db';
 import {
   type EditableField,
+  ROLE_SECTION_MESSAGE,
   UK_ZONE,
   formatTimeIn,
   isEditLocked,
   reconfirmingChanges,
   ukRoleWindow,
+  validateRoleSection,
 } from '@thc/domain';
-import { TEMPLATES } from '@thc/notifications';
+import { TEMPLATES, outboxKey } from '@thc/notifications';
 import { LIVE_BOOKING_STATUSES } from './data';
-import { EDIT_CLIENT_LOCKED, clientChanged, reconfirmKey, validateEventInput } from './save-rules';
 
 /**
  * Saving an event — Scope §3.2, §3.5.
@@ -58,8 +59,24 @@ export type SaveResult = { error: string } | { ok: true; id: string };
 const NO_SUPABASE =
   'This environment has no Supabase project, so the event cannot be saved (docs/04-setup-github-vercel-supabase.md).';
 
-/** The pure rules live in `save-rules.ts`, where the tests can reach them. */
-const validate = validateEventInput;
+function validate(input: EventInput): string | null {
+  if (!input.clientId || !input.venueId) return 'Choose a client and a venue.';
+  if (!input.title.trim()) return 'Give the event a title.';
+  if (!input.date) return 'Set the event date.';
+  if (input.roles.length === 0) return 'Add at least one role.';
+
+  for (const role of input.roles) {
+    if (!role.roleId) return 'Every role section needs a role.';
+    const issues = validateRoleSection({
+      ...ukRoleWindow(input.date, role.start, role.end),
+      headcount: role.headcount,
+      buffer: role.buffer,
+      allocationPerHour: role.allocationPerHour,
+    });
+    if (issues.length > 0) return ROLE_SECTION_MESSAGE[issues[0]!];
+  }
+  return null;
+}
 
 function sectionRow(eventId: string, date: string, role: RoleSectionInput) {
   const { startsAt, endsAt } = ukRoleWindow(date, role.start, role.end);
@@ -145,14 +162,10 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
 
   const { data: event } = await supabase
     .from('events')
-    .select('event_date, venue_address, cancelled_at, client_id')
+    .select('event_date, venue_address, cancelled_at')
     .eq('id', input.id)
     .single();
   if (!event) return { error: 'That event no longer exists.' };
-  // §3.2: the client is not on the editable list. The policies copied at
-  // creation and the rate-card prices belong to THAT client; the form keeps
-  // the select disabled, and this is the rule behind the courtesy.
-  if (clientChanged(event.client_id, input.clientId)) return { error: EDIT_CLIENT_LOCKED };
 
   const { data: existing } = await supabase
     .from('shift_requirements')
@@ -183,6 +196,7 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
   const { error } = await supabase
     .from('events')
     .update({
+      client_id: input.clientId,
       venue_id: input.venueId,
       venue_name: venue.name,
       venue_address: venue.address,
@@ -258,9 +272,8 @@ interface ExistingSection {
  *
  * The flag is what the app reads for the Awaiting state; the push §3.5 pairs
  * with it is N11, queued here in `notification_outbox` with the §8 register's
- * own copy and idempotency key. The key carries the new start, end and dress
- * code, so a second change queues a second push while a re-save of the same
- * values does not.
+ * own copy and idempotency key. The key carries the new start, so a second
+ * change queues a second push while a re-save of the same times does not.
  * Draining the outbox to Web Push is the sender's job, not this screen's.
  */
 async function flagReconfirmations(
@@ -271,14 +284,7 @@ async function flagReconfirmations(
 ): Promise<string | null> {
   const previous = new Map(before.map((s) => [s.id, s]));
   const failures: string[] = [];
-  const affected: {
-    id: string;
-    reason: string;
-    startsAt: Date;
-    endsAt: Date;
-    dressCode: string | null;
-    window: string;
-  }[] = [];
+  const affected: { id: string; reason: string; startsAt: Date; window: string }[] = [];
 
   for (const role of input.roles) {
     if (!role.id) continue; // A section added now has nobody booked on it.
@@ -299,8 +305,6 @@ async function flagReconfirmations(
         id: role.id,
         reason: triggers.join(','),
         startsAt,
-        endsAt,
-        dressCode: role.dressCode || null,
         // The worker is told their ROLE's new hours, never the event window
         // (RULE-18), in UK time as §1.8 has it for a scheduled time.
         window: `${formatTimeIn(startsAt, UK_ZONE)} – ${formatTimeIn(endsAt, UK_ZONE)} (UK)`,
@@ -319,13 +323,11 @@ async function flagReconfirmations(
     const bookings = (rows ?? []) as { id: string; staff_id: string }[];
     if (bookings.length === 0) continue;
 
-    // One call, one row per worker, keyed on what changed (`reconfirmKey`:
-    // start, end and dress code) so a re-save of the same values is a no-op
-    // against the unique index while a later change to the END alone still
-    // queues its push (§8). Through the RPC rather than the table:
-    // `notification_outbox` carries only `admin_read`, so a direct insert
-    // reaches RLS, finds no INSERT policy and is rejected — which is what
-    // this used to do, every time, while N11 reached nobody.
+    // One call, one row per worker, keyed so a re-save of the same times is
+    // a no-op against the unique index (§8). Through the RPC rather than the
+    // table: `notification_outbox` carries only `admin_read`, so a direct
+    // insert reaches RLS, finds no INSERT policy and is rejected — which is
+    // what this used to do, every time, while N11 reached nobody.
     //
     // `payload` is the VALUES map the drain renders the §8 copy with — NOT
     // rendered text. `render(entry.body, values)` runs in
@@ -335,7 +337,7 @@ async function flagReconfirmations(
     // and {bookingId}; `reason` rides along for the card's "was 12:00–00:30".
     const { error: queueError } = await supabase.rpc('queue_office_notifications', {
       p_rows: bookings.map((booking) => ({
-        key: reconfirmKey(booking.id, section),
+        key: outboxKey('N11', 'booking', `${booking.id}:${section.startsAt.toISOString()}`),
         channel: TEMPLATES.N11.channel,
         template: 'N11',
         recipient_staff_id: booking.staff_id,

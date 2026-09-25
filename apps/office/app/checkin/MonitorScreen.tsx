@@ -3,12 +3,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Avatar, Button, Checkbox, Panel, Pill, SegToggle, Select } from '@thc/ui';
-import { displayTimeRange } from '@thc/domain';
+import { UK_ZONE, formatDateTimeIn, formatTimeIn, viewerZone } from '@thc/domain';
 import { createClient } from '@thc/db/browser';
 import { MonitorTable } from './MonitorTable';
 import { ResolveModal } from './ResolveModal';
-import { VIOLATION_LABEL, logTime, missingWorkers, needsAttention } from './status';
-import { useViewerZone } from './useViewerZone';
+import { VIOLATION_LABEL, missingWorkers, needsAttention } from './status';
+import { violationRowProps } from './violationRow';
 import type { MonitorRow, ViolationRow } from './types';
 
 /**
@@ -71,13 +71,12 @@ export function MonitorScreen({
   const attentionCount = rows.filter(needsAttention).length;
   const shownViolations = violations.filter((v) => showResolved || !v.resolved);
 
-  // Mount-guarded (§1.8): the first paint is UK on both sides, the reader's
-  // zone arrives once mounted. One read, handed to every part of the board.
-  const zone = useViewerZone();
+  const zone = viewerZone();
+  const local = (iso: string) => formatTimeIn(new Date(iso), zone);
 
   return (
     <div className="stack" style={{ gap: 16 }}>
-      <EventStrip rows={rows} zone={zone} />
+      <EventStrip rows={rows} />
 
       <Panel
         title="Today’s events · live"
@@ -109,7 +108,7 @@ export function MonitorScreen({
           </div>
         }
       >
-        <MonitorTable rows={visible} zone={zone} />
+        <MonitorTable rows={visible} />
       </Panel>
 
       <Panel
@@ -140,16 +139,7 @@ export function MonitorScreen({
             </thead>
             <tbody>
               {shownViolations.map((v) => (
-                /* §9.5: "The row itself is clickable, with a 'Details' button
-                   alongside as the keyboard path" — and "coral highlighting"
-                   (`.tbl tr.violation`) for an entry still open; a resolved
-                   one is dimmed instead, as in checkin.html. */
-                <tr
-                  key={v.id}
-                  className={v.resolved ? 'clickable' : 'violation clickable'}
-                  style={v.resolved ? { opacity: 0.45 } : undefined}
-                  onClick={() => setOpen(v)}
-                >
+                <tr key={v.id} {...violationRowProps(v, () => setOpen(v))}>
                   <td>
                     <div className="person">
                       <Avatar name={v.staffName} src={v.photoUrl ?? undefined} size="sm" />
@@ -171,15 +161,14 @@ export function MonitorScreen({
                       </>
                     ) : null}
                   </td>
-                  {/* An actual stamp: the reader's own zone, with the day
-                      spelled unless it was today (§1.8, checkin.html). */}
-                  <td className="mono sm">{logTime(v.detectedAt, zone)}</td>
+                  <td className="mono sm">{local(v.detectedAt)}</td>
                   <td style={{ textAlign: 'right' }}>
                     <Button
                       size="sm"
                       tone={v.resolved ? 'ghost' : 'default'}
-                      onClick={(e) => {
-                        e.stopPropagation();
+                      onClick={(event) => {
+                        // The row opens the same window; one open, not two.
+                        event.stopPropagation();
                         setOpen(v);
                       }}
                     >
@@ -193,7 +182,7 @@ export function MonitorScreen({
         )}
       </Panel>
 
-      {open ? <ResolveModal violation={open} zone={zone} onClose={() => setOpen(null)} /> : null}
+      {open ? <ResolveModal violation={open} onClose={() => setOpen(null)} /> : null}
     </div>
   );
 }
@@ -202,13 +191,8 @@ export function MonitorScreen({
  * The strip above the table. §9.5's "−1 worker" flag is the point of it:
  * the manager sees an event is short before it becomes a failure, and
  * still has time to pull someone from the buffer.
- *
- * The card's window is the EVENT window — earliest role start to latest
- * role end (CLAUDE.md) — and a scheduled time, so it carries both zones
- * like the WINDOW column (§1.8: "the same dual display applies on the
- * event card").
  */
-export function EventStrip({ rows, zone }: { rows: MonitorRow[]; zone: string }) {
+function EventStrip({ rows }: { rows: MonitorRow[] }) {
   const byEvent = new Map<string, MonitorRow[]>();
   for (const r of rows) byEvent.set(r.eventId, [...(byEvent.get(r.eventId) ?? []), r]);
 
@@ -219,11 +203,6 @@ export function EventStrip({ rows, zone }: { rows: MonitorRow[]; zone: string })
       {[...byEvent.entries()].map(([id, group]) => {
         const first = group[0]!;
         const short = missingWorkers(group);
-        const win = displayTimeRange(
-          new Date(Math.min(...group.map((r) => Date.parse(r.startsAt)))),
-          new Date(Math.max(...group.map((r) => Date.parse(r.endsAt)))),
-          zone,
-        );
         const onShift = group.filter((r) => r.status === 'on_shift').length;
         const offSite = group.filter((r) => r.status === 'off_site').length;
         const out = group.filter((r) => r.status === 'checked_out').length;
@@ -233,12 +212,7 @@ export function EventStrip({ rows, zone }: { rows: MonitorRow[]; zone: string })
               {first.eventTitle}
               {short > 0 ? <span className="evflag">−{short} worker</span> : null}
             </div>
-            <div className="m">
-              <span className="win2">
-                {win.primary}
-                {win.secondary ? <span className="l2">{win.secondary}</span> : null}
-              </span>
-            </div>
+            <div className="m">{formatDateTimeIn(new Date(first.startsAt), UK_ZONE)} UK</div>
             <div className="c">
               {onShift > 0 ? <span className="green">{onShift} on shift</span> : null}
               {offSite > 0 ? <span className="amber">{offSite} off-site</span> : null}

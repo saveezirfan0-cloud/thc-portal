@@ -87,7 +87,8 @@ export function OnboardingBoard({
 }: {
   data: BoardData;
   now: string;
-  applyUrl: string;
+  /** Null when the Staff App's origin is not configured in production. */
+  applyUrl: string | null;
 }) {
   const router = useRouter();
   const at = useMemo(() => new Date(now), [now]);
@@ -140,9 +141,11 @@ export function OnboardingBoard({
         </>
       }
       actions={
-        <a className="btn sm" href={applyUrl} target="_blank" rel="noreferrer">
-          Open /apply form ↗
-        </a>
+        applyUrl ? (
+          <a className="btn sm" href={applyUrl} target="_blank" rel="noreferrer">
+            Open /apply form ↗
+          </a>
+        ) : null
       }
     >
       <div className="stack">

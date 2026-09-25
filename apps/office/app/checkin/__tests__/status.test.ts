@@ -3,10 +3,6 @@ import {
   STATUS_LABEL,
   VIOLATION_LABEL,
   breaksCell,
-  carriesZone,
-  duePillTime,
-  flaggedAs,
-  logTime,
   missingWorkers,
   needsActualFinish,
   needsAttention,
@@ -110,69 +106,6 @@ describe('§9.5 the Breaks column', () => {
   it('shows the count and the most recent one', () => {
     expect(breaksCell({ breaksCount: 2, lastBreakAt: '2026-06-14T14:10:00Z' }, at)).toBe(
       '2 · last 14:10',
-    );
-  });
-});
-
-describe('§1.8 the Due pill', () => {
-  // 15:00 UK on a BST day. Warsaw is an hour ahead of London.
-  const start = '2026-09-18T14:00:00Z';
-
-  it('shows the viewer’s LOCAL clock with no zone suffix — deliberately', () => {
-    expect(duePillTime(start, 'Europe/Warsaw')).toBe('16:00');
-    expect(duePillTime(start, 'Europe/Athens')).toBe('17:00');
-    expect(duePillTime(start, 'Europe/Warsaw')).not.toMatch(/UK|your time/);
-  });
-
-  it('reads the UK clock for a UK viewer', () => {
-    expect(duePillTime(start, 'Europe/London')).toBe('15:00');
-  });
-
-  it('falls back to UK when the value carries no zone to convert from', () => {
-    expect(carriesZone(start)).toBe(true);
-    expect(carriesZone('2026-09-18T14:00:00+01:00')).toBe(true);
-    expect(carriesZone('2026-09-18T14:00:00')).toBe(false);
-    // A zoneless wall clock is parsed as the runtime's local time; whatever
-    // that is, the pill shows it as UK rather than shifting it again.
-    const bare = '2026-09-18T14:00:00';
-    const ukOf = new Intl.DateTimeFormat('en-GB', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-      timeZone: 'Europe/London',
-    }).format(new Date(bare));
-    expect(duePillTime(bare, 'Europe/Warsaw')).toBe(ukOf);
-  });
-});
-
-describe('§9.5 the violation log’s Time column', () => {
-  // 18 Sep 2026 is a Friday (the wireframe's "Thu 18 Sep" is a day out).
-  const now = new Date('2026-09-18T14:32:00Z'); // Fri 18 Sep, 16:32 Athens
-
-  it('reads "today HH:MM" in the viewer’s zone for an entry detected today', () => {
-    expect(logTime('2026-09-18T13:12:00Z', 'Europe/Athens', now)).toBe('today 16:12');
-    expect(logTime('2026-09-18T13:12:00Z', 'Europe/London', now)).toBe('today 14:12');
-  });
-
-  it('spells the day for anything older, so two 19:30s a week apart differ', () => {
-    expect(logTime('2026-09-17T19:48:00Z', 'Europe/Athens', now)).toBe('Thu 17 · 22:48');
-    expect(logTime('2026-09-16T19:00:00Z', 'Europe/Athens', now)).toBe('Wed 16 · 22:00');
-  });
-
-  it('decides "today" in the viewer’s zone, not the server’s', () => {
-    // 22:30 UTC on the 17th is already the 18th in Athens (01:30).
-    expect(logTime('2026-09-17T22:30:00Z', 'Europe/Athens', now)).toBe('today 01:30');
-    expect(logTime('2026-09-17T22:30:00Z', 'Europe/London', now)).toBe('Thu 17 · 23:30');
-  });
-});
-
-describe('§9.5 the "Flagged as" line', () => {
-  it('is the violation name plus the event name, as built', () => {
-    expect(flaggedAs({ type: 'left_early', eventTitle: 'Press Night' })).toBe(
-      'Left early — Press Night',
-    );
-    expect(flaggedAs({ type: 'no_checkout', eventTitle: 'Corporate Lunch' })).toBe(
-      'No check-out — Corporate Lunch',
     );
   });
 });

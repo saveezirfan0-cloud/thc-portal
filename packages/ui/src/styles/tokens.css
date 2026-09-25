@@ -228,12 +228,6 @@
   --btn-h-sm: 28px;
   --btn-h-lg: 50px;
   --input-h: 40px;
-  --seg-h: 32px;
-  --seg-h-sm: 28px;
-  /* The smallest thing a finger can hit (§1.2). The Staff App frame sets
-     every control metric above to this — see "touch targets" in
-     components.css — so it is a floor, not a size. */
-  --tap-min: 44px;
 }
 
 /* =====================================================================
@@ -375,10 +369,7 @@
   --nav-bar: 0px;
 
   --btn-h: 38px;
-  /* 44 is the tap floor (--tap-min): a text input is a control, and the
-     public /apply form renders outside the Staff App frame, so the token
-     itself has to clear it. The wireframe's warm block is 46. */
-  --input-h: 44px;
+  --input-h: 42px;
 }
 
 /* --- v2 dark: the spec's "Luminous Midnight" ------------------------

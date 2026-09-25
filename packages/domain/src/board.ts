@@ -46,18 +46,17 @@ export function roleBoardHeader(counts: RoleBoardCounts): string {
 /**
  * Whether Invited and Potential pool are shown for this role at all (§3.3).
  *
- * "Shown only while the role actually has open or invited slots to fill":
- * they are hidden ENTIRELY — not rendered empty — once the role is confirmed
- * and stable, whatever the event's status. An Upcoming role at full
- * confirmation with nobody invited hides them too (the Chef row on
- * `event-board.html`, 2 confirmed of 2 (+0), Upcoming). Open is measured the
- * way the header counts it — against headcount, never headcount + buffer.
- * A Completed or Cancelled event never shows them; on an Ongoing event they
- * come back the moment a no-show or a departure reopens a slot, so the
- * manager can still fill it.
+ * They are hidden ENTIRELY — not rendered empty — once the role is confirmed
+ * and stable: an Ongoing event with no shortfall, or any Completed or
+ * Cancelled event. If a shortfall reopens on an event that is already
+ * Ongoing, because someone no-showed or left, they come back so the manager
+ * can still fill it.
  */
 export function showsCandidatePools(status: EventStatus, counts: RoleBoardCounts): boolean {
   if (status === 'completed' || status === 'cancelled') return false;
+  // Upcoming: still filling, so the pools stay even at full confirmation —
+  // a drop-out before the day is the ordinary case the buffer exists for.
+  if (status === 'upcoming') return true;
   return openSlots(counts) > 0 || counts.invited > 0;
 }
 

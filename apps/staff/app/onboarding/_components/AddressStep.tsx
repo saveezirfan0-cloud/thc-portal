@@ -93,7 +93,7 @@ export function AddressStep({
       <WizardTop
         step={2}
         heading="Where do you live?"
-        sub="We use it to work out how far each venue is from you — closer shifts rank higher (§6) and Radar shows distances from here."
+        sub="We use it to work out how far each venue is from you — closer shifts rank higher and Radar shows distances from here."
       />
 
       <div className="row">

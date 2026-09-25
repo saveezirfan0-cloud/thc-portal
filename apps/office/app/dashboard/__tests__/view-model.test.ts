@@ -48,8 +48,8 @@ describe('allocation (§3.2)', () => {
     expect(allocationLabel(6, 1)).not.toBe('7');
   });
 
-  it('spells out a zero buffer on a list — "2 (+0)", as dashboard.html draws it (§3.2)', () => {
-    expect(allocationLabel(2, 0)).toBe('2 (+0)');
+  it('drops a zero buffer on a list', () => {
+    expect(allocationLabel(2, 0)).toBe('2');
   });
 });
 

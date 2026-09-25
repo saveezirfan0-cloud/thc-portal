@@ -1,3 +1,4 @@
+import { isSafeRelativePath } from '@thc/db';
 import { AuthCard } from '@thc/ui';
 import { LoginForm } from './LoginForm';
 
@@ -34,7 +35,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
         </>
       }
     >
-      <LoginForm next={next} />
+      {/* Not reflected into the form unless it is a path on this app (§1.4). */}
+      <LoginForm next={isSafeRelativePath(next) ? next : undefined} />
     </AuthCard>
   );
 }

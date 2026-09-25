@@ -75,20 +75,6 @@
 .rolesec.changed {
   border-color: var(--amber);
 }
-/* A changed input carries the amber cue itself, beside its "was …" hint
-   (shift-builder.html:265). */
-.rolesec .input.was {
-  border-color: var(--amber);
-}
-.rolesec .rh s {
-  color: var(--muted);
-}
-.rolesec .rh .l2,
-.sumrow .l2 {
-  display: block;
-  color: var(--muted);
-  font-size: 10.5px;
-}
 .rolesec.collapsed .rh {
   border-bottom: 0;
 }

@@ -60,21 +60,27 @@ test('a session the app refuses can still end itself', async ({ page }, testInfo
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
 
-  // The credentials are good. Two refusals exist, and both must leave no
-  // session behind: the sign-in action itself refuses a wrong-app role with
-  // the one generic sentence and clears the cookies it wrote (the office
-  // and staff actions, wireframes/backoffice/login.html:55); or the ROLE
-  // gate answers a terminal 403 page whose only control is Sign out (the
-  // middleware backstop, still what the client app does).
-  const refusedAtSignIn = page.getByText(/Email or password is incorrect/);
-  const wrongAppPage = page.getByRole('heading', { name: /not for the/i });
-  await expect(refusedAtSignIn.or(wrongAppPage)).toBeVisible();
-  if (await wrongAppPage.isVisible()) {
-    // If the role gate intercepts this POST, it re-renders the same page
-    // and the account is stuck.
-    await page.getByRole('button', { name: 'Sign out' }).click();
+  if (testInfo.project.name === 'office') {
+    // The Back Office refuses another app's account AT the form, "the same
+    // way" as a wrong password (wireframes/backoffice/login.html): signIn()
+    // drops the session it just made and shows the generic message, so there
+    // is no wrong-app page to be stuck on in the first place.
+    await expect(page.getByText(/email or password is incorrect/i)).toBeVisible();
     await expect(page).toHaveURL(/\/login/);
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/login/);
+    return;
   }
+
+  // The credentials are good, so sign-in succeeds and the ROLE gate is what
+  // refuses the session — a terminal 403 page, never a redirect (three apps
+  // on three hosts made HOME_PATH a loop).
+  await expect(page.getByRole('heading', { name: /not for the/i })).toBeVisible();
+
+  // The only control on that page. If the role gate intercepts this POST, it
+  // re-renders the same page and the account is stuck.
+  await page.getByRole('button', { name: 'Sign out' }).click();
+  await expect(page).toHaveURL(/\/login/);
 
   // And the session is really gone, not merely navigated away from.
   await page.goto('/');

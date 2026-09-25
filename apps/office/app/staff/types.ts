@@ -41,6 +41,8 @@ export interface StaffRow {
   removed: boolean;
   display_name: string;
   photo_path: string | null;
+  /** Short-lived signed URL for the selfie, set on the server (_lib/photos.ts). */
+  photo_url?: string | null;
   rating: number | null;
   /** Show-rate, as a percentage. */
   reliability: number | null;
@@ -59,20 +61,6 @@ export interface StaffRow {
   weekly_cap_hours: number | null;
   weekly_cap_band: CapBand | null;
   weekly_booked_hours: number | null;
-  /**
-   * The Sunday the current cap band holds until (§9.6's hover: "20 h — term
-   * time until 13.12.2026"). Students only. Not on staff_directory_v yet —
-   * the directory reads it from staff_profile_v (data.ts) — so optional
-   * until the view carries it.
-   */
-  weekly_cap_until?: string | null;
-  /**
-   * A signed, fetchable URL for the onboarding selfie (§9.6 "photo"), never
-   * the bucket path: `photo_path` resolves against the office origin in an
-   * <img>. Filled by the loader through the manager's own session
-   * (../checkin/photos.ts); null for a removed worker or a failed signing.
-   */
-  photo_url?: string | null;
 }
 
 export interface StudentRow {
@@ -80,6 +68,8 @@ export interface StudentRow {
   display_name: string;
   employee_id: number | null;
   photo_path: string | null;
+  /** Short-lived signed URL for the selfie, set on the server (_lib/photos.ts). */
+  photo_url?: string | null;
   status: StaffStatus;
   weekly_cap_hours: number | null;
   weekly_cap_band: CapBand | null;

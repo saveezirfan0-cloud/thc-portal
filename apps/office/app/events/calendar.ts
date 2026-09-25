@@ -18,39 +18,15 @@ export function isCalendarView(value: string | undefined): value is CalendarView
   return value !== undefined && (CALENDAR_VIEWS as string[]).includes(value);
 }
 
-/**
- * The Europe/London civil date an instant falls on, "YYYY-MM-DD".
- *
- * This is the comparison every "which day" question on this screen needs —
- * today, the day a window ends, the day an event was cancelled. Never the
- * UTC date: during BST an instant after 23:00Z already belongs to the next
- * London day (§1.8).
- */
-export function ukDateOf(instant: Date): string {
-  return new Intl.DateTimeFormat('en-CA', {
+/** Today in Europe/London, as a civil date. */
+export function todayInUk(now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: UK_ZONE,
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-  }).format(instant); // en-CA formats as YYYY-MM-DD
-}
-
-/** Today in Europe/London, as a civil date. */
-export function todayInUk(now: Date = new Date()): string {
-  return ukDateOf(now);
-}
-
-/**
- * "today", "tomorrow" or "on Fri 19 Sep" — the day a start time falls on,
- * relative to the reader's today in the UK, for the builder's edit and
- * locked banners ("Allowed up to the event's start time (07:00 tomorrow)",
- * "started at 08:00 today"; shift-builder.html).
- */
-export function relativeDayLabel(iso: string, today: string): string {
-  if (iso === today) return 'today';
-  if (iso === addDays(today, 1)) return 'tomorrow';
-  if (iso === addDays(today, -1)) return 'yesterday';
-  return `on ${formatDayShort(iso)}`;
+  }).format(now);
+  return parts; // en-CA formats as YYYY-MM-DD
 }
 
 function toUtc(iso: string): Date {
@@ -205,29 +181,12 @@ export function formatDayLong(iso: string): string {
   return `${formatDayShort(iso)} ${iso.slice(0, 4)}`;
 }
 
-/** "September" — the list footer's "13 events in September" (§3.1). */
-export function monthName(iso: string): string {
-  return MONTHS_LONG[toUtc(iso).getUTCMonth()]!;
-}
-
-/**
- * The label between the arrows: month, week span, or single day (§3.1).
- *
- * A week inside one month names it once — "Mon 15 – Sun 21 Sep 2026"
- * (events.html) — and only a week straddling two spells both. The day
- * label says "· today" when it is (events.html: "Thu 18 Sep 2026 · today").
- */
-export function periodLabel(view: CalendarView, iso: string, today?: string): string {
-  if (view === 'day') return `${formatDayLong(iso)}${iso === today ? ' · today' : ''}`;
+/** The label between the arrows: month, week span, or single day (§3.1). */
+export function periodLabel(view: CalendarView, iso: string): string {
+  if (view === 'day') return formatDayLong(iso);
   if (view === 'week') {
     const days = weekDays(iso);
-    const monday = days[0]!;
-    const sunday = days[6]!;
-    const sameMonth = monday.slice(0, 7) === sunday.slice(0, 7);
-    const first = sameMonth
-      ? `${WEEKDAYS[weekdayIndex(monday)]} ${toUtc(monday).getUTCDate()}`
-      : formatDayShort(monday);
-    return `${first} – ${formatDayLong(sunday)}`;
+    return `${formatDayShort(days[0]!)} – ${formatDayLong(days[6]!)}`;
   }
-  return `${monthName(iso)} ${iso.slice(0, 4)}`;
+  return `${MONTHS_LONG[toUtc(iso).getUTCMonth()]} ${iso.slice(0, 4)}`;
 }

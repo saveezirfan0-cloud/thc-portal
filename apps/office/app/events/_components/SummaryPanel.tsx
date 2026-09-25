@@ -1,13 +1,15 @@
 'use client';
 
-import Link from 'next/link';
 import { Panel, Pill } from '@thc/ui';
-import { type Forecast, formatAllocationPair, formatHours } from '@thc/domain';
+import { type Forecast, displayTime, formatAllocationPair, formatHours } from '@thc/domain';
 import type { RoleSectionWindow } from '@thc/domain';
-import { ScheduledWindow } from './ScheduledWindow';
+import { useViewerZone } from './useViewerZone';
 
 const gbp = (pence: number) =>
   new Intl.NumberFormat('en-GB', { style: 'currency', currency: 'GBP' }).format(pence / 100);
+
+/** The label belongs on the end of a range, not in the middle of it. */
+const stripZone = (line: string) => line.replace(/ \((UK)\)$| your time$/, '');
 
 export interface SummaryPanelProps {
   /** The derived event window (RULE-18), or null before the first role. */
@@ -35,16 +37,27 @@ export function SummaryPanel({
   buffer,
   forecast,
 }: SummaryPanelProps) {
+  const zone = useViewerZone();
+  // A scheduled time shows both zones, with the local line dropped when they
+  // coincide — never a bare clock the reader could take for their own (§1.8).
+  const start = window ? displayTime(window.startsAt, 'scheduled', zone) : null;
+  const end = window ? displayTime(window.endsAt, 'scheduled', zone) : null;
+
   return (
     <Panel title="Summary">
       <div className="sumrow">
         <span>Derived event window</span>
-        {/* A scheduled time shows both zones, with the local line dropped
-            when they coincide — never a bare clock the reader could take
-            for their own (§1.8). */}
         <span className="v">
-          {window ? (
-            <ScheduledWindow startsAt={window.startsAt} endsAt={window.endsAt} labelled />
+          {start && end ? (
+            <>
+              {stripZone(start.primary)} – {end.primary}
+              {start.secondary && end.secondary ? (
+                <>
+                  <br />
+                  {stripZone(start.secondary)} – {end.secondary}
+                </>
+              ) : null}
+            </>
           ) : (
             '—'
           )}
@@ -84,12 +97,10 @@ export function SummaryPanel({
 }
 
 export function ClientPolicies({
-  clientId,
   paysBreaks,
   paysBuffer,
   clientName,
 }: {
-  clientId: string;
   paysBreaks: boolean;
   paysBuffer: boolean;
   clientName: string;
@@ -117,14 +128,13 @@ export function ClientPolicies({
             <br />
             <span className="muted xs">
               {paysBuffer
-                ? 'Everyone accepted works and is paid normally. Strict policy would turn away the surplus at check-in (RULE-15).'
+                ? 'Everyone accepted works and is paid normally.'
                 : 'Strict: past the headcount, later arrivals are turned away — a fixed 4 hours if on time, nothing if late (RULE-15).'}
             </span>
           </span>
         </label>
         <span className="muted xs">
-          Set at client level (<Link href={`/clients/${clientId}`}>client card</Link>), shown here
-          and on the event board.
+          Set at client level on the client card, shown here and on the event board.
         </span>
       </div>
     </Panel>

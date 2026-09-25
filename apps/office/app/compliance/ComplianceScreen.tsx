@@ -16,8 +16,15 @@ import type { CompliancePageData } from './types';
  * expired · 14 expiring"), not a number, and `Tabs` counts only numbers — the
  * markup and classes are the design system's own (`.tabs`, `.n`, `.alert`).
  */
-export function ComplianceScreen({ data }: { data: CompliancePageData }) {
-  const [tab, setTab] = useState<'review' | 'radar'>('review');
+export function ComplianceScreen({
+  data,
+  initialTab = 'review',
+}: {
+  data: CompliancePageData;
+  /** `/compliance?tab=radar` — the dashboard's "view radar →" (§9.1). */
+  initialTab?: 'review' | 'radar';
+}) {
+  const [tab, setTab] = useState<'review' | 'radar'>(initialTab);
   const counts = radarCounts(data.radar);
 
   return (

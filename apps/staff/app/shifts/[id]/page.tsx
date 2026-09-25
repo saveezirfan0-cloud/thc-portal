@@ -1,35 +1,35 @@
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { Alert } from '@thc/ui';
 import { StaffShell } from '../../_components/StaffShell';
 import { loadBookings, openInvites } from '../../data';
-import { loadProfile } from '../../profile/data';
-import { shiftsBadge } from '../list';
 import { loadShift, supabaseConfigured } from './data';
+import { shiftScreenReachable } from './phase';
 import { ShiftScreen } from './ShiftScreen';
 import '../../staff-app.css';
-import '../shifts.css';
 import './shift.css';
 
-export const metadata = { title: 'Shift · THC' };
+export const metadata = { title: 'Shift · THC Staff' };
 /** The shift screen is the state of right now; nothing may be cached. */
 export const dynamic = 'force-dynamic';
 
 /**
- * `/shifts/:id` — §10.4, §5.1–5.2b.
+ * `/shifts/:id` — §10.4, §5.1, `wireframes/staff/shift-detail.html`.
  *
- * Rendered through `StaffShell` like every other working screen, so the
- * §10.1 app lock, the four tabs with their lock state and counts, and the
- * profile behind the avatar are the same here as on the list a worker came
- * from. The header carries the wireframe's "‹ Shifts" way back above the
- * title.
+ * Rendered through `StaffShell`, like every other working screen, so the
+ * §10.1 app lock stands in front of it: an auto-blocked worker sees the
+ * Documents-only screen, a held one the hold screen, a leaver the leaver
+ * screen — never a check-in button reached by a deep link or a stale push.
+ * The shell also owns the header and the four tabs, in the one order the
+ * rest of the app uses.
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const back = <Link href="/shifts">‹ Shifts</Link>;
 
   if (!supabaseConfigured()) {
     return (
-      <StaffShell title="Shift" active="/shifts">
+      <StaffShell title="Shift" sub={back} active="/shifts">
         <Alert tone="coral">
           This environment has no Supabase project, so the shift cannot be read. See
           docs/04-setup-github-vercel-supabase.md.
@@ -38,27 +38,24 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     );
   }
 
-  // `staff_bookings()` resolves the caller itself: another worker's id
-  // returns nothing rather than their shift.
-  const [bookings, profile] = await Promise.all([loadBookings(), loadProfile()]);
-  const shift = await loadShift(id, bookings);
+  // `staff_shift_detail()` answers for the caller's own bookings only:
+  // another worker's id returns nothing rather than their shift.
+  const [shift, bookings] = await Promise.all([loadShift(id), loadBookings()]);
   if (!shift) notFound();
+
+  // An invitation has its own screen, with Accept and Decline.
+  if (shift.status === 'invited') redirect(`/invites/${id}`);
+  if (!shiftScreenReachable(shift)) notFound();
 
   return (
     <StaffShell
-      title={
-        <>
-          <Link href="/shifts" className="back">
-            ‹ Shifts
-          </Link>
-          {shift.eventTitle} · {shift.roleName}
-        </>
-      }
+      title={`${shift.eventTitle} · ${shift.roleName}`}
+      sub={back}
       active="/shifts"
-      shifts={shiftsBadge(bookings)}
+      shifts={bookings.filter((b) => b.status === 'confirmed' || b.status === 'worked').length}
       invites={openInvites(bookings).length}
     >
-      <ShiftScreen shift={shift} firstName={profile?.firstName ?? null} />
+      <ShiftScreen shift={shift} />
     </StaffShell>
   );
 }

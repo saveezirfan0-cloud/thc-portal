@@ -103,7 +103,11 @@ export function StudentVisaView({ students, query }: StudentVisaViewProps) {
                   <tr key={row.id}>
                     <td>
                       <div className="person">
-                        <Avatar name={row.display_name} size="sm" />
+                        <Avatar
+                          name={row.display_name}
+                          src={row.photo_url ?? undefined}
+                          size="sm"
+                        />
                         <div>
                           <div className="n">{row.display_name}</div>
                           <div className="s">{employeeId(row.employee_id)}</div>

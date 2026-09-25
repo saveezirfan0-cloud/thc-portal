@@ -13,13 +13,16 @@ import {
   type ReconfirmField,
   type RoleSectionDraft,
   type RoleSectionIssue,
+  UK_ZONE,
   defaultAllocationPerHour,
   derivedEventWindow,
+  formatTimeIn,
   isEditLocked,
   reconfirmingChanges,
   ukRoleWindow,
   validateRoleSection,
 } from '@thc/domain';
+import type { SavedEvent } from './data';
 
 /** The sentinel the dress-code select uses for the per-event free text (§9.7). */
 export const DRESS_CODE_OTHER = '__other__';
@@ -208,17 +211,71 @@ export function canRemoveRole(role: RoleDraft, bookedBySectionId: Record<string,
 }
 
 /**
- * §3.2: the dress code "defaults to the dress code already set for this
- * client + role combination on the client's Rate card (§9.7)". The first
- * entry of the card's list is the default (shift-builder.html opens Chef on
- * "Chef whites"); a value already on the new list, or the per-event "Other"
- * override, is kept; anything else falls back to the list's first entry, or
- * to nothing when the card has no list for this role.
+ * A saved event as the builder's working state — for editing it, or as the
+ * starting point of its Duplicate (§3.2).
+ *
+ * "Multi-day = separate events created via Duplicate (the clone copies the
+ * roles, NOT the staff)." So a duplicate:
+ *   * keeps the client, venue, title, PO, contact, notes and every role
+ *     section's times, headcount, buffer, rates, dress code and allocation;
+ *   * drops every section id, so saving creates new sections and nothing
+ *     booked on the original — confirmed, invited or applied — comes along;
+ *   * leaves the DATE empty: a day is the one thing a duplicate must change,
+ *     and Save stays disabled until the manager sets it;
+ *   * starts with auto-assign ON at event and role level, the §3.4 default
+ *     for any new event — a switch turned off on the original was about
+ *     that day's people.
+ *
+ * `dressCodesFor` is the client's rate-card list for a role: a stored dress
+ * code not on it was that event's own override and reopens as "Other".
  */
-export function defaultDressCode(dressCodes: readonly string[], current = ''): string {
-  if (current === DRESS_CODE_OTHER) return current;
-  if (current && dressCodes.includes(current)) return current;
-  return dressCodes[0] ?? '';
+export function draftFromSaved(
+  event: SavedEvent,
+  dressCodesFor: (roleId: string) => string[],
+  as: 'edit' | 'duplicate',
+): EventDraft {
+  const duplicate = as === 'duplicate';
+  const roles: RoleDraft[] = event.sections.map((section, index) => {
+    const onList = dressCodesFor(section.roleId).includes(section.dressCode);
+    return {
+      key: `${duplicate ? 'copy' : 'saved'}-${section.id}-${index}`,
+      id: duplicate ? null : section.id,
+      roleId: section.roleId,
+      start: section.start,
+      end: section.end,
+      headcount: section.headcount,
+      buffer: section.buffer,
+      chargeRate: section.chargeRate,
+      payRate: section.payRate,
+      dressCode: section.dressCode && !onList ? DRESS_CODE_OTHER : section.dressCode,
+      dressCodeOther: section.dressCode && !onList ? section.dressCode : '',
+      autoAssign: duplicate ? true : section.autoAssign,
+      allocationPerHour: section.allocationPerHour,
+      // Whatever is stored is the manager's choice; the default never
+      // overwrites it on reopening (§3.4).
+      allocationTouched: true,
+    };
+  });
+
+  // A role added now is pre-filled with the event's CURRENT window (§3.2),
+  // which is the derived one: earliest start → latest end (RULE-18).
+  const window = derivedEventWindow(
+    event.sections.map((s) => ukRoleWindow(event.date, s.start, s.end)),
+  );
+
+  return {
+    clientId: event.clientId,
+    venueId: event.venueId,
+    title: event.title,
+    date: duplicate ? '' : event.date,
+    overallStart: window ? formatTimeIn(window.startsAt, UK_ZONE) : '07:00',
+    overallEnd: window ? formatTimeIn(window.endsAt, UK_ZONE) : '23:30',
+    poNumber: event.poNumber,
+    onsiteContact: event.onsiteContact,
+    notes: event.notes,
+    autoAssign: duplicate ? true : event.autoAssign,
+    roles,
+  };
 }
 
 /** What the worker is actually told to wear (§9.7). */

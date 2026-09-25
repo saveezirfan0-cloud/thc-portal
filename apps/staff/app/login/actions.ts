@@ -2,8 +2,8 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { safeNextPath } from '@thc/db';
 import { createClient } from '@thc/db/server';
-import { safeNext } from './safeNext';
 
 /**
  * Email + password sign-in (§1.4).
@@ -15,8 +15,8 @@ import { safeNext } from './safeNext';
 export async function signIn(_prev: string | null, formData: FormData): Promise<string | null> {
   const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
-  // A path on this origin or the landing route — never a host (safeNext.ts).
-  const next = safeNext(String(formData.get('next') ?? ''), '/shifts');
+  // Only ever a path on this app (§1.4): see packages/db/src/redirect.ts.
+  const next = safeNextPath(formData.get('next'), '/shifts');
 
   if (!email || !password) return 'Enter your email and password.';
 

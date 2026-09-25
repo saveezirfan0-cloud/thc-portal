@@ -78,9 +78,9 @@ export function DocumentsHub({
       {locked ? (
         <Note>
           <span className="xs">
-            Shifts, Invites and Radar are locked until every document is verified and in date
-            (§4.3). Shifts you were removed from aren’t restored — they may already have gone to
-            someone else.
+            Shifts, Invites and Radar are locked until every document is verified and in date.
+            Shifts you were removed from aren’t restored — they may already have gone to someone
+            else.
           </span>
         </Note>
       ) : null}

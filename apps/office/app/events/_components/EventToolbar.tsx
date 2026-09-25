@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import type { ReactNode } from 'react';
 import { type CalendarView, periodLabel, shiftPeriod, todayInUk } from '../calendar';
 import { EventFilters } from './EventFilters';
 import type { ClientOption } from '../data';
@@ -28,18 +27,8 @@ export function hrefFor(query: Partial<ToolbarQuery> & { view: CalendarView; dat
  * the list as well; "+ New event" is in the page header rather than here.
  * All of it is links, so every view is a URL a manager can bookmark or share.
  */
-export function EventToolbar({
-  query,
-  clients,
-  extra,
-}: {
-  query: ToolbarQuery;
-  clients: ClientOption[];
-  /** View-specific pills on the right: the month legend, the day counters. */
-  extra?: ReactNode;
-}) {
+export function EventToolbar({ query, clients }: { query: ToolbarQuery; clients: ClientOption[] }) {
   const { view, date } = query;
-  const today = todayInUk();
   const isCalendar = view !== 'list';
   const calendarView: CalendarView = isCalendar ? view : 'month';
 
@@ -81,7 +70,7 @@ export function EventToolbar({
         >
           ‹
         </Link>
-        <span className="lbl">{periodLabel(view, date, today)}</span>
+        <span className="lbl">{periodLabel(view, date)}</span>
         <Link
           href={hrefFor({ ...query, date: shiftPeriod(view, date, 1) })}
           aria-label="Next period"
@@ -90,12 +79,11 @@ export function EventToolbar({
         </Link>
       </div>
 
-      <Link className="btn sm" href={hrefFor({ ...query, date: today })}>
+      <Link className="btn sm" href={hrefFor({ ...query, date: todayInUk() })}>
         Today
       </Link>
 
       <div className="right">
-        {extra}
         <EventFilters query={query} clients={clients} />
       </div>
     </div>

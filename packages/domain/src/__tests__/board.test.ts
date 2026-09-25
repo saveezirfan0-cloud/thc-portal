@@ -44,23 +44,11 @@ describe('Invited and Potential pool are hidden, not emptied (§3.3)', () => {
   const full = { confirmed: 12, invited: 0, headcount: 12, buffer: 2 };
   const short = { confirmed: 10, invited: 0, headcount: 12, buffer: 2 };
 
-  it('hides them on an Upcoming role that is fully confirmed with nobody invited', () => {
-    // event-board.html, "Upcoming · filling": Chef 2 confirmed · 0 invited ·
-    // 0 open of 2 (+0) → "Invited · Potential pool — hidden entirely — role
-    // fully confirmed and stable (§3.3)".
-    expect(
-      showsCandidatePools('upcoming', { confirmed: 2, invited: 0, headcount: 2, buffer: 0 }),
-    ).toBe(false);
-    expect(showsCandidatePools('upcoming', full)).toBe(false);
-  });
-
-  it('shows them on an Upcoming role while it has open or invited slots', () => {
-    // Kitchen Porter on the same board: 2 confirmed · 3 invited · 1 open of 3.
-    expect(
-      showsCandidatePools('upcoming', { confirmed: 2, invited: 3, headcount: 3, buffer: 1 }),
-    ).toBe(true);
+  it('shows them while the event is still upcoming, even at full confirmation', () => {
+    // A drop-out before the day is the ordinary case, and the buffer exists
+    // precisely because it happens.
+    expect(showsCandidatePools('upcoming', full)).toBe(true);
     expect(showsCandidatePools('upcoming', short)).toBe(true);
-    expect(showsCandidatePools('upcoming', { ...full, invited: 1 })).toBe(true);
   });
 
   it('hides them on an Ongoing event with no shortfall', () => {

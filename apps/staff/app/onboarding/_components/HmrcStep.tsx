@@ -165,7 +165,7 @@ export function HmrcStep({ initial, niMasked }: { initial: HmrcForm; niMasked: s
           mono
           value={niMasked}
           readOnly
-          hint="On file and locked. Any correction goes through the office (§2.8)."
+          hint="On file and locked. Any correction goes through the office."
         />
       ) : (
         <Input
@@ -180,7 +180,7 @@ export function HmrcStep({ initial, niMasked }: { initial: HmrcForm; niMasked: s
               ? 'That doesn’t look like an NI number. It should look like AB123456C.'
               : undefined
           }
-          hint="Leave blank if you don’t have one yet — you can still be onboarded and paid; add it in Profile details once HMRC issues it (§2.10). Once saved it’s shown masked and locked."
+          hint="Leave blank if you don’t have one yet — you can still be onboarded and paid; add it in Profile details once HMRC issues it. Once saved it’s shown masked and locked."
         />
       )}
 

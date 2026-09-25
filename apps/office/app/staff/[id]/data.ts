@@ -2,6 +2,8 @@ import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../data';
 import { ENTRY_COLUMNS, managerName } from '../../feedback/data';
+import { loadStaffViolationLog } from '../../checkin/data';
+import { signStaffPhotos } from '../../_lib/photos';
 import type { FeedbackEntry } from '../../feedback/types';
 import type {
   ClientOption,
@@ -89,6 +91,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     manager,
     activated,
     location,
+    violationDetails,
   ] = await Promise.all([
     supabase.from('staff_profile_v').select(PROFILE_COLUMNS).eq('id', id).maybeSingle<ProfileRow>(),
     supabase
@@ -154,6 +157,9 @@ export async function loadProfile(id: string): Promise<ProfileData> {
       .select('home_location_stale')
       .eq('id', id)
       .maybeSingle<{ home_location_stale: boolean }>(),
+    // The Shifts tab opens the /checkin detail window and Resolve (§9.6),
+    // so it reads the entries through the monitor's own query.
+    loadStaffViolationLog(supabase, id),
   ]);
 
   const error =
@@ -169,12 +175,17 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     clients.error;
   if (error) return { ...EMPTY, problem: error.message };
 
+  // The header selfie: a private-bucket key, signed here (_lib/photos.ts).
+  const photoPath = profile.data?.photo_path ?? null;
+  const photoUrl = photoPath ? ((await signStaffPhotos([photoPath])).get(photoPath) ?? null) : null;
+
   return {
-    profile: profile.data ?? null,
+    profile: profile.data ? { ...profile.data, photo_url: photoUrl } : null,
     documents: documents.data ?? [],
     qualifications: qualifications.data ?? [],
     shifts: shifts.data ?? [],
     violations: violations.data ?? [],
+    violationDetails: violationDetails.error ? undefined : violationDetails.rows,
     feedback: feedback.data ?? [],
     references: references.data ?? [],
     declarations: declarations.data ?? [],

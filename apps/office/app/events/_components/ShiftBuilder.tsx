@@ -3,17 +3,16 @@
 import { useId, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { Alert, Button, Chip, Input, Note, Panel, Pill, Select, Textarea } from '@thc/ui';
-import { UK_ZONE, eventStatus, forecastEvent, formatTimeIn, ukInputLabel } from '@thc/domain';
-import { formatDayLong, relativeDayLabel, todayInUk, ukDateOf } from '../calendar';
+import { UK_ZONE, forecastEvent, formatTimeIn, ukInputLabel } from '@thc/domain';
 import { RoleSection } from './RoleSection';
 import { Switch } from './Switch';
 import { ClientPolicies, SummaryPanel } from './SummaryPanel';
 import {
+  DRESS_CODE_OTHER,
   type EventDraft,
   type RoleDraft,
   canRemoveRole,
   canSave,
-  defaultDressCode,
   draftIssues,
   draftWindow,
   editRole,
@@ -98,38 +97,33 @@ export function ShiftBuilder({
   const cancelled = Boolean(saved?.cancelledAt);
   const readOnly = locked || cancelled;
   const saveable = canSave(draft) && !readOnly;
-  // §1.5, for the pill on a locked section: Ongoing green, Completed and
-  // Cancelled neutral — the lock alone does not mean Ongoing.
-  const status = eventStatus(window, saved?.cancelledAt ?? null);
-  // "07:00 tomorrow" / "08:00 today" — the start the banners name.
-  const startLabel = window
-    ? `${formatTimeIn(window.startsAt, UK_ZONE)} ${relativeDayLabel(ukDateOf(window.startsAt), todayInUk())}`
-    : null;
 
   const erroredRoles = [...issues.roles.values()].filter((list) => list.length > 0).length;
-  // The summary's counts and its forecast read the SAME set — the sections
-  // that resolve and carry no error — so "3 valid · 1 error" and
-  // "17 (+3)" describe the same roles (shift-builder.html:220).
-  const validSections = draft.roles.filter(
+  const validRoles = draft.roles.filter(
     (role) =>
       role.roleId &&
       isResolvable(draft.date, role) &&
       (issues.roles.get(role.key) ?? []).length === 0,
-  );
-  const validRoles = validSections.length;
-  const headcount = validSections.reduce((sum, role) => sum + role.headcount, 0);
-  const buffer = validSections.reduce((sum, role) => sum + role.buffer, 0);
+  ).length;
+  const headcount = draft.roles.reduce((sum, role) => sum + role.headcount, 0);
+  const buffer = draft.roles.reduce((sum, role) => sum + role.buffer, 0);
 
   const forecast = useMemo(
     () =>
       forecastEvent(
-        validSections.map((role) => ({
-          ...resolveRole(role, draft.date),
-          chargeRatePence: Math.round(role.chargeRate * 100),
-          payRatePence: Math.round(role.payRate * 100),
-        })),
+        draft.roles
+          .filter(
+            (role) =>
+              role.roleId &&
+              isResolvable(draft.date, role) &&
+              (issues.roles.get(role.key) ?? []).length === 0,
+          )
+          .map((role) => ({
+            ...resolveRole(role, draft.date),
+            chargeRatePence: Math.round(role.chargeRate * 100),
+            payRatePence: Math.round(role.payRate * 100),
+          })),
       ),
-    // validSections is derived from exactly these two.
     [draft, issues],
   );
 
@@ -158,12 +152,12 @@ export function ShiftBuilder({
       onsiteContact: current.onsiteContact || (picked?.staffContactPoint ?? ''),
       roles: current.roles.map((role) => {
         const card = picked?.rateCard[role.roleId];
+        const stillOnList =
+          role.dressCode === DRESS_CODE_OTHER || (card?.dressCodes ?? []).includes(role.dressCode);
         return {
           ...role,
           chargeRate: card?.chargeRate ?? role.chargeRate,
-          // §3.2: the code defaults to the new client's list for this role;
-          // a value still on it, or the per-event override, is kept.
-          dressCode: defaultDressCode(card?.dressCodes ?? [], role.dressCode),
+          dressCode: stillOnList ? role.dressCode : '',
         };
       }),
     }));
@@ -175,8 +169,7 @@ export function ShiftBuilder({
       roleId,
       payRate: role?.payRate ?? 0,
       chargeRate: client?.rateCard[roleId]?.chargeRate ?? 0,
-      // §3.2 / §9.7: the client + role combination's first listed code.
-      dressCode: defaultDressCode(client?.rateCard[roleId]?.dressCodes ?? []),
+      dressCode: '',
       dressCodeOther: '',
     });
   }
@@ -204,9 +197,6 @@ export function ShiftBuilder({
     });
   }
 
-  // shift-builder.html:305 — every panel header says so while the form is locked.
-  const lockedPill = readOnly ? <Pill>locked</Pill> : null;
-
   const changesByKey = new Map<string, Set<string>>();
   for (const role of draft.roles) {
     const original = role.id ? originals.get(role.id) : undefined;
@@ -224,15 +214,17 @@ export function ShiftBuilder({
         {cancelled ? (
           <Alert tone="coral">
             <b>This event is cancelled.</b> A cancelled event is not edited — it stays on the record
-            with its Cancelled status (§1.5, §3.2). Re-run it as a new event, or use Duplicate on
-            the event board to copy the roles.
+            with its Cancelled status (§1.5, §3.2). Re-run it as a new event, or{' '}
+            <Link href={`/events/new?from=${saved?.id ?? ''}`}>duplicate it</Link> to copy the
+            roles.
           </Alert>
         ) : null}
 
         {locked && !cancelled ? (
           <Alert tone="coral">
             <b>
-              Editing is locked — {draft.title} started at {startLabel ?? 'its scheduled start'}.
+              Editing is locked — {draft.title} started at{' '}
+              {window ? `${formatTimeIn(window.startsAt, UK_ZONE)} (UK)` : 'its scheduled start'}.
             </b>{' '}
             Once the event has started, and for any past event, no field can be changed (§3.2). What
             is still possible is on the event board: Withdraw, No show / Get back, Cancel event,
@@ -243,12 +235,12 @@ export function ShiftBuilder({
         {mode === 'edit' && !readOnly ? (
           <Alert>
             <b>
-              Editing {draft.title} · {formatDayLong(draft.date)}
+              Editing {draft.title} · {draft.date}
               {draft.poNumber ? ` · PO ${draft.poNumber}` : ''}.
             </b>{' '}
-            Allowed up to the event&rsquo;s start time{startLabel ? ` (${startLabel})` : ''}. Every
-            field — venue, date and time, headcount, buffer, charge rate, dress code, PO Number — is
-            editable the same way as at creation (§3.2).
+            Allowed up to the event&rsquo;s start. Every field — venue, date and time, headcount,
+            buffer, charge rate, dress code, PO Number — is editable the same way as at creation
+            (§3.2).
           </Alert>
         ) : null}
 
@@ -257,10 +249,7 @@ export function ShiftBuilder({
         <Panel
           title="1 · Client & venue"
           actions={
-            <>
-              <span className="muted sm">client → venue (address → geo point, type → radius)</span>
-              {lockedPill}
-            </>
+            <span className="muted sm">client → venue (address → geo point, type → radius)</span>
           }
         >
           <div className="stack">
@@ -272,16 +261,9 @@ export function ShiftBuilder({
                   </>
                 }
                 value={draft.clientId}
-                // §3.2's editable list has no client on it: the policies
-                // were copied from this client at creation and the rate card
-                // priced every section (shift-builder.html:248, one option).
-                disabled={readOnly || mode === 'edit'}
+                disabled={readOnly}
                 onChange={(e) => pickClient(e.target.value)}
-                hint={
-                  mode === 'edit'
-                    ? 'Set at creation — the rate card, dress codes and policies are this client\u2019s. To run it for another client, create a new event (§3.2).'
-                    : "Loads this client's rate card, dress codes, on-site contact and policies."
-                }
+                hint="Loads this client's rate card, dress codes, on-site contact and policies."
               >
                 <option value="">Choose…</option>
                 {reference.clients.map((option) => (
@@ -376,11 +358,7 @@ export function ShiftBuilder({
                 disabled={readOnly}
                 placeholder="Optional — as given by the client"
                 onChange={(e) => setDraft((c) => ({ ...c, poNumber: e.target.value }))}
-                hint={
-                  mode === 'edit'
-                    ? 'Applies silently — no re-confirmation.'
-                    : 'Free text, optional, no format or uniqueness rule; can be added or edited any time, also after creation (§3.2).'
-                }
+                hint="Free text, optional, no format or uniqueness rule; can be added or edited any time (§3.2)."
               />
             </div>
           </div>
@@ -389,12 +367,9 @@ export function ShiftBuilder({
         <Panel
           title="2 · Date & overall window"
           actions={
-            <>
-              <span className="muted sm">
-                every role added below is pre-filled with this window, then edited independently
-              </span>
-              {lockedPill}
-            </>
+            <span className="muted sm">
+              every role added below is pre-filled with this window, then edited independently
+            </span>
           }
         >
           <div className="stack">
@@ -456,7 +431,6 @@ export function ShiftBuilder({
               <Button size="sm" onClick={addRole} disabled={readOnly}>
                 + Add role
               </Button>
-              {lockedPill}
             </>
           }
         >
@@ -483,7 +457,6 @@ export function ShiftBuilder({
                 mode={mode}
                 booked={role.id ? (booked[role.id] ?? 0) : 0}
                 locked={readOnly}
-                status={status}
                 onChange={(patch) =>
                   patch.roleId !== undefined
                     ? pickRole(role.key, patch.roleId)
@@ -495,7 +468,7 @@ export function ShiftBuilder({
           </div>
         </Panel>
 
-        <Panel title="4 · On-site contact & instructions" actions={lockedPill}>
+        <Panel title="4 · On-site contact & instructions">
           <div className="stack">
             <div className="f2">
               <Input
@@ -537,7 +510,6 @@ export function ShiftBuilder({
       <div className="side">
         {client ? (
           <ClientPolicies
-            clientId={client.id}
             clientName={client.name}
             paysBreaks={client.paysBreaks}
             paysBuffer={client.paysBuffer}
@@ -568,8 +540,15 @@ export function ShiftBuilder({
           </Panel>
         ) : null}
 
-        {mode === 'edit' ? (
-          <Panel title="Duplicate">
+        {mode === 'edit' && saved ? (
+          <Panel
+            title="Duplicate"
+            actions={
+              <Link className="btn sm" href={`/events/new?from=${saved.id}`}>
+                Duplicate
+              </Link>
+            }
+          >
             <span className="sm muted">
               Multi-day = separate events created via <b>Duplicate</b> on the event board. The clone
               copies the roles (times, headcount, buffer, rates, dress code), <b>not the staff</b>,

@@ -1,0 +1,505 @@
+/**
+ * The event board's view-model — Scope §3.3, §3.4, §6.
+ *
+ * Pure, so the rules the manager reads off the board can be tested without
+ * a database or a browser. Nothing here re-derives a rule: the gates and
+ * the five factor inputs come from `auto_assign_candidates` (SQL), the
+ * ranking from `rankCandidateRows` (the engine's own), the rates from
+ * `finalHourlyPence` / `marginPerHourPence`. This module only decides what
+ * each list shows and in what words.
+ */
+
+import {
+  ACCEPT_APPLICATION_REFUSAL_COPY,
+  type CandidateRow,
+  type ScoreBreakdown,
+  type ScoreInput,
+  type ScoreWeights,
+  type Wave,
+  candidateInput,
+  finalHourlyPence,
+  marginPerHourPence,
+  rankCandidateRows,
+} from '@thc/domain';
+
+// ---------------------------------------------------------------------
+// People
+// ---------------------------------------------------------------------
+
+export interface BoardPersonName {
+  staffId: string;
+  /** "Grace L." — Avatar derives the initials, including the GDPR case. */
+  name: string;
+  /** Roles this worker is signed off for, for the row's second line. */
+  roles: string[];
+}
+
+/**
+ * "Grace L."; a GDPR-removed worker is "Deleted account #1042" and keeps
+ * their row, so the headcount is not skewed (§1.7).
+ */
+export function shortName(person: {
+  first: string;
+  last: string;
+  removed: boolean;
+  employeeId: number | string | null;
+}): string {
+  if (person.removed) {
+    return person.employeeId === null ? 'Deleted account' : `Deleted account #${person.employeeId}`;
+  }
+  const initial = person.last.trim().charAt(0);
+  return initial ? `${person.first} ${initial}.` : person.first;
+}
+
+function personFor(people: ReadonlyMap<string, BoardPersonName>, staffId: string) {
+  return people.get(staffId) ?? { staffId, name: 'Deleted account', roles: [] };
+}
+
+// ---------------------------------------------------------------------
+// Potential pool (§3.3)
+// ---------------------------------------------------------------------
+
+export interface PoolEntry extends BoardPersonName {
+  /** 1-based position in the engine's order: wave 1 first, then by score. */
+  rank: number;
+  wave: Wave;
+  /** Qualified at THIS client and THIS role — the "Qualified" chip. */
+  qualified: boolean;
+  breakdown: ScoreBreakdown;
+  /** The figures the score was computed from, as the engine read them. */
+  input: ScoreInput;
+  /** Set for a pending Radar application: the "Applied" marker (§3.3). */
+  appliedAt: string | null;
+  /** The `applied` booking a manager takes forward (N10); null otherwise. */
+  applicationId: string | null;
+}
+
+export interface PendingApplication {
+  staffId: string;
+  bookingId: string;
+  appliedAt: string | null;
+  createdAt: string;
+}
+
+/**
+ * The ranked Potential pool for one role section.
+ *
+ * In the pool: every candidate with no gate and no booking on this
+ * section, plus the pending Radar applicants (§3.3: "Anyone who
+ * self-applied via Radar … carries an 'Applied' marker in the Potential
+ * pool"). An invited worker who also applied stays in Invited only — their
+ * booking is `invited`, so they never reach here (confirmed 04.09.2026).
+ * Confirmed, invited, cancelled and closed bookings are all elsewhere.
+ */
+export function buildPool(
+  rows: readonly CandidateRow[],
+  people: ReadonlyMap<string, BoardPersonName>,
+  applications: readonly PendingApplication[],
+  weights: ScoreWeights,
+): PoolEntry[] {
+  const applied = new Map(applications.map((a) => [a.staffId, a]));
+  const eligible = rows.filter(
+    (row) =>
+      row.gate === null &&
+      (row.booking_status === null ||
+        (row.booking_status === 'applied' && applied.has(row.staff_id))),
+  );
+
+  return rankCandidateRows(eligible, weights).map((ranked, index) => {
+    const row = ranked.subject;
+    const application = applied.get(row.staff_id) ?? null;
+    return {
+      ...personFor(people, row.staff_id),
+      rank: index + 1,
+      wave: ranked.wave,
+      qualified: row.qualified,
+      breakdown: ranked.breakdown,
+      input: candidateInput(row),
+      appliedAt: application ? (application.appliedAt ?? application.createdAt) : null,
+      applicationId: application?.bookingId ?? null,
+    };
+  });
+}
+
+export type PoolFilter = 'all' | 'applied' | 'not_applied';
+export type PoolSort = 'score' | 'applied' | 'name';
+
+export interface PoolQuery {
+  q: string;
+  filter: PoolFilter;
+  sort: PoolSort;
+}
+
+/**
+ * §3.3: "the manager can sort/filter the pool by application status; the
+ * pool's existing ranking and search stay intact alongside this". The rank
+ * number is the engine's and never renumbers — a search or a re-sort
+ * changes what is shown, not who auto-assign would invite next.
+ */
+export function queryPool(entries: readonly PoolEntry[], query: PoolQuery): PoolEntry[] {
+  const needle = query.q.trim().toLowerCase();
+  const shown = entries.filter((entry) => {
+    if (query.filter === 'applied' && !entry.appliedAt) return false;
+    if (query.filter === 'not_applied' && entry.appliedAt) return false;
+    if (!needle) return true;
+    return [entry.name, ...entry.roles].join(' ').toLowerCase().includes(needle);
+  });
+
+  if (query.sort === 'name') {
+    return [...shown].sort((a, b) => a.name.localeCompare(b.name, 'en-GB') || a.rank - b.rank);
+  }
+  if (query.sort === 'applied') {
+    // Applicants first, oldest application first; the rest in rank order.
+    return [...shown].sort((a, b) => {
+      if (a.appliedAt && b.appliedAt) return a.appliedAt.localeCompare(b.appliedAt);
+      if (a.appliedAt) return -1;
+      if (b.appliedAt) return 1;
+      return a.rank - b.rank;
+    });
+  }
+  return [...shown].sort((a, b) => a.rank - b.rank);
+}
+
+/** One factor chip: what it shows, and the hover line "show-rate 99% → 90". */
+export interface FactorChip {
+  label: string;
+  title: string;
+}
+
+function trimNumber(value: number, digits = 1): string {
+  return Number(value.toFixed(digits)).toString();
+}
+
+/** The five chips on a pool row, in the §6 order (wireframe event-board). */
+export function factorChips(entry: Pick<PoolEntry, 'input' | 'breakdown'>): FactorChip[] {
+  const { input, breakdown } = entry;
+  const round = (n: number) => Math.round(n);
+  // 1,000 km is the engine's "no usable home address" stand-in (autoAssign.ts).
+  const noAddress = input.distanceKm >= 1_000;
+  return [
+    {
+      label: `show ${trimNumber(input.reliability)}%`,
+      title: `show-rate ${trimNumber(input.reliability)}% → ${round(breakdown.show)}`,
+    },
+    {
+      label: `${trimNumber(input.rating)}★`,
+      title: `rating ${trimNumber(input.rating)} → ${round(breakdown.rating)}`,
+    },
+    {
+      label: noAddress ? 'no address' : `${trimNumber(input.distanceKm)} km`,
+      title: noAddress
+        ? 'no usable home address → 0'
+        : `${trimNumber(input.distanceKm)} km → ${round(breakdown.proximity)}`,
+    },
+    {
+      label: `${input.futureShifts} future`,
+      title: `${input.futureShifts} future shift${input.futureShifts === 1 ? '' : 's'} → ${round(breakdown.fair)}`,
+    },
+    {
+      label: `${input.venueTimes} visit${input.venueTimes === 1 ? '' : 's'}`,
+      title: `${input.venueTimes} visit${input.venueTimes === 1 ? '' : 's'} → ${round(breakdown.venue)}`,
+    },
+  ];
+}
+
+/**
+ * The hover breakdown on a score (§3.3, §6), one line per factor, in the
+ * wireframe's form: "show-rate 99% → 90 × 0.30 = 27.0".
+ */
+export function scoreBreakdownLines(
+  entry: Pick<PoolEntry, 'input' | 'breakdown'>,
+  weights: ScoreWeights,
+): string[] {
+  const { input, breakdown } = entry;
+  const line = (label: string, factor: number, weight: number) =>
+    `${label} → ${Math.round(factor)} × ${weight.toFixed(2)} = ${(factor * weight).toFixed(1)}`;
+  const noAddress = input.distanceKm >= 1_000;
+  return [
+    line(`show-rate ${trimNumber(input.reliability)}%`, breakdown.show, weights.show),
+    line(`rating ${trimNumber(input.rating)}`, breakdown.rating, weights.rating),
+    line(
+      noAddress ? 'proximity (no address)' : `proximity ${trimNumber(input.distanceKm)} km`,
+      breakdown.proximity,
+      weights.proximity,
+    ),
+    line(`fair rotation ${input.futureShifts} future`, breakdown.fair, weights.fair),
+    line(`venue history ${Math.min(input.venueTimes, 10)} of 10`, breakdown.venue, weights.venue),
+    `total ${breakdown.total.toFixed(1)} ≈ ${Math.round(breakdown.total)}`,
+  ];
+}
+
+/** "30%" for the legend, from the weights actually in `settings`. */
+export function weightPercent(weight: number): string {
+  return `${Math.round(weight * 100)}%`;
+}
+
+// ---------------------------------------------------------------------
+// Unavailable (§3.3, §3.4, §6, §9.6)
+// ---------------------------------------------------------------------
+
+export type UnavailableTone = 'coral' | 'amber' | 'neutral';
+
+export interface UnavailableEntry extends BoardPersonName {
+  /** A live gate from auto_assign_candidates, or the booking's cancel_cause. */
+  reason: string;
+  label: string;
+  detail: string;
+  tone: UnavailableTone;
+  appliedAt: string | null;
+}
+
+interface ReasonCopy {
+  label: string;
+  detail: string;
+  tone: UnavailableTone;
+}
+
+/**
+ * The live hard gates, as §3.3 names them. `wrong_role` is absent on
+ * purpose: it never produces a row on the board (§6).
+ */
+export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
+  blocked: {
+    label: 'Blocked — compliance',
+    detail: 'not compliant, so not invitable (§2.12)',
+    tone: 'coral',
+  },
+  booked_elsewhere: {
+    label: 'Booked elsewhere',
+    detail: 'confirmed on an overlapping shift, or at a different venue less than 2 h apart',
+    tone: 'amber',
+  },
+  hours_limit: {
+    label: 'Hours limit reached',
+    detail: 'this shift would take them over their weekly hours limit (RULE-20)',
+    tone: 'amber',
+  },
+  rtw_expired: {
+    label: 'Right to work expired',
+    detail: 'this shift is past their right-to-work expiry',
+    tone: 'coral',
+  },
+  self_cancelled: {
+    label: 'Rejected — self-cancelled',
+    detail:
+      'cancelled a confirmed booking more than 72 h before the shift · permanently excluded from this event: no auto-assign, no Radar, no manual invite (RULE-04)',
+    tone: 'coral',
+  },
+  do_not_return: {
+    label: 'Do not return',
+    detail: 'marked Do not return at this client (§9.6)',
+    tone: 'coral',
+  },
+};
+
+/**
+ * Why a booking on THIS section left the live states — `bookings.cancel_cause`
+ * (CANCEL_CAUSES in packages/domain/src/state.ts). Used only when the worker
+ * carries no live gate: a gate is the more current reason.
+ */
+export const CAUSE_COPY: Readonly<Record<string, ReasonCopy>> = {
+  office_withdraw: {
+    label: 'Withdrawn',
+    detail: 'withdrawn from this shift by the office (§3.3)',
+    tone: 'neutral',
+  },
+  ready_cutoff: {
+    label: 'Released at the cutoff',
+    detail: 'no "I\'m ready" by 12:00 the day before — released at 12:05 (N6b, §3.5)',
+    tone: 'amber',
+  },
+  self_cancel: GATE_COPY['self_cancelled']!,
+  // §3.4: overlapping invitations withdrawn at an Accept "move to
+  // Unavailable → Booked elsewhere on the event board".
+  overlap_auto_withdraw: {
+    label: 'Booked elsewhere',
+    detail: 'accepted an overlapping shift, so this invitation was withdrawn automatically (§3.4)',
+    tone: 'amber',
+  },
+  event_cancelled: {
+    label: 'Event cancelled',
+    detail: 'booking cancelled with the event (N12)',
+    tone: 'neutral',
+  },
+  blocked: {
+    label: 'Blocked — compliance',
+    detail: 'booking cancelled when the worker was blocked (§4.3)',
+    tone: 'coral',
+  },
+  blocked_invite: {
+    label: 'Blocked — compliance',
+    detail: 'invitation withdrawn when the worker was blocked (§4.3)',
+    tone: 'coral',
+  },
+  left: { label: 'Left THC', detail: 'booking cancelled when they left (§10.6)', tone: 'neutral' },
+  left_invite: {
+    label: 'Left THC',
+    detail: 'invitation withdrawn when they left (§10.6)',
+    tone: 'neutral',
+  },
+  gdpr: { label: 'Account deleted', detail: 'removed at their request (§1.7)', tone: 'neutral' },
+  gdpr_invite: {
+    label: 'Account deleted',
+    detail: 'removed at their request (§1.7)',
+    tone: 'neutral',
+  },
+  slot_taken: {
+    label: 'Slot taken',
+    detail: 'someone confirmed first, so the invitation closed (§3.4)',
+    tone: 'neutral',
+  },
+  declined: { label: 'Declined', detail: 'declined the invitation', tone: 'neutral' },
+  withdrawn_by_worker: {
+    label: 'Application withdrawn',
+    detail: 'withdrew their Radar application',
+    tone: 'neutral',
+  },
+};
+
+const UNKNOWN_CAUSE: ReasonCopy = {
+  label: 'Cancelled',
+  detail: 'this booking was cancelled',
+  tone: 'neutral',
+};
+
+/** Structural reasons first, the way §3.3 lists them; then the booking causes. */
+const REASON_ORDER = [
+  'blocked',
+  'booked_elsewhere',
+  'hours_limit',
+  'rtw_expired',
+  'self_cancelled',
+  'do_not_return',
+];
+
+export interface EndedBooking {
+  staffId: string;
+  status: string;
+  cancelCause: string | null;
+  appliedAt: string | null;
+}
+
+/**
+ * The Unavailable list for one role section, computed fresh (§3.4: "not a
+ * cached snapshot").
+ *
+ * Two sources, one row per worker:
+ *   * the live hard gates from `auto_assign_candidates` — blocked,
+ *     booked elsewhere, hours limit, right to work, self-cancelled, do not
+ *     return. `wrong_role` never produces a row (§6).
+ *   * this section's cancelled and closed bookings, labelled by
+ *     `cancel_cause` when the worker carries no live gate. This used to
+ *     label every cancellation "self-cancelled", which told the manager a
+ *     worker the office itself had withdrawn was barred from the event.
+ *
+ * Anyone holding a live booking here (confirmed, invited, worked, turned
+ * away, applied) is listed in its own section and is skipped.
+ */
+export function buildUnavailable(
+  rows: readonly CandidateRow[] | null,
+  ended: readonly EndedBooking[],
+  people: ReadonlyMap<string, BoardPersonName>,
+  listedElsewhere: ReadonlySet<string>,
+): UnavailableEntry[] {
+  const out = new Map<string, UnavailableEntry>();
+  const endedByStaff = new Map(ended.map((b) => [b.staffId, b]));
+
+  for (const row of rows ?? []) {
+    if (!row.gate || row.gate === 'wrong_role') continue;
+    if (listedElsewhere.has(row.staff_id)) continue;
+    const copy = GATE_COPY[row.gate] ?? { label: row.gate, detail: '', tone: 'neutral' };
+    out.set(row.staff_id, {
+      ...personFor(people, row.staff_id),
+      reason: row.gate,
+      ...copy,
+      appliedAt: endedByStaff.get(row.staff_id)?.appliedAt ?? null,
+    });
+  }
+
+  for (const booking of ended) {
+    if (out.has(booking.staffId) || listedElsewhere.has(booking.staffId)) continue;
+    const cause = booking.cancelCause ?? '';
+    const copy = CAUSE_COPY[cause] ?? UNKNOWN_CAUSE;
+    out.set(booking.staffId, {
+      ...personFor(people, booking.staffId),
+      reason: cause || booking.status,
+      ...copy,
+      appliedAt: null,
+    });
+  }
+
+  const order = (reason: string) => {
+    const i = REASON_ORDER.indexOf(reason);
+    return i === -1 ? REASON_ORDER.length : i;
+  };
+  return [...out.values()].sort(
+    (a, b) => order(a.reason) - order(b.reason) || a.name.localeCompare(b.name, 'en-GB'),
+  );
+}
+
+// ---------------------------------------------------------------------
+// Role header (§3.3, §9.8)
+// ---------------------------------------------------------------------
+
+export interface RateLine {
+  pay: string;
+  /** Base + 12.07% holiday, broken out and never blended (§9.8). */
+  final: string;
+  charge: string;
+  /** "+£9.40/h", or "−£0.50/h" when the charge is under the final rate. */
+  margin: string;
+  marginTone: 'green' | 'coral';
+}
+
+function pounds(pence: number): string {
+  return `£${(Math.abs(pence) / 100).toFixed(2)}`;
+}
+
+/** "Pay £19.00 · final £21.29 · charge £30.69 · +£9.40/h" (wireframe). */
+export function rateLine(payRate: number, chargeRate: number): RateLine {
+  const payPence = Math.round(payRate * 100);
+  const chargePence = Math.round(chargeRate * 100);
+  const marginPence = marginPerHourPence(chargePence, payPence);
+  return {
+    pay: pounds(payPence),
+    final: pounds(finalHourlyPence(payPence)),
+    charge: pounds(chargePence),
+    margin: `${marginPence < 0 ? '−' : '+'}${pounds(marginPence)}/h`,
+    marginTone: marginPence < 0 ? 'coral' : 'green',
+  };
+}
+
+// ---------------------------------------------------------------------
+// Manual invite (§3.3, §3.4) — office_invite_worker's refusals
+// ---------------------------------------------------------------------
+
+const INVITE_REFUSAL_COPY: Readonly<Record<string, string>> = {
+  event_cancelled: 'This event has been cancelled, so nobody can be invited to it.',
+  event_ended: 'This shift has already ended, so nobody can be invited to it (RULE-16).',
+  full: 'This role is already fully confirmed (headcount + buffer). Nobody else is invited.',
+  already_has_booking:
+    'This worker already has a booking on this role — invited, confirmed, released or closed — so a second invitation cannot be sent.',
+  not_bookable: ACCEPT_APPLICATION_REFUSAL_COPY.not_bookable,
+  wrong_role: ACCEPT_APPLICATION_REFUSAL_COPY.wrong_role,
+  do_not_return: ACCEPT_APPLICATION_REFUSAL_COPY.do_not_return,
+  blocked: ACCEPT_APPLICATION_REFUSAL_COPY.blocked,
+  self_cancelled: ACCEPT_APPLICATION_REFUSAL_COPY.self_cancelled,
+  booked_elsewhere: ACCEPT_APPLICATION_REFUSAL_COPY.booked_elsewhere,
+  rtw_expired: ACCEPT_APPLICATION_REFUSAL_COPY.rtw_expired,
+  hours_limit: ACCEPT_APPLICATION_REFUSAL_COPY.hours_limit,
+};
+
+export function inviteRefusal(reason: string): string {
+  return INVITE_REFUSAL_COPY[reason] ?? `The invitation was not sent (${reason || 'unknown'}).`;
+}
+
+/**
+ * Whether the auto-assign switches may be pressed (§3.4). Auto-assign
+ * stops for a cancelled event (§3.3) and has nothing to fill once every
+ * role section is over; before that — including on an Ongoing event,
+ * where the 10-minute escalation needs it — the manager may turn it off
+ * and on at will.
+ */
+export function canToggleAutoAssign(status: string): boolean {
+  return status === 'upcoming' || status === 'ongoing';
+}
