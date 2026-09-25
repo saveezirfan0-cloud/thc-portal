@@ -108,7 +108,7 @@ export function DocumentsStep({
             <span className="ico">✓</span>
             <div>
               <div className="t">Share code · {formatShareCode(shareCode)}</div>
-              <div className="m">Checked with gov.uk after you submit</div>
+              <div className="m">Checked with gov.uk automatically after you submit</div>
             </div>
             <div className="right">
               <Pill>Entered</Pill>
@@ -136,11 +136,11 @@ export function DocumentsStep({
             No
           </Radio>
         </RadioGroup>
-        {answer === false ? (
-          <div className="xs muted">
-            “No” is recorded as verified straight away — nothing for the office to review.
-          </div>
-        ) : null}
+        {/* Always shown, as the wireframe draws it: it explains the choice
+            before it is made, not only once "No" is picked. */}
+        <div className="xs muted">
+          “No” is recorded as verified straight away — nothing for the office to review.
+        </div>
         {answer === true ? (
           <>
             <Textarea

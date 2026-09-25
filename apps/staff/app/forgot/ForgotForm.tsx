@@ -20,7 +20,7 @@ export function ForgotForm() {
   return (
     <form action={formAction} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
       <div className="row">
-        <Link href="/login" className="sm" style={{ minHeight: 'var(--tap-min)' }}>
+        <Link href="/login" className="sm">
           ‹ Back to sign in
         </Link>
       </div>

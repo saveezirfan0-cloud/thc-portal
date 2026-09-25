@@ -77,6 +77,15 @@ export function WizardFoot({ children, hint }: { children: ReactNode; hint?: Rea
   );
 }
 
-export function workerFor(first: string, last: string): ChromeWorker {
-  return { name: `${first} ${last}`.trim() || 'Your profile', photoUrl: null };
+/**
+ * The chrome's worker. §10.1: the selfie "becomes their photo across the
+ * whole system (falling back to initials)" — so from step 4 on, the header
+ * shows the photo that is on file, signed once by the page.
+ */
+export function workerFor(
+  first: string,
+  last: string,
+  photoUrl: string | null = null,
+): ChromeWorker {
+  return { name: `${first} ${last}`.trim() || 'Your profile', photoUrl };
 }

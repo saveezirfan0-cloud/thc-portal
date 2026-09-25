@@ -7,6 +7,7 @@ import {
   errorBanner,
   parseDob,
   toE164,
+  todayInUk,
   validate,
 } from '../form';
 
@@ -100,6 +101,135 @@ describe('the dialling picker (§2.1)', () => {
   it('never lists one dialling code twice', () => {
     const seen = DIAL_CODES.map((c) => c.code);
     expect(new Set(seen).size).toBe(seen.length);
+  });
+
+  // §2.1 "international picker", apply.html "… all countries": every ITU
+  // country code, one row each. A missing code is a wrong number stored in
+  // E.164 and every later SMS to it (§2.12).
+  it('covers every country — the EU/EEA, the Commonwealth and the rest of the ITU list', () => {
+    const codes = new Set<string>(DIAL_CODES.map((c) => c.code));
+    const euEea = [
+      '+43',
+      '+32',
+      '+359',
+      '+385',
+      '+357',
+      '+420',
+      '+45',
+      '+372',
+      '+358',
+      '+33',
+      '+49',
+      '+30',
+      '+36',
+      '+353',
+      '+39',
+      '+371',
+      '+370',
+      '+352',
+      '+356',
+      '+31',
+      '+48',
+      '+351',
+      '+40',
+      '+421',
+      '+386',
+      '+34',
+      '+46',
+      '+354',
+      '+423',
+      '+47',
+    ];
+    const commonwealth = [
+      '+880',
+      '+263',
+      '+94',
+      '+254',
+      '+256',
+      '+255',
+      '+233',
+      '+234',
+      '+92',
+      '+91',
+      '+27',
+      '+61',
+      '+64',
+      '+60',
+      '+65',
+      '+230',
+      '+679',
+      '+675',
+      '+260',
+      '+265',
+      '+267',
+      '+1',
+    ];
+    const elsewhere = [
+      '+81',
+      '+52',
+      '+57',
+      '+373',
+      '+389',
+      '+387',
+      '+977',
+      '+251',
+      '+374',
+      '+994',
+      '+998',
+      '+7',
+      '+20',
+      '+212',
+      '+966',
+      '+971',
+      '+972',
+      '+90',
+      '+84',
+      '+63',
+      '+62',
+      '+86',
+      '+82',
+      '+55',
+      '+54',
+      '+56',
+      '+51',
+      '+58',
+    ];
+    for (const code of [...euEea, ...commonwealth, ...elsewhere])
+      expect(codes.has(code), code).toBe(true);
+    expect(codes.size).toBeGreaterThanOrEqual(200);
+  });
+
+  it('names every row, so type-ahead by country finds it', () => {
+    for (const country of DIAL_CODES) expect(country.name.length).toBeGreaterThan(1);
+  });
+});
+
+describe('the age gate runs on the UK calendar day (§1.8, §2.1)', () => {
+  // 2026-06-20T23:30Z is 00:30 BST on 21 June — already the 21st in London,
+  // still the 20th in UTC (Vercel) and further west.
+  const bstMidnight = new Date('2026-06-20T23:30:00Z');
+
+  it('todayInUk is the London civil date, not the process zone’s', () => {
+    const today = todayInUk(bstMidnight);
+    expect([today.getFullYear(), today.getMonth() + 1, today.getDate()]).toEqual([2026, 6, 21]);
+  });
+
+  it('accepts an applicant on the UK morning of their 18th birthday, as submit_application() does', () => {
+    const today = todayInUk(bstMidnight);
+    expect(validate(values({ dob: '2008-06-21' }), today).dob).toBeUndefined();
+    expect(validate(values({ dob: '2008-06-22' }), today).dob).toBe(
+      'You must be 18 or over to apply',
+    );
+  });
+
+  it('judges "in the future" against the same UK day', () => {
+    const today = todayInUk(bstMidnight);
+    expect(validate(values({ dob: '2026-06-21' }), today).dob).toBe(
+      'You must be 18 or over to apply',
+    );
+    expect(validate(values({ dob: '2026-06-22' }), today).dob).toBe(
+      'Enter a real date, as day, month and year',
+    );
   });
 });
 

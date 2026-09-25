@@ -1,0 +1,29 @@
+/* The Staff App's auth screens (A0–A3, wireframes/staff/auth.html).
+
+   The secondary actions on these cards are text links — "Forgot password?",
+   "‹ Back to sign in", "Send me a new link" — drawn at 12px, which the
+   wireframe wants, but a link's box is its line of text. On the Staff App
+   every tappable thing is 44px, so the links keep their look and grow their
+   hit area: inline-flex, a minimum height, and horizontal padding. Tokens
+   only; the minimum is derived from the spacing scale until packages/ui
+   carries it as its own token. */
+:root {
+  --tap-min: calc(var(--sp-28) + var(--sp-16));
+}
+
+.auth-card a.sm,
+.auth-card .row > a,
+.auth-card .foot a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-min);
+  padding: 0 var(--sp-12);
+  border-radius: var(--r-pill);
+}
+
+/* The Show/Hide addon on the password field, at the same minimum. */
+.auth-card .input-row > button.addon {
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  cursor: pointer;
+}

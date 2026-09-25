@@ -4,12 +4,12 @@ import { randomUUID } from 'node:crypto';
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { uploadError, uploadKind, UPLOAD_MAX_BYTES, UPLOAD_MIME } from '@thc/domain';
+import { isDocType, uploadError, uploadKind, UPLOAD_MAX_BYTES, UPLOAD_MIME } from '@thc/domain';
 import type { DocType, HmrcGender, StudentLoanPlan } from '@thc/domain';
 import { staffDb, supabaseConfigured } from '../db';
 import { geocodePostcode } from '../_lib/postcode';
 import { photoPathFor } from '../profile/photos';
-import { documentExtractor, toDaterangeLiteral } from './extractor';
+import { extractDocument } from '../../lib/extract';
 import { NOT_CONFIGURED, reasonMessage } from './messages';
 import { documentPath, isOwnDocumentPath } from './paths';
 import type { Referee } from './state';
@@ -180,6 +180,10 @@ export async function startDocumentUpload(input: {
   fileType: string;
 }): Promise<Result<{ path: string; token: string; contentType: string }>> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  // The path is built from this field (§2.5 pt 7, paths.ts): a docType
+  // that is not one of ours must never reach `documentPath`, or a signed
+  // upload URL is minted for a key nothing will ever record or clean up.
+  if (!isDocType(input.docType)) return { ok: false, message: reasonMessage('doc_not_for_branch') };
   const invalid = uploadError({ name: input.fileName, type: input.fileType, size: input.fileSize });
   if (invalid) return { ok: false, message: invalid };
   const kind = uploadKind({ name: input.fileName, type: input.fileType })!;
@@ -256,45 +260,10 @@ export async function finishDocumentUpload(input: {
     return recorded;
   }
 
-  await extract(admin, recorded.data.docId, input.docType, input.path, mime);
+  // §2.6 — pre-fill, never verify (lib/extract.ts, shared with the
+  // Documents tab so a renewal is read the same way).
+  await extractDocument(admin, recorded.data.docId, input.docType, input.path, mime);
   return { ok: true };
-}
-
-/**
- * §2.6 — pre-fill, never verify. A failed or absent extractor leaves the
- * document flagged for manual review, which is where it started; it never
- * fails the upload.
- */
-async function extract(
-  admin: SupabaseClient,
-  docId: string,
-  docType: DocType,
-  path: string,
-  mimeType: string,
-) {
-  const extractor = documentExtractor();
-  if (!extractor) return;
-  try {
-    const { data: file } = await admin.storage.from('documents').download(path);
-    if (!file) return;
-    const result = await extractor.extract({
-      docType,
-      path,
-      mimeType,
-      bytes: await file.arrayBuffer(),
-    });
-    await admin.rpc('record_document_extraction', {
-      p_doc: docId,
-      p_expiry: result.expiryDate,
-      p_term_dates: result.holidays?.map(toDaterangeLiteral) ?? null,
-      p_completion: result.completionDate,
-      p_institution: result.awardingInstitution,
-      p_confidence: result.confidence,
-      p_raw: { provider: extractor.provider, ...result.raw },
-    });
-  } catch (error) {
-    console.error('document extraction failed', docId, error);
-  }
 }
 
 export async function submitDocuments(input: {

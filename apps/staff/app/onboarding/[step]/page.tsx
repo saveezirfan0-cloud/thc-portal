@@ -49,11 +49,14 @@ export default async function Page({ params }: { params: Promise<{ step: string 
     redirect('/onboarding');
   }
 
-  const worker = workerFor(state.firstName, state.lastName);
-  return <WizardFrame worker={worker}>{await render(n, state)}</WizardFrame>;
+  // Signed once: the header's avatar (§10.1, the selfie "across the whole
+  // system") and step 3's preview read the same URL.
+  const photoUrl = await signOwnPhoto(state.photoPath);
+  const worker = workerFor(state.firstName, state.lastName, photoUrl);
+  return <WizardFrame worker={worker}>{await render(n, state, photoUrl)}</WizardFrame>;
 }
 
-async function render(n: number, s: OnboardingState) {
+async function render(n: number, s: OnboardingState, photoUrl: string | null) {
   const today = ukToday();
   switch (n) {
     case 1:
@@ -78,7 +81,7 @@ async function render(n: number, s: OnboardingState) {
         <SelfieStep
           name={`${s.firstName} ${s.lastName}`.trim()}
           locked={Boolean(s.photoPath)}
-          existingUrl={await signOwnPhoto(s.photoPath)}
+          existingUrl={photoUrl}
         />
       );
     case 4:
@@ -112,7 +115,9 @@ async function render(n: number, s: OnboardingState) {
             q1OtherJob: s.hmrc?.q1OtherJob ?? null,
             q2Pension: s.hmrc?.q2Pension ?? null,
             q3Since6April: s.hmrc?.q3Since6April ?? null,
-            studentLoan: s.hmrc?.studentLoan ?? null,
+            // The wireframe opens with "No" selected — an explicit answer the
+            // worker can change, not a question left unanswered.
+            studentLoan: s.hmrc?.studentLoan ?? 'none',
             postgraduateLoan: s.hmrc?.postgraduateLoan ?? false,
             niNumber: '',
             declared: false,

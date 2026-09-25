@@ -33,7 +33,10 @@ export function ResetForm() {
         required
         value={password}
         onChange={(event) => setPasswordValue(event.target.value)}
-        hint={`At least ${MIN_LENGTH} characters, with a number. Not one you’ve used before.`}
+        // "Not one you've used before" (the wireframe) promised a password
+        // history nothing enforces. What IS refused is the current password
+        // — Supabase Auth's `same_password` — so that is what the hint says.
+        hint={`At least ${MIN_LENGTH} characters, with a number. Not the one you use now.`}
       />
       <Input
         label="Confirm new password"

@@ -18,7 +18,8 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
+  // No maximumScale: WCAG 1.4.4 and the wizard's own "Pinch to zoom" copy
+  // both want the page zoomable; iOS stopped honouring the lock anyway.
   viewportFit: 'cover',
   // The same value as `theme_color` in app/manifest.ts. A browser that finds
   // the two disagreeing paints the installed app's status bar one colour and

@@ -90,7 +90,11 @@ export function SelfieStep({
         <WizardTop
           step={3}
           heading="Your profile photo"
-          sub="Already on file from your previous time with us. It’s locked — changing it goes through the office."
+          // Neutral on purpose: steps 1–4 stay open until Submit, so the
+          // candidate who took this photo a minute ago lands here too, and
+          // "from your previous time with us" would be false for them. The
+          // one sentence the wireframe fixes is the lock (§10.1).
+          sub="Your photo is already on file and locked — changing it goes through the office."
         />
         <div className="cam">
           {existingUrl ? <img src={existingUrl} alt={name} /> : <Avatar name={name} size="xl" />}
