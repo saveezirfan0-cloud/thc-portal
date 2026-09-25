@@ -75,6 +75,8 @@ export function capReason(
       return `${capHours} h — university holiday${ends}`;
     case 'graduated_48':
       return `${capHours} h — completion letter verified`;
+    case 'visa_limit':
+      return `${capHours} h — the hours limit on the visa`;
     default:
       return `${capHours} h — standard weekly limit`;
   }

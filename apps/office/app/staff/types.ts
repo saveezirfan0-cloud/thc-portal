@@ -32,7 +32,9 @@ export type CapBand =
   // two bands the completion letter requirement added (20260922093000).
   | 'uncapped'
   | 'student_term_10'
-  | 'visa_expired_0';
+  | 'visa_expired_0'
+  // A work or dependant visa's own weekly hours limit (20260929150000, D36).
+  | 'visa_limit';
 
 export interface StaffRow {
   id: string;
