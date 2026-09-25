@@ -137,6 +137,33 @@
   background: var(--green-dim);
 }
 
+/* The status pill on a calendar chip (§3.2: list AND calendar), small. */
+.evchip .st,
+.wchip .st {
+  display: inline-block;
+  margin-left: 4px;
+  padding: 0 5px;
+  font-family: var(--font-num);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  color: var(--muted);
+  white-space: nowrap;
+  text-decoration: none;
+}
+.evchip .st.upcoming,
+.wchip .st.upcoming {
+  border-color: var(--cyan-line);
+  color: var(--cyan-ink);
+}
+.evchip .st.ongoing,
+.wchip .st.ongoing {
+  border-color: var(--green-line);
+  color: var(--green-ink);
+}
+
 /* ---- day: one wide row per event ------------------------------------ */
 .dayrow {
   display: grid;

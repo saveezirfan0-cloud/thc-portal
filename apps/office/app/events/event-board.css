@@ -205,6 +205,93 @@
   font-size: 12px;
 }
 
+/* The PO NUMBER chip in the event header (§3.2, wireframe `.pochip`). */
+.pochip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+  border: 1px solid var(--cyan-line);
+  background: var(--cyan-dim);
+  border-radius: var(--r-pill);
+  padding: 3px 10px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  letter-spacing: 0.08em;
+}
+.pochip .k {
+  text-transform: uppercase;
+  color: var(--muted);
+  font-size: var(--fs-10);
+}
+.pochip .v {
+  color: var(--cyan-ink);
+  font-weight: 600;
+}
+
+/* A role block: the heading collapses it (§3.3 "clicking the heading collapses it"). */
+.rsh-h {
+  min-width: 0;
+}
+.rsh-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-8);
+  flex-wrap: wrap;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.rsh-toggle:focus-visible {
+  outline: 2px solid var(--focus-line);
+  outline-offset: 2px;
+}
+.role-block:has(> div[hidden]) > .panel-h {
+  border-bottom: 0;
+}
+.car {
+  color: var(--muted);
+  font-size: var(--fs-12);
+  width: 12px;
+  flex: 0 0 auto;
+}
+.car::before {
+  content: '▾';
+}
+.rsh-toggle[aria-expanded='false'] .car::before,
+details:not([open]) > summary .car::before {
+  content: '▸';
+}
+
+/* Unavailable is collapsed by default (wireframe "▸ collapsed"). */
+details.sub > summary.subh {
+  cursor: pointer;
+  list-style: none;
+}
+details.sub > summary.subh::-webkit-details-marker {
+  display: none;
+}
+
+/* A No-show row keeps its place in Confirmed, tinted (§3.3). */
+.prow.noshow {
+  background: var(--coral-dim);
+}
+
+/* "in 18:52 · out 01:34" — actual stamps, viewer-local (§1.8). */
+.stamp {
+  font-family: var(--font-mono);
+  font-size: var(--fs-11);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.stamp b {
+  color: var(--text);
+  font-weight: 500;
+}
+
 @media (max-width: 900px) {
   .prow {
     flex-wrap: wrap;
