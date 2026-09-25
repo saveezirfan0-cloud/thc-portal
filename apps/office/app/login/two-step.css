@@ -1,0 +1,55 @@
+/*
+ * Two-step sign-in (ADR-0037): the code step (/login/verify) and the panel
+ * on /account. Layout only; every colour, radius and space is a token.
+ */
+
+.twostep-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+}
+.twostep-form > p {
+  margin: 0;
+}
+
+/* Six digits read better spaced out, and they are what the phone shows. */
+.twostep-code {
+  letter-spacing: 0.2em;
+  font-size: var(--fs-20);
+}
+
+/* The QR code is read by a camera: paper and ink in every theme, never
+   the ground (tokens.css, "a QR code is read by a camera"). GoTrue's SVG
+   draws its own modules; the quiet zone round it is this padding. */
+.twostep-qr {
+  display: block;
+  align-self: flex-start;
+  background: var(--qr-paper);
+  padding: var(--sp-12);
+  border-radius: var(--r-field);
+  width: 180px;
+  height: 180px;
+  box-sizing: content-box;
+}
+
+/* The manual-entry key: selectable in one go, wrapped at group boundaries. */
+.twostep-secret {
+  display: block;
+  padding: var(--sp-10) var(--sp-12);
+  border: 1px solid var(--line);
+  border-radius: var(--r-field);
+  font-size: var(--fs-15);
+  word-spacing: 0.3em;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
+.twostep-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-8);
+}
+
+.twostep-leave {
+  margin-top: var(--sp-12);
+}

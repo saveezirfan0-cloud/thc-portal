@@ -308,9 +308,14 @@ auth_token = "env(SUPABASE_AUTH_SMS_TWILIO_AUTH_TOKEN)"
 max_enrolled_factors = 10
 
 # Control MFA via App Authenticator (TOTP)
+# On: two-step sign-in for Back Office logins (ADR-0037). Opt-in per login
+# from /account; the office middleware sends an aal1 session with a
+# verified factor to /login/verify. The hosted project needs the same two
+# switches in Dashboard -> Authentication -> Multi-Factor (TOTP is on by
+# default there).
 [auth.mfa.totp]
-enroll_enabled = false
-verify_enabled = false
+enroll_enabled = true
+verify_enabled = true
 
 # Configure MFA via Phone Messaging
 [auth.mfa.phone]

@@ -14,6 +14,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | Route | Screen | Wireframe | § | Bot |
 |---|---|---|---|---|
 | `/login` | Login (a non-admin account gets the generic refusal) | `backoffice/login.html` | 1.4 | platform |
+| `/login/verify` | Two-step sign-in code step: after email + password, a login with a verified authenticator types its 6-digit code; `next` carried through. States: code form, wrong / expired code, too many attempts, no session (→ `/login`), already verified (→ `next`), a factor this screen cannot challenge, Not you? Sign out | — (ADR-0037) | 1.4 | platform |
 | `/login/forgot`, `/login/forgot/sent`, `/login/reset` | Forgot password → Reset link sent → Set new password (A1–A3, from `admin@`) | `backoffice/login.html#state=forgot`, `#state=sent` | 10.2, 9.12 | platform |
 | `/forgot`, `/forgot/sent`, `/reset` | A1 Forgot password → A2 Reset link sent → A3 Set new password (+ link expired) | `backoffice/login.html` (forgot, sent) · `public/activate.html` (reset) | 10.2 | platform |
 | `/dashboard` | Dashboard | `backoffice/dashboard.html` | 9.1 | reports |

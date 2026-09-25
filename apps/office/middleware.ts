@@ -2,6 +2,12 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { isRole, withSessionPersistence, wrongAppBody } from '@thc/db';
+import {
+  aalFromAccessToken,
+  nextLevelFor,
+  twoStepDecision,
+  verifyStepPath,
+} from './app/login/two-step';
 
 /**
  * Role routing for the admin app (§1.4).
@@ -151,7 +157,44 @@ export async function middleware(request: NextRequest) {
     });
   }
 
+  // Two-step sign-in (ADR-0037). An admin whose login has a verified
+  // authenticator, holding a session that has not yet been through the code
+  // step (aal1 — a password alone), reaches nothing but the public pages
+  // until it has. /login/verify is under /login, and sign-out is answered
+  // above, so neither the code step nor the way out can loop.
+  //
+  // The factor list is `getUser()`'s — GoTrue's answer, not the copy of the
+  // user in the cookie, which the browser can edit (auth-js's own
+  // getAuthenticatorAssuranceLevel() reads that copy). The aal claim is read
+  // from the access token getUser() has just had GoTrue accept.
+  if (!isPublic(pathname) && nextLevelFor(user.factors) === 'aal2') {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    const decision = twoStepDecision({
+      currentLevel: aalFromAccessToken(session?.access_token),
+      nextLevel: 'aal2',
+    });
+    if (decision === 'verify') {
+      const target = request.nextUrl.clone();
+      const [path, query = ''] = verifyStepPath(pathname + request.nextUrl.search).split('?');
+      target.pathname = path ?? '/login/verify';
+      target.search = query ? `?${query}` : '';
+      return withCookies(NextResponse.redirect(target), response);
+    }
+  }
+
   return response;
+}
+
+/**
+ * A redirect built after the token refresh has to carry the refreshed auth
+ * cookies too, or the browser keeps the old ones and the next request
+ * refreshes (and rotates the refresh token) all over again.
+ */
+function withCookies(redirect: NextResponse, from: NextResponse): NextResponse {
+  for (const cookie of from.cookies.getAll()) redirect.cookies.set(cookie);
+  return redirect;
 }
 
 export const config = {
