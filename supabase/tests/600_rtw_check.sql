@@ -27,7 +27,7 @@
 -- Every gov.uk / provider result here is SYNTHETIC (ADR-0025).
 -- =====================================================================
 begin;
-select plan(108);
+select plan(110);
 \ir _shared/fixtures.psql
 
 \set u1 'c6000000-0000-4000-8000-0000000000a1'
@@ -159,10 +159,10 @@ reset role;
 select results_eq(format($$ select dob, share_code from staff where id = %L $$, :'w1'),
   $$ values (date '1996-06-06', 'W60000002'::text) $$, 'D: the new date of birth and code are on the profile');
 select results_eq(
-  format($$ select data ->> 'dobBefore', data ->> 'dobAfter' from audit_log
+  format($$ select data ->> 'dobChanged', data::text ~ '\d{4}-\d{2}-\d{2}' from audit_log
              where action = 'document.uploaded' and data ->> 'staffId' = %L and data ->> 'source' = 'onboarding_reenter' $$, :'w1'),
-  $$ values ('1996-05-05'::text, '1996-06-06'::text) $$,
-  'D: the change of date of birth is audited with the previous one (QA 25.09)');
+  $$ values ('true'::text, false) $$,
+  'D: the change of date of birth is audited as a fact — no date is copied into the audit trail (security review)');
 select is((select count(*)::int from rtw_checks c join compliance_docs d on d.id = c.compliance_doc_id
             where d.staff_id = :'w1' and d.share_code = 'W60000002' and c.status = 'queued'), 1,
   'D: and the new code is queued for the check');
@@ -478,8 +478,9 @@ values (:'w6', 'share_code_report', 'W60000060', 'rejected', 'not recognised', c
 update settings set value = value || '{"reenter_per_day": 1}'::jsonb where key = 'rtw_check';
 select set_config('request.jwt.claims', json_build_object('sub', :'u6', 'role', 'authenticated')::text, true);
 select is(onboarding_reenter_share_code('W60000061', null) ->> 'ok', 'true', 'L: the first re-entry of the day');
-select is((select count(*)::int from audit_log where data ->> 'staffId' = :'w6' and data ? 'dobBefore'), 0,
-  'L: no date of birth in the audit when it did not change');
+select is((select data ->> 'dobChanged' from audit_log where data ->> 'staffId' = :'w6'
+            and data ->> 'source' = 'onboarding_reenter'), 'false',
+  'L: an unchanged date of birth is audited as unchanged');
 reset role;
 update compliance_docs set review_status = 'rejected', rejection_reason = 'not recognised'
  where staff_id = :'w6' and review_status = 'pending';
@@ -510,6 +511,33 @@ select ok(pg_get_functiondef('install_job_schedules()'::regprocedure) like '%edg
   'M: install_job_schedules still reads the edge base through edge_base_url() (20260927160300)');
 
 -- =====================================================================
+-- N · Security review (26.09)
+-- =====================================================================
+-- An error code never carries the share code however it was written, nor
+-- anything shaped like a date of birth.
+select is(
+  rtw_check_clean_error('Timeout for w60 000 003, W60-000-003 and W60000003', 'W60000003'),
+  'timeout_for_share_code_share_code_and_share_code',
+  'N: the share code is taken out spaced, hyphenated or in lower case');
+select ok(
+  rtw_check_clean_error('dob 1996-05-05 / 05/05/1996 / 5.5.96 / 19960505 / 5 May 1996 / May 5, 1996 refused', null)
+    !~ '(1996|19960505|\m5\.5\.96)',
+  'N: a date of birth in any common format is taken out');
+select is(rtw_check_clean_error('govuk_page_changed:next', 'W60000003'), 'govuk_page_changed:next',
+  'N: an ordinary code is untouched');
+
+-- A report only rtw_checks references is not a discardable upload.
+insert into storage.objects (bucket_id, name, metadata) values
+  ('documents', :'w3' || '/share-code-report/rtw-check-only.pdf', '{"mimetype":"application/pdf","size":1000}'),
+  ('documents', :'w3' || '/share-code-report/stray.pdf',          '{"mimetype":"application/pdf","size":1000}');
+update rtw_checks set report_path = :'w3' || '/share-code-report/rtw-check-only.pdf'
+ where compliance_doc_id = :'d4';
+select is(evidence_path_discardable(:'w3', :'w3' || '/share-code-report/rtw-check-only.pdf'), false,
+  'N: a report referenced only by rtw_checks cannot be discarded by a failed upload');
+select is(evidence_path_discardable(:'w3', :'w3' || '/share-code-report/stray.pdf'), true,
+  'N: an unreferenced fresh object still can');
+
+-- =====================================================================
 -- J · GDPR removal
 -- =====================================================================
 select set_config('request.jwt.claims', '{"role":"service_role"}', true);
@@ -518,11 +546,6 @@ select is((select count(*)::int from rtw_checks where staff_id = :'w4'), 0,
   'J: their checks go with their documents (§1.7)');
 select is((select count(*)::int from storage_deletions where path = :'w4' || '/share-code-report/rtw-check-f.pdf'), 1,
   'J: and the gov.uk report is owed to the Storage purge');
-select lives_ok(format($$ select remove_worker(%L) $$, :'w1'), 'J: the candidate who changed their date of birth is removed');
-select is((select count(*)::int from audit_log where data ->> 'staffId' = :'w1' and (data ? 'dobBefore' or data ? 'dobAfter')), 0,
-  'J: and the audit trail forgets their dates of birth (§1.7)');
-select is((select count(*)::int from audit_log where data ->> 'staffId' = :'w1' and data ->> 'source' = 'onboarding_reenter'), 1,
-  'J: while keeping the fact of the re-entry');
 
 select * from finish();
 rollback;

@@ -308,6 +308,45 @@ revoke execute on function public.retained_storage_paths(uuid) from public, anon
 grant  execute on function public.retained_storage_paths(uuid) to service_role;
 
 -- ---------------------------------------------------------------------
+-- 3c · A report only a check references is evidence, not a discardable
+--      upload.
+--
+-- evidence_path_discardable() (20260923193000, its latest definition)
+-- asks whether anything references an object before the Staff App removes
+-- a refused upload with the service key. A check's report can be
+-- referenced by rtw_checks alone (an earlier run's, once a later run has
+-- replaced compliance_docs.gov_report_path), and it sits under the
+-- worker's own folder — so a worker naming that path in a failed upload
+-- could have had it deleted. Unchanged but for the rtw_checks line.
+-- ---------------------------------------------------------------------
+create or replace function public.evidence_path_discardable(p_staff uuid, p_path text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, extensions
+as $$
+  select p_staff is not null
+     and p_path is not null
+     and p_path like p_staff::text || '/%'
+     and p_path !~ '(^|/)\.\.(/|$)'
+     and not exists (select 1 from compliance_docs d
+                      where d.file_path = p_path or d.gov_report_path = p_path)
+     and not exists (select 1 from staff s where s.wtr_optout_copy_path = p_path)
+     and not exists (select 1 from rtw_checks c where c.report_path = p_path)
+     and exists (select 1 from storage.objects o
+                  where o.bucket_id = 'documents'
+                    and o.name = p_path
+                    and o.created_at > now() - interval '1 hour')
+$$;
+
+comment on function public.evidence_path_discardable(uuid, text) is
+  'True only for a documents-bucket object under the worker''s own folder, uploaded within the hour, that no compliance_docs row, opt-out copy or automated right-to-work check (ADR-0025) references. The Staff App asks this before removing a refused upload with the service key.';
+
+revoke execute on function public.evidence_path_discardable(uuid, text) from public, anon, authenticated;
+grant  execute on function public.evidence_path_discardable(uuid, text) to service_role;
+
+-- ---------------------------------------------------------------------
 -- 4 · Backoff. RTW_CHECK_BACKOFF_MINUTES in packages/domain, the same
 --     literal: 30 min, 2 h, 6 h, 16 h — five attempts over about a day.
 -- ---------------------------------------------------------------------
@@ -365,18 +404,33 @@ comment on function public.rtw_check_stuck(text, timestamptz, timestamptz, times
 -- ---------------------------------------------------------------------
 -- 5 · What may be stored of a result, and of an error.
 -- ---------------------------------------------------------------------
+-- An error code as stored: [a-z0-9_:.-], at most 120 characters, with the
+-- share code taken out however it was written ("W12 3AB 4CD",
+-- "w123ab4cd", "W12-3AB-4CD") and anything shaped like a date — a date of
+-- birth in any common format — taken out too.
 create or replace function public.rtw_check_clean_error(p_error text, p_share_code text)
 returns text
-language sql
+language plpgsql
 immutable
 set search_path = public, extensions
 as $$
-  select nullif(left(regexp_replace(
-           replace(lower(coalesce(p_error, '')),
-                   lower(coalesce(nullif(regexp_replace(coalesce(p_share_code, ''), '\s', '', 'g'), ''), '#none#')),
-                   'share_code'),
-           '[^a-z0-9_:.-]+', '_', 'g'), 120), '')
-$$;
+declare
+  v    text := lower(coalesce(p_error, ''));
+  code text := lower(regexp_replace(coalesce(p_share_code, ''), '[^A-Za-z0-9]', '', 'g'));
+begin
+  if length(code) >= 6 then
+    -- The code's characters with any separators between them.
+    v := regexp_replace(v, array_to_string(regexp_split_to_array(code, ''), '[^a-z0-9]*'),
+                        'share_code', 'g');
+  end if;
+  -- Dates: 1996-05-05, 05/05/1996, 5.5.96, 19960505, 05051996, 5 May 1996, May 5, 1996.
+  v := regexp_replace(v, '\d{4}[-/. ]\d{1,2}[-/. ]\d{1,2}', 'date', 'g');
+  v := regexp_replace(v, '\d{1,2}[-/. ]\d{1,2}[-/. ]\d{2,4}', 'date', 'g');
+  v := regexp_replace(v, '\d{1,2}(st|nd|rd|th)?[-/. ]*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?[-/., ]*\d{2,4}', 'date', 'g');
+  v := regexp_replace(v, '(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?[-/. ]*\d{1,2}(st|nd|rd|th)?,?[-/. ]*\d{2,4}', 'date', 'g');
+  v := regexp_replace(v, '\d{8}', 'date', 'g');
+  return nullif(left(regexp_replace(v, '[^a-z0-9_:.-]+', '_', 'g'), 120), '');
+end $$;
 
 create or replace function public.rtw_check_clean_result(p_result jsonb, p_share_code text)
 returns jsonb
@@ -743,13 +797,14 @@ comment on function public.compliance_reject_document(uuid, text) is
 -- 7 · Enqueue.
 -- ---------------------------------------------------------------------
 
--- Where the job route lives. The same three layers as edge_base_url
--- (20260927160300): the rule, a write-time guard on settings, and a reader
--- that re-checks at run time. The bearer posted there is rtw_job_secret,
--- never the service key — it only authenticates this route — but an admin
--- session still must not be able to point it at an arbitrary host over
--- plain http, or at a path of their choosing. An origin only: https, or a
--- local development one.
+-- Where the job route lives. NOT a settings row: an admin session can
+-- write settings (admin_all), so a stolen one could point the base at its
+-- own host and collect Bearer <rtw_job_secret> on every nudge and cron
+-- tick. The base is a VAULT secret named office_base_url, which only the
+-- database owner and the service role can create or change — the same
+-- trust as the service_role_key secret beside it (security review,
+-- 26.09). The reader still checks the shape at run time: an origin only,
+-- https, or a local development one.
 create or replace function public.is_office_base_url(p_url text)
 returns boolean
 language sql
@@ -765,25 +820,6 @@ $$;
 comment on function public.is_office_base_url(text) is
   'True for the Back Office origin the rtw-check job is posted to: https://<host>[:port] (no path), or a local development origin (ADR-0025).';
 
-create or replace function public.settings_office_base_url_guard()
-returns trigger
-language plpgsql
-set search_path = public, extensions
-as $$
-begin
-  if new.key = 'office_base_url' and not is_office_base_url(new.value #>> '{}') then
-    raise exception 'office_base_url_invalid: % — must be the Back Office origin, https://<host>',
-      coalesce(new.value #>> '{}', 'null')
-      using errcode = '22023';
-  end if;
-  return new;
-end $$;
-
-drop trigger if exists settings_office_base_url_guard on settings;
-create trigger settings_office_base_url_guard
-  before insert or update on settings
-  for each row execute function public.settings_office_base_url_guard();
-
 create or replace function public.office_base_url()
 returns text
 language plpgsql
@@ -793,23 +829,26 @@ set search_path = public, extensions
 as $$
 declare v_base text;
 begin
-  select value #>> '{}' into v_base from public.settings where key = 'office_base_url';
+  select btrim(decrypted_secret) into v_base
+    from vault.decrypted_secrets where name = 'office_base_url'
+   limit 1;  -- vault secret names are unique
   if coalesce(v_base, '') = '' then
     return null;
   end if;
   if not is_office_base_url(v_base) then
-    raise exception 'office_base_url_invalid: %', v_base using errcode = '22023';
+    raise exception 'office_base_url_invalid: the vault secret office_base_url is not a Back Office origin'
+      using errcode = '22023';
   end if;
   return rtrim(v_base, '/');
 end $$;
 
 comment on function public.office_base_url() is
-  'settings.office_base_url without a trailing slash, or null when unset; raises office_base_url_invalid for anything but a Back Office origin. The rtw-check cron command and nudge read the base through this (ADR-0025).';
+  'The Back Office origin from the VAULT secret office_base_url (never a settings row: admins can write settings), without a trailing slash, or null when unset; raises office_base_url_invalid for anything but an https origin. The rtw-check cron command and nudge read the base through this (ADR-0025).';
 
 -- Wake the runner now rather than at the next 10-minute tick, so the
 -- worker sees the outcome while they are still looking. A no-op without
--- settings.office_base_url and the vault secret rtw_job_secret, and it can
--- never fail the insert that called it.
+-- the vault secrets office_base_url and rtw_job_secret, and it can never
+-- fail the insert that called it.
 create or replace function public.rtw_check_nudge()
 returns void
 language plpgsql
@@ -1712,47 +1751,20 @@ begin
 
   insert into audit_log (at, actor, action, entity, entity_id, data)
   values (now(), auth.uid(), 'document.uploaded', 'compliance_docs', v_doc,
-          jsonb_strip_nulls(jsonb_build_object(
+          -- The FACT of a changed date of birth is evidence; the dates are
+          -- not copied: the audit trail outlives a §1.7 removal.
+          jsonb_build_object(
             'staffId',    s.id,
             'docType',    'share_code_report',
             'source',     'onboarding_reenter',
-            'dobChanged', v_dob_changed,
-            -- The date of birth is what gov.uk matches the code against, so
-            -- a change is evidence. Stripped again on a GDPR removal
-            -- (audit_log_forget_dob below).
-            'dobBefore',  case when v_dob_changed then s.dob end,
-            'dobAfter',   case when v_dob_changed then p_dob end)));
+            'dobChanged', v_dob_changed));
 
   return jsonb_build_object('ok', true, 'documentId', v_doc::text, 'status', 'pending');
 end $$;
 
 comment on function public.onboarding_reenter_share_code(text, date) is
-  '§2.5 / §2.6: a candidate whose share code was rejected (by the automated check or the office) enters another after submitting step 4, and may correct their date of birth (18+; the previous one audited). At most settings.rtw_check.reenter_per_day (5) in 24 h (too_many_attempts). A new pending share_code_report, which queues the check (ADR-0025).';
+  '§2.5 / §2.6: a candidate whose share code was rejected (by the automated check or the office) enters another after submitting step 4, and may correct their date of birth (18+; the change audited, not the dates). At most settings.rtw_check.reenter_per_day (5) in 24 h (too_many_attempts). A new pending share_code_report, which queues the check (ADR-0025).';
 
--- §1.7: the audit trail outlives a removal, the person's date of birth
--- does not. The re-entry audit is the one place it is copied, so the copy
--- goes when the person does.
-create or replace function public.audit_log_forget_dob()
-returns trigger
-language plpgsql
-security definer
-set search_path = public, extensions
-as $$
-begin
-  update audit_log
-     set data = data - 'dobBefore' - 'dobAfter'
-   where action = 'document.uploaded'
-     and data ->> 'staffId' = new.id::text
-     and (data ? 'dobBefore' or data ? 'dobAfter');
-  return null;
-end $$;
-
-drop trigger if exists staff_audit_log_forget_dob on staff;
-create trigger staff_audit_log_forget_dob
-  after update of removed_at on staff
-  for each row
-  when (new.removed_at is not null and old.removed_at is null)
-  execute function audit_log_forget_dob();
 
 -- ---------------------------------------------------------------------
 -- 14 · Privileges.
@@ -1773,7 +1785,6 @@ revoke execute on function public.rtw_check_manual_allowed(uuid)                
 revoke execute on function public.rtw_check_nudge()                                   from public, anon, authenticated;
 revoke execute on function public.is_office_base_url(text)                            from public, anon, authenticated;
 revoke execute on function public.office_base_url()                                   from public, anon, authenticated;
-revoke execute on function public.settings_office_base_url_guard()                    from public, anon, authenticated;
 grant  execute on function public.office_base_url()                                   to service_role;
 revoke execute on function public.rtw_check_enqueue(uuid, uuid)                       from public, anon, authenticated;
 revoke execute on function public.compliance_docs_rtw_check_enqueue()                 from public, anon, authenticated;
@@ -1783,7 +1794,6 @@ revoke execute on function public.rtw_check_request(uuid)                       
 revoke execute on function public.rtw_check_mark_reviewed(uuid)                       from public, anon;
 revoke execute on function public.my_rtw_checks()                                     from public, anon;
 revoke execute on function public.onboarding_reenter_share_code(text, date)           from public, anon;
-revoke execute on function public.audit_log_forget_dob()                              from public, anon, authenticated;
 revoke execute on function public.rtw_check_stale_after()                             from public, anon;
 revoke execute on function public.rtw_check_stuck(text, timestamptz, timestamptz, timestamptz) from public, anon;
 

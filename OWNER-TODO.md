@@ -118,8 +118,9 @@ hand as before (ADR-0018). THC has accepted that a passing check verifies a work
       `RTW_PROVIDER_AUTH_HEADER` / `RTW_PROVIDER_AUTH_PREFIX` if the provider's differ),
       `RTW_JOB_SECRET` (`openssl rand -base64 48`), and `RTW_GOVUK_ENABLED=true` if
       allowed. Redeploy. Check the plan allows the route's `maxDuration = 300`.
-- [ ] SQL editor: set `settings.office_base_url` and create the vault secret
-      `rtw_job_secret` with the same value as `RTW_JOB_SECRET` (`docs/12`).
+- [ ] SQL editor: create two **vault** secrets (`docs/12`): `office_base_url` (the Back
+      Office's https origin — not a settings row, so an admin session cannot redirect the
+      job secret) and `rtw_job_secret` (the same value as `RTW_JOB_SECRET`).
 - [ ] With the check still off, run **one** check by hand on a consenting worker's share
       code. Ask a session to confirm ADR-0025's items 7–12 (gov.uk's pages and wording)
       and item 13 (Chromium on Vercel).

@@ -254,11 +254,15 @@ attempt is spent while THC is still choosing.
 
 ```sql
 -- The Back Office's public origin, which pg_cron and the share-code nudge post to.
-insert into settings (key, value) values ('office_base_url', '"https://office.thehospitalitycompany.co.uk"')
-on conflict (key) do update set value = excluded.value;
+-- A VAULT secret, not a settings row: an admin session can write settings, and
+-- whoever sets this receives the job secret. An https origin, no path.
+select vault.create_secret('https://office.thehospitalitycompany.co.uk', 'office_base_url');
 
 -- The same value as RTW_JOB_SECRET on Vercel.
 select vault.create_secret('<RTW_JOB_SECRET>', 'rtw_job_secret');
+
+-- To change either later: select vault.update_secret(id, '<new value>')
+--   from vault.secrets where name = 'office_base_url';
 
 -- Last, once the keys work (one manual check done — OWNER-TODO §8):
 update settings set value = value || '{"enabled": true}' where key = 'rtw_check';
@@ -270,8 +274,9 @@ provider-only), `company_name` (what gov.uk is told is checking), `max_attempts`
 Needs review with the hand-typed date allowed) and `reenter_per_day` (5: how often a
 candidate may re-enter a share code in 24 hours).
 The `rtw-check` schedule (every 10 minutes) is registered **disabled**. Enabling it is a
-migration plus pgTAP 190, then `select install_job_schedules();`, which now also needs
-`office_base_url` and `rtw_job_secret` for that row.
+migration plus pgTAP 190, then `select install_job_schedules();`. Without the two vault
+secrets `office_base_url` and `rtw_job_secret` that row is skipped (with a notice) and the
+rest install; the nudge likewise does nothing.
 
 **Checking it works:** `select job, ok, counts, error from job_runs where job =
 'rtw-check' order by started_at desc limit 5;` — `counts` has `claimed`, `passed`,

@@ -99,13 +99,15 @@ An automated rejection queues exactly the office's N8. Settled status is sent as
   - `rtw_check_claim()` leases due checks, `for update skip locked`, with a 10-minute lease. A lapsed lease is re-taken as a new attempt. It hands the share code and date of birth to the runner **for that run only**.
   - `rtw_check_record()` applies the decision.
 - **The report** is uploaded to the private `documents` bucket at `<staff_id>/share-code-report/rtw-check-<check_id>.pdf`. The path is refused unless it is under that worker. It is written to `rtw_checks.report_path` and to `compliance_docs.gov_report_path`. §2.6: "stored on the profile".
-- **The schedule:** a `job_schedules` row `rtw-check` runs every 10 minutes. `job_schedules` gained `base_url_setting` and `secret_name`:
-  - this row posts to `settings.office_base_url` + `/api/jobs/rtw-check` with the vault secret `rtw_job_secret`, never the service key;
+- **The schedule:** a `job_schedules` row `rtw-check` runs every 10 minutes. `job_schedules` gained `base_url_source` and `secret_name` (each checked: `edge_base_url` / `office_base_url`, `service_role_key` / `rtw_job_secret`, and the service key only ever to `edge_base_url`):
+  - this row posts to `office_base_url()` + `/api/jobs/rtw-check` with the vault secret `rtw_job_secret`, never the service key;
+  - **the base is a Vault secret named `office_base_url`, not a settings row** (security review, 26.09). An admin session can write `settings`, so a stolen one could have pointed the base at its own host and collected `Bearer <rtw_job_secret>` on every tick. Only the owner and the service role can set a Vault secret. `office_base_url()` still checks at run time that it is an https origin with no path;
+  - without either Vault secret the installer skips that row with a notice and installs the rest;
   - every other row is unchanged.
 
   It is registered **disabled**, like `willo-invite`. pgTAP 190's list of enabled schedules is unchanged.
-- **The nudge:** filing a share code also `pg_net`-posts the route. So the worker sees the outcome within a minute or two, not at the next tick. Without `office_base_url` and the vault secret the nudge does nothing, and it can never fail the insert that triggered it.
-- **Logs** carry the check id, the source and the outcome, and never a share code, a date of birth or a name. Error codes are reduced to `[a-z0-9_:.-]`, and the database replaces a share code inside one with `share_code`.
+- **The nudge:** filing a share code also `pg_net`-posts the route. So the worker sees the outcome within a minute or two, not at the next tick. Without the Vault secrets `office_base_url` and `rtw_job_secret` the nudge does nothing, and it can never fail the insert that triggered it.
+- **Logs** carry the check id, the source and the outcome, and never a share code, a date of birth or a name. Error codes are reduced to `[a-z0-9_:.-]`; the database replaces a share code inside one with `share_code` however it was spaced, hyphenated or cased, and anything shaped like a date (a date of birth in any common format) with `date`.
 
 ### 5 · The data
 
@@ -154,7 +156,7 @@ An automated rejection queues exactly the office's N8. Settled status is sent as
 - A check that could not decide says the result "is with the office".
 - **New:** after submitting step 4, a candidate can re-enter a rejected share code **and correct their date of birth** (`onboarding_reenter_share_code`). Before this they had no way back: step 1 closes at submission, and the Documents hub is for employed workers. An employed worker's date of birth is not editable in the app, because it feeds HMRC (§2.8). The hub tells them to contact the office.
   - Re-entry is capped at `settings.rtw_check.reenter_per_day` (default 5) in 24 hours, so the form cannot be used to try dates of birth against a code (`too_many_attempts`).
-  - A changed date of birth is audited with the previous and new values (`dobBefore`, `dobAfter`). Both keys are stripped from the audit trail when the person is removed (`audit_log_forget_dob`, §1.7).
+  - A changed date of birth is audited as a fact only (`dobChanged: true`). The dates themselves are not copied into the audit trail, which outlives a §1.7 removal (security review, 26.09).
 
 ### 7 · The off switch
 
@@ -241,7 +243,8 @@ Nothing below has been seen working against the real service. Each assumption is
 
 - **With the 26.09 round (merged 26.09).** The two migrations here sort after `20260927150000`–`161300` and restate, from those LATEST bodies, what they touch:
   - `compliance_review_queue_v` keeps `20260927160000`'s `rtw_date` row and its `review_reason` column in place; the check columns are appended after it, and the `rtw_check` item fills `review_reason` with the check's reason. The automated check never touches an `rtw_date` row: it runs on pending reports only, and `compliance_confirm_rtw_date()` stays the office's way to date a report verified before 23.09.
-  - `install_job_schedules()` keeps `20260927160300`'s run-time `edge_base_url()` reader for every Edge Function row. `settings.office_base_url` gets the same three layers (`is_office_base_url`, a write-time guard, the `office_base_url()` reader), and a check constraint keeps the service key to Edge Function rows only.
+  - `install_job_schedules()` keeps `20260927160300`'s run-time `edge_base_url()` reader for every Edge Function row. The office base is read by `office_base_url()` from the Vault (see §4), checked at run time by `is_office_base_url`, and check constraints keep the service key to Edge Function rows and the bearer to the two named secrets.
+  - `evidence_path_discardable()` (`20260923193000`) is restated with one more reference: an object a check's `report_path` names is never discarded by a failed Staff App upload.
   - `retained_storage_paths()` (`20260927160400`) also keeps a held document's check reports out of the prefix purge.
   - The trigger functions here are revoked from `anon` and `authenticated`, as `20260927161000` requires of every trigger (pgTAP 190 §3).
   - The rota guard (`20260927150000`) and a passing check agree: a pass writes either the gov.uk date or the settled no-time-limit flag through the one Verify, so the worker is never left dateless.
@@ -257,7 +260,7 @@ These steps are in `OWNER-TODO.md` §8, with the keys in `docs/12-keys-and-asset
 
 1. THC chooses a provider and confirms assumptions 1–6 against its documentation, or changes `provider.config.ts`.
 2. Set the office Vercel env vars: `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` (plus the auth header and prefix if they differ), `RTW_JOB_SECRET`, and optionally `RTW_GOVUK_ENABLED=true`.
-3. Put the same `RTW_JOB_SECRET` in the Supabase vault as `rtw_job_secret`, and set `settings.office_base_url`.
+3. Put the same `RTW_JOB_SECRET` in the Supabase Vault as `rtw_job_secret`, and the Back Office's https origin as the Vault secret `office_base_url` (`docs/12`).
 4. Run one check by hand with a consenting worker's share code, and confirm assumptions 7–12.
 5. Set `settings.rtw_check.enabled = true`.
 6. Ask a session to enable the `rtw-check` schedule. That is a migration plus pgTAP 190's list. Then run `select install_job_schedules();`.

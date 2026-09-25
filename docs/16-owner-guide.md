@@ -1054,8 +1054,11 @@ payroll recipients from `settings.payroll_recipients`, not from the environment.
 
 Built, and switched off until THC chooses a provider. It is a Back Office route, not an
 Edge Function, so its keys go on the **office** Vercel project, and pg_cron reaches it at
-`settings.office_base_url` (an https origin — a guard refuses anything else, as for
-`edge_base_url`) with its own Vault secret `rtw_job_secret`, never the service key. The
+the Vault secret `office_base_url` (an https origin; kept out of `settings`, which an admin
+session can write, because whoever sets it receives the bearer) with its own Vault secret
+`rtw_job_secret`, never the service key. Commands:
+`select vault.create_secret('https://<office origin>', 'office_base_url');` and
+`select vault.create_secret('<RTW_JOB_SECRET>', 'rtw_job_secret');`. The
 full list of variables, the SQL and the switch-on order are in
 `docs/12-keys-and-assets.md` ("The automated right-to-work check") and `OWNER-TODO.md`
 §8. THC has accepted that a passing check verifies a worker without the Home Office photo
