@@ -8,6 +8,7 @@
  * machine anything.
  */
 import type { StaffStatus } from '../staff/types';
+import type { RtwCheckRow } from '../_lib/rtwCheck';
 
 export type { StaffStatus };
 
@@ -203,6 +204,10 @@ export interface CandidateData {
   hmrc: HmrcChecklist | null;
   application: Application | null;
   roles: RoleOption[];
+  /** The latest automated gov.uk check per share-code document (ADR-0025). */
+  rtwChecks?: RtwCheckRow[];
+  /** settings.rtw_check.enabled. */
+  rtwCheckEnabled?: boolean;
   problem: string | null;
 }
 

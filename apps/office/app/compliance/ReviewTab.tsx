@@ -29,11 +29,14 @@ import {
   documentLine,
   filterQueue,
   foundLine,
+  queueRowCheck,
   ukDate,
   ukStamp,
+  verifyAllowed,
   verifyHint,
   whoLine,
 } from './queue';
+import { RtwCheckPanel } from '../_components/RtwCheckPanel';
 import type { WhoFilter } from './queue';
 import { rtwDateProblem, rtwDateRule, rtwDateValue } from './rtw';
 import type { RtwDateRule } from './rtw';
@@ -52,8 +55,20 @@ import type { ActionResult, QueueRow } from './types';
  * without both. So does the Verify of a visa document, a status document or
  * a share code report: the reviewer confirms the right-to-work date it
  * carries, because that date is the per-shift hard stop (20260923200000).
+ *
+ * The automated gov.uk check (ADR-0025): while it is on, a share code
+ * reaches this queue only when its check needs review — with the reason,
+ * what gov.uk returned, the report and "Run check again" — and only then is
+ * the hand-typed date offered. A check that found no right to work is an
+ * item of its own (kind `rtw_check`), cleared with "Mark reviewed".
  */
-export function ReviewTab({ rows }: { rows: QueueRow[] }) {
+export function ReviewTab({
+  rows,
+  rtwCheckEnabled = false,
+}: {
+  rows: QueueRow[];
+  rtwCheckEnabled?: boolean;
+}) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [who, setWho] = useState<WhoFilter>('all');
@@ -176,6 +191,7 @@ export function ReviewTab({ rows }: { rows: QueueRow[] }) {
                   <QueueLine
                     key={row.item_id}
                     row={row}
+                    rtwCheckEnabled={rtwCheckEnabled}
                     busy={pendingId === row.item_id}
                     onVerify={() => verify(row)}
                     onReject={() => setRejecting(row)}
@@ -254,11 +270,13 @@ export function ReviewTab({ rows }: { rows: QueueRow[] }) {
 
 function QueueLine({
   row,
+  rtwCheckEnabled,
   busy,
   onVerify,
   onReject,
 }: {
   row: QueueRow;
+  rtwCheckEnabled: boolean;
   busy: boolean;
   onVerify: () => void;
   onReject: () => void;
@@ -293,12 +311,22 @@ function QueueLine({
           <Pill tone="purple">in-employment</Pill>
         ) : null}
         {row.is_reupload ? <Pill tone="amber">re-upload</Pill> : null}
+        {row.kind === 'rtw_check' ? <Pill tone="coral">no right to work</Pill> : null}
         <span className="sub">
           {documentLine(row)}
           {row.kind === 'declaration' && row.declaration_details ? (
             <> · “{row.declaration_details}” · details visible to Admin only</>
           ) : null}
         </span>
+        {row.item_type === 'share_code_report' ? (
+          <RtwCheckPanel
+            compact
+            row={queueRowCheck(row)}
+            docId={row.kind === 'document' ? row.item_id : ''}
+            docStatus={row.kind === 'document' ? 'pending' : 'rejected'}
+            enabled={rtwCheckEnabled}
+          />
+        ) : null}
       </td>
       <td className="mono sm">
         {ukStamp(row.submitted_at)}
@@ -321,12 +349,18 @@ function QueueLine({
         ) : null}
       </td>
       <td style={{ textAlign: 'right' }}>
-        <Button size="sm" tone="green" onClick={onVerify} disabled={busy}>
-          Verify
-        </Button>{' '}
-        <Button size="sm" tone="danger" onClick={onReject} disabled={busy}>
-          Reject
-        </Button>
+        {verifyAllowed(row) ? (
+          <>
+            <Button size="sm" tone="green" onClick={onVerify} disabled={busy}>
+              Verify
+            </Button>{' '}
+          </>
+        ) : null}
+        {row.kind !== 'rtw_check' ? (
+          <Button size="sm" tone="danger" onClick={onReject} disabled={busy}>
+            Reject
+          </Button>
+        ) : null}
         {hint ? <span className="sub muted xs">{hint}</span> : null}
       </td>
     </tr>
@@ -579,6 +613,12 @@ function RightToWorkModal({
           The gov.uk report shows <b>settled status</b> — no time limit (§2.5 pt 2). Pre-settled
           status has an end date: enter it instead.
         </label>
+      ) : null}
+      {row.rtw_check_reason ? (
+        <Note tone="coral">
+          <b>Why the automatic gov.uk check did not verify it:</b> {row.rtw_check_reason} The date
+          gov.uk returned, if any, is pre-filled — confirm it against the report.
+        </Note>
       ) : null}
       {row.staff_right_to_work_until ? (
         <Note>

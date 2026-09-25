@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { loadRtwChecks } from '../_lib/rtwCheckData';
 import type { Database } from '@thc/db';
 import { supabaseConfigured } from '../staff/data';
 import type {
@@ -95,6 +96,8 @@ const EMPTY: Omit<CandidateData, 'problem'> = {
   hmrc: null,
   application: null,
   roles: [],
+  rtwChecks: [],
+  rtwCheckEnabled: false,
 };
 
 const MONEY_COLUMNS =
@@ -116,6 +119,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     hmrc,
     application,
     roles,
+    rtw,
   ] = await Promise.all([
     supabase.from('onboarding_candidates_v').select('*').eq('id', id).maybeSingle<CandidateRow>(),
     supabase
@@ -165,6 +169,8 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .limit(1)
       .maybeSingle<Application>(),
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
+    // The automated gov.uk check (ADR-0025); best-effort, never an error panel.
+    loadRtwChecks(supabase, id),
   ]);
 
   const error =
@@ -197,6 +203,8 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     hmrc: hmrc.data ?? null,
     application: application.data ?? null,
     roles: roles.data ?? [],
+    rtwChecks: rtw.checks,
+    rtwCheckEnabled: rtw.enabled,
     problem: null,
   };
 }

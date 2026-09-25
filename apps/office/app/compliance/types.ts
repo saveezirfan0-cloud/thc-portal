@@ -20,9 +20,14 @@ export type StaffStatus =
 
 export type BlockKind = 'auto_document' | 'manual' | 'conviction_review' | null;
 
-/** One item waiting on the office: a pending document or a pending Yes declaration (§4.1). */
+/**
+ * One item waiting on the office: a pending document, a pending Yes
+ * declaration (§4.1), or — kind `rtw_check` — an automated gov.uk check in
+ * needs_review whose document has already been rejected (no right to work;
+ * ADR-0025), where `item_id` is the check's id.
+ */
 export interface QueueRow {
-  kind: 'document' | 'declaration';
+  kind: 'document' | 'declaration' | 'rtw_check';
   item_id: string;
   staff_id: string;
   display_name: string;
@@ -56,6 +61,22 @@ export interface QueueRow {
   completion_date_claimed: string | null;
   mime_type: string | null;
   size_bytes: number | null;
+  // The latest automated right-to-work check (20260928100000, ADR-0025);
+  // null on every row that is not a share code (optional: absent before it).
+  rtw_check_id?: string | null;
+  rtw_check_status?:
+    'queued' | 'running' | 'passed' | 'rejected' | 'needs_review' | 'failed' | null;
+  rtw_check_source?: 'provider' | 'govuk' | null;
+  rtw_check_outcome?: string | null;
+  rtw_check_attempts?: number | null;
+  rtw_checked_at?: string | null;
+  rtw_check_reason?: string | null;
+  rtw_check_until?: string | null;
+  rtw_check_no_time_limit?: boolean | null;
+  rtw_check_conditions?: string[] | null;
+  rtw_check_report_path?: string | null;
+  /** Share codes only: whether ADR-0018's hand-typed date is allowed now. */
+  rtw_manual_allowed?: boolean | null;
 }
 
 export type RadarState = 'expired' | 'expiring' | 'valid';
@@ -125,6 +146,8 @@ export interface CompliancePageData {
   radar: RadarRow[];
   warnings: WarningRow[];
   rotaGuardMode: 'block' | 'warn';
+  /** settings.rtw_check.enabled — the automated gov.uk check (ADR-0025). */
+  rtwCheckEnabled: boolean;
   problem: string | null;
 }
 
