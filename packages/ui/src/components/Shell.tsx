@@ -17,6 +17,10 @@ export interface NavItem {
    * 404 from its own sidebar.
    */
   pending?: boolean;
+  /** Gets its own tab in the phone tab bar; the rest sit behind More. */
+  primary?: boolean;
+  /** The tab-bar label where the full one does not fit, e.g. "Check-in". */
+  short?: string;
 }
 
 export interface SidebarProps {

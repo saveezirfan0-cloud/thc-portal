@@ -134,7 +134,7 @@ export function ClientsScreen({ clients, problem }: ClientsScreenProps) {
               </p>
             </EmptyState>
           ) : (
-            <table className="tbl">
+            <table className="tbl card-rows">
               <thead>
                 <tr>
                   <th>Client</th>
@@ -149,7 +149,7 @@ export function ClientsScreen({ clients, problem }: ClientsScreenProps) {
               <tbody>
                 {shown.map((client) => (
                   <tr key={client.id}>
-                    <td className="name">
+                    <td className="name cell-title">
                       {/*
                         The name opens the card (§9.7), not the edit modal:
                         the card is where the rate card, the qualified pool
@@ -161,12 +161,14 @@ export function ClientsScreen({ clients, problem }: ClientsScreenProps) {
                       </Link>
                       <span className="sub">{client.staff_contact_point}</span>
                     </td>
-                    <td>
+                    <td data-label="Contact">
                       {client.contact_name}
                       <span className="sub">{describeEmails(client.contact_emails)}</span>
                     </td>
-                    <td className="mono sm">{client.phone}</td>
-                    <td>
+                    <td data-label="Phone" className="mono sm">
+                      {client.phone}
+                    </td>
+                    <td data-label="Rate card roles">
                       {client.rate_card_roles.length === 0 ? (
                         <span className="muted sm">no rate card yet</span>
                       ) : (
@@ -177,14 +179,16 @@ export function ClientsScreen({ clients, problem }: ClientsScreenProps) {
                         </div>
                       )}
                     </td>
-                    <td className="sm">
+                    <td data-label="Policies" className="sm">
                       <span className="muted">Breaks:</span>{' '}
                       {client.pays_breaks ? 'paid' : 'unpaid'} ·{' '}
                       <span className="muted">Buffer:</span>{' '}
                       {client.pays_buffer ? 'paid' : 'strict'}
                     </td>
-                    <td className="num">{client.event_count}</td>
-                    <td className="num margin">
+                    <td data-label="Events" className="num">
+                      {client.event_count}
+                    </td>
+                    <td data-label="Avg margin" className="num margin">
                       {client.avg_margin_pct === null ? (
                         <span className="muted">—</span>
                       ) : (

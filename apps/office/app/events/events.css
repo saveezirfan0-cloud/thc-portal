@@ -216,3 +216,71 @@
   border-radius: var(--r-pill);
   background: var(--accent);
 }
+
+/* The month grid's day number, when it links to that day (MonthView). */
+.cal .day .dlink {
+  color: inherit;
+  text-decoration: none;
+}
+.cal .day .dlink:hover {
+  color: var(--cyan-ink);
+}
+
+/* Month on a phone. Seven columns at 390px leave each day ~46px wide: the
+   chips could not show a word, the counter overflowed the cell and the warm
+   card radius turned every cell into a capsule. Each event becomes a dot in
+   its fill colour, and the whole cell is the link to that day's Day view —
+   the list a phone can actually read. */
+@media (max-width: 760px) {
+  :root .cal {
+    gap: 3px;
+    /* The grid's card radius would clip the corner cells into a curve. */
+    overflow: visible;
+  }
+  .cal .dh {
+    padding: 4px 0;
+    text-align: center;
+  }
+  :root[data-style] .cal .day {
+    position: relative;
+    min-height: 56px;
+    padding: 6px 4px;
+    gap: 4px;
+    /* The small control radius, not the card one: a card radius on a 46px
+       cell is a capsule. */
+    border-radius: var(--r-check);
+  }
+  .cal .day .d {
+    justify-content: center;
+    font-size: var(--fs-12);
+  }
+  .cal .day .d .cnt {
+    display: none;
+  }
+  .cal .day .dlink::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+  }
+  .cal .day .scroll {
+    flex-flow: row wrap;
+    justify-content: center;
+    gap: 3px;
+    max-height: none;
+    overflow: visible;
+  }
+  :root[data-style] .cal .evchip {
+    width: 7px;
+    height: 7px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--r-pill);
+    background: var(--accent);
+    font-size: 0;
+  }
+  .cal .evchip > *,
+  :root[data-style] .cal .evchip::before {
+    display: none;
+  }
+}

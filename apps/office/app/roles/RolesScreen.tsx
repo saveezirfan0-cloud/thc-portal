@@ -92,7 +92,7 @@ export function RolesScreen({ roles, problem }: RolesScreenProps) {
               </p>
             </EmptyState>
           ) : (
-            <table className="tbl">
+            <table className="tbl card-rows">
               <thead>
                 <tr>
                   <th>Role</th>
@@ -107,16 +107,22 @@ export function RolesScreen({ roles, problem }: RolesScreenProps) {
               <tbody>
                 {roles.map((role) => (
                   <tr key={role.id}>
-                    <td>
+                    <td className="cell-title">
                       <button type="button" className="role-name" onClick={() => setEditing(role)}>
                         {role.name}
                       </button>
                     </td>
                     <td className="sm muted desc">{role.description ?? '—'}</td>
-                    <td className="money">{formatPounds(toPence(role.pay_rate))}</td>
-                    <td className="money hol">{formatAddition(toPence(role.holiday_rate))}</td>
-                    <td className="money fin">{formatPounds(toPence(role.final_rate))}</td>
-                    <td className="sm">
+                    <td data-label="Staff pay rate" className="money">
+                      {formatPounds(toPence(role.pay_rate))}
+                    </td>
+                    <td data-label="Holiday +12.07%" className="money hol">
+                      {formatAddition(toPence(role.holiday_rate))}
+                    </td>
+                    <td data-label="Final rate" className="money fin">
+                      {formatPounds(toPence(role.final_rate))}
+                    </td>
+                    <td data-label="On rate cards" className="sm">
                       {role.rate_card_count === 0 ? (
                         <span className="muted">0 clients</span>
                       ) : (
@@ -125,7 +131,7 @@ export function RolesScreen({ roles, problem }: RolesScreenProps) {
                         </>
                       )}
                     </td>
-                    <td className="actions">
+                    <td className="actions cell-actions">
                       <Button size="sm" onClick={() => setEditing(role)}>
                         Edit
                       </Button>

@@ -216,7 +216,7 @@ export function StaffScreen({
                   (last completed shift, released shifts, P45) need columns
                   staff_directory_v does not carry yet.
                 */
-                <table className="tbl">
+                <table className="tbl card-rows">
                   <thead>
                     <tr>
                       <th />
@@ -234,7 +234,7 @@ export function StaffScreen({
                   </tbody>
                 </table>
               ) : (
-                <table className="tbl">
+                <table className="tbl card-rows">
                   <thead>
                     <tr>
                       <th />
@@ -315,14 +315,14 @@ function StaffTableRow({ row }: { row: StaffRow }) {
 
   return (
     <tr>
-      <td>
+      <td className="cell-lead">
         <Avatar
           name={row.removed ? '#' : row.display_name}
           src={row.removed ? undefined : (row.photo_url ?? undefined)}
           size="sm"
         />
       </td>
-      <td className="name">
+      <td className="name cell-title">
         {/*
           §9.6: "The name is clickable → the profile." A removed worker's
           is too — §1.7 keeps the record openable with its non-personal
@@ -335,19 +335,23 @@ function StaffTableRow({ row }: { row: StaffRow }) {
           {row.display_name}
         </Link>
       </td>
-      <td className="mono sm">{employeeId(row.employee_id)}</td>
-      <td>
+      <td data-label="Employee ID" className="mono sm">
+        {employeeId(row.employee_id)}
+      </td>
+      <td data-label="Role(s)">
         <div className="chips">
           {row.role_names.map((name) => (
             <Chip key={name}>{name}</Chip>
           ))}
         </div>
       </td>
-      <td>
+      <td data-label="Rating">
         <span className={`rating ${tone}`}>★ {formatRating(row.rating)}</span>
       </td>
-      <td className="mono">{formatShowRate(row.reliability)}</td>
-      <td className="status">
+      <td data-label="Show-rate" className="mono">
+        {formatShowRate(row.reliability)}
+      </td>
+      <td data-label="Compliance status" className="status">
         <StatusPill row={row} />
         {atLimit ? (
           // A per-week condition, beside the status and never instead of it.
@@ -372,7 +376,9 @@ function StaffTableRow({ row }: { row: StaffRow }) {
           <span className="sub">Left: {row.leave_reason}</span>
         ) : null}
       </td>
-      <td className="sm muted">{describeRightToWork(row)}</td>
+      <td data-label="Right to work" className="sm muted">
+        {describeRightToWork(row)}
+      </td>
     </tr>
   );
 }
@@ -381,24 +387,28 @@ function StaffTableRow({ row }: { row: StaffRow }) {
 function InactiveTableRow({ row }: { row: StaffRow }) {
   return (
     <tr>
-      <td>
+      <td className="cell-lead">
         <Avatar name={row.display_name} src={row.photo_url ?? undefined} size="sm" />
       </td>
-      <td className="name">
+      <td className="name cell-title">
         <Link href={`/staff/${row.id}`} className="staff-name">
           {row.display_name}
         </Link>
       </td>
-      <td className="mono sm">{employeeId(row.employee_id)}</td>
-      <td className="mono sm">{formatUkStamp(row.left_at)}</td>
-      <td>
+      <td data-label="Employee ID" className="mono sm">
+        {employeeId(row.employee_id)}
+      </td>
+      <td data-label="Left" className="mono sm">
+        {formatUkStamp(row.left_at)}
+      </td>
+      <td data-label="Reason given">
         {row.leave_reason ? (
           `“${row.leave_reason}”`
         ) : (
           <span className="muted">— no reason given</span>
         )}
       </td>
-      <td>
+      <td data-label="Role(s)">
         <div className="chips">
           {row.role_names.map((name) => (
             <Chip key={name}>{name}</Chip>

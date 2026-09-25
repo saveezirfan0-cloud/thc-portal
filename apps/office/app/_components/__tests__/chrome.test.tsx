@@ -62,7 +62,13 @@ describe('the Back Office menu counters', () => {
     const link = compliance.slice(0, compliance.indexOf('</a>'));
     expect(link).toContain('Compliance');
     expect(link).toContain('<span class="count alert">7</span>');
-    expect(markup.match(/class="count/g)).toHaveLength(1);
+    // Once in the sidebar and once on the phone tab bar's Compliance tab —
+    // CSS shows one or the other, never both.
+    expect(markup.match(/class="count/g)).toHaveLength(2);
+    const tab = markup.slice(markup.indexOf('class="pnav-bar"'));
+    expect(tab.slice(tab.indexOf('href="/compliance"'))).toContain(
+      '<span class="count alert">7</span>',
+    );
   });
 
   it('shows nothing when the queue is empty or the count is unknown', () => {
@@ -74,5 +80,44 @@ describe('the Back Office menu counters', () => {
     expect(markup).not.toContain('class="count');
     const items = [{ href: '/compliance', label: 'Compliance' }];
     expect(withCounts(items, { '/compliance': 0 })).toEqual(items);
+  });
+});
+
+/**
+ * §1.2: the Back Office works on a phone. Below 760px the sidebar gives way
+ * to a tab bar — Dashboard, Scheduling, Compliance, Check-in and More —
+ * and the rest of the menu, sign-out and the appearance switch live in the
+ * More sheet. The switch stays in the top-bar markup (hidden on a phone by
+ * `.hide-phone`), so the assertions above still hold at every width.
+ */
+describe('the Back Office phone menu', () => {
+  it('gives the four day-of-operations screens a tab and hides the rest behind More', () => {
+    const markup = renderToStaticMarkup(
+      <OfficeShell activeHref="/events" title="Scheduling">
+        <span />
+      </OfficeShell>,
+    );
+    const bar = markup.slice(markup.indexOf('class="pnav-bar"'));
+    const tabs = [...bar.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
+    expect(tabs).toEqual(['/dashboard', '/events', '/compliance', '/checkin']);
+    expect(bar).toContain('>Check-in<');
+    expect(bar).toContain('aria-expanded="false"');
+    expect(bar).toContain('>More<');
+    expect(bar).toMatch(
+      /class="pnav-tab active"[^>]*href="\/events"|href="\/events"[^>]*class="pnav-tab active"/,
+    );
+  });
+
+  it('carries a hidden counter on More, so a queue is never out of sight', () => {
+    const markup = renderToStaticMarkup(
+      <NavCountsProvider counts={{ '/onboarding': 4 }}>
+        <OfficeShell activeHref="/staff" title="Staff">
+          <span />
+        </OfficeShell>
+      </NavCountsProvider>,
+    );
+    const bar = markup.slice(markup.indexOf('class="pnav-bar"'));
+    const more = bar.slice(bar.indexOf('>More<'));
+    expect(more).toContain('<span class="count alert">4</span>');
   });
 });

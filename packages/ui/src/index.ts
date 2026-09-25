@@ -31,6 +31,9 @@ export type { MenuButtonProps } from './components/MenuButton';
 export { Alert, EmptyState, Note, Panel } from './components/Panel';
 export type { NoteTone, PanelProps } from './components/Panel';
 
+export { PhoneNav } from './components/PhoneNav';
+export type { PhoneNavProps } from './components/PhoneNav';
+
 export { ModeSwitch } from './components/ModeSwitch';
 export type { ModeSwitchProps } from './components/ModeSwitch';
 

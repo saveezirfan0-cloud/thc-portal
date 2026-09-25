@@ -69,3 +69,20 @@
   outline: 2px solid var(--focus-line);
   outline-offset: -2px;
 }
+
+/* On a phone the event strip is a swipeable row, not a column: stacked, a
+   busy day's ten cards pushed the live table a whole screen down. */
+@media (max-width: 760px) {
+  .evstrip {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(220px, 78%);
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+    padding-bottom: 2px;
+  }
+  .evstrip > * {
+    scroll-snap-align: start;
+  }
+}

@@ -218,3 +218,17 @@
     width: 100%;
   }
 }
+
+/* On a phone a sub-list header is the label and its count on one line and
+   the note or the pool's search and filters full-width under it; side by
+   side they squeezed into three narrow columns. */
+@media (max-width: 760px) {
+  .subh {
+    flex-wrap: wrap;
+  }
+  .subh .right {
+    margin-left: 0;
+    flex: 1 1 100%;
+    flex-wrap: wrap;
+  }
+}
