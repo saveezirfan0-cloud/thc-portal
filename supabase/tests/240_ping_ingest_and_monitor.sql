@@ -166,14 +166,32 @@ update shift_requirements set starts_at = now() - interval '9 hours 30 minutes',
 select is((select status from checkin_monitor_v where booking_id = :'bk_on'), 'no_check_out',
   'RULE-02 four hours past the end with nothing recorded reads No check-out');
 
--- The waiting states, on the worker who never checked in.
-update shift_requirements set starts_at = now() + interval '3 hours', ends_at = now() + interval '9 hours'
+-- The waiting states, on the worker who never checked in. The section has
+-- to start later TODAY in London and more than 30 minutes out: a fixed
+-- now() + 3 hours crossed London midnight for any run after 21:00 UK, and
+-- a shift that starts tomorrow is rightly Due, not "Not confirmed today".
+-- So it starts three hours out or two minutes before London midnight,
+-- whichever is sooner; in the last 32 minutes of the UK day no such start
+-- exists and both asserts are skipped rather than failed.
+select ((((now() at time zone 'Europe/London')::date + 1)::timestamp at time zone 'Europe/London')
+        - now()) > interval '32 minutes' as room_today \gset
+update shift_requirements
+   set starts_at = now() + least(interval '3 hours',
+         (((now() at time zone 'Europe/London')::date + 1)::timestamp at time zone 'Europe/London')
+         - now() - interval '2 minutes'),
+       ends_at   = now() + interval '9 hours'
  where id = :'sh_mon';
-select is((select status from checkin_monitor_v where booking_id = :'bk_due'), 'not_confirmed_today',
-  '§3.5 a worker who has not pressed the on-the-day confirmation is shown as such, not as Due');
+select case when :'room_today'::boolean
+  then is((select status from checkin_monitor_v where booking_id = :'bk_due'), 'not_confirmed_today',
+          '§3.5 a worker who has not pressed the on-the-day confirmation is shown as such, not as Due')
+  else skip('the last 32 minutes of the UK day leave no later-today start more than 30 minutes out', 1)
+  end;
 update bookings set on_day_confirmed_at = now() where id = :'bk_due';
-select is((select status from checkin_monitor_v where booking_id = :'bk_due'), 'due',
-  '§9.5 once they have, the row is simply Due');
+select case when :'room_today'::boolean
+  then is((select status from checkin_monitor_v where booking_id = :'bk_due'), 'due',
+          '§9.5 once they have, the row is simply Due')
+  else skip('the last 32 minutes of the UK day leave no later-today start more than 30 minutes out', 1)
+  end;
 
 -- §1.8: "today" on both sides in Europe/London. A section starting 00:30
 -- London TOMORROW is still tomorrow — before 20260927160600 the left side
