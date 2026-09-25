@@ -60,6 +60,7 @@ import {
   phaseLabel,
   quizGate,
   stageAge,
+  stageEnteredAt,
   studentLoanLabel,
 } from './view-model';
 import type { Period } from './view-model';
@@ -123,7 +124,7 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
   const phase = phaseIndex(row);
   const column =
     row.status === 'compliant' ? 'contract' : (columnFor(row) ?? 'interview_requested');
-  const age = stageAge(row.stage_entered_at, at);
+  const age = stageAge(stageEnteredAt(row, column), at);
 
   const run = (work: () => Promise<ActionResult>, after?: () => void) => {
     setProblem(null);
@@ -461,8 +462,20 @@ function Facts({ row, data, phase }: { row: CandidateRow; data: CandidateData; p
     );
   }
   if (phase === 2) {
+    // "Activated 13.09.2026 (E3)" — candidate.html; the date is when the
+    // password was set (activated_at, 20260927170000).
     facts.push(
-      <span key="act">{row.activated ? 'Activated (E3)' : 'Not activated yet — E3 sent'}</span>,
+      <span key="act">
+        {row.activated && row.activated_at ? (
+          <>
+            Activated <b>{formatUkDate(row.activated_at)}</b> (E3)
+          </>
+        ) : row.activated ? (
+          'Activated (E3)'
+        ) : (
+          'Not activated yet — E3 sent'
+        )}
+      </span>,
     );
   }
   return <div className="facts">{facts}</div>;

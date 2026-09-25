@@ -208,6 +208,22 @@ export function ukDaysBetween(fromIso: string, now: Date): number {
 export type AgeTone = 'ok' | 'warn' | 'bad';
 
 /**
+ * The instant a card's "N d" counts from. `stage_entered_at` for every
+ * column but one: the move from Additional info to Contract is derived
+ * (ADR-0013) and nothing re-stamps it, so a Contract card counts from
+ * `additional_info_done_at` — the moment the last of HMRC, references
+ * and bank landed — and not from the quiz pass, which would have it
+ * arriving in the column already days old.
+ */
+export function stageEnteredAt(
+  row: Pick<CandidateRow, 'stage_entered_at' | 'additional_info_done_at'>,
+  column: ColumnKey | null,
+): string {
+  if (column === 'contract' && row.additional_info_done_at) return row.additional_info_done_at;
+  return row.stage_entered_at;
+}
+
+/**
  * Days in the current stage, as the card's corner shows it. Amber from
  * four days and coral from six, the two thresholds the approved board
  * draws ("Awaiting a Willo decision for 4 days", "No response to the
@@ -240,6 +256,12 @@ function ukParts(iso: string): { month: number; day: number; weekday: number } {
 export function shortDay(iso: string): string {
   const p = ukParts(iso);
   return `${WEEKDAYS[p.weekday]} ${p.day} ${MONTHS[p.month - 1]}`;
+}
+
+/** "17 Sep" in UK time — a date inside a sentence ("activated 17 Sep"). */
+export function shortDate(iso: string): string {
+  const p = ukParts(iso);
+  return `${p.day} ${MONTHS[p.month - 1]}`;
 }
 
 /** "18:44" in UK time. */
@@ -281,6 +303,17 @@ function plural(n: number, one: string, many = `${one}s`): string {
 
 function scoreLabel(score: number | null): string {
   return score === null ? '—' : `${Math.round(score)}%`;
+}
+
+/** "activated 17 Sep" / "activated" / "not activated" (§2.7). */
+function activationWord(row: Pick<CandidateRow, 'activated' | 'activated_at'>): string {
+  if (!row.activated) return 'not activated';
+  return row.activated_at ? `activated ${shortDate(row.activated_at)}` : 'activated';
+}
+
+/** "65% · 75% · 70%" — every attempt this period, in order (§2.9). */
+function attemptsLabel(scores: number[]): string {
+  return scores.map((score) => `${Math.round(score)}%`).join(' · ');
 }
 
 /** The Willo line on the two interview columns (§2.4). */
@@ -336,16 +369,16 @@ export function cardLines(row: CandidateRow, column: ColumnKey, now: Date): Line
         ? (RTW_SHORT[row.rtw_branch] ?? row.rtw_branch)
         : 'Right to work not chosen yet';
       if (row.docs_total === 0) {
-        // "UK citizen · 0 of 3 uploaded yet · activated" — the branch's
-        // required set is what onboarding_documents_missing() lists while
-        // nothing is in. The activation DATE the wireframe adds needs an
-        // `activated_at` the view does not carry yet.
+        // "UK citizen · 0 of 3 uploaded yet · activated 17 Sep" — the
+        // branch's required set is what onboarding_documents_missing()
+        // lists while nothing is in; the date is when the password was set
+        // (activated_at, 20260927170000).
         const required = row.docs_missing?.length ?? 0;
         lines.push({
           text: [
             branch,
             required > 0 ? `0 of ${required} uploaded yet` : 'nothing uploaded yet',
-            row.activated ? 'activated' : 'not activated',
+            activationWord(row),
           ].join(' · '),
         });
       } else {
@@ -441,12 +474,19 @@ export function rejectedLines(row: CandidateRow): Line[] {
           text: 'Rejected in Willo → the system rejected automatically and sent email E2 (THC wording, not Willo’s).',
         },
       ];
-    case 'quiz_failed':
+    case 'quiz_failed': {
+      // "Attempts 65% · 75% · 70%" as the approved board writes it; the
+      // best-over-N line only for a row from before quiz_scores existed.
+      const attempts =
+        row.quiz_scores.length > 0
+          ? `Attempts ${attemptsLabel(row.quiz_scores)}`
+          : `Best ${scoreLabel(row.quiz_best_score)} over ${row.quiz_attempts_used} attempts`;
       return [
         {
-          text: `Best ${scoreLabel(row.quiz_best_score)} over ${row.quiz_attempts_used} attempts — automatic rejection after the third failure; email E4 + terminal screen in the app (§2.9).`,
+          text: `${attempts} — automatic rejection after the third failure; email E4 + terminal screen in the app (§2.9).`,
         },
       ];
+    }
     default: {
       const lines: Line[] = row.rejection_reason
         ? [{ text: `Reason: “${row.rejection_reason}”` }]
