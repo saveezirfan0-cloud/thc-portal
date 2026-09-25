@@ -441,7 +441,7 @@ export function decideRtwCheck(
     const expected = subject.belowDegreeLevel ? 10 : 20;
     if (termLimit !== expected) {
       return review(
-        `gov.uk limits term time to ${termLimit} hours a week; the profile's course level gives ${expected} (RULE-20). Check the course level before verifying.`,
+        `gov.uk limits term time to ${termLimit} hours a week; the profile's course level gives ${expected}. Check the course level before verifying.`,
       );
     }
   }
