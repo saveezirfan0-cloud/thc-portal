@@ -62,7 +62,11 @@ select is_empty(
           'new_starter_export_rows', 'queue_finance_report_email',
           -- P2, the outbox drain (20260924100000). Without these the drain
           -- 500s on its first unsendable row and holds the whole batch.
-          'fail_outbox_send', 'release_outbox_claim'
+          'fail_outbox_send', 'release_outbox_claim',
+          -- The automated right-to-work check (20260928100000, ADR-0025),
+          -- a Back Office route on the service key rather than an Edge
+          -- Function. Without these every share code waits for ever.
+          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config'
         )
         and not has_function_privilege('service_role', p.oid, 'execute') $$,
   'the service role can execute every function the §7 jobs call'
@@ -91,7 +95,12 @@ select is_empty(
           'compliance_daily', 'block_worker', 'unblock_if_compliant',
           'request_p45', 'declare_conviction', 'released_shift_lines',
           'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
-          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion'
+          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion',
+          -- rtw_check_claim hands out share codes and dates of birth;
+          -- rtw_check_record verifies a worker's right to work. The two
+          -- *_as bodies take the reviewer as an argument.
+          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config',
+          'compliance_verify_document_as', 'compliance_reject_document_as'
         )
         and has_function_privilege('anon', p.oid, 'execute') $$,
   'anon can execute none of the job, engine, compliance or lifecycle write paths'
@@ -120,7 +129,9 @@ select is_empty(
           'compliance_daily', 'block_worker', 'unblock_if_compliant',
           'request_p45', 'declare_conviction', 'released_shift_lines',
           'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
-          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion'
+          'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion',
+          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config',
+          'compliance_verify_document_as', 'compliance_reject_document_as'
         )
         and has_function_privilege('authenticated', p.oid, 'execute') $$,
   'nor can a signed-in worker block, retire, reset or remove anybody'
