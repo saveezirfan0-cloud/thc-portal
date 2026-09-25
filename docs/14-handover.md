@@ -129,8 +129,8 @@ real environment to prove it in.
    open are the findings under office onboarding / staff / dashboard / clients
    / settings / design-system, staff apply / onboarding / documents / profile /
    activate / reset / notifications / install / privacy, the client app, docs
-   and e2e. The §4.1 menu counter in the office chrome was built and then
-   dropped at the merge with #52's `SignedInAs`; it wants rebuilding on that.
+   and e2e. The §4.1 menu counter in the office chrome was rebuilt on #52's
+   `SignedInAs` (`navCounts.ts`, bb0896f) and is pinned by `chrome.test`.
 4c. ~~**ADR-0018's rota-guard gap.**~~ **Closed** by `20260927150000`:
    `can_roster_staff()` refuses a non-UK worker whose latest verified
    right-to-work evidence carries neither a date nor the settled no-time-limit
@@ -297,12 +297,10 @@ real environment to prove it in.
   the next merge to `main` deploys all fifteen in order with no flag. Types
   (`packages/db/src/types.generated.ts`) are regenerated from the live project
   once they are applied — they do not yet know this round's RPCs.
-- **ESLint does not run `react-hooks/rules-of-hooks`.** The flat config loads
-  `@eslint/js` and `typescript-eslint` only, so a hook placed after an early
-  return (step 1's `useId()`, fixed in #58 after Playwright caught it) passes
-  lint and the render tests, and fails only in a browser. Adding
-  `eslint-plugin-react-hooks` is a dependency change for its own PR; expect
-  it to find more.
+- **ESLint runs `react-hooks/rules-of-hooks`** (error) and `exhaustive-deps`
+  (warning) on every TSX file since 27.09; the tree was clean under both the
+  day the rule landed. Step 1's `useId()` after an early return was the case
+  that got past lint and the render tests before it.
 - `supabase/config.toml` `otp_expiry` is 86400 (activation links last a day).
 - `scripts/pgtest-local.sh` — the Docker-free pgTAP harness §7 describes, as a
   script.
