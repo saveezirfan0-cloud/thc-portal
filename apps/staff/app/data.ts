@@ -61,10 +61,37 @@ export interface OpenShift extends OpenShiftRow {
 
 const date = (value: unknown): Date | null => (value ? new Date(value as string) : null);
 
-export async function loadBookings(): Promise<BookingRow[]> {
-  if (!supabaseConfigured()) return [];
+/**
+ * What a list loader hands back: the rows, and whether reading them failed.
+ *
+ * A failed read is NOT an empty list. A worker told "No shifts booked" when
+ * the database simply did not answer does not turn up, and becomes a
+ * No-show (audit D18). So the error travels with the rows, and every screen
+ * that shows an empty state checks `problem` first and shows
+ * `<LoadProblem>` instead.
+ */
+export interface Loaded<T> {
+  rows: T[];
+  /** The RPC's own error message, for logs. Never rendered to the worker. */
+  problem: string | null;
+}
+
+/** One row by id, with the same distinction: not found is not "could not read". */
+export interface Found<T> {
+  row: T | null;
+  problem: string | null;
+}
+
+export async function loadBookings(): Promise<Loaded<BookingRow>> {
+  if (!supabaseConfigured()) return { rows: [], problem: null };
   const supabase = staffDb(await cookies());
-  const { data } = await supabase.rpc('staff_bookings');
+  const { data, error } = await supabase.rpc('staff_bookings');
+  if (error) return { rows: [], problem: error.message || 'staff_bookings failed' };
+  return { rows: toBookings(data), problem: null };
+}
+
+/** `staff_bookings()` rows in the screens' shape. */
+export function toBookings(data: unknown): BookingRow[] {
   return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
     bookingId: row['booking_id'] as string,
     status: row['status'] as StaffBookingStatus,
@@ -105,10 +132,16 @@ export async function loadBookings(): Promise<BookingRow[]> {
   }));
 }
 
-export async function loadOpenShifts(): Promise<OpenShift[]> {
-  if (!supabaseConfigured()) return [];
+export async function loadOpenShifts(): Promise<Loaded<OpenShift>> {
+  if (!supabaseConfigured()) return { rows: [], problem: null };
   const supabase = staffDb(await cookies());
-  const { data } = await supabase.rpc('staff_open_shifts');
+  const { data, error } = await supabase.rpc('staff_open_shifts');
+  if (error) return { rows: [], problem: error.message || 'staff_open_shifts failed' };
+  return { rows: toOpenShifts(data), problem: null };
+}
+
+/** `staff_open_shifts()` rows in the screens' shape. */
+export function toOpenShifts(data: unknown): OpenShift[] {
   return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
     shiftId: row['shift_id'] as string,
     eventId: row['event_id'] as string,
@@ -134,14 +167,14 @@ export async function loadOpenShifts(): Promise<OpenShift[]> {
   }));
 }
 
-export async function findBooking(bookingId: string): Promise<BookingRow | null> {
-  const all = await loadBookings();
-  return all.find((b) => b.bookingId === bookingId) ?? null;
+export async function findBooking(bookingId: string): Promise<Found<BookingRow>> {
+  const { rows, problem } = await loadBookings();
+  return { row: rows.find((b) => b.bookingId === bookingId) ?? null, problem };
 }
 
-export async function findOpenShift(shiftId: string): Promise<OpenShift | null> {
-  const all = await loadOpenShifts();
-  return all.find((s) => s.shiftId === shiftId) ?? null;
+export async function findOpenShift(shiftId: string): Promise<Found<OpenShift>> {
+  const { rows, problem } = await loadOpenShifts();
+  return { row: rows.find((s) => s.shiftId === shiftId) ?? null, problem };
 }
 
 /**

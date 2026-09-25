@@ -5,8 +5,9 @@ import { explainLimit, formatDistance, formatHours, sectionHours } from '@thc/do
 import { StaffShell } from '../../_components/StaffShell';
 import { ShiftTime } from '../../_components/ShiftTime';
 import { ActionButton } from '../../_components/ActionButton';
+import { LoadProblem } from '../../_components/LoadProblem';
 import { acceptInvite, declineInvite } from '../../actions';
-import { findBooking, loadBookings, openInvites } from '../../data';
+import { loadBookings, openInvites } from '../../data';
 import '../../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -22,10 +23,18 @@ export const metadata = { title: 'Invitation · THC Staff' };
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const invite = await findBooking(id);
+  const { rows: all, problem } = await loadBookings();
+  const invite = all.find((b) => b.bookingId === id) ?? null;
+  // A failed read is not a 404 (audit D18).
+  if (problem) {
+    return (
+      <StaffShell title="Invitation" sub={<Link href="/invites">‹ Invites</Link>} active="/invites">
+        <LoadProblem what="this invitation" />
+      </StaffShell>
+    );
+  }
   if (!invite || invite.status !== 'invited') notFound();
 
-  const all = await loadBookings();
   const hours = sectionHours({ startsAt: invite.startsAt, endsAt: invite.endsAt });
   const limit = invite.hoursLimit
     ? explainLimit({

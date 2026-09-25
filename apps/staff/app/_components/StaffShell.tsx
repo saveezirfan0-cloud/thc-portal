@@ -4,10 +4,13 @@ import { AppChrome } from './AppChrome';
 import { BottomTabs } from './BottomTabs';
 import { TabLockedScreen } from './DocumentsLock';
 import { PushStatus } from './PushStatus';
+import { LoadProblem } from './LoadProblem';
 import { LockScreen } from '../profile/_components/LockScreen';
 import { appLock, reachableTabs, showsBottomNav } from '../profile/lock';
-import { loadProfile } from '../profile/data';
+import { readProfile } from '../profile/data';
+import { signOwnPhoto } from '../profile/photos';
 import type { StaffProfile } from '../profile/types';
+import '../chrome.css';
 
 /**
  * The Staff App chrome (§10.1): frosted header, body, frosted bottom nav,
@@ -60,10 +63,29 @@ export async function StaffShell({
   pushStatus?: boolean;
   children: ReactNode;
 }) {
-  const profile = await loadProfile();
-  // No profile (no database wired up, docs/04) means nothing to lock on.
-  // Locking on an absent row would black out the whole app on the strength
-  // of a failed query, which is a worse failure than the one it prevents.
+  const read = await readProfile();
+
+  // The lock is computed from this row, so a read that FAILED cannot be
+  // treated as "nothing to lock on" (audit D16): that would show a held or
+  // auto-blocked worker their shifts whenever `staff_me()` timed out. It
+  // fails closed — no tabs, no content, a retry. Only an environment with
+  // no project at all (docs/04, a developer's machine) runs unlocked.
+  //
+  // A screen that renders whatever the lock says (`ignoreLock`: /install,
+  // /notifications) keeps its content, since no lock would have hidden it;
+  // it still loses the tabs, which a failed read cannot vouch for.
+  if (read.kind === 'problem') {
+    return (
+      <AppFrame>
+        <AppChrome title={ignoreLock ? title : 'The Hospitality Company'} worker={null} />
+        <AppBody className={ignoreLock ? undefined : 'center'}>
+          {ignoreLock ? children : <LoadProblem what="your account" />}
+        </AppBody>
+      </AppFrame>
+    );
+  }
+
+  const profile = read.kind === 'ok' ? read.profile : null;
   const lock = profile ? appLock(profile) : 'none';
   const unlocked = reachableTabs(lock);
 
@@ -82,6 +104,7 @@ export async function StaffShell({
   // action either" and a row of dead tabs reads as one.
   const open = ignoreLock || lock === 'none';
   const showNav = showsBottomNav(lock);
+  const worker = await chromeWorker(profile);
 
   return (
     <AppFrame>
@@ -89,7 +112,7 @@ export async function StaffShell({
         title={open ? title : 'The Hospitality Company'}
         {...(sub && open ? { sub } : {})}
         {...(below && open ? { below } : {})}
-        worker={chromeWorker(profile)}
+        worker={worker}
       />
       <AppBody className={open ? undefined : 'center'}>
         {open ? (
@@ -141,13 +164,15 @@ function Locked({
  * field for it (#42, types.ts), so there is no path from a manager's
  * internal note (§9.6) to this app's markup.
  */
-function chromeWorker(profile: StaffProfile | null) {
+async function chromeWorker(profile: StaffProfile | null) {
   if (!profile) return null;
   return {
     name: `${profile.firstName} ${profile.lastName}`.trim() || 'Your profile',
-    // The signed selfie URL is `profile/photos.ts`'s and costs a Storage
-    // round trip; the header falls back to initials rather than spending
-    // one on every screen. /profile itself shows the photo.
-    photoUrl: null,
+    // §10.1: the square selfie is the header avatar. It is signed with the
+    // worker's OWN session — `photos_worker_read_own` lets a worker read
+    // `<staff_id>/…` — so no service key is involved, and the path comes
+    // from `staff_me()`, never from the browser. A Storage failure falls
+    // back to initials rather than failing the screen.
+    photoUrl: await signOwnPhoto(profile.photoPath),
   };
 }

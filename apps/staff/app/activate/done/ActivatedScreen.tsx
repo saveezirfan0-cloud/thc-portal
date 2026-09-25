@@ -103,7 +103,7 @@ export function ActivatedScreen() {
             {origin}
           </a>
           <p className="xs muted" style={{ margin: 0 }}>
-            Sent to you by email as well (E3). One account, one app — no app-store download.
+            Sent to you by email as well. One account, one app — no app-store download.
           </p>
         </div>
       ) : null}

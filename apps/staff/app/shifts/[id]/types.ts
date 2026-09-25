@@ -32,6 +32,12 @@ export interface ShiftDetail {
   cancelCause: CancelCause | null;
   /** An unresolved RULE-02 No check-out violation stands on this booking. */
   noCheckoutOpen: boolean;
+  /**
+   * When the strict-buffer turn-away was logged (`check_logs.attempted_at`),
+   * or null. RULE-15 prices it: on time → a flat 4 h, late → nothing.
+   * Optional so a detail built elsewhere (fixtures, tests) need not carry it.
+   */
+  turnedAwayAt?: string | null;
 }
 
 export interface GpsFix {

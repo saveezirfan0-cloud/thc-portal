@@ -22,6 +22,9 @@ import type { ActionResult } from './types';
 const NOT_CONFIGURED =
   'This environment has no Supabase project, so nothing can be saved. See docs/04-setup-github-vercel-supabase.md.';
 
+/** A read that failed is not "we couldn't find your record" (audit D18). */
+const COULD_NOT_READ = 'We couldn’t reach your profile just now. Please try again.';
+
 /**
  * The reason codes the RPCs raise, as sentences. Anything unmapped falls
  * through to its own message rather than a generic one — a refusal nobody
@@ -246,7 +249,8 @@ export type PhotoSlot = { ok: true; path: string } | { ok: false; message: strin
 export async function startPhotoUpload(): Promise<PhotoSlot> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const supabase = await db();
-  const { data } = await supabase.rpc('staff_me');
+  const { data, error } = await supabase.rpc('staff_me');
+  if (error) return { ok: false, message: COULD_NOT_READ };
   const me = data as Record<string, unknown> | null;
   if (!me) return { ok: false, message: REASONS['unknown_staff'] as string };
   if (me['photoLocked']) return { ok: false, message: REASONS['photo_locked'] as string };

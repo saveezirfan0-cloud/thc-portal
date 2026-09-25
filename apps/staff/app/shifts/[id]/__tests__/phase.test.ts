@@ -4,8 +4,10 @@ import {
   distanceM,
   formatDistance,
   isStaticPhase,
+  isTerminalPhase,
   shiftPhase,
   shiftScreenReachable,
+  turnAwayPaid,
 } from '../phase';
 
 /** 17:00–23:30 UK on 14 June 2026 (BST). */
@@ -65,9 +67,17 @@ describe('§5.1 which state the shift screen is in', () => {
   });
 
   it('quotes the window the worker is told about', () => {
-    const { opens, locks } = checkInWindow(START);
+    const { opens, locks, confirmedAfterStart } = checkInWindow(shift());
     expect(opens.toISOString()).toBe('2026-06-14T15:30:00.000Z');
     expect(locks.toISOString()).toBe('2026-06-14T16:30:00.000Z');
+    expect(confirmedAfterStart).toBe(false);
+  });
+
+  it('never quotes start+30 to a booking confirmed after the start (§3.4)', () => {
+    const late = shift({ confirmedAt: new Date(Date.parse(START) + 60 * 60_000).toISOString() });
+    const { locks, confirmedAfterStart } = checkInWindow(late);
+    expect(confirmedAfterStart).toBe(true);
+    expect(locks.toISOString()).toBe(new Date(END).toISOString());
   });
 });
 
@@ -170,5 +180,30 @@ describe('§5.1 the distance line', () => {
   it('reads kilometres once it is a journey, as the copy does', () => {
     expect(formatDistance(842)).toBe('842 m');
     expect(formatDistance(1800)).toBe('1.8 km');
+  });
+});
+
+describe('audit D19 · a turn-away is a state of its own, not a fresh check-in', () => {
+  const away = shift({ status: 'turned_away' });
+
+  it('stays turned away inside the window, where the clock alone would offer check-in', () => {
+    expect(shiftPhase({ shift: away, openBreak: false, now: at(5) })).toBe('turned_away');
+    expect(shiftPhase({ shift: away, openBreak: false, now: at(-20) })).toBe('turned_away');
+  });
+
+  it('is terminal — no map, no location request — but not one of the three §10.4 dead ends', () => {
+    expect(isTerminalPhase('turned_away')).toBe(true);
+    expect(isStaticPhase('turned_away')).toBe(false);
+    expect(isTerminalPhase('check_in')).toBe(false);
+  });
+
+  it('is paid the flat 4 h only when the logged attempt was inside the grace (RULE-15)', () => {
+    const on = (min: number) =>
+      turnAwayPaid({ startsAt: START, endsAt: END, turnedAwayAt: at(min).toISOString() });
+    expect(on(-10)).toBe(true);
+    expect(on(29)).toBe(true);
+    expect(on(30)).toBe(false);
+    // No stamp: the screen cannot vouch for the pay, so it does not claim it.
+    expect(turnAwayPaid({ startsAt: START, endsAt: END, turnedAwayAt: null })).toBe(false);
   });
 });

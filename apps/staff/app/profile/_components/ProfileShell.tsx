@@ -27,6 +27,7 @@ export function ProfileShell({
   lock,
   name,
   photoUrl,
+  nav = true,
   children,
 }: {
   title: ReactNode;
@@ -35,6 +36,11 @@ export function ProfileShell({
   lock: AppLock;
   name: string;
   photoUrl?: string | null;
+  /**
+   * False when the profile could not be read: the lock is unknown, so no
+   * tab can be vouched for and none is drawn (fail closed, audit D16).
+   */
+  nav?: boolean;
   children: ReactNode;
 }) {
   const reachable = reachableTabs(lock);
@@ -74,7 +80,7 @@ export function ProfileShell({
           same `{href, label, locked}` data and decides what a link is
           itself, so only strings cross the boundary. Same markup, same
           classes, same locked-is-a-span behaviour. */}
-      {showsBottomNav(lock) ? <BottomTabs tabs={tabs} /> : null}
+      {nav && showsBottomNav(lock) ? <BottomTabs tabs={tabs} /> : null}
     </AppFrame>
   );
 }
