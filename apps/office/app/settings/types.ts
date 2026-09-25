@@ -17,6 +17,13 @@ export interface ScoringWeights {
   venue_history: number;
 }
 
+/**
+ * §2.4: the "Review interview on Willo" link, as a template with `{id}`
+ * where Willo's candidate id goes (onboarding_candidates_v substitutes it).
+ * Null until THC supplies the Willo account; the link is then "not connected".
+ */
+export type WilloReviewUrlTemplate = string | null;
+
 /** §2.4, Appendix B: Willo's own stage names → the kanban's. */
 export interface WilloStageMap {
   new_response: string;
@@ -40,8 +47,14 @@ export interface VenueTypeRadius {
 export interface SettingsData {
   weights: ScoringWeights;
   willo: WilloStageMap;
+  willoReviewUrlTemplate: WilloReviewUrlTemplate;
   senders: Senders;
-  payrollRecipients: string[];
+  /**
+   * §8's fixed recipients for the office/payroll emails, read from the
+   * notification register on the server so the screen's note can never
+   * drift from what the drain sends. Not a setting.
+   */
+  recipients: { e5e6: string[]; e7: string[] };
   /** RULE-06's different-venue gap, in minutes (§3.4). */
   bookedElsewhereGapMinutes: number;
   /** §3.4's escalation radius, in miles. */

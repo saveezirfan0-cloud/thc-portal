@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Alert, KpiTile, Panel, Pill, TileGrid } from '@thc/ui';
+import { Alert, KpiTile, Panel, Pill, TableScroll, TileGrid } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { UpcomingTable } from './_components/UpcomingTable';
 import { ViewerZone } from './_components/ViewerZone';
@@ -69,22 +69,22 @@ export default async function Page() {
         <TileGrid columns={4}>
           <KpiTile
             label="Open positions"
-            // Amber, not accent: this is the number that means work is
-            // sold and nobody is standing in it.
-            tone="warn"
+            // Accent, as the wireframe draws it: §9.1's "headline number of
+            // the business", not a warning.
+            tone="accent"
             value={kpis?.openPositions ?? '—'}
-            description="Across all events, any date · sold, not staffed"
+            description="Sold but not staffed — all events, any date"
           />
           <KpiTile
             label="On shift now"
             tone="ok"
             value={kpis?.onShiftNow ?? '—'}
-            description="Checked in and working this minute"
+            description="Checked in and on site this minute"
           />
           <KpiTile
             label="Staff available"
             value={kpis?.staffAvailable ?? '—'}
-            description="Compliant, with a live right to work, nothing booked today"
+            description="Compliant workers, not booked or blocked"
           />
           <KpiTile
             label="Compliance blocks"
@@ -140,8 +140,10 @@ export default async function Page() {
                   // §1.5: broken out, never blended. Two figures side by
                   // side, not one total with an asterisk.
                   <span className="dash-split">
-                    <span>Base {formatPounds(finance.baseTotal)}</span>
-                    <span>Holiday {formatPounds(finance.holidayTotal)}</span>
+                    <span>
+                      Base {formatPounds(finance.baseTotal)} · Holiday{' '}
+                      {formatPounds(finance.holidayTotal)}
+                    </span>
                     <span className="muted">never blended</span>
                   </span>
                 }
@@ -164,7 +166,10 @@ export default async function Page() {
         <Panel
           title={
             <>
-              Upcoming events <span className="muted sm">· next 10 days</span>
+              Upcoming events <span className="muted sm">· next 10 days</span>{' '}
+              <span className="muted sm">
+                Event window = earliest role start → latest role end (RULE-18)
+              </span>
             </>
           }
           actions={
@@ -175,7 +180,10 @@ export default async function Page() {
           flush
         >
           <div className="panel-b tight">
-            <UpcomingTable events={upcoming} today={today} />
+            {/* docs/07: tables scroll horizontally under 820px. */}
+            <TableScroll>
+              <UpcomingTable events={upcoming} today={today} />
+            </TableScroll>
           </div>
         </Panel>
       </div>

@@ -10,6 +10,7 @@ import {
   boardCounts,
   canResendActivation,
   candidateActions,
+  candidateCap,
   cardLines,
   columnFor,
   parsePeriod,
@@ -18,6 +19,7 @@ import {
   phaseIndex,
   quizGate,
   rejectedColumn,
+  rejectedLines,
   rejectedPill,
   returningActions,
   stageAge,
@@ -471,5 +473,81 @@ describe('term periods (+ Add period)', () => {
       'Period 1 ends before it starts.',
     );
     expect(periodsProblem([])).toBeNull();
+  });
+});
+
+describe('card lines the wireframe spells out (onboarding.html)', () => {
+  it('says "Applied today HH:MM" on the day itself, and the day otherwise', () => {
+    const today = candidate({ applied_at: '2026-09-23T10:20:00Z' });
+    expect(cardLines(today, 'interview_requested', NOW)[0]!.text).toMatch(/^Applied today 11:20/);
+    expect(cardLines(candidate(), 'interview_requested', NOW)[0]!.text).toMatch(
+      /^Applied Thu 10 Sep/,
+    );
+  });
+
+  it("counts the branch's required documents and says whether the account is activated", () => {
+    const row = candidate({
+      status: 'documents',
+      rtw_branch: 'uk_irish',
+      docs_missing: ['passport', 'ni_evidence', 'birth_certificate'],
+      activated: true,
+    });
+    expect(cardLines(row, 'documents', NOW)[0]!.text).toBe(
+      'UK citizen · 0 of 3 uploaded yet · activated',
+    );
+    expect(
+      cardLines({ ...row, activated: false, docs_missing: null }, 'documents', NOW)[0]!.text,
+    ).toBe('UK citizen · nothing uploaded yet · not activated');
+  });
+
+  it('dates the automatic quiz unlock', () => {
+    const row = candidate({ status: 'quiz', stage_entered_at: '2026-09-17T09:00:00Z' });
+    expect(cardLines(row, 'quiz', NOW)[0]!.text).toBe(
+      'All documents verified Thu 17 Sep → quiz unlocked automatically',
+    );
+  });
+
+  it('does not claim a presentation time the database never stamps (ADR-0013)', () => {
+    const row = candidate({
+      status: 'contract',
+      quiz_passed_at: '2026-09-18T08:00:00Z',
+      stage_entered_at: '2026-09-18T08:00:00Z',
+      ...ALL_IN,
+    });
+    const line = cardLines(row, 'contract', NOW)[0]!.text;
+    expect(line).toBe(
+      'Quiz passed Fri 18 Sep · additional info complete · contract not yet signed',
+    );
+    expect(line).not.toMatch(/presented/);
+  });
+
+  it('tells the office what a manager rejection took out of Compliance (§4.1)', () => {
+    const row = candidate({
+      status: 'rejected',
+      rejection_cause: 'manager',
+      rejection_reason: 'Right to work could not be established',
+      docs_pending: 2,
+    });
+    expect(rejectedLines(row).map((l) => l.text)).toEqual([
+      'Reason: “Right to work could not be established”',
+      'Their 2 pending documents dropped out of Compliance → Needs review automatically (§4.1).',
+    ]);
+    expect(rejectedLines({ ...row, docs_pending: 0 })).toHaveLength(1);
+  });
+});
+
+describe('the weekly limit as §2.3 words it', () => {
+  it('prints "h/week" and the dotted date the candidate profile and wireframe use', () => {
+    expect(candidateCap('student_term_20', 20, '2026-12-13')).toBe(
+      '20 h/week — term time until 13.12.2026',
+    );
+    expect(candidateCap('student_holiday_48', 48, '2027-01-10')).toBe(
+      '48 h/week — university holiday until 10.01.2027',
+    );
+  });
+
+  it('leaves the sentences that carry no hours alone', () => {
+    expect(candidateCap('uncapped', null)).toMatch(/^No weekly ceiling/);
+    expect(candidateCap(null, null)).toMatch(/cannot be booked/);
   });
 });

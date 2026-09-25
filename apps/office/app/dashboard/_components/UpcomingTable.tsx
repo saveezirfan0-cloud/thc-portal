@@ -1,4 +1,8 @@
+'use client';
+
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import type { MouseEvent } from 'react';
 import { EVENT_STATUS_LABEL, type EventStatus, eventStatus } from '@thc/domain';
 import { EmptyState, Pill } from '@thc/ui';
 import {
@@ -23,6 +27,11 @@ import { ScheduledWindow } from './ScheduledWindow';
  *
  * Cancelled events stay on the list, struck through and greyed, and say so
  * where the fill would be: §3.3 keeps them visible and out of the money.
+ *
+ * The whole row opens the event board, as the wireframe's `tr.clickable`
+ * does — the `clickable` class promises a pointer and a hover tint, and a
+ * row that only looked clickable did nothing. The title keeps its Link for
+ * the keyboard and for "open in a new tab".
  */
 
 const STATUS_TONE: Record<EventStatus, 'cyan' | 'green' | 'neutral'> = {
@@ -33,9 +42,17 @@ const STATUS_TONE: Record<EventStatus, 'cyan' | 'green' | 'neutral'> = {
 };
 
 export function UpcomingTable({ events, today }: { events: UpcomingEvent[]; today: string }) {
+  const router = useRouter();
   if (events.length === 0) {
     return <EmptyState>Nothing in the diary for the next ten days.</EmptyState>;
   }
+
+  const openEvent = (eventId: string) => (event: MouseEvent<HTMLTableRowElement>) => {
+    // A click on the title's own link, or on anything else interactive in
+    // the row, is already handled — one navigation, not two.
+    if ((event.target as HTMLElement).closest('a, button')) return;
+    router.push(`/events/${eventId}`);
+  };
 
   return (
     <table className="tbl dash-upcoming">
@@ -60,7 +77,11 @@ export function UpcomingTable({ events, today }: { events: UpcomingEvent[]; toda
           const relative = relativeDayLabel(event.eventDate, today);
 
           return (
-            <tr key={event.eventId} className={cancelled ? undefined : 'clickable'}>
+            <tr
+              key={event.eventId}
+              className={cancelled ? undefined : 'clickable'}
+              onClick={cancelled ? undefined : openEvent(event.eventId)}
+            >
               <td>
                 <b className={relative ? 'cyan' : undefined}>{formatDayLabel(event.eventDate)}</b>
                 {relative ? <span className="sub">{relative}</span> : null}

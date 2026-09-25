@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react';
 import {
   Alert,
   Button,
+  Checkbox,
   Chip,
   Modal,
   Note,
@@ -50,7 +51,8 @@ export function Qualifications({
   const [adding, setAdding] = useState(false);
   const [barring, setBarring] = useState<QualificationRow | null>(null);
   const [clientId, setClientId] = useState('');
-  const [roleId, setRoleId] = useState('');
+  // §9.6: "then one or more of that worker's roles" — a set, not a pick.
+  const [roleIds, setRoleIds] = useState<string[]>([]);
   const [note, setNote] = useState('');
   const [reason, setReason] = useState('');
   const [problem, setProblem] = useState<string | null>(null);
@@ -211,20 +213,29 @@ export function Qualifications({
             </Button>
             <Button
               tone="primary"
-              disabled={pending || clientId === '' || roleId === ''}
+              disabled={pending || clientId === '' || roleIds.length === 0}
               onClick={() =>
                 run(
-                  () => grantQualification(profile.id, clientId, roleId, note),
+                  // One entry per role, as the table holds them (client +
+                  // one role, RULE-17). The first refusal stops the run so
+                  // the message names the role that failed.
+                  async () => {
+                    for (const roleId of roleIds) {
+                      const result = await grantQualification(profile.id, clientId, roleId, note);
+                      if (!result.ok) return result;
+                    }
+                    return { ok: true } as const;
+                  },
                   () => {
                     setAdding(false);
                     setClientId('');
-                    setRoleId('');
+                    setRoleIds([]);
                     setNote('');
                   },
                 )
               }
             >
-              Add
+              {roleIds.length > 1 ? `Add ${roleIds.length} entries` : 'Add'}
             </Button>
           </>
         }
@@ -241,18 +252,31 @@ export function Qualifications({
           </Select>
         </div>
         <div className="field">
-          <span className="label">Role</span>
-          <Select value={roleId} onChange={(event) => setRoleId(event.target.value)}>
-            <option value="">Choose a role…</option>
-            {held.map((role) => (
-              <option key={role.id} value={role.id}>
-                {role.name}
-              </option>
-            ))}
-          </Select>
+          <span className="label">Role(s)</span>
+          {held.length === 0 ? (
+            <span className="muted sm">
+              This worker holds no role yet — add one on the Overview.
+            </span>
+          ) : (
+            <div className="stack">
+              {held.map((role) => (
+                <Checkbox
+                  key={role.id}
+                  checked={roleIds.includes(role.id)}
+                  onChange={(next) =>
+                    setRoleIds(
+                      next ? [...roleIds, role.id] : roleIds.filter((id) => id !== role.id),
+                    )
+                  }
+                >
+                  {role.name}
+                </Checkbox>
+              ))}
+            </div>
+          )}
           <span className="hint">
-            Only the roles this worker already holds — a qualification for any other role is a row
-            auto-assign never reads (§9.6).
+            One or more of the roles this worker already holds (§9.6) — a qualification for any
+            other role is a row auto-assign never reads.
           </span>
         </div>
         <div className="field">
