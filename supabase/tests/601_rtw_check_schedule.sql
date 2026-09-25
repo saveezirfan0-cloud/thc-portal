@@ -63,9 +63,10 @@ select lives_ok($$ select install_job_schedules() $$,
   'enabled without the vault secrets, the installer skips that row and installs the rest');
 select is((select count(*)::int from cron.job where jobname = 'rtw-check'), 0, 'still not scheduled');
 
-insert into vault.secrets (name, secret) values
-  ('office_base_url', 'https://office.rtw601.test/'),
-  ('rtw_job_secret', 'synthetic-601-secret-0123456789abcdef');
+-- Through vault.create_secret, not an insert: on Supabase the table's encrypt
+-- trigger is not callable by the test role, the SECURITY DEFINER API is.
+select vault.create_secret('https://office.rtw601.test/', 'office_base_url');
+select vault.create_secret('synthetic-601-secret-0123456789abcdef', 'rtw_job_secret');
 select is(office_base_url(), 'https://office.rtw601.test', 'the base comes from the vault, without its trailing slash');
 select install_job_schedules();
 select ok(
@@ -81,7 +82,7 @@ select ok(
      from cron.job where jobname = 'notify-drain'),
   'notify-drain still posts through edge_base_url() with service_role_key, as 20260927160300 left it');
 
-update vault.secrets set secret = 'http://attacker.example/steal' where name = 'office_base_url';
+select vault.update_secret((select id from vault.secrets where name = 'office_base_url'), 'http://attacker.example/steal');
 select throws_like($$ select office_base_url() $$, '%office_base_url_invalid%',
   'a vault value that is not an https origin is refused at run time');
 
