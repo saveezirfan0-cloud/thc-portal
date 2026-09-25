@@ -50,6 +50,8 @@ describe('dashboard tiles and copy (§9.1, dashboard.html)', () => {
     expect(html).toContain('Sold but not staffed — all events, any date');
     expect(html).toContain('Checked in and on site this minute');
     expect(html).toContain('Compliant workers, not booked or blocked');
-    expect(html).toContain('Event window = earliest role start → latest role end (RULE-18)');
+    expect(html).toContain('Event window = earliest role start → latest role end');
+    // Section and rule numbers are for the build, not the reader.
+    expect(html).not.toMatch(/§|RULE-/);
   });
 });
