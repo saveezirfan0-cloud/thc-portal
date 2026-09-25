@@ -31,7 +31,14 @@ import { Feedback } from './Feedback';
 import { Overview } from './Overview';
 import { Qualifications } from './Qualifications';
 import { Shifts } from './Shifts';
-import { canBlock, canReset, hoursTone, isActionable, noShowTone } from './profile';
+import {
+  blockBanner,
+  canBlock,
+  canReset,
+  hoursThisWeek,
+  isActionable,
+  noShowTone,
+} from './profile';
 import {
   addRole,
   blockWorker,
@@ -81,6 +88,13 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
   const [resent, setResent] = useState(false);
 
   const actionable = isActionable(profile.status);
+  const banner = blockBanner(profile);
+  const hours = hoursThisWeek(profile);
+  const capWhy = capReason(
+    profile.weekly_cap_band,
+    profile.weekly_cap_hours,
+    profile.weekly_cap_until,
+  );
   const unheld = data.roles.filter((role) => !profile.role_names.includes(role.name));
 
   const run = (
@@ -125,18 +139,11 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             <Pill tone="coral" large>
               Blocked
             </Pill>
+            {/* Each kind of block lifts differently; the words say which. */}
             <span>
-              <b>
-                {profile.block_reason
-                  ? `Blocked — ${profile.block_reason}`
-                  : 'Blocked automatically — a document is out of date (§4.3)'}
-              </b>
+              <b>{banner.title}</b>
               <br />
-              <span className="muted sm">
-                {profile.block_kind === 'manual'
-                  ? 'Manual block. Only a manager’s Unblock lifts it, and only after the full compliance check (§4.3). The worker never sees the reason.'
-                  : 'System block: temporary, not a penalty. It lifts by itself once the document is verified and the full re-check passes (§4.3).'}
-              </span>
+              <span className="muted sm">{banner.detail}</span>
             </span>
             <Button
               tone="primary"
@@ -178,14 +185,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
                   : ''}
               </span>
               <span>
-                Weekly limit{' '}
-                <b>
-                  {capReason(
-                    profile.weekly_cap_band,
-                    profile.weekly_cap_hours,
-                    profile.weekly_cap_until,
-                  )}
-                </b>
+                Weekly limit <b>{capWhy}</b>
               </span>
               <span>
                 Joined <b>{formatUkDate(profile.joined_at)}</b>
@@ -197,7 +197,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
               <span className="label">Roles</span>
               {profile.role_names.length === 0 ? (
                 <span className="muted sm">
-                  None — this worker is invisible to every auto-assign round until one is added (§6)
+                  None — this worker is invisible to every auto-assign round until one is added
                 </span>
               ) : (
                 profile.role_names.map((name) => {
@@ -210,7 +210,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
                           type="button"
                           className="x"
                           aria-label={`Remove ${name}`}
-                          title="Also removes this worker’s client qualifications for this role — except any marked Do not return, which the database keeps (§9.6)"
+                          title="Also removes this worker’s client qualifications for this role — except any marked Do not return, which the database keeps"
                           disabled={pending}
                           onClick={() => run(() => removeRole(profile.id, role.id))}
                         >
@@ -241,7 +241,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
                   </Select>
                   <span className="muted xs">
                     role qualification = what they can do anywhere; eligible for these roles’
-                    invitations only (§9.6)
+                    invitations only
                   </span>
                 </>
               ) : null}
@@ -255,7 +255,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
                   size="sm"
                   tone="outline"
                   disabled={pending || resent}
-                  title="A fresh personal link and a new E3 (§2.7). Once every 10 minutes."
+                  title="A fresh personal link and a new activation email. Once every 10 minutes."
                   onClick={() =>
                     run(
                       () => resendActivationLink(profile.id),
@@ -286,7 +286,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
                   disabled={!actionable || !canBlock(profile.status) || pending}
                   title={
                     actionable && !canBlock(profile.status)
-                      ? 'Only a compliant worker can be blocked (§2.12) — a leaver or candidate is not'
+                      ? 'Only a compliant worker can be blocked — a leaver or candidate is not'
                       : undefined
                   }
                   onClick={() => setDialog('block')}
@@ -297,7 +297,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
               <Button
                 size="sm"
                 disabled={!canReset(profile.status) || pending}
-                title="Only on a blocked, rejected or inactive profile (§9.6)"
+                title="Only on a blocked, rejected or inactive profile"
                 onClick={() => setDialog('reset')}
               >
                 Reset to candidate
@@ -313,8 +313,8 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             </div>
             {profile.removed ? (
               <span className="muted xs">
-                Removed under §1.7. The record stays open with its non-personal history; nothing
-                here can be undone.
+                Removed: personal data anonymised. The record stays open with its non-personal
+                history; nothing here can be undone.
               </span>
             ) : null}
           </div>
@@ -326,26 +326,13 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             value={profile.shifts_worked}
             description={`since ${formatUkDate(profile.joined_at)}`}
           />
+          {/* §9.6: "worked / calculated weekly limit", the reason on hover;
+              the booked hours underneath, because the cap gates on them. */}
           <KpiTile
             label="Hours this week"
-            value={
-              <span
-                title={capReason(
-                  profile.weekly_cap_band,
-                  profile.weekly_cap_hours,
-                  profile.weekly_cap_until,
-                )}
-              >
-                {Number(profile.weekly_booked_hours ?? 0).toFixed(0)} /{' '}
-                {profile.weekly_cap_hours ?? '—'}
-              </span>
-            }
-            tone={hoursTone(profile.weekly_cap_hours, profile.weekly_booked_hours)}
-            description={capReason(
-              profile.weekly_cap_band,
-              profile.weekly_cap_hours,
-              profile.weekly_cap_until,
-            )}
+            value={<span title={capWhy}>{hours.value}</span>}
+            tone={hours.tone}
+            description={`worked · ${hours.booked} · ${capWhy}`}
           />
           <KpiTile
             label="No-shows"
@@ -363,7 +350,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             label="Show-rate"
             value={formatShowRate(profile.reliability)}
             tone={profile.reliability !== null && profile.reliability >= 95 ? 'ok' : 'default'}
-            description="feeds the auto-assign score (30%, §6)"
+            description="feeds the auto-assign score (30%)"
           />
         </TileGrid>
 
@@ -462,16 +449,14 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
           <Textarea value={reason} onChange={(event) => setReason(event.target.value)} />
           <span className="hint">
             Saved and shown on the profile as &ldquo;Blocked — reason&rdquo;. Internal: the worker
-            never sees it (§9.6). A manual block always means something went wrong — a worker who
-            has simply left goes to Inactive instead (§10.6).
+            never sees it. A manual block always means something went wrong — a worker who has
+            simply left goes to Inactive instead.
           </span>
         </div>
         <div className="sm stack">
           <div>• All future bookings released to auto-assign, and open invitations withdrawn</div>
-          <div>
-            • Out of the scoring pool; the app shows &ldquo;Your account is on hold&rdquo; (§10.1)
-          </div>
-          <div>• Only a manager’s Unblock lifts it, after the full compliance check (§4.3)</div>
+          <div>• Out of the scoring pool; the app shows &ldquo;Your account is on hold&rdquo;</div>
+          <div>• Only a manager’s Unblock lifts it, after the full compliance check</div>
         </div>
       </Modal>
 
@@ -499,7 +484,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
         <p className="sm">
           The profile returns to the <b>start of the onboarding pipeline</b> on this same record.
           They complete the whole wizard again — application → interview → Right to Work and
-          documents → HMRC New Starter → convictions → H&amp;S quiz → contract (§2.12).
+          documents → HMRC New Starter → convictions → H&amp;S quiz → contract.
         </p>
         <div className="two">
           <div className="card">
@@ -509,7 +494,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
               <li>HMRC New Starter Checklist</li>
               <li>Criminal convictions declaration</li>
               <li>H&amp;S quiz result and the signed contract</li>
-              <li>Term dates, so RULE-20 stops reading evidence nobody may rely on</li>
+              <li>Term dates, so the weekly limit stops reading evidence nobody may rely on</li>
             </ul>
             <div className="muted xs mt-8">
               Superseded documents stay on the profile read-only as the record of the previous
@@ -585,12 +570,11 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
               <li>Booking and shift history, violations</li>
               <li>
                 Feedback, comments verbatim — the office redacts a name by editing or deleting the
-                entry if asked (§1.7)
+                entry if asked
               </li>
               <li>Roles and rating on the anonymised row</li>
               <li>
                 Timesheets already sent keep the real name; a regenerated copy prints the new label
-                (§11.3)
               </li>
             </ul>
           </div>

@@ -61,6 +61,22 @@ export interface StaffRow {
   weekly_cap_hours: number | null;
   weekly_cap_band: CapBand | null;
   weekly_booked_hours: number | null;
+  // ---- 20260929160100 --------------------------------------------------
+  /** For the search (wireframe: "name, Employee ID, phone"); null once removed. */
+  phone?: string | null;
+  /** The Sunday a student's band holds until (§9.6 "… until 13.12.2026"). */
+  weekly_cap_until?: string | null;
+  /** Hours of this Mon–Sun week's shifts that reached `worked` (§9.6). */
+  weekly_worked_hours?: number | null;
+  /** Inactive tab (§9.6, §10.6) — computed for an inactive worker only. */
+  last_worked_event?: string | null;
+  last_worked_venue?: string | null;
+  last_worked_at?: string | null;
+  /** The confirmed shifts the P45 request released, oldest first. */
+  released_shifts?: { title: string; startsAt: string }[] | null;
+  /** The E8 notice to the office, from the outbox. */
+  p45_notice_sent_at?: string | null;
+  p45_notice_failed_at?: string | null;
 }
 
 export interface StudentRow {
@@ -91,4 +107,6 @@ export interface StudentRow {
   wtr_optout_cancelled_from: string | null;
   optout_eligible: boolean;
   rtw_days_left: number | null;
+  /** The Sunday the band holds until (20260929160100). */
+  weekly_cap_until?: string | null;
 }
