@@ -90,6 +90,7 @@ export const ENTITY_LABEL: Readonly<Record<string, string>> = {
   account: 'Users & access',
   settings: 'Settings',
   client: 'Clients',
+  client_qualification: 'Qualifications',
 };
 
 export function entityLabel(entity: string): string {
@@ -124,6 +125,8 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   'booking.manual_invite': 'Invited to a shift',
   'booking.application_accepted': 'Accepted shift application',
   'event.cancelled': 'Cancelled event',
+  do_not_return_on: 'Marked do not return',
+  do_not_return_off: 'Cleared do not return',
   'profile.updated': 'Updated own profile',
   'account.invited': 'Invited user',
   'account.reinvited': 'Re-sent user invite',
