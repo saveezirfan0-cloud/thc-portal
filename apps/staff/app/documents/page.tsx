@@ -67,12 +67,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ s
   const data = loaded ? { ...loaded, rtwChecks } : null;
   const view = data ? buildDocumentsView(data) : null;
   const locked = gate.lock === 'documents';
-  const updatedAt = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Europe/London',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(new Date());
+  // The instant of this read; PullToRefresh words it in the phone's own
+  // zone (§1.8: an actual stamp is viewer-local only).
+  const updatedAt = new Date().toISOString();
 
   return (
     <StaffShell title={HEADING} active="/profile" ignoreLock={gate.ignoreLock}>

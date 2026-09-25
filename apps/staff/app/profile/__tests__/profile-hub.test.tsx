@@ -132,3 +132,28 @@ describe('documentsStatus — the badge on the Documents row', () => {
     expect(documentsStatus(worker({ status: 'inactive' }))).toBeNull();
   });
 });
+
+describe('the two sub-lines: next pay and a document expiring', () => {
+  const renderWith = (extra: Partial<Parameters<typeof ProfileHub>[0]>) =>
+    renderToStaticMarkup(
+      <ProfileHub profile={worker()} photoUrl={null} futureShifts={0} {...extra} />,
+    );
+
+  it('puts "Next pay" on the Payment information row, and hides it when nothing is owed', () => {
+    const owed = renderWith({ nextPay: { payDate: '2026-10-02', totalPence: 12345 } });
+    expect(owed).toContain('Next pay Fri 2 Oct · £123.45');
+    expect(owed).not.toContain('Earnings history, bank details');
+
+    const none = renderWith({ nextPay: null });
+    expect(none).not.toContain('Next pay');
+    expect(none).toContain('Earnings history, bank details');
+  });
+
+  it('puts an amber expiry on the Documents row', () => {
+    const html = renderWith({
+      expiring: { docType: 'passport', label: 'Passport', days: 12, expiresOn: '2026-10-05' },
+    });
+    expect(html).toContain('<span class="s amber">Passport expires in 12 days</span>');
+    expect(html).not.toContain('Right to work, ID, declarations');
+  });
+});
