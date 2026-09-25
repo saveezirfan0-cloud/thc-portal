@@ -5,18 +5,9 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { eventsDb, supabaseConfigured } from './db';
-import {
-  type EditableField,
-  ROLE_SECTION_MESSAGE,
-  UK_ZONE,
-  formatTimeIn,
-  isEditLocked,
-  reconfirmingChanges,
-  ukRoleWindow,
-  validateRoleSection,
-} from '@thc/domain';
-import { TEMPLATES, outboxKey } from '@thc/notifications';
+import { ROLE_SECTION_MESSAGE, isEditLocked, ukRoleWindow, validateRoleSection } from '@thc/domain';
 import { LIVE_BOOKING_STATUSES } from './data';
+import { planReconfirmations, reconfirmOutboxRows } from './reconfirm';
 
 /**
  * Saving an event — Scope §3.2, §3.5.
@@ -263,6 +254,7 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
   const notifyFailed = await flagReconfirmations(supabase, input, before, {
     dateChanged: event.event_date !== input.date,
     venueChanged: event.venue_address !== venue.address,
+    venueBefore: event.venue_address,
   });
   // This path redirects, so there is no result to hang a warning on and the
   // manager cannot be told inline — see docs/14 O14. Logging it is the
@@ -292,47 +284,30 @@ interface ExistingSection {
  * and nobody is auto-removed when headcount drops below the confirmed count
  * (§3.2, §3.3) — the manager withdraws people by hand on the event board.
  *
- * The flag is what the app reads for the Awaiting state; the push §3.5 pairs
- * with it is N11, queued here in `notification_outbox` with the §8 register's
- * own copy and idempotency key. The key carries the new start, so a second
- * change queues a second push while a re-save of the same times does not.
- * Draining the outbox to Web Push is the sender's job, not this screen's.
+ * The flag is what the app reads for the Awaiting state, and
+ * `reconfirm_reason` is the line the card prints under "Time Changed" —
+ * a sentence with the old window, "Start time moved by the office (was
+ * 09:00–14:00)" (§3.5), never field names (`reconfirmReason`, D34).
+ *
+ * The push is N11 when the time moved, and N11b — an extension with its
+ * own words — when only the dress code or the venue did: N11's copy says
+ * "Shift time changed", which would send a worker to the clock for a
+ * change of dress code. Each save that changes something is its own
+ * message: the key carries the new start AND end and a per-save marker, so
+ * a second end-time change, or a dress-code change after a time change,
+ * is not swallowed by the first one's key. A save that changes nothing
+ * that matters reaches none of this.
  */
 async function flagReconfirmations(
   supabase: SupabaseClient,
   input: EventInput,
   before: ExistingSection[],
-  changed: { dateChanged: boolean; venueChanged: boolean },
+  changed: { dateChanged: boolean; venueChanged: boolean; venueBefore: string | null },
 ): Promise<string | null> {
-  const previous = new Map(before.map((s) => [s.id, s]));
   const failures: string[] = [];
-  const affected: { id: string; reason: string; startsAt: Date; window: string }[] = [];
-
-  for (const role of input.roles) {
-    if (!role.id) continue; // A section added now has nobody booked on it.
-    const was = previous.get(role.id);
-    if (!was) continue;
-
-    const { startsAt, endsAt } = ukRoleWindow(input.date, role.start, role.end);
-    const fields: EditableField[] = [];
-    if (startsAt.toISOString() !== new Date(was.starts_at).toISOString()) fields.push('starts_at');
-    if (endsAt.toISOString() !== new Date(was.ends_at).toISOString()) fields.push('ends_at');
-    if ((role.dressCode || null) !== was.dress_code) fields.push('dress_code');
-    if (changed.dateChanged) fields.push('event_date');
-    if (changed.venueChanged) fields.push('venue_address');
-
-    const triggers = reconfirmingChanges(fields);
-    if (triggers.length > 0) {
-      affected.push({
-        id: role.id,
-        reason: triggers.join(','),
-        startsAt,
-        // The worker is told their ROLE's new hours, never the event window
-        // (RULE-18), in UK time as §1.8 has it for a scheduled time.
-        window: `${formatTimeIn(startsAt, UK_ZONE)} – ${formatTimeIn(endsAt, UK_ZONE)} (UK)`,
-      });
-    }
-  }
+  const affected = planReconfirmations(input.date, input.roles, before, changed);
+  // One marker per save: two saves are two messages, one save is one.
+  const saveMarker = new Date().toISOString();
 
   for (const section of affected) {
     const { data: rows } = await supabase
@@ -345,33 +320,16 @@ async function flagReconfirmations(
     const bookings = (rows ?? []) as { id: string; staff_id: string }[];
     if (bookings.length === 0) continue;
 
-    // One call, one row per worker, keyed so a re-save of the same times is
-    // a no-op against the unique index (§8). Through the RPC rather than the
-    // table: `notification_outbox` carries only `admin_read`, so a direct
-    // insert reaches RLS, finds no INSERT policy and is rejected — which is
-    // what this used to do, every time, while N11 reached nobody.
+    // Through the RPC rather than the table: `notification_outbox` carries
+    // only `admin_read`, so a direct insert reaches RLS and is rejected.
     //
     // `payload` is the VALUES map the drain renders the §8 copy with — NOT
-    // rendered text. `render(entry.body, values)` runs in
-    // packages/notifications/src/outbox.ts and ignores anything a row calls
-    // `body`, so sending pre-rendered copy delivered the literal
-    // "Shift time changed — now {window}" to the worker. N11 reads {window}
-    // and {bookingId}; `reason` rides along for the card's "was 12:00–00:30".
+    // rendered text (packages/notifications/src/outbox.ts). N11 reads
+    // {window}; N11b reads {change}; both deep-link on {bookingId}.
     const { error: queueError } = await supabase.rpc('queue_office_notifications', {
-      p_rows: bookings.map((booking) => ({
-        key: outboxKey('N11', 'booking', `${booking.id}:${section.startsAt.toISOString()}`),
-        channel: TEMPLATES.N11.channel,
-        template: 'N11',
-        recipient_staff_id: booking.staff_id,
-        payload: {
-          window: section.window,
-          bookingId: booking.id,
-          reason: section.reason,
-        },
-      })),
+      p_rows: reconfirmOutboxRows(section, bookings, saveMarker),
     });
-    // supabase-js returns `{ data, error }` and never throws. The unchecked
-    // await is how this failed silently for every save until now.
+    // supabase-js returns `{ data, error }` and never throws.
     if (queueError) failures.push(queueError.message);
   }
 

@@ -12,6 +12,9 @@ import {
   type EventStatus,
   type RoleSectionWindow,
   UK_ZONE,
+  cancelledFinanceNote,
+  ukDayLabel,
+  ukInstant,
   derivedEventWindow,
   eventFill,
   eventStatus,
@@ -51,6 +54,12 @@ export interface EventRow {
   poNumber: string;
   cancelReason: string;
   status: EventStatus;
+  /**
+   * A cancelled event's finance line (§3.3): before the day it is excluded
+   * from financials; on the day (UK) the scheduled hours are billed and
+   * paid. Null unless cancelled.
+   */
+  cancelledNote: string | null;
   fill: EventFill;
   /** The derived window, or null while the event has no role sections. */
   window: RoleSectionWindow | null;
@@ -83,6 +92,7 @@ export function toEventRow(event: ListedEvent, now: Date = new Date()): EventRow
     poNumber: event.poNumber,
     cancelReason: event.cancelReason,
     status: eventStatus(window, event.cancelledAt, now),
+    cancelledNote: event.cancelledAt ? cancelledFinanceNote(event.cancelledAt, event.date) : null,
     fill: eventFill(event.roles),
     window,
     windowLabel: window
@@ -184,4 +194,13 @@ export function periodTotals(rows: EventRow[]): { events: number; open: number }
 export function fillTone(row: EventRow): 'green' | 'amber' | 'neutral' {
   if (row.status === 'cancelled') return 'neutral';
   return row.fill.open === 0 ? 'green' : 'amber';
+}
+
+/**
+ * The page crumb's period — "Thu 18 Sep 2026", the wireframe's
+ * "events · Thu 18 Sep 2026" — for the UK day the calendar is anchored on.
+ * Read at UK noon, so a date near a clock change can never slip a day.
+ */
+export function periodCrumb(date: string): string {
+  return `${ukDayLabel(ukInstant(date, '12:00'))} ${date.slice(0, 4)}`;
 }

@@ -245,6 +245,20 @@ export const TEMPLATES = {
     mandatory: true,
     deepLink: '/shifts',
   },
+  // §8 N10b's trigger — the manager presses Withdraw — covers an open
+  // invitation too, but its copy ("You've been removed from …") tells a
+  // worker they had a shift they never accepted. Same trigger, the
+  // invitation's own words (withdraw_booking(), 20260930110300).
+  N10d: {
+    code: 'N10d',
+    channel: 'push',
+    title: 'Invitation withdrawn',
+    body: 'Your invitation to {event} · {dateTime} has been withdrawn.',
+    trigger:
+      'The office withdraws an open invitation (manager presses Withdraw on an Invited row). Not in §8: N10b covers the Withdraw, but its copy says the worker was removed from a shift they had, which an invitee never did (ADR-0037)',
+    timing: 'on change, in the same transaction as the withdrawal',
+    deepLink: '/invites',
+  },
   N10c: {
     code: 'N10c',
     channel: 'push',
@@ -265,6 +279,21 @@ export const TEMPLATES = {
     trigger: 'Event time / date changed (start time OR end time — either one triggers this push)',
     timing:
       'on change — delivered as a standard device-level push (FCM/APNs, §1.3), reaching the worker even if the Staffing App is closed',
+    deepLink: '/shifts/{bookingId}',
+  },
+  // §3.5 sends the same re-confirmation for a venue address or dress-code
+  // change, but §8 only gives N11's copy, which says the TIME changed. A
+  // worker told "Shift time changed — now 17:00–23:00" about a dress code
+  // would look at the clock and miss the change. Same flow, own words.
+  N11b: {
+    code: 'N11b',
+    channel: 'push',
+    title: 'Shift details changed',
+    body: 'Shift details changed — {change}. Please confirm in the app.',
+    trigger:
+      'Venue address or dress code changed on a booked shift (§3.5: "If the event time / date, venue address, or dress code changes → everyone booked must re-confirm … + push"). Not in §8: N11 is the only re-confirmation push §8 lists, and its copy is about the time (20260930110000 round, ADR-0037)',
+    timing:
+      'on change — the same device-level push and "Awaiting" state as N11; sent instead of N11 when the time did not move',
     deepLink: '/shifts/{bookingId}',
   },
   N12: {
@@ -587,11 +616,18 @@ export const REQUIREMENT_CODES = [
 /**
  * Codes the register carries that §8 does not name, each with its `trigger`
  * saying why. E2b exists because §8's own copy would have been untrue where
- * it was about to be sent; E10 because §9.12 requires a send §8 never lists.
- * Kept apart from SCOPE_CODES so the test can still hold that list to the
- * scope exactly.
+ * it was about to be sent; E10 because §9.12 requires a send §8 never lists;
+ * N10d and N11b for the same reason as E2b — §8's copy (N10b, N11) would
+ * tell an invitee they had a shift, or tell a worker the time moved when it
+ * was the dress code (ADR-0037). Kept apart from SCOPE_CODES so the test can
+ * still hold that list to the scope exactly.
  */
-export const EXTENSION_CODES = ['E2b', 'E10'] as const satisfies readonly TemplateCode[];
+export const EXTENSION_CODES = [
+  'E2b',
+  'E10',
+  'N10d',
+  'N11b',
+] as const satisfies readonly TemplateCode[];
 
 export function template(code: TemplateCode): Template {
   return TEMPLATES[code];

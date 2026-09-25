@@ -26,8 +26,18 @@ export interface ProfileRow extends StaffRow {
   ni_number_masked: string | null;
   has_ni_number: boolean;
   term_dates: string[] | null;
-  /** The Sunday the current cap band holds until (§4.4). Students only. */
+  /**
+   * The Sunday the current cap band holds until (§4.4) — for the three
+   * student bands the term calendar moves; null otherwise. From
+   * staff_directory_v since 20260930110500.
+   */
   weekly_cap_until: string | null;
+  /**
+   * §9.6 "Hours this week (worked / calculated weekly limit)": this Mon–Sun
+   * UK week's shifts that reached `worked`, at each role section's
+   * scheduled window (20260930110500). Booked stays beside it.
+   */
+  weekly_worked_hours: number | string | null;
   contract_signed_at: string | null;
   contract_version: string | null;
   joined_at: string;

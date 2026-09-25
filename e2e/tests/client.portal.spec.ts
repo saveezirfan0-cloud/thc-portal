@@ -168,6 +168,15 @@ test('the event list offers the tabs the scope names, and each holds its own doc
   }
 });
 
+test('the list panel names the customer (§11.1)', async ({ page }) => {
+  // wireframes/client/events.html: "Events · Leonardo Hotel St Pauls",
+  // read from client_company_v under the customer's own session.
+  await openAsClient(page, '/client');
+  await expect(page.locator('section.panel h3').first()).toContainText(
+    'Events · Leonardo Hotel St Pauls',
+  );
+});
+
 test('a row is name · venue · date/time · "N of M confirmed" · faces · document · details (§11.1)', async ({
   page,
 }) => {

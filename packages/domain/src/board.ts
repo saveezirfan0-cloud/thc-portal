@@ -148,8 +148,9 @@ export const ACCEPT_APPLICATION_REFUSAL_COPY: Readonly<Record<ApplicationAcceptR
   not_applied:
     'This application is no longer pending — the worker withdrew it, or it has already been answered.',
   event_ended: 'This shift has already ended, and the application closed with it (RULE-16).',
-  full: 'This role is already fully confirmed (headcount + buffer). Anyone still waiting has been told it filled (N10c).',
-  not_bookable: 'This worker has left or been removed and cannot be booked (§10.6, §1.7).',
+  full: 'Every seat on this role is taken, so applications are closed and anyone still waiting has been told it filled (N10c). Invite the worker instead if you want them for the buffer.',
+  not_bookable:
+    'This person cannot be booked: they have left, been removed, or are not a worker yet (§10.6, §1.7, §2.12).',
   wrong_role: 'This worker is not signed off for this role.',
   do_not_return: 'This worker is marked Do not return at this client.',
   blocked: 'This worker is blocked (compliance) and cannot be booked.',

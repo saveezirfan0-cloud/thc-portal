@@ -1,12 +1,15 @@
 'use client';
 
 import { Avatar, EmptyState, Note, Panel, Pill } from '@thc/ui';
-import { capReason, employeeId, formatUkDate } from './staff';
+import { capReason, employeeId, formatUkDate, matchesCapFilter } from './staff';
+import type { CapFilter } from './staff';
 import type { StudentRow } from './types';
 
 export interface StudentVisaViewProps {
   students: StudentRow[];
   query: string;
+  /** The toolbar's cap filter (wireframe: All caps · 20 h · 48 h · Blocked). */
+  capFilter?: CapFilter;
 }
 
 /**
@@ -28,15 +31,17 @@ export interface StudentVisaViewProps {
  * dates" — evidence status including a letter under review or rejected,
  * and the days left on the visa once it is inside the 60-day alert window.
  */
-export function StudentVisaView({ students, query }: StudentVisaViewProps) {
+export function StudentVisaView({ students, query, capFilter = 'all' }: StudentVisaViewProps) {
   const needle = query.trim().toLowerCase();
-  const rows = needle
-    ? students.filter(
-        (row) =>
-          row.display_name.toLowerCase().includes(needle) ||
-          employeeId(row.employee_id).toLowerCase().includes(needle),
-      )
-    : students;
+  // The KPI tiles above count the whole population; the table follows the
+  // toolbar's cap filter and search.
+  const rows = students.filter(
+    (row) =>
+      matchesCapFilter(row, capFilter) &&
+      (needle === '' ||
+        row.display_name.toLowerCase().includes(needle) ||
+        employeeId(row.employee_id).toLowerCase().includes(needle)),
+  );
 
   const bands = {
     term: students.filter(

@@ -63,6 +63,7 @@ const lineup: LineupRow[] = [
   {
     bookingId: 'b-1',
     eventId: EVENT_ID,
+    shiftId: 's-chef',
     role: 'Chef',
     startsAt: '2026-09-19T06:00:00Z',
     endsAt: '2026-09-19T14:00:00Z',
@@ -74,6 +75,7 @@ const lineup: LineupRow[] = [
   {
     bookingId: 'b-2',
     eventId: EVENT_ID,
+    shiftId: 's-chef',
     role: 'Chef',
     startsAt: '2026-09-19T06:00:00Z',
     endsAt: '2026-09-19T14:00:00Z',

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { candidateInput, rankCandidateRows, selectInvitees } from '../autoAssign';
+import { candidateInput, rankCandidateRows, roundMayInvite, selectInvitees } from '../autoAssign';
 import type { CandidateRow } from '../autoAssign';
 
 const row = (over: Partial<CandidateRow> = {}): CandidateRow => ({
@@ -84,6 +84,42 @@ describe('selectInvitees — who one round invites (§3.4, §6)', () => {
         row({ staff_id: 'fresh' }),
       ];
       expect(selectInvitees(rows, { allocation: 2 })).toEqual(['fresh']);
+    });
+
+    it('reopens an offer that ended by circumstance, never one a person decided (D33, ADR-0037)', () => {
+      const rows = [
+        row({ staff_id: 'lost-the-slot', booking_status: 'closed', booking_cause: 'slot_taken' }),
+        row({
+          staff_id: 'overlap-withdrawn',
+          booking_status: 'cancelled',
+          booking_cause: 'overlap_auto_withdraw',
+        }),
+        row({ staff_id: 'declined', booking_status: 'closed', booking_cause: 'declined' }),
+        row({
+          staff_id: 'withdrew-application',
+          booking_status: 'closed',
+          booking_cause: 'withdrawn_by_worker',
+        }),
+        row({
+          staff_id: 'office-withdrew',
+          booking_status: 'cancelled',
+          booking_cause: 'office_withdraw',
+        }),
+        row({
+          staff_id: 'released-at-1205',
+          booking_status: 'cancelled',
+          booking_cause: 'ready_cutoff',
+        }),
+        // Also gated self_cancelled in SQL; dropped here even without it.
+        row({
+          staff_id: 'self-cancelled',
+          booking_status: 'cancelled',
+          booking_cause: 'self_cancel',
+        }),
+      ];
+      expect(selectInvitees(rows, { allocation: 10 }).sort()).toEqual(
+        ['lost-the-slot', 'overlap-withdrawn'].sort(),
+      );
     });
 
     it('still fills the allocation from whoever is left', () => {
@@ -198,5 +234,14 @@ describe('rankCandidateRows — the board ranks as the engine does (§3.3, §6)'
         }),
       ),
     ).toEqual({ reliability: 97.5, rating: 0, distanceKm: 1000, futureShifts: 5, venueTimes: 3 });
+  });
+});
+
+describe('roundMayInvite — the booking half of a round (§3.4, §3.6)', () => {
+  it('treats a row read before booking_cause existed as a live booking or none', () => {
+    expect(roundMayInvite({ booking_status: null })).toBe(true);
+    expect(roundMayInvite({ booking_status: 'invited' })).toBe(false);
+    // An ended row with no cause is a decision until shown otherwise.
+    expect(roundMayInvite({ booking_status: 'closed' })).toBe(false);
   });
 });
