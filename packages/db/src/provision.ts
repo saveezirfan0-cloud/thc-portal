@@ -39,6 +39,8 @@ export interface AuthUserLike {
   email?: string | null;
   email_confirmed_at?: string | null;
   app_metadata?: Record<string, unknown> | null;
+  /** GoTrue's ban. remove_worker() sets it a century out (§1.7). */
+  banned_until?: string | null;
 }
 
 export interface AuthErrorLike {
@@ -75,6 +77,20 @@ export type Provisioned =
 
 function roleOf(user: AuthUserLike): unknown {
   return user.app_metadata?.['role'];
+}
+
+/**
+ * A login GoTrue refuses to sign in. The only one this code can meet is a
+ * GDPR-removed worker's (§1.7): remove_worker() bans it AND replaces its
+ * address, so a returning person's invite no longer finds it. This is the
+ * belt to that: if a banned login ever does come back for an address, the
+ * token is dropped unsent rather than mailed as a link that can never
+ * activate (audit D9b).
+ */
+export function isBanned(user: AuthUserLike, now: number = Date.now()): boolean {
+  if (!user.banned_until) return false;
+  const until = Date.parse(user.banned_until);
+  return Number.isFinite(until) && until > now;
 }
 
 /** GoTrue's answer to an invite for an address that is already confirmed. */
@@ -123,6 +139,10 @@ export async function provisionStaffLogin(
   const tokenHash = result.data?.properties?.hashed_token ?? '';
   if (result.error || !user || !tokenHash) {
     return { ok: false, code: 'account_link_failed', detail: result.error?.message };
+  }
+
+  if (isBanned(user)) {
+    return { ok: false, code: 'account_link_failed', detail: 'login_disabled' };
   }
 
   const role = roleOf(user);
