@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { UK_ZONE, formatTimeIn, needsDualZone, viewerZone } from '@thc/domain';
+import { UK_ZONE, formatTimeIn, needsDualZone } from '@thc/domain';
+import { ScheduledWindow as Shared, useViewerZone } from '@thc/ui';
+
+export { useViewerZone };
 
 /**
  * §1.8 on the Payroll tab, which shows both kinds of time side by side:
@@ -10,16 +12,11 @@ import { UK_ZONE, formatTimeIn, needsDualZone, viewerZone } from '@thc/domain';
  *     elsewhere;
  *   · actual check-in/out stamps — the reader's own clock only.
  *
- * Local copies of the hook /dashboard and /events carry, for the reason
- * their comments give: a screen's `_components` are its own, and the shared
- * home for one is `packages/ui`. First paint is UK so the server and the
- * browser render identical markup; the reader's zone arrives once mounted.
+ * The hook and the scheduled window are packages/ui's (`useViewerZone`,
+ * `ScheduledWindow`), shared with /dashboard and /events. First paint is UK
+ * so the server and the browser render identical markup; the reader's zone
+ * arrives once mounted.
  */
-export function useViewerZone(): string {
-  const [zone, setZone] = useState(UK_ZONE);
-  useEffect(() => setZone(viewerZone()), []);
-  return zone;
-}
 
 export function ViewerZone() {
   const zone = useViewerZone();
@@ -32,20 +29,9 @@ export function ViewerZone() {
   );
 }
 
+/** The payroll table's column is narrow, so the UK line is labelled "(UK)". */
 export function ScheduledWindow({ startsAt, endsAt }: { startsAt: string; endsAt: string }) {
-  const zone = useViewerZone();
-  const start = new Date(startsAt);
-  const end = new Date(endsAt);
-  const uk = `${formatTimeIn(start, UK_ZONE)} – ${formatTimeIn(end, UK_ZONE)}`;
-  if (!needsDualZone(zone)) return <span className="mono">{uk}</span>;
-  return (
-    <span className="mono">
-      {uk} (UK)
-      <span className="sub">
-        {formatTimeIn(start, zone)} – {formatTimeIn(end, zone)} your time
-      </span>
-    </span>
-  );
+  return <Shared startsAt={startsAt} endsAt={endsAt} suffix="(UK)" className="mono" />;
 }
 
 /** An actual stamp: the reader's own clock, never dual (§1.8). */

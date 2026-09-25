@@ -509,6 +509,20 @@ describe('modal and auth card', () => {
       ),
     ).toMatchSnapshot();
   });
+
+  it('renders the public card without the appearance switch', () => {
+    expect(
+      html(
+        <AuthCard
+          product="Account activation"
+          heading="Welcome — set your password"
+          appearance="none"
+        >
+          <Input id="password" label="Password" type="password" />
+        </AuthCard>,
+      ),
+    ).toMatchSnapshot();
+  });
 });
 
 describe('initials and rating bands', () => {

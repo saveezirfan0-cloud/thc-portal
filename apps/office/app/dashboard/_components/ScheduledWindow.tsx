@@ -1,11 +1,12 @@
 'use client';
 
-import { UK_ZONE, formatTimeIn, needsDualZone } from '@thc/domain';
-import { useViewerZone } from './useViewerZone';
+import { ScheduledWindow as Shared } from '@thc/ui';
 
 /**
- * A scheduled window, per §1.8: UK time, plus a second "your time" line
- * when the reader is not in Europe/London.
+ * A scheduled window on §9.1, per §1.8: UK time, plus a second "your time"
+ * line when the reader is not in Europe/London. The component is
+ * `ScheduledWindow` in packages/ui; the dashboard's tables are dense, so
+ * this is the same thing with the spaces dropped from the separator.
  *
  * Every window on this screen is a SCHEDULED one — a role section's start
  * and end, or the event window derived from them — so it never takes the
@@ -21,22 +22,5 @@ export function ScheduledWindow({
   endsAt: string;
   className?: string;
 }) {
-  const zone = useViewerZone();
-  const start = new Date(startsAt);
-  const end = new Date(endsAt);
-  const uk = `${formatTimeIn(start, UK_ZONE)}–${formatTimeIn(end, UK_ZONE)}`;
-
-  if (!needsDualZone(zone)) {
-    return <span className={className}>{uk}</span>;
-  }
-
-  return (
-    <span className={className}>
-      {/* §1.8's own label: "06:15 – 23:00 UK time", never a bare "(UK)". */}
-      {uk} UK time
-      <span className="sub">
-        {formatTimeIn(start, zone)}–{formatTimeIn(end, zone)} your time
-      </span>
-    </span>
-  );
+  return <Shared startsAt={startsAt} endsAt={endsAt} separator="–" className={className} />;
 }

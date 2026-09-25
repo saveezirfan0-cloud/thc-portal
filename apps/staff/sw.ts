@@ -145,7 +145,10 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(title, {
       body,
       icon: '/icon-192.png',
-      badge: '/icon-192.png',
+      // Android paints the badge as a silhouette in the status bar, so it is
+      // the mark alone, white on transparent (scripts/gen-push-badge.mjs) —
+      // the launcher icon there is a cyan square with its corners lost.
+      badge: '/icons/badge-96.png',
       // Deep link (§10.4): a tapped N5 opens that invitation, not the app's
       // front door. `tag` collapses a repeat of the same one.
       data: { url },

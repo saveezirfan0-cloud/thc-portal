@@ -54,13 +54,6 @@
   pointer-events: none;
 }
 
-/* The public card draws no appearance switch in any state (apply.html);
-   the shared AuthCard carries one for sign-in (ADR-0007), so it is hidden
-   here and /apply/submitted, which never had it, agrees. */
-.apply-page .auth-card .appearance {
-  display: none;
-}
-
 /* The consent tick (§1.7) is the shared `Checkbox` from packages/ui (D1).
    What is left here: the 2px nudge that lines the transparent input up with
    this page's taller text and that text's line height (the wireframe's `.txt`).

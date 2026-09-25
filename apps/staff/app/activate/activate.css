@@ -39,16 +39,16 @@
   cursor: pointer;
 }
 
-/* The form's own column, and the Show/Hide addon at the Staff App's 44px
-   minimum (derived from the spacing scale until packages/ui carries it). */
+/* The form's own column, and the Show/Hide addon at the Staff App's minimum
+   touch target (`--tap-min`, packages/ui tokens.css). */
 .act-form {
   display: flex;
   flex-direction: column;
   gap: var(--sp-14);
 }
 .act-form .input-row > .addon {
-  min-height: calc(var(--sp-28) + var(--sp-16));
-  min-width: calc(var(--sp-28) + var(--sp-16));
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
 }
 
 /* Activated: the tick beside the heading. Sized off the spacing scale. */
@@ -70,6 +70,29 @@
   justify-content: center;
   font-size: var(--fs-26);
   font-weight: 700;
+}
+
+/* Activated, on a desktop: the 132px QR the wireframe hands over to the
+   phone, beside the address. Paper white and ink black whatever the theme
+   (`--qr-paper` / `--qr-ink`): a camera reads it, and an inverted code is
+   one most scanners refuse. Three touch targets square. */
+.act-qr-row {
+  gap: var(--sp-16);
+}
+.act-qr {
+  --act-qr: calc(var(--tap-min) * 3);
+  width: var(--act-qr);
+  height: var(--act-qr);
+  flex: 0 0 auto;
+  padding: var(--sp-8);
+  background: var(--qr-paper);
+  color: var(--qr-ink);
+  border-radius: var(--r-check);
+}
+.act-qr svg {
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 
 /* Activated: the two platform blocks (iPhone · Safari, Android · Chrome). */
