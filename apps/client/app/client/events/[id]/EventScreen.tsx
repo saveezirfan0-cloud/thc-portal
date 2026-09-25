@@ -8,6 +8,7 @@ import { EventWindow } from '../../EventWindow';
 import { ukDateLong, ukDateShort } from '../../format';
 import { feedbackOpen, fillOf, groupByRole, headerDocuments, statusTone } from '../../rules';
 import type { DocumentKind, LineupRow, PortalEvent, RoleSection } from '../../rules';
+import { CalendarButton } from './CalendarButton';
 import { FeedbackModal } from './FeedbackModal';
 
 /**
@@ -118,6 +119,8 @@ export function EventScreen({
                 </Button>
               );
             })}
+            {/* ADR-0035: an .ics built in the browser; none when cancelled. */}
+            <CalendarButton event={event} />
           </div>
         </div>
 
