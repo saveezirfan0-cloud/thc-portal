@@ -8,7 +8,7 @@ import { Alert, Avatar, EmptyState, Panel, Pill, SearchInput, Select } from '@th
 import { OfficeShell } from '../_components/OfficeShell';
 import { actionLabel, entityHref, entityLabel } from '../_lib/accounts';
 import type { ActivityFilters, ActivityPageData } from './data';
-import { PERIODS, actorName, describe } from './view-model';
+import { EXPORT_CAP, PERIODS, actorName, describe, exportHref } from './view-model';
 import '../account/account.css';
 import './activity.css';
 
@@ -55,6 +55,18 @@ export function ActivityScreen({
       activeHref="/activity"
       title="Activity log"
       crumbs={<>Who did what, and when · every change the platform records · §1.7</>}
+      actions={
+        // A download, not a navigation: a plain link to the route, carrying
+        // the filters on screen (not the page — the file starts at the newest).
+        <a
+          className="btn sm"
+          href={exportHref(filters)}
+          download
+          title={`These filters as a CSV file, newest first, up to ${EXPORT_CAP.toLocaleString('en-GB')} entries. Times are UK time.`}
+        >
+          Export CSV
+        </a>
+      }
     >
       {data.problem ? <Alert tone="coral">{data.problem}</Alert> : null}
 

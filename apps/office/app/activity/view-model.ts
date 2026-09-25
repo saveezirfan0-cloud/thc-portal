@@ -87,3 +87,45 @@ export function actorName(row: Pick<ActivityRow, 'actor' | 'actor_name'>): strin
   if (!row.actor) return 'System';
   return row.actor_name ?? 'Former user';
 }
+
+/** The /activity filters, as the URL carries them. */
+export interface ActivityFilters {
+  entity: string | null;
+  actor: string | null;
+  query: string | null;
+  period: Period;
+  before: number | null;
+}
+
+/**
+ * The filters from a query string — one reader for the page and for
+ * /activity/export, so the file holds what the screen showed.
+ */
+export function parseFilters(get: (key: string) => string | null | undefined): ActivityFilters {
+  const before = Number(get('before'));
+  return {
+    entity: get('entity') || null,
+    actor: get('actor') || null,
+    query: get('q')?.trim() || null,
+    period: parsePeriod(get('period')),
+    before: Number.isSafeInteger(before) && before > 0 ? before : null,
+  };
+}
+
+/** /activity/export stops here and says so; past it, narrow the filters. */
+export const EXPORT_CAP = 10_000;
+
+/**
+ * "Export CSV": the current filters, without the page. `before` is where
+ * the screen has paged to, not what it is filtered by, so the file always
+ * starts from the newest entry the filters match.
+ */
+export function exportHref(filters: ActivityFilters): string {
+  const params = new URLSearchParams();
+  if (filters.entity) params.set('entity', filters.entity);
+  if (filters.actor) params.set('actor', filters.actor);
+  if (filters.query) params.set('q', filters.query);
+  if (filters.period !== '30d') params.set('period', filters.period);
+  const search = params.toString();
+  return search ? `/activity/export?${search}` : '/activity/export';
+}

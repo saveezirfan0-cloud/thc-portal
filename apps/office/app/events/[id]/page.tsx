@@ -12,6 +12,7 @@ import {
   orderSections,
 } from '@thc/domain';
 import { OfficeShell } from '../../_components/OfficeShell';
+import { RecordHistory } from '../../_components/history/RecordHistory';
 import { ViewerZone } from '../_components/ViewerZone';
 import { StatusPill } from '../_components/EventViews';
 import { ScheduledWindow } from '../_components/ScheduledWindow';
@@ -212,6 +213,9 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             />
           ))
         )}
+
+        {/* The audit trail (ADR-0035): closed until asked for — a busy screen. */}
+        <RecordHistory entity="event" id={event.id} deferred />
       </div>
     </OfficeShell>
   );
