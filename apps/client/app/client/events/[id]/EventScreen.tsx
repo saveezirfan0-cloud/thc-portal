@@ -165,12 +165,8 @@ export function EventScreen({
         ? null
         : groups.map((group) => (
             <Panel
-<<<<<<< HEAD
               key={group.key}
-=======
-              key={group.role}
               className="role-panel"
->>>>>>> origin/main
               title={
                 <span className="role-title">
                   <span>{group.role}</span>
