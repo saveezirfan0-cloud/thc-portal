@@ -1,4 +1,4 @@
-import { payableMinutes } from '@thc/domain';
+import { LEFT_EARLY_GRACE_MIN, payableMinutes, unpaidBreakMinutes } from '@thc/domain';
 import type { ShiftDetail } from './types';
 
 /**
@@ -20,15 +20,25 @@ export interface Earnings {
   floorApplied: boolean;
 }
 
+/**
+ * The same inputs `payable_shifts_v` hands `payable_minutes()` (audit D8):
+ * the unpaid breaks clipped to the paid window, and RULE-14's two blockers
+ * on the four-hour floor. Without them this screen promised four hours to
+ * a worker the payroll then paid one — a Left early violation blocks the
+ * floor, resolved or not, and an open No check-out blocks it until a
+ * manager resolves it.
+ */
 export function shiftEarnings(shift: ShiftDetail, now = new Date()): Earnings | null {
   if (!shift.checkInAt || !shift.checkOutAt) return null;
 
-  const unpaidBreakMin = shift.breaksLogged ? totalBreakMinutes(shift, now) : 0;
+  const unpaidBreakMin = shift.breaksLogged ? paidBreakMinutes(shift, now) : 0;
   const result = payableMinutes({
     shift: { startsAt: new Date(shift.startsAt), endsAt: new Date(shift.endsAt) },
     checkInAt: new Date(shift.checkInAt),
     checkOutAt: new Date(shift.checkOutAt),
     unpaidBreakMin,
+    leftEarlyViolation: leftEarly(shift),
+    noCheckOut: shift.noCheckoutOpen ? 'unresolved' : 'none',
   });
   if (result.payableMin === null || result.workedMin === null) return null;
 
@@ -44,6 +54,46 @@ export function shiftEarnings(shift: ShiftDetail, now = new Date()): Earnings | 
 }
 
 /**
+ * RULE-14's Left early. The server says so when it can (`leftEarly`, from
+ * the violations); until `staff_shift_detail()` carries it, the screen reads
+ * it the way `check_out()` raises it for an on-site press — a finish more
+ * than 15 minutes before the scheduled end (ADR-0032). That errs towards
+ * the smaller figure: the screen never promises money payroll won't pay.
+ */
+export function leftEarly(shift: ShiftDetail): boolean {
+  if (typeof shift.leftEarly === 'boolean') return shift.leftEarly;
+  if (!shift.checkOutAt) return false;
+  return (
+    new Date(shift.checkOutAt).getTime() <
+    new Date(shift.endsAt).getTime() - LEFT_EARLY_GRACE_MIN * 60_000
+  );
+}
+
+/**
+ * The unpaid break minutes the PAY deducts (§5.2b, D49): each break clipped
+ * to [max(check-in, start), min(finish, end)], exactly as
+ * `unpaid_break_minutes()` does. A break outside the paid window was never
+ * paid, so it is not taken off again.
+ */
+export function paidBreakMinutes(shift: ShiftDetail, now = new Date()): number {
+  return unpaidBreakMinutes(
+    {
+      shift: { startsAt: new Date(shift.startsAt), endsAt: new Date(shift.endsAt) },
+      checkInAt: shift.checkInAt ? new Date(shift.checkInAt) : null,
+      finishAt: shift.checkOutAt ? new Date(shift.checkOutAt) : now,
+    },
+    shift.breaks.map((br) => ({
+      startedAt: new Date(br.startedAt),
+      endedAt: br.endedAt ? new Date(br.endedAt) : null,
+    })),
+  );
+}
+
+/**
+ * The live chargeable timer's break total (§5.2b "the chargeable timer is
+ * paused"): every break, unclipped, so the timer stops while a break runs
+ * whenever it runs. The money is `paidBreakMinutes`.
+ *
  * A break still running counts to now, so the on-shift screen's chargeable
  * timer keeps moving in the right direction while the worker is away. The
  * settled figure comes from `unpaid_break_minutes` in the database when the

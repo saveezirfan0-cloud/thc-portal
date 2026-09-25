@@ -78,6 +78,9 @@ export function toShiftDetail(row: Record<string, unknown>): ShiftDetail {
     eventCancelledAt: str('event_cancelled_at'),
     cancelCause: (row['cancel_cause'] as CancelCause | null) ?? null,
     noCheckoutOpen: row['no_checkout_open'] === true,
+    // RULE-14 (audit D8). Undefined until the function returns the column;
+    // earnings.ts then reads it from the check-out.
+    leftEarly: typeof row['left_early'] === 'boolean' ? row['left_early'] : undefined,
     // RULE-15: the logged turn-away attempt, which decides whether the
     // worker was on time (paid 4 h) or late (nothing). Null before the
     // column exists (20260929130000) or when they were never turned away.
