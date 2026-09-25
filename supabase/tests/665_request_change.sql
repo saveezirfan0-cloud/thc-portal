@@ -16,9 +16,14 @@
 --   D. A photo request, alongside the pending name one.
 --   E. Withdraw: own pending only; not_pending once decided; ask again.
 --   F. The wall between workers; a leaver and a removed worker.
+--   G. (20260930150100, security review #1) The RC1 flood: request →
+--      withdraw looped four times — the fourth request is refused
+--      too_many_requests and at most three RC1s are queued. The ceiling
+--      is per kind and rolling: a request older than 24 hours does not
+--      count, and the other kind is not affected.
 -- =====================================================================
 begin;
-select plan(44);
+select plan(54);
 \ir _shared/fixtures.psql
 
 \set pcr_b '66500000-0000-4000-8000-0000000000b1'
@@ -250,5 +255,65 @@ select is(
   (select count(*)::int from notification_outbox where template = 'RC1'), :outbox_before + 3,
   'F: three requests made, three RC1s — none for any refusal');
 
+-- =====================================================================
+-- G · The RC1 flood (Staff Bravo, compliant, with a pending PHOTO request)
+-- =====================================================================
+reset role;
+select count(*)::int as rc1_before from notification_outbox where template = 'RC1' \gset
+select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+
+select request_profile_change('name', 'Stafford', 'Bravo', null,
+                              :'staffb' || '/change-requests/ev-b.pdf') ->> 'id' as g1 \gset
+select is((withdraw_profile_change(:'g1') ->> 'ok')::boolean, true, 'G: request 1, withdrawn');
+select request_profile_change('name', 'Stafford', 'Bravo', null,
+                              :'staffb' || '/change-requests/ev-b.pdf') ->> 'id' as g2 \gset
+select is((withdraw_profile_change(:'g2') ->> 'ok')::boolean, true, 'G: request 2, withdrawn');
+select request_profile_change('name', 'Stafford', 'Bravo', null,
+                              :'staffb' || '/change-requests/ev-b.pdf') ->> 'id' as g3 \gset
+select is((withdraw_profile_change(:'g3') ->> 'ok')::boolean, true, 'G: request 3, withdrawn');
+select throws_ok(
+  format($$ select request_profile_change('name', 'Stafford', 'Bravo', null, %L) $$,
+         :'staffb' || '/change-requests/ev-b.pdf'),
+  'P0001', 'too_many_requests', 'G: the fourth name request in 24 hours is refused');
+
+reset role;
+select is(
+  (select count(*)::int from notification_outbox where template = 'RC1'), :rc1_before + 3,
+  'G: three RC1s queued for four attempts — the refusal emailed nobody');
+select is(
+  (select count(*)::int from profile_change_requests where staff_id = :'staffb' and kind = 'name'), 3,
+  'G: and wrote no fourth request');
+
+-- Withdrawn requests still count: each one's RC1 email already went.
+select is(
+  (select count(*)::int from profile_change_requests
+    where staff_id = :'staffb' and kind = 'name' and status = 'withdrawn'), 3,
+  'G: (all three were withdrawn, and still counted)');
+
+-- Per kind: the photo request is its own count. Withdraw Bravo's pending
+-- one (inserted above) and ask again — one photo request in 24 hours.
+select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((withdraw_profile_change(:'pcr_b') ->> 'ok')::boolean, true, 'G: Bravo withdraws the photo request');
+select lives_ok(
+  format($$ select request_profile_change('photo', null, null, %L) $$, :'staffb' || '/selfie-b.jpg'),
+  'G: a photo request is not held back by the name ceiling');
+
+-- Rolling, not per calendar day: age the oldest name request past 24
+-- hours (the state guard fixes created_at, so as the table owner with
+-- the trigger set aside) and the fourth goes through.
+reset role;
+alter table profile_change_requests disable trigger profile_change_requests_state_guard;
+update profile_change_requests set created_at = now() - interval '25 hours' where id = :'g1';
+alter table profile_change_requests enable trigger profile_change_requests_state_guard;
+select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select lives_ok(
+  format($$ select request_profile_change('name', 'Stafford', 'Bravo', null, %L) $$,
+         :'staffb' || '/change-requests/ev-b.pdf'),
+  'G: once one of the three is older than 24 hours, the worker can ask again');
+
+reset role;
 select * from finish();
 rollback;

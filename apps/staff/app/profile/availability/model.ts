@@ -1,4 +1,11 @@
-import { UK_ZONE, formatDateIn, formatTimeIn, ukInstant, ukToday } from '@thc/domain';
+import {
+  UK_ZONE,
+  formatDateIn,
+  formatTimeIn,
+  needsDualZone,
+  ukInstant,
+  ukToday,
+} from '@thc/domain';
 import type { UnavailabilityInput, UnavailabilityRefusal } from '@thc/domain';
 
 /**
@@ -223,7 +230,7 @@ export function repeatHint(form: AddForm): string {
  * window yet. "19:00 – 00:00 your time (Madrid)".
  */
 export function addSheetYourTime(form: AddForm, zone: string): string | null {
-  if (zone === UK_ZONE || form.allDay) return null;
+  if (!needsDualZone(zone) || form.allDay) return null;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(form.fromDate)) return null;
   if (!/^\d{2}:\d{2}$/.test(form.fromTime) || !/^\d{2}:\d{2}$/.test(form.toTime)) return null;
   const endDate =

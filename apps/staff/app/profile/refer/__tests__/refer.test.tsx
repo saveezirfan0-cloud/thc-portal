@@ -58,6 +58,27 @@ describe('the words and the origin', () => {
     expect(publicOrigin({})).toBe('http://127.0.0.1:3001');
   });
 
+  it('in production uses only the configured staff URL, never the request host', () => {
+    const forged = { host: 'evil.example', proto: 'https' };
+    for (const prod of [{ VERCEL_ENV: 'production' }, { NODE_ENV: 'production' }]) {
+      expect(publicOrigin({ ...prod, NEXT_PUBLIC_STAFF_URL: 'https://app.thc.test' }, forged)).toBe(
+        'https://app.thc.test',
+      );
+      // Unset: no link at all rather than one built on a header the caller chose.
+      expect(publicOrigin(prod, forged)).toBeNull();
+      expect(publicOrigin({ ...prod, VERCEL_URL: 'thc-staff.vercel.app' }, forged)).toBeNull();
+      expect(publicOrigin({ ...prod, NEXT_PUBLIC_STAFF_URL: '  ' }, forged)).toBeNull();
+    }
+  });
+
+  it('falls back to the request host only outside production', () => {
+    for (const env of [{ NODE_ENV: 'development' }, { VERCEL_ENV: 'preview', NODE_ENV: 'test' }]) {
+      expect(publicOrigin(env, { host: 'localhost:3001', proto: 'http' })).toBe(
+        'http://localhost:3001',
+      );
+    }
+  });
+
   it('shares the link itself', () => {
     expect(shareData(LINK).url).toBe(LINK);
   });

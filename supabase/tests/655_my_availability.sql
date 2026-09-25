@@ -17,9 +17,13 @@
 --      can be neither read nor deleted.
 --   F. A leaver and a removed worker are refused; so is admin (no staff
 --      row) and a client.
+--   G. (20260930150100) Editable only when appLock() would be 'none': a
+--      manual hold, a documents block, and a compliant worker with an
+--      expired document are all refused add AND remove; their entries
+--      are kept; once the lock lifts, editing works again.
 -- =====================================================================
 begin;
-select plan(43);
+select plan(55);
 \ir _shared/fixtures.psql
 
 -- UK today, as the RPC reads it.
@@ -252,6 +256,78 @@ select throws_ok($$ select * from my_unavailability() $$,
 select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
 select throws_ok(format($$ select add_my_unavailability(%L::date) $$, :'uk_today'::date + 25),
   'P0001', 'unknown_staff', 'F: a client is refused');
+
+reset role;
+
+-- =====================================================================
+-- G · Only when the app would show the screen (20260930150100)
+--
+-- Staff Bravo (compliant, 200 future rows from C, plus the entry Staff
+-- Alpha could not delete). The UI shows /profile/availability only for
+-- appLock() === 'none'; the RPCs now say the same.
+-- =====================================================================
+select count(*)::int as bravo_rows from staff_unavailability where staff_id = :'staffb' \gset
+
+-- G1 · A manual hold (§10.1 case 2): nothing behind the hold screen.
+update staff set status = 'blocked', block_kind = 'manual', block_reason = 'Conduct review'
+ where id = :'staffb';
+select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(format($$ select add_my_unavailability(%L::date) $$, :'uk_today'::date + 26),
+  'P0001', 'not_editable', 'G: a manual hold cannot add');
+select throws_ok($$ select remove_my_unavailability('65500000-0000-4000-8000-0000000000b1') $$,
+  'P0001', 'not_editable', 'G: nor remove');
+select isnt_empty($$ select 1 from my_unavailability() $$,
+  'G: but can still read their own entries (the read is not a write)');
+
+-- G2 · A documents block (§10.1 case 1, blocked on the row).
+reset role;
+update staff set block_kind = 'auto_document', block_reason = null where id = :'staffb';
+select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(format($$ select add_my_unavailability(%L::date) $$, :'uk_today'::date + 26),
+  'P0001', 'not_editable', 'G: a documents-blocked worker cannot add (the UI shows them Documents only)');
+select throws_ok($$ select remove_my_unavailability('65500000-0000-4000-8000-0000000000b1') $$,
+  'P0001', 'not_editable', 'G: nor remove');
+
+-- G3 · A conviction under review (blocked, block_kind conviction_review).
+reset role;
+update staff set block_kind = 'conviction_review' where id = :'staffb';
+select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(format($$ select add_my_unavailability(%L::date) $$, :'uk_today'::date + 26),
+  'P0001', 'not_editable', 'G: a conviction-review block cannot add');
+
+-- G4 · Compliant on the row, but the passport expired yesterday (UK):
+-- appLock() is 'documents' before the nightly job gets to it.
+reset role;
+update staff set status = 'compliant', block_kind = null, block_reason = null where id = :'staffb';
+update compliance_docs set expiry_date = :'uk_today'::date - 1, right_to_work_until = null
+ where id = :'doc_b';
+select ok(
+  exists (select 1 from compliance_blockers(:'staffb', :'uk_today'::date) where reason = 'document_expired:passport'),
+  'G: (precondition) Staff Bravo''s passport has expired');
+select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(format($$ select add_my_unavailability(%L::date) $$, :'uk_today'::date + 26),
+  'P0001', 'not_editable', 'G: a compliant worker with an expired document cannot add');
+select throws_ok($$ select remove_my_unavailability('65500000-0000-4000-8000-0000000000b1') $$,
+  'P0001', 'not_editable', 'G: nor remove');
+
+reset role;
+select is((select count(*)::int from staff_unavailability where staff_id = :'staffb'), :bravo_rows,
+  'G: every refusal left the entries as they were — a lock keeps them, it does not delete them');
+
+-- G5 · The lock lifts: editing works again.
+update compliance_docs set expiry_date = null where id = :'doc_b';
+select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is(
+  (remove_my_unavailability('65500000-0000-4000-8000-0000000000b1') ->> 'removed')::int, 1,
+  'G: compliant again, the worker removes an entry');
+select is(
+  (add_my_unavailability(:'uk_today'::date + 26) ->> 'ok')::boolean, true,
+  'G: and adds one');
 
 reset role;
 select * from finish();

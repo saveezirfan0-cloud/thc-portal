@@ -37,15 +37,20 @@ export interface Tab {
 }
 
 export function BottomTabs({ tabs, active }: { tabs: Tab[]; active?: string }) {
+  // Named, so a screen reader's landmark list reads "Main, navigation"
+  // rather than a bare "navigation" beside the header's own links; and the
+  // lit tab says so in words (`aria-current="page"`), not only in cyan.
   return (
-    <nav className="bottom-nav">
+    <nav className="bottom-nav" aria-label="Main">
       {tabs.map((tab) => {
+        const isActive = tab.href === active;
         // No `clsx` here: it is a dependency of packages/ui, not of this
         // app, and three booleans do not justify adding one.
         const className =
-          [tab.href === active && 'active', tab.locked && 'locked', tab.pending && 'pending']
+          [isActive && 'active', tab.locked && 'locked', tab.pending && 'pending']
             .filter(Boolean)
             .join(' ') || undefined;
+        const current = isActive ? ('page' as const) : undefined;
         const icon = TAB_ICONS[tab.href];
         const body = (
           <>
@@ -65,11 +70,11 @@ export function BottomTabs({ tabs, active }: { tabs: Tab[]; active?: string }) {
         // and for the worker that is the same thing: nothing happens. They
         // are told apart by the class, which is what colours them.
         return tab.locked || tab.pending ? (
-          <span key={tab.href} className={className} aria-disabled="true">
+          <span key={tab.href} className={className} aria-disabled="true" aria-current={current}>
             {body}
           </span>
         ) : (
-          <Link key={tab.href} href={tab.href} className={className}>
+          <Link key={tab.href} href={tab.href} className={className} aria-current={current}>
             {body}
           </Link>
         );
