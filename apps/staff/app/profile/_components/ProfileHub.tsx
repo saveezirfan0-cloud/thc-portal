@@ -41,6 +41,7 @@ export function ProfileHub({
   futureShifts,
   nextPay = null,
   expiring = null,
+  emergencyContactSet = null,
 }: {
   profile: StaffProfile;
   photoUrl: string | null;
@@ -49,6 +50,12 @@ export function ProfileHub({
   nextPay?: { payDate: string; totalPence: number } | null;
   /** `expiringDocument()` — a verified document inside §4.2's first reminder rung. */
   expiring?: ExpiringDocument | null;
+  /**
+   * ADR-0037: false draws the amber "Emergency contact not set" subline on
+   * Profile details — a nudge, never a lock (Q11). Null (unknown, or a
+   * read that failed) draws nothing.
+   */
+  emergencyContactSet?: boolean | null;
 }) {
   const [leaving, setLeaving] = useState(false);
   const name = `${profile.firstName} ${profile.lastName}`.trim();
@@ -97,7 +104,14 @@ export function ProfileHub({
             status={documents}
           />
         ) : null}
-        <HubRow href="/profile/details" title="Profile details" sub="Mobile, email, home address" />
+        <HubRow
+          href="/profile/details"
+          title="Profile details"
+          sub="Mobile, email, home address"
+          {...(working && emergencyContactSet === false
+            ? { note: 'Emergency contact not set' }
+            : {})}
+        />
         {/* ADR-0036: only for a worker auto-assign can invite at all. */}
         {lock === 'none' ? (
           <HubRow href="/profile/availability" title="Availability" sub="Days you can’t work" />
@@ -152,11 +166,14 @@ function HubRow({
   title,
   sub,
   subTone = null,
+  note = null,
   status,
 }: {
   href: string;
   title: string;
   sub: string;
+  /** A second, amber line under the sub — "Emergency contact not set". */
+  note?: string | null;
   /** Amber for something that needs the worker soon (a document expiring). */
   subTone?: 'amber' | null;
   status?: DocumentsStatus | null;
@@ -166,6 +183,7 @@ function HubRow({
       <span className="hub-copy">
         <span className="t">{title}</span>
         <span className={subTone ? `s ${subTone}` : 's'}>{sub}</span>
+        {note ? <span className="s amber">{note}</span> : null}
       </span>
       <span className="right">
         {status ? (
