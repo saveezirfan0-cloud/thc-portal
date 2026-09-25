@@ -1,16 +1,49 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ShiftDetail } from '../types';
+import type { StaffProfile } from '../../../profile/types';
 
 /**
  * `GET /shifts/:id/calendar.ics` — the worker's own live booking only, as
  * `staff_shift_detail()` returns it; everything the shift screen would not
- * show as a live shift is a 404.
+ * show as a live shift is a 404 — and so is everything for a worker the
+ * app is locked to (§10.1, `appLock()`), so the URL is no way round the lock.
  */
 const shift = vi.fn<() => Promise<ShiftDetail | null>>();
 vi.mock('../data', () => ({
   supabaseConfigured: () => true,
   loadShift: () => shift(),
 }));
+const profile = vi.fn<() => Promise<StaffProfile | null>>();
+vi.mock('../../../profile/data', () => ({
+  loadProfile: () => profile(),
+}));
+
+const me = (over: Partial<StaffProfile> = {}): StaffProfile => ({
+  staffId: 's1',
+  firstName: 'Amara',
+  lastName: 'Kent',
+  employeeId: 1042,
+  email: 'amara@example.test',
+  phone: '+447700900123',
+  homeAddress: null,
+  photoPath: null,
+  photoLocked: true,
+  status: 'compliant',
+  blockKind: null,
+  leftAt: null,
+  rtwBranch: 'uk_irish',
+  niMasked: null,
+  hasNiNumber: true,
+  rating: 4.8,
+  reliability: 97,
+  quizAttempts: 1,
+  rejectionCause: null,
+  roles: ['Waiting Staff'],
+  blockers: [],
+  checkedIn: false,
+  bank: null,
+  ...over,
+});
 
 const { GET } = await import('../calendar.ics/route');
 
@@ -50,7 +83,11 @@ const get = () =>
     params: Promise.resolve({ id: 'b1' }),
   });
 
-beforeEach(() => shift.mockReset());
+beforeEach(() => {
+  shift.mockReset();
+  profile.mockReset();
+  profile.mockResolvedValue(me());
+});
 
 describe('GET /shifts/:id/calendar.ics', () => {
   it('answers a confirmed booking with text/calendar, never cached', async () => {
@@ -77,4 +114,25 @@ describe('GET /shifts/:id/calendar.ics', () => {
     shift.mockResolvedValue(row);
     expect((await get()).status).toBe(404);
   });
+
+  it.each([
+    ['no profile at all', null],
+    ['a documents lock — an expired document', me({ blockers: ['document_expired:passport'] })],
+    [
+      'a documents lock — an automatic block',
+      me({ status: 'blocked', blockKind: 'auto_document' }),
+    ],
+    ['a manual hold', me({ status: 'blocked', blockKind: 'manual' })],
+    ['a leaver', me({ status: 'inactive', leftAt: '2026-06-01T09:00:00Z' })],
+    ['a rejected account', me({ status: 'rejected', rejectionCause: 'manager' })],
+    ['a removed account', me({ status: 'removed' })],
+  ])(
+    'is a 404 for a locked worker: %s — even for their own confirmed booking',
+    async (_case, who) => {
+      profile.mockResolvedValue(who);
+      shift.mockResolvedValue(detail());
+      expect((await get()).status).toBe(404);
+      expect(shift).not.toHaveBeenCalled();
+    },
+  );
 });

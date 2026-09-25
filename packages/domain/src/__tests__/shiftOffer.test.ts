@@ -9,6 +9,7 @@ import {
   canOfferShift,
   offerExpiresAt,
   offerVisibleTo,
+  offerWave1Exhausted,
   takeOffer,
   type TakeOfferInput,
 } from '../shiftOffer';
@@ -139,6 +140,9 @@ function takeInput(i: Raw): TakeOfferInput {
   return {
     eventCancelled: i['eventCancelled'] as boolean,
     offerStatus: i['offerStatus'] as ShiftOfferStatus,
+    mode: i['mode'] as ShiftOfferMode,
+    targetStaffId: (i['targetStaffId'] as string | undefined) ?? null,
+    directEnabled: (i['directEnabled'] as boolean | undefined) ?? false,
     expiresAt: new Date(i['expiresAt'] as string),
     originalStatus: i['originalStatus'] as BookingStatus,
     offeredBy: i['offeredBy'] as string,
@@ -147,6 +151,7 @@ function takeInput(i: Raw): TakeOfferInput {
     gate: i['candidate'] ? (i['gate'] as string | null) : undefined,
     qualified: i['qualified'] as boolean,
     wave1Exhausted: i['wave1Exhausted'] as boolean,
+    autoAssign: i['autoAssign'] as boolean,
     takerBookingStatus: i['takerBookingStatus'] as BookingStatus | null,
   };
 }
@@ -169,6 +174,23 @@ describe('takeOffer — the order take_offered_shift() checks in', () => {
     expect([...reasons].sort()).toEqual([...TAKE_OFFER_REFUSALS].sort());
   });
 
+  it('an office cover request is never takeable, whatever else holds', () => {
+    const c = cases.find((x) => x.name === 'office_cover_request_is_not_open')!;
+    expect(takeOffer(takeInput(c.input), new Date(c.input['now'] as string))).toEqual({
+      ok: false,
+      reason: 'offer_not_open',
+    });
+  });
+
+  it('with auto-assign off, wave 2 takes at once (RULE-17 deadlock, ADR-0039 review fixes)', () => {
+    const base = takeInput(
+      cases.find((x) => x.name === 'not_yet_before_wave1_is_exhausted')!.input,
+    );
+    const now = new Date('2026-10-01T12:00:00.000Z');
+    expect(takeOffer(base, now)).toEqual({ ok: false, reason: 'not_yet' });
+    expect(takeOffer({ ...base, autoAssign: false }, now)).toEqual({ ok: true, takerFrom: 'none' });
+  });
+
   it('the calendar never refuses a take (ADR-0036)', () => {
     const c = cases.find((x) => x.name === 'unavailable_does_not_refuse')!;
     expect(takeOffer(takeInput(c.input), new Date(c.input['now'] as string)).ok).toBe(true);
@@ -188,16 +210,29 @@ describe('offerVisibleTo — Radar "Up for grabs" (RULE-17)', () => {
           expiresAt: new Date(i['expiresAt'] as string),
           offeredBy: i['offeredBy'] as string,
           targetStaffId: i['targetStaffId'] as string | null,
+          autoAssign: i['autoAssign'] as boolean,
         },
         {
           staffId: i['viewer'] as string,
           gate: i['candidate'] ? (i['gate'] as string | null) : undefined,
           qualified: i['qualified'] as boolean,
+          bookingStatus: i['bookingStatus'] as BookingStatus | null,
         },
         i['wave1Exhausted'] as boolean,
         new Date(i['now'] as string),
       ),
     ).toBe(expected);
+  });
+});
+
+describe('offerWave1Exhausted — RULE-17 for an offer', () => {
+  it.each([
+    [true, false, false],
+    [true, true, true],
+    [false, false, true],
+    [false, true, true],
+  ])('auto-assign %s, every wave-1 worker told %s → %s', (autoAssign, told, expected) => {
+    expect(offerWave1Exhausted(autoAssign, told)).toBe(expected);
   });
 });
 

@@ -12,6 +12,7 @@ import {
   takeRefusalCopy,
   ukDateTime,
   ukShortDateTime,
+  yourTimeAt,
 } from '../offers';
 import { toBookingOffer, toOpenOffer } from '../offers-data';
 import { HANDED_OVER_COPY } from '../[id]/messages';
@@ -69,12 +70,26 @@ describe('the words, as docs/18 §4 fixes them', () => {
     );
   });
 
-  it('the chip and the card line (wireframe (c), (d))', () => {
+  it('the chip and the card line say the close is UK time (wireframe (c), (d), §1.8)', () => {
     const expires = new Date('2026-09-20T15:00:00Z');
-    expect(offeredChip(expires)).toBe('Offered · open until Sun 20, 16:00');
-    expect(offeredCardLine(expires)).toBe('Offered to other workers · open until Sun 20, 16:00');
+    expect(offeredChip(expires)).toBe('Offered · open until Sun 20, 16:00 (UK time)');
+    expect(offeredCardLine(expires)).toBe(
+      'Offered to other workers · open until Sun 20, 16:00 (UK time)',
+    );
     expect(ukShortDateTime(expires)).toBe('Sun 20, 16:00');
     expect(ukDateTime(expires)).toBe('Sun 20 Sep, 16:00');
+  });
+
+  it('the "your time" line for a scheduled instant, only off UK time (§1.8)', () => {
+    const expires = new Date('2026-09-20T15:00:00Z');
+    expect(yourTimeAt(expires, 'Europe/London')).toBeNull();
+    expect(yourTimeAt(expires, 'Europe/Madrid')).toBe('Sun 20, 17:00 your time');
+    expect(yourTimeAt(expires, 'America/New_York')).toBe('Sun 20, 11:00 your time');
+    // Time only: the viewer's day leads only when it is not the UK day.
+    expect(yourTimeAt(expires, 'Europe/Madrid', false)).toBe('17:00 your time');
+    const lateUk = new Date('2026-09-20T22:30:00Z'); // 23:30 UK, 00:30 Madrid on the 21st
+    expect(yourTimeAt(lateUk, 'Europe/Madrid', false)).toBe('Mon 21 · 00:30 your time');
+    expect(yourTimeAt(lateUk, 'Europe/London', false)).toBeNull();
   });
 
   it('Ask the office for cover, and what the worker reads after', () => {
@@ -121,6 +136,7 @@ describe('refusals', () => {
       'use_offer',
       'note_too_long',
       'already_offered',
+      'recently_requested',
       'section_started',
       'not_confirmed',
       'event_cancelled',

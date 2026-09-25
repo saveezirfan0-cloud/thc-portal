@@ -19,6 +19,7 @@ import type { OpenShift } from '../data';
 import { WeekMeter } from './WeekMeter';
 import { weekLabel } from './model';
 import { UP_FOR_GRABS, ukShortDateTime } from '../shifts/offers';
+import { YourTimeAt } from '../shifts/YourTimeAt';
 import { loadOpenOffers } from '../shifts/offers-data';
 import type { OpenOffer } from '../shifts/offers-data';
 import '../staff-app.css';
@@ -163,7 +164,9 @@ function OfferCard({ offer }: { offer: OpenOffer }) {
       <div className="m">
         £{offer.payRate.toFixed(2)}/h
         {offer.dressCode ? ` · Dress code: ${offer.dressCode}` : ''} · open until{' '}
-        {ukShortDateTime(offer.expiresAt)}
+        {ukShortDateTime(offer.expiresAt)} (UK time)
+        {/* §1.8: a scheduled close — the viewer's own clock too, when it differs. */}
+        <YourTimeAt at={offer.expiresAt} />
       </div>
       <Link className="btn outline block" href={`/radar/offers/${offer.offerId}`}>
         View &amp; take

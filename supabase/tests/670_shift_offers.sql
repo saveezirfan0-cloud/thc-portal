@@ -2,7 +2,9 @@
 -- 670 · Offer up a shift — offer, withdraw, lapse (ADR-0039, docs/18 §4)
 --   20260930110100_shift_offers.sql
 --
---   A · who may call the worker RPCs
+--   A · who may call the worker RPCs: a worker, never the office, and
+--       never a leaver, a rejected candidate or a removed account
+--       (20260930150000: staff_caller(), 20260930120000's error shape)
 --   B · offer_shift(): the worker stays confirmed; the refusals too_late
 --       (at exactly 72 h — RULE-04's boundary), auto_assign_off (role or
 --       event switch), already_offered, not_confirmed, event_cancelled
@@ -13,7 +15,7 @@
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(35);
+select plan(42);
 \ir _shared/fixtures.psql
 
 \set ev      '67000000-0000-4000-8000-000000000001'
@@ -42,6 +44,12 @@ select plan(35);
 \set c7  '67020000-0000-4000-8000-000000000017'
 \set c8  '67020000-0000-4000-8000-000000000018'
 \set uc6 '67030000-0000-4000-8000-000000000016'
+\set lv  '67020000-0000-4000-8000-000000000021'
+\set rj  '67020000-0000-4000-8000-000000000022'
+\set rm  '67020000-0000-4000-8000-000000000023'
+\set ulv '67030000-0000-4000-8000-000000000021'
+\set urj '67030000-0000-4000-8000-000000000022'
+\set urm '67030000-0000-4000-8000-000000000023'
 
 \set b_far  '67040000-0000-4000-8000-000000000001'
 \set b_edge '67040000-0000-4000-8000-000000000002'
@@ -63,9 +71,11 @@ select plan(35);
 -- Fixture
 -- ---------------------------------------------------------------------
 insert into auth.users (id, email) values
-  (:'u1', 'o1@so670.test'), (:'u2', 'o2@so670.test'), (:'uc6', 'c6@so670.test');
+  (:'u1', 'o1@so670.test'), (:'u2', 'o2@so670.test'), (:'uc6', 'c6@so670.test'),
+  (:'ulv', 'lv@so670.test'), (:'urj', 'rj@so670.test'), (:'urm', 'rm@so670.test');
 insert into profiles (id, role, full_name) values
-  (:'u1', 'staff', 'Olly One'), (:'u2', 'staff', 'Olga Two'), (:'uc6', 'staff', 'Cass Six');
+  (:'u1', 'staff', 'Olly One'), (:'u2', 'staff', 'Olga Two'), (:'uc6', 'staff', 'Cass Six'),
+  (:'ulv', 'staff', 'Lee Left'), (:'urj', 'staff', 'Rhi Rejected'), (:'urm', 'staff', 'Rex Removed');
 
 insert into staff (id, user_id, first_name, last_name, email, phone, dob, status, rtw_branch) values
   (:'o1', :'u1',  'Olly', 'One',   'o1@so670.test', '+447700967001', date '1995-01-01', 'compliant', 'uk_irish'),
@@ -77,7 +87,11 @@ insert into staff (id, user_id, first_name, last_name, email, phone, dob, status
   (:'c5', null,   'Cy',   'Five',  'c5@so670.test', '+447700967015', date '1995-01-15', 'compliant', 'uk_irish'),
   (:'c6', :'uc6', 'Cass', 'Six',   'c6@so670.test', '+447700967016', date '1995-01-16', 'compliant', 'uk_irish'),
   (:'c7', null,   'Cy',   'Seven', 'c7@so670.test', '+447700967017', date '1995-01-17', 'compliant', 'uk_irish'),
-  (:'c8', null,   'Cy',   'Eight', 'c8@so670.test', '+447700967018', date '1995-01-18', 'compliant', 'uk_irish');
+  (:'c8', null,   'Cy',   'Eight', 'c8@so670.test', '+447700967018', date '1995-01-18', 'compliant', 'uk_irish'),
+  (:'lv', :'ulv', 'Lee',  'Left',     'lv@so670.test', '+447700967021', date '1995-01-21', 'inactive',  'uk_irish'),
+  (:'rj', :'urj', 'Rhi',  'Rejected', 'rj@so670.test', '+447700967022', date '1995-01-22', 'rejected',  'uk_irish'),
+  (:'rm', :'urm', 'Rex',  'Removed',  'rm@so670.test', '+447700967023', date '1995-01-23', 'removed',   'uk_irish');
+update staff set left_at = now() where id = :'lv';
 insert into staff_roles (staff_id, role_id)
 select id, :'role_id' from staff where email like '%@so670.test';
 
@@ -146,8 +160,34 @@ select ok(not has_function_privilege('authenticated', 'public.bookings_offer_lap
 
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select throws_ok(format($$ select offer_shift(%L) $$, :'b_far'), '42501', 'not_a_worker',
+select throws_ok(format($$ select offer_shift(%L) $$, :'b_far'), 'P0001', 'unknown_staff',
   'A: the office cannot offer a worker''s shift for them (Invariant 4)');
+reset role;
+
+-- The caller is refused by who they are before anything is looked up, in
+-- 20260930120000's shape.
+select set_config('request.jwt.claims', json_build_object('sub', :'ulv', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(format($$ select offer_shift(%L) $$, :'b_far'), 'P0001', 'not_editable',
+  'A: a leaver cannot offer a shift');
+select throws_ok(format($$ select withdraw_shift_offer(%L) $$, gen_random_uuid()), 'P0001', 'not_editable',
+  'A: nor withdraw an offer');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'urj', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(format($$ select offer_shift(%L) $$, :'b_far'), 'P0001', 'not_editable',
+  'A: a rejected candidate cannot offer a shift');
+select throws_ok(format($$ select take_offered_shift(%L) $$, gen_random_uuid()), 'P0001', 'not_editable',
+  'A: nor take one');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'urm', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(format($$ select offer_shift(%L) $$, :'b_far'), 'P0001', 'account_closed',
+  'A: a removed account cannot offer a shift');
+select throws_ok(format($$ select withdraw_shift_offer(%L) $$, gen_random_uuid()), 'P0001', 'account_closed',
+  'A: nor withdraw an offer');
+select throws_ok(format($$ select take_offered_shift(%L) $$, gen_random_uuid()), 'P0001', 'account_closed',
+  'A: nor take one');
 reset role;
 
 select set_config('request.jwt.claims', json_build_object('sub', :'u2', 'role', 'authenticated')::text, true);
