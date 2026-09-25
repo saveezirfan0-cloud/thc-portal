@@ -10,8 +10,8 @@ import { Alert, Button, Content, PageHead } from '@thc/ui';
  * The message is never the exception's own text: in production Next.js
  * replaces it anyway, and in development it can carry SQL or a row that
  * belongs in the server log, not on a screen. The digest is what an
- * operator matches against that log. No chrome, for the same reason as
- * loading.tsx: this boundary also covers /login.
+ * operator matches against that log. No chrome: this boundary also
+ * covers /login, where an anonymous visitor must not see the admin sidebar.
  */
 export default function RouteError({
   error,
