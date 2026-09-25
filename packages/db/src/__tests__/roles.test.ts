@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { wrongAppBody } from '../roles';
+import { HOME_PATH, ROLES, wrongAppBody } from '../roles';
 
 /**
  * The wrong-app page is a dead end by construction: the reader holds a
@@ -26,5 +26,19 @@ describe('wrongAppBody', () => {
     const html = wrongAppBody(null, 'Back Office');
     expect(html).toContain('no role set');
     expect(html).toContain('action="/auth/signout"');
+  });
+});
+
+describe('HOME_PATH', () => {
+  // Every app's `/` redirects to its home. A home of `/` is a page that
+  // redirects to itself: the Staff App shipped that and looped until Safari
+  // gave up after 20 redirections.
+  it.each(ROLES)('never sends %s to the root that redirects to it', (role) => {
+    expect(HOME_PATH[role]).not.toBe('/');
+    expect(HOME_PATH[role]).toMatch(/^\/[a-z]/);
+  });
+
+  it('lands each role on the first screen of its app', () => {
+    expect(HOME_PATH).toEqual({ admin: '/dashboard', client: '/client', staff: '/shifts' });
   });
 });

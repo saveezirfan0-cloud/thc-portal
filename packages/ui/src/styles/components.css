@@ -343,11 +343,54 @@
 .signout {
   display: contents;
 }
-/* Below 760px the sidebar becomes a bottom bar and its foot is hidden, which
-   takes the Back Office's only sign-out with it. Screens that keep a control
-   in the foot pair it with an `.only-phone` copy somewhere that survives. */
+/* The Back Office top bar's slots (OfficeShell). Transparent on a desktop,
+   where the bar is one row; the phone rules below re-flow them. */
+.tb-actions,
+.tb-mode {
+  display: contents;
+}
+.tb-mode-compact {
+  display: none;
+}
+
+/* Shown below 760px only; nothing on the desktop layouts needs it. */
 .only-phone {
   display: none;
+}
+
+/* The phone menu button (MenuButton). Hidden until the 760px break, where
+   the sidebar becomes a drawer and this is the way into it. */
+.menu-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: var(--btn-h);
+  height: var(--btn-h);
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-control);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+}
+.menu-btn:hover {
+  border-color: var(--cyan-line);
+  color: var(--cyan-ink);
+}
+.menu-btn[aria-expanded='true'] {
+  border-color: var(--cyan-line);
+  background: var(--cyan-dim);
+  color: var(--cyan-ink);
+}
+/* Behind an open drawer or menu: a tap here closes it. */
+.nav-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: var(--scrim-soft);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
 }
 .mt-8 {
   margin-top: var(--sp-8);
@@ -2256,7 +2299,7 @@ textarea.input {
 /* ---------------------------------------------------------------------
    11 · RESPONSIVE (§1.2)
    Both web apps work on phone and tablet, not desktop only. The sidebar
-   narrows, then becomes a frosted bottom drawer; the KPI row wraps
+   narrows, then becomes a slide-in drawer behind a menu button; the KPI row wraps
    4 → 2 → 1; wide tables scroll; the line-up grid steps 5 → 3 → 1.
 
    The handoff suggests an icon-only rail between those two states. That
@@ -2301,57 +2344,50 @@ textarea.input {
   }
 }
 @media (max-width: 760px) {
-  /* Below the tablet break the sidebar becomes a frosted bottom drawer so
-     the content gets the full width. Labels stay: they are the only thing
-     distinguishing the items until icons land. */
+  /* Below the tablet break the sidebar leaves the grid and becomes a drawer
+     that slides in from the left, opened by the menu button in the top bar.
+     It keeps everything it has on a desktop — brand, every item with its
+     count, the divider, the foot with who is signed in and sign-out — so a
+     phone reaches exactly what a desktop does. (It used to be a bottom strip
+     scrolled sideways, three labels visible at a time, foot hidden.) */
   .shell {
     grid-template-columns: minmax(0, 1fr);
   }
   .sidebar {
     position: fixed;
-    left: 0;
-    right: 0;
+    top: 0;
     bottom: 0;
-    top: auto;
-    height: auto;
-    flex-direction: row;
-    border-right: 0;
-    border-top: 1px solid var(--glass-line);
-    z-index: 20;
-    background: var(--glass-nav);
-    backdrop-filter: blur(var(--blur)) saturate(140%);
-    -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
+    left: 0;
+    width: min(304px, 86vw);
+    height: 100vh;
+    height: 100dvh;
+    z-index: 50;
+    border-right: 1px solid var(--glass-line);
+    border-radius: 0 var(--r-tile) var(--r-tile) 0;
+    transform: translateX(-104%);
+    visibility: hidden;
+    transition:
+      transform 0.22s ease,
+      visibility 0s linear 0.22s;
+    padding-bottom: env(safe-area-inset-bottom);
   }
-  .sidebar .brand,
-  .sidebar .foot,
-  .sidebar nav .divider {
-    display: none;
-  }
-  /* The foot goes with it, so anything that lived only there — sign out —
-     has to reappear where this breakpoint can still reach it. */
-  .only-phone {
-    display: contents;
+  .sidebar.open {
+    transform: none;
+    visibility: visible;
+    transition: transform 0.22s ease;
   }
   .sidebar nav {
-    flex-direction: row;
-    padding: var(--sp-6) var(--sp-10);
-    gap: var(--sp-4);
-    overflow-x: auto;
-    width: 100%;
+    flex: 1 1 auto;
+    padding-top: var(--sp-10);
   }
   .sidebar nav :is(a, .pending) {
-    border-left: 0;
-    border-bottom: var(--nav-bar) solid transparent;
-    white-space: nowrap;
-    padding: var(--sp-10) var(--sp-12);
-    margin: 0;
+    min-height: 44px;
   }
-  .sidebar nav a.active {
-    border-left-color: transparent;
-    border-bottom-color: var(--cyan-ink);
+  .menu-btn {
+    display: inline-flex;
   }
-  .main {
-    padding-bottom: 68px;
+  .only-phone {
+    display: contents;
   }
   .grid.c2,
   .grid.c3,
@@ -2379,17 +2415,38 @@ textarea.input {
   }
   .topbar h1 {
     font-size: var(--fs-17);
+    flex: 1 1 0;
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
+  .topbar .spacer {
+    display: none;
+  }
   .topbar .tz {
     order: 2;
     flex: 1 1 100%;
   }
+  .topbar .tb-mode {
+    display: none;
+  }
+  .topbar .tb-mode-compact {
+    display: contents;
+  }
+  .topbar .tb-actions {
+    order: 3;
+    flex: 1 1 100%;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-8);
+  }
+  .topbar .tb-actions:empty {
+    display: none;
+  }
   .topbar .crumbs {
     flex: 1 1 100%;
+    order: 1;
   }
   .userchip {
     max-width: 45vw;
@@ -2406,6 +2463,87 @@ textarea.input {
   .page-head .actions {
     margin-left: 0;
     width: 100%;
+    flex-wrap: wrap;
+  }
+  .page-head .actions .search,
+  .toolbar .search {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .page-head .actions .search .input,
+  .toolbar .search .input {
+    width: 100%;
+  }
+  .page-head h1 {
+    font-size: var(--fs-20);
+  }
+  /* A segmented control with more options than the phone has width scrolls
+     inside its own track instead of wrapping each label onto two lines and
+     pushing the last options off the page. */
+  .seg {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .seg::-webkit-scrollbar,
+  .tabs::-webkit-scrollbar {
+    display: none;
+  }
+  .tabs {
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs > button,
+  .tabs > a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .seg button,
+  .seg a {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+  .toolbar > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+  /* Filter rows: a search box and a select or two, sized in px for a
+     desktop (several screens set the widths inline). On a phone the row
+     wraps and the fields share the width. The !important is for those
+     inline widths, and applies below this break only. */
+  .content :is(.row, .toolbar):has(> :is(.search, select.input, input.input)) {
+    flex-wrap: wrap;
+  }
+  .content :is(.row, .toolbar) > :is(.search, select.input, input.input) {
+    flex: 1 1 150px;
+    width: auto !important;
+    min-width: 0;
+  }
+  .content :is(.row, .toolbar) > .search > .input {
+    width: 100% !important;
+  }
+  .content :is(.row, .toolbar) > .search {
+    align-self: center;
+  }
+  .content :is(.row, .toolbar) > .search::before {
+    top: 50%;
+  }
+  .toolbar select.input,
+  .toolbar .input {
+    max-width: 100%;
+  }
+  /* The panel header's title and its right-hand controls wrap rather than
+     overlap: a role name, its window and a count pill do not fit one row. */
+  .panel-h {
+    flex-wrap: wrap;
+    padding: var(--sp-14) var(--sp-16);
+    row-gap: var(--sp-6);
+  }
+  .panel-h h3 {
+    min-width: 0;
+  }
+  .panel-b {
+    padding: var(--sp-16);
   }
   .phone {
     width: 100%;

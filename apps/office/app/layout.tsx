@@ -24,7 +24,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const [user, counts] = await Promise.all([officeUser(), officeNavCounts()]);
 
   return (
-    <html lang="en-GB" suppressHydrationWarning>
+    <html lang="en-GB" data-style="warm" suppressHydrationWarning>
       <head>
         <AppearanceScript />
       </head>

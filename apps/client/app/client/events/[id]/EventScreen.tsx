@@ -74,7 +74,7 @@ export function EventScreen({
           </Pill>
           {event.poNumber ? <Pill large>PO Number · {event.poNumber}</Pill> : null}
 
-          <div className="ml-auto row">
+          <div className="actions row">
             {/* §11.2's header action: the §11.3 PDF, once the office has
                 produced one. Download only; sending is the office's (§11.4).
                 After completion the allocation sheet stays downloadable
@@ -165,16 +165,17 @@ export function EventScreen({
         ? null
         : groups.map((group) => (
             <Panel
+<<<<<<< HEAD
               key={group.key}
+=======
+              key={group.role}
+              className="role-panel"
+>>>>>>> origin/main
               title={
-                <>
-                  {group.role}{' '}
-                  <EventWindow
-                    startsAt={group.startsAt}
-                    endsAt={group.endsAt}
-                    className="mono sm muted"
-                  />
-                </>
+                <span className="role-title">
+                  <span>{group.role}</span>
+                  <EventWindow startsAt={group.startsAt} endsAt={group.endsAt} className="rw" />
+                </span>
               }
               actions={<Pill tone="green">{group.confirmed} confirmed</Pill>}
               flush

@@ -2,7 +2,13 @@
 
 import { useState } from 'react';
 import { Alert, Button, Pill, Progress } from '@thc/ui';
-import { TOTAL_STEPS, formatShareCode, rtwCheckWorkerState } from '@thc/domain';
+import {
+  TOTAL_STEPS,
+  UK_ZONE,
+  formatDateIn,
+  formatShareCode,
+  rtwCheckWorkerState,
+} from '@thc/domain';
 import type { DocRequirement, RtwCheckStatus } from '@thc/domain';
 import { docIcon } from '../state';
 import type { DocStatus, RequirementRow, UploadedDoc } from '../state';
@@ -39,11 +45,7 @@ const STATUS_PILL: Record<
 
 function fmtDay(iso: string | null): string {
   if (!iso) return '';
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'Europe/London',
-  }).format(new Date(iso));
+  return formatDateIn(new Date(iso), UK_ZONE);
 }
 
 function fmtDate(iso: string | null): string {

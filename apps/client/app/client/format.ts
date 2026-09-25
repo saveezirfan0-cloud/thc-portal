@@ -1,4 +1,4 @@
-import { UK_ZONE } from '@thc/domain';
+import { UK_ZONE, formatDateIn } from '@thc/domain';
 
 /**
  * Date formatting for the portal (§1.8).
@@ -12,22 +12,13 @@ import { UK_ZONE } from '@thc/domain';
 
 /** "Friday 19 September 2026" — the event page's Date field. */
 export function ukDateLong(iso: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-    timeZone: UK_ZONE,
-  }).format(new Date(iso));
+  // formatDateIn, not Intl.format(): Node wrote "Friday, 25 September" and
+  // Safari "Friday 25 September", and that comma was a hydration mismatch
+  // that re-rendered the page and wiped the theme off <html>.
+  return formatDateIn(new Date(iso), UK_ZONE, { weekday: 'long', month: 'long', year: true });
 }
 
 /** "Thu 18 Sep 2026" — the list's date cell. */
 export function ukDateShort(iso: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: UK_ZONE,
-  }).format(new Date(iso));
+  return formatDateIn(new Date(iso), UK_ZONE, { weekday: 'short', year: true });
 }

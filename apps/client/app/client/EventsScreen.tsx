@@ -118,12 +118,13 @@ export function EventsScreen({
             placeholder="Search events"
             value={query}
             onChange={(e) => setQuery(e.currentTarget.value)}
-            style={{ width: 220 }}
+            className="ev-search"
           />
         </div>
       </div>
 
       <Panel
+        className="events-panel"
         title={
           <>
             {company ? `Events · ${company}` : 'Events'}{' '}
@@ -225,12 +226,12 @@ export function EventsScreen({
 
                 return (
                   <div key={e.id} className={cancelled ? 'ecard cancelled' : 'ecard'}>
-                    <div className="row">
+                    <div className="when">
                       <Pill tone={statusTone(e.status)} dot={e.status === 'ongoing'}>
                         {STATUS_LABEL[e.status]}
                       </Pill>
-                      <span className="ml-auto win">
-                        {ukDateShort(e.startsAt)} ·{' '}
+                      <span className="win">
+                        <b>{ukDateShort(e.startsAt)}</b>
                         <EventWindow startsAt={e.startsAt} endsAt={e.endsAt} />
                       </span>
                     </div>
@@ -240,20 +241,20 @@ export function EventsScreen({
                       {e.poNumber ? ` · PO ${e.poNumber}` : ''}
                     </div>
                     {cancelled ? null : (
-                      <div className="row">
+                      <div className="faces">
                         <Faces people={facesFor(e.id)} photos={photos} />
-                        <span className="sm" style={{ marginLeft: 14 }}>
+                        <span className="sm">
                           <b>{fill.confirmed}</b> of {fill.headcount} confirmed
                         </span>
                       </div>
                     )}
-                    <div className="row">
+                    <div className="foot">
                       {doc ? (
                         <DocButton doc={doc} loaded={documentsLoaded} />
                       ) : (
                         <span className="sm muted">No document</span>
                       )}
-                      <Link className="ml-auto sm" href={`/client/events/${e.id}`}>
+                      <Link className="ml-auto btn sm" href={`/client/events/${e.id}`}>
                         Details →
                       </Link>
                     </div>

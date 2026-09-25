@@ -242,3 +242,10 @@
   border-top-left-radius: calc(var(--r-phone) - 1px);
   border-top-right-radius: calc(var(--r-phone) - 1px);
 }
+
+/* The phone drawer (components.css §11) lifts off the page like a card. */
+@media (max-width: 760px) {
+  :root[data-style='warm'] .sidebar.open {
+    box-shadow: var(--shadow-card);
+  }
+}

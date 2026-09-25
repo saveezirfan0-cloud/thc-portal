@@ -1,6 +1,7 @@
 import { Content, Logo, ModeSwitch, Shell, SignOut, Topbar } from '@thc/ui';
 import type { NavItem } from '@thc/ui';
 import { OfficeSidebar } from './OfficeSidebar';
+import { OfficeNavButton, OfficeNavProvider } from './OfficeNav';
 import { SignedInAs } from './SignedInAs';
 import type { ReactNode } from 'react';
 
@@ -74,51 +75,59 @@ export function OfficeShell({
   actions,
   children,
 }: OfficeShellProps) {
+  // On a phone the sidebar is a drawer, foot and sign-out included, opened
+  // from the top bar's menu button (OfficeNav).
   return (
-    <Shell
-      sidebar={
-        <OfficeSidebar
-          items={NAV}
-          activeHref={activeHref}
-          brand={
-            <>
-              <Logo />
-              <div>
-                <div className="name">The Hospitality Company</div>
-                <div className="sub">Back Office</div>
-              </div>
-            </>
-          }
-          footer={
-            <>
-              <SignedInAs />
-              {/* `ml-auto xs` text link, as every backoffice wireframe's
+    <OfficeNavProvider>
+      <Shell
+        sidebar={
+          <OfficeSidebar
+            items={NAV}
+            activeHref={activeHref}
+            brand={
+              <>
+                <Logo />
+                <div>
+                  <div className="name">The Hospitality Company</div>
+                  <div className="sub">Back Office</div>
+                </div>
+              </>
+            }
+            footer={
+              <>
+                <SignedInAs />
+                {/* `ml-auto xs` text link, as every backoffice wireframe's
                   `.foot` draws it — a pill here was ADR-0012's last piece
                   of drift, waiting on a `link` tone to exist. */}
-              <SignOut tone="link" size="md" className="ml-auto xs" />
+                <SignOut tone="link" size="md" className="ml-auto xs" />
+              </>
+            }
+          />
+        }
+      >
+        <Topbar
+          title={title}
+          crumbs={crumbs}
+          timezone={timezone}
+          lead={<OfficeNavButton />}
+          actions={
+            <>
+              {/* On a phone the screen's own actions drop to a row of their
+                own under the title, and the Light / Dark pair becomes the
+                one-icon toggle the Staff App header uses, so the title keeps
+                its line instead of truncating to "Dashbo…". */}
+              {actions ? <span className="tb-actions">{actions}</span> : null}
+              <span className="tb-mode">
+                <ModeSwitch small />
+              </span>
+              <span className="tb-mode-compact">
+                <ModeSwitch compact />
+              </span>
             </>
           }
         />
-      }
-    >
-      <Topbar
-        title={title}
-        crumbs={crumbs}
-        timezone={timezone}
-        actions={
-          <>
-            {actions}
-            <ModeSwitch small />
-            {/* The sidebar foot is `display: none` below 760px, where the rail
-                becomes a bottom bar — so on a phone the button above is gone
-                and this is the only sign-out left. */}
-            <span className="only-phone">
-              <SignOut />
-            </span>
-          </>
-        }
-      />
-      <Content>{children}</Content>
-    </Shell>
+        <Content>{children}</Content>
+      </Shell>
+    </OfficeNavProvider>
   );
 }

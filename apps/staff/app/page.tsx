@@ -22,5 +22,6 @@ export const dynamic = 'force-dynamic';
 export default async function Page() {
   const profile = await loadProfile();
   if (profile && appLock(profile) === 'onboarding') redirect('/onboarding');
+  // HOME_PATH must never be `/` — that is this page (packages/db roles.test).
   redirect(HOME_PATH.staff);
 }

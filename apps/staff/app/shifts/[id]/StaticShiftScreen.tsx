@@ -6,6 +6,7 @@ import {
   STATIC_SCREEN_COPY,
   SUPPORT_EMAIL,
   UK_ZONE,
+  formatDateIn,
   formatTimeIn,
 } from '@thc/domain';
 import type { StaticScreenCase } from '@thc/domain';
@@ -33,12 +34,7 @@ export function StaticShiftScreen({
 }) {
   const copy = STATIC_SCREEN_COPY[kind];
   const uk = (iso: string) => formatTimeIn(new Date(iso), UK_ZONE);
-  const day = new Date(shift.startsAt).toLocaleDateString('en-GB', {
-    timeZone: UK_ZONE,
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  });
+  const day = formatDateIn(new Date(shift.startsAt), UK_ZONE, { weekday: 'short' });
 
   // The wireframe's summary line: enough to tell WHICH shift this was, which
   // matters most for a stale push opened days later.
