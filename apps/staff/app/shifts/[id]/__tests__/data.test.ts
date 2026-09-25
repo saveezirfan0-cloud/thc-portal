@@ -57,6 +57,8 @@ const row = (over: Record<string, unknown> = {}) => ({
   pays_breaks: false,
   event_cancelled_at: null,
   no_checkout_open: false,
+  turned_away_at: null,
+  turned_away_pay_min: null,
   check_in_at: '2026-06-14T16:04:00Z',
   check_out_at: '2026-06-14T22:33:00Z',
   breaks: [
@@ -141,6 +143,38 @@ describe('loadShift() reads the worker’s own shift through staff_shift_detail(
     const shift = await loadShift('b1');
     expect(shift?.cancelCause).toBe('office_withdraw');
     expect(shiftPhase({ shift: shift!, openBreak: false, now: new Date(START) })).toBe('withdrawn');
+  });
+
+  it('carries the logged turn-away and the minutes SQL gave it (§3.2, RULE-15)', async () => {
+    rpc.mockResolvedValue({
+      data: [
+        row({
+          status: 'turned_away',
+          check_in_at: null,
+          check_out_at: null,
+          turned_away_at: '2026-06-14T15:58:00Z',
+          turned_away_pay_min: 240,
+        }),
+      ],
+      error: null,
+    });
+    const shift = await loadShift('b1');
+    expect(shift?.turnedAwayAt).toBe('2026-06-14T15:58:00Z');
+    expect(shift?.turnedAwayPayMin).toBe(240);
+    expect(shiftPhase({ shift: shift!, openBreak: false, now: new Date(END) })).toBe('turned_away');
+  });
+
+  it('keeps a late turn-away’s 0 as 0, and no turn-away as null', async () => {
+    rpc.mockResolvedValue({
+      data: [row({ status: 'turned_away', turned_away_at: START, turned_away_pay_min: 0 })],
+      error: null,
+    });
+    expect((await loadShift('b1'))?.turnedAwayPayMin).toBe(0);
+
+    rpc.mockResolvedValue({ data: [row()], error: null });
+    const plain = await loadShift('b1');
+    expect(plain?.turnedAwayAt).toBeNull();
+    expect(plain?.turnedAwayPayMin).toBeNull();
   });
 
   it('returns null for somebody else’s booking, which the function answers with no row', async () => {

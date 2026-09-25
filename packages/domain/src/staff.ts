@@ -189,6 +189,50 @@ export const STATIC_SCREEN_CONTACT_LEAD =
 export const STATIC_SCREEN_CONTACT = `${STATIC_SCREEN_CONTACT_LEAD} ${SUPPORT_EMAIL}`;
 export const STATIC_SCREEN_ACTION = 'OK, I understand';
 
+/**
+ * §3.2 strict buffer policy, RULE-15 — `wireframes/staff/shift-detail.html` (m).
+ *
+ * Once `headcount` workers have checked in on an event that does not pay for
+ * its buffer, every later check-in press is turned away: the attempt is
+ * logged (`check_logs.attempted_at`, §1.5), the booking becomes
+ * `turned_away`, and the worker gets this screen in place of the shift.
+ *
+ * The §3.2 message is three sentences, and the middle one — "We've logged
+ * that you arrived on time and you'll be paid for 4 hours." — is shown ONLY
+ * where the logged attempt was inside the 30-minute grace. A worker turned
+ * away late is paid nothing (RULE-15), and must not be told otherwise.
+ */
+export const TURNED_AWAY_COPY = {
+  badge: 'Not needed today',
+  tone: 'amber',
+  title: 'Thanks for coming',
+  opening: 'Thanks for coming — this shift is already fully staffed, so you’re not needed today.',
+  onTime: 'We’ve logged that you arrived on time and you’ll be paid for 4 hours.',
+  closing: 'Please check your app for other shifts.',
+  radar: 'Open Radar',
+} as const;
+
+/**
+ * Whether the turned-away worker was on time, read from what the DATABASE
+ * decided about their logged attempt: `turned_away_minutes()` in SQL and
+ * `turnedAwayMinutes()` in pay.ts, both 240 inside the grace and 0 after it.
+ * Never the phone's clock — the attempt timestamp is the server's `now()`.
+ *
+ * With no decision at all (null) the answer is "not on time": the screen
+ * never promises four hours the payroll view would not pay.
+ */
+export function turnedAwayOnTime(turnAwayPayMin: number | null | undefined): boolean {
+  return typeof turnAwayPayMin === 'number' && turnAwayPayMin > 0;
+}
+
+/** The §3.2 turn-away message, with the second sentence only when on time. */
+export function turnedAwayMessage(turnAwayPayMin: number | null | undefined): string {
+  const c = TURNED_AWAY_COPY;
+  return turnedAwayOnTime(turnAwayPayMin)
+    ? `${c.opening} ${c.onTime} ${c.closing}`
+    : `${c.opening} ${c.closing}`;
+}
+
 export type ShiftCard =
   /** The shift starts today. Check-in lives inside this card (§5). */
   | 'today'

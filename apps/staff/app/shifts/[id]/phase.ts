@@ -31,6 +31,7 @@ export type ShiftPhase =
   | 'before_window' // too early to check in
   | 'check_in' // the window is open
   | 'locked' // start+30 passed with no check-in (§5.1)
+  | 'turned_away' // strict buffer: past the headcount (§3.2, RULE-15)
   | 'on_shift'
   | 'on_break'
   | 'closed'; // checked out
@@ -40,6 +41,14 @@ const STATIC_PHASES: readonly ShiftPhase[] = ['event_cancelled', 'withdrawn', 'n
 /** True for the three phases that replace the whole shift screen (§10.4). */
 export function isStaticPhase(phase: ShiftPhase): phase is StaticScreenCase {
   return STATIC_PHASES.includes(phase);
+}
+
+/**
+ * Every phase with nothing to press and no map: the three §10.4 dead ends
+ * and the §3.2 turn-away. None of them asks for the worker's location.
+ */
+export function isEndScreen(phase: ShiftPhase): boolean {
+  return isStaticPhase(phase) || phase === 'turned_away';
 }
 
 /**
@@ -96,6 +105,11 @@ export function shiftPhase({ shift, openBreak, now }: PhaseInput): ShiftPhase {
   });
   if (dead) return dead;
 
+  // §3.2 strict buffer: the attempt was turned away and the booking is
+  // terminal. "Thanks for coming" replaces the shift, however late the
+  // worker comes back to it — the check-in button is not offered again.
+  if (shift.status === 'turned_away') return 'turned_away';
+
   if (shift.checkOutAt) return 'closed';
 
   if (shift.checkInAt) {
@@ -113,6 +127,19 @@ export function shiftPhase({ shift, openBreak, now }: PhaseInput): ShiftPhase {
   const confirmedAfterStart = shift.confirmedAt !== null && new Date(shift.confirmedAt) > startsAt;
   const locksAt = confirmedAfterStart ? endsAt : addMinutes(startsAt, CHECK_IN_GRACE_MIN);
   return now >= locksAt ? 'locked' : 'check_in';
+}
+
+/**
+ * §3.2: did `attempt_check_in()` just turn this press away? Its reply
+ * carries the decision and RULE-15's minutes for the logged attempt
+ * (`turnAwayPayMin`: 240 inside the grace, 0 after it), which is all the
+ * turn-away screen needs until the refreshed row says the same thing.
+ * Anything else — checked in, out of radius, locked — is not a turn-away.
+ */
+export function turnedAwayReply(reply: Record<string, unknown>): { payMin: number | null } | null {
+  if (reply['decision'] !== 'turned_away') return null;
+  const payMin = reply['turnAwayPayMin'];
+  return { payMin: payMin === null || payMin === undefined ? null : Number(payMin) };
 }
 
 /** The check-in window the screen quotes back: "Check-in window 16:30 – 17:30". */

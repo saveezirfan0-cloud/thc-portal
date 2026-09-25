@@ -21,9 +21,12 @@
 --   F. §5.1 check-out from anywhere: check_out() with NO coordinates at
 --      all records the last on-site fix, and with no on-site fix raises
 --      the No check-out violation rather than failing or defaulting.
+--   G. §3.2 strict buffer turn-away (20260928100200): the screen reads the
+--      logged attempt and RULE-15's minutes for it, so "Thanks for coming"
+--      carries the four-hour sentence on every visit only when on time.
 -- =====================================================================
 begin;
-select plan(30);
+select plan(38);
 \ir _shared/fixtures.psql
 
 \set ev_cx   'c5600000-0000-4000-8000-000000000001'
@@ -37,6 +40,13 @@ select plan(30);
 \set b_cx    'c5600000-0000-4000-8000-000000000023'
 \set b_wd    'c5600000-0000-4000-8000-000000000024'
 \set b_inv   'c5600000-0000-4000-8000-000000000025'
+\set ev_sb    'c5600000-0000-4000-8000-000000000002'
+\set sh_ta_on 'c5600000-0000-4000-8000-000000000016'
+\set sh_ta_lt 'c5600000-0000-4000-8000-000000000017'
+\set b_ta_on  'c5600000-0000-4000-8000-000000000026'
+\set b_ta_lt  'c5600000-0000-4000-8000-000000000027'
+\set b_fl_on  'c5600000-0000-4000-8000-000000000028'
+\set b_fl_lt  'c5600000-0000-4000-8000-000000000029'
 
 update events set onsite_contact = 'Priya on 07700 900999', notes = 'Stage door on Godliman St'
  where id = :'event_a';
@@ -183,6 +193,67 @@ reset role;
 
 select is((select count(*)::int from violations where booking_id = :'b_nfx' and type = 'no_checkout'), 1,
   'F: exactly one No check-out violation on the booking');
+
+-- ---------------------------------------------------------------------
+-- G · the strict-buffer turn-away (§3.2, RULE-15)
+--
+-- An event that does NOT pay for its buffer, headcount 1, and the one slot
+-- already taken by another worker's check-in on each section. Worker A then
+-- presses Check in on site: once inside the grace (on time), once after it.
+-- ---------------------------------------------------------------------
+insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location,
+                    geofence_radius_m, title, event_date, pays_breaks, pays_buffer) values
+  (:'ev_sb', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+   st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150,
+   'Fixture Strict Buffer Event', current_date, false, false);
+
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                charge_rate, pay_rate, dress_code, allocation_per_hour) values
+  -- Check-in open, the start still ten minutes away: an attempt now is on time.
+  (:'sh_ta_on', :'ev_sb', :'role_id', now() + interval '10 minutes',
+   now() + interval '4 hours 10 minutes', 1, 1, 22.97, 14.00, 'Black tie', 2),
+  -- Started 45 minutes ago: the grace has elapsed, so an attempt now is late.
+  (:'sh_ta_lt', :'ev_sb', :'role_id', now() - interval '45 minutes',
+   now() + interval '3 hours 15 minutes', 1, 1, 22.97, 14.00, 'Black tie', 2);
+
+insert into bookings (id, shift_id, staff_id, status, source, confirmed_at) values
+  (:'b_fl_on', :'sh_ta_on', :'staffb', 'worked',    'auto', now() - interval '2 days'),
+  (:'b_fl_lt', :'sh_ta_lt', :'staffb', 'worked',    'auto', now() - interval '2 days'),
+  (:'b_ta_on', :'sh_ta_on', :'staffa', 'confirmed', 'auto', now() - interval '2 days'),
+  (:'b_ta_lt', :'sh_ta_lt', :'staffa', 'confirmed', 'auto', now() - interval '2 days');
+
+insert into check_logs (booking_id, outcome, check_in_at) values
+  (:'b_fl_on', 'checked_in', now()),
+  (:'b_fl_lt', 'checked_in', now() - interval '40 minutes');
+
+set local "request.jwt.claims" = '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}';
+set local role authenticated;
+
+select is((select attempt_check_in(:'b_ta_on', 51.5000, -0.1000) ->> 'decision'), 'turned_away',
+  'G: past the headcount under a strict buffer, an on-site press is turned away');
+select is((select status from staff_shift_detail(:'b_ta_on')), 'turned_away',
+  'G: and the screen reads the booking back as turned away');
+select is((select turned_away_at from staff_shift_detail(:'b_ta_on')), now(),
+  'G: with the logged attempt''s own timestamp (CheckLog.attempted_at, §1.5)');
+select is((select turned_away_pay_min from staff_shift_detail(:'b_ta_on')), 240,
+  'G: on time, RULE-15''s flat four hours — the screen shows the paid sentence');
+
+select is((select attempt_check_in(:'b_ta_lt', 51.5000, -0.1000) ->> 'turnAwayPayMin'), '0',
+  'G: a turn-away after the grace is paid nothing');
+select ok((select turned_away_at is not null and turned_away_pay_min = 0
+             from staff_shift_detail(:'b_ta_lt')),
+  'G: and the screen reads 0 back, so the paid sentence is withheld on every visit');
+
+select ok((select turned_away_at is null and turned_away_pay_min is null
+             from staff_shift_detail(:'b_run')),
+  'G: a shift with no turn-away carries neither');
+reset role;
+
+select ok((select bool_and((p.pay ->> 'payableMin')::int = d.turned_away_pay_min)
+             from (values (:'b_ta_on'::uuid), (:'b_ta_lt'::uuid)) x(id)
+             join payable_shifts_v p on p.booking_id = x.id
+             cross join lateral staff_shift_detail(x.id) d),
+  'G: what the screen says matches what payable_shifts_v pays');
 
 select * from finish();
 rollback;

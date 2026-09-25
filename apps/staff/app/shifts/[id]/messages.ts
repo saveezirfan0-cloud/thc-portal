@@ -1,3 +1,5 @@
+import { MINIMUM_SHIFT_MIN, turnedAwayMessage } from '@thc/domain';
+
 /**
  * The message keys the check-in / check-out / break RPCs return, in the
  * worker's language (§5.1 copy). One table, read by the shift screen and
@@ -9,10 +11,9 @@ export const CHECK_IN_MESSAGES: Record<string, string> = {
   out_of_radius: 'You’re not close enough to the venue yet.',
   check_in_not_open: 'Check-in is not open yet.',
   no_show_locked: 'Check-in has closed for this shift. Contact the office.',
-  turned_away_paid:
-    'Thanks for coming — this shift is already fully staffed, so you’re not needed today. We’ve logged that you arrived on time and you’ll be paid for 4 hours.',
-  turned_away_unpaid:
-    'Thanks for coming — this shift is already fully staffed, so you’re not needed today.',
+  // §3.2, RULE-15: the copy is @thc/domain's, not restated here.
+  turned_away_paid: turnedAwayMessage(MINIMUM_SHIFT_MIN),
+  turned_away_unpaid: turnedAwayMessage(0),
   already_checked_in: 'You’re already checked in.',
 };
 

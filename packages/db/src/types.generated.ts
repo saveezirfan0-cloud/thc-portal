@@ -8087,6 +8087,8 @@ export type Database = {
           role: string;
           starts_at: string;
           status: string;
+          turned_away_at: string;
+          turned_away_pay_min: number;
           venue_address: string;
           venue_lat: number;
           venue_lng: number;

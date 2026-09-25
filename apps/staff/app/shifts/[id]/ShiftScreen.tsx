@@ -3,11 +3,27 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, GpsChip, MobileCard, Note, Pill, Timer } from '@thc/ui';
-import { UK_ZONE, formatTimeIn, needsDualZone, viewerZone } from '@thc/domain';
+import {
+  MINIMUM_SHIFT_MIN,
+  UK_ZONE,
+  formatTimeIn,
+  needsDualZone,
+  turnedAwayMessage,
+  viewerZone,
+} from '@thc/domain';
 import { checkIn, checkOut, finishBreak, recordPing, startBreak } from './actions';
 import { shiftEarnings, formatDuration, formatMoney, totalBreakMinutes } from './earnings';
-import { checkInWindow, distanceM, formatDistance, isStaticPhase, shiftPhase } from './phase';
+import {
+  checkInWindow,
+  distanceM,
+  formatDistance,
+  isEndScreen,
+  isStaticPhase,
+  shiftPhase,
+  turnedAwayReply,
+} from './phase';
 import { StaticShiftScreen } from './StaticShiftScreen';
+import { TurnedAwayScreen } from './TurnedAwayScreen';
 import type { GpsFix, ShiftDetail } from './types';
 
 /**
@@ -36,6 +52,10 @@ export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [now, setNow] = useState(() => new Date());
+  // §3.2: the RPC's own answer to a press it turned away, so "Thanks for
+  // coming" is on screen the moment the reply lands rather than after the
+  // refresh. Its minutes are the database's (RULE-15), never this clock's.
+  const [turnedAway, setTurnedAway] = useState<{ payMin: number | null } | null>(null);
 
   // The clock moves the screen through its own states — the check-in window
   // opening, the grace elapsing — with no write behind them.
@@ -46,9 +66,9 @@ export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
 
   const openBreak = shift.breaks.find((b) => b.endedAt === null) ?? null;
   const phase = shiftPhase({ shift, openBreak: Boolean(openBreak), now });
-  // §10.4's dead ends have no map and nothing to press, so they do not ask
-  // for the worker's location either.
-  const dead = isStaticPhase(phase);
+  // §10.4's dead ends and the §3.2 turn-away have no map and nothing to
+  // press, so they do not ask for the worker's location either.
+  const dead = isEndScreen(phase) || turnedAway !== null;
   const zone = viewerZone();
   const local = (iso: string) => formatTimeIn(new Date(iso), zone);
   const uk = (iso: string) => formatTimeIn(new Date(iso), UK_ZONE);
@@ -122,7 +142,12 @@ export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
       setError(result.error);
       return;
     }
-    setMessage(MESSAGES[String(result.result.messageKey ?? '')] ?? null);
+    const away = turnedAwayReply(result.result);
+    if (away) {
+      setTurnedAway(away);
+    } else {
+      setMessage(MESSAGES[String(result.result.messageKey ?? '')] ?? null);
+    }
     router.refresh();
   }
 
@@ -131,6 +156,18 @@ export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
 
   if (isStaticPhase(phase)) {
     return <StaticShiftScreen kind={phase} shift={shift} localTime={local} />;
+  }
+
+  // §3.2 strict buffer. Once the refresh has the booking as `turned_away`
+  // the row's own RULE-15 minutes win; until then, the RPC's reply.
+  if (phase === 'turned_away' || turnedAway) {
+    return (
+      <TurnedAwayScreen
+        turnAwayPayMin={
+          phase === 'turned_away' ? shift.turnedAwayPayMin : (turnedAway?.payMin ?? null)
+        }
+      />
+    );
   }
 
   return (
@@ -404,10 +441,10 @@ const MESSAGES: Record<string, string> = {
   out_of_radius: 'You’re not close enough to the venue yet.',
   check_in_not_open: 'Check-in is not open yet.',
   no_show_locked: 'Check-in has closed for this shift. Contact the office.',
-  turned_away_paid:
-    'Thanks for coming — this shift is already fully staffed, so you’re not needed today. We’ve logged that you arrived on time and you’ll be paid for 4 hours.',
-  turned_away_unpaid:
-    'Thanks for coming — this shift is already fully staffed, so you’re not needed today.',
+  // §3.2, RULE-15: shown as TurnedAwayScreen, not as this alert; kept so a
+  // key never renders as nothing. The copy is @thc/domain's.
+  turned_away_paid: turnedAwayMessage(MINIMUM_SHIFT_MIN),
+  turned_away_unpaid: turnedAwayMessage(0),
   checked_out: 'You’re checked out.',
   checked_out_off_site:
     'You checked out away from the venue — we’ve recorded your last time on site.',

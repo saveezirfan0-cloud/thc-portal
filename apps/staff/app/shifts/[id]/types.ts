@@ -32,6 +32,18 @@ export interface ShiftDetail {
   cancelCause: CancelCause | null;
   /** An unresolved RULE-02 No check-out violation stands on this booking. */
   noCheckoutOpen: boolean;
+  /**
+   * §3.2 strict buffer policy: the logged turn-away attempt
+   * (`check_logs.attempted_at`), null where there was none.
+   */
+  turnedAwayAt: string | null;
+  /**
+   * RULE-15's minutes for that attempt as SQL decided them
+   * (`turned_away_minutes()`): 240 inside the grace, 0 after it, null
+   * without a turn-away. The "paid for 4 hours" sentence reads this, never
+   * the phone's clock.
+   */
+  turnedAwayPayMin: number | null;
 }
 
 export interface GpsFix {
