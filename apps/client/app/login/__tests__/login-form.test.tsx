@@ -35,7 +35,7 @@ describe('the client sign-in form (§1.4)', () => {
   it('offers "Keep me signed in on this device", ticked by default', () => {
     expect(REMEMBER_LABEL).toBe('Keep me signed in on this device');
     expect(markup).toContain(
-      `<input type="checkbox" class="check-input" name="remember" checked="" value="on"/><span class="box on" aria-hidden="true"></span><span>${REMEMBER_LABEL}</span>`,
+      `<input type="checkbox" class="check-input" name="keep_signed_in" checked="" value="1"/><span class="box on" aria-hidden="true"></span><span>${REMEMBER_LABEL}</span>`,
     );
   });
 

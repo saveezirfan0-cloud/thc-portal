@@ -625,7 +625,7 @@ They send as quoted once email and push are switched on, and none is treated as 
 
 The legal privacy notice for applicants and workers, from THC or its solicitor, to replace the page at /privacy — the page the application form links to before the consent tick (§1.7, §2.1), and that the sign-in pages of all three applications link to.
 
-It should cover at least: who the controller is and how to contact them; the lawful basis for each use; what is collected at application, during onboarding and while working — including the worker’s location while checked in to a shift; who it is shared with and where it goes (Willo for interviews, Google Gemini for reading documents, Resend for email, Supabase and Vercel for hosting — all under contract); retention, including right-to-work evidence for the length of employment plus two years; the worker’s rights and how to complain to the ICO.
+It should cover at least: who the controller is and how to contact them; the lawful basis for each use; what is collected at application, during onboarding and while working — including the worker’s location while checked in to a shift; who it is shared with and where it goes (Willo for interviews, Anthropic (Claude) for reading documents, Resend for email, Supabase and Vercel for hosting — all under contract); retention, including right-to-work evidence for the length of employment plus two years; the worker’s rights and how to complain to the ICO.
 
 **Why the platform needs it**
 
@@ -889,7 +889,7 @@ Not applicable — this is how every screen is built.
 | Web Push | The phone notifications. No account: a key pair is generated once by the build team. | — | No. |
 | Supabase | The database, file storage, sign-in and background jobs. London region. | Build team (staging) | A production organisation owned by THC (item 8), with the build team invited in. |
 | Vercel | Hosts the three web applications. | Build team (staging) | A production team owned by THC (item 8). |
-| Google AI Studio / Gemini | Reads uploaded documents to pre-fill dates and confidence; a manager always checks. | Build team | No. The key transfers at hand-over; THC’s own account can be created then. |
+| Anthropic (Claude API) | Reads uploaded documents to pre-fill dates and confidence; a manager always checks (ADR-0033 — replaces the scope’s Gemini, awaiting THC’s confirmation). Off until a key is set. | THC | Yes — an Anthropic organisation and API key in THC’s name, set on the Staff App. |
 | Mapbox | The map of venues and their geofences in the Back Office. | Build team | No. Transfers at hand-over. |
 | GitHub | Where the code lives. | Build team | A THC organisation to receive the code at hand-over (item 8). |
 

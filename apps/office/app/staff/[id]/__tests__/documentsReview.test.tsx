@@ -105,6 +105,7 @@ const queued = (over: Partial<QueueRow>): QueueRow => ({
   mime_type: null,
   size_bytes: null,
   review_reason: null,
+  manual_review_reason: null,
   ...over,
 });
 
