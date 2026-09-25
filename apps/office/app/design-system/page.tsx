@@ -160,7 +160,7 @@ export default function Page() {
 
         <Panel title="Shape and type">
           <span className="label">
-            Radius — the fluid scale in both themes; zero only in the §1.6 rendering
+            Radius — the fluid scale in both themes; zero only in the square scope rendering
           </span>
           <div className="ds-shapes mt-8">
             {SHAPES.map(([token, label]) => (
@@ -226,11 +226,11 @@ export default function Page() {
           </Button>
           <hr />
           <Note>
-            Every button animates on hover (§1.6): solid accent lightens, outlined takes the accent
-            border and text, outlined danger fills 12% danger. In the fluid look the primary carries
-            the cyan→violet gradient, and Auto-assign carries the violet one. Depth follows the
-            ground: a soft warm card shadow in light, frosted glass and coloured glow in dark. Never
-            a neutral black cast (ADR-0007).
+            Every button animates on hover: solid accent lightens, outlined takes the accent border
+            and text, outlined danger fills 12% danger. In the fluid look the primary carries the
+            cyan→violet gradient, and Auto-assign carries the violet one. Depth follows the ground:
+            a soft warm card shadow in light, frosted glass and coloured glow in dark. Never a
+            neutral black cast (ADR-0007).
           </Note>
         </Panel>
 

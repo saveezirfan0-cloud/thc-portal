@@ -171,10 +171,10 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
     endsAt: new Date(s.ends_at),
   }));
   if (isEditLocked(stored)) {
-    return { error: 'This event has started. Editing is locked (§3.2).' };
+    return { error: 'This event has started. Editing is locked.' };
   }
   if (event.cancelled_at) {
-    return { error: 'This event is cancelled and is not edited (§3.2).' };
+    return { error: 'This event is cancelled and is not edited.' };
   }
 
   const { data: venue } = await supabase
@@ -218,7 +218,7 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
     if ((held ?? []).length > 0) {
       return {
         error:
-          'A role section with people booked on it cannot be removed. Withdraw them on the event board first (§3.3).',
+          'A role section with people booked on it cannot be removed. Withdraw them on the event board first.',
       };
     }
     await supabase.from('shift_requirements').delete().in('id', removed);

@@ -76,7 +76,7 @@ export async function markNoShow(eventId: string, bookingId: string): Promise<Ac
 
   if (!canMarkNoShow({ startsAt: context.startsAt, endsAt: context.endsAt })) {
     return {
-      error: 'No-show can be recorded from the shift start until two weeks after it ends (§3.3).',
+      error: 'No-show can be recorded from the shift start until two weeks after it ends.',
     };
   }
 
@@ -292,7 +292,7 @@ export async function setRoleAutoAssign(
   if (eventError) return { error: eventError.message };
   if (!event) return { error: 'That event no longer exists.' };
   if ((event as { cancelled_at: string | null }).cancelled_at) {
-    return { error: 'This event is cancelled; auto-assign has stopped for it (§3.3).' };
+    return { error: 'This event is cancelled; auto-assign has stopped for it.' };
   }
 
   const { data, error } = await supabase

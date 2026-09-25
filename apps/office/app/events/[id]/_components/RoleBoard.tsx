@@ -197,7 +197,7 @@ export function RoleBoard({
               {reopened ? <Pill tone="purple">re-opened</Pill> : null}
               {section.escalation
                 ? 'escalation invites, proximity first'
-                : 'invitations have no deadline and are never withdrawn by auto-assign (§3.6)'}
+                : 'invitations have no deadline and are never withdrawn by auto-assign'}
             </span>
           </div>
           {section.invited.length === 0 ? (

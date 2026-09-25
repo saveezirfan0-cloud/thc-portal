@@ -410,7 +410,7 @@ describe('the role header rate line (§3.3, §9.8)', () => {
 describe('manual invite and the switches', () => {
   it('turns every office_invite_worker refusal into the manager’s words', () => {
     expect(inviteRefusal('full')).toMatch(/fully confirmed/);
-    expect(inviteRefusal('event_ended')).toMatch(/RULE-16/);
+    expect(inviteRefusal('event_ended')).toMatch(/already ended/);
     expect(inviteRefusal('self_cancelled')).toMatch(/RULE-04/);
     // D33: an ended booking is reopened, so this is a LIVE one (or history).
     expect(inviteRefusal('already_has_booking')).toMatch(/already holds this role/);

@@ -90,12 +90,12 @@ export function refusal(message: string): { status: number; message: string } {
   if (message.includes('event_cancelled'))
     return {
       status: 409,
-      message: 'This event is cancelled, so no allocation sheet or timesheet is generated (§11.3).',
+      message: 'This event is cancelled, so no allocation sheet or timesheet is generated.',
     };
   if (message.includes('event_not_found'))
     return { status: 404, message: 'That event does not exist.' };
   if (message.includes('client_has_no_contact_email'))
-    return { status: 409, message: 'The client card has no contact email to send to (§9.7).' };
+    return { status: 409, message: 'The client card has no contact email to send to.' };
   return { status: 500, message };
 }
 

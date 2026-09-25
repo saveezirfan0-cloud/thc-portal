@@ -313,7 +313,7 @@ interface ReasonCopy {
 export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
   blocked: {
     label: 'Blocked — compliance',
-    detail: 'not compliant, so not invitable (§2.12)',
+    detail: 'not compliant, so not invitable',
     tone: 'coral',
   },
   booked_elsewhere: {
@@ -323,7 +323,7 @@ export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
   },
   hours_limit: {
     label: 'Hours limit reached',
-    detail: 'this shift would take them over their weekly hours limit (RULE-20)',
+    detail: 'this shift would take them over their weekly hours limit',
     tone: 'amber',
   },
   rtw_expired: {
@@ -334,12 +334,12 @@ export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
   self_cancelled: {
     label: 'Rejected — self-cancelled',
     detail:
-      'cancelled a confirmed booking more than 72 h before the shift · permanently excluded from this event: no auto-assign, no Radar, no manual invite (RULE-04)',
+      'cancelled a confirmed booking more than 72 h before the shift · permanently excluded from this event: no auto-assign, no Radar, no manual invite',
     tone: 'coral',
   },
   do_not_return: {
     label: 'Do not return',
-    detail: 'marked Do not return at this client (§9.6)',
+    detail: 'marked Do not return at this client',
     tone: 'coral',
   },
   // Only once the section has started: the board reads the escalation pool
@@ -360,12 +360,12 @@ export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
 export const CAUSE_COPY: Readonly<Record<string, ReasonCopy>> = {
   office_withdraw: {
     label: 'Withdrawn',
-    detail: 'withdrawn from this shift by the office (§3.3)',
+    detail: 'withdrawn from this shift by the office',
     tone: 'neutral',
   },
   ready_cutoff: {
     label: 'Released at the cutoff',
-    detail: 'no "I\'m ready" by 12:00 the day before — released at 12:05 (N6b, §3.5)',
+    detail: 'no "I\'m ready" by 12:00 the day before — released at 12:05',
     tone: 'amber',
   },
   self_cancel: GATE_COPY['self_cancelled']!,
@@ -373,7 +373,7 @@ export const CAUSE_COPY: Readonly<Record<string, ReasonCopy>> = {
   // Unavailable → Booked elsewhere on the event board".
   overlap_auto_withdraw: {
     label: 'Booked elsewhere',
-    detail: 'accepted an overlapping shift, so this invitation was withdrawn automatically (§3.4)',
+    detail: 'accepted an overlapping shift, so this invitation was withdrawn automatically',
     tone: 'amber',
   },
   event_cancelled: {
@@ -383,29 +383,29 @@ export const CAUSE_COPY: Readonly<Record<string, ReasonCopy>> = {
   },
   blocked: {
     label: 'Blocked — compliance',
-    detail: 'booking cancelled when the worker was blocked (§4.3)',
+    detail: 'booking cancelled when the worker was blocked',
     tone: 'coral',
   },
   blocked_invite: {
     label: 'Blocked — compliance',
-    detail: 'invitation withdrawn when the worker was blocked (§4.3)',
+    detail: 'invitation withdrawn when the worker was blocked',
     tone: 'coral',
   },
-  left: { label: 'Left THC', detail: 'booking cancelled when they left (§10.6)', tone: 'neutral' },
+  left: { label: 'Left THC', detail: 'booking cancelled when they left', tone: 'neutral' },
   left_invite: {
     label: 'Left THC',
-    detail: 'invitation withdrawn when they left (§10.6)',
+    detail: 'invitation withdrawn when they left',
     tone: 'neutral',
   },
-  gdpr: { label: 'Account deleted', detail: 'removed at their request (§1.7)', tone: 'neutral' },
+  gdpr: { label: 'Account deleted', detail: 'removed at their request', tone: 'neutral' },
   gdpr_invite: {
     label: 'Account deleted',
-    detail: 'removed at their request (§1.7)',
+    detail: 'removed at their request',
     tone: 'neutral',
   },
   slot_taken: {
     label: 'Slot taken',
-    detail: 'someone confirmed first, so the invitation closed (§3.4)',
+    detail: 'someone confirmed first, so the invitation closed',
     tone: 'neutral',
   },
   declined: { label: 'Declined', detail: 'declined the invitation', tone: 'neutral' },
@@ -543,7 +543,7 @@ export function rateLine(payRate: number, chargeRate: number): RateLine {
 
 const INVITE_REFUSAL_COPY: Readonly<Record<string, string>> = {
   event_cancelled: 'This event has been cancelled, so nobody can be invited to it.',
-  event_ended: 'This shift has already ended, so nobody can be invited to it (RULE-16).',
+  event_ended: 'This shift has already ended, so nobody can be invited to it.',
   full: 'This role is already fully confirmed (headcount + buffer). Nobody else is invited.',
   // D33: an ended booking is reopened by the invite, so this is only a live
   // one, or an ended one that carries check-in history or a violation.
@@ -572,7 +572,7 @@ export function inviteRefusal(reason: string): string {
 
 const WITHDRAW_REFUSAL_COPY: Readonly<Record<string, string>> = {
   checked_in:
-    'This worker has already checked in (or been turned away), so the booking cannot be withdrawn (§3.6).',
+    'This worker has already checked in (or been turned away), so the booking cannot be withdrawn.',
   not_withdrawable:
     'This booking is no longer live — it was already withdrawn, declined or cancelled — or it is a Radar application, which the office answers by accepting it or letting the role fill.',
 };
