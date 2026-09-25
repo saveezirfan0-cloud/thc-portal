@@ -163,7 +163,8 @@ describe('§10.1 the app lock stands in front of the shift screen', () => {
     shift.mockResolvedValue(detail());
     const html = await render();
     // ADR-0035: Shifts · Invites · Radar · Profile.
-    expect(html).toContain('<a href="/profile"><span class="l">Profile</span></a>');
+    // The tab icon sits between the link and its label.
+    expect(html).toMatch(/<a href="\/profile">(?:(?!<\/a>).)*<span class="l">Profile<\/span><\/a>/);
   });
 
   it('is a 404 for a booking that is not the worker’s', async () => {
