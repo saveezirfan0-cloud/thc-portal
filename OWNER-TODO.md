@@ -5,7 +5,7 @@ below is a setting, a key, a deploy or content that a coding session cannot
 supply. Tick items off here as they are done. `docs/14-handover.md` §5 has the
 background for each.
 
-Last updated 26.09.2026; §8 (the automated gov.uk check, ADR-0025) added after. **§1 and §2 re-checked against the live project and
+Last updated 26.09.2026; §8 (the automated gov.uk check, ADR-0025) and §9 (the 25.09 audit fix round) added after. **§1 and §2 re-checked against the live project and
 GitHub on 23.09** — both are still open, they are not stale entries.
 
 ## 1 · Supabase settings (dashboard)
@@ -82,9 +82,10 @@ Nothing is lost; it all sends once the keys exist.
 - [ ] **Office pin editor?** When a worker's postcode lookup fails, their
       profile shows "location out of date" until they re-save a findable
       address. Say if managers should be able to move the pin themselves.
-- [ ] **Close `/apply`'s last bypass?** Revoking anon from `submit_application`
-      makes the per-caller limit unbypassable, but then `/apply` depends on
-      `SUPABASE_SERVICE_ROLE_KEY` being set on the Staff App (it is today).
+- [x] ~~**Close `/apply`'s last bypass?**~~ **Done in the 25.09 fix round
+      (ADR-0036):** `submit_application` is service-role only; `/apply`
+      refuses in plain words without `SUPABASE_SERVICE_ROLE_KEY`. The security
+      advisor's anon-callable definer count drops from 6 to 5.
 - [ ] **Gender at step 7** is asked as Male/Female because §9.9's New Starter
       report says "Gender (M/F)" (HMRC). Confirm with THC, or ask a session to
       remove it (ADR-0024).
@@ -129,6 +130,51 @@ hand as before (ADR-0018). THC has accepted that a passing check verifies a work
       `190`, not a dashboard change. Then re-run `select install_job_schedules();`
 - [ ] Share codes filed before the switch have no check. Press **Run gov.uk check** on each
       in Compliance → Needs review.
+
+## 9 · After the 25.09 audit fix round (`docs/18-audit-2026-09-25.md`)
+
+Settings the fix round depends on. Until they are set, password reset links
+and sign-in hardening behave as described in ADR-0035.
+
+- [ ] **Supabase → Auth → Email Templates → Reset Password**: paste
+      `supabase/templates/recovery.html`. The link now goes to
+      `/auth/confirm?token_hash=…`, so it works from any browser or mail app.
+- [ ] **Supabase → Auth → URL Configuration → Redirect URLs**: for each of the
+      three apps add `<url>/auth/callback**` **and** `<url>/auth/confirm**`.
+- [ ] **Supabase → Auth**: turn **sign-ups off**, set the minimum password
+      length to **10** with letters and digits, and turn **secure password
+      change** on — the same values as `supabase/config.toml`.
+- [ ] **Vercel**, all three projects: set `NEXT_PUBLIC_OFFICE_URL`,
+      `NEXT_PUBLIC_STAFF_URL` and `NEXT_PUBLIC_CLIENT_URL`. Forgot-password now
+      refuses in production rather than send a link to localhost.
+- [ ] **Regenerate `packages/db/src/types.generated.ts`** once the round is
+      live (`pnpm --filter @thc/db gen:types`); several new RPCs and views are
+      read through local casts until then.
+- [ ] **Before any real data**: change the six seed passwords (`password123`)
+      or delete the seed users on the live project.
+- [ ] **On the morning of a client walk-through**: re-run
+      `supabase/demo/review-data.sql` so the "today" event is placed around the
+      current hour, and upload a few sample files to Storage so document and
+      photo previews are not empty.
+- [ ] **THC decisions recorded as defaults** — confirm or change:
+      - ADR-0030 — the 12:05 cutoff releases only a booking that was sent its
+        N6 warning (if the reminder job is down all morning, nobody is released).
+      - ADR-0031 — automatic rounds never re-invite someone who declined, was
+        withdrawn or was released at 12:05; Radar stops at headcount, buffer
+        seats are filled by invitation.
+      - ADR-0032 — Left early = check-out more than 15 min before the section's
+        end (on or off site); an off-site check-out with a last on-site fix
+        more than 30 min old goes to review as No check-out.
+      - ADR-0033 — show-rate = attended ÷ decided bookings, 90 until three
+        are decided; resolved No-shows count as attended.
+      - ADR-0034 — Staff App failure states and shift-screen defaults.
+      - ADR-0035 / ADR-0036 — reset links, "Keep me signed in", GDPR removal
+        scope; whether the payroll/new-starter CSVs in the `reports` bucket are
+        kept after a removal.
+      - ADR-0037 — the 10 h below-degree band (the completion-letter PDF wins
+        over the v1.5 changelog); visa hour limits; the NI mismatch flow.
+      - ADR-0038 — the Inactive tab's P45 column reads "Requested" (the
+        platform never learns that a P45 was issued).
 
 ## Done
 
