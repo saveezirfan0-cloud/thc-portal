@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { createClient } from '@thc/db/server';
+import { safeNext } from './safeNext';
 
 /**
  * Email + password sign-in (§1.4).
@@ -14,7 +15,8 @@ import { createClient } from '@thc/db/server';
 export async function signIn(_prev: string | null, formData: FormData): Promise<string | null> {
   const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
-  const next = String(formData.get('next') ?? '') || '/shifts';
+  // A path on this origin or the landing route — never a host (safeNext.ts).
+  const next = safeNext(String(formData.get('next') ?? ''), '/shifts');
 
   if (!email || !password) return 'Enter your email and password.';
 
@@ -38,5 +40,5 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
     return 'Email or password is incorrect. Try again or reset your password.';
   }
 
-  redirect(next.startsWith('/') ? next : '/shifts');
+  redirect(next);
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ukLocalToIso } from '../ResolveModal';
+import { ukLocalToIso } from '../ukLocalToIso';
 
 /**
  * "Actual finish (UK time)" is labelled UK because §1.8 says a

@@ -37,7 +37,17 @@ const PRODUCT_LAUNCH = '60000000-0000-4000-8000-000000000002';
  * The three seeded charge rates on Marco's two events are listed by value
  * as well, because a number leaks without its label.
  */
-const MONEY = ['pay rate', 'charge rate', 'margin', '£', 'per hour', '/h', '30.69', '21.23', '22.97'];
+const MONEY = [
+  'pay rate',
+  'charge rate',
+  'margin',
+  '£',
+  'per hour',
+  '/h',
+  '30.69',
+  '21.23',
+  '22.97',
+];
 
 /** Invited · Potential pool · Unavailable · Auto-assign stay internal (§11.2). */
 const SELECTION = ['potential pool', 'unavailable', 'auto-assign', 'auto invite', 'invited'];
@@ -139,7 +149,11 @@ test('no money reaches the Client Portal, on the list or on either event (§11.1
   // check on the rendered page rather than the only thing standing between
   // a customer and a rate.
   await openAsClient(page, '/client');
-  for (const path of ['/client', `/client/events/${GALA_DINNER}`, `/client/events/${LUNCH_SERVICE}`]) {
+  for (const path of [
+    '/client',
+    `/client/events/${GALA_DINNER}`,
+    `/client/events/${LUNCH_SERVICE}`,
+  ]) {
     await page.goto(path);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     const body = await bodyText(page);
@@ -160,9 +174,9 @@ test('the event page shows confirmed staff only, by role, with the role window (
   // has issued one (the outbox journey may just have), a disabled button
   // until then — but present either way, before and during the event.
   await expect(
-    page.getByRole('button', { name: '↓ Download Allocation Sheet' }).or(
-      page.getByRole('link', { name: '↓ Download Allocation Sheet' }),
-    ),
+    page
+      .getByRole('button', { name: '↓ Download Allocation Sheet' })
+      .or(page.getByRole('link', { name: '↓ Download Allocation Sheet' })),
   ).toBeVisible();
 
   // Grouped by role, each panel titled with the role's own window
@@ -195,9 +209,7 @@ test('the event page shows confirmed staff only, by role, with the role window (
 
 test('feedback is locked before the event starts, and says so (§11.2)', async ({ page }) => {
   await openAsClient(page, `/client/events/${GALA_DINNER}`);
-  await expect(page.getByRole('status')).toContainText(
-    'Feedback opens once the event has started',
-  );
+  await expect(page.getByRole('status')).toContainText('Feedback opens once the event has started');
   const buttons = page.getByRole('button', { name: 'Leave feedback' });
   expect(await buttons.count()).toBeGreaterThan(0);
   for (const button of await buttons.all()) {
@@ -228,9 +240,9 @@ test.describe('feedback on a started event (§11.2, §11.5)', () => {
     await expect(page.getByRole('heading', { name: 'Lunch Service' })).toBeVisible();
     // After the event the header offers the signed timesheet instead.
     await expect(
-      page.getByRole('button', { name: '↓ Download Signed Timesheet' }).or(
-        page.getByRole('link', { name: '↓ Download Signed Timesheet' }),
-      ),
+      page
+        .getByRole('button', { name: '↓ Download Signed Timesheet' })
+        .or(page.getByRole('link', { name: '↓ Download Signed Timesheet' })),
     ).toBeVisible();
     await expect(page.getByRole('status')).toContainText('The event has started');
 

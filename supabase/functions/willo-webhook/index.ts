@@ -75,6 +75,32 @@ interface Plan {
   needsAccount: boolean;
 }
 
+/**
+ * A delivery the receiver could not apply and answers 500 to, so Willo
+ * retries. The inbound path cannot use runJob()'s job_runs row (Willo
+ * signs its own deliveries, ADR-0021), so this is its trace: one
+ * admin-readable audit row per failed delivery (willo_record_failure,
+ * 20260926111200). Invariant 7 — a receiver failing every delivery must
+ * show somewhere in the database, not only in the function log.
+ */
+async function failed(
+  db: SupabaseClient,
+  candidate: string,
+  eventKey: string,
+  code: string,
+  detail: Record<string, unknown> = {},
+): Promise<Response> {
+  console.error(`[willo-webhook] ${code}`, { candidate, eventKey, ...detail });
+  const { error } = await db.rpc('willo_record_failure', {
+    p_willo_candidate_id: candidate,
+    p_event: eventKey,
+    p_code: code,
+  });
+  if (error)
+    console.error('[willo-webhook] could not record the failure', { error: error.message });
+  return json(500, { error: code });
+}
+
 async function refuse(
   db: SupabaseClient,
   candidate: string,
@@ -137,8 +163,9 @@ async function webhook(request: Request): Promise<Response> {
     p_event: event.eventKey,
   });
   if (planError) {
-    console.error('[willo-webhook] plan failed', { ...log, error: planError.message });
-    return json(500, { error: 'plan failed' });
+    return failed(db, event.willoCandidateId, event.eventKey, 'plan failed', {
+      error: planError.message,
+    });
   }
   if (!plan) {
     // Created in Willo by hand, or removed (§1.7) since. Nothing to move.
@@ -158,8 +185,9 @@ async function webhook(request: Request): Promise<Response> {
       if (isPermanentRefusal(error.message)) {
         return refuse(db, event.willoCandidateId, event.eventKey, error.message);
       }
-      console.error('[willo-webhook] record failed', { ...log, error: error.message });
-      return json(500, { error: 'record failed' });
+      return failed(db, event.willoCandidateId, event.eventKey, 'record failed', {
+        error: error.message,
+      });
     }
     console.log('[willo-webhook] applied', { ...log, result: data });
     return json(200, { outcome: (data as { outcome?: string } | null)?.outcome ?? 'applied' });
@@ -170,8 +198,9 @@ async function webhook(request: Request): Promise<Response> {
   const origin = env('STAFF_APP_URL');
   if (!origin) {
     // Retryable on purpose: set the secret and Willo's next retry lands.
-    console.error('[willo-webhook] STAFF_APP_URL is not set — E3 cannot carry a link', log);
-    return json(500, { error: 'not configured' });
+    return failed(db, event.willoCandidateId, event.eventKey, 'not configured', {
+      reason: 'STAFF_APP_URL is not set — E3 cannot carry a link',
+    });
   }
   const issued = await issueActivationLink(
     db.auth.admin as unknown as AdminAuth,
@@ -182,12 +211,10 @@ async function webhook(request: Request): Promise<Response> {
     if (issued.code === 'account_not_staff' || issued.code === 'account_missing') {
       return refuse(db, event.willoCandidateId, event.eventKey, issued.code);
     }
-    console.error('[willo-webhook] login provisioning failed', {
-      ...log,
+    return failed(db, event.willoCandidateId, event.eventKey, 'provisioning failed', {
       code: issued.code,
       detail: issued.detail,
     });
-    return json(500, { error: 'provisioning failed' });
   }
 
   const { data, error } = await db.rpc('willo_accept_with_account', {
@@ -201,8 +228,9 @@ async function webhook(request: Request): Promise<Response> {
     if (isPermanentRefusal(error.message)) {
       return refuse(db, event.willoCandidateId, event.eventKey, error.message);
     }
-    console.error('[willo-webhook] accept failed', { ...log, error: error.message });
-    return json(500, { error: 'accept failed' });
+    return failed(db, event.willoCandidateId, event.eventKey, 'accept failed', {
+      error: error.message,
+    });
   }
   console.log('[willo-webhook] accepted', { ...log, result: data });
   return json(200, { outcome: (data as { outcome?: string } | null)?.outcome ?? 'applied' });
@@ -331,9 +359,7 @@ function isTransientDbError(error: RpcError): boolean {
   return /^(08|40|53|57)/.test(code) || code === '55P03';
 }
 
-type RpcOutcome<T> =
-  | { ok: true; data: T }
-  | { ok: false; error: RpcError; transient: boolean };
+type RpcOutcome<T> = { ok: true; data: T } | { ok: false; error: RpcError; transient: boolean };
 
 async function rpcWithRetries<T>(
   call: () => PromiseLike<{ data: T | null; error: RpcError | null }>,
@@ -368,7 +394,15 @@ function invite(request: Request): Promise<Response> {
     if (error) throw new Error(`willo_invite_due: ${error.message}`);
     const due = (data ?? []) as Due[];
 
-    const counts = { due: due.length, created: 0, linked: 0, failed: 0, unknown: 0, stuck: 0, deferred: 0 };
+    const counts = {
+      due: due.length,
+      created: 0,
+      linked: 0,
+      failed: 0,
+      unknown: 0,
+      stuck: 0,
+      deferred: 0,
+    };
 
     // Every attempt that does not link ends in exactly one of these, so a
     // row is never left leased by accident. If even this write fails the
@@ -381,7 +415,11 @@ function invite(request: Request): Promise<Response> {
     ) => {
       counts[bucket] += 1;
       const result = await rpcWithRetries(() =>
-        db.rpc('willo_invite_failed', { p_staff: row.staff_id, p_error: reason, p_outcome: outcome }),
+        db.rpc('willo_invite_failed', {
+          p_staff: row.staff_id,
+          p_error: reason,
+          p_outcome: outcome,
+        }),
       );
       if (!result.ok) {
         console.error('[willo-invite] could not record the outcome; the lease stands', {
@@ -440,7 +478,11 @@ function invite(request: Request): Promise<Response> {
           });
           // The key is only in this log now. The lease stands; the stale
           // path retries at most 3 times, then the office looks in Willo.
-          await ended(row, `created ${result.key}, not recorded: ${recorded.error.message}`, 'unknown');
+          await ended(
+            row,
+            `created ${result.key}, not recorded: ${recorded.error.message}`,
+            'unknown',
+          );
           continue;
         }
         counts.created += 1;

@@ -32,15 +32,44 @@
   margin: 0;
 }
 
-/* Native select with the wireframe's caret. Drawn as a background mark so it
-   needs no wrapper element and cannot drift out of position. */
+/* Native select with the wireframe's caret: a `.caret` wrapper whose
+   pseudo-element draws the mark in the muted token, as apply.html does. It
+   used to be an SVG data URL with the colour written into it, which is the
+   one place a hex literal hides from the token grep — and it was the same
+   steel blue on the cream ground and the navy one. A select cannot carry a
+   pseudo-element of its own, hence the wrapper. */
+.apply-page .caret {
+  position: relative;
+}
+
+.apply-page .caret::after {
+  content: '▾';
+  position: absolute;
+  right: var(--sp-12);
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
 .apply-page select.input {
   appearance: none;
   -webkit-appearance: none;
-  padding-right: 28px;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6'><path d='M1 1l4 4 4-4' fill='none' stroke='%238aa0b8' stroke-width='1.5' stroke-linecap='round'/></svg>");
-  background-repeat: no-repeat;
-  background-position: right 11px center;
+  padding-right: var(--sp-28);
+}
+
+/* The picker (ADR-0009): 168px at 12px type, the dialling code first so it
+   is the part that survives the clip, and an ellipsis so the clip reads as
+   deliberate. */
+.apply-page .apply-dial {
+  flex: 0 0 168px;
+}
+
+.apply-page .apply-dial select.input {
+  font-size: var(--fs-12);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* The consent tick (§1.7) is the shared Checkbox from packages/ui (D1):
@@ -115,9 +144,30 @@
   gap: 12px;
 }
 
-/* Phone browsers are where most applications are typed (§1.2). */
+/* `.auth-wrap` hides its overflow to clip the two corner glows. `hidden`
+   also makes it the scroll container every sticky descendant sticks to —
+   and it does not scroll, the page does — so the sticky button below would
+   never move. `clip` clips the glows the same and creates no scroll
+   container. */
+.apply-page .auth-wrap {
+  overflow: clip;
+}
+
+/* Phone browsers are where most applications are typed (§1.2). The
+   wireframe's phone frame: the name row collapses to one column and the
+   submit button is full-width and sticky-bottom, riding above the fields
+   as they scroll under it on a halo of the card's ground, clear of the
+   home-indicator inset. It stops at the end of the form, so the contact
+   line under it is still reached. */
 @media (max-width: 480px) {
   .apply-page .grid.c2 {
     grid-template-columns: 1fr;
+  }
+
+  .apply-page form > .btn.lg {
+    position: sticky;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + var(--sp-12));
+    z-index: 1;
+    box-shadow: 0 0 0 var(--sp-6) var(--panel);
   }
 }

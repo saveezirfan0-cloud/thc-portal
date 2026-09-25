@@ -42,6 +42,7 @@ const doc = (over: Partial<DocumentRow>): DocumentRow => ({
   review_status: 'verified',
   superseded: false,
   file_path: null,
+  gov_report_path: null,
   uploaded_at: '2026-07-10T11:00:00Z',
   expiry_date: null,
   expires_on: null,
@@ -88,7 +89,7 @@ describe('the closing compliance line (§9.6)', () => {
     expect(
       complianceSummary({ status: 'compliant', contract_signed_at: '2026-07-12T13:42:00Z' }),
     ).toBe(
-      'Documents verified, quiz passed. Contract signed electronically: 12/07/2026 14:42 UK time',
+      'Documents verified, quiz passed. Contract signed electronically: 12.07.2026 14:42 UK time',
     );
   });
 
@@ -102,7 +103,7 @@ describe('the closing compliance line (§9.6)', () => {
 describe('time zones (§1.8)', () => {
   it('states UK time on an audit stamp, and converts BST correctly', () => {
     // 13:42 UTC in July is 14:42 in London.
-    expect(formatUkStamp('2026-07-12T13:42:00Z')).toBe('12/07/2026 14:42 UK time');
+    expect(formatUkStamp('2026-07-12T13:42:00Z')).toBe('12.07.2026 14:42 UK time');
   });
 
   it('shows a scheduled window in UK time', () => {

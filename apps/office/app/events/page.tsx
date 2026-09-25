@@ -1,17 +1,28 @@
 import Link from 'next/link';
 import { Alert, Panel } from '@thc/ui';
+import { UK_ZONE, formatTimeIn } from '@thc/domain';
 import {
   type CalendarView,
+  formatDayLong,
   isCalendarView,
   monthGrid,
+  monthName,
   periodRange,
   todayInUk,
   weekDays,
 } from './calendar';
 import { loadEventsInRange, loadReferenceData } from './data';
 import { OfficeShell } from '../_components/OfficeShell';
+import { ViewerZone } from './_components/ViewerZone';
 import { EventToolbar, type ToolbarQuery } from './_components/EventToolbar';
-import { DayView, ListView, MonthView, WeekView } from './_components/EventViews';
+import {
+  DayPills,
+  DayView,
+  ListView,
+  MonthLegend,
+  MonthView,
+  WeekView,
+} from './_components/EventViews';
 import { bucketByDay, periodTotals, toEventRows } from './view-model';
 import './shift-builder.css';
 import './events.css';
@@ -46,7 +57,8 @@ export default async function Page({
   const view: CalendarView = isCalendarView(single('view'))
     ? (single('view') as CalendarView)
     : 'list';
-  const today = todayInUk();
+  const now = new Date();
+  const today = todayInUk(now);
   const date = ISO_DATE.test(single('date')) ? single('date') : today;
 
   const query: ToolbarQuery = {
@@ -81,7 +93,15 @@ export default async function Page({
     <OfficeShell
       activeHref="/events"
       title="Scheduling"
-      crumbs={null}
+      // events.html:81 — "events · Thu 18 Sep 2026 · 14:32 UK time".
+      crumbs={
+        <>
+          events · <b>{formatDayLong(today)}</b> · {formatTimeIn(now, UK_ZONE)} UK time
+        </>
+      }
+      // Every window on this screen is a scheduled time, so the topbar names
+      // the reader's own zone and each window carries both (§1.8).
+      timezone={<ViewerZone />}
       actions={
         // §3.1: the same place in every view, not in a sub-toolbar.
         <Link className="btn primary sm" href="/events/new">
@@ -92,7 +112,13 @@ export default async function Page({
       <div className="stack">
         {reference.unavailable ? <Alert tone="coral">{reference.unavailable}</Alert> : null}
 
-        <EventToolbar query={query} clients={reference.clients} />
+        <EventToolbar
+          query={query}
+          clients={reference.clients}
+          extra={
+            view === 'month' ? <MonthLegend /> : view === 'day' ? <DayPills rows={rows} /> : null
+          }
+        />
 
         {view === 'list' ? (
           <Panel flush className="stack" actions={null}>
@@ -104,8 +130,8 @@ export default async function Page({
               style={{ borderBottom: 0, borderTop: '1px solid var(--line)' }}
             >
               <span className="muted sm">
-                {totals.events} event{totals.events === 1 ? '' : 's'} in this period · {totals.open}{' '}
-                open position{totals.open === 1 ? '' : 's'}
+                {totals.events} event{totals.events === 1 ? '' : 's'} in {monthName(date)} ·{' '}
+                {totals.open} open position{totals.open === 1 ? '' : 's'}
               </span>
             </div>
           </Panel>
@@ -130,7 +156,7 @@ export default async function Page({
           />
         ) : null}
 
-        {view === 'day' ? <DayView rows={rows} /> : null}
+        {view === 'day' ? <DayView rows={rows} now={now} /> : null}
       </div>
     </OfficeShell>
   );

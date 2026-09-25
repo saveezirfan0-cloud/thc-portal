@@ -12,6 +12,79 @@ vi.mock('next/link', () => ({
 }));
 
 const { OfficeShell } = await import('../OfficeShell');
+const { ChromeProvider } = await import('../ChromeContext');
+
+const shell = (chrome: { complianceCount: number; user: { name: string; role?: string } | null }) =>
+  renderToStaticMarkup(
+    <ChromeProvider value={chrome}>
+      <OfficeShell activeHref="/events" title="Scheduling">
+        <span />
+      </OfficeShell>
+    </ChromeProvider>,
+  );
+
+/**
+ * §4.1: "A counter in the menu — so the manager can see the queue is not
+ * empty." Every `wireframes/backoffice/*.html` carries
+ * `Compliance <span class="count">7</span>`, on every screen, not only on
+ * /compliance — so it is the chrome's, fed by the root layout, and this
+ * renders the shell on another screen to prove no page has to pass it.
+ */
+describe('the Compliance counter in the menu (§4.1)', () => {
+  it('shows the Needs-review queue size on the Compliance item, danger-coloured', () => {
+    const markup = shell({ complianceCount: 7, user: null });
+    expect(markup).toMatch(
+      /href="\/compliance"[^>]*>(?:(?!<\/a>).)*Compliance<\/span><span class="count alert">7<\/span><\/a>/,
+    );
+  });
+
+  it('shows nothing at zero: the badge says the queue is NOT empty', () => {
+    const markup = shell({ complianceCount: 0, user: null });
+    expect(markup).not.toContain('class="count');
+  });
+
+  it('badges no other item', () => {
+    const markup = shell({ complianceCount: 3, user: null });
+    expect(markup.match(/class="count/g)).toHaveLength(1);
+  });
+
+  it('renders without a provider, as the unit tests of screens do', () => {
+    const markup = renderToStaticMarkup(
+      <OfficeShell activeHref="/events" title="Scheduling">
+        <span />
+      </OfficeShell>,
+    );
+    expect(markup).toContain('>Compliance<');
+    expect(markup).not.toContain('class="count');
+  });
+});
+
+/** The sidebar foot: `dashboard.html` line 38, "Gisela M. · Admin". */
+describe('the sidebar foot', () => {
+  it('names the signed-in operator from the layout read when no screen passes one', () => {
+    const markup = shell({ complianceCount: 0, user: { name: 'Gisela M.', role: 'Admin' } });
+    expect(markup).toContain('Gisela M.');
+    expect(markup).toContain('>Admin<');
+    expect(markup).toContain('title="Gisela M."');
+  });
+
+  it('lets a screen that passes `user` win', () => {
+    const markup = renderToStaticMarkup(
+      <ChromeProvider value={{ complianceCount: 0, user: { name: 'Gisela M.', role: 'Admin' } }}>
+        <OfficeShell activeHref="/events" title="Scheduling" user={{ name: 'Operations' }}>
+          <span />
+        </OfficeShell>
+      </ChromeProvider>,
+    );
+    expect(markup).toContain('Operations');
+    expect(markup).not.toContain('Gisela M.');
+  });
+
+  it('keeps the sign-out button when there is no operator to show', () => {
+    const markup = shell({ complianceCount: 0, user: null });
+    expect(markup).toContain('Sign out');
+  });
+});
 
 /**
  * ADR-0007's appearance switch belongs to the chrome, not to a screen. It

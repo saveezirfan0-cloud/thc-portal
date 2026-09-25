@@ -132,8 +132,8 @@ set local role authenticated;
 
 select is((select count(*)::int from venue_directory_v), 0,
   'a client reads no venue through venue_directory_v (§11.1)');
-select is((select count(*)::int from venue_upcoming_events_v where venue_id = :'venue_id'), 1,
-  'a client sees only their own upcoming event at the venue, exactly as the events policy says');
+select is((select count(*)::int from venue_upcoming_events_v where venue_id = :'venue_id'), 0,
+  'a client reads nothing through the venue''s upcoming-events view: the client role holds no policy on events at all (ADR-0026) — its own events come from client_events_v');
 
 -- A client's update and delete fail differently from an insert: RLS filters
 -- the row out first, so the function reports "no live venue" rather than a

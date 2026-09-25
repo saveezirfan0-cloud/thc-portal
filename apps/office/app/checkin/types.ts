@@ -17,7 +17,11 @@ export interface MonitorRow {
   eventTitle: string;
   roleName: string;
   staffName: string;
-  photoPath: string | null;
+  /**
+   * A signed, fetchable URL for the onboarding selfie — never the bucket
+   * path (`photos.ts`). NULL for a removed worker and when signing failed.
+   */
+  photoUrl: string | null;
   /** The ROLE SECTION's window (RULE-18), never the event's. */
   startsAt: string;
   endsAt: string;
@@ -38,7 +42,8 @@ export interface ViolationRow {
   id: string;
   bookingId: string;
   staffName: string;
-  photoPath: string | null;
+  /** As on MonitorRow: a signed URL or null, never a bucket path. */
+  photoUrl: string | null;
   eventTitle: string;
   venueName: string;
   roleName: string;

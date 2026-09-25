@@ -29,3 +29,111 @@
 .mobile-list .right {
   margin-left: auto;
 }
+
+/* The wireframe's "‹ Shifts" way back, above the title (§10.1). */
+.app-header .title .back {
+  display: block;
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--cyan);
+  text-decoration: none;
+  margin-bottom: 1px;
+}
+
+/* The counter block — "On shift · chargeable time" over the HH:MM:SS. */
+.tblock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-12) var(--sp-14);
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+  background: var(--card-glass);
+}
+.tblock .lab,
+.earn-total .lab {
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.tblock.paused .timer {
+  color: var(--muted);
+}
+.tblock.brk {
+  border-color: var(--amber);
+}
+.tblock.brk .timer {
+  color: var(--amber);
+}
+
+/* The summary's right-aligned figures (wireframe (k), (i)). */
+.kvs.sum .kv .v {
+  text-align: right;
+  font-family: var(--font-mono);
+}
+.mobile-list .right.amber {
+  color: var(--amber);
+}
+
+/* The pill-and-title head of the confirmation, before the summary. */
+.static-screen.head {
+  flex: 0 0 auto;
+  padding: var(--sp-10) 0 0;
+  gap: var(--sp-6);
+}
+.center {
+  text-align: center;
+}
+
+/* The schematic map: pin, geofence circle, "you" (§5.1, §9.11). */
+.geo-map {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background:
+    repeating-linear-gradient(0deg, var(--map-a) 0 22px, var(--map-b) 22px 23px),
+    repeating-linear-gradient(90deg, transparent 0 22px, var(--map-b) 22px 23px);
+}
+.geo-map .pin {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--cyan-ink);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 3px var(--cyan-dim);
+  border-radius: 50%;
+}
+.geo-map .circle {
+  position: absolute;
+  border: 1.5px solid var(--cyan-ink);
+  background: var(--cyan-dim);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+}
+.geo-map .me {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--purple-ink);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 4px var(--purple-dim);
+  border-radius: 50%;
+}
+.geo-map .lbl {
+  position: absolute;
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  color: var(--muted);
+  background: var(--card-glass);
+  padding: 2px 6px;
+  border-radius: var(--r-pill);
+}
+.geo-map .lbl.you {
+  color: var(--purple-ink);
+  transform: translate(-50%, 8px);
+}

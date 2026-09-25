@@ -1,6 +1,10 @@
 import { acceptedLog } from '@thc/domain';
+import type { NoCheckOutState } from '@thc/domain';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { loadBookings } from '../../data';
+import type { BookingRow } from '../../data';
+import { venuePoint } from '../venue';
 import type { ShiftDetail } from './types';
 
 export function supabaseConfigured(): boolean {
@@ -10,105 +14,116 @@ export function supabaseConfigured(): boolean {
 /**
  * One booking, as the worker who owns it.
  *
- * RLS is the gate: `staff_self_bookings` means a forged id returns nothing
- * rather than somebody else's shift. The check log and the breaks come with
- * it so the screen knows which of the §10.4 states it is in without a
- * second round trip.
+ * The role window, the base rate, the event's details and the three
+ * static-screen facts come from `staff_bookings()` — the guarded,
+ * security-definer reader every Staff App screen uses — never from an
+ * embed off `bookings`: a worker holds no select policy on
+ * `shift_requirements`, `roles` or `events` (§10.4 Invariant 3, the charge
+ * rate must never reach this app), so an embed returns nothing on a real
+ * project and the screen rendered a shift with no start, no rate and no
+ * venue. The RPC resolves the caller itself, so a forged id finds no row
+ * rather than somebody else's shift.
+ *
+ * The check log, the breaks and the violations are the worker's own rows
+ * and carry no money; they are read from their tables under the worker's
+ * self policies.
  */
-export async function loadShift(bookingId: string): Promise<ShiftDetail | null> {
+export async function loadShift(
+  bookingId: string,
+  bookings?: readonly BookingRow[],
+): Promise<ShiftDetail | null> {
   if (!supabaseConfigured()) return null;
 
-  const supabase = createClient(await cookies());
-  const { data } = await supabase
-    .from('bookings')
-    .select(
-      `id, status, confirmed_at,
-       logs:check_logs ( check_in_at, check_out_at, manager_finish_at ),
-       breaks ( id, started_at, ended_at ),
-       shift:shift_id (
-         starts_at, ends_at, pay_rate, dress_code,
-         role:role_id ( name ),
-         event:event_id ( title, venue_name, venue_address, notes, onsite_contact,
-                          geofence_radius_m, pays_breaks )
-       )`,
-    )
-    .eq('id', bookingId)
-    // `check_logs` is append-only: one row per BUTTON PRESS, not one per
-    // booking (§1.5). This is the embedded form of the lateral every other
-    // reader of that table uses — `where check_in_at is not null order by
-    // check_in_at limit 1` — so the screen is handed the same row
-    // `payable_shifts_v` prices and `check_out()` locks. Filtering an
-    // embedded resource narrows the embedded rows, not the booking: a
-    // worker who has only ever been turned away still gets their shift,
-    // with an empty `logs`.
-    .not('logs.check_in_at', 'is', null)
-    .order('check_in_at', { referencedTable: 'logs', ascending: true })
-    .limit(1, { referencedTable: 'logs' })
-    .maybeSingle();
+  const rows = bookings ?? (await loadBookings());
+  const booking = rows.find((b) => b.bookingId === bookingId);
+  if (!booking) return null;
 
-  if (!data) return null;
+  const supabase = createClient(await cookies()) as unknown as TableClient;
+  const [coords, logs, breaks, violations] = await Promise.all([
+    venuePoint(bookingId),
+    supabase
+      .from('check_logs')
+      .select('check_in_at, check_out_at, manager_finish_at, outcome, attempted_at')
+      .eq('booking_id', bookingId),
+    supabase.from('breaks').select('id, started_at, ended_at').eq('booking_id', bookingId),
+    supabase.from('violations').select('type, resolved').eq('booking_id', bookingId),
+  ]);
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
-  const row = data as any;
-  const shift = row.shift;
-  const event = shift?.event;
-  const log = acceptedLog<CheckLogRow>(row.logs);
-  /* eslint-enable @typescript-eslint/no-explicit-any */
+  // `check_logs` is append-only: one row per BUTTON PRESS, not one per
+  // booking (§1.5). A strict-buffer turn-away, an out-of-radius refusal and
+  // the accepted check-in can all sit under one booking; only the accepted
+  // press carries `check_in_at`, and it is the row `check_out()` and
+  // `resolve_violation()` update — the same row `payable_shifts_v` prices.
+  const logRows = (logs.data ?? []) as CheckLogRow[];
+  const log = acceptedLog<CheckLogRow>(logRows);
+  const turnedAway = logRows
+    .filter((r) => r.outcome === 'turned_away' && r.attempted_at)
+    .sort((a, b) => (a.attempted_at! < b.attempted_at! ? 1 : -1))[0];
 
-  // The venue point is a PostGIS geography, which PostgREST does not hand
-  // back as numbers, so the coordinates come from the RPC's own distance
-  // maths rather than from here. The screen only needs the radius to say
-  // how far away the worker is; `attempt_check_in` recomputes it server
-  // side, and that computation is the one that decides.
-  const coords = await venuePoint(bookingId);
+  const violationRows = (violations.data ?? []) as { type: string; resolved: boolean }[];
+  const noCheckoutRow = violationRows.find((v) => v.type === 'no_checkout');
+  const noCheckOut: NoCheckOutState = noCheckoutRow
+    ? noCheckoutRow.resolved
+      ? 'resolved'
+      : 'unresolved'
+    : booking.noCheckoutOpen
+      ? 'unresolved'
+      : 'none';
 
   return {
-    bookingId: row.id,
-    status: row.status,
-    confirmedAt: row.confirmed_at ?? null,
-    eventTitle: event?.title ?? '',
-    venueName: event?.venue_name ?? '',
-    venueAddress: event?.venue_address ?? '',
-    onsiteContact: event?.onsite_contact ?? null,
-    notes: event?.notes ?? null,
-    dressCode: shift?.dress_code ?? null,
-    roleName: shift?.role?.name ?? '',
-    startsAt: shift?.starts_at,
-    endsAt: shift?.ends_at,
-    payRate: Number(shift?.pay_rate ?? 0),
+    bookingId: booking.bookingId,
+    status: booking.status,
+    confirmedAt: booking.confirmedAt?.toISOString() ?? null,
+    cancelCause: booking.cancelCause,
+    eventCancelledAt: booking.eventCancelledAt?.toISOString() ?? null,
+    noCheckoutOpen: noCheckOut === 'unresolved',
+    leftEarly: violationRows.some((v) => v.type === 'left_early'),
+    eventDate: booking.eventDate,
+    eventTitle: booking.eventTitle,
+    venueName: booking.venueName,
+    venueAddress: booking.venueAddress,
+    onsiteContact: booking.onsiteContact,
+    notes: booking.notes,
+    dressCode: booking.dressCode || null,
+    roleName: booking.role,
+    startsAt: booking.startsAt.toISOString(),
+    endsAt: booking.endsAt.toISOString(),
+    payRate: booking.payRate,
     venueLat: coords?.lat ?? 0,
     venueLng: coords?.lng ?? 0,
-    geofenceRadiusM: event?.geofence_radius_m ?? 0,
-    breaksLogged: !event?.pays_breaks,
+    geofenceRadiusM: coords?.radiusM ?? 0,
+    // Null until accepted (the RPC withholds it); a booked shift always has it.
+    breaksLogged: booking.paysBreaks === null ? false : !booking.paysBreaks,
     checkInAt: log?.check_in_at ?? null,
     checkOutAt: log?.manager_finish_at ?? log?.check_out_at ?? null,
-    breaks: (row.breaks ?? [])
-      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-      .map((b: any) => ({ id: b.id, startedAt: b.started_at, endedAt: b.ended_at ?? null }))
-      /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-      .sort((a: any, b: any) => a.startedAt.localeCompare(b.startedAt)),
+    noCheckOut,
+    turnedAwayAt: turnedAway?.attempted_at ?? null,
+    breaks: ((breaks.data ?? []) as BreakRow[])
+      .map((b) => ({ id: b.id, startedAt: b.started_at, endedAt: b.ended_at ?? null }))
+      .sort((a, b) => a.startedAt.localeCompare(b.startedAt)),
   };
 }
 
-/** The three columns of `check_logs` this screen reads. */
+/** The columns of `check_logs` this screen reads. */
 export interface CheckLogRow {
   check_in_at: string | null;
   check_out_at: string | null;
   manager_finish_at: string | null;
+  outcome?: string | null;
+  attempted_at?: string | null;
 }
 
-/**
- * The venue's centre, for the map and the distance the screen shows while
- * the worker is walking there. `booking_venue_point` is a tiny reader
- * because geography columns do not survive PostgREST as numbers.
- */
-async function venuePoint(bookingId: string): Promise<{ lat: number; lng: number } | null> {
-  const supabase = createClient(await cookies()) as unknown as {
-    rpc(fn: string, args: Record<string, string>): PromiseLike<{ data: unknown; error: unknown }>;
+interface BreakRow {
+  id: string;
+  started_at: string;
+  ended_at: string | null;
+}
+
+/** See apps/office/app/venues/actions.ts: the generated types are a placeholder. */
+interface TableClient {
+  from(table: string): {
+    select(columns: string): {
+      eq(column: string, value: string): PromiseLike<{ data: unknown; error: unknown }>;
+    };
   };
-  const { data } = await supabase.rpc('booking_venue_point', { p_booking: bookingId });
-  const point = data as { lat?: number; lng?: number } | null;
-  return point && typeof point.lat === 'number' && typeof point.lng === 'number'
-    ? { lat: point.lat, lng: point.lng }
-    : null;
 }

@@ -18,7 +18,7 @@
 --     the aggregated row says so rather than showing a mixture.
 -- =====================================================================
 begin;
-select plan(30);
+select plan(39);
 \ir _shared/fixtures.psql
 
 \set role_b     'bbbbbbbb-0000-4000-8000-00000000000b'
@@ -146,13 +146,16 @@ select is((select do_not_return from clients_qualified_staff_v
             where client_id = :'clienta' and staff_id = :'staffa'), true,
   'barring through ONE role bars the worker across the whole row — the auto-assign gate is client-wide, and a mixed row would read as half a bar');
 
--- §1.7 reaches this list too.
+-- §1.7 reaches this list too. Inside a savepoint: §2.12 (20260926110800)
+-- has no removed → compliant edge, so "putting them back" is a rollback,
+-- with the answer captured by \gset and asserted afterwards.
+savepoint removed_staffa;
 update staff set removed_at = now(), status = 'removed' where id = :'staffa';
-select is((select display_name from clients_qualified_staff_v
-            where client_id = :'clienta' and staff_id = :'staffa'),
-  deleted_account_label(90001),
+select display_name as removed_name from clients_qualified_staff_v
+ where client_id = :'clienta' and staff_id = :'staffa' \gset
+rollback to savepoint removed_staffa;
+select is(:'removed_name', deleted_account_label(90001),
   'a removed worker who is still cleared reads as the anonymised label here as well — the view goes through staff_directory_v rather than the table (§1.7)');
-update staff set removed_at = null, status = 'compliant' where id = :'staffa';
 
 -- =====================================================================
 -- Block 4 · the client's events
@@ -187,6 +190,40 @@ select is((select margin_gbp from clients_event_list_v where id = :'cancelled'),
 select is((select status::text from clients_event_list_v where id = :'cancelled'), 'cancelled',
   'and is labelled as cancelled rather than derived from the clock');
 
+-- =====================================================================
+-- Who reads the three clients_* views (§9.7, §11.1)
+--
+-- Everything above ran as the table owner. The office reads with the
+-- manager's own session (role `authenticated`), and until 20260926110700
+-- clients_event_list_v failed for every admin: security_invoker over
+-- event_windows, which 0009 revoked from the PostgREST roles — so §9.7's
+-- fourth block never rendered. A customer and a worker read nothing:
+-- the rate card carries charge_rate and margin.
+-- =====================================================================
 reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from clients_event_list_v where id = :'event_a'), 1,
+  '§9.7 block 4: an admin session reads the client''s events (the window is derived inline, not read from the revoked event_windows)');
+select ok((select count(*) from clients_rate_card_v where client_id = :'clienta') >= 1,
+  'and the rate card');
+select ok((select count(*) from clients_qualified_staff_v where client_id = :'clienta') >= 1,
+  'and the qualified pool');
+reset role;
+
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from clients_rate_card_v), 0, '§11.1 a client reads no rate card — charge rates and margin');
+select is((select count(*)::int from clients_qualified_staff_v), 0, 'nor the qualified pool — worker personal data');
+select is((select count(*)::int from clients_event_list_v), 0, 'nor the office''s event list with its margin; its own events come from client_events_v');
+reset role;
+
+select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is((select count(*)::int from clients_rate_card_v), 0, 'a worker reads no rate card');
+select is((select count(*)::int from clients_qualified_staff_v), 0, 'nor the pool, not even their own clearance row');
+select is((select count(*)::int from clients_event_list_v), 0, 'nor the client''s event list');
+reset role;
+
 select * from finish();
 rollback;

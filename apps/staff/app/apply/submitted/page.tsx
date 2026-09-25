@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { Logo } from '@thc/ui';
+import { PublicCard } from '../PublicCard';
 import { SENT_TO_COOKIE } from '../form';
 import '../apply.css';
 
@@ -22,46 +22,35 @@ export default async function Page() {
 
   return (
     <div className="apply-page">
-      <div className="auth-wrap">
-        <section className="auth-card done">
-          <div className="brand">
-            <Logo size="lg" />
-            <div>
-              <div className="name">The Hospitality Company</div>
-              <div className="sub">Join our team</div>
+      <PublicCard product="Join our team" className="done">
+        <span className="ico" aria-hidden="true">
+          ✓
+        </span>
+        <h2>Check your inbox</h2>
+        <p className="lead">
+          We&apos;ve sent you an email from <b style={{ color: 'var(--text)' }}>Willo</b> with a
+          link to your video interview. Complete it whenever you&apos;re ready — it takes about ten
+          minutes and you can record it on your phone.
+        </p>
+
+        <div className="box">
+          {sentTo ? (
+            <div className="row">
+              <span className="label">Sent to</span>
+              <span className="mono sm">{sentTo}</span>
             </div>
+          ) : null}
+          <div className="row" style={{ marginTop: sentTo ? 8 : 0 }}>
+            <span className="label">From</span>
+            <span className="mono sm">Willo (interview invitation)</span>
           </div>
+        </div>
 
-          <span className="ico" aria-hidden="true">
-            ✓
-          </span>
-          <h2>Check your inbox</h2>
-          <p className="lead">
-            We&apos;ve sent you an email from <b style={{ color: 'var(--text)' }}>Willo</b> with a
-            link to your video interview. Complete it whenever you&apos;re ready — it takes about
-            ten minutes and you can record it on your phone.
-          </p>
-
-          <div className="box">
-            {sentTo ? (
-              <div className="row">
-                <span className="label">Sent to</span>
-                <span className="mono sm">{sentTo}</span>
-              </div>
-            ) : null}
-            <div className="row" style={{ marginTop: sentTo ? 8 : 0 }}>
-              <span className="label">From</span>
-              <span className="mono sm">Willo (interview invitation)</span>
-            </div>
-          </div>
-
-          <p className="xs muted">
-            Can&apos;t find it? Check your spam folder, or write to{' '}
-            <a href="mailto:admin@thehospitalitycompany.co.uk">admin@thehospitalitycompany.co.uk</a>
-            .
-          </p>
-        </section>
-      </div>
+        <p className="xs muted">
+          Can&apos;t find it? Check your spam folder, or write to{' '}
+          <a href="mailto:admin@thehospitalitycompany.co.uk">admin@thehospitalitycompany.co.uk</a>.
+        </p>
+      </PublicCard>
     </div>
   );
 }

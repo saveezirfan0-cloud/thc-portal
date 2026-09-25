@@ -2,10 +2,19 @@
 
 import { useState } from 'react';
 import { Alert, Button, Modal, Note, Textarea } from '@thc/ui';
-import { UK_ZONE, formatDateTimeIn, ukInputLabel } from '@thc/domain';
+import {
+  UK_ZONE,
+  UK_ZONE_LABEL,
+  VIEWER_ZONE_LABEL,
+  displayTimeRange,
+  formatDateTimeIn,
+  needsDualZone,
+  ukInputLabel,
+} from '@thc/domain';
 import { resolveViolation } from './actions';
-import { VIOLATION_LABEL, needsActualFinish, reclassifiesToLate } from './status';
+import { VIOLATION_LABEL, flaggedAs, needsActualFinish, reclassifiesToLate } from './status';
 import type { ViolationRow } from './types';
+import { ukLocalToIso } from './ukLocalToIso';
 
 /**
  * The violation detail window (§9.5), which doubles as the audit trail.
@@ -15,6 +24,13 @@ import type { ViolationRow } from './types';
  * entry afterwards. A resolved entry therefore renders as a record rather
  * than a form.
  *
+ * Two zones share this window and §1.8 keeps them apart: "operational
+ * versus audit". Detected, Checked in and Checked out are stamps the
+ * manager acts on today, so they read in the READER's zone on one line
+ * ("18:58 your time", checkin.html) — the same clock as the Due pill and
+ * the log behind the window. "Resolved by … UK time" and the finish a
+ * manager entered are records of a decision already taken, and stay UK.
+ *
  * The finish time is validated on the SERVER (`resolve_violation`), and the
  * dialog stays open with whatever it refused — before the check-in, or in
  * the future. There is deliberately no upper bound against the scheduled
@@ -23,9 +39,12 @@ import type { ViolationRow } from './types';
  */
 export function ResolveModal({
   violation,
+  zone,
   onClose,
 }: {
   violation: ViolationRow;
+  /** The reader's zone, from the screen's mount-guarded `useViewerZone`. */
+  zone: string;
   onClose: () => void;
 }) {
   const [note, setNote] = useState('');
@@ -36,6 +55,17 @@ export function ResolveModal({
 
   const wantsFinish = needsActualFinish(violation.type);
   const canSubmit = note.trim().length > 0 && (!wantsFinish || finish.length > 0) && !busy;
+
+  // An operational stamp, in the reader's zone, labelled so it is never a
+  // bare clock; a UK reader's own zone IS UK time, so the label says so.
+  const stamp = (iso: string) =>
+    `${formatDateTimeIn(new Date(iso), zone)} ${needsDualZone(zone) ? VIEWER_ZONE_LABEL : UK_ZONE_LABEL}`;
+  // An audit record: UK, always (§1.8).
+  const audit = (iso: string) => `${formatDateTimeIn(new Date(iso), UK_ZONE)} ${UK_ZONE_LABEL}`;
+  const scheduled =
+    violation.startsAt && violation.endsAt
+      ? displayTimeRange(new Date(violation.startsAt), new Date(violation.endsAt), zone, true)
+      : null;
 
   async function submit() {
     setBusy(true);
@@ -64,28 +94,34 @@ export function ResolveModal({
       <div className="stack" style={{ gap: 12 }}>
         <p className="muted sm">
           {violation.eventTitle} · {violation.venueName} · {violation.roleName}
+          {/* The scheduled window, dual like every scheduled time (§1.8). */}
+          {scheduled ? (
+            <>
+              {' '}
+              · {scheduled.primary}
+              {scheduled.secondary ? ` (${scheduled.secondary})` : ''}
+            </>
+          ) : null}
         </p>
         <div className="kvs">
           <div className="kv">
+            <span className="k">Flagged as</span>
+            <span className="v">{flaggedAs(violation)}</span>
+          </div>
+          <div className="kv">
             <span className="k">Detected</span>
-            <span className="v mono">
-              {formatDateTimeIn(new Date(violation.detectedAt), UK_ZONE)} UK
-            </span>
+            <span className="v mono">{stamp(violation.detectedAt)}</span>
           </div>
           <div className="kv">
             <span className="k">Checked in</span>
             <span className="v mono">
-              {violation.checkInAt
-                ? `${formatDateTimeIn(new Date(violation.checkInAt), UK_ZONE)} UK`
-                : 'never'}
+              {violation.checkInAt ? stamp(violation.checkInAt) : 'never'}
             </span>
           </div>
           <div className="kv">
             <span className="k">Checked out</span>
             <span className="v mono">
-              {violation.checkOutAt
-                ? `${formatDateTimeIn(new Date(violation.checkOutAt), UK_ZONE)} UK`
-                : 'no check-out recorded'}
+              {violation.checkOutAt ? stamp(violation.checkOutAt) : 'no check-out recorded'}
             </span>
           </div>
         </div>
@@ -95,17 +131,13 @@ export function ResolveModal({
           <>
             <Note tone="green">
               Resolved by {violation.resolvedByName ?? 'a manager'}
-              {violation.resolvedAt
-                ? ` · ${formatDateTimeIn(new Date(violation.resolvedAt), UK_ZONE)} UK`
-                : ''}
+              {violation.resolvedAt ? ` · ${audit(violation.resolvedAt)}` : ''}
             </Note>
             <blockquote className="sm">{violation.resolutionNote}</blockquote>
             {violation.actualFinishAt ? (
               <div className="kv">
                 <span className="k">Actual finish entered</span>
-                <span className="v mono">
-                  {formatDateTimeIn(new Date(violation.actualFinishAt), UK_ZONE)} UK
-                </span>
+                <span className="v mono">{audit(violation.actualFinishAt)}</span>
               </div>
             ) : null}
           </>
@@ -176,25 +208,4 @@ export function ResolveModal({
       </div>
     </Modal>
   );
-}
-
-/**
- * `datetime-local` gives a wall clock with no zone. §1.8 says this field is
- * UK time, so it is read as UK and converted to the instant the server
- * stores — not as the manager's own zone, which is the bug this avoids for
- * anyone working outside the UK.
- */
-export function ukLocalToIso(local: string): string {
-  const [date, time] = local.split('T');
-  const [y, m, d] = (date ?? '').split('-').map(Number);
-  const [hh, mm] = (time ?? '').split(':').map(Number);
-  const guess = Date.UTC(y ?? 0, (m ?? 1) - 1, d ?? 1, hh ?? 0, mm ?? 0);
-  // Europe/London is UTC or UTC+1; find the offset that round-trips.
-  for (const offset of [0, -3600_000]) {
-    const candidate = new Date(guess + offset);
-    const back = formatDateTimeIn(candidate, UK_ZONE);
-    const wanted = formatDateTimeIn(new Date(guess), 'UTC');
-    if (back === wanted) return candidate.toISOString();
-  }
-  return new Date(guess).toISOString();
 }

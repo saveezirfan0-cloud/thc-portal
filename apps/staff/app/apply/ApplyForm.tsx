@@ -3,7 +3,17 @@
 import { useActionState, useState } from 'react';
 import { Alert, Button, Checkbox, Input, InputRow } from '@thc/ui';
 import { apply } from './actions';
-import { DIAL_CODES, INITIAL_STATE, ageOn, errorBanner, parseDob, validate } from './form';
+import {
+  COMMON_COUNTRIES,
+  INITIAL_STATE,
+  OTHER_COUNTRIES,
+  ageOn,
+  countryLabel,
+  errorBanner,
+  parseDob,
+  validate,
+  visibleErrors,
+} from './form';
 import type { ApplicationValues, FieldErrors } from './form';
 
 /**
@@ -31,9 +41,12 @@ export function ApplyForm() {
   const blocked = underage || !values.consent;
 
   // Before the first submit the form stays quiet; after it, the field errors
-  // follow what the person types. The server's answer seeds the first pass.
+  // follow what the person types — plus whatever the server refused that
+  // the person has not changed since (visibleErrors), so a refusal only the
+  // server could make is never dropped on the floor. The server's answer
+  // seeds the first pass.
   const checked = validate(values);
-  const errors: FieldErrors = { ...(touched ? checked : state.errors) };
+  const errors: FieldErrors = touched ? visibleErrors(checked, state, values) : { ...state.errors };
 
   // ...except for the two fields that hold the button down. `blocked`
   // disables submit, so in exactly those states the first submit never
@@ -101,19 +114,33 @@ export function ApplyForm() {
           Mobile
         </span>
         <InputRow>
-          <div style={{ flex: '0 0 118px' }}>
+          {/* The wireframe's `.caret` wrapper: the mark is a pseudo-element
+              in the muted token, so it follows the theme — a select cannot
+              carry a pseudo-element of its own. ADR-0009: the value is the
+              ISO code, the two groups are disjoint, the list is every
+              country and the browser's type-ahead finds one by name. */}
+          <div className="caret apply-dial">
             <select
               className="input"
-              name="dialCode"
+              name="country"
               aria-label="Country code"
-              value={values.dialCode}
-              onChange={(e) => set('dialCode', e.target.value)}
+              value={values.country}
+              onChange={(e) => set('country', e.target.value)}
             >
-              {DIAL_CODES.map((c, i) => (
-                <option key={`${c.code}-${i}`} value={c.code}>
-                  {c.label}
-                </option>
-              ))}
+              <optgroup label="Common">
+                {COMMON_COUNTRIES.map((c) => (
+                  <option key={c.iso} value={c.iso}>
+                    {countryLabel(c)}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="All countries">
+                {OTHER_COUNTRIES.map((c) => (
+                  <option key={c.iso} value={c.iso}>
+                    {countryLabel(c)}
+                  </option>
+                ))}
+              </optgroup>
             </select>
           </div>
           <input

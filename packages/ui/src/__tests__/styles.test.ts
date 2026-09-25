@@ -9,6 +9,10 @@ const sheets = Object.fromEntries(files.map((f) => [f, readFileSync(join(STYLES,
 const all = Object.values(sheets).join('\n');
 const stripComments = (css: string) => css.replace(/\/\*[\s\S]*?\*\//g, '');
 const rules = stripComments(all);
+/** The wireframe sheet this package mirrors (CLAUDE.md). */
+const WIREFRAME = stripComments(
+  readFileSync(join(STYLES, '..', '..', '..', '..', 'wireframes', 'assets', 'thc.css'), 'utf8'),
+);
 
 /** The `:root` block of tokens.css, i.e. the scope + dark defaults. */
 function block(selector: string): string {
@@ -279,10 +283,99 @@ describe('palette discipline', () => {
     // Every purple surface is either the Auto-Assign switch, the tone
     // modifiers the design system exposes, or the Radar self-applicant flag.
     for (const selector of purpleRules) {
-      expect(selector).toMatch(
-        /purple|\.switch|\.kcard\.returning|\.mcard\.applied|\.card\.purple/,
-      );
+      expect(selector).toMatch(/purple|\.switch|\.mcard\.applied|\.card\.purple/);
     }
+  });
+
+  it('flags a returning applicant in amber, as the wireframe does (§2.12)', () => {
+    // The card carries an amber "Returning applicant" pill; a purple border
+    // under it read as Auto-Assign. Both sheets must draw the same card.
+    const rule = (css: string) => {
+      const start = css.indexOf('.kcard.returning {');
+      expect(start, '.kcard.returning').toBeGreaterThan(-1);
+      return css.slice(start, css.indexOf('}', start));
+    };
+    expect(rule(stripComments(sheets['components.css']!))).toContain('var(--amber-ink)');
+    expect(rule(stripComments(sheets['components.css']!))).not.toContain('--purple');
+    expect(rule(WIREFRAME)).toContain('var(--amber-ink)');
+  });
+});
+
+describe('touch targets on the Staff App (§1.2)', () => {
+  // The brief: touch targets >= 44px on the Staff App. Every control metric
+  // is a token, and the frame the Staff App renders in re-points them all to
+  // the one floor — so a screen cannot ship a 28px button or a 32px segment
+  // by reaching for the small size.
+  const STAFF = ".app-frame,\n.phone,\n[data-app='staff'] {";
+  const px = (value: string) => Number.parseFloat(value);
+
+  function staffBlock(): string {
+    const css = stripComments(sheets['components.css']!);
+    const start = css.indexOf(STAFF);
+    expect(start, 'the Staff App tap-target block').toBeGreaterThan(-1);
+    return css.slice(start, css.indexOf('}', start));
+  }
+
+  it('names the floor once, at 44px', () => {
+    expect(px(token(':root', '--tap-min'))).toBeGreaterThanOrEqual(44);
+  });
+
+  it('re-points every control metric to the floor inside the frame', () => {
+    const block = staffBlock();
+    for (const name of ['--btn-h', '--btn-h-sm', '--input-h', '--seg-h', '--seg-h-sm']) {
+      expect(block, name).toMatch(new RegExp(`${name}:\\s*var\\(--tap-min\\);`));
+    }
+  });
+
+  it('is what the sized controls actually read', () => {
+    // A literal height in a component rule would step around the token.
+    const css = stripComments(sheets['components.css']!);
+    const rule = (selector: string) => {
+      const start = css.indexOf(`${selector} {`);
+      expect(start, selector).toBeGreaterThan(-1);
+      return css.slice(start, css.indexOf('}', start));
+    };
+    expect(rule('.btn')).toContain('height: var(--btn-h)');
+    expect(rule('.btn.sm')).toContain('height: var(--btn-h-sm)');
+    expect(rule('.btn.sm.icon')).toContain('width: var(--btn-h-sm)');
+    expect(rule('.input,\nselect.input,\ntextarea.input')).toContain('height: var(--input-h)');
+    expect(rule('.seg button,\n.seg a')).toContain('height: var(--seg-h)');
+    expect(rule('.seg.sm button,\n.seg.sm a')).toContain('height: var(--seg-h-sm)');
+    const literal = css
+      .split(/(?=\n\.)/)
+      .filter((r) => /^\s*\.seg\b/.test(r))
+      .filter((r) => /height:\s*\d+px/.test(r.slice(r.indexOf('{'))))
+      .map((r) => r.trim().split('{')[0]!.trim());
+    expect(literal).toEqual([]);
+  });
+
+  it('gives a checkbox or radio row the floor without moving the box off the first line', () => {
+    const css = stripComments(sheets['components.css']!);
+    const start = css.indexOf(":is(.app-frame, .phone, [data-app='staff']) .check {");
+    expect(start).toBeGreaterThan(-1);
+    const rule = css.slice(start, css.indexOf('}', start));
+    expect(rule).toContain('min-height: var(--tap-min)');
+    expect(rule).toContain('padding-block: calc((var(--tap-min) - 18px) / 2)');
+    expect(rule).not.toContain('align-items');
+  });
+
+  it('clears the floor on the public /apply form, which renders outside the frame', () => {
+    // A text input is a control too, and the warm block is what both modes
+    // render (ADR-0007), so the token itself has to be at least the floor.
+    expect(px(token(":root[data-style='warm']", '--input-h'))).toBeGreaterThanOrEqual(44);
+    expect(px(token(':root', '--btn-h-lg'))).toBeGreaterThanOrEqual(44);
+  });
+
+  it('is the same rule in the wireframe sheet', () => {
+    // packages/ui mirrors wireframes/assets/thc.css (CLAUDE.md): the phone
+    // frame there sets the same five tokens to the same floor.
+    const start = WIREFRAME.indexOf('.phone { --btn-h: var(--tap-min);');
+    expect(start).toBeGreaterThan(-1);
+    const rule = WIREFRAME.slice(start, WIREFRAME.indexOf('}', start));
+    for (const name of ['--btn-h', '--btn-h-sm', '--input-h', '--seg-h', '--seg-h-sm']) {
+      expect(rule, name).toContain(`${name}: var(--tap-min)`);
+    }
+    expect(WIREFRAME).toMatch(/--tap-min:\s*44px/);
   });
 });
 

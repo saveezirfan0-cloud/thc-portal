@@ -6,10 +6,14 @@ import {
   formatAllocation,
   formatCounter,
   formatEventFill,
+  formatHours,
   formatOpen,
+  sectionHours,
 } from '@thc/domain';
 import { formatDayShort, weekdayIndex } from '../calendar';
-import { type DayBucket, type EventRow, fillTone } from '../view-model';
+import { type DayBucket, type EventRow, cancelledLine, fillTone } from '../view-model';
+import { ClickableRow } from './ClickableRow';
+import { ScheduledWindow } from './ScheduledWindow';
 
 const STATUS_TONE: Record<EventStatus, 'cyan' | 'green' | 'neutral'> = {
   upcoming: 'cyan',
@@ -29,9 +33,53 @@ export function StatusPill({ status }: { status: EventStatus }) {
 const classes = (...parts: (string | false | undefined)[]) => parts.filter(Boolean).join(' ');
 
 /** The chip's fill word: "full", "4 open", or nothing once cancelled. */
-function chipFill(row: EventRow): string | null {
+export function chipFill(row: EventRow): string | null {
   if (row.status === 'cancelled') return null;
   return formatOpen(row.fill) ?? 'full';
+}
+
+/**
+ * The chip classes the month and week calendars share: `full` only when
+ * nothing is open and the event is live, `ongoing` from the status, and
+ * `cancelled`. An ongoing event that is short stays amber — the wireframe's
+ * ongoing chip is green because it is "10 of 10", not because it is ongoing.
+ */
+export function chipClasses(kind: 'evchip' | 'wchip', row: EventRow): string {
+  return classes(
+    kind,
+    row.status === 'cancelled' && 'cancelled',
+    row.status === 'ongoing' && 'ongoing',
+    row.status !== 'cancelled' && fillTone(row) === 'green' && 'full',
+  );
+}
+
+/**
+ * A role's own fill pill — "4 of 4" green, "3 of 4" amber — as the day
+ * rows carry one per role (events.html:322). Confirmed is capped at
+ * headcount the way the event fill is (§3.2).
+ */
+export function roleFill(role: { confirmed: number; headcount: number }): {
+  text: string;
+  tone: 'green' | 'amber';
+} {
+  const confirmed = Math.min(role.confirmed, role.headcount);
+  return {
+    text: `${confirmed} of ${role.headcount}`,
+    tone: confirmed >= role.headcount ? 'green' : 'amber',
+  };
+}
+
+/**
+ * The sub-line under a day row's window: "starts in 28 min" while the
+ * start is within the hour, else the window's length ("12 h window").
+ */
+export function windowSubline(row: EventRow, now: Date = new Date()): string | null {
+  if (!row.window || row.status === 'cancelled') return null;
+  const untilStartMin = Math.round((row.window.startsAt.getTime() - now.getTime()) / 60_000);
+  if (row.status === 'upcoming' && untilStartMin >= 0 && untilStartMin <= 60) {
+    return `starts in ${untilStartMin} min`;
+  }
+  return `${formatHours(sectionHours(row.window))} window`;
 }
 
 // ---------------------------------------------------------------------
@@ -66,8 +114,8 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
         {rows.map((row) => {
           const cancelled = row.status === 'cancelled';
           const open = formatOpen(row.fill);
-          return (
-            <tr key={row.id} className={cancelled ? undefined : 'clickable'}>
+          const cells = (
+            <>
               <td>
                 <b className={row.date === today ? 'cyan' : undefined}>
                   {formatDayShort(row.date)}
@@ -82,17 +130,21 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
                     <b>{row.title}</b>
                   </Link>
                 )}
-                {cancelled && row.cancelReason ? (
-                  <span className="sub">{row.cancelReason}</span>
-                ) : null}
+                {cancelled ? <span className="sub">{cancelledLine(row)}</span> : null}
               </td>
               <td className={cancelled ? 'muted' : undefined}>
                 {row.clientName}
                 <span className="sub">{row.venueName}</span>
               </td>
               <td className={classes('mono', 'sm', cancelled && 'muted')}>
-                {row.windowLabel}
-                {row.endsNextDay ? <span className="sub">ends next day</span> : null}
+                {/* The column header carries the zone; a reader outside the
+                    UK gets the "your time" line beneath (§1.8). */}
+                {row.window ? (
+                  <ScheduledWindow startsAt={row.window.startsAt} endsAt={row.window.endsAt} />
+                ) : (
+                  '—'
+                )}
+                {row.endsLabel ? <span className="sub">{row.endsLabel}</span> : null}
               </td>
               <td>
                 <div className="roles">
@@ -129,7 +181,17 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
               <td className={classes('mono', 'sm', !row.poNumber && 'muted')}>
                 {row.poNumber || '—'}
               </td>
-            </tr>
+            </>
+          );
+          // The whole row opens the board, as the wireframe's onclick does —
+          // the cursor `.clickable` shows must not promise what only the
+          // title delivered. A cancelled row has no board to go to.
+          return cancelled ? (
+            <tr key={row.id}>{cells}</tr>
+          ) : (
+            <ClickableRow key={row.id} href={`/events/${row.id}`} className="clickable">
+              {cells}
+            </ClickableRow>
           );
         })}
       </tbody>
@@ -142,6 +204,21 @@ export function ListView({ rows, today }: { rows: EventRow[]; today: string }) {
 // ---------------------------------------------------------------------
 
 const WEEKDAY_HEADS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+/** The month toolbar's key: full green · N open amber · cancelled (events.html:193). */
+export function MonthLegend() {
+  return (
+    <span className="row legend-chips" aria-label="Legend">
+      <span className="evchip full">
+        <span className="t">full</span>green
+      </span>
+      <span className="evchip">
+        <span className="t">N open</span>amber
+      </span>
+      <span className="evchip cancelled">cancelled</span>
+    </span>
+  );
+}
 
 export function MonthView({
   cells,
@@ -161,6 +238,7 @@ export function MonthView({
       ))}
       {cells.map((cell) => {
         const bucket = buckets.get(cell.iso);
+        const count = bucket?.count ?? 0;
         return (
           <div
             key={cell.iso}
@@ -168,12 +246,16 @@ export function MonthView({
           >
             <div className="d">
               {cell.dayOfMonth}
-              {bucket && bucket.count > 0 ? (
+              {/* An in-month day with nothing on it still says "0 ev"; only
+                  the neighbours' spill days stay bare (events.html:204). */}
+              {count > 0 ? (
                 <span className="cnt">
-                  {bucket.allCancelled
-                    ? `${bucket.count} ev · cancelled`
-                    : formatCounter(bucket.count, bucket.open)}
+                  {bucket!.allCancelled
+                    ? `${count} ev · cancelled`
+                    : formatCounter(count, bucket!.open)}
                 </span>
+              ) : cell.inMonth ? (
+                <span className="cnt">0 ev</span>
               ) : null}
             </div>
             {bucket && bucket.events.length > 0 ? (
@@ -190,17 +272,11 @@ export function MonthView({
   );
 }
 
-function MonthChip({ row }: { row: EventRow }) {
-  const tone = fillTone(row);
+export function MonthChip({ row }: { row: EventRow }) {
   const fill = chipFill(row);
   return (
     <Link
-      className={classes(
-        'evchip',
-        row.status === 'cancelled' && 'cancelled',
-        row.status === 'ongoing' && 'ongoing',
-        row.status !== 'cancelled' && tone === 'green' && 'full',
-      )}
+      className={chipClasses('evchip', row)}
       href={`/events/${row.id}`}
       title={`${row.title} · ${row.clientName}`}
     >
@@ -230,6 +306,9 @@ export function WeekView({
         const bucket = buckets.get(iso);
         const count = bucket?.count ?? 0;
         const open = bucket?.open ?? 0;
+        // A day whose only events are cancelled reads "1 ev · cancelled" in
+        // amber, as the month cell does (events.html:300) — not "0 open".
+        const allCancelled = bucket?.allCancelled ?? false;
         return (
           <div className={classes('col', iso === today && 'today')} key={iso}>
             <div className="ch">
@@ -237,8 +316,12 @@ export function WeekView({
                 {WEEKDAY_HEADS[weekdayIndex(iso)]} {Number(iso.slice(8, 10))}
                 {iso === today ? ' · today' : ''}
               </span>
-              <span className={classes('c', open === 0 && 'ok')}>
-                {count === 0 ? '0 ev' : formatCounter(count, open)}
+              <span className={classes('c', open === 0 && !allCancelled && 'ok')}>
+                {count === 0
+                  ? '0 ev'
+                  : allCancelled
+                    ? `${count} ev · cancelled`
+                    : formatCounter(count, open)}
               </span>
             </div>
             <div className="list">
@@ -253,25 +336,30 @@ export function WeekView({
   );
 }
 
-function WeekChip({ row }: { row: EventRow }) {
+export function WeekChip({ row }: { row: EventRow }) {
+  const cancelled = row.status === 'cancelled';
   return (
-    <Link
-      className={classes(
-        'wchip',
-        row.status === 'cancelled' && 'cancelled',
-        row.status === 'ongoing' && 'ongoing',
-        row.status !== 'cancelled' && fillTone(row) === 'green' && 'full',
-      )}
-      href={`/events/${row.id}`}
-    >
+    <Link className={chipClasses('wchip', row)} href={`/events/${row.id}`}>
       <span className="w">
-        {row.windowLabel}
-        {row.status !== 'cancelled' ? <span className="f">{formatEventFill(row.fill)}</span> : null}
+        {row.window ? (
+          <ScheduledWindow startsAt={row.window.startsAt} endsAt={row.window.endsAt} />
+        ) : (
+          '—'
+        )}
+        {!cancelled ? <span className="f">{formatEventFill(row.fill)}</span> : null}
       </span>
-      <span className="n">{row.title}</span>
+      <span className="n">
+        {row.title}
+        {/* §3.2: the status pill sits on the row in every view; the week
+            chip draws it for the ongoing state (events.html:271). */}
+        {row.status === 'ongoing' ? <StatusPill status={row.status} /> : null}
+      </span>
       <span className="m">
         {row.clientName} · {row.venueName}
       </span>
+      {cancelled ? (
+        <span className="m">{cancelledLine(row)} — stays visible, greyed (§3.3)</span>
+      ) : null}
     </Link>
   );
 }
@@ -280,7 +368,24 @@ function WeekChip({ row }: { row: EventRow }) {
 // Day
 // ---------------------------------------------------------------------
 
-export function DayView({ rows }: { rows: EventRow[] }) {
+/** The day toolbar's right-hand pills: "3 ev · 0 open" and "1 ongoing" (events.html:207). */
+export function DayPills({ rows }: { rows: EventRow[] }) {
+  const live = rows.filter((row) => row.status !== 'cancelled');
+  const open = live.reduce((sum, row) => sum + row.fill.open, 0);
+  const ongoing = rows.filter((row) => row.status === 'ongoing').length;
+  return (
+    <>
+      <Pill tone="cyan">{formatCounter(rows.length, open)}</Pill>
+      {ongoing > 0 ? (
+        <Pill tone="green" dot>
+          {ongoing} ongoing
+        </Pill>
+      ) : null}
+    </>
+  );
+}
+
+export function DayView({ rows, now }: { rows: EventRow[]; now?: Date }) {
   if (rows.length === 0) {
     return (
       <Panel>
@@ -291,35 +396,72 @@ export function DayView({ rows }: { rows: EventRow[] }) {
 
   return (
     <div className="stack tight">
+      <div className="dayrow head" aria-hidden="true">
+        <span className="label">Window (UK time)</span>
+        <span className="label">Event</span>
+        <span className="label">Client · Venue</span>
+        <span className="label">Roles · headcount (+buffer)</span>
+        <span className="label">Fill</span>
+        <span className="label">Status</span>
+      </div>
       {rows.map((row) => {
         const open = formatOpen(row.fill);
+        const cancelled = row.status === 'cancelled';
+        const subline = windowSubline(row, now);
         return (
           <Link
             key={row.id}
             href={`/events/${row.id}`}
-            className={classes('dayrow', row.status === 'cancelled' && 'cancelled')}
+            className={classes('dayrow', cancelled && 'cancelled')}
           >
             <span className="w">
-              {row.windowLabel}
-              {row.endsNextDay ? <span className="sub">ends next day</span> : null}
+              {row.window ? (
+                <ScheduledWindow startsAt={row.window.startsAt} endsAt={row.window.endsAt} />
+              ) : (
+                '—'
+              )}
+              {row.endsLabel ? <span className="sub">{row.endsLabel}</span> : null}
+              {subline ? <span className="sub">{subline}</span> : null}
             </span>
             <span>
               <b>{row.title}</b>
-              {row.poNumber ? <span className="sub mono">PO {row.poNumber}</span> : null}
+              {row.poNumber || row.onsiteContact ? (
+                <span className="sub">
+                  {row.poNumber ? <span className="mono">PO {row.poNumber}</span> : null}
+                  {row.poNumber && row.onsiteContact ? ' · ' : ''}
+                  {row.onsiteContact ? `on-site: ${row.onsiteContact}` : ''}
+                </span>
+              ) : null}
+              {cancelled ? <span className="sub">{cancelledLine(row)}</span> : null}
             </span>
             <span>
               {row.clientName}
-              <span className="sub">{row.venueName}</span>
+              <span className="sub">
+                {row.venueName}
+                {row.venueAddress ? `, ${row.venueAddress}` : ''}
+                {row.geofenceRadiusM ? ` · geofence ${row.geofenceRadiusM} m` : ''}
+              </span>
             </span>
-            <span className="row wrap">
-              {row.roles.map((role, index) => (
-                <span className="chip" key={`${row.id}-${index}`}>
-                  {role.roleName} {formatAllocation(role.headcount, role.buffer)}
-                </span>
-              ))}
+            {/* §3.2: each role's own times wherever the role appears, and a
+                fill pill per role (events.html:322). */}
+            <span className="stack tight">
+              {row.roles.map((role, index) => {
+                const fill = roleFill(role);
+                return (
+                  <span className="row sm roleline" key={`${row.id}-${index}`}>
+                    <span className="chip">{role.roleName}</span>
+                    <span className="mono">
+                      {role.start}–{role.end}
+                    </span>
+                    <span className="mono">{formatAllocation(role.headcount, role.buffer)}</span>
+                    {cancelled ? null : <Pill tone={fill.tone}>{fill.text}</Pill>}
+                  </span>
+                );
+              })}
+              {row.roles.length === 0 ? <span className="muted sm">No roles yet</span> : null}
             </span>
             <span>
-              {row.status === 'cancelled' ? null : (
+              {cancelled ? null : (
                 <>
                   <Pill tone={fillTone(row) === 'green' ? 'green' : 'amber'}>
                     {formatEventFill(row.fill)}

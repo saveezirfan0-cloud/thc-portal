@@ -14,7 +14,7 @@
 -- so an erasure survives Storage being unreachable.
 -- =====================================================================
 begin;
-select plan(20);
+select plan(24);
 \set now '2026-09-22 09:00:00+01'
 \ir _shared/fixtures.psql
 
@@ -58,17 +58,30 @@ create temporary table t_rm as select remove_worker(:'gone', :'now'::timestamptz
 select is((select r->>'filesQueued' from t_rm), '4',
   'every Storage object the worker''s records pointed at is queued: two documents, the gov.uk report and the selfie');
 select bag_eq(
-  $$ select bucket || '/' || path from storage_deletions $$,
+  $$ select bucket || '/' || path from storage_deletions where not prefix $$,
   $$ values ('documents/documents/95101/passport.pdf'::text),
             ('documents/documents/95101/share-code.pdf'),
             ('documents/documents/95101/gov-report.pdf'),
             ('photos/photos/95101/selfie.jpg') $$,
   'named individually, with their bucket — a path this function does not capture is one nothing can ever find again');
+-- …and, since 20260926110300, the worker's two FOLDERS as prefixes: an
+-- object that reached a bucket without a row (an upload whose finish…()
+-- never ran, a selfie whose staff_set_photo() raised) is erased by the
+-- prefix sweep, which nothing named could have found.
+select bag_eq(
+  $$ select bucket || '/' || path from storage_deletions where prefix $$,
+  $$ values ('documents/d5000000-0000-4000-8000-000000000001/'::text),
+            ('photos/d5000000-0000-4000-8000-000000000001/') $$,
+  '§1.7 "documents / photo wiped": the worker''s <staff_id>/ folder in each bucket is queued as a prefix, so orphaned objects go too');
+select is((select r->>'prefixesQueued' from t_rm), '2', 'and the removal reports the two prefixes');
+select is_empty(
+  format($$ select * from retained_storage_paths(%L) $$, :'gone'),
+  'nothing under this worker is held back from the prefix sweep: no evidence carries retain_until (ADR-0019)');
 select is((select count(*)::int from storage_deletions where path like '%95102%'), 0,
   'and nobody else''s objects are queued');
 select is((select count(*)::int from compliance_docs where staff_id = :'gone'), 0,
   'the rows go, which is why the paths had to be read BEFORE they did');
-select is((select count(*)::int from storage_deletions where deleted_at is null), 4,
+select is((select count(*)::int from storage_deletions where deleted_at is null), 6,
   'nothing is marked deleted yet: SQL queues the obligation, the gdpr-purge job discharges it');
 
 -- ---------------------------------------------------------------------
@@ -120,6 +133,11 @@ select is((select data->>'willoCandidateId' from audit_log where action = 'gdpr_
 -- ---------------------------------------------------------------------
 select is((select count(*)::int from claim_storage_deletions(2)), 2,
   'the drain takes a batch, like the outbox''s claim');
+select ok(
+  (select pg_get_function_result(p.oid) like '%prefix boolean%staff_id uuid%'
+     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = 'claim_storage_deletions'),
+  'and each claimed row says whether it is one object or a whole prefix, and whose, which is what the drain lists and what retained_storage_paths() keeps');
 select is((select count(*)::int from storage_deletions where attempts = 1), 2,
   'and counts the attempt, so a path that can never be deleted becomes visible instead of being retried silently for ever');
 

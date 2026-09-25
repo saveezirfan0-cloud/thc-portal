@@ -1,3 +1,7 @@
+// Build-time fence (security.md Invariant 8): a cookie-backed session client
+// belongs to server components, route handlers and middleware; Next refuses to
+// bundle it into a Client Component. Browsers use `@thc/db/browser`.
+import 'server-only';
 import { createServerClient } from '@supabase/ssr';
 import { supabaseAnonKey, supabaseUrl } from './env';
 import type { Database } from './types.generated';

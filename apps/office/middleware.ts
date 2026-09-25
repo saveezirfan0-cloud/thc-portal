@@ -11,10 +11,21 @@ import { isRole, wrongAppBody } from '@thc/db';
  * which is what actually protects the data: a forged URL gets past nothing.
  */
 const ALLOWED_ROLE = 'admin' as const;
-const PUBLIC_PATHS = ['/login', '/auth', '/design-system'];
+const PUBLIC_PATHS = ['/login', '/auth'];
 
-function isPublic(pathname: string): boolean {
-  return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+/**
+ * The component gallery renders sample copy only, but it is the whole admin
+ * component library and its vocabulary (Wave 2, margin, Auto-assign, Willo)
+ * on the admin host. The security brief lists every surface reachable
+ * without a session, and this was not on it (invariant 6). It stays open
+ * where it is looked at — local, CI's `next start`, Vercel previews — and
+ * on the production deployment it is a signed-in admin page like the rest.
+ */
+const PREVIEW_PATHS = ['/design-system'];
+
+function isPublic(pathname: string, env: NodeJS.ProcessEnv = process.env): boolean {
+  const open = env.VERCEL_ENV === 'production' ? PUBLIC_PATHS : [...PUBLIC_PATHS, ...PREVIEW_PATHS];
+  return open.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
 
 /**

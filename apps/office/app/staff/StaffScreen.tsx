@@ -8,15 +8,19 @@ import { StudentVisaView } from './StudentVisaView';
 import {
   capReason,
   employeeId,
+  formatLeftAt,
   formatRating,
   formatShowRate,
   formatUkDate,
+  isWorker,
   limitReached,
   matchesFilter,
   matchesQuery,
   ratingTone,
+  sortRows,
+  statusPill,
 } from './staff';
-import type { Filter } from './staff';
+import type { Filter, Sort } from './staff';
 import type { StaffRow, StudentRow } from './types';
 import './staff.css';
 
@@ -28,7 +32,6 @@ export interface StaffScreenProps {
   initialView?: 'directory' | 'student';
 }
 
-type Sort = 'name' | 'rating' | 'show' | 'newest';
 const PAGE_SIZE = 15;
 
 /**
@@ -46,7 +49,7 @@ const PAGE_SIZE = 15;
  * Staff.status machine (§2.12), and the filter tabs treat it that way.
  */
 export function StaffScreen({
-  staff,
+  staff: everyone,
   students,
   problem,
   initialView = 'directory',
@@ -57,6 +60,11 @@ export function StaffScreen({
   const [sort, setSort] = useState<Sort>('name');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
+
+  // §9.6 "A list of workers": the loader already asks for workers only,
+  // and the same rule is applied here so the crumb adds up whatever the
+  // read returned (staff.html: 934 + 9 + 61 + 8 = 1,012).
+  const staff = useMemo(() => everyone.filter(isWorker), [everyone]);
 
   const counts = useMemo(
     () => ({
@@ -71,23 +79,20 @@ export function StaffScreen({
 
   const roles = useMemo(() => [...new Set(staff.flatMap((row) => row.role_names))].sort(), [staff]);
 
-  const filtered = useMemo(() => {
-    const rows = staff.filter(
-      (row) =>
-        matchesFilter(row, filter) &&
-        matchesQuery(row, query) &&
-        (role === '' || row.role_names.includes(role)),
-    );
-    const sorted = [...rows];
-    if (sort === 'rating') sorted.sort((a, b) => (b.rating ?? -1) - (a.rating ?? -1));
-    else if (sort === 'show') sorted.sort((a, b) => (b.reliability ?? -1) - (a.reliability ?? -1));
-    // §9.6: the Inactive tab is newest first, so the office can work
-    // through outstanding P45s and final pay in the order they arrived.
-    else if (sort === 'newest' || filter === 'inactive') {
-      sorted.sort((a, b) => (b.left_at ?? '').localeCompare(a.left_at ?? ''));
-    } else sorted.sort((a, b) => a.display_name.localeCompare(b.display_name));
-    return sorted;
-  }, [staff, filter, query, role, sort]);
+  const filtered = useMemo(
+    () =>
+      sortRows(
+        staff.filter(
+          (row) =>
+            matchesFilter(row, filter) &&
+            matchesQuery(row, query) &&
+            (role === '' || row.role_names.includes(role)),
+        ),
+        filter,
+        sort,
+      ),
+    [staff, filter, query, role, sort],
+  );
 
   const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const current = Math.min(page, pages - 1);
@@ -206,6 +211,28 @@ export function StaffScreen({
                   <h3>No worker matches</h3>
                   <p>Search runs over the name, the Employee ID and the worker&rsquo;s roles.</p>
                 </EmptyState>
+              ) : filter === 'inactive' ? (
+                /*
+                  §9.6: the Inactive tab shows "the date they left and the
+                  reason they gave" — its own table (staff.html), not the
+                  directory's columns with a sub-line.
+                */
+                <table className="tbl">
+                  <thead>
+                    <tr>
+                      <th />
+                      <th>Name</th>
+                      <th>Employee ID</th>
+                      <th>Left (UK time)</th>
+                      <th>Reason given</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shown.map((row) => (
+                      <InactiveTableRow key={row.id} row={row} />
+                    ))}
+                  </tbody>
+                </table>
               ) : (
                 <table className="tbl">
                   <thead>
@@ -282,21 +309,23 @@ export function StaffScreen({
   );
 }
 
-function StaffTableRow({ row }: { row: StaffRow }) {
-  const tone = ratingTone(row.rating);
-  const atLimit = limitReached(row);
-
+/**
+ * §9.6: "The name is clickable → the profile." A removed worker's is too —
+ * §1.7 keeps the record openable with its non-personal history visible,
+ * and the label is already the anonymised one.
+ */
+function NameCells({ row }: { row: StaffRow }) {
   return (
-    <tr>
+    <>
       <td>
-        <Avatar name={row.removed ? '#' : row.display_name} size="sm" />
+        <Avatar
+          name={row.removed ? '#' : row.display_name}
+          src={row.photo_url ?? undefined}
+          deleted={row.removed}
+          size="sm"
+        />
       </td>
       <td className="name">
-        {/*
-          §9.6: "The name is clickable → the profile." A removed worker's
-          is too — §1.7 keeps the record openable with its non-personal
-          history visible, and the label is already the anonymised one.
-        */}
         <Link
           href={`/staff/${row.id}`}
           className={row.removed ? 'staff-name removed' : 'staff-name'}
@@ -305,6 +334,38 @@ function StaffTableRow({ row }: { row: StaffRow }) {
         </Link>
       </td>
       <td className="mono sm">{employeeId(row.employee_id)}</td>
+    </>
+  );
+}
+
+/**
+ * One leaver (§9.6, §10.6). The wireframe's further columns — last
+ * completed shift, released shifts, P45 — need data the directory view
+ * does not carry yet; the two the scope names are here.
+ */
+function InactiveTableRow({ row }: { row: StaffRow }) {
+  return (
+    <tr>
+      <NameCells row={row} />
+      <td className="mono sm">{formatLeftAt(row.left_at)}</td>
+      <td>
+        {row.leave_reason ? (
+          <>&ldquo;{row.leave_reason}&rdquo;</>
+        ) : (
+          <span className="muted">— no reason given</span>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+function StaffTableRow({ row }: { row: StaffRow }) {
+  const tone = ratingTone(row.rating);
+  const atLimit = limitReached(row);
+
+  return (
+    <tr>
+      <NameCells row={row} />
       <td>
         <div className="chips">
           {row.role_names.map((name) => (
@@ -322,7 +383,7 @@ function StaffTableRow({ row }: { row: StaffRow }) {
           // A per-week condition, beside the status and never instead of it.
           <span
             className="limit"
-            title={`${capReason(row.weekly_cap_band, row.weekly_cap_hours)} · ${row.weekly_booked_hours ?? 0} h booked this week`}
+            title={`${capReason(row.weekly_cap_band, row.weekly_cap_hours, row.weekly_cap_until)} · ${row.weekly_booked_hours ?? 0} h booked this week`}
           >
             Limit reached
           </span>
@@ -346,12 +407,20 @@ function StaffTableRow({ row }: { row: StaffRow }) {
   );
 }
 
-function StatusPill({ row }: { row: StaffRow }) {
-  if (row.removed) return <Pill>Removed</Pill>;
-  if (row.status === 'blocked') return <Pill tone="coral">Blocked</Pill>;
-  if (row.status === 'inactive') return <Pill>Inactive</Pill>;
-  if (row.status === 'compliant') return <Pill tone="green">Compliant</Pill>;
-  return <Pill tone="amber">Onboarding</Pill>;
+/** The one status vocabulary (staff.ts statusPill), shared with the profile header. */
+export function StatusPill({
+  row,
+  large,
+}: {
+  row: Pick<StaffRow, 'status' | 'removed'>;
+  large?: boolean;
+}) {
+  const { label, tone } = statusPill(row);
+  return (
+    <Pill tone={tone} large={large}>
+      {label}
+    </Pill>
+  );
 }
 
 const BRANCH_LABEL: Record<string, string> = {

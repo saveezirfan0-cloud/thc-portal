@@ -1,4 +1,5 @@
-import type { MonitorRow, MonitorStatus, ViolationType } from './types';
+import { UK_ZONE, formatTimeIn } from '@thc/domain';
+import type { MonitorRow, MonitorStatus, ViolationRow, ViolationType } from './types';
 
 /**
  * How each §9.5 Status renders. The colour lives on the pill and never on
@@ -69,6 +70,55 @@ export function breaksCell(
   return row.lastBreakAt
     ? `${row.breaksCount} · last ${formatTime(row.lastBreakAt)}`
     : String(row.breaksCount);
+}
+
+/** True when an ISO string names its zone ("…Z" or "…+01:00"); a bare wall clock does not. */
+export function carriesZone(iso: string): boolean {
+  return /(Z|[+-]\d{2}:?\d{2})$/i.test(iso.trim());
+}
+
+/**
+ * The clock on the "Due [scheduled start time]" pill (§1.8): the reader's
+ * LOCAL time, with no zone suffix — the one deliberate exception to the
+ * dual display, "intentional and must not be 'fixed' back to UK time". The
+ * WINDOW column beside it carries the UK reference, and keeping the pill
+ * in the same zone as the check-in stamps is what makes the lateness
+ * arithmetic on the row read correctly. A value with no zone to convert
+ * from falls back to UK, as the scope says.
+ */
+export function duePillTime(startsAt: string, zone: string): string {
+  return formatTimeIn(new Date(startsAt), carriesZone(startsAt) ? zone : UK_ZONE);
+}
+
+const YMD: Intl.DateTimeFormatOptions = { year: 'numeric', month: '2-digit', day: '2-digit' };
+
+/**
+ * The violation log's Time column (checkin.html: "today 16:12", "Wed 17 ·
+ * 22:48"). An actual stamp, so the reader's own zone (§1.8); the day is
+ * spelled for anything not detected today, because the log holds the last
+ * hundred entries and two "19:30"s a week apart must not read alike.
+ */
+export function logTime(iso: string, zone: string, now: Date = new Date()): string {
+  const at = new Date(iso);
+  const day = (d: Date) => new Intl.DateTimeFormat('en-GB', { ...YMD, timeZone: zone }).format(d);
+  const clock = formatTimeIn(at, zone);
+  if (day(at) === day(now)) return `today ${clock}`;
+  const weekday = new Intl.DateTimeFormat('en-GB', {
+    weekday: 'short',
+    day: 'numeric',
+    timeZone: zone,
+  }).format(at);
+  return `${weekday} · ${clock}`;
+}
+
+/**
+ * The window's "Flagged as" line (§9.5): the violation name plus the event
+ * name, "kept as-is for v1 rather than reworked". The scope describes it as
+ * server-composed; this build has no server string for it, so the same two
+ * values are joined here — it is a label, not a rule.
+ */
+export function flaggedAs(v: Pick<ViolationRow, 'type' | 'eventTitle'>): string {
+  return `${VIOLATION_LABEL[v.type]} — ${v.eventTitle}`;
 }
 
 export const VIOLATION_LABEL: Record<ViolationType, string> = {

@@ -4,6 +4,7 @@ import { useId, useState } from 'react';
 import { Alert, Button, Input, Pill, Select } from '@thc/ui';
 import {
   type EditableField,
+  type EventStatus,
   ROLE_SECTION_MESSAGE,
   type RoleSectionIssue,
   defaultAllocationPerHour,
@@ -17,6 +18,7 @@ import {
   ukInputLabel,
 } from '@thc/domain';
 import { Switch } from './Switch';
+import { ScheduledWindow } from './ScheduledWindow';
 import { DRESS_CODE_OTHER, type RoleDraft, isResolvable, resolveRole } from '../draft';
 import type { ClientOption, RoleOption } from '../data';
 
@@ -45,9 +47,21 @@ export interface RoleSectionProps {
   changed: Set<string>;
   original: RoleDraft | undefined;
   locked: boolean;
+  /**
+   * The event's status (§1.5), for the pill on a locked section: Ongoing is
+   * green, Completed and Cancelled neutral (docs/07). The lock alone does
+   * not mean Ongoing — a past or a cancelled event is locked too.
+   */
+  status?: EventStatus;
   onChange: (patch: Partial<RoleDraft>) => void;
   onRemove: () => void;
 }
+
+const LOCKED_PILL: Partial<Record<EventStatus, { label: string; tone: 'green' | 'neutral' }>> = {
+  ongoing: { label: 'Ongoing', tone: 'green' },
+  completed: { label: 'Completed', tone: 'neutral' },
+  cancelled: { label: 'Cancelled', tone: 'neutral' },
+};
 
 export function RoleSection({
   mode,
@@ -62,12 +76,14 @@ export function RoleSection({
   changed,
   original,
   locked,
+  status,
   onChange,
   onRemove,
 }: RoleSectionProps) {
   const roleName = roles.find((r) => r.id === role.roleId)?.name ?? 'Choose a role';
   const resolvable = isResolvable(date, role);
-  const hours = resolvable ? sectionHours(resolveRole(role, date)) : null;
+  const resolved = resolvable ? resolveRole(role, date) : null;
+  const hours = resolved ? sectionHours(resolved) : null;
   const dressCodes = client?.rateCard[role.roleId]?.dressCodes ?? [];
   const margin = marginPerHourPence(
     Math.round(role.chargeRate * 100),
@@ -87,23 +103,35 @@ export function RoleSection({
   const lengthIssue = issueFor('below_minimum_hours') ?? issueFor('end_before_start');
   const reconfirming = reconfirmingChanges([...changed] as EditableField[]).length > 0;
 
+  // The section's scheduled window carries both zones for a reader outside
+  // the UK (§1.8), the way the Summary panel does; the typed inputs below
+  // are labelled "(UK time)" on their own.
+  const headerWindow = resolved ? (
+    <ScheduledWindow startsAt={resolved.startsAt} endsAt={resolved.endsAt} />
+  ) : (
+    <>
+      {role.start} – {role.end}
+    </>
+  );
+
   if (locked) {
+    const pill = status ? LOCKED_PILL[status] : undefined;
     return (
       <div className="rolesec collapsed">
         <div className="rh">
           <span className="n">Role {index + 1}</span>
           <b>{roleName}</b>
-          <span className="mono sm muted">
-            {role.start} – {role.end}
-          </span>
+          <span className="mono sm muted">{headerWindow}</span>
           <Pill>{formatAllocationPair(role.headcount, role.buffer)}</Pill>
-          <div className="right">
-            <Pill tone="green">Ongoing</Pill>
-          </div>
+          <div className="right">{pill ? <Pill tone={pill.tone}>{pill.label}</Pill> : null}</div>
         </div>
       </div>
     );
   }
+
+  // shift-builder.html:261 — the old time struck through beside the new one.
+  const struck = (field: 'starts_at' | 'ends_at', was: string) =>
+    changed.has(field) && original ? <s>{was}</s> : null;
 
   return (
     <div className={classes('rolesec', issues.length > 0 && 'err', changed.size > 0 && 'changed')}>
@@ -111,7 +139,8 @@ export function RoleSection({
         <span className="n">Role {index + 1}</span>
         <b>{roleName}</b>
         <span className="mono sm muted">
-          {role.start} – {role.end}
+          {struck('starts_at', original?.start ?? '')} {struck('ends_at', original?.end ?? '')}{' '}
+          {headerWindow}
           {hours === null ? '' : ` · ${formatHours(hours)}`}
         </span>
         {/* Absolute buffer: "12 (+2)", never the total (§3.2). */}
@@ -169,7 +198,9 @@ export function RoleSection({
             mono
             value={role.start}
             onChange={(e) => onChange({ start: e.target.value })}
-            {...(changed.has('starts_at') && original ? { hint: `was ${original.start}` } : {})}
+            {...(changed.has('starts_at') && original
+              ? { hint: <span className="amber">was {original.start}</span>, className: 'was' }
+              : {})}
           />
           <Input
             label={ukInputLabel('End')}
@@ -179,7 +210,7 @@ export function RoleSection({
             onChange={(e) => onChange({ end: e.target.value })}
             {...(lengthIssue ? { error: ROLE_SECTION_MESSAGE[lengthIssue] } : {})}
             {...(!lengthIssue && changed.has('ends_at') && original
-              ? { hint: `was ${original.end}` }
+              ? { hint: <span className="amber">was {original.end}</span>, className: 'was' }
               : {})}
           />
           <Input
@@ -192,7 +223,10 @@ export function RoleSection({
             {...(issues.includes('headcount_below_one')
               ? { error: ROLE_SECTION_MESSAGE.headcount_below_one }
               : changed.has('headcount') && original
-                ? { hint: `was ${original.headcount}` }
+                ? {
+                    hint: <span className="amber">was {original.headcount}</span>,
+                    className: 'was',
+                  }
                 : {})}
           />
           <Input
@@ -271,7 +305,9 @@ export function RoleSection({
                 : 'No list on the rate card for this role yet — use "Other"'
             }
           >
-            <option value="">Choose…</option>
+            {/* The client's list has a default — its first entry (§3.2) — so
+                the placeholder appears only where the card has no list. */}
+            {dressCodes.length === 0 ? <option value="">Choose…</option> : null}
             {dressCodes.map((code) => (
               <option key={code} value={code}>
                 {code}
@@ -353,13 +389,17 @@ export function RoleSection({
           </Alert>
         ) : null}
 
-        {changed.has('headcount') && original && role.headcount < confirmed ? (
+        {/* shift-builder.html:273 — shown as soon as the headcount is cut
+            with people confirmed, not only once it is already below them. */}
+        {original && role.headcount < original.headcount && confirmed > 0 ? (
           <Alert tone="cyan">
             <b>
               Headcount {original.headcount} → {role.headcount} with {confirmed} confirmed:
             </b>{' '}
-            nobody is auto-removed. The manager withdraws people by hand on the event board (§3.2,
-            §3.3).
+            nobody is auto-removed
+            {role.headcount < confirmed
+              ? ` — it is now below the confirmed count, so the manager withdraws ${confirmed - role.headcount} ${confirmed - role.headcount === 1 ? 'person' : 'people'} by hand on the event board (§3.2, §3.3).`
+              : ' — if it later drops below the confirmed count, the manager withdraws people by hand on the event board (§3.2, §3.3).'}
           </Alert>
         ) : null}
       </div>

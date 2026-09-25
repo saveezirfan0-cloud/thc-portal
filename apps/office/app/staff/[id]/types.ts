@@ -60,6 +60,8 @@ export interface DocumentRow {
   reviewed_at: string | null;
   reviewed_by_name: string | null;
   share_code: string | null;
+  /** The gov.uk right-to-work report saved beside a share code (§2.6), downloadable too. */
+  gov_report_path: string | null;
   right_to_work_until: string | null;
   /** The reviewer confirmed settled status: no date, by design (20260923200000). */
   rtw_no_time_limit: boolean;
@@ -114,7 +116,10 @@ export interface ViolationRow {
   resolved: boolean;
   resolved_at: string | null;
   resolution_note: string | null;
+  /** The finish a manager entered when resolving a No check-out (§9.5). */
+  actual_finish_at: string | null;
   resolved_by_name: string | null;
+  event_id: string;
   starts_at: string;
   ends_at: string;
   role_name: string;

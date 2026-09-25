@@ -166,6 +166,23 @@ describe('step 1 validation', () => {
     expect(ageOn('2008-09-23', today)).toBe(18);
   });
 
+  it('the footer repeats a filled date’s own error, never "is required" under a filled field', () => {
+    // A candidate who picked a 2010 birthday reads the §2.1 sentence, not "Date of birth is required".
+    expect(rtwFooterHint({ ...base, dob: '2010-01-01' }, today)).toBe(
+      'You must be 18 or over to work with us.',
+    );
+    expect(rtwFooterHint({ ...base, dob: '2008-02-30' }, today)).toBe('Enter a real date.');
+    // A blank date is still "missing", so the wireframe's word list stays.
+    expect(rtwFooterHint({ ...base, dob: '' }, today)).toBe('Date of birth is required');
+    // The same holds for a typed expiry that has already passed.
+    expect(
+      rtwFooterHint(
+        { ...base, branch: 'work_visa', visaType: 'Graduate', visaExpiry: '2026-09-23' },
+        today,
+      ),
+    ).toBe('This date has already passed.');
+  });
+
   it('validates the share code before anything is sent', () => {
     expect(rtwErrors({ ...base, shareCode: 'W12 3AB' }, today).shareCode).toMatch(/9 letters/);
     expect(rtwFooterHint({ ...base, shareCode: 'W12 3AB' }, today)).toBe(

@@ -1,8 +1,16 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { SHARE_CODE_SQL_PATTERN } from '../shareCode.ts';
 import { deriveStatement } from '../hmrc.ts';
+import {
+  QUIZ_ATTEMPTS,
+  QUIZ_PASS_DENOMINATOR,
+  QUIZ_PASS_NUMERATOR,
+  attemptsLeft,
+  isPass,
+  quizOutcome,
+} from '../quiz.ts';
 import {
   POSTCODE_SQL_PATTERN,
   RELATIVE_SQL_PATTERN,
@@ -108,6 +116,49 @@ describe('document sets (§2.5 pts 1–5) — SQL and TypeScript agree', () => {
       .map((r) => `${r.key}:${r.accepts.join('|')}`);
     const ts = requiredDocuments(branch, choice).map((r) => `${r.key}:${r.accepts.join('|')}`);
     expect(sql).toEqual(ts);
+  });
+});
+
+const quiz = readFileSync(join(MIGRATIONS, '20260923120100_onboarding_wizard_quiz.sql'), 'utf8');
+
+describe('H&S quiz (§2.9) — submit_quiz_attempt() and quiz.ts agree', () => {
+  // The answer key never leaves the database, so the marking is SQL's; this
+  // holds that SQL to the arithmetic the screens render a result with.
+  const start = quiz.indexOf('create or replace function public.submit_quiz_attempt');
+  const body = quiz.slice(start, quiz.indexOf('$$;', start));
+
+  it('reads the latest definition — no later migration restates the function', () => {
+    // If one ever does, point `quiz` at it: the literals below must be held
+    // to whatever is deployed, not to the first draft.
+    expect(start).toBeGreaterThan(-1);
+    const restated = readdirSync(MIGRATIONS)
+      .filter((f) => f.endsWith('.sql') && f > '20260923120100_onboarding_wizard_quiz.sql')
+      .filter((f) =>
+        readFileSync(join(MIGRATIONS, f), 'utf8').includes(
+          'create or replace function public.submit_quiz_attempt',
+        ),
+      );
+    expect(restated).toEqual([]);
+  });
+
+  it('the pass mark is the same integer comparison, 80% as 4/5', () => {
+    expect(body).toContain(
+      `v_passed := v_correct * ${QUIZ_PASS_DENOMINATOR} >= v_total * ${QUIZ_PASS_NUMERATOR};`,
+    );
+    expect(isPass(8, 10) && isPass(12, 15) && !isPass(11, 15)).toBe(true);
+  });
+
+  it('three attempts in total, and the third failure rejects', () => {
+    expect(body).toContain(`if v_taken >= ${QUIZ_ATTEMPTS} then`);
+    expect(body).toContain(`elsif v_attempt >= ${QUIZ_ATTEMPTS} then`);
+    expect(body).toContain(`greatest(${QUIZ_ATTEMPTS} - v_attempt, 0)`);
+    expect(quizOutcome(QUIZ_ATTEMPTS, false)).toBe('rejected');
+    expect(quizOutcome(QUIZ_ATTEMPTS - 1, false)).toBe('retry');
+    expect(attemptsLeft(QUIZ_ATTEMPTS)).toBe(0);
+  });
+
+  it('the percent is floored, so 79.9% never prints as 80%', () => {
+    expect(body).toContain("'percent',      floor(v_correct * 100.0 / v_total)::int");
   });
 });
 

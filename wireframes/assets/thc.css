@@ -57,7 +57,8 @@
   --nav-bar: 3px;                      /* cyan left bar on the active sidebar item */
 
   --sidebar-w: 232px; --topbar-h: 56px; --gap: 16px;
-  --btn-h: 36px; --input-h: 38px;
+  --btn-h: 36px; --btn-h-sm: 28px; --input-h: 38px; --seg-h: 32px; --seg-h-sm: 26px;
+  --tap-min: 44px;                     /* the smallest thing a finger can hit (§1.2); the phone frame sets every control metric to it */
 }
 
 /* ---- warm style: the default look proposed for THC (ADR-0003) ---- */
@@ -230,11 +231,11 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
 .btn.ghost { background: transparent; border-color: transparent; color: var(--muted); }
 .btn.ghost:hover { color: var(--text); border-color: var(--line); }
 .btn.outline { background: transparent; border-color: var(--cyan-ink); color: var(--cyan-ink); }
-.btn.sm { height: 28px; padding: 0 10px; font-size: 12px; }
+.btn.sm { height: var(--btn-h-sm); padding: 0 10px; font-size: 12px; }
 .btn.lg { height: 48px; padding: 0 20px; font-size: 15px; border-radius: var(--r); }
 .btn.block { width: 100%; }
 .btn.icon { width: var(--btn-h); padding: 0; }
-.btn.sm.icon { width: 28px; }
+.btn.sm.icon { width: var(--btn-h-sm); }
 .btn[disabled], .btn.disabled { opacity: .45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
 .btn[disabled]::after, .btn.disabled::after { display: none; }
 
@@ -263,12 +264,12 @@ table.tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
    7 · SEG TOGGLE / TABS
    --------------------------------------------------------------------- */
 .seg { display: inline-flex; border: 1px solid var(--line); background: var(--panel); border-radius: var(--r-sm); overflow: hidden; }
-.seg button, .seg a { padding: 0 14px; height: 32px; display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-body); font-weight: 700; font-size: 12.5px; background: transparent; color: var(--muted); border: 0; border-right: 1px solid var(--line); cursor: pointer; }
+.seg button, .seg a { padding: 0 14px; height: var(--seg-h); display: inline-flex; align-items: center; gap: 6px; font-family: var(--font-body); font-weight: 700; font-size: 12.5px; background: transparent; color: var(--muted); border: 0; border-right: 1px solid var(--line); cursor: pointer; }
 .seg button:last-child, .seg a:last-child { border-right: 0; }
 .seg .on, .seg .active { background: var(--cyan-dim); color: var(--cyan-ink); }
 .seg .n { font-family: var(--font-num); font-size: 10px; padding: 0 6px; background: var(--line); color: var(--text); border-radius: var(--r-pill); }
 .seg .n.alert { background: var(--coral); color: var(--on-coral); }
-.seg.sm button { height: 26px; padding: 0 10px; font-size: 11.5px; }
+.seg.sm button { height: var(--seg-h-sm); padding: 0 10px; font-size: 11.5px; }
 
 .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line); }
 .tabs button, .tabs a { padding: 10px 14px; background: transparent; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; font-family: var(--font-body); font-weight: 700; font-size: 13px; color: var(--muted); cursor: pointer; display: inline-flex; gap: 8px; align-items: center; }
@@ -449,6 +450,11 @@ textarea.input { height: auto; min-height: 84px; padding: 10px 12px; resize: ver
 .phone::before { content: ''; position: absolute; top: -120px; left: -80px; width: 320px; height: 320px; background: radial-gradient(circle, var(--glow-a), transparent 60%); pointer-events: none; }
 .phone::after { content: ''; position: absolute; bottom: -120px; right: -100px; width: 340px; height: 340px; background: radial-gradient(circle, var(--glow-b), transparent 60%); pointer-events: none; }
 .phone > * { position: relative; z-index: 1; }
+/* Touch targets (§1.2): every control on the Staff App is at least --tap-min tall. The phone frame re-points the metric tokens
+   (type and padding unchanged); .check has no height of its own, so it takes the floor as symmetric padding. */
+.phone { --btn-h: var(--tap-min); --btn-h-sm: var(--tap-min); --input-h: var(--tap-min); --seg-h: var(--tap-min); --seg-h-sm: var(--tap-min); }
+.phone .check { min-height: var(--tap-min); padding-block: calc((var(--tap-min) - 18px) / 2); }
+.phone .check .check-input { top: calc((var(--tap-min) - 18px) / 2); }
 .statusbar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; font-family: var(--font-num); font-size: 12px; font-weight: 700; }
 .app-header { position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 10px; padding: 8px 16px 10px; background: var(--glass); backdrop-filter: blur(18px) saturate(140%); -webkit-backdrop-filter: blur(18px) saturate(140%); border-bottom: 1px solid var(--glass-line); }
 .app-header .title { font-family: var(--font-head); font-size: 20px; font-weight: var(--head-weight); flex: 1; }
@@ -556,7 +562,7 @@ textarea.input { height: auto; min-height: 84px; padding: 10px 12px; resize: ver
   --r-xs: 8px; --r-sm: 12px; --r: 16px; --r-lg: 22px; --r-phone: 44px; --r-nav: 12px;
   --head-weight: 800; --head-track: -0.025em;
   --label-size: 11px; --label-track: .06em; --label-weight: 700;
-  --btn-h: 44px; --input-h: 46px;
+  --btn-h: 44px; --input-h: 46px; --seg-h: 34px;
   --grad-primary: linear-gradient(135deg, #3EDCEC 0%, #21B7CF 100%);
   --grad-purple: linear-gradient(135deg, #B48BFF 0%, #8B5CF6 100%);
   --grad-card: linear-gradient(160deg, var(--cyan-dim), transparent 70%);
@@ -623,7 +629,7 @@ textarea.input { height: auto; min-height: 84px; padding: 10px 12px; resize: ver
 :root[data-style="warm"][data-theme="dark"] .pill { border-color: transparent; }
 :root[data-style="warm"] .chip { border-color: transparent; }
 :root[data-style="warm"] .seg { padding: 3px; background: var(--panel-2); border-color: transparent; border-radius: var(--r-pill); }
-:root[data-style="warm"] .seg button, :root[data-style="warm"] .seg a { border-right: 0; border-radius: var(--r-pill); height: 34px; }
+:root[data-style="warm"] .seg button, :root[data-style="warm"] .seg a { border-right: 0; border-radius: var(--r-pill); }
 :root[data-style="warm"] .seg .on, :root[data-style="warm"] .seg .active { background: var(--panel); color: var(--text); box-shadow: 0 2px 8px rgba(20,26,44,.12); }
 :root[data-style="warm"] .tabs button, :root[data-style="warm"] .tabs a { padding: 10px 16px; border-bottom-width: 3px; }
 :root[data-style="warm"] .input, :root[data-style="warm"] select.input, :root[data-style="warm"] textarea.input { border-width: 1.5px; }

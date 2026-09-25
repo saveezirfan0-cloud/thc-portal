@@ -52,9 +52,9 @@ describe('the buffer is absolute (§3.2)', () => {
     expect(formatAllocationPair(6, 1)).not.toBe('7');
   });
 
-  it('spells out a zero buffer on the builder, and drops it elsewhere', () => {
+  it('spells out a zero buffer on the builder and in the list alike (§3.2)', () => {
     expect(formatAllocationPair(2, 0)).toBe('2 (+0)');
-    expect(formatAllocation(2, 0)).toBe('2');
+    expect(formatAllocation(2, 0)).toBe('2 (+0)');
   });
 
   it('keeps the sum beside the pair on the confirmation target, never instead of it', () => {

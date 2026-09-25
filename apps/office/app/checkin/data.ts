@@ -1,6 +1,7 @@
 import { acceptedLog } from '@thc/domain';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { signPhotos } from './photos';
 import type { MonitorRow, MonitorStatus, ViolationRow, ViolationType } from './types';
 
 /**
@@ -84,14 +85,29 @@ export async function loadMonitor(): Promise<MonitorPageData> {
   // has to match 20260922090000_ping_ingest_and_monitor.sql.
   const monitorRows = (monitor.data ?? []) as unknown as Record<string, unknown>[];
 
+  // §9.5 "the real selfie": every photo_path on the board is signed once,
+  // through this manager's session (photos.ts), and only the URL reaches a
+  // row. A removed worker's path is already NULL in the view and in the
+  // violation mapping below, so nothing of theirs is signed.
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  const photos = await signPhotos(supabase, [
+    ...monitorRows.map((r) => r.photo_path as string | null),
+    ...(violations.data ?? []).map((v: any) => (v.staff?.removed_at ? null : v.staff?.photo_path)),
+  ]);
+  const urlFor = (path: unknown): string | null =>
+    typeof path === 'string' ? (photos.get(path) ?? null) : null;
+
   const rows: MonitorRow[] = monitorRows.map((r) => ({
     bookingId: r.booking_id as string,
     staffId: r.staff_id as string,
     eventId: r.event_id as string,
     eventTitle: (r.event_title as string) ?? '',
     roleName: (r.role_name as string) ?? '',
-    staffName: (r.staff_name as string) ?? '',
-    photoPath: (r.photo_path as string | null) ?? null,
+    // The view spells the §1.7 label with `||`, which is NULL for a removed
+    // worker who never got an Employee ID; deleted_account_label() prints
+    // "#unknown" for that case and so does this.
+    staffName: (r.staff_name as string | null) ?? deletedAccountLabel(null),
+    photoUrl: urlFor(r.photo_path),
     startsAt: r.starts_at as string,
     endsAt: r.ends_at as string,
     checkInAt: (r.check_in_at as string | null) ?? null,
@@ -104,7 +120,6 @@ export async function loadMonitor(): Promise<MonitorPageData> {
     status: r.status as MonitorStatus,
   }));
 
-  /* eslint-disable @typescript-eslint/no-explicit-any */
   const violationRows: ViolationRow[] = (violations.data ?? []).map((v: any) => {
     const shift = v.booking?.shift;
     // `acceptedLog`, not `[0]` (§1.5). check_logs holds one row per button
@@ -132,9 +147,9 @@ export async function loadMonitor(): Promise<MonitorPageData> {
       id: v.id,
       bookingId: v.booking_id,
       staffName: staff?.removed_at
-        ? `Deleted account #${staff.employee_id}`
+        ? deletedAccountLabel(staff.employee_id)
         : `${staff?.first_name ?? ''} ${staff?.last_name ?? ''}`.trim(),
-      photoPath: staff?.removed_at ? null : (staff?.photo_path ?? null),
+      photoUrl: staff?.removed_at ? null : urlFor(staff?.photo_path),
       eventTitle: shift?.event?.title ?? '',
       venueName: shift?.event?.venue_name ?? '',
       roleName: shift?.role?.name ?? '',
@@ -156,4 +171,13 @@ export async function loadMonitor(): Promise<MonitorPageData> {
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   return { rows, violations: violationRows, problem: null };
+}
+
+/**
+ * §1.7's label, as `deleted_account_label()` spells it in SQL
+ * (20260921190118_gdpr_removal.sql): the Employee ID is the number, and a
+ * worker removed before one was issued reads "#unknown" — never "#null".
+ */
+export function deletedAccountLabel(employeeId: number | string | null | undefined): string {
+  return `Deleted account #${employeeId ?? 'unknown'}`;
 }

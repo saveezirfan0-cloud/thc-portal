@@ -6,6 +6,7 @@ import {
   type RoleDraft,
   canRemoveRole,
   canSave,
+  defaultDressCode,
   draftIssues,
   draftLocked,
   draftWindow,
@@ -273,5 +274,28 @@ describe('what an edit does to the people already booked (§3.5)', () => {
   it('reports a venue change separately, because it reaches everyone booked', () => {
     expect(reconfirmPlan(before, { ...before, venueId: 'venue-excel' }).venueChanged).toBe(true);
     expect(reconfirmPlan(before, before).venueChanged).toBe(false);
+  });
+});
+
+describe('the dress code defaults to the rate card (§3.2, §9.7)', () => {
+  const list = ['Chef whites', 'Kitchen blacks'];
+
+  it('opens on the first entry of the client + role list when nothing is chosen', () => {
+    expect(defaultDressCode(list)).toBe('Chef whites');
+    expect(defaultDressCode(list, '')).toBe('Chef whites');
+  });
+
+  it('keeps a value that is on the new list, and the per-event override', () => {
+    expect(defaultDressCode(list, 'Kitchen blacks')).toBe('Kitchen blacks');
+    expect(defaultDressCode(list, DRESS_CODE_OTHER)).toBe(DRESS_CODE_OTHER);
+  });
+
+  it('falls back to the new list when the old value is not on it', () => {
+    expect(defaultDressCode(list, 'Black & whites')).toBe('Chef whites');
+  });
+
+  it('is empty only when the card has no list for this role', () => {
+    expect(defaultDressCode([])).toBe('');
+    expect(defaultDressCode([], 'Black & whites')).toBe('');
   });
 });

@@ -2,10 +2,10 @@
 
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { createClient } from '@thc/db/server';
+import { createAdminClient } from '@thc/db/admin';
 import { callerKey } from '../../lib/callerKey';
 import type { HeaderReader } from '../../lib/callerKey';
-import { SENT_TO_COOKIE, toE164, validate } from './form';
+import { SENT_TO_COOKIE, phoneFor, validate } from './form';
 import type { ApplicationValues, ApplyState } from './form';
 
 function read(formData: FormData): ApplicationValues {
@@ -13,7 +13,7 @@ function read(formData: FormData): ApplicationValues {
     firstName: String(formData.get('firstName') ?? ''),
     lastName: String(formData.get('lastName') ?? ''),
     email: String(formData.get('email') ?? ''),
-    dialCode: String(formData.get('dialCode') ?? '+44'),
+    country: String(formData.get('country') ?? 'GB'),
     mobile: String(formData.get('mobile') ?? ''),
     dob: String(formData.get('dob') ?? ''),
     consent: formData.get('consent') === 'on',
@@ -112,7 +112,7 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
   const errors = validate(values);
   if (Object.keys(errors).length > 0) return { errors, values };
 
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     // Not wired to a project yet (docs/04). Say so rather than throwing a 500.
     return {
       errors: {},
@@ -123,7 +123,19 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
 
   const email = values.email.trim().toLowerCase();
   const jar = await cookies();
-  const supabase = createClient(jar) as unknown as RpcClient;
+
+  // The service-role client, not the anon-key SSR client, and only for the
+  // two RPCs below. Both are SECURITY DEFINER functions that exist for THIS
+  // action: nobody signs in to apply (§2.1), so an anon grant on them was
+  // never "the applicant's" privilege — it was the world's. On the anon key
+  // anyone could name another connection's bucket to `apply_caller_check()`
+  // and spend a college's allowance for the day, or reach
+  // `submit_application()` straight through PostgREST with a fresh pair of
+  // identities each time and never meet the per-caller limit (ADR-0024's
+  // own "what this does not close"). With the key held here, the form is
+  // the only door and every submission passes the limit first. The client
+  // is never handed to anything else in this module.
+  const supabase = createAdminClient() as unknown as RpcClient;
 
   // Before the submission, not after: a refused caller creates nothing. It
   // does not look at who is applying, so a returning applicant (§2.12) is
@@ -137,7 +149,7 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
     p_first_name: values.firstName.trim(),
     p_last_name: values.lastName.trim(),
     p_email: email,
-    p_phone: toE164(values.dialCode, values.mobile),
+    p_phone: phoneFor(values),
     p_dob: values.dob.trim(),
     p_consent: values.consent,
   });

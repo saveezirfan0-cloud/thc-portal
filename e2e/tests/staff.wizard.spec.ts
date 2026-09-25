@@ -118,7 +118,10 @@ test('step 1 needs Male or Female before Continue, and moves on to 2/11 (2026092
   await expect(gender.getByRole('button', { name: 'Male' })).toBeVisible();
   await expect(gender.getByRole('button', { name: 'Female' })).toBeVisible();
   await gender.getByRole('button', { name: 'Male' }).click();
-  await expect(gender.getByRole('button', { name: 'Male' })).toHaveAttribute('aria-pressed', 'true');
+  await expect(gender.getByRole('button', { name: 'Male' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
   await expect(next).toBeEnabled();
 
   await next.click();
@@ -128,11 +131,15 @@ test('step 1 needs Male or Female before Continue, and moves on to 2/11 (2026092
 
   // Written by the RPC, as M, not merely held on the screen.
   expect(
-    sql(`select gender || ':' || rtw_branch::text from staff where id = ${lit(candidate!.staffId)}`),
+    sql(
+      `select gender || ':' || rtw_branch::text from staff where id = ${lit(candidate!.staffId)}`,
+    ),
   ).toBe('M:uk_irish');
-  expect(sql(`select rtw_at is not null from onboarding_progress where staff_id = ${lit(candidate!.staffId)}`)).toBe(
-    't',
-  );
+  expect(
+    sql(
+      `select rtw_at is not null from onboarding_progress where staff_id = ${lit(candidate!.staffId)}`,
+    ),
+  ).toBe('t');
 
   // Step 1 stays editable until the documents are submitted; step 3 is not
   // open yet.
@@ -170,10 +177,12 @@ test('with the documents submitted, everything waits for the office to verify th
     '/onboarding',
   );
   // A locked screen shows no shift, and therefore no rate of any kind.
-  expect((await page.locator('body').innerText())).not.toMatch(/£/);
+  expect(await page.locator('body').innerText()).not.toMatch(/£/);
 });
 
-test('a worker sees the base rate only — never the charge rate (§10.4, §11.1)', async ({ page }) => {
+test('a worker sees the base rate only — never the charge rate (§10.4, §11.1)', async ({
+  page,
+}) => {
   // Tom Reid is confirmed as Waiting Staff on the Gala Dinner: base £14.00,
   // charged to the client at £22.97. The card carries the first and must
   // not carry the second.

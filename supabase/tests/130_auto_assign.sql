@@ -15,7 +15,7 @@
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(65);
+select plan(70);
 
 \ir _shared/overlap_vectors.psql
 
@@ -159,9 +159,16 @@ values (:'other', :'elsew', 'confirmed', 'manual', now());
 update staff set term_dates = '{}' where id = :'capped';
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
                                 charge_rate, pay_rate, allocation_per_hour)
+-- On the Monday of the section's week — or the Tuesday when the section IS
+-- that Monday (a Friday run), so the two never overlap and booked_elsewhere
+-- cannot fire before the cap does.
 values ('7e7e7e7e-0000-4000-8000-000000000003', :'evt2', :'ro',
-        date_trunc('week', (now() + interval '10 days')) + interval '1 hour',
-        date_trunc('week', (now() + interval '10 days')) + interval '17 hours',
+        date_trunc('week', (now() + interval '10 days'))
+          + (case when (now() + interval '10 days')::date = date_trunc('week', (now() + interval '10 days'))::date
+                  then interval '1 day' else interval '0 day' end) + interval '1 hour',
+        date_trunc('week', (now() + interval '10 days'))
+          + (case when (now() + interval '10 days')::date = date_trunc('week', (now() + interval '10 days'))::date
+                  then interval '1 day' else interval '0 day' end) + interval '17 hours',
         9, 0, 22.97, 14.00, 9);
 insert into bookings (shift_id, staff_id, status, source, confirmed_at)
 values ('7e7e7e7e-0000-4000-8000-000000000003', :'capped', 'confirmed', 'manual', now());
@@ -242,21 +249,27 @@ select is(invite_worker(:'sec', :'selfc')->>'reason', 'self_cancelled',
 -- Unreachable until §10.6 and §1.7 existed, because nothing could set
 -- either column. 20260921192246 closes it with `not found`.
 -- ---------------------------------------------------------------------
+-- Borrowed inside a savepoint: clean2 is the second worker in the
+-- first-to-confirm and withdrawal cases below, and §2.12 (20260926110800)
+-- refuses removed → compliant on the row, so "putting them back" is a
+-- rollback, not an update. The answers are captured with \gset and
+-- asserted after the rollback, so the test counter is untouched by it.
+savepoint borrowed_clean2;
 update staff set status = 'inactive', left_at = now() - interval '1 day' where id = :'clean2';
-select is(invite_worker(:'sec', :'clean2')->>'reason', 'not_bookable',
-  '§10.6: a worker who has left cannot be invited — their absence from the candidate pool must not read as "no gate applies"');
-select is((select count(*)::int from bookings where shift_id = :'sec' and staff_id = :'clean2'), 0,
-  'and no row is written, which is what the old code did instead');
-
+select invite_worker(:'sec', :'clean2')->>'reason' as left_reason \gset
+select count(*)::int as left_rows from bookings where shift_id = :'sec' and staff_id = :'clean2' \gset
 update staff set status = 'removed', left_at = null, removed_at = now() - interval '1 day' where id = :'clean2';
-select is(invite_worker(:'sec', :'clean2')->>'reason', 'not_bookable',
-  '§1.7: nor can a GDPR-removed worker, for the same reason and by the same route');
+select invite_worker(:'sec', :'clean2')->>'reason' as removed_reason \gset
+rollback to savepoint borrowed_clean2;
 
--- Put them back: clean2 is the second worker in the first-to-confirm and
--- withdrawal cases below, and borrowing them here must not change those.
-update staff set status = 'compliant', left_at = null, removed_at = null where id = :'clean2';
+select is(:'left_reason'::text, 'not_bookable',
+  '§10.6: a worker who has left cannot be invited — their absence from the candidate pool must not read as "no gate applies"');
+select is(:'left_rows'::int, 0,
+  'and no row is written, which is what the old code did instead');
+select is(:'removed_reason'::text, 'not_bookable',
+  '§1.7: nor can a GDPR-removed worker, for the same reason and by the same route');
 select is((select gate from auto_assign_candidates(:'sec') where staff_id = :'clean2'), null,
-  'and they return to the pool cleanly, so the cases below are unaffected by having borrowed them');
+  'and they return to the pool cleanly (the borrowing was rolled back — §2.12 has no removed → compliant edge), so the cases below are unaffected');
 
 -- ---------------------------------------------------------------------
 -- 5. First-to-confirm and the automatic withdrawal (§3.4, §3.6)
@@ -367,6 +380,29 @@ select is((select count(*)::int from notification_outbox
   'N6b is queued once, under its idempotency key (§8)');
 select is(release_unready_bookings(timestamptz '2026-12-14 12:10Z'), 0,
   'the job is idempotent: a second pass releases nobody and queues nothing new');
+
+-- §3.5: a booking confirmed AFTER the day-before deadline — the
+-- replacement the 12:05 re-fill itself produced, or an invitation accepted
+-- that afternoon — was never given stage 2, and stage 3 never releases.
+-- Before 20260926110400 this worker was released at 12:05 ON THE SHIFT DAY
+-- with N6b "…removed from your shift tomorrow…".
+insert into bookings (id, shift_id, staff_id, status, source, confirmed_at) values
+  ('0e0e0e0e-0000-4000-8000-00000000ff01','7e7e7e7e-0000-4000-8000-000000000007', :'wrong',
+   'confirmed','auto', timestamptz '2026-12-14 14:00Z');
+select is(release_unready_bookings(timestamptz '2026-12-15 09:00Z'), 0,
+  '§3.5: a booking confirmed after the 12:00 deadline is not released by the next 12:05 — on the day itself nothing releases');
+select is((select status::text from bookings where id = '0e0e0e0e-0000-4000-8000-00000000ff01'), 'confirmed',
+  'and the late-confirmed worker keeps the shift');
+
+-- §8 N5 renders "{role} · {event} · {dateTime} · {rate}/h": the payload
+-- carries every value, and the rate is the worker's BASE rate (§1.5).
+select queue_booking_push('N5', '0e0e0e0e-0000-4000-8000-00000000ff01');
+select is((select payload->>'role' from notification_outbox where key = 'N5:booking:0e0e0e0e-0000-4000-8000-00000000ff01'),
+  (select name from roles where id = :'ro'), 'N5 carries the role name');
+select is((select payload->>'rate' from notification_outbox where key = 'N5:booking:0e0e0e0e-0000-4000-8000-00000000ff01'),
+  '£14.00', 'and the BASE pay rate — never the charge rate, holiday never blended (§1.5)');
+select is((select payload->>'dateTime' from notification_outbox where key = 'N5:booking:0e0e0e0e-0000-4000-8000-00000000ff01'),
+  'Tue 15 Dec 10:00–18:00', 'and the section''s window in Europe/London');
 
 select is(self_cancel_booking('0e0e0e0e-0000-4000-8000-000000000002')->>'ok', 'true',
   'RULE-04: a worker may self-cancel while more than 72 hours remain');

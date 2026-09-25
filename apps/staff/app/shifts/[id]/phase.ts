@@ -20,13 +20,17 @@ export type ShiftPhase =
   | 'before_window' // too early to check in
   | 'check_in' // the window is open
   | 'locked' // start+30 passed with no check-in (§5.1)
+  | 'turned_away' // RULE-15: the strict buffer sent them home — terminal
   | 'on_shift'
   | 'on_break'
-  | 'check_out_locked' // end+4h: RULE-02 has taken over
+  | 'check_out_locked' // RULE-02 has taken over: end+4h, or the second trigger
   | 'closed'; // checked out
 
 export interface PhaseInput {
-  shift: Pick<ShiftDetail, 'startsAt' | 'endsAt' | 'confirmedAt' | 'checkInAt' | 'checkOutAt'>;
+  shift: Pick<
+    ShiftDetail,
+    'startsAt' | 'endsAt' | 'confirmedAt' | 'checkInAt' | 'checkOutAt' | 'status' | 'noCheckoutOpen'
+  >;
   openBreak: boolean;
   now: Date;
 }
@@ -34,6 +38,18 @@ export interface PhaseInput {
 export function shiftPhase({ shift, openBreak, now }: PhaseInput): ShiftPhase {
   const startsAt = new Date(shift.startsAt);
   const endsAt = new Date(shift.endsAt);
+
+  // RULE-15: `attempt_check_in` moved the booking to `turned_away` and
+  // logged no check-in. That is terminal — the (m) screen, not the button
+  // again, which the RPC would only refuse.
+  if (shift.status === 'turned_away') return 'turned_away';
+
+  // RULE-02, either trigger. The second one records `check_out_at` equal
+  // to the check-in and raises the violation on the press, so an unresolved
+  // No check-out outranks a finish time: pay is undetermined until a
+  // manager enters the real one, and the worker sees the static screen —
+  // "the card does NOT disappear" (§10.4).
+  if (shift.noCheckoutOpen) return 'check_out_locked';
 
   if (shift.checkOutAt) return 'closed';
 

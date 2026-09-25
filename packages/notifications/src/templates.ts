@@ -350,7 +350,7 @@ export const TEMPLATES = {
     title: 'Activate your account',
     body: 'Your application was accepted. Set your password to start onboarding: {link}\n\nThen download the app and add it to your home screen: {installLink}',
     trigger: 'Accepted after the interview — activation + password + "download the app"',
-    timing: 'on acceptance. The only mandatory system email (§8)',
+    timing: 'on acceptance — mandatory (§8 table)',
     mandatory: true,
   },
   E4: {

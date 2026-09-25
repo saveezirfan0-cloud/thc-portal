@@ -37,7 +37,7 @@ export function KanbanColumn({
 
 export function KanbanCard({
   onOpen,
-  /** §2.12 duplicate check: matches an existing record, flagged in purple. */
+  /** §2.12 duplicate check: matches an existing record, flagged in amber. */
   returning,
   children,
 }: {

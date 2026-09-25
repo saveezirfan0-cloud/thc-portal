@@ -18,8 +18,12 @@
 -- §2.8 says the worker never sees the derived A/B/C statement.
 -- =====================================================================
 begin;
-select plan(82);
+select plan(85);
 \ir _shared/fixtures.psql
+
+-- A queued erasure to probe for (§1.7): admin-read, service-role-write.
+insert into storage_deletions (bucket, path, staff_id)
+  values ('photos', 'rls-probe/selfie.jpg', :'staffa');
 
 -- A cap-band notice for the worker under test. Created here rather than in
 -- the shared fixtures on purpose: 200_compliance_daily runs
@@ -235,6 +239,17 @@ select is((select count(*)::int from staff where id = :'staffb'), 1, 'second wor
 select is((select count(*)::int from staff where id = :'staffa'), 0, 'second worker cannot read the first worker''s staff row');
 select is((select count(*)::int from bookings where id = :'booking_b'), 1, 'second worker reads their own booking');
 select is((select count(*)::int from bookings where id = :'booking_a'), 0, 'second worker cannot read the first worker''s booking');
+
+-- ---- the erasure queue and the public form (§1.7, §2.1) ------------------
+select is((select count(*)::int from storage_deletions where path = 'rls-probe/selfie.jpg'), 0,
+  'a worker reads no erasure queue, not even the row naming their own selfie');
+select throws_ok(
+  format($$ insert into storage_deletions (bucket, path, staff_id) values ('photos', 'forged/x.jpg', %L) $$, :'staffa'),
+  '42501', null, 'a worker cannot queue a deletion of anybody''s evidence — that is remove_worker()''s');
+select throws_ok(
+  $$ insert into applications (first_name, last_name, email, phone, dob, age_band, consented_at)
+     values ('Forged', 'Row', 'forged@rls.test', '+447700900998', date '1990-01-01', '25-34', now()) $$,
+  '42501', null, '§2.1: a worker cannot insert an application row and skip the throttle and DOB match');
 
 reset role;
 select * from finish();

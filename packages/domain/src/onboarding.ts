@@ -330,6 +330,12 @@ export function rtwFooterHint(form: RtwForm, today: string = ukToday()): string 
   const errors = rtwErrors(form, today);
   if (errors.branch) return errors.branch;
   if (errors.shareCode && form.shareCode.trim() !== '') return 'Fix the share code to continue';
+  // A date that is FILLED but refused (under 18, not a real date, an expiry
+  // already passed) is not "missing": the footer repeats the field's own
+  // sentence, so a candidate who picked a 2010 birthday never reads "Date of
+  // birth is required" under a filled field (§2.1, §10.3 1/11).
+  if (errors.dob && form.dob.trim() !== '') return errors.dob;
+  if (errors.visaExpiry && form.visaExpiry.trim() !== '') return errors.visaExpiry;
   const missing = [
     errors.dob && 'date of birth',
     errors.gender && 'gender',

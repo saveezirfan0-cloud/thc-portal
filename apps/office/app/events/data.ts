@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { UK_ZONE, formatTimeIn } from '@thc/domain';
 import { eventsDb, supabaseConfigured } from './db';
+import { FILL_BOOKING_STATUSES, tallyFill } from './fill';
 
 /**
  * Everything the Shift Builder reads — Scope §3.2.
@@ -206,6 +207,8 @@ interface SectionRow {
 /** A booking that still ties a worker to the shift (§3.6). */
 export const LIVE_BOOKING_STATUSES = ['invited', 'confirmed', 'applied', 'worked'] as const;
 
+export { FILL_BOOKING_STATUSES, countsTowardsFill, tallyFill } from './fill';
+
 /** Reads a Europe/London wall-clock "HH:MM" back out of a stored timestamptz. */
 function ukTime(iso: string): string {
   return formatTimeIn(new Date(iso), UK_ZONE);
@@ -236,7 +239,7 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
   const sections = (sectionData ?? []) as SectionRow[];
 
   const ids = sections.map((s) => s.id);
-  const confirmed = new Map<string, number>();
+  let confirmed = new Map<string, number>();
   const booked = new Map<string, number>();
   if (ids.length > 0) {
     const { data: bookings } = await supabase
@@ -244,12 +247,13 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
       .select('shift_id, status')
       .in('shift_id', ids)
       .in('status', LIVE_BOOKING_STATUSES);
-    for (const row of (bookings ?? []) as { shift_id: string; status: string }[]) {
+    const rows = (bookings ?? []) as { shift_id: string; status: string }[];
+    for (const row of rows) {
       booked.set(row.shift_id, (booked.get(row.shift_id) ?? 0) + 1);
-      if (row.status === 'confirmed') {
-        confirmed.set(row.shift_id, (confirmed.get(row.shift_id) ?? 0) + 1);
-      }
     }
+    // Confirmed AND worked: a worker who has checked in still re-confirms
+    // nothing, but they hold the slot the builder's counts describe (§3.2).
+    confirmed = tallyFill(rows);
   }
 
   return {
@@ -302,7 +306,10 @@ export interface ListedEvent {
   clientName: string;
   venueName: string;
   venueAddress: string;
+  /** The venue's radius, for the day view's "· geofence 150 m" (§3.1). */
+  geofenceRadiusM: number | null;
   poNumber: string;
+  onsiteContact: string;
   cancelledAt: string | null;
   cancelReason: string;
   roles: ListedRole[];
@@ -314,7 +321,9 @@ interface ListedEventRow {
   event_date: string;
   venue_name: string;
   venue_address: string;
+  geofence_radius_m: number | null;
   po_number: string | null;
+  onsite_contact: string | null;
   cancelled_at: string | null;
   cancel_reason: string | null;
   client_id: string;
@@ -336,7 +345,7 @@ export async function loadEventsInRange(from: string, to: string): Promise<Liste
   const { data: eventData } = await supabase
     .from('events')
     .select(
-      'id, title, event_date, venue_name, venue_address, po_number, cancelled_at, cancel_reason, client_id',
+      'id, title, event_date, venue_name, venue_address, geofence_radius_m, po_number, onsite_contact, cancelled_at, cancel_reason, client_id',
     )
     .gte('event_date', from)
     .lte('event_date', to)
@@ -365,19 +374,19 @@ export async function loadEventsInRange(from: string, to: string): Promise<Liste
     buffer: number;
   }[];
 
-  const confirmed = new Map<string, number>();
+  let confirmed = new Map<string, number>();
   if (sections.length > 0) {
+    // `confirmed` and `worked` both hold the slot (FILL_BOOKING_STATUSES):
+    // reading `confirmed` alone emptied every Ongoing and Completed row.
     const { data: bookings } = await supabase
       .from('bookings')
-      .select('shift_id')
-      .eq('status', 'confirmed')
+      .select('shift_id, status')
+      .in('status', FILL_BOOKING_STATUSES)
       .in(
         'shift_id',
         sections.map((s) => s.id),
       );
-    for (const booking of (bookings ?? []) as { shift_id: string }[]) {
-      confirmed.set(booking.shift_id, (confirmed.get(booking.shift_id) ?? 0) + 1);
-    }
+    confirmed = tallyFill((bookings ?? []) as { shift_id: string; status: string }[]);
   }
 
   const clientNames = new Map(
@@ -408,7 +417,9 @@ export async function loadEventsInRange(from: string, to: string): Promise<Liste
     clientName: clientNames.get(event.client_id) ?? 'Client',
     venueName: event.venue_name,
     venueAddress: event.venue_address,
+    geofenceRadiusM: event.geofence_radius_m,
     poNumber: event.po_number ?? '',
+    onsiteContact: event.onsite_contact ?? '',
     cancelledAt: event.cancelled_at,
     cancelReason: event.cancel_reason ?? '',
     roles: byEvent.get(event.id) ?? [],

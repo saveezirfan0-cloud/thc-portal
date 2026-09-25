@@ -134,6 +134,19 @@ describe('notification register (§8)', () => {
     );
   });
 
+  it('does not call E3 the only mandatory email while marking others mandatory', () => {
+    // §8's opening line says "the only mandatory system email is E3" but its
+    // EMAIL table marks E2 and E4–E9 mandatory too; the register follows the
+    // table (REGISTER-NOTES.md), so no entry may restate the opening line.
+    expect(template('E3').timing).toBe('on acceptance — mandatory (§8 table)');
+    for (const [key, value] of entries) {
+      expect(
+        `${value.trigger} ${value.timing}`.toLowerCase(),
+        `${key} restates §8's opening line`,
+      ).not.toContain('only mandatory');
+    }
+  });
+
   it('addresses the office/payroll emails as §8 names them', () => {
     expect(TEMPLATES.E5.recipients).toEqual(TEMPLATES.E6.recipients);
     expect(TEMPLATES.E5.recipients).toEqual([

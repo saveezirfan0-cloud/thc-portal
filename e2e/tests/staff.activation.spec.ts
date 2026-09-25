@@ -1,5 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
-import { createCandidateInDocuments, databaseUnreachable, lit, removeCandidate, sql } from './_support/db';
+import {
+  createCandidateInDocuments,
+  databaseUnreachable,
+  lit,
+  removeCandidate,
+  sql,
+} from './_support/db';
 import type { Candidate } from './_support/db';
 
 /**
@@ -44,7 +50,9 @@ async function admin<T>(path: string, init: RequestInit): Promise<T> {
     },
   });
   if (!response.ok) {
-    throw new Error(`${init.method} /auth/v1/admin/${path}: ${response.status} ${await response.text()}`);
+    throw new Error(
+      `${init.method} /auth/v1/admin/${path}: ${response.status} ${await response.text()}`,
+    );
   }
   return (await response.json()) as T;
 }
@@ -118,7 +126,9 @@ test.describe('/activate/:token', () => {
         expect(response?.ok()).toBe(true);
         await expect(page.getByRole('heading', { name: /Welcome/ })).toBeVisible();
         // The greeting is the service-key preview; the form is there either way.
-        await expect(page.getByRole('heading', { name: new RegExp(`Welcome, ${candidate!.firstName}`) })).toBeVisible();
+        await expect(
+          page.getByRole('heading', { name: new RegExp(`Welcome, ${candidate!.firstName}`) }),
+        ).toBeVisible();
         await expect(page.getByText(candidate!.email)).toBeVisible();
         await expect(page.getByRole('button', { name: 'Activate my account' })).toBeVisible();
         // Nothing to click yet: the password rules gate the button.
@@ -137,7 +147,9 @@ test.describe('/activate/:token', () => {
       // GoTrue clears the token on verify; the preview no longer finds anyone.
       expect(previewName(token)).toBe('');
       expect(
-        sql(`select coalesce(confirmation_token, '') = ${lit(token)} from auth.users where id = ${lit(userId)}`),
+        sql(
+          `select coalesce(confirmation_token, '') = ${lit(token)} from auth.users where id = ${lit(userId)}`,
+        ),
       ).toBe('f');
     });
 

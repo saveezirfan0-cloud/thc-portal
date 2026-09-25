@@ -207,6 +207,20 @@ export function canRemoveRole(role: RoleDraft, bookedBySectionId: Record<string,
   return (bookedBySectionId[role.id] ?? 0) === 0;
 }
 
+/**
+ * §3.2: the dress code "defaults to the dress code already set for this
+ * client + role combination on the client's Rate card (§9.7)". The first
+ * entry of the card's list is the default (shift-builder.html opens Chef on
+ * "Chef whites"); a value already on the new list, or the per-event "Other"
+ * override, is kept; anything else falls back to the list's first entry, or
+ * to nothing when the card has no list for this role.
+ */
+export function defaultDressCode(dressCodes: readonly string[], current = ''): string {
+  if (current === DRESS_CODE_OTHER) return current;
+  if (current && dressCodes.includes(current)) return current;
+  return dressCodes[0] ?? '';
+}
+
 /** What the worker is actually told to wear (§9.7). */
 export function effectiveDressCode(role: RoleDraft): string {
   return role.dressCode === DRESS_CODE_OTHER ? role.dressCodeOther.trim() : role.dressCode;

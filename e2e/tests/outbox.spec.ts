@@ -51,7 +51,8 @@ test('Send allocation sheet queues exactly one D1 row under the register key (§
 
   const [response] = await Promise.all([
     page.waitForResponse(
-      (r) => r.url().includes(`/api/documents/${GALA_DINNER}/send`) && r.request().method() === 'POST',
+      (r) =>
+        r.url().includes(`/api/documents/${GALA_DINNER}/send`) && r.request().method() === 'POST',
       { timeout: 60_000 },
     ),
     dialog.getByRole('button', { name: 'Send', exact: true }).click(),
@@ -77,9 +78,11 @@ test('Send allocation sheet queues exactly one D1 row under the register key (§
   ).toBe(`D1|email|${CLIENT_CARD_EMAILS}`);
   // The document knows its own email, so a second press on the same copy
   // would be the same key — and `on conflict (key) do nothing`.
-  expect(sql(`select outbox_key from event_documents where id = ${lit(body.documentId!)}`)).toBe(key);
-  // And the PO number rides on it (§11.3: one PDF per event, PO on it).
-  expect(sql(`select payload ->> 'poNumber' from notification_outbox where key = ${lit(key)}`)).toBe(
-    '4471-A',
+  expect(sql(`select outbox_key from event_documents where id = ${lit(body.documentId!)}`)).toBe(
+    key,
   );
+  // And the PO number rides on it (§11.3: one PDF per event, PO on it).
+  expect(
+    sql(`select payload ->> 'poNumber' from notification_outbox where key = ${lit(key)}`),
+  ).toBe('4471-A');
 });

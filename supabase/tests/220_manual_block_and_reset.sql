@@ -19,7 +19,7 @@
 --            unauditable; keep it live and it satisfies the new check.
 -- =====================================================================
 begin;
-select plan(25);
+select plan(28);
 \set now '2026-09-21 12:00:00+01'
 \ir _shared/fixtures.psql
 
@@ -58,20 +58,34 @@ select throws_ok(
   'reason_required',
   '§4.3: a manual block "requires a reason" — without one it is an auto-block wearing the wrong label');
 
-select is((block_worker_manually(:'clean', 'Conduct under review', :'now'::timestamptz))->>'status', 'blocked',
+select is((block_worker_manually(:'clean', 'Conduct under review', :'now'::timestamptz, :'admin_uid'))->>'status', 'blocked',
   'Block runs the same §4.3 cascade as an expired document');
 select is((select block_kind::text from staff where id = :'clean'), 'manual',
   'and records that a human pressed it, which is what keeps the automatic unblock off it');
 select is((select block_reason from staff where id = :'clean'), 'Conduct under review',
   'the reason is saved, and shows on the profile as "Blocked — <reason>"');
+-- §9.6 "they see the reason first": who, when and what was released is an
+-- audit row (20260926110300 — before it Block wrote none, and the office's
+-- service-key call carried no actor).
+select is((select actor::text || ' ' || (data->>'reason') from audit_log
+            where action = 'block_manual' and entity_id = :'clean'),
+  :'admin_uid' || ' Conduct under review',
+  'the block is audited with the manager as actor (p_actor) and the reason');
+select is((select actor_name || ' · ' || action || ' · ' || coalesce(released::text, '?') from staff_block_audit_v where staff_id = :'clean'),
+  'Gisela M. · block_manual · 0',
+  'and staff_block_audit_v hands the profile banner the latest block: who, what, how many bookings it released');
 
 -- ---------------------------------------------------------------------
 -- Unblock (§9.6): the same full compliance check, first.
 -- ---------------------------------------------------------------------
-select is((unblock_worker(:'clean', date '2026-09-21'))->>'unblocked', 'true',
+select is((unblock_worker(:'clean', date '2026-09-21', :'admin_uid'))->>'unblocked', 'true',
   'Unblock lifts a manual block when the profile is otherwise clean');
 select is((select status::text || '/' || coalesce(block_kind::text, 'none') from staff where id = :'clean'),
   'compliant/none', 'and the kind and reason go with it');
+select is((select actor::text || ' ' || (data->>'blockKind') from audit_log
+            where action = 'unblock' and entity_id = :'clean'),
+  :'admin_uid' || ' manual',
+  'the unblock is audited too — who lifted which kind of block (§9.6, 20260926110300)');
 
 select is((block_worker_manually(:'stale', 'Client asked us not to re-engage', :'now'::timestamptz))->>'status',
   'blocked', 'the second worker is blocked by hand too');

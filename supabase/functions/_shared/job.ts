@@ -15,6 +15,9 @@
  */
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+import { timingSafeEqual } from '../../../packages/db/src/willo.ts';
+
+const encoder = new TextEncoder();
 
 export interface JobResult {
   ok: boolean;
@@ -29,15 +32,26 @@ function serviceClient(): SupabaseClient {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+/**
+ * The bearer the caller presented equals the expected key. Constant time
+ * over equal-length inputs (timingSafeEqual visits every byte whatever the
+ * first difference), so the response time never says how long a prefix a
+ * guess shared. V8's `===` short-circuits on the first differing byte,
+ * which is what the earlier "compare lengths first" version still leaked.
+ * Exported for the test.
+ */
+export function bearerMatches(header: string | null, expected: string | undefined): boolean {
+  if (!expected) return false;
+  const token = header?.startsWith('Bearer ') ? header.slice(7) : '';
+  return timingSafeEqual(encoder.encode(token), encoder.encode(expected));
+}
+
 /** The caller must hold the service key. pg_net sends it as a bearer token. */
 function authorised(request: Request): boolean {
-  const expected = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
-  const header = request.headers.get('Authorization') ?? '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : '';
-  // Constant-time-ish: compare lengths first, then the whole string. These
-  // are not user-supplied secrets being guessed interactively, but there is
-  // no reason to leak the prefix either.
-  return Boolean(expected) && token.length === expected!.length && token === expected;
+  return bearerMatches(
+    request.headers.get('Authorization'),
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+  );
 }
 
 /**
