@@ -59,6 +59,7 @@
   --sidebar-w: 232px; --topbar-h: 56px; --gap: 16px;
   --btn-h: 36px; --btn-h-sm: 28px; --input-h: 38px; --seg-h: 32px; --seg-h-sm: 26px;
   --tap-min: 44px;                     /* the smallest thing a finger can hit (§1.2); the phone frame sets every control metric to it */
+  --qr-paper: #ffffff; --qr-ink: #000000; /* a QR code is read by a camera: paper white and ink black in every style and theme (public/activate.html) */
 }
 
 /* ---- warm style: the default look proposed for THC (ADR-0003) ---- */

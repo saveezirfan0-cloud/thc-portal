@@ -11,10 +11,12 @@ const nextConfig: NextConfig = {
   // serverless Chromium. @sparticuz/chromium unpacks its browser from these
   // brotli files at runtime, which file tracing cannot see, so the job route
   // is told to ship them. Confirm on the first Vercel deploy (ADR-0025).
+  //
+  // Only pnpm's real path, which is what the package resolves `bin/` against.
+  // The symlinked `./node_modules/@sparticuz/chromium/bin/**` was listed too
+  // and traced as a second 67 MB copy of the browser (148 MB function).
   outputFileTracingIncludes: {
     '/api/jobs/rtw-check': [
-      './node_modules/@sparticuz/chromium/bin/**',
-      // pnpm's real path, which the package resolves `bin/` against.
       '../../node_modules/.pnpm/@sparticuz+chromium@*/node_modules/@sparticuz/chromium/bin/**',
     ],
   },

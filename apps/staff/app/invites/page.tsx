@@ -5,7 +5,7 @@ import { StaffShell } from '../_components/StaffShell';
 import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
 import { acceptInvite, declineInvite } from '../actions';
-import { loadBookings, openInvites } from '../data';
+import { loadBookings, openInvites, overlapWarning, shiftsBadge } from '../data';
 import '../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -28,15 +28,23 @@ export const metadata = { title: 'Invites · THC Staff' };
  *     that exists only on the screen is not a hard gate;
  *   - RULE-16: an open invitation disappears on its own once its event has
  *     ended, whatever its row still says, and a cancelled event's invitation
- *     goes the moment N12 lands.
+ *     goes the moment N12 lands;
+ *   - §3.4: where the invitation collides with a CONFIRMED booking — the
+ *     windows intersect, or a different venue is under two hours away — the
+ *     card carries the amber "Overlaps your confirmed …" line before the
+ *     worker taps. `accept_invite` still refuses it; the line is a warning.
  */
 export default async function Page() {
   const bookings = await loadBookings();
   const invites = openInvites(bookings);
-  const booked = bookings.filter((b) => b.status === 'confirmed').length;
 
   return (
-    <StaffShell title="Invites" active="/invites" shifts={booked} invites={invites.length}>
+    <StaffShell
+      title="Invites"
+      active="/invites"
+      shifts={shiftsBadge(bookings)}
+      invites={invites.length}
+    >
       {invites.length === 0 ? (
         <EmptyState>
           <h3>No open invitations</h3>
@@ -52,6 +60,7 @@ export default async function Page() {
                 shiftHours: sectionHours(invite),
               })
             : null;
+          const overlap = overlapWarning(invite, bookings);
           return (
             <div className={`mcard${invite.hoursLimit ? ' muted' : ''}`} key={invite.bookingId}>
               <div className="card-head">
@@ -77,6 +86,7 @@ export default async function Page() {
                 £{invite.payRate.toFixed(2)}/h
                 {invite.dressCode ? ` · Dress code: ${invite.dressCode}` : ''}
               </div>
+              {overlap ? <div className="m amber">{overlap}</div> : null}
               {limit ? <div className="m">{limit}</div> : null}
               <div className="card-actions">
                 <ActionButton

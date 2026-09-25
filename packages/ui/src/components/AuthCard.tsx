@@ -10,6 +10,13 @@ export interface AuthCardProps {
   banner?: ReactNode;
   /** Small print under the button. */
   footer?: ReactNode;
+  /**
+   * Where the appearance switch goes. `'corner'` (the default, also `true`)
+   * is the sign-in card's top-right corner; `'none'` (or `false`) draws no
+   * switch, for the public cards whose wireframes have none — the
+   * application form and the activation link (apply.html, activate.html).
+   */
+  appearance?: boolean | 'corner' | 'none';
   children: ReactNode;
 }
 
@@ -22,20 +29,26 @@ export interface AuthCardProps {
  * The appearance switch is in the card's corner because sign-in is the one
  * screen that has no chrome to put it in, and a viewer whose device prefers
  * dark would otherwise get a light login followed by a dark app (ADR-0007).
+ * A public card that reaches a person who has no account yet can drop it
+ * (`appearance="none"`), since there is no app behind it to disagree with.
  */
 export function AuthCard({
   product,
   heading = 'Sign in',
   banner,
   footer,
+  appearance = 'corner',
   children,
 }: AuthCardProps) {
+  const withSwitch = appearance === 'corner' || appearance === true;
   return (
     <div className="auth-wrap">
       <section className="auth-card">
-        <div className="appearance">
-          <ModeSwitch small />
-        </div>
+        {withSwitch ? (
+          <div className="appearance">
+            <ModeSwitch small />
+          </div>
+        ) : null}
         <div className="brand">
           <Logo size="lg" />
           <div>

@@ -3,6 +3,7 @@ import {
   Alert,
   AppBody,
   AppHeader,
+  AuthCard,
   Avatar,
   AvatarGroup,
   BottomNav,
@@ -32,6 +33,7 @@ import {
   Pill,
   Progress,
   Rating,
+  ScheduledWindow,
   Score,
   SearchInput,
   SegBar,
@@ -418,6 +420,43 @@ export default function Page() {
           </TableScroll>
         </Panel>
 
+        <Panel title="Scheduled window (§1.8)">
+          <p className="sm muted">
+            A scheduled time is UK first, with a second &ldquo;your time&rdquo; line only when the
+            reader&rsquo;s zone differs. Left: as a reader in the UK sees it. Middle: as a reader in
+            Berlin sees it. Right: the live one, in your own zone. Actual check-in stamps and audit
+            stamps never come through this component.
+          </p>
+          <div className="ds-grid-2 mt-8">
+            <div className="ds-window">
+              <span className="label">Europe/London</span>
+              <ScheduledWindow
+                className="mono"
+                startsAt="2026-09-26T16:00:00Z"
+                endsAt="2026-09-26T22:30:00Z"
+                zone="Europe/London"
+              />
+            </div>
+            <div className="ds-window">
+              <span className="label">Europe/Berlin</span>
+              <ScheduledWindow
+                className="mono"
+                startsAt="2026-09-26T16:00:00Z"
+                endsAt="2026-09-26T22:30:00Z"
+                zone="Europe/Berlin"
+              />
+            </div>
+            <div className="ds-window">
+              <span className="label">Your zone</span>
+              <ScheduledWindow
+                className="mono"
+                startsAt="2026-09-26T16:00:00Z"
+                endsAt="2026-09-26T22:30:00Z"
+              />
+            </div>
+          </div>
+        </Panel>
+
         <Panel title="Status and feedback">
           <Alert tone="amber">
             This shift has an unresolved <b>No check-out</b> violation. Payroll holds the row until
@@ -539,6 +578,35 @@ export default function Page() {
             state="expired"
             actions={<Pill tone="coral">Expired</Pill>}
           />
+        </Panel>
+
+        <Panel title="Auth card (§1.4, §10.2)">
+          <p className="sm muted">
+            One card for all three apps. Sign-in carries the appearance switch in its corner
+            (ADR-0007: no chrome to put it in). A public card whose wireframe draws none — the
+            application form, the activation link — passes <code>appearance=&quot;none&quot;</code>.
+          </p>
+          <div className="ds-grid-2 ds-auth mt-8">
+            <AuthCard product="Back Office" footer="Trouble signing in? Contact the office.">
+              <Input label="Email" type="email" defaultValue="gisela@thehospitalitycompany.co.uk" />
+              {/* `reveal`: the "Show" addon of wireframes/client/login.html (§1.4). */}
+              <Input label="Password" type="password" defaultValue="••••••••" reveal />
+              <Button tone="primary" block>
+                Sign in
+              </Button>
+            </AuthCard>
+            <AuthCard
+              product="Account activation"
+              heading="Welcome, Amira — set your password"
+              appearance="none"
+            >
+              <Input label="Password" type="password" defaultValue="" />
+              <Input label="Confirm password" type="password" defaultValue="" />
+              <Button tone="primary" block>
+                Activate my account
+              </Button>
+            </AuthCard>
+          </div>
         </Panel>
 
         <Panel title="Onboarding pipeline">

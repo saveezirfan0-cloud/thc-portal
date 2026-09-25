@@ -23,6 +23,12 @@ import type { ActionResult } from './types';
  * uses it has to establish for itself that the caller is an admin. That
  * is what `asAdmin()` below is: without it, this file would be a public
  * endpoint for anonymising any worker in the system by id.
+ *
+ * The same key carries no `sub`, so inside the database `auth.uid()` is
+ * NULL and the audit row each of the four writes would name nobody.
+ * Each takes `p_actor` for exactly this (20260927160400 §4), and it is
+ * the manager's id `asAdmin()` read from the SESSION — never a value the
+ * browser sent — that `callPrivilegedRpc()` passes.
  */
 
 const NOT_CONFIGURED =
@@ -57,7 +63,7 @@ async function callRpc(fn: string, args: RpcArguments, staffId: string): Promise
  * caller's own identity being read and `profiles`' own policy that
  * answers — never a claim the browser sent.
  */
-async function asAdmin(): Promise<{ ok: true } | { ok: false; message: string }> {
+async function asAdmin(): Promise<{ ok: true; userId: string } | { ok: false; message: string }> {
   const supabase = createClient(await cookies());
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, message: 'Sign in to do this.' };
@@ -71,10 +77,14 @@ async function asAdmin(): Promise<{ ok: true } | { ok: false; message: string }>
   if (profile?.role !== 'admin') {
     return { ok: false, message: 'Only the office can do this.' };
   }
-  return { ok: true };
+  return { ok: true, userId: auth.user.id };
 }
 
-/** The service-role client: RLS is bypassed, so `asAdmin()` is the gate. */
+/**
+ * The service-role client: RLS is bypassed, so `asAdmin()` is the gate —
+ * and the session's user id it returns is the `p_actor` the audit row
+ * (staff_block_audit_v, §1.7's removal record) names as the manager.
+ */
 async function callPrivilegedRpc(
   fn: string,
   args: RpcArguments,
@@ -86,7 +96,7 @@ async function callPrivilegedRpc(
   if (!gate.ok) return gate;
 
   const admin = createAdminClient() as unknown as RpcClient;
-  const { error } = await admin.rpc(fn, args);
+  const { error } = await admin.rpc(fn, { ...args, p_actor: gate.userId });
   if (error) return { ok: false, message: error.message };
   return done(staffId);
 }

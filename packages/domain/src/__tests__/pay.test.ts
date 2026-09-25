@@ -10,9 +10,10 @@ import {
   isNoCheckOut,
   pay,
   payableMinutes,
+  showRate,
   turnedAwayMinutes,
 } from '../pay';
-import type { NoCheckOutState } from '../pay';
+import type { NoCheckOutState, ShowRateBooking } from '../pay';
 
 /**
  * The §5.1–5.2 vectors, run against the TypeScript half of the contract.
@@ -169,5 +170,19 @@ describe('holiday pay (§9.8)', () => {
     expect(money.holidayPence).toBe(Math.round(11200 * 0.1207));
     // The two are returned separately so nothing can silently add them.
     expect(money).not.toHaveProperty('totalPence');
+  });
+});
+
+describe('§6 the show-rate (BG-03, RULE-14, §9.5)', () => {
+  // The same cases, by name, run against staff_show_rate() in
+  // supabase/tests/596_show_rate_derived.sql.
+  for (const c of merged<{ bookings: ShowRateBooking[] }>(vectors.showRate)) {
+    it(c.name, () => {
+      expect(showRate(c.input.bookings)).toBe(c.expect.rate);
+    });
+  }
+
+  it('has every case the SQL side replays', () => {
+    expect(vectors.showRate.cases.length).toBe(11);
   });
 });

@@ -14,8 +14,15 @@ import {
 } from '@thc/ui';
 import { EventWindow } from './EventWindow';
 import { ukDateShort } from './format';
-import { byDateDescending, documentFor, fillOf, filterByTab, statusTone } from './rules';
-import type { LineupRow, PortalEvent, RoleSection, Tab } from './rules';
+import { byDateDescending, documentOffer, fillOf, filterByTab, statusTone } from './rules';
+import type {
+  DocumentKind,
+  DocumentOffer,
+  LineupRow,
+  PortalEvent,
+  RoleSection,
+  Tab,
+} from './rules';
 
 /**
  * §11.1 · the customer's event list.
@@ -48,12 +55,15 @@ export function EventsScreen({
   sections,
   lineup,
   photos,
+  documents = {},
   now,
 }: {
   events: PortalEvent[];
   sections: RoleSection[];
   lineup: LineupRow[];
   photos: Record<string, string>;
+  /** Which §11.3 PDFs the office has issued, per event (`client_event_documents_v`). */
+  documents?: Record<string, DocumentKind[]>;
   /** Fixed on the server so the first paint cannot disagree with hydration. */
   now: string;
 }) {
@@ -107,12 +117,13 @@ export function EventsScreen({
             placeholder="Search events"
             value={query}
             onChange={(e) => setQuery(e.currentTarget.value)}
-            style={{ width: 220 }}
+            className="ev-search"
           />
         </div>
       </div>
 
       <Panel
+        className="events-panel"
         title="Events"
         actions={<Pill>{rows.length === 1 ? '1 event' : `${rows.length} events`}</Pill>}
         flush
@@ -140,7 +151,7 @@ export function EventsScreen({
                   {rows.map((e) => {
                     const fill = fillOf(sectionsFor(e.id));
                     const faces = facesFor(e.id);
-                    const doc = documentFor(e.status);
+                    const doc = documentOffer(e.status, documents[e.id] ?? []);
                     const cancelled = e.status === 'cancelled';
 
                     return (
@@ -183,17 +194,7 @@ export function EventsScreen({
                         </td>
                         <td>
                           <div className="stack tight">
-                            {doc ? (
-                              <Button
-                                size="sm"
-                                disabled
-                                title="The timesheet documents arrive with §11.3"
-                              >
-                                {DOC_LABEL[doc]}
-                              </Button>
-                            ) : (
-                              <span className="muted sm">No document</span>
-                            )}
+                            <DocumentButton eventId={e.id} offer={doc} />
                             <Link className="sm" href={`/client/events/${e.id}`}>
                               Details →
                             </Link>
@@ -210,17 +211,17 @@ export function EventsScreen({
             <div className="cards" style={{ padding: 14 }}>
               {rows.map((e) => {
                 const fill = fillOf(sectionsFor(e.id));
-                const doc = documentFor(e.status);
+                const doc = documentOffer(e.status, documents[e.id] ?? []);
                 const cancelled = e.status === 'cancelled';
 
                 return (
                   <div key={e.id} className={cancelled ? 'ecard cancelled' : 'ecard'}>
-                    <div className="row">
+                    <div className="when">
                       <Pill tone={statusTone(e.status)} dot={e.status === 'ongoing'}>
                         {STATUS_LABEL[e.status]}
                       </Pill>
-                      <span className="ml-auto win">
-                        {ukDateShort(e.startsAt)} ·{' '}
+                      <span className="win">
+                        <b>{ukDateShort(e.startsAt)}</b>
                         <EventWindow startsAt={e.startsAt} endsAt={e.endsAt} />
                       </span>
                     </div>
@@ -230,26 +231,16 @@ export function EventsScreen({
                       {e.poNumber ? ` · PO ${e.poNumber}` : ''}
                     </div>
                     {cancelled ? null : (
-                      <div className="row">
+                      <div className="faces">
                         <Faces people={facesFor(e.id)} photos={photos} />
-                        <span className="sm" style={{ marginLeft: 14 }}>
+                        <span className="sm">
                           <b>{fill.confirmed}</b> of {fill.headcount} confirmed
                         </span>
                       </div>
                     )}
-                    <div className="row">
-                      {doc ? (
-                        <Button
-                          size="sm"
-                          disabled
-                          title="The timesheet documents arrive with §11.3"
-                        >
-                          {DOC_LABEL[doc]}
-                        </Button>
-                      ) : (
-                        <span className="sm muted">No document</span>
-                      )}
-                      <Link className="ml-auto sm" href={`/client/events/${e.id}`}>
+                    <div className="foot">
+                      <DocumentButton eventId={e.id} offer={doc} />
+                      <Link className="ml-auto btn sm" href={`/client/events/${e.id}`}>
                         Details →
                       </Link>
                     </div>
@@ -261,6 +252,28 @@ export function EventsScreen({
         )}
       </Panel>
     </>
+  );
+}
+
+/**
+ * The row's document (§11.1, §11.3): a real download — an `<a href>` to the
+ * PDF, so it can be saved or forwarded from a phone (§11.4) — once the
+ * office has issued that kind; the same label, disabled, until it has; and
+ * the wireframe's "No document" for a cancelled event.
+ */
+function DocumentButton({ eventId, offer }: { eventId: string; offer: DocumentOffer | null }) {
+  if (!offer) return <span className="muted sm">No document</span>;
+  if (offer.available) {
+    return (
+      <a className="btn sm" href={`/client/events/${eventId}/document?kind=${offer.kind}`}>
+        {DOC_LABEL[offer.kind]}
+      </a>
+    );
+  }
+  return (
+    <Button size="sm" disabled title="THC has not issued this document yet">
+      {DOC_LABEL[offer.kind]}
+    </Button>
   );
 }
 

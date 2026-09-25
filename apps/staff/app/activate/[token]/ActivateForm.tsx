@@ -52,7 +52,12 @@ export function ActivateForm({
 
   if (state.expired) {
     return (
-      <AuthCard product="Account activation" heading="This link has expired" footer={footer}>
+      <AuthCard
+        product="Account activation"
+        heading="This link has expired"
+        footer={footer}
+        appearance="none"
+      >
         <div className="row">
           <Pill tone="coral">Link expired</Pill>
         </div>
@@ -68,7 +73,7 @@ export function ActivateForm({
   const mark = (ok: boolean) => (!touched ? undefined : ok ? 'ok' : 'bad');
 
   return (
-    <AuthCard product="Account activation" heading={heading} footer={footer}>
+    <AuthCard product="Account activation" heading={heading} footer={footer} appearance="none">
       <p className="sm muted">{lead}</p>
       <form action={formAction} className="act-form">
         {state.error ? <Alert tone="coral">{state.error}</Alert> : null}

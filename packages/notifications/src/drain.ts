@@ -184,8 +184,16 @@ async function sendPush(
     };
   }
 
-  // The service worker (apps/staff/sw.ts) reads exactly these three fields.
-  const payload = { title: message.title, body: message.body, url: message.url ?? '/shifts' };
+  // The service worker (apps/staff/sw.ts) reads exactly these fields:
+  // title, body, the deep link it opens on tap, and — for N8 only — the
+  // label of the one button the register gives a push, which opens the
+  // same link.
+  const payload = {
+    title: message.title,
+    body: message.body,
+    url: message.url ?? '/shifts',
+    ...(message.action ? { action: message.action } : {}),
+  };
 
   const results = await Promise.all(
     subscriptions.map(async (subscription) => {

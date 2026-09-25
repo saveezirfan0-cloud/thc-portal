@@ -13,7 +13,10 @@ import { StaffShell } from '../../_components/StaffShell';
 import { ShiftTime } from '../../_components/ShiftTime';
 import { ActionButton } from '../../_components/ActionButton';
 import { applyForShift } from '../../actions';
-import { findOpenShift, loadBookings, openInvites } from '../../data';
+import { findOpenShift, loadBookings, openInvites, shiftsBadge } from '../../data';
+import { RadarMap } from '../RadarMap';
+import { WeekMeter } from '../WeekMeter';
+import { dayLabel } from '../model';
 import '../../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -28,6 +31,10 @@ export const metadata = { title: 'Open shift · THC Staff' };
  * booking — the office or auto-assign still confirms it — and the button
  * re-checks live availability, so "Sorry, this shift is now full" is a real
  * answer from the server rather than a stale count on this page.
+ *
+ * Every shift gets the map block and the week meter — "Week of Mon 14 with
+ * this shift · 13 h of 20 h" — not only a Limit Reached one: the meter is
+ * how a worker sees a shift that fits, and how close it comes.
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -48,7 +55,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       title={`${shift.eventTitle} · ${shift.role}`}
       sub={<Link href="/radar">‹ Radar</Link>}
       active="/radar"
-      shifts={bookings.filter((b) => b.status === 'confirmed' || b.status === 'worked').length}
+      shifts={shiftsBadge(bookings)}
       invites={openInvites(bookings).length}
     >
       <div className="card-head">
@@ -93,17 +100,42 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         </div>
       </div>
 
+      <RadarMap shift={shift} />
+
+      {shift.bookedHours !== null ? (
+        <WeekMeter
+          label={
+            shift.weekStart
+              ? `Week of ${dayLabel(shift.weekStart)} with this shift`
+              : 'This week with this shift'
+          }
+          bookedHours={shift.bookedHours}
+          capHours={shift.capHours}
+          shiftHours={hours}
+          {...(shift.hoursLimit
+            ? {
+                below: (
+                  <>
+                    {explainLimit({
+                      weekStart: shift.weekStart,
+                      bookedHours: shift.bookedHours,
+                      capHours: shift.capHours,
+                      shiftHours: hours,
+                    }) ??
+                      `This ${formatHours(hours)} shift would take you over your weekly hours limit for that Mon–Sun week.`}{' '}
+                    The limit is calculated from your verified documents and cannot be changed in
+                    the app.
+                  </>
+                ),
+              }
+            : {})}
+        />
+      ) : null}
+
       {shift.hoursLimit ? (
         <Alert tone="coral">
-          <b>Limit Reached.</b>{' '}
-          {explainLimit({
-            weekStart: shift.weekStart,
-            bookedHours: shift.bookedHours,
-            capHours: shift.capHours,
-            shiftHours: hours,
-          }) ??
-            `This ${formatHours(hours)} shift would take you over your weekly hours limit for that Mon–Sun week.`}{' '}
-          The limit is calculated from your verified documents and cannot be changed in the app.
+          <b>Limit Reached.</b> Applying is blocked for the Mon–Sun week this shift falls in
+          (RULE-20).
         </Alert>
       ) : (
         <p className="note xs">

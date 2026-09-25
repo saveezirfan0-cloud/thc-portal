@@ -176,8 +176,17 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
 
       <div className="field">
         <label className="label" htmlFor="client-email">
-          Contact emails <span className="coral">*</span>{' '}
-          <span className="muted">· 2–3 people</span>
+          {/* §9.7: "Contact emails" on New client; "Allocation email(s)" once
+              the client exists, as the card's Edit names them
+              (wireframes/backoffice/client-card.html) — the allocation sheet
+              and timesheet go to these addresses (§11.4). */}
+          {editing ? 'Allocation email(s)' : 'Contact emails'} <span className="coral">*</span>
+          {editing ? null : (
+            <>
+              {' '}
+              <span className="muted">· 2–3 people</span>
+            </>
+          )}
         </label>
         <div className="emails">
           {emails.map((email) => (

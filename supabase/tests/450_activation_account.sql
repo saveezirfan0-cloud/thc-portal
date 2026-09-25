@@ -169,8 +169,10 @@ select throws_ok($$ select link_staff_account('45000000-0000-4000-8000-000000000
 -- =====================================================================
 -- D · activation_preview (service role)
 -- =====================================================================
+-- `activated` joined the preview in 20260928110000: false here, because
+-- none of these logins has a password yet (595 covers the true case).
 select is(activation_preview(:'tok_mei'),
-  '{"firstName":"Mei","lastName":"Lin","email":"Mei@Act.test"}'::jsonb,
+  '{"firstName":"Mei","lastName":"Lin","email":"Mei@Act.test","activated":false}'::jsonb,
   'an invite token (confirmation_token) previews the candidate it is for');
 select is(activation_preview(:'tok_zed') ->> 'firstName', 'Zed',
   'a magic-link token (recovery_token) does too');

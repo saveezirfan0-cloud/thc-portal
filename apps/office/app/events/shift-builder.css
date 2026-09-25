@@ -9,7 +9,7 @@
 .builder {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 320px;
-  gap: 20px;
+  gap: var(--sp-20);
   align-items: start;
 }
 
@@ -18,14 +18,14 @@
   top: calc(var(--topbar-h) + 16px);
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: var(--sp-16);
 }
 
 .f4,
 .f3,
 .f2 {
   display: grid;
-  gap: 12px;
+  gap: var(--sp-12);
 }
 .f4 {
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -44,30 +44,31 @@
 .rolesec .rh {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: var(--sp-10);
+  padding: var(--sp-10) var(--sp-14);
   border-bottom: 1px solid var(--line);
   background: var(--panel-2);
   flex-wrap: wrap;
 }
 .rolesec .rh .n {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
   color: var(--muted);
+  font-weight: var(--label-weight);
 }
 .rolesec .rh .right {
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--sp-10);
 }
 .rolesec .rb {
-  padding: 14px;
+  padding: var(--sp-14);
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--sp-12);
 }
 .rolesec.err {
   border-color: var(--coral);
@@ -83,7 +84,7 @@
   /* Seven across only where a native time picker and a £ addon both fit;
      below that the row wraps rather than clipping a value. */
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--sp-10);
 }
 .rolesec .grid6 .input,
 .rolesec .grid6 .input-row {
@@ -111,23 +112,24 @@
 .sumrow {
   display: flex;
   justify-content: space-between;
-  gap: 12px;
+  gap: var(--sp-12);
   font-size: 12.5px;
-  padding: 6px 0;
+  padding: var(--sp-6) 0;
   border-bottom: 1px dashed var(--line);
 }
 .sumrow:last-child {
   border-bottom: 0;
 }
 .sumrow .v {
-  font-family: var(--font-mono);
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
 .policy {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-8);
   font-size: 12.5px;
 }
 .policy .check {

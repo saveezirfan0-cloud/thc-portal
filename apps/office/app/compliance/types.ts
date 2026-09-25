@@ -66,6 +66,14 @@ export interface QueueRow {
   size_bytes: number | null;
   /** Why a row that is not a pending upload is here; null on document and declaration rows. */
   review_reason: string | null;
+  /**
+   * Why the extractor sent this upload to a human beyond its confidence
+   * (compliance_docs.manual_review_reason, 20260928110300 / 20260928110900):
+   * `letter expired` for a term letter whose every holiday range is already
+   * past — Verify refuses it (§4.2). Null when the flag is confidence only,
+   * and on declaration and rtw_date rows.
+   */
+  manual_review_reason: string | null;
   // The latest automated right-to-work check (20260928100000, ADR-0025);
   // null on every row that is not a share code (optional: absent before it).
   rtw_check_id?: string | null;

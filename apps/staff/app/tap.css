@@ -1,0 +1,24 @@
+/*
+ * Staff App touch targets (§1.2, §10.1): every control a worker taps is at
+ * least --tap-min tall. The wireframes get this from thc.css, whose `.phone`
+ * frame re-points the control metrics to --tap-min; the product runs
+ * full-bleed on the device, so the same re-pointing sits on the root. It is
+ * restated for the warm selector because tokens.css sets --btn-h and
+ * --input-h there at the same specificity, and this sheet has to win.
+ *
+ * Loaded once from app/layout.tsx, so no screen has to do this itself.
+ */
+:root,
+:root[data-style='warm'] {
+  --btn-h: var(--tap-min);
+  --btn-h-sm: var(--tap-min);
+  --input-h: var(--tap-min);
+}
+
+/* The segmented control's buttons carry a fixed height in packages/ui
+   rather than a metric token (thc.css has --seg-h; components.css does
+   not read it yet), so they are lifted here. */
+.seg button,
+.seg a {
+  height: var(--tap-min);
+}

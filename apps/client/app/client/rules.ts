@@ -76,6 +76,9 @@ export function fillOf(sections: readonly RoleSection[]): {
   return { confirmed, headcount, percent, tone: confirmed >= headcount ? 'green' : 'amber' };
 }
 
+/** The two §11.3 PDFs, as `client_event_documents_v` names them. */
+export type DocumentKind = 'allocation' | 'signout';
+
 /**
  * Which document the row offers (§11.1, §11.3).
  *
@@ -84,9 +87,65 @@ export function fillOf(sections: readonly RoleSection[]): {
  * or downloaded". Once the event is over it becomes the sign-out timesheet.
  * A cancelled event keeps its row, greyed, with no document.
  */
-export function documentFor(status: EventStatus): 'allocation' | 'signout' | null {
+export function documentFor(status: EventStatus): DocumentKind | null {
   if (status === 'cancelled') return null;
   return status === 'completed' ? 'signout' : 'allocation';
+}
+
+/** One download the screen draws: live when the office has issued a copy. */
+export interface DocumentOffer {
+  kind: DocumentKind;
+  available: boolean;
+}
+
+/**
+ * The list's document button (§11.1): the kind `documentFor` names, live
+ * only when `client_event_documents_v` holds a copy of it. A cancelled
+ * event offers nothing, whatever was issued before the cancellation.
+ *
+ * `issued` is what the view returned for this event — for the sign-out
+ * timesheet that is a FINAL copy only (sent, or drawn after the window
+ * ended), so a completed event whose timesheet is still a mid-event draft
+ * shows the button disabled rather than a link to a half-filled sheet.
+ */
+export function documentOffer(
+  status: EventStatus,
+  issued: readonly DocumentKind[],
+): DocumentOffer | null {
+  const kind = documentFor(status);
+  return kind ? { kind, available: issued.includes(kind) } : null;
+}
+
+/**
+ * The event page's header downloads (§11.2, wireframes/client/event.html).
+ *
+ * Before and during the event: "↓ Download Allocation Sheet", live or
+ * disabled. Completed: "↓ Download Signed Timesheet" takes the primary slot
+ * (live once a final copy exists, disabled until then) and the allocation
+ * sheet stays beside it as history — but only when one was issued; there
+ * is no sense in a disabled button for a document that will never come.
+ * Cancelled: nothing.
+ */
+export function headerDocuments(
+  status: EventStatus,
+  issued: readonly DocumentKind[],
+): DocumentOffer[] {
+  if (status === 'cancelled') return [];
+  if (status !== 'completed')
+    return [{ kind: 'allocation', available: issued.includes('allocation') }];
+  const history: DocumentOffer[] = issued.includes('allocation')
+    ? [{ kind: 'allocation', available: true }]
+    : [];
+  return [...history, { kind: 'signout', available: issued.includes('signout') }];
+}
+
+/**
+ * The star picker's readout (wireframes/client/event.html: "4 of 5 — tap a
+ * star"). Before a choice it says what is wanted; after one, what was
+ * chosen — the number is the accessible answer to "which star is on".
+ */
+export function starsHint(rating: number): string {
+  return rating > 0 ? `${rating} of 5 — tap a star` : 'Tap a star — 1 to 5, required';
 }
 
 /**

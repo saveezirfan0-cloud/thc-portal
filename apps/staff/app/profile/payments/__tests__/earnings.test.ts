@@ -52,13 +52,13 @@ describe('isPaid — what Earnings history is allowed to show', () => {
 
 describe('formatting', () => {
   it('prints the pay date the way the card does', () => {
-    // "Sept", not the wireframe's "Sep": en-GB's short September in modern
-    // ICU is four letters, and `formatDateTimeIn` in @thc/domain — which
-    // every other date in this app goes through — renders it the same way.
-    // Matching the wireframe here would mean a hand-rolled month table and
-    // two spellings of September on the same screen.
-    expect(formatPayDate('2026-09-11')).toBe('Fri 11 Sept');
-    expect(formatPayDate('2026-09-04')).toBe('Fri 4 Sept');
+    // "Sep", as the wireframe writes it, in every engine. Intl's own
+    // short month is "Sept" in Node and Chrome but "Sep" in Safari, so the
+    // server's render and an iPhone's disagreed — a hydration mismatch. The
+    // words now come from `formatDateIn` in @thc/domain, which
+    // `formatDateTimeIn` uses too, so September has one spelling app-wide.
+    expect(formatPayDate('2026-09-11')).toBe('Fri 11 Sep');
+    expect(formatPayDate('2026-09-04')).toBe('Fri 4 Sep');
   });
 
   it('groups by the month the money arrives in', () => {

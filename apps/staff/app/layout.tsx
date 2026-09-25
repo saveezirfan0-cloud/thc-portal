@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { AppearanceScript } from '@thc/ui';
 import '@thc/ui/styles.css';
+import './tap.css';
 import { ServiceWorkerRegistrar } from './_components/ServiceWorkerRegistrar';
 
 export const metadata: Metadata = {
@@ -29,7 +30,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-GB" suppressHydrationWarning>
+    <html lang="en-GB" data-style="warm" suppressHydrationWarning>
       <head>
         <AppearanceScript />
       </head>

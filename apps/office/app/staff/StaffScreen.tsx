@@ -30,6 +30,8 @@ export interface StaffScreenProps {
   problem: string | null;
   /** `/staff?view=student` lands on the Student visa view (linked from /compliance). */
   initialView?: 'directory' | 'student';
+  /** The tab to open on — the Inactive tab is its own table (§9.6). */
+  initialFilter?: Filter;
 }
 
 const PAGE_SIZE = 15;
@@ -53,9 +55,10 @@ export function StaffScreen({
   students,
   problem,
   initialView = 'directory',
+  initialFilter = 'all',
 }: StaffScreenProps) {
   const [view, setView] = useState<'directory' | 'student'>(initialView);
-  const [filter, setFilter] = useState<Filter>('all');
+  const [filter, setFilter] = useState<Filter>(initialFilter);
   const [role, setRole] = useState('');
   const [sort, setSort] = useState<Sort>('name');
   const [query, setQuery] = useState('');
@@ -212,11 +215,11 @@ export function StaffScreen({
                 /*
                   §9.6: "showing the date they left and the reason they gave"
                   — the wireframe's Inactive tab is its own table, with the
-                  leaver's stamp beside the reason. Its last three columns
-                  (last completed shift, released shifts, P45) need columns
-                  staff_directory_v does not carry yet.
+                  leaver's stamp beside the reason, then what the office
+                  works through: the last shift actually worked, the shifts
+                  the leaving released (E8's list), and the P45 request.
                 */
-                <table className="tbl">
+                <table className="tbl card-rows">
                   <thead>
                     <tr>
                       <th />
@@ -225,6 +228,9 @@ export function StaffScreen({
                       <th>Left</th>
                       <th>Reason given</th>
                       <th>Role(s)</th>
+                      <th>Last completed shift</th>
+                      <th>Released shifts</th>
+                      <th>P45</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -234,7 +240,7 @@ export function StaffScreen({
                   </tbody>
                 </table>
               ) : (
-                <table className="tbl">
+                <table className="tbl card-rows">
                   <thead>
                     <tr>
                       <th />
@@ -315,14 +321,14 @@ function StaffTableRow({ row }: { row: StaffRow }) {
 
   return (
     <tr>
-      <td>
+      <td className="cell-lead">
         <Avatar
           name={row.removed ? '#' : row.display_name}
           src={row.removed ? undefined : (row.photo_url ?? undefined)}
           size="sm"
         />
       </td>
-      <td className="name">
+      <td className="name cell-title">
         {/*
           §9.6: "The name is clickable → the profile." A removed worker's
           is too — §1.7 keeps the record openable with its non-personal
@@ -335,25 +341,29 @@ function StaffTableRow({ row }: { row: StaffRow }) {
           {row.display_name}
         </Link>
       </td>
-      <td className="mono sm">{employeeId(row.employee_id)}</td>
-      <td>
+      <td data-label="Employee ID" className="mono sm">
+        {employeeId(row.employee_id)}
+      </td>
+      <td data-label="Role(s)">
         <div className="chips">
           {row.role_names.map((name) => (
             <Chip key={name}>{name}</Chip>
           ))}
         </div>
       </td>
-      <td>
+      <td data-label="Rating">
         <span className={`rating ${tone}`}>★ {formatRating(row.rating)}</span>
       </td>
-      <td className="mono">{formatShowRate(row.reliability)}</td>
-      <td className="status">
+      <td data-label="Show-rate" className="mono">
+        {formatShowRate(row.reliability)}
+      </td>
+      <td data-label="Compliance status" className="status">
         <StatusPill row={row} />
         {atLimit ? (
           // A per-week condition, beside the status and never instead of it.
           <span
             className="limit"
-            title={`${capReason(row.weekly_cap_band, row.weekly_cap_hours)} · ${row.weekly_booked_hours ?? 0} h booked this week`}
+            title={`${capReason(row.weekly_cap_band, row.weekly_cap_hours, row.weekly_cap_until)} · ${row.weekly_booked_hours ?? 0} h booked this week`}
           >
             Limit reached
           </span>
@@ -372,38 +382,69 @@ function StaffTableRow({ row }: { row: StaffRow }) {
           <span className="sub">Left: {row.leave_reason}</span>
         ) : null}
       </td>
-      <td className="sm muted">{describeRightToWork(row)}</td>
+      <td data-label="Right to work" className="sm muted">
+        {describeRightToWork(row)}
+      </td>
     </tr>
   );
 }
 
-/** The wireframe's Inactive tab row: who, when they left, and the reason they gave. */
+/**
+ * The wireframe's Inactive tab row: who, when they left, the reason they
+ * gave, their last worked shift, how many shifts the leaving released and
+ * the P45 request (§9.6, §10.6). "Issued" has no column yet — the office
+ * marks nothing when the P45 goes out, so the pill stays at Requested.
+ */
 function InactiveTableRow({ row }: { row: StaffRow }) {
   return (
     <tr>
-      <td>
+      <td className="cell-lead">
         <Avatar name={row.display_name} src={row.photo_url ?? undefined} size="sm" />
       </td>
-      <td className="name">
+      <td className="name cell-title">
         <Link href={`/staff/${row.id}`} className="staff-name">
           {row.display_name}
         </Link>
       </td>
-      <td className="mono sm">{employeeId(row.employee_id)}</td>
-      <td className="mono sm">{formatUkStamp(row.left_at)}</td>
-      <td>
+      <td data-label="Employee ID" className="mono sm">
+        {employeeId(row.employee_id)}
+      </td>
+      <td data-label="Left" className="mono sm">
+        {formatUkStamp(row.left_at)}
+      </td>
+      <td data-label="Reason given">
         {row.leave_reason ? (
           `“${row.leave_reason}”`
         ) : (
           <span className="muted">— no reason given</span>
         )}
       </td>
-      <td>
+      <td data-label="Role(s)">
         <div className="chips">
           {row.role_names.map((name) => (
             <Chip key={name}>{name}</Chip>
           ))}
         </div>
+      </td>
+      <td data-label="Last completed shift" className="sm">
+        {row.last_shift_at ? (
+          formatUkDate(row.last_shift_at)
+        ) : (
+          <span className="muted">— none worked</span>
+        )}
+      </td>
+      <td data-label="Released shifts" className="sm mono">
+        {row.released_shift_count}
+      </td>
+      <td data-label="P45">
+        {row.p45_requested_at ? (
+          <>
+            <Pill tone="amber">Requested</Pill>
+            <span className="sub">E8 sent {formatUkStamp(row.p45_requested_at)}</span>
+          </>
+        ) : (
+          <span className="muted">—</span>
+        )}
       </td>
     </tr>
   );

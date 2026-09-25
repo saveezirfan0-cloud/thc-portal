@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { UK_ZONE, formatTimeIn, overlapVerdict } from '@thc/domain';
 import type { CancelCause, OpenShiftRow, StaffBooking, StaffBookingStatus } from '@thc/domain';
 import { staffDb, supabaseConfigured } from './db';
 
@@ -57,6 +58,34 @@ export interface OpenShift extends OpenShiftRow {
   weekStart: string | null;
   bookedHours: number | null;
   capHours: number | null;
+  /**
+   * The venue's pin and geofence, and the worker's home pin, for the
+   * detail's map (wireframes/staff/radar.html, ADR-0005). Null where the
+   * worker has no home pin yet — the map then shows the venue alone.
+   */
+  venueLat: number | null;
+  venueLng: number | null;
+  geofenceRadiusM: number | null;
+  homeLat: number | null;
+  homeLng: number | null;
+}
+
+/**
+ * The Radar header strip — "This week (Mon 14 – Sun 20) · 8 h of 20 h"
+ * (§10.4, RULE-20). The week is the CURRENT Mon–Sun week in Europe/London,
+ * read by `staff_week_meter()` off the same helpers the per-row figures
+ * use, so the strip and the cards cannot disagree about a cap.
+ */
+export interface WeekMeter {
+  /** Monday, `YYYY-MM-DD`. */
+  weekStart: string;
+  /** Sunday, `YYYY-MM-DD`. */
+  weekEnd: string;
+  bookedHours: number;
+  /** Null where there is no ceiling (RULE-20). */
+  capHours: number | null;
+  /** The worker's signed-off roles, sorted. */
+  roles: string[];
 }
 
 const date = (value: unknown): Date | null => (value ? new Date(value as string) : null);
@@ -131,7 +160,33 @@ export async function loadOpenShifts(): Promise<OpenShift[]> {
     weekStart: (row['week_start'] as string) ?? null,
     bookedHours: row['booked_hours'] === null ? null : Number(row['booked_hours']),
     capHours: row['cap_hours'] === null ? null : Number(row['cap_hours']),
+    venueLat: coordinate(row['venue_lat']),
+    venueLng: coordinate(row['venue_lng']),
+    geofenceRadiusM: coordinate(row['geofence_radius_m']),
+    homeLat: coordinate(row['home_lat']),
+    homeLng: coordinate(row['home_lng']),
   }));
+}
+
+/** A numeric column that may be absent (older function body) or null. */
+function coordinate(value: unknown): number | null {
+  return value === null || value === undefined ? null : Number(value);
+}
+
+export async function loadWeekMeter(): Promise<WeekMeter | null> {
+  if (!supabaseConfigured()) return null;
+  const supabase = staffDb(await cookies());
+  const { data } = await supabase.rpc('staff_week_meter');
+  const row = data as Record<string, unknown> | null;
+  if (!row || !row['weekStart']) return null;
+  return {
+    weekStart: row['weekStart'] as string,
+    weekEnd: row['weekEnd'] as string,
+    bookedHours: Number(row['bookedHours'] ?? 0),
+    capHours:
+      row['capHours'] === null || row['capHours'] === undefined ? null : Number(row['capHours']),
+    roles: (row['roles'] as string[]) ?? [],
+  };
 }
 
 export async function findBooking(bookingId: string): Promise<BookingRow | null> {
@@ -163,4 +218,72 @@ export function openInvites(bookings: readonly BookingRow[], now: Date = new Dat
   return bookings.filter(
     (b) => b.status === 'invited' && !b.eventCancelledAt && b.endsAt.getTime() > now.getTime(),
   );
+}
+
+/**
+ * The Shifts tab's badge — §10.1's bottom navigation, `wireframes/staff/*.html`
+ * ("Shifts · 3").
+ *
+ * One reading, used by every screen that renders the shell: the bookings
+ * the My shifts list shows, which are the confirmed ones and the ones under
+ * way or just worked (`shifts/page.tsx`'s `mine`). It is the list the badge
+ * points at, so the number and the cards behind it cannot disagree — which
+ * they did while /invites counted confirmed only and /radar counted both,
+ * and the badge changed as the worker moved between tabs.
+ */
+export function shiftsBadge(bookings: readonly Pick<BookingRow, 'status'>[]): number {
+  return bookings.filter((b) => b.status === 'confirmed' || b.status === 'worked').length;
+}
+
+/**
+ * The amber line an invitation carries BEFORE the worker taps Accept —
+ * "Overlaps your confirmed Awards Night · Waiting Staff 16:00 – 02:00"
+ * (wireframes/staff/invites.html, §3.4).
+ *
+ * The rule is `overlapVerdict` from `@thc/domain`, the same one
+ * `accept_invite` re-checks in SQL: only CONFIRMED bookings count, two
+ * windows that intersect conflict anywhere, and different venues need the
+ * two-hour gap. This is a warning, not the gate — Accept stays live, and
+ * the server's own refusal ("You're already booked for an overlapping
+ * shift.") is still the answer if the worker presses on.
+ *
+ * `staff_bookings()` carries no venue id, so "the same venue" is read off
+ * the venue's name and address together, which is what the card prints.
+ */
+export function overlapWarning(
+  invite: Pick<BookingRow, 'bookingId' | 'startsAt' | 'endsAt' | 'venueName' | 'venueAddress'>,
+  bookings: readonly Pick<
+    BookingRow,
+    | 'bookingId'
+    | 'status'
+    | 'startsAt'
+    | 'endsAt'
+    | 'venueName'
+    | 'venueAddress'
+    | 'eventTitle'
+    | 'role'
+  >[],
+): string | null {
+  const venueKey = (b: { venueName: string; venueAddress: string }) =>
+    `${b.venueName}|${b.venueAddress}`;
+  const candidate = {
+    startsAt: invite.startsAt.getTime(),
+    endsAt: invite.endsAt.getTime(),
+    venueId: venueKey(invite),
+  };
+  for (const held of bookings) {
+    if (held.status !== 'confirmed' || held.bookingId === invite.bookingId) continue;
+    const verdict = overlapVerdict(candidate, {
+      startsAt: held.startsAt.getTime(),
+      endsAt: held.endsAt.getTime(),
+      venueId: venueKey(held),
+    });
+    if (verdict === 'clear') continue;
+    const window = `${formatTimeIn(held.startsAt, UK_ZONE)} – ${formatTimeIn(held.endsAt, UK_ZONE)}`;
+    const which = `${held.eventTitle} · ${held.role} ${window}`;
+    return verdict === 'intersects'
+      ? `Overlaps your confirmed ${which}`
+      : `Within 2 h of your confirmed ${which} at another venue`;
+  }
+  return null;
 }

@@ -21,7 +21,7 @@
  *     No check-out one behaves differently from the other two: its card stays.
  */
 
-import { UK_ZONE } from './time';
+import { UK_ZONE, formatDateIn } from './time';
 import type { BookingStatus, CancelCause } from './state';
 
 const HOUR_MS = 3_600_000;
@@ -274,12 +274,38 @@ export type AcceptRefusal =
   | 'rtw_expired'
   | 'not_invited'
   | 'event_cancelled'
-  | 'event_ended';
+  | 'event_ended'
+  /** RULE-12, re-read at Accept (20260928110400): not compliant. */
+  | 'blocked'
+  /** A leaver or a removed account (§10.6, §1.7) — no candidate row at all. */
+  | 'not_bookable'
+  /** RULE-04: self-cancelled off this event. */
+  | 'self_cancelled';
+
+/**
+ * RULE-03 (§3.4): "a popup appears in the app: 'Sorry, this shift has been
+ * taken — someone confirmed first.'" — the scope's sentence, verbatim, as
+ * the popup's headline. The body is the explanation the wireframe draws
+ * under it (wireframes/staff/shifts.html): where the invitation went.
+ */
+export const TAKEN_POPUP_SENTENCE = 'Sorry, this shift has been taken — someone confirmed first.';
 
 export const ACCEPT_REFUSAL_COPY: Record<AcceptRefusal, { title: string; body: string }> = {
   taken: {
-    title: 'Sorry, this shift has been taken',
-    body: 'Someone confirmed first. The invitation has moved to Closed and is no longer in your list.',
+    title: TAKEN_POPUP_SENTENCE,
+    body: 'The invitation has moved to Closed and is no longer in your list.',
+  },
+  blocked: {
+    title: 'Your account is blocked',
+    body: 'You can’t accept shifts until your documents are back in order. Check the Documents tab.',
+  },
+  not_bookable: {
+    title: 'This invitation is no longer open',
+    body: 'Your account can’t take shifts. Please contact the office.',
+  },
+  self_cancelled: {
+    title: 'This invitation is no longer open',
+    body: 'You cancelled a confirmed shift on this event, so you can’t rejoin it (§3.6).',
   },
   overlap: {
     title: "You're already booked for an overlapping shift.",
@@ -469,10 +495,5 @@ function formatHoursShort(hours: number): string {
 function formatWeekStart(isoDate: string): string {
   const [y, m, d] = isoDate.split('-').map(Number);
   const at = new Date(Date.UTC(y!, m! - 1, d!));
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'UTC',
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }).format(at);
+  return formatDateIn(at, 'UTC', { weekday: 'short' });
 }

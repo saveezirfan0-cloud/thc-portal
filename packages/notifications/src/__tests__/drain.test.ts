@@ -269,6 +269,26 @@ describe('push', () => {
     expect(p.subscriptionsFor).toHaveBeenCalledWith('staff-1');
   });
 
+  it("carries N8's Re-upload button in the payload, and no button on any other push", async () => {
+    const { p, sent } = ports({ subscriptions: [device(1)] });
+    await drainRow(
+      push({ key: 'N8:doc:d1', template: 'N8', payload: { reason: 'Photo is blurred' } }),
+      CONFIGURED,
+      null,
+      p,
+    );
+    expect(readOn(1, sent[0]!.body)).toEqual({
+      title: 'Document rejected',
+      body: 'Document rejected — Photo is blurred. Re-upload.',
+      url: '/documents',
+      action: 'Re-upload',
+    });
+    // The ordinary push has no `action` key at all — the service worker
+    // draws a button only when one is named.
+    await drainRow(push(), CONFIGURED, null, p);
+    expect(readOn(1, sent[1]!.body)).not.toHaveProperty('action');
+  });
+
   it('deletes a subscription the push service says is gone, and still counts the live one', async () => {
     const { p, deleted } = ports({
       subscriptions: [device(1), device(2)],

@@ -25,9 +25,14 @@ export {
   UserChip,
 } from './components/Shell';
 export type { NavItem, PageHeadProps, SidebarProps, TopbarProps } from './components/Shell';
+export { MenuButton } from './components/MenuButton';
+export type { MenuButtonProps } from './components/MenuButton';
 
 export { Alert, EmptyState, Note, Panel } from './components/Panel';
 export type { NoteTone, PanelProps } from './components/Panel';
+
+export { PhoneNav } from './components/PhoneNav';
+export type { PhoneNavProps } from './components/PhoneNav';
 
 export { ModeSwitch } from './components/ModeSwitch';
 export type { ModeSwitchProps } from './components/ModeSwitch';
@@ -54,6 +59,9 @@ export type { DocRowProps, DocState } from './components/DocRow';
 
 export { AuthCard } from './components/AuthCard';
 export type { AuthCardProps } from './components/AuthCard';
+
+export { ScheduledWindow, useViewerZone } from './components/ScheduledWindow';
+export type { ScheduledWindowProps } from './components/ScheduledWindow';
 
 export { SignOut } from './components/SignOut';
 export type { SignOutProps } from './components/SignOut';
@@ -91,6 +99,7 @@ export {
   MODE_STORAGE_KEY,
   applyMode,
   appearanceScript,
+  resolveMode,
   styleForMode,
   useAppearance,
 } from './components/Appearance';

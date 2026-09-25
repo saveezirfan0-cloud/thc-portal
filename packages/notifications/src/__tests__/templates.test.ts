@@ -127,6 +127,16 @@ describe('notification register (§8)', () => {
     }
   });
 
+  it('gives N8, and only N8, the Re-upload button §8 names, opening /documents', () => {
+    // §2.3 / §2.6 / §8: "Document rejected — [reason]" + a Re-upload button.
+    // No other row of the register names a button on the push itself —
+    // N6's "I'm ready" and N7's "Confirm today" live on the /shifts card.
+    expect(template('N8').action).toBe('Re-upload');
+    expect(template('N8').deepLink).toBe('/documents');
+    const withButton = entries.filter(([, v]) => v.action).map(([k]) => k);
+    expect(withButton).toEqual(['N8']);
+  });
+
   it('marks mandatory exactly the sends §8 calls mandatory', () => {
     const mandatory = entries.filter(([, v]) => v.mandatory).map(([k]) => k);
     expect(mandatory.sort()).toEqual(

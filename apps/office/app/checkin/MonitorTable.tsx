@@ -16,6 +16,11 @@ import type { MonitorRow } from './types';
  *            show different hours.
  *   Check-in an ACTUAL stamp, so it shows the viewer's zone only — the
  *            manager wants to know what their own clock said.
+ *   Due      the start, in the viewer's zone with no suffix (checkin.html
+ *            "Due 17:00" for a 15:00 UK section seen from Athens): the pill
+ *            answers "how long until they are due" against the clock on the
+ *            wall, and the Window column beside it already carries the UK
+ *            figure.
  */
 export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
   const zone = viewerZone();
@@ -28,7 +33,7 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
   }
 
   return (
-    <table className="tbl monitor-tbl">
+    <table className="tbl card-rows monitor-tbl">
       <thead>
         <tr>
           <th>Staff</th>
@@ -42,7 +47,7 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
       <tbody>
         {rows.map((row) => (
           <tr key={row.bookingId}>
-            <td>
+            <td className="cell-title">
               <div className="person">
                 <Avatar name={row.staffName} src={row.photoUrl ?? undefined} />
                 <div>
@@ -51,10 +56,10 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
                 </div>
               </div>
             </td>
-            <td>
+            <td data-label="Event">
               <b>{row.eventTitle}</b>
             </td>
-            <td>
+            <td data-label="Window">
               <span className="win2">
                 {uk(row.startsAt)} – {uk(row.endsAt)} UK time
                 {dual ? (
@@ -64,16 +69,18 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
                 ) : null}
               </span>
             </td>
-            <td className="stamp">
+            <td data-label="Check-in" className="stamp">
               {row.checkInAt ? local(row.checkInAt) : <span className="muted">—</span>}
             </td>
-            <td className="mono sm">{breaksCell(row, local)}</td>
-            <td>
+            <td data-label="Breaks" className="mono sm">
+              {breaksCell(row, local)}
+            </td>
+            <td data-label="Status">
               <Pill tone={statusTone(row)}>
                 {row.status === 'checked_out' && row.checkOutAt
                   ? `${STATUS_LABEL.checked_out} ${local(row.checkOutAt)}`
                   : row.status === 'due'
-                    ? `${STATUS_LABEL.due} ${uk(row.startsAt)}`
+                    ? `${STATUS_LABEL.due} ${local(row.startsAt)}`
                     : STATUS_LABEL[row.status]}
               </Pill>
             </td>

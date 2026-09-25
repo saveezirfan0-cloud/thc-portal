@@ -7,6 +7,7 @@ import { PushStatus } from './PushStatus';
 import { LockScreen } from '../profile/_components/LockScreen';
 import { appLock, reachableTabs, showsBottomNav } from '../profile/lock';
 import { loadProfile } from '../profile/data';
+import { signOwnPhoto } from '../profile/photos';
 import type { StaffProfile } from '../profile/types';
 
 /**
@@ -65,6 +66,11 @@ export async function StaffShell({
   // Locking on an absent row would black out the whole app on the strength
   // of a failed query, which is a worse failure than the one it prevents.
   const lock = profile ? appLock(profile) : 'none';
+  // §10.1: the selfie "becomes their photo across the whole system (falling
+  // back to initials)" — the header included. `signOwnPhoto` is memoised
+  // per request, so a screen that renders the shell and /profile's own
+  // avatar in one pass signs once.
+  const photoUrl = await signOwnPhoto(profile?.photoPath ?? null);
   const unlocked = reachableTabs(lock);
 
   const items = [
@@ -89,7 +95,7 @@ export async function StaffShell({
         title={open ? title : 'The Hospitality Company'}
         {...(sub && open ? { sub } : {})}
         {...(below && open ? { below } : {})}
-        worker={chromeWorker(profile)}
+        worker={chromeWorker(profile, photoUrl)}
       />
       <AppBody className={open ? undefined : 'center'}>
         {open ? (
@@ -140,14 +146,14 @@ function Locked({
  * `staff_me()` does not return `block_reason` and `StaffProfile` has no
  * field for it (#42, types.ts), so there is no path from a manager's
  * internal note (§9.6) to this app's markup.
+ *
+ * The photo is the signed selfie URL (`profile/photos.ts`, the worker's own
+ * session, ten minutes) or null, in which case `Avatar` draws initials.
  */
-function chromeWorker(profile: StaffProfile | null) {
+function chromeWorker(profile: StaffProfile | null, photoUrl: string | null) {
   if (!profile) return null;
   return {
     name: `${profile.firstName} ${profile.lastName}`.trim() || 'Your profile',
-    // The signed selfie URL is `profile/photos.ts`'s and costs a Storage
-    // round trip; the header falls back to initials rather than spending
-    // one on every screen. /profile itself shows the photo.
-    photoUrl: null,
+    photoUrl,
   };
 }

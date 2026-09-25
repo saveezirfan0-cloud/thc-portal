@@ -203,3 +203,64 @@ export function documentState(
   if (left <= EXPIRING_WITHIN_DAYS) return 'expiring';
   return 'verified';
 }
+
+// ---------------------------------------------------------------------
+// §4.2 · A term-dates letter must still be current
+// ---------------------------------------------------------------------
+
+/**
+ * One holiday range as the letter prints it (and as the extractor and the
+ * reviewer enter it): inclusive ISO dates, `from` ≤ `to`. Postgres stores
+ * the half-open `[from, to + 1 day)` (toDaterangeLiteral in the Staff App's
+ * extractor), so "the last day is before today" reads `to < today` here and
+ * `upper(range) <= today` in `term_letter_expired()` (20260928110300).
+ */
+export interface TermRange {
+  from: string;
+  to: string;
+}
+
+export type TermLetterDatesVerdict =
+  /** Every range on the letter ended before today — "an already-expired letter is not accepted". */
+  | 'expired'
+  /** At least one range ends today or later. */
+  | 'current'
+  /** Nothing to judge: the extractor found no dates, or the reviewer has not entered any. */
+  | 'no_dates';
+
+/**
+ * §4.2: "The AI must verify that the dates found in the document are in the
+ * future, not the past — an already-expired letter is not accepted."
+ *
+ * The letter is judged on ITS OWN dates, not on `doc_expires_on()`'s 31
+ * December (which is about reminders and the block, ADR-0011): a letter for
+ * a year that has already finished says nothing about this one. The rule is
+ * about ALL the ranges — a letter whose Christmas holiday is past but whose
+ * Easter and summer are still to come is current. Empty or absent ranges
+ * are `no_dates`, not `expired`: the extractor is deferred (ADR-0014) and
+ * a letter it could not read still goes to a human.
+ *
+ * Mirrors `term_letter_expired(daterange[], date)`; the SQL side flags the
+ * extraction `needs_manual_review` with reason "letter expired" and refuses
+ * Verify with `term_letter_expired`.
+ */
+export function termLetterDatesVerdict(
+  today: string,
+  ranges: readonly TermRange[] | null | undefined,
+): TermLetterDatesVerdict {
+  if (!ranges || ranges.length === 0) return 'no_dates';
+  // ISO dates compare as strings. A range typed backwards is judged on the
+  // later of its two ends, so a typo cannot make a current letter "expired".
+  const stillToCome = ranges.some(
+    (range) => (range.to >= range.from ? range.to : range.from) >= today,
+  );
+  return stillToCome ? 'current' : 'expired';
+}
+
+/** `true` only for the `expired` verdict — the refusal, not the uncertainty. */
+export function termLetterExpired(
+  today: string,
+  ranges: readonly TermRange[] | null | undefined,
+): boolean {
+  return termLetterDatesVerdict(today, ranges) === 'expired';
+}

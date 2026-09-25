@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useTransition } from 'react';
+import { UK_ZONE, formatDateIn } from '@thc/domain';
 import { Alert, Button, Modal, Pill } from '@thc/ui';
 import { deleteVenue, loadUpcomingEvents } from './actions';
 import type { UpcomingEvent, Venue } from './types';
@@ -112,11 +113,5 @@ function describe(event: UpcomingEvent): string {
  * the string is parsed as a UK wall-clock date rather than as an instant.
  */
 function formatEventDate(isoDate: string): string {
-  const formatted = new Intl.DateTimeFormat('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    timeZone: 'Europe/London',
-  }).format(new Date(`${isoDate}T12:00:00Z`));
-  return formatted.replace(',', '');
+  return formatDateIn(new Date(`${isoDate}T12:00:00Z`), UK_ZONE, { weekday: 'short' });
 }

@@ -82,3 +82,19 @@
   top: var(--sp-10);
   right: var(--sp-10);
 }
+
+/* On a phone the corner switch sat on top of the brand name — "Light Dark"
+   over "The Hospitality Company" on /apply and on every sign-in card. It
+   joins the flow instead: its own line at the top right of the card, with
+   the brand below it. */
+@media (max-width: 480px) {
+  .auth-card {
+    padding: var(--sp-20);
+  }
+
+  .auth-card .appearance {
+    position: static;
+    align-self: flex-end;
+    margin: calc(-1 * var(--sp-8)) calc(-1 * var(--sp-8)) calc(-1 * var(--sp-6)) 0;
+  }
+}

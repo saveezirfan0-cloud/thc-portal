@@ -38,11 +38,11 @@
 .hol-lbl {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--sp-6);
 }
 .hol-lbl .pill {
-  height: 18px;
-  font-size: 9.5px;
+  height: 18px; /* the wireframe's inline pill in a field label (roles.html); no token */
+  font-size: var(--label-size);
 }
 
 /* The rate field's £ / per-hour addons stay tight to the input. */
@@ -54,22 +54,22 @@
 .calc {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--sp-10);
 }
 .calc .c {
   border: 1px solid var(--line);
   background: var(--bg);
-  padding: 10px 12px;
+  padding: var(--sp-10) var(--sp-12);
   /* --r-sm is not a token; this read as 0 next to rounded cards. */
   border-radius: var(--r-tile);
 }
 .calc .c .label {
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: var(--sp-4);
 }
 .calc .c .v {
   font-family: var(--font-num);
-  font-size: 16px;
+  font-size: var(--fs-16);
   font-weight: 600;
 }
 .calc .c .v.cyan {
@@ -80,7 +80,9 @@
   .calc {
     grid-template-columns: 1fr;
   }
+  /* A phone draws the list as cards, where the description has the card's
+     width to itself. */
   .tbl td.desc {
-    max-width: 20ch;
+    max-width: none;
   }
 }

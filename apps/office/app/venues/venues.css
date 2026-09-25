@@ -32,7 +32,7 @@
   white-space: nowrap;
 }
 .tbl td.actions .btn + .btn {
-  margin-left: 6px;
+  margin-left: var(--sp-6);
 }
 /* Venue type, printed under the name in the list. */
 .vt {
@@ -82,7 +82,7 @@
 }
 .map .lbl.name {
   color: var(--text);
-  font-size: 11px;
+  font-size: var(--fs-11);
   white-space: nowrap;
   pointer-events: none;
 }
@@ -95,7 +95,7 @@
   gap: 3px;
   align-items: flex-end;
   font-family: var(--font-num);
-  font-size: 9.5px;
+  font-size: var(--label-size);
   color: var(--muted);
 }
 .map .scale i {
@@ -108,9 +108,9 @@
   left: 12px;
   bottom: 12px;
   display: flex;
-  gap: 12px;
+  gap: var(--sp-12);
   font-family: var(--font-label);
-  font-size: 9.5px;
+  font-size: var(--label-size);
   color: var(--muted);
   /* --panel-glass is not a token; the legend had no fill at all and sat
      unreadable on the map tiles. --card-glass is the one meant for a
@@ -118,7 +118,7 @@
   background: var(--card-glass);
   backdrop-filter: blur(var(--blur)) saturate(140%);
   -webkit-backdrop-filter: blur(var(--blur)) saturate(140%);
-  padding: 4px var(--sp-10);
+  padding: var(--sp-4) var(--sp-10);
   border-radius: var(--r-pill);
 }
 .map .legend b {
@@ -148,11 +148,11 @@
 .radius-row {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: var(--sp-14);
 }
 .radius-row .val {
   font-family: var(--font-num);
-  font-size: 16px;
+  font-size: var(--fs-16);
   font-weight: 600;
   color: var(--cyan-ink);
   min-width: 70px;
@@ -169,7 +169,7 @@
   -webkit-appearance: none;
   background: transparent;
   height: 18px;
-  margin: 14px 0;
+  margin: var(--sp-14) 0;
   cursor: pointer;
 }
 .radius-input:focus-visible {
@@ -214,7 +214,7 @@
   display: flex;
   justify-content: space-between;
   font-family: var(--font-num);
-  font-size: 9.5px;
+  font-size: var(--label-size);
   color: var(--muted);
   margin-top: -8px;
 }
@@ -223,7 +223,7 @@
 .types {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px 14px;
+  gap: var(--sp-4) var(--sp-14);
   font-size: 11.5px;
   color: var(--muted);
 }
@@ -261,7 +261,7 @@
 .venue-form {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: var(--sp-14);
 }
 .modal:has(.venue-form) {
   max-height: calc(100vh - 48px);

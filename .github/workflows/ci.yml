@@ -236,3 +236,28 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
         run: supabase db push
+
+      # After the migrations, because a function calls the SQL they create.
+      # Until 25.09 this was a manual step, and the live project had two of
+      # the seven functions: pg_cron would have posted the 12:05 cutoff, the
+      # No-show timer and the outbox drain at a 404. Deploying is idempotent,
+      # so every push to main redeploys all seven from this commit.
+      #
+      # By name, never a bare `supabase functions deploy`: willo-webhook is
+      # the one function that must skip Supabase's JWT check (Willo signs
+      # its own deliveries, ADR-0021) and the job functions must not.
+      # Run from the repository root: the functions import packages/* by
+      # relative path (ADR-0020).
+      #
+      # This does NOT run `install_job_schedules()`; that stays a one-off in
+      # the SQL editor because it needs the Vault secret (docs/16 §4.7).
+      - name: deploy the Edge Functions
+        if: steps.secrets.outputs.ready == 'true'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: |
+          for fn in auto-staffing booking-tick compliance-daily finance-reports gdpr-purge notify-drain; do
+            supabase functions deploy "$fn" --project-ref "$PROJECT_REF"
+          done
+          supabase functions deploy willo-webhook --no-verify-jwt --project-ref "$PROJECT_REF"

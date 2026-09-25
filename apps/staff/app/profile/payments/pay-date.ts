@@ -1,4 +1,4 @@
-import { UK_ZONE } from '@thc/domain';
+import { UK_ZONE, formatDateIn } from '@thc/domain';
 
 /**
  * When a worked shift is paid — the rule behind Earnings history (§10.1).
@@ -74,21 +74,14 @@ export function isPaid(payDate: string, now: Date = new Date()): boolean {
 
 /** "Fri 11 Sep", the pill on each earnings card. */
 export function formatPayDate(payDate: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'UTC',
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  }).format(new Date(`${payDate}T00:00:00Z`));
+  // formatDateIn: Intl's own output differs by engine ("Fri, 11 Sept" in
+  // Chrome, "Fri 11 Sep" in Safari) and would not hydrate.
+  return formatDateIn(new Date(`${payDate}T00:00:00Z`), 'UTC', { weekday: 'short' });
 }
 
 /** "Sep 2026", the label on the "Paid so far" tile. */
 export function payMonthLabel(payDate: string): string {
-  return new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'UTC',
-    month: 'short',
-    year: 'numeric',
-  }).format(new Date(`${payDate}T00:00:00Z`));
+  return formatDateIn(new Date(`${payDate}T00:00:00Z`), 'UTC', { day: false, year: true });
 }
 
 /** The `YYYY-MM` a pay date falls in, for the "Paid so far" total. */

@@ -42,7 +42,7 @@ export default async function Page({
 
   if (!isActivationToken(token)) {
     return (
-      <AuthCard product="Account activation" heading="This link doesn’t work">
+      <AuthCard product="Account activation" heading="This link doesn’t work" appearance="none">
         <LinkSpent />
       </AuthCard>
     );
@@ -60,7 +60,12 @@ export default async function Page({
   // says whether the account already has a password, when it can.
   if (person?.activated) {
     return (
-      <AuthCard product="Account activation" heading="You’re already activated" footer={footer}>
+      <AuthCard
+        product="Account activation"
+        heading="You’re already activated"
+        footer={footer}
+        appearance="none"
+      >
         <p className="sm muted">
           This link has been used and your password is set. Sign in with it to carry on.
         </p>

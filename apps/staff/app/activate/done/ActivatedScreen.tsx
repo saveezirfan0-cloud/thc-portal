@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import QRCode from 'qrcode';
 import { Alert, Button } from '@thc/ui';
 import { isIos, isStandalone } from '../../../lib/push';
 import '../activate.css';
@@ -17,24 +18,37 @@ import '../activate.css';
  * "Open the app" goes to the onboarding wizard (§10.3). Activation leaves
  * the candidate signed in on this browser, so on the phone that is one
  * tap; from the installed icon it is a sign-in with the new password.
+ *
+ * The desktop card also draws a QR code of the app's address (activate.html:
+ * "Scan with your phone camera, or open"). The address is the Staff App's
+ * public origin, `NEXT_PUBLIC_STAFF_URL` (docs/16 §3.1) — the one E3 was
+ * built on — and only when that is unset the page's own, which on a Vercel
+ * preview is a hostname behind a login wall.
  */
 const WIZARD_PATH = '/onboarding';
 
-type Platform = 'ios' | 'android' | 'desktop' | 'installed' | 'unknown';
+export type Platform = 'ios' | 'android' | 'desktop' | 'installed' | 'unknown';
+
+const PUBLIC_ORIGIN = process.env['NEXT_PUBLIC_STAFF_URL'] ?? '';
 
 interface InstallPromptEvent extends Event {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 }
 
-export function ActivatedScreen() {
-  const [platform, setPlatform] = useState<Platform>('unknown');
+export function ActivatedScreen({
+  initialPlatform = 'unknown',
+}: {
+  /** The platform before detection runs — for the tests and previews, where no effect does. */
+  initialPlatform?: Platform;
+}) {
+  const [platform, setPlatform] = useState<Platform>(initialPlatform);
   const [deferred, setDeferred] = useState<InstallPromptEvent | null>(null);
   const [outcome, setOutcome] = useState<string | null>(null);
-  const [origin, setOrigin] = useState('');
+  const [origin, setOrigin] = useState(PUBLIC_ORIGIN ? new URL(PUBLIC_ORIGIN).host : '');
 
   useEffect(() => {
-    setOrigin(window.location.host);
+    if (!PUBLIC_ORIGIN) setOrigin(window.location.host);
     if (isStandalone()) setPlatform('installed');
     else if (isIos(navigator.userAgent, navigator.maxTouchPoints)) setPlatform('ios');
     else if (/android/i.test(navigator.userAgent)) setPlatform('android');
@@ -97,14 +111,19 @@ export function ActivatedScreen() {
       </Link>
 
       {platform === 'desktop' ? (
-        <div className="stack">
-          <span className="label">On your phone, open</span>
-          <a className="mono sm" href={`https://${origin}`}>
-            {origin}
-          </a>
-          <p className="xs muted" style={{ margin: 0 }}>
-            Sent to you by email as well (E3). One account, one app — no app-store download.
-          </p>
+        <div className="row top act-qr-row">
+          {origin ? <AppQr url={`https://${origin}`} /> : null}
+          <div className="stack" style={{ flex: 1 }}>
+            <span className="label">
+              {origin ? 'Scan with your phone camera, or open' : 'On your phone, open'}
+            </span>
+            <a className="mono sm" href={`https://${origin}`}>
+              {origin}
+            </a>
+            <p className="xs muted" style={{ margin: 0 }}>
+              Sent to you by email as well (E3). One account, one app — no app-store download.
+            </p>
+          </div>
         </div>
       ) : null}
 
@@ -173,5 +192,34 @@ export function ActivatedScreen() {
         invitations and check-in depend on them.
       </p>
     </>
+  );
+}
+
+/**
+ * The QR as inline SVG, one path of unit squares over the module grid, so
+ * it is crisp at any size and takes its colours from the box around it
+ * (`currentColor` on `--qr-paper`). `QRCode.create` is synchronous, which
+ * keeps the server and the browser rendering the same markup.
+ */
+export function AppQr({ url }: { url: string }) {
+  const { modules } = QRCode.create(url, { errorCorrectionLevel: 'M' });
+  const size = modules.size;
+  let d = '';
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      if (modules.get(y, x)) d += `M${x} ${y}h1v1H${x}z`;
+    }
+  }
+  return (
+    <div className="act-qr">
+      <svg
+        viewBox={`0 0 ${size} ${size}`}
+        shapeRendering="crispEdges"
+        role="img"
+        aria-label={`QR code → ${url}`}
+      >
+        <path d={d} fill="currentColor" />
+      </svg>
+    </div>
   );
 }

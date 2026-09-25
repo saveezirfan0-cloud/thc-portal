@@ -31,13 +31,31 @@
 }
 
 .privacy-page .notice {
+  --accent: var(--amber);
+  position: relative;
   margin: 0;
   padding: var(--sp-10) var(--sp-12);
   border: 1px solid var(--line);
-  border-left: 3px solid var(--amber);
+  border-left: 3px solid var(--accent);
   border-radius: var(--r-tile);
   font-size: var(--fs-12);
   color: var(--muted);
+}
+/* A 3px border on a rounded box is a crescent; the rounded look draws the
+   accent inset, as packages/ui warm.css does for .toast. */
+:root[data-style='warm'] .privacy-page .notice {
+  border-left: 1px solid var(--line);
+  padding-left: var(--sp-20);
+}
+:root[data-style='warm'] .privacy-page .notice::before {
+  content: '';
+  position: absolute;
+  left: var(--sp-8);
+  top: var(--sp-10);
+  bottom: var(--sp-10);
+  width: 3px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
 }
 
 .privacy-page a {

@@ -17,6 +17,10 @@ export interface NavItem {
    * 404 from its own sidebar.
    */
   pending?: boolean;
+  /** Gets its own tab in the phone tab bar; the rest sit behind More. */
+  primary?: boolean;
+  /** The tab-bar label where the full one does not fit, e.g. "Check-in". */
+  short?: string;
 }
 
 export interface SidebarProps {
@@ -26,11 +30,23 @@ export interface SidebarProps {
   footer?: ReactNode;
   /** Renders each item; apps pass their router's Link. */
   renderLink?: (item: NavItem, className: string, children: ReactNode) => ReactNode;
+  /** For the phone drawer: `aria-controls` on the menu button points here. */
+  id?: string;
+  /** `open` slides the phone drawer in (below 760px). */
+  className?: string;
 }
 
-export function Sidebar({ items, activeHref, brand, footer, renderLink }: SidebarProps) {
+export function Sidebar({
+  items,
+  activeHref,
+  brand,
+  footer,
+  renderLink,
+  id,
+  className,
+}: SidebarProps) {
   return (
-    <aside className="sidebar">
+    <aside className={clsx('sidebar', className)} id={id}>
       {brand ? <div className="brand">{brand}</div> : null}
       <nav>
         {items.map((item) => {
@@ -74,11 +90,14 @@ export interface TopbarProps {
   /** Right-hand time-zone note, e.g. "All times UK (Europe/London)". */
   timezone?: ReactNode;
   actions?: ReactNode;
+  /** Before the title — the phone menu button. */
+  lead?: ReactNode;
 }
 
-export function Topbar({ title, crumbs, timezone, actions }: TopbarProps) {
+export function Topbar({ title, crumbs, timezone, actions, lead }: TopbarProps) {
   return (
     <header className="topbar">
+      {lead}
       {title ? <h1>{title}</h1> : null}
       {crumbs ? <div className="crumbs">{crumbs}</div> : null}
       <div className="spacer" />

@@ -6,27 +6,27 @@
 /* The profile header: photo, who, and the manager's buttons. */
 .phead {
   display: flex;
-  gap: 18px;
+  gap: var(--sp-18);
   align-items: flex-start;
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: var(--r-card);
-  padding: 18px 20px;
+  padding: var(--sp-18) var(--sp-20);
 }
 .phead .who {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-8);
 }
 .phead h2 {
-  font-size: 24px;
+  font-size: var(--fs-24);
   margin: 0;
 }
 .phead .facts {
   display: flex;
-  gap: 6px 18px;
+  gap: var(--sp-6) var(--sp-18);
   flex-wrap: wrap;
   font-size: 12.5px;
   color: var(--muted);
@@ -38,7 +38,7 @@
 .phead .acts {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--sp-8);
   align-items: flex-end;
   flex: 0 0 auto;
 }
@@ -46,7 +46,7 @@
 /* Role qualification, edited in place on the header (§9.6). */
 .roles-edit {
   display: flex;
-  gap: 6px;
+  gap: var(--sp-6);
   align-items: center;
   flex-wrap: wrap;
 }
@@ -56,23 +56,24 @@
   color: inherit;
   cursor: pointer;
   font: inherit;
-  padding: 0 0 0 4px;
+  padding: 0 0 0 var(--sp-4);
 }
 
 /* The key/value grid used by every Overview panel. */
 .kv {
   display: grid;
   grid-template-columns: 170px 1fr;
-  gap: 8px 14px;
-  font-size: 13px;
+  gap: var(--sp-8) var(--sp-14);
+  font-size: var(--fs-13);
   align-items: baseline;
 }
 .kv .k {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
   color: var(--muted);
+  font-weight: var(--label-weight);
 }
 .kv.tight {
   grid-template-columns: 96px 1fr;
@@ -86,12 +87,12 @@
 .blocklbl {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
+  gap: var(--sp-12);
+  padding: var(--sp-12) var(--sp-16);
   border: 1px solid var(--coral);
   border-radius: var(--r-card);
   background: var(--coral-dim);
-  font-size: 14px;
+  font-size: var(--fs-14);
 }
 .blocklbl b {
   color: var(--coral-ink);
@@ -99,17 +100,18 @@
 
 /* A feedback entry: the source colour is the whole point of the stripe. */
 .fb {
+  position: relative;
   border: 1px solid var(--line);
   border-radius: var(--r-card);
   background: var(--bg);
-  padding: 12px 14px;
+  padding: var(--sp-12) var(--sp-14);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--sp-6);
 }
 .fb .h {
   display: flex;
-  gap: 10px;
+  gap: var(--sp-10);
   align-items: center;
   flex-wrap: wrap;
   font-size: 12.5px;
@@ -119,14 +121,34 @@
 }
 .fb .h .when {
   color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
+  font-family: var(--font-num);
+  font-size: var(--fs-11);
 }
 .fb.client {
-  border-left: 3px solid var(--cyan);
+  --accent: var(--cyan);
+  border-left: 3px solid var(--accent);
 }
 .fb.office {
-  border-left: 3px solid var(--purple);
+  --accent: var(--purple);
+  border-left: 3px solid var(--accent);
+}
+/* A 3px border on a --r-card box is a crescent; the rounded look draws the
+   stripe inset, as packages/ui warm.css does for .toast and .card.accent. */
+:root[data-style='warm'] .fb.client,
+:root[data-style='warm'] .fb.office {
+  border-left: 1px solid var(--line);
+  padding-left: var(--sp-20);
+}
+:root[data-style='warm'] .fb.client::before,
+:root[data-style='warm'] .fb.office::before {
+  content: '';
+  position: absolute;
+  left: var(--sp-8);
+  top: var(--sp-10);
+  bottom: var(--sp-10);
+  width: 3px;
+  border-radius: var(--r-pill);
+  background: var(--accent);
 }
 
 /* Superseded documents stay visible and read-only (§2.12). */
@@ -142,15 +164,15 @@
 .two {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 14px;
+  gap: var(--sp-14);
 }
 .two ul {
   margin: 0;
-  padding-left: 18px;
+  padding-left: var(--sp-18);
   font-size: 12.5px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-4);
 }
 
 @media (max-width: 900px) {
@@ -159,6 +181,11 @@
   }
   .phead .acts {
     align-items: flex-start;
+  }
+  /* Block, Reset to candidate and Remove (GDPR) are one row that is wider
+     than a 360px phone. */
+  .phead .acts .row {
+    flex-wrap: wrap;
   }
   .kv,
   .two {

@@ -90,12 +90,13 @@ the gap grew from seventeen migrations to twenty-six. `push` carries no such
 rule — it runs the file from the commit that was pushed — which is why the
 deploy now lives beside the tests that gate it.
 
-**It deploys migrations, and nothing else.** Two deploy steps stay manual, and in this
-order — `supabase functions deploy`, then `select install_job_schedules()`. docs/13 P1 is
-explicit about why the order matters: the other way round, pg_cron spends the gap posting
-at a 404. No migration calls `install_job_schedules()` itself, so there is no automatic
-hazard here; the risk is only that this page leaves you believing a green `ci` means the
-whole system is deployed. It means the schema is.
+**It deploys migrations, then all seven Edge Functions** (since 25.09; `willo-webhook`
+with `--no-verify-jwt`). One step stays manual: `select install_job_schedules()`, once,
+after the Vault secret `service_role_key` exists (docs/16 §4.7). docs/13 P1 is explicit
+about the order — functions first, schedules second, or pg_cron spends the gap posting at
+a 404 — and the job keeps it. No migration calls `install_job_schedules()` itself; the
+risk is only believing a green `ci` means the jobs are running. It means the schema and
+the functions are deployed.
 
 **If the deploy fails,** re-run the `deploy-database` job from its run page in Actions —
 the tests do not need repeating. There is no `workflow_dispatch` button for it, and adding
@@ -304,6 +305,7 @@ names the code already expects.
 | File | App | Why |
 |---|---|---|
 | `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` | `apps/staff/public/` | **Done.** All three exist at the right sizes, are the real mark on cyan, and the manifest is valid — the staff app is installable. (This line used to say they were missing; they were not.) |
+| `icons/badge-96.png` | `apps/staff/public/` | **Done.** The Web Push `badge` (`apps/staff/sw.ts`): Android draws it as a silhouette in the status bar, so it is the mark alone, white on transparent. Generated from `brand/thc-mark.svg` by `pnpm --filter @thc/staff gen:badge`; not hand-placed. |
 | `favicon.ico` and `apple-icon.png` | All three apps' `public/` | Browser tab and iOS home screen |
 | Brand mark | `packages/ui` | **Done.** `packages/ui/src/components/Logo.tsx` inlines `brand/thc-mark.svg` and is wired into all three sign-in cards, the Back Office sidebar, the Client Portal top bar and `/apply/submitted`. A test asserts the inlined paths still equal the source file, so a new logo must be regenerated rather than hand-edited. |
 

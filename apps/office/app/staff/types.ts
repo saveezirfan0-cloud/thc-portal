@@ -61,6 +61,15 @@ export interface StaffRow {
   weekly_cap_hours: number | null;
   weekly_cap_band: CapBand | null;
   weekly_booked_hours: number | null;
+  // Appended by 20260928110000 (the 26.09 deferrals).
+  /** The Sunday the current cap band holds until; null when nothing on the calendar ends it (§4.4). */
+  weekly_cap_until: string | null;
+  /** The end of the last WORKED shift (§10.6, E8's lastShiftDate). */
+  last_shift_at: string | null;
+  /** Confirmed shifts the system released from the worker: cutoff, block, leaving, GDPR. */
+  released_shift_count: number;
+  /** When the P45 was asked for — left_at while the row is inactive (§10.6). */
+  p45_requested_at: string | null;
 }
 
 export interface StudentRow {

@@ -94,6 +94,11 @@ describe('radius', () => {
     expect(/--r-logo:\s*50%/.test(scope)).toBe(true);
   });
 
+  it('carries the Staff App’s minimum touch target as its own token (§1.2, §10.1)', () => {
+    // 44px: what the app sheets used to derive as `--sp-28 + --sp-16`.
+    expect(token(':root', '--tap-min')).toBe('44px');
+  });
+
   it('follows the fluid scale in the warm style (ADR-0007)', () => {
     const warm = ":root[data-style='warm']";
     expect(token(warm, '--r-card')).toBe('28px');
@@ -325,5 +330,33 @@ describe('focus', () => {
     expect(base).toMatch(/:focus-visible/);
     expect(base).toMatch(/outline:\s*2px solid var\(--focus-line\)/);
     expect(token(':root', '--focus-line')).toBe('var(--cyan-ink)');
+  });
+});
+
+describe('a table row drawn as a card on a phone (ADR-0030)', () => {
+  const rule = (selector: string) => {
+    const css = stripComments(sheets['components.css']!);
+    const start = css.indexOf(`${selector} {`);
+    expect(start, `missing ${selector}`).toBeGreaterThan(-1);
+    return css.slice(start, css.indexOf('}', start));
+  };
+
+  it('keeps a mixed text-and-tag cell in its value column', () => {
+    // The first cut laid a labelled cell out as a two-column grid and moved
+    // its children to column 2. Grid placement reaches elements only, so a
+    // bare text run in a cell like "Breaks: paid · Buffer: strict" fell into
+    // the label column and the policies read scrambled. The label floats in
+    // a reserved gutter instead, and the cell contains the float.
+    const cell = rule('.tbl.card-rows td[data-label]');
+    expect(cell).not.toMatch(/display:\s*grid/);
+    expect(cell).toMatch(/display:\s*flow-root/);
+    expect(cell).toMatch(/padding-left:/);
+
+    const label = rule('.tbl.card-rows td[data-label]::before');
+    expect(label).toContain('content: attr(data-label)');
+    expect(label).toMatch(/float:\s*left/);
+    expect(stripComments(sheets['components.css']!)).not.toMatch(
+      /\.tbl\.card-rows td\[data-label\] > \*/,
+    );
   });
 });

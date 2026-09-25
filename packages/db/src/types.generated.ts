@@ -964,6 +964,7 @@ export type Database = {
           file_size: number | null;
           gov_report_path: string | null;
           id: string;
+          manual_review_reason: string | null;
           mime_type: string | null;
           needs_manual_review: boolean;
           rejection_reason: string | null;
@@ -994,6 +995,7 @@ export type Database = {
           file_size?: number | null;
           gov_report_path?: string | null;
           id?: string;
+          manual_review_reason?: string | null;
           mime_type?: string | null;
           needs_manual_review?: boolean;
           rejection_reason?: string | null;
@@ -1024,6 +1026,7 @@ export type Database = {
           file_size?: number | null;
           gov_report_path?: string | null;
           id?: string;
+          manual_review_reason?: string | null;
           mime_type?: string | null;
           needs_manual_review?: boolean;
           rejection_reason?: string | null;
@@ -1830,25 +1833,31 @@ export type Database = {
       };
       job_schedules: {
         Row: {
+          base_url_source: string;
           cron_expression: string;
           edge_path: string;
           enabled: boolean;
           job: string;
           note: string | null;
+          secret_name: string;
         };
         Insert: {
+          base_url_source?: string;
           cron_expression: string;
           edge_path: string;
           enabled?: boolean;
           job: string;
           note?: string | null;
+          secret_name?: string;
         };
         Update: {
+          base_url_source?: string;
           cron_expression?: string;
           edge_path?: string;
           enabled?: boolean;
           job?: string;
           note?: string | null;
+          secret_name?: string;
         };
         Relationships: [];
       };
@@ -2696,6 +2705,180 @@ export type Database = {
           pay_rate?: number;
         };
         Relationships: [];
+      };
+      rtw_checks: {
+        Row: {
+          attempts: number;
+          compliance_doc_id: string;
+          created_at: string;
+          error: string | null;
+          finished_at: string | null;
+          id: string;
+          lease_until: string | null;
+          max_attempts: number;
+          next_attempt_at: string;
+          outcome: string | null;
+          report_path: string | null;
+          requested_by: string | null;
+          result: Json | null;
+          review_reason: string | null;
+          reviewed_at: string | null;
+          reviewed_by: string | null;
+          source: string | null;
+          staff_id: string;
+          started_at: string | null;
+          status: string;
+          updated_at: string;
+          worker_reason: string | null;
+        };
+        Insert: {
+          attempts?: number;
+          compliance_doc_id: string;
+          created_at?: string;
+          error?: string | null;
+          finished_at?: string | null;
+          id?: string;
+          lease_until?: string | null;
+          max_attempts?: number;
+          next_attempt_at?: string;
+          outcome?: string | null;
+          report_path?: string | null;
+          requested_by?: string | null;
+          result?: Json | null;
+          review_reason?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          source?: string | null;
+          staff_id: string;
+          started_at?: string | null;
+          status?: string;
+          updated_at?: string;
+          worker_reason?: string | null;
+        };
+        Update: {
+          attempts?: number;
+          compliance_doc_id?: string;
+          created_at?: string;
+          error?: string | null;
+          finished_at?: string | null;
+          id?: string;
+          lease_until?: string | null;
+          max_attempts?: number;
+          next_attempt_at?: string;
+          outcome?: string | null;
+          report_path?: string | null;
+          requested_by?: string | null;
+          result?: Json | null;
+          review_reason?: string | null;
+          reviewed_at?: string | null;
+          reviewed_by?: string | null;
+          source?: string | null;
+          staff_id?: string;
+          started_at?: string | null;
+          status?: string;
+          updated_at?: string;
+          worker_reason?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'rtw_checks_compliance_doc_id_fkey';
+            columns: ['compliance_doc_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_docs';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_compliance_doc_id_fkey';
+            columns: ['compliance_doc_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_documents_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_requested_by_fkey';
+            columns: ['requested_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_reviewed_by_fkey';
+            columns: ['reviewed_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       settings: {
         Row: {
@@ -4307,12 +4490,25 @@ export type Database = {
           item_label: string | null;
           item_type: string | null;
           kind: string | null;
+          manual_review_reason: string | null;
           mime_type: string | null;
           needs_manual_review: boolean | null;
           photo_path: string | null;
           previous_rejection: string | null;
           review_reason: string | null;
           rtw_branch: Database['public']['Enums']['rtw_branch'] | null;
+          rtw_check_attempts: number | null;
+          rtw_check_conditions: Json | null;
+          rtw_check_id: string | null;
+          rtw_check_no_time_limit: boolean | null;
+          rtw_check_outcome: string | null;
+          rtw_check_reason: string | null;
+          rtw_check_report_path: string | null;
+          rtw_check_source: string | null;
+          rtw_check_status: string | null;
+          rtw_check_until: string | null;
+          rtw_checked_at: string | null;
+          rtw_manual_allowed: boolean | null;
           share_code: string | null;
           size_bytes: number | null;
           staff_id: string | null;
@@ -4837,6 +5033,8 @@ export type Database = {
       onboarding_candidates_v: {
         Row: {
           activated: boolean | null;
+          activated_at: string | null;
+          additional_info_done_at: string | null;
           age: number | null;
           applied_age_band: string | null;
           applied_at: string | null;
@@ -4868,6 +5066,7 @@ export type Database = {
           quiz_best_score: number | null;
           quiz_blockers: string[] | null;
           quiz_passed_at: string | null;
+          quiz_scores: number[] | null;
           references_count: number | null;
           rejected_at: string | null;
           rejected_by_name: string | null;
@@ -5151,6 +5350,128 @@ export type Database = {
         };
         Relationships: [];
       };
+      rtw_checks_latest_v: {
+        Row: {
+          attempts: number | null;
+          check_id: string | null;
+          conditions: Json | null;
+          created_at: string | null;
+          document_id: string | null;
+          error: string | null;
+          finished_at: string | null;
+          max_attempts: number | null;
+          next_attempt_at: string | null;
+          no_time_limit: boolean | null;
+          outcome: string | null;
+          record_name: string | null;
+          reference_number: string | null;
+          report_path: string | null;
+          requested_by: string | null;
+          review_reason: string | null;
+          reviewed_at: string | null;
+          right_to_work_until: string | null;
+          source: string | null;
+          staff_id: string | null;
+          started_at: string | null;
+          status: string | null;
+          stuck: boolean | null;
+          term_time_limit_hours: number | null;
+          worker_reason: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'rtw_checks_compliance_doc_id_fkey';
+            columns: ['document_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_docs';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_compliance_doc_id_fkey';
+            columns: ['document_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_documents_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_requested_by_fkey';
+            columns: ['requested_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'rtw_checks_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       staff_block_audit_v: {
         Row: {
           action: string | null;
@@ -5335,10 +5656,13 @@ export type Database = {
           employee_id: number | null;
           graduated_at: string | null;
           id: string | null;
+          last_shift_at: string | null;
           leave_reason: string | null;
           left_at: string | null;
+          p45_requested_at: string | null;
           photo_path: string | null;
           rating: number | null;
+          released_shift_count: number | null;
           reliability: number | null;
           removed: boolean | null;
           right_to_work_until: string | null;
@@ -5349,6 +5673,7 @@ export type Database = {
           weekly_booked_hours: number | null;
           weekly_cap_band: Database['public']['Enums']['cap_band'] | null;
           weekly_cap_hours: number | null;
+          weekly_cap_until: string | null;
           wtr_optout: boolean | null;
         };
         Relationships: [];
@@ -6197,6 +6522,7 @@ export type Database = {
           still_short: number;
         }[];
       };
+      auto_assign_first_round: { Args: { p_event: string }; Returns: Json };
       block_worker: {
         Args: {
           p_cause?: string;
@@ -6392,6 +6718,10 @@ export type Database = {
         Args: { p_doc: string; p_reason: string };
         Returns: Json;
       };
+      compliance_reject_document_as: {
+        Args: { p_doc: string; p_reason: string; p_reviewer: string };
+        Returns: Json;
+      };
       compliance_verify_declaration: {
         Args: { p_declaration: string; p_note?: string };
         Returns: Json;
@@ -6400,6 +6730,16 @@ export type Database = {
         Args: {
           p_doc: string;
           p_expiry?: string;
+          p_right_to_work_until?: string;
+          p_term_dates?: unknown[];
+        };
+        Returns: Json;
+      };
+      compliance_verify_document_as: {
+        Args: {
+          p_doc: string;
+          p_expiry?: string;
+          p_reviewer: string;
           p_right_to_work_until?: string;
           p_term_dates?: unknown[];
         };
@@ -6701,6 +7041,7 @@ export type Database = {
         Returns: boolean;
       };
       geomfromewkt: { Args: { '': string }; Returns: unknown };
+      get_back: { Args: { p_booking: string; p_note?: string }; Returns: Json };
       gettransactionid: { Args: never; Returns: unknown };
       grant_client_qualification: {
         Args: {
@@ -6730,6 +7071,7 @@ export type Database = {
         Returns: Json;
       };
       is_edge_base_url: { Args: { p_url: string }; Returns: boolean };
+      is_office_base_url: { Args: { p_url: string }; Returns: boolean };
       is_uk_time: {
         Args: { p_hhmm: string; p_now: string; p_window?: string };
         Returns: boolean;
@@ -6748,6 +7090,17 @@ export type Database = {
       looks_like_relative: { Args: { p: string }; Returns: boolean };
       mark_feedback_read: { Args: { p_id: string }; Returns: Json };
       mark_ready: { Args: { p_booking: string }; Returns: Json };
+      my_rtw_checks: {
+        Args: never;
+        Returns: {
+          checked_at: string;
+          created_at: string;
+          document_id: string;
+          outcome: string;
+          status: string;
+          worker_reason: string;
+        }[];
+      };
       n6_due_at: { Args: { p_starts_at: string }; Returns: string };
       n7_due_at: { Args: { p_starts_at: string }; Returns: string };
       new_starter_export_rows: {
@@ -6812,10 +7165,12 @@ export type Database = {
       };
       normalise_msisdn: { Args: { p: string }; Returns: string };
       normalise_share_code: { Args: { p: string }; Returns: string };
+      office_base_url: { Args: never; Returns: string };
       office_invite_worker: {
         Args: { p_shift: string; p_staff: string };
         Returns: Json;
       };
+      office_mark_no_show: { Args: { p_booking: string }; Returns: Json };
       onboarding_accept: {
         Args: {
           p_activation_link: string;
@@ -6966,6 +7321,10 @@ export type Database = {
           prompt: string;
           question_no: number;
         }[];
+      };
+      onboarding_reenter_share_code: {
+        Args: { p_dob?: string; p_share_code: string };
+        Returns: Json;
       };
       onboarding_reject: {
         Args: { p_reason: string; p_staff: string };
@@ -7328,6 +7687,68 @@ export type Database = {
           p_starts: string;
         };
         Returns: Json;
+      };
+      rtw_check_backoff: { Args: { p_attempt: number }; Returns: string };
+      rtw_check_claim: {
+        Args: { p_lease_seconds?: number; p_limit?: number };
+        Returns: {
+          attempt: number;
+          below_degree_level: boolean;
+          check_id: string;
+          date_of_birth: string;
+          document_id: string;
+          first_name: string;
+          last_name: string;
+          max_attempts: number;
+          rtw_branch: string;
+          share_code: string;
+          staff_id: string;
+        }[];
+      };
+      rtw_check_clean_error: {
+        Args: { p_error: string; p_share_code: string };
+        Returns: string;
+      };
+      rtw_check_clean_result: {
+        Args: { p_result: Json; p_share_code: string };
+        Returns: Json;
+      };
+      rtw_check_config: { Args: never; Returns: Json };
+      rtw_check_enabled: { Args: never; Returns: boolean };
+      rtw_check_enqueue: {
+        Args: { p_doc: string; p_requested_by?: string };
+        Returns: string;
+      };
+      rtw_check_manual_allowed: { Args: { p_doc: string }; Returns: boolean };
+      rtw_check_mark_reviewed: { Args: { p_check: string }; Returns: Json };
+      rtw_check_nudge: { Args: never; Returns: undefined };
+      rtw_check_record: {
+        Args: {
+          p_check: string;
+          p_decision: Json;
+          p_error?: string;
+          p_report_path?: string;
+          p_result: Json;
+        };
+        Returns: Json;
+      };
+      rtw_check_request: { Args: { p_doc: string }; Returns: Json };
+      rtw_check_stale_after: { Args: never; Returns: string };
+      rtw_check_stuck: {
+        Args: {
+          p_lease_until: string;
+          p_next_attempt_at: string;
+          p_started_at: string;
+          p_status: string;
+        };
+        Returns: boolean;
+      };
+      rtw_check_transitions: {
+        Args: never;
+        Returns: {
+          from_status: string;
+          to_status: string;
+        }[];
       };
       rtw_daily: { Args: { p_now?: string }; Returns: Json };
       rtw_date_clear_allowed: { Args: never; Returns: boolean };
@@ -7964,6 +8385,7 @@ export type Database = {
         Returns: unknown;
       };
       staff_account_activated: { Args: { p_staff: string }; Returns: boolean };
+      staff_account_activated_at: { Args: { p_staff: string }; Returns: string };
       staff_bookings: {
         Args: { p_staff?: string };
         Returns: {
@@ -8042,7 +8464,10 @@ export type Database = {
           event_date: string;
           event_id: string;
           event_title: string;
+          geofence_radius_m: number;
           headcount: number;
+          home_lat: number;
+          home_lng: number;
           hours_limit: boolean;
           pay_rate: number;
           qualified: boolean;
@@ -8050,6 +8475,8 @@ export type Database = {
           shift_id: string;
           starts_at: string;
           venue_address: string;
+          venue_lat: number;
+          venue_lng: number;
           venue_name: string;
           week_start: string;
         }[];
@@ -8093,6 +8520,7 @@ export type Database = {
           venue_name: string;
         }[];
       };
+      staff_show_rate: { Args: { p_staff: string }; Returns: number };
       staff_sync_email: { Args: never; Returns: Json };
       staff_transition_allowed: {
         Args: {
@@ -8105,15 +8533,21 @@ export type Database = {
         Args: { p_home_address: string; p_phone: string };
         Returns: Json;
       };
+      staff_update_contact_for: {
+        Args: { p_home_address: string; p_phone: string; p_staff: string };
+        Returns: Json;
+      };
       staff_update_contact_geocoded: {
         Args: {
           p_home_address: string;
           p_lat: number;
           p_lng: number;
           p_phone: string;
+          p_staff: string;
         };
         Returns: Json;
       };
+      staff_week_meter: { Args: { p_staff?: string }; Returns: Json };
       staff_writer: { Args: { p_staff?: string }; Returns: string };
       start_break: { Args: { p_booking: string }; Returns: Json };
       submit_application: {
@@ -8191,6 +8625,10 @@ export type Database = {
       submit_quiz_attempt: { Args: { p_answers: Json }; Returns: Json };
       term_letter_applies: {
         Args: { p_on?: string; p_staff: string };
+        Returns: boolean;
+      };
+      term_letter_expired: {
+        Args: { p_ranges: unknown[]; p_today: string };
         Returns: boolean;
       };
       turned_away_minutes: {

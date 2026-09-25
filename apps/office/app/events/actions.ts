@@ -148,8 +148,30 @@ export async function createEvent(input: EventInput): Promise<SaveResult> {
     return { error: sectionError.message };
   }
 
+  await firstAutoAssignRound(supabase, event.id);
+
   revalidatePath('/events');
   redirect(`/events/${event.id}`);
+}
+
+/**
+ * §3.4: "from the moment the event is created it adds allocation invites
+ * every hour". The hourly cron fires at :17, so without this an event saved
+ * at 09:20 waited until 10:17 for its first invitations.
+ * `auto_assign_first_round()` (20260928110200) posts one hourly-mode round
+ * for this event's due sections — both switches on, not started, short of
+ * headcount + buffer — to the auto-staffing Edge Function, exactly as the
+ * cron command does. It reports rather than raises when nothing is due
+ * (auto-assign off) or the base URL / key is not configured, and a failure
+ * here must not fail a save that has already happened: the :17 round
+ * catches up either way, so the outcome is deliberately not surfaced.
+ */
+async function firstAutoAssignRound(supabase: SupabaseClient, eventId: string): Promise<void> {
+  try {
+    await supabase.rpc('auto_assign_first_round', { p_event: eventId });
+  } catch {
+    // The event is saved; the hourly round will invite at :17.
+  }
 }
 
 export async function updateEvent(input: EventInput): Promise<SaveResult> {

@@ -458,3 +458,61 @@ export function acceptedLog<T extends { check_in_at: string | null }>(
   const accepted = (logs ?? []).filter((l) => Boolean(l.check_in_at));
   return [...accepted].sort((a, b) => stamp(a) - stamp(b))[0] ?? null;
 }
+
+// ---------------------------------------------------------------------------
+// §6 · the show-rate (BG-03, RULE-14, §9.5)
+// ---------------------------------------------------------------------------
+
+/** One violation on a booking, as far as the show-rate cares. */
+export interface ShowRateViolation {
+  type: string;
+  resolved: boolean;
+}
+
+/** One booking in a worker's history: its status and the violations on it. */
+export interface ShowRateBooking {
+  /** `bookings.status` — worked, turned_away, confirmed, cancelled, … */
+  status: string;
+  violations: readonly ShowRateViolation[];
+}
+
+/**
+ * The §6 "Show-rate (reliability)" input, 0–100, from a worker's history.
+ * Postgres repeats this as `staff_show_rate(uuid)` (20260928110100), which
+ * is what `auto_assign_candidates` feeds the 30% show factor; the cases in
+ * `pay.vectors.json` → `showRate` are replayed by name in
+ * supabase/tests/596_show_rate_derived.sql so the two cannot drift.
+ *
+ * The reading of the scope (docs/15 Q4):
+ *
+ *  - The sample is every shift the worker was due at and the day came:
+ *    `worked`, `turned_away`, and a booking carrying an unresolved No-show
+ *    (which stays `confirmed` in the roster by design, §3.3).
+ *  - Worked and turned away both mean they turned up. A strict-buffer
+ *    turn-away is paid under RULE-15 and is never a mark against them.
+ *  - An unresolved No-show (BG-03) or No check-out (RULE-14) counts
+ *    against; resolving lifts it. "Removes or reduces" (§9.5) is read as
+ *    REMOVES — the scope gives no half weight anywhere.
+ *  - Late, Left early and Left the geofence weigh nothing: §9.5 says they
+ *    are "only ever reviewed by the manager case by case, with no
+ *    automatic consequence".
+ *  - Self-cancel, Decline and Leaving never enter the sample: those
+ *    bookings are cancelled / closed, each promised "no show-rate impact".
+ *  - No history is null; the candidates function defaults it to 90, the §6
+ *    formula's own zero point, so a new worker scores as before.
+ */
+export function showRate(bookings: readonly ShowRateBooking[]): number | null {
+  const unresolved = (b: ShowRateBooking, type: string) =>
+    b.violations.some((v) => v.type === type && !v.resolved);
+
+  const sample = bookings.filter(
+    (b) => b.status === 'worked' || b.status === 'turned_away' || unresolved(b, 'no_show'),
+  );
+  if (sample.length === 0) return null;
+
+  const shown = sample.filter(
+    (b) => !unresolved(b, 'no_show') && !unresolved(b, 'no_checkout'),
+  ).length;
+  // Two decimals, the same rounding as SQL's round(…, 2).
+  return Math.round((shown / sample.length) * 10_000) / 100;
+}

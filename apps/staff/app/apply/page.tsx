@@ -15,7 +15,8 @@ export const metadata = {
 export default function Page() {
   return (
     <div className="apply-page">
-      <AuthCard product="Join our team" heading="Apply to work with us">
+      {/* The public card draws no appearance switch in any state (apply.html). */}
+      <AuthCard product="Join our team" heading="Apply to work with us" appearance="none">
         <ApplyForm />
       </AuthCard>
     </div>

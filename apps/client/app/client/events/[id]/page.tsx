@@ -33,7 +33,7 @@ export default async function ClientEventPage({ params }: { params: Promise<{ id
       sections={sections}
       lineup={lineup}
       photos={Object.fromEntries(signed)}
-      documents={documents.map((d) => d.kind)}
+      documents={documents.map((d) => ({ kind: d.kind, issuedAt: d.issued_at }))}
       now={new Date().toISOString()}
     />
   );

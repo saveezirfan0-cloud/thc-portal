@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  LETTER_EXPIRED,
   RTW_DATE_MISSING,
   actionsFor,
   ageLabel,
@@ -11,6 +12,7 @@ import {
   radarCounts,
   radarStatus,
   remindersLine,
+  reviewFlag,
   ukDate,
   ukStamp,
   uploadedLine,
@@ -54,6 +56,7 @@ const ROW: QueueRow = {
   mime_type: 'application/pdf',
   size_bytes: 1_258_291,
   review_reason: null,
+  manual_review_reason: null,
 };
 
 /** A share code verified before 23.09 with no date (20260927160000). */
@@ -186,6 +189,43 @@ describe('Needs review (§4.1)', () => {
     expect(
       filterQueue(rows, { query: '', who: 'staff', document: 'any' }).map((r) => r.item_id),
     ).toEqual(['r1']);
+  });
+
+  it('says why the extractor flagged a term letter whose dates are all past (§4.2, 20260928110900)', () => {
+    // Last year's letter, read with total confidence: the badge alone would
+    // say "needs manual review" and nothing about why.
+    const expired: QueueRow = {
+      ...ROW,
+      ai_confidence: 0.99,
+      needs_manual_review: true,
+      term_dates: ['[2025-12-13,2026-01-07)', '[2026-06-13,2026-09-22)'],
+      manual_review_reason: LETTER_EXPIRED,
+    };
+    expect(foundLine(expired)).toEqual({ text: '2 holiday ranges', confidence: 'manual' });
+    expect(reviewFlag(expired)).toEqual({
+      label: 'Letter expired',
+      detail: 'every term date on it is in the past — not accepted (§4.2)',
+    });
+    expect(verifyHint(expired)).toContain('Verify is refused');
+    expect(verifyHint(expired)).toContain('Reject');
+    // Verify and Reject are still offered: the database refuses the first,
+    // the reviewer takes the second.
+    expect(actionsFor(expired)).toEqual({ verify: 'Verify', reject: true });
+  });
+
+  it('shows no flag when the reason is absent — confidence alone, or another kind of row', () => {
+    expect(reviewFlag(ROW)).toBeNull();
+    expect(reviewFlag({ ...ROW, ai_confidence: 0.41, needs_manual_review: true })).toBeNull();
+    expect(verifyHint(ROW)).toBeNull();
+    expect(reviewFlag(RTW_DATE)).toBeNull();
+    expect(
+      reviewFlag({ ...ROW, kind: 'declaration', item_type: 'criminal_declaration' }),
+    ).toBeNull();
+    // A reason the screen does not know yet is shown as it is, never hidden.
+    expect(reviewFlag({ ...ROW, manual_review_reason: 'institution unknown' })).toEqual({
+      label: 'Flagged',
+      detail: 'institution unknown',
+    });
   });
 
   it('marks a re-upload with the reason the last one was rejected', () => {

@@ -30,6 +30,7 @@ import {
   documentLine,
   filterQueue,
   foundLine,
+  reviewFlag,
   queueRowCheck,
   ukDate,
   ukStamp,
@@ -187,7 +188,7 @@ export function ReviewTab({
               </p>
             </EmptyState>
           ) : (
-            <table className="tbl">
+            <table className="tbl card-rows">
               <thead>
                 <tr>
                   <th>Who</th>
@@ -296,11 +297,12 @@ function QueueLine({
 }) {
   const who = whoLine(row);
   const found = foundLine(row);
+  const flag = reviewFlag(row);
   const hint = verifyHint(row);
   const actions = actionsFor(row);
   return (
     <tr>
-      <td>
+      <td className="cell-title">
         <div className="person">
           <Avatar name={row.display_name} size="sm" />
           <div>
@@ -319,7 +321,7 @@ function QueueLine({
           </div>
         </div>
       </td>
-      <td>
+      <td data-label="Document">
         <b>{row.item_label}</b>{' '}
         {row.kind === 'declaration' && row.declaration_source === 'in_employment' ? (
           <Pill tone="purple">in-employment</Pill>
@@ -343,11 +345,11 @@ function QueueLine({
           />
         ) : null}
       </td>
-      <td className="mono sm">
+      <td data-label="Uploaded" className="mono sm">
         {ukStamp(row.submitted_at)}
         <span className="sub">{uploadedLine(row)}</span>
       </td>
-      <td>
+      <td data-label="AI found">
         <span
           className={
             found.confidence === null && row.kind === 'declaration' ? 'found muted' : 'found'
@@ -362,8 +364,18 @@ function QueueLine({
             AI {Math.round((row.ai_confidence ?? 0) * 100)}%
           </span>
         ) : null}
+        {flag ? (
+          // The wireframe's flagged-document annotation: the badge, then a
+          // muted note. Expired is coral in the document pill vocabulary
+          // (docs/07) — the outcome here is Reject → re-upload.
+          <>
+            {' '}
+            <Pill tone="coral">{flag.label}</Pill>
+            <span className="sub muted xs">{flag.detail}</span>
+          </>
+        ) : null}
       </td>
-      <td style={{ textAlign: 'right' }}>
+      <td className="right-align cell-actions">
         {verifyAllowed(row) ? (
           <Button size="sm" tone="green" onClick={onVerify} disabled={busy}>
             {actions.verify}

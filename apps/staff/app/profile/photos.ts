@@ -1,3 +1,4 @@
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { staffDb, supabaseConfigured } from '../db';
 
@@ -27,7 +28,13 @@ const BUCKET = 'photos';
 /** Long enough to read a page, short enough not to be worth forwarding. */
 const READ_TTL_SECONDS = 60 * 10;
 
-export async function signOwnPhoto(path: string | null): Promise<string | null> {
+/**
+ * Signed once per request (`React.cache`): the shell signs it for the
+ * header on every screen (§10.1), and /profile signs the same path again
+ * for the sheet, so without this a profile visit would cost two Storage
+ * round trips for one image.
+ */
+export const signOwnPhoto = cache(async (path: string | null): Promise<string | null> => {
   if (!path || !supabaseConfigured()) return null;
   try {
     const supabase = staffDb(await cookies());
@@ -41,7 +48,7 @@ export async function signOwnPhoto(path: string | null): Promise<string | null> 
     // photo is an aid to recognition, and `Avatar` falls back to initials.
     return null;
   }
-}
+});
 
 /**
  * Where this worker's selfie goes: `<staffId>/selfie-<epoch>.jpg`.
