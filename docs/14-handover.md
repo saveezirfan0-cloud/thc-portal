@@ -130,12 +130,11 @@ real environment to prove it in.
    activate / reset / notifications / install / privacy, the client app, docs
    and e2e. The §4.1 menu counter in the office chrome was built and then
    dropped at the merge with #52's `SignedInAs`; it wants rebuilding on that.
-4c. **ADR-0018's rota-guard gap.** `can_roster_staff()` reads a null
-   `right_to_work_until` on a non-UK branch as "no expiry"; pgTAP `524` §B pins
-   that as current behaviour. Close it by restating the guard from its latest
-   definition (a null date with `rtw_no_time_limit = false` on a non-UK branch
-   is a hard stop) and flipping `524` §B. The Needs review row
-   (`20260926121000`) is how the office finds those workers meanwhile.
+4c. ~~**ADR-0018's rota-guard gap.**~~ **Closed** by `20260927150000`:
+   `can_roster_staff()` refuses a non-UK worker whose latest verified
+   right-to-work evidence carries neither a date nor the settled no-time-limit
+   flag, on every date, until the office confirms the date from the Needs
+   review row (`20260926121000`); pgTAP `524` §B flipped and pins it.
 5. **Nothing else is open in code** beyond §4's notes. The 25.09 round closed
    the last three gaps (below).
 

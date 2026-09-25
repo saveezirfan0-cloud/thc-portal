@@ -31,7 +31,7 @@
 --      execute the function or read the queue.
 -- =====================================================================
 begin;
-select plan(46);
+select plan(47);
 \ir _shared/fixtures.psql
 
 \set gap      'c5240000-0000-4000-8000-000000000001'
@@ -114,8 +114,10 @@ select is((select count(*)::int from compliance_review_queue_v where staff_id in
 -- =====================================================================
 select is((select right_to_work_until from staff where id = :'gap'), null,
   'before: the worker has no right-to-work date');
-select ok(can_roster_staff(:'gap', :'today'::date + 5000),
-  'ADR-0018 gap, unchanged here: can_roster_staff() still reads a NULL date as "no expiry" for a non-UK worker — this row is what surfaces them (20260922093100; the rota guard is another owner''s)');
+select ok(not can_roster_staff(:'gap', :'today'::date + 5000),
+  'ADR-0018 closed (20260927150000): a non-UK worker whose verified share code carries no date is refused on every date until the office confirms one from this row');
+select ok(not can_roster_staff(:'gap', :'today'::date + 1),
+  'and tomorrow too — it is the missing date, not a far horizon, that refuses');
 
 -- =====================================================================
 -- C · The confirm
