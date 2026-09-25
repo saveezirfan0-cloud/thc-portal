@@ -265,7 +265,10 @@ update settings set value = value || '{"enabled": true}' where key = 'rtw_check'
 ```
 
 `settings.rtw_check` also holds `primary` (`provider`), `fallback` (`govuk`, or null for
-provider-only), `company_name` (what gov.uk is told is checking) and `max_attempts` (5).
+provider-only), `company_name` (what gov.uk is told is checking), `max_attempts` (5),
+`stale_after_minutes` (60: a check the runner has not touched for this long shows in
+Needs review with the hand-typed date allowed) and `reenter_per_day` (5: how often a
+candidate may re-enter a share code in 24 hours).
 The `rtw-check` schedule (every 10 minutes) is registered **disabled**. Enabling it is a
 migration plus pgTAP 190, then `select install_job_schedules();`, which now also needs
 `office_base_url` and `rtw_job_secret` for that row.

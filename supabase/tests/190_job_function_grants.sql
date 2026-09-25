@@ -131,7 +131,11 @@ select is_empty(
           'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
           'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion',
           'rtw_check_claim', 'rtw_check_record', 'rtw_check_config',
-          'compliance_verify_document_as', 'compliance_reject_document_as'
+          'compliance_verify_document_as', 'compliance_reject_document_as',
+          -- rtw_check_manual_allowed is NOT here on purpose: the office's
+          -- security_invoker queue view calls it as `authenticated`, so it
+          -- checks its caller instead and answers a worker NULL (600 §I).
+          'rtw_check_enqueue', 'rtw_check_nudge', 'audit_log_forget_dob'
         )
         and has_function_privilege('authenticated', p.oid, 'execute') $$,
   'nor can a signed-in worker block, retire, reset or remove anybody'

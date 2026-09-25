@@ -126,6 +126,7 @@ An automated rejection queues exactly the office's N8. Settled status is sent as
 **Compliance → Needs review:**
 
 - While the check is on, a share code whose check is **queued or running is not in the queue**, because it is not the office's yet.
+- **Unless it is stuck.** A check that is due but unclaimed, or whose lease lapsed, for longer than `settings.rtw_check.stale_after_minutes` (default 60) means the runner is not running: the schedule, its secret, the base URL or both adapters are missing while the switch is on. It is listed with that reason, and the hand-typed date is allowed (`rtw_check_stuck`). Backing off between retries is not stuck, because the next attempt is still in the future. A check the office then verifies by hand is stopped (`failed`) when the runner comes back.
 - A share code in **needs_review** is listed with a panel showing:
   - the reason;
   - status and source;
@@ -133,11 +134,13 @@ An automated rejection queues exactly the office's N8. Settled status is sent as
   - what gov.uk returned (date or no time limit, conditions, name, reference);
   - "Download gov.uk report", a 60-second signed URL whose path is read through the session;
   - "Run check again".
-- A **no-right-to-work** result has a document that is already rejected, so it is an item of its own (kind `rtw_check`) until the office presses **Mark reviewed**, which is audited.
+- A **no-right-to-work** result has a document that is already rejected, so it is an item of its own (kind `rtw_check`) until the office presses **Mark reviewed**, which is audited. Only that outcome makes such an item.
+- **A person's decision answers the check.** When the office verifies or rejects a share code by hand, every needs-review check on it is stamped `reviewed_at` / `reviewed_by` inside the same Verify / Reject body. Without this, a hand-decided document whose check was in needs review turned into a false "no right to work" item (QA, 25.09).
 
 **The manual date (amends ADR-0018):**
 
-- While the check is on, a share code is verified by hand **only when its latest check is in needs_review**. The database refuses anything else with `rtw_check_required`, whichever screen tries.
+- While the check is on, a share code is verified by hand **only when its latest check is in needs_review, or stuck**. The database refuses anything else with `rtw_check_required`, whichever screen tries.
+- `rtw_check_manual_allowed()` is executable by `authenticated`, because the office's security-invoker queue view calls it. It therefore checks its caller: it answers `NULL` to anyone but an admin or the service role.
 - Off, ADR-0018 is unchanged.
 - The date gov.uk returned is pre-filled into the Verify form, as the extractor seam already did.
 
@@ -150,10 +153,12 @@ An automated rejection queues exactly the office's N8. Settled status is sent as
 - A rejection shows the reason with Enter new code / Enter again.
 - A check that could not decide says the result "is with the office".
 - **New:** after submitting step 4, a candidate can re-enter a rejected share code **and correct their date of birth** (`onboarding_reenter_share_code`). Before this they had no way back: step 1 closes at submission, and the Documents hub is for employed workers. An employed worker's date of birth is not editable in the app, because it feeds HMRC (§2.8). The hub tells them to contact the office.
+  - Re-entry is capped at `settings.rtw_check.reenter_per_day` (default 5) in 24 hours, so the form cannot be used to try dates of birth against a code (`too_many_attempts`).
+  - A changed date of birth is audited with the previous and new values (`dobBefore`, `dobAfter`). Both keys are stripped from the audit trail when the person is removed (`audit_log_forget_dob`, §1.7).
 
 ### 7 · The off switch
 
-`settings.rtw_check` is `{enabled: false, primary: 'provider', fallback: 'govuk', company_name: 'The Hospitality Company', max_attempts: 5}`. `enabled` is not in the brief's list, and it is deliberate. Without it, every share code filed before the keys exist would be enqueued, hidden from the office's queue and never run.
+`settings.rtw_check` is `{enabled: false, primary: 'provider', fallback: 'govuk', company_name: 'The Hospitality Company', stale_after_minutes: 60, reenter_per_day: 5, max_attempts: 5}`. `enabled` is not in the brief's list, and it is deliberate. Without it, every share code filed before the keys exist would be enqueued, hidden from the office's queue and never run.
 
 With the switch off:
 
@@ -170,6 +175,7 @@ A share code filed before the switch was turned on has no check. The office pres
 The report is right-to-work evidence on the share-code document. It is kept and purged with that document.
 
 - A GDPR removal deletes the document, which cascades to its checks. The report paths are owed to the Storage purge twice over: `remove_worker()` already queues `gov_report_path`, and an `AFTER DELETE` trigger on `rtw_checks` queues every check's `report_path`, including a report an earlier run left.
+- **No orphaned reports.** The runner uploads a report only when this run's outcome stores it (never on a retry). If recording then fails, it asks whether the check is still `running`: if so, nothing references the report and it is deleted; if the record may have landed (a lost response), it is kept.
 - If THC extends ADR-0019's two-year hold to other right-to-work evidence (OWNER-TODO §5), the check rows follow the document's `retain_until`, because they are only deleted when it is.
 
 The audit trail keeps these rows, with no share code, date of birth or name:
@@ -206,19 +212,20 @@ Nothing below has been seen working against the real service. Each assumption is
    - the checker's company name.
 
    Each field is found by its label first, with CSS fallbacks. The fields may come on any pages and in any order, with a "Continue"-like button between them, and the result arrives within 6 pages.
-9. **The result wording.**
-   - Not found: "we could not find…", "details do not match", "share code is not valid / has expired".
-   - No right: "does not have the right to work", "cannot work in the UK".
-   - A pass: "has/have permission to work in the UK", "can work in the UK".
+9. **The result wording.** Every outcome statement is matched as a **whole line**, from its start, so help text elsewhere on the page cannot decide the outcome.
+   - Not found: a line starting "We could not find…", "The details do not match", "The share code is not valid / has expired". It is read only on a page that states no outcome and names nobody.
+   - No right: a whole line "This person / They does not have the right to work in the UK" or "… cannot work in the UK", ending there. "They cannot work in the UK for more than 20 hours a week during term time" is a student's condition, not a refusal.
+   - A pass: a line starting "This person / They has/have permission to work in the UK" or "… can work in the UK". A page with both a pass and a refusal is an error.
+   - A flow that never gave gov.uk both the code and the date of birth is never parsed: it is `govuk_page_changed:inputs`, retried, then the office.
    - The end date follows "until", "expires on" or "valid until", as `31 March 2028` or `31/03/2028`.
-   - No time limit is stated as "no time limit", "indefinite leave" or "settled status".
+   - No time limit is stated as "no time limit", "indefinite leave" or "settled status" — never "pre-settled status", which has an end date (§2.5 pt 2).
    - The name is on a "Name" line. The reference follows "Reference number". Conditions sit under a "Conditions" heading, or are lines about hours per week, term time, or "cannot/can only … work".
 10. **The PDF.** Chromium's print of the result page (`page.pdf()`) is an acceptable "PDF report" for the profile. gov.uk's own download, if it has one, is not used.
 11. **Terms and access.** gov.uk's terms of use permit an employer to use automation on this service. ADR-0002 flagged this as possibly not the case, and **THC should confirm it**. The service also serves a headless Chromium from Vercel's IP ranges without a CAPTCHA or bot wall. If either is false, run provider-only: `RTW_GOVUK_ENABLED` unset, or `settings.rtw_check.fallback` null.
 
 **Shared wording — `packages/domain/src/rtwCheck.ts`**
 
-12. **The conditions.** The term-time limit pattern ("20 hours a week … term time"). The benign conditions that need no human: "no restrictions", "full-time during vacations", "cannot be self-employed", "cannot work as a professional sportsperson", "cannot fill a permanent full-time vacancy". Anything else goes to the office.
+12. **The conditions.** Each condition line is recognised only **whole**: a line that is only the student term-time limit ("They can work up to 20 hours a week during term time", "They cannot work in the UK for more than 20 hours a week during term time"), or one of the benign lines ("No restrictions", "They can work in any job", "They can work full-time during official vacations", "They cannot be self-employed", "They cannot work as a professional sportsperson", "They cannot fill a permanent full-time vacancy"). A benign pattern never admits a line with a digit or a qualifying word ("hours", "except", "only", "not", "unless", "maximum", "limit"), so "Can work in any job for up to 20 hours a week" goes to the office. Anything else goes to the office.
 
 **Runtime**
 

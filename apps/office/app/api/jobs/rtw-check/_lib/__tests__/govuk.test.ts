@@ -85,6 +85,46 @@ describe('parseGovukResult', () => {
     });
   });
 
+  it('pre-settled status is never read as no time limit (QA 25.09)', () => {
+    expect(parseGovukResult(page('govuk-pre-settled-no-date.txt'), AT)).toMatchObject({
+      outcome: 'error',
+      error: 'govuk_no_expiry',
+    });
+    expect(parseGovukResult(page('govuk-pre-settled.txt'), AT)).toMatchObject({
+      outcome: 'right_to_work',
+      rightToWorkUntil: '2027-08-12',
+    });
+  });
+
+  it('a student’s "cannot work in the UK for more than 20 hours" is a pass with the term limit, not no-right', () => {
+    const r = parseGovukResult(page('govuk-pass-student-cannot.txt'), AT);
+    expect(r).toMatchObject({
+      outcome: 'right_to_work',
+      rightToWorkUntil: '2028-03-31',
+      termTimeLimitHours: 20,
+    });
+    expect(
+      decideRtwCheck(
+        r,
+        {
+          firstName: 'Amara',
+          lastName: 'Kofi',
+          rtwBranch: 'international_student',
+          belowDegreeLevel: false,
+        },
+        { attempt: 1, maxAttempts: 5, today: '2026-09-25' },
+      ).action,
+    ).toBe('verify');
+  });
+
+  it('help text on a pass page cannot make it not-found or no-right', () => {
+    expect(parseGovukResult(page('govuk-pass-with-help.txt'), AT)).toMatchObject({
+      outcome: 'right_to_work',
+      fullName: 'Ben Tran',
+      rightToWorkUntil: '2026-10-30',
+    });
+  });
+
   it('anything else is an error', () => {
     expect(parseGovukResult(page('govuk-maintenance.txt'), AT).error).toBe(
       'govuk_unrecognised_result',
@@ -238,6 +278,16 @@ describe('createGovukChecker', () => {
     const out = await createGovukChecker(enabled, async () => fake.browser)!.check(INPUT);
     expect(out.result).toMatchObject({ outcome: 'error', error: 'govuk_page_changed:next' });
     expect(fake.browser.closed).toBe(true);
+  });
+
+  it('an incomplete flow is never parsed — even a not-found page is page_changed', async () => {
+    const fake = fakeBrowser([
+      { fields: ['shareCode'], text: '' },
+      { fields: [], text: page('govuk-not-found.txt') },
+    ]);
+    const out = await createGovukChecker(enabled, async () => fake.browser)!.check(INPUT);
+    expect(out.result).toMatchObject({ outcome: 'error', error: 'govuk_page_changed:inputs' });
+    expect(fake.pdfCalls()).toBe(0);
   });
 
   it('a "result" reached without giving gov.uk the inputs is not a result', async () => {

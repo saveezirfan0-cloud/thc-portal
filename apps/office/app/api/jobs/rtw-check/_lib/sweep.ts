@@ -113,7 +113,14 @@ export interface SweepDeps {
   limit: number;
   claim(limit: number): Promise<ClaimedCheck[]>;
   uploadReport(path: string, bytes: Uint8Array): Promise<void>;
+  /** Delete an uploaded report nothing will reference (best effort). */
+  removeReport(path: string): Promise<void>;
   record(input: RecordInput): Promise<{ status: string }>;
+  /**
+   * After a failed record: is the check still `running` (so nothing was
+   * written and the report is referenced by nothing)? null = cannot tell.
+   */
+  stillRunning(checkId: string): Promise<boolean | null>;
   now?: () => Date;
   log?: (line: string) => void;
 }
@@ -188,8 +195,10 @@ export async function runRtwCheckSweep(
       { attempt: row.attempt, maxAttempts: row.max_attempts, today: ukToday(now()) },
     );
 
+    // A retry keeps nothing — the next attempt makes its own report — so a
+    // report is only uploaded when this run's outcome will store it.
     let path: string | null = null;
-    if (output.report) {
+    if (output.report && decision.action !== 'retry') {
       const target = reportPath(row.staff_id, row.check_id);
       try {
         await deps.uploadReport(target, output.report);
@@ -219,6 +228,18 @@ export async function runRtwCheckSweep(
       // The lease lapses and the next sweep runs it again (attempt + 1).
       counts.record_errors += 1;
       log(`rtw-check ${row.check_id}: record failed; retried when the lease lapses`);
+      if (path) {
+        // Nothing references the report unless the record landed after all
+        // (a lost response). Delete it only when the check is provably
+        // still running; otherwise it may be the one on the profile.
+        const running = await deps.stillRunning(row.check_id).catch(() => null);
+        if (running === true) {
+          await deps.removeReport(path).catch(() => undefined);
+          log(`rtw-check ${row.check_id}: unreferenced report removed`);
+        } else {
+          log(`rtw-check ${row.check_id}: report kept — the record may have landed`);
+        }
+      }
     }
   }
   return counts;

@@ -27,7 +27,7 @@
 -- Every gov.uk / provider result here is SYNTHETIC (ADR-0025).
 -- =====================================================================
 begin;
-select plan(84);
+select plan(104);
 \ir _shared/fixtures.psql
 
 \set u1 'c6000000-0000-4000-8000-0000000000a1'
@@ -158,6 +158,11 @@ select throws_like($$ select onboarding_reenter_share_code('W60000002', null) $$
 reset role;
 select results_eq(format($$ select dob, share_code from staff where id = %L $$, :'w1'),
   $$ values (date '1996-06-06', 'W60000002'::text) $$, 'D: the new date of birth and code are on the profile');
+select results_eq(
+  format($$ select data ->> 'dobBefore', data ->> 'dobAfter' from audit_log
+             where action = 'document.uploaded' and data ->> 'staffId' = %L and data ->> 'source' = 'onboarding_reenter' $$, :'w1'),
+  $$ values ('1996-05-05'::text, '1996-06-06'::text) $$,
+  'D: the change of date of birth is audited with the previous one (QA 25.09)');
 select is((select count(*)::int from rtw_checks c join compliance_docs d on d.id = c.compliance_doc_id
             where d.staff_id = :'w1' and d.share_code = 'W60000002' and c.status = 'queued'), 1,
   'D: and the new code is queued for the check');
@@ -276,6 +281,12 @@ select is(compliance_verify_document(:'d3', null, null, :'today'::date + 300) ->
   'G: the office verifies it by hand (ADR-0018)');
 select is((select right_to_work_until from staff where id = :'w2'), :'today'::date + 300,
   'G: and the worker''s date follows');
+select is((select count(*)::int from compliance_review_queue_v where staff_id = :'w2'), 0,
+  'G: and nothing is left in Needs review — no false "no right to work" item (QA 25.09)');
+select results_eq(
+  format($$ select reviewed_by, reviewed_at is not null from rtw_checks where compliance_doc_id = %L $$, :'d3'),
+  format($$ values (%L::uuid, true) $$, :'admin_uid'),
+  'G: the hand Verify answered the waiting check (reviewed_by, reviewed_at)');
 
 -- =====================================================================
 -- H · Name mismatch; Run check again; a pass Verify refuses
@@ -322,6 +333,26 @@ select is((select review_reason from rtw_checks where id = (select check_id from
   'H: saying why');
 select is((select review_status::text from compliance_docs where id = :'d6'), 'pending',
   'H: and the document is untouched by the refused Verify');
+
+savepoint h_reject;
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+select is(compliance_reject_document(:'d6', 'Please send a new code') ->> 'rejected', 'true',
+  'H: the office rejects it by hand instead');
+select is((select count(*)::int from compliance_review_queue_v where staff_id = :'w5'), 0,
+  'H: which leaves no item behind: the check is answered, and it was not a no-right-to-work');
+select is((select count(*)::int from rtw_checks where compliance_doc_id = :'d6'
+            and status = 'needs_review' and reviewed_at is null), 0,
+  'H: every needs-review check on the document is stamped reviewed');
+rollback to savepoint h_reject;
+
+savepoint h_narrow;
+-- Decided behind the functions' back (no stamp): the narrowed branch still
+-- shows nothing, because the outcome was not no_right_to_work.
+update compliance_docs set review_status = 'rejected', rejection_reason = 'x' where id = :'d6';
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+select is((select count(*)::int from compliance_review_queue_v where kind = 'rtw_check' and staff_id = :'w5'), 0,
+  'H: the rtw_check item is only ever a no-right-to-work result');
+rollback to savepoint h_narrow;
 
 -- =====================================================================
 -- I · Guards
@@ -398,11 +429,63 @@ reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'u1', 'role', 'authenticated')::text, true);
 set local role authenticated;
 select is((select count(*)::int from rtw_checks), 0, 'I: a worker reads no rtw_checks rows (their status comes through my_rtw_checks)');
+select is(rtw_check_manual_allowed(:'d6'), null::boolean,
+  'I: rtw_check_manual_allowed answers a worker nothing (admin and service role only)');
 reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 select is((select count(*)::int from rtw_checks), 0, 'I: a client reads nothing');
 select is((select count(*)::int from my_rtw_checks()), 0, 'I: and has no checks of their own');
+reset role;
+
+-- =====================================================================
+-- K · A check the runner never runs surfaces after stale_after_minutes
+-- =====================================================================
+update rtw_checks set next_attempt_at = now() - interval '2 hours' where id = :'c5';
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+update settings set value = value || '{"stale_after_minutes": 180}'::jsonb where key = 'rtw_check';
+select is((select count(*)::int from compliance_review_queue_v where item_id = :'d6'), 0,
+  'K: due for 2 hours with a 3-hour threshold: still the runner''s');
+update settings set value = value || '{"stale_after_minutes": 60}'::jsonb where key = 'rtw_check';
+select results_eq(
+  format($$ select kind, rtw_check_status, rtw_manual_allowed,
+                   rtw_check_reason like 'The automatic gov.uk check has not run for over 60 minutes%%'
+              from compliance_review_queue_v where item_id = %L $$, :'d6'),
+  $$ values ('document'::text, 'queued'::text, true, true) $$,
+  'K: past 60 minutes it is in Needs review, saying why, with the hand-typed date allowed');
+select is((select stuck from rtw_checks_latest_v where check_id = :'c5'), true, 'K: the office''s view marks it stuck');
+select is(compliance_verify_document(:'d6', null, null, :'today'::date + 200) ->> 'verified', 'true',
+  'K: the office verifies it by hand');
+select set_config('request.jwt.claims', '{"role":"service_role"}', true);
+select is((select count(*)::int from rtw_check_claim(10, 600) where document_id = :'d6'), 0,
+  'K: when the runner comes back it does not run it');
+select results_eq(format($$ select status, error from rtw_checks where id = %L $$, :'c5'),
+  $$ values ('failed'::text, 'document_not_pending'::text) $$, 'K: it is stopped instead');
+
+-- =====================================================================
+-- L · Re-entry is capped per 24 hours
+-- =====================================================================
+\set u6 'c6000000-0000-4000-8000-0000000000a6'
+\set w6 'c6000000-0000-4000-8000-000000000006'
+insert into auth.users (id, email) values (:'u6', 'kofi@rtw600.test');
+insert into profiles (id, role, full_name) values (:'u6', 'staff', 'Kofi Mensah');
+insert into staff (id, user_id, first_name, last_name, email, phone, dob, status, rtw_branch, share_code) values
+  (:'w6', :'u6', 'Kofi', 'Mensah', 'kofi@rtw600.test', '+447700960006', date '1995-06-06', 'documents', 'eu_settled', 'W60000060');
+insert into onboarding_progress (staff_id, rtw_at, address_at, selfie_at, documents_at, updated_at)
+values (:'w6', now(), now(), now(), now(), now());
+insert into compliance_docs (staff_id, doc_type, share_code, review_status, rejection_reason, uploaded_at)
+values (:'w6', 'share_code_report', 'W60000060', 'rejected', 'not recognised', clock_timestamp());
+update settings set value = value || '{"reenter_per_day": 1}'::jsonb where key = 'rtw_check';
+select set_config('request.jwt.claims', json_build_object('sub', :'u6', 'role', 'authenticated')::text, true);
+select is(onboarding_reenter_share_code('W60000061', null) ->> 'ok', 'true', 'L: the first re-entry of the day');
+select is((select count(*)::int from audit_log where data ->> 'staffId' = :'w6' and data ? 'dobBefore'), 0,
+  'L: no date of birth in the audit when it did not change');
+reset role;
+update compliance_docs set review_status = 'rejected', rejection_reason = 'not recognised'
+ where staff_id = :'w6' and review_status = 'pending';
+select set_config('request.jwt.claims', json_build_object('sub', :'u6', 'role', 'authenticated')::text, true);
+select throws_like($$ select onboarding_reenter_share_code('W60000062', null) $$, '%too_many_attempts%',
+  'L: the second is refused (settings.rtw_check.reenter_per_day)');
 reset role;
 
 -- =====================================================================
@@ -414,6 +497,11 @@ select is((select count(*)::int from rtw_checks where staff_id = :'w4'), 0,
   'J: their checks go with their documents (§1.7)');
 select is((select count(*)::int from storage_deletions where path = :'w4' || '/share-code-report/rtw-check-f.pdf'), 1,
   'J: and the gov.uk report is owed to the Storage purge');
+select lives_ok(format($$ select remove_worker(%L) $$, :'w1'), 'J: the candidate who changed their date of birth is removed');
+select is((select count(*)::int from audit_log where data ->> 'staffId' = :'w1' and (data ? 'dobBefore' or data ? 'dobAfter')), 0,
+  'J: and the audit trail forgets their dates of birth (§1.7)');
+select is((select count(*)::int from audit_log where data ->> 'staffId' = :'w1' and data ->> 'source' = 'onboarding_reenter'), 1,
+  'J: while keeping the fact of the re-entry');
 
 select * from finish();
 rollback;

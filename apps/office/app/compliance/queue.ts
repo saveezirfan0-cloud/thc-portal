@@ -205,6 +205,10 @@ export function queueRowCheck(row: QueueRow): RtwCheckRow | null {
     error: null,
     report_path: row.rtw_check_report_path ?? null,
     reviewed_at: null,
+    // In flight, yet the database allows the hand-typed date: stuck.
+    stuck:
+      row.rtw_manual_allowed === true &&
+      (row.rtw_check_status === 'queued' || row.rtw_check_status === 'running'),
   };
 }
 

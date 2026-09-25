@@ -114,11 +114,13 @@ describe('runRtwCheckSweep', () => {
   ) {
     const recorded: RecordInput[] = [];
     const uploads: string[] = [];
+    const removed: string[] = [];
     const lines: string[] = [];
     const claim = vi.fn(async () => [row]);
     return {
       recorded,
       uploads,
+      removed,
       lines,
       claim,
       d: {
@@ -130,6 +132,10 @@ describe('runRtwCheckSweep', () => {
         uploadReport: async (path: string) => {
           uploads.push(path);
         },
+        removeReport: async (path: string) => {
+          removed.push(path);
+        },
+        stillRunning: async () => true as boolean | null,
         record: async (input: RecordInput) => {
           recorded.push(input);
           return {
@@ -202,6 +208,38 @@ describe('runRtwCheckSweep', () => {
       },
     });
     expect(await runRtwCheckSweep(t.d)).toMatchObject({ record_errors: 1 });
+  });
+
+  it('a record that fails removes the report nothing references (QA 25.09)', async () => {
+    const t = deps(checker('provider', { result: pass('provider'), report: PDF }), {
+      record: async () => {
+        throw new Error('refused');
+      },
+    });
+    await runRtwCheckSweep(t.d);
+    expect(t.uploads).toEqual(['s1/share-code-report/rtw-check-c1.pdf']);
+    expect(t.removed).toEqual(['s1/share-code-report/rtw-check-c1.pdf']);
+  });
+
+  it('…but keeps it when the record may have landed (a lost response)', async () => {
+    for (const answer of [false, null]) {
+      const t = deps(checker('provider', { result: pass('provider'), report: PDF }), {
+        record: async () => {
+          throw new Error('network');
+        },
+        stillRunning: async () => answer,
+      });
+      await runRtwCheckSweep(t.d);
+      expect(t.removed).toEqual([]);
+    }
+  });
+
+  it('a retry uploads nothing, so nothing is orphaned', async () => {
+    const withReport = { result: rtwCheckError('govuk', 'govuk_timeout'), report: PDF };
+    const t = deps(checker('govuk', withReport));
+    await runRtwCheckSweep(t.d);
+    expect(t.uploads).toEqual([]);
+    expect(t.recorded[0]).toMatchObject({ decision: { action: 'retry' }, reportPath: null });
   });
 
   it('logs no share code, date of birth or name', async () => {

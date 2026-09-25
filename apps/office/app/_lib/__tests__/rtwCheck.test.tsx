@@ -40,6 +40,7 @@ const row = (over: Partial<RtwCheckRow> = {}): RtwCheckRow => ({
   error: null,
   report_path: 's1/share-code-report/rtw-check-k1.pdf',
   reviewed_at: null,
+  stuck: false,
   ...over,
 });
 
@@ -83,6 +84,17 @@ describe('rtwCheckView', () => {
       { docStatus: 'pending', enabled: true },
     );
     expect(view.lines[0]!.v).toBe('attempt 2 of 5 failed · next try 25.09.2026 10:00 UK time');
+  });
+
+  it('stuck (the runner is not running): surfaced, with the hand-typed date (QA 25.09)', () => {
+    const view = rtwCheckView(
+      row({ status: 'queued', outcome: null, finished_at: null, report_path: null, stuck: true }),
+      { docStatus: 'pending', enabled: true },
+    );
+    expect(view.status).toEqual({ tone: 'coral', label: 'Not running' });
+    expect(view.reason).toMatch(/has not run/);
+    expect(view.manualAllowed).toBe(true);
+    expect(view.canRunAgain).toBe(false);
   });
 
   it('needs review: the reason, the hand-typed date allowed, Run again offered', () => {
@@ -181,7 +193,20 @@ describe('the Compliance queue', () => {
       rtw_check_until: '2028-03-31',
       rtw_checked_at: '2026-09-25T06:12:00Z',
     });
-    expect(check).toMatchObject({ check_id: 'k1', document_id: 'd1', review_reason: 'why' });
+    expect(check).toMatchObject({
+      check_id: 'k1',
+      document_id: 'd1',
+      review_reason: 'why',
+      stuck: false,
+    });
+    expect(
+      queueRowCheck({
+        ...base,
+        rtw_check_id: 'k2',
+        rtw_check_status: 'queued',
+        rtw_manual_allowed: true,
+      })?.stuck,
+    ).toBe(true);
   });
 
   it('words the no-right-to-work item', () => {

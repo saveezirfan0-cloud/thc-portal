@@ -92,24 +92,29 @@ export const GOVUK_MAX_PAGES = 6;
 
 export const GOVUK_RESULT = {
   /** gov.uk found no record for the share code and date of birth. */
+  // Every outcome pattern is ANCHORED to a whole line (the `m` flag), so
+  // help text elsewhere on the page — "If we could not find…", "People who
+  // cannot work in the UK for more than 20 hours…" — cannot decide the
+  // outcome (QA 25.09). A line starts with the statement, and the
+  // no-right lines must END where the statement ends.
+  /** gov.uk found no record for the share code and date of birth. Only read when the page states no outcome. */
   notFound: [
-    /we (?:could not|couldn't|cannot|can't) find/i,
-    /details (?:do not|don't) match/i,
-    /(?:the )?share code (?:is|has) (?:not valid|invalid|incorrect|expired)/i,
-    /share code (?:you entered )?(?:has expired|is not recognised)/i,
-    /no (?:matching )?record/i,
+    /^\s*we (?:could not|couldn't|cannot|can't) find (?:any |a )?(?:details|record|match|one)/im,
+    /^\s*(?:the )?details (?:you (?:entered|gave|provided) )?(?:do not|don't) match/im,
+    /^\s*(?:the |this )?share code (?:you entered )?(?:is|has) (?:not valid|invalid|incorrect|expired|not been recognised)/im,
+    /^\s*(?:the |this )?share code (?:you entered )?(?:has expired|is not recognised)/im,
   ],
   /** A record, saying the person may not work. Checked before `right`. */
   noRight: [
-    /(?:does not|doesn't|do not|don't) have (?:the |a )?right to work/i,
-    /(?:cannot|can't|is not allowed to|are not allowed to) work in the UK/i,
-    /no right to work/i,
+    /^\s*(?:this person|they|the applicant)\s+(?:does not|doesn't|do not|don't)\s+have\s+(?:the\s+|a\s+)?right\s+to\s+work\s+in\s+the\s+UK\s*\.?\s*$/im,
+    /^\s*(?:this person|they|the applicant)\s+(?:cannot|can't|is not allowed to|are not allowed to)\s+work\s+in\s+the\s+UK\s*\.?\s*$/im,
+    /^\s*no right to work in the UK\s*\.?\s*$/im,
   ],
   /** A record, saying they may. */
   right: [
-    /(?:has|have) (?:the )?(?:permission|right) to work in the UK/i,
-    /(?:can|is allowed to|are allowed to) work in the UK/i,
-    /right to work (?:in the UK )?(?:is )?(?:valid|confirmed)/i,
+    /^\s*(?:this person|they|the applicant)\s+(?:has|have)\s+(?:the\s+)?(?:permission|right)\s+to\s+work\s+in\s+the\s+UK\b/im,
+    /^\s*(?:this person|they|the applicant)\s+(?:can|is allowed to|are allowed to)\s+work\s+in\s+the\s+UK\b/im,
+    /^\s*(?:their )?right to work (?:in the UK )?(?:is )?(?:valid|confirmed)\b/im,
   ],
   /** The end date, captured as printed ("31 March 2028"). */
   until: [
@@ -120,7 +125,9 @@ export const GOVUK_RESULT = {
   noTimeLimit: [
     /no time limit/i,
     /indefinite(?:ly| leave)/i,
-    /settled status(?! - pre)/i,
+    // "settled status" but never "pre-settled status" (a lookbehind: the
+    // old lookahead read pre-settled as no time limit — QA 25.09).
+    /(?<!pre[-\s])settled status/i,
     /\bwithout (?:a )?time limit/i,
   ],
   /** The person's name, on a "Name" line or as the page's H1. */

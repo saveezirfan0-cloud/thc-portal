@@ -41,13 +41,19 @@ export interface RtwCheckRow {
   error: string | null;
   report_path: string | null;
   reviewed_at: string | null;
+  /**
+   * Queued or running, untouched by the runner for longer than
+   * settings.rtw_check.stale_after_minutes: the runner is not running
+   * (rtw_check_stuck). The office may verify by hand.
+   */
+  stuck: boolean;
 }
 
 export const RTW_CHECK_COLUMNS =
   'check_id, document_id, staff_id, status, source, outcome, attempts, max_attempts, ' +
   'next_attempt_at, created_at, started_at, finished_at, right_to_work_until, no_time_limit, ' +
   'conditions, term_time_limit_hours, record_name, reference_number, review_reason, ' +
-  'worker_reason, error, report_path, reviewed_at';
+  'worker_reason, error, report_path, reviewed_at, stuck';
 
 /** A row read from the view, with anything it could not type set safely. */
 export function parseRtwCheckRow(raw: Record<string, unknown>): RtwCheckRow | null {
@@ -83,6 +89,7 @@ export function parseRtwCheckRow(raw: Record<string, unknown>): RtwCheckRow | nu
     error: text(raw['error']),
     report_path: text(raw['report_path']),
     reviewed_at: text(raw['reviewed_at']),
+    stuck: raw['stuck'] === true,
   };
 }
 
@@ -139,6 +146,9 @@ export interface RtwCheckView {
   inFlight: boolean;
 }
 
+export const STUCK_REASON =
+  'The automatic gov.uk check has not run — the schedule, its secret or the provider may be missing. Verify by hand from the report, and check job_runs.';
+
 const TONE: Record<RtwCheckStatus, RtwTone> = {
   queued: 'cyan',
   running: 'cyan',
@@ -152,12 +162,13 @@ export function rtwCheckView(
   row: RtwCheckRow | null,
   context: { docStatus: string; enabled: boolean },
 ): RtwCheckView {
+  const stuck = Boolean(row?.stuck) && rtwCheckInFlight(row?.status);
   const inFlight = rtwCheckInFlight(row?.status);
   const pending = context.docStatus === 'pending';
   const base = {
     hasReport: Boolean(row?.report_path),
     canRunAgain: context.enabled && pending && !inFlight,
-    manualAllowed: !context.enabled || row?.status === 'needs_review',
+    manualAllowed: !context.enabled || row?.status === 'needs_review' || stuck,
     canMarkReviewed:
       row?.status === 'needs_review' &&
       ['rejected', 'verified', 'superseded'].includes(context.docStatus) &&
@@ -203,9 +214,16 @@ export function rtwCheckView(
 
   return {
     ...base,
-    status: { tone: TONE[row.status], label: RTW_CHECK_STATUS_LABEL[row.status] },
+    status: stuck
+      ? { tone: 'coral', label: 'Not running' }
+      : { tone: TONE[row.status], label: RTW_CHECK_STATUS_LABEL[row.status] },
     lines,
-    reason: row.status === 'needs_review' ? row.review_reason : null,
+    reason:
+      row.status === 'needs_review'
+        ? row.review_reason
+        : stuck
+          ? (row.review_reason ?? STUCK_REASON)
+          : null,
   };
 }
 

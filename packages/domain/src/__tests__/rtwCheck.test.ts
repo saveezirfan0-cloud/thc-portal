@@ -116,6 +116,59 @@ describe('work conditions (assumed gov.uk wording)', () => {
   });
 });
 
+describe('condition lines are recognised whole, never by a substring (QA 25.09)', () => {
+  it.each([
+    'Can work in any job for up to 20 hours a week',
+    'They can work in any job except as a doctor',
+    'They can only work for the sponsor named on their visa',
+    'No restrictions until 1 March 2027',
+    'They can work up to 20 hours a week during term time, except in their first term',
+    'They cannot work full-time during official vacations unless approved',
+    'Can work 10 hours a week',
+    'They must not work more than 48 hours a week',
+  ])('%s → the office', (line) => {
+    expect(unrecognisedConditions([line])).toEqual([line]);
+  });
+
+  it.each([
+    'No restrictions',
+    'They can work in any job.',
+    'They can work up to 20 hours a week during term time.',
+    'They cannot work more than 20 hours a week during term time',
+    'They cannot work in the UK for more than 20 hours a week during term time.',
+    'Maximum of 10 hours per week during term-time',
+    'They can work full-time during official vacations',
+    'They cannot be self-employed.',
+    'They can work in the UK with no time limit',
+  ])('%s → recognised', (line) => {
+    expect(unrecognisedConditions([line])).toEqual([]);
+  });
+
+  it('"any job for up to 20 hours" on the EU branch is not auto-verified (the cap would stay 48)', () => {
+    expect(
+      decideRtwCheck(
+        {
+          outcome: 'right_to_work',
+          fullName: 'Marta Villanueva',
+          rightToWorkUntil: '2028-03-31',
+          conditions: ['Can work in any job for up to 20 hours a week'],
+          termTimeLimitHours: null,
+          referenceNumber: null,
+          checkedAt: '2026-09-25T07:00:00Z',
+          source: 'govuk',
+        },
+        {
+          firstName: 'Marta',
+          lastName: 'Villanueva',
+          rtwBranch: 'eu_settled',
+          belowDegreeLevel: false,
+        },
+        { attempt: 1, maxAttempts: 5, today: '2026-09-25' },
+      ).action,
+    ).toBe('needs_review');
+  });
+});
+
 describe('decideRtwCheck', () => {
   it('verifies a clean pass with the gov.uk date', () => {
     expect(decideRtwCheck(pass(), eu, ctx)).toEqual({

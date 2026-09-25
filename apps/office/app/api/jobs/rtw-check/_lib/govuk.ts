@@ -117,14 +117,18 @@ export function parseGovukResult(text: string, checkedAt: string): RtwCheckResul
     source: 'govuk' as const,
   };
 
-  if (any(GOVUK_RESULT.notFound, t))
-    return { ...base, outcome: 'not_found', referenceNumber: null };
-
   const fullName = firstCapture(GOVUK_RESULT.name, t);
-  if (any(GOVUK_RESULT.noRight, t)) return { ...base, outcome: 'no_right_to_work', fullName };
-  if (!any(GOVUK_RESULT.right, t)) {
-    return rtwCheckError('govuk', 'govuk_unrecognised_result', checkedAt);
+  const noRight = any(GOVUK_RESULT.noRight, t);
+  const right = any(GOVUK_RESULT.right, t);
+
+  // "Not found" only on a page that states no outcome and names nobody:
+  // help text on a result page must never turn a pass into a re-enter.
+  if (!noRight && !right && !fullName && any(GOVUK_RESULT.notFound, t)) {
+    return { ...base, outcome: 'not_found', referenceNumber: null };
   }
+  if (noRight && right) return rtwCheckError('govuk', 'govuk_contradictory_result', checkedAt);
+  if (noRight) return { ...base, outcome: 'no_right_to_work', fullName };
+  if (!right) return rtwCheckError('govuk', 'govuk_unrecognised_result', checkedAt);
 
   const rawUntil = firstCapture(GOVUK_RESULT.until, t);
   const until = rawUntil ? parseUkDate(rawUntil) : null;
@@ -267,12 +271,16 @@ export function createGovukChecker(
       try {
         const page = await browser.newPage();
         const { text, complete } = await driveGovuk(page, input, config);
-        let result = parseGovukResult(text, checkedAt);
-        if (!complete && result.outcome !== 'not_found' && result.outcome !== 'error') {
-          // A "result" reached without ever giving gov.uk the code and the
-          // date of birth is not a result for this person.
-          result = rtwCheckError('govuk', 'govuk_page_changed:inputs', checkedAt);
+        if (!complete) {
+          // A page reached without ever giving gov.uk the code AND the date
+          // of birth is not an answer about this person, whatever it says —
+          // it is never parsed (QA 25.09). Retried, then the office.
+          return {
+            result: rtwCheckError('govuk', 'govuk_page_changed:inputs', checkedAt),
+            report: null,
+          };
         }
+        const result = parseGovukResult(text, checkedAt);
         let report: Uint8Array | null = null;
         if (result.outcome === 'right_to_work' || result.outcome === 'no_right_to_work') {
           const bytes = await page.pdf({ format: 'A4', printBackground: true });

@@ -63,6 +63,10 @@
 -- enabled is not in the brief's list; it is the switch the ADR argues for:
 -- without it every share code filed before the provider exists would be
 -- enqueued, hidden from the office's queue, and never run.
+-- stale_after_minutes: a check that has not run for this long (the
+-- schedule, the secret or both adapters missing) is surfaced to the office
+-- with the hand-typed date allowed, rather than hidden for ever.
+-- reenter_per_day: how often a candidate may re-enter a share code in 24 h.
 -- ---------------------------------------------------------------------
 insert into settings (key, value) values
   ('rtw_check', jsonb_build_object(
@@ -70,6 +74,8 @@ insert into settings (key, value) values
      'primary',      'provider',
      'fallback',     'govuk',
      'company_name', 'The Hospitality Company',
+     'stale_after_minutes', 60,
+     'reenter_per_day', 5,
      'max_attempts', 5))
 on conflict (key) do nothing;
 
@@ -85,13 +91,15 @@ as $$
            'primary',      'provider',
            'fallback',     'govuk',
            'company_name', 'The Hospitality Company',
+           'stale_after_minutes', 60,
+           'reenter_per_day', 5,
            'max_attempts', 5)
          || coalesce((select value from settings
                        where key = 'rtw_check' and jsonb_typeof(value) = 'object'), '{}'::jsonb)
 $$;
 
 comment on function public.rtw_check_config() is
-  'settings.rtw_check over its defaults: enabled (false), primary (provider), fallback (govuk), company_name (the name gov.uk is told is checking), max_attempts (5). ADR-0025.';
+  'settings.rtw_check over its defaults: enabled (false), primary (provider), fallback (govuk), company_name (the name gov.uk is told is checking), stale_after_minutes (60), reenter_per_day (5), max_attempts (5). ADR-0025.';
 
 create or replace function public.rtw_check_enabled()
 returns boolean
@@ -281,6 +289,45 @@ $$;
 
 comment on function public.rtw_check_backoff(int) is
   'Wait after failed attempt N before the next: 30 min, 2 h, 6 h, 16 h (RTW_CHECK_BACKOFF_MINUTES). ADR-0025.';
+
+-- A check the runner has not touched for stale_after_minutes: queued and
+-- due for that long without being claimed, or running on a lease that
+-- lapsed that long ago. Backing off between retries is NOT stuck — its
+-- next_attempt_at is in the future. A stuck check means the schedule, the
+-- secret, the base URL or both adapters are missing while the switch is
+-- on; the office then sees it and may verify by hand (QA 25.09).
+create or replace function public.rtw_check_stale_after()
+returns interval
+language sql
+stable
+security definer
+set search_path = public, extensions
+as $$
+  select make_interval(mins => least(greatest(
+           case when (rtw_check_config() ->> 'stale_after_minutes') ~ '^\d{1,5}$'
+                then (rtw_check_config() ->> 'stale_after_minutes')::int end, 10), 1440))
+$$;
+
+create or replace function public.rtw_check_stuck(
+  p_status          text,
+  p_next_attempt_at timestamptz,
+  p_lease_until     timestamptz,
+  p_started_at      timestamptz
+) returns boolean
+language sql
+stable
+security definer
+set search_path = public, extensions
+as $$
+  select case p_status
+    when 'queued'  then coalesce(p_next_attempt_at < now() - rtw_check_stale_after(), false)
+    when 'running' then coalesce(coalesce(p_lease_until, p_started_at) < now() - rtw_check_stale_after(), false)
+    else false
+  end
+$$;
+
+comment on function public.rtw_check_stuck(text, timestamptz, timestamptz, timestamptz) is
+  'A queued check due, or a running check whose lease lapsed, more than settings.rtw_check.stale_after_minutes (default 60) ago: the runner is not running. Surfaces the document in Needs review with the hand-typed date allowed (ADR-0025).';
 
 -- ---------------------------------------------------------------------
 -- 5 · What may be stored of a result, and of an error.
@@ -487,6 +534,14 @@ begin
          rtw_no_time_limit = v_no_limit
    where id = d.id;
 
+  -- A person decided the document: a check that was waiting on the office
+  -- for it has its answer, and must not linger in Needs review.
+  if v_reviewer is not null then
+    update rtw_checks
+       set reviewed_at = now(), reviewed_by = v_reviewer
+     where compliance_doc_id = d.id and status = 'needs_review' and reviewed_at is null;
+  end if;
+
   if v_is_rtw then
     insert into audit_log (at, actor, action, entity, entity_id, data)
     values (now(), v_reviewer, 'rtw.verified', 'compliance_docs', d.id,
@@ -523,7 +578,11 @@ comment on function public.compliance_verify_document_as(uuid, uuid, date, dater
 
 -- Is a hand-typed date allowed for this share-code document right now?
 -- Off: always (ADR-0018). On: only once its latest check is in
--- needs_review — the brief's "only genuine failures reach a human".
+-- needs_review, or stuck (the runner is not running) — the brief's "only
+-- genuine failures reach a human". Answers the office and the service role
+-- only: it is granted to `authenticated` because the office's
+-- security_invoker queue view calls it, and a worker has no business
+-- probing document ids with it.
 create or replace function public.rtw_check_manual_allowed(p_doc uuid)
 returns boolean
 language sql
@@ -531,16 +590,21 @@ stable
 security definer
 set search_path = public, extensions
 as $$
-  select not rtw_check_enabled()
+  select case
+    when coalesce(auth.role(), '') <> 'service_role'
+         and current_app_role() is distinct from 'admin' then null
+    else not rtw_check_enabled()
       or coalesce((select c.status = 'needs_review'
+                          or rtw_check_stuck(c.status, c.next_attempt_at, c.lease_until, c.started_at)
                      from rtw_checks c
                     where c.compliance_doc_id = p_doc
                     order by c.created_at desc, c.id desc
                     limit 1), false)
+  end
 $$;
 
 comment on function public.rtw_check_manual_allowed(uuid) is
-  'Whether the office may verify this share-code report by hand: always while the automated check is off; while it is on, only when the latest check is in needs_review (ADR-0025, amending ADR-0018).';
+  'Whether the office may verify this share-code report by hand: always while the automated check is off; while it is on, only when the latest check is in needs_review or stuck (ADR-0025, amending ADR-0018). NULL for anyone but an admin or the service role.';
 
 create or replace function public.compliance_verify_document(
   p_doc                 uuid,
@@ -606,6 +670,13 @@ begin
          reviewed_by = v_reviewer,
          reviewed_at = now()
    where id = d.id;
+
+  -- As on Verify: a person's decision answers a check waiting on them.
+  if v_reviewer is not null then
+    update rtw_checks
+       set reviewed_at = now(), reviewed_by = v_reviewer
+     where compliance_doc_id = d.id and status = 'needs_review' and reviewed_at is null;
+  end if;
 
   insert into notification_outbox (key, channel, template, recipient_staff_id, payload)
   values ('N8:doc:' || d.id, 'push', 'N8', d.staff_id,
@@ -1162,7 +1233,8 @@ select distinct on (c.compliance_doc_id)
   c.error,
   c.report_path,
   c.requested_by,
-  c.reviewed_at
+  c.reviewed_at,
+  rtw_check_stuck(c.status, c.next_attempt_at, c.lease_until, c.started_at) as stuck
 from rtw_checks c
 order by c.compliance_doc_id, c.created_at desc, c.id desc;
 
@@ -1178,13 +1250,16 @@ grant select on rtw_checks_latest_v to authenticated, service_role;
 -- As 20260923210000 plus:
 --   · a share-code document whose check is queued or running is not
 --     listed while the check is switched on — it is not the office's yet
---     (§2.6: only failures are flagged for manual review);
+--     (§2.6: only failures are flagged for manual review) — unless the
+--     check is stuck (rtw_check_stuck: the runner is not running), when it
+--     is listed with that reason and the hand-typed date;
 --   · every document row carries its latest check (status, source, when,
 --     the date and conditions gov.uk returned, the office's reason, the
 --     report);
---   · kind 'rtw_check': a check in needs_review whose document is no
---     longer pending — gov.uk said no right to work and the worker has
---     been asked to re-enter — until the office marks it reviewed.
+--   · kind 'rtw_check': a check whose outcome is no_right_to_work, in
+--     needs_review, whose document is no longer pending — the worker has
+--     been asked to re-enter — until the office marks it reviewed, or
+--     decides the document by hand (which stamps reviewed_at).
 -- The new columns are appended, so the view keeps its existing ones.
 -- ---------------------------------------------------------------------
 create or replace view compliance_review_queue_v with (security_invoker = true) as
@@ -1234,7 +1309,11 @@ select
   k.outcome                                                  as rtw_check_outcome,
   k.attempts                                                 as rtw_check_attempts,
   coalesce(k.finished_at, k.created_at)                      as rtw_checked_at,
-  k.review_reason                                            as rtw_check_reason,
+  coalesce(k.review_reason,
+           case when k.stuck then format(
+             'The automatic gov.uk check has not run for over %s minutes — the schedule, its secret or the provider may be missing. Verify by hand from the report, and check job_runs.',
+             (extract(epoch from rtw_check_stale_after()) / 60)::int) end)
+                                                             as rtw_check_reason,
   k.right_to_work_until                                      as rtw_check_until,
   k.no_time_limit                                            as rtw_check_no_time_limit,
   k.conditions                                               as rtw_check_conditions,
@@ -1249,6 +1328,7 @@ where d.review_status = 'pending'
   and s.removed_at is null
   and not coalesce(d.doc_type = 'share_code_report'
                    and k.status in ('queued', 'running')
+                   and not k.stuck
                    and rtw_check_enabled(), false)
 union all
 select
@@ -1353,6 +1433,7 @@ from rtw_checks_latest_v k
 join compliance_docs d on d.id = k.document_id
 join staff s on s.id = k.staff_id
 where k.status = 'needs_review'
+  and k.outcome = 'no_right_to_work'
   and k.reviewed_at is null
   and d.review_status <> 'pending'
   and s.status not in ('rejected', 'removed')
@@ -1385,6 +1466,9 @@ declare
   v_code   text;
   v_status review_status;
   v_doc    uuid;
+  v_cap    int;
+  v_recent int;
+  v_dob_changed boolean;
 begin
   if s.status <> 'documents' then
     raise exception 'wrong_stage' using errcode = 'P0001';
@@ -1408,12 +1492,28 @@ begin
     raise exception 'already_verified' using errcode = 'P0001';
   end if;
 
+  -- Each re-entry is a gov.uk query with a code and a date of birth: a cap
+  -- keeps the form from being a way to try dates of birth against a code.
+  v_cap := least(greatest(case when (rtw_check_config() ->> 'reenter_per_day') ~ '^\d{1,3}$'
+                               then (rtw_check_config() ->> 'reenter_per_day')::int end, 1), 50);
+  select count(*)::int into v_recent
+    from audit_log a
+   where a.action = 'document.uploaded'
+     and a.entity = 'compliance_docs'
+     and a.data ->> 'staffId' = s.id::text
+     and a.data ->> 'source' = 'onboarding_reenter'
+     and a.at > now() - interval '24 hours';
+  if v_recent >= v_cap then
+    raise exception 'too_many_attempts' using errcode = 'P0001';
+  end if;
+
   if not is_valid_share_code(p_share_code) then
     raise exception 'bad_share_code' using errcode = 'P0001';
   end if;
   v_code := normalise_share_code(p_share_code);
 
-  if p_dob is not null and p_dob is distinct from s.dob then
+  v_dob_changed := p_dob is not null and p_dob is distinct from s.dob;
+  if v_dob_changed then
     if p_dob > (onboarding_uk_today() - interval '18 years')::date then
       raise exception 'under_18' using errcode = 'P0001';
     end if;
@@ -1428,15 +1528,47 @@ begin
 
   insert into audit_log (at, actor, action, entity, entity_id, data)
   values (now(), auth.uid(), 'document.uploaded', 'compliance_docs', v_doc,
-          jsonb_build_object('staffId', s.id, 'docType', 'share_code_report',
-                             'source', 'onboarding_reenter',
-                             'dobChanged', p_dob is not null and p_dob is distinct from s.dob));
+          jsonb_strip_nulls(jsonb_build_object(
+            'staffId',    s.id,
+            'docType',    'share_code_report',
+            'source',     'onboarding_reenter',
+            'dobChanged', v_dob_changed,
+            -- The date of birth is what gov.uk matches the code against, so
+            -- a change is evidence. Stripped again on a GDPR removal
+            -- (audit_log_forget_dob below).
+            'dobBefore',  case when v_dob_changed then s.dob end,
+            'dobAfter',   case when v_dob_changed then p_dob end)));
 
   return jsonb_build_object('ok', true, 'documentId', v_doc::text, 'status', 'pending');
 end $$;
 
 comment on function public.onboarding_reenter_share_code(text, date) is
-  '§2.5 / §2.6: a candidate whose share code was rejected (by the automated check or the office) enters another after submitting step 4, and may correct their date of birth (18+). A new pending share_code_report, which queues the check (ADR-0025).';
+  '§2.5 / §2.6: a candidate whose share code was rejected (by the automated check or the office) enters another after submitting step 4, and may correct their date of birth (18+; the previous one audited). At most settings.rtw_check.reenter_per_day (5) in 24 h (too_many_attempts). A new pending share_code_report, which queues the check (ADR-0025).';
+
+-- §1.7: the audit trail outlives a removal, the person's date of birth
+-- does not. The re-entry audit is the one place it is copied, so the copy
+-- goes when the person does.
+create or replace function public.audit_log_forget_dob()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+begin
+  update audit_log
+     set data = data - 'dobBefore' - 'dobAfter'
+   where action = 'document.uploaded'
+     and data ->> 'staffId' = new.id::text
+     and (data ? 'dobBefore' or data ? 'dobAfter');
+  return null;
+end $$;
+
+drop trigger if exists staff_audit_log_forget_dob on staff;
+create trigger staff_audit_log_forget_dob
+  after update of removed_at on staff
+  for each row
+  when (new.removed_at is not null and old.removed_at is null)
+  execute function audit_log_forget_dob();
 
 -- ---------------------------------------------------------------------
 -- 14 · Privileges.
@@ -1463,12 +1595,18 @@ revoke execute on function public.rtw_check_request(uuid)                       
 revoke execute on function public.rtw_check_mark_reviewed(uuid)                       from public, anon;
 revoke execute on function public.my_rtw_checks()                                     from public, anon;
 revoke execute on function public.onboarding_reenter_share_code(text, date)           from public, anon;
+revoke execute on function public.audit_log_forget_dob()                              from public, anon, authenticated;
+revoke execute on function public.rtw_check_stale_after()                             from public, anon;
+revoke execute on function public.rtw_check_stuck(text, timestamptz, timestamptz, timestamptz) from public, anon;
 
 -- The office's views call these as the admin.
 grant execute on function public.rtw_check_enabled()              to authenticated, service_role;
 grant execute on function public.rtw_check_manual_allowed(uuid)   to authenticated, service_role;
 grant execute on function public.rtw_check_transitions()          to authenticated, service_role;
 grant execute on function public.rtw_check_backoff(int)           to authenticated, service_role;
+-- Read the settings row and the clock only; the queue view needs them.
+grant execute on function public.rtw_check_stale_after()          to authenticated, service_role;
+grant execute on function public.rtw_check_stuck(text, timestamptz, timestamptz, timestamptz) to authenticated, service_role;
 -- The runner (apps/office/app/api/jobs/rtw-check), on the service key.
 grant execute on function public.rtw_check_claim(int, int)                        to service_role;
 grant execute on function public.rtw_check_record(uuid, jsonb, jsonb, text, text) to service_role;

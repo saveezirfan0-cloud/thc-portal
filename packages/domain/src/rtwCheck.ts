@@ -198,22 +198,66 @@ export function namesMatch(
 // office, never through.
 // ---------------------------------------------------------------------
 
-/** "20 hours a week in term time", "up to 20 hours per week during term-time" … */
+/**
+ * "20 hours a week in term time", "up to 20 hours per week during term-time"
+ * … anywhere in a line. Used to READ the limit (the decision then checks it
+ * against RULE-20); it never on its own makes a line acceptable — see
+ * `TERM_TIME_LINE_PATTERNS`.
+ */
 export const TERM_TIME_LIMIT_PATTERN =
   /(\d{1,2})\s*hours?\s*(?:a|per|each)\s*week[^.]*?\bterm[\s-]?time|\bterm[\s-]?time[^.]*?(\d{1,2})\s*hours?\s*(?:a|per|each)\s*week/i;
 
-/** Conditions that restrict nothing the system does not already apply. */
-export const BENIGN_CONDITION_PATTERNS: readonly RegExp[] = [
-  /^no (?:work )?(?:restrictions?|conditions?)\.?$/i,
-  /\bno restrictions? on (?:the )?(?:type of )?work\b/i,
-  /\bcan work in (?:the )?UK (?:with )?no (?:time )?limit\b/i,
-  /\bcan work in any job\b/i,
-  /\bfull[\s-]?time during (?:official )?(?:university |college )?(?:vacations?|holidays?)\b/i,
-  /\bcannot work as a professional sports ?person\b/i,
-  /\bcannot be self[\s-]?employed\b/i,
-  /\bcannot fill a permanent full[\s-]?time vacancy\b/i,
-  /\bcannot work as (?:a|an) (?:entertainer|doctor or dentist in training)\b/i,
+/**
+ * A WHOLE condition line that is only the student term-time limit, and so
+ * needs no human: the limit is read from it and held to RULE-20. Anchored,
+ * so "… up to 20 hours a week in term time, except …" is not one.
+ */
+export const TERM_TIME_LINE_PATTERNS: readonly RegExp[] = [
+  /^(?:they|this person|the applicant)?\s*(?:can|may)\s+work\s+(?:in\s+the\s+UK\s+)?(?:for\s+)?(?:up\s+to|a\s+maximum\s+of|no\s+more\s+than|a\s+total\s+of)?\s*\d{1,2}\s+hours?\s+(?:a|per|each)\s+week\s+(?:during|in)\s+(?:the\s+)?term[\s-]?time\.?$/i,
+  /^(?:they|this person|the applicant)?\s*(?:cannot|can't|must\s+not)\s+work\s+(?:in\s+the\s+UK\s+)?(?:for\s+)?more\s+than\s+\d{1,2}\s+hours?\s+(?:a|per|each)\s+week\s+(?:during|in)\s+(?:the\s+)?term[\s-]?time\.?$/i,
+  /^(?:maximum\s+of\s+|up\s+to\s+)?\d{1,2}\s+hours?\s+(?:a|per|each)\s+week\s+(?:during|in)\s+(?:the\s+)?term[\s-]?time\.?$/i,
 ];
+
+/**
+ * WHOLE condition lines that restrict nothing the system does not already
+ * apply. Anchored at both ends: "Can work in any job" is benign, "Can work in
+ * any job for up to 20 hours a week" is not (QA 25.09).
+ */
+const SUBJECT = String.raw`(?:they|this person|the applicant)?\s*`;
+export const BENIGN_CONDITION_PATTERNS: readonly RegExp[] = [
+  /^no\s+(?:work\s+)?(?:restrictions?|conditions?)\.?$/i,
+  /^no\s+restrictions?\s+on\s+(?:the\s+)?(?:type\s+of\s+)?work\.?$/i,
+  new RegExp(
+    String.raw`^${SUBJECT}can\s+work\s+in\s+(?:the\s+)?UK\s+(?:with\s+)?no\s+(?:time\s+)?limit\.?$`,
+    'i',
+  ),
+  new RegExp(String.raw`^${SUBJECT}can\s+work\s+in\s+any\s+job\.?$`, 'i'),
+  new RegExp(
+    String.raw`^${SUBJECT}can\s+work\s+full[\s-]?time\s+during\s+(?:official\s+)?(?:university\s+|college\s+)?(?:vacations?|holidays?)\.?$`,
+    'i',
+  ),
+  new RegExp(
+    String.raw`^${SUBJECT}cannot\s+work\s+as\s+a\s+professional\s+sports\s?person\.?$`,
+    'i',
+  ),
+  new RegExp(String.raw`^${SUBJECT}cannot\s+be\s+self[\s-]?employed\.?$`, 'i'),
+  new RegExp(
+    String.raw`^${SUBJECT}cannot\s+fill\s+a\s+permanent\s+full[\s-]?time\s+vacancy\.?$`,
+    'i',
+  ),
+  new RegExp(
+    String.raw`^${SUBJECT}cannot\s+work\s+as\s+(?:a|an)\s+(?:entertainer|doctor\s+or\s+dentist\s+in\s+training)\.?$`,
+    'i',
+  ),
+];
+
+/**
+ * Words that change what a line allows. A line carrying one — or any digit —
+ * is only ever accepted as one of the anchored term-time lines above;
+ * otherwise it goes to the office.
+ */
+export const RESTRICTIVE_WORDS =
+  /\d|\bhours?\b|\bexcept\b|\bonly\b|\bnot\b|\bunless\b|\bmaximum\b|\blimit/i;
 
 /** The hours limit a record puts on term time, or null. */
 export function termTimeLimitFrom(conditions: readonly string[]): number | null {
@@ -224,13 +268,26 @@ export function termTimeLimitFrom(conditions: readonly string[]): number | null 
   return null;
 }
 
-/** Conditions that are neither the term-time limit nor one of the benign lines above. */
+function normaliseLine(line: string): string {
+  return line.replace(/\s+/g, ' ').trim();
+}
+
+/** A line needing no human: a whole benign line, or a whole term-time line. */
+export function conditionRecognised(line: string): boolean {
+  const l = normaliseLine(line);
+  if (TERM_TIME_LINE_PATTERNS.some((p) => p.test(l))) return true;
+  if (!BENIGN_CONDITION_PATTERNS.some((p) => p.test(l))) return false;
+  // Belt and braces: a benign pattern never admits a line with a number or
+  // a qualifying word in it ("no limit" in the no-time-limit line aside).
+  return !RESTRICTIVE_WORDS.test(l.replace(/\bno\s+(?:time\s+)?limit\b/i, ''));
+}
+
+/** Conditions that are neither a whole term-time line nor a whole benign line. */
 export function unrecognisedConditions(conditions: readonly string[]): string[] {
   return conditions
-    .map((c) => c.trim())
+    .map(normaliseLine)
     .filter((c) => c.length > 0)
-    .filter((c) => !TERM_TIME_LIMIT_PATTERN.test(c))
-    .filter((c) => !BENIGN_CONDITION_PATTERNS.some((p) => p.test(c)));
+    .filter((c) => !conditionRecognised(c));
 }
 
 // ---------------------------------------------------------------------

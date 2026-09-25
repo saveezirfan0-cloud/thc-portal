@@ -44,6 +44,20 @@ interface RpcClient {
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
 }
 
+/** rtw_checks is newer than the generated types (docs/14 §4). */
+interface StatusRead {
+  from(table: 'rtw_checks'): {
+    select(columns: 'status'): {
+      eq(
+        column: 'id',
+        value: string,
+      ): {
+        maybeSingle(): PromiseLike<{ data: { status: string } | null; error: unknown }>;
+      };
+    };
+  };
+}
+
 export async function POST(request: Request) {
   const gate = checkJobSecret(request.headers.get('authorization'), env('RTW_JOB_SECRET'));
   if (gate === 'not_configured') {
@@ -98,6 +112,18 @@ export async function POST(request: Request) {
           upsert: true,
         });
         if (error) throw new Error('upload failed');
+      },
+      removeReport: async (path) => {
+        await admin.storage.from('documents').remove([path]);
+      },
+      stillRunning: async (checkId) => {
+        const { data, error } = await (admin as unknown as StatusRead)
+          .from('rtw_checks')
+          .select('status')
+          .eq('id', checkId)
+          .maybeSingle();
+        if (error || !data) return null;
+        return data.status === 'running';
       },
       record: async (input: RecordInput) => {
         const { data, error } = await db.rpc('rtw_check_record', {
