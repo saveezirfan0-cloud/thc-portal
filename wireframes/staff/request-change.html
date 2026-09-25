@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff App · Request a change — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+/* page-local helpers (wireframe only) */
+.app-body>*{flex-shrink:0}
+.title .back{display:block;font-family:var(--font-mono);font-size:9.5px;color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+.lockf .input{color:var(--muted);background:var(--panel-2)}
+.lockf .label::after{content:' · locked';color:var(--muted);text-transform:none;letter-spacing:0}
+.sec{display:flex;flex-direction:column;gap:10px;padding-top:12px;border-top:1px solid var(--line)}
+.sec h3{font-size:15px}
+.status{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--line);background:var(--panel-glass);font-size:12.5px}
+.status.amber{border-color:var(--amber-line);background:var(--amber-dim)}
+.status.coral{border-color:var(--coral);background:var(--coral-dim)}
+.upload{border:1px dashed var(--line);padding:14px;text-align:center;font-size:12.5px;color:var(--muted)}
+.cam{height:260px;border:1px solid var(--line);background:var(--panel-2);display:flex;align-items:center;justify-content:center}
+.cam .oval{width:150px;height:190px;border:2px dashed var(--cyan)}
+.push .k{font-family:var(--font-mono);font-size:9.5px;color:var(--amber);letter-spacing:.06em;margin-top:3px}
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Profile details — Request a change · Emergency contact</span><span class="pill cyan">/profile/details/request</span><span class="pill">§10.1 · §9.6 · §1.7 · §8 RC2/RC3 · ADR-0037 · ADR-0038 (proposed)</span>
+  <span class="spacer"></span>
+  <a href="refer.html">Next: Refer a friend →</a>
+</div>
+
+<div class="wf-section">
+  <h2>Request a change — the in-app route for what §10.1 locks<small>Stub (docs/18 §2–§3, Phase 0-C) — to be refined by <b>staff-pwa</b>. Name and photo stay locked; the worker asks the office, which approves or rejects on <a href="../backoffice/change-requests.html">/staff/requests</a>. Profile details also gains an optional Emergency contact, office-only and never on a client document.</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ Profile details · Request a change ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Profile details · <b>Locked name and photo gain "Request a change"</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:35</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Profile details</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:12px">
+          <div class="row" style="gap:12px"><span class="avatar photo xl">AK</span><div><div class="sm strong">Profile photo · locked</div><div class="xs muted">Set once at onboarding — it's printed on timesheets.</div><a class="btn ghost sm" href="#photo" style="margin-top:4px">Request a change</a></div></div>
+          <div class="field lockf"><span class="label">Full name</span><input class="input" value="Amara Kalu" readonly><span class="hint">Tied to your right-to-work check and payroll — corrections go through the office. <a href="#name">Request a change</a></span></div>
+          <div class="field lockf"><span class="label">National Insurance number</span><input class="input mono" value="●●●●●●●2B" readonly></div>
+          <div class="field"><span class="label">Mobile</span><input class="input mono" value="+44 7700 900321"></div>
+          <div class="field"><span class="label">Email</span><div class="input-row"><input class="input" value="amara.k@example.com"><span class="addon">Change</span></div></div>
+          <div class="field"><span class="label">Home address</span><input class="input" value="Flat 4, 22 Roman Road, London E2 0RY"></div>
+          <button class="btn primary block lg">Save changes</button>
+          <span class="annot">↓ Emergency contact section below the address (next phone)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Profile details · Emergency contact ============ -->
+    <div class="phone-wrap" id="emergency">
+      <div class="cap">Profile details · <b>Scrolled ↓ — Emergency contact (optional)</b> (ADR-0037)</div>
+      <div class="phone">
+        <div class="statusbar"><span>14:36</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Profile details</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:12px">
+          <div class="sec">
+            <h3>Emergency contact</h3>
+            <p class="xs muted">Who should the office call if something happens to you on a shift? Only the office can see this — it's never shared with clients.</p>
+            <div class="field"><span class="label">Name</span><input class="input" value="Grace Kalu"></div>
+            <div class="field"><span class="label">Relationship</span><input class="input" value="Parent"><div class="row" style="gap:6px;flex-wrap:wrap;margin-top:4px"><span class="chip cyan">Parent</span><span class="chip">Partner</span><span class="chip">Sibling</span><span class="chip">Friend</span><span class="chip">Other</span></div></div>
+            <div class="field"><span class="label">Phone</span><div class="input-row"><span class="addon">🇬🇧 +44</span><input class="input mono" value="7700 900456"></div><span class="hint">Any country — the same picker as your own number.</span></div>
+            <div class="row"><button class="btn primary" style="flex:1">Save</button><button class="btn ghost" style="flex:1">Remove</button></div>
+          </div>
+          <span class="annot">saved as E.164 (+447700900456) · never on the allocation sheet or timesheet (§11.3 unchanged) · deleted on GDPR removal</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Emergency contact · empty + bad phone ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Emergency contact · <b>Empty, and a phone number that isn't valid</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:36</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Profile details</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:12px;padding-bottom:24px">
+          <div class="sec">
+            <h3>Emergency contact <span class="pill amber">Not set</span></h3>
+            <div class="field"><span class="label">Name</span><input class="input" value="Grace Kalu"></div>
+            <div class="field"><span class="label">Relationship</span><input class="input" value="Parent"></div>
+            <div class="field"><span class="label">Phone</span><div class="input-row"><span class="addon">🇬🇧 +44</span><input class="input mono" value="7700 90"></div><span class="hint coral">Enter a full phone number, including the area code.</span></div>
+            <button class="btn primary block">Save</button>
+          </div>
+          <span class="annot">optional — no lock while empty (Q11); the Profile row shows "Emergency contact not set"</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Request · name ============ -->
+    <div class="phone-wrap" id="name">
+      <div class="cap">Request a change · <b>?kind=name — new name, evidence, note</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:37</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile details</span>Change your name</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:12px">
+          <p class="sm muted">Your name is tied to your right-to-work check and payroll, so the office checks the change before it's made.</p>
+          <div class="field lockf"><span class="label">Now</span><input class="input" value="Amara Kalu" readonly></div>
+          <div class="row">
+            <div class="field grow"><span class="label">First name</span><input class="input" value="Amara"></div>
+            <div class="field grow"><span class="label">Last name</span><input class="input" value="Okafor"></div>
+          </div>
+          <div class="field"><span class="label">Evidence</span><div class="upload">📄 marriage-certificate.jpg · 1.8 MB<br><span class="xs">e.g. marriage certificate, deed poll, or a passport in the new name</span></div></div>
+          <div class="field"><span class="label">Note to the office · optional</span><textarea class="input" style="min-height:56px">Married in August.</textarea></div>
+          <button class="btn primary block lg">Send to the office</button>
+          <span class="annot">evidence required for a name (Q13) · one pending name request at a time · the same name as now is refused</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Request · photo ============ -->
+    <div class="phone-wrap" id="photo">
+      <div class="cap">Request a change · <b>?kind=photo — camera capture (the selfie capture)</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:38</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile details</span>New profile photo</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:12px">
+          <p class="sm muted">Face the camera in good light, no hat or sunglasses. The office approves it before it replaces your current photo.</p>
+          <div class="cam"><div class="oval"></div></div>
+          <button class="btn primary block lg">Take photo</button>
+          <div class="field"><span class="label">Note to the office · optional</span><input class="input" placeholder="e.g. new haircut"></div>
+          <span class="annot">uploaded under photos/&lt;own id&gt;/ with a fresh name (existing Storage policy) · the current photo stays until approved</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Pending ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Profile details · <b>Pending — "with the office", withdraw</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:39</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Profile details</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:12px;padding-bottom:24px">
+          <div class="field lockf"><span class="label">Full name</span><input class="input" value="Amara Kalu" readonly></div>
+          <div class="status amber"><span>Name change requested · with the office</span><button class="btn ghost sm ml-auto">Withdraw</button></div>
+          <div class="xs muted">Requested: Amara Okafor · Thu 18 Sep, 14:37 (UK time)</div>
+          <span class="annot">RC1 emailed to admin@ on request · "Request a change" hidden while a name request is pending</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Rejected ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Profile details · <b>Rejected — "Not changed: {reason}" + Request again</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>10:12</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Profile details</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:12px;padding-bottom:24px">
+          <div class="row" style="gap:12px"><span class="avatar photo xl">AK</span><div><div class="sm strong">Profile photo · locked</div></div></div>
+          <div class="status coral"><span>Not changed: your face is partly covered — please retake without sunglasses.</span><a class="btn ghost sm ml-auto" href="#photo">Request again</a></div>
+          <span class="annot">the office's reason is required on reject and shown to the worker as written (the rejection_reason precedent)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Push gallery ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Push gallery · <b>RC2 approved · RC3 rejected</b> (drafts, Q21)</div>
+      <div class="phone short">
+        <div class="statusbar"><span>10:12</span><span>●●● 5G ▮</span></div>
+        <div style="padding:8px 12px;display:flex;flex-direction:column;gap:8px">
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 09:40</div><div class="b"><b>Profile updated</b> — Your name has been updated.</div><div class="k">RC2 · on approve · → /profile/details · RC2:request:&lt;id&gt;</div></div></div>
+          <div class="push"><span class="logo round" style="width:26px;height:26px;font-size:11px">🥂</span><div><div class="app">The Hospitality Company · 10:12</div><div class="b"><b>Change not made</b> — We couldn't update your photo: your face is partly covered — please retake without sunglasses.</div><div class="k">RC3 · on reject · → /profile/details · RC3:request:&lt;id&gt;</div></div></div>
+        </div>
+        <div class="app-body" style="padding-bottom:24px">
+          <span class="annot">RC1 (to admin@) and RC4 (name approved → admin@ + thc_payroll@) are office emails, not pushes</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> Additions to Scope v1.6 (ADR-0037 and ADR-0038, proposed — awaiting THC; docs/18 §2–§3). <b>Request a change</b>: name and photo stay locked (§10.1); the locked name row and the locked photo gain <b>Request a change</b> → <code>/profile/details/request?kind=name|photo</code>. A name needs first and last name (1–100 each), an evidence upload (signed upload into the documents bucket) and an optional note (≤ 500); a photo reuses the selfie camera. One pending request per kind; withdrawable while pending. The office approves or rejects on <a href="../backoffice/change-requests.html">/staff/requests</a>: approval updates the name (RC2 to the worker, RC4 to admin@ and payroll) or repoints the photo (RC2); a rejection needs a reason, which the worker sees (RC3). No automatic right-to-work re-check (Q13). Issued PDFs and payroll exports are never changed. <b>Emergency contact</b>: optional (Q11) — name, relationship (suggestions Parent / Partner / Sibling / Friend / Other), phone in E.164 with the international picker; Save and Remove. Only the office sees it (Staff profile, and later the check-in monitor); it is never on the allocation sheet, the timesheet or anything in the Client Portal. A leaver can read but not edit it; it is deleted on GDPR removal (Q12).</div>
+</body>
+</html>

@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Staff App · Availability — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+/* page-local helpers (wireframe only) */
+.app-body>*{flex-shrink:0}
+.title .back{display:block;font-family:var(--font-mono);font-size:9.5px;color:var(--cyan);letter-spacing:.1em;text-transform:uppercase;margin-bottom:1px}
+.grp{display:flex;align-items:center;gap:8px;font-family:var(--font-mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:4px}
+.grp::after{content:'';flex:1;border-top:1px solid var(--line)}
+.hub .link{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid var(--line);color:var(--text)}
+.hub .link:last-child{border-bottom:0}
+.hub .link .t{font-weight:500;font-size:13.5px}
+.hub .link .s{font-size:11.5px;color:var(--muted)}
+.hub .link .chev{margin-left:auto;color:var(--muted)}
+.hub .p45{margin-top:6px;padding-top:12px;border-top:1px dashed var(--line);text-align:center}
+.ua{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);background:var(--panel-glass)}
+.ua .t{font-weight:600;font-size:13.5px}
+.ua .s{font-size:11.5px;color:var(--muted)}
+.ua .ml-auto{flex:0 0 auto}
+.conf{border:1px solid var(--amber-line);background:var(--amber-dim);padding:10px 12px;display:flex;flex-direction:column;gap:6px;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Availability — days you can't work</span><span class="pill cyan">/profile/availability</span><span class="pill">§9.6 · §10.1 · §3.4 · RULE-18 · §1.8 · ADR-0036 (proposed)</span>
+  <span class="spacer"></span>
+  <a href="request-change.html">Next: Request a change →</a>
+</div>
+
+<div class="wf-section">
+  <h2>Availability — a hard gate for automated invitations, advisory for people<small>Stub (docs/18 §1, Phase 0-C) — to be refined by <b>staff-pwa</b>. The worker marks days or times they can't work. Auto-assign's rounds, refills, escalation and offer pushes skip them; a manager can still invite by hand after a warning, and the worker can still accept or apply. No reason field. Copy other than the conflict line is draft.</small></h2>
+
+  <div class="phones">
+
+    <!-- ============ Profile tab · new rows ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Profile tab · <b>New rows — Availability, Refer a friend; "Emergency contact not set"</b> (ADR-0035 hub)</div>
+      <div class="phone">
+        <div class="statusbar"><span>14:32</span><span>●●● 5G ▮</span></div>
+        <div class="app-header"><span class="logo round">🥂</span><div class="title">Profile</div><span class="avatar photo">AK</span></div>
+        <div class="app-body hub" style="gap:12px">
+          <div class="row" style="gap:12px"><span class="avatar photo xl">AK</span><div><div style="font-family:var(--font-head);font-size:18px;font-weight:600">Amara Kalu</div><div class="mono xs muted">Employee ID THC-00417</div><div class="row" style="gap:6px;margin-top:4px"><span class="pill green">Compliant</span></div></div></div>
+          <button class="btn outline block">Edit profile</button>
+          <div>
+            <a class="link" href="documents.html"><div><div class="t">Documents</div><div class="s">Right to work, term dates, declarations</div></div><span class="pill green ml-auto">Up to date</span><span class="chev">›</span></a>
+            <a class="link" href="request-change.html"><div><div class="t">Profile details</div><div class="s">Phone, email, address</div><div class="xs amber">Emergency contact not set</div></div><span class="chev">›</span></a>
+            <a class="link" href="#list"><div><div class="t">Availability</div><div class="s">Days you can't work</div></div><span class="chev">›</span></a>
+            <a class="link" href="refer.html"><div><div class="t">Refer a friend</div><div class="s">Share your link to /apply</div></div><span class="chev">›</span></a>
+            <a class="link" href="profile.html#security"><div><div class="t">Security settings</div><div class="s">Password, signed-in devices</div></div><span class="chev">›</span></a>
+            <a class="link" href="profile.html#pay"><div><div class="t">Payment information</div><div class="s">Earnings history, bank details</div></div><span class="chev">›</span></a>
+            <a class="link" href="#"><div><div class="t">Notifications</div><div class="s">Allowed on this device</div></div><span class="chev">›</span></a>
+          </div>
+          <span class="annot">amber subline only while no emergency contact is saved — a nudge, never a lock (ADR-0037, Q11). Refer a friend shows for compliant workers only (ADR-0040)</span>
+          <button class="btn block">Sign out</button>
+          <div class="xs muted" style="text-align:center">Need help? Please contact us at: <b class="cyan">admin@thehospitalitycompany.co.uk</b></div>
+          <div class="p45"><a class="xs muted" href="profile.html#p45" style="text-decoration:underline">Request my P45</a></div>
+        </div>
+        <nav class="bottom-nav">
+          <a href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+          <a class="active" href="profile.html"><span class="i"></span>Profile</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Availability list ============ -->
+    <div class="phone-wrap" id="list">
+      <div class="cap">Availability · <b>Upcoming entries by week</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:33</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Availability</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px">
+          <p class="sm muted">Mark days or times you can't work. We won't send you automatic invitations for them. You can still accept or apply for anything yourself.</p>
+          <button class="btn primary block">+ Add days you can't work</button>
+
+          <div class="grp">Week of Mon 22 Sep</div>
+          <div class="ua"><div><div class="t">Sat 27 Sep</div><div class="s">All day</div></div><button class="btn ghost sm ml-auto">Delete</button></div>
+
+          <div class="grp">Week of Mon 29 Sep</div>
+          <div class="ua"><div><div class="t">Mon 29 Sep – Fri 3 Oct</div><div class="s">All day · 5 days</div></div><button class="btn ghost sm ml-auto">Delete</button></div>
+          <div class="ua"><div><div class="t">Wed 1 Oct · 18:00 – 23:00 <span class="xs muted">UK time</span></div><div class="s">Repeats weekly · 3 of 6 (to Wed 22 Oct)</div></div><button class="btn ghost sm ml-auto">Delete</button></div>
+
+          <div class="grp">Week of Mon 6 Oct</div>
+          <div class="ua"><div><div class="t">Wed 8 Oct · 18:00 – 23:00 <span class="xs muted">UK time</span></div><div class="s">Repeats weekly · 4 of 6</div></div><button class="btn ghost sm ml-auto">Delete</button></div>
+          <span class="annot">entries in the past drop off · times are the UK window; a "your time" line is added when the phone's zone differs (§1.8)</span>
+        </div>
+        <nav class="bottom-nav">
+          <a href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+          <a class="active" href="profile.html"><span class="i"></span>Profile</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Add sheet · all day ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Availability · <b>Add sheet — one day, all day</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:34</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Availability</div><span class="avatar photo">AK</span></div>
+        <div class="app-body"><div class="ua"><div><div class="t">Sat 27 Sep</div><div class="s">All day</div></div></div></div>
+        <div class="sheet-back"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div style="font-family:var(--font-head);font-size:18px;font-weight:600">Days you can't work</div>
+          <div class="seg" style="align-self:stretch;display:flex"><button class="on" style="flex:1">One day</button><button style="flex:1">Date range</button></div>
+          <div class="field"><span class="label">Date</span><input class="input" value="Tue 23 Sep 2026"></div>
+          <label class="switch on"><span class="track"></span>All day</label>
+          <div class="field"><span class="label">Repeat weekly for · weeks</span><input class="input mono" value="0"><span class="hint">Up to 26 weeks. Leave at 0 for just this day.</span></div>
+          <button class="btn primary block lg">Save</button>
+          <button class="btn ghost block">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Add sheet · time window + repeat + your time ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Availability · <b>Add sheet — time window, repeat weekly, "your time" line</b> (§1.8)</div>
+      <div class="phone">
+        <div class="statusbar"><span>15:34</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Availability</div><span class="avatar photo">AK</span></div>
+        <div class="app-body"></div>
+        <div class="sheet-back"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <div style="font-family:var(--font-head);font-size:18px;font-weight:600">Days you can't work</div>
+          <div class="seg" style="align-self:stretch;display:flex"><button class="on" style="flex:1">One day</button><button style="flex:1">Date range</button></div>
+          <div class="field"><span class="label">Date</span><input class="input" value="Wed 1 Oct 2026"></div>
+          <label class="switch"><span class="track"></span>All day</label>
+          <div class="row">
+            <div class="field grow"><span class="label">From (UK time)</span><input class="input mono" value="18:00"></div>
+            <div class="field grow"><span class="label">To (UK time)</span><input class="input mono" value="23:00"></div>
+          </div>
+          <div class="xs muted">19:00 – 00:00 your time (Madrid)</div>
+          <div class="field"><span class="label">Repeat weekly for · weeks</span><input class="input mono" value="6"><span class="hint">Every Wednesday to Wed 5 Nov. Keeps 18:00 UK across the clock change.</span></div>
+          <button class="btn primary block lg">Save 6 entries</button>
+          <span class="annot">"To" at or before "From" on one date = overnight into the next UK date · refusals: in the past · more than 12 months ahead · a range over 31 days · more than 26 repeats</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Saved · overlaps a confirmed shift ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Availability · <b>Saved over a confirmed shift — warned, never cancelled</b></div>
+      <div class="phone">
+        <div class="statusbar"><span>14:35</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Availability</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:10px">
+          <div class="conf">
+            <b>You're booked on a shift at this time</b>
+            <div class="mcard" style="margin:0">
+              <div class="h"><span class="pill green">Confirmed</span><span class="ml-auto mono sm">Tue 23 · 16:00 – 02:00</span></div>
+              <div class="t">Awards Night · Waiting Staff</div>
+              <div class="m">The Dorchester, 53 Park Lane, W1K 1QA</div>
+            </div>
+            <div>Marking yourself unavailable doesn't cancel this shift — use Cancel or Offer on the shift.</div>
+            <a class="btn outline sm" href="offer-shift.html">Open the shift</a>
+          </div>
+          <div class="grp">Week of Mon 22 Sep</div>
+          <div class="ua"><div><div class="t">Tue 23 Sep</div><div class="s">All day</div></div><button class="btn ghost sm ml-auto">Delete</button></div>
+          <div class="ua"><div><div class="t">Sat 27 Sep</div><div class="s">All day</div></div><button class="btn ghost sm ml-auto">Delete</button></div>
+          <span class="annot">conflicts = the worker's own confirmed bookings overlapping the role window (RULE-18); the entry is saved, the booking untouched</span>
+        </div>
+        <nav class="bottom-nav">
+          <a href="shifts.html"><span class="i"></span>Shifts<span class="badge">3</span></a>
+          <a href="invites.html"><span class="i"></span>Invites<span class="badge">2</span></a>
+          <a href="radar.html"><span class="i"></span>Radar</a>
+          <a class="active" href="profile.html"><span class="i"></span>Profile</a>
+        </nav>
+      </div>
+    </div>
+
+    <!-- ============ Delete one or the series ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Availability · <b>Delete — this one, or the whole series</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:36</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Availability</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="min-height:420px;padding-bottom:24px">
+          <div class="modal-inline" style="min-height:260px">
+            <div class="modal-back" style="padding:12px">
+              <div class="modal">
+                <div class="mh"><h3>Delete this entry?</h3></div>
+                <div class="mb"><p class="muted">Wed 1 Oct · 18:00 – 23:00 (UK time) repeats weekly. Delete just this one, or every remaining week?</p></div>
+                <div class="mf"><button class="btn">Just this one</button><button class="btn danger">All 6</button></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ Empty ============ -->
+    <div class="phone-wrap">
+      <div class="cap">Availability · <b>Empty — nothing marked</b></div>
+      <div class="phone short">
+        <div class="statusbar"><span>14:33</span><span>●●● 5G ▮</span></div>
+        <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Availability</div><span class="avatar photo">AK</span></div>
+        <div class="app-body" style="gap:12px;padding-bottom:24px">
+          <div class="empty"><h3>No days marked</h3>Add the days or times you can't work, and we won't send you automatic invitations for them.</div>
+          <button class="btn primary block">+ Add days you can't work</button>
+          <span class="annot">reachable only when appLock() === 'none' — a locked worker has no Availability row</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> Addition to Scope v1.6 (ADR-0036, proposed — awaiting THC; docs/18 §1). An entry is one day (all day = UK midnight to UK midnight, so 23 h or 25 h on a clock-change day), a date range of up to 31 days, or a time window on one day in <b>UK time</b> — labelled "(UK time)", with a "your time" line when the phone's zone differs (§1.8); a window whose end is at or before its start runs overnight. "Repeat weekly" makes up to 26 entries sharing one series, keeping the UK wall-clock time across a clock change. Limits: nothing in the past, nothing more than 12 months ahead, at most 200 future entries. <b>No reason field</b> (Q10). <b>What it does:</b> auto-assign's first round, hourly rounds, cutoff refills, same-day escalation and offer pushes (OF1) skip a worker whose entry overlaps the <b>role section</b> window (RULE-18). <b>What it does not do:</b> withdraw an open invitation (§3.4), cancel a confirmed booking (the worker is warned and pointed at Cancel / Offer), or stop the worker accepting, applying on Radar or taking an offered shift. A manager can still invite by hand after "{name} marked themselves unavailable for this time. Invite anyway?" (Q9). The office sees the entries read-only on <a href="../backoffice/change-requests.html#cr=availability">/staff/:id → Availability</a>. The client sees nothing. GDPR removal deletes the entries.</div>
+</body>
+</html>
