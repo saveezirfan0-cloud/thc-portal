@@ -110,3 +110,12 @@ Bodies are in `docs/18` §3 and `packages/notifications`. Every send is a
   (`_lib/photos.ts`); the evidence is signed for 60 s after the session has read the
   request (admin_read), as `/onboarding`'s document links are.
 - pgTAP 666 (and 661 A for the function shape and grants).
+
+## Review note (25.09.2026)
+
+The office's "I've checked the evidence matches the right-to-work document" tick is
+enforced in the Back Office server action (`apps/office/app/staff/requests/actions.ts`),
+not by `office_decide_profile_change`, which takes no parameter for it. Only an admin
+session can call that function, and the office UI is the only caller, so this is accepted
+under Q13's default. If THC answers Q13 with a mandatory right-to-work re-check, the
+database function should take the attestation as an argument and refuse without it.

@@ -29,6 +29,8 @@ None of these loosens an existing rule.
 
 `booking_source 'offer'` has its own migration: `alter type … add value` cannot be used in the transaction that adds it.
 
+**As built:** Agent B split its block into one file per feature (`20260930120000`–`20260930120300`). The review round (qa-reviewer + security, 25.09) added `20260930150000_shift_offers_review_fixes.sql` (scheduling), `20260930150100_self_service_review_fixes.sql` (staff-pwa), `20260930150200_gdpr_purge_additions_payloads.sql` (platform) and `20260930150300_referral_new_candidates_only.sql` (onboarding).
+
 ---
 
 ## 1 · Availability calendar
