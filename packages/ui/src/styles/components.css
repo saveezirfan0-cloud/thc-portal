@@ -2596,7 +2596,7 @@ textarea.input {
   .content :is(.row, .toolbar):has(> :is(.search, select.input, input.input)) {
     flex-wrap: wrap;
   }
-  .content :is(.row, .toolbar) > :is(.search, select.input, input.input) {
+  .content :is(.row, .toolbar) > :is(select.input, input.input) {
     flex: 1 1 150px;
     width: auto !important;
     min-width: 0;
@@ -2604,8 +2604,13 @@ textarea.input {
   .content :is(.row, .toolbar) > .search > .input {
     width: 100% !important;
   }
+  /* The search takes a line of its own, so its placeholder is readable;
+     the selects share the next line. */
   .content :is(.row, .toolbar) > .search {
     align-self: center;
+    flex: 1 1 100%;
+    width: auto !important;
+    min-width: 0;
   }
   .content :is(.row, .toolbar) > .search::before {
     top: 50%;
