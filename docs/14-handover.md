@@ -297,6 +297,12 @@ real environment to prove it in.
   the next merge to `main` deploys all fifteen in order with no flag. Types
   (`packages/db/src/types.generated.ts`) are regenerated from the live project
   once they are applied — they do not yet know this round's RPCs.
+- **ESLint does not run `react-hooks/rules-of-hooks`.** The flat config loads
+  `@eslint/js` and `typescript-eslint` only, so a hook placed after an early
+  return (step 1's `useId()`, fixed in #58 after Playwright caught it) passes
+  lint and the render tests, and fails only in a browser. Adding
+  `eslint-plugin-react-hooks` is a dependency change for its own PR; expect
+  it to find more.
 - `supabase/config.toml` `otp_expiry` is 86400 (activation links last a day).
 - `scripts/pgtest-local.sh` — the Docker-free pgTAP harness §7 describes, as a
   script.

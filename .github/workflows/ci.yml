@@ -55,8 +55,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: pnpm install --frozen-lockfile
       - run: pnpm turbo lint typecheck test
+      # The token is for resolving "latest": unauthenticated, the action asks
+      # api.github.com for the newest release and shares the runner's 60/h
+      # anonymous quota with everything else on that address, which is how
+      # 8e02c65 failed before a test ran ("rate limit exceeded").
       - uses: supabase/setup-cli@v1
-        with: { version: latest }
+        with: { version: latest, github-token: ${{ github.token }} }
       # Supabase takes the digits before the first underscore as a
       # migration's version and makes that the primary key of
       # supabase_migrations.schema_migrations, so two files sharing one
@@ -196,7 +200,8 @@ jobs:
 
       - uses: supabase/setup-cli@v1
         if: steps.secrets.outputs.ready == 'true'
-        with: { version: latest }
+        # Authenticated, as above: a deploy must not fail on the anonymous quota.
+        with: { version: latest, github-token: ${{ github.token }} }
 
       # --dry-run first, so the log records what WOULD be applied even when
       # the push then fails. Without it a failed deploy leaves no trace of
