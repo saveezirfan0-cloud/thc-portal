@@ -87,3 +87,4 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/client` | Event list | `client/events.html` | 11.1 | client-portal |
 | `/client/events/:id` | Event page + feedback popup | `client/event.html` | 11.2, 11.5 | client-portal |
 | `/client/events/:id/document` | Allocation sheet · Sign-out timesheet (latest final copy, ADR-0004) | `client/timesheet.html` | 11.3 | reports |
+| `/client/account` | Your account (read-only details, timesheet recipients, change password) | — (ADR-0036, no wireframe) | 11.1 (addition), 9.7, 11.4 | client-portal |

@@ -9,17 +9,16 @@ import { DEFAULT_SENDER_ADDRESSES } from '@thc/notifications';
 /**
  * Where "Need something changed?" sends the customer.
  *
- * There is no single "office email" in the codebase. The office's own
+ * There is no single "office email" the client can read: the office's own
  * mailbox is `settings.senders.admin` (§9.12, editable at /settings), which
- * the client role cannot read and must not be given (ADR-0004); its code
- * fallback appears as `DEFAULT_SENDER_ADDRESSES.admin`, `SUPPORT_EMAIL` in
- * @thc/domain, and as literals across the apps. So this uses the address the
- * §11.3 document footer prints (`COMPANY.email` in packages/pdf), which is
- * the same mailbox §11.4 names as the sender of the documents this page
- * lists the recipients of: timesheets@. It is read from the §9.12 register
- * rather than typed again, so there is one copy of the string in this app.
+ * the client role cannot read and must not be given (ADR-0004). Its code
+ * fallback, `DEFAULT_SENDER_ADDRESSES.admin`, is the address the sign-in
+ * page footer already shows the customer, and a change to their details is
+ * an office conversation rather than a question about one document — so it
+ * goes to admin@, not to the timesheets@ sender. Read from the §9.12
+ * register rather than typed again.
  */
-export const OFFICE_EMAIL: string = DEFAULT_SENDER_ADDRESSES.timesheets;
+export const OFFICE_EMAIL: string = DEFAULT_SENDER_ADDRESSES.admin;
 
 export const ACCOUNT_COPY = {
   title: 'Your account',

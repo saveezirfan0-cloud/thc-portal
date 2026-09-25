@@ -25,7 +25,7 @@ The client asked for an account page and agreed its scope on 2026-09-25. It is a
 
 ## The office address
 
-The codebase has no single "office email". The office's mailbox is `settings.senders.admin` (§9.12, editable at `/settings`), which the client role cannot read and must not be given. Its code fallback appears as `DEFAULT_SENDER_ADDRESSES.admin`, as `SUPPORT_EMAIL` in `@thc/domain` and as literals across the apps. The page therefore uses the address printed in the §11.3 document footer (`COMPANY.email` in `packages/pdf`): `timesheets@thehospitalitycompany.co.uk`. This is also the mailbox §11.4 names as the sender of the documents whose recipients the page lists. It is read from `DEFAULT_SENDER_ADDRESSES.timesheets` in `@thc/notifications`, so the string exists once in the app (`apps/client/app/client/account/copy.ts`). If the office would rather receive these on `admin@`, change that one constant.
+The codebase has no single "office email" the client can read. The office's mailbox is `settings.senders.admin` (§9.12, editable at `/settings`), which the client role cannot read and must not be given. The page uses its code fallback, `DEFAULT_SENDER_ADDRESSES.admin` in `@thc/notifications` (`admin@thehospitalitycompany.co.uk`), which is the address the sign-in page footer already shows the customer. A change to the client's details is an office conversation, not a question about one document, so it does not go to the `timesheets@` sender. The string exists once in the app (`apps/client/app/client/account/copy.ts`).
 
 ## Consequences
 

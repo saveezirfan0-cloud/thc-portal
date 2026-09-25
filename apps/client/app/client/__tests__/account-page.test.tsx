@@ -151,7 +151,7 @@ describe('Your account · the page', () => {
 
   it('offers the office by email, with the §11.3 document-footer address', async () => {
     const html = await markup();
-    expect(OFFICE_EMAIL).toBe('timesheets@thehospitalitycompany.co.uk');
+    expect(OFFICE_EMAIL).toBe('admin@thehospitalitycompany.co.uk');
     expect(html).toContain('Need something changed?');
     expect(html).toContain(`href="mailto:${OFFICE_EMAIL}?subject=`);
     expect(html).toContain(encodeURIComponent('Account change · Leonardo Hotel St Pauls'));
