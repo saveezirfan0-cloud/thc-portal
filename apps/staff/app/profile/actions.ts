@@ -26,6 +26,8 @@ const NOT_CONFIGURED =
 
 /** The service key is missing from this deployment (docs/12): say so, never 500. */
 const TRY_AGAIN = 'That didn’t go through. Please try again.';
+/** A read that failed is not "we couldn't find your record" (audit D18). */
+const COULD_NOT_READ = 'We couldn’t reach your profile just now. Please try again.';
 
 /**
  * The reason codes the RPCs raise, as sentences. Anything unmapped falls
@@ -271,7 +273,8 @@ export type PhotoSlot = { ok: true; path: string } | { ok: false; message: strin
 export async function startPhotoUpload(): Promise<PhotoSlot> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const supabase = await db();
-  const { data } = await supabase.rpc('staff_me');
+  const { data, error } = await supabase.rpc('staff_me');
+  if (error) return { ok: false, message: COULD_NOT_READ };
   const me = data as Record<string, unknown> | null;
   if (!me) return { ok: false, message: REASONS['unknown_staff'] as string };
   if (me['photoLocked']) return { ok: false, message: REASONS['photo_locked'] as string };

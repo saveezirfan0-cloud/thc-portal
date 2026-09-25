@@ -4,11 +4,13 @@ import { AppChrome } from './AppChrome';
 import { BottomTabs } from './BottomTabs';
 import { TabLockedScreen } from './DocumentsLock';
 import { PushStatus } from './PushStatus';
+import { LoadProblem } from './LoadProblem';
 import { LockScreen } from '../profile/_components/LockScreen';
 import { appLock, reachableTabs, showsBottomNav } from '../profile/lock';
-import { loadProfile } from '../profile/data';
+import { readProfile } from '../profile/data';
 import { signOwnPhoto } from '../profile/photos';
 import type { StaffProfile } from '../profile/types';
+import '../chrome.css';
 
 /**
  * The Staff App chrome (§10.1): frosted header, body, frosted bottom nav,
@@ -61,10 +63,29 @@ export async function StaffShell({
   pushStatus?: boolean;
   children: ReactNode;
 }) {
-  const profile = await loadProfile();
-  // No profile (no database wired up, docs/04) means nothing to lock on.
-  // Locking on an absent row would black out the whole app on the strength
-  // of a failed query, which is a worse failure than the one it prevents.
+  const read = await readProfile();
+
+  // The lock is computed from this row, so a read that FAILED cannot be
+  // treated as "nothing to lock on" (audit D16): that would show a held or
+  // auto-blocked worker their shifts whenever `staff_me()` timed out. It
+  // fails closed — no tabs, no content, a retry. Only an environment with
+  // no project at all (docs/04, a developer's machine) runs unlocked.
+  //
+  // A screen that renders whatever the lock says (`ignoreLock`: /install,
+  // /notifications) keeps its content, since no lock would have hidden it;
+  // it still loses the tabs, which a failed read cannot vouch for.
+  if (read.kind === 'problem') {
+    return (
+      <AppFrame>
+        <AppChrome title={ignoreLock ? title : 'The Hospitality Company'} worker={null} />
+        <AppBody className={ignoreLock ? undefined : 'center'}>
+          {ignoreLock ? children : <LoadProblem what="your account" />}
+        </AppBody>
+      </AppFrame>
+    );
+  }
+
+  const profile = read.kind === 'ok' ? read.profile : null;
   const lock = profile ? appLock(profile) : 'none';
   // §10.1: the selfie "becomes their photo across the whole system (falling
   // back to initials)" — the header included. `signOwnPhoto` is memoised

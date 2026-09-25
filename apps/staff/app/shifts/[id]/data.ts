@@ -22,14 +22,26 @@ export { supabaseConfigured };
  * manager-entered finish preferred over the pressed one (RULE-02) — decided
  * in SQL, so the screen and payroll read the same row.
  */
-export async function loadShift(bookingId: string): Promise<ShiftDetail | null> {
-  if (!supabaseConfigured()) return null;
+export interface ShiftRead {
+  /** Null when the booking is not the caller's (or does not exist): a 404. */
+  shift: ShiftDetail | null;
+  /**
+   * The read itself failed. NOT a 404 (audit D18): a worker told their
+   * shift does not exist does not turn up, and becomes a No-show. The page
+   * shows `<LoadProblem>` with a retry instead.
+   */
+  problem: string | null;
+}
+
+export async function loadShift(bookingId: string): Promise<ShiftRead> {
+  if (!supabaseConfigured()) return { shift: null, problem: null };
 
   const supabase = staffDb(await cookies());
-  const { data } = await supabase.rpc('staff_shift_detail', { p_booking: bookingId });
+  const { data, error } = await supabase.rpc('staff_shift_detail', { p_booking: bookingId });
+  if (error) return { shift: null, problem: error.message || 'staff_shift_detail failed' };
   const row = (Array.isArray(data) ? data[0] : data) as Record<string, unknown> | null | undefined;
-  if (!row) return null;
-  return toShiftDetail(row);
+  if (!row) return { shift: null, problem: null };
+  return { shift: toShiftDetail(row), problem: null };
 }
 
 /** One row of `staff_shift_detail()` in the screen's shape. */

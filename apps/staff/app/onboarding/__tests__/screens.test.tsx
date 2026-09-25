@@ -169,7 +169,9 @@ describe('2/11 Home address', () => {
       />,
     );
     expect(footer(html).disabled).toBe(false);
-    expect(html).toContain('(E7)');
+    // The office is told (E7), in words: the register code is not shown.
+    expect(html).toContain('the office is notified of the');
+    expect(html).not.toContain('(E7)');
   });
 });
 

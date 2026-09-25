@@ -86,7 +86,7 @@ describe('loadShift() reads the worker’s own shift through staff_shift_detail(
 
   it('carries the times, venue and role the embed used to lose', async () => {
     rpc.mockResolvedValue({ data: [row()], error: null });
-    const shift = await loadShift('b1');
+    const { shift } = await loadShift('b1');
 
     expect(shift).toMatchObject({
       bookingId: 'b1',
@@ -107,7 +107,7 @@ describe('loadShift() reads the worker’s own shift through staff_shift_detail(
 
   it('carries the accepted check-in and finish, so a worked shift reads as closed', async () => {
     rpc.mockResolvedValue({ data: [row()], error: null });
-    const shift = await loadShift('b1');
+    const { shift } = await loadShift('b1');
 
     expect(shift?.checkInAt).toBe('2026-06-14T16:04:00Z');
     expect(shift?.checkOutAt).toBe('2026-06-14T22:33:00Z');
@@ -118,13 +118,13 @@ describe('loadShift() reads the worker’s own shift through staff_shift_detail(
 
   it('lists breaks in the order they were taken', async () => {
     rpc.mockResolvedValue({ data: [row()], error: null });
-    const shift = await loadShift('b1');
+    const { shift } = await loadShift('b1');
     expect(shift?.breaks.map((b) => b.id)).toEqual(['k1', 'k2']);
   });
 
   it('has no Breaks block where the client pays for breaks', async () => {
     rpc.mockResolvedValue({ data: [row({ pays_breaks: true })], error: null });
-    expect((await loadShift('b1'))?.breaksLogged).toBe(false);
+    expect((await loadShift('b1')).shift?.breaksLogged).toBe(false);
   });
 
   it('carries the static-screen inputs (§10.4)', async () => {
@@ -140,7 +140,7 @@ describe('loadShift() reads the worker’s own shift through staff_shift_detail(
       ],
       error: null,
     });
-    const shift = await loadShift('b1');
+    const { shift } = await loadShift('b1');
     expect(shift?.cancelCause).toBe('office_withdraw');
     expect(shiftPhase({ shift: shift!, openBreak: false, now: new Date(START) })).toBe('withdrawn');
   });
@@ -158,7 +158,7 @@ describe('loadShift() reads the worker’s own shift through staff_shift_detail(
       ],
       error: null,
     });
-    const shift = await loadShift('b1');
+    const { shift } = await loadShift('b1');
     expect(shift?.turnedAwayAt).toBe('2026-06-14T15:58:00Z');
     expect(shift?.turnedAwayPayMin).toBe(240);
     expect(shiftPhase({ shift: shift!, openBreak: false, now: new Date(END) })).toBe('turned_away');
@@ -169,28 +169,37 @@ describe('loadShift() reads the worker’s own shift through staff_shift_detail(
       data: [row({ status: 'turned_away', turned_away_at: START, turned_away_pay_min: 0 })],
       error: null,
     });
-    expect((await loadShift('b1'))?.turnedAwayPayMin).toBe(0);
+    expect((await loadShift('b1')).shift?.turnedAwayPayMin).toBe(0);
 
     rpc.mockResolvedValue({ data: [row()], error: null });
-    const plain = await loadShift('b1');
+    const { shift: plain } = await loadShift('b1');
     expect(plain?.turnedAwayAt).toBeNull();
     expect(plain?.turnedAwayPayMin).toBeNull();
   });
 
   it('carries a logged Left early, so the check-out prices RULE-14 as payroll does (D8)', async () => {
     rpc.mockResolvedValue({ data: [row({ left_early: true })], error: null });
-    expect((await loadShift('b1'))?.leftEarly).toBe(true);
+    expect((await loadShift('b1')).shift?.leftEarly).toBe(true);
 
     rpc.mockResolvedValue({ data: [row({ left_early: false })], error: null });
-    expect((await loadShift('b1'))?.leftEarly).toBe(false);
+    expect((await loadShift('b1')).shift?.leftEarly).toBe(false);
 
     // A row without the column leaves it to earnings.ts to read the check-out.
     rpc.mockResolvedValue({ data: [row()], error: null });
-    expect((await loadShift('b1'))?.leftEarly).toBeUndefined();
+    expect((await loadShift('b1')).shift?.leftEarly).toBeUndefined();
   });
 
-  it('returns null for somebody else’s booking, which the function answers with no row', async () => {
+  it('returns no shift for somebody else’s booking, which the function answers with no row', async () => {
     rpc.mockResolvedValue({ data: [], error: null });
-    expect(await loadShift('someone-else')).toBeNull();
+    expect(await loadShift('someone-else')).toEqual({ shift: null, problem: null });
+  });
+
+  // Audit D18: the error used to be dropped, and a failed read became a 404
+  // — "this shift doesn't exist" to a worker who has one.
+  it('reports a failed read as a problem, never as "no such shift"', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: 'canceling statement due to timeout' } });
+    const read = await loadShift('b1');
+    expect(read.shift).toBeNull();
+    expect(read.problem).toBe('canceling statement due to timeout');
   });
 });
