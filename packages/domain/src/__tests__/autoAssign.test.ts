@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { candidateInput, rankCandidateRows, selectInvitees } from '../autoAssign';
+import {
+  candidateInput,
+  rankCandidateRows,
+  selectInvitees,
+  selectOfferRecipients,
+} from '../autoAssign';
 import type { CandidateRow } from '../autoAssign';
 
 const row = (over: Partial<CandidateRow> = {}): CandidateRow => ({
@@ -198,5 +203,84 @@ describe('rankCandidateRows — the board ranks as the engine does (§3.3, §6)'
         }),
       ),
     ).toEqual({ reliability: 97.5, rating: 0, distanceKm: 1000, futureShifts: 5, venueTimes: 3 });
+  });
+});
+
+describe('selectInvitees — the calendar gates the machine (ADR-0036)', () => {
+  it('never invites a worker who marked themselves unavailable for the section', () => {
+    const rows = [row({ staff_id: 'away' }), row({ staff_id: 'free', distance_km: 9 })];
+    expect(selectInvitees(rows, { allocation: 2 })).toEqual(['away', 'free']);
+    expect(selectInvitees(rows, { allocation: 2, unavailable: ['away'] })).toEqual(['free']);
+    expect(selectInvitees(rows, { allocation: 2, unavailable: new Set(['away']) })).toEqual([
+      'free',
+    ]);
+  });
+
+  it('does not spend the allocation on them either — the next best is invited instead', () => {
+    const rows = [
+      row({ staff_id: 'best', qualified: true }),
+      row({ staff_id: 'second', distance_km: 3 }),
+      row({ staff_id: 'third', distance_km: 6 }),
+    ];
+    expect(selectInvitees(rows, { allocation: 2, unavailable: ['best'] })).toEqual([
+      'second',
+      'third',
+    ]);
+  });
+
+  it('an unknown id changes nothing', () => {
+    const rows = [row({ staff_id: 'a' })];
+    expect(selectInvitees(rows, { allocation: 1, unavailable: ['nobody'] })).toEqual(['a']);
+  });
+});
+
+describe("selectOfferRecipients — who this hour's OF1 push reaches (ADR-0039)", () => {
+  it('skips everyone already told: the rounds are additive', () => {
+    const rows = [row({ staff_id: 'a' }), row({ staff_id: 'b' }), row({ staff_id: 'c' })];
+    expect(selectOfferRecipients(rows, { allocation: 2, notified: ['a'] })).toEqual(['b', 'c']);
+  });
+
+  it('wave 1 first, then wave 2, each by score (RULE-17)', () => {
+    const rows = [
+      row({ staff_id: 'w2-near', distance_km: 0 }),
+      row({ staff_id: 'w1-far', distance_km: 9, qualified: true }),
+      row({ staff_id: 'w1-near', distance_km: 1, qualified: true }),
+    ];
+    expect(selectOfferRecipients(rows, { allocation: 2, notified: [] })).toEqual([
+      'w1-near',
+      'w1-far',
+    ]);
+  });
+
+  it('drops gated workers and the calendar-unavailable', () => {
+    const rows = [
+      row({ staff_id: 'blocked', gate: 'blocked' }),
+      row({ staff_id: 'away' }),
+      row({ staff_id: 'free' }),
+    ];
+    expect(
+      selectOfferRecipients(rows, { allocation: 5, notified: [], unavailable: ['away'] }),
+    ).toEqual(['free']);
+  });
+
+  it('never pushes the offerer or anyone who holds or left the section', () => {
+    const rows = [
+      row({ staff_id: 'offerer', booking_status: 'confirmed' }),
+      row({ staff_id: 'left', booking_status: 'cancelled' }),
+      row({ staff_id: 'worked', booking_status: 'worked' }),
+      row({ staff_id: 'turned', booking_status: 'turned_away' }),
+      row({ staff_id: 'invited', booking_status: 'invited' }),
+      row({ staff_id: 'applied', booking_status: 'applied' }),
+      row({ staff_id: 'closed', booking_status: 'closed' }),
+    ];
+    expect(selectOfferRecipients(rows, { allocation: 10, notified: [] }).sort()).toEqual([
+      'applied',
+      'closed',
+      'invited',
+    ]);
+  });
+
+  it('pushes nobody with no allocation', () => {
+    expect(selectOfferRecipients([row()], { allocation: 0, notified: [] })).toEqual([]);
   });
 });

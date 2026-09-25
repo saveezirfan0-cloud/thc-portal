@@ -25,6 +25,13 @@
 -- 20260928100000 (ADR-0025) added rtw_checks to assertions 1 and 3:
 -- admin-read, written by definer functions and the service role; the
 -- worker reads their own status through my_rtw_checks(), not a policy.
+-- 20260930100100 (docs/18, ADR-0036 … ADR-0040) added the seven staff
+-- additions to assertions 1 and 3 — staff_unavailability,
+-- staff_emergency_contacts, profile_change_requests, shift_offers,
+-- shift_offer_notices, staff_referral_codes, application_referrals — each
+-- with one admin_read and NO staff, client or anon policy: the worker's
+-- every read and write is a definer RPC (ADR-0031), and assertions 4 and 5
+-- are unchanged on purpose. 650_staff_additions_rls holds the rest.
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
@@ -53,8 +60,11 @@ select bag_eq(
             ('venue_types'),('venues'),('violations'),
             ('payroll_export_lines'),('event_documents'),
             ('onboarding_progress'),('quiz_questions'),('contract_versions'),
-            ('rtw_checks') $$,
-  'RLS is enabled on all 40 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), and rtw_checks from the automated right-to-work check (ADR-0025)'
+            ('rtw_checks'),
+            ('staff_unavailability'),('staff_emergency_contacts'),('profile_change_requests'),
+            ('shift_offers'),('shift_offer_notices'),('staff_referral_codes'),
+            ('application_referrals') $$,
+  'RLS is enabled on all 47 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/18 (ADR-0036 … ADR-0040)'
 );
 
 -- ---------------------------------------------------------------------
@@ -107,7 +117,8 @@ select is_empty(
 --    admin_all everywhere except audit_log, report_sends, location_pings,
 --    notification_outbox, job_runs and job_schedules, which are admin_read:
 --    all six are written only by definer functions and the service role
---    (§1.7, §9.9, §5.2b, §8, §7).
+--    (§1.7, §9.9, §5.2b, §8, §7). rtw_checks and the seven docs/18
+--    additions are admin_read for the same reason.
 -- ---------------------------------------------------------------------
 select bag_eq(
   $$ select distinct c.relname::text from pg_policy p join pg_class c on c.oid = p.polrelid
@@ -124,7 +135,10 @@ select bag_eq(
             ('venue_types'),('venues'),('violations'),
             ('payroll_export_lines'),('event_documents'),
             ('onboarding_progress'),('quiz_questions'),('contract_versions'),
-            ('rtw_checks') $$,
+            ('rtw_checks'),
+            ('staff_unavailability'),('staff_emergency_contacts'),('profile_change_requests'),
+            ('shift_offers'),('shift_offer_notices'),('staff_referral_codes'),
+            ('application_referrals') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );
 

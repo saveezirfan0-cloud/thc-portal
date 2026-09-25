@@ -1,0 +1,504 @@
+{
+  "description": "ADR-0039 offer up a shift (docs/18 §4). The contract between SHIFT_OFFER_TRANSITIONS / SHIFT_OFFER_MODE_TRANSITIONS in state.ts, canOfferShift / offerExpiresAt / takeOffer / offerVisibleTo in shiftOffer.ts, and shift_offer_transitions(), shift_offer_mode_transitions() and the shift_offers_state_guard trigger in 20260930100100_staff_additions_schema.sql (take_offered_shift() in 20260930110100 is held to the take cases). Every pair of distinct statuses NOT listed under edges is illegal; staying in the same status is not a transition. In take and visibility inputs, candidate=false means the worker has no auto_assign_candidates row at all (gate undefined). Regenerate the pgTAP half with: node packages/domain/scripts/gen-vectors-sql.mjs",
+  "statuses": ["open", "taken", "withdrawn", "lapsed", "cancelled"],
+  "edges": [
+    {
+      "from": "open",
+      "to": "taken",
+      "ref": "ADR-0039 a confirmed replacement takes it (take_offered_shift); OF2 + OF4"
+    },
+    {
+      "from": "open",
+      "to": "withdrawn",
+      "ref": "ADR-0039 the worker withdraws the offer (withdraw_shift_offer)"
+    },
+    {
+      "from": "open",
+      "to": "lapsed",
+      "ref": "ADR-0039 expiry at start - 72 h (OF3), the booking leaving confirmed by any other cause, §1.7 GDPR"
+    },
+    {
+      "from": "open",
+      "to": "cancelled",
+      "ref": "ADR-0039 the office declines a cover request (office_decline_cover); OF6"
+    }
+  ],
+  "modes": ["pool", "office", "direct"],
+  "modeEdges": [
+    {
+      "from": "office",
+      "to": "pool",
+      "ref": "ADR-0039 the office opens a cover request to the pool (office_open_offer_to_pool), only while open"
+    }
+  ],
+  "canOffer": [
+    {
+      "name": "72h_plus_1ms_remain",
+      "startsAt": "2026-10-10T17:00:00.000Z",
+      "now": "2026-10-07T16:59:59.999Z",
+      "expect": true
+    },
+    {
+      "name": "exactly_72h_remain",
+      "startsAt": "2026-10-10T17:00:00.000Z",
+      "now": "2026-10-07T17:00:00.000Z",
+      "expect": false
+    },
+    {
+      "name": "71h_remain",
+      "startsAt": "2026-10-10T17:00:00.000Z",
+      "now": "2026-10-07T18:00:00.000Z",
+      "expect": false
+    },
+    {
+      "name": "thirty_days_out",
+      "startsAt": "2026-10-10T17:00:00.000Z",
+      "now": "2026-09-10T17:00:00.000Z",
+      "expect": true
+    }
+  ],
+  "expires": [
+    {
+      "name": "pool_offer_closes_at_start_minus_72h",
+      "startsAt": "2026-10-10T17:00:00.000Z",
+      "openedByOffice": false,
+      "expect": "2026-10-07T17:00:00.000Z"
+    },
+    {
+      "name": "cover_opened_by_the_office_runs_to_the_start",
+      "startsAt": "2026-10-10T17:00:00.000Z",
+      "openedByOffice": true,
+      "expect": "2026-10-10T17:00:00.000Z"
+    },
+    {
+      "name": "across_the_autumn_change_is_72_absolute_hours",
+      "startsAt": "2026-10-26T18:00:00.000Z",
+      "openedByOffice": false,
+      "expect": "2026-10-23T18:00:00.000Z"
+    }
+  ],
+  "take": {
+    "defaults": {
+      "eventCancelled": false,
+      "offerStatus": "open",
+      "expiresAt": "2026-10-07T17:00:00.000Z",
+      "now": "2026-10-01T12:00:00.000Z",
+      "originalStatus": "confirmed",
+      "offeredBy": "offerer",
+      "taker": "taker",
+      "sectionStartsAt": "2026-10-10T17:00:00.000Z",
+      "gate": null,
+      "candidate": true,
+      "qualified": true,
+      "wave1Exhausted": false,
+      "takerBookingStatus": null
+    },
+    "cases": [
+      {
+        "name": "ok_wave1_new_row",
+        "input": {},
+        "expect": {
+          "ok": true,
+          "takerFrom": "none"
+        }
+      },
+      {
+        "name": "event_cancelled_first",
+        "input": {
+          "eventCancelled": true,
+          "offerStatus": "taken",
+          "gate": "blocked"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "event_cancelled"
+        }
+      },
+      {
+        "name": "offer_not_open_taken_race",
+        "input": {
+          "offerStatus": "taken",
+          "now": "2026-10-08T00:00:00.000Z"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "offer_not_open"
+        }
+      },
+      {
+        "name": "offer_not_open_withdrawn",
+        "input": {
+          "offerStatus": "withdrawn"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "offer_not_open"
+        }
+      },
+      {
+        "name": "offer_expired_beats_original_not_confirmed",
+        "input": {
+          "now": "2026-10-08T00:00:00.000Z",
+          "originalStatus": "cancelled"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "offer_expired"
+        }
+      },
+      {
+        "name": "offer_expired_exactly_at_expiry",
+        "input": {
+          "now": "2026-10-07T17:00:00.000Z"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "offer_expired"
+        }
+      },
+      {
+        "name": "original_not_confirmed_beats_own_offer",
+        "input": {
+          "originalStatus": "cancelled",
+          "taker": "offerer"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "original_not_confirmed"
+        }
+      },
+      {
+        "name": "own_offer_beats_gate",
+        "input": {
+          "taker": "offerer",
+          "gate": "blocked"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "own_offer"
+        }
+      },
+      {
+        "name": "section_started_beats_gate",
+        "note": "an office-opened offer whose expiry was set past the start",
+        "input": {
+          "expiresAt": "2026-10-11T00:00:00.000Z",
+          "now": "2026-10-10T17:00:00.000Z",
+          "gate": "hours_limit"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "section_started"
+        }
+      },
+      {
+        "name": "no_candidate_row_is_not_bookable",
+        "input": {
+          "candidate": false
+        },
+        "expect": {
+          "ok": false,
+          "reason": "not_bookable"
+        }
+      },
+      {
+        "name": "gate_wrong_role",
+        "input": {
+          "gate": "wrong_role"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "wrong_role"
+        }
+      },
+      {
+        "name": "gate_do_not_return",
+        "input": {
+          "gate": "do_not_return"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "do_not_return"
+        }
+      },
+      {
+        "name": "gate_blocked",
+        "input": {
+          "gate": "blocked"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "blocked"
+        }
+      },
+      {
+        "name": "gate_self_cancelled",
+        "input": {
+          "gate": "self_cancelled"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "self_cancelled"
+        }
+      },
+      {
+        "name": "gate_booked_elsewhere_is_overlap",
+        "input": {
+          "gate": "booked_elsewhere"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "overlap"
+        }
+      },
+      {
+        "name": "gate_rtw_expired",
+        "input": {
+          "gate": "rtw_expired"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "rtw_expired"
+        }
+      },
+      {
+        "name": "gate_hours_limit",
+        "input": {
+          "gate": "hours_limit"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "hours_limit"
+        }
+      },
+      {
+        "name": "unknown_gate_is_not_bookable",
+        "input": {
+          "gate": "outside_radius"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "not_bookable"
+        }
+      },
+      {
+        "name": "gate_beats_not_yet",
+        "input": {
+          "gate": "hours_limit",
+          "qualified": false
+        },
+        "expect": {
+          "ok": false,
+          "reason": "hours_limit"
+        }
+      },
+      {
+        "name": "unavailable_does_not_refuse",
+        "input": {
+          "gate": "unavailable"
+        },
+        "expect": {
+          "ok": true,
+          "takerFrom": "none"
+        }
+      },
+      {
+        "name": "unavailable_and_unqualified_still_waits_for_wave1",
+        "input": {
+          "gate": "unavailable",
+          "qualified": false
+        },
+        "expect": {
+          "ok": false,
+          "reason": "not_yet"
+        }
+      },
+      {
+        "name": "cancelled_row_is_already_had_booking",
+        "input": {
+          "takerBookingStatus": "cancelled"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "already_had_booking"
+        }
+      },
+      {
+        "name": "confirmed_row_is_already_had_booking",
+        "input": {
+          "takerBookingStatus": "confirmed"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "already_had_booking"
+        }
+      },
+      {
+        "name": "already_had_booking_beats_not_yet",
+        "input": {
+          "takerBookingStatus": "cancelled",
+          "qualified": false
+        },
+        "expect": {
+          "ok": false,
+          "reason": "already_had_booking"
+        }
+      },
+      {
+        "name": "not_yet_before_wave1_is_exhausted",
+        "input": {
+          "qualified": false
+        },
+        "expect": {
+          "ok": false,
+          "reason": "not_yet"
+        }
+      },
+      {
+        "name": "ok_wave2_after_wave1_is_exhausted",
+        "input": {
+          "qualified": false,
+          "wave1Exhausted": true
+        },
+        "expect": {
+          "ok": true,
+          "takerFrom": "none"
+        }
+      },
+      {
+        "name": "ok_from_an_open_invitation",
+        "input": {
+          "takerBookingStatus": "invited"
+        },
+        "expect": {
+          "ok": true,
+          "takerFrom": "invited"
+        }
+      },
+      {
+        "name": "ok_from_a_radar_application",
+        "input": {
+          "takerBookingStatus": "applied"
+        },
+        "expect": {
+          "ok": true,
+          "takerFrom": "applied"
+        }
+      },
+      {
+        "name": "ok_from_a_closed_offer",
+        "input": {
+          "takerBookingStatus": "closed"
+        },
+        "expect": {
+          "ok": true,
+          "takerFrom": "closed"
+        }
+      }
+    ]
+  },
+  "visibility": {
+    "defaults": {
+      "status": "open",
+      "mode": "pool",
+      "expiresAt": "2026-10-07T17:00:00.000Z",
+      "offeredBy": "offerer",
+      "targetStaffId": null,
+      "viewer": "viewer",
+      "gate": null,
+      "candidate": true,
+      "qualified": true,
+      "wave1Exhausted": false,
+      "now": "2026-10-01T12:00:00.000Z"
+    },
+    "cases": [
+      {
+        "name": "pool_wave1_sees_it",
+        "input": {},
+        "expect": true
+      },
+      {
+        "name": "pool_wave2_waits",
+        "input": {
+          "qualified": false
+        },
+        "expect": false
+      },
+      {
+        "name": "pool_wave2_after_exhaustion",
+        "input": {
+          "qualified": false,
+          "wave1Exhausted": true
+        },
+        "expect": true
+      },
+      {
+        "name": "never_the_offerer",
+        "input": {
+          "viewer": "offerer"
+        },
+        "expect": false
+      },
+      {
+        "name": "office_cover_request_is_hidden",
+        "input": {
+          "mode": "office"
+        },
+        "expect": false
+      },
+      {
+        "name": "direct_offer_to_its_colleague",
+        "input": {
+          "mode": "direct",
+          "targetStaffId": "viewer"
+        },
+        "expect": true
+      },
+      {
+        "name": "direct_offer_hidden_from_others",
+        "input": {
+          "mode": "direct",
+          "targetStaffId": "someone_else",
+          "wave1Exhausted": true
+        },
+        "expect": false
+      },
+      {
+        "name": "expired_is_hidden",
+        "input": {
+          "now": "2026-10-07T17:00:00.000Z"
+        },
+        "expect": false
+      },
+      {
+        "name": "taken_is_hidden",
+        "input": {
+          "status": "taken"
+        },
+        "expect": false
+      },
+      {
+        "name": "gated_worker_never_sees_it",
+        "input": {
+          "gate": "blocked",
+          "wave1Exhausted": true
+        },
+        "expect": false
+      },
+      {
+        "name": "unavailable_worker_still_sees_it",
+        "input": {
+          "gate": "unavailable"
+        },
+        "expect": true
+      },
+      {
+        "name": "no_candidate_row_never_sees_it",
+        "input": {
+          "candidate": false
+        },
+        "expect": false
+      }
+    ]
+  }
+}

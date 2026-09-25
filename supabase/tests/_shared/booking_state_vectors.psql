@@ -51,6 +51,7 @@ insert into cancel_cause_vectors values
   ('office_withdraw', 'cancelled'),
   ('ready_cutoff', 'cancelled'),
   ('self_cancel', 'cancelled'),
+  ('handed_over', 'cancelled'),
   ('overlap_auto_withdraw', 'cancelled'),
   ('event_cancelled', 'cancelled'),
   ('blocked', 'cancelled'),
@@ -75,4 +76,4 @@ insert into legacy_cause_vectors values
 
 \set booking_status_count 7
 \set booking_edge_count 10
-\set cancel_cause_count 14
+\set cancel_cause_count 15

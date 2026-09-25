@@ -24,8 +24,24 @@ import { fileURLToPath } from 'node:url';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-/** Written only by `security definer` RPCs and the service role. */
-const OWNED_BY_RPC = ['notification_outbox', 'audit_log', 'report_sends', 'rtw_checks'];
+/**
+ * Written only by `security definer` RPCs and the service role. The seven
+ * staff additions (docs/18 §0.2–0.3, 20260930100100) are admin-read with no
+ * staff policy at all: the worker's and the office's writes are all RPCs.
+ */
+const OWNED_BY_RPC = [
+  'notification_outbox',
+  'audit_log',
+  'report_sends',
+  'rtw_checks',
+  'staff_unavailability',
+  'staff_emergency_contacts',
+  'profile_change_requests',
+  'shift_offers',
+  'shift_offer_notices',
+  'staff_referral_codes',
+  'application_referrals',
+];
 
 const sources = globSync(['apps/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}'], {
   cwd: REPO,
