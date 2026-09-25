@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { Content, Logo, ModeSwitch, Shell, Sidebar, SignOut, Topbar } from '@thc/ui';
+import { SignedInAs } from './SignedInAs';
 import type { ReactNode } from 'react';
-import { NavCount, OperatorFoot } from './ChromeContext';
 
 /**
  * The Back Office chrome: sidebar, topbar and content well.
@@ -30,15 +30,6 @@ import { NavCount, OperatorFoot } from './ChromeContext';
  * The appearance switch is added to whatever the screen passes as actions,
  * not passed by the screen: ADR-0007 makes it part of the chrome, and one
  * screen forgetting it is how it ended up living only on /design-system.
- *
- * The Compliance counter (§4.1: "A counter in the menu — so the manager can
- * see the queue is not empty"; every `wireframes/backoffice/*.html` carries
- * `Compliance <span class="count">7</span>`) is the same kind of thing: a
- * screen cannot be asked to pass it, because the badge belongs to every
- * screen. The root layout reads the queue size once per request and
- * `NavCount` picks it up through `ChromeContext`, whichever side of the
- * client boundary this shell renders on. The sidebar foot's operator comes
- * the same way, unless a screen passes `user` itself.
  */
 const NAV = [
   { href: '/dashboard', label: 'Dashboard' },
@@ -67,18 +58,6 @@ export interface OfficeShellProps {
    */
   timezone?: ReactNode;
   actions?: ReactNode;
-  /**
-   * The signed-in operator, for the sidebar foot
-   * (`wireframes/backoffice/dashboard.html`: avatar, name, role).
-   *
-   * A prop rather than a lookup in here, because five screens render this
-   * shell from a client component (`StaffScreen`, `RolesScreen`,
-   * `ClientsScreen`, `ClientCard`, `ProfileScreen`), and a `next/headers`
-   * read anywhere in the shell's import graph fails their build. Optional:
-   * when no screen passes it, the root layout's read (`chrome.ts`, via
-   * `ChromeContext`) fills the foot, so it is never blank inside a session.
-   */
-  user?: { name: string; role?: string };
   children: ReactNode;
 }
 
@@ -88,7 +67,6 @@ export function OfficeShell({
   crumbs,
   timezone = 'All times UK (Europe/London)',
   actions,
-  user,
   children,
 }: OfficeShellProps) {
   return (
@@ -109,15 +87,15 @@ export function OfficeShell({
           renderLink={(item, className, body) => (
             <Link href={item.href} className={className}>
               {body}
-              {/* Last inside the link, where the wireframe's `.count` sits;
-                  `margin-left: auto` pushes it to the rail's edge. */}
-              <NavCount href={item.href} />
             </Link>
           )}
           footer={
             <>
-              <OperatorFoot user={user} />
-              <SignOut className="ml-auto" />
+              <SignedInAs />
+              {/* `ml-auto xs` text link, as every backoffice wireframe's
+                  `.foot` draws it — a pill here was ADR-0012's last piece
+                  of drift, waiting on a `link` tone to exist. */}
+              <SignOut tone="link" size="md" className="ml-auto xs" />
             </>
           }
         />

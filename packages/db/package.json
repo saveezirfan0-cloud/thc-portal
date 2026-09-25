@@ -16,7 +16,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "gen:types": "supabase gen types typescript --linked > src/types.generated.ts"
+    "gen:types": "supabase gen types typescript --linked > src/types.generated.ts && prettier --write src/types.generated.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.8.0",

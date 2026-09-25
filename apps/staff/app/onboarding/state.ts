@@ -1,8 +1,7 @@
-import { isGender, requiredDocuments } from '@thc/domain';
+import { requiredDocuments } from '@thc/domain';
 import type {
   DocRequirement,
   DocType,
-  Gender,
   HmrcAnswers,
   OnboardingStatus,
   RtwBranch,
@@ -51,16 +50,10 @@ export interface OnboardingState {
   status: OnboardingStatus;
   employeeId: number | null;
   dob: string | null;
-  /** M or F, for the §9.9 New Starter report; asked on step 1 with the DOB. */
-  gender: Gender | null;
   rtwBranch: RtwBranch | null;
   shareCode: string | null;
   wtrOptOut: boolean;
   homeAddress: string | null;
-  /** Stored on its own by step 2 (20260926100300), formatted "E2 0RY". */
-  homePostcode: string | null;
-  /** "United Kingdom" once step 2 is done — the step refuses anywhere else. */
-  homeCountry: string | null;
   homeLat: number | null;
   homeLng: number | null;
   photoPath: string | null;
@@ -118,13 +111,10 @@ export function mapOnboardingState(raw: unknown): OnboardingState | null {
     status: (str(r['status']) ?? 'documents') as OnboardingStatus,
     employeeId: num(r['employeeId']),
     dob: str(r['dob']),
-    gender: isGender(r['gender']) ? r['gender'] : null,
     rtwBranch: str(r['rtwBranch']) as RtwBranch | null,
     shareCode: str(r['shareCode']),
     wtrOptOut: bool(r['wtrOptOut']),
     homeAddress: str(r['homeAddress']),
-    homePostcode: str(r['homePostcode']),
-    homeCountry: str(r['homeCountry']),
     homeLat: num(r['homeLat']),
     homeLng: num(r['homeLng']),
     photoPath: str(r['photoPath']),

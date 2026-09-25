@@ -3,17 +3,7 @@
 import { useActionState, useState } from 'react';
 import { Alert, Button, Checkbox, Input, InputRow } from '@thc/ui';
 import { apply } from './actions';
-import {
-  COMMON_COUNTRIES,
-  INITIAL_STATE,
-  OTHER_COUNTRIES,
-  ageOn,
-  countryLabel,
-  errorBanner,
-  parseDob,
-  validate,
-  visibleErrors,
-} from './form';
+import { DIAL_CODES, INITIAL_STATE, ageOn, errorBanner, parseDob, validate } from './form';
 import type { ApplicationValues, FieldErrors } from './form';
 
 /**
@@ -41,12 +31,9 @@ export function ApplyForm() {
   const blocked = underage || !values.consent;
 
   // Before the first submit the form stays quiet; after it, the field errors
-  // follow what the person types — plus whatever the server refused that
-  // the person has not changed since (visibleErrors), so a refusal only the
-  // server could make is never dropped on the floor. The server's answer
-  // seeds the first pass.
+  // follow what the person types. The server's answer seeds the first pass.
   const checked = validate(values);
-  const errors: FieldErrors = touched ? visibleErrors(checked, state, values) : { ...state.errors };
+  const errors: FieldErrors = { ...(touched ? checked : state.errors) };
 
   // ...except for the two fields that hold the button down. `blocked`
   // disables submit, so in exactly those states the first submit never
@@ -114,33 +101,19 @@ export function ApplyForm() {
           Mobile
         </span>
         <InputRow>
-          {/* The wireframe's `.caret` wrapper: the mark is a pseudo-element
-              in the muted token, so it follows the theme — a select cannot
-              carry a pseudo-element of its own. ADR-0009: the value is the
-              ISO code, the two groups are disjoint, the list is every
-              country and the browser's type-ahead finds one by name. */}
-          <div className="caret apply-dial">
+          <div style={{ flex: '0 0 118px' }}>
             <select
               className="input"
-              name="country"
+              name="dialCode"
               aria-label="Country code"
-              value={values.country}
-              onChange={(e) => set('country', e.target.value)}
+              value={values.dialCode}
+              onChange={(e) => set('dialCode', e.target.value)}
             >
-              <optgroup label="Common">
-                {COMMON_COUNTRIES.map((c) => (
-                  <option key={c.iso} value={c.iso}>
-                    {countryLabel(c)}
-                  </option>
-                ))}
-              </optgroup>
-              <optgroup label="All countries">
-                {OTHER_COUNTRIES.map((c) => (
-                  <option key={c.iso} value={c.iso}>
-                    {countryLabel(c)}
-                  </option>
-                ))}
-              </optgroup>
+              {DIAL_CODES.map((c, i) => (
+                <option key={`${c.code}-${i}`} value={c.code}>
+                  {c.label}
+                </option>
+              ))}
             </select>
           </div>
           <input
@@ -182,20 +155,19 @@ export function ApplyForm() {
       />
 
       {/*
-        The shared Checkbox (D1): a real, focusable input under the drawn
-        square, so Tab and Space work and the accessible name is the
-        browser's. The one thing it has no prop for is the coral box border
-        the wireframe draws when the GDPR consent is missing (§1.7), so that
-        state is a class on the wrapper and one rule in apply.css rather
-        than a second copy of the control.
+        The shared tick from @thc/ui: a real, focusable input under the drawn
+        square (D1), so Space toggles it and it has an accessible name. No
+        `value`, so the browser submits "on" — what `read()` in actions.ts
+        checks. The coral square of the wireframe's validation state is drawn
+        by apply.css from the error this renders, so the two cannot disagree.
       */}
-      <div className={errors.consent ? 'consent-missing' : undefined}>
+      <div className="apply-consent">
         <Checkbox
           name="consent"
           checked={values.consent}
-          onChange={(checked) => {
+          onChange={(next) => {
             setConsentTouched(true);
-            set('consent', checked);
+            set('consent', next);
           }}
           error={errors.consent}
         >

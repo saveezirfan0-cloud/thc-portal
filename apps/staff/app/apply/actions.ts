@@ -2,10 +2,9 @@
 
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { createAdminClient } from '@thc/db/admin';
-import { callerKey } from '../../lib/callerKey';
-import type { HeaderReader } from '../../lib/callerKey';
-import { SENT_TO_COOKIE, phoneFor, validate } from './form';
+import { createClient } from '@thc/db/server';
+import { callerKey } from './caller';
+import { SENT_TO_COOKIE, toE164, validate } from './form';
 import type { ApplicationValues, ApplyState } from './form';
 
 function read(formData: FormData): ApplicationValues {
@@ -13,7 +12,7 @@ function read(formData: FormData): ApplicationValues {
     firstName: String(formData.get('firstName') ?? ''),
     lastName: String(formData.get('lastName') ?? ''),
     email: String(formData.get('email') ?? ''),
-    country: String(formData.get('country') ?? 'GB'),
+    dialCode: String(formData.get('dialCode') ?? '+44'),
     mobile: String(formData.get('mobile') ?? ''),
     dob: String(formData.get('dob') ?? ''),
     consent: formData.get('consent') === 'on',
@@ -26,75 +25,55 @@ function read(formData: FormData): ApplicationValues {
  * functions and `.rpc()` cannot be typed from the schema yet. The one call
  * this page makes is typed by hand here instead of loosening the shared type.
  */
-interface RpcError {
-  message: string;
-  code?: string;
+interface ApplicationArgs {
+  p_first_name: string;
+  p_last_name: string;
+  p_email: string;
+  p_phone: string;
+  p_dob: string;
+  p_consent: boolean;
 }
+
+type RpcAnswer = Promise<{ error: { message: string; code?: string } | null }>;
 
 interface RpcClient {
-  rpc(
-    fn: 'apply_caller_check',
-    args: { p_caller_hash: string },
-  ): Promise<{ data: unknown; error: RpcError | null }>;
-  rpc(
-    fn: 'submit_application',
-    args: {
-      p_first_name: string;
-      p_last_name: string;
-      p_email: string;
-      p_phone: string;
-      p_dob: string;
-      p_consent: boolean;
-    },
-  ): Promise<{ error: RpcError | null }>;
+  rpc(fn: 'submit_application', args: ApplicationArgs): RpcAnswer;
 }
 
-/**
- * The refusal, and the whole of it. It names no limit and no wait — the
- * RPC's retry_after_seconds is for the office's diagnosis, not for the
- * caller — so the endpoint gives away nothing about where the line is.
- */
-const TOO_MANY_FROM_CONNECTION =
-  'Too many applications from this connection — please try again in a few minutes.';
+interface AdminRpcClient {
+  rpc(
+    fn: 'submit_application_as_caller',
+    args: ApplicationArgs & { p_caller_hash: string | null },
+  ): RpcAnswer;
+}
+
+let warnedNoServiceKey = false;
 
 /**
- * The per-caller limit (ADR-0024, docs/14 D2).
- *
- * `submit_application()` bounds per email and per mobile; this bounds the
- * connection they arrive from, so a caller with a fresh pair every time is
- * bounded too. The key is a salted hash of the client address
- * (lib/callerKey.ts) and the count is in the database, so it holds across
- * every serverless instance.
- *
- * It fails OPEN, and that is the point of it being a separate step: the
- * function not being deployed yet, the network dropping, a malformed
- * answer — each is logged and treated as "allowed". A database hiccup must
- * never turn into a refused applicant; the per-email and per-mobile limits
- * are still in force underneath. A request with no client address at all
- * (only off the platform: a bare `next dev`) is allowed for the reason the
- * lib gives.
+ * The write, with the per-caller limit when this deployment can apply it
+ * (ADR-0024). `submit_application_as_caller` is service-role only — a
+ * caller key anyone could send would be a limit anyone could dodge — so
+ * it needs SUPABASE_SERVICE_ROLE_KEY. Without the key the form still
+ * works through the anon `submit_application`, with the per-email and
+ * per-mobile limits only, and says so once in the log.
  */
-async function callerAllowed(supabase: RpcClient, requestHeaders: HeaderReader): Promise<boolean> {
-  const key = callerKey(requestHeaders);
-  if (!key) {
-    console.warn('[apply] no client address on the request — caller limit skipped');
-    return true;
+async function submit(args: ApplicationArgs, jar: Awaited<ReturnType<typeof cookies>>): RpcAnswer {
+  if (process.env['SUPABASE_SERVICE_ROLE_KEY']) {
+    const { createAdminClient } = await import('@thc/db/admin');
+    const admin = createAdminClient() as unknown as AdminRpcClient;
+    return admin.rpc('submit_application_as_caller', {
+      ...args,
+      p_caller_hash: callerKey(await headers()),
+    });
   }
-  try {
-    const { data, error } = await supabase.rpc('apply_caller_check', { p_caller_hash: key });
-    if (error) {
-      console.warn('[apply] caller limit unavailable — allowing', {
-        code: error.code,
-        message: error.message,
-      });
-      return true;
-    }
-    const verdict = data as { allowed?: unknown } | null;
-    return verdict?.allowed !== false;
-  } catch (cause) {
-    console.warn('[apply] caller limit unavailable — allowing', cause);
-    return true;
+  if (!warnedNoServiceKey) {
+    warnedNoServiceKey = true;
+    console.warn(
+      '[apply] SUPABASE_SERVICE_ROLE_KEY is not set — /apply runs without the per-caller throttle (per-email and per-mobile limits still apply).',
+    );
   }
+  const supabase = createClient(jar) as unknown as RpcClient;
+  return supabase.rpc('submit_application', args);
 }
 
 /**
@@ -112,7 +91,7 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
   const errors = validate(values);
   if (Object.keys(errors).length > 0) return { errors, values };
 
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     // Not wired to a project yet (docs/04). Say so rather than throwing a 500.
     return {
       errors: {},
@@ -124,35 +103,17 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
   const email = values.email.trim().toLowerCase();
   const jar = await cookies();
 
-  // The service-role client, not the anon-key SSR client, and only for the
-  // two RPCs below. Both are SECURITY DEFINER functions that exist for THIS
-  // action: nobody signs in to apply (§2.1), so an anon grant on them was
-  // never "the applicant's" privilege — it was the world's. On the anon key
-  // anyone could name another connection's bucket to `apply_caller_check()`
-  // and spend a college's allowance for the day, or reach
-  // `submit_application()` straight through PostgREST with a fresh pair of
-  // identities each time and never meet the per-caller limit (ADR-0024's
-  // own "what this does not close"). With the key held here, the form is
-  // the only door and every submission passes the limit first. The client
-  // is never handed to anything else in this module.
-  const supabase = createAdminClient() as unknown as RpcClient;
-
-  // Before the submission, not after: a refused caller creates nothing. It
-  // does not look at who is applying, so a returning applicant (§2.12) is
-  // treated exactly as a new one and still reaches the ordinary
-  // confirmation below.
-  if (!(await callerAllowed(supabase, await headers()))) {
-    return { errors: {}, values, failure: TOO_MANY_FROM_CONNECTION };
-  }
-
-  const { error } = await supabase.rpc('submit_application', {
-    p_first_name: values.firstName.trim(),
-    p_last_name: values.lastName.trim(),
-    p_email: email,
-    p_phone: phoneFor(values),
-    p_dob: values.dob.trim(),
-    p_consent: values.consent,
-  });
+  const { error } = await submit(
+    {
+      p_first_name: values.firstName.trim(),
+      p_last_name: values.lastName.trim(),
+      p_email: email,
+      p_phone: toE164(values.dialCode, values.mobile),
+      p_dob: values.dob.trim(),
+      p_consent: values.consent,
+    },
+    jar,
+  );
 
   if (error) {
     // 22023 is the function's own validation, so its message is copy written

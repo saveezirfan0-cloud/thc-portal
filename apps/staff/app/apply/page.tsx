@@ -1,5 +1,5 @@
+import { AuthCard } from '@thc/ui';
 import { ApplyForm } from './ApplyForm';
-import { PublicCard } from './PublicCard';
 import './apply.css';
 
 export const metadata = {
@@ -10,16 +10,14 @@ export const metadata = {
 /**
  * `/apply` (§2.1) — a public URL with no registration and no login. The
  * middleware already lists it as public; it deliberately renders none of the
- * app's chrome, and (PublicCard) none of the sign-in card's appearance
- * switch either, as the wireframe draws it.
+ * app's chrome.
  */
 export default function Page() {
   return (
     <div className="apply-page">
-      <PublicCard product="Join our team">
-        <h2>Apply to work with us</h2>
+      <AuthCard product="Join our team" heading="Apply to work with us">
         <ApplyForm />
-      </PublicCard>
+      </AuthCard>
     </div>
   );
 }

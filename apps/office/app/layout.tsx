@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { AppearanceScript } from '@thc/ui';
-import { ChromeProvider } from './_components/ChromeContext';
-import { loadChrome } from './_components/chrome';
+import { SignedInAsProvider } from './_components/SignedInAs';
+import { officeUser } from './_components/officeUser';
 import '@thc/ui/styles.css';
 
 export const metadata: Metadata = {
@@ -12,22 +12,20 @@ export const metadata: Metadata = {
 export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
 
 /**
- * The one place the chrome's own data is read (§4.1's menu counter, the
- * sidebar foot's operator): every screen renders `OfficeShell` under this
- * layout, so one read here reaches the badge on all of them. The cookie
- * read makes the tree dynamic, which it is already — the middleware gates
- * every route on a session and the screens query as the signed-in manager.
- * Outside a session (`/login`) it costs nothing: no claims, no query.
+ * Read once here, not per screen: the sidebar foot names the signed-in
+ * operator on every Back Office page, and seven of them render the shell
+ * from a client component that cannot do this lookup itself.
  */
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const chrome = await loadChrome();
+  const user = await officeUser();
+
   return (
     <html lang="en-GB" suppressHydrationWarning>
       <head>
         <AppearanceScript />
       </head>
       <body>
-        <ChromeProvider value={chrome}>{children}</ChromeProvider>
+        <SignedInAsProvider user={user}>{children}</SignedInAsProvider>
       </body>
     </html>
   );

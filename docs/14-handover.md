@@ -1,6 +1,6 @@
 # 14 · Where the build actually is, and what to do next
 
-Figures re-verified on `claude/festive-edison-ejx5tj` at the 26.09 audit round (after `c0ab319`). This is the honest state, not
+Figures re-verified on the 26.09 round (the branch that follows `dbd0227`). This is the honest state, not
 the plan — every number below was produced by running something, not by counting
 what a previous revision claimed. Where something looks finished but is not, it
 says so.
@@ -16,10 +16,10 @@ screen it names is now built; what is left is listed in §2 and §4 below.
 ## 1 · What is genuinely built
 
 **Every screen in the product now exists.** Three Next.js apps on one Supabase
-database, **99 migrations**, **76 pgTAP files (2,822 assertions)**, **1,981 Vitest
-tests across 124 files** in eight packages, seven Edge Functions (`auto-staffing`,
+database, **86 migrations**, **75 pgTAP files (2,590 assertions)**, **1,643 Vitest
+tests across 98 files** in eight packages, seven Edge Functions (`auto-staffing`,
 `booking-tick`, `compliance-daily`, `finance-reports`, `gdpr-purge`,
-`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0029`. CI runs
+`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0024`. CI runs
 lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 `deploy-database` pushes migrations to the live project on merge to `main`.
 
@@ -27,10 +27,10 @@ lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 
 | Check | Result |
 |---|---|
-| All 99 migrations applied in order to an **empty** database | clean |
-| `scripts/pgtest-local.sh` — all 76 pgTAP files | 2,822 assertions, **2 failures**, both expected (below) |
-| `turbo lint typecheck test build` | 29/29 tasks |
-| Live Supabase project vs the repo | 81 applied live; the 18 from 26.09 deploy with the merge to `main` |
+| All 86 migrations applied in order to an **empty** database | clean |
+| `scripts/pgtest-local.sh` — all 75 pgTAP files | 2,590 assertions, **2 failures**, both expected (below) |
+| `turbo lint typecheck test` | 29/29 tasks |
+| Live Supabase project vs the repo | all 81 applied at `dbd0227`; the 26.09 round's 5 deploy on merge |
 
 `002` assertions **6 and 7** fail in every local harness and **that pair is the
 clean baseline**: they record that on Supabase `anon` *can* write
@@ -105,65 +105,65 @@ real environment to prove it in.
    the induction slides, the contract text (`contract_versions`), E2b and
    CL1–CL6 wording, the `/privacy` legal text, and sample completion letters for
    the Gemini extractor.
-4. **Browser passes against the live project.** No screen has been clicked
-   through for real; coverage is render tests, view-model tests, pgTAP and —
-   since 26.09 — Playwright journeys for the wizard, activation, the outbox and
-   a signed-in Client Portal, which run only in CI (`supabase start`).
-4b. **The audit round is half done.** The 26.09 audit (`.claude/agents/audit.md`,
-   `security.md`, qa per screen) ran about half its slices before the session
-   limits cut it: un-audited are the office staff, staff profile, clients,
-   roles, reports, feedback, venues, settings and check-in screens; the Staff
-   App invites, radar, documents, profile and lock screens; every Client
-   Portal screen; scope §3.3–§4.5, §5.1–§5.2b, §7 BG-01–05, §9.6–§9.12,
-   §10.1–§10.7, §11, RULE index; and all four design lenses. Of the 375
-   findings it did raise, the fix round closed the database half and the
-   events, check-in, shifts, apply and login screens; still open are the
-   findings under office onboarding / staff / dashboard / clients / settings /
-   design-system, staff onboarding / documents / profile / activate / reset /
-   notifications / install / privacy, the client app, docs, and e2e — the
-   per-group lists are the next session's input (`scratchpad/fix-groups` was
-   session-local; regenerate by re-running the audit briefs on those slices).
+4. **Browser passes against the live project.** No new screen has been clicked
+   through for real; coverage is render tests, view-model tests and pgTAP. A
+   `qa-reviewer` pass per wireframe and Playwright journeys for the wizard,
+   activation and the drain are the next safety net.
+4b. **The 26.09 audit round is half done.** The three new briefs
+   (`.claude/agents/audit.md`, `security.md`, `design-engine.md`) and the
+   per-screen qa ran about half their slices before the session limits cut
+   them: un-audited are the office staff, staff profile, clients, roles,
+   reports, feedback, venues, settings and check-in screens; the Staff App
+   invites, radar, documents, profile and lock screens; every Client Portal
+   screen; scope §3.3–§4.5, §5.1–§5.2b, §7 BG-01–05, §9.6–§9.12, §10, §11 and
+   the RULE index; and all four design lenses. Of the 375 findings raised, the
+   fix round (`20260926130000`–`131200`, pgTAP `550`, ADR-0026–0029) closed
+   the database half and the events, check-in, shifts and login screens; still
+   open are the findings under office onboarding / staff / dashboard / clients
+   / settings / design-system, staff apply / onboarding / documents / profile /
+   activate / reset / notifications / install / privacy, the client app, docs
+   and e2e. The §4.1 menu counter in the office chrome was built and then
+   dropped at the merge with #52's `SignedInAs`; it wants rebuilding on that.
 4c. **ADR-0018's rota-guard gap.** `can_roster_staff()` reads a null
    `right_to_work_until` on a non-UK branch as "no expiry"; pgTAP `524` §B pins
-   that as current behaviour. Close it by restating the guard from
-   `20260924130100` (a null date with `rtw_no_time_limit = false` on a non-UK
-   branch is a hard stop) and flipping `524` §B.
-4d. **Types.** `packages/db/src/types.generated.ts` is still the placeholder:
-   `supabase gen types` needs Docker even with `--db-url`, so it runs after the
-   deploy with `pnpm --filter @thc/db gen:types` against the linked project.
-5. **Nothing else is open in code** beyond §4's notes. The 25.09 and 26.09
-   rounds closed the last gaps (below).
+   that as current behaviour. Close it by restating the guard from its latest
+   definition (a null date with `rtw_no_time_limit = false` on a non-UK branch
+   is a hard stop) and flipping `524` §B. The Needs review row
+   (`20260926121000`) is how the office finds those workers meanwhile.
+5. **Nothing else is open in code** beyond §4's notes. The 25.09 round closed
+   the last three gaps (below).
 
 ---
 
-## 3 · Closed on 26.09, the most recent round
+## 3 · Closed on 26.09, the most recent round (the §4 clean-up)
 
-- **D2 · `/apply` is bounded per caller** (ADR-0024, `20260926100000`, pgTAP
-  `520`): `apply_caller_check()` runs before `submit_application()`, keyed on a
-  salted hash of the client address, counted in the database so it holds across
-  every serverless instance; two `settings` windows like `apply_throttle`. The
-  table is policy-less on purpose and the RPC is the only door. The same ADR
-  closes the last of D1: the consent tick is the shared `Checkbox`.
-- **A changed home address moves the pin** (ADR-0025, `20260926100100`, pgTAP
-  `521`): `home_location` re-derives from the UK postcode via postcodes.io — the
-  caller only, a postcode that appears in their own current address, inside the
-  UK box — and records its source (`pin` / `postcode`). The §6 proximity score no
-  longer scores a worker from where they used to live.
-- **"Create candidate in Willo" is idempotent** (`20260926100200`, pgTAP `522`,
-  ADR-0021's 26.09 addendum): the lease is on the row, the key Willo answers with
-  is written first and alone, the link is retried and the create is not. No
-  second E1.
-- **The wizard collects the New Starter fields** (`20260926100300`, pgTAP `523`):
-  step 1 asks for gender (M/F, required in every branch), step 2 stores the
-  postcode on its own and the country; workers already past step 2 are backfilled
-  by the same rule. §9.9 Tab 3 is no longer blank.
-- **Workers with no right-to-work date are in the queue** (`20260926100400`):
-  `compliance_review_queue_v` gains an `rtw_date` row — "Right-to-work date
-  missing — re-verify" — for every live non-UK worker whose latest verified
-  share code carries no date, counted by the tab and the crumb like any other
-  item. The re-verify is still the office's; finding them no longer is.
-- `docs/08-screen-inventory.md` lists every route; O10 point 5 is marked closed;
-  the open-questions page is `docs/15-open-questions.md`.
+- **Database types** are generated from the live project
+  (`packages/db/src/types.generated.ts`); `gen:types` formats them.
+- **A verified right-to-work date cannot be blanked** by any API role
+  (`20260926120000`, pgTAP `540`); fixtures use an owner-only
+  `thc.allow_rtw_date_clear` escape.
+- **A worker's home location follows their address** (`20260926110000`,
+  `530`): postcodes.io on edit, a `home_location_stale` flag the office sees
+  when the lookup fails. No office pin editor — a flag clears on the next
+  successful lookup.
+- **Willo's create-candidate is idempotent** across a lost link, and asks Willo
+  by `external_id` before creating again (`20260926100000`, `520`, ADR-0024).
+  Residual: with the record lost AND no lookup endpoint, a duplicate is possible.
+- **New Starter fields**: gender asked at wizard step 7 (§9.9 Tab 3, "M/F" — a
+  wireframe deviation, ADR-0024); postcode and country derived from the address.
+- **`/apply`**: the shared, keyboard-operable `Checkbox`; and a per-caller
+  limit (hashed caller, 5/hour, 20/day, in `settings`). Residual: anon can
+  still call `submit_application` directly through PostgREST, which bypasses
+  the per-caller limit (not the per-email/mobile ones) — closing it means
+  revoking anon and making the service key mandatory for `/apply`.
+- **`rls_auto_enable()` is Supabase's own** "enable RLS automatically on new
+  tables" option: the `ensure_rls` event trigger enables RLS on any new table in
+  `public`. It only adds protection; left in place, not mirrored in a migration
+  (locally every migration enables RLS itself, and 001 asserts it).
+- `docs/08-screen-inventory.md` lists the routes that exist.
+- Workers verified on a share code with no date: the live project has 5, all
+  seed demo accounts (`@example.com`, EU settled). None real; recheck after any
+  data import (query in `20260923200000`'s header).
 
 ## 3a · Closed on 25.09
 
@@ -291,34 +291,18 @@ here so a reader can tell a deliberate finding from a new one.
 
 New from the 24.09 wave:
 
-- ~~**Willo:** if Willo creates a candidate and the local link then fails
-  transiently, the next sweep creates them again and a second E1 goes out.~~
-  **Closed 26.09** by `20260926100200` (pgTAP `522`): the lease is on the row and
-  the key is written first, so a retried link never re-creates.
-- ~~`/apply` still uses its own consent tick; it can move to the shared `Checkbox`
-  now that D1 is fixed.~~ **Closed 26.09** with ADR-0024 (`20260926100000`,
-  pgTAP `520`).
+- Three hand-rolled copies of the tick-box control remain (the HMRC
+  declaration, the contract signature, the office role picker); each is a
+  place the next D1 can hide. `/apply` now uses the shared `Checkbox`, which
+  draws the coral border and announces the error off `aria-invalid` (#54).
 
 From the 23.09 build:
 
 - **Workers verified on a share code before 23.09 with no date still have
-  none** — nothing to backfill from. Re-verify them. **Surfaced 26.09** by
-  `20260926100400`: each is an `rtw_date` row in the Needs review queue
-  ("Right-to-work date missing — re-verify"), so the query in the header of
-  `20260923200000` no longer has to be run by hand; the re-verify itself is
-  still the office's.
+  none** — nothing to backfill from. Re-verify them; the query that finds them
+  is in the header of `20260923200000`.
 - **The share-code date is confirmed by the office** until the extractor that
   reads the gov.uk report exists; §2.3 says nobody types it (ADR-0018).
-- **A later direct update that blanks a verified document's date is not
-  refused** — only the moment of verifying is guarded, because the `200`/`220`/
-  `250` fixtures blank dates that way. The worker's date still recomputes.
-- ~~**New Starter report fields** (gender, postcode, country) are blank until
-  collected; the wizard does not ask for gender yet.~~ **Closed 26.09** by
-  `20260926100300` (pgTAP `523`): step 1 requires gender, step 2 stores the
-  postcode and country, and workers already past step 2 are backfilled.
-- **Types not regenerated.** `packages/db` `types.generated.ts` is still the
-  placeholder; the new RPCs are called through loose typed wrappers. Run
-  `pnpm --filter @thc/db gen:types` against the live project after deploy.
 - **Unverified on real infrastructure:** the `finance-reports` Edge Function has
   not been run under Deno (ADR-0006's `../../../packages` import question); Storage
   image transforms may be off (photos then fall back to the original); GoTrue's
@@ -333,30 +317,9 @@ From the 23.09 build:
   pins the distinction that makes this easy to get wrong: **`compliance_docs`.`rejection_reason`
   has the opposite rule** and must stay readable, because §2.6 and N8 require a
   rejected DOCUMENT to tell the worker why so they can re-upload.
-- ~~`docs/08-screen-inventory.md` does not yet list the `/documents` sub-routes,
-  `/activate` or `/compliance/export`; the open-questions page still lists
-  O10 point 5 as open.~~ **Closed 26.09**: both done, and the open-questions
-  page is now `docs/15-open-questions.md` (§8).
 
 Carried over:
 
-- ~~**D2 · `/apply` is a public write endpoint with no rate limit** (§2.1).~~
-  **Closed 26.09** — ADR-0024, `20260926100000`, pgTAP `520`.
-- ~~**A worker's home address is not re-geocoded when they edit it.** There is no
-  geocoder in the repo, so `home_location` — and therefore the §6 proximity score
-  — goes stale on an address change. E7 tells the office and the screen says so,
-  but it wants a decision rather than a note.~~ **Closed 26.09** — ADR-0025,
-  `20260926100100`, pgTAP `521`: the point follows the postcode.
-- ~~**`/apply` is still unthrottled per caller.** The new limits are per email and
-  per mobile; a distributed attacker with a fresh pair each time is bounded only
-  at the edge. That belongs in front of PostgREST, so it is an `apps/` change.~~
-  **Closed 26.09** — the same ADR-0024: the app's server action asks
-  `apply_caller_check()` first, and the count lives in the database.
-- **`public.rls_auto_enable()` exists on the live project and in no migration.**
-  A `SECURITY DEFINER` function that manipulates RLS, origin unknown, which was
-  reachable unauthenticated. EXECUTE is now revoked from `public`, `anon` and
-  `authenticated` by a `DO` block that no-ops where it is absent — but nobody has
-  established what created it, and that is worth finding out.
 
 
 ---
@@ -473,13 +436,11 @@ Each of these cost a merge conflict or a red build:
   collapsed when four sessions all reached for `0006`. Two sessions still managed
   to pick the same second; CI has a uniqueness guard now.
 - **ADRs collide too** — four sessions reached for `0008`. Check `docs/adr/` for
-  the highest number immediately before you write one. It is at `0025`.
+  the highest number immediately before you write one. It is at `0018`.
 - **pgTAP files collide as well**; three landed on `130`. Number from the highest
   file in `supabase/tests/`, not from the highest you remember.
-- **Doc numbers collide.** There were two `14-`s for three days: this page and
-  the open-questions page. **Resolved 26.09**: `15-open-questions.md` is the
-  open questions, `16-owner-guide.md` the owner guide, `17-inputs-from-thc.md`
-  the THC inputs sheet. Take the next number from `ls docs/`, not from memory.
+- **Doc numbers collide.** There are two `14-`s right now: this page and
+  `14-open-questions.md`. Renumber one when neither is being edited.
 - **A session merging to `main` late collides with sessions that merged
   early**, even on timestamps: #44 and this build both reached for
   `20260923090000` and both fixed `age_18`; pgTAP `360` and ADR `0012` were

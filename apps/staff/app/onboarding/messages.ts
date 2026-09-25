@@ -13,8 +13,6 @@ const REASONS: Record<string, string> = {
   bad_branch: 'Choose which describes you.',
   dob_required: 'Your date of birth is required.',
   under_18: 'You must be 18 or over to work with us.',
-  gender_required: 'Choose Male or Female.',
-  bad_gender: 'Choose Male or Female.',
   doc_choice_required: 'Choose which documents you will provide.',
   bad_share_code:
     "Share code must be 9 letters and numbers starting with W — e.g. W123AB4CD. Spaces are fine, we'll remove them.",
@@ -45,6 +43,7 @@ const REASONS: Record<string, string> = {
   quiz_not_configured: 'The quiz isn’t available yet. Please contact the office.',
   answer_required: 'Answer the questions shown.',
   bad_student_loan: 'Choose your student loan.',
+  gender_required: 'Choose male or female for your HMRC payroll record.',
   invalid_ni: 'That doesn’t look like a National Insurance number. It should look like AB123456C.',
   ni_locked: 'Your NI number is already on file and locked. Corrections go through the office.',
   two_references_required: 'We need two referees.',

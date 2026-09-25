@@ -230,31 +230,10 @@ export const VISA_TYPES = [
   'Other work visa',
 ] as const;
 
-/**
- * Gender, as HMRC's New Starter Checklist takes it: exactly two values, and
- * the New Starter report column is "Gender (M/F)" (§9.9 Tab 3, confirmed
- * 28.07.2026). Asked on step 1 with the date of birth, in every branch —
- * the report is what needs it, and the report is sent the Monday after the
- * first paid shift (§2.8, §9.9), so it has to be on file before then.
- */
-export type Gender = 'M' | 'F';
-
-export const GENDER_OPTIONS: readonly { value: Gender; label: string }[] = [
-  { value: 'M', label: 'Male' },
-  { value: 'F', label: 'Female' },
-];
-
-/** The same two letters `staff_gender_m_or_f` accepts (20260923130000). */
-export function isGender(value: unknown): value is Gender {
-  return value === 'M' || value === 'F';
-}
-
 export interface RtwForm {
   branch: RtwBranch | null;
   /** ISO date, YYYY-MM-DD. */
   dob: string;
-  /** M or F — required in every branch, like the date of birth. */
-  gender: Gender | null;
   shareCode: string;
   visaType: string;
   /** ISO date, YYYY-MM-DD. */
@@ -308,7 +287,6 @@ export function rtwErrors(
   else if (ageOn(form.dob, today) < 18) {
     errors.dob = 'You must be 18 or over to work with us.';
   }
-  if (!isGender(form.gender)) errors.gender = 'Choose Male or Female.';
   if (needsShareCode(form.branch)) {
     const err = shareCodeError(form.shareCode);
     if (err) errors.shareCode = err;
@@ -330,15 +308,8 @@ export function rtwFooterHint(form: RtwForm, today: string = ukToday()): string 
   const errors = rtwErrors(form, today);
   if (errors.branch) return errors.branch;
   if (errors.shareCode && form.shareCode.trim() !== '') return 'Fix the share code to continue';
-  // A date that is FILLED but refused (under 18, not a real date, an expiry
-  // already passed) is not "missing": the footer repeats the field's own
-  // sentence, so a candidate who picked a 2010 birthday never reads "Date of
-  // birth is required" under a filled field (§2.1, §10.3 1/11).
-  if (errors.dob && form.dob.trim() !== '') return errors.dob;
-  if (errors.visaExpiry && form.visaExpiry.trim() !== '') return errors.visaExpiry;
   const missing = [
     errors.dob && 'date of birth',
-    errors.gender && 'gender',
     errors.shareCode && 'share code',
     errors.visaType && 'visa type',
     errors.visaExpiry && 'expiry',

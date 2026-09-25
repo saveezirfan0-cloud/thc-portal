@@ -37,7 +37,6 @@ const TODAY = '2026-09-23';
 const blank: RtwForm = {
   branch: null,
   dob: '',
-  gender: null,
   shareCode: '',
   visaType: '',
   visaExpiry: '',
@@ -76,13 +75,7 @@ describe('1/11 Right to work', () => {
   it('UK / Irish — no share code field, passport or birth certificate + NI evidence', () => {
     const html = renderToStaticMarkup(
       <RtwStep
-        initial={{
-          ...blank,
-          branch: 'uk_irish',
-          dob: '2001-02-14',
-          gender: 'M',
-          ukChoice: 'passport',
-        }}
+        initial={{ ...blank, branch: 'uk_irish', dob: '2001-02-14', ukChoice: 'passport' }}
         today={TODAY}
       />,
     );
@@ -90,41 +83,6 @@ describe('1/11 Right to work', () => {
     expect(html).toContain('Birth cert. + NI evidence');
     expect(html).toContain('P60');
     expect(footer(html).disabled).toBe(false);
-  });
-
-  it('gender under the DOB in every branch: Male / Female on the shared segment, required (§9.9)', () => {
-    const html = renderToStaticMarkup(
-      <RtwStep
-        initial={{ ...blank, branch: 'uk_irish', dob: '2001-02-14', ukChoice: 'passport' }}
-        today={TODAY}
-      />,
-    );
-    expect(html).toContain('Gender');
-    expect(html).toMatch(/aria-label="Gender"[^>]*>/);
-    expect(html).toContain('>Male<');
-    expect(html).toContain('>Female<');
-    // Nothing pressed on the Gender segment itself (the document choice
-    // beneath it is pre-selected, so the check is scoped to this control).
-    const seg = html.slice(html.indexOf('aria-label="Gender"'));
-    expect(seg.slice(0, seg.indexOf('</div>'))).not.toContain('aria-pressed="true"');
-    expect(html).toContain('HMRC New Starter report');
-    expect(footer(html)).toEqual({ label: 'Continue', disabled: true });
-    expect(html).toContain('Gender is required');
-
-    const chosen = renderToStaticMarkup(
-      <RtwStep
-        initial={{
-          ...blank,
-          branch: 'eu_settled',
-          dob: '1999-09-30',
-          gender: 'F',
-          shareCode: 'W123AB4CD',
-        }}
-        today={TODAY}
-      />,
-    );
-    expect(chosen).toMatch(/aria-pressed="true"[^>]*>Female</);
-    expect(footer(chosen).disabled).toBe(false);
   });
 
   it('EU/EEA — an invalid share code shows the wireframe error and blocks Continue', () => {
@@ -146,7 +104,6 @@ describe('1/11 Right to work', () => {
           ...blank,
           branch: 'work_visa',
           dob: '1997-06-08',
-          gender: 'M',
           shareCode: 'W123AB4CD',
           visaType: 'Skilled Worker',
           visaExpiry: '2028-03-31',
@@ -176,11 +133,11 @@ describe('1/11 Right to work', () => {
     expect(html).not.toContain('Visa — photo');
   });
 
-  it('dependant — DOB, gender, share code and expiry required', () => {
+  it('dependant — DOB, share code and expiry required', () => {
     const html = renderToStaticMarkup(
       <RtwStep initial={{ ...blank, branch: 'dependant_other' }} today={TODAY} />,
     );
-    expect(html).toContain('Date of birth, gender, share code and expiry are required');
+    expect(html).toContain('Date of birth, share code and expiry are required');
     expect(footer(html).disabled).toBe(true);
   });
 });
@@ -360,6 +317,28 @@ describe('7/11 HMRC', () => {
     expect(html).not.toContain('2 · Do you receive');
     expect(html).toContain('●●●●●●●6C');
     expect(footer(html).disabled).toBe(false);
+  });
+  it('asks gender as HMRC’s two values, says why, and waits for it (§9.9 Tab 3)', () => {
+    const unanswered = renderToStaticMarkup(
+      <HmrcStep
+        initial={{ ...form, q1OtherJob: true, declared: true, gender: null }}
+        niMasked={null}
+      />,
+    );
+    expect(unanswered).toContain('Gender, as HMRC records it');
+    expect(unanswered).toContain('>Male<');
+    expect(unanswered).toContain('>Female<');
+    expect(unanswered).toContain('only accept male or female');
+    expect(unanswered).toContain('Answer the gender question to continue');
+    expect(footer(unanswered).disabled).toBe(true);
+
+    const answered = renderToStaticMarkup(
+      <HmrcStep
+        initial={{ ...form, q1OtherJob: true, declared: true, gender: 'F' }}
+        niMasked={null}
+      />,
+    );
+    expect(footer(answered).disabled).toBe(false);
   });
 });
 

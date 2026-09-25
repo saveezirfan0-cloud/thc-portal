@@ -218,12 +218,6 @@ select is(
 --       locks, a per-email and per-mobile throttle
 --       (20260922183012), and a void return so it cannot be used as an
 --       account-existence oracle. 120_apply holds that.
---     · apply_caller_check() — the per-caller half of the same limit
---       (ADR-0024, 20260926100000). Anonymous by the same argument;
---       it takes only a salted 64-hex digest, refuses anything else
---       with 22023, stores no address, and answers allowed/retry_after
---       from its own policy-less table. 520_apply_caller_throttle holds
---       that.
 --
 --     Extension-owned functions are excluded: PostGIS's
 --     st_estimatedextent overloads are definer and are not ours.
@@ -240,9 +234,8 @@ select bag_eq(
                          where d.classid = 'pg_proc'::regclass
                            and d.objid = p.oid and d.deptype = 'e')
         and has_function_privilege('anon', p.oid, 'execute') $$,
-  $$ values ('current_app_role'::text), ('current_client_id'), ('submit_application'),
-            ('apply_caller_check') $$,
-  'exactly four security definer functions in public are reachable by anon, and each is there on purpose (apply_caller_check is the /apply per-caller limit, ADR-0024: it takes a 64-hex digest only, stores no address, and answers allowed/retry_after)'
+  $$ values ('current_app_role'::text), ('current_client_id'), ('submit_application') $$,
+  'exactly three security definer functions in public are reachable by anon, and each is there on purpose'
 );
 
 -- ---------------------------------------------------------------------

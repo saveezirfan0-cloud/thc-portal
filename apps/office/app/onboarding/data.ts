@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import type { Database } from '@thc/db';
 import { supabaseConfigured } from '../staff/data';
 import type {
   Application,
@@ -42,7 +43,9 @@ const NOT_CONFIGURED =
   'This environment has no Supabase project, so the onboarding pipeline cannot be read. See docs/04-setup-github-vercel-supabase.md.';
 
 /** The statuses a person holds while the kanban can show them (§2.2). */
-const ON_BOARD = [
+// The DATABASE enum, which still carries `additional_info` (ADR-0013: a
+// column, not a status) — the domain's StaffStatus rightly leaves it out.
+const ON_BOARD: Database['public']['Enums']['staff_status'][] = [
   'interview_requested',
   'interview_completed',
   'documents',

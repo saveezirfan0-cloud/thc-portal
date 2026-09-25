@@ -5,8 +5,9 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { uploadError, uploadKind, UPLOAD_MAX_BYTES, UPLOAD_MIME } from '@thc/domain';
-import type { DocType, StudentLoanPlan } from '@thc/domain';
+import type { DocType, HmrcGender, StudentLoanPlan } from '@thc/domain';
 import { staffDb, supabaseConfigured } from '../db';
+import { geocodePostcode } from '../_lib/postcode';
 import { photoPathFor } from '../profile/photos';
 import { documentExtractor, toDaterangeLiteral } from './extractor';
 import { NOT_CONFIGURED, reasonMessage } from './messages';
@@ -68,16 +69,12 @@ async function sessionStaffId(): Promise<string | null> {
 export async function saveRightToWork(input: {
   branch: string;
   dob: string;
-  /** M or F — required in every branch, like the DOB (§9.9 Tab 3). */
-  gender: string | null;
   shareCode: string;
   visaType: string;
   visaExpiry: string;
   ukChoice: string | null;
   wtrOptOut: boolean;
 }): Promise<Result> {
-  // p_gender is always sent: the eight-argument RPC is the only one a
-  // client may call (20260926100300), and it refuses a null itself.
   return call('onboarding_save_right_to_work', {
     p_branch: input.branch,
     p_dob: input.dob || null,
@@ -86,7 +83,6 @@ export async function saveRightToWork(input: {
     p_visa_expiry: input.visaExpiry || null,
     p_uk_doc_choice: input.ukChoice,
     p_wtr_optout: input.wtrOptOut,
-    p_gender: input.gender,
   });
 }
 
@@ -109,22 +105,28 @@ export async function saveAddress(input: {
   });
 }
 
-// The lookup is shared with the profile's address edit (ADR-0025) and
-// lives in lib/postcodes.ts. The import sits next to its only use so the
-// move was one edit to this file; an import declaration is hoisted
-// wherever it is written.
-import { lookupPostcode as lookupUkPostcode } from '../../lib/postcodes';
-
 /**
- * Postcode → a point to centre the map on, from postcodes.io (open data,
- * no key, UK-only — which is exactly the population). A convenience for
- * finding the street; the pin the worker then places is what is saved.
- * Stays a server action so AddressStep can call it.
+ * Postcode → a point to centre the map on, from postcodes.io through the
+ * Staff App's one geocoder (app/_lib/postcode.ts, shared with
+ * /profile/details). A convenience for finding the street; the pin the
+ * worker then places is what is saved.
  */
 export async function lookupPostcode(
   postcode: string,
 ): Promise<Result<{ lat: number; lng: number }>> {
-  return lookupUkPostcode(postcode);
+  const found = await geocodePostcode(postcode);
+  if (found.ok) return { ok: true, lat: found.lat, lng: found.lng };
+  switch (found.reason) {
+    case 'bad_postcode':
+      return { ok: false, message: 'Enter a UK postcode, e.g. E2 0RY.' };
+    case 'unreachable':
+      return {
+        ok: false,
+        message: 'Postcode search is unreachable — use your location or move the map.',
+      };
+    default:
+      return { ok: false, message: 'We couldn’t find that postcode.' };
+  }
 }
 
 // ---------------------------------------------------------------------
@@ -349,8 +351,13 @@ export async function submitHmrc(input: {
   postgraduateLoan: boolean;
   niNumber: string;
   declared: boolean;
+  gender?: HmrcGender | null;
 }): Promise<Result> {
+  // The 8-argument checklist (20260926100100): the gender HMRC's payroll
+  // record needs, written with the checklist in one transaction. The
+  // database refuses a missing one (`gender_required`).
   return call('submit_hmrc_checklist', {
+    p_gender: input.gender ?? null,
     p_q1_other_job: input.q1OtherJob,
     p_q2_pension: input.q2Pension,
     p_q3_since_april: input.q3Since6April,

@@ -203,19 +203,6 @@ describe('New Starter CSV (§9.9 Tab 3)', () => {
   it('leaves a missing NI number blank rather than inventing one', () => {
     expect(lines(newStarterCsv([{ ...chen, ni_number: null }]))[1]).toContain('THC-00960,,');
   });
-
-  it('writes Postcode, Country and Gender as the database stored them, and blanks — never a guess — when it has none', () => {
-    // A worker onboarded before 20260926100300 collected them: the report
-    // falls back to the postcode at the end of the address and leaves the
-    // other two null; the CSV prints exactly that.
-    const before = { ...chen, postcode: 'SW7 2HE', country: null, gender: null };
-    expect(lines(newStarterCsv([before]))[1]).toBe(
-      'Chen Wei,THC-00960,QQ123456A,"Flat 4, 12 Exhibition Rd, London",SW7 2HE,,21/11/2003,,10/09/2026,B,Plan 2',
-    );
-    const cells = lines(newStarterCsv([chen]))[1]!.split(',');
-    // Columns 4–7 after the quoted address: Postcode · Country · Date of birth · Gender.
-    expect(cells.slice(-7, -3)).toEqual(['SW7 2HE', 'United Kingdom', '21/11/2003', 'M']);
-  });
 });
 
 describe('CSV hygiene', () => {

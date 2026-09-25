@@ -60,6 +60,7 @@ export default defineConfig({
         /outbox\.spec\.ts/,
         /auth\.smoke\.spec\.ts/,
         /gate\.smoke\.spec\.ts/,
+        /signout\.smoke\.spec\.ts/,
       ],
     },
     {
@@ -79,12 +80,18 @@ export default defineConfig({
         /public\..*\.spec\.ts/,
         /auth\.smoke\.spec\.ts/,
         /gate\.smoke\.spec\.ts/,
+        /signout\.smoke\.spec\.ts/,
       ],
     },
     {
       name: 'client',
       use: { ...devices['Desktop Chrome'], baseURL: `http://127.0.0.1:${PORTS.client}` },
-      testMatch: [/client\..*\.spec\.ts/, /auth\.smoke\.spec\.ts/, /gate\.smoke\.spec\.ts/],
+      testMatch: [
+        /client\..*\.spec\.ts/,
+        /auth\.smoke\.spec\.ts/,
+        /gate\.smoke\.spec\.ts/,
+        /signout\.smoke\.spec\.ts/,
+      ],
     },
   ],
   webServer: [

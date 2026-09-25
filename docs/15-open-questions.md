@@ -666,15 +666,26 @@ that is not mine to do here:
    half of O10 is closed. What is still missing is the screen (B8).
 
 5. ~~**`request_p45()` and `declare_conviction()` are service-role only too, and for a
-   sharper reason.**~~ — **CLOSED.** Both took a staff id and neither checked that it was
-   the *caller's*; granting either to `authenticated` as they stood would have let any
-   signed-in worker retire a colleague or suspend them on a fabricated declaration. The
-   shape asked for — the self-check and the grant in the same commit — is what landed:
-   `request_my_p45()` (`20260922180000_staff_self_service.sql`, S6) and
-   `declare_my_conviction()` (`20260923150000_staff_documents_hub.sql`, S4, §10.7) take
-   no staff id, read the caller from `auth.uid()`, and are the only forms granted to
-   `authenticated`; the id-taking originals stay service-role only and are called by the
-   self forms. The Staff App's `/documents/declare` runs the conviction one.
+   sharper reason.**~~ **Closed.** Both take a staff id and neither checks that it is the
+   *caller's*, so granting either to `authenticated` as they stood would have let any
+   signed-in worker retire a colleague or suspend them on a fabricated declaration. This
+   entry said whoever built S4 and S6 must either keep the server-action shape or add the
+   self-check and the grant in the same commit — **never the grant alone**.
+
+   They took the third option, which is better than either: a **self-scoped wrapper that
+   takes no staff id at all**, so there is no argument to point at somebody else.
+   `request_my_p45(text)` (`20260922180000`) and `declare_my_conviction(text, date)`
+   (`20260923150000`) are what `authenticated` holds. The two-argument originals are
+   **still granted to `service_role` only**, and `190_job_function_grants.sql` names both
+   in the list it asserts stays out of the PostgREST roles — so the grant this entry
+   warned about cannot be added later by accident without turning a test red.
+
+   Verified 23.09 by reading the grants in the migrations and the assertion in `190`,
+   not by taking the handover's word for it.
+
+Points 4 and 5 are now closed; 1, 2 and 3 were superseded by later waves — the §9.6
+screen, the drain and the verify action all exist, so what remains of this entry is the
+record of why the grants were withheld, which is still the reason not to widen them.
 
 None of these blocks the other work. They are recorded so that "compliance is built" is
 not read as "workers are being told", and so that the missing grants read as deliberate

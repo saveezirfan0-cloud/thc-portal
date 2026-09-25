@@ -136,6 +136,7 @@ describe('Web/Button', () => {
             Cancel event
           </Button>
           <Button tone="ghost">Ghost</Button>
+          <Button tone="link">Link</Button>
           <Button size="sm">Small</Button>
           <Button size="lg" block tone="primary">
             Check in
