@@ -174,7 +174,8 @@ export function removeCandidate(candidate: Candidate | null): void {
         delete from audit_log where entity_id = v_staff or (v_user is not null and actor = v_user);
         delete from onboarding_progress where staff_id = v_staff;
         delete from compliance_docs where staff_id = v_staff;
-        delete from criminal_declarations where staff_id = v_staff;
+        -- criminal_declarations go with the staff row (on delete cascade):
+        -- a direct delete is refused, §1.5 (20260930120000).
         delete from staff_roles where staff_id = v_staff;
         delete from staff where id = v_staff;
         if v_user is not null then
