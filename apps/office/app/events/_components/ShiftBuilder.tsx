@@ -2,7 +2,7 @@
 
 import { useId, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { Alert, Button, Chip, Input, Note, Panel, Pill, Select, Textarea } from '@thc/ui';
+import { Alert, Button, Chip, Input, Note, Panel, Pill, SaveBar, Select, Textarea } from '@thc/ui';
 import { UK_ZONE, forecastEvent, formatTimeIn, ukInputLabel } from '@thc/domain';
 import { RoleSection } from './RoleSection';
 import { Switch } from './Switch';
@@ -97,6 +97,9 @@ export function ShiftBuilder({
   const cancelled = Boolean(saved?.cancelledAt);
   const readOnly = locked || cancelled;
   const saveable = canSave(draft) && !readOnly;
+  // Presentation only: the save bar says "Unsaved changes" once the form
+  // differs from what it opened with. Saving is still gated by `saveable`.
+  const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(initial), [draft, initial]);
 
   const erroredRoles = [...issues.roles.values()].filter((list) => list.length > 0).length;
   const validRoles = draft.roles.filter(
@@ -581,44 +584,48 @@ export function ShiftBuilder({
           </Panel>
         ) : null}
 
-        <div className="stack tight">
-          {readOnly ? (
-            <>
-              <Link className="btn primary lg block keep" href={`/events/${saved?.id ?? ''}`}>
-                Open event board →
-              </Link>
-              <Link className="btn block keep" href="/events">
-                Back to scheduling
-              </Link>
-              <Button size="lg" block disabled>
-                Save event
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button
-                tone="primary"
-                size="lg"
-                block
-                disabled={!saveable || pending}
-                onClick={onSave}
-              >
-                {pending ? 'Saving…' : 'Save event'}
-              </Button>
-              <Link className="btn block" href={saved ? `/events/${saved.id}` : '/events'}>
-                Cancel
-              </Link>
-              {!saveable ? (
-                <span className="muted xs" data-testid="save-blockers">
-                  {issues.event.length > 0
-                    ? issues.event.join(' · ')
-                    : 'Save is disabled while a role section fails validation.'}
-                </span>
-              ) : null}
-            </>
-          )}
-        </div>
+        {readOnly ? (
+          <div className="stack tight">
+            <Link className="btn primary lg block keep" href={`/events/${saved?.id ?? ''}`}>
+              Open event board →
+            </Link>
+            <Link className="btn block keep" href="/events">
+              Back to scheduling
+            </Link>
+            <Button size="lg" block disabled>
+              Save event
+            </Button>
+          </div>
+        ) : null}
       </div>
+
+      {/* The save action rides at the bottom of the screen for the whole of
+          a long form, instead of waiting at the end of the side column
+          (below the fold on a phone, several screens down). Same buttons,
+          same rules, same handler. */}
+      {readOnly ? null : (
+        <SaveBar
+          label="Save event"
+          dirty={dirty}
+          status={pending ? 'Saving…' : undefined}
+          hint={
+            !saveable ? (
+              <span data-testid="save-blockers">
+                {issues.event.length > 0
+                  ? issues.event.join(' · ')
+                  : 'Save is disabled while a role section fails validation.'}
+              </span>
+            ) : undefined
+          }
+        >
+          <Link className="btn" href={saved ? `/events/${saved.id}` : '/events'}>
+            Cancel
+          </Link>
+          <Button tone="primary" disabled={!saveable || pending} onClick={onSave}>
+            {pending ? 'Saving…' : 'Save event'}
+          </Button>
+        </SaveBar>
+      )}
     </div>
   );
 }

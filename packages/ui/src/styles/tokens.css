@@ -101,6 +101,15 @@
   --row-hover: rgba(255, 255, 255, 0.03);
   --tint: rgba(255, 255, 255, 0.02);
 
+  /* --- a control that cannot be used right now ----------------------
+     Disabled is a state, not a fade. A flat muted surface with a readable
+     label says "not yet" on purpose, where the old 55% opacity turned the
+     gradient primary into something that looked broken. Each ink clears
+     4.5:1 on its own surface in every theme; contrast.test.ts holds it. */
+  --disabled-bg: #131c2b;
+  --disabled-ink: #8a97a3;
+  --disabled-line: #1c2839;
+
   /* --- elevation: frosted surfaces, never a drop shadow ------------- */
   --glass: rgba(11, 18, 32, 0.6); /* top bar */
   --glass-nav: rgba(11, 18, 32, 0.72); /* bottom nav */
@@ -316,6 +325,12 @@
   --row-hover: rgba(36, 29, 22, 0.035);
   --tint: rgba(36, 29, 22, 0.02);
 
+  /* Clay rather than cream, so a disabled button still reads as a button
+     on the page ground; the ink is muted one step darker (5.1:1). */
+  --disabled-bg: #ece6dc;
+  --disabled-ink: #6b5d4f;
+  --disabled-line: #ddd4c7;
+
   --glass: rgba(255, 252, 247, 0.6);
   --glass-nav: rgba(255, 252, 247, 0.72);
   --glass-strong: rgba(255, 252, 247, 0.88);
@@ -409,6 +424,10 @@
 
   --map-a: #171b26;
   --map-b: #1e2333;
+
+  --disabled-bg: #232838;
+  --disabled-ink: #9aa5b4;
+  --disabled-line: #30364a;
 
   --grad-primary: linear-gradient(135deg, #3edcec 0%, #8f7bff 100%);
   --grad-primary-hover: linear-gradient(135deg, #7de9f4 0%, #a99bff 100%);

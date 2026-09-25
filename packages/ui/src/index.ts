@@ -54,6 +54,19 @@ export type {
   SwitchProps,
 } from './components/Controls';
 
+export { SaveBar } from './components/SaveBar';
+export type { SaveBarProps } from './components/SaveBar';
+
+export {
+  Skeleton,
+  SkeletonKpis,
+  SkeletonPanel,
+  SkeletonScreen,
+  SkeletonText,
+  SkeletonToolbar,
+} from './components/Skeleton';
+export type { SkeletonProps, SkeletonShape } from './components/Skeleton';
+
 export { DocRow } from './components/DocRow';
 export type { DocRowProps, DocState } from './components/DocRow';
 

@@ -360,3 +360,53 @@ describe('a table row drawn as a card on a phone (ADR-0030)', () => {
     );
   });
 });
+
+describe('a disabled control', () => {
+  const css = stripComments(sheets['components.css']!);
+  const rule = (selector: string) => {
+    const start = css.indexOf(`${selector} {`);
+    expect(start, `missing ${selector}`).toBeGreaterThan(-1);
+    return css.slice(start, css.indexOf('}', start));
+  };
+
+  it('is a flat muted surface, not a faded control', () => {
+    // 55% opacity turned the gradient primary into a washed-out gradient
+    // that read as a rendering fault. Every tone gives way to one surface.
+    const disabled = rule(".btn:disabled,\n.btn[aria-disabled='true'],\n.btn.disabled");
+    expect(disabled).toMatch(/background:\s*var\(--disabled-bg\)/);
+    expect(disabled).toMatch(/color:\s*var\(--disabled-ink\)/);
+    expect(disabled).toMatch(/box-shadow:\s*none/);
+    expect(disabled).toMatch(/cursor:\s*not-allowed/);
+    expect(disabled).not.toMatch(/opacity/);
+  });
+
+  it('has its tones defined in every theme', () => {
+    for (const selector of [
+      ':root',
+      ":root[data-theme='light']",
+      ":root[data-style='warm'][data-theme='dark']",
+    ]) {
+      for (const name of ['--disabled-bg', '--disabled-ink', '--disabled-line']) {
+        expect(token(selector, name), `${selector} ${name}`).toMatch(/^#[0-9a-f]{6}$/);
+      }
+    }
+  });
+});
+
+describe('loading skeletons', () => {
+  it('stop shimmering for anyone who asks for reduced motion', () => {
+    const css = stripComments(sheets['components.css']!);
+    expect(css).toMatch(/\.skel \{[^}]*animation:/);
+    expect(css).toMatch(
+      /@media \(prefers-reduced-motion: reduce\) \{\s*\.skel \{\s*animation: none;/,
+    );
+  });
+});
+
+describe('phone touch targets (§1.2)', () => {
+  it('grow every control to the finger target below 760px', () => {
+    const css = stripComments(sheets['components.css']!);
+    const phone = css.slice(css.indexOf('.btn:not(.link),\n  input.input'));
+    expect(phone).toMatch(/min-height:\s*var\(--tap-min\)/);
+  });
+});

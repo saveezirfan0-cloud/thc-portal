@@ -558,3 +558,16 @@
 .star:disabled {
   cursor: default;
 }
+
+/* Finger targets on a phone (§1.2): the brand (home) link in the bar and
+   the event page's "← Your events". */
+@media (max-width: 760px) {
+  .ctop .brand {
+    min-height: var(--tap-min);
+  }
+  .ehead > .row > a.sm:first-child {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min);
+  }
+}

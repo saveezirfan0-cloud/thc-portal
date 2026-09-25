@@ -200,6 +200,18 @@
   display: flex;
 }
 
+/* The event header's fields: a value's second line (the venue address, the
+   window's RULE-18 note) is a line of its own. Inline, "The Savoy, Strand"
+   ran straight into "Strand, London WC2R 0EZ" with no space between. */
+.field .sub,
+.field > div > .muted.xs {
+  display: block;
+}
+.field .sub {
+  color: var(--muted);
+  font-size: var(--fs-12);
+}
+
 /* The event header's read-only policy checkmarks (§3.2, kept visible §3.3). */
 .policies {
   display: flex;
@@ -211,6 +223,17 @@
 @media (max-width: 900px) {
   .prow {
     flex-wrap: wrap;
+  }
+  /* The name keeps the avatar's line; the chips and actions wrap under it.
+     At its content width the "who" block fell below its own avatar. */
+  .prow .who {
+    flex: 1 1 12rem;
+  }
+  /* "Qualified — Grosvenor House Hotel & Conference Centre · Waiting staff"
+     is wider than a phone; the pill wraps inside the card, not past it. */
+  .prow > .pill {
+    max-width: 100%;
+    white-space: normal;
   }
   .prow .right {
     margin-left: 0;

@@ -133,3 +133,17 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Block 1 is the key/value list over two of three columns and the two
+   tiles in the third. Below a desktop the third column was ~190px for two
+   tiles side by side ("21.4" cut to "21.") and on a phone the list's inline
+   two-column span forced a second, implicit column that the tiles then
+   shared. The list takes the full width and the tiles sit under it. */
+@media (max-width: 1100px) {
+  .grid.c3:has(> .kv) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .grid.c3 > .kv {
+    grid-column: 1 / -1 !important;
+  }
+}

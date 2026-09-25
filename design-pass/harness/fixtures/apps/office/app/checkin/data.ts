@@ -1,0 +1,90 @@
+export * from '../../../../../../../apps/office/app/checkin/data';
+
+const t = (hm: string, day = '2026-09-25') => new Date(`${day}T${hm}:00+01:00`).toISOString();
+const statuses = [
+  'on_shift',
+  'off_site',
+  'not_checked_in',
+  'checked_out',
+  'no_check_out',
+  'not_confirmed_today',
+  'due',
+] as const;
+const people = [
+  'Amelia Hughes-Montgomery',
+  'Tom Baker',
+  'Priya Ramanathan',
+  'Jack Wilson',
+  'Olivia Chen',
+  'Mohammed Al-Rashid',
+  'Grace O’Connor',
+];
+
+export async function loadMonitor() {
+  const rows = people.map((name, i) => ({
+    bookingId: `b${i}`,
+    staffId: `s${i}`,
+    eventId: i < 4 ? 'e1' : 'e2',
+    eventTitle: i < 4 ? 'Autumn Gala Dinner — The Savoy Ballroom' : 'Corporate Awards Night',
+    roleName: i % 2 ? 'Bartender' : 'Waiting staff (silver service)',
+    staffName: name,
+    photoUrl: null,
+    startsAt: t(i < 4 ? '17:00' : '18:30'),
+    endsAt: t(i < 4 ? '23:30' : '23:59'),
+    checkInAt: i < 5 ? t('16:52') : null,
+    checkOutAt: i === 3 ? t('23:35') : null,
+    lastFixInside: i === 1 ? false : true,
+    lastFixAt: t('20:14'),
+    breaksCount: i % 3 === 0 ? null : 1,
+    lastBreakAt: i % 3 === 0 ? null : t('19:40'),
+    lateCheckOut: i === 4,
+    status: statuses[i],
+  }));
+  const violations = [
+    {
+      id: 'v1',
+      bookingId: 'b4',
+      staffName: 'Olivia Chen',
+      photoUrl: null,
+      eventTitle: 'Corporate Awards Night',
+      venueName: 'Grosvenor House, Park Lane',
+      roleName: 'Bartender',
+      startsAt: t('18:30', '2026-09-24'),
+      endsAt: t('23:59', '2026-09-24'),
+      type: 'no_checkout',
+      detectedAt: t('04:00'),
+      minutesLate: null,
+      resolved: false,
+      resolvedAt: null,
+      resolvedByName: null,
+      resolutionNote: null,
+      actualFinishAt: null,
+      checkInAt: t('18:22', '2026-09-24'),
+      checkOutAt: null,
+      payrollExported: false,
+    },
+    {
+      id: 'v2',
+      bookingId: 'b2',
+      staffName: 'Priya Ramanathan',
+      photoUrl: null,
+      eventTitle: 'Autumn Gala Dinner — The Savoy Ballroom',
+      venueName: 'The Savoy, Strand',
+      roleName: 'Waiting staff (silver service)',
+      startsAt: t('17:00', '2026-09-23'),
+      endsAt: t('23:30', '2026-09-23'),
+      type: 'late',
+      detectedAt: t('17:31', '2026-09-23'),
+      minutesLate: 22,
+      resolved: true,
+      resolvedAt: t('09:10', '2026-09-24'),
+      resolvedByName: 'Sarah Mitchell',
+      resolutionNote: 'Train delay, confirmed with client',
+      actualFinishAt: null,
+      checkInAt: t('17:22', '2026-09-23'),
+      checkOutAt: t('23:31', '2026-09-23'),
+      payrollExported: true,
+    },
+  ];
+  return { rows, violations, problem: null };
+}

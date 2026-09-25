@@ -234,4 +234,17 @@
   .fb-form.grid.c3 {
     grid-template-columns: 1fr;
   }
+  /* The note and "Add feedback" share a line only when both fit. */
+  .fb-form-full {
+    flex-wrap: wrap;
+  }
+}
+
+/* Five 26px stars are five targets a thumb misses on a phone (§1.2): each
+   star grows to the finger target, the glyph stays the size it was. */
+@media (max-width: 760px) {
+  .starpick button {
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+  }
 }

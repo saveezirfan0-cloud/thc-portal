@@ -85,6 +85,23 @@ describe('every text tone clears AA on every ground it is drawn on', () => {
     }
   });
 
+  it('keeps a disabled control readable in every theme', () => {
+    // Disabled is a flat surface with a muted label, not a fade (the old
+    // 55% opacity is what made "Save rota guard" look broken). WCAG exempts
+    // disabled controls from contrast; this system does not, because a
+    // manager still has to read what the button would do.
+    const themes: [string, string][] = [
+      ['scope dark', ':root'],
+      ['light', ":root[data-theme='light']"],
+      ['fluid dark', ":root[data-style='warm'][data-theme='dark']"],
+    ];
+    for (const [name, selector] of themes) {
+      const ink = token(selector, '--disabled-ink');
+      const surface = token(selector, '--disabled-bg');
+      expect(contrast(ink, surface), `${name}: ${ink} on ${surface}`).toBeGreaterThanOrEqual(AA);
+    }
+  });
+
   it('rejects the spec’s own light foregrounds, which is why they were not taken', () => {
     const page = token(":root[data-theme='light']", '--bg');
     for (const failing of ['#0891b2', '#10b981', '#f59e0b', '#f43f5e', '#64748b']) {
