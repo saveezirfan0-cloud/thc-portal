@@ -247,6 +247,30 @@ export function foundLine(row: QueueRow): {
   return { text: found.join(' · ') || '—', confidence };
 }
 
+/** compliance_docs.manual_review_reason for a term letter whose every holiday range is past (20260927181100). */
+export const LETTER_EXPIRED = 'letter expired';
+
+/**
+ * Why the extractor sent this upload to a human beyond its confidence
+ * (manual_review_reason, 20260927185000), rendered beside the AI badge in
+ * the wireframe's style for a flagged document — a pill and a muted note.
+ * Today one reason: a University Term Dates Letter whose every holiday
+ * range is already past. "An already-expired letter is not accepted"
+ * (§4.2): Verify refuses it, so the reviewer rejects it and the worker
+ * uploads the current one (§4.1 N8). Anything else the column may carry
+ * later is shown as it is, so a new reason is never silently hidden.
+ */
+export function reviewFlag(row: QueueRow): { label: string; detail: string } | null {
+  if (row.kind !== 'document' || !row.manual_review_reason) return null;
+  if (row.manual_review_reason === LETTER_EXPIRED) {
+    return {
+      label: 'Letter expired',
+      detail: 'every term date on it is in the past — not accepted (§4.2)',
+    };
+  }
+  return { label: 'Flagged', detail: row.manual_review_reason };
+}
+
 /** The "Uploaded" cell's sub-line: how long it has waited, and for the rtw_date row, what the stamp is. */
 export function uploadedLine(row: QueueRow, now: Date = new Date()): string {
   const age = ageLabel(row.submitted_at, now);
@@ -272,6 +296,11 @@ export function verifyHint(row: QueueRow): string | null {
   }
   if (row.item_type === 'university_completion_letter') {
     return 'Approve → confirm the completion date and visa expiry → 48 h/week from the completion date, never past the visa';
+  }
+  if (row.kind === 'document' && row.manual_review_reason === LETTER_EXPIRED) {
+    // compliance_verify_document() raises term_letter_expired on this row
+    // (20260927181100); the screen says so before the button does.
+    return 'Verify is refused — an already-expired letter is not accepted (§4.2) · Reject → N8 with Re-upload, the worker sends the current year’s letter';
   }
   if (row.kind === 'declaration' && row.declaration_source === 'in_employment') {
     return 'Verify → re-check → N15 "your shifts are open again" · Reject → converts to a manual block';

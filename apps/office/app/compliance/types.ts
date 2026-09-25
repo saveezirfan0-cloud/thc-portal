@@ -64,6 +64,14 @@ export interface QueueRow {
   size_bytes: number | null;
   /** Why a row that is not a pending upload is here; null on document and declaration rows. */
   review_reason: string | null;
+  /**
+   * Why the extractor sent this upload to a human beyond its confidence
+   * (compliance_docs.manual_review_reason, 20260927181100 / 20260927185000):
+   * `letter expired` for a term letter whose every holiday range is already
+   * past — Verify refuses it (§4.2). Null when the flag is confidence only,
+   * and on declaration and rtw_date rows.
+   */
+  manual_review_reason: string | null;
 }
 
 export type RadarState = 'expired' | 'expiring' | 'valid';

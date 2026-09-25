@@ -28,6 +28,9 @@ export async function loadCompliance(): Promise<CompliancePageData> {
 
   const supabase = createClient(await cookies());
   const [queue, radar, warnings, mode] = await Promise.all([
+    // `*` is every column of the view, in QueueRow's shape — including
+    // review_reason (20260927160000) and manual_review_reason
+    // (20260927185000), which the row renders beside the AI badge.
     supabase
       .from('compliance_review_queue_v')
       .select('*')

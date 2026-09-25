@@ -18,6 +18,12 @@ const MESSAGES: [RegExp, string][] = [
     /^already_expired: (\d{4}-\d{2}-\d{2})/,
     'This document has already expired ($1) and cannot be accepted — reject it and ask for a current one (§4.2).',
   ],
+  // compliance_verify_document on a term letter whose every holiday range
+  // is past (20260927181100): "an already-expired letter is not accepted".
+  [
+    /^term_letter_expired/,
+    'This letter has expired: every term date on it is before today. Reject it and ask the worker for a current letter (§4.2).',
+  ],
   [
     /^use_approve_completion_letter/,
     'A completion letter is approved with its completion date and visa expiry.',
