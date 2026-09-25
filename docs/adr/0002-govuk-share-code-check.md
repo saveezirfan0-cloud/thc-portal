@@ -1,6 +1,6 @@
 # ADR-0002 · gov.uk share-code check without a public API
 
-**Status:** Proposed — decide at kick-off
+**Status:** Superseded by [ADR-0025](0025-automated-govuk-share-code-check.md) (28.09.2026): the check runs itself on gov.uk with no provider, and an admin confirms each result with one click. Option 1 below remains what the office does while the `rtw-check` job is off or when a check fails.
 
 ## Context
 §2.3/§2.6 say the system "queries gov.uk itself" with share code + DOB and stores the PDF report and the right-to-work-until date. The gov.uk employer service ("View a job applicant's right to work details") is a web form with no published API for employers.

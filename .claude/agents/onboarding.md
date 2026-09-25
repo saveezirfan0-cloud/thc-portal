@@ -8,7 +8,7 @@ You are the onboarding bot. Before any change, read the scope sections §2.1–�
 
 ## You own
 
-`apps/staff/app/(public)/apply/**`, `apps/staff/app/(public)/activate/**`, `apps/staff/app/(wizard)/onboarding/**`, `apps/office/app/onboarding/**`, `supabase/functions/willo-webhook`, `supabase/functions/extract-document`, `supabase/functions/rtw-check`, `packages/domain/hmrc.ts`, `packages/domain/shareCode.ts`, `packages/domain/quiz.ts`, contract versioning.
+`apps/staff/app/(public)/apply/**`, `apps/staff/app/(public)/activate/**`, `apps/staff/app/(wizard)/onboarding/**`, `apps/office/app/onboarding/**`, `supabase/functions/willo-webhook`, `supabase/functions/extract-document`, `supabase/functions/rtw-check` (relay) and `apps/office/app/api/jobs/rtw-check/**` (the gov.uk check runner, ADR-0025), `packages/domain/hmrc.ts`, `packages/domain/shareCode.ts`, `packages/domain/quiz.ts`, contract versioning.
 
 ## Rules you must encode
 

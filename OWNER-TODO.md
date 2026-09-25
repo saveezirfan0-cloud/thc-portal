@@ -64,6 +64,40 @@ Nothing is lost; it all sends once the keys exist.
       plus test `190`, not a dashboard change. Then re-run
       `select install_job_schedules();`
 
+## 4b · Switch on the gov.uk share-code check (ADR-0025)
+
+Until this is done nothing is queued and the office checks share codes by hand,
+exactly as today. No provider account is needed.
+
+- [ ] **Legal, before anything else:** THC's adviser confirms that driving the Home
+      Office "View a job applicant's right to work details" service with an automated
+      browser is acceptable, and that the retained PDF (the service's own, or the result
+      page printed to PDF) is an acceptable copy. The photo check stays with a person.
+- [ ] **Privacy:** add Anthropic (reads the result page) to the privacy notice (`/privacy`)
+      and the DPIA, and put Anthropic's commercial terms / DPA on file.
+- [ ] **Vercel Pro** on the Back Office project (commercial use; one check runs 20–60 s).
+- [ ] Anthropic: create an API key at https://console.anthropic.com (API Keys) and set a
+      monthly spend limit there.
+- [ ] Generate the job secret once: `openssl rand -hex 32`.
+- [ ] Vercel, **Back Office** project, server-side: `ANTHROPIC_API_KEY`, `RTW_JOB_SECRET`
+      (the value above), `RTW_COMPANY_NAME` (THC's legal name as it should print on the
+      result). Redeploy.
+- [ ] Supabase: `supabase secrets set OFFICE_BASE_URL=https://<back office host> RTW_JOB_SECRET=<the same value>`
+      then `supabase functions deploy rtw-check`.
+- [ ] **Live test on staging first** (docs/adr/0025 "Not verified"). With the job on in
+      staging, have consenting staff submit real share codes: EU settled, EU pre-settled,
+      work visa, student, dependant; then one with a wrong date of birth and one expired
+      code. For each, compare the Back Office result with a manual check on gov.uk for the
+      same code: name, date, conditions, photo, PDF. If the page differs, update
+      `apps/office/app/api/jobs/rtw-check/_lib/govuk-assumptions.ts` only.
+- [ ] Switch on, in the SQL editor:
+      `update job_schedules set enabled = true where job = 'rtw-check'; select install_job_schedules();`
+      Then watch `job_runs` for `rtw-check` and the Compliance queue.
+- [ ] Share codes entered before the switch are not queued: press **Run check again** on
+      each pending one in the Compliance queue.
+- [ ] After the first deploy of the migration, regenerate the database types:
+      `pnpm --filter @thc/db gen:types`.
+
 ## 5 · From THC (content the app shows as placeholders)
 
 - [ ] Health & Safety **quiz**: the 10 questions and answers.
@@ -79,6 +113,11 @@ Nothing is lost; it all sends once the keys exist.
 
 ## 6 · Decisions
 
+- [ ] **Keep gov.uk reports after a GDPR removal?** The Home Office asks employers to keep
+      the right-to-work check result for the employment plus two years. Today a removal
+      erases the share-code report and photo with everything else (ADR-0019 held only the
+      completion letter; ADR-0025 does not extend it). Tell us if the report should be held
+      like the completion letter.
 - [ ] **Office pin editor?** When a worker's postcode lookup fails, their
       profile shows "location out of date" until they re-save a findable
       address. Say if managers should be able to move the pin themselves.

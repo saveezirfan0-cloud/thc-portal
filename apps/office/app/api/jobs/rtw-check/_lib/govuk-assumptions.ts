@@ -6,7 +6,7 @@
  *
  * Nothing here has been run against the real page: this environment has
  * no network route to it and no real share code. Each entry says how
- * fragile it is. When the live test (OWNER-TODO, "Switch on the gov.uk
+ * fragile it is. When the live test (OWNER-TODO §4b, "Switch on the gov.uk
  * check") shows a difference, this file is the only one to change: the
  * browser steps in govuk.ts read these values and nothing else, and the
  * result is read by Claude from the page itself, not by selectors.

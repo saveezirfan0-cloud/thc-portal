@@ -146,6 +146,11 @@ Do not chase these now. Each is listed against the phase that first needs it.
 | `RESEND_API_KEY` | https://resend.com/api-keys — a **Sending access** key for the verified domain | P2, every email (`notify-drain`) — see below |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Generated, not obtained. Run `npx web-push generate-vapid-keys`; the subject is `mailto:admin@thehospitalitycompany.co.uk` | P2, every push (`notify-drain`) — see below |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | https://account.mapbox.com/access-tokens/ | Phase 2, the venues map |
+| `ANTHROPIC_API_KEY` | https://console.anthropic.com → API Keys (ADR-0025). **Vercel, Back Office only, server-side** — never a `NEXT_PUBLIC_` name. Claude reads the gov.uk result PDF. Missing → the runner answers 503 and claims nothing | The gov.uk share-code check |
+| `RTW_JOB_SECRET` | Generated, not obtained: `openssl rand -hex 32`. The **same value in two places**: Vercel (Back Office, server-side) and a Supabase secret for the `rtw-check` relay. Under 32 characters counts as unset and every call is refused | The gov.uk share-code check |
+| `RTW_COMPANY_NAME` | THC's legal entity name exactly as it should print on the Home Office result. **Vercel, Back Office** | The gov.uk share-code check |
+| `OFFICE_BASE_URL` | The Back Office's public origin, e.g. `https://office.thehospitalitycompany.co.uk`, no trailing slash. **Supabase secret** for the `rtw-check` relay — deliberately not a `settings` row, so no admin session can redirect the secret (ADR-0025) | The gov.uk share-code check |
+| `RTW_CHROMIUM_PATH` | Optional, **local development only**: a Chromium binary for the runner (e.g. `/opt/pw-browsers/chromium_headless_shell-1194/chrome-linux/headless_shell`). Unset on Vercel, where `@sparticuz/chromium` supplies it | Running the check locally |
 
 Anything used by a background function goes in Supabase rather than Vercel:
 
