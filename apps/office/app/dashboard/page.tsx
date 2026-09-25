@@ -141,8 +141,8 @@ export default async function Page() {
                   // side, not one total with an asterisk.
                   <span className="dash-split">
                     <span>
-                      Base {formatPounds(finance.baseTotal)} · Holiday{' '}
-                      {formatPounds(finance.holidayTotal)}
+                      <span>Base {formatPounds(finance.baseTotal)}</span> ·{' '}
+                      <span>Holiday {formatPounds(finance.holidayTotal)}</span>
                     </span>
                     <span className="muted">never blended</span>
                   </span>

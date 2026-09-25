@@ -52,6 +52,10 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  // Every hook runs before the branch picker's early return: a hook called
+  // only once a branch is chosen changes the hook count between renders,
+  // and React throws on the click that picks the branch.
+  const shareId = useId();
 
   const set = <K extends keyof RtwForm>(key: K, value: RtwForm[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
@@ -113,7 +117,6 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
 
   const docs = requiredDocuments(branch, form.ukChoice ?? 'passport');
   const shareOk = isValidShareCode(form.shareCode);
-  const shareId = useId();
   const showShareError = form.shareCode.trim() !== '' && !shareOk;
 
   return (
