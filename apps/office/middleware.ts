@@ -42,6 +42,16 @@ function isPublic(pathname: string): boolean {
  */
 const SIGN_OUT_PATH = '/auth/signout';
 
+/**
+ * Background jobs called by the scheduler, not by a person (ADR-0025).
+ * pg_cron has no session, so the role gate would send them to /login.
+ * Each route authenticates the call itself with its own secret and
+ * constant-time comparison, and answers 401 to everyone else — including
+ * a signed-in admin. POST only, exact paths only: nothing under these
+ * paths, and no GET, inherits the exemption.
+ */
+const JOB_PATHS = ['/api/jobs/rtw-check'];
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -73,6 +83,10 @@ export async function middleware(request: NextRequest) {
   }
 
   if (request.nextUrl.pathname === SIGN_OUT_PATH && request.method === 'POST') {
+    return response;
+  }
+
+  if (JOB_PATHS.includes(request.nextUrl.pathname) && request.method === 'POST') {
     return response;
   }
 
