@@ -23,7 +23,7 @@ create policy office_users_invite_links on notification_outbox
   as restrictive
   for select
   to authenticated
-  using (template <> 'E11' or office_can('users'));
+  using (template <> 'E11' or (select office_can('users')));
 
 create or replace function public.redact_finished_invite_link()
 returns trigger

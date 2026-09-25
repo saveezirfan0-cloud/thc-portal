@@ -7,6 +7,7 @@ import { createAdminClient } from '@thc/db/admin';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
 import { queueInviteEmail } from '../_lib/inviteEmail';
+import { sessionIsAdmin } from '../_lib/sessionRole';
 import { officeOrigin } from '../login/origin';
 import {
   explainAccountError as explainAccountCode,
@@ -71,12 +72,9 @@ function session(store: Awaited<ReturnType<typeof cookies>>): SupabaseClient {
 async function asAdmin(supabase: SupabaseClient): Promise<boolean> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth?.user) return false;
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', auth.user.id)
-    .maybeSingle<{ role: string }>();
-  return profile?.role === 'admin';
+  // current_app_role(), not the profiles row: it also refuses a
+  // switched-off login and a two-step login below aal2 (20260930160000).
+  return sessionIsAdmin(supabase);
 }
 
 /**

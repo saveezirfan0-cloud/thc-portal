@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { createAdminClient } from '@thc/db/admin';
+import { sessionIsAdmin } from '../_lib/sessionRole';
 import { supabaseConfigured } from '../staff/data';
 import { periodToRange, periodsProblem } from './view-model';
 import { acceptWithAccount, resendActivation } from './activation';
@@ -320,12 +321,9 @@ async function asAdmin(): Promise<boolean> {
   const supabase = createClient(await cookies());
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return false;
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', auth.user.id)
-    .maybeSingle<{ role: string }>();
-  return profile?.role === 'admin';
+  // current_app_role(), not the profiles row: it also refuses a
+  // switched-off login and a two-step login below aal2 (20260930160000).
+  return sessionIsAdmin(supabase);
 }
 
 /**

@@ -73,3 +73,9 @@ Stated plainly, because a claim of protection that is not there is worse than no
 - `packages/db/src/types.generated.ts`: `profiles.office_role` and the enum hand-added; regenerate after deploy.
 - The Back Office's invite now calls the six-argument `admin_register_account`.
 - Adding an office role, or a permission, is a migration (`office_can`) and a change to `permissions.ts`, each held by its own test.
+
+## Update — security review of the merged branch
+
+- `20260930180000` rewrites every `public` policy that called `current_app_role()` or `office_can()` bare to `(select …)`, so each runs once per statement instead of once per row (the stricter `current_app_role()` of `20260930160000` had tripled per-row cost). The rule is unchanged; pgTAP 658 fails if a bare call comes back.
+- The service-key server actions (`staff/[id]`, `onboarding`, `users`) now ask `current_app_role()` through `sessionIsAdmin()` instead of reading `profiles.role`, so a switched-off login or a two-step login below aal2 cannot reach the service key even if it got past the middleware.
+- Still open, older than this work: E3 activation links (workers) sit in `notification_outbox` readable by every Back Office login. Fencing them like E11 needs a decision on which office roles run Onboarding.
