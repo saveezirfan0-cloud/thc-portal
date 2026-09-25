@@ -90,12 +90,13 @@ the gap grew from seventeen migrations to twenty-six. `push` carries no such
 rule — it runs the file from the commit that was pushed — which is why the
 deploy now lives beside the tests that gate it.
 
-**It deploys migrations, and nothing else.** Two deploy steps stay manual, and in this
-order — `supabase functions deploy`, then `select install_job_schedules()`. docs/13 P1 is
-explicit about why the order matters: the other way round, pg_cron spends the gap posting
-at a 404. No migration calls `install_job_schedules()` itself, so there is no automatic
-hazard here; the risk is only that this page leaves you believing a green `ci` means the
-whole system is deployed. It means the schema is.
+**It deploys migrations, then all seven Edge Functions** (since 25.09; `willo-webhook`
+with `--no-verify-jwt`). One step stays manual: `select install_job_schedules()`, once,
+after the Vault secret `service_role_key` exists (docs/16 §4.7). docs/13 P1 is explicit
+about the order — functions first, schedules second, or pg_cron spends the gap posting at
+a 404 — and the job keeps it. No migration calls `install_job_schedules()` itself; the
+risk is only believing a green `ci` means the jobs are running. It means the schema and
+the functions are deployed.
 
 **If the deploy fails,** re-run the `deploy-database` job from its run page in Actions —
 the tests do not need repeating. There is no `workflow_dispatch` button for it, and adding
