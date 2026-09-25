@@ -1,6 +1,6 @@
 # 14 · Where the build actually is, and what to do next
 
-Figures re-verified against `main` at `dbd0227`. This is the honest state, not
+Figures re-verified on `claude/festive-edison-ejx5tj` at the 26.09 audit round (after `c0ab319`). This is the honest state, not
 the plan — every number below was produced by running something, not by counting
 what a previous revision claimed. Where something looks finished but is not, it
 says so.
@@ -16,10 +16,10 @@ screen it names is now built; what is left is listed in §2 and §4 below.
 ## 1 · What is genuinely built
 
 **Every screen in the product now exists.** Three Next.js apps on one Supabase
-database, **81 migrations**, **70 pgTAP files (2,473 assertions)**, **1,597 Vitest
-tests across 94 files** in eight packages, seven Edge Functions (`auto-staffing`,
+database, **99 migrations**, **76 pgTAP files (2,822 assertions)**, **1,981 Vitest
+tests across 124 files** in eight packages, seven Edge Functions (`auto-staffing`,
 `booking-tick`, `compliance-daily`, `finance-reports`, `gdpr-purge`,
-`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0023`. CI runs
+`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0029`. CI runs
 lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 `deploy-database` pushes migrations to the live project on merge to `main`.
 
@@ -27,10 +27,10 @@ lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 
 | Check | Result |
 |---|---|
-| All 81 migrations applied in order to an **empty** database | clean |
-| `scripts/pgtest-local.sh` — all 70 pgTAP files | 2,473 assertions, **2 failures**, both expected (below) |
-| `turbo lint typecheck test` | 29/29 tasks |
-| Live Supabase project vs the repo | **identical**, all 81 applied |
+| All 99 migrations applied in order to an **empty** database | clean |
+| `scripts/pgtest-local.sh` — all 76 pgTAP files | 2,822 assertions, **2 failures**, both expected (below) |
+| `turbo lint typecheck test build` | 29/29 tasks |
+| Live Supabase project vs the repo | 81 applied live; the 18 from 26.09 deploy with the merge to `main` |
 
 `002` assertions **6 and 7** fail in every local harness and **that pair is the
 clean baseline**: they record that on Supabase `anon` *can* write
@@ -105,10 +105,32 @@ real environment to prove it in.
    the induction slides, the contract text (`contract_versions`), E2b and
    CL1–CL6 wording, the `/privacy` legal text, and sample completion letters for
    the Gemini extractor.
-4. **Browser passes against the live project.** No new screen has been clicked
-   through for real; coverage is render tests, view-model tests and pgTAP. A
-   `qa-reviewer` pass per wireframe and Playwright journeys for the wizard,
-   activation and the drain are the next safety net.
+4. **Browser passes against the live project.** No screen has been clicked
+   through for real; coverage is render tests, view-model tests, pgTAP and —
+   since 26.09 — Playwright journeys for the wizard, activation, the outbox and
+   a signed-in Client Portal, which run only in CI (`supabase start`).
+4b. **The audit round is half done.** The 26.09 audit (`.claude/agents/audit.md`,
+   `security.md`, qa per screen) ran about half its slices before the session
+   limits cut it: un-audited are the office staff, staff profile, clients,
+   roles, reports, feedback, venues, settings and check-in screens; the Staff
+   App invites, radar, documents, profile and lock screens; every Client
+   Portal screen; scope §3.3–§4.5, §5.1–§5.2b, §7 BG-01–05, §9.6–§9.12,
+   §10.1–§10.7, §11, RULE index; and all four design lenses. Of the 375
+   findings it did raise, the fix round closed the database half and the
+   events, check-in, shifts, apply and login screens; still open are the
+   findings under office onboarding / staff / dashboard / clients / settings /
+   design-system, staff onboarding / documents / profile / activate / reset /
+   notifications / install / privacy, the client app, docs, and e2e — the
+   per-group lists are the next session's input (`scratchpad/fix-groups` was
+   session-local; regenerate by re-running the audit briefs on those slices).
+4c. **ADR-0018's rota-guard gap.** `can_roster_staff()` reads a null
+   `right_to_work_until` on a non-UK branch as "no expiry"; pgTAP `524` §B pins
+   that as current behaviour. Close it by restating the guard from
+   `20260924130100` (a null date with `rtw_no_time_limit = false` on a non-UK
+   branch is a hard stop) and flipping `524` §B.
+4d. **Types.** `packages/db/src/types.generated.ts` is still the placeholder:
+   `supabase gen types` needs Docker even with `--db-url`, so it runs after the
+   deploy with `pnpm --filter @thc/db gen:types` against the linked project.
 5. **Nothing else is open in code** beyond §4's notes. The 25.09 and 26.09
    rounds closed the last gaps (below).
 

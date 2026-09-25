@@ -46,7 +46,10 @@ export type Env = Record<string, string | undefined>;
 
 /** The salt in force. Pure: the environment is a parameter for the test. */
 export function callerSalt(env: Env = process.env): string {
-  const salt = env['APPLY_CALLER_SALT'];
+  // Either name: the Staff Vercel project was given the salt as
+  // APPLY_THROTTLE_SALT on 23.09, before this module named it; reading both
+  // spares the owner a rename and a redeploy (docs/16 §3.1).
+  const salt = env['APPLY_CALLER_SALT'] || env['APPLY_THROTTLE_SALT'];
   return salt && salt.length > 0 ? salt : FALLBACK_SALT;
 }
 

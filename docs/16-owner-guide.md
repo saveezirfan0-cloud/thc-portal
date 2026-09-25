@@ -398,18 +398,19 @@ only; values are never read). "P" = Production, "Pv" = Preview.
 | `APP_TZ` | set, P+Pv | set, P+Pv | set, P+Pv | server | Always `Europe/London` (§1.8); `next.config.ts` defaults it, the variable pins it. |
 | `NEXT_PUBLIC_STAFF_URL` | set, P+Pv | **add** | set, P+Pv | browser | Office: the origin E3's `/activate/:token` link is built on (`apps/office/app/onboarding/actions.ts` refuses Accept in production without it) and the `/privacy` link. Client: the `/privacy` link. **Staff: the origin password-reset links come back to** (`apps/staff/app/forgot/actions.ts`); without it the app falls back to `VERCEL_URL`, the deployment's unique hostname, which Vercel's deployment protection puts behind a login wall. Value today: `https://thc-portal-staff.vercel.app`. |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | — | **add in §4.5** | — | browser | The key the browser subscribes with (`apps/staff/lib/push.ts`). Absent, the app reports "Notifications are not available yet" and never asks permission. Must equal the Supabase `VAPID_PUBLIC_KEY`. |
-| `APPLY_CALLER_SALT` | — | **rename** — present as `APPLY_THROTTLE_SALT`, P+Pv (23.09) | — | **server only** | HMAC salt for `/apply`'s per-caller limit (ADR-0024, §2.1, docs/14 §4 "unthrottled per caller"), read by `apps/staff/lib/callerKey.ts`. Only a hash of the caller's address is stored; rotating it resets the counters. See the note below. |
+| `APPLY_CALLER_SALT` (or `APPLY_THROTTLE_SALT`) | — | **set** — present as `APPLY_THROTTLE_SALT`, P+Pv (23.09); either name is read | — | **server only** | HMAC salt for `/apply`'s per-caller limit (ADR-0024, §2.1, docs/14 §4 "unthrottled per caller"), read by `apps/staff/lib/callerKey.ts`. Only a hash of the caller's address is stored; rotating it resets the counters. See the note below. |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | optional | optional | — | browser | Raster tiles under the venue map (`apps/office/app/venues/VenueMap.tsx`) and the home-address pin (`apps/staff/app/onboarding/_components/PinMap.tsx`). Without it the maps draw their own surface with no tiles (ADR-0005). §6.2. |
 | `MAPBOX_TOKEN` | optional | — | — | server only | Reverse geocoding for the venue pin (`apps/office/app/venues/actions.ts`); falls back to the public token. §6.2. |
 | `RESEND_API_KEY` | do not set | do not set | do not set | — | `turbo.json` and docs/04 list it, but no app reads it. It is a **Supabase** secret (§4.4). |
 
-**The salt's name does not match yet.** The code reads **`APPLY_CALLER_SALT`**
-(`apps/staff/lib/callerKey.ts`, ADR-0024); the variable on `thc-portal-staff`
-was created on 23.09 as **`APPLY_THROTTLE_SALT`**. Rename it on the Vercel page
-(edit → Key) and redeploy (§3.3). Until then the app uses its built-in fallback
-salt and logs `APPLY_CALLER_SALT is not set` once per cold start — the limit
-still works, but the fallback is in the repository, so anyone reading the
-table and the code could reverse a hash. To generate a value:
+**The salt already exists under its earlier name.** The variable on
+`thc-portal-staff` was created on 23.09 as **`APPLY_THROTTLE_SALT`**;
+`apps/staff/lib/callerKey.ts` (ADR-0024) reads `APPLY_CALLER_SALT` first and
+`APPLY_THROTTLE_SALT` second, so **no rename is needed**. Only if neither is set
+does the app use its built-in fallback salt and log `APPLY_CALLER_SALT is not
+set` once per cold start — the limit still works, but the fallback is in the
+repository, so anyone reading the table and the code could reverse a hash. To
+generate a value, should you ever rotate it:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
@@ -1221,6 +1222,6 @@ and what a session could confirm on 23.09.2026. Tick the last column in
 | Done | `SUPABASE_SERVICE_ROLE_KEY` on Office and Staff | §3.1 | present on all three | [x] |
 | Done | `NEXT_PUBLIC_STAFF_URL` on Office and Client | §3.1 | present; **add to Staff too** | [x] |
 | Done | Live database caught up | §7.1 | 81 applied, newest `20260925100100` | [x] |
-| — | Rename `APPLY_THROTTLE_SALT` → `APPLY_CALLER_SALT` on thc-portal-staff (ADR-0024, not yet in OWNER-TODO) | §3.1 | Vercel holds `APPLY_THROTTLE_SALT`; the code reads `APPLY_CALLER_SALT` | [ ] |
+| — | `/apply` salt on thc-portal-staff (ADR-0024) | §3.1 | Vercel holds `APPLY_THROTTLE_SALT`, and the code reads that name too — nothing to do | [x] |
 | — | `gdpr-purge` has no schedule row (found while writing this page) | §4.6 | a migration for a session | [ ] |
 | — | Optional: Mapbox tokens, Gemini key, Firewall rule | §6.2, §6.1, §3.6 | none set | [ ] |

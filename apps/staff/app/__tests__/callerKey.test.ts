@@ -127,6 +127,11 @@ describe('callerSalt', () => {
     expect(callerSalt({ APPLY_CALLER_SALT: SALT })).toBe(SALT);
   });
 
+  it('reads APPLY_THROTTLE_SALT too — the name the Vercel project already holds (docs/16 §3.1)', () => {
+    expect(callerSalt({ APPLY_THROTTLE_SALT: SALT })).toBe(SALT);
+    expect(callerSalt({ APPLY_CALLER_SALT: 'wins', APPLY_THROTTLE_SALT: SALT })).toBe('wins');
+  });
+
   it('falls back to the built-in salt when it is unset or empty, so a fresh environment still throttles', () => {
     expect(callerSalt({})).toBe(FALLBACK_SALT);
     expect(callerSalt({ APPLY_CALLER_SALT: '' })).toBe(FALLBACK_SALT);
