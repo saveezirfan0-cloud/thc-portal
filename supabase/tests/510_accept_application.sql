@@ -192,9 +192,12 @@ set local role authenticated;
 select throws_ok($$ select accept_application('51300000-0000-4000-8000-0000000000ff') $$,
   'P0002', 'booking_not_found', 'an unknown booking is an error, not a silent no-op');
 
+-- One threshold with Radar (20260929110200, D39): an application is for a
+-- seat, and at 1 confirmed of 1 (+1) there is none left — the buffer seat
+-- is filled by invitations. So Ada's acceptance closes the other two.
 select is(accept_application(:'a1'),
-  jsonb_build_object('ok', true, 'withdrawn', 0, 'closedApplications', 0),
-  'the office accepts Ada''s application: 1 confirmed of 1 (+1), so nobody else is closed yet');
+  jsonb_build_object('ok', true, 'withdrawn', 0, 'closedApplications', 2),
+  'the office accepts Ada''s application: 1 confirmed of 1 (+1) takes the last seat and closes the other two applications');
 select is((select status::text from bookings where id = :'a1'), 'confirmed', 'applied → confirmed');
 select isnt((select confirmed_at from bookings where id = :'a1'), null, 'confirmed_at is stamped');
 select is((select template from notification_outbox where key = 'N10:booking:' || :'a1'), 'N10',
@@ -206,12 +209,12 @@ select is((select payload ->> 'event' from notification_outbox where key = 'N10:
 select is((select payload ->> 'date' from notification_outbox where key = 'N10:booking:' || :'a1'),
   to_char(:'w'::date + 3, 'DD Mon YYYY'), 'and {date}, the role''s own UK day');
 select is((select count(*)::int from notification_outbox
-            where template = 'N10c' and recipient_staff_id in (:'w2', :'w3')), 0,
-  'no N10c while the buffer slot is still open: the buffer is absolute, and the role is not full');
+            where template = 'N10c' and recipient_staff_id in (:'w2', :'w3')), 2,
+  'Ben and Cai get N10c at the point Radar stops offering the shift, not one buffer seat later');
 
 select is(accept_application(:'a2'),
-  jsonb_build_object('ok', true, 'withdrawn', 0, 'closedApplications', 1),
-  'Ben takes the buffer slot: 2 confirmed of 1 (+1) fills the role and closes the one application left');
+  jsonb_build_object('ok', false, 'reason', 'not_applied', 'status', 'closed'),
+  'Ben''s application is already closed: the buffer seat goes to an invitation, and the office can still invite him');
 select is((select status::text || '/' || cancel_cause from bookings where id = :'a3'), 'closed/slot_taken',
   'Cai''s application is closed as not taken forward (ADR-0022''s cause)');
 select isnt((select cancelled_at from bookings where id = :'a3'), null,
@@ -221,14 +224,14 @@ select is((select count(*)::int from notification_outbox
               and payload ->> 'bookingId' = :'a3'
               and payload ->> 'date' = to_char(:'w'::date + 3, 'DD Mon YYYY')), 1,
   'and Cai gets N10c, once, with {event} and {date}');
-select is((select count(*)::int from notification_outbox where template = 'N10c' and recipient_staff_id in (:'w1', :'w2')), 0,
-  'the two who were booked get no N10c');
-select is((select count(*)::int from bookings where shift_id = :'s' and status = 'confirmed'), 2,
-  'the role holds headcount + buffer confirmed, and no more');
+select is((select count(*)::int from notification_outbox where template = 'N10c' and recipient_staff_id = :'w1'), 0,
+  'Ada, who was booked, gets no N10c');
+select is((select count(*)::int from bookings where shift_id = :'s' and status = 'confirmed'), 1,
+  'applications took the headcount seat and no more; the buffer seat is left to invitations');
 select is(accept_application(:'a3') ->> 'reason', 'not_applied',
   'a closed application cannot be accepted');
 select is((select count(*)::int from audit_log where action = 'booking.application_accepted'
-            and entity_id in (:'a1', :'a2')), 2, 'each acceptance is audited');
+            and entity_id in (:'a1', :'a2')), 1, 'the acceptance is audited, the refusal is not');
 
 -- A role that was full before this migration: the application closes now.
 select is(accept_application(:'a4'),

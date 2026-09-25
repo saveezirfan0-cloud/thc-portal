@@ -84,9 +84,13 @@ export const BOOKING_TRANSITIONS: Readonly<Record<BookingStatus, readonly Bookin
   confirmed: ['worked', 'turned_away', 'cancelled'],
   worked: [],
   turned_away: [],
-  cancelled: [],
-  // §10.4: a dead offer may be applied for again on Radar.
-  closed: ['applied'],
+  // §3.6: only self-cancel excludes permanently, so any other cancelled row
+  // may be offered again (invite_worker) or applied for again (Radar). Who
+  // may reopen which row is `bookingReopenableBy` (ADR-0031); a
+  // self-cancelled row never leaves `cancelled` (bookings_self_cancel_is_final).
+  cancelled: ['invited', 'applied'],
+  // §10.4: a dead offer may be applied for again on Radar, or made again.
+  closed: ['applied', 'invited'],
 };
 
 /**
@@ -132,6 +136,41 @@ export function cancelCauseStatus(cause: CancelCause): 'cancelled' | 'closed' {
  */
 export function excludesFromEvent(cause: CancelCause): boolean {
   return cause === 'self_cancel';
+}
+
+/**
+ * Who may reopen an ended booking row on the same section (§3.6, §3.4,
+ * §10.4; ADR-0031). `booking_reopenable_by()` in SQL is the same table.
+ *
+ *   never   self_cancel (RULE-04), event_cancelled, gdpr / gdpr_invite
+ *   anyone  ended by circumstance — slot_taken, overlap_auto_withdraw, a
+ *           block or leave cascade: an auto-assign round may invite again
+ *   person  ended by a decision — declined, withdrawn_by_worker,
+ *           office_withdraw, ready_cutoff: only the office's manual invite
+ *           or the worker's own Radar application reopens it
+ *
+ * Null for a live row (invited, applied, confirmed, worked, turned_away):
+ * that is `already_has_booking`, not something to reopen.
+ */
+export type Reopener = 'never' | 'anyone' | 'person';
+
+const NEVER_REOPENED: readonly string[] = ['self_cancel', 'event_cancelled', 'gdpr', 'gdpr_invite'];
+const REOPENED_BY_ANYONE: readonly string[] = [
+  'slot_taken',
+  'overlap_auto_withdraw',
+  'blocked',
+  'blocked_invite',
+  'left',
+  'left_invite',
+];
+
+export function bookingReopenableBy(status: string, cause: string | null): Reopener | null {
+  if (status !== 'cancelled' && status !== 'closed') return null;
+  const c = cause ?? '';
+  if (status === 'closed') return c === 'slot_taken' ? 'anyone' : 'person';
+  if (NEVER_REOPENED.includes(c)) return 'never';
+  if (REOPENED_BY_ANYONE.includes(c)) return 'anyone';
+  return 'person';
 }
 
 /** Blocked, inactive and removed workers get no invitations and are out of the scoring pool (§2.12). */
@@ -225,9 +264,12 @@ export function assertRtwCheckTransition(from: RtwCheckStatus, to: RtwCheckStatu
  *
  * `gate` is the auto-assign hard gate for this worker on this section
  * (`auto_assign_candidates`): `null` for none, `undefined` when the worker
- * has no candidate row at all (removed §1.7, left §10.6). Fill counts ONLY
- * confirmed and the buffer is absolute, so the role is full at
- * `headcount + buffer`.
+ * has no candidate row at all (removed §1.7, left §10.6, or not a worker).
+ * Fill counts confirmed and checked-in (`worked`) bookings only. An
+ * application is for a seat, so it is refused — and the pending ones close
+ * with N10c — once no seat is left against HEADCOUNT: the same point Radar
+ * stops offering the shift (D39, ADR-0031). The buffer is filled by
+ * invitations.
  *
  * There is no Decline: §10.4 and §8 end an application only by N10 (taken
  * forward), N10c (the role filled), the worker withdrawing it, or N12 (the
@@ -254,14 +296,14 @@ export interface ApplicationAcceptInput {
   status: BookingStatus;
   eventCancelled: boolean;
   shiftEndsAt: Date;
+  /** Confirmed and checked-in (`worked`) bookings on the section. */
   confirmed: number;
   headcount: number;
-  buffer: number;
   gate: string | null | undefined;
 }
 
 export type ApplicationAcceptOutcome =
-  | { ok: true; to: 'confirmed'; fillsRole: boolean }
+  | { ok: true; to: 'confirmed'; closesApplications: boolean }
   | { ok: false; reason: ApplicationAcceptRefusal };
 
 export function acceptApplication(
@@ -271,7 +313,7 @@ export function acceptApplication(
   if (input.eventCancelled) return { ok: false, reason: 'event_cancelled' };
   if (input.status !== 'applied') return { ok: false, reason: 'not_applied' };
   if (now.getTime() >= input.shiftEndsAt.getTime()) return { ok: false, reason: 'event_ended' };
-  if (roleFilled(input.confirmed, input.headcount, input.buffer)) {
+  if (noSeatLeft(input.confirmed, input.headcount)) {
     return { ok: false, reason: 'full' };
   }
   if (input.gate === undefined) return { ok: false, reason: 'not_bookable' };
@@ -288,18 +330,20 @@ export function acceptApplication(
   return {
     ok: true,
     to: 'confirmed',
-    fillsRole: roleFilled(input.confirmed + 1, input.headcount, input.buffer),
+    closesApplications: noSeatLeft(input.confirmed + 1, input.headcount),
   };
 }
 
 /**
- * §8 N10c: the moment a role is fully confirmed — headcount + buffer, only
- * confirmed counting — every still-pending application on it closes
- * (`closed`, cause `slot_taken`) and its worker is told the shift filled.
- * `close_filled_role_applications()` in the database.
+ * §8 N10c / §10.4: the moment a role has no seat left — confirmed (or
+ * checked in) >= headcount, the point Radar stops offering it — every
+ * still-pending application on it closes (`closed`, cause `slot_taken`)
+ * and its worker is told the shift filled. One threshold for Radar,
+ * `apply_to_shift`, `accept_application` and
+ * `close_filled_role_applications()` (20260929110200, ADR-0031).
  */
-export function roleFilled(confirmed: number, headcount: number, buffer: number): boolean {
-  return confirmed >= headcount + buffer;
+export function noSeatLeft(confirmed: number, headcount: number): boolean {
+  return confirmed >= headcount;
 }
 
 /** The cause an application closes with when the role fills without it (N10c). */
