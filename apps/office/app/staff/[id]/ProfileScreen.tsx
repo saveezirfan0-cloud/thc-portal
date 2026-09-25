@@ -17,6 +17,7 @@ import {
   TileGrid,
 } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
+import { RecordHistory } from '../../_components/history/RecordHistory';
 import {
   RTW_LABEL,
   capReason,
@@ -45,7 +46,7 @@ import { canResendActivation } from '../../onboarding/view-model';
 import type { ProfileData, ProfileRow } from './types';
 import './profile.css';
 
-type Tab = 'overview' | 'documents' | 'qualification' | 'shifts' | 'feedback';
+type Tab = 'overview' | 'documents' | 'qualification' | 'shifts' | 'feedback' | 'history';
 type Dialog = 'block' | 'reset' | 'remove' | null;
 
 /**
@@ -389,6 +390,8 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             },
             { value: 'shifts', label: 'Shifts', count: data.shifts.length },
             { value: 'feedback', label: 'Feedback', count: data.feedback.length },
+            // The audit trail (ADR-0035): read when the tab opens, not with the page.
+            { value: 'history', label: 'History' },
           ]}
         />
 
@@ -434,6 +437,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             managerName={data.managerName}
           />
         ) : null}
+        {tab === 'history' ? <RecordHistory entity="staff" id={profile.id} /> : null}
       </div>
 
       {/* Block (§9.6, §4.3): the reason is mandatory and is the label. */}

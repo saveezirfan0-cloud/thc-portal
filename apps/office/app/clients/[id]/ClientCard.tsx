@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Alert, Button, Chip, KpiTile, Panel, TileGrid } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
+import { RecordHistory } from '../../_components/history/RecordHistory';
 import { ClientModal } from '../ClientModal';
 import { ClientEvents } from './ClientEvents';
 import { QualifiedStaff } from './QualifiedStaff';
@@ -146,6 +147,17 @@ export function ClientCard({ data }: { data: ClientCardData }) {
         />
 
         <ClientEvents rows={data.events} />
+
+        {/* The audit trail (ADR-0035), after the scope's four blocks. */}
+        <RecordHistory
+          entity="client"
+          id={client.id}
+          title={
+            <>
+              <span className="blk-n">5</span> History
+            </>
+          }
+        />
 
         <Alert tone="cyan">
           Changing a policy applies to events built from now on; existing events keep the policy
