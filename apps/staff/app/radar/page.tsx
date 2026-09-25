@@ -45,11 +45,8 @@ export const metadata = { title: 'Radar · THC Staff' };
  * this week's hours under "This week".
  */
 export default async function Page() {
-  const [
-    { rows: shifts, problem },
-    { rows: bookings, problem: bookingsProblem },
-    { row: meter },
-  ] = await Promise.all([loadOpenShifts(), loadBookings(), loadWeekMeter()]);
+  const [{ rows: shifts, problem }, { rows: bookings, problem: bookingsProblem }, { row: meter }] =
+    await Promise.all([loadOpenShifts(), loadBookings(), loadWeekMeter()]);
   const groups = radarGroups(shifts);
   const applications = new Map(
     bookings.filter((b) => b.status === 'applied').map((b) => [b.shiftId, b.bookingId] as const),

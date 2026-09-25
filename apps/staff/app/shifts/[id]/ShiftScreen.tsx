@@ -479,8 +479,8 @@ export function ShiftScreen({
           </Button>
           {started ? (
             <p className="xs muted center-note">
-              Check-out works from anywhere until <UkTime at={checkOutLocksAt(shift.endsAt)} /> (4
-              h after the end) — being on site only affects the time we record.
+              Check-out works from anywhere until <UkTime at={checkOutLocksAt(shift.endsAt)} /> (4 h
+              after the end) — being on site only affects the time we record.
             </p>
           ) : (
             <p className="xs muted">
