@@ -68,7 +68,7 @@ select is(
   6, 'the service role — what the Edge Function holds — can call all six');
 -- Invariant 7: the inbound path cannot use runJob()'s job_runs row (Willo
 -- signs its own deliveries, ADR-0021), so a delivery answered 500 leaves
--- this audit row instead of nothing (20260926131200).
+-- this audit row instead of nothing (20260927161300).
 select lives_ok($$ select willo_record_failure('W-ana', 'candidate.accepted', 'provisioning failed') $$,
   'a retryable receiver failure is recorded');
 select is((select data->>'code' from audit_log where action = 'willo_event_failed' and entity_id = :'c_acc'),
@@ -194,7 +194,7 @@ reset role;
 select is((select enabled::text || ' ' || edge_path from job_schedules where job = 'willo-invite'), 'false willo-webhook/invite',
   'the safety-net schedule is registered, disabled until THC''s Willo keys are set');
 
--- A Supabase Functions base: 20260926130200 refuses any other destination
+-- A Supabase Functions base: 20260927160300 refuses any other destination
 -- for the service-role bearer.
 insert into settings (key, value) values ('edge_base_url', '"https://abcdefghijklmnopqrst.supabase.co/functions/v1"')
   on conflict (key) do update set value = excluded.value;

@@ -37,7 +37,7 @@ lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 | All 110 migrations applied in order to an **empty** database | clean |
 | `scripts/pgtest-local.sh` — all 86 pgTAP files | 2,945 assertions, **2 failures**, both expected (below) |
 | `turbo test` | 11/11 tasks, 1,918 tests in 121 files; lint and typecheck were run per workspace this round (three fixers in one tree), not as one turbo pass |
-| Live Supabase project vs the repo | all 81 applied at `dbd0227` (26.09); everything since deploys on merge to `main` — not re-checked this round |
+| Live Supabase project vs the repo | 95 applied through `20260927140300` (#56); the 26.09 fix round's 14 files and `20260927150000` deploy with the next merge to `main` (see §3, "The 26.09 fix round was refused by the live database") |
 
 `002` assertions **6 and 7** fail in every local harness and **that pair is the
 clean baseline**: they record that on Supabase `anon` *can* write
@@ -124,7 +124,7 @@ real environment to prove it in.
    invites, radar, documents, profile and lock screens; every Client Portal
    screen; scope §3.3–§4.5, §5.1–§5.2b, §7 BG-01–05, §9.6–§9.12, §10, §11 and
    the RULE index; and all four design lenses. Of the 375 findings raised, the
-   fix round (`20260926130000`–`131200`, pgTAP `550`, ADR-0026–0029) closed
+   fix round (`20260927160000`–`161300`, pgTAP `594`, ADR-0026–0029) closed
    the database half and the events, check-in, shifts and login screens; still
    open are the findings under office onboarding / staff / dashboard / clients
    / settings / design-system, staff apply / onboarding / documents / profile /
@@ -135,7 +135,7 @@ real environment to prove it in.
    `can_roster_staff()` refuses a non-UK worker whose latest verified
    right-to-work evidence carries neither a date nor the settled no-time-limit
    flag, on every date, until the office confirms the date from the Needs
-   review row (`20260926121000`); pgTAP `524` §B flipped and pins it.
+   review row (`20260927160000`); pgTAP `524` §B flipped and pins it.
 5. **Open in code: the Gemini provider.** `documentExtractor()` in
    `apps/staff/app/onboarding/extractor.ts` returns `null` (ADR-0014 "STUBBED");
    the provider behind `DocumentExtractor`, and its call from the wizard's
@@ -282,6 +282,21 @@ real environment to prove it in.
   `supabase_migrations.schema_migrations`; the next push to `main` deploys the
   rest normally. The job does what its comment says: read the log, never add
   `--include-all` blind.
+- **The 26.09 fix round was refused by the live database.** #57 merged the
+  round as `20260926121000` / `130000`–`131200` after #56's `20260927100000`–
+  `140300` were already live, so `deploy-database` on `826a2f6` stopped at the
+  dry run with the same "below the last remote migration" refusal as #43's and
+  applied nothing (`20260927150000` included). `--include-all` was the wrong
+  answer this time, not just the blind one: `20260926130400` restated
+  `booking_tick()` and `release_unready_bookings()`, which `20260927140000` /
+  `140300` had already superseded in the tree, so applying it after them would
+  have put the live database on the withdrawn versions. The round is renumbered
+  `20260927160000`–`161300` (same order, same content; every reference in tests,
+  ADRs and app code follows), the two superseded restatements are removed from
+  `160500` (its header says why; ADR-0029 §1–3 now point at 140000/140300), and
+  the next merge to `main` deploys all fifteen in order with no flag. Types
+  (`packages/db/src/types.generated.ts`) are regenerated from the live project
+  once they are applied — they do not yet know this round's RPCs.
 - `supabase/config.toml` `otp_expiry` is 86400 (activation links last a day).
 - `scripts/pgtest-local.sh` — the Docker-free pgTAP harness §7 describes, as a
   script.

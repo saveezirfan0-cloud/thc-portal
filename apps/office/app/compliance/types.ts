@@ -22,7 +22,7 @@ export type BlockKind = 'auto_document' | 'manual' | 'conviction_review' | null;
 
 /**
  * One item waiting on the office (§4.1): a pending document, a pending Yes
- * declaration, or — `rtw_date` (20260926121000) — a share code report that
+ * declaration, or — `rtw_date` (20260927160000) — a share code report that
  * was verified before the right-to-work date was required and still has
  * none. That last one is keyed on the verified report; its `item_type` is
  * `share_code_report`, so the document filter finds it.

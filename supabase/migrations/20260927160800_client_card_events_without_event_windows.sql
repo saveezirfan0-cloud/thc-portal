@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260926130700 · the client card's event list works for an
+-- Migration 20260927160800 · the client card's event list works for an
 --                            admin session (§9.7 block 4)
 --
 -- clients_event_list_v is `security_invoker` and joined event_windows,

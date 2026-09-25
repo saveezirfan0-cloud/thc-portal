@@ -85,7 +85,7 @@ create temporary table t_rm as select remove_worker(:'gdpr', :'now'::timestamptz
 
 -- ---------------------------------------------------------------------
 -- Login disabled (§1.7; wireframes/staff/auth.html "A GDPR-removed
--- account cannot sign in at all"). Until 20260926130300 the row was only
+-- account cannot sign in at all"). Until 20260927160400 the row was only
 -- unlinked, and the old password still opened an unlocked staff shell.
 -- ---------------------------------------------------------------------
 select is((select r->>'loginDisabled' from t_rm), 'true',

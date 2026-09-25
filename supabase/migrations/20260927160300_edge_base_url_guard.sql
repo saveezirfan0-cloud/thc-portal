@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260926130200 · where the service-role bearer may be posted
+-- Migration 20260927160300 · where the service-role bearer may be posted
 --                            (docs/01-architecture.md §4, security
 --                            Invariant 8)
 --

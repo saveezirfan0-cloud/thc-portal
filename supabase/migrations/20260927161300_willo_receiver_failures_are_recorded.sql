@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260926131200 · the Willo receiver's failures leave a trace
+-- Migration 20260927161300 · the Willo receiver's failures leave a trace
 --                            (security brief Invariant 7; ADR-0021)
 --
 -- Every §7 job runs inside runJob(), which opens a job_runs row and

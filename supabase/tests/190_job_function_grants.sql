@@ -271,7 +271,7 @@ select bag_eq(
             ('auto-staffing-cutoff'), ('auto-staffing-escalation'),
             ('compliance-daily'), ('notify-drain'), ('finance-reports'),
             ('gdpr-purge') $$,
-  'exactly the eight schedules whose Edge Function exists are enabled: notify-drain ships with P2 and re-enables finance-reports (20260924100000), which 20260923193100 paused until its email could go out; gdpr-purge (20260926130300) drains the §1.7 Storage queue, which nothing had scheduled'
+  'exactly the eight schedules whose Edge Function exists are enabled: notify-drain ships with P2 and re-enables finance-reports (20260924100000), which 20260923193100 paused until its email could go out; gdpr-purge (20260927160400) drains the §1.7 Storage queue, which nothing had scheduled'
 );
 
 -- ---------------------------------------------------------------------
@@ -281,7 +281,7 @@ select bag_eq(
 --    regardless of who holds EXECUTE, so a grant to a PostgREST role only
 --    publishes a definer on an RPC path. Asserted over every function in
 --    public that returns `trigger`, so the next one is caught without a
---    name list (20260926130900 revoked the two that had slipped through).
+--    name list (20260927161000 revoked the two that had slipped through).
 --    Extension-owned triggers are excluded, as assertion 8 excludes
 --    extension-owned definers: on Supabase, PostGIS's postgis_cache_bbox
 --    and checkauthtrigger carry the extension's own grants, are not ours

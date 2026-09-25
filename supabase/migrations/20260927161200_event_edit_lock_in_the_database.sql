@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260926131100 · §3.2's edit lock is held in the database
+-- Migration 20260927161200 · §3.2's edit lock is held in the database
 --
 -- §3.2: "Editing is only allowed up to the event's start time. Once the
 -- event has started — and therefore for any past event — editing is

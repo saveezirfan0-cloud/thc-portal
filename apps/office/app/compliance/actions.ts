@@ -142,7 +142,7 @@ export async function approveCompletionLetter(
 }
 
 /**
- * The "Right-to-work date missing — re-verify" row (20260926121000): the
+ * The "Right-to-work date missing — re-verify" row (20260927160000): the
  * share code report is already verified, only the date was never written
  * down. The reviewer re-runs the gov.uk check and confirms the date it
  * shows — or `NO_TIME_LIMIT` for settled status on the EU branch, and

@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260926130300 · §1.7 removal disables the login, the Storage
+-- Migration 20260927160400 · §1.7 removal disables the login, the Storage
 --                            purge is actually scheduled and erases by
 --                            prefix, and the office's irreversible
 --                            actions record who pressed them

@@ -70,7 +70,7 @@ async function setStaff(fields: Record<string, unknown>): Promise<void> {
 
 /**
  * The same, for a state the §2.12 machine refuses to enter directly —
- * compliant → rejected is not an edge, and since 20260926130800 the
+ * compliant → rejected is not an edge, and since 20260927160900 the
  * database says so to the service role too. A fixture is not a transition,
  * so this one writes as the superuser with user triggers off, and is the
  * only way `rejected` is set or undone in this file.
