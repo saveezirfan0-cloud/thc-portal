@@ -11,6 +11,7 @@ import {
   pay,
   payableMinutes,
   turnedAwayMinutes,
+  unpaidBreakMinutes,
 } from '../pay';
 import type { NoCheckOutState } from '../pay';
 
@@ -69,6 +70,13 @@ interface TurnAwayVector {
   attemptMinFromStart: number;
 }
 
+interface BreakVector {
+  shiftMin: number;
+  checkInMinFromStart: number;
+  finishMinFromStart: number;
+  breaks: [number, number | null][];
+}
+
 describe('§5.1 check-in (shared vectors)', () => {
   it.each(merged<CheckInVector>(vectors.checkIn))('$name', ({ input, expect: expected }) => {
     expect(
@@ -125,6 +133,21 @@ describe('RULE-15 buffer turn-away (shared vectors)', () => {
     expect(turnedAwayMinutes(shiftOf(input.shiftMin), at(input.attemptMinFromStart))).toBe(
       expected.payMin,
     );
+  });
+});
+
+describe('§5.2b breaks inside the paid window (shared vectors, D49)', () => {
+  it.each(merged<BreakVector>(vectors.breaks))('$name', ({ input, expect: expected }) => {
+    expect(
+      unpaidBreakMinutes(
+        {
+          shift: shiftOf(input.shiftMin),
+          checkInAt: at(input.checkInMinFromStart),
+          finishAt: at(input.finishMinFromStart),
+        },
+        input.breaks.map(([s, e]) => ({ startedAt: at(s), endedAt: e === null ? null : at(e) })),
+      ),
+    ).toBe(expected.unpaidBreakMin);
   });
 });
 

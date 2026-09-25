@@ -1,9 +1,10 @@
 'use client';
 
 import { Avatar, Pill } from '@thc/ui';
-import { UK_ZONE, formatTimeIn, needsDualZone, viewerZone } from '@thc/domain';
-import { STATUS_LABEL, breaksCell, statusTone } from './status';
+import { UK_ZONE, formatTimeIn, needsDualZone } from '@thc/domain';
+import { statusLabel, breaksCell, statusTone } from './status';
 import type { MonitorRow } from './types';
+import { useViewerZone } from './useViewerZone';
 
 /**
  * The top half of §9.5 — who is on site and who is not.
@@ -16,9 +17,17 @@ import type { MonitorRow } from './types';
  *            show different hours.
  *   Check-in an ACTUAL stamp, so it shows the viewer's zone only — the
  *            manager wants to know what their own clock said.
+ *   Due      the pill carries the scheduled start in the VIEWER's zone with
+ *            no suffix — deliberately, §1.8: "must not be 'fixed' back to UK
+ *            time"; the Window column beside it carries both (audit D30).
+ *
+ * The zone is `useViewerZone()`, not `viewerZone()`: during the server
+ * render of this client component `Intl` is the server's zone (UTC on
+ * Vercel), which streamed UTC stamps and forced a hydration re-render
+ * (audit D41). First paint is UK; the reader's zone arrives on mount.
  */
 export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
-  const zone = viewerZone();
+  const zone = useViewerZone();
   const dual = needsDualZone(zone);
   const local = (iso: string) => formatTimeIn(new Date(iso), zone);
   const uk = (iso: string) => formatTimeIn(new Date(iso), UK_ZONE);
@@ -69,13 +78,7 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
             </td>
             <td className="mono sm">{breaksCell(row, local)}</td>
             <td>
-              <Pill tone={statusTone(row)}>
-                {row.status === 'checked_out' && row.checkOutAt
-                  ? `${STATUS_LABEL.checked_out} ${local(row.checkOutAt)}`
-                  : row.status === 'due'
-                    ? `${STATUS_LABEL.due} ${uk(row.startsAt)}`
-                    : STATUS_LABEL[row.status]}
-              </Pill>
+              <Pill tone={statusTone(row)}>{statusLabel(row, local)}</Pill>
             </td>
           </tr>
         ))}
