@@ -98,6 +98,10 @@ export function ProfileHub({
           />
         ) : null}
         <HubRow href="/profile/details" title="Profile details" sub="Mobile, email, home address" />
+        {/* ADR-0036: only for a worker auto-assign can invite at all. */}
+        {lock === 'none' ? (
+          <HubRow href="/profile/availability" title="Availability" sub="Days you can’t work" />
+        ) : null}
         <HubRow
           href="/profile/payments"
           title="Payment information"
