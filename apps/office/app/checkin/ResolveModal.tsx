@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { Alert, Button, Modal, Note, Textarea } from '@thc/ui';
 import { UK_ZONE, formatDateTimeIn, ukInputLabel } from '@thc/domain';
 import { resolveViolation } from './actions';
+import { flaggedAs } from './log';
 import { VIOLATION_LABEL, needsActualFinish, reclassifiesToLate } from './status';
 import type { ViolationRow } from './types';
+import { useViewerZone } from './useViewerZone';
 
 /**
  * The violation detail window (§9.5), which doubles as the audit trail.
@@ -15,11 +17,18 @@ import type { ViolationRow } from './types';
  * entry afterwards. A resolved entry therefore renders as a record rather
  * than a form.
  *
- * The finish time is validated on the SERVER (`resolve_violation`), and the
- * dialog stays open with whatever it refused — before the check-in, or in
- * the future. There is deliberately no upper bound against the scheduled
- * end: a worker may genuinely have finished later, and RULE-01 caps the
- * payable amount there regardless.
+ * Times, per §1.8: the check-in / check-out / detected stamps are actual
+ * instants, so they are the viewer's own clock; what the manager TYPES is
+ * UK time and the label says so; the resolution stamp is an audit stamp and
+ * stays UK.
+ *
+ * Every time typed here is validated on the SERVER (`resolve_violation`),
+ * and the dialog stays open with whatever it refused. A No check-out's
+ * finish has no upper bound against the scheduled end: RULE-01 caps the
+ * pay there regardless. A No-show takes the arrival — required once the
+ * section has ended, when "the moment you press" would sit after the end
+ * and pay nothing — and, then, an optional finish that settles the shift
+ * in the same action (audit D17).
  */
 export function ResolveModal({
   violation,
@@ -28,21 +37,35 @@ export function ResolveModal({
   violation: ViolationRow;
   onClose: () => void;
 }) {
+  const zone = useViewerZone();
   const [note, setNote] = useState('');
   const [finish, setFinish] = useState('');
+  const [arrived, setArrived] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   const wantsFinish = needsActualFinish(violation.type);
-  const canSubmit = note.trim().length > 0 && (!wantsFinish || finish.length > 0) && !busy;
+  const isNoShow = reclassifiesToLate(violation.type);
+  // The modal only ever opens in the browser, on a click: no server render
+  // to disagree with.
+  const sectionEnded = new Date(violation.endsAt).getTime() <= Date.now();
+  const needsArrival = isNoShow && sectionEnded;
+  const canSubmit =
+    note.trim().length > 0 &&
+    (!wantsFinish || finish.length > 0) &&
+    (!needsArrival || arrived.length > 0) &&
+    !busy;
+
+  const stamp = (iso: string) => `${formatDateTimeIn(new Date(iso), zone)} your time`;
 
   async function submit() {
     setBusy(true);
     setError(null);
-    // The input is UK wall-clock per §1.8; the server takes an instant.
-    const iso = wantsFinish && finish ? ukLocalToIso(finish) : null;
-    const result = await resolveViolation(violation.id, note, iso);
+    // The inputs are UK wall-clock per §1.8; the server takes instants.
+    const finishIso = (wantsFinish || isNoShow) && finish ? ukLocalToIso(finish) : null;
+    const arrivedIso = isNoShow && arrived ? ukLocalToIso(arrived) : null;
+    const result = await resolveViolation(violation.id, note, finishIso, arrivedIso);
     setBusy(false);
     if ('error' in result) {
       setError(result.error);
@@ -67,25 +90,25 @@ export function ResolveModal({
         </p>
         <div className="kvs">
           <div className="kv">
-            <span className="k">Detected</span>
-            <span className="v mono">
-              {formatDateTimeIn(new Date(violation.detectedAt), UK_ZONE)} UK
+            <span className="k">Flagged as</span>
+            <span className="v">
+              {violation.flaggedAs ?? flaggedAs(violation.type, violation.eventTitle)}
             </span>
+          </div>
+          <div className="kv">
+            <span className="k">Detected</span>
+            <span className="v mono">{stamp(violation.detectedAt)}</span>
           </div>
           <div className="kv">
             <span className="k">Checked in</span>
             <span className="v mono">
-              {violation.checkInAt
-                ? `${formatDateTimeIn(new Date(violation.checkInAt), UK_ZONE)} UK`
-                : 'never'}
+              {violation.checkInAt ? stamp(violation.checkInAt) : 'never'}
             </span>
           </div>
           <div className="kv">
             <span className="k">Checked out</span>
             <span className="v mono">
-              {violation.checkOutAt
-                ? `${formatDateTimeIn(new Date(violation.checkOutAt), UK_ZONE)} UK`
-                : 'no check-out recorded'}
+              {violation.checkOutAt ? stamp(violation.checkOutAt) : 'no check-out recorded'}
             </span>
           </div>
         </div>
@@ -117,18 +140,39 @@ export function ResolveModal({
                 payment — please notify Finance to pay it.
               </Alert>
             ) : null}
-            {reclassifiesToLate(violation.type) ? (
+            {isNoShow ? (
               <Note>
                 Resolving a No-show is the same action as “Get back”: it registers the worker as
                 arrived and reclassifies this entry to Late, with the minutes counted from the
-                moment you press it.
+                arrival time below — or from the moment you press it, if you leave it empty.
               </Note>
             ) : null}
 
-            {wantsFinish ? (
+            {isNoShow ? (
               <label className="field">
                 <span className="label">
-                  {ukInputLabel('Actual finish')} <span className="coral">*</span>
+                  {ukInputLabel('Arrived at')}
+                  {needsArrival ? <span className="coral"> *</span> : null}
+                </span>
+                <input
+                  className="input"
+                  type="datetime-local"
+                  value={arrived}
+                  onChange={(e) => setArrived(e.target.value)}
+                />
+                <span className="hint">
+                  {needsArrival
+                    ? 'The shift has ended, so enter when the worker actually arrived. Not before check-in opened (start − 30 min), not in the future.'
+                    : 'Leave empty to register them as arriving now. Not before check-in opened (start − 30 min), not in the future.'}
+                </span>
+              </label>
+            ) : null}
+
+            {wantsFinish || needsArrival ? (
+              <label className="field">
+                <span className="label">
+                  {ukInputLabel('Actual finish')}
+                  {wantsFinish ? <span className="coral"> *</span> : null}
                 </span>
                 <input
                   className="input"
@@ -137,8 +181,9 @@ export function ResolveModal({
                   onChange={(e) => setFinish(e.target.value)}
                 />
                 <span className="hint">
-                  Becomes the shift’s check-out for RULE-01. The four-hour floor applies again once
-                  this is resolved.
+                  {wantsFinish
+                    ? 'Becomes the shift’s check-out for RULE-01. The four-hour floor applies again once this is resolved.'
+                    : 'Optional. Closes the shift now, so it is paid; left empty, the worker’s missing check-out is raised as a No check-out to resolve later.'}
                 </span>
               </label>
             ) : null}

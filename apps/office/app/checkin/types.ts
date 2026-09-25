@@ -58,4 +58,10 @@ export interface ViolationRow {
   checkOutAt: string | null;
   /** RULE-06: the shift is already in an export, so a change cannot be topped up. */
   payrollExported: boolean;
+  /**
+   * §9.5's "Flagged as" line, composed by the loader: violation name + event
+   * ("Checked out early — Gala Dinner"). Optional so a row built elsewhere
+   * still renders; the window composes it the same way when it is absent.
+   */
+  flaggedAs?: string;
 }

@@ -69,3 +69,10 @@
   outline: 2px solid var(--focus-line);
   outline-offset: -2px;
 }
+
+/* The violation log is paged by the query (audit D50). */
+.log-pager {
+  gap: 12px;
+  justify-content: flex-end;
+  padding: 10px 14px;
+}

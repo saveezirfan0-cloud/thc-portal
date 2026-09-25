@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Avatar, Button, Checkbox, Panel, Pill, SegToggle, Select } from '@thc/ui';
-import { UK_ZONE, formatDateTimeIn, formatTimeIn, viewerZone } from '@thc/domain';
+import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
 import { createClient } from '@thc/db/browser';
+import { type LogQuery, logQueryHref, logTime } from './log';
 import { MonitorTable } from './MonitorTable';
+import { useViewerZone } from './useViewerZone';
 import { ResolveModal } from './ResolveModal';
 import { VIOLATION_LABEL, missingWorkers, needsAttention } from './status';
 import { violationRowProps } from './violationRow';
@@ -24,15 +27,20 @@ import type { MonitorRow, ViolationRow } from './types';
 export function MonitorScreen({
   rows,
   violations,
+  log = { showResolved: false, page: 1 },
+  hasMore = false,
 }: {
   rows: MonitorRow[];
+  /** One page of the log, already filtered by the query (audit D50). */
   violations: ViolationRow[];
+  log?: LogQuery;
+  hasMore?: boolean;
 }) {
   const router = useRouter();
   const [attentionOnly, setAttentionOnly] = useState(false);
   const [eventFilter, setEventFilter] = useState('all');
-  const [showResolved, setShowResolved] = useState(false);
   const [open, setOpen] = useState<ViolationRow | null>(null);
+  const showResolved = log.showResolved;
 
   useEffect(() => {
     const timer = setInterval(() => router.refresh(), 30_000);
@@ -69,10 +77,12 @@ export function MonitorScreen({
       (eventFilter === 'all' || r.eventId === eventFilter) && (!attentionOnly || needsAttention(r)),
   );
   const attentionCount = rows.filter(needsAttention).length;
+  // The query already left the resolved ones out; this only guards a row
+  // that was resolved since the page was read.
   const shownViolations = violations.filter((v) => showResolved || !v.resolved);
 
-  const zone = viewerZone();
-  const local = (iso: string) => formatTimeIn(new Date(iso), zone);
+  // §1.8: the reader's own zone, mount-guarded (audit D41).
+  const zone = useViewerZone();
 
   return (
     <div className="stack" style={{ gap: 16 }}>
@@ -115,14 +125,17 @@ export function MonitorScreen({
         title="Violation log"
         flush
         actions={
-          <Checkbox checked={showResolved} onChange={setShowResolved}>
+          <Checkbox
+            checked={showResolved}
+            onChange={(checked) => router.push(logQueryHref({ showResolved: checked, page: 1 }))}
+          >
             Show resolved
           </Checkbox>
         }
       >
         {shownViolations.length === 0 ? (
           <p className="muted sm">
-            {violations.length === 0
+            {showResolved
               ? 'No violations logged.'
               : 'Nothing unresolved. Tick “Show resolved” to see closed entries.'}
           </p>
@@ -161,7 +174,7 @@ export function MonitorScreen({
                       </>
                     ) : null}
                   </td>
-                  <td className="mono sm">{local(v.detectedAt)}</td>
+                  <td className="mono sm">{logTime(v.detectedAt, zone)}</td>
                   <td style={{ textAlign: 'right' }}>
                     <Button
                       size="sm"
@@ -180,6 +193,17 @@ export function MonitorScreen({
             </tbody>
           </table>
         )}
+        {log.page > 1 || hasMore ? (
+          <div className="row log-pager">
+            {log.page > 1 ? (
+              <Link href={logQueryHref({ ...log, page: log.page - 1 })}>← Newer</Link>
+            ) : null}
+            <span className="muted sm">Page {log.page}</span>
+            {hasMore ? (
+              <Link href={logQueryHref({ ...log, page: log.page + 1 })}>Older →</Link>
+            ) : null}
+          </div>
+        ) : null}
       </Panel>
 
       {open ? <ResolveModal violation={open} onClose={() => setOpen(null)} /> : null}
