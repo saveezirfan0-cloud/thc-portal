@@ -15,6 +15,8 @@ import {
   SegToggle,
   Select,
 } from '@thc/ui';
+import { Arrivals } from './ArrivalsPill';
+import type { ArrivalsByEvent } from './arrivals';
 import { EventWindow } from './EventWindow';
 import { ukDateShort } from './format';
 import {
@@ -87,6 +89,7 @@ export function EventsScreen({
   lineup,
   photos,
   documents = {},
+  arrivals = {},
   now,
 }: {
   events: PortalEvent[];
@@ -95,6 +98,8 @@ export function EventsScreen({
   photos: Record<string, string>;
   /** Which §11.3 PDFs the office has issued, per event (`client_event_documents_v`). */
   documents?: Record<string, DocumentKind[]>;
+  /** On-the-day check-in counts per event (ADR-0038); counts only, never who. */
+  arrivals?: ArrivalsByEvent;
   /** Fixed on the server so the first paint cannot disagree with hydration. */
   now: string;
 }) {
@@ -276,6 +281,9 @@ export function EventsScreen({
                               </span>
                               <Progress value={fill.percent} tone={fill.tone} />
                               <RoleLine sections={secs} />
+                              <Arrivals
+                                counts={e.status === 'ongoing' ? arrivals[e.id] : undefined}
+                              />
                             </div>
                           )}
                         </td>
@@ -339,6 +347,7 @@ export function EventsScreen({
                         </div>
                         <Progress value={fill.percent} tone={fill.tone} />
                         <RoleLine sections={secs} />
+                        <Arrivals counts={e.status === 'ongoing' ? arrivals[e.id] : undefined} />
                       </div>
                     )}
                     {nudge || sheet ? (

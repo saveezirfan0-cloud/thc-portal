@@ -286,6 +286,31 @@ describe('an empty list says why (ADR-0034)', () => {
   });
 });
 
+describe('arrival counts on the day (ADR-0038)', () => {
+  const counts = (confirmed: number, arrived: number) => ({ confirmed, arrived, bySection: {} });
+  const withArrivals = (events: PortalEvent[]) =>
+    renderToStaticMarkup(
+      <EventsScreen
+        events={events}
+        sections={sections}
+        lineup={lineup}
+        photos={{}}
+        arrivals={{ 'ev-gala': counts(13, 11), 'ev-lunch': counts(4, 4) }}
+        now={NOW}
+      />,
+    );
+
+  it('shows "N of M arrived" on the ongoing event, in the table and on the card', () => {
+    const markup = withArrivals([gala]);
+    expect(markup.match(/11 of 13 arrived/g)).toHaveLength(2);
+    expect(card(markup, 'Gala Dinner')).toContain('11 of 13 arrived');
+  });
+
+  it('shows nothing for an event that is not live, even when the view has a row', () => {
+    expect(withArrivals([lunch])).not.toContain('arrived');
+  });
+});
+
 describe('no money on the list (§11.1)', () => {
   it('prints no currency or rate anywhere', () => {
     const markup = render([gala, launch, lunch]);

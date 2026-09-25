@@ -230,6 +230,13 @@
   min-width: 120px;
 }
 
+/* The arrivals pill (ADR-0038) sits in the fill cell's column, and a flex
+   column would otherwise stretch it to the cell's width. */
+.fill-cell > .arrivals,
+.ev-fill > .arrivals {
+  align-self: flex-start;
+}
+
 .fill-cell .progress {
   width: 100px;
 }
@@ -535,9 +542,13 @@
     font-size: 26px;
   }
 
+  /* Up to three full-width buttons on a completed event (two documents and
+     Add to calendar, ADR-0035): each takes its own line rather than the row
+     running off the phone. */
   .ehead .actions {
     margin-left: 0;
     width: 100%;
+    flex-wrap: wrap;
   }
 
   .ehead .actions .btn {

@@ -1,4 +1,5 @@
 import { Alert } from '@thc/ui';
+import { loadArrivals } from './arrivals';
 import { EventsScreen } from './EventsScreen';
 import { loadEventList } from './data';
 import { kindsByEvent, loadAllDocuments } from './documents';
@@ -21,9 +22,10 @@ export default async function ClientEventsPage() {
   const { events, sections, lineup, problem } = await loadEventList();
   // The documents ride alongside the events, one query for the page, so the
   // list can tell a real download from a copy the office has not issued yet.
-  const [signed, documents] = await Promise.all([
+  const [signed, documents, arrivals] = await Promise.all([
     signLineupPhotos(lineup.map((l) => l.photoPath)),
     loadAllDocuments(),
+    loadArrivals(),
   ]);
 
   return (
@@ -35,6 +37,7 @@ export default async function ClientEventsPage() {
         lineup={lineup}
         photos={Object.fromEntries(signed)}
         documents={kindsByEvent(documents)}
+        arrivals={arrivals}
         now={new Date().toISOString()}
       />
     </>
