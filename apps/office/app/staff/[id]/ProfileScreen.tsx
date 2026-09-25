@@ -26,6 +26,8 @@ import {
   formatUkDate,
   statusLabel,
 } from '../staff';
+import { Availability } from './Availability';
+import { ChangeRequestBanner } from './ChangeRequestBanner';
 import { Documents } from './Documents';
 import { Feedback } from './Feedback';
 import { Overview } from './Overview';
@@ -45,7 +47,7 @@ import { canResendActivation } from '../../onboarding/view-model';
 import type { ProfileData, ProfileRow } from './types';
 import './profile.css';
 
-type Tab = 'overview' | 'documents' | 'qualification' | 'shifts' | 'feedback';
+type Tab = 'overview' | 'documents' | 'qualification' | 'shifts' | 'feedback' | 'availability';
 type Dialog = 'block' | 'reset' | 'remove' | null;
 
 /**
@@ -367,6 +369,9 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
           />
         </TileGrid>
 
+        {/* ADR-0038: a pending name/photo change, decided here or in the queue. */}
+        <ChangeRequestBanner requests={data.changeRequests ?? []} />
+
         <Tabs
           value={tab}
           onChange={setTab}
@@ -389,6 +394,12 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             },
             { value: 'shifts', label: 'Shifts', count: data.shifts.length },
             { value: 'feedback', label: 'Feedback', count: data.feedback.length },
+            // ADR-0036: read-only, the next 8 weeks.
+            {
+              value: 'availability',
+              label: 'Availability',
+              count: data.availability?.length ?? 0,
+            },
           ]}
         />
 
@@ -398,6 +409,17 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             references={data.references}
             declarations={data.declarations}
             locationStale={data.locationStale === true}
+            emergencyContact={data.emergencyContact ?? null}
+            emergencyContactProblem={data.emergencyContactProblem ?? null}
+            referrals={data.referrals ?? null}
+            referralsProblem={data.referralsProblem ?? null}
+          />
+        ) : null}
+        {tab === 'availability' ? (
+          <Availability
+            rows={data.availability ?? []}
+            problem={data.availabilityProblem ?? null}
+            name={profile.display_name}
           />
         ) : null}
         {tab === 'documents' ? (

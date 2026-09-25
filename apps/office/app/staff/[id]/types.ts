@@ -13,6 +13,7 @@ import type { QueueRow } from '../../compliance/types';
 import type { CapBand, StaffRow } from '../types';
 import type { FeedbackEntry } from '../../feedback/types';
 import type { ViolationRow as DetailViolationRow } from '../../checkin/types';
+import type { ChangeRequestView } from '../requests/types';
 
 export type ReviewStatus = 'pending' | 'verified' | 'rejected' | 'superseded';
 export type ViolationType = 'no_show' | 'late' | 'left_early' | 'left_geofence' | 'no_checkout';
@@ -171,6 +172,63 @@ export interface ClientOption {
   name: string;
 }
 
+/**
+ * `office_emergency_contact()` (ADR-0037, 20260930130000). Office-only
+ * worker personal data: never on a client document or in a client_* view.
+ */
+export interface EmergencyContact {
+  name: string;
+  relationship: string;
+  /** E.164, the /apply rule. */
+  phone: string;
+  updatedAt: string;
+  /** Who saved it last: the worker in the app, or the office here. */
+  updatedBy: 'worker' | 'office' | null;
+  /** The manager, when the office saved it. */
+  updatedByName: string | null;
+}
+
+/** One side of a referral in `office_staff_referrals()` (ADR-0040). */
+export interface ReferralPerson {
+  staffId: string;
+  /** "Deleted account #id" for a removed person (§1.7). */
+  name: string;
+  employeeId: number | null;
+  status: string;
+  removed: boolean;
+  recordedAt: string;
+}
+
+export interface Referrals {
+  code: string | null;
+  codeRevokedAt: string | null;
+  referredBy: ReferralPerson | null;
+  referred: ReferralPerson[];
+}
+
+/** A confirmed booking an unavailability entry overlaps (role section window, RULE-18). */
+export interface AvailabilityBooking {
+  bookingId: string;
+  eventId: string;
+  eventTitle: string;
+  roleName: string;
+  startsAt: string;
+  endsAt: string;
+}
+
+/** `office_staff_unavailability()` (ADR-0036): one entry, next 8 weeks. */
+export interface AvailabilityRow {
+  id: string;
+  starts_at: string;
+  ends_at: string;
+  all_day: boolean;
+  series_id: string | null;
+  series_count: number;
+  series_last_start: string | null;
+  created_at: string;
+  bookings: AvailabilityBooking[];
+}
+
 export interface ProfileData {
   profile: ProfileRow | null;
   documents: DocumentRow[];
@@ -218,6 +276,19 @@ export interface ProfileData {
    * old location. Null/absent = not known, and nothing is shown.
    */
   locationStale?: boolean | null;
+  /**
+   * The docs/18 additions (ADR-0036/0037/0038/0040). Each is read on its
+   * own and fails on its own: `undefined` = not read, and the matching
+   * `…Problem` says why a card or tab has nothing to show.
+   */
+  emergencyContact?: EmergencyContact | null;
+  emergencyContactProblem?: string | null;
+  referrals?: Referrals | null;
+  referralsProblem?: string | null;
+  availability?: AvailabilityRow[];
+  availabilityProblem?: string | null;
+  /** This worker's PENDING change requests, photos signed — the Overview banner. */
+  changeRequests?: ChangeRequestView[];
   problem: string | null;
 }
 

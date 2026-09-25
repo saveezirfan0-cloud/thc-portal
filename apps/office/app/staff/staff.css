@@ -2,6 +2,13 @@
  * Page-local styles for /staff, mirroring the inline <style> block in
  * wireframes/backoffice/staff.html. Tokens only (CLAUDE.md).
  */
+
+/* ADR-0038: "Change requests (N)" above the directory, right-aligned. */
+.staff-requests-link {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .tbl .staff-name {
   color: var(--text);
   font-weight: 600;

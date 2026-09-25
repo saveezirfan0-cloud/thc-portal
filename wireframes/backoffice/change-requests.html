@@ -62,7 +62,7 @@
     </header>
 
     <div class="content">
-      <div class="note sm">Stub (docs/18 §1–§3, §5, Phase 0-C) — to be refined by <b>directory</b>. The first five states are the new <code>/staff/requests</code> queue; the last two are additions to <a href="staff-profile.html">/staff/:id</a>. <code>/staff</code> gains a "Change requests (2)" link above the directory; the sidebar count is optional (<code>navCounts.ts</code>).</div>
+      <div class="note sm">Built by <b>directory</b> (docs/18 Phase 1-C; <code>apps/office/app/staff/requests/**</code>, <code>apps/office/app/staff/[id]/**</code>). The first five states are the <code>/staff/requests</code> queue; the last two are additions to <a href="staff-profile.html">/staff/:id</a>. <code>/staff</code> has a "Change requests (2)" link above the directory, and the Staff menu item carries the same count (<code>navCounts.ts</code>). The /staff/:id banner's <b>Review</b> opens the same dialog as the queue, starting from both sides with Reject and Approve. An empty emergency contact offers <b>Add</b> instead of Edit.</div>
       <div class="wf-states" data-target="cr"><button data-state="pending">Pending</button><button data-state="approve">Approve name · dialog</button><button data-state="reject">Reject · dialog</button><button data-state="decided">Decided</button><button data-state="empty">Empty</button><button data-state="overview">/staff/:id · Overview cards</button><button data-state="availability">/staff/:id · Availability tab</button></div>
 
       <!-- ================= PENDING ================= -->
