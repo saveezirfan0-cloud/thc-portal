@@ -2,6 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { safeNextPath } from '@thc/db';
 import { createClient } from '@thc/db/server';
 
 /**
@@ -14,7 +15,9 @@ import { createClient } from '@thc/db/server';
 export async function signIn(_prev: string | null, formData: FormData): Promise<string | null> {
   const email = String(formData.get('email') ?? '').trim();
   const password = String(formData.get('password') ?? '');
-  const next = String(formData.get('next') ?? '') || '/events';
+  // Only ever a path on this app (§1.4): see packages/db/src/redirect.ts.
+  // /client is the portal's home; /events was never a route here.
+  const next = safeNextPath(formData.get('next'), '/client');
 
   if (!email || !password) return 'Enter your email and password.';
 
@@ -38,5 +41,5 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
     return 'Email or password is incorrect. Try again or reset your password.';
   }
 
-  redirect(next.startsWith('/') ? next : '/events');
+  redirect(next);
 }

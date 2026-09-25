@@ -118,7 +118,11 @@ test.describe('Radar (§10.4, RULE-17)', () => {
   test('shifts are grouped by wave, and the second wave says why it is there', async ({ page }) => {
     const groups = page.locator('.grp');
     await expect(groups.first()).toBeVisible();
-    await expect(page.getByText(/RULE-17|worked here before/i).first()).toBeVisible();
+    // Worker-facing copy carries no rule numbers (audit 24.09): the second
+    // wave explains itself in words — or the first shows "Worked here before".
+    await expect(
+      page.getByText(/worked here before|every worker qualified/i).first(),
+    ).toBeVisible();
   });
 
   test('every card carries a km badge — Radar is "closest first"', async ({ page }) => {

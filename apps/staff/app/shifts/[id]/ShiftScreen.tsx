@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Alert, AppBody, AppHeader, Button, GpsChip, MobileCard, Note, Pill, Timer } from '@thc/ui';
+import { Alert, Button, GpsChip, MobileCard, Note, Pill, Timer } from '@thc/ui';
 import { UK_ZONE, formatTimeIn, needsDualZone, viewerZone } from '@thc/domain';
 import { checkIn, checkOut, finishBreak, recordPing, startBreak } from './actions';
 import { shiftEarnings, formatDuration, formatMoney, totalBreakMinutes } from './earnings';
-import { checkInWindow, distanceM, formatDistance, shiftPhase } from './phase';
+import { checkInWindow, distanceM, formatDistance, isStaticPhase, shiftPhase } from './phase';
+import { StaticShiftScreen } from './StaticShiftScreen';
 import type { GpsFix, ShiftDetail } from './types';
 
 /**
@@ -18,10 +19,17 @@ import type { GpsFix, ShiftDetail } from './types';
  * server side. What it decides for itself is only what to SHOW — and the
  * distance line, which is advisory: `attempt_check_in` recomputes it
  * against the venue column, and that computation is the one that counts.
+ *
+ * It is the BODY only. The header, the bottom nav and the §10.1 app lock
+ * are `StaffShell`'s, which the page wraps this in — so a blocked, on-hold
+ * or leaver worker opening a deep link never gets this far.
  */
-export function ShiftScreen({ shift: initial }: { shift: ShiftDetail }) {
+export function ShiftScreen({ shift }: { shift: ShiftDetail }) {
   const router = useRouter();
-  const [shift] = useState(initial);
+  // `shift` is read straight from props, not copied into state: after a
+  // press, `router.refresh()` hands down the booking as the server now has
+  // it, and a copy in state would keep showing the check-in button to a
+  // worker who has just checked in.
   const [fix, setFix] = useState<GpsFix | null>(null);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -38,6 +46,9 @@ export function ShiftScreen({ shift: initial }: { shift: ShiftDetail }) {
 
   const openBreak = shift.breaks.find((b) => b.endedAt === null) ?? null;
   const phase = shiftPhase({ shift, openBreak: Boolean(openBreak), now });
+  // §10.4's dead ends have no map and nothing to press, so they do not ask
+  // for the worker's location either.
+  const dead = isStaticPhase(phase);
   const zone = viewerZone();
   const local = (iso: string) => formatTimeIn(new Date(iso), zone);
   const uk = (iso: string) => formatTimeIn(new Date(iso), UK_ZONE);
@@ -74,15 +85,15 @@ export function ShiftScreen({ shift: initial }: { shift: ShiftDetail }) {
   }, []);
 
   useEffect(() => {
-    void locate();
-  }, [locate]);
+    if (!dead) void locate();
+  }, [locate, dead]);
 
   // §5.1 background tracking, as far as a PWA can do it: a fix whenever the
   // worker has the screen open during the shift. Off-site check-out reads
   // this trail, so even this much is the difference between recording their
   // real finish and falling to RULE-02 (ADR-0001, docs/06).
   useEffect(() => {
-    if (!shift.checkInAt || shift.checkOutAt) return;
+    if (dead || !shift.checkInAt || shift.checkOutAt) return;
     let cancelled = false;
     const send = async () => {
       const f = await locate();
@@ -94,7 +105,7 @@ export function ShiftScreen({ shift: initial }: { shift: ShiftDetail }) {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [locate, shift.bookingId, shift.checkInAt, shift.checkOutAt]);
+  }, [dead, locate, shift.bookingId, shift.checkInAt, shift.checkOutAt]);
 
   const metres = fix ? distanceM(fix, { lat: shift.venueLat, lng: shift.venueLng }) : null;
   const inside = metres !== null && metres <= shift.geofenceRadiusM;
@@ -118,208 +129,209 @@ export function ShiftScreen({ shift: initial }: { shift: ShiftDetail }) {
   const window_ = checkInWindow(shift.startsAt);
   const earnings = shiftEarnings(shift, now);
 
+  if (isStaticPhase(phase)) {
+    return <StaticShiftScreen kind={phase} shift={shift} localTime={local} />;
+  }
+
   return (
     <>
-      <AppHeader title={shift.eventTitle} sub={shift.roleName} />
-      <AppBody>
-        <div className="row" style={{ gap: 8 }}>
-          <Pill tone="cyan">{sameUkDay(shift.startsAt, now) ? 'Today' : 'Upcoming'}</Pill>
-          <span className="ml-auto mono sm">
-            {uk(shift.startsAt)} – {uk(shift.endsAt)} UK
-          </span>
-        </div>
-        {dual ? (
-          <p className="xs muted">
-            {local(shift.startsAt)} – {local(shift.endsAt)} your time
-          </p>
-        ) : null}
+      <div className="row" style={{ gap: 8 }}>
+        <Pill tone="cyan">{sameUkDay(shift.startsAt, now) ? 'Today' : 'Upcoming'}</Pill>
+        <span className="ml-auto mono sm">
+          {uk(shift.startsAt)} – {uk(shift.endsAt)} UK
+        </span>
+      </div>
+      {dual ? (
+        <p className="xs muted">
+          {local(shift.startsAt)} – {local(shift.endsAt)} your time
+        </p>
+      ) : null}
 
-        <MobileCard title="Where">
-          <div className="kvs">
+      <MobileCard title="Where">
+        <div className="kvs">
+          <div className="kv">
+            <span className="k">Venue</span>
+            <span className="v">
+              {shift.venueName}, {shift.venueAddress}
+            </span>
+          </div>
+          {shift.dressCode ? (
             <div className="kv">
-              <span className="k">Venue</span>
+              <span className="k">Dress code</span>
+              <span className="v">{shift.dressCode}</span>
+            </div>
+          ) : null}
+          {shift.onsiteContact ? (
+            <div className="kv">
+              <span className="k">On-site contact</span>
+              <span className="v">{shift.onsiteContact}</span>
+            </div>
+          ) : null}
+          {shift.notes ? (
+            <div className="kv">
+              <span className="k">Notes</span>
+              <span className="v">{shift.notes}</span>
+            </div>
+          ) : null}
+        </div>
+      </MobileCard>
+
+      {gpsError ? <Alert tone="coral">{gpsError}</Alert> : null}
+      {metres !== null ? (
+        <GpsChip inside={inside}>
+          {inside ? (
+            <>
+              <b>On site</b> · {formatDistance(metres)} from the venue centre
+            </>
+          ) : (
+            <>
+              <b>You’re {formatDistance(metres)} from the venue.</b> Check-in opens within{' '}
+              {shift.geofenceRadiusM} m of {shift.venueName}.
+            </>
+          )}
+        </GpsChip>
+      ) : null}
+
+      {error ? <Alert tone="coral">{error}</Alert> : null}
+      {message ? (
+        <Alert tone={message.startsWith('We couldn') ? 'coral' : 'amber'}>{message}</Alert>
+      ) : null}
+
+      {/* ---- the buttons, one phase at a time (§5.1) ---- */}
+      {phase === 'before_window' ? (
+        <>
+          <Button block size="lg" tone="primary" disabled>
+            Check in — verify GPS
+          </Button>
+          <p className="xs muted">
+            Check-in opens at {uk(window_.opens.toISOString())} UK, within {shift.geofenceRadiusM} m
+            of the venue.
+          </p>
+        </>
+      ) : null}
+
+      {phase === 'check_in' ? (
+        <>
+          <Button
+            block
+            size="lg"
+            tone="primary"
+            disabled={!inside || busy}
+            onClick={() => fix && run(() => checkIn(shift.bookingId, fix.lat, fix.lng))}
+          >
+            {busy ? 'Checking in…' : 'Check in — verify GPS'}
+          </Button>
+          <p className="xs muted">
+            Check-in window {uk(window_.opens.toISOString())} – {uk(window_.locks.toISOString())}.
+            You’re paid from {uk(shift.startsAt)} whenever you arrive before it; after{' '}
+            {uk(shift.startsAt)} you’re marked Late; at {uk(window_.locks.toISOString())} check-in
+            locks.
+          </p>
+        </>
+      ) : null}
+
+      {phase === 'locked' ? (
+        <Alert tone="coral">
+          <b>You’ve been marked as not attended — contact the office.</b>
+          <br />
+          <span className="xs">
+            Check-in closed at {uk(window_.locks.toISOString())}, 30 minutes after your start time.
+            If you’re on site, a manager can register your arrival.
+          </span>
+        </Alert>
+      ) : null}
+
+      {phase === 'on_shift' || phase === 'on_break' ? (
+        <>
+          <Timer>
+            {formatDuration(
+              Math.max(
+                0,
+                Math.round((now.getTime() - new Date(shift.checkInAt!).getTime()) / 60_000) -
+                  (shift.breaksLogged ? totalBreakMinutes(shift, now) : 0),
+              ),
+            )}
+          </Timer>
+          <p className="xs muted">
+            Chargeable time{phase === 'on_break' ? ' · paused while you’re on a break' : ''}
+          </p>
+
+          {shift.breaksLogged ? (
+            <BreaksBlock
+              shift={shift}
+              onBreak={Boolean(openBreak)}
+              busy={busy}
+              onStart={() => run(() => startBreak(shift.bookingId))}
+              onFinish={() => run(() => finishBreak(shift.bookingId))}
+              formatTime={local}
+            />
+          ) : (
+            <Note>
+              Breaks are paid by this client — take them as your manager on site directs. Nothing to
+              log.
+            </Note>
+          )}
+
+          {/* §5.1: check-out works from ANYWHERE. With no fix at all —
+                location off, no signal, a phone that never answers — the
+                press still goes to check_out() without coordinates, and the
+                server records the last on-site fix or, with none, raises
+                RULE-02. The button never waits on the GPS. */}
+          <Button
+            block
+            size="lg"
+            disabled={busy}
+            onClick={() =>
+              run(async () => {
+                const at = fix ?? (await locate());
+                return checkOut(shift.bookingId, at?.lat ?? null, at?.lng ?? null);
+              })
+            }
+          >
+            {busy ? 'Checking out…' : 'Check out'}
+          </Button>
+        </>
+      ) : null}
+
+      {phase === 'closed' && earnings ? (
+        <MobileCard title="Shift complete">
+          <div className="kvs sum">
+            <div className="kv">
+              <span className="k">Worked</span>
               <span className="v">
-                {shift.venueName}, {shift.venueAddress}
+                {uk(shift.startsAt)} – {uk(shift.endsAt)} ·{' '}
+                {formatDuration(earnings.workedMin + earnings.unpaidBreakMin)}
               </span>
             </div>
-            {shift.dressCode ? (
+            {earnings.unpaidBreakMin > 0 ? (
               <div className="kv">
-                <span className="k">Dress code</span>
-                <span className="v">{shift.dressCode}</span>
+                <span className="k">Unpaid break</span>
+                <span className="v">− {formatDuration(earnings.unpaidBreakMin)}</span>
               </div>
             ) : null}
-            {shift.onsiteContact ? (
-              <div className="kv">
-                <span className="k">On-site contact</span>
-                <span className="v">{shift.onsiteContact}</span>
-              </div>
-            ) : null}
-            {shift.notes ? (
-              <div className="kv">
-                <span className="k">Notes</span>
-                <span className="v">{shift.notes}</span>
-              </div>
-            ) : null}
+            <div className="kv">
+              <span className="k">Payable</span>
+              <span className="v">{formatDuration(earnings.payableMin)}</span>
+            </div>
+            <div className="kv">
+              <span className="k">Hourly rate</span>
+              <span className="v">{formatMoney(earnings.hourlyRatePence)} / h</span>
+            </div>
           </div>
+          {earnings.floorApplied ? (
+            <Note>Short shifts are paid a four-hour minimum, so that is what this comes to.</Note>
+          ) : null}
+          <div className="tblock earn-total">
+            <span className="lab">Total earnings for this shift</span>
+            <span className="earn">{formatMoney(earnings.totalPence)}</span>
+            <span className="xs muted">before tax · base rate only</span>
+          </div>
+          <p className="sm muted" style={{ textAlign: 'center' }}>
+            Your hours are sent to the office as a timesheet. You’re paid the Friday after the week
+            you worked.
+          </p>
         </MobileCard>
-
-        {gpsError ? <Alert tone="coral">{gpsError}</Alert> : null}
-        {metres !== null ? (
-          <GpsChip inside={inside}>
-            {inside ? (
-              <>
-                <b>On site</b> · {formatDistance(metres)} from the venue centre
-              </>
-            ) : (
-              <>
-                <b>You’re {formatDistance(metres)} from the venue.</b> Check-in opens within{' '}
-                {shift.geofenceRadiusM} m of {shift.venueName}.
-              </>
-            )}
-          </GpsChip>
-        ) : null}
-
-        {error ? <Alert tone="coral">{error}</Alert> : null}
-        {message ? (
-          <Alert tone={message.startsWith('We couldn') ? 'coral' : 'amber'}>{message}</Alert>
-        ) : null}
-
-        {/* ---- the buttons, one phase at a time (§5.1) ---- */}
-        {phase === 'before_window' ? (
-          <>
-            <Button block size="lg" tone="primary" disabled>
-              Check in — verify GPS
-            </Button>
-            <p className="xs muted">
-              Check-in opens at {uk(window_.opens.toISOString())} UK, within {shift.geofenceRadiusM}{' '}
-              m of the venue.
-            </p>
-          </>
-        ) : null}
-
-        {phase === 'check_in' ? (
-          <>
-            <Button
-              block
-              size="lg"
-              tone="primary"
-              disabled={!inside || busy}
-              onClick={() => fix && run(() => checkIn(shift.bookingId, fix.lat, fix.lng))}
-            >
-              {busy ? 'Checking in…' : 'Check in — verify GPS'}
-            </Button>
-            <p className="xs muted">
-              Check-in window {uk(window_.opens.toISOString())} – {uk(window_.locks.toISOString())}.
-              You’re paid from {uk(shift.startsAt)} whenever you arrive before it; after{' '}
-              {uk(shift.startsAt)} you’re marked Late; at {uk(window_.locks.toISOString())} check-in
-              locks.
-            </p>
-          </>
-        ) : null}
-
-        {phase === 'locked' ? (
-          <Alert tone="coral">
-            <b>You’ve been marked as not attended — contact the office.</b>
-            <br />
-            <span className="xs">
-              Check-in closed at {uk(window_.locks.toISOString())}, 30 minutes after your start
-              time. If you’re on site, a manager can register your arrival.
-            </span>
-          </Alert>
-        ) : null}
-
-        {phase === 'on_shift' || phase === 'on_break' ? (
-          <>
-            <Timer>
-              {formatDuration(
-                Math.max(
-                  0,
-                  Math.round((now.getTime() - new Date(shift.checkInAt!).getTime()) / 60_000) -
-                    (shift.breaksLogged ? totalBreakMinutes(shift, now) : 0),
-                ),
-              )}
-            </Timer>
-            <p className="xs muted">
-              Chargeable time{phase === 'on_break' ? ' · paused while you’re on a break' : ''}
-            </p>
-
-            {shift.breaksLogged ? (
-              <BreaksBlock
-                shift={shift}
-                onBreak={Boolean(openBreak)}
-                busy={busy}
-                onStart={() => run(() => startBreak(shift.bookingId))}
-                onFinish={() => run(() => finishBreak(shift.bookingId))}
-                formatTime={local}
-              />
-            ) : (
-              <Note>
-                Breaks are paid by this client — take them as your manager on site directs. Nothing
-                to log.
-              </Note>
-            )}
-
-            <Button
-              block
-              size="lg"
-              disabled={busy}
-              onClick={() => fix && run(() => checkOut(shift.bookingId, fix.lat, fix.lng))}
-            >
-              {busy ? 'Checking out…' : 'Check out'}
-            </Button>
-          </>
-        ) : null}
-
-        {phase === 'check_out_locked' ? (
-          <Alert tone="amber">
-            <b>We didn’t receive your check-out for this shift — the office is following up.</b>
-            <br />
-            <span className="xs">
-              If you believe there has been an error, contact admin@thehospitalitycompany.co.uk
-            </span>
-          </Alert>
-        ) : null}
-
-        {phase === 'closed' && earnings ? (
-          <MobileCard title="Shift complete">
-            <div className="kvs sum">
-              <div className="kv">
-                <span className="k">Worked</span>
-                <span className="v">
-                  {uk(shift.startsAt)} – {uk(shift.endsAt)} ·{' '}
-                  {formatDuration(earnings.workedMin + earnings.unpaidBreakMin)}
-                </span>
-              </div>
-              {earnings.unpaidBreakMin > 0 ? (
-                <div className="kv">
-                  <span className="k">Unpaid break</span>
-                  <span className="v">− {formatDuration(earnings.unpaidBreakMin)}</span>
-                </div>
-              ) : null}
-              <div className="kv">
-                <span className="k">Payable</span>
-                <span className="v">{formatDuration(earnings.payableMin)}</span>
-              </div>
-              <div className="kv">
-                <span className="k">Hourly rate</span>
-                <span className="v">{formatMoney(earnings.hourlyRatePence)} / h</span>
-              </div>
-            </div>
-            {earnings.floorApplied ? (
-              <Note>Short shifts are paid a four-hour minimum, so that is what this comes to.</Note>
-            ) : null}
-            <div className="tblock earn-total">
-              <span className="lab">Total earnings for this shift</span>
-              <span className="earn">{formatMoney(earnings.totalPence)}</span>
-              <span className="xs muted">before tax · base rate only</span>
-            </div>
-            <p className="sm muted" style={{ textAlign: 'center' }}>
-              Your hours are sent to the office as a timesheet. You’re paid the Friday after the
-              week you worked.
-            </p>
-          </MobileCard>
-        ) : null}
-      </AppBody>
+      ) : null}
     </>
   );
 }

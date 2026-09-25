@@ -130,13 +130,13 @@ export function ApplyForm() {
             onChange={(e) => set('mobile', e.target.value)}
           />
         </InputRow>
+        {/* The wireframe's "International picker — number stored in E.164"
+            is a note to the builder, not to the applicant (docs/15). */}
         {errors.mobile ? (
           <span className="error" role="alert">
             {errors.mobile}
           </span>
-        ) : (
-          <span className="hint">International picker — number stored in E.164.</span>
-        )}
+        ) : null}
       </div>
 
       {/* A native date input opens the OS wheel picker on the phone browsers

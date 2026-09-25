@@ -33,6 +33,8 @@ export interface QualifiedStaffRow {
   display_name: string;
   employee_id: number | null;
   photo_path: string | null;
+  /** Short-lived signed URL for the selfie, set on the server (_lib/photos.ts). */
+  photo_url?: string | null;
   status: string;
   rating: number | null;
   reliability: number | null;

@@ -1,7 +1,7 @@
 /**
  * The Staff App's service worker — Scope §10.5, ADR-0001 (docs/06).
  *
- * Three jobs, in the order they matter to a worker standing outside a
+ * Two jobs, in the order they matter to a worker standing outside a
  * venue on one bar of signal:
  *
  *   1. Receive Web Push with the app closed. This is the whole of §8 on a
@@ -11,10 +11,12 @@
  *   2. Serve the app shell offline, so opening the app on the Underground
  *      shows the shell and an honest "you are offline" rather than the
  *      browser's dinosaur.
- *   3. Keep the queued check-in attempts alive. The queue itself belongs
- *      to the on-shift screen (§5, S5); what lives here is the Background
- *      Sync registration that replays it on Android. iOS has no Background
- *      Sync, so the app also replays on next open — never only here.
+ *
+ * There is NO offline check-in queue, and nothing here pretends to be one.
+ * The scope does not require it, and a check-in or check-out is decided by
+ * the server at the moment of the press (§5.1) — the grace, the lock and
+ * the geofence all read `now()`. /offline says so plainly: check-in and
+ * check-out need a connection (docs/15).
  *
  * Compiled by @serwist/next at build time into public/sw.js. Nothing in
  * this file runs in a window: `self` is the ServiceWorkerGlobalScope.

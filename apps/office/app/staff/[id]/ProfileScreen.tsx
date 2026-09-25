@@ -158,7 +158,11 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
         ) : null}
 
         <div className="phead">
-          <Avatar size="xl" name={profile.display_name} />
+          <Avatar
+            size="xl"
+            name={profile.display_name}
+            src={profile.removed ? undefined : (profile.photo_url ?? undefined)}
+          />
           <div className="who">
             <div className="row wrap">
               <h2>{profile.display_name}</h2>
@@ -371,8 +375,11 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             {
               value: 'documents',
               label: 'Documents',
-              count: data.documents.length,
-              alert: profile.documents_pending > 0,
+              // The criminal declarations are rows of this tab too (§9.6).
+              count: data.documents.length + data.declarations.length,
+              alert:
+                profile.documents_pending > 0 ||
+                data.declarations.some((row) => row.review_status === 'pending'),
             },
             {
               value: 'qualification',
@@ -392,7 +399,13 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             locationStale={data.locationStale === true}
           />
         ) : null}
-        {tab === 'documents' ? <Documents profile={profile} documents={data.documents} /> : null}
+        {tab === 'documents' ? (
+          <Documents
+            profile={profile}
+            documents={data.documents}
+            declarations={data.declarations}
+          />
+        ) : null}
         {tab === 'qualification' ? (
           <Qualifications
             profile={profile}
@@ -401,7 +414,13 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             roles={data.roles}
           />
         ) : null}
-        {tab === 'shifts' ? <Shifts shifts={data.shifts} violations={data.violations} /> : null}
+        {tab === 'shifts' ? (
+          <Shifts
+            shifts={data.shifts}
+            violations={data.violations}
+            details={data.violationDetails}
+          />
+        ) : null}
         {tab === 'feedback' ? (
           <Feedback
             profile={profile}

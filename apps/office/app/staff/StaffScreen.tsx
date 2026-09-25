@@ -179,7 +179,7 @@ export function StaffScreen({
                 <option value="name">Sort: name A–Z</option>
                 <option value="rating">Sort: rating</option>
                 <option value="show">Sort: show-rate</option>
-                <option value="newest">Sort: newest leaver</option>
+                <option value="newest">Sort: newest</option>
               </Select>
             </>
           ) : null}
@@ -289,7 +289,11 @@ function StaffTableRow({ row }: { row: StaffRow }) {
   return (
     <tr>
       <td>
-        <Avatar name={row.removed ? '#' : row.display_name} size="sm" />
+        <Avatar
+          name={row.removed ? '#' : row.display_name}
+          src={row.removed ? undefined : (row.photo_url ?? undefined)}
+          size="sm"
+        />
       </td>
       <td className="name">
         {/*

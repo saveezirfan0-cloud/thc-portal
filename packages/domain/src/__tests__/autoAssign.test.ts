@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { selectInvitees } from '../autoAssign';
+import { candidateInput, rankCandidateRows, selectInvitees } from '../autoAssign';
 import type { CandidateRow } from '../autoAssign';
 
 const row = (over: Partial<CandidateRow> = {}): CandidateRow => ({
@@ -23,6 +23,25 @@ describe('selectInvitees — who one round invites (§3.4, §6)', () => {
       row({ staff_id: 'middling', distance_km: 5 }),
     ];
     expect(selectInvitees(rows, { allocation: 2 })).toEqual(['near', 'middling']);
+  });
+
+  it('escalation puts the nearest first within a wave, score only breaking ties (§3.4)', () => {
+    const rows = [
+      // Better on every other factor, but further away.
+      row({ staff_id: 'strong-far', distance_km: 4, rating: 5, reliability: 100 }),
+      row({ staff_id: 'weak-near', distance_km: 1, rating: 3, reliability: 70 }),
+      row({ staff_id: 'qualified-far', distance_km: 4.5, qualified: true }),
+    ];
+    expect(selectInvitees(rows, { allocation: 3 })).toEqual([
+      'qualified-far',
+      'strong-far',
+      'weak-near',
+    ]);
+    expect(selectInvitees(rows, { allocation: 3, proximityFirst: true })).toEqual([
+      'qualified-far',
+      'weak-near',
+      'strong-far',
+    ]);
   });
 
   it('invites nobody when the allocation is zero or negative', () => {
@@ -117,5 +136,67 @@ describe('selectInvitees — who one round invites (§3.4, §6)', () => {
   it('invites nobody from an empty or fully gated pool', () => {
     expect(selectInvitees([], { allocation: 5 })).toEqual([]);
     expect(selectInvitees([row({ gate: 'blocked' })], { allocation: 5 })).toEqual([]);
+  });
+});
+
+describe('rankCandidateRows — the board ranks as the engine does (§3.3, §6)', () => {
+  it('puts a qualified 71 above an unqualified 94 (RULE-17), and keeps each row as the subject', () => {
+    // §6 example, as the wireframe shows it: Yusuf A. above Ella F.
+    const yusuf = row({
+      staff_id: 'yusuf',
+      qualified: true,
+      reliability: 94,
+      rating: 4.3,
+      distance_km: 5.5,
+      future_shifts: 2,
+      venue_times: 2,
+    });
+    const ella = row({
+      staff_id: 'ella',
+      qualified: false,
+      reliability: 100,
+      rating: 4.9,
+      distance_km: 0.4,
+      future_shifts: 0,
+      venue_times: 0,
+    });
+    const ranked = rankCandidateRows([ella, yusuf]);
+    expect(ranked.map((r) => r.subject.staff_id)).toEqual(['yusuf', 'ella']);
+    expect(ranked.map((r) => r.wave)).toEqual([1, 2]);
+    expect(ranked[1]!.breakdown.total).toBeGreaterThan(ranked[0]!.breakdown.total);
+    expect(ranked[0]!.subject).toBe(yusuf);
+  });
+
+  it('drops gated rows and leaves booking statuses to the caller', () => {
+    const ranked = rankCandidateRows([
+      row({ staff_id: 'gated', gate: 'blocked' }),
+      row({ staff_id: 'applied', booking_status: 'applied' }),
+    ]);
+    expect(ranked.map((r) => r.subject.staff_id)).toEqual(['applied']);
+  });
+
+  it('agrees with selectInvitees on the order of the open rows', () => {
+    const rows = [
+      row({ staff_id: 'a', distance_km: 9 }),
+      row({ staff_id: 'b', distance_km: 1, qualified: true, reliability: 90 }),
+      row({ staff_id: 'c', distance_km: 3 }),
+    ];
+    expect(rankCandidateRows(rows).map((r) => r.subject.staff_id)).toEqual(
+      selectInvitees(rows, { allocation: 10 }),
+    );
+  });
+
+  it('reads numerics that arrive as strings, and never flatters missing data', () => {
+    expect(
+      candidateInput(
+        row({
+          reliability: '97.5',
+          rating: null,
+          distance_km: null,
+          future_shifts: null,
+          venue_times: '3',
+        }),
+      ),
+    ).toEqual({ reliability: 97.5, rating: 0, distanceKm: 1000, futureShifts: 5, venueTimes: 3 });
   });
 });

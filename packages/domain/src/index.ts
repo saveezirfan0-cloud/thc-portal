@@ -17,3 +17,4 @@ export * from './hmrc';
 export * from './quiz';
 export * from './onboarding';
 export * from './documents';
+export * from './password';

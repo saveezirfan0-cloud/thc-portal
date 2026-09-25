@@ -60,6 +60,18 @@ test('a session the app refuses can still end itself', async ({ page }, testInfo
   await page.getByLabel('Password').fill(PASSWORD);
   await page.getByRole('button', { name: 'Sign in' }).click();
 
+  if (testInfo.project.name === 'office') {
+    // The Back Office refuses another app's account AT the form, "the same
+    // way" as a wrong password (wireframes/backoffice/login.html): signIn()
+    // drops the session it just made and shows the generic message, so there
+    // is no wrong-app page to be stuck on in the first place.
+    await expect(page.getByText(/email or password is incorrect/i)).toBeVisible();
+    await expect(page).toHaveURL(/\/login/);
+    await page.goto('/');
+    await expect(page).toHaveURL(/\/login/);
+    return;
+  }
+
   // The credentials are good, so sign-in succeeds and the ROLE gate is what
   // refuses the session — a terminal 403 page, never a redirect (three apps
   // on three hosts made HOME_PATH a loop).

@@ -18,7 +18,7 @@ const row = (over: Partial<MonitorRow> = {}): MonitorRow => ({
   eventTitle: 'Gala Dinner',
   roleName: 'Waiting Staff',
   staffName: 'Amara K.',
-  photoPath: null,
+  photoUrl: null,
   startsAt: '2026-06-14T16:00:00Z',
   endsAt: '2026-06-14T22:30:00Z',
   checkInAt: null,

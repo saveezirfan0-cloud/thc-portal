@@ -47,8 +47,23 @@ export async function checkIn(bookingId: string, lat: number, lng: number): Prom
   return call('attempt_check_in', { p_booking: bookingId, p_lat: lat, p_lng: lng }, bookingId);
 }
 
-export async function checkOut(bookingId: string, lat: number, lng: number): Promise<RpcResult> {
-  return call('check_out', { p_booking: bookingId, p_lat: lat, p_lng: lng }, bookingId);
+/**
+ * §5.1: check-out is open from anywhere, so the fix is optional. With none,
+ * `check_out()` treats the press as off site — the last on-site fix from
+ * the ping trail is recorded, or with no such fix the No check-out
+ * violation is raised (RULE-02). The database decides; this only forwards.
+ */
+export async function checkOut(
+  bookingId: string,
+  lat: number | null,
+  lng: number | null,
+): Promise<RpcResult> {
+  const fixed = Number.isFinite(lat) && Number.isFinite(lng);
+  return call(
+    'check_out',
+    { p_booking: bookingId, p_lat: fixed ? lat : null, p_lng: fixed ? lng : null },
+    bookingId,
+  );
 }
 
 export async function startBreak(bookingId: string): Promise<RpcResult> {

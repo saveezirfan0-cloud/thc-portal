@@ -117,7 +117,7 @@ export function TabLockedScreen({
         <p>
           Shifts, Invites and Radar are closed while your compliance is outstanding. Documents is
           the one tab still open to you — everything reopens automatically once the office has
-          verified what is missing and nothing else has expired (§4.3).
+          verified what is missing and nothing else has expired.
         </p>
         {onboarding ? (
           // §10.3: for a candidate the wizard is the way forward.

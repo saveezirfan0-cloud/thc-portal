@@ -113,7 +113,7 @@ export function BankStep({
       ) : null}
       <div className="note xs">
         You can change these later in Profile → Payment information → Bank &amp; payroll. Each
-        change is emailed to the office and payroll (E5, §2.10).
+        change is emailed to the office and payroll.
       </div>
       {error ? <Alert tone="coral">{error}</Alert> : null}
       <WizardFoot hint={complete ? undefined : 'Enter your account details to continue'}>

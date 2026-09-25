@@ -74,7 +74,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
         <>
           <p className="xs muted">
             Shifts for your roles{roleNames ? `: ${roleNames}` : ''}, soonest first. Auto-assign
-            still runs — self-apply is an extra channel (RULE-08).
+            still runs — self-apply is an extra channel.
           </p>
           {openShifts.length === 0 ? (
             <EmptyState>
@@ -88,7 +88,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
                 <div className={`mcard${shift.hoursLimit ? ' muted' : ''}`} key={shift.shiftId}>
                   <div className="card-head">
                     {shift.qualified ? <Pill tone="purple">You’ve worked here before</Pill> : null}
-                    {shift.hoursLimit ? <Pill tone="coral">Limit reached</Pill> : null}
+                    {shift.hoursLimit ? <Pill tone="coral">Limit Reached</Pill> : null}
                     <span className="right">
                       <ShiftTime startsAt={shift.startsAt} endsAt={shift.endsAt} withDate />
                     </span>
@@ -129,7 +129,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
                       tone="outline"
                       block
                       disabled={shift.hoursLimit}
-                      disabledLabel="Limit reached"
+                      disabledLabel="Limit Reached"
                       action={applyForShift.bind(null, shift.shiftId)}
                     />
                   )}
@@ -222,11 +222,11 @@ function ShiftCardView({ booking }: { booking: BookingRow }) {
               `worked` has been checked into, and confirm_on_day refuses it —
               offering the button would be a press that can only fail. */}
           {booking.status !== 'confirmed' || booking.onDayConfirmedAt ? (
-            <p className="m">Check-in and check-out are on the shift screen (§5).</p>
+            <p className="m">Check-in and check-out are on the shift screen.</p>
           ) : (
             <>
               <p className="m">
-                Reminder only — no deadline. Confirming tells the office you’re on your way (§3.5).
+                Reminder only — no deadline. Confirming tells the office you’re on your way.
               </p>
               <ActionButton
                 label="Confirm today’s shift"
@@ -264,8 +264,8 @@ function ShiftCardView({ booking }: { booking: BookingRow }) {
               confirm={{
                 title: 'Cancel this shift?',
                 body: 'We’ll offer this shift to the next person on the list. This can’t be undone. You also won’t be able to take any shift on this event again.',
-                confirmLabel: 'Cancel shift',
-                keepLabel: 'Keep it',
+                confirmLabel: 'Yes, cancel shift',
+                keepLabel: 'Keep my shift',
               }}
             />
           </span>

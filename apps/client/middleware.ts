@@ -11,7 +11,10 @@ import { isRole, wrongAppBody } from '@thc/db';
  * which is what actually protects the data: a forged URL gets past nothing.
  */
 const ALLOWED_ROLE = 'client' as const;
-const PUBLIC_PATHS = ['/login', '/auth'];
+// /forgot and /reset are A1–A3 (§10.2, `wireframes/client/login.html`):
+// nobody who needs them is signed in, or they hold only the short-lived
+// session /auth/callback just made.
+const PUBLIC_PATHS = ['/login', '/forgot', '/reset', '/auth'];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));

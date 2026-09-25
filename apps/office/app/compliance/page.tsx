@@ -14,7 +14,10 @@ export const dynamic = 'force-dynamic';
  * Read on the server as the manager: every source is a security_invoker view,
  * so RLS decides what comes back and this page tests no role of its own.
  */
-export default async function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  // `?tab=radar` is how the dashboard's "view radar →" (§9.1) lands on the
+  // Radar rather than the queue. Anything else opens the default tab.
+  const { tab } = await searchParams;
   const data = await loadCompliance();
   const blocked = new Set(
     [...data.queue, ...data.radar].filter((r) => r.status === 'blocked').map((r) => r.staff_id),
@@ -41,7 +44,7 @@ export default async function Page() {
         </>
       }
     >
-      <ComplianceScreen data={data} />
+      <ComplianceScreen data={data} initialTab={tab === 'radar' ? 'radar' : 'review'} />
     </OfficeShell>
   );
 }

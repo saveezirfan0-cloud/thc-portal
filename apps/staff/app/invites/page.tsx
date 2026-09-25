@@ -56,7 +56,7 @@ export default async function Page() {
             <div className={`mcard${invite.hoursLimit ? ' muted' : ''}`} key={invite.bookingId}>
               <div className="card-head">
                 {invite.hoursLimit ? (
-                  <Pill tone="coral">Limit reached</Pill>
+                  <Pill tone="coral">Limit Reached</Pill>
                 ) : (
                   <Pill tone="cyan">Invited</Pill>
                 )}

@@ -1,7 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { Checkbox, Chip, Panel, Pill, TableScroll } from '@thc/ui';
+import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Button, Checkbox, Chip, Panel, Pill, TableScroll } from '@thc/ui';
+import { ResolveModal } from '../../checkin/ResolveModal';
+import { violationRowProps } from '../../checkin/violationRow';
+import type { ViolationRow as DetailViolationRow } from '../../checkin/types';
 import { formatUkDate } from '../staff';
 import {
   VIOLATION_LABEL,
@@ -23,15 +27,34 @@ import type { ShiftRow, ViolationRow } from './types';
  * check-out stamps are the viewer's own local time, because a worker who
  * pressed the button at 17:03 did so at 17:03 where they were standing.
  *
- * Resolve is not offered here. §9.6 says the profile's log and the §9.5
- * monitor's are "deliberately identical in behaviour" — a resolution
- * carries a mandatory note and belongs to the check-in domain, so the row
- * links there rather than growing a second implementation that could
- * diverge from it.
+ * The violation log opens the /checkin detail window and its Resolve.
+ * §9.6 says the profile's log and the §9.5 monitor's are "deliberately
+ * identical in behaviour", so this is not a second implementation: it is
+ * the monitor's own `ResolveModal`, fed by the monitor's own query
+ * (`loadStaffViolationLog`), with the same row behaviour — coral bar on an
+ * unresolved entry, the whole row opens it, from the keyboard too.
  */
-export function Shifts({ shifts, violations }: { shifts: ShiftRow[]; violations: ViolationRow[] }) {
+export function Shifts({
+  shifts,
+  violations,
+  details,
+}: {
+  shifts: ShiftRow[];
+  violations: ViolationRow[];
+  /** The same entries in the monitor's shape; absent when that read failed. */
+  details?: DetailViolationRow[];
+}) {
+  const router = useRouter();
   const [showResolved, setShowResolved] = useState(true);
+  const [open, setOpen] = useState<DetailViolationRow | null>(null);
   const shown = violations.filter((row) => showResolved || !row.resolved);
+  const byId = useMemo(() => new Map((details ?? []).map((row) => [row.id, row])), [details]);
+
+  const close = () => {
+    setOpen(null);
+    // A resolution changes this tab (status, note) and the KPI row above.
+    router.refresh();
+  };
 
   return (
     <div className="stack">
@@ -126,44 +149,74 @@ export function Shifts({ shifts, violations }: { shifts: ShiftRow[]; violations:
                 <tr>
                   <th>Event</th>
                   <th>Violation</th>
-                  <th>Detected</th>
+                  <th>Time</th>
                   <th>Status</th>
+                  <th />
                 </tr>
               </thead>
               <tbody>
-                {shown.map((row) => (
-                  <tr key={row.id} style={row.resolved ? { opacity: 0.6 } : undefined}>
-                    <td>
-                      {row.event_title} — {row.client_name}
-                      <span className="sub">
-                        {row.role_name} · {formatUkWindow(row.starts_at, row.ends_at)} UK time
-                      </span>
-                    </td>
-                    <td>
-                      <b>{VIOLATION_LABEL[row.type]}</b>
-                      {row.minutes_late !== null ? (
-                        <span className="sub">{row.minutes_late} min</span>
-                      ) : null}
-                      {row.resolution_note ? (
+                {shown.map((row) => {
+                  const detail = byId.get(row.id);
+                  const openRow = detail ? () => setOpen(detail) : null;
+                  return (
+                    <tr
+                      key={row.id}
+                      {...(openRow
+                        ? violationRowProps(row, openRow, 0.6)
+                        : {
+                            className: row.resolved ? undefined : 'violation',
+                            style: row.resolved ? { opacity: 0.6 } : undefined,
+                          })}
+                    >
+                      <td>
+                        {row.event_title} — {row.client_name}
                         <span className="sub">
-                          {row.resolved_by_name ? `${row.resolved_by_name}: ` : ''}
-                          &ldquo;{row.resolution_note}&rdquo;
+                          {row.role_name} · {formatUkWindow(row.starts_at, row.ends_at)} UK time
                         </span>
-                      ) : null}
-                    </td>
-                    <td className="mono sm">{formatUkStamp(row.detected_at)}</td>
-                    <td>
-                      <Pill tone={row.resolved ? 'green' : 'coral'}>
-                        {row.resolved ? 'Resolved' : 'Unresolved'}
-                      </Pill>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td>
+                        <b>{VIOLATION_LABEL[row.type]}</b>
+                        {row.minutes_late !== null ? (
+                          <span className="sub">{row.minutes_late} min</span>
+                        ) : null}
+                        {row.resolution_note ? (
+                          <span className="sub">
+                            {row.resolved_by_name ? `${row.resolved_by_name}: ` : ''}
+                            &ldquo;{row.resolution_note}&rdquo;
+                          </span>
+                        ) : null}
+                      </td>
+                      <td className="mono sm">{formatUkStamp(row.detected_at)}</td>
+                      <td>
+                        <Pill tone={row.resolved ? 'green' : 'coral'}>
+                          {row.resolved ? 'Resolved' : 'Unresolved'}
+                        </Pill>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        {openRow ? (
+                          <Button
+                            size="sm"
+                            tone={row.resolved ? 'ghost' : 'default'}
+                            onClick={(event) => {
+                              // The row opens the same window; one open, not two.
+                              event.stopPropagation();
+                              openRow();
+                            }}
+                          >
+                            {row.resolved ? 'Details' : 'Details / Resolve'}
+                          </Button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </TableScroll>
         )}
       </Panel>
+
+      {open ? <ResolveModal violation={open} onClose={close} /> : null}
     </div>
   );
 }

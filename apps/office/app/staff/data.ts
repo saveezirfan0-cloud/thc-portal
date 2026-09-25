@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { signStaffPhotos } from '../_lib/photos';
 import type { StaffRow, StudentRow } from './types';
 
 /**
@@ -62,5 +63,20 @@ export async function loadStaff(): Promise<StaffPageData> {
   const error = staff.error ?? students.error;
   if (error) return { staff: [], students: [], problem: error.message };
 
-  return { staff: staff.data ?? [], students: students.data ?? [], problem: null };
+  // The selfie is a key in the private `photos` bucket, not a URL: both
+  // lists are signed in one batch, and a path that cannot be signed leaves
+  // that row on initials (_lib/photos.ts).
+  const staffRows = staff.data ?? [];
+  const studentRows = students.data ?? [];
+  const urls = await signStaffPhotos([
+    ...staffRows.map((row) => row.photo_path),
+    ...studentRows.map((row) => row.photo_path),
+  ]);
+  const url = (path: string | null) => (path ? (urls.get(path) ?? null) : null);
+
+  return {
+    staff: staffRows.map((row) => ({ ...row, photo_url: url(row.photo_path) })),
+    students: studentRows.map((row) => ({ ...row, photo_url: url(row.photo_path) })),
+    problem: null,
+  };
 }

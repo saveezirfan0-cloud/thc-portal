@@ -29,11 +29,11 @@ import { WizardFoot, WizardTop } from './Wizard';
  * wireframe's per-branch caveat (it never overrides a visa limit, §4.4).
  */
 const OPT_OUT_NOTE: Record<RtwBranch, string> = {
-  uk_irish: 'Optional — no visa limit applies to you (§4.4).',
-  eu_settled: 'Optional (§4.4).',
-  work_visa: 'Only within what your visa allows — visa conditions take precedence (§4.4).',
-  international_student: 'Applies outside term time only (§4.4).',
-  dependant_other: 'The conditions of your visa decide whether this applies (§4.4).',
+  uk_irish: 'Optional — no visa limit applies to you.',
+  eu_settled: 'Optional.',
+  work_visa: 'Only within what your visa allows — visa conditions take precedence.',
+  international_student: 'Applies outside term time only.',
+  dependant_other: 'The conditions of your visa decide whether this applies.',
 };
 
 export function RtwStep({ initial, today }: { initial: RtwForm; today: string }) {
@@ -73,7 +73,7 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
         <WizardTop
           step={1}
           heading="Which describes you?"
-          sub="This decides which documents we ask for. We check your right to work with gov.uk (§2.6)."
+          sub="This decides which documents we ask for. We check your right to work with gov.uk."
         />
         <div role="radiogroup" aria-label="Right to work" className="wiz-options">
           {RTW_BRANCHES.map((b) => (
@@ -130,7 +130,7 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
         onChange={(e) => set('dob', e.target.value)}
         onBlur={() => setTouched(true)}
         error={touched ? errors.dob : undefined}
-        hint="Required in every branch (§2.5)."
+        hint="Required in every branch."
       />
 
       {needsShareCode(branch) ? (
@@ -225,8 +225,7 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
             <div>
               <div className="t">Birth certificate + NI evidence</div>
               <div className="m">
-                Only if you don’t have a passport. NI evidence: {NI_EVIDENCE_ACCEPTED.join(', ')}{' '}
-                (§2.5 pt 7).
+                Only if you don’t have a passport. NI evidence: {NI_EVIDENCE_ACCEPTED.join(', ')}.
               </div>
             </div>
           </div>
@@ -236,8 +235,7 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
       {branch === 'international_student' ? (
         <Alert tone="cyan">
           In term time you can work up to <b>20 h/week</b> — a visa condition. Outside term: 48 h
-          (or more with the opt-out below). Nobody sets this — it follows your verified term dates
-          (§4.4).
+          (or more with the opt-out below). Nobody sets this — it follows your verified term dates.
         </Alert>
       ) : null}
 
@@ -249,7 +247,7 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
       {branch === 'eu_settled' ? (
         <div className="note xs">
           Pre-settled status: your “right to work until” date comes back from the gov.uk check and
-          becomes the expiry we remind you about (§2.6, §4.2).
+          becomes the expiry we remind you about.
         </div>
       ) : null}
 

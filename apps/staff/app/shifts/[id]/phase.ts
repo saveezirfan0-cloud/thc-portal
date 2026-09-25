@@ -3,7 +3,9 @@ import {
   CHECK_IN_OPENS_MIN,
   NO_CHECK_OUT_AFTER_MIN,
   addMinutes,
+  staticScreenCase,
 } from '@thc/domain';
+import type { StaticScreenCase } from '@thc/domain';
 import type { ShiftDetail } from './types';
 
 /**
@@ -15,18 +17,69 @@ import type { ShiftDetail } from './types';
  * hide one that would have worked. What it adds is the states the server
  * has no opinion about — before the window opens, and after the shift is
  * closed — and the copy for each.
+ *
+ * The three §10.4 dead ends come first and are whole screens of their own —
+ * no map, no check-in/out, no breaks: a cancelled event (N12), a booking the
+ * office took back (N10b / N6b), and a shift locked for No check-out
+ * (RULE-02). The rule for the first two and for a RAISED No check-out is
+ * `staticScreenCase()` in @thc/domain; this adds the moment the check-out
+ * button locks at end+4h, before the job has written the violation, so the
+ * screen never shows a live check-out the server would refuse.
  */
 export type ShiftPhase =
+  | StaticScreenCase // 'event_cancelled' | 'withdrawn' | 'no_checkout' — static (§10.4)
   | 'before_window' // too early to check in
   | 'check_in' // the window is open
   | 'locked' // start+30 passed with no check-in (§5.1)
   | 'on_shift'
   | 'on_break'
-  | 'check_out_locked' // end+4h: RULE-02 has taken over
   | 'closed'; // checked out
 
+const STATIC_PHASES: readonly ShiftPhase[] = ['event_cancelled', 'withdrawn', 'no_checkout'];
+
+/** True for the three phases that replace the whole shift screen (§10.4). */
+export function isStaticPhase(phase: ShiftPhase): phase is StaticScreenCase {
+  return STATIC_PHASES.includes(phase);
+}
+
+/**
+ * Whether `/shifts/:id` has anything to show for this booking at all.
+ *
+ * A booked shift (confirmed, worked, turned away) gets the shift screen; a
+ * §10.4 dead end gets its static screen. Anything else — the worker's own
+ * cancel, a declined or lapsed invitation, a pending application — is not a
+ * shift of theirs, and offering it a check-in button would be offering a
+ * press the server refuses (`booking_not_confirmed`).
+ */
+export function shiftScreenReachable(
+  shift: Pick<ShiftDetail, 'status' | 'cancelCause' | 'eventCancelledAt' | 'noCheckoutOpen'>,
+): boolean {
+  if (shift.status === 'confirmed' || shift.status === 'worked' || shift.status === 'turned_away') {
+    return true;
+  }
+  return (
+    staticScreenCase({
+      status: shift.status,
+      cancelCause: shift.cancelCause,
+      eventCancelledAt: shift.eventCancelledAt ? new Date(shift.eventCancelledAt) : null,
+      noCheckoutOpen: shift.noCheckoutOpen,
+    }) !== null
+  );
+}
+
 export interface PhaseInput {
-  shift: Pick<ShiftDetail, 'startsAt' | 'endsAt' | 'confirmedAt' | 'checkInAt' | 'checkOutAt'>;
+  shift: Pick<
+    ShiftDetail,
+    | 'startsAt'
+    | 'endsAt'
+    | 'confirmedAt'
+    | 'checkInAt'
+    | 'checkOutAt'
+    | 'status'
+    | 'cancelCause'
+    | 'eventCancelledAt'
+    | 'noCheckoutOpen'
+  >;
   openBreak: boolean;
   now: Date;
 }
@@ -35,13 +88,21 @@ export function shiftPhase({ shift, openBreak, now }: PhaseInput): ShiftPhase {
   const startsAt = new Date(shift.startsAt);
   const endsAt = new Date(shift.endsAt);
 
+  const dead = staticScreenCase({
+    status: shift.status,
+    cancelCause: shift.cancelCause,
+    eventCancelledAt: shift.eventCancelledAt ? new Date(shift.eventCancelledAt) : null,
+    noCheckoutOpen: shift.noCheckoutOpen,
+  });
+  if (dead) return dead;
+
   if (shift.checkOutAt) return 'closed';
 
   if (shift.checkInAt) {
-    if (openBreak) return 'on_break';
     // RULE-02: four hours past the end the button locks and only a manager
-    // can close the shift.
-    return now >= addMinutes(endsAt, NO_CHECK_OUT_AFTER_MIN) ? 'check_out_locked' : 'on_shift';
+    // can close the shift — whether or not a break was left running.
+    if (now >= addMinutes(endsAt, NO_CHECK_OUT_AFTER_MIN)) return 'no_checkout';
+    return openBreak ? 'on_break' : 'on_shift';
   }
 
   if (now < addMinutes(startsAt, -CHECK_IN_OPENS_MIN)) return 'before_window';

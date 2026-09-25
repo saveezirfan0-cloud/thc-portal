@@ -110,7 +110,7 @@ export function QuizStep({
         </div>
         {!passed && result.outcome === 'retry' ? (
           <Alert tone="amber">
-            After three unsuccessful attempts your application can’t continue (§2.9).
+            After three unsuccessful attempts your application can’t continue.
           </Alert>
         ) : null}
         {history}

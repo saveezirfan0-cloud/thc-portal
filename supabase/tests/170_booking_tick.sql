@@ -167,7 +167,8 @@ create temporary table t_second as select booking_tick(:'now'::timestamptz) as c
 
 select is(
   (select counts from t_second),
-  '{"n13": 0, "n9b": 0, "no_show": 0, "n9_check_in": 0, "no_checkout": 0, "n9_check_out": 0}'::jsonb,
+  -- n6 / n7 since 20260927140000; their own cases are 590_n6_n7_confirm_reminders.
+  '{"n6": 0, "n7": 0, "n13": 0, "n9b": 0, "no_show": 0, "n9_check_in": 0, "no_checkout": 0, "n9_check_out": 0}'::jsonb,
   'a second run at the same instant does nothing at all: every rule is idempotent');
 
 select is((select count(*)::int from violations where booking_id::text like 'b1000000%'), 2,

@@ -46,7 +46,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     >
       <div className="card-head">
         <Pill tone="cyan">Invited</Pill>
-        {invite.hoursLimit ? <Pill tone="coral">Limit reached</Pill> : null}
+        {invite.hoursLimit ? <Pill tone="coral">Limit Reached</Pill> : null}
         <Pill>{invite.venueName}</Pill>
         <span className="right mono sm muted">{invite.eventDate}</span>
       </div>
@@ -80,7 +80,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         </div>
         <div className="kv">
           <span className="k">Role window</span>
-          <span className="v">Your hours — the event itself may run longer (RULE-18).</span>
+          <span className="v">Your hours — the event itself may run longer.</span>
         </div>
         {/* Withheld until acceptance (§10.4, §3.2, §5.2b). The loader returns
             null for both, so there is nothing here to print by accident. */}
@@ -97,7 +97,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       {invite.hoursLimit ? (
         <Alert tone="coral">
           <b>Limit Reached.</b> {limit} The limit is calculated from your verified documents and
-          can’t be changed in the app (RULE-20, §4.4).
+          can’t be changed in the app.
         </Alert>
       ) : (
         <Alert tone="cyan">

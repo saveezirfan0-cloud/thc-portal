@@ -1,5 +1,11 @@
 # 14 · Where the build actually is, and what to do next
 
+> **Superseded in part by [`15-audit-2026-09-24.md`](15-audit-2026-09-24.md).** An
+> independent audit on 24.09 found code gaps this page reports as closed — among them a
+> worker shift screen with no shift data under RLS, no Potential pool / manual invite /
+> Duplicate on the event board, N6/N7 never queued, and an open redirect at every login.
+> Read §2–§5 there before trusting §2 below.
+
 Figures re-verified on the 26.09 round (the branch that follows `dbd0227`). This is the honest state, not
 the plan — every number below was produced by running something, not by counting
 what a previous revision claimed. Where something looks finished but is not, it

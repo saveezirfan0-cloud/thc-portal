@@ -12,7 +12,7 @@ import { loadEventsInRange, loadReferenceData } from './data';
 import { OfficeShell } from '../_components/OfficeShell';
 import { EventToolbar, type ToolbarQuery } from './_components/EventToolbar';
 import { DayView, ListView, MonthView, WeekView } from './_components/EventViews';
-import { bucketByDay, periodTotals, toEventRows } from './view-model';
+import { bucketByDay, filterEventRows, periodTotals, toEventRows } from './view-model';
 import './shift-builder.css';
 import './events.css';
 
@@ -58,22 +58,16 @@ export default async function Page({
   };
 
   const { from, to } = periodRange(view, date);
-  const [reference, events] = await Promise.all([loadReferenceData(), loadEventsInRange(from, to)]);
+  const [reference, { events, problem }] = await Promise.all([
+    loadReferenceData(),
+    loadEventsInRange(from, to),
+  ]);
 
-  const needle = query.q.trim().toLowerCase();
-  const clientName = reference.clients.find((c) => c.id === query.clientId)?.name ?? '';
-
-  let rows = toEventRows(events);
-  if (clientName) rows = rows.filter((row) => row.clientName === clientName);
-  if (query.status) rows = rows.filter((row) => row.status === query.status);
-  if (needle) {
-    rows = rows.filter((row) =>
-      [row.title, row.clientName, row.venueName, row.poNumber]
-        .join(' ')
-        .toLowerCase()
-        .includes(needle),
-    );
-  }
+  const rows = filterEventRows(toEventRows(events), {
+    clientId: query.clientId,
+    status: query.status,
+    q: query.q,
+  });
 
   const totals = periodTotals(rows);
 
@@ -91,10 +85,12 @@ export default async function Page({
     >
       <div className="stack">
         {reference.unavailable ? <Alert tone="coral">{reference.unavailable}</Alert> : null}
+        {/* A failed read is said out loud, never drawn as an empty period. */}
+        {problem ? <Alert tone="coral">{problem}</Alert> : null}
 
         <EventToolbar query={query} clients={reference.clients} />
 
-        {view === 'list' ? (
+        {!problem && view === 'list' ? (
           <Panel flush className="stack" actions={null}>
             <div className="panel-b tight">
               <ListView rows={rows} today={today} />
@@ -111,7 +107,7 @@ export default async function Page({
           </Panel>
         ) : null}
 
-        {view === 'month' ? (
+        {!problem && view === 'month' ? (
           <MonthView
             cells={monthGrid(date)}
             buckets={bucketByDay(
@@ -122,7 +118,7 @@ export default async function Page({
           />
         ) : null}
 
-        {view === 'week' ? (
+        {!problem && view === 'week' ? (
           <WeekView
             days={weekDays(date)}
             buckets={bucketByDay(rows, weekDays(date))}
@@ -130,7 +126,7 @@ export default async function Page({
           />
         ) : null}
 
-        {view === 'day' ? <DayView rows={rows} /> : null}
+        {!problem && view === 'day' ? <DayView rows={rows} /> : null}
       </div>
     </OfficeShell>
   );

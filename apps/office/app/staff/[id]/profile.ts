@@ -1,4 +1,11 @@
-import type { DocumentRow, FeedbackRow, ProfileRow, ShiftRow, ViolationRow } from './types';
+import type {
+  DeclarationRow,
+  DocumentRow,
+  FeedbackRow,
+  ProfileRow,
+  ShiftRow,
+  ViolationRow,
+} from './types';
 
 /**
  * The profile's presentation rules (§9.6). Pure, so the ones that are easy
@@ -170,4 +177,28 @@ export function canReset(status: ProfileRow['status']): boolean {
  */
 export function isActionable(status: ProfileRow['status']): boolean {
   return status !== 'removed';
+}
+
+/**
+ * A Criminal Record declaration as a row of the Documents tab (§9.6): when,
+ * where it came from, and what happened to it. The stamps are audit
+ * records, so UK time (§1.8). A declaration never has a file.
+ */
+export function declarationMeta(row: DeclarationRow): string {
+  const parts = [
+    `${row.source === 'onboarding' ? 'Onboarding' : 'In employment (§10.7)'} · declared ${formatUkStamp(row.declared_at)}`,
+  ];
+  if (!row.answer) parts.push('auto-verified on submission — no admin action');
+  else if (row.reviewed_at) parts.push(`reviewed ${formatUkStamp(row.reviewed_at)}`);
+  parts.push('no file to download');
+  return parts.join(' · ');
+}
+
+/**
+ * Verify / Reject is offered only on a Yes still under review: a No is
+ * auto-verified on submission and never queues (§2.10, §4.1), and a decided
+ * or superseded declaration is history, never re-decided (§1.5).
+ */
+export function declarationActionable(row: DeclarationRow): boolean {
+  return row.answer && row.review_status === 'pending';
 }

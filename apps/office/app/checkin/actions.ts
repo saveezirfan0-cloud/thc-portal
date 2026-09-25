@@ -52,6 +52,8 @@ export async function resolveViolation(
   if (error) return { error: REASONS[error.message] ?? error.message };
 
   revalidatePath('/checkin');
+  // The same window resolves from the profile's Shifts tab (§9.6).
+  revalidatePath('/staff/[id]', 'page');
 
   const result = data as { payrollExported?: boolean } | null;
   return result?.payrollExported

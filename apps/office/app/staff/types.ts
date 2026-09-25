@@ -41,6 +41,8 @@ export interface StaffRow {
   removed: boolean;
   display_name: string;
   photo_path: string | null;
+  /** Short-lived signed URL for the selfie, set on the server (_lib/photos.ts). */
+  photo_url?: string | null;
   rating: number | null;
   /** Show-rate, as a percentage. */
   reliability: number | null;
@@ -66,6 +68,8 @@ export interface StudentRow {
   display_name: string;
   employee_id: number | null;
   photo_path: string | null;
+  /** Short-lived signed URL for the selfie, set on the server (_lib/photos.ts). */
+  photo_url?: string | null;
   status: StaffStatus;
   weekly_cap_hours: number | null;
   weekly_cap_band: CapBand | null;
