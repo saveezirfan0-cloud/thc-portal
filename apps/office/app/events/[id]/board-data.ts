@@ -3,12 +3,20 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { type CandidateRow, type ScoreWeights, parseWeights } from '@thc/domain';
 import { eventsDb, supabaseConfigured } from '../db';
 import {
+  type BoardOffer,
   type BoardPersonName,
+  type BookingAttendance,
+  type CheckLogRow,
   type EndedBooking,
+  type Handover,
   type PoolEntry,
   type UnavailableEntry,
+  type UnavailableWindow,
+  type ViolationRow,
+  attendanceOf,
   buildPool,
   buildUnavailable,
+  sectionInEscalation,
   shortName,
 } from './board-model';
 
@@ -24,6 +32,10 @@ import {
  * time the event page is opened, not a cached snapshot"): the pool and the
  * Unavailable reasons come from `auto_assign_candidates`, the same function
  * the engine rounds read, and are ranked with the engine's own ranking.
+ * Once a section has started, the pool is the ESCALATION pool
+ * (`p_escalation`): the radius gate and nearest-first, as the 10-minute
+ * job sees it (§3.4). Attendance on Confirmed rows is read from
+ * `check_logs` and `violations` on the same open.
  *
  * A failed query is reported, never mistaken for an empty or missing
  * event: the page shows `problem` in an Alert. Only a query that SUCCEEDS
@@ -40,8 +52,16 @@ export interface BoardBooking extends BoardPersonName {
   appliedAt: string | null;
   /** §9.6: qualified at THIS client and THIS role — the Wave 1 chip. */
   qualified: boolean;
+  /** An unresolved No-show (§3.3): badged in Confirmed, with Get back. */
   noShow: boolean;
   reconfirmRequired: boolean;
+  /**
+   * ADR-0046: the open offer on a confirmed booking — a chip, never a move:
+   * the worker stays confirmed until somebody takes it.
+   */
+  offer: BoardOffer | null;
+  /** On shift / Checked out / Late / Left early / No check-out (wireframe). */
+  attendance: BookingAttendance;
 }
 
 export interface BoardSection {
@@ -70,6 +90,15 @@ export interface BoardSection {
   /** Why `pool` is null — shown on the section rather than hidden. */
   poolProblem: string | null;
   unavailable: UnavailableEntry[];
+  /**
+   * ADR-0043: set when `auto_assign_unavailable` could not be read. The
+   * pool is still shown, but it may list workers the engine will skip.
+   */
+  calendarProblem: string | null;
+  /** ADR-0046: completed hand-overs on this section, oldest first. */
+  handovers: Handover[];
+  /** Under way: the pool is the escalation pool (radius, nearest first, §3.4). */
+  escalation: boolean;
 }
 
 export interface BoardEvent {
@@ -118,6 +147,30 @@ interface StaffRow {
  */
 const IN_CHUNK = 150;
 
+/** One `shift_offers` row as the board reads it (ADR-0046). */
+interface OfferRow {
+  id: string;
+  booking_id: string;
+  shift_id: string;
+  mode: 'pool' | 'office' | 'direct';
+  status: string;
+  note: string | null;
+  expires_at: string;
+  closed_at: string | null;
+  taken_by_booking_id: string | null;
+}
+
+/** `auto_assign_unavailable` (20260930201000), not yet in the generated types. */
+interface UnavailableRpc {
+  rpc(
+    fn: 'auto_assign_unavailable',
+    args: { p_shift: string },
+  ): PromiseLike<{
+    data: { staff_id: string; starts_at: string; ends_at: string }[] | null;
+    error: { message: string } | null;
+  }>;
+}
+
 async function selectIn<T>(
   supabase: SupabaseClient,
   table: string,
@@ -140,7 +193,7 @@ async function selectIn<T>(
   return { rows: results.flatMap((r) => (r.data ?? []) as T[]), error: null };
 }
 
-export async function loadBoard(eventId: string): Promise<BoardLoad> {
+export async function loadBoard(eventId: string, now: Date = new Date()): Promise<BoardLoad> {
   if (!supabaseConfigured()) return { event: null, problem: NO_SUPABASE };
   const supabase = eventsDb(await cookies());
 
@@ -185,9 +238,20 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
     ((roleRes.data ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]),
   );
   const sectionIds = sections.map((s) => s['id'] as string);
+  const escalating = new Set(
+    sections
+      .filter((s) =>
+        sectionInEscalation(
+          { startsAt: s['starts_at'] as string, endsAt: s['ends_at'] as string },
+          now,
+        ),
+      )
+      .map((s) => s['id'] as string),
+  );
 
-  // Bookings, and the candidate pool per section — each computed now.
-  const [bookingRes, candidateRes] = await Promise.all([
+  // Bookings, the candidate pool and the availability calendar per
+  // section — each computed now.
+  const [bookingRes, candidateRes, awayRes, offerRes] = await Promise.all([
     sectionIds.length
       ? supabase
           .from('bookings')
@@ -203,10 +267,29 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
     Promise.all(
       sectionIds.map((id) =>
         supabase
-          .rpc('auto_assign_candidates', { p_shift: id })
+          .rpc('auto_assign_candidates', { p_shift: id, p_escalation: escalating.has(id) })
           .or('gate.is.null,gate.neq.wrong_role'),
       ),
     ),
+    // ADR-0043: who marked each ROLE SECTION's window unavailable (RULE-18).
+    // A new RPC, typed locally until the Phase 2 type regeneration.
+    Promise.all(
+      sectionIds.map((id) =>
+        (supabase as unknown as UnavailableRpc).rpc('auto_assign_unavailable', { p_shift: id }),
+      ),
+    ),
+    // ADR-0046: open offers (the Confirmed-row chips) and completed
+    // hand-overs (the section's history line). The office reads
+    // shift_offers through its admin_read policy.
+    sectionIds.length
+      ? supabase
+          .from('shift_offers')
+          .select(
+            'id, booking_id, shift_id, mode, status, note, expires_at, closed_at, taken_by_booking_id',
+          )
+          .in('shift_id', sectionIds)
+          .in('status', ['open', 'taken'])
+      : Promise.resolve({ data: [], error: null }),
   ]);
   if (bookingRes.error) {
     return {
@@ -214,7 +297,23 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
       problem: `The bookings on this event could not be read: ${bookingRes.error.message}`,
     };
   }
+  // An unread offer must not look like "nobody has offered anything up".
+  if (offerRes.error) {
+    return {
+      event: null,
+      problem: `The shift offers on this event could not be read: ${offerRes.error.message}`,
+    };
+  }
   const bookings = (bookingRes.data ?? []) as Record<string, string | boolean | null>[];
+  const offerRows = (offerRes.data ?? []) as OfferRow[];
+  const openOffers = new Map<string, BoardOffer>(
+    offerRows
+      .filter((o) => o.status === 'open')
+      .map((o) => [
+        o.booking_id,
+        { offerId: o.id, mode: o.mode, expiresAt: o.expires_at, note: o.note },
+      ]),
+  );
   const candidates = new Map<string, { rows: CandidateRow[] | null; problem: string | null }>(
     sectionIds.map((id, i) => {
       const res = candidateRes[i]!;
@@ -230,6 +329,30 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
     }),
   );
 
+  const away = new Map<
+    string,
+    { windows: Map<string, UnavailableWindow[]>; problem: string | null }
+  >(
+    sectionIds.map((id, i) => {
+      const res = awayRes[i]!;
+      const windows = new Map<string, UnavailableWindow[]>();
+      for (const row of res.data ?? []) {
+        const list = windows.get(row.staff_id) ?? [];
+        list.push({ startsAt: row.starts_at, endsAt: row.ends_at });
+        windows.set(row.staff_id, list);
+      }
+      return [
+        id,
+        {
+          windows,
+          problem: res.error
+            ? `The availability calendar could not be read: ${res.error.message}`
+            : null,
+        },
+      ];
+    }),
+  );
+
   // Everyone the board will name: booked on a section, or a candidate the
   // pool or Unavailable will show. wrong_role never produces a row (§6),
   // so those workers are not even looked up.
@@ -239,7 +362,8 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
   }
   const staffIds = [...named];
 
-  const [staffRes, staffRoleRes, qualRes, violationRes] = await Promise.all([
+  const bookingIds = bookings.map((b) => b['id'] as string);
+  const [staffRes, staffRoleRes, qualRes, violationRes, checkLogRes] = await Promise.all([
     selectIn<StaffRow>(
       supabase,
       'staff',
@@ -259,19 +383,42 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
       .select('staff_id, role_id')
       .eq('client_id', event['client_id'] as string)
       .eq('do_not_return', false),
-    selectIn<{ booking_id: string }>(
+    selectIn<{
+      booking_id: string;
+      type: string;
+      resolved: boolean;
+      minutes_late: number | null;
+      actual_finish_at: string | null;
+    }>(
       supabase,
       'violations',
+      'booking_id, type, resolved, minutes_late, actual_finish_at',
       'booking_id',
+      bookingIds,
+    ),
+    selectIn<{
+      booking_id: string;
+      outcome: string;
+      check_in_at: string | null;
+      check_out_at: string | null;
+      manager_finish_at: string | null;
+    }>(
+      supabase,
+      'check_logs',
+      'booking_id, outcome, check_in_at, check_out_at, manager_finish_at',
       'booking_id',
-      bookings.map((b) => b['id'] as string),
-      { type: 'no_show' },
+      bookingIds,
     ),
   ]);
-  // A failed read of the no-show badges must not show nobody as a no-show,
-  // so it is a problem like the rest rather than an empty set.
+  // A failed read of the no-show badges or the attendance must not show
+  // nobody as a no-show or everyone as absent, so it is a problem like the
+  // rest rather than an empty set.
   const peopleError =
-    staffRes.error ?? staffRoleRes.error ?? qualRes.error?.message ?? violationRes.error;
+    staffRes.error ??
+    staffRoleRes.error ??
+    qualRes.error?.message ??
+    violationRes.error ??
+    checkLogRes.error;
   if (peopleError) {
     return { event: null, problem: `The workers on this event could not be read: ${peopleError}` };
   }
@@ -302,7 +449,33 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
       (q) => `${q.staff_id}:${q.role_id}`,
     ),
   );
-  const noShows = new Set(violationRes.rows.map((v) => v.booking_id));
+  const violationsByBooking = new Map<string, ViolationRow[]>();
+  for (const v of violationRes.rows) {
+    const list = violationsByBooking.get(v.booking_id) ?? [];
+    list.push({
+      type: v.type,
+      resolved: Boolean(v.resolved),
+      minutesLate: v.minutes_late,
+      actualFinishAt: v.actual_finish_at,
+    });
+    violationsByBooking.set(v.booking_id, list);
+  }
+  const logsByBooking = new Map<string, CheckLogRow[]>();
+  for (const l of checkLogRes.rows) {
+    const list = logsByBooking.get(l.booking_id) ?? [];
+    list.push({
+      outcome: l.outcome,
+      checkInAt: l.check_in_at,
+      checkOutAt: l.check_out_at,
+      managerFinishAt: l.manager_finish_at,
+    });
+    logsByBooking.set(l.booking_id, list);
+  }
+  // Recorded by hand or at start + 30, and not yet reversed by Get back /
+  // Resolve (§3.3, §9.5).
+  const noShows = new Set(
+    violationRes.rows.filter((v) => v.type === 'no_show' && !v.resolved).map((v) => v.booking_id),
+  );
 
   const toBooking = (
     row: Record<string, string | boolean | null>,
@@ -325,8 +498,31 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
       qualified: qualified.has(`${person.staffId}:${roleId}`),
       noShow: noShows.has(row['id'] as string),
       reconfirmRequired: Boolean(row['reconfirm_required']),
+      offer: openOffers.get(row['id'] as string) ?? null,
+      attendance: attendanceOf(
+        logsByBooking.get(row['id'] as string) ?? [],
+        violationsByBooking.get(row['id'] as string) ?? [],
+      ),
     };
   };
+
+  // "Handed over: {from} → {to} · {date}" — both people hold a booking on
+  // the section (the original cancelled / handed_over, the taker's), so
+  // both are already named.
+  const bookingStaff = new Map(bookings.map((b) => [b['id'] as string, b['staff_id'] as string]));
+  const nameOf = (bookingId: string | null) => {
+    const staffId = bookingId ? bookingStaff.get(bookingId) : undefined;
+    return (staffId && people.get(staffId)?.name) || 'Deleted account';
+  };
+  const handovers = (shiftId: string): Handover[] =>
+    offerRows
+      .filter((o) => o.shift_id === shiftId && o.status === 'taken' && o.closed_at)
+      .sort((a, b) => (a.closed_at ?? '').localeCompare(b.closed_at ?? ''))
+      .map((o) => ({
+        fromName: nameOf(o.booking_id),
+        toName: nameOf(o.taken_by_booking_id),
+        at: o.closed_at!,
+      }));
 
   return {
     problem: null,
@@ -357,6 +553,7 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
           .map((b) => toBooking(b, roleId))
           .sort((a, b) => (a.appliedAt ?? a.createdAt).localeCompare(b.appliedAt ?? b.createdAt));
         const { rows, problem } = candidates.get(id)!;
+        const calendar = away.get(id)!;
 
         // Everyone with a live booking here is listed in its own section.
         const live = new Set(
@@ -371,6 +568,9 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
             status: b['status'] as string,
             cancelCause: (b['cancel_cause'] as string) ?? null,
             appliedAt: (b['applied_at'] as string) ?? null,
+            // invite_worker never reopens a booking with history (D33).
+            hasHistory:
+              logsByBooking.has(b['id'] as string) || violationsByBooking.has(b['id'] as string),
           }));
 
         return {
@@ -403,10 +603,18 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
                   createdAt: a.createdAt,
                 })),
                 weights,
+                {
+                  ended,
+                  proximityFirst: escalating.has(id),
+                  unavailable: new Set(calendar.windows.keys()),
+                },
               )
             : null,
           poolProblem: problem,
-          unavailable: buildUnavailable(rows, ended, people, live),
+          unavailable: buildUnavailable(rows, ended, people, live, calendar.windows),
+          calendarProblem: calendar.problem,
+          handovers: handovers(id),
+          escalation: escalating.has(id),
         };
       }),
     },

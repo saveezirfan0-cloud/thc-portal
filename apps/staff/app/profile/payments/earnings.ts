@@ -40,6 +40,36 @@ export function paidThisMonth(
   };
 }
 
+/**
+ * The Profile tab's "Next pay Fri 2 Oct · £123.45": the earliest Friday
+ * still to come, and the BASE pay of every worked shift that lands on it —
+ * the same figure each EarningsCard will show once that Friday arrives,
+ * holiday pay not blended in. Null when nothing is owed, so the line is
+ * simply absent rather than reading "£0.00".
+ *
+ * A shift with no settled figure yet (no check-out, so `basePence` is null)
+ * is left out, as Earnings history leaves it out: it is not owed until the
+ * office resolves it, and promising it would be a number the worker holds
+ * THC to.
+ */
+export function nextPay(
+  rows: readonly EarningsRow[],
+  now: Date = new Date(),
+): { payDate: string; totalPence: number; count: number } | null {
+  const owed = rows.filter(
+    (row) => row.basePence !== null && row.basePence > 0 && !isPaid(row.payDate, now),
+  );
+  // ISO dates sort as strings; the first is the soonest Friday.
+  const [payDate] = owed.map((row) => row.payDate).sort();
+  if (!payDate) return null;
+  const due = owed.filter((row) => row.payDate === payDate);
+  return {
+    payDate,
+    totalPence: due.reduce((sum, row) => sum + (row.basePence ?? 0), 0),
+    count: due.length,
+  };
+}
+
 /** Base pence for one shift. Exported so the tests can assert the split. */
 export function basePenceFor(payableMin: number, payRate: number): number {
   return pay(payableMin, Math.round(payRate * 100)).basePence;

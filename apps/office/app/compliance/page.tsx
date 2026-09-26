@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { OfficeShell } from '../_components/OfficeShell';
+import { ViewerZone } from '../checkin/ViewerZone';
 import { ComplianceScreen } from './ComplianceScreen';
 import { loadCompliance } from './data';
 import './compliance.css';
@@ -9,7 +10,9 @@ export const metadata = { title: 'Compliance · THC Back Office' };
 export const dynamic = 'force-dynamic';
 
 /**
- * /compliance — §4.1–4.3, `wireframes/backoffice/compliance.html`.
+ * /compliance — §4.1–4.3, `wireframes/backoffice/compliance.html`. The
+ * topbar names the reader's own zone; every stamp on the screen is an audit
+ * stamp and is UK time whoever reads it.
  *
  * Read on the server as the manager: every source is a security_invoker view,
  * so RLS decides what comes back and this page tests no role of its own.
@@ -32,7 +35,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
           review queue + expiry radar · <b>{data.queue.length} to review</b> · {blocked} blocked
         </>
       }
-      timezone="Viewer: Europe/London (UK)"
+      timezone={<ViewerZone />}
       actions={
         <>
           <Link className="btn ghost sm" href="/staff?view=student">

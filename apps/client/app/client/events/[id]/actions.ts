@@ -11,6 +11,7 @@ import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../../data';
+import { feedbackErrorMessage } from '../../rules';
 
 /**
  * §11.2 / §11.5 · leave feedback on one confirmed worker.
@@ -26,13 +27,6 @@ import { supabaseConfigured } from '../../data';
  * cannot be skipped by posting a different booking id.
  */
 export type FeedbackResult = { ok: true } | { ok: false; error: string };
-
-/** Postgres error codes the RPC raises on purpose, in the customer's words. */
-const MESSAGES: Record<string, string> = {
-  '22023': 'Feedback opens once the event has started.',
-  '23505': 'Feedback has already been left for this person on this event.',
-  '42501': 'That booking is not on one of your events.',
-};
 
 export async function leaveFeedback(
   eventId: string,
@@ -56,7 +50,9 @@ export async function leaveFeedback(
   });
 
   if (error) {
-    return { ok: false, error: MESSAGES[error.code ?? ''] ?? 'That could not be saved.' };
+    // The RPC's errors in the customer's words. 22023 covers both a bad
+    // rating and an event that has not started, so the message decides.
+    return { ok: false, error: feedbackErrorMessage(error) };
   }
 
   // The button on this row becomes "✓ Feedback sent", which is a column of

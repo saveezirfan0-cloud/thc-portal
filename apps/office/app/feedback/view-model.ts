@@ -155,9 +155,7 @@ export function clientMetaLine(entry: FeedbackEntry): string {
   const who = entry.author_name ?? entry.client_name ?? 'the client';
   const bits = [`from ${who} (client)`, `submitted ${ukDayTime(entry.created_at)}`];
   if (entry.staff_removed && entry.staff_removed_at) {
-    bits.push(
-      `worker GDPR-removed ${ukShort(entry.staff_removed_at)} — comment retained verbatim (§1.7)`,
-    );
+    bits.push(`worker GDPR-removed ${ukShort(entry.staff_removed_at)} — comment retained verbatim`);
   }
   return bits.join(' · ');
 }

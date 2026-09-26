@@ -1,0 +1,71 @@
+-- =====================================================================
+-- GENERATED FILE — do not edit.
+--
+-- Source: packages/domain/src/changeRequest.vectors.json
+-- Regenerate: pnpm --filter @thc/domain gen:vectors
+--
+-- ADR-0045: profile_change_transitions(), the state guard and the
+-- profile_change_requests CHECKs against the cases state.ts and
+-- changeRequest.ts are held to. `refusal` null = the name is accepted.
+-- Included with \ir from supabase/tests/701_staff_additions_state.sql; the .psql
+-- extension keeps pg_prove from running it as a test of its own.
+-- =====================================================================
+
+create temporary table change_request_status_vectors (
+  status text primary key
+) on commit drop;
+
+insert into change_request_status_vectors values
+  ('pending'),
+  ('approved'),
+  ('rejected'),
+  ('withdrawn');
+
+create temporary table change_request_edge_vectors (
+  from_status text not null,
+  to_status text not null
+) on commit drop;
+
+insert into change_request_edge_vectors values
+  ('pending', 'approved'),
+  ('pending', 'rejected'),
+  ('pending', 'withdrawn');
+
+create temporary table change_request_name_vectors (
+  name text primary key,
+  first_name text not null,
+  last_name text not null,
+  refusal text
+) on commit drop;
+
+insert into change_request_name_vectors values
+  ('new_surname', 'Maria', 'Lopez-Garcia', null),
+  ('trimmed', ' Maria ', ' Garcia ', null),
+  ('an_accent_is_a_change', 'Maria', 'López', null),
+  ('capitals_are_a_change', 'MARIA', 'Lopez', null),
+  ('first_name_of_100_characters', 'NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN', 'Lopez', null),
+  ('blank_first_name', '  ', 'Garcia', 'first_required'),
+  ('blank_last_name', 'Maria', '', 'last_required'),
+  ('first_name_of_101_characters', 'NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN', 'Lopez', 'first_too_long'),
+  ('last_name_of_101_characters', 'Maria', 'NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNN', 'last_too_long'),
+  ('the_name_on_file', 'Maria', 'Lopez', 'unchanged'),
+  ('the_name_on_file_with_spaces', ' Maria', 'Lopez ', 'unchanged');
+
+create temporary table change_request_decision_vectors (
+  name text primary key,
+  approve boolean not null,
+  reason text,
+  refusal text
+) on commit drop;
+
+insert into change_request_decision_vectors values
+  ('approve_without_reason', true, null, null),
+  ('approve_with_a_note', true, 'Matches the passport', null),
+  ('reject_without_reason', false, null, 'reason_required'),
+  ('reject_with_a_blank_reason', false, '   ', 'reason_required'),
+  ('reject_with_a_reason', false, 'The document shows a different surname.', null),
+  ('reject_with_300_characters', false, 'RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR', null),
+  ('reject_with_301_characters', false, 'RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR', 'reason_too_long');
+
+\set change_request_status_count 4
+\set change_request_edge_count 3

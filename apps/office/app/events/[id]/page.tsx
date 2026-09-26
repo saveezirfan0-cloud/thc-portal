@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Alert, Panel, Pill } from '@thc/ui';
 import {
+  cancelledOnTheDay,
   derivedEventWindow,
   eventFill,
   eventStatus,
@@ -127,8 +128,13 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         {status === 'cancelled' ? (
           <Alert tone="coral">
             <b>This event is cancelled.</b> {event.cancelReason ? `"${event.cancelReason}" — ` : ''}
-            it stays here for the record and is excluded from financial reports (§9.9). No
-            allocation sheet or timesheet is generated for it (§11.3).
+            it stays here for the record.{' '}
+            {/* §3.3's resolved edge case: on the day (UK), or after work
+                started, the scheduled hours are billed and paid in full. */}
+            {event.cancelledAt && cancelledOnTheDay(event.cancelledAt, event.date)
+              ? 'It was cancelled on the day, so the scheduled hours are billed to the client and paid to every affected worker in full.'
+              : 'It was cancelled before the day, so it is excluded from the financial reports.'}{' '}
+            No allocation sheet or timesheet is generated for it.
           </Alert>
         ) : null}
 
@@ -137,6 +143,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           actions={
             <span className="row" style={{ gap: 8 }}>
               <StatusPill status={status} />
+              {/* §3.2: the PO NUMBER chip, read-only in the header. */}
+              <span className="pochip">
+                <span className="k">PO number</span>
+                <span className="v">{event.poNumber || '—'}</span>
+              </span>
               <Pill tone={fill.open === 0 ? 'green' : 'amber'}>{formatEventFill(fill)}</Pill>
               {open ? <span className="muted sm">{open}</span> : null}
               {/* §3.4: purple, default ON; both switches must be on for a round. */}
@@ -150,7 +161,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           }
         >
           <div className="stack">
-            <div className="grid c4">
+            <div className="grid c3">
               <Field label="Client">{event.clientName}</Field>
               <Field label="Venue">
                 {event.venueName}
@@ -169,11 +180,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                   <span className="mono">—</span>
                 )}
                 <span className="muted xs">
-                  {event.date} · earliest role start → latest role end (RULE-18)
+                  {event.date} · earliest role start → latest role end
                 </span>
-              </Field>
-              <Field label="PO number">
-                <span className="mono">{event.poNumber || '—'}</span>
               </Field>
             </div>
 
@@ -183,7 +191,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
                 <b>Break policy</b> — {event.paysBreaks ? 'client pays' : 'client does not pay'}
               </span>
               <span>
-                <b>Buffer policy</b> — {event.paysBuffer ? 'client pays' : 'strict (RULE-15)'}
+                <b>Buffer policy</b> — {event.paysBuffer ? 'client pays' : 'strict'}
               </span>
               <span className="muted">Set at client level; read-only here.</span>
             </div>

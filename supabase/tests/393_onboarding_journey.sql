@@ -33,8 +33,10 @@ select plan(52);
 -- =====================================================================
 -- 1. The public form (§2.1)
 -- =====================================================================
-set local "request.jwt.claims" = '{"role":"anon"}';
-set local role anon;
+-- The /apply server action calls it with the service key (20260930120200,
+-- ADR-0024): the visitor is logged out, the database caller is not anon.
+set local "request.jwt.claims" = '{"role":"service_role"}';
+set local role service_role;
 select throws_ok(
   format($$ select submit_application('Young', 'Person', 'young@journey.test', '+447700900998', %L::date, true) $$,
          ((now() at time zone 'Europe/London')::date - interval '17 years')::date),
@@ -95,6 +97,9 @@ select lives_ok(
   $$ select onboarding_save_address('Flat 4, 22 Roman Road', 'London', 'E2 0RY', 51.5290, -0.0450) $$,
   '2/11 home address: the pin');
 -- 3/11 selfie
+-- The upload, through the worker's own session (photos_worker_insert_own);
+-- staff_set_photo() requires the object to exist (20260930120200).
+insert into storage.objects (bucket_id, name) values ('photos', :'cand' || '/selfie-1.jpg');
 select lives_ok(format($$ select staff_set_photo(%L) $$, :'cand' || '/selfie-1.jpg'), '3/11 the selfie is taken');
 select lives_ok($$ select onboarding_confirm_selfie() $$, '3/11 and used');
 -- 4/11 documents + declaration

@@ -54,9 +54,18 @@ export function InductionStep({ alreadyDone }: { alreadyDone: boolean }) {
           Stand-in slides: THC’s own induction deck replaces these before go-live.
         </div>
       ) : null}
-      <div className="slide" aria-live="polite">
+      <div className={slide.image ? 'slide slide-image' : 'slide'} aria-live="polite">
         {slide.image ? (
-          <img src={slide.image} alt={slide.title} />
+          // The deck is 16:9 and dense for a phone: a tap opens the page on its
+          // own, where the browser lets the worker zoom in.
+          <a
+            href={slide.image}
+            target="_blank"
+            rel="noopener"
+            aria-label={`${slide.title} — open full size`}
+          >
+            <img src={slide.image} alt={slide.title} />
+          </a>
         ) : (
           <>
             <div className="label cyan">{slide.section}</div>

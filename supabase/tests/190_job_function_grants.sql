@@ -66,7 +66,8 @@ select is_empty(
           -- The automated right-to-work check (20260928100000, ADR-0025),
           -- a Back Office route on the service key rather than an Edge
           -- Function. Without these every share code waits for ever.
-          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config'
+          -- rtw_check_attach_photo files the gov.uk photo (ADR-0041).
+          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config', 'rtw_check_attach_photo'
         )
         and not has_function_privilege('service_role', p.oid, 'execute') $$,
   'the service role can execute every function the §7 jobs call'
@@ -105,7 +106,7 @@ select is_empty(
           -- rtw_check_claim hands out share codes and dates of birth;
           -- rtw_check_record verifies a worker's right to work. The two
           -- *_as bodies take the reviewer as an argument.
-          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config',
+          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config', 'rtw_check_attach_photo',
           'compliance_verify_document_as', 'compliance_reject_document_as'
         )
         and has_function_privilege('anon', p.oid, 'execute') $$,
@@ -136,7 +137,7 @@ select is_empty(
           'request_p45', 'declare_conviction', 'released_shift_lines',
           'block_worker_manually', 'unblock_worker', 'reset_to_candidate',
           'remove_worker', 'claim_storage_deletions', 'complete_storage_deletion',
-          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config',
+          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config', 'rtw_check_attach_photo',
           'compliance_verify_document_as', 'compliance_reject_document_as',
           -- rtw_check_manual_allowed is NOT here on purpose: the office's
           -- security_invoker queue view calls it as `authenticated`, so it
@@ -223,7 +224,7 @@ select is(
 --     "which of these is anon allowed to call" is the one question worth
 --     asking structurally rather than per feature.
 --
---     The three exceptions, and why each is not a hole:
+--     The two exceptions, and why each is not a hole:
 --
 --     · current_app_role() / current_client_id() — called inside the
 --       predicate of essentially every policy in the schema, which is
@@ -234,11 +235,12 @@ select is(
 --       no profile, which is exactly how anon is kept out of
 --       venue_types and staff_transitions. 20260921123503's triage
 --       reached the same conclusion.
---     · submit_application() — the public form (§2.1) is anonymous by
---       definition. It is bounded instead: validation, two advisory
---       locks, a per-email and per-mobile throttle
---       (20260922183012), and a void return so it cannot be used as an
---       account-existence oracle. 120_apply holds that.
+--     · submit_application() is NOT one any more. The public form
+--       (§2.1) is anonymous, but the Staff App's server action calls it
+--       with the service key through submit_application_as_caller(),
+--       which adds the per-caller limit (ADR-0024); the anon grant was
+--       the way round that limit and went in 20260930120200. 120_apply
+--       holds it.
 --
 --     Extension-owned functions are excluded: PostGIS's
 --     st_estimatedextent overloads are definer and are not ours.
@@ -255,8 +257,8 @@ select bag_eq(
                          where d.classid = 'pg_proc'::regclass
                            and d.objid = p.oid and d.deptype = 'e')
         and has_function_privilege('anon', p.oid, 'execute') $$,
-  $$ values ('current_app_role'::text), ('current_client_id'), ('submit_application') $$,
-  'exactly three security definer functions in public are reachable by anon, and each is there on purpose'
+  $$ values ('current_app_role'::text), ('current_client_id') $$,
+  'exactly two security definer functions in public are reachable by anon, and each is there on purpose — submit_application is service-role only (20260930120200)'
 );
 
 -- ---------------------------------------------------------------------
@@ -265,11 +267,13 @@ select bag_eq(
 --     to by default and `create or replace` never takes away.
 --
 --     2e asks "can anon call it"; this asks "was it ever revoked at all".
---     They differ for one function: submit_application is granted to
---     anon by name (120_apply) and revoked from PUBLIC, which is the
---     shape a deliberate publication has. A definer that reaches anon
---     only because nobody wrote a revoke — 20260927140100's pool, had it
---     been definer — has PUBLIC's grant and fails here by name.
+--     They used to differ for one function: submit_application was
+--     granted to anon by name and revoked from PUBLIC, which is the shape
+--     a deliberate publication has. Since 20260930120200 it is granted to
+--     service_role only (120_apply), so today the two lists agree. A
+--     definer that reaches anon only because nobody wrote a revoke —
+--     20260927140100's pool, had it been definer — has PUBLIC's grant and
+--     fails here by name.
 --
 --     The two policy helpers are the exceptions 2e already argues for:
 --     every RLS predicate in the schema calls them as the caller, so

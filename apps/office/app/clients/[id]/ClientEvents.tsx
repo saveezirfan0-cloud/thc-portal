@@ -115,9 +115,7 @@ export function ClientEvents({ rows }: { rows: ClientEventRow[] }) {
                   <td data-label="Date · window (UK time)" className="mono sm">
                     {formatUkDate(row.event_date)} · {formatUkWindow(row.starts_at, row.ends_at)}
                     {row.section_count > 1 ? (
-                      <span className="sub">
-                        derived window — role times are on the event page (§3.2)
-                      </span>
+                      <span className="sub">derived window — role times are on the event page</span>
                     ) : null}
                   </td>
                   <td data-label="Venue" className="sm">

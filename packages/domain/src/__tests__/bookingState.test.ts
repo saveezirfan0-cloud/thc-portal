@@ -76,6 +76,17 @@ describe('the transitions the write paths make (§3.4, §3.5, §3.6, §10.4, RUL
     ['withdraw_application', 'applied', 'closed'],
     ['event cancelled with an application pending (N12)', 'applied', 'cancelled'],
     ['apply_to_shift revives a closed offer', 'closed', 'applied'],
+    [
+      'apply_to_shift reopens a cancelled, not self-cancelled, row (ADR-0037)',
+      'cancelled',
+      'applied',
+    ],
+    ['invite_worker reopens a closed offer (ADR-0037)', 'closed', 'invited'],
+    [
+      'invite_worker reopens a cancelled, not self-cancelled, row (ADR-0037)',
+      'cancelled',
+      'invited',
+    ],
     ['attempt_check_in · accepted', 'confirmed', 'worked'],
     ['attempt_check_in · strict buffer', 'confirmed', 'turned_away'],
     ['release_unready_bookings (12:05)', 'confirmed', 'cancelled'],
@@ -87,7 +98,8 @@ describe('the transitions the write paths make (§3.4, §3.5, §3.6, §10.4, RUL
     ['a confirmed booking is not un-accepted', 'confirmed', 'invited'],
     ['a worked shift is not cancelled after the fact', 'worked', 'cancelled'],
     ['a turned-away worker is not checked in later', 'turned_away', 'worked'],
-    ['a cancelled booking is not revived (RULE-04, Withdraw)', 'cancelled', 'applied'],
+    ['a cancelled booking is not confirmed without a fresh offer', 'cancelled', 'confirmed'],
+    ['a cancelled booking is not put back to worked', 'cancelled', 'worked'],
     ['a closed offer is not accepted, only re-applied for', 'closed', 'confirmed'],
     ['nobody is invited out of an application', 'applied', 'invited'],
   ] as const)('%s: %s → %s is refused', (_why, from, to) => {
@@ -128,8 +140,10 @@ describe('cancel_cause — one vocabulary (docs/14 B3)', () => {
     }
   });
 
-  it('only a self-cancel excludes the worker from the event (RULE-04)', () => {
-    expect(CANCEL_CAUSES.filter(excludesFromEvent)).toEqual(['self_cancel']);
+  it('only a self-cancel and a completed hand-over exclude the worker from the event (RULE-04, ADR-0046)', () => {
+    expect(CANCEL_CAUSES.filter(excludesFromEvent)).toEqual(['self_cancel', 'handed_over']);
+    expect(excludesFromEvent('handed_over')).toBe(true);
+    expect(cancelCauseStatus('handed_over')).toBe('cancelled');
   });
 
   it('carries every literal cause the SQL write paths emit', () => {

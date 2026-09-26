@@ -34,6 +34,7 @@ insert into rota_guard_vectors values
   ('ac4_opt_out_uncapped_is_ok', true, null, 'uncapped', 70, 12, 'block', 'ok', null),
   ('ac6_rtw_expired_blocks_whatever_the_cap', false, null, 'uncapped', 0, 4, 'warn', 'block', 'rtw_expired'),
   ('ac6_week_wholly_past_expiry_is_zero', false, 0, 'visa_expired_0', 0, 4, 'warn', 'block', 'rtw_expired'),
-  ('already_over_cap_any_shift_breaches', true, 20, 'student_term_20', 24, 1, 'block', 'block', 'visa_cap');
+  ('already_over_cap_any_shift_breaches', true, 20, 'student_term_20', 24, 1, 'block', 'block', 'visa_cap'),
+  ('visa_limit_over_blocks_even_in_warn_mode', true, 20, 'visa_limit', 16, 8, 'warn', 'block', 'visa_cap');
 
-\set rota_vector_count 12
+\set rota_vector_count 13

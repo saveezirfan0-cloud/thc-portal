@@ -35,7 +35,7 @@ vi.mock('next/link', () => ({
 }));
 vi.mock('../actions', () => ({ requestP45: (reason: string) => requestP45(reason) }));
 
-const { ProfileSheet } = await import('../_components/ProfileSheet');
+const { ProfileHub } = await import('../_components/ProfileHub');
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -70,7 +70,7 @@ let root: Root;
 
 function mount(profile: StaffProfile, futureShifts = 3) {
   act(() => {
-    root.render(<ProfileSheet profile={profile} photoUrl={null} futureShifts={futureShifts} />);
+    root.render(<ProfileHub profile={profile} photoUrl={null} futureShifts={futureShifts} />);
   });
 }
 

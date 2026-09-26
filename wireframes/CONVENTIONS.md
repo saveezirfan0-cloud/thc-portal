@@ -54,6 +54,7 @@ Use `.annot` spans sparingly to call out a rule on the canvas (amber mono text),
 - Today in the wireframes = Thu 18 Sep 2026, 14:32 UK time.
 
 ## File naming (must match the hub links)
-Back Office: `backoffice/{login,dashboard,onboarding,candidate,events,shift-builder,event-board,compliance,checkin,staff,staff-profile,clients,client-card,roles,reports,feedback,venues}.html`
-Staff app: `staff/{auth,onboarding-1,onboarding-2,onboarding-3,shifts,shift-detail,radar,invites,documents,profile,locks}.html`
+Back Office: `backoffice/{login,dashboard,onboarding,candidate,events,shift-builder,event-board,compliance,checkin,staff,staff-profile,change-requests,clients,client-card,roles,reports,feedback,venues}.html`
+Staff app: `staff/{auth,onboarding-1,onboarding-2,onboarding-3,shifts,shift-detail,offer-shift,radar,invites,documents,profile,availability,request-change,refer,locks}.html`
+Additions planned in `docs/19` (ADR-0043–0046, proposed) are stubs: `staff/{availability,request-change,refer,offer-shift}.html`, `backoffice/change-requests.html`.
 Public: `public/{apply,activate}.html` · Client Portal: `client/{login,events,event,timesheet}.html`

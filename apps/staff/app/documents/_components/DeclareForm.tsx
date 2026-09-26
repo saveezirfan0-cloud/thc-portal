@@ -20,7 +20,14 @@ import { declareConviction } from '../actions';
  * itself with §10.7's "Thanks for telling us" copy. What they typed is not
  * shown back anywhere — the form clears and the tab never receives it.
  */
-export function DeclareForm({ futureShifts, today }: { futureShifts: number; today: string }) {
+export function DeclareForm({
+  futureShifts,
+  today,
+}: {
+  /** Null when the bookings could not be read. */
+  futureShifts: number | null;
+  today: string;
+}) {
   const router = useRouter();
   const [details, setDetails] = useState('');
   const [date, setDate] = useState('');
@@ -130,10 +137,12 @@ export function DeclareForm({ futureShifts, today }: { futureShifts: number; tod
 }
 
 /** The confirmation's first sentence, with the real number of shifts it releases. */
-export function consequence(futureShifts: number): string {
+export function consequence(futureShifts: number | null): string {
   const shifts =
-    futureShifts === 0
-      ? 'You have no booked shifts to release'
-      : `${futureShifts} booked ${futureShifts === 1 ? 'shift' : 'shifts'} will be released and offered to other staff`;
+    futureShifts === null
+      ? 'any booked shifts will be released and offered to other staff'
+      : futureShifts === 0
+        ? 'You have no booked shifts to release'
+        : `${futureShifts} booked ${futureShifts === 1 ? 'shift' : 'shifts'} will be released and offered to other staff`;
   return `Submitting pauses your upcoming shifts straight away — ${shifts}. This can’t be undone from the app.`;
 }

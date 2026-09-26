@@ -52,7 +52,17 @@ export function QuizStep({
     setError(null);
     start(async () => {
       const marked = await submitQuiz(answers);
-      if (!marked.ok) return setError(marked.message);
+      if (!marked.ok) {
+        setError(marked.message);
+        // Replaced while the worker was answering: the answers belong to
+        // questions that no longer exist. Start again on the current set.
+        if (marked.reason === 'quiz_changed') {
+          setAnswers({});
+          setIndex(0);
+          router.refresh();
+        }
+        return;
+      }
       setResult(marked.result);
       setAttempts((a) => [...a, marked.result]);
       if (marked.result.outcome === 'rejected') router.push('/onboarding');
@@ -63,6 +73,9 @@ export function QuizStep({
     setAnswers({});
     setIndex(0);
     setResult(null);
+    // The questions came with the page; fetch them again so a new attempt
+    // is never sat against a set replaced since (20260930140000).
+    router.refresh();
   }
 
   const history = (
@@ -168,6 +181,10 @@ export function QuizStep({
       />
       <Progress value={index + (answered ? 1 : 0)} max={total} tone="green" />
       <div className="q">{q.prompt}</div>
+      {q.image ? (
+        // THC's Q7 asks what a symbol means: the picture IS the question.
+        <img className="quiz-img" src={q.image} alt="COSHH hazard symbol" />
+      ) : null}
       <div role="radiogroup" aria-label={q.prompt} className="wiz-options">
         {q.options.map((option, i) => (
           <button

@@ -12,6 +12,7 @@ import {
   payableMinutes,
   showRate,
   turnedAwayMinutes,
+  unpaidBreakMinutes,
 } from '../pay';
 import type { NoCheckOutState, ShowRateBooking } from '../pay';
 
@@ -68,6 +69,13 @@ interface PayVector {
 interface TurnAwayVector {
   shiftMin: number;
   attemptMinFromStart: number;
+}
+
+interface BreakVector {
+  shiftMin: number;
+  checkInMinFromStart: number;
+  finishMinFromStart: number;
+  breaks: [number, number | null][];
 }
 
 describe('§5.1 check-in (shared vectors)', () => {
@@ -129,6 +137,21 @@ describe('RULE-15 buffer turn-away (shared vectors)', () => {
   });
 });
 
+describe('§5.2b breaks inside the paid window (shared vectors, D49)', () => {
+  it.each(merged<BreakVector>(vectors.breaks))('$name', ({ input, expect: expected }) => {
+    expect(
+      unpaidBreakMinutes(
+        {
+          shift: shiftOf(input.shiftMin),
+          checkInAt: at(input.checkInMinFromStart),
+          finishAt: at(input.finishMinFromStart),
+        },
+        input.breaks.map(([s, e]) => ({ startedAt: at(s), endedAt: e === null ? null : at(e) })),
+      ),
+    ).toBe(expected.unpaidBreakMin);
+  });
+});
+
 // The rules above are the contract. What follows is the reasoning behind the
 // pieces the vectors exercise only indirectly.
 
@@ -183,6 +206,6 @@ describe('§6 the show-rate (BG-03, RULE-14, §9.5)', () => {
   }
 
   it('has every case the SQL side replays', () => {
-    expect(vectors.showRate.cases.length).toBe(11);
+    expect(vectors.showRate.cases.length).toBe(12);
   });
 });

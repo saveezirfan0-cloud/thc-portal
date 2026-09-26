@@ -7,7 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { checkPassword, passwordError, passwordOk } from '@thc/domain';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
-import { officeOrigin } from '../login/origin';
+import { appOrigin } from '@thc/db';
 import {
   explainAccountError,
   normaliseEmail,
@@ -77,9 +77,18 @@ export async function changeMyEmail(newEmail: string): Promise<AccountResult> {
     return { ok: false, message: 'That is already your sign-in address.' };
   }
 
+  // The Back Office's own public URL (packages/db origin.ts): never guessed
+  // in production, so an unset variable is refused in words.
+  const origin = appOrigin(process.env['NEXT_PUBLIC_OFFICE_URL'], 'http://127.0.0.1:3000');
+  if (!origin) {
+    return {
+      ok: false,
+      message: 'The email cannot be changed on this deployment yet — set NEXT_PUBLIC_OFFICE_URL.',
+    };
+  }
   const { error } = await supabase.auth.updateUser(
     { email },
-    { emailRedirectTo: `${officeOrigin()}/auth/callback?next=/account` },
+    { emailRedirectTo: `${origin}/auth/callback?next=/account` },
   );
   if (error) {
     console.error('[account] email change failed', {

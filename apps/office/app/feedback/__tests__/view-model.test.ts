@@ -132,7 +132,7 @@ describe('row copy', () => {
         staff_name: 'Deleted account #1042',
       }),
     ).toBe(
-      'from Sophie L. (client) · submitted Fri 18 Sep 09:12 · worker GDPR-removed 19 Sep — comment retained verbatim (§1.7)',
+      'from Sophie L. (client) · submitted Fri 18 Sep 09:12 · worker GDPR-removed 19 Sep — comment retained verbatim',
     );
   });
 

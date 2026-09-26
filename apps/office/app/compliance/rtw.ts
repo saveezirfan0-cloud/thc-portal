@@ -37,7 +37,7 @@ export function rtwDateRule(docType: string, branch: string | null): RtwDateRule
     return {
       field: 'right_to_work_until',
       label: 'Right to work until (gov.uk report)',
-      hint: 'Read it off the gov.uk report. It becomes the expiry used for reminders (§2.6, §4.4) and the last day the worker can be rostered.',
+      hint: 'Read it off the gov.uk report. It becomes the expiry used for reminders and the last day the worker can be rostered.',
       allowNoTimeLimit: branch === 'eu_settled',
     };
   }

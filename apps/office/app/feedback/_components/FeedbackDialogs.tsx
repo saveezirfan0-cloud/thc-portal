@@ -195,7 +195,7 @@ export function DeleteFeedbackModal({
         {entry.author_kind === 'client' ? (
           <Alert tone="amber">
             Client feedback is otherwise read-only. It can be deleted here only because the worker
-            has been removed (§1.7) — use this to redact a name if asked. This cannot be undone.
+            has been removed — use this to redact a name if asked. This cannot be undone.
           </Alert>
         ) : (
           <p className="sm muted">

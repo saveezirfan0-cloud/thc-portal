@@ -127,15 +127,25 @@ self.addEventListener('push', (event) => {
   // payload may name that button (`action`); where the platform draws
   // notification buttons (Android, desktop) it appears, and iOS — which
   // draws none — still opens the deep link on tap, where the button lives.
+  // `tag` collapses a repeat of the same item (N8: per document); without
+  // one, the deep link is the tag.
   let action: string | null = null;
+  let tag: string | null = null;
 
   if (raw) {
     try {
-      const data = raw.json() as { title?: string; body?: string; url?: string; action?: string };
+      const data = raw.json() as {
+        title?: string;
+        body?: string;
+        url?: string;
+        action?: string;
+        tag?: string;
+      };
       title = data.title ?? title;
       body = data.body ?? '';
       url = data.url ?? HOME;
       action = typeof data.action === 'string' && data.action ? data.action : null;
+      tag = typeof data.tag === 'string' && data.tag ? data.tag : null;
     } catch {
       body = raw.text();
     }
@@ -152,7 +162,7 @@ self.addEventListener('push', (event) => {
       // Deep link (§10.4): a tapped N5 opens that invitation, not the app's
       // front door. `tag` collapses a repeat of the same one.
       data: { url },
-      tag: url,
+      tag: tag ?? url,
       ...(action ? { actions: [{ action: 'open', title: action }] } : {}),
     } as NotificationOptions),
   );

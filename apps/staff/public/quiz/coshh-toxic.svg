@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" role="img" aria-labelledby="title">
+  <title id="title">COSHH hazard symbol: acute toxicity (GHS06, skull and crossbones)</title>
+  <!-- GHS06: a red diamond border on a white ground, a black skull and crossbones. -->
+  <path d="M50 6 94 50 50 94 6 50Z" fill="#fff" stroke="#e60012" stroke-width="7" stroke-linejoin="miter"/>
+  <!-- the crossbones, behind the skull -->
+  <g stroke="#000" stroke-width="4.4" stroke-linecap="round" fill="none">
+    <path d="M34 54 66 68M66 54 34 68"/>
+  </g>
+  <g fill="#000">
+    <circle cx="34.1" cy="51.4" r="2.9"/><circle cx="32.1" cy="55.8" r="2.9"/>
+    <circle cx="65.9" cy="51.4" r="2.9"/><circle cx="67.9" cy="55.8" r="2.9"/>
+    <circle cx="67.9" cy="66.2" r="2.9"/><circle cx="65.9" cy="70.6" r="2.9"/>
+    <circle cx="32.1" cy="66.2" r="2.9"/><circle cx="34.1" cy="70.6" r="2.9"/>
+  </g>
+  <!-- the skull -->
+  <path fill="#000" stroke="#fff" stroke-width="1.6" d="M50 25.5c-8.3 0-14 5.6-14 13 0 4.3 1.9 7.6 4.9 9.6V54a2.4 2.4 0 0 0 2.4 2.4h13.4a2.4 2.4 0 0 0 2.4-2.4v-5.9c3-2 4.9-5.3 4.9-9.6 0-7.4-5.7-13-14-13Z"/>
+  <g fill="#fff">
+    <ellipse cx="44.6" cy="39.4" rx="3.6" ry="3.9"/>
+    <ellipse cx="55.4" cy="39.4" rx="3.6" ry="3.9"/>
+    <path d="M50 44.2 47.9 48.3h4.2Z"/>
+    <rect x="45.7" y="51.2" width="1.1" height="5.2"/>
+    <rect x="49.45" y="51.2" width="1.1" height="5.2"/>
+    <rect x="53.2" y="51.2" width="1.1" height="5.2"/>
+  </g>
+</svg>

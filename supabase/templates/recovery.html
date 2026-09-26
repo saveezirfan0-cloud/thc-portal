@@ -1,0 +1,38 @@
+<!--
+  Supabase Auth recovery email — §10.2 A1 → A3, §9.12 (sent from admin@).
+  ADR-0039, audit D13.
+
+  The link carries a token_hash, not GoTrue's PKCE /verify link, so it
+  works in ANY browser on ANY device: another computer, a mail app's
+  in-app browser, or Safari when the request came from the installed PWA.
+  Each app's /auth/confirm calls verifyOtp({ type: 'recovery', token_hash })
+  and hands off to /reset.
+
+  {{ .RedirectTo }} and not {{ .SiteURL }}: the three apps share one Auth
+  project and one Site URL, and each app's forgot action sends its OWN
+  <origin>/auth/confirm as redirectTo (packages/db/src/origin.ts), so the
+  link opens the app it was requested from. GoTrue substitutes the Site URL
+  when a redirectTo is not on the allow-list, so every app's
+  <origin>/auth/confirm** must be on it (supabase/config.toml
+  additional_redirect_urls, and the hosted project's URL Configuration).
+
+  The hosted project reads its templates from the dashboard, not this file:
+  Authentication → Email Templates → Reset Password takes this body
+  (owner step, reported with the change).
+-->
+<h2>Reset your password</h2>
+
+<p>We received a request to reset the password for your The Hospitality Company account.</p>
+
+<p>
+  <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery&next=/reset"
+    >Set a new password</a
+  >
+</p>
+
+<p>
+  The link works once. If you did not ask for this, you can ignore this email — your password has
+  not changed.
+</p>
+
+<p>The Hospitality Company · admin@thehospitalitycompany.co.uk</p>

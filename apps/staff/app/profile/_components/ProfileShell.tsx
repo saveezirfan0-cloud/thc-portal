@@ -2,22 +2,23 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { AppBody, AppFrame, AppHeader, Avatar, Logo } from '@thc/ui';
 import { BottomTabs } from '../../_components/BottomTabs';
-import { reachableTabs, showsBottomNav } from '../lock';
+import { reachableTabs, showsBottomNav, STAFF_TABS } from '../lock';
 import type { AppLock } from '../lock';
 
 /**
  * Chrome for the profile screens (§10.1).
  *
- * Not `StaffShell`: these screens are reached from the avatar rather than
- * from a tab, so none of the four tabs is active, and the wireframe gives
- * them a collapsed header carrying a "‹ Profile" back link where the tab
- * screens carry a title. The primitives are the same ones — the frosted
+ * Not `StaffShell`: the wireframe gives the screens under Profile a
+ * collapsed header carrying a "‹ Profile" back link where the tab screens
+ * carry a title. Profile is a tab since ADR-0042, so it is the one lit
+ * here — on the hub and on every screen beneath it. The primitives are the same ones — the frosted
  * header, body and bottom nav from packages/ui — so the two read as one
  * app.
  *
  * The nav it renders is lock-aware. §10.1's four cases differ precisely in
  * which tabs exist, and `reachableTabs()` is the single answer: an
- * auto-blocked worker keeps Documents and loses the other three; a
+ * auto-blocked worker keeps Profile (and Documents inside it) and loses
+ * the other three; a
  * manually blocked worker, a rejected candidate and a leaver get no
  * navigation at all, because there is nothing behind it for them.
  */
@@ -27,6 +28,7 @@ export function ProfileShell({
   lock,
   name,
   photoUrl,
+  nav = true,
   children,
 }: {
   title: ReactNode;
@@ -35,15 +37,15 @@ export function ProfileShell({
   lock: AppLock;
   name: string;
   photoUrl?: string | null;
+  /**
+   * False when the profile could not be read: the lock is unknown, so no
+   * tab can be vouched for and none is drawn (fail closed, audit D16).
+   */
+  nav?: boolean;
   children: ReactNode;
 }) {
   const reachable = reachableTabs(lock);
-  const tabs = [
-    { href: '/documents', label: 'Documents' },
-    { href: '/shifts', label: 'Shifts' },
-    { href: '/invites', label: 'Invites' },
-    { href: '/radar', label: 'Radar' },
-  ].map((tab) => ({ ...tab, locked: !reachable.includes(tab.href) }));
+  const tabs = STAFF_TABS.map((tab) => ({ ...tab, locked: !reachable.includes(tab.href) }));
 
   return (
     <AppFrame>
@@ -74,7 +76,14 @@ export function ProfileShell({
           same `{href, label, locked}` data and decides what a link is
           itself, so only strings cross the boundary. Same markup, same
           classes, same locked-is-a-span behaviour. */}
-      {showsBottomNav(lock) ? <BottomTabs tabs={tabs} /> : null}
+      {nav && showsBottomNav(lock) ? (
+        // Lit only when it is open: a leaver's Profile tab is closed like
+        // the other three (§10.6), and a closed tab is never the active one.
+        <BottomTabs
+          tabs={tabs}
+          {...(reachable.includes('/profile') ? { active: '/profile' } : {})}
+        />
+      ) : null}
     </AppFrame>
   );
 }

@@ -132,7 +132,7 @@ describe('Willo stage map (§2.4)', () => {
         accepted: 'documents',
         rejected: 'documents',
       }),
-    ).toContain('§2.4');
+    ).toBe('A Willo rejection must map to the Rejected stage.');
   });
 });
 

@@ -36,9 +36,7 @@ const APPS = ['apps/office/app', 'apps/staff/app', 'apps/client/app'];
  * `/auth/signout` and `/auth/callback` are plumbing, not screens: no wireframe,
  * no state list, nothing a reader of the inventory would look for.
  */
-// /login/callback is the PKCE exchange a reset link lands on (Supabase Auth
-// → session cookie → redirect); it renders nothing and has no wireframe.
-const NOT_SCREENS = [/^\/auth\//, /^\/login\/callback$/];
+const NOT_SCREENS = [/^\/auth\//];
 
 /** Every `page.tsx` and `route.ts` under a directory, as a Next.js route. */
 function routesOf(appDir) {

@@ -88,10 +88,31 @@ describe('acceptance criteria (requirement §6), at the rule', () => {
     expect(at('2026-10-12')).toBe(48);
     // The worker is told the first day it counts.
     expect(completionEffectiveFrom('2026-10-07', '2026-09-23')).toBe('2026-10-12');
-    // A letter approved long after the date lifts from the approval, not retroactively.
-    expect(completionEffectiveFrom('2026-06-30', '2026-09-23')).toBe('2026-09-23');
+    // A letter approved long after the date lifts from the Monday after the
+    // approval — never retroactively, and never part-way through a week
+    // (audit D35: approved on Wednesday 23.09, released Monday 28.09).
+    expect(completionEffectiveFrom('2026-06-30', '2026-09-23')).toBe('2026-09-28');
+    // Approved on a Monday: that week is whole, so it is released at once.
+    expect(completionEffectiveFrom('2026-06-30', '2026-09-21')).toBe('2026-09-21');
     // A Monday completion date is its own first full week.
     expect(completionEffectiveFrom('2026-10-12', '2026-09-23')).toBe('2026-10-12');
+  });
+
+  it('AC3 — a completion date already in the past releases from the Monday after verification, not mid-week', () => {
+    const verifiedOn = '2026-09-24'; // a Thursday
+    const graduate = (weekStart: string) =>
+      weeklyCap({
+        ...TERM_STUDENT,
+        completionLetterVerified: true,
+        completionDate: '2025-12-19',
+        verifiedOn,
+        weekStart,
+      });
+    // The whole week of 21.09 stays at the term cap: one cap for Mon–Sun.
+    expect(graduate('2026-09-21')).toEqual({ capHours: 20, band: 'student_term_20' });
+    expect(graduate('2026-09-28')).toEqual({ capHours: 48, band: 'graduated_48' });
+    // What the worker is told agrees with what the rota does.
+    expect(completionEffectiveFrom('2025-12-19', verifiedOn)).toBe('2026-09-28');
   });
 
   it('AC4 — above 48 hours only with a valid, un-cancelled opt-out, and only for an 18+', () => {

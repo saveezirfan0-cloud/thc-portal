@@ -8,7 +8,7 @@ import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
 import { queueInviteEmail } from '../_lib/inviteEmail';
 import { sessionIsAdmin } from '../_lib/sessionRole';
-import { officeOrigin } from '../login/origin';
+import { appOrigin } from '@thc/db';
 import {
   explainAccountError as explainAccountCode,
   normaliseEmail,
@@ -82,11 +82,9 @@ async function asAdmin(supabase: SupabaseClient): Promise<boolean> {
  * origin is configuration — the variable its own password reset reads.
  */
 function originFor(role: InviteRole): string | null {
-  if (role === 'admin') return officeOrigin();
-  const explicit = process.env['NEXT_PUBLIC_CLIENT_URL'];
-  if (explicit) return explicit.replace(/\/$/, '');
-  if (process.env.NODE_ENV === 'production') return null;
-  return 'http://127.0.0.1:3002';
+  return role === 'admin'
+    ? appOrigin(process.env['NEXT_PUBLIC_OFFICE_URL'], 'http://127.0.0.1:3000')
+    : appOrigin(process.env['NEXT_PUBLIC_CLIENT_URL'], 'http://127.0.0.1:3002');
 }
 
 async function issue(
@@ -106,7 +104,9 @@ async function issue(
     return {
       ok: false,
       message:
-        'The invite link could not be built — set NEXT_PUBLIC_CLIENT_URL for the Back Office.',
+        input.role === 'admin'
+          ? 'The invite link could not be built — set NEXT_PUBLIC_OFFICE_URL for the Back Office.'
+          : 'The invite link could not be built — set NEXT_PUBLIC_CLIENT_URL for the Back Office.',
     };
   }
 

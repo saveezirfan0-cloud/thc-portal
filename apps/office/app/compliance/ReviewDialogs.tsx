@@ -8,11 +8,31 @@ import {
   confirmRtwDate,
   rejectDeclaration,
   rejectDocument,
+  resolveNiCheck,
   verifyDeclaration,
   verifyDocument,
 } from './actions';
-import { EVIDENCE_FORM_LABEL, ukDate, ukStamp, verifyStep } from './queue';
+import type { VerifyConditions, VerifyDates } from './actions';
+import {
+  VISA_LIMIT_HINT,
+  belowDegreeHint,
+  conditionFieldFor,
+  formatNi,
+  initialBelowDegree,
+  initialVisaLimit,
+  niEvidenceLine,
+  visaLimitProblem,
+} from './conditions';
+import {
+  EVIDENCE_FORM_LABEL,
+  queueRowLockedUntil,
+  rejectPrefill,
+  ukDate,
+  ukStamp,
+  verifyStep,
+} from './queue';
 import { rtwDateProblem, rtwDateRule, rtwDateValue } from './rtw';
+import { rtwLockedLabel, rtwLockedValue } from '../_lib/rtwCheck';
 import type { RtwDateRule } from './rtw';
 import type { ActionResult, QueueRow } from './types';
 
@@ -48,9 +68,18 @@ export function useReviewDialogs({
   const [rejecting, setRejecting] = useState<QueueRow | null>(null);
   const [approving, setApproving] = useState<QueueRow | null>(null);
   const [confirming, setConfirming] = useState<QueueRow | null>(null);
+  const [checking, setChecking] = useState<QueueRow | null>(null);
 
   const verify = (row: QueueRow) => {
     const step = verifyStep(row);
+    if (step === 'ni_match') {
+      run(row.item_id, () => resolveNiCheck(row.item_id, true));
+      return;
+    }
+    if (step === 'confirm') {
+      setChecking(row);
+      return;
+    }
     if (step === 'approve') {
       setApproving(row);
       return;
@@ -77,7 +106,9 @@ export function useReviewDialogs({
               () =>
                 rejecting.kind === 'declaration'
                   ? rejectDeclaration(rejecting.item_id, reason)
-                  : rejectDocument(rejecting.item_id, reason),
+                  : rejecting.kind === 'ni_check'
+                    ? resolveNiCheck(rejecting.item_id, false, reason)
+                    : rejectDocument(rejecting.item_id, reason),
               () => setRejecting(null),
             )
           }
@@ -90,17 +121,33 @@ export function useReviewDialogs({
           rule={rtwDateRule(confirming.item_type, confirming.rtw_branch)!}
           busy={busy(confirming.item_id)}
           onClose={() => setConfirming(null)}
-          onVerify={(field, value) =>
+          onVerify={(field, value, conditions) =>
             run(
               confirming.item_id,
               () =>
                 confirming.kind === 'rtw_date'
                   ? confirmRtwDate(confirming.item_id, value)
-                  : verifyDocument(
-                      confirming.item_id,
+                  : verifyWith(
+                      confirming,
                       field === 'expiry' ? { expiry: value } : { rightToWorkUntil: value },
+                      conditions,
                     ),
               () => setConfirming(null),
+            )
+          }
+        />
+      ) : null}
+
+      {checking ? (
+        <ConfirmVerifyModal
+          row={checking}
+          busy={busy(checking.item_id)}
+          onClose={() => setChecking(null)}
+          onVerify={(conditions) =>
+            run(
+              checking.item_id,
+              () => verifyWith(checking, {}, conditions),
+              () => setChecking(null),
             )
           }
         />
@@ -126,6 +173,139 @@ export function useReviewDialogs({
   return { verify, reject: setRejecting, dialogs };
 }
 
+/** What the reviewer confirmed beside the document (conditions.ts). */
+type ConfirmedConditions = Omit<VerifyConditions, 'staffId'>;
+
+/**
+ * Verify, and then the conditions confirmed beside it — or the plain Verify
+ * when the route has none to confirm.
+ */
+function verifyWith(
+  row: QueueRow,
+  dates: VerifyDates,
+  conditions: ConfirmedConditions,
+): Promise<ActionResult> {
+  if (conditions.belowDegreeLevel === undefined && conditions.visaHourLimit === undefined) {
+    return verifyDocument(row.item_id, dates);
+  }
+  return verifyDocument(row.item_id, dates, { staffId: row.staff_id, ...conditions });
+}
+
+/**
+ * The course level (a student, D32) or the visa's own weekly hours limit (a
+ * work or dependant visa, D36), beside the Verify of the document that says
+ * so. Opens on what is on file, else on what the automated gov.uk check
+ * read. Renders nothing for any other document.
+ */
+function useConditions(row: QueueRow) {
+  const field = conditionFieldFor(row.item_type, row.rtw_branch);
+  const [below, setBelow] = useState(
+    initialBelowDegree(row.below_degree_level, row.rtw_check_term_limit),
+  );
+  const [limit, setLimit] = useState(
+    initialVisaLimit(
+      row.visa_weekly_hour_limit,
+      row.rtw_check_term_limit,
+      row.rtw_check_conditions,
+    ),
+  );
+  const problem = field === 'visa_limit' ? visaLimitProblem(limit) : null;
+  const confirmed: ConfirmedConditions =
+    field === 'below_degree'
+      ? { belowDegreeLevel: below }
+      : field === 'visa_limit'
+        ? { visaHourLimit: limit }
+        : {};
+  const fields =
+    field === 'below_degree' ? (
+      <label className="row sm">
+        <input
+          type="checkbox"
+          checked={below}
+          onChange={(event) => setBelow(event.target.checked)}
+        />
+        <span>
+          <b>Course is below degree level</b> — 10 hours a week in term time instead of 20.{' '}
+          <span className="muted">{belowDegreeHint(row.rtw_check_term_limit)}</span>
+        </span>
+      </label>
+    ) : field === 'visa_limit' ? (
+      <Input
+        type="text"
+        inputMode="numeric"
+        label="Weekly hours limit on the visa (if any)"
+        value={limit}
+        onChange={(event) => setLimit(event.target.value)}
+        hint={VISA_LIMIT_HINT}
+        error={problem ?? undefined}
+      />
+    ) : null;
+  return { fields, confirmed, problem };
+}
+
+/**
+ * A document with no date to confirm but something to check beside it: NI
+ * evidence against the NI number, shown in full (D43), or a student's term
+ * letter with the course level (D32).
+ */
+function ConfirmVerifyModal({
+  row,
+  busy,
+  onClose,
+  onVerify,
+}: {
+  row: QueueRow;
+  busy: boolean;
+  onClose: () => void;
+  onVerify: (conditions: ConfirmedConditions) => void;
+}) {
+  const conditions = useConditions(row);
+  const ni = row.item_type === 'ni_evidence';
+  return (
+    <Modal
+      open
+      title={`Verify ${row.item_label}`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button tone="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            tone="green"
+            solid
+            disabled={busy || conditions.problem !== null}
+            onClick={() => onVerify(conditions.confirmed)}
+          >
+            Verify
+          </Button>
+        </>
+      }
+    >
+      <div className="row">
+        <Avatar name={row.display_name} size="sm" />
+        <div className="sm">
+          {row.display_name} · {row.is_candidate ? 'Candidate' : 'Staff'} · {row.item_label} ·
+          uploaded {ukStamp(row.submitted_at)}
+        </div>
+      </div>
+      {ni ? (
+        <Note tone={row.ni_number ? 'neutral' : 'amber'}>
+          {row.ni_number ? (
+            <>
+              NI number on the profile: <b className="mono">{formatNi(row.ni_number)}</b> — check it
+              matches the number on the document before you verify.
+            </>
+          ) : (
+            niEvidenceLine(null)
+          )}
+        </Note>
+      ) : null}
+      {conditions.fields}
+    </Modal>
+  );
+}
+
 /**
  * "Reject asks for a reason → push N8 with a Re-upload button" (§4.1). The
  * in-employment declaration is the exception: the worker is NOT told through
@@ -142,12 +322,23 @@ function RejectModal({
   onClose: () => void;
   onReject: (reason: string) => void;
 }) {
-  const [reason, setReason] = useState('');
+  // ADR-0041: a share code the gov.uk check recommends rejecting opens with
+  // its suggested N8 text — the admin reads it, edits it if need be, and it
+  // reaches the worker only when they press Reject.
+  const suggested = rejectPrefill(row);
+  const [reason, setReason] = useState(suggested);
   const inEmployment = row.kind === 'declaration' && row.declaration_source === 'in_employment';
+  const niCheck = row.kind === 'ni_check';
   return (
     <Modal
       open
-      title={row.kind === 'declaration' ? 'Reject declaration' : 'Reject document'}
+      title={
+        row.kind === 'declaration'
+          ? 'Reject declaration'
+          : niCheck
+            ? 'NI number does not match'
+            : 'Reject document'
+      }
       onClose={onClose}
       footer={
         <>
@@ -172,6 +363,14 @@ function RejectModal({
           uploaded {ukStamp(row.submitted_at)}
         </div>
       </div>
+      {niCheck && row.ni_number ? <div className="sm">{niEvidenceLine(row.ni_number)}</div> : null}
+      {suggested ? (
+        <Note tone="amber">
+          <b>The automatic gov.uk check recommends Reject.</b>{' '}
+          {row.rtw_check_reason ?? 'Check the gov.uk report first.'} The reason below is its
+          suggestion — edit it before it goes to the worker.
+        </Note>
+      ) : null}
       <Textarea
         label={
           <>
@@ -184,13 +383,12 @@ function RejectModal({
           inEmployment ? (
             <>
               Kept on the profile: the block converts to a manual block with this reason, and only a
-              manager can lift it. The worker is not told through the app — the office calls them
-              (§10.7).
+              manager can lift it. The worker is not told through the app — the office calls them.
             </>
           ) : (
             <>
               Goes to the worker word for word in push N8 — “Document rejected — [reason]” — with a{' '}
-              <b>Re-upload</b> button. The new upload comes back to this queue (§4.1, §2.3).
+              <b>Re-upload</b> button. The new upload comes back to this queue.
             </>
           )
         }
@@ -309,14 +507,24 @@ function RightToWorkModal({
   rule: RtwDateRule;
   busy: boolean;
   onClose: () => void;
-  onVerify: (field: RtwDateRule['field'], value: string) => void;
+  onVerify: (field: RtwDateRule['field'], value: string, conditions: ConfirmedConditions) => void;
 }) {
+  const conditions = useConditions(row);
   const [date, setDate] = useState(
-    (rule.field === 'expiry' ? row.expiry_date : row.doc_right_to_work_until) ?? '',
+    (rule.field === 'expiry'
+      ? row.expiry_date
+      : // With the admin confirming (ADR-0041) gov.uk's date waits on the
+        // check, not the worker-readable document: start from it.
+        (row.doc_right_to_work_until ?? row.rtw_check_until)) ?? '',
   );
   const [noTimeLimit, setNoTimeLimit] = useState(false);
-  const problem = rtwDateProblem(rule, date, noTimeLimit);
   const reverify = row.kind === 'rtw_date';
+  // ADR-0041: when the gov.uk check recommends Verify, its date is confirmed
+  // as it is — shown read-only and sent exactly — not typed.
+  const locked = reverify ? null : queueRowLockedUntil(row);
+  const problem = locked
+    ? rtwDateProblem(rule, locked.date ?? '', locked.noTimeLimit)
+    : rtwDateProblem(rule, date, noTimeLimit);
   return (
     <Modal
       open
@@ -330,8 +538,14 @@ function RightToWorkModal({
           <Button
             tone="green"
             solid
-            disabled={busy || problem !== null}
-            onClick={() => onVerify(rule.field, rtwDateValue(date, noTimeLimit))}
+            disabled={busy || problem !== null || (!reverify && conditions.problem !== null)}
+            onClick={() =>
+              onVerify(
+                rule.field,
+                locked ? rtwLockedValue(locked) : rtwDateValue(date, noTimeLimit),
+                reverify ? {} : conditions.confirmed,
+              )
+            }
           >
             {reverify ? 'Confirm date' : 'Verify'}
           </Button>
@@ -351,30 +565,49 @@ function RightToWorkModal({
           ) : null}
         </div>
       </div>
-      <Input
-        type="date"
-        label={
-          <>
-            {rule.label} <span className="coral">*</span>
-          </>
-        }
-        value={noTimeLimit ? '' : date}
-        disabled={noTimeLimit}
-        onChange={(event) => setDate(event.target.value)}
-        hint={rule.hint}
-      />
-      {rule.allowNoTimeLimit ? (
+      {locked ? (
+        <div className="stack" data-testid="rtw-locked-until">
+          <div className="sm">
+            {rule.label}: <b className="mono">{rtwLockedLabel(locked)}</b>
+          </div>
+          <div className="muted xs">
+            Returned by gov.uk — confirmed as it is, not typed. {rule.hint}
+          </div>
+        </div>
+      ) : (
+        <Input
+          type="date"
+          label={
+            <>
+              {rule.label} <span className="coral">*</span>
+            </>
+          }
+          value={noTimeLimit ? '' : date}
+          disabled={noTimeLimit}
+          onChange={(event) => setDate(event.target.value)}
+          hint={rule.hint}
+        />
+      )}
+      {rule.allowNoTimeLimit && !locked ? (
         <label className="row sm">
           <input
             type="checkbox"
             checked={noTimeLimit}
             onChange={(event) => setNoTimeLimit(event.target.checked)}
           />
-          The gov.uk report shows <b>settled status</b> — no time limit (§2.5 pt 2). Pre-settled
-          status has an end date: enter it instead.
+          The gov.uk report shows <b>settled status</b> — no time limit. Pre-settled status has an
+          end date: enter it instead.
         </label>
       ) : null}
-      {row.rtw_check_reason ? (
+      {reverify ? null : conditions.fields}
+      {locked ? (
+        <Note tone="green">
+          <b>The automatic gov.uk check recommends Verify.</b>{' '}
+          {row.rtw_check_reason ??
+            'Compare the gov.uk photo with the worker’s selfie, then Verify.'}{' '}
+          The photos are on the row, under the check.
+        </Note>
+      ) : row.rtw_check_reason ? (
         <Note tone="coral">
           <b>Why the automatic gov.uk check did not verify it:</b> {row.rtw_check_reason} The date
           gov.uk returned, if any, is pre-filled — confirm it against the report.
@@ -386,7 +619,7 @@ function RightToWorkModal({
           right-to-work date on file: nothing stops a shift past their visa and the reminder ladder
           has nothing to count down from. Re-run the share code on gov.uk and confirm the date it
           shows. The report stays verified — nothing else on the profile changes. If the check no
-          longer passes, block the worker from their profile (§9.6).
+          longer passes, block the worker from their profile.
         </Note>
       ) : null}
       {row.staff_right_to_work_until ? (
@@ -395,7 +628,9 @@ function RightToWorkModal({
           date across the worker’s current evidence is kept.
         </Note>
       ) : null}
-      {problem && (date !== '' || noTimeLimit) ? <div className="coral sm">{problem}</div> : null}
+      {problem && (locked || date !== '' || noTimeLimit) ? (
+        <div className="coral sm">{problem}</div>
+      ) : null}
     </Modal>
   );
 }

@@ -43,7 +43,7 @@ interface RpcClient {
 /** The database's refusals, in words a manager can act on. */
 const MESSAGES: Record<string, string> = {
   not_authorised: 'Only the office can do this.',
-  roles_required: 'Pick at least one role type before accepting (§2.4).',
+  roles_required: 'Pick at least one role type before accepting.',
   reason_required: 'A reason is required.',
   activation_link_required:
     'The activation link could not be built — set NEXT_PUBLIC_STAFF_URL for the Back Office.',
@@ -83,7 +83,7 @@ function explain(message: string): string {
     return `A new link was sent less than 10 minutes ago. You can send another${at ? ` after ${at} (UK time)` : ' shortly'}.`;
   }
   if (code === 'not_resettable') {
-    return 'Reset to candidate is only possible on a blocked, rejected or inactive record (§9.6).';
+    return 'Reset to candidate is only possible on a blocked, rejected or inactive record.';
   }
   if (code === 'not_under_review') return 'This item is no longer under review — refresh the page.';
   if (code === 'not_awaiting_decision') return 'The interview is not marked complete yet.';

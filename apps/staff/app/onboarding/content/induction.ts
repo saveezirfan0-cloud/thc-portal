@@ -5,13 +5,10 @@
  *    built-in viewer. The supplied file is used as-is; re-drawing the
  *    induction content as native app screens is not in scope for v1."
  *
- * PLACEHOLDER. THC's deck is an Appendix B input this repository does not
- * hold. The viewer is built for it as-is: export each page of the supplied
- * file to `apps/staff/public/induction/slide-01.png` … and list them below
- * with `image`, and the viewer shows the image instead of the text. Until
- * then these slides are short stand-ins so the step can be walked, and the
- * screen says so. The quiz's questions (quiz_questions, likewise flagged
- * is_placeholder) must be replaced from the same source at the same time.
+ * THC's deck is shown as supplied: each page exported to
+ * `apps/staff/public/induction/slide-NN.webp` and listed below with `image`.
+ * The quiz is THC's own ten questions (quiz_questions, 20260930140000);
+ * several are not answered by this deck — docs/17 item 9.
  */
 
 export interface InductionSlide {
@@ -23,58 +20,75 @@ export interface InductionSlide {
   image?: string;
 }
 
-export const INDUCTION_IS_PLACEHOLDER = true;
+export const INDUCTION_IS_PLACEHOLDER = false;
 
+/**
+ * THC's own deck, "General Health & Safety Awareness" (21 slides, supplied
+ * 26.09.2026), exported page by page to /public/induction as-is. To replace
+ * it, re-export every page of the new file over these and update the titles
+ * (the titles are the images' alt text and the slide counter's reading).
+ */
 export const INDUCTION_DECK: readonly InductionSlide[] = [
   {
-    section: 'Section 1 · Welcome',
-    title: 'Why health and safety matters at our events',
-    body: 'You will work in busy kitchens, bars and halls full of guests. This induction covers what to do to keep yourself, your colleagues and the guests safe.',
+    section: 'Welcome',
+    title: 'General Health & Safety Awareness',
+    image: '/induction/slide-01.webp',
   },
   {
-    section: 'Section 1 · Welcome',
-    title: 'Your responsibilities',
-    body: 'Follow the venue briefing and your supervisor’s instructions. If something looks unsafe, stop and tell someone. Never take a risk to save time.',
+    section: 'Your workplace',
+    title: 'Fast-paced, high-energy — and safe by design',
+    image: '/induction/slide-02.webp',
+  },
+  { section: 'Fire safety', title: 'If you discover a fire', image: '/induction/slide-03.webp' },
+  {
+    section: 'Fire in the workplace',
+    title: 'Know your extinguishers',
+    image: '/induction/slide-04.webp',
   },
   {
-    section: 'Section 2 · Fire safety',
-    title: 'If you discover a fire',
-    body: 'Raise the alarm and alert the people around you. Do not try to tackle a fire unless you are trained and it is safe to do so.',
+    section: 'Common sense? Or is it?',
+    title: '82% of workplace accidents are caused by human error',
+    image: '/induction/slide-05.webp',
+  },
+  { section: 'Manual handling', title: 'Lift and carry safely', image: '/induction/slide-06.webp' },
+  {
+    section: 'Safe handling of knives',
+    title: "Do's and don'ts",
+    image: '/induction/slide-07.webp',
+  },
+  { section: 'Food hygiene', title: 'Standards for all staff', image: '/induction/slide-08.webp' },
+  { section: 'Hazardous substances', title: 'Know the labels', image: '/induction/slide-09.webp' },
+  {
+    section: 'General safety rules',
+    title: 'Ten rules for everyone',
+    image: '/induction/slide-10.webp',
+  },
+  { section: 'Part two', title: 'Workplace risk assessments', image: '/induction/slide-11.webp' },
+  { section: 'Risk assessment', title: 'Manual handling', image: '/induction/slide-12.webp' },
+  { section: 'Risk assessment', title: 'Fire & gas appliances', image: '/induction/slide-13.webp' },
+  { section: 'Risk assessment', title: 'Hazardous substances', image: '/induction/slide-14.webp' },
+  {
+    section: 'Risk assessment',
+    title: 'Violence & slippery floors',
+    image: '/induction/slide-15.webp',
+  },
+  { section: 'Risk assessment', title: 'Cuts & lacerations', image: '/induction/slide-16.webp' },
+  { section: 'Risk assessment', title: 'Impact & burns', image: '/induction/slide-17.webp' },
+  { section: 'Risk assessment', title: 'Noise & electrical', image: '/induction/slide-18.webp' },
+  {
+    section: 'COSHH risk assessment',
+    title: 'Control of Substances Hazardous to Health',
+    image: '/induction/slide-19.webp',
   },
   {
-    section: 'Section 2 · Fire safety',
-    title: 'Evacuation',
-    body: 'Learn the fire exits and the assembly point at the start of every shift. Never block a fire exit, and never use a lift in a fire.',
+    section: 'Safety is everyone’s job',
+    title: 'Spot it. Sort it. Report it.',
+    image: '/induction/slide-20.webp',
   },
   {
-    section: 'Section 3 · Slips, trips and lifting',
-    title: 'Spills and walkways',
-    body: 'Put out a wet-floor sign and get a spill cleaned straight away. Keep walkways and exits clear of crates, chairs and cables.',
-  },
-  {
-    section: 'Section 3 · Slips, trips and lifting',
-    title: 'Lifting safely',
-    body: 'Bend your knees, keep the load close to your body and lift with your legs. Get help with anything heavy or awkward.',
-  },
-  {
-    section: 'Section 4 · Food and allergens',
-    title: 'Allergen questions',
-    body: 'Never guess. If a guest asks what is in a dish, check the allergen information with the kitchen before they order.',
-  },
-  {
-    section: 'Section 5 · Hazardous substances',
-    title: 'Cleaning chemicals',
-    body: 'Read the label, wear gloves when told to, never mix products, and put them back where they are stored.',
-  },
-  {
-    section: 'Section 6 · Accidents',
-    title: 'First aid and reporting',
-    body: 'If you or anyone else is hurt, get the first aider and tell your supervisor. Report near misses too — they prevent the next accident.',
-  },
-  {
-    section: 'Section 6 · Accidents',
-    title: 'Before you start the quiz',
-    body: 'The quiz that follows is based on these slides. The pass mark is 80% and you have three attempts. You can come back to any slide before you start.',
+    section: 'You’ve completed the module',
+    title: 'Now for the quiz',
+    image: '/induction/slide-21.webp',
   },
 ];
 

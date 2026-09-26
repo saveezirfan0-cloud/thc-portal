@@ -29,3 +29,138 @@
 .mobile-list .right {
   margin-left: auto;
 }
+
+/* Directions · Add to calendar, under the Where card (§10.4). */
+.shift-links {
+  display: flex;
+  gap: var(--sp-8);
+  margin-top: var(--sp-10);
+}
+.shift-links > .btn {
+  flex: 1;
+  text-decoration: none;
+}
+
+/* "Check-in opens in 2 h 15 min" (§5.1), above the fixed opening time. */
+.countdown {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  margin: 0;
+}
+
+/* ---- the map (ADR-0005: drawn, not a GL library) -------------------- */
+.shift-map {
+  position: relative;
+  height: 110px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background:
+    linear-gradient(var(--map-a) 1px, transparent 1px) 0 0 / 23px 23px,
+    linear-gradient(90deg, var(--map-a) 1px, transparent 1px) 0 0 / 23px 23px,
+    var(--map-b);
+}
+.shift-map.tall {
+  height: 160px;
+}
+.shift-map .tile {
+  position: absolute;
+  width: 256px;
+  height: 256px;
+  pointer-events: none;
+  user-select: none;
+}
+.shift-map .circle {
+  position: absolute;
+  border: 1.5px solid var(--cyan-ink);
+  background: var(--cyan-dim);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+}
+.shift-map .pin {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--cyan-ink);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 3px var(--cyan-dim);
+  border-radius: var(--r-pill);
+}
+.shift-map .me {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--purple-ink);
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 0 4px var(--purple-dim);
+  border-radius: var(--r-pill);
+}
+.shift-map .me.off {
+  opacity: 0.7;
+}
+.shift-map .lbl {
+  position: absolute;
+  font-family: var(--font-label);
+  font-size: var(--fs-10);
+  color: var(--muted);
+  background: var(--card-glass);
+  padding: 2px 6px;
+  border-radius: var(--r-pill);
+  white-space: nowrap;
+}
+.shift-map .lbl.you {
+  color: var(--purple-ink);
+  transform: translateX(-50%);
+}
+
+/* ---- the timer block and the breaks block (wireframe d, f) ----------- */
+.tblock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--sp-12) var(--sp-14);
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+  background: var(--card-glass);
+}
+.tblock .lab {
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
+  color: var(--muted);
+}
+.tblock.paused .timer {
+  color: var(--muted);
+}
+.tblock.brk {
+  border-color: var(--amber-line);
+}
+.tblock.brk .timer {
+  color: var(--amber-ink);
+}
+/* §5.2b: before check-in the block is shown, and plainly not yet usable. */
+.breaks-off {
+  opacity: 0.6;
+}
+
+/* ---- full-screen states (wireframe i, j, k, l, m) -------------------- */
+.shift-full {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+  width: 100%;
+}
+.shift-full .static-screen {
+  padding: var(--sp-10) 0 0;
+  gap: var(--sp-6);
+  flex: 0 0 auto;
+}
+.kvs.sum .kv .v {
+  text-align: right;
+  font-family: var(--font-num);
+}
+.center-note {
+  text-align: center;
+}

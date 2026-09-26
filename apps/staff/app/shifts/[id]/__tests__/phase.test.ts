@@ -68,9 +68,17 @@ describe('§5.1 which state the shift screen is in', () => {
   });
 
   it('quotes the window the worker is told about', () => {
-    const { opens, locks } = checkInWindow(START);
+    const { opens, locks, confirmedAfterStart } = checkInWindow(shift());
     expect(opens.toISOString()).toBe('2026-06-14T15:30:00.000Z');
     expect(locks.toISOString()).toBe('2026-06-14T16:30:00.000Z');
+    expect(confirmedAfterStart).toBe(false);
+  });
+
+  it('never quotes start+30 to a booking confirmed after the start (§3.4)', () => {
+    const late = shift({ confirmedAt: new Date(Date.parse(START) + 60 * 60_000).toISOString() });
+    const { locks, confirmedAfterStart } = checkInWindow(late);
+    expect(confirmedAfterStart).toBe(true);
+    expect(locks.toISOString()).toBe(new Date(END).toISOString());
   });
 });
 

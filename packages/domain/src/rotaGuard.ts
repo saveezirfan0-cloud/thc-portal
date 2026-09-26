@@ -42,10 +42,15 @@ export interface RotaGuardResult {
   reason: RotaGuardReason | null;
 }
 
-/** Bands set by the Student visa condition, which no setting relaxes. */
+/**
+ * Bands set by an immigration condition — the Student visa's term time, a
+ * work or dependant visa's own hours limit, or no right to work at all —
+ * which no setting relaxes.
+ */
 export const VISA_CAP_BANDS: readonly CapBand[] = [
   'student_term_20',
   'student_term_10',
+  'visa_limit',
   'visa_expired_0',
 ];
 

@@ -260,6 +260,232 @@ pgTAP vectors — and the Rejected view's alert on `/onboarding` would be rewrit
 
 ---
 
+## Q9 · Availability — gate or preference?
+
+**Where:** an addition to the scope — the availability calendar, ADR-0043 (proposed),
+`docs/19` §1. Touches §3.4 and §6.
+
+A worker can mark days or times they cannot work. §6's five scoring weights are
+contractual, so the calendar is not a sixth factor (a factor can be outscored, and the
+worker would still be pushed invitations for a day they said they cannot work). It is a
+**hard gate on what the machine does**, and advice to people.
+
+**Default:** "unavailable" stops automated invitations (hourly rounds, the first round,
+cutoff refills, same-day escalation) and offer pushes (Q16) only. A manager can still
+invite by hand after a warning ("{name} marked themselves unavailable for this time.
+Invite anyway?"); the worker can still accept an invitation or apply on Radar. An open
+invitation is never withdrawn and a confirmed shift is never cancelled by a calendar
+entry — the worker is warned and pointed at Cancel / Offer.
+
+**The alternative:** the gate also stops manual invitations, so "Invite anyway" goes.
+
+**What changes if THC picks the alternative:** one clause in `invite_worker` and the
+confirm dialog on the event board is removed.
+
+> **Ask:** when a worker has marked themselves unavailable, should a manager still be
+> able to invite them by hand after a warning (what we do), or should it stop manual
+> invitations too?
+
+---
+
+## Q10 · Availability — shape
+
+**Where:** ADR-0043 (proposed), `docs/19` §1.
+
+**Default:** single days, a date range of up to 31 days, or a time window on a day
+(UK time); "Repeat weekly" for up to 26 weeks; up to 12 months ahead. **No reason
+field** — a reason invites health information the platform has no basis to hold.
+
+**The alternative:** longer ranges or other repeat patterns (fortnightly, term-time), and
+an optional reason visible to the office.
+
+**What changes:** the limits are constants in `validateUnavailability()` and one CHECK; a
+reason is one column, one field and a line in the privacy notice.
+
+> **Ask:** are these limits enough, or do you need longer patterns? Do you want workers to
+> give a reason — knowing it may be health information?
+
+---
+
+## Q11 · Emergency contact
+
+**Where:** an addition to the scope, ADR-0044 (proposed), `docs/19` §2. Touches §10.1 and
+§1.7.
+
+**Default:** optional, kept in Profile details, visible to the office only (on the staff
+profile now, on the check-in monitor in a later phase), **never on the allocation sheet
+or the timesheet** (those are client documents), and deleted on GDPR removal. While it is
+empty the Profile screen shows an amber "Emergency contact not set" line — a nudge, not a
+lock.
+
+**The alternative:** mandatory — either a lock like a missing document, or a step in the
+onboarding wizard.
+
+**What changes:** a wizard step or a new `appLock()` case; existing workers would be
+asked on their next visit.
+
+> **Ask:** should an emergency contact be mandatory? If so, should new workers give it
+> during onboarding?
+
+---
+
+## Q12 · Emergency contact — leavers
+
+**Where:** ADR-0044 (proposed), §10.6, §1.7.
+
+**Default:** a leaver's emergency contact is kept while their record exists (they can
+re-join on the same record, §2.12) and deleted only on **Remove (GDPR)**.
+
+**The alternative:** delete it the moment the worker leaves (Request my P45, §10.6).
+
+**What changes:** one delete in the leave path.
+
+> **Ask:** should we delete a worker's emergency contact as soon as they leave, rather
+> than only when they are removed?
+
+---
+
+## Q13 · Name change
+
+**Where:** an addition to the scope — "Request a change", ADR-0045 (proposed), `docs/19`
+§3. Touches §10.1's "corrections go through the office".
+
+**Default:** the worker requests the change in the app with an evidence upload; the
+office compares it and ticks "I've checked the evidence matches the right-to-work
+document" before approving; payroll is emailed (RC4). There is **no automatic fresh
+right-to-work check**. Issued PDFs and payroll exports are never changed.
+
+**The alternative:** approving a name change sends the worker back through a
+right-to-work check (share code or document) before they can be booked again.
+
+**What changes:** the approve path sets a compliance blocker and the worker sees a
+Documents lock until it is cleared.
+
+> **Ask:** when a worker changes their name, must it trigger a fresh right-to-work check,
+> or is the office's comparison against the evidence enough?
+
+---
+
+## Q14 · Photo change
+
+**Where:** ADR-0045 (proposed).
+
+**Default:** one pending photo request at a time, no limit on how often, and the office
+approves every one. The new photo replaces the one printed on timesheets from the next
+document issued; issued documents keep the old photo.
+
+**The alternative:** a frequency limit (e.g. one change a year) or approval-free changes.
+
+> **Ask:** should photo changes be limited in any way?
+
+---
+
+## Q15 · Offer up — exclusion
+
+**Where:** an addition to the scope — "Offer up a shift", ADR-0046 (proposed), `docs/19`
+§4. Touches RULE-04.
+
+**Default:** once another worker takes the shift, the offerer is barred from that event
+exactly as after a self-cancel. Without the bar, offering would be a way round the
+self-cancel exclusion.
+
+**The alternative:** no bar — the offerer can be invited to or apply for the same event
+again.
+
+**What changes:** `handed_over` stops setting `self_cancelled`; one vector flips.
+
+> **Ask:** after a worker hands a shift over, should they stay barred from that event (as
+> after a cancellation)?
+
+---
+
+## Q16 · Offer up — window
+
+**Where:** ADR-0046 (proposed), RULE-04.
+
+**Default:** a worker can offer a shift to the pool while more than 72 hours remain (the
+same boundary as Cancel shift), and only while auto-assign is on for that role. The offer
+closes 72 hours before the start and the worker stays booked (OF3). Inside 72 hours they
+can press "Ask the office for cover"; the office can open it to the pool until the start,
+decline it, or cover it by hand.
+
+**The alternative:** a closer window, e.g. 24 hours, for pool offers.
+
+**What changes:** one constant (`canOfferShift()` and its SQL twin), plus vectors.
+
+> **Ask:** is 72 hours the right cut-off for offering a shift to other workers, or should
+> it be closer, e.g. 24 hours?
+
+---
+
+## Q17 · Peer-to-peer swaps
+
+**Where:** ADR-0046 (proposed) — designed, not built.
+
+**Default:** off (`shift_offers_direct_enabled = false`). If wanted: the worker names a
+colleague by Employee ID (no staff directory is shown), the colleague must be qualified
+at that client and role and pass every hard gate, and a two-way swap gets no credit for
+the shift being given away.
+
+> **Ask:** do you want workers to be able to hand a shift to a named colleague, or swap
+> shifts with one?
+
+---
+
+## Q18 · Offer up — office emails
+
+**Where:** ADR-0046 (proposed), §8.
+
+**Default:** the office is emailed only for a cover request inside 72 hours (OF5). A pool
+hand-over sends no email — no slot is lost — and shows on the event board as "Handed
+over: {from} → {to}". A lapsed offer sends nothing to the office.
+
+**The alternative:** an email on every hand-over, or when an offer lapses.
+
+> **Ask:** do you also want an email when a shift is handed over, or when an offer closes
+> with nobody taking it?
+
+---
+
+## Q19 · Referral reward
+
+**Where:** an addition to the scope — "Refer a friend", ADR-0047 (proposed), `docs/19`
+§5.
+
+**Default:** referrals are recorded and shown to the office ("Referred by …" on the
+candidate). There is no reward and the app makes no promise of one.
+
+> **Ask:** do you want to reward referrals? If so, what is the reward, and what earns it
+> (the friend applies, is hired, completes a number of shifts)?
+
+---
+
+## Q20 · Referral privacy
+
+**Where:** ADR-0047 (proposed), §1.7.
+
+**Default:** the referrer sees a count only ("N people have applied with your link"); the
+applicant never sees the referrer's name; `/apply` and `/privacy` say "If a friend
+referred you, we record who referred you." A push telling the referrer their friend
+joined (RF1) is written but not built — it would tell one person about another's
+employment.
+
+> **Ask:** may a referrer be told that their friend has joined (RF1)? Please supply the
+> privacy-notice wording for referrals.
+
+---
+
+## Q21 · New message wording
+
+**Where:** §8, `packages/notifications` (`ADDITION_CODES`).
+
+**Default:** RC1–RC4 (Request a change) and OF1–OF6 (Offer up a shift) are drafts written
+to match the §8 register's tone; the copy is in `docs/19` §3 and §4.
+
+> **Ask:** please confirm or rewrite RC1–RC4 and OF1–OF6, as you did for §8.
+
+---
+
 ---
 
 # For the owner

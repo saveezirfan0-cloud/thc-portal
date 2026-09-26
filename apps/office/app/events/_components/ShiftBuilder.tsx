@@ -2,7 +2,7 @@
 
 import { useId, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
-import { Alert, Button, Chip, Input, Note, Panel, Pill, SaveBar, Select, Textarea } from '@thc/ui';
+import { Alert, Button, Chip, Input, Note, Panel, SaveBar, Select, Textarea } from '@thc/ui';
 import { UK_ZONE, forecastEvent, formatTimeIn, ukInputLabel } from '@thc/domain';
 import { RoleSection } from './RoleSection';
 import { Switch } from './Switch';
@@ -217,7 +217,7 @@ export function ShiftBuilder({
         {cancelled ? (
           <Alert tone="coral">
             <b>This event is cancelled.</b> A cancelled event is not edited — it stays on the record
-            with its Cancelled status (§1.5, §3.2). Re-run it as a new event, or{' '}
+            with its Cancelled status. Re-run it as a new event, or{' '}
             <Link href={`/events/new?from=${saved?.id ?? ''}`}>duplicate it</Link> to copy the
             roles.
           </Alert>
@@ -229,9 +229,9 @@ export function ShiftBuilder({
               Editing is locked — {draft.title} started at{' '}
               {window ? `${formatTimeIn(window.startsAt, UK_ZONE)} (UK)` : 'its scheduled start'}.
             </b>{' '}
-            Once the event has started, and for any past event, no field can be changed (§3.2). What
-            is still possible is on the event board: Withdraw, No show / Get back, Cancel event,
-            Send / Download documents.
+            Once the event has started, and for any past event, no field can be changed. What is
+            still possible is on the event board: Withdraw, No show / Get back, Cancel event, Send /
+            Download documents.
           </Alert>
         ) : null}
 
@@ -242,8 +242,7 @@ export function ShiftBuilder({
               {draft.poNumber ? ` · PO ${draft.poNumber}` : ''}.
             </b>{' '}
             Allowed up to the event&rsquo;s start. Every field — venue, date and time, headcount,
-            buffer, charge rate, dress code, PO Number — is editable the same way as at creation
-            (§3.2).
+            buffer, charge rate, dress code, PO Number — is editable the same way as at creation.
           </Alert>
         ) : null}
 
@@ -287,8 +286,7 @@ export function ShiftBuilder({
                 hint={
                   mode === 'edit' ? (
                     <span className="amber">
-                      Changing the venue address triggers re-confirmation for everyone booked
-                      (§3.5).
+                      Changing the venue address triggers re-confirmation for everyone booked.
                     </span>
                   ) : (
                     'From the Venues directory. Address and geofence come with it, read-only here.'
@@ -337,7 +335,7 @@ export function ShiftBuilder({
                   readOnly
                   value={venue ? `${venue.geofenceRadiusM} m` : '—'}
                 />
-                <span className="hint">Set on the venue, not per event (§9.11).</span>
+                <span className="hint">Set on the venue, not per event.</span>
               </div>
             </div>
 
@@ -361,7 +359,7 @@ export function ShiftBuilder({
                 disabled={readOnly}
                 placeholder="Optional — as given by the client"
                 onChange={(e) => setDraft((c) => ({ ...c, poNumber: e.target.value }))}
-                hint="Free text, optional, no format or uniqueness rule; can be added or edited any time (§3.2)."
+                hint="Free text, optional, no format or uniqueness rule; can be added or edited any time."
               />
             </div>
           </div>
@@ -417,9 +415,8 @@ export function ShiftBuilder({
             </div>
             <Note>
               Every field where a manager <b>types</b> a time carries &ldquo;(UK time)&rdquo; — the
-              server reads a zoneless value as Europe/London (§1.8). The saved event window is
-              derived from the roles: earliest start → latest end (RULE-18); the overall window
-              above is only the pre-fill.
+              server reads a zoneless value as Europe/London. The saved event window is derived from
+              the roles: earliest start → latest end; the overall window above is only the pre-fill.
             </Note>
           </div>
         </Panel>
@@ -429,7 +426,7 @@ export function ShiftBuilder({
           actions={
             <>
               <span className="muted sm">
-                one section per role, each with its own start and end (RULE-18)
+                one section per role, each with its own start and end
               </span>
               <Button size="sm" onClick={addRole} disabled={readOnly}>
                 + Add role
@@ -494,7 +491,7 @@ export function ShiftBuilder({
                   ) : null}
                 </div>
                 <span className="hint">
-                  From the client card — where &ldquo;Send allocation sheet&rdquo; goes (§11.4).
+                  From the client card — where &ldquo;Send allocation sheet&rdquo; goes.
                 </span>
               </div>
             </div>
@@ -504,7 +501,7 @@ export function ShiftBuilder({
               value={draft.notes}
               disabled={readOnly}
               onChange={(e) => setDraft((c) => ({ ...c, notes: e.target.value }))}
-              hint="Visible to staff on their shift details in the app (§10.4) — entrance, parking, a specific ask from the client."
+              hint="Visible to staff on their shift details in the app — entrance, parking, a specific ask from the client."
             />
           </div>
         </Panel>
@@ -529,7 +526,7 @@ export function ShiftBuilder({
         />
 
         {mode === 'edit' && !readOnly ? (
-          <Panel title="What triggers re-confirmation" actions={<Pill>§3.5</Pill>}>
+          <Panel title="What triggers re-confirmation">
             <div className="stack tight sm">
               <div>
                 <span className="amber">▲</span> Start or end time of a role · date · venue address
@@ -555,7 +552,7 @@ export function ShiftBuilder({
             <span className="sm muted">
               Multi-day = separate events created via <b>Duplicate</b> on the event board. The clone
               copies the roles (times, headcount, buffer, rates, dress code), <b>not the staff</b>,
-              and starts filling from zero (§3.2).
+              and starts filling from zero.
             </span>
           </Panel>
         ) : null}
@@ -578,8 +575,8 @@ export function ShiftBuilder({
             <span className="sm muted">
               Default ON at event and role level. From the moment the event is saved, auto-assign
               adds <i>allocation</i> invites every hour (at :17) in score order — qualified staff
-              first (RULE-17) — until headcount + buffer is filled (§3.4). Turn a role off when the
-              client asks for a specific person.
+              first — until headcount + buffer is filled. Turn a role off when the client asks for a
+              specific person.
             </span>
           </Panel>
         ) : null}

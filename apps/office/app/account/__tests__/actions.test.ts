@@ -231,20 +231,24 @@ describe('changeMyEmail', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/account');
   });
 
-  it('falls back to the Vercel URL, then to the local office on :3000', async () => {
+  it('never guesses the origin from VERCEL_URL: locally :3000, in production it refuses', async () => {
+    // packages/db origin.ts (main #70): a deployment URL is not in the
+    // Supabase redirect allow-list and sits behind Vercel's SSO.
     vi.stubEnv('VERCEL_URL', 'thc-office.vercel.app');
-    await changeMyEmail('a@example.com');
-    expect(session.auth.updateUser).toHaveBeenLastCalledWith(
-      { email: 'a@example.com' },
-      { emailRedirectTo: 'https://thc-office.vercel.app/auth/callback?next=/account' },
-    );
-
-    vi.stubEnv('VERCEL_URL', '');
     await changeMyEmail('b@example.com');
     expect(session.auth.updateUser).toHaveBeenLastCalledWith(
       { email: 'b@example.com' },
       { emailRedirectTo: 'http://127.0.0.1:3000/auth/callback?next=/account' },
     );
+
+    vi.stubEnv('NODE_ENV', 'production');
+    session.auth.updateUser.mockClear();
+    const refused = await changeMyEmail('c@example.com');
+    expect(refused).toEqual({
+      ok: false,
+      message: 'The email cannot be changed on this deployment yet — set NEXT_PUBLIC_OFFICE_URL.',
+    });
+    expect(session.auth.updateUser).not.toHaveBeenCalled();
   });
 
   it('says plainly when the new address already has a login', async () => {

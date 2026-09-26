@@ -21,10 +21,10 @@ select plan(22);
 -- =====================================================================
 -- A · who can reach what
 -- =====================================================================
-select ok(not has_function_privilege('anon', 'public.submit_application_as_caller(text,text,text,text,date,boolean,text)', 'execute')
-      and not has_function_privilege('authenticated', 'public.submit_application_as_caller(text,text,text,text,date,boolean,text)', 'execute'),
+select ok(not has_function_privilege('anon', 'public.submit_application_as_caller(text,text,text,text,date,boolean,text,text)', 'execute')
+      and not has_function_privilege('authenticated', 'public.submit_application_as_caller(text,text,text,text,date,boolean,text,text)', 'execute'),
   'neither anon nor a signed-in account can call it — a hash anyone could send would be a limit anyone could dodge');
-select ok(has_function_privilege('service_role', 'public.submit_application_as_caller(text,text,text,text,date,boolean,text)', 'execute'),
+select ok(has_function_privilege('service_role', 'public.submit_application_as_caller(text,text,text,text,date,boolean,text,text)', 'execute'),
   'the Staff App server action (service key) can');
 select ok(not has_schema_privilege('anon', 'private', 'usage')
       and not has_schema_privilege('authenticated', 'private', 'usage'),

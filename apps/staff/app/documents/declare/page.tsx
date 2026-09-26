@@ -28,9 +28,14 @@ export default async function Page() {
           );
         }
         const now = Date.now();
-        const futureShifts = (await loadBookings()).filter(
-          (booking) => booking.status === 'confirmed' && booking.startsAt.getTime() > now,
-        ).length;
+        const { rows, problem } = await loadBookings();
+        // A failed read has no count: the sentence then says "any booked
+        // shifts" rather than "You have no booked shifts" (audit D18).
+        const futureShifts = problem
+          ? null
+          : rows.filter(
+              (booking) => booking.status === 'confirmed' && booking.startsAt.getTime() > now,
+            ).length;
         return <DeclareForm futureShifts={futureShifts} today={data.today} />;
       }}
     </SubScreen>

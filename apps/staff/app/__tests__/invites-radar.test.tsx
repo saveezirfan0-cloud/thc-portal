@@ -34,51 +34,84 @@ vi.mock('../actions', () => ({
   declineInvite: vi.fn(),
   applyForShift: vi.fn(),
   withdrawApplication: vi.fn(),
+  cancelShift: vi.fn(),
+  confirmToday: vi.fn(),
+  markReady: vi.fn(),
+  reconfirm: vi.fn(),
+  takeOfferedShift: vi.fn(),
 }));
 vi.mock('../profile/photos', () => ({ signOwnPhoto: async () => null }));
 vi.mock('../profile/data', () => ({
-  loadProfile: async (): Promise<StaffProfile> => ({
-    staffId: 's1',
-    firstName: 'Amara',
-    lastName: 'Kalu',
-    employeeId: 417,
-    email: 'amara@example.test',
-    phone: '+447700900123',
-    homeAddress: null,
-    photoPath: null,
-    photoLocked: true,
-    status: 'compliant',
-    blockKind: null,
-    leftAt: null,
-    rtwBranch: 'uk_irish',
-    niMasked: null,
-    hasNiNumber: true,
-    rating: null,
-    reliability: null,
-    quizAttempts: 1,
-    roles: ['Waiting Staff', 'Bar Staff'],
-    blockers: [],
-    checkedIn: false,
-    bank: null,
+  readProfile: async (): Promise<{ kind: 'ok'; profile: StaffProfile }> => ({
+    kind: 'ok',
+    profile: {
+      staffId: 's1',
+      firstName: 'Amara',
+      lastName: 'Kalu',
+      employeeId: 417,
+      email: 'amara@example.test',
+      phone: '+447700900123',
+      homeAddress: null,
+      photoPath: null,
+      photoLocked: true,
+      status: 'compliant',
+      blockKind: null,
+      leftAt: null,
+      rtwBranch: 'uk_irish',
+      niMasked: null,
+      hasNiNumber: true,
+      rating: null,
+      reliability: null,
+      quizAttempts: 1,
+      roles: ['Waiting Staff', 'Bar Staff'],
+      blockers: [],
+      checkedIn: false,
+      bank: null,
+    },
   }),
 }));
 
 const bookings = vi.fn<() => Promise<BookingRow[]>>();
 const openShifts = vi.fn<() => Promise<OpenShift[]>>();
 const meter = vi.fn<() => Promise<WeekMeter | null>>();
+// The loaders hand back { rows | row, problem } (audit D18); these reads
+// all succeed, so `problem` is null throughout.
 vi.mock('../data', async (importOriginal) => ({
   ...(await importOriginal<typeof Data>()),
-  loadBookings: () => bookings(),
-  loadOpenShifts: () => openShifts(),
-  loadWeekMeter: () => meter(),
-  findBooking: async (id: string) => (await bookings()).find((b) => b.bookingId === id) ?? null,
-  findOpenShift: async (id: string) => (await openShifts()).find((s) => s.shiftId === id) ?? null,
+  loadBookings: async () => ({ rows: await bookings(), problem: null }),
+  loadOpenShifts: async () => ({ rows: await openShifts(), problem: null }),
+  loadWeekMeter: async () => ({ row: await meter(), problem: null }),
+  findBooking: async (id: string) => ({
+    row: (await bookings()).find((b) => b.bookingId === id) ?? null,
+    problem: null,
+  }),
+  findOpenShift: async (id: string) => ({
+    row: (await openShifts()).find((s) => s.shiftId === id) ?? null,
+    problem: null,
+  }),
+}));
+
+// ADR-0046's two offer reads (audit D18): they succeed with nothing unless
+// a test says otherwise.
+type OfferLoad = { rows: never[]; problem: string | null };
+const offerReads = vi.hoisted(() => ({
+  booking: { rows: [], problem: null } as { rows: never[]; problem: string | null },
+  open: { rows: [], problem: null } as { rows: never[]; problem: string | null },
+  one: { row: null, problem: null } as { row: null; problem: string | null },
+}));
+vi.mock('../shifts/offers-data', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  loadBookingOffers: async (): Promise<OfferLoad> => offerReads.booking,
+  loadOpenOffers: async (): Promise<OfferLoad> => offerReads.open,
+  findOpenOffer: async () => offerReads.one,
 }));
 
 const { default: InvitesPage } = await import('../invites/page');
 const { default: InvitePage } = await import('../invites/[id]/page');
 const { default: RadarPage } = await import('../radar/page');
 const { default: RadarDetailPage } = await import('../radar/[id]/page');
+const { default: ShiftsPage } = await import('../shifts/page');
+const { default: RadarOfferPage } = await import('../radar/offers/[id]/page');
 
 // Every fixture is placed against the real clock, because RULE-16 is.
 const NOW = Date.now();
@@ -181,6 +214,17 @@ const FIXTURE_BOOKINGS: BookingRow[] = [
     eventCancelledAt: hours(-1),
   }),
   booking({ bookingId: 'worked-1', status: 'worked', eventTitle: 'Board Lunch' }),
+  // The screenshot: a booking two weeks gone, still `confirmed` because
+  // nobody checked in (a No-show is a violation, not a status). It is
+  // history — in no badge, and under "Past shifts", not above today.
+  booking({
+    bookingId: 'stale',
+    status: 'confirmed',
+    confirmedAt: hours(-400),
+    eventTitle: 'Stale Lunch',
+    startsAt: hours(-14 * 24),
+    endsAt: hours(-14 * 24 + 5),
+  }),
   booking({
     bookingId: 'applied-1',
     status: 'applied',
@@ -271,6 +315,9 @@ const disabledButton = (html: string, label: string) =>
   new RegExp(`<button[^>]*disabled=""[^>]*>${label}</button>`).test(html);
 
 beforeEach(() => {
+  offerReads.booking = { rows: [], problem: null };
+  offerReads.open = { rows: [], problem: null };
+  offerReads.one = { row: null, problem: null };
   bookings.mockReset().mockResolvedValue(FIXTURE_BOOKINGS);
   openShifts.mockReset().mockResolvedValue(FIXTURE_SHIFTS);
   meter.mockReset().mockResolvedValue(FIXTURE_METER);
@@ -282,10 +329,49 @@ describe('the Shifts badge is the same number on every tab (§10.1)', () => {
     ['/invites/:id', () => InvitePage({ params: Promise.resolve({ id: 'inv-launch' }) })],
     ['/radar', () => RadarPage()],
     ['/radar/:id', () => RadarDetailPage({ params: Promise.resolve({ id: 's-board' }) })],
-  ])('%s counts confirmed + worked (2) and the open invitations (3)', async (_route, page) => {
-    const html = await render(page());
-    expect(html).toContain('Shifts<span class="n">2</span>');
-    expect(html).toContain('Invites<span class="n">3</span>');
+    ['/shifts', () => ShiftsPage({ searchParams: Promise.resolve({}) })],
+  ])(
+    '%s counts upcoming confirmed + worked (2) and the open invitations (3)',
+    async (_route, page) => {
+      const html = await render(page());
+      expect(html).toContain('Shifts<span class="n">2</span>');
+      expect(html).toContain('Invites<span class="n">3</span>');
+    },
+  );
+});
+
+describe('/shifts — My shifts (§10.4, shifts.html)', () => {
+  it('groups upcoming shifts soonest first and keeps the past collapsed below them', async () => {
+    const html = await render(ShiftsPage({ searchParams: Promise.resolve({}) }));
+    const awards = html.indexOf('Awards Night · Waiting Staff');
+    const board = html.indexOf('Board Lunch');
+    const past = html.indexOf('Past shifts · 1');
+    const stale = html.indexOf('Stale Lunch');
+    // Board Lunch (hours 96–103) and the Awards Night (a week out).
+    expect(board).toBeGreaterThan(-1);
+    expect(awards).toBeGreaterThan(board);
+    expect(past).toBeGreaterThan(awards);
+    expect(stale).toBeGreaterThan(past);
+    expect(html).toContain('<details class="past-shifts">');
+  });
+
+  it('the stale booking reads "Not checked in", never "Confirmed"', async () => {
+    const html = await render(ShiftsPage({ searchParams: Promise.resolve({}) }));
+    const row = html.slice(html.indexOf('Stale Lunch'));
+    expect(row.slice(0, row.indexOf('</a>'))).toContain('Not checked in');
+  });
+
+  it('the venue name leads and the address sits under it', async () => {
+    const html = await render(ShiftsPage({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain(
+      '<span class="venue-name">The Dorchester</span><span class="venue-addr">53 Park Lane, W1K 1QA</span>',
+    );
+  });
+
+  it('carries the current week’s hours meter (RULE-20), the same as Radar', async () => {
+    const html = await render(ShiftsPage({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain('This week (Mon 14 – Sun 20)');
+    expect(html).toContain('8 h of 20 h');
   });
 });
 
@@ -432,5 +518,55 @@ describe('/radar/:id', () => {
     const html = await render(RadarDetailPage({ params: Promise.resolve({ id: 's-board' }) }));
     expect(html).toContain('class="map radar-map"');
     expect(html).not.toContain('class="me"');
+  });
+});
+
+/**
+ * Audit D18 on ADR-0046's offer reads: a failed read shows `<LoadProblem>`,
+ * never "Nothing open nearby", a missing Offered chip, or a 404.
+ */
+describe('offer reads that fail (audit D18)', () => {
+  const TIMEOUT = 'canceling statement due to timeout';
+
+  it('/radar: a failed offer read is the load-problem state, not "Nothing open nearby"', async () => {
+    openShifts.mockResolvedValue([]);
+    offerReads.open = { rows: [], problem: TIMEOUT };
+    const html = await render(RadarPage());
+    expect(html).toContain('data-load-problem');
+    expect(html).toContain('We couldn’t load shifts up for grabs');
+    expect(html).not.toContain('Nothing open nearby');
+  });
+
+  it('/radar: with every read answered and nothing open, the empty state stands', async () => {
+    openShifts.mockResolvedValue([]);
+    const html = await render(RadarPage());
+    expect(html).toContain('Nothing open nearby');
+    expect(html).not.toContain('data-load-problem');
+  });
+
+  it('/radar/offers/:id: a failed read is the load-problem state, never a 404', async () => {
+    offerReads.one = { row: null, problem: TIMEOUT };
+    const html = await render(RadarOfferPage({ params: Promise.resolve({ id: 'o1' }) }));
+    expect(html).toContain('data-load-problem');
+    expect(html).toContain('We couldn’t load this shift');
+  });
+
+  it('/radar/offers/:id: an offer this worker may not see is still a 404', async () => {
+    await expect(RadarOfferPage({ params: Promise.resolve({ id: 'o1' }) })).rejects.toThrow(
+      'NEXT_NOT_FOUND',
+    );
+  });
+
+  it('/shifts: a failed offer read says so above the booked shifts', async () => {
+    offerReads.booking = { rows: [], problem: TIMEOUT };
+    const html = await render(ShiftsPage({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain('We couldn’t load your shift offers');
+    // The shifts themselves are still there: only the offers are unknown.
+    expect(html).toContain('Awards Night · Waiting Staff');
+  });
+
+  it('/shifts: no load-problem line when the offer read succeeded', async () => {
+    const html = await render(ShiftsPage({ searchParams: Promise.resolve({}) }));
+    expect(html).not.toContain('your shift offers');
   });
 });

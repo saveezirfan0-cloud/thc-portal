@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  blockBanner,
   canBlock,
   canReset,
   complianceSummary,
@@ -8,11 +9,14 @@ import {
   formatLocalStamp,
   formatUkStamp,
   formatUkWindow,
+  hoursThisWeek,
   hoursTone,
   isActionable,
   noShowTone,
   payableHours,
+  reviewLabel,
   shiftOutcome,
+  shiftsInRange,
 } from '../profile';
 import type { DocumentRow, FeedbackRow, ShiftRow } from '../types';
 
@@ -104,14 +108,50 @@ describe('the closing compliance line (§9.6)', () => {
     expect(
       complianceSummary({ status: 'blocked', contract_signed_at: '2026-07-12T13:42:00Z' }),
     ).toBe(
-      'Blocked — see the reason above. Contract signed electronically: 12.07.2026 14:42 UK time',
+      'Blocked — not bookable until the block is lifted. Contract signed electronically: 12.07.2026 14:42 UK time',
     );
   });
 
   it('never calls a candidate "compliant and bookable"', () => {
     const line = complianceSummary({ status: 'documents', contract_signed_at: null });
-    expect(line).toBe('Onboarding in progress. Contract not yet signed.');
-    expect(line).not.toMatch(/bookable/);
+    expect(line).toBe('Onboarding in progress — not bookable yet. Contract not yet signed.');
+    expect(line).not.toMatch(/Compliant and bookable/);
+  });
+
+  // Every branch: no clause contradicts another, "Compliant and bookable"
+  // belongs to a compliant worker alone, a contract is "not yet signed"
+  // only for somebody still onboarding, and no section number is printed.
+  it.each([
+    ['compliant', false, null, 'Documents verified, quiz passed. Compliant and bookable.'],
+    ['blocked', false, null, 'Blocked — not bookable until the block is lifted.'],
+    ['inactive', false, null, 'Left through the app — not bookable.'],
+    [
+      'inactive',
+      false,
+      '2026-07-12T13:42:00Z',
+      'Left through the app — not bookable. Contract signed electronically: 12.07.2026 14:42 UK time',
+    ],
+    ['rejected', false, null, 'Application rejected — not bookable.'],
+    ['removed', true, null, 'Removed — personal data anonymised; the history stays.'],
+    ['compliant', true, null, 'Removed — personal data anonymised; the history stays.'],
+    [
+      'interview_requested',
+      false,
+      null,
+      'Onboarding in progress — not bookable yet. Contract not yet signed.',
+    ],
+    [
+      'contract',
+      false,
+      '2026-07-12T13:42:00Z',
+      'Onboarding in progress — not bookable yet. Contract signed electronically: 12.07.2026 14:42 UK time',
+    ],
+  ])('status %s (removed %s, signed %s) reads "%s"', (status, removed, signed, expected) => {
+    const line = complianceSummary({ status, removed, contract_signed_at: signed });
+    expect(line).toBe(expected);
+    if (status !== 'compliant' || removed) expect(line).not.toMatch(/Compliant and bookable/);
+    if (signed) expect(line).not.toMatch(/not yet signed/);
+    expect(line).not.toMatch(/§|RULE-/);
   });
 });
 
@@ -167,6 +207,29 @@ describe('shift outcomes (§9.6)', () => {
     expect(
       shiftOutcome({ ...SHIFT, booking_status: 'cancelled', kind: null, self_cancelled: false }),
     ).toBe('Cancelled');
+  });
+
+  it('names a hand-over as one, not as a self-cancellation (ADR-0046)', () => {
+    // take_offered_shift sets self_cancelled = true on the original booking
+    // too (the event bar, Q15) — the cause is what tells the two apart.
+    expect(
+      shiftOutcome({
+        ...SHIFT,
+        booking_status: 'cancelled',
+        kind: null,
+        cancel_cause: 'handed_over',
+        self_cancelled: true,
+      }),
+    ).toBe('Handed over (offered up)');
+    expect(
+      shiftOutcome({
+        ...SHIFT,
+        booking_status: 'cancelled',
+        kind: null,
+        cancel_cause: 'self_cancel',
+        self_cancelled: true,
+      }),
+    ).toBe('Self-cancelled');
   });
 });
 
@@ -234,5 +297,107 @@ describe('the manager buttons (§9.6, §2.12, §1.7)', () => {
     expect(canBlock('documents')).toBe(false);
     expect(canBlock('blocked')).toBe(false);
     expect(canBlock('additional_info')).toBe(false);
+  });
+});
+
+describe('the blocked banner says how THIS block lifts (§9.6, §4.3, §10.7)', () => {
+  it('a document block lifts by itself once the document is verified', () => {
+    const banner = blockBanner({ block_kind: 'auto_document', block_reason: null });
+    expect(banner.title).toBe('Blocked automatically — a document is out of date');
+    expect(banner.detail).toMatch(/lifts by itself once the document is verified/);
+  });
+
+  it('a conviction review does NOT lift "once the document is verified"', () => {
+    const banner = blockBanner({
+      block_kind: 'conviction_review',
+      block_reason: 'Criminal conviction declared — under review',
+    });
+    expect(banner.title).toBe('Blocked — Criminal conviction declared — under review');
+    expect(banner.detail).not.toMatch(/document is verified/);
+    expect(banner.detail).toMatch(/Verify it on the Documents tab/);
+    expect(banner.detail).toMatch(/reject it and it becomes a manual block/);
+  });
+
+  it('a manual block is lifted by a manager only, and says so', () => {
+    const banner = blockBanner({ block_kind: 'manual', block_reason: 'Client complaint' });
+    expect(banner.title).toBe('Blocked — Client complaint');
+    expect(banner.detail).toMatch(/Only a manager’s Unblock lifts it/);
+  });
+
+  it('prints no section number', () => {
+    for (const kind of ['auto_document', 'manual', 'conviction_review', null] as const) {
+      const banner = blockBanner({ block_kind: kind, block_reason: null });
+      expect(`${banner.title} ${banner.detail}`).not.toMatch(/§|RULE-/);
+    }
+  });
+});
+
+describe('hours this week is worked / limit (§9.6)', () => {
+  it('shows worked hours over the cap, with booked underneath', () => {
+    expect(
+      hoursThisWeek({ weekly_worked_hours: 8, weekly_booked_hours: 18, weekly_cap_hours: 20 }),
+    ).toEqual({ value: '8 / 20', booked: '18 h booked', tone: 'default' });
+  });
+
+  it('is amber once the committed hours reach the cap, even while fewer are worked', () => {
+    expect(
+      hoursThisWeek({ weekly_worked_hours: 12, weekly_booked_hours: 20, weekly_cap_hours: 20 })
+        .tone,
+    ).toBe('warn');
+  });
+
+  it('reads numeric strings and fractions the way the office does', () => {
+    expect(
+      hoursThisWeek({
+        weekly_worked_hours: '7.5000',
+        weekly_booked_hours: '48',
+        weekly_cap_hours: 48,
+      }),
+    ).toEqual({ value: '7.5 / 48', booked: '48 h booked', tone: 'warn' });
+  });
+
+  it('has no cap to show when there is no ceiling', () => {
+    expect(
+      hoursThisWeek({ weekly_worked_hours: null, weekly_booked_hours: 60, weekly_cap_hours: null }),
+    ).toEqual({ value: '0 / —', booked: '60 h booked', tone: 'default' });
+  });
+});
+
+describe('labels, never enums (§9.6)', () => {
+  it("names a declaration's review state", () => {
+    expect(reviewLabel('pending')).toBe('Under review');
+    expect(reviewLabel('verified')).toBe('Verified');
+    expect(reviewLabel('rejected')).toBe('Rejected');
+    expect(reviewLabel('superseded')).toBe('Superseded');
+  });
+
+  it('never prints a raw booking status', () => {
+    expect(shiftOutcome({ ...SHIFT, kind: null, booking_status: 'closed' })).toBe(
+      'Did not go ahead',
+    );
+    expect(shiftOutcome({ ...SHIFT, kind: null, booking_status: 'worked' })).toBe('Worked');
+    expect(shiftOutcome({ ...SHIFT, kind: null, booking_status: 'something_new' })).toBe('Other');
+  });
+});
+
+describe('the Shifts tab range (wireframe: Last 90 days / All)', () => {
+  const now = new Date('2026-09-25T12:00:00Z');
+  const rows = [
+    { id: 'future', starts_at: '2026-10-02T17:00:00Z' },
+    { id: 'recent', starts_at: '2026-09-01T17:00:00Z' },
+    { id: 'edge', starts_at: '2026-06-27T12:00:00Z' },
+    { id: 'old', starts_at: '2026-06-01T17:00:00Z' },
+  ];
+
+  it('keeps the last 90 days and anything still ahead', () => {
+    expect(shiftsInRange(rows, '90', now).map((row) => row.id)).toEqual([
+      'future',
+      'recent',
+      'edge',
+    ]);
+  });
+
+  it('All is everything', () => {
+    expect(shiftsInRange(rows, 'all', now)).toHaveLength(4);
   });
 });

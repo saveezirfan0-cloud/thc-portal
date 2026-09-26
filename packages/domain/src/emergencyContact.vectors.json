@@ -1,0 +1,201 @@
+{
+  "description": "ADR-0044 emergency contact (docs/19 §2). The contract between packages/domain/src/emergencyContact.ts (isE164, normaliseEmergencyPhone, validateEmergencyContact) and the staff_emergency_contacts CHECKs in 20260930200100_staff_additions_schema.sql: phone ^\\+[1-9][0-9]{6,14}$ (E.164, the /apply rule), name 1-100 and relationship 1-40, both trimmed. `storable` is whether the raw string passes the CHECK as it is; `normalised` is what the form stores for it (null = refused). Regenerate the pgTAP half with: node packages/domain/scripts/gen-vectors-sql.mjs",
+  "phones": [
+    {
+      "name": "uk_mobile_e164",
+      "input": "+447700900123",
+      "storable": true,
+      "normalised": "+447700900123"
+    },
+    {
+      "name": "french_mobile_e164",
+      "input": "+33612345678",
+      "storable": true,
+      "normalised": "+33612345678"
+    },
+    {
+      "name": "seven_digits_is_the_minimum",
+      "input": "+1234567",
+      "storable": true,
+      "normalised": "+1234567"
+    },
+    {
+      "name": "six_digits_is_too_short",
+      "input": "+123456",
+      "storable": false,
+      "normalised": null
+    },
+    {
+      "name": "fifteen_digits_is_the_maximum",
+      "input": "+123456789012345",
+      "storable": true,
+      "normalised": "+123456789012345"
+    },
+    {
+      "name": "sixteen_digits_is_too_long",
+      "input": "+1234567890123456",
+      "storable": false,
+      "normalised": null
+    },
+    {
+      "name": "spaces_are_stripped",
+      "input": "+44 7700 900123",
+      "storable": false,
+      "normalised": "+447700900123"
+    },
+    {
+      "name": "dashes_and_brackets_are_stripped",
+      "input": "+44 (7700) 900-123",
+      "storable": false,
+      "normalised": "+447700900123"
+    },
+    {
+      "name": "surrounding_spaces_are_trimmed",
+      "input": "  +447700900123  ",
+      "storable": false,
+      "normalised": "+447700900123"
+    },
+    {
+      "name": "national_number_without_country_code_is_refused",
+      "input": "07700900123",
+      "storable": false,
+      "normalised": null
+    },
+    {
+      "name": "country_code_without_plus_is_refused",
+      "input": "447700900123",
+      "storable": false,
+      "normalised": null
+    },
+    {
+      "name": "zero_after_plus_is_refused",
+      "input": "+0447700900123",
+      "storable": false,
+      "normalised": null
+    },
+    {
+      "name": "letters_are_refused",
+      "input": "+44 7700 9OO123",
+      "storable": false,
+      "normalised": null
+    },
+    {
+      "name": "empty_is_refused",
+      "input": "",
+      "storable": false,
+      "normalised": null
+    }
+  ],
+  "contacts": [
+    {
+      "name": "ok",
+      "input": {
+        "name": "Maria Lopez",
+        "relationship": "Parent",
+        "phone": "+447700900123"
+      },
+      "errors": [],
+      "phone": "+447700900123"
+    },
+    {
+      "name": "ok_trimmed_and_normalised",
+      "input": {
+        "name": " Maria Lopez ",
+        "relationship": " Partner ",
+        "phone": "+44 7700 900123"
+      },
+      "errors": [],
+      "phone": "+447700900123"
+    },
+    {
+      "name": "name_of_100_characters",
+      "input": {
+        "name": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "relationship": "Friend",
+        "phone": "+447700900123"
+      },
+      "errors": [],
+      "phone": "+447700900123"
+    },
+    {
+      "name": "name_of_101_characters",
+      "input": {
+        "name": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        "relationship": "Friend",
+        "phone": "+447700900123"
+      },
+      "errors": ["name"],
+      "phone": "+447700900123"
+    },
+    {
+      "name": "blank_name",
+      "input": {
+        "name": "   ",
+        "relationship": "Friend",
+        "phone": "+447700900123"
+      },
+      "errors": ["name"],
+      "phone": "+447700900123"
+    },
+    {
+      "name": "relationship_of_40_characters",
+      "input": {
+        "name": "Maria Lopez",
+        "relationship": "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR",
+        "phone": "+447700900123"
+      },
+      "errors": [],
+      "phone": "+447700900123"
+    },
+    {
+      "name": "relationship_of_41_characters",
+      "input": {
+        "name": "Maria Lopez",
+        "relationship": "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR",
+        "phone": "+447700900123"
+      },
+      "errors": ["relationship"],
+      "phone": "+447700900123"
+    },
+    {
+      "name": "blank_relationship",
+      "input": {
+        "name": "Maria Lopez",
+        "relationship": "",
+        "phone": "+447700900123"
+      },
+      "errors": ["relationship"],
+      "phone": "+447700900123"
+    },
+    {
+      "name": "missing_phone",
+      "input": {
+        "name": "Maria Lopez",
+        "relationship": "Sibling",
+        "phone": ""
+      },
+      "errors": ["phone"],
+      "phone": null
+    },
+    {
+      "name": "phone_without_country_code",
+      "input": {
+        "name": "Maria Lopez",
+        "relationship": "Sibling",
+        "phone": "07700900123"
+      },
+      "errors": ["phone"],
+      "phone": null
+    },
+    {
+      "name": "everything_missing",
+      "input": {
+        "name": "",
+        "relationship": "",
+        "phone": ""
+      },
+      "errors": ["name", "phone", "relationship"],
+      "phone": null
+    }
+  ]
+}
