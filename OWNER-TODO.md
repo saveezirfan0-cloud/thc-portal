@@ -222,8 +222,8 @@ Settings the round depends on, and the choices it recorded as defaults.
       refuses in production rather than send a link to localhost.
 - [ ] **Vercel, thc-portal-staff**: keep `SUPABASE_SERVICE_ROLE_KEY` set —
       `/apply` now needs it.
-- [ ] **Regenerate `packages/db/src/types.generated.ts`** once the round is
-      live; several new RPCs, columns and views are read through local casts.
+- [x] **Regenerate `packages/db/src/types.generated.ts`** once the round is
+      live — done 26.09 from the live project (all 145 migrations applied).
 - [ ] **Before any real data**: change the six seed passwords (`password123`)
       or delete the seed users on the live project.
 - [ ] **On the morning of a client walk-through**: re-run
