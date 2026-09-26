@@ -182,7 +182,12 @@ test('Save limits writes the settings row and says so (§3.4)', async ({ page })
     // Saved unchanged: a real round trip through the action and RLS that
     // leaves every other spec's auto-assign reading the same numbers.
     await limits.getByRole('button', { name: 'Save limits' }).click();
-    await expect(limits.locator('.alert.green')).toHaveText('Saved.');
+    // Any .alert, not only the green one: a refusal is a coral alert
+    // carrying the server's message, and that message is the diagnosis
+    // (the first run of this test found "permission denied for function
+    // is_edge_base_url" on every save; 20260930150000).
+    await expect(limits.locator('.alert')).toHaveText('Saved.');
+    await expect(limits.locator('.alert')).toHaveClass(/\bgreen\b/);
     expect(
       Number(sql(`select value #>> '{}' from settings where key = 'booked_elsewhere_gap_minutes'`)),
     ).toBe(Number(gap));
