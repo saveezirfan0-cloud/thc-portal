@@ -130,6 +130,13 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: ${{ env.API_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ env.ANON_KEY }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ env.SERVICE_ROLE_KEY }}
+          # Each app's own public URL, as on Vercel. The forgot-password
+          # actions build the emailed link from these and refuse without
+          # them under `next start` (ADR-0039); the allow-list in
+          # supabase/config.toml names the same three origins.
+          NEXT_PUBLIC_OFFICE_URL: http://127.0.0.1:3000
+          NEXT_PUBLIC_STAFF_URL: http://127.0.0.1:3001
+          NEXT_PUBLIC_CLIENT_URL: http://127.0.0.1:3002
           APP_TZ: Europe/London
 
   # =====================================================================

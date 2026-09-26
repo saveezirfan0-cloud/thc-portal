@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { HOME_PATH } from '@thc/db';
-import { loadProfile } from './profile/data';
+import { readProfile } from './profile/data';
 import { appLock } from './profile/lock';
 
 /**
@@ -20,8 +20,10 @@ import { appLock } from './profile/lock';
 export const dynamic = 'force-dynamic';
 
 export default async function Page() {
-  const profile = await loadProfile();
-  if (profile && appLock(profile) === 'onboarding') redirect('/onboarding');
+  // A failed read goes to /shifts, whose shell fails closed with a retry
+  // (audit D16) — not to the wizard, and not to an error page with no way on.
+  const read = await readProfile();
+  if (read.kind === 'ok' && appLock(read.profile) === 'onboarding') redirect('/onboarding');
   // HOME_PATH must never be `/` — that is this page (packages/db roles.test).
   redirect(HOME_PATH.staff);
 }

@@ -39,12 +39,17 @@ select has_column('public', 'compliance_review_queue_v', 'manual_review_reason',
   'the queue carries manual_review_reason');
 select col_type_is('public', 'compliance_review_queue_v', 'manual_review_reason', 'text',
   'as text, the document row''s own column');
+-- Appended straight after rtw_manual_allowed, the last column before it.
+-- 20260930130400 appends five more after it, so "the last column" is no
+-- longer the test: "no existing column moved" is.
 select is(
-  (select column_name::text from information_schema.columns
+  (select ordinal_position::int from information_schema.columns
      where table_schema = 'public' and table_name = 'compliance_review_queue_v'
-     order by ordinal_position desc limit 1),
-  'manual_review_reason',
-  'appended last — create-or-replace may only add columns at the end, and review_reason keeps its place');
+       and column_name = 'manual_review_reason'),
+  (select ordinal_position::int + 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'compliance_review_queue_v'
+       and column_name = 'rtw_manual_allowed'),
+  'appended at the end, after rtw_manual_allowed — create-or-replace may only add columns at the end, and review_reason keeps its place');
 select is(
   (select c.reloptions::text[] @> array['security_invoker=true']
      from pg_class c join pg_namespace n on n.oid = c.relnamespace

@@ -81,6 +81,23 @@ export const MINIMUM_SHIFT_MIN = 4 * 60;
  */
 export const TURN_AWAY_PAY_MIN = 4 * 60;
 
+/**
+ * §9.5 "Left early" (audit D5, ADR-0035). A check-out pressed more than this
+ * long before the scheduled end is an early finish and raises the violation
+ * that blocks RULE-14's floor. Inside it, the minutes are still deducted by
+ * RULE-01 — only the flag waits, mirroring the 15-minute check-out grace.
+ */
+export const LEFT_EARLY_GRACE_MIN = 15;
+
+/**
+ * RULE-02 review of a stale fix (audit D15, ADR-0035). Off site, a last
+ * on-site fix more than this long before the press AND before the scheduled
+ * end is recorded as the finish but raises a No check-out for a manager to
+ * confirm: with screen-open pings only, it may be nothing more than the ping
+ * sent right after check-in.
+ */
+export const STALE_FIX_MIN = 30;
+
 export interface ShiftWindow {
   /** Scheduled start of the ROLE SECTION, never the event window (RULE-18). */
   startsAt: Date;
@@ -246,6 +263,12 @@ export interface CheckOutResult {
   recordedAt: Date | null;
   violation: 'none' | 'no_checkout';
   messageKey: string;
+  /**
+   * §9.5 "Left early": the check-out was pressed more than
+   * `LEFT_EARLY_GRACE_MIN` before the scheduled end (D5). Raised alongside
+   * whatever `violation` says; false when the press recorded nothing.
+   */
+  leftEarly: boolean;
 }
 
 /** True once the shift is old enough that a missing check-out is RULE-02, not lateness. */
@@ -262,6 +285,7 @@ export function checkOutDecision(input: CheckOutInput): CheckOutResult {
       recordedAt: null,
       violation: 'none',
       messageKey: 'check_out_not_open',
+      leftEarly: false,
     };
   }
 
@@ -272,8 +296,12 @@ export function checkOutDecision(input: CheckOutInput): CheckOutResult {
       recordedAt: null,
       violation: 'no_checkout',
       messageKey: 'no_check_out_locked',
+      leftEarly: false,
     };
   }
+
+  // D5: the worker said they had finished, before the scheduled end.
+  const leftEarly = at < addMinutes(shift.endsAt, -LEFT_EARLY_GRACE_MIN);
 
   if (insideGeofence) {
     return {
@@ -281,15 +309,22 @@ export function checkOutDecision(input: CheckOutInput): CheckOutResult {
       recordedAt: at,
       violation: 'none',
       messageKey: 'checked_out',
+      leftEarly,
     };
   }
 
   if (lastOnSiteAt !== null) {
+    // D15: the fix is still what is recorded, and what the §5.1 message
+    // quotes, but a manager confirms a fix that is stale on both counts.
+    const stale =
+      minutesBetween(lastOnSiteAt, at) > STALE_FIX_MIN &&
+      minutesBetween(lastOnSiteAt, shift.endsAt) > STALE_FIX_MIN;
     return {
       decision: 'recorded_last_on_site',
       recordedAt: lastOnSiteAt,
-      violation: 'none',
+      violation: stale ? 'no_checkout' : 'none',
       messageKey: 'checked_out_off_site',
+      leftEarly,
     };
   }
 
@@ -300,7 +335,56 @@ export function checkOutDecision(input: CheckOutInput): CheckOutResult {
     recordedAt: checkInAt,
     violation: 'no_checkout',
     messageKey: 'no_check_out_office_confirms',
+    leftEarly,
   };
+}
+
+// ---------------------------------------------------------------------------
+// §5.2b · breaks inside the paid window
+// ---------------------------------------------------------------------------
+
+export interface BreakSpan {
+  startedAt: Date;
+  /** Null while the break is still running: it then ends at the finish. */
+  endedAt: Date | null;
+}
+
+export interface BreakWindowInput {
+  shift: ShiftWindow;
+  /** The accepted check-in; null reads as the scheduled start. */
+  checkInAt: Date | null;
+  /**
+   * The finish the pay window uses: the manager-entered finish, the recorded
+   * check-out, or — for a shift still running — now.
+   */
+  finishAt: Date;
+}
+
+/**
+ * One break's minutes inside [max(check-in, start), min(finish, end)]
+ * (audit D49). A break taken before the paid window opened, or after it
+ * closed, costs the worker nothing: RULE-01 never paid those minutes in the
+ * first place, so deducting them again would take them twice. Mirrors
+ * `break_window_minutes()` in SQL; both are held to the `breaks` vectors.
+ */
+export function breakWindowMinutes(window: BreakWindowInput, br: BreakSpan): number {
+  const { shift, checkInAt, finishAt } = window;
+  const from = Math.max(
+    br.startedAt.getTime(),
+    shift.startsAt.getTime(),
+    checkInAt ? checkInAt.getTime() : -Infinity,
+  );
+  const to = Math.min(
+    (br.endedAt ?? finishAt).getTime(),
+    finishAt.getTime(),
+    shift.endsAt.getTime(),
+  );
+  return Math.max(0, Math.round((to - from) / MS_PER_MIN));
+}
+
+/** §5.2b. The unpaid total: every break clipped to the paid window, then summed. */
+export function unpaidBreakMinutes(window: BreakWindowInput, breaks: readonly BreakSpan[]): number {
+  return breaks.reduce((total, br) => total + breakWindowMinutes(window, br), 0);
 }
 
 // ---------------------------------------------------------------------------
@@ -476,6 +560,13 @@ export function acceptedLog<T extends { check_in_at: string | null }>(
 export interface ShowRateViolation {
   type: string;
   resolved: boolean;
+  /**
+   * A No check-out raised for review of a stale on-site fix (audit D15,
+   * ADR-0035), `violations.stale_fix_review` in SQL. The worker did press
+   * Check out; only the recorded finish waits for a manager, so it never
+   * counts against the show-rate.
+   */
+  staleFixReview?: boolean;
 }
 
 /** One booking in a worker's history: its status and the violations on it. */
@@ -502,6 +593,9 @@ export interface ShowRateBooking {
  *  - An unresolved No-show (BG-03) or No check-out (RULE-14) counts
  *    against; resolving lifts it. "Removes or reduces" (§9.5) is read as
  *    REMOVES — the scope gives no half weight anywhere.
+ *  - A No check-out raised only to review a stale on-site fix (D15,
+ *    ADR-0035) weighs nothing: the worker pressed Check out, and the app's
+ *    screen-open pings are what left the fix old, not the worker.
  *  - Late, Left early and Left the geofence weigh nothing: §9.5 says they
  *    are "only ever reviewed by the manager case by case, with no
  *    automatic consequence".
@@ -512,7 +606,7 @@ export interface ShowRateBooking {
  */
 export function showRate(bookings: readonly ShowRateBooking[]): number | null {
   const unresolved = (b: ShowRateBooking, type: string) =>
-    b.violations.some((v) => v.type === type && !v.resolved);
+    b.violations.some((v) => v.type === type && !v.resolved && !v.staleFixReview);
 
   const sample = bookings.filter(
     (b) => b.status === 'worked' || b.status === 'turned_away' || unresolved(b, 'no_show'),

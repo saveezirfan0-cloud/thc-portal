@@ -26,6 +26,8 @@ const NOT_CONFIGURED =
 
 /** The service key is missing from this deployment (docs/12): say so, never 500. */
 const TRY_AGAIN = 'That didn’t go through. Please try again.';
+/** A read that failed is not "we couldn't find your record" (audit D18). */
+const COULD_NOT_READ = 'We couldn’t reach your profile just now. Please try again.';
 
 /**
  * The reason codes the RPCs raise, as sentences. Anything unmapped falls
@@ -47,6 +49,10 @@ const REASONS: Record<string, string> = {
   bad_account_number: 'An account number is eight digits.',
   on_shift:
     'You’re checked in to a shift right now. Request my P45 is available once you’ve checked out.',
+  // §10.1 lock case 2: only a manager pressing Unblock lifts a manual block
+  // (request_p45 refuses it, 20260930120200). The reason stays internal.
+  blocked_manual:
+    'Your account is on hold. Please contact the office at: admin@thehospitalitycompany.co.uk',
   unknown_staff: 'We couldn’t find your record. Please contact the office.',
   pin_outside_uk: 'That postcode isn’t in the UK. Please check your address.',
   no_postcode: 'Please include your postcode at the end of your address, e.g. London E2 0RY.',
@@ -222,9 +228,16 @@ export async function saveBankDetails(
  * by signing in with it first: `updateUser({ password })` alone would let
  * anyone holding an unlocked phone change it, which is the one thing a
  * "current password" field exists to prevent.
+ *
+ * The address that check signs in with is the SESSION's, read on the
+ * server — never the one the browser sent (audit D52). A client-supplied
+ * address let the "current password" be any account's password: sign in
+ * as a colleague with theirs, and the updateUser below then changed the
+ * colleague's. The first parameter is kept only so the form's call shape
+ * does not change; it is ignored.
  */
 export async function changePassword(
-  email: string,
+  _claimedEmail: string,
   currentPassword: string,
   newPassword: string,
 ): Promise<ActionResult> {
@@ -233,8 +246,12 @@ export async function changePassword(
     return { ok: false, message: 'Use at least 10 characters, with a number.' };
   }
   const supabase = await db();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user?.email) return { ok: false, message: 'Sign in again to change your password.' };
   const { error: wrong } = await supabase.auth.signInWithPassword({
-    email,
+    email: user.email,
     password: currentPassword,
   });
   if (wrong) return { ok: false, message: 'That current password isn’t right.' };
@@ -271,7 +288,8 @@ export type PhotoSlot = { ok: true; path: string } | { ok: false; message: strin
 export async function startPhotoUpload(): Promise<PhotoSlot> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const supabase = await db();
-  const { data } = await supabase.rpc('staff_me');
+  const { data, error } = await supabase.rpc('staff_me');
+  if (error) return { ok: false, message: COULD_NOT_READ };
   const me = data as Record<string, unknown> | null;
   if (!me) return { ok: false, message: REASONS['unknown_staff'] as string };
   if (me['photoLocked']) return { ok: false, message: REASONS['photo_locked'] as string };

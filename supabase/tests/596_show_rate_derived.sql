@@ -89,12 +89,15 @@ select is(staff_show_rate(:'staffa'), 0.00,
   'a No-show alone is zero, not null');
 
 -- "Get back" through the real path: resolve_violation reclassifies the
--- entry to Late and moves the booking to worked (§9.5, §3.3).
+-- entry to Late and moves the booking to worked (§9.5, §3.3). The section
+-- ended days ago, so the manager enters the arrival (D17, 20260930100000:
+-- after the end the press is not an arrival).
 insert into bookings (id, shift_id, staff_id, status, source, confirmed_at) values
   (:'b1', :'s1', :'staffa', 'worked', 'auto', now() - interval '4 days');
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 select is(
-  resolve_violation((select id from violations where booking_id = :'b3'), 'Arrived, spoke to the client')->>'nowType',
+  resolve_violation((select id from violations where booking_id = :'b3'), 'Arrived, spoke to the client',
+                    null, now() - interval '3 days' + interval '40 minutes')->>'nowType',
   'late',
   'Get back reclassifies the No-show to Late');
 select is(staff_show_rate(:'staffa'), 100.00,

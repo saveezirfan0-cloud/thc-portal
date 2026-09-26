@@ -132,10 +132,10 @@ export function ReviewTab({
       <Alert tone="cyan">
         <b>Why this tab exists:</b> a current worker who re-uploads after an expiry or a rejection
         never reappears on the onboarding kanban. Every profile with a document — or a Criminal
-        Record declaration answered Yes (onboarding or in-employment, §10.7) — in the “under review”
-        state lands here, candidates and staff alike (§4.1). So does a share code verified before
-        the right-to-work date was required — “Right-to-work date missing — re-verify” — until the
-        date off the gov.uk report is confirmed (§2.6, §4.4).
+        Record declaration answered Yes (onboarding or in-employment) — in the “under review” state
+        lands here, candidates and staff alike. So does a share code verified before the
+        right-to-work date was required — “Right-to-work date missing — re-verify” — until the date
+        off the gov.uk report is confirmed.
       </Alert>
 
       {result ? (
@@ -182,11 +182,10 @@ export function ReviewTab({
 
       <Note>
         <b>Dropped out automatically:</b> once someone is Rejected or Removed their outstanding
-        documents no longer need review and leave this queue (§4.1). A “No” Criminal Record answer
-        is auto-verified on submission and never appears here (§2.10). References are never reviewed
-        and never queue (§2.10). The Official University Completion Letter is reviewed here too:
-        approving it confirms the completion date and visa expiry, and the cap follows from the
-        completion date (completion letter requirement §2.2–2.3).
+        documents no longer need review and leave this queue. A “No” Criminal Record answer is
+        auto-verified on submission and never appears here. References are never reviewed and never
+        queue. The Official University Completion Letter is reviewed here too: approving it confirms
+        the completion date and visa expiry, and the cap follows from the completion date.
       </Note>
 
       {dialogs}

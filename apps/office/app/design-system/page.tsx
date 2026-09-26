@@ -162,7 +162,7 @@ export default function Page() {
 
         <Panel title="Shape and type">
           <span className="label">
-            Radius — the fluid scale in both themes; zero only in the §1.6 rendering
+            Radius — the fluid scale in both themes; zero only in the square scope rendering
           </span>
           <div className="ds-shapes mt-8">
             {SHAPES.map(([token, label]) => (
@@ -228,11 +228,11 @@ export default function Page() {
           </Button>
           <hr />
           <Note>
-            Every button animates on hover (§1.6): solid accent lightens, outlined takes the accent
-            border and text, outlined danger fills 12% danger. In the fluid look the primary carries
-            the cyan→violet gradient, and Auto-assign carries the violet one. Depth follows the
-            ground: a soft warm card shadow in light, frosted glass and coloured glow in dark. Never
-            a neutral black cast (ADR-0007).
+            Every button animates on hover: solid accent lightens, outlined takes the accent border
+            and text, outlined danger fills 12% danger. In the fluid look the primary carries the
+            cyan→violet gradient, and Auto-assign carries the violet one. Depth follows the ground:
+            a soft warm card shadow in light, frosted glass and coloured glow in dark. Never a
+            neutral black cast (ADR-0007).
           </Note>
         </Panel>
 
@@ -420,7 +420,7 @@ export default function Page() {
           </TableScroll>
         </Panel>
 
-        <Panel title="Scheduled window (§1.8)">
+        <Panel title="Scheduled window">
           <p className="sm muted">
             A scheduled time is UK first, with a second &ldquo;your time&rdquo; line only when the
             reader&rsquo;s zone differs. Left: as a reader in the UK sees it. Middle: as a reader in
@@ -580,7 +580,7 @@ export default function Page() {
           />
         </Panel>
 
-        <Panel title="Auth card (§1.4, §10.2)">
+        <Panel title="Auth card">
           <p className="sm muted">
             One card for all three apps. Sign-in carries the appearance switch in its corner
             (ADR-0007: no chrome to put it in). A public card whose wireframe draws none — the

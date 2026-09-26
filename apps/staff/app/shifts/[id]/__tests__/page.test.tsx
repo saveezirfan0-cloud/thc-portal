@@ -1,8 +1,20 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { ReactElement } from 'react';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StaffProfile } from '../../../profile/types';
 import type { ShiftDetail } from '../types';
+
+// The fixtures place shifts hours from "now". After 22:00 UK that crossed
+// into the next London day and the today-only states ("Not confirmed today",
+// "Check-in opens at") failed every evening. Pin the clock to a UK
+// afternoon so the suite means the same thing at any hour it runs.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(new Date('2026-09-25T13:00:00Z'));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 /**
  * `/shifts/:id` renders inside `StaffShell` (§10.1, docs/15): the app lock
@@ -38,11 +50,29 @@ vi.mock('../actions', () => ({
 }));
 
 const profile = vi.fn<() => Promise<StaffProfile | null>>();
-vi.mock('../../../profile/data', () => ({ loadProfile: () => profile() }));
+/** Set to make `staff_me()` fail (audit D16). */
+let profileFails = false;
+vi.mock('../../../profile/data', () => ({
+  readProfile: async () => {
+    if (profileFails) return { kind: 'problem', message: 'timeout' };
+    const p = await profile();
+    return p ? { kind: 'ok', profile: p } : { kind: 'unconfigured' };
+  },
+}));
+vi.mock('../../../profile/photos', () => ({ signOwnPhoto: async () => null }));
 
 const shift = vi.fn<() => Promise<ShiftDetail | null>>();
-vi.mock('../data', () => ({ loadShift: () => shift(), supabaseConfigured: () => true }));
-vi.mock('../../../data', () => ({ loadBookings: async () => [], openInvites: () => [] }));
+/** Set to make `staff_shift_detail()` fail (audit D18). */
+let shiftFails = false;
+vi.mock('../data', () => ({
+  loadShift: async () =>
+    shiftFails ? { shift: null, problem: 'timeout' } : { shift: await shift(), problem: null },
+  supabaseConfigured: () => true,
+}));
+vi.mock('../../../data', () => ({
+  loadBookings: async () => ({ rows: [], problem: null }),
+  openInvites: () => [],
+}));
 
 const { default: Page } = await import('../page');
 
@@ -107,8 +137,11 @@ const detail = (over: Partial<ShiftDetail> = {}): ShiftDetail => ({
 });
 
 /** Page → StaffShell element → awaited shell → markup. */
-async function render(): Promise<string> {
-  const page = (await Page({ params: Promise.resolve({ id: 'b1' }) })) as ReactElement<{
+async function render(search: { checkin?: string } = {}): Promise<string> {
+  const page = (await Page({
+    params: Promise.resolve({ id: 'b1' }),
+    searchParams: Promise.resolve(search),
+  })) as ReactElement<{
     [key: string]: unknown;
   }>;
   const shell = page.type as (props: unknown) => Promise<ReactElement>;
@@ -118,6 +151,8 @@ async function render(): Promise<string> {
 beforeEach(() => {
   profile.mockReset();
   shift.mockReset();
+  profileFails = false;
+  shiftFails = false;
 });
 
 describe('§10.1 the app lock stands in front of the shift screen', () => {
@@ -212,6 +247,31 @@ describe('§10.4 the static screens', () => {
       'We didn’t receive your check-out for this shift — the office is following up with you directly.',
     );
     noLiveControls(html);
+  });
+});
+
+describe('audit D16 · the lock fails closed when the profile cannot be read', () => {
+  it('shows the retry, not the tabs and not the check-in', async () => {
+    profileFails = true;
+    shift.mockResolvedValue(detail());
+    const html = await render();
+    expect(html).toContain('We couldn’t load your account — pull to refresh or try again.');
+    expect(html).toContain('Try again');
+    expect(html).not.toContain('Check in');
+    expect(html).not.toContain('Mandarin Oriental');
+    expect(html).not.toContain('bottom-nav');
+    expect(html).not.toContain('href="/documents"');
+    expect(html).not.toContain('href="/profile"');
+  });
+});
+
+describe('audit D18 · a failed read is not a 404', () => {
+  it('says the shift could not be loaded, with a retry', async () => {
+    profile.mockResolvedValue(worker());
+    shiftFails = true;
+    const html = await render();
+    expect(html).toContain('We couldn’t load this shift — pull to refresh or try again.');
+    expect(html).toContain('Try again');
   });
 });
 
@@ -406,5 +466,91 @@ describe('§3.2 the strict-buffer turn-away screen (RULE-15)', () => {
     expect(html).toContain(`<p>${OPENING} ${CLOSING}</p>`);
     expect(html).not.toContain(PAID);
     noLiveControls(html);
+  });
+});
+
+describe('the shift screen against wireframes/staff/shift-detail.html', () => {
+  it('draws the geofence map (ADR-0005), no GL library', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail());
+    const html = await render();
+    expect(html).toContain('shift-map');
+    expect(html).toContain('Geofence 150 m');
+  });
+
+  it('labels the check-in window and lock times as UK (§1.8)', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail());
+    const html = await render();
+    expect(html).toMatch(
+      /Check-in window \d{2}:\d{2} \(UK\)(<!-- -->)? – (<!-- -->)?\d{2}:\d{2} \(UK\)/,
+    );
+  });
+
+  it('never quotes start+30 to a booking confirmed after the start (§3.4)', async () => {
+    profile.mockResolvedValue(worker());
+    const startsAt = new Date(Date.now() - 60 * 60_000).toISOString();
+    shift.mockResolvedValue(
+      detail({ startsAt, confirmedAt: new Date(Date.now() - 10 * 60_000).toISOString() }),
+    );
+    const html = await render();
+    expect(html).toContain('Check in — verify GPS');
+    expect(html).toContain('check-in stays open until');
+    expect(html).not.toContain('check-in locks');
+    expect(html).not.toContain('Check-in closed');
+  });
+
+  it('offers Cancel shift on the detail screen while more than 72 h remain (RULE-04)', async () => {
+    profile.mockResolvedValue(worker());
+    const startsAt = new Date(Date.now() + 5 * 24 * 3600_000).toISOString();
+    const endsAt = new Date(Date.parse(startsAt) + 6 * 3600_000).toISOString();
+    shift.mockResolvedValue(detail({ startsAt, endsAt }));
+    const html = await render();
+    expect(html).toContain('Cancel shift');
+    expect(html).toMatch(/Cancel available until .* \(UK\), 72 h(<!-- -->)? before the start/);
+  });
+
+  it('does not offer it inside 72 h', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail());
+    const html = await render();
+    expect(html).not.toContain('Cancel shift');
+  });
+
+  it('replaces the screen with "Not attended" once check-in has locked', async () => {
+    profile.mockResolvedValue(worker());
+    const startsAt = new Date(Date.now() - 45 * 60_000).toISOString();
+    shift.mockResolvedValue(detail({ startsAt }));
+    const html = await render();
+    expect(html).toContain('data-full="not_attended"');
+    expect(html).toContain('Not attended');
+    expect(html).toContain('Check-in closed');
+    expect(html).toContain('You’ve been marked as not attended — contact the office.');
+    expect(html).toContain('30 minutes after your start time');
+    expect(html).not.toContain('Check in — verify GPS');
+  });
+
+  it('replaces the screen with "Shift complete — thank you, Tom" and Done once checked out', async () => {
+    profile.mockResolvedValue(worker());
+    const startsAt = new Date(Date.now() - 7 * 3600_000).toISOString();
+    const endsAt = new Date(Date.now() - 1 * 3600_000).toISOString();
+    shift.mockResolvedValue(
+      detail({ status: 'worked', startsAt, endsAt, checkInAt: startsAt, checkOutAt: endsAt }),
+    );
+    const html = await render();
+    expect(html).toContain('Shift complete — thank you, Tom');
+    expect(html).toContain('Total earnings for this shift');
+    expect(html).toContain('>Done<');
+    expect(html).not.toContain('Check out');
+  });
+
+  it('carries the check-out line while checked in', async () => {
+    profile.mockResolvedValue(worker());
+    const startsAt = new Date(Date.now() - 2 * 3600_000).toISOString();
+    shift.mockResolvedValue(detail({ status: 'worked', startsAt, checkInAt: startsAt }));
+    const html = await render();
+    expect(html).toContain('Check out');
+    expect(html).toMatch(/Check-out works from anywhere until (<!-- -->)?\d{2}:\d{2} \(UK\)/);
+    expect(html).not.toContain('Unlocks after check-in');
   });
 });

@@ -111,6 +111,10 @@ reset role;
 set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
 
 delete from breaks where booking_id = :'bk_worker';
+-- The section and the check-in move back two hours so both breaks below sit
+-- inside the paid window: a break outside [max(check-in, start), finish]
+-- costs nothing (D49, 20260929120000; the clipping has its own vectors).
+update shift_requirements set starts_at = now() - interval '2 hours' where id = :'sh_unpaid';
 update check_logs set check_in_at = (select starts_at from shift_requirements where id = :'sh_unpaid')
  where booking_id = :'bk_worker';
 insert into breaks (booking_id, started_at, ended_at) values

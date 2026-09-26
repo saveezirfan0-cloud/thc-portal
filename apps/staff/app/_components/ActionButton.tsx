@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { Alert, Button, Modal } from '@thc/ui';
 import type { ButtonTone } from '@thc/ui';
 import type { ActionResult, Refusal } from '../actions';
@@ -25,6 +26,7 @@ export function ActionButton({
   confirm,
   disabled,
   disabledLabel,
+  onDone,
 }: {
   label: string;
   tone?: ButtonTone;
@@ -38,7 +40,13 @@ export function ActionButton({
   disabled?: boolean;
   /** What the button reads when disabled — "Limit Reached" (RULE-20). */
   disabledLabel?: string;
+  /**
+   * Where to go once it succeeds. The shift screen's Cancel shift uses it:
+   * the booking it was showing is no longer the worker's to look at.
+   */
+  onDone?: string;
 }) {
+  const router = useRouter();
   const [asking, setAsking] = useState(false);
   const [refusal, setRefusal] = useState<Refusal | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -50,6 +58,7 @@ export function ActionButton({
       setAsking(false);
       if ('refusal' in result) setRefusal(result.refusal);
       else if (result.note) setNote(result.note);
+      else if (onDone) router.replace(onDone);
     });
   }
 

@@ -8,5 +8,8 @@
 export const WRONG_CREDENTIALS =
   'The email or password is incorrect. Check both and try again, or reset your password.';
 
+/** login.html:62 — under the heading, desktop. */
+export const LEAD = 'Your events, confirmed line-ups and timesheets — read-only.';
+
 /** login.html:65 — ticked by default. */
 export const REMEMBER_LABEL = 'Keep me signed in on this device';

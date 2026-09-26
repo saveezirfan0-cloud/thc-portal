@@ -409,7 +409,9 @@ describe('the completion letter slot (requirement §2.1, §4.5)', () => {
         ],
       }),
     ).completion!;
-    expect(slot.meta).toBe('Approved · 48 h/week since 03.07.2026 (course completed 29.06.2026)');
+    // Verified on Friday 03.07: the release starts on the Monday after, so
+    // the Mon–Sun week is never split (audit D35, ADR-0040).
+    expect(slot.meta).toBe('Approved · 48 h/week since 06.07.2026 (course completed 29.06.2026)');
   });
 });
 

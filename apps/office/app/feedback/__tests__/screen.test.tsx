@@ -177,3 +177,24 @@ describe('/feedback — office tab (§9.10)', () => {
     expect(render([])).toContain('placeholder="Search by staff name"');
   });
 });
+
+describe('/feedback — no scope references in the product (audit 53)', () => {
+  it('renders no § or RULE- token on either tab, empty or populated', () => {
+    const removed: FeedbackEntry = {
+      ...BASE,
+      staff_removed: true,
+      staff_removed_at: '2026-09-19T10:00:00Z',
+      deletable: true,
+    };
+    const office: FeedbackEntry = { ...BASE, id: 'o1', author_kind: 'office', editable: true };
+    const OFFICE_TAB: FeedbackQuery = { ...CLIENT_TAB, tab: 'office' };
+    for (const markup of [
+      render([]),
+      render([BASE, removed], CLIENT_TAB, 1),
+      render([], OFFICE_TAB),
+      render([office], OFFICE_TAB),
+    ]) {
+      expect(markup).not.toMatch(/§|RULE-\d|BG-\d/);
+    }
+  });
+});

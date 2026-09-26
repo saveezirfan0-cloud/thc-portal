@@ -42,6 +42,7 @@ export function PotentialPool({
   weights,
   problem,
   canInvite,
+  escalation = false,
 }: {
   eventId: string;
   shiftId: string;
@@ -52,6 +53,11 @@ export function PotentialPool({
   problem: string | null;
   /** False once the section has ended (RULE-16): the pool is read-only. */
   canInvite: boolean;
+  /**
+   * The section has started: this is the escalation pool — only workers
+   * inside the radius, nearest first within each wave (§3.4).
+   */
+  escalation?: boolean;
 }) {
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<PoolFilter>('all');
@@ -92,7 +98,7 @@ export function PotentialPool({
             value={sort}
             onChange={(event) => setSort(event.target.value as PoolSort)}
           >
-            <option value="score">Sort: score ↓</option>
+            <option value="score">{escalation ? 'Sort: nearest ↓' : 'Sort: score ↓'}</option>
             <option value="applied">Sort: applied first</option>
             <option value="name">Sort: name</option>
           </select>
@@ -117,8 +123,14 @@ export function PotentialPool({
           <b>{weightPercent(weights.venue)}</b> venue history
         </span>
         <span className="muted">
-          · weights editable in /settings (§6) · hover a score for the breakdown
+          · weights editable in /settings · hover a score for the breakdown
         </span>
+        {escalation ? (
+          <span className="muted">
+            · the shift has started: same-day escalation — inside the radius only, nearest first
+            within each wave
+          </span>
+        ) : null}
       </div>
 
       {problem ? (
@@ -160,9 +172,9 @@ export function PotentialPool({
 
       <div className="prow muted sm">
         <span>
-          <b>RULE-17:</b> the qualified wave is exhausted before any unqualified worker is invited,
-          whatever the score. Qualification is a priority wave, not a hard gate: Invite works on
-          anyone here. Accepting an applicant sends N10; when the role fills, the remaining
+          <b>Qualified first:</b> the qualified wave is exhausted before any unqualified worker is
+          invited, whatever the score. Qualification is a priority wave, not a hard gate: Invite
+          works on anyone here. Accepting an applicant sends N10; when the role fills, the remaining
           applicants get N10c.
         </span>
       </div>
@@ -207,6 +219,22 @@ function PoolRow({
       ) : null}
       {entry.appliedAt ? (
         <span className="applied">{appliedAgo(new Date(entry.appliedAt))}</span>
+      ) : null}
+      {/* An earlier booking here ended; §3.6 bars only a self-cancel, so the
+          manager can invite them again. A person-decided end (declined,
+          withdrawn, released at 12:05) is never re-invited by auto-assign. */}
+      {entry.endedLabel ? (
+        <span
+          className="muted xs"
+          title={
+            entry.autoInvitable
+              ? 'Auto-assign may invite them again.'
+              : 'Only a manual invitation reaches them: auto-assign does not re-invite after a decision.'
+          }
+        >
+          earlier: {entry.endedLabel}
+          {entry.autoInvitable ? '' : ' · manual only'}
+        </span>
       ) : null}
       <div className="factors">
         {factorChips(entry).map((chip) => (

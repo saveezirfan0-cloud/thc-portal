@@ -107,7 +107,6 @@ export function QualifiedStaff({
         <>
           <span className="muted sm">
             cleared to work at this client, grouped by role — auto-assign&rsquo;s first wave
-            (RULE-17)
           </span>
           <SearchInput
             value={query}
@@ -133,7 +132,7 @@ export function QualifiedStaff({
           <h3>Nobody is cleared at this client yet</h3>
           <p>
             Add workers above, or let the first clean shift here add them by itself — a completed
-            shift with no unresolved violation grants the qualification automatically (§9.6).
+            shift with no unresolved violation grants the qualification automatically.
           </p>
         </div>
       ) : (
@@ -242,8 +241,8 @@ export function QualifiedStaff({
                                 disabled={pending || row.do_not_return}
                                 title={
                                   row.do_not_return
-                                    ? 'Switch Do not return off first — removing the row would un-bar this worker (§9.6)'
-                                    : `Removes ${group.role} only. A later clean shift here may re-grant it (§9.6).`
+                                    ? 'Switch Do not return off first — removing the row would un-bar this worker'
+                                    : `Removes ${group.role} only. A later clean shift here may re-grant it.`
                                 }
                                 onClick={() =>
                                   run(() => revokeQualification(clientId, qualificationId))
@@ -270,7 +269,7 @@ export function QualifiedStaff({
           record. Working a Waiting Staff shift here does not qualify somebody as Bar Staff here.
           Removing an automatic grant does not stop the next clean shift re-granting it; to keep
           someone away, switch <b>Do not return</b> on — they are then Unavailable → Do not return
-          on every event of this client, with the reason attached (§9.6, §9.7).
+          on every event of this client, with the reason attached.
         </span>
       </div>
 
@@ -331,7 +330,7 @@ export function QualifiedStaff({
           </div>
           <span className="hint">
             Each worker is cleared for each role you pick — &ldquo;Waiting Staff at this
-            client&rdquo; and &ldquo;Bar Staff at this client&rdquo; are separate entries (§9.6).
+            client&rdquo; and &ldquo;Bar Staff at this client&rdquo; are separate entries.
           </span>
         </div>
         <div className="field">
@@ -408,16 +407,16 @@ export function QualifiedStaff({
             placeholder="e.g. client asked not to re-engage after the February banquet"
           />
           <span className="hint">
-            Shown under Unavailable → Do not return on this client&rsquo;s events (§9.6), and kept
-            if the flag is ever switched off.
+            Shown under Unavailable → Do not return on this client&rsquo;s events, and kept if the
+            flag is ever switched off.
           </span>
         </div>
       </Modal>
 
       <Note>
-        Removing a qualification is not barring somebody. §9.6 is explicit that a removed automatic
-        grant can be re-granted by the next clean shift — where a client has asked for someone not
-        to return, switch the toggle rather than deleting the row.
+        Removing a qualification is not barring somebody. A removed automatic grant can be
+        re-granted by the next clean shift — where a client has asked for someone not to return,
+        switch the toggle rather than deleting the row.
       </Note>
     </Panel>
   );

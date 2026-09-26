@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { staffDb, supabaseConfigured } from '../db';
+import { StaffLoadError, staffDb, supabaseConfigured } from '../db';
 import { mapOnboardingState } from './state';
 import type { OnboardingState } from './state';
 import type { HmrcGender } from '@thc/domain';
@@ -15,7 +15,10 @@ export { supabaseConfigured };
 export async function loadOnboarding(): Promise<OnboardingState | null> {
   if (!supabaseConfigured()) return null;
   const supabase = staffDb(await cookies());
-  const { data } = await supabase.rpc('onboarding_state');
+  const { data, error } = await supabase.rpc('onboarding_state');
+  // A failed read is not "we couldn't find your onboarding" (audit D18):
+  // it goes to the error boundary, which offers the retry.
+  if (error) throw new StaffLoadError(error.message || 'onboarding_state failed');
   return mapOnboardingState(data);
 }
 

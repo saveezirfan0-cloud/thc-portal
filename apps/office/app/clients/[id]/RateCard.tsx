@@ -101,7 +101,7 @@ export function RateCard({
       actions={
         <>
           <span className="muted sm">
-            charge rate and dress codes are individual to this client and edited only here (§9.7)
+            charge rate and dress codes are individual to this client and edited only here
           </span>
           <Select
             value={adding}
@@ -136,7 +136,7 @@ export function RateCard({
           <h3>No roles on this rate card</h3>
           <p>
             Add one from the Roles catalogue above. A role that is not there yet has to be created
-            in <b>Roles</b> first (§9.8).
+            in <b>Roles</b> first.
           </p>
         </div>
       ) : (
@@ -238,7 +238,7 @@ export function RateCard({
                         disabled={pending}
                         title={
                           row.section_count > 0
-                            ? `${row.section_count} built role sections keep the rate they were built with (§3.2) — this only removes the role from the next event's options`
+                            ? `${row.section_count} built role sections keep the rate they were built with — this only removes the role from the next event's options`
                             : undefined
                         }
                         onClick={() => run(() => removeRole(clientId, row.id))}
@@ -256,11 +256,10 @@ export function RateCard({
 
       <div className="panel-b">
         <span className="muted sm">
-          Base pay comes from the Roles catalogue (§9.8); final = base × 1.1207; margin = charge −
-          final, as a share of the charge. Both staff pay and charge rates change during the year,
-          so editing stays open. This dress-code list is what the event form offers for this client
-          and role; the event-level &ldquo;Other&rdquo; is a one-off and is not saved back here
-          (§3.2).
+          Base pay comes from the Roles catalogue; final = base × 1.1207; margin = charge − final,
+          as a share of the charge. Both staff pay and charge rates change during the year, so
+          editing stays open. This dress-code list is what the event form offers for this client and
+          role; the event-level &ldquo;Other&rdquo; is a one-off and is not saved back here.
         </span>
       </div>
     </Panel>

@@ -554,7 +554,7 @@ describe('card lines the wireframe spells out (onboarding.html)', () => {
       quiz_scores: [65, 75, 70],
     });
     expect(rejectedLines(row)[0]!.text).toBe(
-      'Attempts 65% · 75% · 70% — automatic rejection after the third failure; email E4 + terminal screen in the app (§2.9).',
+      'Attempts 65% · 75% · 70% — automatic rejection after the third failure; email E4 + terminal screen in the app.',
     );
     // A row from before quiz_scores existed keeps the best-over-N line.
     expect(rejectedLines({ ...row, quiz_scores: [] })[0]!.text).toMatch(
@@ -592,7 +592,7 @@ describe('card lines the wireframe spells out (onboarding.html)', () => {
     });
     expect(rejectedLines(row).map((l) => l.text)).toEqual([
       'Reason: “Right to work could not be established”',
-      'Their 2 pending documents dropped out of Compliance → Needs review automatically (§4.1).',
+      'Their 2 pending documents dropped out of Compliance → Needs review automatically.',
     ]);
     expect(rejectedLines({ ...row, docs_pending: 0 })).toHaveLength(1);
   });

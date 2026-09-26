@@ -17,11 +17,14 @@ values (:'doc', :'settled', 'share_code_report', 'verified', 'W12345678', now(),
 
 select has_column('staff_documents_v', 'rtw_no_time_limit',
   'staff_documents_v names the settled-status confirmation');
+-- Appended straight after awarding_institution, the last column before it.
+-- (20260930130500 appends ni_recheck after it, so "the last column" is no
+-- longer the test: "no existing column moved" is.)
 select is(
-  (select attnum from pg_attribute where attrelid = 'public.staff_documents_v'::regclass
+  (select attnum::int from pg_attribute where attrelid = 'public.staff_documents_v'::regclass
       and attname = 'rtw_no_time_limit'),
-  (select max(attnum) from pg_attribute where attrelid = 'public.staff_documents_v'::regclass
-      and attnum > 0 and not attisdropped),
+  (select attnum::int + 1 from pg_attribute where attrelid = 'public.staff_documents_v'::regclass
+      and attname = 'awarding_institution'),
   'appended at the end, so no existing column moved');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);

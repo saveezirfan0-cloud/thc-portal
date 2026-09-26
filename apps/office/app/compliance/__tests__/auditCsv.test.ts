@@ -48,7 +48,7 @@ describe('AC7 — all documents and decisions are auditable and exportable', () 
     const [head, line, trailing] = csv.split('\r\n');
     expect(head!.split(',')).toHaveLength(AUDIT_COLUMNS.length);
     expect(line).toBe(
-      '2026-09-23 14:05,Completion letter,approved,873,Amara Kalu,Gisela M.,d1,transcript,s1/completion-letter/f1.pdf,2026-09-22 10:00,2026-10-07,2026-10-07,2028-03-31,,,,',
+      '2026-09-23 14:05,Completion letter,approved,873,Amara Kalu,Gisela M.,d1,transcript,s1/completion-letter/f1.pdf,2026-09-22 10:00,2026-10-07,2026-10-07,2028-03-31,,,,,,,,,,,,,,,',
     );
     expect(trailing).toBe('');
   });
@@ -80,6 +80,71 @@ describe('AC7 — all documents and decisions are auditable and exportable', () 
     expect(csv).toContain('"The award date is not visible, please re-upload"');
     expect(csv).toContain('48-hour opt-out,cancelled');
     expect(csv).toContain(',7,2026-09-30,');
+  });
+});
+
+describe('AC7 — right-to-work changes and decisions are in the same export', () => {
+  const rtw: AuditRow = {
+    ...BASE,
+    id: 4,
+    record_type: 'rtw',
+    event: 'changed',
+    document_id: null,
+    evidence_form: null,
+    file_path: null,
+    uploaded_at: null,
+    completion_date_claimed: null,
+    completion_date: null,
+    visa_expiry: null,
+    branch_before: 'international_student',
+    branch: 'work_visa',
+    rtw_until_before: '2027-01-31',
+    rtw_until: '2029-05-01',
+  };
+
+  it('names the record and carries the route and the dates either side', () => {
+    const line = auditCsv([rtw]).split('\r\n')[1]!;
+    expect(line).toContain('Right to work,changed');
+    expect(line).toContain(',international_student,work_visa,2027-01-31,2029-05-01,');
+  });
+
+  it('carries the conditions the office sets and the automated check’s result', () => {
+    const csv = auditCsv([
+      {
+        ...rtw,
+        id: 5,
+        event: 'conditions',
+        condition: 'visa_weekly_hour_limit',
+        visa_hour_limit: 20,
+      },
+      {
+        ...rtw,
+        id: 6,
+        event: 'conditions',
+        condition: 'below_degree_level',
+        below_degree_level: true,
+      },
+      {
+        ...rtw,
+        id: 7,
+        record_type: 'rtw_check',
+        event: 'passed',
+        check_source: 'provider',
+        check_outcome: 'right_to_work',
+        rtw_no_time_limit: false,
+      },
+    ]);
+    expect(csv).toContain(',visa_weekly_hour_limit,,20,');
+    expect(csv).toContain(',below_degree_level,yes,,');
+    expect(csv).toContain('Automated gov.uk check,passed');
+    expect(csv).toContain(',no,,,,provider,right_to_work');
+  });
+
+  it('has a header for every new column', () => {
+    const headers = AUDIT_COLUMNS.map((c) => c.header);
+    for (const needed of ['Route before', 'Route', 'Right to work until', 'Visa hours limit']) {
+      expect(headers).toContain(needed);
+    }
   });
 });
 

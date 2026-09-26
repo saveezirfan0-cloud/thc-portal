@@ -1,11 +1,13 @@
 -- =====================================================================
 -- 590 · N6 and N7, the confirmation reminders (§3.5, §8)
 --   20260927140000_n6_n7_confirm_reminders.sql
+--   (keys since 20260929100000: <code>:booking:<id>:<start epoch>, so the
+--   lookups below match on the booking prefix; 610 holds the key itself)
 --
 -- docs/15 §3: both templates existed and nothing queued them. Four things
 -- are held here, per reminder:
---   * it is sent — once, keyed on the booking, however often the
---     every-minute job re-runs;
+--   * it is sent — once, keyed on the booking and its start, however
+--     often the every-minute job re-runs;
 --   * to the right audience — confirmed only; N6 skips anyone who pressed
 --     "I'm ready", N7 anyone who confirmed today or checked in; nothing
 --     for invited, cancelled or closed bookings or a cancelled event;
@@ -138,26 +140,27 @@ create temporary table t_n6 as select booking_tick('2026-09-24 08:30+01') as cou
 select is((select counts->>'n6' from t_n6), '1',
   'N6: at 08:30 UK the day before, exactly one booking is reminded');
 select is(
-  (select recipient_staff_id from notification_outbox where key = 'N6:booking:' || :'b_n6'),
-  :'staffa'::uuid, 'the confirmed worker who has not pressed "I''m ready" gets N6, keyed N6:booking:<id>');
+  (select recipient_staff_id from notification_outbox
+    where key = 'N6:booking:' || :'b_n6' || ':' || extract(epoch from timestamptz '2026-09-25 18:00+01')::bigint),
+  :'staffa'::uuid, 'the confirmed worker who has not pressed "I''m ready" gets N6, keyed N6:booking:<id>:<start epoch> (20260929100000)');
 select is(
   (select array[channel::text, template, payload->>'bookingId', payload->>'window']
-     from notification_outbox where key = 'N6:booking:' || :'b_n6'),
+     from notification_outbox where key like 'N6:booking:' || :'b_n6' || ':%'),
   array['push', 'N6', :'b_n6', '18:00–23:00'],
   'a push on the N6 template, carrying the booking its deep link opens and the role''s own UK window');
-select ok(not exists (select 1 from notification_outbox where key = 'N6:booking:' || :'b_ready'),
+select ok(not exists (select 1 from notification_outbox where key like 'N6:booking:' || :'b_ready' || ':%'),
   'not to a worker who has already pressed "I''m ready"');
-select ok(not exists (select 1 from notification_outbox where key = 'N6:booking:' || :'b_inv'),
+select ok(not exists (select 1 from notification_outbox where key like 'N6:booking:' || :'b_inv' || ':%'),
   'not to an invitation — there is nothing to be ready for until it is accepted');
-select ok(not exists (select 1 from notification_outbox where key = 'N6:booking:' || :'b_canc'),
+select ok(not exists (select 1 from notification_outbox where key like 'N6:booking:' || :'b_canc' || ':%'),
   'not to a cancelled booking');
-select ok(not exists (select 1 from notification_outbox where key = 'N6:booking:' || :'b_closed'),
+select ok(not exists (select 1 from notification_outbox where key like 'N6:booking:' || :'b_closed' || ':%'),
   'not to a closed one');
-select ok(not exists (select 1 from notification_outbox where key = 'N6:booking:' || :'b_evtx'),
+select ok(not exists (select 1 from notification_outbox where key like 'N6:booking:' || :'b_evtx' || ':%'),
   'not to anyone on an event the office has cancelled');
-select ok(not exists (select 1 from notification_outbox where key = 'N6:booking:' || :'b_later'),
+select ok(not exists (select 1 from notification_outbox where key like 'N6:booking:' || :'b_later' || ':%'),
   'RULE-18: not to a role of the same event that does not start tomorrow — its own section decides');
-select ok(not exists (select 1 from notification_outbox where key = 'N6:booking:' || :'b_n7'),
+select ok(not exists (select 1 from notification_outbox where key like 'N6:booking:' || :'b_n7' || ':%'),
   'and not for a section that starts today: its deadline was yesterday');
 
 select is((select (booking_tick('2026-09-24 08:31+01'))->>'n6'), '0',
@@ -175,19 +178,20 @@ select is((select counts->>'n7' from t_n7), '1',
   'N7: at 09:00 UK exactly one booking is reminded');
 select is(
   (select array[recipient_staff_id::text, template, payload->>'bookingId']
-     from notification_outbox where key = 'N7:booking:' || :'b_n7'),
+     from notification_outbox
+    where key = 'N7:booking:' || :'b_n7' || ':' || extract(epoch from timestamptz '2026-09-24 19:00+01')::bigint),
   array[:'staffa', 'N7', :'b_n7'],
-  'the confirmed worker on today''s section gets N7, keyed N7:booking:<id>');
-select ok(not exists (select 1 from notification_outbox where key = 'N7:booking:' || :'b_onday'),
+  'the confirmed worker on today''s section gets N7, keyed N7:booking:<id>:<start epoch> (20260929100000)');
+select ok(not exists (select 1 from notification_outbox where key like 'N7:booking:' || :'b_onday' || ':%'),
   'not to a worker who has already confirmed today');
-select ok(not exists (select 1 from notification_outbox where key = 'N7:booking:' || :'b_inv7'),
+select ok(not exists (select 1 from notification_outbox where key like 'N7:booking:' || :'b_inv7' || ':%'),
   'not to an invitation');
-select ok(not exists (select 1 from notification_outbox where key = 'N7:booking:' || :'b_brk'),
+select ok(not exists (select 1 from notification_outbox where key like 'N7:booking:' || :'b_brk' || ':%'),
   'not to a section already under way: its reminder window closed 30 minutes before it began');
 
 select is((select (booking_tick('2026-09-24 09:01+01'))->>'n7'), '0',
   'the re-run a minute later sends nothing');
-select is((select count(*)::int from notification_outbox where key = 'N7:booking:' || :'b_n7'), 1,
+select is((select count(*)::int from notification_outbox where key like 'N7:booking:' || :'b_n7' || ':%'), 1,
   'one row for the booking');
 
 -- Checked in before the push: no N7. The breakfast worker checks in at
@@ -218,7 +222,7 @@ select is((select (booking_tick('2026-09-24 10:31+01'))->>'n6'), '1',
 
 select is((select (booking_tick('2026-09-24 11:59+01'))->>'n6'), '0',
   'and a run at 11:59 sends nobody a second one');
-select is((select count(*)::int from notification_outbox where key = 'N6:booking:' || :'b_n6'), 1,
+select is((select count(*)::int from notification_outbox where key like 'N6:booking:' || :'b_n6' || ':%'), 1,
   'one row for the booking, however many times the job ran');
 
 -- One accepted at 12:00 is past the deadline: no reminder of it.
@@ -227,7 +231,7 @@ values (:'b_after', '59100000-0000-4000-8000-000000000001', '59300000-0000-4000-
         'confirmed', 'auto', '2026-09-24 12:00+01');
 select is((select (booking_tick('2026-09-24 12:00+01'))->>'n6'), '0',
   'not after the cutoff: at 12:00 UK nothing is queued');
-select ok(not exists (select 1 from notification_outbox where key = 'N6:booking:' || :'b_after'),
+select ok(not exists (select 1 from notification_outbox where key like 'N6:booking:' || :'b_after' || ':%'),
   'so a booking accepted at 12:00 the day before is never told to beat a deadline already gone');
 
 -- GMT: 08:00 UTC is 09:00 in summer, so a UTC-hour rule would differ here.
@@ -235,7 +239,7 @@ select is((select (booking_tick('2026-11-10 07:59+00'))->>'n6'), '0',
   'winter: nothing at 07:59 GMT the day before');
 select is((select (booking_tick('2026-11-10 08:00+00'))->>'n6'), '1',
   'winter: N6 at 08:00 GMT the day before');
-select ok(exists (select 1 from notification_outbox where key = 'N6:booking:' || :'b_winter'),
+select ok(exists (select 1 from notification_outbox where key like 'N6:booking:' || :'b_winter' || ':%'),
   'to the winter booking');
 
 select * from finish();

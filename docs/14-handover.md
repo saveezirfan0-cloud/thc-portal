@@ -22,10 +22,10 @@ screen it names is now built; what is left is listed in §2 and §4 below.
 ## 1 · What is genuinely built
 
 **Every screen in the product now exists.** Three Next.js apps on one Supabase
-database, **120 migrations**, **94 pgTAP files (3,171 assertions)**, **2,202 Vitest
-tests across 147 files** in eight packages, seven Edge Functions (`auto-staffing`,
+database, **124 migrations**, **97 pgTAP files (3,314 assertions)**, **2,506 Vitest
+tests across 166 files** in eight packages, seven Edge Functions (`auto-staffing`,
 `booking-tick`, `compliance-daily`, `finance-reports`, `gdpr-purge`,
-`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0031` (31 files;
+`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0033` (33 files;
 `0025`, the automated gov.uk check, landed with #59). CI runs
 lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 `deploy-database` pushes migrations to the live project on merge to `main`.
@@ -34,10 +34,11 @@ lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 
 | Check | Result |
 |---|---|
-| All 120 migrations applied in order to an **empty** database | clean |
-| `scripts/pgtest-local.sh` — all 94 pgTAP files | 3,171 assertions, **2 failures**, both expected (below) |
-| `turbo lint typecheck test build` | 29/29 tasks, 2,202 tests in 147 files (27.09, one pass on the final tree) |
-| Live Supabase project vs the repo | 112 applied through `20260928100100` (#59); the 27.09 round's ten files (`20260928110000`–`110900`, renumbered above #59's at the merge) deploy with the next merge to `main`, then `gen:types` |
+| All 124 migrations applied in order to an **empty** database | clean |
+| `scripts/pgtest-local.sh` — all 97 pgTAP files | 3,314 assertions, **2 failures**, both expected (below) |
+| `turbo lint typecheck test` | 29/29 tasks, 2,506 tests in 166 files |
+| Live Supabase project vs the repo | **in sync** — all 124 applied, last is `20260928120100_extraction_never_clears_worker_input`. The pending-deploy note that stood here is closed: #63 added the Edge Function deploy to `deploy-database`, so a merge to `main` now pushes the migrations *and* redeploys all seven functions |
+| Edge Functions on the live project | **all seven ACTIVE** (it was two until 25.09). `willo-webhook` is the only one with `verify_jwt: false`, which is right — Willo signs its own deliveries (ADR-0021) |
 
 `002` assertions **6 and 7** fail in every local harness and **that pair is the
 clean baseline**: they record that on Supabase `anon` *can* write

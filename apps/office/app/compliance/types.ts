@@ -28,9 +28,12 @@ export type BlockKind = 'auto_document' | 'manual' | 'conviction_review' | null;
  * `share_code_report`, so the document filter finds it. Or — kind
  * `rtw_check` (ADR-0025) — an automated gov.uk check that found no right to
  * work, whose document is already rejected; `item_id` is the check's id.
+ * Or — kind `ni_check` (20260930130400, D43) — NI evidence verified before
+ * the NI number was entered, back now that it has been, keyed on the
+ * verified document.
  */
 export interface QueueRow {
-  kind: 'document' | 'declaration' | 'rtw_date' | 'rtw_check';
+  kind: 'document' | 'declaration' | 'rtw_date' | 'rtw_check' | 'ni_check';
   item_id: string;
   staff_id: string;
   display_name: string;
@@ -90,6 +93,17 @@ export interface QueueRow {
   rtw_check_report_path?: string | null;
   /** Share codes only: whether ADR-0018's hand-typed date is allowed now. */
   rtw_manual_allowed?: boolean | null;
+  // 20260930130400 (optional: absent before it).
+  /** The full NI number, on NI evidence and `ni_check` rows only (D43). */
+  ni_number?: string | null;
+  /** What the course-level field is set to now (D32). */
+  below_degree_level?: boolean | null;
+  /** A work or dependant visa's weekly hours limit on file (D36). */
+  visa_weekly_hour_limit?: number | null;
+  /** The weekly hours limit the automated check parsed — the pre-filled value. */
+  rtw_check_term_limit?: number | null;
+  /** A gov.uk report already on the share code document (D31). */
+  gov_report_path?: string | null;
 }
 
 export type RadarState = 'expired' | 'expiring' | 'valid';
@@ -135,7 +149,7 @@ export interface WarningRow {
 export interface AuditRow {
   id: number;
   at: string;
-  record_type: 'completion_letter' | 'wtr_optout';
+  record_type: 'completion_letter' | 'wtr_optout' | 'rtw' | 'rtw_check';
   event: string;
   document_id: string | null;
   staff_id: string | null;
@@ -152,6 +166,18 @@ export interface AuditRow {
   notice_days: number | null;
   effective_from: string | null;
   retain_until: string | null;
+  // 20260930130400 (AC7): right-to-work changes and decisions.
+  doc_type?: string | null;
+  branch_before?: string | null;
+  branch?: string | null;
+  rtw_until_before?: string | null;
+  rtw_until?: string | null;
+  rtw_no_time_limit?: boolean | null;
+  condition?: string | null;
+  below_degree_level?: boolean | null;
+  visa_hour_limit?: number | null;
+  check_source?: string | null;
+  check_outcome?: string | null;
 }
 
 export interface CompliancePageData {

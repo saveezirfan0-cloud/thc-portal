@@ -20,7 +20,7 @@
 --     qualification they earned.
 -- =====================================================================
 begin;
-select plan(44);
+select plan(47);
 \ir _shared/fixtures.psql
 
 \set role_b     'bbbbbbbb-0000-4000-8000-000000000002'
@@ -239,12 +239,27 @@ select is((select count(*)::int from client_qualifications
             where staff_id = :'staffa' and client_id = :'clientb'), 0,
   'Staff Alpha starts unqualified at Client B, so any row below was put there by the trigger');
 
+-- In the order production writes it (D37, 20260929120000): the booking is
+-- confirmed; attempt_check_in() writes the accepted check log, moves the
+-- booking to `worked` and raises the Late in one go; check_out() closes the
+-- log; a manager resolves the Late the next morning.
 insert into bookings (id, shift_id, staff_id, status, source) values
   (:'past_bkg', :'past_shift', :'staffa', 'confirmed', 'auto');
+insert into check_logs (booking_id, attempted_at, outcome, check_in_at, on_site_verified)
+select :'past_bkg', starts_at + interval '15 minutes', 'checked_in', starts_at + interval '15 minutes', true
+  from shift_requirements where id = :'past_shift';
+update bookings set status = 'worked' where id = :'past_bkg';
 insert into violations (id, staff_id, booking_id, type, minutes_late) values
   (:'past_viol', :'staffa', :'past_bkg', 'late', 15);
 
-update bookings set status = 'worked' where id = :'past_bkg';
+select is((select count(*)::int from client_qualifications
+            where staff_id = :'staffa' and client_id = :'clientb'), 0,
+  'checking in grants nothing: the shift has not been completed yet, and the Late it raises comes with the check-in (D37)');
+
+update check_logs set check_out_at = (select ends_at from shift_requirements where id = :'past_shift'),
+                      check_out_pressed_at = (select ends_at from shift_requirements where id = :'past_shift'),
+                      check_out_on_site = true
+ where booking_id = :'past_bkg';
 select is((select count(*)::int from client_qualifications
             where staff_id = :'staffa' and client_id = :'clientb'), 0,
   'a completed shift with an UNRESOLVED violation grants nothing — §9.6''s condition is a clean shift');
@@ -275,7 +290,9 @@ update client_qualifications set granted_by = :'admin_uid', granted_from_event =
  where staff_id = :'staffa' and client_id = :'clientb';
 insert into bookings (id, shift_id, staff_id, status, source) values
   (:'past_bkg_b', :'past_shift', :'staffb', 'confirmed', 'auto');
-update bookings set status = 'worked' where id = :'past_bkg';
+-- The shift closes again (a manager-entered finish): the grant runs again.
+update check_logs set manager_finish_at = (select ends_at - interval '1 minute' from shift_requirements where id = :'past_shift')
+ where booking_id = :'past_bkg';
 select is((select note from client_qualifications
             where staff_id = :'staffa' and client_id = :'clientb'),
   'Manual: client asked for her',
@@ -292,10 +309,30 @@ update shift_requirements set role_id = :'role_b' where id = :'past_shift';
 delete from bookings where id = :'past_bkg';
 insert into bookings (id, shift_id, staff_id, status, source) values
   (:'past_bkg', :'past_shift', :'staffa', 'confirmed', 'auto');
+insert into check_logs (booking_id, attempted_at, outcome, check_in_at, on_site_verified)
+select :'past_bkg', starts_at, 'checked_in', starts_at, true
+  from shift_requirements where id = :'past_shift';
 update bookings set status = 'worked' where id = :'past_bkg';
+update check_logs set check_out_at = (select ends_at from shift_requirements where id = :'past_shift')
+ where booking_id = :'past_bkg';
 select is((select count(*)::int from client_qualifications
             where staff_id = :'staffa' and client_id = :'clientb'), 1,
   'a clean shift at a client where she is barred grants nothing, not even for a different role — the gate is client-wide, and a new row would read as a contradiction on the screen');
+
+-- A clean shift is granted at the finish, not at the check-in (D37).
+delete from client_qualifications where staff_id = :'staffb' and client_id = :'clientb';
+insert into check_logs (booking_id, attempted_at, outcome, check_in_at, on_site_verified)
+select :'past_bkg_b', starts_at, 'checked_in', starts_at, true
+  from shift_requirements where id = :'past_shift';
+update bookings set status = 'worked' where id = :'past_bkg_b';
+select is((select count(*)::int from client_qualifications
+            where staff_id = :'staffb' and client_id = :'clientb'), 0,
+  'a clean check-in alone grants nothing — `worked` is the check-in, not the end of the shift (D37)');
+update check_logs set check_out_at = (select ends_at from shift_requirements where id = :'past_shift')
+ where booking_id = :'past_bkg_b';
+select is((select count(*)::int from client_qualifications
+            where staff_id = :'staffb' and client_id = :'clientb'), 1,
+  'a clean shift is granted when it closes — the check-out, not the check-in (§9.6, D37)');
 
 -- =====================================================================
 -- RLS

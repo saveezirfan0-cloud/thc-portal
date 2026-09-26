@@ -11,7 +11,7 @@ export const metadata = { title: 'Set a new password · THC Client Portal' };
  * A3 Set new password — §10.2, `wireframes/public/activate.html` (reset,
  * and its "Link expired" variant).
  *
- * Reached from the emailed recovery link via /auth/callback, which
+ * Reached from the emailed recovery link via /auth/confirm, which
  * exchanges the code for a session. If that left no session behind, the
  * link is spent — and this says so here, before a password is typed twice
  * for nothing.

@@ -1,0 +1,31 @@
+-- =====================================================================
+-- GENERATED FILE — DO NOT EDIT.
+--
+-- Source:    packages/domain/src/readyDeadline.vectors.json
+-- Generator: node supabase/tests/_shared/ready-deadline-vectors.mjs
+--
+-- The shared §3.5 deadline vectors as a table pgTAP can join against. The
+-- Vitest suite in packages/domain fails if this file has drifted from the
+-- JSON, so readyDeadline() and ready_deadline() are held to the same cases.
+-- =====================================================================
+
+create temporary table ready_deadline_vectors (
+  name      text primary key,
+  starts_at timestamptz not null,
+  deadline  timestamptz not null
+) on commit drop;
+
+insert into ready_deadline_vectors values
+  ('bst_evening', '2026-09-19T17:00:00.000Z'::timestamptz, '2026-09-18T11:00:00.000Z'::timestamptz),
+  ('gmt_evening', '2026-12-19T17:00:00.000Z'::timestamptz, '2026-12-18T12:00:00.000Z'::timestamptz),
+  ('bst_after_midnight', '2026-09-20T01:00:00.000Z'::timestamptz, '2026-09-19T11:00:00.000Z'::timestamptz),
+  ('gmt_midnight_exactly', '2026-11-11T00:00:00.000Z'::timestamptz, '2026-11-10T12:00:00.000Z'::timestamptz),
+  ('autumn_2330_gmt_on_the_changeover_day', '2026-10-25T23:30:00.000Z'::timestamptz, '2026-10-24T11:00:00.000Z'::timestamptz),
+  ('autumn_0130_bst_before_the_change', '2026-10-25T00:30:00.000Z'::timestamptz, '2026-10-24T11:00:00.000Z'::timestamptz),
+  ('autumn_day_after_the_change', '2026-10-26T10:00:00.000Z'::timestamptz, '2026-10-25T12:00:00.000Z'::timestamptz),
+  ('spring_0030_bst_the_day_after_the_change', '2026-03-29T23:30:00.000Z'::timestamptz, '2026-03-29T11:00:00.000Z'::timestamptz),
+  ('spring_0030_gmt_on_the_changeover_day', '2026-03-29T00:30:00.000Z'::timestamptz, '2026-03-28T12:00:00.000Z'::timestamptz),
+  ('spring_evening_on_the_changeover_day', '2026-03-29T17:00:00.000Z'::timestamptz, '2026-03-28T12:00:00.000Z'::timestamptz),
+  ('new_year_rolls_the_month_and_year', '2027-01-01T09:00:00.000Z'::timestamptz, '2026-12-31T12:00:00.000Z'::timestamptz);
+
+\set ready_vector_count 11

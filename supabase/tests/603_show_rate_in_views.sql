@@ -91,9 +91,12 @@ reset role;
 -- 3 · Resolving lifts it on every screen at once (§9.5, RULE-14)
 -- ---------------------------------------------------------------------
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+-- The section ended days ago, so the manager enters the arrival (D17,
+-- 20260930100000: after the end the press is not an arrival).
 select lives_ok(
   $$ select resolve_violation((select id from violations where booking_id = '60006000-0000-4000-8000-000000000022'),
-                              'Arrived, spoke to the client') $$,
+                              'Arrived, spoke to the client',
+                              null, now() - interval '3 days' + interval '40 minutes') $$,
   'Get back on the No-show');
 set local role authenticated;
 select is((select reliability from staff_directory_v where id = :'staffa'), 100.00::numeric(5,2),

@@ -43,7 +43,7 @@ export function SettingsScreen({ data }: { data: SettingsData }) {
     <OfficeShell
       activeHref="/settings"
       title="System settings"
-      crumbs={<>Values THC can change without a release · §6 · §2.4 · §9.11 · §9.12</>}
+      crumbs={<>Values THC can change without a release</>}
       timezone="All times UK (Europe/London)"
     >
       {data.problem ? <Alert tone="coral">{data.problem}</Alert> : null}
@@ -135,7 +135,7 @@ function WeightsBlock({ weights }: { weights: ScoringWeights }) {
   return (
     <Block
       title="Auto-assign scoring weights"
-      sub="§6. Read on every auto-assign round — a change here takes effect on the next hourly round, with no deployment."
+      sub="Read on every auto-assign round — a change here takes effect on the next hourly round, with no deployment."
       actions={<Pill tone={balanced ? 'green' : 'coral'}>Total {total.toFixed(2)}</Pill>}
     >
       {WEIGHT_FIELDS.map((field) => (
@@ -153,9 +153,9 @@ function WeightsBlock({ weights }: { weights: ScoringWeights }) {
         />
       ))}
       <Note>
-        Client qualification is not a weight and never becomes one: it is an ORDERING (RULE-17,
-        §3.4). Qualified workers are scored and exhausted as Wave 1, then everyone else as Wave 2 —
-        a weighting could be out-scored by proximity.
+        Client qualification is not a weight and never becomes one: it is an ORDERING. Qualified
+        workers are scored and exhausted as Wave 1, then everyone else as Wave 2 — a weighting could
+        be out-scored by proximity.
       </Note>
       <Feedback note={note} error={error} />
       <Button tone="primary" disabled={pending} onClick={() => run(() => saveWeights(draft))}>
@@ -178,7 +178,7 @@ function AutoAssignBlock({
   const { note, error, pending, run } = useSave();
 
   return (
-    <Block title="Auto-assign limits" sub="§3.4. Hard gates, not weights.">
+    <Block title="Auto-assign limits" sub="Hard gates, not weights.">
       <Input
         label="Different-venue gap (minutes)"
         type="number"
@@ -224,7 +224,7 @@ function RotaGuardBlock({ mode }: { mode: RotaGuardMode }) {
   return (
     <Block
       title="Rota guard"
-      sub="Completion letter requirement §4. What happens when a shift would take a worker over 48 hours in a week without a 48-hour opt-out."
+      sub="What happens when a shift would take a worker over 48 hours in a week without a 48-hour opt-out."
     >
       <Select
         label="Over the 48-hour limit"
@@ -286,7 +286,7 @@ function WilloBlock({
   return (
     <Block
       title="Willo stage map"
-      sub="§2.4. Editable so a change to the Willo pipeline does not need a release."
+      sub="Editable so a change to the Willo pipeline does not need a release."
     >
       {rows.map((row) => (
         <Select
@@ -343,12 +343,12 @@ function SendersBlock({
   const { note, error, pending, run } = useSave();
 
   return (
-    <Block title="Sender addresses" sub="§9.12. All outgoing mail comes from one of these two.">
+    <Block title="Sender addresses" sub="All outgoing mail comes from one of these two.">
       <Input
         label="Allocation sheets & timesheets"
         type="email"
         value={draft.timesheets}
-        hint="§11.4's two documents, and nothing else."
+        hint="The allocation sheet and the timesheet, and nothing else."
         onChange={(event) => setDraft({ ...draft, timesheets: event.target.value })}
       />
       <Input
@@ -360,9 +360,8 @@ function SendersBlock({
       />
       <Note>
         Replies to both go to a monitored THC mailbox — no-reply addresses are not used, and this
-        form refuses one. The office and payroll notifications go to fixed §8 addresses, not a
-        setting: E5 and E6 to <b>{recipients.e5e6.join(', ')}</b>; E7 to{' '}
-        <b>{recipients.e7.join(', ')}</b>.
+        form refuses one. The office and payroll notifications go to fixed addresses, not a setting:
+        E5 and E6 to <b>{recipients.e5e6.join(', ')}</b>; E7 to <b>{recipients.e7.join(', ')}</b>.
       </Note>
       <Feedback note={note} error={error} />
       <Button tone="primary" disabled={pending} onClick={() => run(() => saveSenders(draft))}>
@@ -382,7 +381,7 @@ function RadiiBlock({ types }: { types: SettingsData['venueTypes'] }) {
   return (
     <Block
       title="Standard geofence radii by venue type"
-      sub="§9.11. These pre-fill the slider when a venue is created. Changing one never moves an existing venue or a scheduled event."
+      sub="These pre-fill the slider when a venue is created. Changing one never moves an existing venue or a scheduled event."
     >
       {types.length === 0 ? (
         <Note>No venue types are loaded.</Note>

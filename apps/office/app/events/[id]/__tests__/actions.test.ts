@@ -71,6 +71,15 @@ describe('Get back (§3.3)', () => {
     expect(state.revalidated).toEqual([]);
   });
 
+  it('after the shift has ended, sends the manager to Resolve for the arrival (D17)', async () => {
+    state.rpc.mockResolvedValueOnce({ data: null, error: { message: 'arrived_at_required' } });
+    expect(await getBack('evt-1', 'bk-1')).toEqual({
+      error:
+        'The shift has ended — use Resolve in the violation log to enter the arrival and finish.',
+    });
+    expect(state.revalidated).toEqual([]);
+  });
+
   it('reports an already-resolved entry rather than pretending', async () => {
     state.rpc.mockResolvedValueOnce({ data: { decision: 'already_resolved' }, error: null });
     expect(await getBack('evt-1', 'bk-1')).toEqual({
@@ -95,7 +104,7 @@ describe('manual No-show (§3.3)', () => {
   it('maps the window refusal to the §3.3 sentence', async () => {
     state.rpc.mockResolvedValueOnce({ data: null, error: { message: 'outside_window' } });
     expect(await markNoShow('evt-1', 'bk-2')).toEqual({
-      error: 'No-show can be recorded from the shift start until two weeks after it ends (§3.3).',
+      error: 'No-show can be recorded from the shift start until two weeks after it ends.',
     });
   });
 

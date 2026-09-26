@@ -145,8 +145,7 @@ export function AddressStep({
         </div>
       </div>
       <div className="xs muted">
-        You can change your address later in Profile details — the office is notified of the change
-        (E7).
+        You can change your address later in Profile details — the office is notified of the change.
       </div>
 
       {error ? <Alert tone="coral">{error}</Alert> : null}

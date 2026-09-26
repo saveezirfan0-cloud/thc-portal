@@ -66,12 +66,12 @@ export function CancelEvent({ eventId, affected }: { eventId: string; affected: 
             value={reason}
             onChange={(event) => setReason(event.target.value)}
             placeholder="e.g. Client cancelled — event postponed to Q1"
-            hint="Required. Shown on the event in the list and the calendar (§3.3)."
+            hint="Required. Shown on the event in the list and the calendar."
           />
           <span className="muted xs">
-            A cancellation before the day of the event contributes no margin, revenue or payroll
-            (§9.9). If the client cancels on the day, or after anyone has started, the scheduled
-            hours are billed and paid in full — that case is handled in the reports, not here.
+            A cancellation before the day of the event contributes no margin, revenue or payroll. If
+            the client cancels on the day, or after anyone has started, the scheduled hours are
+            billed and paid in full — that case is handled in the reports, not here.
           </span>
         </div>
       </Modal>

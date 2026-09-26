@@ -27,20 +27,23 @@ import './notifications.css';
  * permission request that is not tied to a user gesture, and the failure
  * is invisible: no dialog, no error, a button that appears to do nothing.
  */
+// The pill is a plain label. The register's own codes (N5, N6, N9, N1 in
+// §8) are the office's and the build's vocabulary; to a worker they are
+// noise that reads like an error code (audit, screens table).
 const REGISTER = [
-  { code: 'N5', title: 'Shift invitations', detail: 'First to confirm takes the slot.' },
+  { label: 'Invitations', title: 'Shift invitations', detail: 'First to confirm takes the slot.' },
   {
-    code: 'N6',
+    label: 'Deadline',
     title: '“I’m ready” — the 12:00 deadline',
     detail: 'Miss it and you’re removed from the shift.',
   },
   {
-    code: 'N9',
+    label: 'Check-in',
     title: 'Time to check in / check out',
     detail: '30 minutes before start and end.',
   },
   {
-    code: 'N1',
+    label: 'Documents',
     title: 'Document expiry warnings',
     detail: 'A month, 2 weeks, 1 week before — and on the day.',
   },
@@ -147,9 +150,9 @@ export function NotificationsScreen({
       <div className="notif-register">
         <MobileList>
           {REGISTER.map((item) => (
-            <MobileRow key={item.code}>
+            <MobileRow key={item.label}>
               <span className="row" style={{ gap: 'var(--sp-8)', alignItems: 'flex-start' }}>
-                <Pill tone="purple">{item.code}</Pill>
+                <Pill tone="purple">{item.label}</Pill>
                 <span>
                   <div className="t">{item.title}</div>
                   <div className="s">{item.detail}</div>
