@@ -215,9 +215,9 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
           everywhere; they sign in with their password and set two-step up again on My profile.
         </p>
         <p className="sm muted users-plain">
-          Not hidden from a scheduler yet: the pay and charge rates on the event builder and event
-          board, which they need to build a role section. They cannot change them — a section they
-          add carries the catalogue rates (ADR-0056).
+          A scheduler sees no pay or charge rates, margins, payroll or reports anywhere — the
+          database refuses them, not just the screens. A role section they add carries the catalogue
+          rates.
         </p>
       </Panel>
 
