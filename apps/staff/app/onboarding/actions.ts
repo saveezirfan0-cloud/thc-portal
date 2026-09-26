@@ -10,7 +10,7 @@ import { staffDb, supabaseConfigured } from '../db';
 import { geocodePostcode } from '../_lib/postcode';
 import { photoPathFor } from '../profile/photos';
 import { extractAfterResponse } from '../../lib/extract';
-import { NOT_CONFIGURED, reasonMessage } from './messages';
+import { NOT_CONFIGURED, reasonCode, reasonMessage } from './messages';
 import { documentPath, isOwnDocumentPath } from './paths';
 import type { Referee } from './state';
 
@@ -24,7 +24,8 @@ import type { Referee } from './state';
  * private `documents` bucket, and run the extractor.
  */
 
-export type Result<T extends object = object> = ({ ok: true } & T) | { ok: false; message: string };
+export type Result<T extends object = object> =
+  ({ ok: true } & T) | { ok: false; message: string; reason?: string | null };
 
 async function db(): Promise<SupabaseClient> {
   return staffDb(await cookies());
@@ -50,7 +51,9 @@ async function call<T extends object = object>(
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const supabase = await db();
   const { data, error } = await supabase.rpc(fn, args);
-  if (error) return { ok: false, message: reasonMessage(error.message) };
+  if (error) {
+    return { ok: false, message: reasonMessage(error.message), reason: reasonCode(error.message) };
+  }
   if (revalidate) refresh();
   return { ok: true, data: (data ?? {}) as T };
 }

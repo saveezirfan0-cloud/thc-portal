@@ -7,8 +7,8 @@
  *
  * THC's deck is shown as supplied: each page exported to
  * `apps/staff/public/induction/slide-NN.webp` and listed below with `image`.
- * The quiz's questions (quiz_questions, flagged is_placeholder until THC's
- * ten arrive) are written from the same deck.
+ * The quiz is THC's own ten questions (quiz_questions, 20260930140000);
+ * several are not answered by this deck — docs/17 item 9.
  */
 
 export interface InductionSlide {

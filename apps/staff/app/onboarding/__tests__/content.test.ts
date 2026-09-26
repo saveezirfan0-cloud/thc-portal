@@ -1,4 +1,4 @@
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { QUIZ_FAILED_COPY, QUIZ_FAILED_TITLE } from '@thc/domain';
@@ -29,6 +29,49 @@ describe('the agreement as stored (§2.11)', () => {
       },
       { heading: null, text: 'A closing line.' },
     ]);
+  });
+
+  it('reads THC’s layout: a heading on its own, then numbered sub-clauses and definitions', () => {
+    const thc =
+      '1. INTERPRETATION.\n\n1.1 The definitions and rules of interpretation in this clause apply to this Agreement.\n\n"AWR 2010" means the Agency Workers Regulations 2010 (SI 2010/93).\n\n3.10.3.1 explains the basis on which it is considered that an individual is a comparable employee; and\n\n5. TEMPORARY WORKER\'S OBLIGATIONS.\n\n7. BENEFITS. The Temporary Worker is not entitled to any benefits.';
+    expect(contractParagraphs(thc)).toEqual([
+      { heading: '1. INTERPRETATION.', text: '' },
+      {
+        heading: null,
+        text: '1.1 The definitions and rules of interpretation in this clause apply to this Agreement.',
+      },
+      { heading: null, text: '"AWR 2010" means the Agency Workers Regulations 2010 (SI 2010/93).' },
+      {
+        heading: null,
+        text: '3.10.3.1 explains the basis on which it is considered that an individual is a comparable employee; and',
+      },
+      { heading: "5. TEMPORARY WORKER'S OBLIGATIONS.", text: '' },
+      { heading: '7. BENEFITS.', text: 'The Temporary Worker is not entitled to any benefits.' },
+    ]);
+  });
+
+  it('THC’s published agreement (20260930140100) reads as 28 bold clauses, with the duty to disclose', () => {
+    const sql = readFileSync(
+      join(
+        __dirname,
+        '../../../../../supabase/migrations/20260930140100_thc_agency_worker_contract.sql',
+      ),
+      'utf8',
+    );
+    const body = /\$contract\$\n([\s\S]*?)\n\$contract\$/.exec(sql)?.[1] ?? '';
+    const paragraphs = contractParagraphs(body);
+    const headings = paragraphs.flatMap((p) => (p.heading ? [p.heading] : []));
+    expect(headings).toHaveLength(28);
+    expect(headings.map((h) => Number.parseInt(h, 10))).toEqual(
+      Array.from({ length: 28 }, (_, i) => i + 1),
+    );
+    expect(headings[0]).toBe('1. INTERPRETATION.');
+    expect(headings[27]).toBe('28. DUTY TO DISCLOSE CRIMINAL CONVICTIONS.');
+    expect(paragraphs.find((p) => p.heading?.startsWith('28.'))?.text).toMatch(
+      /undertakes to declare any unspent criminal conviction/,
+    );
+    // Nothing left over from the PDF: no page footers, no contents page, no split words.
+    expect(body).not.toMatch(/\b\d+ of 20\b|TABLE OF CONTENTS|\.{5}|f uture|self -cert/);
   });
 });
 

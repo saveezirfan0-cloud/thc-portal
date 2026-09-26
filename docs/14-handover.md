@@ -109,10 +109,13 @@ real environment to prove it in.
    (ADR-0021) on an *assumed* signing scheme and API shape, all configurable.
    Check ADR-0021's list against Willo's first sandbox delivery, then enable the
    `willo-invite` schedule and add it to `190`'s list in the same commit.
-3. **THC content, flagged as placeholders in the code:** the 10 quiz questions,
-   the induction slides, the contract text (`contract_versions`), E2b and
-   CL1–CL6 wording, the `/privacy` legal text, and sample completion letters for
-   the Claude extractor (ADR-0033).
+3. **THC content, flagged as placeholders in the code:** E2b and CL1–CL6
+   wording and the `/privacy` legal text. Received 26.09 and live: the induction
+   slides, sample letters for the Claude extractor (ADR-0033), THC's 10 quiz
+   questions (`20260930140000`; the answer key is inferred and Q8 reworded, both
+   for THC to confirm) and THC's agency worker contract (`20260930140100`,
+   still flagged because clause 28, the duty to disclose, is ours) — the open
+   points are in `docs/17` items 2 and 9.
 4. **Browser passes against the live project.** No new screen has been clicked
    through for real; coverage is render tests, view-model tests and pgTAP. A
    `qa-reviewer` pass per wireframe and Playwright journeys for the wizard,
