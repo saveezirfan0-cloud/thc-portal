@@ -281,6 +281,17 @@
   height: 100%;
   object-fit: contain;
 }
+/* THC's supplied deck (16:9 pages): no frame padding, the page's own shape. */
+.slide.slide-image {
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  overflow: hidden;
+}
+.slide.slide-image a {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
 .dots {
   display: flex;
   gap: var(--sp-4);

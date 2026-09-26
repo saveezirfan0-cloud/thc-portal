@@ -176,6 +176,25 @@ describe('the request', () => {
     expect(text(1)).toMatch(/completionDate/);
     expect(text(1)).toMatch(/awardingInstitution/);
   });
+
+  // Learned from THC's sample letters (26.09): two of three term letters give
+  // only course or stage dates, or point to a website; the completion letter
+  // congratulates the award without stating when. Neither may be guessed.
+  it('never reads course dates as terms, nor the letter’s own date as completion', async () => {
+    const { client, create } = fakeClient(message(answer({})));
+    const extractor = createAnthropicExtractor({ client });
+    await extractor.extract(input('university_term_dates_letter'));
+    await extractor.extract(input('university_completion_letter'));
+    const text = (i: number) =>
+      (
+        (
+          create.mock.calls[i]![0].messages[0]!.content as Anthropic.ContentBlockParam[]
+        )[1] as Anthropic.TextBlockParam
+      ).text;
+    expect(text(0)).toMatch(/course start, course end, stage or placement dates are not terms/i);
+    expect(text(0)).toMatch(/points to a website/i);
+    expect(text(1)).toMatch(/never use the date the letter was written, issued or sent/i);
+  });
 });
 
 describe('each document type maps 1:1 onto ExtractionResult', () => {

@@ -1,8 +1,10 @@
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { QUIZ_FAILED_COPY, QUIZ_FAILED_TITLE } from '@thc/domain';
 import { TEMPLATES } from '@thc/notifications';
 import { contractParagraphs } from '../content/contract';
-import { INDUCTION_DECK, minutesLeft } from '../content/induction';
+import { INDUCTION_DECK, INDUCTION_IS_PLACEHOLDER, minutesLeft } from '../content/induction';
 import { TUTORIAL_CARDS } from '../content/tutorial';
 import { toDaterangeLiteral } from '../extractor';
 import { reasonMessage } from '../messages';
@@ -35,6 +37,25 @@ describe('the induction viewer (§10.3 5/11)', () => {
     expect(INDUCTION_DECK.length).toBeGreaterThan(1);
     expect(minutesLeft(0, 10)).toBe(6);
     expect(minutesLeft(9, 10)).toBe(1);
+  });
+});
+
+describe('THC’s own induction deck (§10.3 5/11: "the supplied file is used as-is")', () => {
+  it('is no longer the stand-in, and every page is one of THC’s slides', () => {
+    expect(INDUCTION_IS_PLACEHOLDER).toBe(false);
+    expect(INDUCTION_DECK).toHaveLength(21);
+    for (const slide of INDUCTION_DECK) {
+      expect(slide.image, slide.title).toMatch(/^\/induction\/slide-\d{2}\.webp$/);
+      expect(slide.body, slide.title).toBeUndefined();
+    }
+  });
+
+  it('ships every image it lists, in order', () => {
+    const publicDir = join(__dirname, '../../../public');
+    INDUCTION_DECK.forEach((slide, i) => {
+      expect(slide.image).toBe(`/induction/slide-${String(i + 1).padStart(2, '0')}.webp`);
+      expect(existsSync(join(publicDir, slide.image!)), slide.image).toBe(true);
+    });
   });
 });
 

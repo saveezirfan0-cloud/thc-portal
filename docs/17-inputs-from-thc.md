@@ -398,7 +398,7 @@ Email or shared drive, together with the induction deck (item 10) so the two mat
 
 **What the platform does until it arrives**
 
-Ten placeholder questions written by the build team from the placeholder induction slides, marked as placeholders in the database. Replacing them is a data change, not a release. If you are content with these, say so and the placeholder flag is removed. They are:
+Ten placeholder questions written by the build team from the placeholder induction slides, marked as placeholders in the database. **Since THC's own deck went live (26.09) they no longer match it** — THC's ten questions are now the next thing needed here. Replacing them is a data change, not a release. If you are content with these, say so and the placeholder flag is removed. They are:
 
 - **1. You discover a small fire in the kitchen. What should you do first?**
 - A. Try to put it out with water
@@ -482,18 +482,7 @@ Email or shared drive.
 
 **What the platform does until it arrives**
 
-Ten short stand-in slides written by the build team, and the screen says they are placeholders. Their titles:
-
-- Section 1 · Welcome — Why health and safety matters at our events
-- Section 1 · Welcome — Your responsibilities
-- Section 2 · Fire safety — If you discover a fire
-- Section 2 · Fire safety — Evacuation
-- Section 3 · Slips, trips and lifting — Spills and walkways
-- Section 3 · Slips, trips and lifting — Lifting safely
-- Section 4 · Food and allergens — Allergen questions
-- Section 5 · Hazardous substances — Cleaning chemicals
-- Section 6 · Accidents — First aid and reporting
-- Section 6 · Accidents — Before you start the quiz
+**Received 26.09.2026** ("General Health & Safety Awareness", 21 slides) and live in the Staff App as supplied. Slides 1, 2, 3, 11 and 20 still have empty photo boxes; a finished file replaces them page for page.
 
 #### 11 · Wording sign-off: E2b, the rejection email after the interview stage
 

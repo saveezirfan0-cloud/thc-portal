@@ -101,13 +101,17 @@ as today.
 ## 5 · From THC (content the app shows as placeholders)
 
 - [ ] Health & Safety **quiz**: the 10 questions and answers.
-- [ ] **Induction** slides.
+- [x] 26.09: **Induction** slides received ("General Health & Safety Awareness", 21 slides) and
+      live in the Staff App's step 5 as supplied. The deck still has empty photo
+      boxes on slides 1, 2, 3, 11 and 20; send a finished file to replace it.
 - [ ] Employment **contract** text (goes into `contract_versions`).
 - [ ] Wording sign-off: **E2b** (rejection after the interview, ADR-0017) and
       the completion-letter emails **CL1–CL6**, including which are mandatory.
 - [ ] **Privacy notice** legal text for `/privacy`.
-- [ ] Sample **completion letters** and **term-dates letters**, to tune the document-reading
-      prompt (Claude, ADR-0033) before real workers' documents go through it.
+- [x] 26.09: sample **term-dates letters** (3) and a **completion letter** received. The
+      document-reading prompt (ADR-0033) now refuses course or stage dates as
+      terms and never takes a letter's own date as the completion date. The
+      letters are personal data and are not kept in the repository.
 - [ ] Decide: should right-to-work documents other than the completion letter
       also be kept for employment + 2 years after a removal (ADR-0019)?
 
