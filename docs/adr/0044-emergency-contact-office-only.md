@@ -1,4 +1,4 @@
-# ADR-0043 · Emergency contact: office-only worker data, never on a client document
+# ADR-0044 · Emergency contact: office-only worker data, never on a client document
 
 Status: proposed — awaiting THC · 25.09.2026
 

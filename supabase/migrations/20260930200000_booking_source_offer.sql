@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20260930200000 · booking_source += 'offer'
---   (ADR-0045 Offer up a shift; docs/19 §4, Phase 0-A)
+--   (ADR-0046 Offer up a shift; docs/19 §4, Phase 0-A)
 --
 -- A worker who takes a shift another worker offered up is booked by
 -- take_offered_shift() (Agent A, 20260930201100) with source = 'offer',
@@ -20,4 +20,4 @@
 alter type booking_source add value if not exists 'offer';
 
 comment on type booking_source is
-  'How a booking came about: auto (hourly auto-assign, §3.4), escalation (same-day escalation, §3.4), manual (the office invited by hand, §3.3), self (Radar application, §10.4), offer (took a shift another worker offered up, ADR-0045).';
+  'How a booking came about: auto (hourly auto-assign, §3.4), escalation (same-day escalation, §3.4), manual (the office invited by hand, §3.3), self (Radar application, §10.4), offer (took a shift another worker offered up, ADR-0046).';

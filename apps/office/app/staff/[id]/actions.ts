@@ -211,7 +211,7 @@ export async function removeWorker(staffId: string, confirmation: string): Promi
 }
 
 // ---------------------------------------------------------------------
-// Emergency contact (ADR-0043) — office-only, audited
+// Emergency contact (ADR-0044) — office-only, audited
 //
 // Both are definers with the admin check in their own body and auth.uid()
 // as the actor (20260930203000), so they go through the SESSION: the audit

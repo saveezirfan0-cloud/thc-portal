@@ -13,8 +13,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
  * `window.confirm`, `window.prompt` or `window.alert`
  * (wireframes/backoffice/event-board.html). The payroll warnings
  * (BookingActions) moved first; Accept application (ApplicationActions) was
- * the one left behind, and is pinned here — with ADR-0042's Invite anyway
- * and ADR-0045's Open to pool and Decline cover: no dialog until the press,
+ * the one left behind, and is pinned here — with ADR-0043's Invite anyway
+ * and ADR-0046's Open to pool and Decline cover: no dialog until the press,
  * and Cancel sends nothing.
  */
 const actions = vi.hoisted(() => ({
@@ -109,7 +109,7 @@ const COVER = {
   note: null,
 };
 
-describe('Open to pool (ADR-0045)', () => {
+describe('Open to pool (ADR-0046)', () => {
   it('asks in the Modal only once pressed, and Cancel sends nothing', async () => {
     const { BookingActions } = await import('../[id]/_components/BookingActions');
     const { OPEN_TO_POOL_CONFIRM } = await import('../[id]/board-model');
@@ -151,7 +151,7 @@ describe('Open to pool (ADR-0045)', () => {
   });
 });
 
-describe('Decline cover, with the office’s note (ADR-0045)', () => {
+describe('Decline cover, with the office’s note (ADR-0046)', () => {
   it('asks in the Modal only once pressed, and Cancel sends nothing — even with a note typed', async () => {
     const { BookingActions } = await import('../[id]/_components/BookingActions');
     mount(
@@ -216,7 +216,7 @@ describe('Decline cover, with the office’s note (ADR-0045)', () => {
   });
 });
 
-describe('Invite anyway (ADR-0042)', () => {
+describe('Invite anyway (ADR-0043)', () => {
   it('asks in the Modal only once pressed, and Cancel sends nothing', async () => {
     const { InviteAnyway } = await import('../[id]/_components/InviteAnyway');
     const { inviteAnywayPrompt } = await import('../[id]/board-model');

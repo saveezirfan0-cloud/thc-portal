@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * The office's decision on a change request (ADR-0044) and the Emergency
- * contact writes (ADR-0043). Held here:
+ * The office's decision on a change request (ADR-0045) and the Emergency
+ * contact writes (ADR-0044). Held here:
  *
  *   · a name is approved only with the evidence tick — asked again on the
  *     server, and the kind read from the request, never from the browser;
@@ -51,7 +51,7 @@ beforeEach(() => {
   createAdminClient.mockClear();
 });
 
-describe('decideChangeRequest (ADR-0044)', () => {
+describe('decideChangeRequest (ADR-0045)', () => {
   it('refuses to approve a name without the evidence tick, before the database', async () => {
     const result = await decideChangeRequest('r1', true, '', false);
     expect(result.ok).toBe(false);
@@ -96,7 +96,7 @@ describe('decideChangeRequest (ADR-0044)', () => {
   });
 });
 
-describe('Emergency contact writes (ADR-0043)', () => {
+describe('Emergency contact writes (ADR-0044)', () => {
   it('validates with the domain rule first and sends the E.164 number', async () => {
     const bad = await saveEmergencyContact('s1', {
       name: 'Grace',

@@ -3,7 +3,7 @@
  * wireframes/backoffice/staff.html. Tokens only (CLAUDE.md).
  */
 
-/* ADR-0044: "Change requests (N)" above the directory, right-aligned. */
+/* ADR-0045: "Change requests (N)" above the directory, right-aligned. */
 .staff-requests-link {
   display: flex;
   justify-content: flex-end;

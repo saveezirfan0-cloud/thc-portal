@@ -4,7 +4,7 @@
 -- Source: packages/domain/src/changeRequest.vectors.json
 -- Regenerate: pnpm --filter @thc/domain gen:vectors
 --
--- ADR-0044: profile_change_transitions(), the state guard and the
+-- ADR-0045: profile_change_transitions(), the state guard and the
 -- profile_change_requests CHECKs against the cases state.ts and
 -- changeRequest.ts are held to. `refusal` null = the name is accepted.
 -- Included with \ir from supabase/tests/701_staff_additions_state.sql; the .psql

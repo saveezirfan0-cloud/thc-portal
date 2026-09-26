@@ -1,6 +1,6 @@
 /**
  * The selfie capture's image step (§1.6, §10.1), shared by the profile
- * photo (`PhotoField`) and a photo change request (ADR-0044,
+ * photo (`PhotoField`) and a photo change request (ADR-0045,
  * `/profile/details/request?kind=photo`), so a requested photo is the same
  * square 512 px JPEG the photos bucket takes (20260927160200: JPEG only,
  * 2 MB) and the office compares like with like.

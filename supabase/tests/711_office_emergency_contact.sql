@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 711 · The office's emergency contact, and the other /staff/:id reads
 --   20260930203000_office_staff_additions.sql · docs/19 §1, §2, §5
---   ADR-0042, ADR-0043, ADR-0046
+--   ADR-0043, ADR-0044, ADR-0047
 --
 --   A. Shape: the seven office functions are definers with a pinned
 --      search_path, and none is executable by PUBLIC or anon (190 2e/2f).
@@ -172,7 +172,7 @@ select is(
 reset role;
 
 -- =====================================================================
--- E · office_staff_unavailability (ADR-0042, RULE-18)
+-- E · office_staff_unavailability (ADR-0043, RULE-18)
 -- =====================================================================
 -- Staff Alpha: an all-day entry on the UK date booking_a starts, a weekly
 -- series of three evenings, one entry past 8 weeks, one in the past.
@@ -226,7 +226,7 @@ select throws_ok(
 reset role;
 
 -- =====================================================================
--- F · office_staff_referrals (ADR-0046)
+-- F · office_staff_referrals (ADR-0047)
 -- =====================================================================
 insert into staff (id, employee_id, first_name, last_name, email, phone, dob, status) values
   (:'cand_c', 96102, 'Priya', 'Sharma', 'cand-c-661@rls.test', '+447700966102', date '1999-03-03', 'compliant');

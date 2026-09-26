@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20260930201000 · availability in auto-assign
---   (ADR-0042 Worker availability; docs/19 §1, Phase 1 Agent A, part A1)
+--   (ADR-0043 Worker availability; docs/19 §1, Phase 1 Agent A, part A1)
 --
 -- The calendar a worker keeps in the Staff App (staff_unavailability,
 -- 20260930200100) becomes a HARD GATE on what the machine does, and
@@ -81,7 +81,7 @@ begin
 end $$;
 
 comment on function public.auto_assign_unavailable(uuid) is
-  'ADR-0042: every availability entry overlapping this ROLE SECTION''s window (RULE-18), as (staff_id, starts_at, ends_at) — one row per entry. What the auto-staffing rounds and the offer pushes skip (withAvailability() in packages/domain) and what the event board shows as "Marked unavailable · {UK window}". Admin, service role or a direct connection only; a worker is refused.';
+  'ADR-0043: every availability entry overlapping this ROLE SECTION''s window (RULE-18), as (staff_id, starts_at, ends_at) — one row per entry. What the auto-staffing rounds and the offer pushes skip (withAvailability() in packages/domain) and what the event board shows as "Marked unavailable · {UK window}". Admin, service role or a direct connection only; a worker is refused.';
 
 revoke execute on function public.auto_assign_unavailable(uuid) from public, anon;
 grant  execute on function public.auto_assign_unavailable(uuid) to authenticated, service_role;
@@ -152,7 +152,7 @@ begin
     return jsonb_build_object('invited', false, 'reason', v_gate);
   end if;
 
-  -- ADR-0042 (20260930201000): the calendar gates what the MACHINE does.
+  -- ADR-0043 (20260930201000): the calendar gates what the MACHINE does.
   -- An hourly, first-round, cutoff-refill or escalation invitation is
   -- refused for a worker who marked this role section's window (RULE-18)
   -- unavailable; a manager's 'manual' invite is not — the board asks
@@ -224,4 +224,4 @@ begin
 end $$;
 
 comment on function public.invite_worker(uuid, uuid, booking_source, boolean) is
-  'Writes one invitation, re-applying every §3.3/§3.4 gate at the insert — with p_source = ''escalation'', the §3.4 radius too (20260927140100). Refuses: event_cancelled · auto_assign_off (an auto/escalation invitation with either switch off at the insert, D9, 20260930110100) · not_bookable (no candidate row: removed, left, or not a worker) · the gate by name · already_has_booking (a live row, a self-cancel, or an ended row this source may not reopen — booking_reopenable_by) · target_met only once CONFIRMED (confirmed-or-worked) >= headcount + buffer: open invitations are not fill (20260928110200). Reopens an ended row instead of inserting, with its own N5 (D33, 20260930110100). Since 20260930201000 (ADR-0042) an ''auto'' or ''escalation'' invitation for a worker whose availability calendar overlaps the role section is refused as unavailable (after the pool gate, before the booking check); a ''manual'' one is not.';
+  'Writes one invitation, re-applying every §3.3/§3.4 gate at the insert — with p_source = ''escalation'', the §3.4 radius too (20260927140100). Refuses: event_cancelled · auto_assign_off (an auto/escalation invitation with either switch off at the insert, D9, 20260930110100) · not_bookable (no candidate row: removed, left, or not a worker) · the gate by name · already_has_booking (a live row, a self-cancel, or an ended row this source may not reopen — booking_reopenable_by) · target_met only once CONFIRMED (confirmed-or-worked) >= headcount + buffer: open invitations are not fill (20260928110200). Reopens an ended row instead of inserting, with its own N5 (D33, 20260930110100). Since 20260930201000 (ADR-0043) an ''auto'' or ''escalation'' invitation for a worker whose availability calendar overlaps the role section is refused as unavailable (after the pool gate, before the booking check); a ''manual'' one is not.';

@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20260930204000 · /apply?ref= records who referred whom
---                            (ADR-0046; docs/19 §5; §2.1, §2.3, §1.7)
+--                            (ADR-0047; docs/19 §5; §2.1, §2.3, §1.7)
 --
 -- A compliant worker shares {origin}/apply?ref={code} (Agent B's
 -- /profile/refer). The Staff App's server action carries the code in a
@@ -111,7 +111,7 @@ begin
     values (v_app, v_referrer, v_candidate, v_code)
     on conflict do nothing;
   exception when others then
-    -- Never raises (ADR-0046 point 4). The block is its own
+    -- Never raises (ADR-0047 point 4). The block is its own
     -- subtransaction, so only the referral is rolled back — the
     -- application the caller just wrote stands.
     return;
@@ -119,7 +119,7 @@ begin
 end $$;
 
 comment on function public.record_application_referral(text, text) is
-  'ADR-0046: records who referred an application that arrived through /apply?ref=. Finds the application submit_application() just wrote for this email (same normalisation), skips a malformed, unknown, revoked or own code, inserts on conflict do nothing, and never raises. Owner-only: called by submit_application_as_caller(), by no API role.';
+  'ADR-0047: records who referred an application that arrived through /apply?ref=. Finds the application submit_application() just wrote for this email (same normalisation), skips a malformed, unknown, revoked or own code, inserts on conflict do nothing, and never raises. Owner-only: called by submit_application_as_caller(), by no API role.';
 
 revoke execute on function public.record_application_referral(text, text)
   from public, anon, authenticated, service_role;
@@ -138,7 +138,7 @@ create or replace function public.submit_application_as_caller(
   p_dob         date,
   p_consent     boolean,
   p_caller_hash text,
-  -- ADR-0046: /apply?ref=. Recorded after the application is written,
+  -- ADR-0047: /apply?ref=. Recorded after the application is written,
   -- never a reason to refuse it.
   p_referral_code text default null
 ) returns void
@@ -191,7 +191,7 @@ begin
   -- applications accepted.
   perform public.submit_application(p_first_name, p_last_name, p_email, p_phone, p_dob, p_consent);
 
-  -- ADR-0046: the one new clause. Only reached once the application is
+  -- ADR-0047: the one new clause. Only reached once the application is
   -- written; record_application_referral() never raises, so a bad,
   -- revoked or own code changes nothing the caller can see.
   if p_referral_code is not null then
@@ -204,7 +204,7 @@ begin
 end $$;
 
 comment on function public.submit_application_as_caller(text, text, text, text, date, boolean, text, text) is
-  '§2.1 /apply through the Staff App server action: submit_application() plus a per-caller limit (settings.apply_caller_throttle: 5/hour, 20/day) keyed by an HMAC of the caller''s IP, never the IP. Null hash = no per-caller check. An optional referral code (/apply?ref=, ADR-0046) is recorded by record_application_referral() after the application is written and never refuses it. Service role only (ADR-0024).';
+  '§2.1 /apply through the Staff App server action: submit_application() plus a per-caller limit (settings.apply_caller_throttle: 5/hour, 20/day) keyed by an HMAC of the caller''s IP, never the IP. Null hash = no per-caller check. An optional referral code (/apply?ref=, ADR-0047) is recorded by record_application_referral() after the application is written and never refuses it. Service role only (ADR-0024).';
 
 revoke execute on function public.submit_application_as_caller(text, text, text, text, date, boolean, text, text)
   from public, anon, authenticated;

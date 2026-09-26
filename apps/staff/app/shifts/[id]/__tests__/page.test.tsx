@@ -75,7 +75,7 @@ vi.mock('../../../data', () => ({
   shiftsBadge: () => 0,
 }));
 
-/** Set to make `staff_booking_offers()` fail (audit D18, ADR-0045). */
+/** Set to make `staff_booking_offers()` fail (audit D18, ADR-0046). */
 let offersFail = false;
 vi.mock('../../offers-data', async (importOriginal) => ({
   ...(await importOriginal<object>()),
@@ -203,7 +203,7 @@ describe('§10.1 the app lock stands in front of the shift screen', () => {
     profile.mockResolvedValue(worker());
     shift.mockResolvedValue(detail());
     const html = await render();
-    // ADR-0041: Shifts · Invites · Radar · Profile.
+    // ADR-0042: Shifts · Invites · Radar · Profile.
     // The tab icon sits between the link and its label.
     expect(html).toMatch(/<a href="\/profile">(?:(?!<\/a>).)*<span class="l">Profile<\/span><\/a>/);
   });
@@ -287,7 +287,7 @@ describe('audit D18 · a failed read is not a 404', () => {
   });
 });
 
-describe('audit D18 · a failed offer read never guesses the Offer panel (ADR-0045)', () => {
+describe('audit D18 · a failed offer read never guesses the Offer panel (ADR-0046)', () => {
   const days = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
 
   it('says the offer could not be loaded, and offers neither Offer nor Ask the office', async () => {

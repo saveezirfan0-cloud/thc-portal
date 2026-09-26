@@ -1,21 +1,21 @@
 {
-  "description": "ADR-0044 request a change (docs/19 §3). The contract between CHANGE_REQUEST_TRANSITIONS / validateNameChange / validateDecision in packages/domain and profile_change_transitions(), the profile_change_requests_state_guard trigger and the profile_change_requests CHECKs in 20260930200100_staff_additions_schema.sql. Every pair of distinct statuses NOT listed under edges is illegal; staying in the same status is not a transition. Regenerate the pgTAP half with: node packages/domain/scripts/gen-vectors-sql.mjs",
+  "description": "ADR-0045 request a change (docs/19 §3). The contract between CHANGE_REQUEST_TRANSITIONS / validateNameChange / validateDecision in packages/domain and profile_change_transitions(), the profile_change_requests_state_guard trigger and the profile_change_requests CHECKs in 20260930200100_staff_additions_schema.sql. Every pair of distinct statuses NOT listed under edges is illegal; staying in the same status is not a transition. Regenerate the pgTAP half with: node packages/domain/scripts/gen-vectors-sql.mjs",
   "statuses": ["pending", "approved", "rejected", "withdrawn"],
   "edges": [
     {
       "from": "pending",
       "to": "approved",
-      "ref": "ADR-0044 the office approves (office_decide_profile_change); RC2, and RC4 for a name"
+      "ref": "ADR-0045 the office approves (office_decide_profile_change); RC2, and RC4 for a name"
     },
     {
       "from": "pending",
       "to": "rejected",
-      "ref": "ADR-0044 the office rejects with a reason the worker is shown; RC3"
+      "ref": "ADR-0045 the office rejects with a reason the worker is shown; RC3"
     },
     {
       "from": "pending",
       "to": "withdrawn",
-      "ref": "ADR-0044 the worker withdraws it (withdraw_profile_change); §1.7 GDPR removal withdraws what is pending"
+      "ref": "ADR-0045 the worker withdraws it (withdraw_profile_change); §1.7 GDPR removal withdraws what is pending"
     }
   ],
   "current": {

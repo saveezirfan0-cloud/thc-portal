@@ -38,7 +38,7 @@ beforeEach(() => {
   rpc.mockReset();
 });
 
-describe('offers (ADR-0045)', () => {
+describe('offers (ADR-0046)', () => {
   it('loadBookingOffers() reports the failure instead of "no offers"', async () => {
     rpc.mockResolvedValue(failed);
     expect(await loadBookingOffers()).toEqual({ rows: [], problem: TIMEOUT });
@@ -81,7 +81,7 @@ describe('offers (ADR-0045)', () => {
   });
 });
 
-describe('availability (ADR-0042)', () => {
+describe('availability (ADR-0043)', () => {
   it('loadUnavailability() reports the failure instead of an empty calendar', async () => {
     rpc.mockResolvedValue(failed);
     expect(await loadUnavailability()).toEqual({ rows: [], problem: TIMEOUT });
@@ -90,7 +90,7 @@ describe('availability (ADR-0042)', () => {
   });
 });
 
-describe('emergency contact (ADR-0043)', () => {
+describe('emergency contact (ADR-0044)', () => {
   it('keeps "none saved" and "could not read" apart', async () => {
     rpc.mockResolvedValue(failed);
     expect(await loadEmergencyContact()).toEqual({ row: null, problem: TIMEOUT });
@@ -104,7 +104,7 @@ describe('emergency contact (ADR-0043)', () => {
   });
 });
 
-describe('change requests (ADR-0044)', () => {
+describe('change requests (ADR-0045)', () => {
   it('loadChangeRequests() reports the failure instead of "no requests"', async () => {
     rpc.mockResolvedValue(failed);
     expect(await loadChangeRequests()).toEqual({ rows: [], problem: TIMEOUT });
@@ -113,7 +113,7 @@ describe('change requests (ADR-0044)', () => {
   });
 });
 
-describe('refer a friend (ADR-0046)', () => {
+describe('refer a friend (ADR-0047)', () => {
   const answer = (fn: string) =>
     fn === 'my_referral_code'
       ? { data: 'K7Q2M9XH', error: null }

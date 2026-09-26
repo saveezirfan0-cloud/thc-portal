@@ -243,7 +243,7 @@ test.describe('The shell around a compliant worker (§10.1)', () => {
     if (serviceKey && supabaseUrl) await setStaff(COMPLIANT);
   });
 
-  test('the bottom navigation is Shifts · Invites · Radar · Profile, in that order (ADR-0041)', async ({
+  test('the bottom navigation is Shifts · Invites · Radar · Profile, in that order (ADR-0042)', async ({
     page,
   }) => {
     await page.goto('/shifts');
@@ -261,7 +261,7 @@ test.describe('The shell around a compliant worker (§10.1)', () => {
     await expect(nav.locator('[aria-current="page"]')).toHaveText(/Shifts/);
   });
 
-  test('the avatar and the Profile tab both lead to the profile (§10.1, ADR-0041)', async ({
+  test('the avatar and the Profile tab both lead to the profile (§10.1, ADR-0042)', async ({
     page,
   }) => {
     for (const path of ['/shifts', '/invites', '/radar']) {
@@ -275,7 +275,7 @@ test.describe('The shell around a compliant worker (§10.1)', () => {
     }
   });
 
-  test('Documents lives under Profile, which is lit while it is open (ADR-0041)', async ({
+  test('Documents lives under Profile, which is lit while it is open (ADR-0042)', async ({
     page,
   }) => {
     await page.goto('/profile');
@@ -349,7 +349,7 @@ test.describe('App lock — the four cases (§10.1)', () => {
     // pressable is a different promise from one that is not.
     const nav = page.locator('nav.bottom-nav');
     await expect(nav.locator('[aria-disabled="true"]')).toHaveCount(3);
-    // Profile — the home of Documents (ADR-0041) — is the only tab not
+    // Profile — the home of Documents (ADR-0042) — is the only tab not
     // locked, and the only link.
     await expect(nav.locator('a')).toHaveCount(1);
     await expect(nav.getByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/profile');
@@ -414,7 +414,7 @@ test.describe('App lock — the four cases (§10.1)', () => {
     await page.goto('/notifications');
     await expect(page.getByRole('button', { name: /Turn on notifications/ })).toBeVisible();
     // …while the navigation shows the three tabs they cannot reach closed,
-    // and Profile — where Documents lives since ADR-0041, so the one tab a
+    // and Profile — where Documents lives since ADR-0042, so the one tab a
     // document-blocked worker keeps (§4, "sees ONLY the Documents tab") —
     // open.
     const links = page.locator('nav.bottom-nav a');

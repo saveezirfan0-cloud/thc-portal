@@ -6,7 +6,7 @@ import { inviteWorker } from '../actions';
 import { inviteAnywayPrompt } from '../board-model';
 
 /**
- * "Invite anyway" on an Unavailable row — ADR-0042, docs/19 §1.
+ * "Invite anyway" on an Unavailable row — ADR-0043, docs/19 §1.
  *
  * The worker marked this role section's window unavailable, so auto-assign
  * skips them. The manager may still invite by hand, in the spirit of

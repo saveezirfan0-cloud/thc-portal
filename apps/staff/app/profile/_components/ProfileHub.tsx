@@ -16,12 +16,12 @@ import { RetryButton } from '../../_components/RetryButton';
 import { P45Flow } from './P45Flow';
 
 /**
- * The Profile tab — §10.1's profile sheet, as a screen (ADR-0041).
+ * The Profile tab — §10.1's profile sheet, as a screen (ADR-0042).
  *
  * §10.1 opens the sheet from the avatar: "the worker's details, links
  * (Profile details / Security settings / Payment information), sign-out,
  * and a 'Need help? …' contact line". All of that is still here, in that
- * order. What ADR-0041 changes is where it lives and what it carries:
+ * order. What ADR-0042 changes is where it lives and what it carries:
  *
  *   - It is a tab, not a modal over another screen, so there is no backdrop
  *     to tap away and nothing to dismiss.
@@ -54,7 +54,7 @@ export function ProfileHub({
   /** `expiringDocument()` — a verified document inside §4.2's first reminder rung. */
   expiring?: ExpiringDocument | null;
   /**
-   * ADR-0043: false draws the amber "Emergency contact not set" subline on
+   * ADR-0044: false draws the amber "Emergency contact not set" subline on
    * Profile details — a nudge, never a lock (Q11). Null (unknown, or a
    * read that failed) draws nothing.
    */
@@ -132,11 +132,11 @@ export function ProfileHub({
               ? { note: 'Emergency contact not set' }
               : {})}
         />
-        {/* ADR-0042: only for a worker auto-assign can invite at all. */}
+        {/* ADR-0043: only for a worker auto-assign can invite at all. */}
         {lock === 'none' ? (
           <HubRow href="/profile/availability" title="Availability" sub="Days you can’t work" />
         ) : null}
-        {/* ADR-0046: compliant workers only — no reward copy (Q19). */}
+        {/* ADR-0047: compliant workers only — no reward copy (Q19). */}
         {lock === 'none' && profile.status === 'compliant' ? (
           <HubRow href="/profile/refer" title="Refer a friend" sub="Share your link to apply" />
         ) : null}

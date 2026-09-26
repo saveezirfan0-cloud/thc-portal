@@ -3,7 +3,7 @@ import { staffDb, supabaseConfigured } from '../../db';
 import type { Found } from '../../data';
 
 /**
- * The two reads behind /profile/refer (ADR-0046): the worker's code,
+ * The two reads behind /profile/refer (ADR-0047): the worker's code,
  * minted the first time (`my_referral_code()`), and the count of people
  * who applied with it (`my_referral_summary()`) — a number, never names.
  *

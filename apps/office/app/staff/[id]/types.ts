@@ -183,7 +183,7 @@ export interface ClientOption {
 }
 
 /**
- * `office_emergency_contact()` (ADR-0043, 20260930203000). Office-only
+ * `office_emergency_contact()` (ADR-0044, 20260930203000). Office-only
  * worker personal data: never on a client document or in a client_* view.
  */
 export interface EmergencyContact {
@@ -198,7 +198,7 @@ export interface EmergencyContact {
   updatedByName: string | null;
 }
 
-/** One side of a referral in `office_staff_referrals()` (ADR-0046). */
+/** One side of a referral in `office_staff_referrals()` (ADR-0047). */
 export interface ReferralPerson {
   staffId: string;
   /** "Deleted account #id" for a removed person (§1.7). */
@@ -226,7 +226,7 @@ export interface AvailabilityBooking {
   endsAt: string;
 }
 
-/** `office_staff_unavailability()` (ADR-0042): one entry, next 8 weeks. */
+/** `office_staff_unavailability()` (ADR-0043): one entry, next 8 weeks. */
 export interface AvailabilityRow {
   id: string;
   starts_at: string;
@@ -287,7 +287,7 @@ export interface ProfileData {
    */
   locationStale?: boolean | null;
   /**
-   * The docs/19 additions (ADR-0042/0043/0044/0046). Each is read on its
+   * The docs/19 additions (ADR-0043/0043/0044/0046). Each is read on its
    * own and fails on its own: `undefined` = not read, and the matching
    * `…Problem` says why a card or tab has nothing to show.
    */

@@ -1,4 +1,4 @@
-# ADR-0042 · Worker availability: a hard gate for automated invitations, advisory for people
+# ADR-0043 · Worker availability: a hard gate for automated invitations, advisory for people
 
 Status: proposed — awaiting THC · 25.09.2026
 
@@ -27,7 +27,7 @@ Two ways to feed it into auto-assign were on the table:
 
 1. **Unavailability is a hard gate on what the machine does, and advice to people.** It
    stops: hourly rounds, the first round, cutoff refills, same-day escalation, and offer
-   pushes (OF1, ADR-0045). It does **not** stop:
+   pushes (OF1, ADR-0046). It does **not** stop:
    - a manager's manual invite — allowed after a confirm dialog, in the spirit of
      RULE-17's override: "{name} marked themselves unavailable for this time. Invite
      anyway?";

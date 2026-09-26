@@ -4,7 +4,7 @@
 -- Source: packages/domain/src/emergencyContact.vectors.json
 -- Regenerate: pnpm --filter @thc/domain gen:vectors
 --
--- ADR-0043: the staff_emergency_contacts CHECKs against the cases
+-- ADR-0044: the staff_emergency_contacts CHECKs against the cases
 -- emergencyContact.ts is held to. `storable`: the raw string passes the
 -- phone CHECK as it is. `normalised`: what the form stores (null = refused).
 -- Included with \ir from supabase/tests/700_staff_additions_rls.sql; the .psql

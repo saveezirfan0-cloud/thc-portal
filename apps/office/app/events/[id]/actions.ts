@@ -323,7 +323,7 @@ export async function setRoleAutoAssign(
 }
 
 // ---------------------------------------------------------------------
-// Offer up a shift — ADR-0045, docs/19 §4 point 3
+// Offer up a shift — ADR-0046, docs/19 §4 point 3
 // ---------------------------------------------------------------------
 
 /**

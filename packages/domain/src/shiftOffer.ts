@@ -1,5 +1,5 @@
 /**
- * Offer up a shift ("release to the pool") — ADR-0045, docs/19 §4 (an
+ * Offer up a shift ("release to the pool") — ADR-0046, docs/19 §4 (an
  * addition to Scope v1.6: §3.6 cause `handed_over` and source `offer`,
  * RULE-04 §7, §10.4, §3.3, §3.4 offer rounds, §8 OF1–OF6, §9.12).
  *
@@ -15,7 +15,7 @@
  *   - The taker passes every hard gate the auto-assign pool applies, by
  *     name, and RULE-17's order: an unqualified taker waits (`not_yet`)
  *     until wave 1 is exhausted.
- *   - Being marked unavailable (ADR-0042) does NOT refuse a take. The
+ *   - Being marked unavailable (ADR-0043) does NOT refuse a take. The
  *     calendar gates what the machine does, never what the worker chooses.
  *   - A completed hand-over bars the offerer from the event like a
  *     self-cancel (`excludesFromEvent('handed_over')`, Q15).
@@ -174,7 +174,7 @@ export function takeOffer(input: TakeOfferInput, now: Date = new Date()): TakeOf
     return { ok: false, reason: 'section_started' };
   }
   if (input.gate === undefined) return { ok: false, reason: 'not_bookable' };
-  // ADR-0042: the calendar never refuses the worker's own choice.
+  // ADR-0043: the calendar never refuses the worker's own choice.
   if (input.gate !== null && input.gate !== CALENDAR_GATE) {
     return { ok: false, reason: GATE_REFUSAL[input.gate] ?? 'not_bookable' };
   }

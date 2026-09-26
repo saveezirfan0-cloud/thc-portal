@@ -1,5 +1,5 @@
 {
-  "description": "ADR-0042 worker availability (docs/19 §1). The contract between packages/domain/src/availability.ts (unavailabilityRange, expandWeekly, overlapsSection, validateUnavailability) and unavailability_range() / staff_unavailable() / the staff_unavailability CHECKs in 20260930200100_staff_additions_schema.sql. Dates and times are UK (Europe/London) as the worker types them; every instant is UTC. Ranges are half-open [lower, upper). Regenerate the pgTAP half with: node packages/domain/scripts/gen-vectors-sql.mjs",
+  "description": "ADR-0043 worker availability (docs/19 §1). The contract between packages/domain/src/availability.ts (unavailabilityRange, expandWeekly, overlapsSection, validateUnavailability) and unavailability_range() / staff_unavailable() / the staff_unavailability CHECKs in 20260930200100_staff_additions_schema.sql. Dates and times are UK (Europe/London) as the worker types them; every instant is UTC. Ranges are half-open [lower, upper). Regenerate the pgTAP half with: node packages/domain/scripts/gen-vectors-sql.mjs",
   "ranges": [
     {
       "name": "all_day_bst_12_oct",

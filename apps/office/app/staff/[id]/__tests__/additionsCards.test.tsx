@@ -18,7 +18,7 @@ const { ReferralsCard } = await import('../ReferralsCard');
 const { Availability } = await import('../Availability');
 const { ChangeRequestBanner } = await import('../ChangeRequestBanner');
 
-describe('Emergency contact card (ADR-0043)', () => {
+describe('Emergency contact card (ADR-0044)', () => {
   it('reads "Not provided" when there is none, and offers Add but not Clear', () => {
     const html = renderToStaticMarkup(
       <EmergencyContactCard staffId="s1" contact={null} editable />,
@@ -60,7 +60,7 @@ describe('Emergency contact card (ADR-0043)', () => {
   });
 });
 
-describe('Referrals card (ADR-0046)', () => {
+describe('Referrals card (ADR-0047)', () => {
   const referrals: Referrals = {
     code: 'K7M4Q2XP',
     codeRevokedAt: null,
@@ -117,7 +117,7 @@ describe('Referrals card (ADR-0046)', () => {
   });
 });
 
-describe('Availability tab (ADR-0042)', () => {
+describe('Availability tab (ADR-0043)', () => {
   const row: AvailabilityRow = {
     id: 'u1',
     starts_at: '2026-09-22T23:00:00Z',
@@ -155,7 +155,7 @@ describe('Availability tab (ADR-0042)', () => {
   });
 });
 
-describe('Pending change-request banner (ADR-0044)', () => {
+describe('Pending change-request banner (ADR-0045)', () => {
   const request = {
     id: 'r1',
     staff_id: 's1',

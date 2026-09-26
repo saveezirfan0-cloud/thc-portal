@@ -356,7 +356,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
           />
         </TileGrid>
 
-        {/* ADR-0044: a pending name/photo change, decided here or in the queue. */}
+        {/* ADR-0045: a pending name/photo change, decided here or in the queue. */}
         <ChangeRequestBanner
           requests={data.changeRequests ?? []}
           problem={data.changeRequestsProblem ?? null}
@@ -384,7 +384,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             },
             { value: 'shifts', label: 'Shifts', count: data.shifts.length },
             { value: 'feedback', label: 'Feedback', count: data.feedback.length },
-            // ADR-0042: read-only, the next 8 weeks.
+            // ADR-0043: read-only, the next 8 weeks.
             {
               value: 'availability',
               label: 'Availability',

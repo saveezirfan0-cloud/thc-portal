@@ -1,5 +1,5 @@
 -- =====================================================================
--- 722 · "Ask the office for cover" (ADR-0045, docs/19 §4 point 3)
+-- 722 · "Ask the office for cover" (ADR-0046, docs/19 §4 point 3)
 --   20260930201100_shift_offers.sql
 --
 --   A · request_cover(): inside 72 h (or with auto-assign off) an `office`

@@ -6,7 +6,7 @@ import { addedOn, availabilityLength, availabilityRepeats, availabilityWhen } fr
 import type { AvailabilityRow } from './types';
 
 /**
- * The Availability tab (ADR-0042), `wireframes/backoffice/change-requests.html`
+ * The Availability tab (ADR-0043), `wireframes/backoffice/change-requests.html`
  * → "/staff/:id · Availability tab".
  *
  * Read-only on purpose: the worker keeps their own calendar in the app, and
@@ -97,7 +97,7 @@ export function Availability({
         Auto-assign skips {name} for any role section overlapping these — first round, hourly
         rounds, refills, escalation and offer pushes. On the event board they appear under
         Unavailable as &ldquo;Marked unavailable&rdquo;, and a manager can still invite them by hand
-        after a warning (ADR-0042, Q9). A confirmed booking is never cancelled by an entry.
+        after a warning (ADR-0043, Q9). A confirmed booking is never cancelled by an entry.
       </Note>
     </div>
   );

@@ -10,7 +10,7 @@ import type { AppLock } from '../lock';
  *
  * Not `StaffShell`: the wireframe gives the screens under Profile a
  * collapsed header carrying a "‹ Profile" back link where the tab screens
- * carry a title. Profile is a tab since ADR-0041, so it is the one lit
+ * carry a title. Profile is a tab since ADR-0042, so it is the one lit
  * here — on the hub and on every screen beneath it. The primitives are the same ones — the frosted
  * header, body and bottom nav from packages/ui — so the two read as one
  * app.

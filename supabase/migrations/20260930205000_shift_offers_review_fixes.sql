@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20260930205000 · offer up a shift — review fixes
---   (ADR-0045 "Amendment · review fixes"; QA + security review of
+--   (ADR-0046 "Amendment · review fixes"; QA + security review of
 --   20260930201100_shift_offers.sql)
 --
 -- Every function below is restated IN FULL from its latest definition
@@ -162,7 +162,7 @@ begin
 end $$;
 
 comment on function public.queue_offer_notice(text, uuid, uuid) is
-  'ADR-0045: queues one of OF1–OF6 for an offer under its register key (OFn:offer:<id>; OF1:offer:<offer>:<staff>; OF5:booking:<booking> — once per booking however often cover is asked) with exactly the payload keys packages/notifications renders, plus offerId/shiftId/eventId (and bookingId) for tooling. Push dates as N5, OF5 as E10; the base rate only; a blank note is "—". Internal: called by the offer functions, never an RPC.';
+  'ADR-0046: queues one of OF1–OF6 for an offer under its register key (OFn:offer:<id>; OF1:offer:<offer>:<staff>; OF5:booking:<booking> — once per booking however often cover is asked) with exactly the payload keys packages/notifications renders, plus offerId/shiftId/eventId (and bookingId) for tooling. Push dates as N5, OF5 as E10; the base rate only; a blank note is "—". Internal: called by the offer functions, never an RPC.';
 
 -- ---------------------------------------------------------------------
 -- 1 · RULE-17 for an offer — exhausted at once with auto-assign off
@@ -209,7 +209,7 @@ as $$
 $$;
 
 comment on function public.offer_wave1_exhausted(uuid) is
-  'ADR-0045, RULE-17: true when auto-assign is off for the offer''s event or role (no OF1 is ever pushed, so the office opening it to the pool releases it to everyone), else once every wave-1 worker for this offer (qualified at client + role, ungated, not the offerer, no ruling-out booking on the section, not marked unavailable) has been pushed it. Until then an unqualified taker gets not_yet and Radar hides it from them. Service role; called inside the definer offer functions.';
+  'ADR-0046, RULE-17: true when auto-assign is off for the offer''s event or role (no OF1 is ever pushed, so the office opening it to the pool releases it to everyone), else once every wave-1 worker for this offer (qualified at client + role, ungated, not the offerer, no ruling-out booking on the section, not marked unavailable) has been pushed it. Until then an unqualified taker gets not_yet and Radar hides it from them. Service role; called inside the definer offer functions.';
 
 -- ---------------------------------------------------------------------
 -- 3 · The worker: offer, withdraw, ask for cover — caller refused by
@@ -281,7 +281,7 @@ begin
 end $$;
 
 comment on function public.offer_shift(uuid) is
-  'ADR-0045: the worker offers their own confirmed booking to the pool. Caller by staff_caller(): unknown_staff / account_closed (removed) / not_editable (leaver, rejected) raise P0001. Refuses event_cancelled / not_confirmed / too_late (72 h or less remain — RULE-04''s boundary) / auto_assign_off (event or role switch off: ask the office instead) / already_offered. The worker stays confirmed; the offer expires at start − 72 h.';
+  'ADR-0046: the worker offers their own confirmed booking to the pool. Caller by staff_caller(): unknown_staff / account_closed (removed) / not_editable (leaver, rejected) raise P0001. Refuses event_cancelled / not_confirmed / too_late (72 h or less remain — RULE-04''s boundary) / auto_assign_off (event or role switch off: ask the office instead) / already_offered. The worker stays confirmed; the offer expires at start − 72 h.';
 
 create or replace function public.withdraw_shift_offer(p_offer uuid)
 returns jsonb
@@ -323,7 +323,7 @@ begin
 end $$;
 
 comment on function public.withdraw_shift_offer(uuid) is
-  'ADR-0045: the worker withdraws their own open offer (a pool offer or a cover request). Caller by staff_caller(): unknown_staff / account_closed / not_editable raise P0001. Under the section lock, so it cannot race a take: offer_not_open once somebody has it.';
+  'ADR-0046: the worker withdraws their own open offer (a pool offer or a cover request). Caller by staff_caller(): unknown_staff / account_closed / not_editable raise P0001. Under the section lock, so it cannot race a take: offer_not_open once somebody has it.';
 
 create or replace function public.request_cover(p_booking uuid, p_note text default null)
 returns jsonb
@@ -403,7 +403,7 @@ begin
 end $$;
 
 comment on function public.request_cover(uuid, text) is
-  'ADR-0045: "Ask the office for cover" — inside 72 h, or with auto-assign off. Creates an office offer (not visible to workers, not pushed) and queues OF5 to admin@ (keyed OF5:booking:<id>, so once per booking). Caller by staff_caller(): unknown_staff / account_closed / not_editable raise P0001. Refuses event_cancelled / not_confirmed / section_started / use_offer (more than 72 h out with auto-assign on) / note_too_long (> 300) / already_offered / recently_requested (a cover request on this booking withdrawn in the last 24 h).';
+  'ADR-0046: "Ask the office for cover" — inside 72 h, or with auto-assign off. Creates an office offer (not visible to workers, not pushed) and queues OF5 to admin@ (keyed OF5:booking:<id>, so once per booking). Caller by staff_caller(): unknown_staff / account_closed / not_editable raise P0001. Refuses event_cancelled / not_confirmed / section_started / use_offer (more than 72 h out with auto-assign on) / note_too_long (> 300) / already_offered / recently_requested (a cover request on this booking withdrawn in the last 24 h).';
 
 -- ---------------------------------------------------------------------
 -- 2 + 3 · The take — section → original booking → offer
@@ -485,7 +485,7 @@ begin
   end if;
 
   -- Every hard gate the pool applies, by name. The calendar is not one of
-  -- them for a take (ADR-0042): the worker has changed their mind.
+  -- them for a take (ADR-0043): the worker has changed their mind.
   select c.gate, c.qualified into v_gate, v_qualified
     from auto_assign_candidates(sr.id) c
    where c.staff_id = v_me;
@@ -598,7 +598,7 @@ begin
 end $$;
 
 comment on function public.take_offered_shift(uuid) is
-  'ADR-0045: one transaction; locks section → offerer''s booking → offer (the order every other exit from confirmed takes). Caller by staff_caller(): unknown_staff / account_closed / not_editable raise P0001. Refuses, in takeOffer()''s order: event_cancelled › offer_not_open › offer_expired › original_not_confirmed › own_offer › section_started › the pool gate by name (booked_elsewhere → overlap; no row → not_bookable) and accept_invite''s overlap / cap re-reads › already_had_booking › not_yet (RULE-17; none with auto-assign off). Then the taker is confirmed (source offer), the offer taken, the original cancelled / handed_over / self_cancelled, the taker''s overlapping invitations withdrawn, OF2 + OF4 queued. Confirmed count net zero. Never refused for the calendar (ADR-0042).';
+  'ADR-0046: one transaction; locks section → offerer''s booking → offer (the order every other exit from confirmed takes). Caller by staff_caller(): unknown_staff / account_closed / not_editable raise P0001. Refuses, in takeOffer()''s order: event_cancelled › offer_not_open › offer_expired › original_not_confirmed › own_offer › section_started › the pool gate by name (booked_elsewhere → overlap; no row → not_bookable) and accept_invite''s overlap / cap re-reads › already_had_booking › not_yet (RULE-17; none with auto-assign off). Then the taker is confirmed (source offer), the offer taken, the original cancelled / handed_over / self_cancelled, the taker''s overlapping invitations withdrawn, OF2 + OF4 queued. Confirmed count net zero. Never refused for the calendar (ADR-0043).';
 
 -- ---------------------------------------------------------------------
 -- 5 · The office declines a cover request — the note is not audited
@@ -649,7 +649,7 @@ begin
 end $$;
 
 comment on function public.office_decline_cover(uuid, text) is
-  'ADR-0045: the office closes a worker''s cover request (open → cancelled) and queues OF6; the worker stays booked. The note is the office''s own record (closed_reason), never sent to the worker and never copied into audit_log (has_note only). Admin only; audited.';
+  'ADR-0046: the office closes a worker''s cover request (open → cancelled) and queues OF6; the worker stays booked. The note is the office''s own record (closed_reason), never sent to the worker and never copied into audit_log (has_note only). Admin only; audited.';
 
 -- ---------------------------------------------------------------------
 -- 6 · The lapse — no OF3 once the section has started
@@ -689,7 +689,7 @@ begin
 end $$;
 
 comment on function public.lapse_shift_offers(timestamptz) is
-  'ADR-0045: closes every open offer past its expiry (open → lapsed, closed_reason expired) and queues OF3 — "you''re still booked" — for each that had gone to other workers, unless the section has already started. The worker stays confirmed. Service role; the auto-staffing hourly run calls it first.';
+  'ADR-0046: closes every open offer past its expiry (open → lapsed, closed_reason expired) and queues OF3 — "you''re still booked" — for each that had gone to other workers, unless the section has already started. The worker stays confirmed. Service role; the auto-staffing hourly run calls it first.';
 
 -- ---------------------------------------------------------------------
 -- Grants, as 20260930201100 set them.

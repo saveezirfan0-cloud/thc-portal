@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 /**
- * Audit D18 on the office's change-request reads (ADR-0044): a read that
+ * Audit D18 on the office's change-request reads (ADR-0045): a read that
  * failed is never an empty queue, and a count that failed is never 0.
  */
 vi.mock('next/headers', () => ({ cookies: async () => ({}) }));

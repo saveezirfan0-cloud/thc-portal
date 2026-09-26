@@ -18,7 +18,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Up for grabs · THC Staff' };
 
 /**
- * One offered shift — ADR-0045, docs/19 §4,
+ * One offered shift — ADR-0046, docs/19 §4,
  * `wireframes/staff/offer-shift.html` (i).
  *
  * Another worker offered this shift up; taking it books the worker at once

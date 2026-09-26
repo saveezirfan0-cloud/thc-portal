@@ -144,7 +144,7 @@ describe('the Inactive tab carries what the office works through (§9.6, §10.6)
     expect(html).toContain('20 h — term time until 13.12.2026');
   });
 
-  it('links to the change-request queue with the pending count (ADR-0044)', () => {
+  it('links to the change-request queue with the pending count (ADR-0045)', () => {
     const html = renderToStaticMarkup(
       <StaffScreen staff={[WORKER]} students={[]} problem={null} pendingRequests={2} />,
     );

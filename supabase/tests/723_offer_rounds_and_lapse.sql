@@ -1,5 +1,5 @@
 -- =====================================================================
--- 723 · The hourly offer rounds and the lapse (ADR-0045, ADR-0042)
+-- 723 · The hourly offer rounds and the lapse (ADR-0046, ADR-0043)
 --   20260930201100_shift_offers.sql
 --
 --   A · lapse_shift_offers(): past expiry → lapsed, OF3 for a pool offer,
@@ -87,7 +87,7 @@ insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headc
 insert into client_qualifications (client_id, role_id, staff_id) values
   (:'clientb', :'role_id', :'q1'), (:'clientb', :'role_id', :'q2'), (:'clientb', :'role_id', :'qa'),
   (:'clientb', :'role_id', :'off');
--- Quin Away has marked the section's day unavailable (ADR-0042).
+-- Quin Away has marked the section's day unavailable (ADR-0043).
 insert into staff_unavailability (staff_id, period)
 values (:'qa', tstzrange(now() + interval '15 days' - interval '1 hour', now() + interval '15 days 7 hours', '[)'));
 
@@ -153,7 +153,7 @@ select is(
 select is(notify_offer_candidates(:'o', array[:'q1'::uuid]), 0,
   'C: additive: Quin First is never pushed twice');
 select is(notify_offer_candidates(:'o', array[:'off'::uuid, :'blk'::uuid, :'qa'::uuid]), 0,
-  'C: never the offerer, a blocked worker, or one marked unavailable (ADR-0042)');
+  'C: never the offerer, a blocked worker, or one marked unavailable (ADR-0043)');
 select ok(not exists (select 1 from shift_offer_notices where offer_id = :'o' and staff_id in (:'off', :'blk', :'qa')),
   'C: none of them is recorded as told');
 

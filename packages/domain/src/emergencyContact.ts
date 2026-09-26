@@ -1,5 +1,5 @@
 /**
- * Emergency contact — ADR-0043, docs/19 §2 (an addition to Scope v1.6:
+ * Emergency contact — ADR-0044, docs/19 §2 (an addition to Scope v1.6:
  * §1.5 Staff, §9.6, §10.1 Profile details, §1.7 GDPR).
  *
  * One optional contact per worker, in `staff_emergency_contacts`: office-only

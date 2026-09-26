@@ -34,7 +34,7 @@ export interface StaffScreenProps {
   /** The tab to open on — the Inactive tab is its own table (§9.6). */
   initialFilter?: Filter;
   /**
-   * Pending name/photo change requests (ADR-0044) — "Change requests (N)".
+   * Pending name/photo change requests (ADR-0045) — "Change requests (N)".
    * Null when the count could not be read: "(?)", never a claimed 0 (D18).
    */
   pendingRequests?: number | null;
@@ -130,7 +130,7 @@ export function StaffScreen({
     >
       {problem ? <Alert tone="coral">{problem}</Alert> : null}
 
-      {/* ADR-0044: the office's queue for the name and photo §10.1 locks. */}
+      {/* ADR-0045: the office's queue for the name and photo §10.1 locks. */}
       <div className="staff-requests-link">
         <Link
           href="/staff/requests"

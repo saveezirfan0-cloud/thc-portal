@@ -6,7 +6,7 @@ import type { ChangeRequestRow, ChangeRequestView } from './types';
 
 /**
  * Reads for the change-request queue (/staff/requests) and the /staff/:id
- * banner — ADR-0044.
+ * banner — ADR-0045.
  *
  * Through `office_profile_change_requests()` rather than the table, for one
  * reason: the Decided tab names the manager who decided, and an admin can

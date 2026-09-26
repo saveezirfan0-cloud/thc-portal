@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Migration 20260930202100 · the worker's own emergency contact
 --   docs/19-staff-features-plan.md §2 (Phase 1, Agent B · staff-pwa)
---   ADR-0043 (proposed — awaiting THC) · Q11, Q12
+--   ADR-0044 (proposed — awaiting THC) · Q11, Q12
 --
 --   my_emergency_contact()                         read
 --   save_my_emergency_contact(name, relationship, phone)
@@ -17,7 +17,7 @@
 -- here queues a notification, and no client_* view, PDF or report reads
 -- the table (pgTAP 700).
 --
--- Who may do what (ADR-0043 "Consequences"):
+-- Who may do what (ADR-0044 "Consequences"):
 --   a working worker        read · save · clear
 --   a leaver (inactive)     read only — not_editable on save / clear
 --   a removed worker        nothing — account_closed
@@ -61,7 +61,7 @@ begin
 end $$;
 
 comment on function public.my_emergency_contact() is
-  'ADR-0043: the calling worker''s own emergency contact ({name, relationship, phone, updatedAt}) or null. A leaver may read it; a removed worker is refused (account_closed). Takes no staff id; never returns updated_by.';
+  'ADR-0044: the calling worker''s own emergency contact ({name, relationship, phone, updatedAt}) or null. A leaver may read it; a removed worker is refused (account_closed). Takes no staff id; never returns updated_by.';
 
 create or replace function public.save_my_emergency_contact(
   p_name         text,
@@ -106,7 +106,7 @@ begin
   end if;
   if v_phone !~ '^\+[1-9][0-9]{6,14}$' then
     raise exception 'bad_phone' using errcode = 'P0001',
-      hint = 'ADR-0043: E.164, with the country code — the /apply rule.';
+      hint = 'ADR-0044: E.164, with the country code — the /apply rule.';
   end if;
 
   insert into staff_emergency_contacts (staff_id, name, relationship, phone, updated_at, updated_by)
@@ -123,7 +123,7 @@ begin
 end $$;
 
 comment on function public.save_my_emergency_contact(text, text, text) is
-  'ADR-0043: saves the calling worker''s emergency contact (name 1–100, relationship 1–40, phone E.164 after dropping separators). Raises name_required, name_too_long, relationship_required, relationship_too_long, bad_phone; not_editable for a leaver; account_closed for a removed worker. No notification.';
+  'ADR-0044: saves the calling worker''s emergency contact (name 1–100, relationship 1–40, phone E.164 after dropping separators). Raises name_required, name_too_long, relationship_required, relationship_too_long, bad_phone; not_editable for a leaver; account_closed for a removed worker. No notification.';
 
 create or replace function public.clear_my_emergency_contact()
 returns jsonb
@@ -153,7 +153,7 @@ begin
 end $$;
 
 comment on function public.clear_my_emergency_contact() is
-  'ADR-0043: removes the calling worker''s emergency contact. not_editable for a leaver; account_closed for a removed worker.';
+  'ADR-0044: removes the calling worker''s emergency contact. not_editable for a leaver; account_closed for a removed worker.';
 
 revoke execute on function public.my_emergency_contact()                        from public, anon;
 revoke execute on function public.save_my_emergency_contact(text, text, text)   from public, anon;

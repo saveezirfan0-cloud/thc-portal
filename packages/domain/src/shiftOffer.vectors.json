@@ -1,26 +1,26 @@
 {
-  "description": "ADR-0045 offer up a shift (docs/19 §4). The contract between SHIFT_OFFER_TRANSITIONS / SHIFT_OFFER_MODE_TRANSITIONS in state.ts, canOfferShift / offerExpiresAt / takeOffer / offerVisibleTo in shiftOffer.ts, and shift_offer_transitions(), shift_offer_mode_transitions() and the shift_offers_state_guard trigger in 20260930200100_staff_additions_schema.sql (take_offered_shift() in 20260930201100 is held to the take cases). Every pair of distinct statuses NOT listed under edges is illegal; staying in the same status is not a transition. In take and visibility inputs, candidate=false means the worker has no auto_assign_candidates row at all (gate undefined); wave1Exhausted means every wave-1 candidate has been pushed the offer, and autoAssign=false (the event or role switch off) makes wave 1 count as exhausted at once (offerWave1Exhausted(); offer_wave1_exhausted() since 20260930205000). visibility.bookingStatus is the viewer's own booking on the section (null = none). Regenerate the pgTAP half with: node packages/domain/scripts/gen-vectors-sql.mjs",
+  "description": "ADR-0046 offer up a shift (docs/19 §4). The contract between SHIFT_OFFER_TRANSITIONS / SHIFT_OFFER_MODE_TRANSITIONS in state.ts, canOfferShift / offerExpiresAt / takeOffer / offerVisibleTo in shiftOffer.ts, and shift_offer_transitions(), shift_offer_mode_transitions() and the shift_offers_state_guard trigger in 20260930200100_staff_additions_schema.sql (take_offered_shift() in 20260930201100 is held to the take cases). Every pair of distinct statuses NOT listed under edges is illegal; staying in the same status is not a transition. In take and visibility inputs, candidate=false means the worker has no auto_assign_candidates row at all (gate undefined); wave1Exhausted means every wave-1 candidate has been pushed the offer, and autoAssign=false (the event or role switch off) makes wave 1 count as exhausted at once (offerWave1Exhausted(); offer_wave1_exhausted() since 20260930205000). visibility.bookingStatus is the viewer's own booking on the section (null = none). Regenerate the pgTAP half with: node packages/domain/scripts/gen-vectors-sql.mjs",
   "statuses": ["open", "taken", "withdrawn", "lapsed", "cancelled"],
   "edges": [
     {
       "from": "open",
       "to": "taken",
-      "ref": "ADR-0045 a confirmed replacement takes it (take_offered_shift); OF2 + OF4"
+      "ref": "ADR-0046 a confirmed replacement takes it (take_offered_shift); OF2 + OF4"
     },
     {
       "from": "open",
       "to": "withdrawn",
-      "ref": "ADR-0045 the worker withdraws the offer (withdraw_shift_offer)"
+      "ref": "ADR-0046 the worker withdraws the offer (withdraw_shift_offer)"
     },
     {
       "from": "open",
       "to": "lapsed",
-      "ref": "ADR-0045 expiry at start - 72 h (OF3), the booking leaving confirmed by any other cause, §1.7 GDPR"
+      "ref": "ADR-0046 expiry at start - 72 h (OF3), the booking leaving confirmed by any other cause, §1.7 GDPR"
     },
     {
       "from": "open",
       "to": "cancelled",
-      "ref": "ADR-0045 the office declines a cover request (office_decline_cover); OF6"
+      "ref": "ADR-0046 the office declines a cover request (office_decline_cover); OF6"
     }
   ],
   "modes": ["pool", "office", "direct"],
@@ -28,7 +28,7 @@
     {
       "from": "office",
       "to": "pool",
-      "ref": "ADR-0045 the office opens a cover request to the pool (office_open_offer_to_pool), only while open"
+      "ref": "ADR-0046 the office opens a cover request to the pool (office_open_offer_to_pool), only while open"
     }
   ],
   "canOffer": [

@@ -1,4 +1,4 @@
-# ADR-0045 · Offer up a shift: the booking is released only when a confirmed replacement takes it
+# ADR-0046 · Offer up a shift: the booking is released only when a confirmed replacement takes it
 
 Status: proposed — awaiting THC · 25.09.2026
 
@@ -37,7 +37,7 @@ steps.
    (`source = 'offer'`); the original → `cancelled`, `cancel_cause = 'handed_over'`,
    `self_cancelled = true`; the offer → `taken`; the taker's overlapping invitations are
    withdrawn as on Accept; OF2 + OF4 queued. The confirmed count is net zero, so no
-   N10c. Being marked unavailable (ADR-0042) does not refuse a take.
+   N10c. Being marked unavailable (ADR-0043) does not refuse a take.
 3. **Inside 72 h, only through the office.** "Ask the office for cover" creates an
    `office` offer (not visible, not pushed); OF5 emails admin@ at once; the worker stays
    confirmed. The office **opens it to the pool** (mode `pool`, expiring at the section
@@ -129,7 +129,7 @@ The decision above stands. Where the build had to choose, it chose this:
 4. **RULE-17 is re-checked in SQL.** `notify_offer_candidates()` takes wave 1 first
    whatever order it is given, and refuses a wave-2 push while a wave-1 worker is still
    untold. `offer_wave1_exhausted()` leaves out wave-1 workers marked unavailable
-   (ADR-0042): the calendar keeps the pushes from them, so waiting for them to be told
+   (ADR-0043): the calendar keeps the pushes from them, so waiting for them to be told
    would wait for ever.
 5. **Ask the office for cover** is offered inside 72 h, and also further out when
    auto-assign is off (the wireframe's (a) note). More than 72 h out with auto-assign on,

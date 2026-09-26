@@ -23,7 +23,7 @@ import {
 } from '../state';
 
 /**
- * ADR-0044 (docs/19 §3). The machine exists twice — CHANGE_REQUEST_TRANSITIONS
+ * ADR-0045 (docs/19 §3). The machine exists twice — CHANGE_REQUEST_TRANSITIONS
  * and profile_change_transitions() + profile_change_requests_state_guard in
  * 20260930200100 — and both are held to changeRequest.vectors.json: here, and
  * in pgTAP 701 through change_request_vectors.psql.
@@ -89,7 +89,7 @@ describe('change request machine — shared vectors (TS ↔ SQL profile_change_t
   });
 
   it('every edge carries its reference', () => {
-    for (const e of vectors.edges) expect(e.ref).toMatch(/ADR-0044/);
+    for (const e of vectors.edges) expect(e.ref).toMatch(/ADR-0045/);
   });
 });
 

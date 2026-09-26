@@ -8,7 +8,7 @@ import type { StaffProfile } from '../profile/types';
  *
  * `appLock()` is the rule (#42) and is not restated here. What this adds is
  * the one decision `StaffShell` leaves to the screen: Documents is the
- * screen lock case 1 KEEPS (under the Profile tab, ADR-0041), so these screens render their own content under that
+ * screen lock case 1 KEEPS (under the Profile tab, ADR-0042), so these screens render their own content under that
  * lock (`ignoreLock`) while every terminal case — the manual hold (case 2),
  * the failed quiz (case 3), the leaver, a removal — falls through to the
  * shell's lock screen, which is how case 2's "the Documents tab is not

@@ -3,7 +3,7 @@ import type { ChangeKind } from '@thc/domain';
 
 /**
  * Request a change — what the worker reads about their own requests
- * (ADR-0044, docs/19 §3, `wireframes/staff/request-change.html`).
+ * (ADR-0045, docs/19 §3, `wireframes/staff/request-change.html`).
  *
  * §10.1's name and photo locks never move; a request is the in-app route
  * to the office, which decides on /staff/requests. This file turns the rows

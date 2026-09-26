@@ -4,7 +4,7 @@
 -- Source: packages/domain/src/availability.vectors.json
 -- Regenerate: pnpm --filter @thc/domain gen:vectors
 --
--- ADR-0042: unavailability_range() and staff_unavailable() against the
+-- ADR-0043: unavailability_range() and staff_unavailable() against the
 -- cases availability.ts is held to. Dates and times are UK wall clock;
 -- lower/upper are the half-open range in UTC. `error` is the refusal the
 -- builder raises instead of a range.

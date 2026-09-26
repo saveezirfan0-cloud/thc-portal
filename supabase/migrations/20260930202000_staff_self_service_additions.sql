@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Migration 20260930202000 · the worker's availability calendar
 --   docs/19-staff-features-plan.md §1 (Phase 1, Agent B · staff-pwa)
---   ADR-0042 (proposed — awaiting THC) · Q9, Q10
+--   ADR-0043 (proposed — awaiting THC) · Q9, Q10
 --
 -- The three RPCs /profile/availability calls. The table, its CHECKs, the
 -- builder unavailability_range() and the gate staff_unavailable() are
@@ -29,7 +29,7 @@
 -- A calendar entry never touches a booking. Saving one over a confirmed
 -- shift returns that shift as a conflict so the screen can say "Marking
 -- yourself unavailable doesn't cancel this shift — use Cancel or Offer on
--- the shift." (ADR-0042 §1); the booking, and any open invitation, are
+-- the shift." (ADR-0043 §1); the booking, and any open invitation, are
 -- untouched. Overlap is measured against the ROLE SECTION (RULE-18).
 --
 -- Forward-only.
@@ -96,7 +96,7 @@ begin
 end $$;
 
 comment on function public.my_unavailability(timestamptz, timestamptz) is
-  'ADR-0042: the calling worker''s own availability entries still running at p_from (default now) and starting before p_to. Takes no staff id. Refuses a leaver (not_editable) and a removed worker (account_closed).';
+  'ADR-0043: the calling worker''s own availability entries still running at p_from (default now) and starting before p_to. Takes no staff id. Refuses a leaver (not_editable) and a removed worker (account_closed).';
 
 -- ---------------------------------------------------------------------
 -- add_my_unavailability — one entry and its weekly copies, in one go.
@@ -243,7 +243,7 @@ begin
 end $$;
 
 comment on function public.add_my_unavailability(date, date, time, time, int) is
-  'ADR-0042: saves one availability entry for the calling worker (UK dates/times; all day when both times are null) plus p_repeat_weeks weekly copies sharing a series_id. {ok:false, reason} for bad_window › in_past › too_far › too_long › too_many (validateUnavailability() in packages/domain). Returns the worker''s confirmed bookings the entries overlap (by role section, RULE-18) as conflicts — never cancels them.';
+  'ADR-0043: saves one availability entry for the calling worker (UK dates/times; all day when both times are null) plus p_repeat_weeks weekly copies sharing a series_id. {ok:false, reason} for bad_window › in_past › too_far › too_long › too_many (validateUnavailability() in packages/domain). Returns the worker''s confirmed bookings the entries overlap (by role section, RULE-18) as conflicts — never cancels them.';
 
 -- ---------------------------------------------------------------------
 -- remove_my_unavailability — one entry, or the rest of its series.
@@ -300,7 +300,7 @@ begin
 end $$;
 
 comment on function public.remove_my_unavailability(uuid, boolean) is
-  'ADR-0042: deletes one of the calling worker''s availability entries, or (p_whole_series) it and every copy of its series not yet over. not_found for an id that is not theirs.';
+  'ADR-0043: deletes one of the calling worker''s availability entries, or (p_whole_series) it and every copy of its series not yet over. not_found for an id that is not theirs.';
 
 -- ---------------------------------------------------------------------
 -- Grants (docs/19 §0.2; pgTAP 190 2e/2f).

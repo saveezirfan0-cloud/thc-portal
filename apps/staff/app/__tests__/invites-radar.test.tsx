@@ -91,7 +91,7 @@ vi.mock('../data', async (importOriginal) => ({
   }),
 }));
 
-// ADR-0045's two offer reads (audit D18): they succeed with nothing unless
+// ADR-0046's two offer reads (audit D18): they succeed with nothing unless
 // a test says otherwise.
 type OfferLoad = { rows: never[]; problem: string | null };
 const offerReads = vi.hoisted(() => ({
@@ -522,7 +522,7 @@ describe('/radar/:id', () => {
 });
 
 /**
- * Audit D18 on ADR-0045's offer reads: a failed read shows `<LoadProblem>`,
+ * Audit D18 on ADR-0046's offer reads: a failed read shows `<LoadProblem>`,
  * never "Nothing open nearby", a missing Offered chip, or a 404.
  */
 describe('offer reads that fail (audit D18)', () => {

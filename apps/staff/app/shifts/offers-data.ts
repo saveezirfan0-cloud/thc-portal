@@ -4,7 +4,7 @@ import type { Found, Loaded } from '../data';
 import type { BookingOffer } from './offers';
 
 /**
- * The two offer reads the Staff App makes — ADR-0045, docs/19 §4.
+ * The two offer reads the Staff App makes — ADR-0046, docs/19 §4.
  *
  * Both are `security definer` RPCs (20260930201100) that resolve the
  * caller themselves, like `staff_bookings()` and `staff_open_shifts()`:

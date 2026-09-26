@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20260930200100 · the staff additions — schema only
---   docs/19-staff-features-plan.md, Phase 0-A; ADR-0042 … ADR-0046
+--   docs/19-staff-features-plan.md, Phase 0-A; ADR-0043 … ADR-0047
 --   (additions to Scope v1.6, status proposed — awaiting THC)
 --
 -- Five features the product owner approved on 25.09.2026, each an addition
@@ -10,14 +10,14 @@
 -- D 140000), which reference only what is created here and what already
 -- exists.
 --
---   §1 staff_unavailability      ADR-0042 availability calendar — a hard gate
+--   §1 staff_unavailability      ADR-0043 availability calendar — a hard gate
 --                                for automated invitations only
---   §2 staff_emergency_contacts  ADR-0043 office-only worker data, never on a
+--   §2 staff_emergency_contacts  ADR-0044 office-only worker data, never on a
 --                                client document
---   §3 profile_change_requests   ADR-0044 request a change of name or photo
---   §4 shift_offers,             ADR-0045 offer up a shift: released only
+--   §3 profile_change_requests   ADR-0045 request a change of name or photo
+--   §4 shift_offers,             ADR-0046 offer up a shift: released only
 --      shift_offer_notices       when a confirmed replacement takes it
---   §5 staff_referral_codes,     ADR-0046 refer a friend: recorded, no reward
+--   §5 staff_referral_codes,     ADR-0047 refer a friend: recorded, no reward
 --      application_referrals
 --
 -- The rules every table here keeps (docs/19 §0):
@@ -40,7 +40,7 @@
 --      restated. Not RPC-callable (20260927161000).
 --
 -- Also here, because the vocabulary is shared and Phase 1 must not race
--- for it: bookings_cancel_cause_check gains 'handed_over' (ADR-0045,
+-- for it: bookings_cancel_cause_check gains 'handed_over' (ADR-0046,
 -- restated from 20260924120000 with the one value added), and
 -- booking_reopenable_by() classifies it 'never' (restated from main's
 -- 20260930110100, its latest body, with the one line added). booking_source
@@ -50,7 +50,7 @@
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- 0 · bookings.cancel_cause += 'handed_over' (ADR-0045, RULE-04 §3.6)
+-- 0 · bookings.cancel_cause += 'handed_over' (ADR-0046, RULE-04 §3.6)
 --
 -- The one cause take_offered_shift() writes on the ORIGINAL booking when a
 -- confirmed replacement takes it. It is a `cancelled` cause, and like
@@ -71,10 +71,10 @@ alter table bookings add constraint bookings_cancel_cause_check check (
 );
 
 comment on column bookings.cancel_cause is
-  'Why the booking left the live states (Scope §3.6). cancelled: office_withdraw · ready_cutoff · self_cancel · handed_over (ADR-0045) · overlap_auto_withdraw · event_cancelled · blocked · blocked_invite · left · left_invite · gdpr · gdpr_invite. closed: slot_taken · declined · withdrawn_by_worker. Null while live. CANCEL_CAUSES in packages/domain/src/state.ts; bookings_cancel_cause_check.';
+  'Why the booking left the live states (Scope §3.6). cancelled: office_withdraw · ready_cutoff · self_cancel · handed_over (ADR-0046) · overlap_auto_withdraw · event_cancelled · blocked · blocked_invite · left · left_invite · gdpr · gdpr_invite. closed: slot_taken · declined · withdrawn_by_worker. Null while live. CANCEL_CAUSES in packages/domain/src/state.ts; bookings_cancel_cause_check.';
 
 -- ---------------------------------------------------------------------
--- 0b · booking_reopenable_by() += 'handed_over' → 'never' (ADR-0045)
+-- 0b · booking_reopenable_by() += 'handed_over' → 'never' (ADR-0046)
 --
 -- main's 20260930110100 (D33, ADR-0037) — the latest body — byte for byte
 -- with one `when` added. A completed hand-over sets self_cancelled, so
@@ -99,7 +99,7 @@ as $$
     when p_status = 'cancelled' then
       case coalesce(p_cause, '')
         when 'self_cancel'     then 'never'
-        when 'handed_over'     then 'never'   -- ADR-0045: sets self_cancelled, the same bar
+        when 'handed_over'     then 'never'   -- ADR-0046: sets self_cancelled, the same bar
         when 'event_cancelled' then 'never'
         when 'gdpr'            then 'never'
         when 'gdpr_invite'     then 'never'
@@ -115,13 +115,13 @@ as $$
 $$;
 
 comment on function public.booking_reopenable_by(booking_status, text) is
-  'Who may reopen an ended booking row on the same section (§3.6, ADR-0037): ''never'' (self_cancel — RULE-04 — handed_over — ADR-0045, the same bar — event_cancelled, gdpr), ''anyone'' (ended by circumstance: slot_taken, overlap_auto_withdraw, a block/leave cascade — an auto-assign round may re-invite), ''person'' (ended by a decision: declined, withdrawn_by_worker, office_withdraw, ready_cutoff — only the office''s manual invite or the worker''s own Radar application reopens it). Null for a live row. Mirrors bookingReopenableBy() in packages/domain/src/state.ts.';
+  'Who may reopen an ended booking row on the same section (§3.6, ADR-0037): ''never'' (self_cancel — RULE-04 — handed_over — ADR-0046, the same bar — event_cancelled, gdpr), ''anyone'' (ended by circumstance: slot_taken, overlap_auto_withdraw, a block/leave cascade — an auto-assign round may re-invite), ''person'' (ended by a decision: declined, withdrawn_by_worker, office_withdraw, ready_cutoff — only the office''s manual invite or the worker''s own Radar application reopens it). Null for a live row. Mirrors bookingReopenableBy() in packages/domain/src/state.ts.';
 
 revoke execute on function public.booking_reopenable_by(booking_status, text) from public, anon;
 grant  execute on function public.booking_reopenable_by(booking_status, text) to authenticated, service_role;
 
 -- ---------------------------------------------------------------------
--- §1 · staff_unavailability (ADR-0042)
+-- §1 · staff_unavailability (ADR-0043)
 --
 -- One row per entry: a half-open, finite, non-empty tstzrange of at most 31
 -- UK calendar days. No reason column, on purpose — a reason field invites
@@ -161,7 +161,7 @@ create index if not exists staff_unavailability_series_idx
   on staff_unavailability (series_id) where series_id is not null;
 
 comment on table staff_unavailability is
-  'ADR-0042: days and times a worker has said they cannot work. A hard gate for automated invitations and offer pushes only — never for a manual invite, the worker''s own Accept / apply / take, an open invitation or a confirmed booking. No reason column (Q10). Admin-read; the worker reads and writes through definer RPCs (docs/19 §1). Deleted on GDPR removal.';
+  'ADR-0043: days and times a worker has said they cannot work. A hard gate for automated invitations and offer pushes only — never for a manual invite, the worker''s own Accept / apply / take, an open invitation or a confirmed booking. No reason column (Q10). Admin-read; the worker reads and writes through definer RPCs (docs/19 §1). Deleted on GDPR removal.';
 comment on column staff_unavailability.period is
   'Half-open [start, end) in UTC, built by unavailability_range() from UK dates and times. At most 31 UK calendar days.';
 comment on column staff_unavailability.series_id is
@@ -191,7 +191,7 @@ declare
 begin
   if p_from_date is null or v_to_date < p_from_date or (p_from is null) <> (p_to is null) then
     raise exception 'bad_window' using errcode = '22023',
-      hint = 'ADR-0042: a date (or range) and either both times or neither.';
+      hint = 'ADR-0043: a date (or range) and either both times or neither.';
   end if;
 
   if p_from is null then
@@ -201,7 +201,7 @@ begin
     if v_to_date = p_from_date then
       if p_to = p_from then
         raise exception 'bad_window' using errcode = '22023',
-          hint = 'ADR-0042: from and to are the same time.';
+          hint = 'ADR-0043: from and to are the same time.';
       end if;
       v_end_date := case when p_to < p_from then p_from_date + 1 else p_from_date end;
     else
@@ -218,7 +218,7 @@ begin
 end $$;
 
 comment on function public.unavailability_range(date, date, time, time) is
-  'ADR-0042: the half-open range one availability entry covers, from UK dates and times (Europe/London). All day when both times are null; to <= from on one date runs overnight; raises bad_window (22023) for from == to, one time alone, or to_date before from_date. Mirrors unavailabilityRange() in packages/domain; availability.vectors.json holds both.';
+  'ADR-0043: the half-open range one availability entry covers, from UK dates and times (Europe/London). All day when both times are null; to <= from on one date runs overnight; raises bad_window (22023) for from == to, one time alone, or to_date before from_date. Mirrors unavailabilityRange() in packages/domain; availability.vectors.json holds both.';
 
 -- The gate. `&&` against the ROLE SECTION's window (RULE-18), half-open on
 -- both sides, so an entry ending at 17:00 misses a section starting then.
@@ -242,10 +242,10 @@ as $$
 $$;
 
 comment on function public.staff_unavailable(uuid, timestamptz, timestamptz) is
-  'ADR-0042: whether the worker has an availability entry overlapping [p_starts, p_ends) — pass the role section''s window (RULE-18). The gate invite_worker(''auto''|''escalation'') and the offer pushes apply (Agent A); never applied to a manual invite or anything the worker does. Invoker: a worker calling it reads no rows.';
+  'ADR-0043: whether the worker has an availability entry overlapping [p_starts, p_ends) — pass the role section''s window (RULE-18). The gate invite_worker(''auto''|''escalation'') and the offer pushes apply (Agent A); never applied to a manual invite or anything the worker does. Invoker: a worker calling it reads no rows.';
 
 -- ---------------------------------------------------------------------
--- §2 · staff_emergency_contacts (ADR-0043)
+-- §2 · staff_emergency_contacts (ADR-0044)
 --
 -- One optional contact per worker. A separate table, not a staff column:
 -- that keeps it out of #44's column-grant regime and out of every staff
@@ -273,12 +273,12 @@ create index if not exists staff_emergency_contacts_updated_by_idx
   on staff_emergency_contacts (updated_by);
 
 comment on table staff_emergency_contacts is
-  'ADR-0043: a worker''s optional emergency contact. Office-only worker personal data: never on a client document, never in a client_* view, never in packages/pdf. Admin-read; written through definer RPCs (docs/19 §2). Deleted on GDPR removal.';
+  'ADR-0044: a worker''s optional emergency contact. Office-only worker personal data: never on a client document, never in a client_* view, never in packages/pdf. Admin-read; written through definer RPCs (docs/19 §2). Deleted on GDPR removal.';
 comment on column staff_emergency_contacts.phone is
   'E.164, ^\+[1-9][0-9]{6,14}$ — the /apply rule. normaliseEmergencyPhone() in packages/domain strips what a person types between the digits.';
 
 -- ---------------------------------------------------------------------
--- §3 · profile_change_requests (ADR-0044)
+-- §3 · profile_change_requests (ADR-0045)
 --
 -- §10.1 locks the name and the photo; this is the office's queue for a
 -- correction. One pending request per worker per kind. The proposed values
@@ -360,7 +360,7 @@ create index if not exists profile_change_requests_decided_by_idx
   on profile_change_requests (decided_by);
 
 comment on table profile_change_requests is
-  'ADR-0044: a worker''s request to change the name or photo §10.1 locks. One pending per worker per kind; proposed values immutable (GDPR anonymisation excepted); a rejection carries decision_reason, which the worker is shown. Admin-read; written through definer RPCs (docs/19 §3). The machine is profile_change_transitions().';
+  'ADR-0045: a worker''s request to change the name or photo §10.1 locks. One pending per worker per kind; proposed values immutable (GDPR anonymisation excepted); a rejection carries decision_reason, which the worker is shown. Admin-read; written through definer RPCs (docs/19 §3). The machine is profile_change_transitions().';
 comment on column profile_change_requests.previous_value is
   'The value on the profile at the moment of the decision, e.g. {"firstName","lastName"} or {"photoPath"}. Issued PDFs and payroll exports are never corrected retroactively (§1.7).';
 comment on column profile_change_requests.decision_reason is
@@ -383,7 +383,7 @@ as $$
 $$;
 
 comment on function public.profile_change_transitions() is
-  'The profile_change_requests machine (ADR-0044): pending → approved | rejected | withdrawn; the three outcomes are terminal ("Request again" is a new row). Equal to CHANGE_REQUEST_TRANSITIONS in packages/domain.';
+  'The profile_change_requests machine (ADR-0045): pending → approved | rejected | withdrawn; the three outcomes are terminal ("Request again" is a new row). Equal to CHANGE_REQUEST_TRANSITIONS in packages/domain.';
 
 create or replace function public.profile_change_requests_state_guard()
 returns trigger
@@ -405,7 +405,7 @@ begin
                     where t.from_status = old.status and t.to_status = new.status) then
       raise exception 'illegal_change_request_transition: % -> %', old.status, new.status
         using errcode = 'P0001',
-              hint = 'ADR-0044. The legal edges are listed by profile_change_transitions().';
+              hint = 'ADR-0045. The legal edges are listed by profile_change_transitions().';
     end if;
     -- Leaving pending is the decision.
     new.decided_at := coalesce(new.decided_at, now());
@@ -414,7 +414,7 @@ begin
   if (new.staff_id, new.kind, new.created_at)
        is distinct from (old.staff_id, old.kind, old.created_at) then
     raise exception 'change_request_immutable' using errcode = 'P0001',
-      hint = 'ADR-0044: a request''s worker, kind and creation time never change.';
+      hint = 'ADR-0045: a request''s worker, kind and creation time never change.';
   end if;
 
   -- The office approves exactly what was asked. The one exception is §1.7:
@@ -424,7 +424,7 @@ begin
      (old.proposed_first_name, old.proposed_last_name, old.proposed_photo_path, old.evidence_path)
      and not exists (select 1 from staff s where s.id = old.staff_id and s.removed_at is not null) then
     raise exception 'change_request_immutable' using errcode = 'P0001',
-      hint = 'ADR-0044: the proposed values are fixed when the request is made. Withdraw it and ask again.';
+      hint = 'ADR-0045: the proposed values are fixed when the request is made. Withdraw it and ask again.';
   end if;
   return new;
 end $$;
@@ -438,7 +438,7 @@ comment on function public.profile_change_requests_state_guard() is
   'Refuses any profile_change_requests status change that is not an edge of profile_change_transitions(), a request inserted already decided, and any change to the proposed values (except the §1.7 anonymisation of a removed worker). Stamps decided_at on leaving pending. The DB half of assertChangeRequestTransition() in packages/domain.';
 
 -- ---------------------------------------------------------------------
--- §4 · shift_offers, shift_offer_notices (ADR-0045)
+-- §4 · shift_offers, shift_offer_notices (ADR-0046)
 --
 -- A worker offers a confirmed booking up and STAYS CONFIRMED until a
 -- replacement takes it; fill, buffer, shift_fill and the client line-up
@@ -512,7 +512,7 @@ create index if not exists shift_offers_swap_idx
   on shift_offers (swap_group_id) where swap_group_id is not null;
 
 comment on table shift_offers is
-  'ADR-0045: a confirmed booking offered up by its worker, who stays confirmed until a replacement takes it (take_offered_shift, Agent A). One open per booking. Admin-read; written through definer RPCs and the auto-staffing job. Radar reads open pool offers through a definer RPC that never returns the offerer. The machine is shift_offer_transitions(); the one mode change is shift_offer_mode_transitions().';
+  'ADR-0046: a confirmed booking offered up by its worker, who stays confirmed until a replacement takes it (take_offered_shift, Agent A). One open per booking. Admin-read; written through definer RPCs and the auto-staffing job. Radar reads open pool offers through a definer RPC that never returns the offerer. The machine is shift_offer_transitions(); the one mode change is shift_offer_mode_transitions().';
 comment on column shift_offers.expires_at is
   'When the offer stops being takeable: start − 72 h for a worker''s pool offer (offerExpiresAt / cancelDeadline); the section start for a cover request the office opened to the pool.';
 comment on column shift_offers.closed_reason is
@@ -528,7 +528,7 @@ create table if not exists shift_offer_notices (
 create index if not exists shift_offer_notices_staff_idx on shift_offer_notices (staff_id);
 
 comment on table shift_offer_notices is
-  'ADR-0045: who has been pushed an offer (OF1), one row per worker per offer, so the hourly rounds are additive and nobody is pushed twice. Admin-read; written by notify_offer_candidates() (Agent A).';
+  'ADR-0046: who has been pushed an offer (OF1), one row per worker per offer, so the hourly rounds are additive and nobody is pushed twice. Admin-read; written by notify_offer_candidates() (Agent A).';
 
 -- The machines. SHIFT_OFFER_TRANSITIONS and SHIFT_OFFER_MODE_TRANSITIONS in
 -- packages/domain/src/state.ts; shiftOffer.vectors.json holds both.
@@ -547,7 +547,7 @@ as $$
 $$;
 
 comment on function public.shift_offer_transitions() is
-  'The shift_offers machine (ADR-0045): open → taken | withdrawn | lapsed | cancelled; the four outcomes are terminal. Equal to SHIFT_OFFER_TRANSITIONS in packages/domain.';
+  'The shift_offers machine (ADR-0046): open → taken | withdrawn | lapsed | cancelled; the four outcomes are terminal. Equal to SHIFT_OFFER_TRANSITIONS in packages/domain.';
 
 create or replace function public.shift_offer_mode_transitions()
 returns table (from_mode text, to_mode text)
@@ -561,7 +561,7 @@ as $$
 $$;
 
 comment on function public.shift_offer_mode_transitions() is
-  'The one mode change a shift offer has (ADR-0045): office → pool, while open (office_open_offer_to_pool). Equal to SHIFT_OFFER_MODE_TRANSITIONS in packages/domain.';
+  'The one mode change a shift offer has (ADR-0046): office → pool, while open (office_open_offer_to_pool). Equal to SHIFT_OFFER_MODE_TRANSITIONS in packages/domain.';
 
 create or replace function public.shift_offers_state_guard()
 returns trigger
@@ -604,7 +604,7 @@ begin
      (old.booking_id, old.shift_id, old.offered_by_staff_id, old.target_staff_id,
       old.swap_group_id, old.created_at) then
     raise exception 'shift_offer_immutable' using errcode = 'P0001',
-      hint = 'ADR-0045: an offer''s booking, worker and target never change.';
+      hint = 'ADR-0046: an offer''s booking, worker and target never change.';
   end if;
 
   if new.mode is distinct from old.mode
@@ -613,7 +613,7 @@ begin
                            where m.from_mode = old.mode and m.to_mode = new.mode)) then
     raise exception 'illegal_shift_offer_mode: % -> %', old.mode, new.mode
       using errcode = 'P0001',
-            hint = 'ADR-0045: only office → pool, while the offer is open.';
+            hint = 'ADR-0046: only office → pool, while the offer is open.';
   end if;
 
   if new.status is distinct from old.status then
@@ -621,7 +621,7 @@ begin
                     where t.from_status = old.status and t.to_status = new.status) then
       raise exception 'illegal_shift_offer_transition: % -> %', old.status, new.status
         using errcode = 'P0001',
-              hint = 'ADR-0045. The legal edges are listed by shift_offer_transitions().';
+              hint = 'ADR-0046. The legal edges are listed by shift_offer_transitions().';
     end if;
     new.closed_at := coalesce(new.closed_at, now());
   end if;
@@ -637,7 +637,7 @@ comment on function public.shift_offers_state_guard() is
   'Refuses any shift_offers status change that is not an edge of shift_offer_transitions(), any mode change but office → pool while open, an offer inserted already closed, and any change to its booking, worker, target or swap group. Fills shift_id / offered_by_staff_id from the booking on insert. Stamps closed_at on leaving open. The DB half of assertShiftOfferTransition() in packages/domain.';
 
 -- ---------------------------------------------------------------------
--- §5 · staff_referral_codes, application_referrals (ADR-0046)
+-- §5 · staff_referral_codes, application_referrals (ADR-0047)
 --
 -- One code per compliant worker, minted lazily by my_referral_code()
 -- (Agent B), eight characters with no I, O, 0 or 1. An application that
@@ -653,7 +653,7 @@ create table if not exists staff_referral_codes (
 );
 
 comment on table staff_referral_codes is
-  'ADR-0046: a worker''s referral code for /apply?ref=. One per worker, never reissued; revoked (revoked_at) on GDPR removal. Admin-read; minted by a definer RPC (docs/19 §5).';
+  'ADR-0047: a worker''s referral code for /apply?ref=. One per worker, never reissued; revoked (revoked_at) on GDPR removal. Admin-read; minted by a definer RPC (docs/19 §5).';
 
 create table if not exists application_referrals (
   application_id     uuid primary key references applications(id) on delete cascade,
@@ -672,7 +672,7 @@ create index if not exists application_referrals_candidate_idx
   on application_referrals (candidate_staff_id);
 
 comment on table application_referrals is
-  'ADR-0046: an application that arrived with a referral code — who referred whom. Kept on GDPR removal of either side (the removed person reads "Deleted account #id"). Admin-read; written only by record_application_referral() (Agent D). The applicant never sees the referrer; the referrer sees a count (Q20).';
+  'ADR-0047: an application that arrived with a referral code — who referred whom. Kept on GDPR removal of either side (the removed person reads "Deleted account #id"). Admin-read; written only by record_application_referral() (Agent D). The applicant never sees the referrer; the referrer sees a count (Q20).';
 
 -- ---------------------------------------------------------------------
 -- RLS: admin_read on all seven, nothing for staff, client or anon.

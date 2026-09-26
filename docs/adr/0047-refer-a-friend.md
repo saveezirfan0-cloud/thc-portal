@@ -1,4 +1,4 @@
-# ADR-0046 · Refer a friend: a referral code on /apply, recorded, no reward
+# ADR-0047 · Refer a friend: a referral code on /apply, recorded, no reward
 
 Status: proposed — awaiting THC · 25.09.2026
 

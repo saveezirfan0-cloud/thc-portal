@@ -8,7 +8,7 @@ import type { NavCounts } from './OfficeSidebar';
  *
  * Compliance's "Needs review" queue (§4.1, "the menu counter is this
  * number" — wireframes/backoffice/compliance.html), and Staff's pending
- * name/photo change requests (ADR-0044, wireframes/backoffice/
+ * name/photo change requests (ADR-0045, wireframes/backoffice/
  * change-requests.html — the same number as /staff's "Change requests (N)").
  * Each is a HEAD request with `count: 'exact'` on what the screen itself
  * lists, so no rows cross the wire and the menu and the screen cannot

@@ -1,4 +1,4 @@
-# ADR-0047 · My shifts keeps only live shifts; the rest fold into "Past shifts"
+# ADR-0048 · My shifts keeps only live shifts; the rest fold into "Past shifts"
 
 Status: accepted · 25.09.2026 · Staff App `/shifts`; amends `wireframes/staff/shifts.html`
 

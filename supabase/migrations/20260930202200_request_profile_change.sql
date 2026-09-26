@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Migration 20260930202200 · Request a change — the worker's side
 --   docs/19-staff-features-plan.md §3 (Phase 1, Agent B · staff-pwa)
---   ADR-0044 (proposed — awaiting THC) · Q13, Q14, Q21 · §8 RC1
+--   ADR-0045 (proposed — awaiting THC) · Q13, Q14, Q21 · §8 RC1
 --
 --   request_profile_change(kind, first, last, photo_path, evidence_path, note)
 --                                   one pending request per kind; queues RC1
@@ -80,7 +80,7 @@ begin
   if exists (select 1 from profile_change_requests r
               where r.staff_id = v_id and r.kind = p_kind and r.status = 'pending') then
     raise exception 'already_pending' using errcode = 'P0001',
-      hint = 'ADR-0044: one pending request per kind. Withdraw it to ask again.';
+      hint = 'ADR-0045: one pending request per kind. Withdraw it to ask again.';
   end if;
   if v_note is not null and char_length(v_note) > 500 then
     raise exception 'note_too_long' using errcode = 'P0001';
@@ -98,7 +98,7 @@ begin
     end if;
     if v_evid is null then
       raise exception 'evidence_required' using errcode = 'P0001',
-        hint = 'ADR-0044 / Q13: a name change needs evidence.';
+        hint = 'ADR-0045 / Q13: a name change needs evidence.';
     end if;
     select e.problem into v_problem
       from evidence_upload_problem(v_id, 'change-requests', v_evid) e;
@@ -160,7 +160,7 @@ begin
 end $$;
 
 comment on function public.request_profile_change(text, text, text, text, text, text) is
-  'ADR-0044: the calling worker asks the office to change their locked name (first/last + evidence in documents/<id>/change-requests/) or photo (a fresh object in photos/<id>/). One pending per kind; the uploaded object must exist; a name equal to the current one is refused. Queues RC1 to admin@ in the same transaction. Never writes staff.';
+  'ADR-0045: the calling worker asks the office to change their locked name (first/last + evidence in documents/<id>/change-requests/) or photo (a fresh object in photos/<id>/). One pending per kind; the uploaded object must exist; a name equal to the current one is refused. Queues RC1 to admin@ in the same transaction. Never writes staff.';
 
 create or replace function public.withdraw_profile_change(p_id uuid)
 returns jsonb
@@ -190,7 +190,7 @@ begin
   end if;
   if v_req_status <> 'pending' then
     raise exception 'not_pending' using errcode = 'P0001',
-      hint = 'ADR-0044: the office has already decided it.';
+      hint = 'ADR-0045: the office has already decided it.';
   end if;
 
   -- The state guard stamps decided_at on leaving pending; decided_by stays
@@ -200,7 +200,7 @@ begin
 end $$;
 
 comment on function public.withdraw_profile_change(uuid) is
-  'ADR-0044: the calling worker withdraws their own pending change request. not_found for another worker''s id; not_pending once the office has decided.';
+  'ADR-0045: the calling worker withdraws their own pending change request. not_found for another worker''s id; not_pending once the office has decided.';
 
 create or replace function public.my_profile_change_requests()
 returns table (
@@ -242,7 +242,7 @@ begin
 end $$;
 
 comment on function public.my_profile_change_requests() is
-  'ADR-0044: the calling worker''s own change requests, newest first, with the office''s reason on a rejection (shown to the worker). Never returns decided_by, previous_value or evidence_path.';
+  'ADR-0045: the calling worker''s own change requests, newest first, with the office''s reason on a rejection (shown to the worker). Never returns decided_by, previous_value or evidence_path.';
 
 revoke execute on function public.request_profile_change(text, text, text, text, text, text) from public, anon;
 revoke execute on function public.withdraw_profile_change(uuid)                               from public, anon;

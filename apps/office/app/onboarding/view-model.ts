@@ -787,7 +787,7 @@ export const RTW_REQUIRED: Record<string, string> = {
 };
 
 // ---------------------------------------------------------------------
-// Refer a friend (ADR-0046, docs/19 §5)
+// Refer a friend (ADR-0047, docs/19 §5)
 //
 // Read from `application_referrals` by a separate admin query (data.ts),
 // never through `onboarding_candidates_v`. The office sees who referred

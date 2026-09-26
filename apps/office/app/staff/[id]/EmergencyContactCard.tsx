@@ -14,7 +14,7 @@ import { clearEmergencyContact, saveEmergencyContact } from './actions';
 import type { EmergencyContact } from './types';
 
 /**
- * The Emergency contact card on the Overview tab (ADR-0043),
+ * The Emergency contact card on the Overview tab (ADR-0044),
  * `wireframes/backoffice/change-requests.html` → "Overview cards".
  *
  * Office-only worker personal data. It is shown here and — in Phase 2 — on

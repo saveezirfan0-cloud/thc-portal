@@ -1,6 +1,6 @@
 /**
  * The row shape of `office_profile_change_requests()` (20260930203000),
- * ADR-0044. Typed by hand until `gen:types` runs against the live project
+ * ADR-0045. Typed by hand until `gen:types` runs against the live project
  * (docs/19 §8, Phase 2.1).
  *
  * A removed worker's row comes back already anonymised by the function:

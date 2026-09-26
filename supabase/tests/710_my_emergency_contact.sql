@@ -1,5 +1,5 @@
 -- =====================================================================
--- 710 · The worker's emergency contact RPCs (ADR-0043, docs/19 §2)
+-- 710 · The worker's emergency contact RPCs (ADR-0044, docs/19 §2)
 --   my_emergency_contact · save_my_emergency_contact ·
 --   clear_my_emergency_contact · 20260930202100
 --

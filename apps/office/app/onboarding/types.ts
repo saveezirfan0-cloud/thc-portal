@@ -111,7 +111,7 @@ export interface BoardData {
   returning: ReturningRow[];
   roles: RoleOption[];
   /**
-   * Who arrived through a referral link (ADR-0046): a separate read of
+   * Who arrived through a referral link (ADR-0047): a separate read of
    * `application_referrals` — `onboarding_candidates_v` is not restated for
    * it (docs/19 §0.6). Absent or empty draws no chip.
    */
@@ -138,7 +138,7 @@ export interface ReferralRow {
   } | null;
 }
 
-/** "Referred by {name} ({employeeId})" on /onboarding/:id (ADR-0046). */
+/** "Referred by {name} ({employeeId})" on /onboarding/:id (ADR-0047). */
 export interface CandidateReferral {
   referrerId: string;
   /** "Deleted account #id" once the referrer is removed (§1.7). */
@@ -285,7 +285,7 @@ export interface CandidateData {
   rtwChecks?: RtwCheckRow[];
   /** settings.rtw_check.enabled. */
   rtwCheckEnabled?: boolean;
-  /** The latest referral that brought this person in (ADR-0046). */
+  /** The latest referral that brought this person in (ADR-0047). */
   referral?: CandidateReferral | null;
   /** Set when that read failed: said on the screen, not "not referred" (D18). */
   referralProblem?: string | null;

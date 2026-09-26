@@ -13,7 +13,7 @@ import type { StaffProfile } from './types';
  *
  *   documents   (1) Not compliant, or a document has expired (§4.3). ONLY
  *               Documents is reachable — through the Profile tab since
- *               ADR-0041. The worker has something to fix, so they are
+ *               ADR-0042. The worker has something to fix, so they are
  *               shown it.
  *   hold        (2) A manager blocked them by hand (§9.6). There is
  *               nothing to fix, so Documents is not offered either — a
@@ -98,7 +98,7 @@ function locksCompliantWorker(blocker: string): boolean {
 }
 
 /**
- * The bottom navigation, in order — ADR-0041.
+ * The bottom navigation, in order — ADR-0042.
  *
  * §10.1 names Documents · Shifts · Invites · Radar. THC moved Documents
  * into a Profile tab (25.09.2026): a worker opens Documents a few times a
@@ -124,7 +124,7 @@ export type StaffTab = (typeof STAFF_TABS)[number]['href'];
  *
  * Lock case 1 keeps Profile, and through it Documents: "ONLY the Documents
  * tab is available" becomes "only Profile — where Documents now lives —
- * is available" (ADR-0041). The worker still has exactly one thing to do
+ * is available" (ADR-0042). The worker still has exactly one thing to do
  * and one place to do it, and Shifts, Invites and Radar stay closed.
  */
 export function reachableTabs(lock: AppLock): readonly StaffTab[] {

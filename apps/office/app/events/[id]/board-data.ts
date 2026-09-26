@@ -56,7 +56,7 @@ export interface BoardBooking extends BoardPersonName {
   noShow: boolean;
   reconfirmRequired: boolean;
   /**
-   * ADR-0045: the open offer on a confirmed booking — a chip, never a move:
+   * ADR-0046: the open offer on a confirmed booking — a chip, never a move:
    * the worker stays confirmed until somebody takes it.
    */
   offer: BoardOffer | null;
@@ -91,11 +91,11 @@ export interface BoardSection {
   poolProblem: string | null;
   unavailable: UnavailableEntry[];
   /**
-   * ADR-0042: set when `auto_assign_unavailable` could not be read. The
+   * ADR-0043: set when `auto_assign_unavailable` could not be read. The
    * pool is still shown, but it may list workers the engine will skip.
    */
   calendarProblem: string | null;
-  /** ADR-0045: completed hand-overs on this section, oldest first. */
+  /** ADR-0046: completed hand-overs on this section, oldest first. */
   handovers: Handover[];
   /** Under way: the pool is the escalation pool (radius, nearest first, §3.4). */
   escalation: boolean;
@@ -147,7 +147,7 @@ interface StaffRow {
  */
 const IN_CHUNK = 150;
 
-/** One `shift_offers` row as the board reads it (ADR-0045). */
+/** One `shift_offers` row as the board reads it (ADR-0046). */
 interface OfferRow {
   id: string;
   booking_id: string;
@@ -271,14 +271,14 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
           .or('gate.is.null,gate.neq.wrong_role'),
       ),
     ),
-    // ADR-0042: who marked each ROLE SECTION's window unavailable (RULE-18).
+    // ADR-0043: who marked each ROLE SECTION's window unavailable (RULE-18).
     // A new RPC, typed locally until the Phase 2 type regeneration.
     Promise.all(
       sectionIds.map((id) =>
         (supabase as unknown as UnavailableRpc).rpc('auto_assign_unavailable', { p_shift: id }),
       ),
     ),
-    // ADR-0045: open offers (the Confirmed-row chips) and completed
+    // ADR-0046: open offers (the Confirmed-row chips) and completed
     // hand-overs (the section's history line). The office reads
     // shift_offers through its admin_read policy.
     sectionIds.length

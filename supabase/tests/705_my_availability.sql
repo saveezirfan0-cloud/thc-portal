@@ -1,5 +1,5 @@
 -- =====================================================================
--- 705 · The worker's availability RPCs (ADR-0042, docs/19 §1)
+-- 705 · The worker's availability RPCs (ADR-0043, docs/19 §1)
 --   my_unavailability · add_my_unavailability · remove_my_unavailability
 --   20260930202000
 --

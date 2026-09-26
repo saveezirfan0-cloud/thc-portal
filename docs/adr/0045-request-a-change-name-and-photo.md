@@ -1,4 +1,4 @@
-# ADR-0044 · Request a change: the office's queue for what §10.1 locks
+# ADR-0045 · Request a change: the office's queue for what §10.1 locks
 
 Status: proposed — awaiting THC · 25.09.2026
 

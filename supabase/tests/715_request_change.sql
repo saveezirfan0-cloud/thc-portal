@@ -1,5 +1,5 @@
 -- =====================================================================
--- 715 · Request a change — the worker's RPCs (ADR-0044, docs/19 §3)
+-- 715 · Request a change — the worker's RPCs (ADR-0045, docs/19 §3)
 --   request_profile_change · withdraw_profile_change ·
 --   my_profile_change_requests · 20260930202200
 --

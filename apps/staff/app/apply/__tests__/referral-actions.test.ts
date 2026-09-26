@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * apply() with `/apply?ref=` (ADR-0046, docs/19 §5).
+ * apply() with `/apply?ref=` (ADR-0047, docs/19 §5).
  *
  *   - the code travels as the 8th argument of submit_application_as_caller
  *     (20260930204000) — since 20260930120200 the only path /apply has:

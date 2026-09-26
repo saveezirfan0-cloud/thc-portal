@@ -1,5 +1,5 @@
 -- =====================================================================
--- 706 · Availability in auto-assign (ADR-0042, docs/19 §1, Agent A)
+-- 706 · Availability in auto-assign (ADR-0043, docs/19 §1, Agent A)
 --   20260930201000_availability_in_auto_assign.sql
 --
 --   A · auto_assign_unavailable(p_shift): the section's calendar entries,
@@ -131,7 +131,7 @@ insert into bookings (shift_id, staff_id, status, source, confirmed_at) values
 insert into bookings (shift_id, staff_id, status, source, cancelled_at, cancel_cause, self_cancelled)
 values (:'s_over', :'w_self', 'cancelled', 'auto', now(), 'self_cancel', true);
 
--- The calendar (ADR-0042), built the way the Staff App builds it.
+-- The calendar (ADR-0043), built the way the Staff App builds it.
 insert into staff_unavailability (staff_id, period, all_day) values
   -- Una: all of Thursday and all of Friday (UK midnight to UK midnight).
   (:'w_un',    unavailability_range(:'w'::date + 3, :'w'::date + 4), true),

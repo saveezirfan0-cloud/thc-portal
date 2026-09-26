@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Migration 20260930205200 · GDPR removal reaches the additions' outbox
 --                            payloads and the office's decline note
---   §1.7 · docs/19 §0.7 · ADR-0044 (RC1–RC4) · ADR-0045 (OF5, OF6)
+--   §1.7 · docs/19 §0.7 · ADR-0045 (RC1–RC4) · ADR-0046 (OF5, OF6)
 --   security review #3, QA S4
 --
 -- staff_removed_purge_additions (20260930200100) anonymised the rows the
@@ -40,7 +40,7 @@
 --
 -- What does not happen: audit_log is NOT rewritten. It is append-only by
 -- design (0009_view_privileges_and_ping_integrity, 20260923100100 — "admin-
--- read and append-only"; ADR-0043 and ADR-0044: "the table row is deleted
+-- read and append-only"; ADR-0044 and ADR-0045: "the table row is deleted
 -- on GDPR removal, and audit_log is not"). The existing
 -- shift_offer.cover_declined rows that carry a `note` stay as written;
 -- the writer stops putting the note there going forward (another change),

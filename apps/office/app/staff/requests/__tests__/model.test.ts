@@ -12,7 +12,7 @@ import {
 } from '../model';
 import type { ChangeRequestRow } from '../types';
 
-/** ADR-0044 — the change-request queue's presentation rules. */
+/** ADR-0045 — the change-request queue's presentation rules. */
 const row = (over: Partial<ChangeRequestRow> = {}): ChangeRequestRow => ({
   id: 'r1',
   staff_id: 's1',

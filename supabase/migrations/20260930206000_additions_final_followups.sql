@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20260930206000 · final follow-ups on the Staff App additions
---   docs/19-staff-features-plan.md §3 · ADR-0044 (proposed — awaiting THC)
+--   docs/19-staff-features-plan.md §3 · ADR-0045 (proposed — awaiting THC)
 --
 -- Two functions RESTATED, each in full from its latest definition — grep
 -- over every migration, main's included: nothing after the files named
@@ -113,7 +113,7 @@ begin
   if exists (select 1 from profile_change_requests r
               where r.staff_id = v_id and r.kind = p_kind and r.status = 'pending') then
     raise exception 'already_pending' using errcode = 'P0001',
-      hint = 'ADR-0044: one pending request per kind. Withdraw it to ask again.';
+      hint = 'ADR-0045: one pending request per kind. Withdraw it to ask again.';
   end if;
   -- 20260930205100: at most three of a kind in any 24 hours, any status.
   -- Each one emailed admin@ (RC1); withdrawing does not un-send it.
@@ -139,7 +139,7 @@ begin
     end if;
     if v_evid is null then
       raise exception 'evidence_required' using errcode = 'P0001',
-        hint = 'ADR-0044 / Q13: a name change needs evidence.';
+        hint = 'ADR-0045 / Q13: a name change needs evidence.';
     end if;
     select e.problem into v_problem
       from evidence_upload_problem(v_id, 'change-requests', v_evid) e;
@@ -209,7 +209,7 @@ begin
 end $$;
 
 comment on function public.request_profile_change(text, text, text, text, text, text) is
-  'ADR-0044: the calling worker asks the office to change their locked name (first/last + evidence in documents/<id>/change-requests/) or photo (a fresh object in photos/<id>/). One pending per kind, and at most three of a kind created in any 24 hours whatever their status (too_many_requests — each queued an RC1; 20260930205100); the uploaded object must exist; a name equal to the current one is refused. A manual hold (status blocked, block_kind manual — §10.1 case 2) is refused not_editable; a documents or conviction-review block is not; a photo path over 200 characters is wrong_path, as for staff_set_photo() (20260930206000). Queues RC1 to admin@ in the same transaction, the kind as {field}. Never writes staff.';
+  'ADR-0045: the calling worker asks the office to change their locked name (first/last + evidence in documents/<id>/change-requests/) or photo (a fresh object in photos/<id>/). One pending per kind, and at most three of a kind created in any 24 hours whatever their status (too_many_requests — each queued an RC1; 20260930205100); the uploaded object must exist; a name equal to the current one is refused. A manual hold (status blocked, block_kind manual — §10.1 case 2) is refused not_editable; a documents or conviction-review block is not; a photo path over 200 characters is wrong_path, as for staff_set_photo() (20260930206000). Queues RC1 to admin@ in the same transaction, the kind as {field}. Never writes staff.';
 
 -- ---------------------------------------------------------------------
 -- 2 · office_decide_profile_change — 20260930203000, RC2/RC3's
@@ -245,7 +245,7 @@ begin
   end if;
   if r.status <> 'pending' then
     raise exception 'already_decided' using errcode = 'P0001',
-      hint = 'ADR-0044: approved, rejected and withdrawn are terminal. "Request again" is a new row.';
+      hint = 'ADR-0045: approved, rejected and withdrawn are terminal. "Request again" is a new row.';
   end if;
 
   -- decisionNeedsReason(approve) in packages/domain: a rejection says why,
@@ -337,7 +337,7 @@ begin
 end $$;
 
 comment on function public.office_decide_profile_change(uuid, boolean, text) is
-  'ADR-0044: the office approves or rejects a pending name/photo change request (/staff/requests). Admin only. Approve name → staff.first_name/last_name + RC2 + RC4 (admin@ + payroll); approve photo → staff.photo_path despite the §10.1 lock, old object kept; reject → reason required (reason_required 22023, ≤ 300) + RC3. RC2/RC3 carry the kind as {field} (20260930206000). previous_value snapshots the profile at the decision; already_decided refuses a second decision; audit_log profile_change.approve|reject. No right-to-work re-check (Q13); issued PDFs and payroll exports untouched (§1.7).';
+  'ADR-0045: the office approves or rejects a pending name/photo change request (/staff/requests). Admin only. Approve name → staff.first_name/last_name + RC2 + RC4 (admin@ + payroll); approve photo → staff.photo_path despite the §10.1 lock, old object kept; reject → reason required (reason_required 22023, ≤ 300) + RC3. RC2/RC3 carry the kind as {field} (20260930206000). previous_value snapshots the profile at the decision; already_decided refuses a second decision; audit_log profile_change.approve|reject. No right-to-work re-check (Q13); issued PDFs and payroll exports untouched (§1.7).';
 
 -- Grants exactly as 20260930205100 and 20260930203000 issued them.
 revoke execute on function public.request_profile_change(text, text, text, text, text, text) from public, anon;

@@ -1,5 +1,5 @@
 -- =====================================================================
--- 720 · Offer up a shift — offer, withdraw, lapse (ADR-0045, docs/19 §4)
+-- 720 · Offer up a shift — offer, withdraw, lapse (ADR-0046, docs/19 §4)
 --   20260930201100_shift_offers.sql
 --
 --   A · who may call the worker RPCs: a worker, never the office, and

@@ -1,5 +1,5 @@
 /**
- * Refer a friend — ADR-0046, docs/19 §5 (an addition to Scope v1.6: §2.1
+ * Refer a friend — ADR-0047, docs/19 §5 (an addition to Scope v1.6: §2.1
  * `/apply?ref=`, §2.3, §9.6, §10.1, §1.7 privacy notice, §1.5).
  *
  * A compliant worker gets one code (`staff_referral_codes`), minted lazily

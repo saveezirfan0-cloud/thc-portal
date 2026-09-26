@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { ukInstant } from '@thc/domain';
 
 /**
- * /profile/availability — the screen and its two actions (ADR-0042).
+ * /profile/availability — the screen and its two actions (ADR-0043).
  *
  *   - the empty state and the list by week, with "UK time" on a window;
  *   - the actions call only the worker's own RPCs, never name a worker,

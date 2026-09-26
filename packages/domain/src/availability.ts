@@ -1,5 +1,5 @@
 /**
- * Worker availability — ADR-0042, docs/19 §1 (an addition to Scope v1.6:
+ * Worker availability — ADR-0043, docs/19 §1 (an addition to Scope v1.6:
  * §1.5 StaffUnavailability, §3.3 the Unavailable reason, §3.4 and §6 a gate
  * on automated invitations, §9.6, §10.1).
  *
@@ -23,7 +23,7 @@
  *
  * It is a hard gate for what the MACHINE does — hourly rounds, the first
  * round, cutoff refills, same-day escalation, offer pushes — and only that
- * (ADR-0042). A manager can still invite by hand after a confirm, the worker
+ * (ADR-0043). A manager can still invite by hand after a confirm, the worker
  * can still accept, apply and take an offer, and nothing here ever cancels
  * a confirmed booking. The five §6 weights are contractual, so availability
  * is not a sixth score: `HARD_GATES` in scoring.ts is unchanged and the
@@ -239,7 +239,7 @@ export function validateUnavailability(
 }
 
 /**
- * Overlays the calendar gate on candidate rows (ADR-0042). A row the SQL
+ * Overlays the calendar gate on candidate rows (ADR-0043). A row the SQL
  * pool already gated keeps its own gate — "wrong role" or "blocked" is the
  * truer reason — and an ungated row whose worker is unavailable for the
  * section gets `unavailable`, which `rankPool` then drops like any gate.

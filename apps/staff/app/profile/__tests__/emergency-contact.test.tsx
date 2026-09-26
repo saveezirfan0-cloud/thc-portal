@@ -3,7 +3,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import type { StaffProfile } from '../types';
 
 /**
- * Emergency contact — ADR-0043, docs/19 §2.
+ * Emergency contact — ADR-0044, docs/19 §2.
  *
  *   - the section: optional ("Not set" is a pill, not a lock), office-only
  *     copy, the /apply international picker, Save and Remove;

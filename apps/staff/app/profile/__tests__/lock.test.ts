@@ -37,7 +37,7 @@ describe('appLock — §10.1 four cases', () => {
   it('(1) leaves ONLY Profile — where Documents lives — when a document has expired', () => {
     const lock = appLock(worker({ blockers: ['document_expired:passport'] }));
     expect(lock).toBe('documents');
-    // ADR-0041: Documents moved inside the Profile tab.
+    // ADR-0042: Documents moved inside the Profile tab.
     expect(reachableTabs(lock)).toEqual(['/profile']);
   });
 

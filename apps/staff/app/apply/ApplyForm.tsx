@@ -20,7 +20,7 @@ import type { ApplicationField, ApplicationValues, FieldErrors } from './form';
  * counting them, and the submit button disabled until the two rules the
  * wireframe shows disabled — 18 or over, and consent — are both satisfied.
  *
- * `referralCode` (ADR-0046, `wireframes/staff/refer.html` "/apply?ref="):
+ * `referralCode` (ADR-0047, `wireframes/staff/refer.html` "/apply?ref="):
  * already shape-checked by the page, carried in a hidden field and nowhere
  * else. The form reads exactly the same with or without it.
  */
@@ -198,7 +198,7 @@ export function ApplyForm({ referralCode = null }: { referralCode?: string | nul
         >
           I agree to The Hospitality Company storing and processing the details on this form to
           assess my application, as described in the <a href="/privacy">Privacy notice</a>.{' '}
-          {/* ADR-0046 / Q20: shown to every applicant, referred or not.
+          {/* ADR-0047 / Q20: shown to every applicant, referred or not.
               THC's legal wording is pending; this sentence is the placeholder
               the wireframe (staff/refer.html) draws. */}
           If a friend referred you, we record who referred you.{' '}

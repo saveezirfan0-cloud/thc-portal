@@ -1,16 +1,16 @@
 -- =====================================================================
 -- 701 · The staff additions — machines, builders and CHECKs
---   20260930200100_staff_additions_schema.sql · docs/19 · ADR-0042 … 0045
+--   20260930200100_staff_additions_schema.sql · docs/19 · ADR-0043 … 0045
 --
---   A. profile_change_requests (ADR-0044): profile_change_transitions() is
+--   A. profile_change_requests (ADR-0045): profile_change_transitions() is
 --      changeRequest.vectors.json edge for edge; the guard drives every one
 --      of the 16 status pairs on a real row; the proposed values are fixed;
 --      the name and decision CHECKs agree with the vectors.
---   B. shift_offers (ADR-0045): shift_offer_transitions() and
+--   B. shift_offers (ADR-0046): shift_offer_transitions() and
 --      shift_offer_mode_transitions() are shiftOffer.vectors.json; all 25
 --      status pairs and all 9 mode pairs through the guard; the booking,
 --      worker and target are fixed; one open offer per booking.
---   C. staff_unavailability (ADR-0042): unavailability_range() and
+--   C. staff_unavailability (ADR-0043): unavailability_range() and
 --      staff_unavailable() against availability.vectors.json — UK
 --      midnights, the 23 h and 25 h days, overnight windows, weekly copies
 --      that keep their wall-clock time, the half-open overlap — and the
@@ -498,7 +498,7 @@ select lives_ok(
   format($$ update bookings set status = 'cancelled', cancelled_at = now(),
                                  cancel_cause = 'handed_over', self_cancelled = true
              where id = %L $$, :'booking_b'),
-  'D: a confirmed booking is handed over: cancelled / handed_over, self_cancelled (ADR-0045)');
+  'D: a confirmed booking is handed over: cancelled / handed_over, self_cancelled (ADR-0046)');
 
 select throws_ok(
   format($$ insert into bookings (shift_id, staff_id, status, source, cancelled_at, cancel_cause)
@@ -515,7 +515,7 @@ select lives_ok(
 -- completed hand-over is 'never', like the self-cancel it stands for, and
 -- the SQL and bookingReopenableBy() (reopen.ts) agree (20260930200100 0b).
 select is(booking_reopenable_by('cancelled', 'handed_over'), 'never',
-  'D: a handed-over row is never reopened (booking_reopenable_by, ADR-0045)');
+  'D: a handed-over row is never reopened (booking_reopenable_by, ADR-0046)');
 select is(booking_reopenable_by('cancelled', 'self_cancel'), 'never',
   'D: and the self-cancel it mirrors still reads never (main''s body kept)');
 

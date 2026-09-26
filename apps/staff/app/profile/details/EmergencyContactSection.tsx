@@ -10,7 +10,7 @@ import type { EmergencyContact } from '../types';
 import { DIAL_CODES, splitE164, toE164 } from './phone';
 
 /**
- * Emergency contact — ADR-0043, `wireframes/staff/request-change.html#emergency`.
+ * Emergency contact — ADR-0044, `wireframes/staff/request-change.html#emergency`.
  *
  * Optional (Q11): an empty section is a nudge — the amber "Not set" pill
  * here and the subline on the Profile tab — never a lock. Only the office

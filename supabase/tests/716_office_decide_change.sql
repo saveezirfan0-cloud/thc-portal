@@ -1,5 +1,5 @@
 -- =====================================================================
--- 716 · The office decides a change request (ADR-0044)
+-- 716 · The office decides a change request (ADR-0045)
 --   office_decide_profile_change, office_profile_change_requests
 --   20260930203000_office_staff_additions.sql · docs/19 §3
 --

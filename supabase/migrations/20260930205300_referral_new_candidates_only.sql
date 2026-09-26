@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20260930205300 · a referral is recorded for a NEW candidate
---                            only (ADR-0046; security finding #5)
+--                            only (ADR-0047; security finding #5)
 --
 -- 20260930204000 let record_application_referral() attach a referral to
 -- any application written in the current transaction — including one the
@@ -101,7 +101,7 @@ begin
     values (v_app, v_referrer, v_candidate, v_code)
     on conflict do nothing;
   exception when others then
-    -- Never raises (ADR-0046 point 4). The block is its own
+    -- Never raises (ADR-0047 point 4). The block is its own
     -- subtransaction, so only the referral is rolled back — the
     -- application the caller just wrote stands.
     return;
@@ -109,7 +109,7 @@ begin
 end $$;
 
 comment on function public.record_application_referral(text, text) is
-  'ADR-0046: records who referred an application that arrived through /apply?ref=. Finds the application submit_application() just wrote for this email (same normalisation) — only one that created a new candidate (outcome candidate_created); a returning-applicant match records nothing (security finding #5, 20260930205300). Skips a malformed, unknown, revoked or own code, inserts on conflict do nothing, and never raises. Owner-only: called by submit_application_as_caller(), by no API role.';
+  'ADR-0047: records who referred an application that arrived through /apply?ref=. Finds the application submit_application() just wrote for this email (same normalisation) — only one that created a new candidate (outcome candidate_created); a returning-applicant match records nothing (security finding #5, 20260930205300). Skips a malformed, unknown, revoked or own code, inserts on conflict do nothing, and never raises. Owner-only: called by submit_application_as_caller(), by no API role.';
 
 revoke execute on function public.record_application_referral(text, text)
   from public, anon, authenticated, service_role;

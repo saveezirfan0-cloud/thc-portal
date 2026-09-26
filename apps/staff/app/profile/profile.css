@@ -5,7 +5,7 @@
  * scope) render this correctly without a second stylesheet.
  */
 
-/* --- The Profile tab (ADR-0041) ---------------------------------------- */
+/* --- The Profile tab (ADR-0042) ---------------------------------------- */
 .profile-hub {
   display: flex;
   flex-direction: column;
@@ -261,7 +261,7 @@
   font-weight: 600;
 }
 
-/* --- Availability (ADR-0042, wireframes/staff/availability.html) ------- */
+/* --- Availability (ADR-0043, wireframes/staff/availability.html) ------- */
 .avail {
   display: flex;
   flex-direction: column;
@@ -340,7 +340,7 @@
   font-weight: 600;
 }
 
-/* --- Emergency contact (ADR-0043, request-change.html#emergency) ------ */
+/* --- Emergency contact (ADR-0044, request-change.html#emergency) ------ */
 .ec-sec {
   display: flex;
   flex-direction: column;
@@ -403,7 +403,7 @@
   flex: 1;
 }
 
-/* --- Request a change (ADR-0044, wireframes/staff/request-change.html) - */
+/* --- Request a change (ADR-0045, wireframes/staff/request-change.html) - */
 .req-status {
   display: flex;
   align-items: center;
@@ -475,7 +475,7 @@
   border-radius: var(--r-avatar);
 }
 
-/* --- Refer a friend (ADR-0046, wireframes/staff/refer.html) ----------- */
+/* --- Refer a friend (ADR-0047, wireframes/staff/refer.html) ----------- */
 .refer {
   display: flex;
   flex-direction: column;

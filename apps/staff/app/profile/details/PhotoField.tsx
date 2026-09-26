@@ -45,7 +45,7 @@ export function PhotoField({
   name: string;
   photoUrl: string | null;
   locked: boolean;
-  /** ADR-0044: false while a photo change request is pending. */
+  /** ADR-0045: false while a photo change request is pending. */
   canRequestChange?: boolean;
   /** The pending / rejected line for the newest photo request. */
   status?: StatusLine;
@@ -57,7 +57,7 @@ export function PhotoField({
   const [pending, start] = useTransition();
 
   // Locked (§10.1): the photo is not editable here, but it can be asked
-  // for — "Request a change" opens the office's queue (ADR-0044), hidden
+  // for — "Request a change" opens the office's queue (ADR-0045), hidden
   // while a request is already with them.
   if (locked) {
     return (

@@ -16,7 +16,7 @@ import {
 import type { AddForm, UnavailabilityEntry } from '../model';
 
 /**
- * /profile/availability's labels and the Add sheet's shaping (ADR-0042).
+ * /profile/availability's labels and the Add sheet's shaping (ADR-0043).
  * The rules are @thc/domain's and the RPC's; this pins what the worker
  * reads, in UK time, across the October clock change.
  */

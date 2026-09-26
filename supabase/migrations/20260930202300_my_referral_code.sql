@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Migration 20260930202300 · Refer a friend — the worker's code and count
 --   docs/19-staff-features-plan.md §5 (Phase 1, Agent B · staff-pwa)
---   ADR-0046 (proposed — awaiting THC) · Q19, Q20
+--   ADR-0047 (proposed — awaiting THC) · Q19, Q20
 --
 --   my_referral_code()     the caller's code, minted the first time a
 --                          COMPLIANT worker asks; stable after that
@@ -46,7 +46,7 @@ begin
   if v_status = 'removed' then
     raise exception 'account_closed' using errcode = 'P0001';
   end if;
-  -- ADR-0046: compliant workers only. A candidate, a worker on a block
+  -- ADR-0047: compliant workers only. A candidate, a worker on a block
   -- and a leaver have no link to share.
   if v_status <> 'compliant' then
     raise exception 'not_compliant' using errcode = 'P0001';
@@ -82,7 +82,7 @@ begin
 end $$;
 
 comment on function public.my_referral_code() is
-  'ADR-0046: the calling worker''s referral code for /apply?ref=, minted on first call (8 chars, ^[A-HJ-NP-Z2-9]{8}$) and stable after. Compliant workers only (not_compliant); a revoked code is never reissued (code_revoked); account_closed for a removed worker. Takes no staff id.';
+  'ADR-0047: the calling worker''s referral code for /apply?ref=, minted on first call (8 chars, ^[A-HJ-NP-Z2-9]{8}$) and stable after. Compliant workers only (not_compliant); a revoked code is never reissued (code_revoked); account_closed for a removed worker. Takes no staff id.';
 
 create or replace function public.my_referral_summary()
 returns jsonb
@@ -117,7 +117,7 @@ begin
 end $$;
 
 comment on function public.my_referral_summary() is
-  'ADR-0046: {code, applied} for the calling worker — their live code (null until minted, or once revoked) and how many applications arrived with it. A count only: never names or outcomes (Q20). Mints nothing.';
+  'ADR-0047: {code, applied} for the calling worker — their live code (null until minted, or once revoked) and how many applications arrived with it. A count only: never names or outcomes (Q20). Mints nothing.';
 
 revoke execute on function public.my_referral_code()    from public, anon;
 revoke execute on function public.my_referral_summary() from public, anon;

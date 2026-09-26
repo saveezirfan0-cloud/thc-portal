@@ -13,7 +13,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Availability · THC Staff' };
 
 /**
- * /profile/availability — days and times the worker can't work (ADR-0042,
+ * /profile/availability — days and times the worker can't work (ADR-0043,
  * docs/19 §1, `wireframes/staff/availability.html`).
  *
  * Only when `appLock() === 'none'`. Availability steers auto-assign's

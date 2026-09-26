@@ -1,7 +1,7 @@
 -- =====================================================================
 -- 731 · /apply?ref= records who referred whom — and changes nothing else
 --   20260930204000_apply_referral.sql,
---   20260930205300_referral_new_candidates_only.sql, ADR-0046, docs/19 §5
+--   20260930205300_referral_new_candidates_only.sql, ADR-0047, docs/19 §5
 --
 --   A. The grants: the restated submit_application_as_caller is still
 --      service-role only, and there is exactly one of it (the 7-argument

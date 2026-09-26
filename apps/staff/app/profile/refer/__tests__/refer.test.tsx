@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { referralLink } from '@thc/domain';
 
 /**
- * Refer a friend — ADR-0046, docs/19 §5. The link, Copy, the QR, a count
+ * Refer a friend — ADR-0047, docs/19 §5. The link, Copy, the QR, a count
  * and never a name; no reward copy anywhere (Q19, Q20).
  */
 vi.mock('../../../activate/activate.css', () => ({}));

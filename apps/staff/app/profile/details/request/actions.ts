@@ -10,7 +10,7 @@ import { changeReason } from '../../change-requests';
 import type { ActionResult } from '../../types';
 
 /**
- * Request a change — the worker's actions (ADR-0044, 20260930202200).
+ * Request a change — the worker's actions (ADR-0045, 20260930202200).
  *
  * Every rule is `request_profile_change()`'s: one pending per kind, the
  * uploaded object must exist in the worker's own folder, a name equal to

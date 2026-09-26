@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 724 · Every OF payload asks for exactly its template's placeholders
---   (ADR-0045; the 592 pattern; packages/notifications PAYLOAD_KEYS)
+--   (ADR-0046; the 592 pattern; packages/notifications PAYLOAD_KEYS)
 --   20260930201100_shift_offers.sql
 --
 -- The drain renders from the register (render(entry.title, values)), so a

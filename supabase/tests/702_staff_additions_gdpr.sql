@@ -165,7 +165,7 @@ select is((select count(*)::int from staff_unavailability where staff_id = :'sta
   'B: the removed worker''s availability is deleted');
 
 select is((select count(*)::int from staff_emergency_contacts where staff_id = :'staffa'), 0,
-  'B: their emergency contact is deleted (ADR-0043)');
+  'B: their emergency contact is deleted (ADR-0044)');
 
 select results_eq(
   format($$ select status, decided_at is not null from profile_change_requests where id = %L $$, :'pcr_name'),

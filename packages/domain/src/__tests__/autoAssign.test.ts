@@ -243,7 +243,7 @@ describe('rankCandidateRows — the board ranks as the engine does (§3.3, §6)'
   });
 });
 
-describe('selectInvitees — the calendar gates the machine (ADR-0042)', () => {
+describe('selectInvitees — the calendar gates the machine (ADR-0043)', () => {
   it('never invites a worker who marked themselves unavailable for the section', () => {
     const rows = [row({ staff_id: 'away' }), row({ staff_id: 'free', distance_km: 9 })];
     expect(selectInvitees(rows, { allocation: 2 })).toEqual(['away', 'free']);
@@ -271,7 +271,7 @@ describe('selectInvitees — the calendar gates the machine (ADR-0042)', () => {
   });
 });
 
-describe("selectOfferRecipients — who this hour's OF1 push reaches (ADR-0045)", () => {
+describe("selectOfferRecipients — who this hour's OF1 push reaches (ADR-0046)", () => {
   it('skips everyone already told: the rounds are additive', () => {
     const rows = [row({ staff_id: 'a' }), row({ staff_id: 'b' }), row({ staff_id: 'c' })];
     expect(selectOfferRecipients(rows, { allocation: 2, notified: ['a'] })).toEqual(['b', 'c']);

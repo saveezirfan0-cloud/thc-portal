@@ -161,7 +161,7 @@ export async function loadEarnings(): Promise<EarningsRow[]> {
 }
 
 /**
- * The emergency contact (ADR-0043) — `my_emergency_contact()`, a separate
+ * The emergency contact (ADR-0044) — `my_emergency_contact()`, a separate
  * read because `staff_me()` is frozen in Phase 1 (docs/19 §0.6).
  *
  * `row: null` is "none saved"; `problem` is "could not read" (audit D18),
@@ -186,7 +186,7 @@ export async function loadEmergencyContact(): Promise<Found<EmergencyContact>> {
 }
 
 /**
- * The worker's own name / photo change requests (ADR-0044) — newest first,
+ * The worker's own name / photo change requests (ADR-0045) — newest first,
  * never `decided_by` — or the failure (audit D18). A failed read is not "no
  * requests": the pending line and its Withdraw would vanish, and a second
  * form would be offered for a request already with the office.

@@ -19,7 +19,7 @@ import { HANDED_OVER_COPY } from '../[id]/messages';
 import { isStaticPhase, shiftPhase, shiftScreenReachable } from '../[id]/phase';
 
 /**
- * Offer up a shift in the Staff App — ADR-0045, docs/19 §4,
+ * Offer up a shift in the Staff App — ADR-0046, docs/19 §4,
  * wireframes/staff/offer-shift.html.
  */
 

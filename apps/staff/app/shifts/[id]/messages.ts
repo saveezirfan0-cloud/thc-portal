@@ -1,7 +1,7 @@
 import { TURN_AWAY_PAY_MIN, turnedAwayMessage } from '@thc/domain';
 
 /**
- * ADR-0045: the static screen for a shift the worker handed over — the
+ * ADR-0046: the static screen for a shift the worker handed over — the
  * sentence docs/19 §4 fixes, verbatim, under the wireframe's "Handed over"
  * pill (`wireframes/staff/offer-shift.html` (g)). Here, not in
  * `STATIC_SCREEN_COPY`, because Phase 0 left `packages/domain/src/staff.ts`

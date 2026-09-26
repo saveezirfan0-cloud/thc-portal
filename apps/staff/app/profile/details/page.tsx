@@ -65,7 +65,7 @@ export default async function Page() {
         requests={requests.rows}
         requestsProblem={requests.problem !== null}
       />
-      {/* ADR-0043. A failed read says so (audit D18) rather than offering an
+      {/* ADR-0044. A failed read says so (audit D18) rather than offering an
           empty form that would overwrite a contact we could not see. */}
       {contact.problem ? (
         <LoadProblem what="your emergency contact" />

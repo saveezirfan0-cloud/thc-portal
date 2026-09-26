@@ -10,7 +10,7 @@ import {
 } from '@thc/domain';
 
 /**
- * Offer up a shift, as the worker sees it — ADR-0045, docs/19 §4,
+ * Offer up a shift, as the worker sees it — ADR-0046, docs/19 §4,
  * `wireframes/staff/offer-shift.html`.
  *
  * Pure, so the screens' choices are unit-tested. The rule itself is

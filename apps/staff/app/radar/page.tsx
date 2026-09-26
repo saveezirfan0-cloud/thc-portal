@@ -58,7 +58,7 @@ export default async function Page() {
     loadOpenShifts(),
     loadBookings(),
     loadWeekMeter(),
-    // ADR-0045: offered shifts this worker may take — RULE-17 visibility,
+    // ADR-0046: offered shifts this worker may take — RULE-17 visibility,
     // decided in SQL, and never the offerer.
     loadOpenOffers(),
   ]);
@@ -161,7 +161,7 @@ export default async function Page() {
 }
 
 /**
- * One offered shift (ADR-0045, wireframes/staff/offer-shift.html (h)). A
+ * One offered shift (ADR-0046, wireframes/staff/offer-shift.html (h)). A
  * confirmed booking at once if taken, so it opens the offer's own detail,
  * not the open shift's. The base rate only; never who offered it.
  */

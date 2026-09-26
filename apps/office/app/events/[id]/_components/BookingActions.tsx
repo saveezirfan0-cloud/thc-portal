@@ -23,7 +23,7 @@ interface Pending {
 
 /**
  * Withdraw, No show and Get back — Scope §3.3. And, on a worker's cover
- * request (ADR-0045), Open to pool and Decline; covering the shift by hand
+ * request (ADR-0046), Open to pool and Decline; covering the shift by hand
  * is the ordinary Withdraw, which lapses the request with the booking.
  *
  * There is no Confirm: the worker confirms in the app. Where the shift's
@@ -55,13 +55,13 @@ export function BookingActions({
   withdrawable?: boolean;
   /** `canMarkNoShow` for the section: from its start to two weeks after its end. */
   noShowAllowed?: boolean;
-  /** ADR-0045: the booking's open offer; a cover request gets two buttons. */
+  /** ADR-0046: the booking's open offer; a cover request gets two buttons. */
   offer?: BoardOffer | null;
 }) {
   const [running, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
-  // ADR-0045 Decline: the office's own note, asked in the Modal like every
+  // ADR-0046 Decline: the office's own note, asked in the Modal like every
   // other question on the board (never a browser prompt).
   const [declining, setDeclining] = useState<string | null>(null);
 

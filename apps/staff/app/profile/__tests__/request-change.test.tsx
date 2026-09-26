@@ -4,7 +4,7 @@ import type { StaffProfile } from '../types';
 import type { ChangeRequest } from '../change-requests';
 
 /**
- * Request a change — ADR-0044, docs/19 §3.
+ * Request a change — ADR-0045, docs/19 §3.
  *
  *   - the status line: pending "with the office" + Withdraw, rejected
  *     "Not changed: {reason}" + Request again, nothing otherwise;

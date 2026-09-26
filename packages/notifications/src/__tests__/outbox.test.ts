@@ -232,7 +232,7 @@ describe('the office\u2019s own rows render, rather than shipping braces (§8)',
 });
 
 /**
- * The Staff App additions (docs/19 §6, ADR-0044/0045) go through the same
+ * The Staff App additions (docs/19 §6, ADR-0045/0045) go through the same
  * drain. `messageFor` looks a code up in TEMPLATES and nowhere else, so
  * registering RC/OF is all it takes — this holds that to be true.
  */

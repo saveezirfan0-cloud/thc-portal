@@ -17,7 +17,7 @@ import type { CandidateRow } from '../autoAssign';
 import { HARD_GATES } from '../scoring';
 
 /**
- * ADR-0042 (docs/19 §1). availability.vectors.json is the contract between
+ * ADR-0043 (docs/19 §1). availability.vectors.json is the contract between
  * this module and unavailability_range() / staff_unavailable() / the
  * staff_unavailability CHECKs; pgTAP 701 runs the same cases through the
  * generated availability_vectors.psql.
@@ -106,7 +106,7 @@ describe('validateUnavailability — the Add sheet (Q10)', () => {
   });
 });
 
-describe('withAvailability — the calendar as a gate, not a score (ADR-0042)', () => {
+describe('withAvailability — the calendar as a gate, not a score (ADR-0043)', () => {
   const row = (staff_id: string, gate: string | null = null): CandidateRow => ({
     staff_id,
     gate,

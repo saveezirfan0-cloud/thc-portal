@@ -194,7 +194,7 @@ export async function withdrawApplication(bookingId: string): Promise<ActionResu
 }
 
 // ---------------------------------------------------------------------
-// Offer up a shift — ADR-0045, docs/19 §4
+// Offer up a shift — ADR-0046, docs/19 §4
 // ---------------------------------------------------------------------
 
 /**

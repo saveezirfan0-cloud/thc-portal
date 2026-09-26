@@ -1,4 +1,4 @@
-# ADR-0041 · Documents moves inside a Profile tab; the profile sheet becomes a screen
+# ADR-0042 · Documents moves inside a Profile tab; the profile sheet becomes a screen
 
 Status: accepted · 25.09.2026 · Staff App only; amends §10.1 "Bottom navigation" and the profile sheet's presentation
 

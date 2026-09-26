@@ -28,13 +28,13 @@
  *     which re-applies every gate at the moment of the insert and locks
  *     the section so two rounds cannot take the same last slot
  *   * whether it is the right UK minute — `is_uk_time` (pgTAP, 180)
- *   * the offer rounds (hourly only, ADR-0045) — `lapse_shift_offers`,
+ *   * the offer rounds (hourly only, ADR-0046) — `lapse_shift_offers`,
  *     `offer_rounds_due`, `offer_candidates`, `notify_offer_candidates`
  *     (pgTAP 720–724); who is pushed is `selectOfferRecipients`, the
  *     invitation ranking minus everyone already told, and the SQL re-checks
  *     every gate, the calendar and RULE-17's wave order at the insert
  *   * who marked the section unavailable — `auto_assign_unavailable`
- *     (pgTAP, 706; ADR-0042), overlaid on the pool by `selectInvitees`'
+ *     (pgTAP, 706; ADR-0043), overlaid on the pool by `selectInvitees`'
  *     `unavailable` option; `invite_worker` refuses the same workers at
  *     the insert for the 'auto' and 'escalation' sources
  *
@@ -110,7 +110,7 @@ Deno.serve((request) =>
       sections: 0,
       invited: 0,
       released: 0,
-      // ADR-0042: candidates the round skipped because their availability
+      // ADR-0043: candidates the round skipped because their availability
       // calendar overlaps the role section (never invited by the machine).
       unavailableSkipped: 0,
     };
@@ -156,7 +156,7 @@ Deno.serve((request) =>
       });
       if (poolError) throw new Error(`auto_assign_candidates: ${poolError.message}`);
 
-      // ADR-0042: the calendar is a hard gate on every round the machine
+      // ADR-0043: the calendar is a hard gate on every round the machine
       // runs — hourly, first round, cutoff refill and escalation alike —
       // measured against this ROLE SECTION's window (RULE-18). It is not a
       // sixth score: the §6 weights are untouched and the workers are
@@ -203,13 +203,13 @@ Deno.serve((request) =>
       counts.sections = (counts.sections as number) + 1;
     }
 
-    // ADR-0045: the offer rounds, on the hourly run only (a first round for
+    // ADR-0046: the offer rounds, on the hourly run only (a first round for
     // one new event has no offers yet). First the lapse — anything past its
     // expiry closes and OF3 tells the worker they are still booked — then,
     // for every open pool offer on a section with auto-assign on, one
     // additive OF1 round of `allocation_per_hour`: wave 1 first, each by
     // the §6 score, never anyone already told, never the offerer, a gated
-    // or an unavailable worker (ADR-0042).
+    // or an unavailable worker (ADR-0043).
     if (mode === 'hourly' && onlyEvent === null) {
       const { data: lapsed, error: lapseError } = await db.rpc('lapse_shift_offers');
       if (lapseError) throw new Error(`lapse_shift_offers: ${lapseError.message}`);

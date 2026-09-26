@@ -100,7 +100,7 @@ begin
   if exists (select 1 from profile_change_requests r
               where r.staff_id = v_id and r.kind = p_kind and r.status = 'pending') then
     raise exception 'already_pending' using errcode = 'P0001',
-      hint = 'ADR-0044: one pending request per kind. Withdraw it to ask again.';
+      hint = 'ADR-0045: one pending request per kind. Withdraw it to ask again.';
   end if;
   -- 20260930205100: at most three of a kind in any 24 hours, any status.
   -- Each one emailed admin@ (RC1); withdrawing does not un-send it.
@@ -126,7 +126,7 @@ begin
     end if;
     if v_evid is null then
       raise exception 'evidence_required' using errcode = 'P0001',
-        hint = 'ADR-0044 / Q13: a name change needs evidence.';
+        hint = 'ADR-0045 / Q13: a name change needs evidence.';
     end if;
     select e.problem into v_problem
       from evidence_upload_problem(v_id, 'change-requests', v_evid) e;
@@ -193,7 +193,7 @@ begin
 end $$;
 
 comment on function public.request_profile_change(text, text, text, text, text, text) is
-  'ADR-0044: the calling worker asks the office to change their locked name (first/last + evidence in documents/<id>/change-requests/) or photo (a fresh object in photos/<id>/). One pending per kind, and at most three of a kind created in any 24 hours whatever their status (too_many_requests — each queued an RC1; 20260930205100); the uploaded object must exist; a name equal to the current one is refused. Queues RC1 to admin@ in the same transaction. Never writes staff.';
+  'ADR-0045: the calling worker asks the office to change their locked name (first/last + evidence in documents/<id>/change-requests/) or photo (a fresh object in photos/<id>/). One pending per kind, and at most three of a kind created in any 24 hours whatever their status (too_many_requests — each queued an RC1; 20260930205100); the uploaded object must exist; a name equal to the current one is refused. Queues RC1 to admin@ in the same transaction. Never writes staff.';
 
 -- ---------------------------------------------------------------------
 -- 2 · add_my_unavailability — 20260930202000, editable only when
@@ -335,7 +335,7 @@ begin
 end $$;
 
 comment on function public.add_my_unavailability(date, date, time, time, int) is
-  'ADR-0042: saves one availability entry for the calling worker (UK dates/times; all day when both times are null) plus p_repeat_weeks weekly copies sharing a series_id. {ok:false, reason} for bad_window › in_past › too_far › too_long › too_many (validateUnavailability() in packages/domain). Returns the worker''s confirmed bookings the entries overlap (by role section, RULE-18) as conflicts — never cancels them. Only for a worker the Staff App would show the screen to (appLock() none: compliant, no expired document, no declaration under review); every block, a manual hold included, raises not_editable (20260930205100).';
+  'ADR-0043: saves one availability entry for the calling worker (UK dates/times; all day when both times are null) plus p_repeat_weeks weekly copies sharing a series_id. {ok:false, reason} for bad_window › in_past › too_far › too_long › too_many (validateUnavailability() in packages/domain). Returns the worker''s confirmed bookings the entries overlap (by role section, RULE-18) as conflicts — never cancels them. Only for a worker the Staff App would show the screen to (appLock() none: compliant, no expired document, no declaration under review); every block, a manual hold included, raises not_editable (20260930205100).';
 
 -- ---------------------------------------------------------------------
 -- 3 · remove_my_unavailability — 20260930202000, the same gate.
@@ -393,7 +393,7 @@ begin
 end $$;
 
 comment on function public.remove_my_unavailability(uuid, boolean) is
-  'ADR-0042: deletes one of the calling worker''s availability entries, or (p_whole_series) it and every copy of its series not yet over. not_found for an id that is not theirs. Only for a worker the Staff App would show the screen to (appLock() none); every block, a manual hold included, raises not_editable (20260930205100).';
+  'ADR-0043: deletes one of the calling worker''s availability entries, or (p_whole_series) it and every copy of its series not yet over. not_found for an id that is not theirs. Only for a worker the Staff App would show the screen to (appLock() none); every block, a manual hold included, raises not_editable (20260930205100).';
 
 -- ---------------------------------------------------------------------
 -- Grants — as 20260930202000 and 20260930202200 set them.

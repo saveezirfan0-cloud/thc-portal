@@ -26,7 +26,7 @@ import type { ChangeRequest } from '../change-requests';
  *                 corrections go through the office." No function in
  *                 actions.ts writes it, so this is a statement of fact
  *                 rather than a disabled input hiding a live field.
- *                 "Request a change" (ADR-0044) asks the office; the
+ *                 "Request a change" (ADR-0045) asks the office; the
  *                 status line under it says where that request is.
  *   NI number     Masked and locked ONCE ENTERED. A worker who joined
  *                 without one — which is allowed (§2.10) — can add it
@@ -49,7 +49,7 @@ export function DetailsForm({
 }: {
   profile: StaffProfile;
   photoUrl: string | null;
-  /** The worker's own change requests (ADR-0044), newest first. */
+  /** The worker's own change requests (ADR-0045), newest first. */
   requests?: ChangeRequest[];
   /**
    * `my_profile_change_requests()` failed (audit D18). Not "no requests":

@@ -12,7 +12,7 @@ import {
 } from '../emergencyContact';
 
 /**
- * ADR-0043 (docs/19 §2). emergencyContact.vectors.json is the contract
+ * ADR-0044 (docs/19 §2). emergencyContact.vectors.json is the contract
  * between this module and the staff_emergency_contacts CHECKs; pgTAP 700
  * runs the same cases through emergency_contact_vectors.psql.
  */

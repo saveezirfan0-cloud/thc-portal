@@ -4,8 +4,8 @@ import type { AvailabilityRow, EmergencyContact } from './types';
 
 /**
  * Presentation rules for the docs/19 additions on /staff/:id — the
- * Availability tab (ADR-0042), the Emergency contact card (ADR-0043) and
- * the Referrals card (ADR-0046). Pure, so Vitest drives them directly.
+ * Availability tab (ADR-0043), the Emergency contact card (ADR-0044) and
+ * the Referrals card (ADR-0047). Pure, so Vitest drives them directly.
  *
  * The availability entries are UK wall-clock by construction: the worker
  * picks UK dates and "(UK time)" hours (§1.8), and an all-day entry is UK

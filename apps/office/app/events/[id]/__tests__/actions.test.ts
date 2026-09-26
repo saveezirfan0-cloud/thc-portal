@@ -125,7 +125,7 @@ describe('manual No-show (§3.3)', () => {
   });
 });
 
-describe('cover requests (ADR-0045)', () => {
+describe('cover requests (ADR-0046)', () => {
   it('Open to pool is one RPC, office_open_offer_to_pool()', async () => {
     state.rpc.mockResolvedValueOnce({ data: { ok: true, expiresAt: 'x' }, error: null });
     expect(await openOfferToPool('evt-1', 'off-1')).toEqual({ ok: true });

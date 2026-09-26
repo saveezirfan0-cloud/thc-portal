@@ -1,5 +1,5 @@
 -- =====================================================================
--- 730 · Refer a friend — the worker's code and count (ADR-0046, docs/19 §5)
+-- 730 · Refer a friend — the worker's code and count (ADR-0047, docs/19 §5)
 --   my_referral_code · my_referral_summary · 20260930202300
 --
 --   A. Shape: definer, search_path pinned, not anon/PUBLIC; the tables

@@ -3,7 +3,7 @@ import type { ChangeKind, ChangeRequestRow, ChangeStatus } from './types';
 
 /**
  * Presentation rules for the change-request queue (/staff/requests) and
- * the /staff/:id banner — ADR-0044, `wireframes/backoffice/change-requests.html`.
+ * the /staff/:id banner — ADR-0045, `wireframes/backoffice/change-requests.html`.
  * Pure, so the ones that are easy to get wrong are driven directly by
  * Vitest.
  */
@@ -86,7 +86,7 @@ export function evidenceName(path: string | null): string | null {
   return name && name !== '' ? name : null;
 }
 
-/** Pending first-come first-served (ADR-0044): oldest first. */
+/** Pending first-come first-served (ADR-0045): oldest first. */
 export function oldestFirst<T extends { created_at: string }>(rows: readonly T[]): T[] {
   return [...rows].sort((a, b) => a.created_at.localeCompare(b.created_at));
 }
@@ -114,7 +114,7 @@ export function decisionMessage(message: string): string {
 
 /**
  * Approve is enabled for a name only once the evidence tick is on; a photo
- * has no evidence to tick (ADR-0044 §3). The server action asks again.
+ * has no evidence to tick (ADR-0045 §3). The server action asks again.
  */
 export function canApprove(kind: ChangeKind, evidenceChecked: boolean): boolean {
   return kind === 'photo' || evidenceChecked;

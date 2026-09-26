@@ -50,8 +50,8 @@ const REQUIREMENT_EMAIL_CODES = ['CL3', 'CL4', 'CL5', 'CL6'];
 
 /**
  * The Staff App additions (docs/19 §3, §4, §6) — not §8's, not the
- * requirement's. RC = Request a change (ADR-0044), OF = Offer up a shift
- * (ADR-0045). RF1 (ADR-0046) is proposed only and must NOT be here.
+ * requirement's. RC = Request a change (ADR-0045), OF = Offer up a shift
+ * (ADR-0046). RF1 (ADR-0047) is proposed only and must NOT be here.
  */
 const ADDITION_PUSH_CODES = ['RC2', 'RC3', 'OF1', 'OF2', 'OF3', 'OF4', 'OF6'];
 const ADDITION_EMAIL_CODES = ['RC1', 'RC4', 'OF5'];
@@ -612,7 +612,7 @@ describe('N6 / N7 render from the payload booking_tick writes', () => {
 
 /**
  * The Staff App additions (docs/19-staff-features-plan.md §3, §4, §6). Not
- * §8's: ADR-0044 (RC, Request a change) and ADR-0045 (OF, Offer up a shift),
+ * §8's: ADR-0045 (RC, Request a change) and ADR-0046 (OF, Offer up a shift),
  * both proposed — awaiting THC. The table below is written out again by hand
  * from docs/19 so an edit to the register cannot silently reword one.
  */
@@ -758,9 +758,9 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/19 §6)', () => {
     }
   });
 
-  it('names its ADR in every trigger — RC → ADR-0044, OF → ADR-0045', () => {
+  it('names its ADR in every trigger — RC → ADR-0045, OF → ADR-0046', () => {
     for (const code of ADDITION_CODES) {
-      const adr = code.startsWith('RC') ? 'ADR-0044' : 'ADR-0045';
+      const adr = code.startsWith('RC') ? 'ADR-0045' : 'ADR-0046';
       expect(template(code).trigger, code).toContain(adr);
       expect(template(code).trigger, code).toMatch(/Not in §8/);
     }

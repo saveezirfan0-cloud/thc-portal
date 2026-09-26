@@ -26,7 +26,7 @@ import type { BookingOffer } from '../offers';
 import { YourTimeAt } from '../YourTimeAt';
 
 /**
- * Offer this shift / Withdraw offer / Ask the office for cover — ADR-0045,
+ * Offer this shift / Withdraw offer / Ask the office for cover — ADR-0046,
  * docs/19 §4, `wireframes/staff/offer-shift.html` (a)–(f).
  *
  * Which panel shows is `offerPanel()` (../offers.ts): more than 72 hours

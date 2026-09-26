@@ -1,8 +1,8 @@
 # 19 · Staff App additions — five features, planned
 
-> **Status:** plan · 25.09.2026. The product owner approved all five. Each is an **addition to Scope v1.6**, so each gets its own ADR (0042–0046, **status: proposed — awaiting THC**) and questions in `docs/15-open-questions.md` → *Questions for THC* (Q9–Q21, §7). Every question has a working default, so the build does not wait on THC.
+> **Status:** plan · 25.09.2026. The product owner approved all five. Each is an **addition to Scope v1.6**, so each gets its own ADR (0043–0047, **status: proposed — awaiting THC**) and questions in `docs/15-open-questions.md` → *Questions for THC* (Q9–Q21, §7). Every question has a working default, so the build does not wait on THC.
 >
-> Saved as `19-` because `16-owner-guide.md`, `17-inputs-from-thc.md` and `18-audit-2026-09-25.md` already exist (it was written as `18-` in parallel with that audit and renumbered when the two met on `main`, along with its ADRs, pgTAP files and migrations — see §0). ADR-0047 (the Past shifts section on `/shifts`) is taken by the quick-wins round.
+> Saved as `19-` because `16-owner-guide.md`, `17-inputs-from-thc.md` and `18-audit-2026-09-25.md` already exist (it was written as `18-` in parallel with that audit and renumbered when the two met on `main`, along with its ADRs, pgTAP files and migrations — see §0). ADR-0048 (the Past shifts section on `/shifts`) is taken by the quick-wins round.
 
 ---
 
@@ -26,11 +26,13 @@ None of these loosens an existing rule.
 |---|---|---|---|---|---|
 | Migrations | `20260930200000_booking_source_offer.sql`, `20260930200100_staff_additions_schema.sql` | `20260930201000_availability_in_auto_assign.sql`, `20260930201100_shift_offers.sql` | `20260930202000_staff_self_service_additions.sql` | `20260930203000_office_staff_additions.sql` | `20260930204000_apply_referral.sql` |
 | pgTAP | `700_staff_additions_rls`, `701_staff_additions_state`, `702_staff_additions_gdpr` | `706_availability_engine`, `720_shift_offers`, `721_take_offer_every_gate`, `722_cover_requests`, `723_offer_rounds_and_lapse`, `724_offer_payloads` | `705_my_availability`, `710_my_emergency_contact`, `715_request_change`, `730_referral_code` | `711_office_emergency_contact`, `716_office_decide_change` | `731_apply_referral` |
-| ADR | 0042–0046 (written in Phase 0; later amended only by owner) | 0042 (engine), 0045 | — | 0043, 0044 | 0046 |
+| ADR | 0043–0047 (written in Phase 0; later amended only by owner) | 0043 (engine), 0046 | — | 0044, 0045 | 0047 |
 
 `booking_source 'offer'` has its own migration: `alter type … add value` cannot be used in the transaction that adds it.
 
 **As built:** Agent B split its block into one file per feature (`20260930202000`–`20260930202300`). The review round (qa-reviewer + security, 25.09) added `20260930205000_shift_offers_review_fixes.sql` (scheduling), `20260930205100_self_service_review_fixes.sql` (staff-pwa), `20260930205200_gdpr_purge_additions_payloads.sql` (platform) and `20260930205300_referral_new_candidates_only.sql` (onboarding).
+
+**Renumbered again (26.09, #75).** `main`'s ADR-0041 (gov.uk share-code check) landed first, so ours moved up one: Documents-in-Profile 0042, availability 0043, emergency contact 0044, request a change 0045, offer up a shift 0046, refer a friend 0047, Past shifts 0048. Numbers below are the final ones.
 
 **Renumbered on meeting `main` (26.09).** The four PRs #69–#72 landed while this was built and took the same numbers: `main`'s `20260930100000`–`20260930140100` (the 25.09 audit round and THC's quiz/contract), ADR-0035–0040, pgTAP 650–652, 660–665 and 670–675, and `docs/18-audit-2026-09-25.md`. None of these files had been deployed, so under point 8 they were re-stamped, in their original order, to sort after `main`'s newest (`20260930140100`): `1000xx → 2000xx`, `1100xx → 2010xx`, `1200xx → 2020xx`, `130000 → 203000`, `140000 → 204000`, `1500xx → 2050xx`. ADRs 0035–0041 became 0041–0047, pgTAP 65x/66x/67x/68x became 70x/71x/72x/73x, and this plan `docs/19`. Every function these migrations restate was rebased onto `main`'s latest body at the same time (docs/10 §3b) — see the header of each migration.
 
@@ -39,7 +41,7 @@ None of these loosens an existing rule.
 ## 1 · Availability calendar
 
 **Scope impact:** §1.5 (new entity *StaffUnavailability*), §3.4 and §6 (a gate on automated invitations), §3.3 (Unavailable reason), §9.6 (profile tab), §10.1 (Profile row).
-**ADR-0042 · Worker availability: a hard gate for automated invitations, advisory for people.**
+**ADR-0043 · Worker availability: a hard gate for automated invitations, advisory for people.**
 
 **Hard gate, not a score.** §6's five weights are contractual; a sixth factor could be outscored and the worker would still be pushed invitations for days they said they cannot work. The gate applies only to what the machine does: hourly rounds, first round, cutoff refills, same-day escalation, offer pushes (F4). It does **not** apply to: a manager's manual invite (after a confirm dialog, in the spirit of RULE-17's override); the worker's own Accept, Radar apply or Take-offer; open invitations (never withdrawn, §3.4); a confirmed booking (never cancelled by a calendar entry — the worker is warned and pointed at Cancel/Offer).
 
@@ -66,7 +68,7 @@ None of these loosens an existing rule.
 ## 2 · Emergency contact
 
 **Scope impact:** §1.5 (Staff entity), §9.6, §10.1 Profile details, §1.7 GDPR. **§11.3 unchanged:** the allocation sheet and timesheet are client documents, so worker personal data never goes on them.
-**ADR-0043 · Emergency contact: office-only worker data, never on a client document.**
+**ADR-0044 · Emergency contact: office-only worker data, never on a client document.**
 
 **Data (Phase 0)** `staff_emergency_contacts`: `staff_id uuid pk → staff`, `name` 1–100, `relationship` 1–40 (UI suggests Parent/Partner/Sibling/Friend/Other), `phone` `^\+[1-9][0-9]{6,14}$` (E.164, the `/apply` rule), `updated_at`, `updated_by` (auth uid). Separate table, not a `staff` column — avoids #44's column-grant regime and keeps it out of every `staff` view. RLS: admin select.
 
@@ -89,7 +91,7 @@ None of these loosens an existing rule.
 ## 3 · Request a change — name and photo
 
 **Scope impact:** §10.1 ("corrections go through the office" gains an in-app route), §9.6, §8 (RC1–RC4), §1.5 (ProfileChangeRequest).
-**ADR-0044 · Request a change: the office's queue for what §10.1 locks.**
+**ADR-0045 · Request a change: the office's queue for what §10.1 locks.**
 
 **Data (Phase 0)** `profile_change_requests`: `id`, `staff_id`, `kind 'name'|'photo'`, `status 'pending'|'approved'|'rejected'|'withdrawn'` default pending, `proposed_first_name`/`proposed_last_name` (required iff name, 1–100, trimmed), `proposed_photo_path` (required iff photo; must start with `staff_id || '/'`), `evidence_path` (documents bucket `<staff_id>/change-requests/<id>.<ext>`; required for name, Q13), `worker_note` ≤ 500, `previous_value jsonb` (snapshot at decision), `created_at`, `decided_at`, `decided_by`, `applied_at`, `decision_reason` ≤ 300 (**required on reject and shown to the worker** — the `compliance_docs.rejection_reason` precedent). Partial unique `(staff_id, kind) where status = 'pending'`. `profile_change_transitions()` + `profile_change_requests_state_guard`: `pending → approved|rejected|withdrawn` only; `decided_*` set on leaving pending; proposed values immutable. RLS: admin select.
 
@@ -121,7 +123,7 @@ None of these loosens an existing rule.
 ## 4 · Offer up a shift ("release to the pool")
 
 **Scope impact:** §3.6 (cause `handed_over`, source `offer`), RULE-04 §7 (a second worker-initiated exit from `confirmed` under the same 72 h boundary), §10.4, §3.3, §3.4 (offer rounds), §8 (OF1–OF6), §9.12.
-**ADR-0045 · Offer up a shift: the booking is released only when a confirmed replacement takes it.**
+**ADR-0046 · Offer up a shift: the booking is released only when a confirmed replacement takes it.**
 
 **The model (safest first):**
 1. **Offer to the pool while > 72 h remain** (exactly `canCancelShift()`), only while auto-assign is ON for the event and role; if OFF, only "Ask the office". The offerer **stays confirmed** — fill, buffer (`6 (+1)`), `shift_fill`, `accept_invite`, the client line-up unchanged. The offer lapses at **start − 72 h** (OF3; still booked).
@@ -163,7 +165,7 @@ A pool hand-over sends no office email — no slot is lost (Q18); the board show
 ## 5 · Refer a friend
 
 **Scope impact:** §2.1 (`/apply?ref=`), §2.3 (referrer on candidate), §9.6, §10.1, §1.7 (privacy notice), §1.5. No money: nothing reaches `packages/pdf`, reports or payroll.
-**ADR-0046 · Refer a friend: a referral code on /apply, recorded, no reward.**
+**ADR-0047 · Refer a friend: a referral code on /apply, recorded, no reward.**
 
 **Data (Phase 0):** `staff_referral_codes(staff_id pk → staff, code text unique ^[A-HJ-NP-Z2-9]{8}$, created_at, revoked_at)`; `application_referrals(application_id pk → applications, referrer_staff_id → staff, candidate_staff_id → staff, code, recorded_at, check referrer <> candidate)`. RLS: admin select on both.
 
@@ -185,7 +187,7 @@ A pool hand-over sends no office email — no slot is lost (Q18); the board show
 
 ## 6 · Register additions (Phase 0, `packages/notifications`)
 
-RC1–RC4 and OF1–OF6 in `TEMPLATES`, each `trigger` naming its ADR; `ADDITION_CODES = ['RC1','RC2','RC3','RC4','OF1','OF2','OF3','OF4','OF5','OF6']`; `templates.test.ts`: union of the four lists = `TEMPLATES`, no worker push contains office wording, RC4 recipients = E7's, OF5 admin only; an "Additions (ADR-0042–0046)" table in `REGISTER-NOTES.md`, every row **confirm with THC**; RF1 documented as proposed, not registered.
+RC1–RC4 and OF1–OF6 in `TEMPLATES`, each `trigger` naming its ADR; `ADDITION_CODES = ['RC1','RC2','RC3','RC4','OF1','OF2','OF3','OF4','OF5','OF6']`; `templates.test.ts`: union of the four lists = `TEMPLATES`, no worker push contains office wording, RC4 recipients = E7's, OF5 admin only; an "Additions (ADR-0043–0046)" table in `REGISTER-NOTES.md`, every row **confirm with THC**; RF1 documented as proposed, not registered.
 
 ---
 
@@ -217,17 +219,17 @@ Carrying Q9–Q21 into `docs/17-inputs-from-thc.md` (generated by `packages/pdf/
 
 - **0-A schema + domain** (one PR — vectors and SQL twins together): migrations `20260930200000_booking_source_offer.sql`, `20260930200100_staff_additions_schema.sql` (7 tables, CHECKs, `admin_read`, two state guards + transitions functions, `unavailability_range()`, `staff_unavailable()`, `bookings_cancel_cause_check += handed_over`, GDPR trigger); `packages/domain` (`availability.ts`, `emergencyContact.ts`, `changeRequest.ts`, `shiftOffer.ts`, `referral.ts`; edits to `state.ts`, `autoAssign.ts`, `staff.ts`, `index.ts`; 4 new + 1 changed vectors; `gen-vectors-sql.mjs`; generated `_shared/*.psql`; tests); pgTAP 700–702 and `001_rls_guard.sql` (the only edit to 001); `scripts/check-write-paths.mjs`; `docs/03-data-model.md`.
 - **0-B notifications** (parallel with 0-A): `templates.ts`, `templates.test.ts`, `REGISTER-NOTES.md`.
-- **0-C docs** (parallel): ADR-0042–0046 (proposed); docs/15 Q9–Q21; `docs/08-screen-inventory.md` rows for `/profile/availability`, `/profile/details/request`, `/profile/refer`, `/radar/offers/:id`, `/staff/requests` and the new tab/cards; wireframe stubs `wireframes/staff/{availability,request-change,refer,offer-shift}.html`, `wireframes/backoffice/change-requests.html` + `wireframes/index.html` links; a pointer in docs/14.
+- **0-C docs** (parallel): ADR-0043–0046 (proposed); docs/15 Q9–Q21; `docs/08-screen-inventory.md` rows for `/profile/availability`, `/profile/details/request`, `/profile/refer`, `/radar/offers/:id`, `/staff/requests` and the new tab/cards; wireframe stubs `wireframes/staff/{availability,request-change,refer,offer-shift}.html`, `wireframes/backoffice/change-requests.html` + `wireframes/index.html` links; a pointer in docs/14.
 - **0-D types:** after 0-A is applied by `deploy-database`, `pnpm --filter @thc/db gen:types`.
 
 ### Phase 1 — four agents in parallel, disjoint files
 
 | Agent | Bot | Features | May touch | Must not touch |
 |---|---|---|---|---|
-| **A** | `scheduling` | F1 engine + board, F4 | `supabase/functions/auto-staffing/**`, `apps/staff/app/{actions.ts, shifts/**, radar/**}`, `apps/office/app/events/**`, its migrations/tests, ADR-0042/0045 | `apps/staff/app/profile/**`, `apps/office/app/staff/**`, `packages/*` |
+| **A** | `scheduling` | F1 engine + board, F4 | `supabase/functions/auto-staffing/**`, `apps/staff/app/{actions.ts, shifts/**, radar/**}`, `apps/office/app/events/**`, its migrations/tests, ADR-0043/0045 | `apps/staff/app/profile/**`, `apps/office/app/staff/**`, `packages/*` |
 | **B** | `staff-pwa` | F1–F3 worker side, F5 `/profile/refer` | `apps/staff/app/profile/**` (sole owner of `ProfileHub.tsx`, `lock.ts`, `StaffShell`), its wireframes | `apps/staff/app/{shifts,radar,apply}/**`, `packages/*` |
-| **C** | `directory` | F1–F3, F5 office side, `handed_over` label | `apps/office/app/staff/**`, `apps/office/app/_components/navCounts.ts`, its wireframes, ADR-0043/0044 | `apps/office/app/{events,onboarding}/**`, `packages/*` |
-| **D** | `onboarding` | F5 `/apply` + candidate side | `apps/staff/app/{apply,privacy}/**`, `apps/office/app/onboarding/**`, ADR-0046 | `apps/staff/app/profile/**`, `packages/*` |
+| **C** | `directory` | F1–F3, F5 office side, `handed_over` label | `apps/office/app/staff/**`, `apps/office/app/_components/navCounts.ts`, its wireframes, ADR-0044/0044 | `apps/office/app/{events,onboarding}/**`, `packages/*` |
+| **D** | `onboarding` | F5 `/apply` + candidate side | `apps/staff/app/{apply,privacy}/**`, `apps/office/app/onboarding/**`, ADR-0047 | `apps/staff/app/profile/**`, `packages/*` |
 
 No Phase-1 agent edits `packages/*`. Until the type regen, new RPCs use narrow local casts (the `(supabase as unknown as XRpc).rpc(…)` pattern in `apps/office/app/staff/[id]/data.ts`). Phase-1 migrations reference only Phase 0 and existing objects, never each other's. C tests its office RPCs with owner-inserted fixtures. Every PR gets `qa-reviewer`; A2 and D also get `security`.
 

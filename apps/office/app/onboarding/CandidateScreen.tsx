@@ -476,7 +476,7 @@ function Facts({ row, data, phase }: { row: CandidateRow; data: CandidateData; p
       </span>,
     );
   }
-  // ADR-0046: who referred them, on every phase — the office's to see,
+  // ADR-0047: who referred them, on every phase — the office's to see,
   // never the applicant's. The name opens the referrer's profile.
   if (data.referralProblem) {
     // Audit D18: a failed read is not "not referred".

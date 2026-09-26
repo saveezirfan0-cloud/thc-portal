@@ -15,7 +15,7 @@ import type { ShiftDetail } from './types';
 
 /**
  * §10.4's three dead ends, `wireframes/staff/shift-detail.html` (n1–n3),
- * and the hand-over (ADR-0045, `wireframes/staff/offer-shift.html` (g)).
+ * and the hand-over (ADR-0046, `wireframes/staff/offer-shift.html` (g)).
  *
  * Instead of the shift screen, not on top of it: no map, no distance line,
  * no check-in or check-out, no breaks block. The copy is @thc/domain's

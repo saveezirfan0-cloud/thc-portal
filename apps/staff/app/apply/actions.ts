@@ -43,7 +43,7 @@ interface ApplicationArgs {
 type RpcAnswer = { error: { message: string; code?: string } | null };
 
 /**
- * `p_referral_code` is 20260930204000's 8th argument (ADR-0046). Typed by
+ * `p_referral_code` is 20260930204000's 8th argument (ADR-0047). Typed by
  * hand here, like the rest of this call, until the Phase 2 type regen.
  */
 interface AdminRpcClient {
@@ -64,7 +64,7 @@ interface AdminRpcClient {
  * than failing inside the database. Every deployed project carries the key
  * (docs/16, environment table); a developer's `supabase start` prints one.
  *
- * The referral code (ADR-0046) rides on the same call. The argument is sent
+ * The referral code (ADR-0047) rides on the same call. The argument is sent
  * only when there is a code, so a code-less call matches the function
  * whichever migration the database is on; and if the database does not yet
  * know the 8th argument (PostgREST's PGRST202, "no such function"), the

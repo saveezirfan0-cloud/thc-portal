@@ -11,7 +11,7 @@ import {
   referralLink,
 } from '../referral';
 
-/** ADR-0046 (docs/19 §5). Unit tests only; the SQL half is pgTAP 700 F. */
+/** ADR-0047 (docs/19 §5). Unit tests only; the SQL half is pgTAP 700 F. */
 const here = dirname(fileURLToPath(import.meta.url));
 const sql = readFileSync(
   resolve(here, '../../../../supabase/migrations/20260930200100_staff_additions_schema.sql'),

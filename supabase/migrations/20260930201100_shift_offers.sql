@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20260930201100 · offer up a shift
---   (ADR-0045; docs/19 §4, Phase 1 Agent A, part A2)
+--   (ADR-0046; docs/19 §4, Phase 1 Agent A, part A2)
 --
 -- A confirmed worker releases a shift to other workers and STAYS
 -- CONFIRMED until a replacement takes it. The data is Phase 0's
@@ -39,7 +39,7 @@
 --     self_cancelled, booked_elsewhere → overlap, rtw_expired, hours_limit;
 --     no row → not_bookable) and accept_invite's overlap and cap re-reads ›
 --     already_had_booking › not_yet (RULE-17: an unqualified taker waits
---     until offer_wave1_exhausted()). The calendar (ADR-0042) never refuses
+--     until offer_wave1_exhausted()). The calendar (ADR-0043) never refuses
 --     a take. Then: the taker's row → confirmed (source 'offer'); the offer
 --     → taken; the original → cancelled / handed_over / self_cancelled
 --     (the offerer is barred from the event, Q15); the taker's overlapping
@@ -184,7 +184,7 @@ begin
 end $$;
 
 comment on function public.queue_offer_notice(text, uuid, uuid) is
-  'ADR-0045: queues one of OF1–OF6 for an offer under its register key (OFn:offer:<id>; OF1:offer:<offer>:<staff>) with exactly the payload keys packages/notifications renders, plus offerId/shiftId/eventId (and bookingId) for tooling. Push dates as N5, OF5 as E10; the base rate only; a blank note is "—". Internal: called by the offer functions, never an RPC.';
+  'ADR-0046: queues one of OF1–OF6 for an offer under its register key (OFn:offer:<id>; OF1:offer:<offer>:<staff>) with exactly the payload keys packages/notifications renders, plus offerId/shiftId/eventId (and bookingId) for tooling. Push dates as N5, OF5 as E10; the base rate only; a blank note is "—". Internal: called by the offer functions, never an RPC.';
 
 -- ---------------------------------------------------------------------
 -- 1 · RULE-17 for an offer
@@ -219,7 +219,7 @@ as $$
 $$;
 
 comment on function public.offer_wave1_exhausted(uuid) is
-  'ADR-0045, RULE-17: true once every wave-1 worker for this offer (qualified at client + role, ungated, not the offerer, no ruling-out booking on the section, not marked unavailable) has been pushed it. Until then an unqualified taker gets not_yet and Radar hides it from them. Service role; called inside the definer offer functions.';
+  'ADR-0046, RULE-17: true once every wave-1 worker for this offer (qualified at client + role, ungated, not the offerer, no ruling-out booking on the section, not marked unavailable) has been pushed it. Until then an unqualified taker gets not_yet and Radar hides it from them. Service role; called inside the definer offer functions.';
 
 -- ---------------------------------------------------------------------
 -- 2 · The worker: offer, withdraw, ask for cover
@@ -281,7 +281,7 @@ begin
 end $$;
 
 comment on function public.offer_shift(uuid) is
-  'ADR-0045: the worker offers their own confirmed booking to the pool. Refuses event_cancelled / not_confirmed / too_late (72 h or less remain — RULE-04''s boundary) / auto_assign_off (event or role switch off: ask the office instead) / already_offered. The worker stays confirmed; the offer expires at start − 72 h.';
+  'ADR-0046: the worker offers their own confirmed booking to the pool. Refuses event_cancelled / not_confirmed / too_late (72 h or less remain — RULE-04''s boundary) / auto_assign_off (event or role switch off: ask the office instead) / already_offered. The worker stays confirmed; the offer expires at start − 72 h.';
 
 create or replace function public.withdraw_shift_offer(p_offer uuid)
 returns jsonb
@@ -314,7 +314,7 @@ begin
 end $$;
 
 comment on function public.withdraw_shift_offer(uuid) is
-  'ADR-0045: the worker withdraws their own open offer (a pool offer or a cover request). Under the section lock, so it cannot race a take: offer_not_open once somebody has it.';
+  'ADR-0046: the worker withdraws their own open offer (a pool offer or a cover request). Under the section lock, so it cannot race a take: offer_not_open once somebody has it.';
 
 create or replace function public.request_cover(p_booking uuid, p_note text default null)
 returns jsonb
@@ -377,7 +377,7 @@ begin
 end $$;
 
 comment on function public.request_cover(uuid, text) is
-  'ADR-0045: "Ask the office for cover" — inside 72 h, or with auto-assign off. Creates an office offer (not visible to workers, not pushed) and queues OF5 to admin@ at once; the worker stays confirmed. Refuses event_cancelled / not_confirmed / section_started / use_offer (more than 72 h out with auto-assign on) / note_too_long (> 300) / already_offered.';
+  'ADR-0046: "Ask the office for cover" — inside 72 h, or with auto-assign off. Creates an office offer (not visible to workers, not pushed) and queues OF5 to admin@ at once; the worker stays confirmed. Refuses event_cancelled / not_confirmed / section_started / use_offer (more than 72 h out with auto-assign on) / note_too_long (> 300) / already_offered.';
 
 -- ---------------------------------------------------------------------
 -- 3 · The take
@@ -444,7 +444,7 @@ begin
   end if;
 
   -- Every hard gate the pool applies, by name. The calendar is not one of
-  -- them for a take (ADR-0042): the worker has changed their mind.
+  -- them for a take (ADR-0043): the worker has changed their mind.
   select c.gate, c.qualified into v_gate, v_qualified
     from auto_assign_candidates(sr.id) c
    where c.staff_id = v_me;
@@ -554,7 +554,7 @@ begin
 end $$;
 
 comment on function public.take_offered_shift(uuid) is
-  'ADR-0045: one transaction under the section lock. Refuses, in takeOffer()''s order: event_cancelled › offer_not_open › offer_expired › original_not_confirmed › own_offer › section_started › the pool gate by name (booked_elsewhere → overlap; no row → not_bookable) and accept_invite''s overlap / cap re-reads › already_had_booking › not_yet (RULE-17). Then the taker is confirmed (source offer), the offer taken, the original cancelled / handed_over / self_cancelled, the taker''s overlapping invitations withdrawn, OF2 + OF4 queued. Confirmed count net zero. Never refused for the calendar (ADR-0042).';
+  'ADR-0046: one transaction under the section lock. Refuses, in takeOffer()''s order: event_cancelled › offer_not_open › offer_expired › original_not_confirmed › own_offer › section_started › the pool gate by name (booked_elsewhere → overlap; no row → not_bookable) and accept_invite''s overlap / cap re-reads › already_had_booking › not_yet (RULE-17). Then the taker is confirmed (source offer), the offer taken, the original cancelled / handed_over / self_cancelled, the taker''s overlapping invitations withdrawn, OF2 + OF4 queued. Confirmed count net zero. Never refused for the calendar (ADR-0043).';
 
 -- ---------------------------------------------------------------------
 -- 4 · What the worker reads
@@ -629,7 +629,7 @@ as $$
 $$;
 
 comment on function public.staff_open_offers(uuid) is
-  'ADR-0045: Radar''s "Up for grabs" (and /radar/offers/:id with p_offer) — the open offers this worker may take, RULE-17 visibility (offerVisibleTo()). Role, event, venue, the section''s window, the BASE rate, dress code, km, expiry; never the offerer, never the holiday element.';
+  'ADR-0046: Radar''s "Up for grabs" (and /radar/offers/:id with p_offer) — the open offers this worker may take, RULE-17 visibility (offerVisibleTo()). Role, event, venue, the section''s window, the BASE rate, dress code, km, expiry; never the offerer, never the holiday element.';
 
 create or replace function public.staff_booking_offers()
 returns table (
@@ -659,7 +659,7 @@ as $$
 $$;
 
 comment on function public.staff_booking_offers() is
-  'ADR-0045: the worker''s own live confirmed bookings with the auto-assign switch (event AND role) and their open offer (mode pool = "Offered · open until …", office = "Cover requested"). For /shifts and /shifts/:id; staff_bookings() is left as it is.';
+  'ADR-0046: the worker''s own live confirmed bookings with the auto-assign switch (event AND role) and their open offer (mode pool = "Offered · open until …", office = "Cover requested"). For /shifts and /shifts/:id; staff_bookings() is left as it is.';
 
 -- ---------------------------------------------------------------------
 -- 5 · The office
@@ -717,7 +717,7 @@ begin
 end $$;
 
 comment on function public.office_open_offer_to_pool(uuid) is
-  'ADR-0045: the office opens a worker''s cover request to the pool (office → pool), takeable until the section start and pushed in the hourly OF1 rounds while auto-assign is on. Admin only; audited. Refuses event_cancelled / offer_not_open / not_a_cover_request / section_started / original_not_confirmed.';
+  'ADR-0046: the office opens a worker''s cover request to the pool (office → pool), takeable until the section start and pushed in the hourly OF1 rounds while auto-assign is on. Admin only; audited. Refuses event_cancelled / offer_not_open / not_a_cover_request / section_started / original_not_confirmed.';
 
 create or replace function public.office_decline_cover(p_offer uuid, p_note text default null)
 returns jsonb
@@ -762,7 +762,7 @@ begin
 end $$;
 
 comment on function public.office_decline_cover(uuid, text) is
-  'ADR-0045: the office closes a worker''s cover request (open → cancelled) and queues OF6; the worker stays booked. The note is the office''s own record (closed_reason), never sent to the worker. Admin only; audited.';
+  'ADR-0046: the office closes a worker''s cover request (open → cancelled) and queues OF6; the worker stays booked. The note is the office''s own record (closed_reason), never sent to the worker. Admin only; audited.';
 
 -- ---------------------------------------------------------------------
 -- 6 · The service role: the hourly offer rounds and the lapse
@@ -796,7 +796,7 @@ begin
 end $$;
 
 comment on function public.lapse_shift_offers(timestamptz) is
-  'ADR-0045: closes every open offer past its expiry (open → lapsed, closed_reason expired) and queues OF3 — "you''re still booked" — for each that had gone to other workers. The worker stays confirmed. Service role; the auto-staffing hourly run calls it first.';
+  'ADR-0046: closes every open offer past its expiry (open → lapsed, closed_reason expired) and queues OF3 — "you''re still booked" — for each that had gone to other workers. The worker stays confirmed. Service role; the auto-staffing hourly run calls it first.';
 
 create or replace function public.offer_rounds_due(p_now timestamptz default now())
 returns table (offer_id uuid, shift_id uuid, event_id uuid, allocation int, expires_at timestamptz)
@@ -819,7 +819,7 @@ as $$
 $$;
 
 comment on function public.offer_rounds_due(timestamptz) is
-  'ADR-0045: the open pool offers an hourly OF1 round serves — not expired, section not started, event live, auto-assign on for the event and role — with the section''s allocation_per_hour. Service role.';
+  'ADR-0046: the open pool offers an hourly OF1 round serves — not expired, section not started, event live, auto-assign on for the event and role — with the section''s allocation_per_hour. Service role.';
 
 create or replace function public.offer_candidates(p_offer uuid)
 returns table (
@@ -849,7 +849,7 @@ as $$
 $$;
 
 comment on function public.offer_candidates(uuid) is
-  'ADR-0045: auto_assign_candidates for the offer''s section without the offerer — the rows selectOfferRecipients() ranks (RULE-17 waves, §6 score). Service role.';
+  'ADR-0046: auto_assign_candidates for the offer''s section without the offerer — the rows selectOfferRecipients() ranks (RULE-17 waves, §6 score). Service role.';
 
 create or replace function public.notify_offer_candidates(p_offer uuid, p_staff uuid[])
 returns int
@@ -887,7 +887,7 @@ begin
        and c.gate is null
        and (c.booking_status is null
             or c.booking_status not in ('confirmed', 'worked', 'turned_away', 'cancelled'))
-       -- ADR-0042: the calendar gates the pushes too.
+       -- ADR-0043: the calendar gates the pushes too.
        and not staff_unavailable(c.staff_id, sr.starts_at, sr.ends_at)
        and not exists (select 1 from shift_offer_notices n
                         where n.offer_id = o.id and n.staff_id = c.staff_id)
@@ -906,7 +906,7 @@ begin
 end $$;
 
 comment on function public.notify_offer_candidates(uuid, uuid[]) is
-  'ADR-0045: one OF1 round for an open pool offer — records a shift_offer_notices row and queues OF1 (OF1:offer:<offer>:<staff>) for each named worker who is ungated, not the offerer, not ruled out by a booking here, not marked unavailable (ADR-0042) and not already told. Wave 1 first; a wave-2 worker only once wave 1 is exhausted (RULE-17). Nothing after expiry, after the start, on a cancelled event or with auto-assign off. Service role.';
+  'ADR-0046: one OF1 round for an open pool offer — records a shift_offer_notices row and queues OF1 (OF1:offer:<offer>:<staff>) for each named worker who is ungated, not the offerer, not ruled out by a booking here, not marked unavailable (ADR-0043) and not already told. Wave 1 first; a wave-2 worker only once wave 1 is exhausted (RULE-17). Nothing after expiry, after the start, on a cancelled event or with auto-assign off. Service role.';
 
 -- ---------------------------------------------------------------------
 -- 7 · bookings_offer_lapse: any other exit from confirmed closes the offer
@@ -934,7 +934,7 @@ create trigger bookings_offer_lapse
   execute function bookings_offer_lapse();
 
 comment on function public.bookings_offer_lapse() is
-  'ADR-0045: when a booking leaves confirmed by any cause but a take (Withdraw, 12:05 cutoff, block, leave, GDPR, event cancelled, self-cancel, check-in), its open offer lapses with that cause as closed_reason. A take closes the offer first, so it never fires for one. A trigger function: not an RPC.';
+  'ADR-0046: when a booking leaves confirmed by any cause but a take (Withdraw, 12:05 cutoff, block, leave, GDPR, event cancelled, self-cancel, check-in), its open offer lapses with that cause as closed_reason. A take closes the offer first, so it never fires for one. A trigger function: not an RPC.';
 
 -- ---------------------------------------------------------------------
 -- Grants. Worker and office RPCs: authenticated, with the check inside.

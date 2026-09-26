@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { CandidateData, CandidateRow, ReferralRow, ReturningRow } from '../types';
 
 /**
- * Refer a friend on the office side (ADR-0046, docs/19 §5):
+ * Refer a friend on the office side (ADR-0047, docs/19 §5):
  * `/onboarding/:id` "Referred by {name} ({employeeId})" → `/staff/:id`, and
  * the kanban's "Referred" chip. Both read `application_referrals` through a
  * separate admin query — `onboarding_candidates_v` is not restated.
@@ -378,7 +378,7 @@ describe('/onboarding — the "Referred" chip', () => {
 
   it('marks exactly the referred candidate', () => {
     // What the database writes since 20260930205300: a referral row for a
-    // new candidate's application only (ADR-0046, security finding #5).
+    // new candidate's application only (ADR-0047, security finding #5).
     const html = board({ candidates: ['c-1'], applications: ['a-1'] });
     expect(chips(html)).toBe(1);
     expect(card(html, 'Hana Kowalska')).toContain('>Referred<');

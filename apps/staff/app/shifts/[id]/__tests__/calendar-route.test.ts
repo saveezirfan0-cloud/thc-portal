@@ -126,7 +126,7 @@ describe('GET /shifts/:id/calendar.ics', () => {
     ['the worker’s own cancel', detail({ status: 'cancelled', cancelCause: 'self_cancel' })],
     ['a cancelled event', detail({ eventCancelledAt: '2026-06-13T09:00:00Z' })],
     ['a withdrawn booking', detail({ status: 'cancelled', cancelCause: 'office_withdraw' })],
-    ['a shift handed over (ADR-0045)', detail({ status: 'cancelled', cancelCause: 'handed_over' })],
+    ['a shift handed over (ADR-0046)', detail({ status: 'cancelled', cancelCause: 'handed_over' })],
     ['a turn-away', detail({ status: 'turned_away' })],
   ])('is a 404 for %s', async (_case, row) => {
     shift.mockResolvedValue(row);

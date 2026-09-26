@@ -1,5 +1,5 @@
 -- =====================================================================
--- 721 · take_offered_shift() — every gate in one file (ADR-0045)
+-- 721 · take_offered_shift() — every gate in one file (ADR-0046)
 --   20260930201100_shift_offers.sql
 --
 -- The take is the one new way into `confirmed`, so every rule a booking
@@ -16,7 +16,7 @@
 -- invitation here), original cancelled / handed_over / self_cancelled,
 -- offer taken, confirmed count unchanged, the taker's overlapping
 -- invitations withdrawn, OF2 + OF4, no N10c, and the offerer barred from
--- the event afterwards. The calendar (ADR-0042) never refuses a take.
+-- the event afterwards. The calendar (ADR-0043) never refuses a take.
 -- =====================================================================
 begin;
 select plan(46);
@@ -174,7 +174,7 @@ insert into bookings (id, shift_id, staff_id, status, source) values
   (:'b_ovinv', :'s_ov', :'t_ok', 'invited', 'auto');
 update events set cancelled_at = now(), cancel_reason = 'fixture' where id = :'ev_x';
 
--- Tia marked Thursday unavailable after she was invited (ADR-0042).
+-- Tia marked Thursday unavailable after she was invited (ADR-0043).
 insert into staff_unavailability (staff_id, period, all_day)
 values (:'t_ok', unavailability_range(:'w'::date + 3), true);
 

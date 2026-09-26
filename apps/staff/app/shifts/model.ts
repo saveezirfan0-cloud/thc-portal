@@ -24,7 +24,7 @@ import {
  * because they read differently to a worker.
  *
  * The collapsed "Past shifts" section below the upcoming list is
- * ADR-0047 (docs/adr/0047-past-shifts-section.md): the wireframe draws only
+ * ADR-0048 (docs/adr/0048-past-shifts-section.md): the wireframe draws only
  * the live cards, and history is one tap away rather than in the way.
  */
 

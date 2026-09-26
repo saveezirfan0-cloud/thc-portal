@@ -1,5 +1,5 @@
 {
-  "description": "ADR-0043 emergency contact (docs/19 §2). The contract between packages/domain/src/emergencyContact.ts (isE164, normaliseEmergencyPhone, validateEmergencyContact) and the staff_emergency_contacts CHECKs in 20260930200100_staff_additions_schema.sql: phone ^\\+[1-9][0-9]{6,14}$ (E.164, the /apply rule), name 1-100 and relationship 1-40, both trimmed. `storable` is whether the raw string passes the CHECK as it is; `normalised` is what the form stores for it (null = refused). Regenerate the pgTAP half with: node packages/domain/scripts/gen-vectors-sql.mjs",
+  "description": "ADR-0044 emergency contact (docs/19 §2). The contract between packages/domain/src/emergencyContact.ts (isE164, normaliseEmergencyPhone, validateEmergencyContact) and the staff_emergency_contacts CHECKs in 20260930200100_staff_additions_schema.sql: phone ^\\+[1-9][0-9]{6,14}$ (E.164, the /apply rule), name 1-100 and relationship 1-40, both trimmed. `storable` is whether the raw string passes the CHECK as it is; `normalised` is what the form stores for it (null = refused). Regenerate the pgTAP half with: node packages/domain/scripts/gen-vectors-sql.mjs",
   "phones": [
     {
       "name": "uk_mobile_e164",

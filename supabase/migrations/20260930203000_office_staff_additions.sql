@@ -1,8 +1,8 @@
 -- =====================================================================
 -- Migration 20260930203000 · the office side of the staff additions
 --   docs/19-staff-features-plan.md Phase 1, Agent C (directory)
---   ADR-0042 (availability, read-only tab), ADR-0043 (emergency contact),
---   ADR-0044 (request a change), ADR-0046 (referrals)
+--   ADR-0043 (availability, read-only tab), ADR-0044 (emergency contact),
+--   ADR-0045 (request a change), ADR-0047 (referrals)
 --   — additions to Scope v1.6, status proposed — awaiting THC
 --
 -- Phase 0 (20260930200100) laid the tables with one admin_read policy each
@@ -45,7 +45,7 @@
 -- =====================================================================
 
 -- ---------------------------------------------------------------------
--- §1 · Emergency contact (ADR-0043)
+-- §1 · Emergency contact (ADR-0044)
 -- ---------------------------------------------------------------------
 create or replace function public.office_save_emergency_contact(
   p_staff        uuid,
@@ -89,7 +89,7 @@ begin
   end if;
   if v_phone !~ '^\+[1-9][0-9]{6,14}$' then
     raise exception 'bad_phone' using errcode = '22023',
-      hint = 'ADR-0043: E.164 with the country code, the /apply rule.';
+      hint = 'ADR-0044: E.164 with the country code, the /apply rule.';
   end if;
 
   select * into v_old from staff_emergency_contacts where staff_id = p_staff;
@@ -120,7 +120,7 @@ begin
 end $$;
 
 comment on function public.office_save_emergency_contact(uuid, text, text, text) is
-  'ADR-0043: the office saves or corrects a worker''s emergency contact (/staff/:id Overview → Edit). Admin only; refuses a removed worker; name 1–100, relationship 1–40, phone E.164 after separators are stripped (bad_name / bad_relationship / bad_phone, 22023). Writes audit_log emergency_contact.office_save with the changed field names — never the values. No notification.';
+  'ADR-0044: the office saves or corrects a worker''s emergency contact (/staff/:id Overview → Edit). Admin only; refuses a removed worker; name 1–100, relationship 1–40, phone E.164 after separators are stripped (bad_name / bad_relationship / bad_phone, 22023). Writes audit_log emergency_contact.office_save with the changed field names — never the values. No notification.';
 
 create or replace function public.office_clear_emergency_contact(p_staff uuid)
 returns jsonb
@@ -150,10 +150,10 @@ begin
 end $$;
 
 comment on function public.office_clear_emergency_contact(uuid) is
-  'ADR-0043: the office clears a worker''s emergency contact (/staff/:id Overview → Clear). Admin only; audited (emergency_contact.office_clear) when there was a row to clear; clearing nothing is a no-op, not an error.';
+  'ADR-0044: the office clears a worker''s emergency contact (/staff/:id Overview → Clear). Admin only; audited (emergency_contact.office_clear) when there was a row to clear; clearing nothing is a no-op, not an error.';
 
 -- ---------------------------------------------------------------------
--- §2 · Decide a change request (ADR-0044)
+-- §2 · Decide a change request (ADR-0045)
 --
 -- Locks the request, then the worker, in that order — the only order any
 -- path here takes, so two managers deciding at once queue on the request
@@ -189,7 +189,7 @@ begin
   end if;
   if r.status <> 'pending' then
     raise exception 'already_decided' using errcode = 'P0001',
-      hint = 'ADR-0044: approved, rejected and withdrawn are terminal. "Request again" is a new row.';
+      hint = 'ADR-0045: approved, rejected and withdrawn are terminal. "Request again" is a new row.';
   end if;
 
   -- decisionNeedsReason(approve) in packages/domain: a rejection says why,
@@ -281,7 +281,7 @@ begin
 end $$;
 
 comment on function public.office_decide_profile_change(uuid, boolean, text) is
-  'ADR-0044: the office approves or rejects a pending name/photo change request (/staff/requests). Admin only. Approve name → staff.first_name/last_name + RC2 + RC4 (admin@ + payroll); approve photo → staff.photo_path despite the §10.1 lock, old object kept; reject → reason required (reason_required 22023, ≤ 300) + RC3. previous_value snapshots the profile at the decision; already_decided refuses a second decision; audit_log profile_change.approve|reject. No right-to-work re-check (Q13); issued PDFs and payroll exports untouched (§1.7).';
+  'ADR-0045: the office approves or rejects a pending name/photo change request (/staff/requests). Admin only. Approve name → staff.first_name/last_name + RC2 + RC4 (admin@ + payroll); approve photo → staff.photo_path despite the §10.1 lock, old object kept; reject → reason required (reason_required 22023, ≤ 300) + RC3. previous_value snapshots the profile at the decision; already_decided refuses a second decision; audit_log profile_change.approve|reject. No right-to-work re-check (Q13); issued PDFs and payroll exports untouched (§1.7).';
 
 -- ---------------------------------------------------------------------
 -- §3 · The office's reads
@@ -359,7 +359,7 @@ begin
 end $$;
 
 comment on function public.office_profile_change_requests(uuid, boolean, int) is
-  'ADR-0044: the /staff/requests queue — pending oldest first, or decided newest first — optionally for one worker (the /staff/:id banner). Admin only. Names the decider (profiles.full_name, which an admin cannot read directly). A removed worker reads "Deleted account #id" with no photo or evidence path.';
+  'ADR-0045: the /staff/requests queue — pending oldest first, or decided newest first — optionally for one worker (the /staff/:id banner). Admin only. Names the decider (profiles.full_name, which an admin cannot read directly). A removed worker reads "Deleted account #id" with no photo or evidence path.';
 
 -- The Overview card. updated_by is compared with the worker's own login to
 -- say "by the worker" / "by the office" — the name only for the office.
@@ -397,7 +397,7 @@ begin
 end $$;
 
 comment on function public.office_emergency_contact(uuid) is
-  'ADR-0043: the worker''s emergency contact for the /staff/:id Overview card, with who saved it last (worker / office + name). Admin only. Null when none — the card says "Not provided". Never read by a PDF, a client_* view or the Client Portal.';
+  'ADR-0044: the worker''s emergency contact for the /staff/:id Overview card, with who saved it last (worker / office + name). Admin only. Null when none — the card says "Not provided". Never read by a PDF, a client_* view or the Client Portal.';
 
 -- The read-only Availability tab: entries overlapping [p_from, p_to), each
 -- with its repeat series and any CONFIRMED booking it overlaps — measured
@@ -457,9 +457,9 @@ begin
 end $$;
 
 comment on function public.office_staff_unavailability(uuid, timestamptz, timestamptz) is
-  'ADR-0042: the /staff/:id Availability tab — a worker''s entries overlapping [p_from, p_to) (default the next 8 weeks), with the repeat series size and last start, and any confirmed booking whose role-section window overlaps (RULE-18). Admin only; read-only — the worker edits in the app.';
+  'ADR-0043: the /staff/:id Availability tab — a worker''s entries overlapping [p_from, p_to) (default the next 8 weeks), with the repeat series size and last start, and any confirmed booking whose role-section window overlaps (RULE-18). Admin only; read-only — the worker edits in the app.';
 
--- The Referrals card and the "Referred by" line (ADR-0046). A removed
+-- The Referrals card and the "Referred by" line (ADR-0047). A removed
 -- person on either side reads "Deleted account #id" (§1.7).
 create or replace function public.office_staff_referrals(p_staff uuid)
 returns jsonb
@@ -515,7 +515,7 @@ begin
 end $$;
 
 comment on function public.office_staff_referrals(uuid) is
-  'ADR-0046: the /staff/:id Referrals card — the worker''s code, who referred them (latest), and everyone who applied with their code, with status. Admin only; a removed person reads "Deleted account #id". No money, no reward (Q19).';
+  'ADR-0047: the /staff/:id Referrals card — the worker''s code, who referred them (latest), and everyone who applied with their code, with status. Admin only; a removed person reads "Deleted account #id". No money, no reward (Q19).';
 
 -- ---------------------------------------------------------------------
 -- Grants: admin-only by the check inside; never PUBLIC or anon (190).

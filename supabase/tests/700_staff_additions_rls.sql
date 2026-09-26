@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 700 · The staff additions — who reads and writes what
---   20260930200100_staff_additions_schema.sql · docs/19 §0 · ADR-0042 … 0046
+--   20260930200100_staff_additions_schema.sql · docs/19 §0 · ADR-0043 … 0046
 --
 --   A. Shape: RLS on all seven, exactly one policy each — admin_read,
 --      SELECT — and no staff, client or anon policy (docs/19 §0.1–0.3).
@@ -14,7 +14,7 @@
 --      another worker's calendar — or their own.
 --   E. The emergency contact CHECKs against emergencyContact.vectors.json
 --      (the phone is E.164, the /apply rule; name 1–100, relationship 1–40).
---   F. The referral code CHECKs (ADR-0046).
+--   F. The referral code CHECKs (ADR-0047).
 -- =====================================================================
 begin;
 select plan(50);
@@ -326,7 +326,7 @@ select throws_ok(
   'E: an untrimmed name is refused — the form trims before it saves');
 
 -- =====================================================================
--- F · Referral codes (ADR-0046)
+-- F · Referral codes (ADR-0047)
 -- =====================================================================
 create function pg_temp.code_ok(p_staff uuid, p_code text)
 returns boolean language plpgsql as $$
