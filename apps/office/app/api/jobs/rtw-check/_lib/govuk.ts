@@ -1,6 +1,6 @@
 import { rtwCheckError, safeErrorCode, termTimeLimitFrom } from '@thc/domain';
 import type { RtwCheckResult } from '@thc/domain';
-import { envNumber, envText, looksLikePdf, parseUkDate } from './checker';
+import { envNumber, envText, looksLikePdf, looksLikePng, parseUkDate } from './checker';
 import type { CheckInput, CheckOutput, EnvReader, RightToWorkChecker } from './checker';
 import {
   GOVUK_DEFAULT_START_URL,
@@ -29,6 +29,8 @@ export interface GovukLocator {
   fill(value: string): Promise<void>;
   click(): Promise<void>;
   innerText(): Promise<string>;
+  /** Playwright's element screenshot; optional so a scripted test page need not draw. */
+  screenshot?(options: { type: 'png' }): Promise<Uint8Array>;
 }
 
 export interface GovukPage {
@@ -172,6 +174,22 @@ async function find(
   return null;
 }
 
+/**
+ * The applicant's photo as a PNG, for the admin's side-by-side comparison
+ * (ADR-0041). Best effort: a missing or odd image is null, never a failed
+ * check — the same photo is in the PDF.
+ */
+export async function govukPhoto(page: GovukPage): Promise<Uint8Array | null> {
+  try {
+    const image = await find(page, GOVUK_SELECTORS.photo);
+    if (!image?.screenshot) return null;
+    const bytes = await image.screenshot({ type: 'png' });
+    return looksLikePng(bytes) ? bytes : null;
+  } catch {
+    return null;
+  }
+}
+
 class PageChanged extends Error {
   constructor(readonly step: string) {
     super(`govuk_page_changed:${step}`);
@@ -282,11 +300,13 @@ export function createGovukChecker(
         }
         const result = parseGovukResult(text, checkedAt);
         let report: Uint8Array | null = null;
+        let photo: Uint8Array | null = null;
         if (result.outcome === 'right_to_work' || result.outcome === 'no_right_to_work') {
+          photo = await govukPhoto(page);
           const bytes = await page.pdf({ format: 'A4', printBackground: true });
           report = looksLikePdf(bytes) ? bytes : null;
         }
-        return { result, report };
+        return { result, report, photo };
       } catch (cause) {
         const code =
           cause instanceof PageChanged
