@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { Alert } from '@thc/ui';
 import { loadEvent } from '../../data';
+import { loadArrivals } from '../../arrivals';
 import { loadDocuments } from '../../documents';
 import { signLineupPhotos } from '../../photos';
 import { EventScreen } from './EventScreen';
@@ -22,9 +23,10 @@ export default async function ClientEventPage({ params }: { params: Promise<{ id
   if (problem) return <Alert tone="amber">{problem}</Alert>;
   if (!event) notFound();
 
-  const [signed, documents] = await Promise.all([
+  const [signed, documents, arrivals] = await Promise.all([
     signLineupPhotos(lineup.map((l) => l.photoPath)),
     loadDocuments(event.id),
+    loadArrivals([event.id]),
   ]);
 
   return (
@@ -34,6 +36,7 @@ export default async function ClientEventPage({ params }: { params: Promise<{ id
       lineup={lineup}
       photos={Object.fromEntries(signed)}
       documents={documents.map((d) => ({ kind: d.kind, issuedAt: d.issued_at }))}
+      arrivals={arrivals[event.id]}
       now={new Date().toISOString()}
     />
   );

@@ -36,10 +36,13 @@
 -- gates are restrictive policies, pinned by exact set.
 -- 20261001201200 (ADR-0060) added office_activation_links to assertions 8
 -- and 10: E3 rows (a worker's activation link) are owners' only, as E11.
+-- 20261001100000/100100 (ADR-0051, ADR-0053) added assertion 11 (10 on main): the
+-- owner-rights views, pinned by name, so the next one is caught by CI and
+-- reviewed rather than found later by the Supabase advisor.
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
-select plan(14);
+select plan(16);
 
 -- ---------------------------------------------------------------------
 -- 1. Tables with RLS enabled (0001_init.sql)
@@ -397,6 +400,52 @@ select is_empty(
               || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')) !~ 'office_can\('
           or p.polroles <> array['authenticated'::regrole::oid]) $$,
   'ADR-0056: every restrictive policy asks office_can() and applies to authenticated only'
+);
+
+-- 11. Views that run with their OWNER's rights (no security_invoker).
+--    This is the ADR-0004 mechanism: the view reads tables the caller's
+--    role cannot, and its own body is the only thing deciding which rows
+--    and columns come back. That makes every one of them a hole if its
+--    body is wrong, so the set is pinned by name. Adding one means adding
+--    it here in the same PR, with its own pgTAP proving the predicate, and
+--    updating the count in docs/14-handover.md.
+--    PostGIS's own views (extension members) are not ours and are left out.
+--    The second assertion splits the set: which of them a signed-in caller
+--    can SELECT at all. The rest are read only by definer functions.
+-- ---------------------------------------------------------------------
+select bag_eq(
+  $$ select c.relname::text
+       from pg_class c
+       join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public'
+        and c.relkind in ('v', 'm')
+        and not coalesce(c.reloptions, '{}') @> '{security_invoker=true}'
+        and not exists (select 1 from pg_depend d
+                         where d.objid = c.oid and d.classid = 'pg_class'::regclass
+                           and d.deptype = 'e') $$,
+  $$ values ('client_account_v'::text), ('client_arrivals_v'), ('client_company_v'),
+            ('client_event_documents_v'), ('client_events_v'), ('client_lineup_v'),
+            ('client_role_sections_v'), ('event_windows'), ('feedback_authors_v'),
+            ('feedback_entries_v'), ('report_first_shifts_v'), ('report_payroll_lines_v'),
+            ('staff_block_reason_v'), ('staff_rejection_reason_v') $$,
+  'the owner-rights views in public are exactly these fourteen (ADR-0004); a new one is a reviewed addition'
+);
+select bag_eq(
+  $$ select c.relname::text
+       from pg_class c
+       join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname = 'public'
+        and c.relkind in ('v', 'm')
+        and not coalesce(c.reloptions, '{}') @> '{security_invoker=true}'
+        and has_table_privilege('authenticated', c.oid, 'select')
+        and not exists (select 1 from pg_depend d
+                         where d.objid = c.oid and d.classid = 'pg_class'::regclass
+                           and d.deptype = 'e') $$,
+  $$ values ('client_account_v'::text), ('client_arrivals_v'), ('client_company_v'),
+            ('client_event_documents_v'), ('client_events_v'), ('client_lineup_v'),
+            ('client_role_sections_v'), ('feedback_authors_v'), ('feedback_entries_v'),
+            ('staff_block_reason_v'), ('staff_rejection_reason_v') $$,
+  'eleven of them are selectable by a signed-in caller (the advisor''s count); event_windows and the two report views are not'
 );
 
 select * from finish();

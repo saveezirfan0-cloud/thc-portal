@@ -1397,18 +1397,41 @@ textarea.input {
 .search .input {
   padding-left: var(--sp-32);
 }
+/* The magnifier is drawn, not typed. It used to be the '⌕' character,
+   which no brand font carries: each platform fell back to its own symbol
+   font, and iOS drew it at half size and off the centre line. An SVG mask
+   filled with a token keeps it the same size everywhere and still follows
+   the theme. */
 .search::before {
-  content: '⌕';
+  content: '';
   position: absolute;
   left: var(--sp-10);
   /* Half the *input*, not half the wrapper: `.search` is a grid item on
      several screens and stretches to its row, which dropped the glyph
      below the field. */
   top: calc(var(--input-h) / 2);
-  transform: translateY(-50%);
-  color: var(--muted);
+  /* Sized in em off the type token the glyph used to be set in, so the
+     icon still follows --fs-16 rather than carrying a literal. */
   font-size: var(--fs-16);
+  width: 1em;
+  height: 1em;
+  transform: translateY(-50%);
+  background-color: var(--muted);
+  -webkit-mask: var(--search-glyph) center / contain no-repeat;
+  mask: var(--search-glyph) center / contain no-repeat;
   pointer-events: none;
+  transition: background-color 0.15s;
+}
+.search {
+  --search-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2.25' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6.75'/%3E%3Cpath d='m15.5 15.5 5 5'/%3E%3C/svg%3E");
+}
+.search:focus-within::before {
+  background-color: var(--text);
+}
+/* Safari paints its own magnifier inside a type=search field; ours is the
+   one that lines up with the padding. The clear (×) button stays. */
+.search .input::-webkit-search-decoration {
+  -webkit-appearance: none;
 }
 
 /* ---------------------------------------------------------------------

@@ -229,3 +229,34 @@ describe('the feedback popup (event.html:223-229)', () => {
     expect(markup).not.toContain('Send feedback');
   });
 });
+
+describe('arrival counts on the day (ADR-0053)', () => {
+  const arrivals = {
+    confirmed: 2,
+    arrived: 1,
+    bySection: { 's-chef': { confirmed: 2, arrived: 1 } },
+  };
+  const DURING = '2026-09-19T09:00:00Z';
+  const render = (event: PortalEvent, now: string) =>
+    renderToStaticMarkup(
+      <EventScreen
+        event={event}
+        sections={sections}
+        lineup={lineup}
+        photos={{}}
+        now={now}
+        arrivals={arrivals}
+      />,
+    );
+
+  it('shows the event total and the per-role count while the event is ongoing', () => {
+    const markup = render(gala({ status: 'ongoing' }), DURING);
+    // Header pill + the Chef panel's pill.
+    expect(markup.match(/1 of 2 arrived/g)).toHaveLength(2);
+  });
+
+  it('shows nothing once the event is over, or before it starts, and never who', () => {
+    expect(render(gala({ status: 'completed' }), AFTER)).not.toContain('arrived');
+    expect(render(gala({ status: 'upcoming' }), BEFORE)).not.toContain('arrived');
+  });
+});

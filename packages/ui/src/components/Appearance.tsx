@@ -39,6 +39,39 @@ export function resolveMode(): Mode {
 }
 
 /**
+ * The browser chrome colour (`<meta name="theme-color">`) for each mode: the
+ * warm grounds' `--bg` in tokens.css, light cream and dark navy. A meta tag
+ * cannot read a CSS variable, so these two strings mirror the tokens, and
+ * appearance.test.ts fails if either drifts.
+ *
+ * Why it is written here at all: an app's metadata can only offer one
+ * colour per `prefers-color-scheme`, which follows the phone's setting. A
+ * client on a light phone who picks dark in the portal then got a cream
+ * title bar over a navy page (ADR-0052 §3). One meta with no `media`,
+ * placed first in <head>, wins over those (the HTML spec takes the first
+ * theme-color whose media matches), and follows the in-app switch.
+ */
+export const THEME_COLOR: Record<Mode, string> = { light: '#FAF7F4', dark: '#0A0E18' };
+
+const THEME_META_ID = 'thc-theme-color';
+
+/** Points the browser chrome at `mode`'s ground. Never throws. */
+export function syncThemeColor(mode: Mode): void {
+  try {
+    let meta = document.getElementById(THEME_META_ID) as HTMLMetaElement | null;
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.id = THEME_META_ID;
+      meta.name = 'theme-color';
+      document.head.prepend(meta);
+    }
+    meta.content = THEME_COLOR[mode];
+  } catch {
+    /* no <head> (a test double, an odd embed) — the metadata's own colours stand */
+  }
+}
+
+/**
  * Inline script for the document head. It runs before first paint so the
  * chosen mode never flashes the wrong palette.
  *
@@ -50,7 +83,8 @@ export function resolveMode(): Mode {
 export const appearanceScript = `(function(){var r=document.documentElement,m=null;
 try{m=localStorage.getItem('${MODE_STORAGE_KEY}');}catch(e){}
 if(m!=='light'&&m!=='dark'){m=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
-r.setAttribute('data-theme',m);r.setAttribute('data-style','warm');})();`;
+r.setAttribute('data-theme',m);r.setAttribute('data-style','warm');
+try{var t=document.getElementById('${THEME_META_ID}');if(!t){t=document.createElement('meta');t.id='${THEME_META_ID}';t.name='theme-color';document.head.prepend(t);}t.content=m==='dark'?'${THEME_COLOR.dark}':'${THEME_COLOR.light}';}catch(e){}})();`;
 
 /**
  * The head script, plus a repair after mount.
@@ -69,6 +103,7 @@ export function AppearanceScript() {
     const theme = root.getAttribute('data-theme');
     if (theme !== 'light' && theme !== 'dark') root.setAttribute('data-theme', resolveMode());
     if (!root.getAttribute('data-style')) root.setAttribute('data-style', 'warm');
+    syncThemeColor(root.getAttribute('data-theme') === 'dark' ? 'dark' : 'light');
   }, []);
   return <script dangerouslySetInnerHTML={{ __html: appearanceScript }} />;
 }
@@ -77,6 +112,7 @@ export function applyMode(mode: Mode): void {
   const root = document.documentElement;
   root.setAttribute('data-theme', mode);
   root.setAttribute('data-style', styleForMode(mode));
+  syncThemeColor(mode);
   try {
     localStorage.setItem(MODE_STORAGE_KEY, mode);
   } catch {
