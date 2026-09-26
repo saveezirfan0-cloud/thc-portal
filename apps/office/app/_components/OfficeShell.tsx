@@ -17,7 +17,7 @@ import type { ReactNode } from 'react';
  *
  * `/settings` is in none of the wireframes' sidebars, so it hangs last,
  * below a divider, where it does not disturb their order — and the three
- * account screens (`/users`, `/activity`, `/account`, ADR-0035) hang
+ * account screens (`/users`, `/activity`, `/account`, ADR-0049) hang
  * under it for the same reason. It is the
  * Django-Admin replacement (§9.11, §9.12) and without a link an admin could
  * only reach it by typing the URL.

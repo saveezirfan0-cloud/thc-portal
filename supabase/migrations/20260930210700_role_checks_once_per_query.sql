@@ -1,14 +1,14 @@
 -- =====================================================================
 -- Role checks evaluated once per query, not once per row
--- (security review of ADR-0035…0039, finding 2)
+-- (security review of ADR-0049…0039, finding 2)
 --
--- 20260930160000 made current_app_role() stricter (switched-off logins,
+-- 20260930210500 made current_app_role() stricter (switched-off logins,
 -- two-step below aal2), which made each call three lookups instead of
 -- one. Most policies call it bare — `current_app_role() = 'admin'` — and
 -- a security definer function is never inlined, so Postgres ran it once
 -- PER ROW: an admin scan of 100k audit_log rows went from 0.64 s to
 -- 1.88 s in the review's measurement. The same holds for office_can() in
--- the restrictive policies (20260930110000).
+-- the restrictive policies (20260930210100).
 --
 -- Wrapped as `(select current_app_role())` the planner runs it once per
 -- statement as an InitPlan. The answer cannot differ between rows of one

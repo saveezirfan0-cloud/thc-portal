@@ -1,11 +1,11 @@
 -- =====================================================================
 -- E11 set-up links are readable by owners only, and gone once sent
--- (QA review of ADR-0035…0038)
+-- (QA review of ADR-0049…0038)
 --
 -- An E11 row in notification_outbox carries the invitee's one-time set-up
 -- link in `payload.link` — whoever holds it can choose that login's
 -- password. The table is `admin_read` (20260921123503), which was the
--- right line when every Back Office login could invite. Since ADR-0036
+-- right line when every Back Office login could invite. Since ADR-0050
 -- only an owner can (office_can('users')), so a manager or scheduler
 -- reading E11 rows over the API could take over a login an owner had
 -- just created — including a new owner's.
@@ -48,4 +48,4 @@ create trigger notification_outbox_redact_invite_link
   for each row execute function public.redact_finished_invite_link();
 
 comment on policy office_users_invite_links on notification_outbox is
-  'ADR-0038/0036: an E11 row carries a one-time set-up link; only a session with office_can(''users'') (an owner) may read it. 20260930170000.';
+  'ADR-0052/0036: an E11 row carries a one-time set-up link; only a session with office_can(''users'') (an owner) may read it. 20260930210600.';

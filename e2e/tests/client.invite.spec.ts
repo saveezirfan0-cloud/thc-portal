@@ -13,7 +13,7 @@ import {
 import { lit, sql } from './_support/db';
 
 /**
- * A Client Portal login, invited from the Back Office (ADR-0035 §1–§3,
+ * A Client Portal login, invited from the Back Office (ADR-0049 §1–§3,
  * §1.4, §11.1).
  *
  * The manager invites someone at Leonardo Hotel St Pauls on the Back

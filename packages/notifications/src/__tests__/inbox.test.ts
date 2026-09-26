@@ -16,7 +16,7 @@ const EMAILS: { code: string; recipients?: readonly string[] }[] = [
   ...Object.values(DOCUMENT_EMAILS),
 ].map((t) => ({ code: t.code, recipients: 'recipients' in t ? t.recipients : undefined }));
 
-describe('office inbox (ADR-0038)', () => {
+describe('office inbox (ADR-0052)', () => {
   it('lists exactly the emails whose recipients the register pins', () => {
     const pinned = EMAILS.filter((e) => e.recipients && e.recipients.length > 0).map((e) => e.code);
     expect([...OFFICE_INBOX_CODES].sort()).toEqual(pinned.sort());

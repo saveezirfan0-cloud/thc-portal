@@ -1,5 +1,5 @@
 /**
- * /inbox filters — the URL is the state (ADR-0038). No imports, so the
+ * /inbox filters — the URL is the state (ADR-0052). No imports, so the
  * client-side filter bar can use it without pulling the register into the
  * browser bundle.
  */

@@ -4,12 +4,12 @@ import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
 import type { OfficeRole } from '../_lib/permissions';
 
-/** One login, as `admin_accounts()` (20260930100000, 20260930110000) returns it. */
+/** One login, as `admin_accounts()` (20260930210000, 20260930210100) returns it. */
 export interface AccountRow {
   id: string;
   email: string | null;
   role: 'admin' | 'client' | 'staff';
-  /** Back Office logins only (ADR-0036); null for client and staff. */
+  /** Back Office logins only (ADR-0050); null for client and staff. */
   office_role: OfficeRole | null;
   full_name: string;
   phone: string | null;

@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260930150000 · "Short-staffed — next 48 hours" (§9.1)
+-- Migration 20260930210400 · "Short-staffed — next 48 hours" (§9.1)
 --
 -- One row per ROLE SECTION (not per event, RULE-18) that starts within the
 -- next 48 hours with fewer confirmed workers than its headcount. The
@@ -70,7 +70,7 @@ where current_app_role() = 'admin'
   and coalesce(f.confirmed, 0) < sr.headcount;
 
 comment on view dashboard_short_staffed_v is
-  'The §9.1 "Short-staffed — next 48 hours" panel: one row per role section starting in [now, now + 48 h) whose confirmed (and worked) bookings are fewer than its headcount. Selected by the section''s own starts_at (RULE-18), never the event date. Buffer is not counted as a shortfall; cancelled events are excluded. Carries no money. Admin-only: security_invoker plus current_app_role() = admin (20260930150000).';
+  'The §9.1 "Short-staffed — next 48 hours" panel: one row per role section starting in [now, now + 48 h) whose confirmed (and worked) bookings are fewer than its headcount. Selected by the section''s own starts_at (RULE-18), never the event date. Buffer is not counted as a shortfall; cancelled events are excluded. Carries no money. Admin-only: security_invoker plus current_app_role() = admin (20260930210400).';
 
 revoke all on dashboard_short_staffed_v from public, anon;
 grant select on dashboard_short_staffed_v to authenticated;

@@ -10,7 +10,7 @@ import { OfficeShell } from './OfficeShell';
 
 /**
  * What a Back Office section shows when the signed-in office role cannot
- * use it and it was opened by URL (ADR-0036). The menu already leaves it
+ * use it and it was opened by URL (ADR-0050). The menu already leaves it
  * out; this is the page's own answer, so a bookmark or a shared link lands
  * on a sentence rather than on a database error. It is not the protection
  * — the database refuses the reads and writes regardless.

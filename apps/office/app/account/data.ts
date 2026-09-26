@@ -4,7 +4,7 @@ import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
 import { verifiedTotp } from '../login/two-step';
 
-/** Two-step sign-in on this login (ADR-0037): the authenticator, if one is set up. */
+/** Two-step sign-in on this login (ADR-0051): the authenticator, if one is set up. */
 export interface MyTwoStep {
   on: boolean;
   /** The name given to the phone at set-up. */

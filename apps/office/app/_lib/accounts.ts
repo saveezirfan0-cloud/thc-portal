@@ -1,9 +1,9 @@
 /**
- * The rules and words shared by /account, /users and /activity (ADR-0035).
+ * The rules and words shared by /account, /users and /activity (ADR-0049).
  *
  * Pure, so the screens can check a form before it is sent and the tests
  * can pin both halves. The database checks the same things again in
- * 20260930100000 — these only save a round trip and say it earlier.
+ * 20260930210000 — these only save a round trip and say it earlier.
  */
 
 export const NAME_MAX = 120;
@@ -41,7 +41,7 @@ export function normaliseEmail(value: string): string {
   return value.trim().toLowerCase();
 }
 
-/** The database's refusals (20260930100000), in words a manager can act on. */
+/** The database's refusals (20260930210000), in words a manager can act on. */
 const MESSAGES: Record<string, string> = {
   not_signed_in: 'Your session has ended. Sign in again.',
   not_authorised: 'Only the office can do this.',

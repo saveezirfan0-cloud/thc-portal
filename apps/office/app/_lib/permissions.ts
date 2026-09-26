@@ -1,8 +1,8 @@
 /**
- * Office roles — who in the Back Office may use what (ADR-0036).
+ * Office roles — who in the Back Office may use what (ADR-0050).
  *
  * The database is the authority: `office_can()` in
- * 20260930110000_office_roles.sql gates the account functions, the
+ * 20260930210100_office_roles.sql gates the account functions, the
  * settings writes and every money-only table, view and report. This file
  * mirrors that table so the screens can hide what the database would
  * refuse anyway — a nav item that always errors reads as broken, not as
@@ -87,7 +87,7 @@ export const PERMISSION_NEEDS: Readonly<Record<OfficePermission, string>> = {
   finance: 'Pay and charge rates, margins, payroll and reports are for owners and managers.',
 };
 
-/** The database's refusals added by 20260930110000, in words a manager can act on. */
+/** The database's refusals added by 20260930210100, in words a manager can act on. */
 const MESSAGES: Readonly<Record<string, string>> = {
   not_permitted: 'Your office role does not allow this. Ask an owner.',
   office_role_required: 'Choose an office role for this login.',

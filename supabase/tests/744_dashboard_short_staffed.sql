@@ -1,5 +1,5 @@
 -- =====================================================================
--- 655 · "Short-staffed — next 48 hours" (§9.1) — 20260930150000
+-- 744 · "Short-staffed — next 48 hours" (§9.1) — 20260930210400
 --
 -- One row per role SECTION starting in [now, now + 48 h) with confirmed
 -- below headcount. Fill counts only confirmed; the buffer is not a

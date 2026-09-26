@@ -1,5 +1,5 @@
 /*
- * /account, /users and /activity — layout only (ADR-0035). Every colour,
+ * /account, /users and /activity — layout only (ADR-0049). Every colour,
  * radius and space is a token from packages/ui; the blocks are its Panel,
  * form, pill and table classes.
  */

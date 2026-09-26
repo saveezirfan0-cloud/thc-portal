@@ -48,7 +48,7 @@ export function UpcomingTable({
 }: {
   events: UpcomingEvent[];
   today: string;
-  /** False for an office role without finance (ADR-0036): the view returns no rate either. */
+  /** False for an office role without finance (ADR-0050): the view returns no rate either. */
   showMargin?: boolean;
 }) {
   const router = useRouter();

@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Set up your login · THC Client Portal' };
 
 /**
- * Where a Client Portal invitation from /users lands (ADR-0035). Opening the
+ * Where a Client Portal invitation from /users lands (ADR-0049). Opening the
  * page changes nothing; the token is spent when the password is saved.
  */
 export default async function Page({

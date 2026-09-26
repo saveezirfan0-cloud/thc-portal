@@ -25,7 +25,7 @@
 -- 20260928100000 (ADR-0025) added rtw_checks to assertions 1 and 3:
 -- admin-read, written by definer functions and the service role; the
 -- worker reads their own status through my_rtw_checks(), not a policy.
--- 20260930110000 (ADR-0036) added assertions 10 and 10b: the office-role
+-- 20260930210100 (ADR-0050) added assertions 10 and 10b: the office-role
 -- gates are restrictive policies, pinned by exact set.
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
@@ -307,7 +307,7 @@ select bag_eq(
   $$ select p.polname::text || ':' || p.polcmd::text
        from pg_policy p where p.polrelid = 'notification_outbox'::regclass $$,
   $$ values ('admin_read:r'::text), ('office_users_invite_links:r') $$,
-  'notification_outbox carries admin_read (select only, matching audit_log and report_sends) and, since 20260930170000, the restrictive office_users_invite_links that keeps E11 set-up links to owners — still nothing that writes'
+  'notification_outbox carries admin_read (select only, matching audit_log and report_sends) and, since 20260930210600, the restrictive office_users_invite_links that keeps E11 set-up links to owners — still nothing that writes'
 );
 
 -- ---------------------------------------------------------------------
@@ -337,12 +337,12 @@ select is_empty(
 );
 
 -- ---------------------------------------------------------------------
--- 10. The office-role gates (20260930110000, ADR-0036) are RESTRICTIVE
+-- 10. The office-role gates (20260930210100, ADR-0050) are RESTRICTIVE
 --     policies: they narrow admin_all for a Back Office login without
 --     'settings' or 'finance' and grant nothing to anybody. Assertions 3
 --     to 5 key on permissive names and would not see one go missing, so
 --     the exact set is pinned here. Adding a restrictive policy is a
---     change to who in the office can do what — update ADR-0036 with it.
+--     change to who in the office can do what — update ADR-0050 with it.
 --     bank_details' WRITE gate is a trigger, not a policy, because
 --     571_bank_details_write_path pins admin_all as its only write policy.
 -- ---------------------------------------------------------------------
@@ -362,7 +362,7 @@ select bag_eq(
             ('bank_details.office_finance_read:r'), ('payroll_export_lines.office_finance_read:r'),
             ('report_sends.office_finance_read:r'),
             ('notification_outbox.office_users_invite_links:r') $$,
-  'ADR-0036: exactly sixteen restrictive policies (the sixteenth, 20260930170000, keeps E11 set-up links to owners) — settings writes on settings / venue_types, finance writes on roles / client_rate_cards, finance reads on bank_details / payroll_export_lines / report_sends'
+  'ADR-0050: exactly sixteen restrictive policies (the sixteenth, 20260930210600, keeps E11 set-up links to owners) — settings writes on settings / venue_types, finance writes on roles / client_rate_cards, finance reads on bank_details / payroll_export_lines / report_sends'
 );
 
 -- 10b. And each of them asks office_can(), for a signed-in session only.
@@ -377,7 +377,7 @@ select is_empty(
         and ((coalesce(pg_get_expr(p.polqual, p.polrelid), '')
               || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')) !~ 'office_can\('
           or p.polroles <> array['authenticated'::regrole::oid]) $$,
-  'ADR-0036: every restrictive policy asks office_can() and applies to authenticated only'
+  'ADR-0050: every restrictive policy asks office_can() and applies to authenticated only'
 );
 
 select * from finish();

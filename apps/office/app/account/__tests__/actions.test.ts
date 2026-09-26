@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * /account — My profile (ADR-0035 §7), the four server actions with every
+ * /account — My profile (ADR-0049 §7), the four server actions with every
  * Supabase client mocked.
  *
  *   saveMyDetails        checked here first (the same rules the database

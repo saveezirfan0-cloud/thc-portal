@@ -1,7 +1,7 @@
 -- =====================================================================
--- 657 · E11 set-up links: owners only, and gone once sent (20260930170000)
+-- 746 · E11 set-up links: owners only, and gone once sent (20260930210600)
 --
--- The QA review of ADR-0035…0038 found a manager or scheduler could read
+-- The QA review of ADR-0049…0038 found a manager or scheduler could read
 -- an E11 row's `payload.link` from notification_outbox (admin_read) and
 -- take over a login an owner had just invited. This pins the fence and
 -- the redaction, and that every other outbox row still reads as before.
@@ -18,7 +18,7 @@ insert into notification_outbox (key, channel, template, recipient_emails, paylo
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 
--- The fixture admin is an owner (20260930110000's insert trigger).
+-- The fixture admin is an owner (20260930210100's insert trigger).
 select is((select count(*)::int from notification_outbox where key = 'E11:invite:657:1'), 1,
   'an owner reads the E11 row');
 select ok((select payload ? 'link' from notification_outbox where key = 'E11:invite:657:1'),

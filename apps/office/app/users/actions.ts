@@ -33,11 +33,11 @@ import {
 import type { AccountRow } from './data';
 
 /**
- * /users — Users & access (ADR-0035, ADR-0036).
+ * /users — Users & access (ADR-0049, ADR-0050).
  *
  * Every write is the database's decision, made as the signed-in manager:
  * `admin_register_account`, `admin_set_login_disabled` and
- * `admin_set_office_role` check the role — and, since ADR-0036, that the
+ * `admin_set_office_role` check the role — and, since ADR-0050, that the
  * caller is an owner — themselves and write the audit row. The service key is used for ONE
  * thing — minting the login and its one-time token through GoTrue — and
  * only after this file has checked the caller is an admin.
@@ -49,7 +49,7 @@ export type UsersResult =
       message?: string;
       link?: string;
       email?: string;
-      /** E11 was queued (ADR-0038); when false, `emailNote` says why. */
+      /** E11 was queued (ADR-0052); when false, `emailNote` says why. */
       emailed?: boolean;
       emailNote?: string;
     }
@@ -60,7 +60,7 @@ const NOT_CONFIGURED =
 const SERVICE_KEY =
   'The login could not be created — set SUPABASE_SERVICE_ROLE_KEY for the Back Office.';
 
-/** ADR-0036's refusals first, then ADR-0035's. */
+/** ADR-0050's refusals first, then ADR-0049's. */
 function explainAccountError(message: string): string {
   return explainOfficeError(message) ?? explainAccountCode(message);
 }
@@ -73,7 +73,7 @@ async function asAdmin(supabase: SupabaseClient): Promise<boolean> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth?.user) return false;
   // current_app_role(), not the profiles row: it also refuses a
-  // switched-off login and a two-step login below aal2 (20260930160000).
+  // switched-off login and a two-step login below aal2 (20260930210500).
   return sessionIsAdmin(supabase);
 }
 
@@ -145,14 +145,14 @@ async function issue(
     p_full_name: input.fullName,
     p_client: input.clientId,
     p_job_title: input.jobTitle,
-    // The six-argument form (20260930110000): the office role is explicit,
+    // The six-argument form (20260930210100): the office role is explicit,
     // and null for a Client Portal login.
     p_office_role: input.role === 'admin' ? input.officeRole : null,
   });
   if (error) return { ok: false, message: explainAccountError(error.message) };
 
   const link = inviteLink(origin, minted.tokenHash, minted.type);
-  // E11 (ADR-0038): the invitation email, through the outbox. A refusal
+  // E11 (ADR-0052): the invitation email, through the outbox. A refusal
   // here never undoes the login — the link is still shown to copy.
   const emailed = await queueInviteEmail(supabase, minted.userId, link);
 
@@ -239,7 +239,7 @@ export async function newInviteLink(userId: string): Promise<UsersResult> {
 }
 
 /**
- * Change a Back Office login's office role (ADR-0036). The database
+ * Change a Back Office login's office role (ADR-0050). The database
  * refuses anyone but an owner, the caller's own login, and leaving no
  * working owner, and writes `account.role_changed`.
  */

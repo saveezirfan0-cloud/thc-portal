@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Office roles: owner / manager / scheduler, enforced in the database
--- (ADR-0036; ADR-0035 "Proposal, not built: finer office permissions";
+-- (ADR-0050; ADR-0049 "Proposal, not built: finer office permissions";
 -- §1.4 roles and access, §9.8 roles & rates, §9.9 reports, §9.11/§9.12
 -- settings)
 --
@@ -11,7 +11,7 @@
 -- What changes is that three kinds of object now also ask
 -- `office_can(<permission>)`:
 --
---   users    — /users: the account functions of 20260930100000 and the
+--   users    — /users: the account functions of 20260930210000 and the
 --              new admin_set_office_role. Owner only.
 --   settings — writes to `settings` and `venue_types` (/settings). Owner
 --              only.
@@ -20,14 +20,14 @@
 --              role-rate views; writes to roles, client_rate_cards and the
 --              rates on shift_requirements. Owner and manager.
 --
--- What the scheduler can STILL read is stated in ADR-0036 ("Residual
+-- What the scheduler can STILL read is stated in ADR-0050 ("Residual
 -- gaps"), not hidden here: the rate columns on roles, shift_requirements,
 -- client_rate_cards and payable_shifts_v are on rows scheduling needs, and
 -- RLS filters rows, not columns.
 --
 -- Nothing here edits an earlier migration. The four account functions are
--- re-created with every check their 20260930100000 body had, in the same
--- order, plus the new one — 651_office_roles asserts the old refusals as
+-- re-created with every check their 20260930210000 body had, in the same
+-- order, plus the new one — 741_office_roles asserts the old refusals as
 -- well as the new ones (docs/10 §3b). The five report RPCs are re-created
 -- from their live bodies with exactly one line changed:
 -- `assert_reports_caller()` → `assert_finance_caller()`.
@@ -72,7 +72,7 @@ alter table profiles
   check ((role = 'admin') = (office_role is not null));
 
 comment on column profiles.office_role is
-  'Back Office permission level (ADR-0036): owner = everything; manager = everything but Users & access and Settings; scheduler = also no money. Set for admin rows only (check constraint); changed only through admin_set_office_role().';
+  'Back Office permission level (ADR-0050): owner = everything; manager = everything but Users & access and Settings; scheduler = also no money. Set for admin rows only (check constraint); changed only through admin_set_office_role().';
 
 -- ---------------------------------------------------------------------
 -- 2 · office_can — the one question every gate below asks
@@ -81,7 +81,7 @@ comment on column profiles.office_role is
 -- permission name (a typo fails closed), and for no session at all. Like
 -- current_app_role() it reads `profiles` live, so a role change takes
 -- effect on the next request — and, like it, it does not read
--- auth.users.banned_until (ADR-0035 "Known limit").
+-- auth.users.banned_until (ADR-0049 "Known limit").
 -- ---------------------------------------------------------------------
 create or replace function public.office_can(p_perm text)
 returns boolean
@@ -103,7 +103,7 @@ as $$
 $$;
 
 comment on function public.office_can(text) is
-  'ADR-0036: may the signed-in Back Office login use ''users'' | ''settings'' | ''finance''? owner: all three; manager: finance; scheduler: none. False for any other session and any other permission name.';
+  'ADR-0050: may the signed-in Back Office login use ''users'' | ''settings'' | ''finance''? owner: all three; manager: finance; scheduler: none. False for any other session and any other permission name.';
 
 -- The report RPCs' gate (20260923130000) plus finance. assert_reports_caller
 -- itself is left alone: the §11.3 allocation sheet and timesheet functions
@@ -125,8 +125,8 @@ $$;
 -- ---------------------------------------------------------------------
 -- 3 · /users — the account functions now require 'users'
 --
--- Each body below is 20260930100000's, check for check; the additions are
--- marked "ADR-0036".
+-- Each body below is 20260930210000's, check for check; the additions are
+-- marked "ADR-0050".
 -- ---------------------------------------------------------------------
 
 -- 3a · admin_accounts gains the office_role column (a changed result
@@ -157,7 +157,7 @@ begin
   if current_app_role() is distinct from 'admin' then
     raise exception 'not_authorised' using errcode = '42501';
   end if;
-  -- ADR-0036
+  -- ADR-0050
   if not office_can('users') then
     raise exception 'not_permitted' using errcode = '42501', detail = 'users';
   end if;
@@ -185,12 +185,12 @@ end;
 $$;
 
 comment on function public.admin_accounts(app_role) is
-  '/users: every login with its role, office role, client, last sign-in and whether it is switched off. Back Office owners only (office_can(''users''), ADR-0036).';
+  '/users: every login with its role, office role, client, last sign-in and whether it is switched off. Back Office owners only (office_can(''users''), ADR-0050).';
 
 -- 3b · admin_register_account gains p_office_role.
 --
 -- Two signatures, deliberately. The six-argument one is the real one and
--- takes the office role explicitly. The five-argument one — 20260930100000's
+-- takes the office role explicitly. The five-argument one — 20260930210000's
 -- signature, kept so existing callers and grants do not change — hands
 -- over 'manager' for an admin login: that is the "defaults to manager".
 -- A single function with a defaulted sixth argument would make every
@@ -219,7 +219,7 @@ begin
   if current_app_role() is distinct from 'admin' then
     raise exception 'not_authorised' using errcode = '42501';
   end if;
-  -- ADR-0036
+  -- ADR-0050
   if not office_can('users') then
     raise exception 'not_permitted' using errcode = '42501', detail = 'users';
   end if;
@@ -240,7 +240,7 @@ begin
   elsif p_client is not null then
     raise exception 'client_not_allowed' using errcode = 'P0001';
   end if;
-  -- ADR-0036: an office role belongs to an admin login and to nothing else.
+  -- ADR-0050: an office role belongs to an admin login and to nothing else.
   if p_role = 'admin' and p_office_role is null then
     raise exception 'office_role_required' using errcode = 'P0001';
   end if;
@@ -271,7 +271,7 @@ begin
     raise exception 'account_has_other_client' using errcode = 'P0001';
   end if;
 
-  -- ADR-0036: the office role is set on a NEW login only. A re-invite
+  -- ADR-0050: the office role is set on a NEW login only. A re-invite
   -- (New invite link) leaves an existing login's role alone — changing it
   -- is admin_set_office_role's job, with its own audit row and its
   -- last-owner guard, and a re-invite must never demote an owner.
@@ -307,7 +307,7 @@ end;
 $$;
 
 comment on function public.admin_register_account(uuid, app_role, text, uuid, text, office_role) is
-  '/users Invite: gives a GoTrue login minted by the office''s service key its profile, office role (new admin logins only) and app_metadata.role (admin or client — never staff). Refuses to change the kind of an existing login. Back Office owners only (ADR-0036); audited as account.invited / account.reinvited.';
+  '/users Invite: gives a GoTrue login minted by the office''s service key its profile, office role (new admin logins only) and app_metadata.role (admin or client — never staff). Refuses to change the kind of an existing login. Back Office owners only (ADR-0050); audited as account.invited / account.reinvited.';
 
 create or replace function public.admin_register_account(
   p_user      uuid,
@@ -326,7 +326,7 @@ as $$
 $$;
 
 comment on function public.admin_register_account(uuid, app_role, text, uuid, text) is
-  '20260930100000''s signature, kept: calls the six-argument admin_register_account with office role ''manager'' for an admin login (ADR-0036''s default). Every check is the six-argument function''s.';
+  '20260930210000''s signature, kept: calls the six-argument admin_register_account with office role ''manager'' for an admin login (ADR-0050''s default). Every check is the six-argument function''s.';
 
 -- 3c · admin_login_lookup
 create or replace function public.admin_login_lookup(p_email text)
@@ -346,7 +346,7 @@ begin
   if current_app_role() is distinct from 'admin' then
     raise exception 'not_authorised' using errcode = '42501';
   end if;
-  -- ADR-0036
+  -- ADR-0050
   if not office_can('users') then
     raise exception 'not_permitted' using errcode = '42501', detail = 'users';
   end if;
@@ -370,7 +370,7 @@ end;
 $$;
 
 comment on function public.admin_login_lookup(text) is
-  '/users Invite: whether an address already has a login, its kind, client and whether it has ever been signed in to — asked before any token is minted. Back Office owners only (ADR-0036).';
+  '/users Invite: whether an address already has a login, its kind, client and whether it has ever been signed in to — asked before any token is minted. Back Office owners only (ADR-0050).';
 
 -- 3d · admin_set_login_disabled
 create or replace function public.admin_set_login_disabled(
@@ -390,7 +390,7 @@ begin
   if current_app_role() is distinct from 'admin' then
     raise exception 'not_authorised' using errcode = '42501';
   end if;
-  -- ADR-0036
+  -- ADR-0050
   if not office_can('users') then
     raise exception 'not_permitted' using errcode = '42501', detail = 'users';
   end if;
@@ -416,7 +416,7 @@ begin
           and (u.banned_until is null or u.banned_until <= now())) then
     raise exception 'last_admin' using errcode = 'P0001';
   end if;
-  -- ADR-0036: nor lose the last working owner — the only role that can
+  -- ADR-0050: nor lose the last working owner — the only role that can
   -- manage logins, so without one nobody could invite or switch anyone
   -- back on. The owner rows are locked first so two owners switching each
   -- other off at once cannot both pass.
@@ -457,7 +457,7 @@ end;
 $$;
 
 comment on function public.admin_set_login_disabled(uuid, boolean, text) is
-  '/users: switch an office or client login off (sign-in refused, sessions ended) or back on. Refuses staff (use Block), the caller''s own login, the last working admin and the last working owner. Back Office owners only (ADR-0036); audited.';
+  '/users: switch an office or client login off (sign-in refused, sessions ended) or back on. Refuses staff (use Block), the caller''s own login, the last working admin and the last working owner. Back Office owners only (ADR-0050); audited.';
 
 -- 3e · admin_set_office_role — new
 create or replace function public.admin_set_office_role(
@@ -548,7 +548,7 @@ create policy office_settings_delete on venue_types as restrictive for delete to
 
 -- 5a · Rate WRITES on the two catalogue tables. Their READS stay open to
 -- every admin: the event builder reads role names and each client's dress
--- codes off these rows (ADR-0036 "Residual gaps"). The predicate names
+-- codes off these rows (ADR-0050 "Residual gaps"). The predicate names
 -- 'admin' so 001_rls_guard 5b still reads it as admin-only.
 create policy office_finance_insert on roles as restrictive for insert to authenticated
   with check (current_app_role() = 'admin'::app_role and (select office_can('finance')));
@@ -646,7 +646,7 @@ begin
     if new.pay_rate is distinct from old.pay_rate
        or new.charge_rate is distinct from old.charge_rate then
       raise exception 'rates_need_finance' using errcode = '42501',
-        detail = 'Changing a pay or charge rate needs a manager (ADR-0036).';
+        detail = 'Changing a pay or charge rate needs a manager (ADR-0050).';
     end if;
     return new;
   end if;
@@ -656,7 +656,7 @@ begin
    where e.id = new.event_id and rc.role_id = new.role_id;
   if new.pay_rate is distinct from v_pay or new.charge_rate is distinct from v_charge then
     raise exception 'rates_need_finance' using errcode = '42501',
-      detail = 'A scheduler''s role section carries the role''s pay rate and the client''s rate-card charge (ADR-0036).';
+      detail = 'A scheduler''s role section carries the role''s pay rate and the client''s rate-card charge (ADR-0050).';
   end if;
   return new;
 end;

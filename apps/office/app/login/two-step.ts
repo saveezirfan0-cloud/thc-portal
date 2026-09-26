@@ -1,5 +1,5 @@
 /**
- * Two-step sign-in (TOTP) for the Back Office — the pure pieces (ADR-0037).
+ * Two-step sign-in (TOTP) for the Back Office — the pure pieces (ADR-0051).
  *
  * No Supabase client here, no Next: the middleware, the sign-in action, the
  * code step and /account all ask the same questions through these functions,
@@ -76,7 +76,7 @@ export type TwoStepDecision = 'pass' | 'verify';
 /**
  * The one rule: a user who CAN reach aal2 and has not yet, types a code.
  * A user with no verified factor passes at aal1 (two-step is opt-in today,
- * ADR-0037). An unknown current level is never taken as aal2.
+ * ADR-0051). An unknown current level is never taken as aal2.
  */
 export function twoStepDecision(levels: {
   currentLevel: AssuranceLevel | null | undefined;

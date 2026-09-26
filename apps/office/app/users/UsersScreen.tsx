@@ -39,7 +39,7 @@ import { inviteMailto } from './invite';
 import '../account/account.css';
 
 /**
- * /users — Users & access (ADR-0035, §1.4).
+ * /users — Users & access (ADR-0049, §1.4).
  *
  * Three tabs, one per app. Back Office and Client Portal logins are
  * created here (Invite) and can be switched off and on; a worker's login
@@ -48,7 +48,7 @@ import '../account/account.css';
  * through. What each kind of login can see is stated on the page, because
  * that — not a toggle here — is where the access rules live (RLS).
  *
- * Back Office logins carry an office role (ADR-0036): owner, manager or
+ * Back Office logins carry an office role (ADR-0050): owner, manager or
  * scheduler. The role is chosen on Invite and changed with Change role;
  * both are the database's decision (`admin_register_account`,
  * `admin_set_office_role`), and this whole page is an owner's.
@@ -205,7 +205,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
         <p className="sm muted users-plain">
           Not hidden from a scheduler yet: the pay and charge rates on the event builder and event
           board, which they need to build a role section. They cannot change them — a section they
-          add carries the catalogue rates (ADR-0036).
+          add carries the catalogue rates (ADR-0050).
         </p>
       </Panel>
 
@@ -465,7 +465,7 @@ function InviteModal({
 }
 
 /**
- * The set-up link, once. The platform emails it (E11, ADR-0038); the link
+ * The set-up link, once. The platform emails it (E11, ADR-0052); the link
  * is still shown so the manager can send it another way — a text message,
  * or their own mail when the email was refused.
  */
@@ -606,7 +606,7 @@ function SwitchModal({ account, onClose }: { account: AccountRow; onClose: () =>
 }
 
 /**
- * Change a Back Office login's office role (ADR-0036). The refusals —
+ * Change a Back Office login's office role (ADR-0050). The refusals —
  * not an owner, their own login, the last working owner — are the
  * database's, shown as it words them.
  */

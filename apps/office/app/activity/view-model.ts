@@ -1,6 +1,6 @@
 /**
  * /activity — turning an `audit_log` row into something a person reads
- * (ADR-0035). Pure, and tested.
+ * (ADR-0049). Pure, and tested.
  */
 
 export interface ActivityRow {

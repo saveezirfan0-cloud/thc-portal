@@ -35,7 +35,7 @@ export function SignedInAsProvider({
 
 /**
  * The signed-in operator for any client component under the root layout —
- * the menu reads the office role from here (ADR-0036). Null outside the
+ * the menu reads the office role from here (ADR-0050). Null outside the
  * provider (the component tests) and when nobody is signed in.
  */
 export function useOfficeUser(): OfficeUser | null {

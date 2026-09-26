@@ -42,7 +42,7 @@ export default async function Page({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  // ADR-0036: money only. The report RPCs refuse a scheduler anyway
+  // ADR-0050: money only. The report RPCs refuse a scheduler anyway
   // (assert_finance_caller); this says so before three of them are asked.
   const role = await currentOfficeRole();
   if (role && !officeCan(role, 'finance')) {

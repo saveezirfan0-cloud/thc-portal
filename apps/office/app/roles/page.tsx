@@ -15,7 +15,7 @@ export const metadata = { title: 'Roles & rates · THC Back Office' };
  * and that button opens a modal the screen owns the state for.
  */
 export default async function Page() {
-  // ADR-0036: Roles & rates is the pay catalogue; role_directory_v returns
+  // ADR-0050: Roles & rates is the pay catalogue; role_directory_v returns
   // nothing to a scheduler and the role writes are refused.
   const role = await currentOfficeRole();
   if (role && !officeCan(role, 'finance')) {

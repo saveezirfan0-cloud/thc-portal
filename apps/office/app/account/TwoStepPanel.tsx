@@ -16,7 +16,7 @@ import {
 import '../login/two-step.css';
 
 /**
- * "Two-step sign-in" on /account (ADR-0037).
+ * "Two-step sign-in" on /account (ADR-0051).
  *
  * Three states: off (what it is, and Set up) → setting up (scan the QR code
  * or type the key, then the first code) → on (which phone, since when, and

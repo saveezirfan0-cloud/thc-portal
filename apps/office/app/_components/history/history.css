@@ -1,4 +1,4 @@
-/* History on a record page (ADR-0035) — layout only; every value is a token.
+/* History on a record page (ADR-0049) — layout only; every value is a token.
    The table itself borrows /activity's classes (activity.css). */
 
 .record-history .history-alert {

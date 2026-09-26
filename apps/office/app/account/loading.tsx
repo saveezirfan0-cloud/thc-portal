@@ -1,7 +1,7 @@
 import { SkeletonPanel, SkeletonScreen } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 
-/** /account (My profile, ADR-0035) while the signed-in user's details are read. */
+/** /account (My profile, ADR-0049) while the signed-in user's details are read. */
 export default function Loading() {
   return (
     <OfficeShell activeHref="/account" title="My profile">

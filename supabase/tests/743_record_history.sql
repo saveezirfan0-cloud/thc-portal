@@ -1,5 +1,5 @@
 -- =====================================================================
--- 653 · Record history (20260930130000)
+-- 743 · Record history (20260930210300)
 --
 -- admin_record_history(entity, id) is /activity cut down to one record,
 -- plus the rows that belong to it: a worker's documents, bookings and
@@ -27,14 +27,14 @@ insert into audit_log (actor, action, entity, entity_id, data) values
   (:'admin_uid', 'booking.manual_invite', 'booking', :'booking_b',
      jsonb_build_object('staffId', :'staffb', 'shiftId', :'shift_b')),
   (:'admin_uid', 'do_not_return_on', 'client_qualification', :'qual_a',
-     jsonb_build_object('staffId', :'staffa', 'clientId', :'clienta', 'reason', 'h653')),
-  (:'admin_uid', 'block_manual', 'staff', :'staffb', jsonb_build_object('reason', 'h653 other worker')),
+     jsonb_build_object('staffId', :'staffa', 'clientId', :'clienta', 'reason', 'h743')),
+  (:'admin_uid', 'block_manual', 'staff', :'staffb', jsonb_build_object('reason', 'h743 other worker')),
   (:'admin_uid', 'account.invited', 'account', :'clienta_uid',
      jsonb_build_object('role', 'client', 'clientId', :'clienta')),
   (:'admin_uid', 'account.invited', 'account', :'clientb_uid',
      jsonb_build_object('role', 'client', 'clientId', :'clientb')),
-  (:'admin_uid', 'event.cancelled', 'event', :'event_b', jsonb_build_object('reason', 'h653 B')),
-  (:'admin_uid', 'event.cancelled', 'event', :'event_a', jsonb_build_object('reason', 'h653 A'));
+  (:'admin_uid', 'event.cancelled', 'event', :'event_b', jsonb_build_object('reason', 'h743 B')),
+  (:'admin_uid', 'event.cancelled', 'event', :'event_a', jsonb_build_object('reason', 'h743 A'));
 
 -- ---------------------------------------------------------------------
 -- 1 · Grants
@@ -93,7 +93,7 @@ select is_empty(format($$ select 1 from admin_record_history('staff', %L)
 -- 4 · An event's history: its own rows and its bookings
 -- ---------------------------------------------------------------------
 select ok(exists (select 1 from admin_record_history('event', :'event_a')
-                   where action = 'event.cancelled' and data ->> 'reason' = 'h653 A'),
+                   where action = 'event.cancelled' and data ->> 'reason' = 'h743 A'),
   'event: its cancellation');
 select ok(exists (select 1 from admin_record_history('event', :'event_a')
                    where entity = 'booking' and entity_id = :'booking_a'),

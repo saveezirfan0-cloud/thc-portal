@@ -70,7 +70,7 @@ async function asAdmin(): Promise<{ ok: true; userId: string } | { ok: false; me
   if (!auth.user) return { ok: false, message: 'Sign in to do this.' };
 
   // current_app_role(), not the profiles row: it also refuses a
-  // switched-off login and a two-step login below aal2 (20260930160000).
+  // switched-off login and a two-step login below aal2 (20260930210500).
   if (!(await sessionIsAdmin(supabase))) {
     return { ok: false, message: 'Only the office can do this.' };
   }

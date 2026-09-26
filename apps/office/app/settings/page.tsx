@@ -17,7 +17,7 @@ export const dynamic = 'force-dynamic';
  * /roles and /venues rely on.
  */
 export default async function Page() {
-  // ADR-0036: owners only. Writes to settings and venue_types are refused
+  // ADR-0050: owners only. Writes to settings and venue_types are refused
   // by restrictive policies for everyone else.
   const role = await currentOfficeRole();
   if (role && !officeCan(role, 'settings')) {

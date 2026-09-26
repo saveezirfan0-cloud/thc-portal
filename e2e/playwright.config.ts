@@ -13,7 +13,7 @@ import { defineConfig, devices } from '@playwright/test';
  *            register's key (§8, §11.4); `office.users.spec.ts` — invite a
  *            Back Office login on /users, accept its set-up link, switch it
  *            off, read both on /activity — and `office.account.spec.ts` —
- *            rename yourself on /account (ADR-0035)
+ *            rename yourself on /account (ADR-0049)
  *   staff    the public /apply form, the PWA shell and the four app locks,
  *            the three working screens, `staff.activation.spec.ts` — a GET
  *            of /activate/:token never spends the link and the submit does,
@@ -25,7 +25,7 @@ import { defineConfig, devices } from '@playwright/test';
  *            chosen, no money anywhere, feedback locked until the event
  *            starts and "✓ Feedback sent" after (§11.1–§11.5); and
  *            `client.invite.spec.ts` — a Client Portal login invited from
- *            the office's /users, set up on the portal (ADR-0035; drives
+ *            the office's /users, set up on the portal (ADR-0049; drives
  *            both servers)
  *
  * The journeys that read or seed the database do it with psql through
@@ -105,7 +105,7 @@ export default defineConfig({
       command: 'pnpm --filter @thc/office start',
       url: `http://127.0.0.1:${PORTS.office}`,
       // /users builds a Client Portal invite link on the portal's origin
-      // (ADR-0035), read from NEXT_PUBLIC_CLIENT_URL. `next start` runs as
+      // (ADR-0049), read from NEXT_PUBLIC_CLIENT_URL. `next start` runs as
       // production, where the office refuses to guess it, so without this
       // every client invite in client.invite.spec.ts is refused. Merged
       // over the ambient environment by Playwright, not a replacement.

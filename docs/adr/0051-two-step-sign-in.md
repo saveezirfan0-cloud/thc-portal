@@ -1,6 +1,6 @@
-# ADR-0037 · Two-step sign-in (TOTP) for Back Office logins
+# ADR-0051 · Two-step sign-in (TOTP) for Back Office logins
 
-**Status:** Accepted · **Wireframes:** none (the code step reuses the sign-in card, `AuthCard`; the `/account` panel reuses the Back Office's Panel, form and pill language) · **§1.4, §10.2** · builds on ADR-0032 (Keep me signed in) and ADR-0035 (My profile)
+**Status:** Accepted · **Wireframes:** none (the code step reuses the sign-in card, `AuthCard`; the `/account` panel reuses the Back Office's Panel, form and pill language) · **§1.4, §10.2** · builds on ADR-0032 (Keep me signed in) and ADR-0049 (My profile)
 
 ## Context
 
@@ -34,14 +34,14 @@ A dashboard reset writes no `audit_log` row. Note it by hand until the follow-up
 
 ## Known limits
 
-- **The database does not check aal yet.** RLS asks `current_app_role() = 'admin'`, and `current_app_role()` reads `profiles` only. Someone holding a stolen password can still sign in against GoTrue directly with the public anon key, skipping the Back Office pages, and read through PostgREST at aal1. The middleware keeps a password alone out of the **app**. It does not keep it out of the **data**. Closing that gap takes a migration. `current_app_role()` (or a restrictive policy per table) would refuse `admin` when `auth.jwt()->>'aal' <> 'aal2'` and the user has a verified row in `auth.mfa_factors`. That needs pgTAP for all three roles and a performance check, because every policy calls the helper. It is the same helper change as ADR-0035's "Known limit" (`banned_until`), and the two should land together.
+- **The database does not check aal yet.** RLS asks `current_app_role() = 'admin'`, and `current_app_role()` reads `profiles` only. Someone holding a stolen password can still sign in against GoTrue directly with the public anon key, skipping the Back Office pages, and read through PostgREST at aal1. The middleware keeps a password alone out of the **app**. It does not keep it out of the **data**. Closing that gap takes a migration. `current_app_role()` (or a restrictive policy per table) would refuse `admin` when `auth.jwt()->>'aal' <> 'aal2'` and the user has a verified row in `auth.mfa_factors`. That needs pgTAP for all three roles and a performance check, because every policy calls the helper. It is the same helper change as ADR-0049's "Known limit" (`banned_until`), and the two should land together.
 - **Password reset for a login with two-step.** The emailed reset link gives an aal1 session on `/reset` (a public path). After the new password is saved, `/reset` sends the manager to `/dashboard`, and the middleware stops them at the code step, so a reset alone does not get past the code. Depending on the GoTrue version, the password update itself may be refused below aal2 when a factor is verified. If it is, `/reset` shows its generic "could not set that password" message. `/reset` was not in this slice and this was not tested against a live project. The fix, if needed, is for `/reset` to send an aal1-with-factor session through `/login/verify?next=/reset` first.
 - **No recovery codes.** GoTrue has a recovery-code API, but it is not enabled or used here. A lost phone means the dashboard reset above.
 
 ## Follow-ups
 
 1. **Make it mandatory for every Back Office login.** Add a `settings` key (e.g. `office_two_step_required`, with a start date so managers get notice). While it is on, the middleware sends an admin whose `nextLevel` is `aal1` (no factor yet) to a set-up-only page before anything else, and the database enforcement above changes to "admin requires aal2", with no exception for logins without a factor. Enforcement in the database has to come first. Making the app strict while the data stays reachable at aal1 would only look like protection.
-2. **Reset from `/users`.** The owner or another admin removes a manager's factor with the service key (`auth.admin.mfa.deleteFactor`), after an `admin_*` function checks the caller and writes the audit row, following ADR-0035's "the service key mints, the database decides".
+2. **Reset from `/users`.** The owner or another admin removes a manager's factor with the service key (`auth.admin.mfa.deleteFactor`), after an `admin_*` function checks the caller and writes the audit row, following ADR-0049's "the service key mints, the database decides".
 3. Recovery codes, once THC decides whether managers should be trusted to keep them.
 
 ## Consequences
@@ -51,6 +51,6 @@ A dashboard reset writes no `audit_log` row. Note it by hand until the follow-up
 - The Client Portal and Staff App are unchanged. Neither app offers a set-up panel, and neither checks a factor if one was enrolled through the API directly.
 
 
-## Update — the database half (20260930160000)
+## Update — the database half (20260930210500)
 
-Decision 1's gap is closed: `current_app_role()` now answers NULL for a Back Office login that has a verified factor while its session is below `aal2`, so a stolen password plus the public anon key reads nothing through the API either. Client Portal and Staff App logins are unaffected. pgTAP 656 pins it.
+Decision 1's gap is closed: `current_app_role()` now answers NULL for a Back Office login that has a verified factor while its session is below `aal2`, so a stolen password plus the public anon key reads nothing through the API either. Client Portal and Staff App logins are unaffected. pgTAP 745 pins it.

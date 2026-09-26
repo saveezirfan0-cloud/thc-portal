@@ -12,7 +12,7 @@ import { databaseUnreachable, lit, sql } from './_support/db';
 import { openAs } from './_support/session';
 
 /**
- * /account — My profile (ADR-0035 §7).
+ * /account — My profile (ADR-0049 §7).
  *
  * A manager renames themself: the sidebar foot, which the root layout
  * reads once for every page, shows the new name straight away, and

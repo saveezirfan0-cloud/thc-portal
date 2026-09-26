@@ -14,7 +14,7 @@ import { sql, lit } from './_support/db';
 
 /**
  * /users — inviting a Back Office login, and switching it off again
- * (ADR-0035 §1–§5, §1.4, §1.7).
+ * (ADR-0049 §1–§5, §1.4, §1.7).
  *
  * The whole life of an office login, as two people:
  *
@@ -30,7 +30,7 @@ import { sql, lit } from './_support/db';
  *
  * Needs the CI stack: psql on 54322, and NEXT_PUBLIC_SUPABASE_URL +
  * SUPABASE_SERVICE_ROLE_KEY in the Back Office's environment (the key
- * mints the login, ADR-0035 §2). Skipped, with the reason, without them.
+ * mints the login, ADR-0049 §2). Skipped, with the reason, without them.
  */
 
 const SIGN_IN_REFUSED = 'Email or password is incorrect. Try again or reset your password.';
@@ -75,7 +75,7 @@ test('invite → set a password → /dashboard; switched off → cannot sign in;
     await test.step('the manager invites a Back Office user and reads the link', async () => {
       const setUp = await inviteFromUsers(page, invitee);
       // On the Back Office's own origin, carrying a token and nothing that
-      // could steer where it lands (ADR-0035 §3).
+      // could steer where it lands (ADR-0049 §3).
       expect(setUp).toMatch(
         new RegExp(
           `^${OFFICE_URL.replace(/\./g, '\\.')}/auth/invite\\?token=[A-Za-z0-9_-]{32,200}$`,
@@ -117,7 +117,7 @@ test('invite → set a password → /dashboard; switched off → cannot sign in;
     await page.reload();
     await page.getByRole('searchbox', { name: 'Search users' }).fill(invitee.email);
     const row = page.locator('.users-table tbody tr', { hasText: invitee.email });
-    // Used once, so it is Active and gets no new link (ADR-0035 §3a).
+    // Used once, so it is Active and gets no new link (ADR-0049 §3a).
     await expect(row).toContainText('Active');
     await expect(row.getByRole('button', { name: 'New invite link' })).toHaveCount(0);
 

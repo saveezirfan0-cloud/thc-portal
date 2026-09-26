@@ -10,8 +10,8 @@ import {
 } from '../permissions';
 
 /**
- * ADR-0036. The matrix below is `office_can()` in
- * 20260930110000_office_roles.sql, and 651_office_roles asserts the same
+ * ADR-0050. The matrix below is `office_can()` in
+ * 20260930210100_office_roles.sql, and 651_office_roles asserts the same
  * rows in the database. If one changes, both change.
  */
 describe('office roles', () => {

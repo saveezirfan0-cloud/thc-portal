@@ -153,7 +153,7 @@ describe('the Back Office phone menu', () => {
 const { SignedInAsProvider } = await import('../SignedInAs');
 
 /**
- * ADR-0036: the menu leaves out what the signed-in office role cannot use.
+ * ADR-0050: the menu leaves out what the signed-in office role cannot use.
  * Presentation only — the pages say "Not available for your role" and the
  * database refuses regardless — but a menu item that always errors reads
  * as a broken product.

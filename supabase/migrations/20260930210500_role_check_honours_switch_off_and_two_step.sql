@@ -1,5 +1,5 @@
 -- =====================================================================
--- Integration round after ADR-0035 … ADR-0038: the database now enforces
+-- Integration round after ADR-0049 … ADR-0052: the database now enforces
 -- what the Back Office app already did.
 --
 -- 1 · current_app_role() — the helper every RLS policy and admin RPC asks
@@ -7,21 +7,21 @@
 --       * a login that is switched off (auth.users.banned_until in the
 --         future). Before this, a switched-off login's access token kept
 --         working against the API until it expired, up to an hour
---         (ADR-0035 "Known limit").
+--         (ADR-0049 "Known limit").
 --       * a Back Office login with a verified two-step factor whose
 --         session has not passed the code step (JWT aal is not aal2).
 --         Before this, the middleware stopped the APP at aal1 but a
 --         stolen password plus the public anon key could still read data
---         through the API (ADR-0037 decision 1).
+--         through the API (ADR-0051 decision 1).
 --     It stays a plain SQL function (one indexed lookup of profiles,
 --     auth.users and auth.mfa_factors by primary/foreign key): the
 --     policies call it per row.
 -- 2 · office_can() goes through current_app_role(), so the same two
 --     rules reach every office permission.
--- 3 · queue_account_invite (ADR-0038) was written before office roles
+-- 3 · queue_account_invite (ADR-0052) was written before office roles
 --     landed and checked only for an admin; sending a set-up link is
 --     Users & access, so it now also needs office_can('users'). The body
---     is otherwise 20260930120000's, unchanged (docs/10 §3b).
+--     is otherwise 20260930210200's, unchanged (docs/10 §3b).
 -- =====================================================================
 
 create or replace function public.current_app_role() returns app_role
@@ -42,7 +42,7 @@ as $$
 $$;
 
 comment on function public.current_app_role() is
-  'The caller''s app role for RLS and every admin RPC. NULL — no access — when there is no session, the login is switched off (banned_until in the future), or a Back Office login with a verified two-step factor has not passed the code step (aal2). 20260930160000.';
+  'The caller''s app role for RLS and every admin RPC. NULL — no access — when there is no session, the login is switched off (banned_until in the future), or a Back Office login with a verified two-step factor has not passed the code step (aal2). 20260930210500.';
 
 create or replace function public.office_can(p_perm text)
 returns boolean
@@ -88,7 +88,7 @@ begin
   if current_app_role() is distinct from 'admin' then
     raise exception 'not_authorised' using errcode = '42501';
   end if;
-  -- ADR-0036: sending a set-up link is Users & access, which is the owner's.
+  -- ADR-0050: sending a set-up link is Users & access, which is the owner's.
   if not office_can('users') then
     raise exception 'not_permitted' using errcode = '42501', detail = 'users';
   end if;
@@ -112,7 +112,7 @@ begin
   if v_banned is not null and v_banned > now() then
     raise exception 'login_disabled' using errcode = 'P0001';
   end if;
-  -- ADR-0035 3a: a login in use gets no link; its owner resets their own.
+  -- ADR-0049 3a: a login in use gets no link; its owner resets their own.
   if v_signed_in is not null then
     raise exception 'already_signed_in' using errcode = 'P0001';
   end if;
@@ -162,7 +162,7 @@ begin
 end;
 $$;
 
--- create or replace keeps the grants 20260930110000 / 120000 set; restated
+-- create or replace keeps the grants 20260930210100 / 120000 set; restated
 -- so this file reads complete on its own.
 revoke all on function public.queue_account_invite(uuid, text) from public, anon;
 grant execute on function public.queue_account_invite(uuid, text) to authenticated;

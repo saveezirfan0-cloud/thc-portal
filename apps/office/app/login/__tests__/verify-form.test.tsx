@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
-/** The code step's field (ADR-0037): a phone offers its keypad and the code. */
+/** The code step's field (ADR-0051): a phone offers its keypad and the code. */
 vi.mock('../verify/actions', () => ({ verifyTwoStep: async () => null }));
 
 const { VerifyForm } = await import('../verify/VerifyForm');

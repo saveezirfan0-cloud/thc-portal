@@ -49,7 +49,7 @@ export function withCounts(items: readonly NavItem[], counts: NavCounts): NavIte
  * which one shows; both get the same items and counters, so the two menus
  * cannot drift apart.
  *
- * Items the signed-in office role cannot use are left out (ADR-0036:
+ * Items the signed-in office role cannot use are left out (ADR-0050:
  * Reports and Roles & rates for a scheduler; Settings and Users & access
  * for a manager or scheduler). That is presentation only — opened by URL,
  * those pages say "Not available for your role", and the database refuses

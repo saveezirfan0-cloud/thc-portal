@@ -18,7 +18,7 @@ import '../../activity/activity.css';
 import './history.css';
 
 /**
- * History — the audit trail of one record (ADR-0035 · §1.7), on the staff
+ * History — the audit trail of one record (ADR-0049 · §1.7), on the staff
  * profile (a tab), the client card (a block) and the event board (a
  * panel, closed until asked for — that screen is busy enough).
  *

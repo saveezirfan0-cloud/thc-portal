@@ -7,7 +7,7 @@ import { isActivationToken, parseActivationType } from '@thc/db/activation';
 import { createClient } from '@thc/db/server';
 
 /**
- * Accept a Back Office invitation (/users, ADR-0035): choose a password.
+ * Accept a Back Office invitation (/users, ADR-0049): choose a password.
  *
  * The one-time token is spent HERE, on submit — not when the page loads —
  * so a link preview in a chat app or an email scanner opening the link

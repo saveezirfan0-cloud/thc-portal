@@ -157,7 +157,7 @@ export async function middleware(request: NextRequest) {
     });
   }
 
-  // Two-step sign-in (ADR-0037). An admin whose login has a verified
+  // Two-step sign-in (ADR-0051). An admin whose login has a verified
   // authenticator, holding a session that has not yet been through the code
   // step (aal1 — a password alone), reaches nothing but the public pages
   // until it has. /login/verify is under /login, and sign-out is answered

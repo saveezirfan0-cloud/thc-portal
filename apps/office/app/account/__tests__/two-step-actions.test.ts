@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * /account — two-step sign-in (ADR-0037), with GoTrue's MFA API mocked.
+ * /account — two-step sign-in (ADR-0051), with GoTrue's MFA API mocked.
  *
  *   startTwoStepSetup    clears an abandoned set-up, then enrolls a TOTP
  *                        factor named after the phone, issuer THC Back Office

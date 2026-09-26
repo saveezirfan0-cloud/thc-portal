@@ -1,6 +1,6 @@
 /**
  * Minting a Back Office or Client Portal login and its one-time set-up
- * link — /users Invite (ADR-0035).
+ * link — /users Invite (ADR-0049).
  *
  * The shape is `@thc/db/provision`'s for a worker (ADR-0021): GoTrue's
  * `generateLink` creates the login (or finds it) and returns a hashed
@@ -106,7 +106,7 @@ export function inviteMailto(input: {
   return `mailto:${encodeURIComponent(input.email)}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
-/** What `admin_login_lookup` says about an address (20260930100000). */
+/** What `admin_login_lookup` says about an address (20260930210000). */
 export interface LoginLookup {
   exists: boolean;
   role?: string | null;

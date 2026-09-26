@@ -1,4 +1,4 @@
-# ADR-0035 · Users & access, the activity log, and My profile
+# ADR-0049 · Users & access, the activity log, and My profile
 
 **Status:** Accepted · **Wireframes:** none (no wireframe exists for these three screens; they reuse the Back Office's Panel, form, pill and `card-rows` table language) · **§1.4, §1.7, §1.8, §10.2**
 
@@ -29,10 +29,10 @@ That is a change to the access rules the contract describes (§1.4 names three r
 
 ## Known limit (closed)
 
-Switching a login off deletes its sessions and refresh tokens, but an access token already issued used to stay valid until it expired (up to an hour), because `current_app_role()` read `profiles` only. **Closed by `20260930160000`:** `current_app_role()` now answers NULL for a login whose `banned_until` is in the future, so every policy and admin RPC refuses that token at once (pgTAP 656).
+Switching a login off deletes its sessions and refresh tokens, but an access token already issued used to stay valid until it expired (up to an hour), because `current_app_role()` read `profiles` only. **Closed by `20260930210500`:** `current_app_role()` now answers NULL for a login whose `banned_until` is in the future, so every policy and admin RPC refuses that token at once (pgTAP 745).
 
 ## Consequences
 
-- `20260930100000_accounts_profile_and_activity.sql`, `supabase/tests/650_accounts_profile_activity.sql`.
+- `20260930210000_accounts_profile_and_activity.sql`, `supabase/tests/740_accounts_profile_activity.sql`.
 - The Back Office needs `SUPABASE_SERVICE_ROLE_KEY` (already required by Accept) and, for Client Portal invites in production, `NEXT_PUBLIC_CLIENT_URL`.
 - Two new public routes, `/auth/invite` in the Back Office and in the Client Portal, both under the existing public `/auth` prefix.

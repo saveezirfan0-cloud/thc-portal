@@ -1,5 +1,5 @@
 -- =====================================================================
--- 650 · Accounts, own profile and the activity log (20260930100000)
+-- 740 · Accounts, own profile and the activity log (20260930210000)
 --
 -- /account: a manager or client edits their own name, phone and job
 --   title; a worker cannot (their name is the staff record); the edit is

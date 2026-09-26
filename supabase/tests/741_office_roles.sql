@@ -1,12 +1,12 @@
 -- =====================================================================
--- 651 · Office roles (20260930110000, ADR-0036)
+-- 741 · Office roles (20260930210100, ADR-0050)
 --
 -- owner / manager / scheduler / client / staff for each of the three
 -- gates — users, settings, finance — plus:
 --   * the last-owner guard (admin_set_office_role and
 --     admin_set_login_disabled);
 --   * every check the four re-created account functions had in
---     20260930100000 still refuses (docs/10 §3b: a straight replace that
+--     20260930210000 still refuses (docs/10 §3b: a straight replace that
 --     drops a rule is the known failure);
 --   * the report RPCs still refuse a worker with their old error;
 --   * what a scheduler keeps: role names, role sections at catalogue
@@ -42,7 +42,7 @@ insert into profiles (id, role, office_role, full_name) values
 insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location, geofence_radius_m,
                     title, event_date, pays_breaks, pays_buffer, po_number)
 values (:'past_ev', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
-        st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Delivered Event', current_date - 3, true, true, '651-P');
+        st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Delivered Event', current_date - 3, true, true, '741-P');
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer, charge_rate, pay_rate)
 values (:'past_sh', :'past_ev', :'role_id', now() - interval '3 days', now() - interval '3 days' + interval '6 hours', 2, 0, 22.97, 14.00);
 
@@ -155,7 +155,7 @@ select throws_ok(format('select admin_register_account(%L, %L, %L, null, null, n
   'P0001', 'office_role_required', 'the six-argument form needs a role for a Back Office login');
 select throws_ok(format('select admin_register_account(%L, %L, %L, %L, null, %L)', :'invitee3', 'client', 'Cara', :'clienta', 'manager'),
   'P0001', 'office_role_not_allowed', 'and refuses one for a client login');
--- 20260930100000's refusals, all still there.
+-- 20260930210000's refusals, all still there.
 select throws_ok(format('select admin_register_account(%L, %L, %L)', :'invitee1', 'staff', 'Someone'),
   'P0001', 'role_not_allowed', 'preserved: a staff login is never made here');
 select throws_ok(format('select admin_register_account(%L, %L, %L)', :'invitee1', 'admin', ' '),
@@ -214,7 +214,7 @@ select is((select actor from audit_log where action = 'account.role_changed' and
 -- The last-owner guard. With the caller always an owner who cannot change
 -- themselves, it is a second fence. It used to be reachable by a caller
 -- whose login had been switched off while their access token still ran
--- (ADR-0035 "Known limit"); since 20260930160000 such a caller has no role
+-- (ADR-0049 "Known limit"); since 20260930210500 such a caller has no role
 -- at all, which is the stronger guarantee these assertions now pin.
 -- (seed.sql's admins are owners too, so every owner but owner2 goes off.)
 update auth.users set banned_until = now() + interval '1 day'
@@ -226,10 +226,10 @@ select throws_ok(format('select admin_set_office_role(%L, %L)', :'owner2', 'mana
 select throws_ok(format('select admin_set_login_disabled(%L, true, %L)', :'owner2', 'Left'),
   '42501', 'not_authorised', 'nor switch them off');
 select throws_ok(format('select admin_set_office_role(%L, %L)', :'manager', 'scheduler'),
-  '42501', 'not_authorised', 'nor do anything else (20260930160000)');
+  '42501', 'not_authorised', 'nor do anything else (20260930210500)');
 reset role;
 select is((select office_role::text from profiles where id = :'owner2'), 'owner', 'the owner is still an owner');
--- 20260930100000's last_admin fence, still ahead of last_owner: every
+-- 20260930210000's last_admin fence, still ahead of last_owner: every
 -- Back Office login but one switched off, and that one is the target.
 update auth.users set banned_until = now() + interval '1 day'
  where id in (select id from profiles where role = 'admin' and id <> :'invitee1');
@@ -349,7 +349,7 @@ select throws_ok($$ select * from finance_report(current_date, current_date, 'we
 -- ---------------------------------------------------------------------
 select set_config('request.jwt.claims', json_build_object('sub', :'scheduler', 'role', 'authenticated')::text, true);
 select is((select name from roles where id = :'role_id'), 'RLS Fixture Role',
-  'a scheduler reads role names — scheduling needs them (the pay_rate beside them is ADR-0036''s residual gap)');
+  'a scheduler reads role names — scheduling needs them (the pay_rate beside them is ADR-0050''s residual gap)');
 with u as (update roles set pay_rate = 99 where id = :'role_id' returning 1)
 select is((select count(*)::int from u), 0, 'a scheduler''s pay-rate change on a role changes no row');
 select throws_ok($$ insert into roles (name, pay_rate) values ('Scheduler role', 12) $$,

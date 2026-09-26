@@ -42,7 +42,7 @@ export const dynamic = 'force-dynamic';
  * would be the second.
  */
 export default async function Page() {
-  // ADR-0036: a scheduler sees no money — no weekly snapshot, no margin
+  // ADR-0050: a scheduler sees no money — no weekly snapshot, no margin
   // on the ten-day list. The views withhold it too; this drops the panel
   // rather than drawing it empty.
   const showMoney = officeCan(await currentOfficeRole(), 'finance');

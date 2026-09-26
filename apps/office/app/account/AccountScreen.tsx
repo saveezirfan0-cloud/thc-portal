@@ -18,11 +18,11 @@ import { TwoStepPanel } from './TwoStepPanel';
 import './account.css';
 
 /**
- * /account — My profile (ADR-0035).
+ * /account — My profile (ADR-0049).
  *
  * Five blocks, each saving on its own, so a password change never rides
  * along with a name edit: your details, sign-in email, password,
- * two-step sign-in (ADR-0037), and this device (sessions + the
+ * two-step sign-in (ADR-0051), and this device (sessions + the
  * appearance switch). No wireframe exists for
  * this screen; it uses the Back Office's existing Panel, form and pill
  * language and adds none of its own.

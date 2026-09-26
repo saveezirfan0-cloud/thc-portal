@@ -4,7 +4,7 @@ import { openAsAdmin } from './session';
 
 /**
  * Back Office and Client Portal logins for the /users, /account and
- * /activity journeys (ADR-0035).
+ * /activity journeys (ADR-0049).
  *
  * Two ways a login comes to exist here, and they are not interchangeable:
  *
@@ -44,7 +44,7 @@ export function unique(): string {
 /**
  * Why this journey cannot run here, or null. Invites need everything the
  * CI browser job brings up: psql on 54322 (to clean up), and the service
- * key the Back Office mints logins with (ADR-0035 §2) — the spec cannot
+ * key the Back Office mints logins with (ADR-0049 §2) — the spec cannot
  * see the server's environment, so it asks its own, which CI sets for
  * both (`pnpm turbo e2e:smoke` env in .github/workflows/ci.yml).
  */
@@ -156,7 +156,7 @@ export function removeLogin(email: string | null): void {
 /**
  * Signs in to the Back Office as the seeded admin, invites one login on
  * /users and returns the set-up link the modal shows (it is shown once,
- * never emailed by the platform — ADR-0035 §3). Leaves `page` on /users
+ * never emailed by the platform — ADR-0049 §3). Leaves `page` on /users
  * with the modal closed.
  */
 export async function inviteFromUsers(
@@ -192,7 +192,7 @@ export async function inviteFromUsers(
   }
   await form.getByRole('button', { name: 'Create login' }).click();
 
-  // E11 (ADR-0038) queues on the local stack, so the dialog normally says
+  // E11 (ADR-0052) queues on the local stack, so the dialog normally says
   // the invitation was emailed; it says "send the link" when it was not.
   const ready = page.getByRole('dialog', {
     name: /^Login ready — (invitation emailed|send the link)$/,

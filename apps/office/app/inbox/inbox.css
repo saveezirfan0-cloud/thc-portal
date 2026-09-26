@@ -1,4 +1,4 @@
-/* /inbox — layout only (ADR-0038); every value is a token. */
+/* /inbox — layout only (ADR-0052); every value is a token. */
 
 .inbox-filters > select.input {
   width: auto;
