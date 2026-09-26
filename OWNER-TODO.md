@@ -5,7 +5,7 @@ below is a setting, a key, a deploy or content that a coding session cannot
 supply. Tick items off here as they are done. `docs/14-handover.md` §5 has the
 background for each.
 
-Last updated 25.09.2026 (after #59, #65 and #66): §3's keys, deploys and base URL done by a session; §4b (Claude document reading) added; the old-system import dropped. **§1 and §2 re-checked against the live project and
+Last updated 26.09.2026: the owner supplies the Resend and Willo keys; `docs/17` v1.2 carries every THC ask (items 24–40 new). Before that, 25.09.2026 (after #59, #65 and #66): §3's keys, deploys and base URL done by a session; §4b (Claude document reading) added; the old-system import dropped. **§1 and §2 re-checked against the live project and
 GitHub on 23.09** — both are still open, they are not stale entries.
 
 ## 1 · Supabase settings (dashboard)
@@ -41,6 +41,8 @@ GitHub on 23.09** — both are still open, they are not stale entries.
 Until this is done every notification waits in the outbox as "not configured".
 Nothing is lost; it all sends once the keys exist.
 
+- [ ] **Resend API key**: the owner has it (26.09). Paste it straight into the
+      function secrets below as `RESEND_API_KEY` — never into a chat or a commit.
 - [ ] Verify THC's sending domain in **Resend**: add the DKIM/SPF/DMARC records
       at THC's DNS host. The senders are `admin@` and `timesheets@`
       thehospitalitycompany.co.uk, editable on `/settings`.
@@ -73,7 +75,10 @@ Nothing is lost; it all sends once the keys exist.
 - [ ] Smoke test: send yourself a push from the Staff App's notifications screen,
       and trigger one email (for example, Send on an event's timesheet).
 
-## 4 · Willo, once THC sends the keys (ADR-0021)
+## 4 · Willo, once the keys arrive (ADR-0021)
+
+The owner is supplying the Willo keys (26.09; `docs/17` item 1). Set them as
+function secrets directly — never paste them into a chat or a commit.
 
 - [ ] `supabase secrets set WILLO_WEBHOOK_SECRET=… WILLO_API_KEY=… WILLO_INTERVIEW_KEY=… STAFF_APP_URL=https://thc-portal-staff.vercel.app`
 - [ ] `supabase functions deploy willo-webhook --no-verify-jwt`
