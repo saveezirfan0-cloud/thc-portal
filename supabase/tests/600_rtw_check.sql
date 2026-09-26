@@ -76,7 +76,9 @@ update compliance_docs set review_status = 'superseded' where id = :'d0';
 -- =====================================================================
 -- B · On: queued on filing, not the office's while it runs
 -- =====================================================================
-update settings set value = value || '{"enabled": true}'::jsonb where key = 'rtw_check';
+-- ADR-0041 made the admin's click the default; this file holds ADR-0025's
+-- fully automatic path, which stays available behind admin_confirms = false.
+update settings set value = value || '{"enabled": true, "admin_confirms": false}'::jsonb where key = 'rtw_check';
 select is(rtw_check_enabled(), true, 'B: switched on through settings.rtw_check.enabled');
 
 insert into compliance_docs (id, staff_id, doc_type, share_code, review_status, needs_manual_review, uploaded_at) values
