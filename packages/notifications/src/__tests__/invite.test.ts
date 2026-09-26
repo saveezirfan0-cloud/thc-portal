@@ -10,12 +10,12 @@ import { RESEND_ENDPOINT } from '../resend';
 import { EXTENSION_CODES, SCOPE_CODES, body, outboxKey, render, template } from '../templates';
 
 /**
- * E11 — the account invitation (ADR-0052): a Back Office or Client Portal
+ * E11 — the account invitation (ADR-0058): a Back Office or Client Portal
  * login's one-time set-up link, emailed rather than only shown on /users.
  */
 
 /**
- * The keys queue_account_invite() writes (20260930210200). The same list is
+ * The keys queue_account_invite() writes (20261001200200). The same list is
  * asserted on the SQL side by supabase/tests/652_account_invite_email.sql, so
  * a key renamed on either side fails one of the two suites.
  */
@@ -56,12 +56,12 @@ function ports() {
   return { p, sent };
 }
 
-describe('E11 — the account invitation (ADR-0052)', () => {
+describe('E11 — the account invitation (ADR-0058)', () => {
   it('is an extension that says why it exists, not a §8 code', () => {
     expect(EXTENSION_CODES as readonly string[]).toContain('E11');
     expect(SCOPE_CODES as readonly string[]).not.toContain('E11');
     expect(template('E11').trigger).toMatch(/Not in §8/);
-    expect(template('E11').trigger).toContain('ADR-0052');
+    expect(template('E11').trigger).toContain('ADR-0058');
     expect(template('E11').mandatory).toBeUndefined();
   });
 

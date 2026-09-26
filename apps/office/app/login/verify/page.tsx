@@ -14,7 +14,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Enter your code · THC Back Office' };
 
 /**
- * /login/verify — the code step of two-step sign-in (ADR-0051).
+ * /login/verify — the code step of two-step sign-in (ADR-0057).
  *
  * A public path, so the middleware never redirects it to itself; it gates
  * itself instead. No session → the sign-in form. Nothing left to check (no

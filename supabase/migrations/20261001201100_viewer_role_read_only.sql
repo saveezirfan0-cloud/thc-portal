@@ -1,8 +1,8 @@
 -- =====================================================================
--- ADR-0054 · The viewer office role writes nothing — enforced in the
+-- ADR-0060 · The viewer office role writes nothing — enforced in the
 -- database, on every write path
 --
--- A viewer (20260930220000) is a Back Office login that reads what a
+-- A viewer (20261001201000) is a Back Office login that reads what a
 -- manager reads, finance included, and changes nothing. Every existing
 -- policy asks `current_app_role() = 'admin'`, which a viewer is, so the
 -- permissive admin_all policies would let one write; and a security
@@ -30,7 +30,7 @@
 --     is owners-only (/users) or also writes a guarded table. (A table
 --     created by a LATER migration is not reached by this loop: it adds
 --     the trigger itself or is argued onto 750's allow-list —
---     office_saved_views, 20260930222000, a viewer's own filter chips.)
+--     office_saved_views, 20261001202000, a viewer's own filter chips.)
 --       audit_log is guarded for UPDATE / DELETE / TRUNCATE; its INSERT is
 --     item 3, because update_my_profile() writes the audit row too.
 -- 3 · audit_log_office_read_only — an AFTER INSERT statement trigger with
@@ -48,7 +48,7 @@
 --     link is dead. The body is 20260924110000's with one line added
 --     (docs/10 §3b).
 --
--- Deliberately not here (ADR-0054 "Residual gaps"): Supabase Auth and
+-- Deliberately not here (ADR-0060 "Residual gaps"): Supabase Auth and
 -- Storage calls the Back Office makes with the service key BEFORE any
 -- database write — Accept's login mint, a document PDF stored before
 -- record_event_document() refuses, an upload slot. Those leave an unused
@@ -58,7 +58,7 @@
 -- ---------------------------------------------------------------------
 -- 1 · office_can()
 --
--- 20260930210500's body with the viewer and 'write' added. It still goes
+-- 20261001200500's body with the viewer and 'write' added. It still goes
 -- through current_app_role(), so a switched-off login and a two-step
 -- login below aal2 are refused everything, as before.
 -- ---------------------------------------------------------------------
@@ -84,7 +84,7 @@ as $$
 $$;
 
 comment on function public.office_can(text) is
-  'ADR-0050, ADR-0054: may the signed-in Back Office login use ''users'' | ''settings'' | ''finance'' | ''write''? owner: all four; manager: finance, write; scheduler: write; viewer: finance (reads money, changes nothing). False for any other session and any other permission name. ''write'' is for the Back Office to ask; the database enforces it with the office_read_only triggers (20260930220100).';
+  'ADR-0056, ADR-0060: may the signed-in Back Office login use ''users'' | ''settings'' | ''finance'' | ''write''? owner: all four; manager: finance, write; scheduler: write; viewer: finance (reads money, changes nothing). False for any other session and any other permission name. ''write'' is for the Back Office to ask; the database enforces it with the office_read_only triggers (20261001201100).';
 
 revoke all on function public.office_can(text) from public, anon;
 grant execute on function public.office_can(text) to authenticated, service_role;
@@ -108,13 +108,13 @@ begin
   if v_uid is not null
      and exists (select 1 from profiles p where p.id = v_uid and p.office_role = 'viewer') then
     raise exception 'read_only' using errcode = '42501',
-      detail = 'A viewer can read the Back Office but not change anything (ADR-0054).';
+      detail = 'A viewer can read the Back Office but not change anything (ADR-0060).';
   end if;
 end;
 $$;
 
 comment on function public.assert_not_read_only() is
-  'ADR-0054: raises read_only when the signed-in session is a Back Office viewer. For definer RPCs that act outside the database before they write.';
+  'ADR-0060: raises read_only when the signed-in session is a Back Office viewer. For definer RPCs that act outside the database before they write.';
 
 -- Security definer so the one lookup never depends on the caller's own
 -- policies on profiles; it reads one row by primary key.
@@ -133,7 +133,7 @@ begin
   end if;
   if exists (select 1 from profiles p where p.id = v_uid and p.office_role = 'viewer') then
     raise exception 'read_only' using errcode = '42501',
-      detail = format('A viewer can read the Back Office but not change anything (%s on %s, ADR-0054).',
+      detail = format('A viewer can read the Back Office but not change anything (%s on %s, ADR-0060).',
                       tg_op, tg_table_name);
   end if;
   return null;
@@ -141,7 +141,7 @@ end;
 $$;
 
 comment on function public.office_read_only_guard() is
-  'ADR-0054: the office_read_only statement trigger on every public table (profiles aside). Raises read_only for a Back Office viewer, whether the write came through PostgREST or a security definer RPC. No session: returns at once.';
+  'ADR-0060: the office_read_only statement trigger on every public table (profiles aside). Raises read_only for a Back Office viewer, whether the write came through PostgREST or a security definer RPC. No session: returns at once.';
 
 -- 3 · The audit actor guard — the service-key paths.
 create or replace function public.office_read_only_audit_guard()
@@ -157,14 +157,14 @@ begin
               where p.office_role = 'viewer'
                 and n.action is distinct from 'profile.updated') then
     raise exception 'read_only' using errcode = '42501',
-      detail = 'A viewer can read the Back Office but not change anything (ADR-0054).';
+      detail = 'A viewer can read the Back Office but not change anything (ADR-0060).';
   end if;
   return null;
 end;
 $$;
 
 comment on function public.office_read_only_audit_guard() is
-  'ADR-0054: refuses an audit_log row whose actor is a Back Office viewer (their own profile.updated aside). Catches the service-key RPCs that name the manager as p_actor, where auth.uid() is null.';
+  'ADR-0060: refuses an audit_log row whose actor is a Back Office viewer (their own profile.updated aside). Catches the service-key RPCs that name the manager as p_actor, where auth.uid() is null.';
 
 do $$
 declare
@@ -206,7 +206,7 @@ create trigger audit_log_office_read_only
 
 -- ---------------------------------------------------------------------
 -- 4 · Resend activation link: refuse a viewer before anything is minted.
---     20260924110000's body; the ADR-0054 line is the only addition.
+--     20260924110000's body; the ADR-0060 line is the only addition.
 -- ---------------------------------------------------------------------
 create or replace function public.onboarding_resend_activation_check(p_staff uuid)
 returns jsonb
@@ -220,7 +220,7 @@ declare
   s         staff;
 begin
   perform assert_office_caller();
-  -- ADR-0054: minting the new token kills the candidate's current link.
+  -- ADR-0060: minting the new token kills the candidate's current link.
   perform assert_not_read_only();
   v_refusal := activation_resend_refusal(p_staff, now());
   if v_refusal is not null then
@@ -231,7 +231,7 @@ begin
 end $$;
 
 comment on function public.onboarding_resend_activation_check(uuid) is
-  '§2.7 Resend activation link, step 1: whether a resend is allowed now (accepted, not rejected/inactive/removed, not yet activated, none in the last 10 minutes) and the email + login to mint it for. Office only, and never a viewer (ADR-0054); raises the refusal code.';
+  '§2.7 Resend activation link, step 1: whether a resend is allowed now (accepted, not rejected/inactive/removed, not yet activated, none in the last 10 minutes) and the email + login to mint it for. Office only, and never a viewer (ADR-0060); raises the refusal code.';
 
 -- ---------------------------------------------------------------------
 -- Grants (docs/14 O7: by name). The trigger functions need none — a

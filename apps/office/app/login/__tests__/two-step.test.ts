@@ -14,7 +14,7 @@ import {
   verifyStepPath,
 } from '../two-step';
 
-/** The pure half of two-step sign-in (ADR-0051). */
+/** The pure half of two-step sign-in (ADR-0057). */
 
 function token(claims: Record<string, unknown>): string {
   const part = (value: unknown) => Buffer.from(JSON.stringify(value)).toString('base64url');

@@ -16,7 +16,7 @@ import { readTwoStep } from '../two-step-session';
 import { NO_AUTHENTICATOR } from './copy';
 
 /**
- * The code step (ADR-0051): after email + password, a login with a verified
+ * The code step (ADR-0057): after email + password, a login with a verified
  * authenticator types its 6-digit code here before anything else opens.
  *
  * `challengeAndVerify` upgrades the session to aal2 and writes the new auth

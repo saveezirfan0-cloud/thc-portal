@@ -1,8 +1,8 @@
 /**
- * Office roles — who in the Back Office may use what (ADR-0050, ADR-0054).
+ * Office roles — who in the Back Office may use what (ADR-0056, ADR-0060).
  *
- * The database is the authority: `office_can()` (20260930210100, and
- * 20260930220100 for the viewer) gates the account functions, the
+ * The database is the authority: `office_can()` (20261001200100, and
+ * 20261001201100 for the viewer) gates the account functions, the
  * settings writes and every money-only table, view and report, and the
  * `office_read_only` triggers refuse every write a viewer makes. This file
  * mirrors that table so the screens can hide what the database would
@@ -65,7 +65,7 @@ export function officeCan(
 }
 
 /**
- * Is this a read-only login (ADR-0054)? Only a KNOWN viewer is: an unknown
+ * Is this a read-only login (ADR-0060)? Only a KNOWN viewer is: an unknown
  * role is not treated as read-only, for the reason `officeCan` gives —
  * the database refuses a viewer's writes whatever the screen shows.
  */
@@ -73,7 +73,7 @@ export function isReadOnly(role: OfficeRole | null | undefined): boolean {
   return role === 'viewer';
 }
 
-/** The Back Office shell's banner for a viewer (ADR-0054). */
+/** The Back Office shell's banner for a viewer (ADR-0060). */
 export const READ_ONLY_BANNER = {
   title: 'Read-only access',
   body: 'You can open every screen your role shows, reports included, but you cannot change anything — a save, send or delete will be refused. Ask an owner if something needs changing.',
@@ -110,8 +110,8 @@ export const PERMISSION_NEEDS: Readonly<Record<OfficePermission, string>> = {
 };
 
 /**
- * The database's refusals added by 20260930210100 and 20260930220100 /
- * 220200 (ADR-0054), in words a manager can act on.
+ * The database's refusals added by 20261001200100 and 20261001201100 /
+ * 220200 (ADR-0060), in words a manager can act on.
  */
 const MESSAGES: Readonly<Record<string, string>> = {
   not_permitted: 'Your office role does not allow this. Ask an owner.',

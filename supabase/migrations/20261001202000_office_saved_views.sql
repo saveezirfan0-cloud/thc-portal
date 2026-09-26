@@ -1,10 +1,10 @@
 -- =====================================================================
--- Saved views follow the manager across devices (ADR-0053, updated)
+-- Saved views follow the manager across devices (ADR-0059, updated)
 --
 -- Scheduling (/events) lets a manager name the current filters ("Client
 -- A · Cancelled · Week") and get them back as a chip. Until now those
 -- lived in the browser's localStorage, so they did not follow a manager
--- from the office PC to a laptop. This is the table ADR-0053 described
+-- from the office PC to a laptop. This is the table ADR-0059 described
 -- and did not build: one row per (owner, scope, name), the filters as
 -- JSON, readable and writable by their owner only.
 --
@@ -80,7 +80,7 @@ end;
 $fn$;
 
 comment on function public.office_saved_view_query_ok(text, jsonb) is
-  'ADR-0053: a saved /events view''s filters are exactly {view, q, clientId, status}, each a string of at most 100 characters with no control characters; view in list/month/week/day, status empty or an event status, clientId empty or a UUID. 20260930222000.';
+  'ADR-0059: a saved /events view''s filters are exactly {view, q, clientId, status}, each a string of at most 100 characters with no control characters; view in list/month/week/day, status empty or an event status, clientId empty or a UUID. 20261001202000.';
 
 -- A CHECK constraint runs its function as the caller, so the office needs
 -- EXECUTE; anon has no business with it.
@@ -108,7 +108,7 @@ create table public.office_saved_views (
 );
 
 comment on table public.office_saved_views is
-  'ADR-0053: a Back Office user''s named filter sets on Scheduling (/events), per owner, across devices. Own rows only; at most 30 per owner; query validated by office_saved_view_query_ok(). 20260930222000.';
+  'ADR-0059: a Back Office user''s named filter sets on Scheduling (/events), per owner, across devices. Own rows only; at most 30 per owner; query validated by office_saved_view_query_ok(). 20261001202000.';
 
 -- "Weddings" and "weddings" are one view: re-saving the name updates it.
 -- Leading column `owner` also covers the foreign key (002 §3).
@@ -155,7 +155,7 @@ end;
 $fn$;
 
 comment on function public.office_saved_views_guard() is
-  'ADR-0053: at most 30 saved views per owner (per-owner advisory lock), owner and scope fixed on update, created_at/updated_at kept here. 20260930222000.';
+  'ADR-0059: at most 30 saved views per owner (per-owner advisory lock), owner and scope fixed on update, created_at/updated_at kept here. 20261001202000.';
 
 -- A trigger needs no EXECUTE to fire; a grant would only publish it as an
 -- RPC (190 §3).

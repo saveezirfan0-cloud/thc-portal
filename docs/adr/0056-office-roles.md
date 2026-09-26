@@ -1,16 +1,16 @@
-# ADR-0050 · Office roles: owner, manager, scheduler — enforced in the database
+# ADR-0056 · Office roles: owner, manager, scheduler — enforced in the database
 
-**Status:** Accepted (product owner approved finer Back Office permissions, 30.09.2026) · **Builds on:** ADR-0049 "Proposal, not built: finer office permissions" · **§1.4, §9.1, §9.7, §9.8, §9.9, §9.11, §9.12**
+**Status:** Accepted (product owner approved finer Back Office permissions, 30.09.2026) · **Builds on:** ADR-0055 "Proposal, not built: finer office permissions" · **§1.4, §9.1, §9.7, §9.8, §9.9, §9.11, §9.12**
 
 ## Context
 
-Every Back Office login is `profiles.role = 'admin'`, and every policy and RPC asked only that. ADR-0049 said a permissions toggle on `/users` that did not change the database rules would be a lie, so none was shown, and sketched the shape that would work. THC has approved it. §1.4 still names three app roles (admin / client / staff); this adds a second axis *inside* admin, and does not touch the first: `app_role`, the three apps' middleware, routing and every existing `current_app_role() = 'admin'` predicate are unchanged.
+Every Back Office login is `profiles.role = 'admin'`, and every policy and RPC asked only that. ADR-0055 said a permissions toggle on `/users` that did not change the database rules would be a lie, so none was shown, and sketched the shape that would work. THC has approved it. §1.4 still names three app roles (admin / client / staff); this adds a second axis *inside* admin, and does not touch the first: `app_role`, the three apps' middleware, routing and every existing `current_app_role() = 'admin'` predicate are unchanged.
 
 ## Decision
 
 ### The roles
 
-`profiles.office_role` — enum `office_role` (`owner`, `manager`, `scheduler`). A check constraint makes it non-null for admin rows and null for client and staff rows. Every admin that existed at migration time became `owner` (they all had full access). A newly invited Back Office login is a `manager` unless the inviting owner chooses otherwise. An admin row inserted any other way (the Supabase dashboard, `seed.sql`, a test fixture) is given `owner` by an insert trigger — whoever does that already holds the database. ADR-0049's sketch had a fourth role, `viewer`; it was not approved at the time. It has since been approved and built — see ADR-0054.
+`profiles.office_role` — enum `office_role` (`owner`, `manager`, `scheduler`). A check constraint makes it non-null for admin rows and null for client and staff rows. Every admin that existed at migration time became `owner` (they all had full access). A newly invited Back Office login is a `manager` unless the inviting owner chooses otherwise. An admin row inserted any other way (the Supabase dashboard, `seed.sql`, a test fixture) is given `owner` by an insert trigger — whoever does that already holds the database. ADR-0055's sketch had a fourth role, `viewer`; it was not approved at the time. It has since been approved and built — see ADR-0060.
 
 | Permission | What it covers | owner | manager | scheduler |
 |---|---|---|---|---|
@@ -24,7 +24,7 @@ Everything else — scheduling, onboarding, compliance, check-in, staff (non-mon
 
 ### What the database now refuses
 
-**users.** `admin_accounts`, `admin_login_lookup`, `admin_register_account` and `admin_set_login_disabled` (20260930210000) are re-created with every check their bodies had, in the same order, plus `office_can('users')` straight after the admin check (docs/10 §3b — `741_office_roles` asserts the old refusals as well as the new). `admin_accounts` also returns `office_role`. `admin_register_account` gains a six-argument form taking `p_office_role`; the original five-argument signature is kept and passes `'manager'` for an admin login — a single function with a defaulted sixth argument would make every five-argument call ambiguous in Postgres. The office role is applied to a **new** login only: a re-invite ("New invite link") never changes it, so a re-invite can never demote an owner. `admin_set_login_disabled` additionally refuses to switch off the last working owner. New: `admin_set_office_role(p_user, p_role)` — owners only, admin logins only, never the caller's own role, never leaves zero working (not switched-off) owners, locks the owner rows first so two owners cannot demote each other at once, audited as `account.role_changed` with `from` / `to`.
+**users.** `admin_accounts`, `admin_login_lookup`, `admin_register_account` and `admin_set_login_disabled` (20261001200000) are re-created with every check their bodies had, in the same order, plus `office_can('users')` straight after the admin check (docs/10 §3b — `741_office_roles` asserts the old refusals as well as the new). `admin_accounts` also returns `office_role`. `admin_register_account` gains a six-argument form taking `p_office_role`; the original five-argument signature is kept and passes `'manager'` for an admin login — a single function with a defaulted sixth argument would make every five-argument call ambiguous in Postgres. The office role is applied to a **new** login only: a re-invite ("New invite link") never changes it, so a re-invite can never demote an owner. `admin_set_login_disabled` additionally refuses to switch off the last working owner. New: `admin_set_office_role(p_user, p_role)` — owners only, admin logins only, never the caller's own role, never leaves zero working (not switched-off) owners, locks the owner rows first so two owners cannot demote each other at once, audited as `account.role_changed` with `from` / `to`.
 
 **settings.** Restrictive policies on `settings` and `venue_types` for INSERT / UPDATE / DELETE require `office_can('settings')`. Reads are unchanged (the event board reads `scoring_weights`; the venue form reads `venue_types`).
 
@@ -57,7 +57,7 @@ Stated plainly, because a claim of protection that is not there is worse than no
 3. **Client card** (`/clients/[id]`): margins show "—" and the rate card section is empty for a scheduler, but its Add / Edit / Remove role controls are still drawn and are refused by the database with an error when used. `ClientCard.tsx` / `RateCard.tsx` were out of this change's paths.
 4. **Staff profile**: the bank fields read as blank for a scheduler rather than as "hidden".
 5. **HMRC starter checklist** (`hmrc_checklists`) stays readable: it is tax status that onboarding reviews, not an amount. The New Starter report that exports it is finance-only.
-6. ~~**Switched-off logins** keep an issued access token until it expires~~ — **closed by `20260930210500`**: `current_app_role()` gives a switched-off login no role, and `office_can()` goes through it. The last-owner guard counts only working owners, so a switched-off owner with a live token cannot use it to demote the last working one.
+6. ~~**Switched-off logins** keep an issued access token until it expires~~ — **closed by `20261001200500`**: `current_app_role()` gives a switched-off login no role, and `office_can()` goes through it. The last-owner guard counts only working owners, so a switched-off owner with a live token cannot use it to demote the last working one.
 
 ## Back Office
 
@@ -69,17 +69,17 @@ Stated plainly, because a claim of protection that is not there is worse than no
 
 ## Consequences
 
-- `20260930210100_office_roles.sql`, `supabase/tests/741_office_roles.sql` (136 assertions); `001_rls_guard` pins the fifteen restrictive policies exactly (assertions 10, 10b).
+- `20261001200100_office_roles.sql`, `supabase/tests/741_office_roles.sql` (136 assertions); `001_rls_guard` pins the fifteen restrictive policies exactly (assertions 10, 10b).
 - `packages/db/src/types.generated.ts`: `profiles.office_role` and the enum hand-added; regenerate after deploy.
 - The Back Office's invite now calls the six-argument `admin_register_account`.
 - Adding an office role, or a permission, is a migration (`office_can`) and a change to `permissions.ts`, each held by its own test.
 
 ## Update — security review of the merged branch
 
-- `20260930210700` rewrites every `public` policy that called `current_app_role()` or `office_can()` bare to `(select …)`, so each runs once per statement instead of once per row (the stricter `current_app_role()` of `20260930210500` had tripled per-row cost). The rule is unchanged; pgTAP 747 fails if a bare call comes back.
+- `20261001200700` rewrites every `public` policy that called `current_app_role()` or `office_can()` bare to `(select …)`, so each runs once per statement instead of once per row (the stricter `current_app_role()` of `20261001200500` had tripled per-row cost). The rule is unchanged; pgTAP 747 fails if a bare call comes back.
 - The service-key server actions (`staff/[id]`, `onboarding`, `users`) now ask `current_app_role()` through `sessionIsAdmin()` instead of reading `profiles.role`, so a switched-off login or a two-step login below aal2 cannot reach the service key even if it got past the middleware.
-- ~~Still open, older than this work: E3 activation links (workers) sit in `notification_outbox` readable by every Back Office login.~~ **Closed by `20260930220200` (ADR-0054):** E3 rows are owners' only, like E11, and the link is removed once the row is sent or failed. Every office role still runs Onboarding: Accept and Resend queue E3 through definer RPCs and never read it back.
+- ~~Still open, older than this work: E3 activation links (workers) sit in `notification_outbox` readable by every Back Office login.~~ **Closed by `20261001201200` (ADR-0060):** E3 rows are owners' only, like E11, and the link is removed once the row is sent or failed. Every office role still runs Onboarding: Accept and Resend queue E3 through definer RPCs and never read it back.
 
-## Update — the viewer role (ADR-0054)
+## Update — the viewer role (ADR-0060)
 
-A fourth role, `viewer`, reads what a manager reads (finance included) and writes nothing. `office_can()` gains the viewer and a fourth permission, `write` (owner, manager, scheduler). The database enforces read-only with an `office_read_only` statement trigger on every public table, which covers definer RPCs as well, and an audit-actor trigger for the service-key paths. `001_rls_guard` now pins seventeen restrictive policies (E3's fence is the seventeenth). See ADR-0054 for the mechanism, the allow-list and the residual gaps.
+A fourth role, `viewer`, reads what a manager reads (finance included) and writes nothing. `office_can()` gains the viewer and a fourth permission, `write` (owner, manager, scheduler). The database enforces read-only with an `office_read_only` statement trigger on every public table, which covers definer RPCs as well, and an audit-actor trigger for the service-key paths. `001_rls_guard` now pins seventeen restrictive policies (E3's fence is the seventeenth). See ADR-0060 for the mechanism, the allow-list and the residual gaps.

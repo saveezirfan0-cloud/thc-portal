@@ -27,7 +27,7 @@ vi.mock('@thc/db/admin', () => ({ createAdminClient }));
 vi.mock('@thc/db/server', () => ({
   createClient: () => ({
     auth: { getUser: async () => ({ data: { user: state.user } }) },
-    // The admin check asks current_app_role() (20260930210500).
+    // The admin check asks current_app_role() (20261001200500).
     rpc: async (fn: string) =>
       fn === 'current_app_role'
         ? { data: state.role ?? null, error: null }

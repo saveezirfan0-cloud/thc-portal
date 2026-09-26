@@ -18,7 +18,7 @@ import type { ReactNode } from 'react';
  *
  * `/settings` is in none of the wireframes' sidebars, so it hangs last,
  * below a divider, where it does not disturb their order — and the three
- * account screens (`/users`, `/activity`, `/account`, ADR-0049) hang
+ * account screens (`/users`, `/activity`, `/account`, ADR-0055) hang
  * under it for the same reason. It is the
  * Django-Admin replacement (§9.11, §9.12) and without a link an admin could
  * only reach it by typing the URL.
@@ -45,7 +45,7 @@ import type { ReactNode } from 'react';
  * from a phone — and everything else, with the sign-out and the appearance
  * switch, is one tap away under More.
  *
- * A viewer (ADR-0054) sees "Read-only access" at the top of every screen's
+ * A viewer (ADR-0060) sees "Read-only access" at the top of every screen's
  * content — `ReadOnlyBanner`, from the same context as the menu.
  */
 const ITEMS: readonly NavItem[] = [

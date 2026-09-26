@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
 
 /**
- * Accepting a Back Office invitation — /auth/invite (ADR-0049 §3), with
+ * Accepting a Back Office invitation — /auth/invite (ADR-0055 §3), with
  * the Supabase client mocked.
  *
  * The one-time token is spent by `verifyOtp` on submit, so everything that

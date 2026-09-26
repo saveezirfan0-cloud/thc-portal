@@ -5,7 +5,7 @@ import { Alert, Button, Input } from '@thc/ui';
 import { verifyTwoStep } from './actions';
 
 /**
- * The code step's form (ADR-0051). One field: numeric keypad on a phone,
+ * The code step's form (ADR-0057). One field: numeric keypad on a phone,
  * and `one-time-code` so iOS / Android offer a code from the authenticator
  * where they can. A space or dash in the pasted code is fine; the server
  * strips it (`normaliseCode`).

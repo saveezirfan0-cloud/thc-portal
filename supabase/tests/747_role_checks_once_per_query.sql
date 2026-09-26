@@ -1,10 +1,10 @@
 -- =====================================================================
 -- 747 · Every policy evaluates the role checks once per query
---       (20260930210700)
+--       (20261001200700)
 --
 -- current_app_role() and office_can() are security definer, so a bare
 -- call in a policy runs once per ROW; wrapped as `(select …)` it runs
--- once per statement. After 20260930210500 made the role check three
+-- once per statement. After 20261001200500 made the role check three
 -- lookups, the bare form tripled the cost of admin reads. This fails the
 -- moment a new policy calls either bare — wrap it.
 -- =====================================================================

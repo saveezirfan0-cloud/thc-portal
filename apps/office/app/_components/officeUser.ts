@@ -11,7 +11,7 @@ import { type OfficeRole, OFFICE_ROLE_LABEL, isOfficeRole } from '../_lib/permis
 /** Who the sidebar foot names. Serialisable: it crosses to a client component. */
 export interface OfficeUser {
   name: string;
-  /** The line under the name: the office role's label (ADR-0050), or "Admin". */
+  /** The line under the name: the office role's label (ADR-0056), or "Admin". */
   role?: string;
   /**
    * `profiles.office_role` — what the menu and the gated pages ask

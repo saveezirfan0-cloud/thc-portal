@@ -4,12 +4,12 @@ import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
 import type { OfficeRole } from '../_lib/permissions';
 
-/** One login, as `admin_accounts()` (20260930210000, 20260930210100, 20260930220200) returns it. */
+/** One login, as `admin_accounts()` (20261001200000, 20261001200100, 20261001201200) returns it. */
 export interface AccountRow {
   id: string;
   email: string | null;
   role: 'admin' | 'client' | 'staff';
-  /** Back Office logins only (ADR-0050); null for client and staff. */
+  /** Back Office logins only (ADR-0056); null for client and staff. */
   office_role: OfficeRole | null;
   full_name: string;
   phone: string | null;
@@ -20,7 +20,7 @@ export interface AccountRow {
   created_at: string;
   last_sign_in_at: string | null;
   disabled: boolean;
-  /** A verified two-step factor (ADR-0051), which an owner can reset (ADR-0054). */
+  /** A verified two-step factor (ADR-0057), which an owner can reset (ADR-0060). */
   two_step: boolean;
 }
 

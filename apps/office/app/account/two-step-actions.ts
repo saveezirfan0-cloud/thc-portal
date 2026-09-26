@@ -15,7 +15,7 @@ import {
 } from '../login/two-step';
 
 /**
- * /account — two-step sign-in, on the user's own session (ADR-0051).
+ * /account — two-step sign-in, on the user's own session (ADR-0057).
  *
  * Everything here is GoTrue's MFA API on the signed-in user's session: no
  * service key, no table of ours. The set-up is two calls a page apart —

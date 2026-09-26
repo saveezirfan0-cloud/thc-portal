@@ -79,7 +79,7 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
   const preference = keepSignedInCookie(persistence);
   cookieStore.set(preference.name, preference.value, preference.options);
 
-  // Two-step sign-in (ADR-0051): a password alone is aal1. A login with a
+  // Two-step sign-in (ADR-0057): a password alone is aal1. A login with a
   // verified authenticator goes to the code step before anything else, with
   // `next` carried through; the middleware would send it there anyway, this
   // just saves the round trip. Set after the preference cookie above, so the

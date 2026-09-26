@@ -40,7 +40,7 @@ export default async function Page({
   const [reference, { events, problem }, savedViews] = await Promise.all([
     loadReferenceData(),
     loadEventsInRange(from, to),
-    // The manager's own saved views, read fresh on every open (ADR-0053).
+    // The manager's own saved views, read fresh on every open (ADR-0059).
     listMySavedViews(),
   ]);
 

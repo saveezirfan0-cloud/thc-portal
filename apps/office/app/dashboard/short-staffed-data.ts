@@ -30,7 +30,7 @@ export async function loadShortStaffed(): Promise<ShortStaffedData> {
   }
 
   // Untyped: the view is not in the generated `Database` type until the
-  // types are regenerated after 20260930210400, and the typed client refuses
+  // types are regenerated after 20261001200400, and the typed client refuses
   // a relation it does not know. The row shape is asserted below instead.
   const supabase = createClient(await cookies()) as unknown as SupabaseClient;
   const { data, error } = await supabase
@@ -42,6 +42,6 @@ export async function loadShortStaffed(): Promise<ShortStaffedData> {
 
   if (error) return { roles: null, problem: error.message };
 
-  // Must match 20260930210400_dashboard_short_staffed.sql.
+  // Must match 20261001200400_dashboard_short_staffed.sql.
   return { roles: toShortStaffed((data ?? []) as unknown as ShortStaffedRow[]), problem: null };
 }

@@ -8,7 +8,7 @@ export type { ActivityFilters } from './view-model';
 
 export const PAGE_SIZE = 50;
 
-/** admin_activity returns at most this many rows a call (20260930210000). */
+/** admin_activity returns at most this many rows a call (20261001200000). */
 const RPC_MAX = 200;
 
 export interface ActivityPageData {

@@ -2,7 +2,7 @@
  * "Short-staffed — next 48 hours" on /dashboard.
  *
  * Which role sections are short is decided in SQL, once:
- * `dashboard_short_staffed_v` (20260930210400) returns every ROLE SECTION
+ * `dashboard_short_staffed_v` (20261001200400) returns every ROLE SECTION
  * (not event) that starts in the next 48 hours with confirmed below its
  * headcount, cancelled events excluded. This file only shapes those rows
  * for the panel and orders them. It deliberately does not re-filter: a
@@ -12,7 +12,7 @@
  * shape.
  */
 
-/** What the database returns. Must match 20260930210400_dashboard_short_staffed.sql. */
+/** What the database returns. Must match 20261001200400_dashboard_short_staffed.sql. */
 export interface ShortStaffedRow {
   shift_id: string;
   event_id: string;

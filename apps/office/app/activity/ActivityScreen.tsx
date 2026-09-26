@@ -13,7 +13,7 @@ import '../account/account.css';
 import './activity.css';
 
 /**
- * /activity — Activity log (ADR-0049, §1.7).
+ * /activity — Activity log (ADR-0055, §1.7).
  *
  * Newest first, fifty at a time. Every stamp is an audit stamp, so UK
  * only (§1.8). An entry names who did it ("System" for a job or a

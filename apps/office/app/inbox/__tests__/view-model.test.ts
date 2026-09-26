@@ -4,7 +4,7 @@ import { DEFAULT_PERIOD, inboxHref, parsePeriod, parseStatus, periodStart } from
 import type { InboxRow } from '../view-model';
 import { about, parseType, present, statusDetail, statusOf } from '../view-model';
 
-/** /inbox (ADR-0052): office emails, read from notification_outbox. */
+/** /inbox (ADR-0058): office emails, read from notification_outbox. */
 
 const STAFF = 'dddddddd-0000-4000-8000-000000000001';
 

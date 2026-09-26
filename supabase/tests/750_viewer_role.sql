@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 750 · The viewer office role reads and writes nothing
---       (20260930220000, 20260930220100, ADR-0054)
+--       (20261001201000, 20261001201100, ADR-0060)
 --
 --   * office_can() for the viewer (finance yes; users, settings, write no)
 --     and 'write' for the other three roles;
@@ -13,7 +13,7 @@
 --     settings and money tables, and the service-key RPCs that name the
 --     viewer as p_actor (auth.uid() null);
 --   * what a viewer may still do: update_my_profile (/account) and save
---     their own Scheduling views (office_saved_views, ADR-0053);
+--     their own Scheduling views (office_saved_views, ADR-0059);
 --   * nobody else is touched: owner, manager, scheduler, a worker, a job.
 -- =====================================================================
 begin;
@@ -37,17 +37,17 @@ insert into profiles (id, role, office_role, full_name) values
 -- 1 · Shape
 -- ---------------------------------------------------------------------
 select enum_has_labels('public', 'office_role', array['owner', 'manager', 'scheduler', 'viewer'],
-  'office_role has viewer, appended after the three ADR-0050 roles');
+  'office_role has viewer, appended after the three ADR-0056 roles');
 
 -- The future-proofing: every table in public (extension tables aside) has
 -- the guard, before insert / update / delete / truncate, per STATEMENT —
 -- except the allow-list. audit_log's INSERT is its own trigger (below).
--- A new table fails this until it gets the trigger (copy 20260930220100's
--- loop body) or is argued onto the allow-list in ADR-0054. The allow-list:
+-- A new table fails this until it gets the trigger (copy 20261001201100's
+-- loop body) or is argued onto the allow-list in ADR-0060. The allow-list:
 --   profiles           — update_my_profile(), the viewer's own name;
 --   office_saved_views — a viewer's own filter chips on /events: own-row
 --                        policies only, a preference, not office data
---                        (20260930222000, ADR-0053).
+--                        (20261001202000, ADR-0059).
 select is_empty(
   $$ select c.relname::text
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -55,7 +55,7 @@ select is_empty(
         and not exists (select 1 from pg_depend d
                          where d.classid = 'pg_class'::regclass
                            and d.objid = c.oid and d.deptype = 'e')
-        and c.relname not in ('profiles', 'office_saved_views')  -- ALLOW-LIST (ADR-0054)
+        and c.relname not in ('profiles', 'office_saved_views')  -- ALLOW-LIST (ADR-0060)
         and not exists (
               select 1 from pg_trigger t
                where t.tgrelid = c.oid
@@ -66,7 +66,7 @@ select is_empty(
                  and (t.tgtype & 2) = 2          -- before
                  and (t.tgtype & 56) = 56        -- delete, update, truncate
                  and ((t.tgtype & 4) = 4 or c.relname = 'audit_log')) $$,  -- insert
-  'ADR-0054: every public table carries the office_read_only statement trigger (allow-list: profiles, office_saved_views)');
+  'ADR-0060: every public table carries the office_read_only statement trigger (allow-list: profiles, office_saved_views)');
 
 select is_empty(
   $$ select tgrelid::regclass::text from pg_trigger
@@ -120,7 +120,7 @@ select is((select count(*)::int from shift_requirements where id = :'shift_a' an
 select is((select count(*)::int from bank_details where staff_id in (:'staffa', :'staffb')), 2,
   'and money-only tables (bank details): a viewer has finance');
 select is((select count(*)::int from report_sends where error = 'rls_fixture_probe'), 1,
-  'and the finance send log (report_sends, finance-only since ADR-0050)');
+  'and the finance send log (report_sends, finance-only since ADR-0056)');
 select lives_ok($$ select * from finance_report(current_date - 7, current_date) $$,
   'and runs the finance report');
 select is((select count(*)::int from notification_outbox where key = 'RLS:fixture:outbox'), 1,

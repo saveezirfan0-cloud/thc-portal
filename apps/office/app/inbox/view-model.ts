@@ -1,6 +1,6 @@
 /**
  * /inbox — turning a `notification_outbox` row addressed to the office
- * into something a person reads (ADR-0052). Pure, and tested.
+ * into something a person reads (ADR-0058). Pure, and tested.
  */
 import type { Tone } from '@thc/ui';
 import type { OfficeInboxCode } from '@thc/notifications';

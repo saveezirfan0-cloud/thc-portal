@@ -505,11 +505,11 @@ export const TEMPLATES = {
       'A worker self-cancels a confirmed booking (RULE-04, §3.6). Not in §8: §9.12 says it "triggers an immediate email to admin@thehospitalitycompany.co.uk, flagging which event/role/shift lost a confirmed worker", but §8 gives it no code, so it takes the next free E-number (20260927140200)',
     timing: 'immediately on the self-cancel, not batched (§9.12)',
   },
-  // The account invitation (ADR-0052). ADR-0049 decision 3 showed the /users
+  // The account invitation (ADR-0058). ADR-0055 decision 3 showed the /users
   // set-up link instead of emailing it, because an email is a new entry in
   // this register and that is the contract's to add; THC has since approved
   // it. E11 is the next free E-number after E10. Queued by
-  // queue_account_invite() (20260930210200) with the person's own address on
+  // queue_account_invite() (20261001200200) with the person's own address on
   // the row, keyed E11:invite:<user>:<n>. Its payload keys are held to that
   // function's by supabase/tests/652_account_invite_email.sql. Written in
   // E3's voice — E3 is the same message for a worker's Staff App login.
@@ -522,7 +522,7 @@ export const TEMPLATES = {
     title: 'Your THC {app} login',
     body: 'Hello {name},\n\nYou have been given a login to the THC {app}. Set your password to sign in: {link}\n\nThe link works once and expires after 24 hours. If it has expired, reply to this email and we will send you a new one.\n\nYou sign in with this email address.\n\nThe Hospitality Company',
     trigger:
-      'The office invites a Back Office or Client Portal login on /users, or issues it a new set-up link (ADR-0049, ADR-0052). Not in §8: §1.4 gives the office and the client a login by email and password, and §8 has no send for it, so THC approved the next free E-number',
+      'The office invites a Back Office or Client Portal login on /users, or issues it a new set-up link (ADR-0055, ADR-0058). Not in §8: §1.4 gives the office and the client a login by email and password, and §8 has no send for it, so THC approved the next free E-number',
     timing:
       'immediately, when the link is issued — a new link is a new email, and an older one still unsent is withdrawn, because its token no longer works',
   },
@@ -791,7 +791,7 @@ export const REQUIREMENT_CODES = [
  * N10d and N11b for the same reason as E2b — §8's copy (N10b, N11) would
  * tell an invitee they had a shift, or tell a worker the time moved when it
  * was the dress code (ADR-0037); E11 because THC approved emailing the
- * office and client set-up link (ADR-0052). Kept apart from SCOPE_CODES so the test can
+ * office and client set-up link (ADR-0058). Kept apart from SCOPE_CODES so the test can
  * still hold that list to the scope exactly.
  */
 export const EXTENSION_CODES = [

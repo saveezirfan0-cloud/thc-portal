@@ -146,7 +146,7 @@ export function ClientCard({ data }: { data: ClientCardData }) {
 
         <ClientEvents rows={data.events} />
 
-        {/* The audit trail (ADR-0049), after the scope's four blocks. */}
+        {/* The audit trail (ADR-0055), after the scope's four blocks. */}
         <RecordHistory
           entity="client"
           id={client.id}

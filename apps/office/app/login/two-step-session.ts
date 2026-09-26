@@ -18,7 +18,7 @@ export interface TwoStepState {
 /**
  * The same question the middleware asks, for a server component or action:
  * the factor list from `getUser()` (GoTrue's, not the cookie's copy) and the
- * aal claim of the token GoTrue has just accepted (ADR-0051).
+ * aal claim of the token GoTrue has just accepted (ADR-0057).
  */
 export async function readTwoStep(supabase: SupabaseClient): Promise<TwoStepState> {
   const {

@@ -1,6 +1,6 @@
-# ADR-0051 · Two-step sign-in (TOTP) for Back Office logins
+# ADR-0057 · Two-step sign-in (TOTP) for Back Office logins
 
-**Status:** Accepted · **Wireframes:** none (the code step reuses the sign-in card, `AuthCard`; the `/account` panel reuses the Back Office's Panel, form and pill language) · **§1.4, §10.2** · builds on ADR-0032 (Keep me signed in) and ADR-0049 (My profile)
+**Status:** Accepted · **Wireframes:** none (the code step reuses the sign-in card, `AuthCard`; the `/account` panel reuses the Back Office's Panel, form and pill language) · **§1.4, §10.2** · builds on ADR-0032 (Keep me signed in) and ADR-0055 (My profile)
 
 ## Context
 
@@ -20,7 +20,7 @@ Supabase Auth has TOTP multi-factor built in. `enroll` returns a QR code (an SVG
 
 ## Recovery (lost or replaced phone)
 
-**Since ADR-0054, an owner does this on `/users`.** "Reset two-step" appears on a Back Office row that has two-step on, but never on your own row. It asks for a reason, and it removes the login's factors and ends every session it has. The step is `admin_reset_two_step()`: owners only, Back Office logins only, audited as `account.two_step_reset` with the reason. Step 1 below still applies: confirm who is asking by phone first. The manager then signs in with their password alone and sets two-step up again from `/account`.
+**Since ADR-0060, an owner does this on `/users`.** "Reset two-step" appears on a Back Office row that has two-step on, but never on your own row. It asks for a reason, and it removes the login's factors and ends every session it has. The step is `admin_reset_two_step()`: owners only, Back Office logins only, audited as `account.two_step_reset` with the reason. Step 1 below still applies: confirm who is asking by phone first. The manager then signs in with their password alone and sets two-step up again from `/account`.
 
 If there is no working owner, or the owner is the one who lost the phone, someone with dashboard access does it on the Supabase project:
 
@@ -36,14 +36,14 @@ A dashboard reset writes no `audit_log` row, so note it by hand. The `/users` re
 
 ## Known limits
 
-- **The database does not check aal yet.** RLS asks `current_app_role() = 'admin'`, and `current_app_role()` reads `profiles` only. Someone holding a stolen password can still sign in against GoTrue directly with the public anon key, skipping the Back Office pages, and read through PostgREST at aal1. The middleware keeps a password alone out of the **app**. It does not keep it out of the **data**. Closing that gap takes a migration. `current_app_role()` (or a restrictive policy per table) would refuse `admin` when `auth.jwt()->>'aal' <> 'aal2'` and the user has a verified row in `auth.mfa_factors`. That needs pgTAP for all three roles and a performance check, because every policy calls the helper. It is the same helper change as ADR-0049's "Known limit" (`banned_until`), and the two should land together.
+- **The database does not check aal yet.** RLS asks `current_app_role() = 'admin'`, and `current_app_role()` reads `profiles` only. Someone holding a stolen password can still sign in against GoTrue directly with the public anon key, skipping the Back Office pages, and read through PostgREST at aal1. The middleware keeps a password alone out of the **app**. It does not keep it out of the **data**. Closing that gap takes a migration. `current_app_role()` (or a restrictive policy per table) would refuse `admin` when `auth.jwt()->>'aal' <> 'aal2'` and the user has a verified row in `auth.mfa_factors`. That needs pgTAP for all three roles and a performance check, because every policy calls the helper. It is the same helper change as ADR-0055's "Known limit" (`banned_until`), and the two should land together.
 - **Password reset for a login with two-step.** The emailed reset link gives an aal1 session on `/reset` (a public path). After the new password is saved, `/reset` sends the manager to `/dashboard`, and the middleware stops them at the code step, so a reset alone does not get past the code. Depending on the GoTrue version, the password update itself may be refused below aal2 when a factor is verified. If it is, `/reset` shows its generic "could not set that password" message. `/reset` was not in this slice and this was not tested against a live project. The fix, if needed, is for `/reset` to send an aal1-with-factor session through `/login/verify?next=/reset` first.
 - **No recovery codes.** GoTrue has a recovery-code API, but it is not enabled or used here. A lost phone means the dashboard reset above.
 
 ## Follow-ups
 
 1. **Make it mandatory for every Back Office login.** Add a `settings` key (e.g. `office_two_step_required`, with a start date so managers get notice). While it is on, the middleware sends an admin whose `nextLevel` is `aal1` (no factor yet) to a set-up-only page before anything else, and the database enforcement above changes to "admin requires aal2", with no exception for logins without a factor. Enforcement in the database has to come first. Making the app strict while the data stays reachable at aal1 would only look like protection.
-2. ~~**Reset from `/users`.**~~ **Built (ADR-0054).** No service key was needed: `admin_reset_two_step()` checks the caller, deletes the factor rows and sessions in `auth`, and writes the audit row in one transaction.
+2. ~~**Reset from `/users`.**~~ **Built (ADR-0060).** No service key was needed: `admin_reset_two_step()` checks the caller, deletes the factor rows and sessions in `auth`, and writes the audit row in one transaction.
 3. Recovery codes, once THC decides whether managers should be trusted to keep them.
 
 ## Consequences
@@ -53,6 +53,6 @@ A dashboard reset writes no `audit_log` row, so note it by hand. The `/users` re
 - The Client Portal and Staff App are unchanged. Neither app offers a set-up panel, and neither checks a factor if one was enrolled through the API directly.
 
 
-## Update — the database half (20260930210500)
+## Update — the database half (20261001200500)
 
 Decision 1's gap is closed: `current_app_role()` now answers NULL for a Back Office login that has a verified factor while its session is below `aal2`, so a stolen password plus the public anon key reads nothing through the API either. Client Portal and Staff App logins are unaffected. pgTAP 745 pins it.

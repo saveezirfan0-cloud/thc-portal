@@ -6,7 +6,7 @@ import { useOfficeUser } from './SignedInAs';
 
 /**
  * "Read-only access", above every Back Office screen for a viewer
- * (ADR-0054). The screens still draw their buttons — hiding each one is
+ * (ADR-0060). The screens still draw their buttons — hiding each one is
  * every screen's own change — and the database refuses whatever a viewer
  * presses (`read_only`), so this says so before they try.
  *

@@ -7,7 +7,7 @@ import { SAVED_VIEWS_KEY, type SavedView } from '../saved-views';
 
 /**
  * The one-tap move of this browser's pre-table views into the account
- * (ADR-0053): offered only when the account has none, cleared from
+ * (ADR-0059): offered only when the account has none, cleared from
  * localStorage only once the database has them, and kept when it refuses.
  */
 

@@ -12,8 +12,8 @@ import {
 import { actionLabel, explainAccountError } from '../accounts';
 
 /**
- * ADR-0050, ADR-0054. The matrix below is `office_can()` in
- * 20260930220100_viewer_role_read_only.sql, and 741_office_roles /
+ * ADR-0056, ADR-0060. The matrix below is `office_can()` in
+ * 20261001201100_viewer_role_read_only.sql, and 741_office_roles /
  * 750_viewer_role assert the same rows in the database. If one changes,
  * both change.
  */
@@ -118,7 +118,7 @@ describe('the database refusals, in words', () => {
     expect(explainOfficeError('no_two_step')).toMatch(/two-step/);
   });
 
-  it('the shared account explainer knows the viewer and two-step refusals (ADR-0054)', () => {
+  it('the shared account explainer knows the viewer and two-step refusals (ADR-0060)', () => {
     expect(explainAccountError('read_only')).toMatch(/read-only \(Viewer\)/);
     expect(explainAccountError('cannot_reset_own_two_step')).toMatch(/My profile/);
     expect(explainAccountError('no_two_step')).toMatch(/nothing to reset/);

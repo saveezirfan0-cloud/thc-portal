@@ -132,7 +132,7 @@ test('the sidebar points at /dashboard, and / lands there', async ({ page }) => 
 });
 
 // ---------------------------------------------------------------------
-// Short-staffed — next 48 hours (ADR-0053)
+// Short-staffed — next 48 hours (ADR-0059)
 // ---------------------------------------------------------------------
 
 interface ShortStaffedFixture {
@@ -241,7 +241,7 @@ function removeShortStaffed(fixture: ShortStaffedFixture | null): void {
   }
 }
 
-test('Short-staffed lists a role below headcount with a way to its board, and cancelling the event clears it (ADR-0053)', async ({
+test('Short-staffed lists a role below headcount with a way to its board, and cancelling the event clears it (ADR-0059)', async ({
   page,
 }) => {
   const unreachable = databaseUnreachable();
@@ -274,7 +274,7 @@ test('Short-staffed lists a role below headcount with a way to its board, and ca
         'href',
         `/events/${short.eventId}`,
       );
-      // No money on this panel (ADR-0053: a scheduler reads it too).
+      // No money on this panel (ADR-0059: a scheduler reads it too).
       await expect(row).not.toContainText('£');
     });
 

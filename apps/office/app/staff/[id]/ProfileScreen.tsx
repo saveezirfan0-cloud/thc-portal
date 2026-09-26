@@ -392,7 +392,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
               label: 'Availability',
               count: data.availability?.length ?? 0,
             },
-            // The audit trail (ADR-0049): read when the tab opens, not with the page.
+            // The audit trail (ADR-0055): read when the tab opens, not with the page.
             { value: 'history', label: 'History' },
           ]}
         />

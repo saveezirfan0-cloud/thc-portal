@@ -32,9 +32,9 @@
 -- with one admin_read and NO staff, client or anon policy: the worker's
 -- every read and write is a definer RPC (ADR-0031), and assertions 4 and 5
 -- are unchanged on purpose. 700_staff_additions_rls holds the rest.
--- 20260930210100 (ADR-0050) added assertions 10 and 10b: the office-role
+-- 20261001200100 (ADR-0056) added assertions 10 and 10b: the office-role
 -- gates are restrictive policies, pinned by exact set.
--- 20260930220200 (ADR-0054) added office_activation_links to assertions 8
+-- 20261001201200 (ADR-0060) added office_activation_links to assertions 8
 -- and 10: E3 rows (a worker's activation link) are owners' only, as E11.
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
@@ -69,7 +69,7 @@ select bag_eq(
             ('shift_offers'),('shift_offer_notices'),('staff_referral_codes'),
             ('application_referrals'),
             ('office_saved_views') $$,
-  'RLS is enabled on all 48 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), and office_saved_views (ADR-0053, 20260930222000)'
+  'RLS is enabled on all 48 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), and office_saved_views (ADR-0059, 20261001202000)'
 );
 
 -- ---------------------------------------------------------------------
@@ -325,7 +325,7 @@ select bag_eq(
   $$ select p.polname::text || ':' || p.polcmd::text
        from pg_policy p where p.polrelid = 'notification_outbox'::regclass $$,
   $$ values ('admin_read:r'::text), ('office_users_invite_links:r'), ('office_activation_links:r') $$,
-  'notification_outbox carries admin_read (select only, matching audit_log and report_sends) and two restrictive read fences — office_users_invite_links (E11, 20260930210600) and office_activation_links (E3, 20260930220200) keep one-time links to owners — still nothing that writes'
+  'notification_outbox carries admin_read (select only, matching audit_log and report_sends) and two restrictive read fences — office_users_invite_links (E11, 20261001200600) and office_activation_links (E3, 20261001201200) keep one-time links to owners — still nothing that writes'
 );
 
 -- ---------------------------------------------------------------------
@@ -355,12 +355,12 @@ select is_empty(
 );
 
 -- ---------------------------------------------------------------------
--- 10. The office-role gates (20260930210100, ADR-0050) are RESTRICTIVE
+-- 10. The office-role gates (20261001200100, ADR-0056) are RESTRICTIVE
 --     policies: they narrow admin_all for a Back Office login without
 --     'settings' or 'finance' and grant nothing to anybody. Assertions 3
 --     to 5 key on permissive names and would not see one go missing, so
 --     the exact set is pinned here. Adding a restrictive policy is a
---     change to who in the office can do what — update ADR-0050 with it.
+--     change to who in the office can do what — update ADR-0056 with it.
 --     bank_details' WRITE gate is a trigger, not a policy, because
 --     571_bank_details_write_path pins admin_all as its only write policy.
 -- ---------------------------------------------------------------------
@@ -381,7 +381,7 @@ select bag_eq(
             ('report_sends.office_finance_read:r'),
             ('notification_outbox.office_users_invite_links:r'),
             ('notification_outbox.office_activation_links:r') $$,
-  'ADR-0050: exactly seventeen restrictive policies (the sixteenth, 20260930210600, keeps E11 set-up links to owners; the seventeenth, 20260930220200 / ADR-0054, E3 activation links) — settings writes on settings / venue_types, finance writes on roles / client_rate_cards, finance reads on bank_details / payroll_export_lines / report_sends'
+  'ADR-0056: exactly seventeen restrictive policies (the sixteenth, 20261001200600, keeps E11 set-up links to owners; the seventeenth, 20261001201200 / ADR-0060, E3 activation links) — settings writes on settings / venue_types, finance writes on roles / client_rate_cards, finance reads on bank_details / payroll_export_lines / report_sends'
 );
 
 -- 10b. And each of them asks office_can(), for a signed-in session only.
@@ -396,7 +396,7 @@ select is_empty(
         and ((coalesce(pg_get_expr(p.polqual, p.polrelid), '')
               || coalesce(pg_get_expr(p.polwithcheck, p.polrelid), '')) !~ 'office_can\('
           or p.polroles <> array['authenticated'::regrole::oid]) $$,
-  'ADR-0050: every restrictive policy asks office_can() and applies to authenticated only'
+  'ADR-0056: every restrictive policy asks office_can() and applies to authenticated only'
 );
 
 select * from finish();

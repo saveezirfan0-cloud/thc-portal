@@ -1,10 +1,10 @@
 -- =====================================================================
 -- 745 · current_app_role() honours a switched-off login and two-step
---       sign-in (20260930210500), and queue_account_invite needs the
+--       sign-in (20261001200500), and queue_account_invite needs the
 --       owner's Users & access permission.
 --
--- The app already stopped both at its door (ADR-0049 switch off ends
--- sessions; ADR-0051 middleware sends an aal1 session to the code step).
+-- The app already stopped both at its door (ADR-0055 switch off ends
+-- sessions; ADR-0057 middleware sends an aal1 session to the code step).
 -- This pins the DATABASE half: the same token used straight against the
 -- API gets no role, so every policy and admin RPC refuses it.
 -- =====================================================================

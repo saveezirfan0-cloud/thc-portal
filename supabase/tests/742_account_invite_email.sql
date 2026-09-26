@@ -1,5 +1,5 @@
 -- =====================================================================
--- 742 · The account invitation email, E11 (20260930210200, ADR-0052)
+-- 742 · The account invitation email, E11 (20261001200200, ADR-0058)
 --
 -- queue_account_invite: only an admin queues it; never for a worker's,
 -- a switched-off or an already-used login; only for an /auth/invite link
@@ -114,7 +114,7 @@ select throws_ok(format('select queue_account_invite(%L, %L)', :'staffa_uid', :'
 select throws_ok(format('select queue_account_invite(%L, %L)', :'offadmin', :'link1'),
   'P0001', 'login_disabled', 'a switched-off login is refused');
 select throws_ok(format('select queue_account_invite(%L, %L)', :'usedadmin', :'link1'),
-  'P0001', 'already_signed_in', 'a login that has been signed in to gets no link (ADR-0049 3a)');
+  'P0001', 'already_signed_in', 'a login that has been signed in to gets no link (ADR-0055 3a)');
 select throws_ok(format('select queue_account_invite(%L, %L)', :'noprofile', :'link1'),
   'P0001', 'unknown_account', 'a login with no profile is refused');
 select throws_ok(format('select queue_account_invite(%L, %L)', :'new_id', :'link1'),

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { explainInviteEmailError, queueInviteEmail } from '../inviteEmail';
 
 /**
- * E11 (ADR-0052): the office emails a login its set-up link through
+ * E11 (ADR-0058): the office emails a login its set-up link through
  * queue_account_invite, as the signed-in manager. The database decides;
  * this only has to call it with the right arguments and turn a refusal into
  * words.

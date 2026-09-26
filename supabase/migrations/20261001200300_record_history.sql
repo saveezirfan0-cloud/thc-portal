@@ -1,5 +1,5 @@
 -- =====================================================================
--- Record history — the audit trail of ONE record (§1.7, ADR-0049)
+-- Record history — the audit trail of ONE record (§1.7, ADR-0055)
 --
 -- /activity reads the whole of audit_log. The staff profile, the client
 -- card and the event board each want the same trail cut down to the
@@ -176,7 +176,7 @@ comment on function public.admin_record_history(text, uuid, int, bigint) is
 revoke all on function public.admin_record_history(text, uuid, int, bigint) from public, anon;
 grant execute on function public.admin_record_history(text, uuid, int, bigint) to authenticated;
 
--- One record's own rows: (entity, entity_id) — the 20260930210000 index
+-- One record's own rows: (entity, entity_id) — the 20261001200000 index
 -- is (entity, id) and would walk every row of that entity.
 create index if not exists audit_log_entity_ref_idx on audit_log (entity, entity_id, id desc);
 -- A worker's related rows by the staffId every document, booking and

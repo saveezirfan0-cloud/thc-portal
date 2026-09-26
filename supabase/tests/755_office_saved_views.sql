@@ -1,6 +1,6 @@
 -- =====================================================================
--- 755 · Saved views on Scheduling follow the manager (20260930222000,
---       ADR-0053)
+-- 755 · Saved views on Scheduling follow the manager (20261001202000,
+--       ADR-0059)
 --
 -- office_saved_views: own rows only, Back Office logins only; another
 -- admin's views are invisible and untouchable; a worker, a client and

@@ -222,7 +222,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           ))
         )}
 
-        {/* The audit trail (ADR-0049): closed until asked for — a busy screen. */}
+        {/* The audit trail (ADR-0055): closed until asked for — a busy screen. */}
         <RecordHistory entity="event" id={event.id} deferred />
       </div>
     </OfficeShell>

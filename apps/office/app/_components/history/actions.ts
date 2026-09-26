@@ -13,7 +13,7 @@ export interface HistoryPage {
 }
 
 /**
- * One page of a record's history (20260930210300 `admin_record_history`).
+ * One page of a record's history (20261001200300 `admin_record_history`).
  *
  * A read, as the signed-in manager: the function checks the role in its
  * own body, so a worker or a client who called this action would be

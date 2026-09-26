@@ -22,7 +22,7 @@ import {
 } from './saved-views-actions';
 
 /**
- * Saved views above the Scheduling list and calendar (ADR-0053).
+ * Saved views above the Scheduling list and calendar (ADR-0059).
  *
  * Each saved view is a chip that is a LINK — to the period on screen now,
  * seen through that view's filters — so it opens in a new tab, and the back

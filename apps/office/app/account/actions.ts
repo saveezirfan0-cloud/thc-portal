@@ -18,9 +18,9 @@ import {
 } from '../_lib/accounts';
 
 /**
- * /account — the signed-in user's own profile (ADR-0049).
+ * /account — the signed-in user's own profile (ADR-0055).
  *
- * The details go through `update_my_profile` (20260930210000): `profiles`
+ * The details go through `update_my_profile` (20261001200000): `profiles`
  * has no UPDATE policy, so that function is the only way in, and it
  * writes the audit row. Email and password are GoTrue's, changed on the
  * user's own session — never the service key.

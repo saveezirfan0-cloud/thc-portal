@@ -1,9 +1,9 @@
 /**
- * The rules and words shared by /account, /users and /activity (ADR-0049).
+ * The rules and words shared by /account, /users and /activity (ADR-0055).
  *
  * Pure, so the screens can check a form before it is sent and the tests
  * can pin both halves. The database checks the same things again in
- * 20260930210000 — these only save a round trip and say it earlier.
+ * 20261001200000 — these only save a round trip and say it earlier.
  */
 
 export const NAME_MAX = 120;
@@ -41,11 +41,11 @@ export function normaliseEmail(value: string): string {
   return value.trim().toLowerCase();
 }
 
-/** The database's refusals (20260930210000, 20260930220200), in words a manager can act on. */
+/** The database's refusals (20261001200000, 20261001201200), in words a manager can act on. */
 const MESSAGES: Record<string, string> = {
   not_signed_in: 'Your session has ended. Sign in again.',
   not_authorised: 'Only the office can do this.',
-  // ADR-0054: a viewer's write, refused by the office_read_only triggers.
+  // ADR-0060: a viewer's write, refused by the office_read_only triggers.
   read_only:
     'Your login is read-only (Viewer), so nothing was changed. Ask an owner if this needs doing.',
   no_profile:
@@ -71,7 +71,7 @@ const MESSAGES: Record<string, string> = {
   cannot_disable_self: 'You cannot switch off your own login.',
   reason_required: 'Give a reason — it goes in the activity log.',
   last_admin: 'This is the last working Back Office login. Invite another admin first.',
-  // ADR-0054: Reset two-step on /users.
+  // ADR-0060: Reset two-step on /users.
   not_office_login: 'Only a Back Office login has two-step sign-in.',
   cannot_reset_own_two_step:
     'You cannot reset your own two-step here — remove it from My profile, with a code from your phone.',

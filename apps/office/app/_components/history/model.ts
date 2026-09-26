@@ -1,8 +1,8 @@
 /**
- * The History tab / block on a record page (ADR-0049 · §1.7).
+ * The History tab / block on a record page (ADR-0055 · §1.7).
  *
  * Pure, and tested. The rows are `admin_record_history`'s
- * (20260930210300), which has `admin_activity`'s columns, so every word on
+ * (20261001200300), which has `admin_activity`'s columns, so every word on
  * screen comes from the activity log's own helpers — a History entry and
  * the same entry on /activity read identically.
  */

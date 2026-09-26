@@ -1,5 +1,5 @@
 /**
- * /activity/export — the activity log as CSV (ADR-0049, §1.7).
+ * /activity/export — the activity log as CSV (ADR-0055, §1.7).
  *
  * The same six things the screen shows, in the same words: the stamp is an
  * audit stamp, so UK time only (§1.8), written `YYYY-MM-DD HH:MM` so a

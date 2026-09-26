@@ -1,5 +1,5 @@
 -- =====================================================================
--- 751 · Reset someone's two-step from /users (20260930220200, ADR-0054)
+-- 751 · Reset someone's two-step from /users (20261001201200, ADR-0060)
 --
 -- admin_reset_two_step: owners only, Back Office logins only, never your
 -- own, a reason, a verified factor to reset; removes the factors, ends the
@@ -67,7 +67,7 @@ set local "request.jwt.claims" = '{"sub":"22222222-2222-2222-2222-222222222222",
 select throws_ok(format($$ select admin_reset_two_step(%L, 'lost phone') $$, :'manager'),
   '42501', 'not_authorised', 'a client cannot');
 -- The scheduler has a verified factor, so their session must be aal2 to
--- be a Back Office session at all (20260930210500).
+-- be a Back Office session at all (20261001200500).
 set local "request.jwt.claims" = '{"sub":"75100000-0000-4000-8000-000000000002","role":"authenticated","aal":"aal2"}';
 select throws_ok(format($$ select admin_reset_two_step(%L, 'lost phone') $$, :'manager'),
   '42501', 'not_permitted', 'a scheduler cannot (Users & access is the owner''s)');
@@ -110,7 +110,7 @@ select is((select two_step from admin_accounts() where id = :'bare'), false,
 select is((select array[office_role::text, role::text, email, disabled::text]
              from admin_accounts('admin') where id = :'manager'),
           array['manager', 'admin', 'manager.751@rls.test', 'false'],
-  'the ADR-0050 columns are all still there');
+  'the ADR-0056 columns are all still there');
 select is((select count(*)::int from admin_accounts('client') where id = :'clienta_uid' and client_name is not null), 1,
   'and the client filter and client name');
 

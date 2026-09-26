@@ -1,7 +1,7 @@
 import { SkeletonPanel, SkeletonScreen, SkeletonToolbar } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 
-/** /activity (ADR-0049) while a page of the audit log is read. */
+/** /activity (ADR-0055) while a page of the audit log is read. */
 export default function Loading() {
   return (
     <OfficeShell activeHref="/activity" title="Activity log">

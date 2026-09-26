@@ -21,7 +21,7 @@ import {
 
 /**
  * Saved views on Scheduling, read and written on the manager's own session
- * (ADR-0053). `office_saved_views` holds the rule — own rows only, Back
+ * (ADR-0059). `office_saved_views` holds the rule — own rows only, Back
  * Office logins only, at most 30, `query` limited to the four filter keys —
  * so these actions never use the service key: a refusal from the database
  * is the answer, and the bar turns read-only on it.

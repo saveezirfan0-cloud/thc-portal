@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { EventFilterSet } from '../filters';
 
 /**
- * The saved-view server actions (ADR-0053) against an in-memory stand-in
+ * The saved-view server actions (ADR-0059) against an in-memory stand-in
  * for `office_saved_views` on the manager's own session. What is pinned:
  * the table name and scope, that only the four filter keys are ever
  * written, re-saving a name updates in place, the cap is said before the

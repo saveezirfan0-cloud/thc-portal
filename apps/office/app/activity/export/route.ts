@@ -17,7 +17,7 @@ import { parseFilters } from '../view-model';
  * GET /activity/export — the activity log as CSV, under the same filters
  * as /activity (area, person, text, period), newest first, at most
  * EXPORT_CAP rows; the file says so on its last line when it stopped
- * there (ADR-0049, §1.7).
+ * there (ADR-0055, §1.7).
  *
  * Two gates. The session must be an admin's — asked here, so a worker or
  * a client who reaches this URL gets a 403 rather than an empty file —

@@ -153,7 +153,7 @@ describe('the Back Office phone menu', () => {
 const { SignedInAsProvider } = await import('../SignedInAs');
 
 /**
- * ADR-0050: the menu leaves out what the signed-in office role cannot use.
+ * ADR-0056: the menu leaves out what the signed-in office role cannot use.
  * Presentation only — the pages say "Not available for your role" and the
  * database refuses regardless — but a menu item that always errors reads
  * as a broken product.
@@ -197,7 +197,7 @@ describe('the Back Office menu per office role', () => {
     expect(render()).toContain('href="/users"');
   });
 
-  it('gives a viewer the manager’s menu, Reports and Roles included (ADR-0054)', () => {
+  it('gives a viewer the manager’s menu, Reports and Roles included (ADR-0060)', () => {
     const markup = render('viewer');
     expect(markup).not.toContain('href="/settings"');
     expect(markup).not.toContain('href="/users"');
@@ -207,7 +207,7 @@ describe('the Back Office menu per office role', () => {
 });
 
 /**
- * ADR-0054: a viewer reads everything their role shows and changes
+ * ADR-0060: a viewer reads everything their role shows and changes
  * nothing. The database refuses their writes; the shell says so first, on
  * every screen, from the same context the menu reads.
  */

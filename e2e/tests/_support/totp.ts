@@ -2,7 +2,7 @@ import { createHmac } from 'node:crypto';
 
 /**
  * RFC 6238 TOTP, the kind GoTrue's `mfa.enroll({ factorType: 'totp' })`
- * issues (ADR-0051): HMAC-SHA1, 30-second steps, 6 digits, a base32
+ * issues (ADR-0057): HMAC-SHA1, 30-second steps, 6 digits, a base32
  * secret. What the manager's authenticator app computes, so the two-step
  * journey can type a real code without a phone. node:crypto only — no
  * dependency for thirty lines.

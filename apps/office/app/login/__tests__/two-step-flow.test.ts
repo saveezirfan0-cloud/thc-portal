@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { NextRequest } from 'next/server';
 
 /**
- * Two-step sign-in, end to end with Supabase mocked (ADR-0051):
+ * Two-step sign-in, end to end with Supabase mocked (ADR-0057):
  *
  *  - sign-in sends a login with a verified authenticator to the code step,
  *    carrying `next`, after the "Keep me signed in" cookie is written;

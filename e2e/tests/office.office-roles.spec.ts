@@ -12,7 +12,7 @@ import {
 import { lit, sql } from './_support/db';
 
 /**
- * Office roles — owner, manager, scheduler (ADR-0050).
+ * Office roles — owner, manager, scheduler (ADR-0056).
  *
  * Not `office.roles.spec.ts`: that name was taken by Roles & rates (§9.8),
  * the catalogue of worker roles and their pay. This one is about who in
@@ -31,7 +31,7 @@ import { lit, sql } from './_support/db';
  *   a manager      has Reports and Roles, not Settings or Users & access.
  *
  * Then the owner makes the scheduler a manager, and the scheduler's menu
- * follows on the next page load — no sign-out (ADR-0050: office_can reads
+ * follows on the next page load — no sign-out (ADR-0056: office_can reads
  * profiles live).
  *
  * The menu and "Not available" are presentation; the database refuses
@@ -42,7 +42,7 @@ import { lit, sql } from './_support/db';
  * and another row action in parallel work, and neither should break this.
  *
  * Needs the CI stack — psql on 54322 and NEXT_PUBLIC_SUPABASE_URL +
- * SUPABASE_SERVICE_ROLE_KEY for the invite (ADR-0049 §2). Skipped, with the
+ * SUPABASE_SERVICE_ROLE_KEY for the invite (ADR-0055 §2). Skipped, with the
  * reason, without them.
  */
 
@@ -105,7 +105,7 @@ async function inviteAndAccept(page: Page, browser: Browser, officeRole: 'Manage
   return { ...invitee, ...own };
 }
 
-test('a scheduler and a manager see only their sections; a role change follows on reload (ADR-0050)', async ({
+test('a scheduler and a manager see only their sections; a role change follows on reload (ADR-0056)', async ({
   page,
   browser,
 }) => {
@@ -148,7 +148,7 @@ test('a scheduler and a manager see only their sections; a role change follows o
       const dash = scheduler.page;
       await dash.goto(`${OFFICE_URL}/dashboard`);
       // The dashboard itself is theirs: the four operational KPIs and the
-      // short-staffed panel (no money on it, ADR-0053) are drawn.
+      // short-staffed panel (no money on it, ADR-0059) are drawn.
       await expect(dash.locator('.tilegrid .kpi')).toHaveCount(4);
       await expect(dash.locator('.panel', { hasText: 'Upcoming events' })).toBeVisible();
 

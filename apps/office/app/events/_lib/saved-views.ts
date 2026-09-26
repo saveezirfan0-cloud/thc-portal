@@ -3,11 +3,11 @@ import { isCalendarView } from '../calendar';
 import { EVENT_STATUSES, type EventFilterSet, sameFilterSet } from './filters';
 
 /**
- * Saved views on Scheduling (/events) — ADR-0053.
+ * Saved views on Scheduling (/events) — ADR-0059.
  *
  * A manager names the current filter set ("Client A · cancelled") and gets
  * it back as a chip above the list. Views live in `office_saved_views`
- * (20260930222000), one row per owner and name, so they follow a manager
+ * (20261001202000), one row per owner and name, so they follow a manager
  * from the office PC to a laptop; they are never shared between managers.
  * The database is the rule: own rows only, at most 30, and `query` holds
  * only the four filter keys below as bounded strings. The helpers here

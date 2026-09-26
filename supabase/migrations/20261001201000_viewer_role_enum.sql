@@ -1,9 +1,9 @@
 -- =====================================================================
--- ADR-0054 · The read-only "viewer" office role — the enum value only
+-- ADR-0060 · The read-only "viewer" office role — the enum value only
 --
--- Owner-approved (ADR-0049's sketch had it; ADR-0050 left it unbuilt).
+-- Owner-approved (ADR-0055's sketch had it; ADR-0056 left it unbuilt).
 -- A viewer reads what a manager reads, finance included, and writes
--- nothing. What enforces that is 20260930220100.
+-- nothing. What enforces that is 20261001201100.
 --
 -- On its own in this file on purpose: `alter type … add value` may run in
 -- a transaction, but the new label cannot be USED in the same one

@@ -1,22 +1,22 @@
 -- =====================================================================
--- ADR-0054 · Reset someone's two-step from /users, and workers'
+-- ADR-0060 · Reset someone's two-step from /users, and workers'
 -- activation links (E3) fenced like E11
 --
 -- 1 · admin_reset_two_step(p_user, p_reason) — the lost-phone recovery
---     ADR-0051 left to the Supabase dashboard (its follow-up 2). Owners
+--     ADR-0057 left to the Supabase dashboard (its follow-up 2). Owners
 --     only (office_can('users')), Back Office logins only, never the
 --     caller's own (they use /account, which asks a fresh code). Removes
 --     every factor of the login, ends its sessions — an aal2 session made
 --     with the lost phone must not outlive the reset — and writes
 --     `account.two_step_reset` with the reason. The auth tables are
---     reached with dynamic SQL behind to_regclass, as 20260930210000's
+--     reached with dynamic SQL behind to_regclass, as 20261001200000's
 --     session deletion is, so a harness without one skips that step.
 --     A login with no verified factor is refused (`no_two_step`): there
 --     is nothing to recover, and an audit row saying otherwise would lie.
 -- 2 · admin_accounts() gains `two_step boolean` (a verified factor), so
 --     /users can offer the reset only where it means something. A changed
 --     result shape cannot be `create or replace`d, so it is dropped and
---     re-created — 20260930210100's body, check for check and column for
+--     re-created — 20261001200100's body, check for check and column for
 --     column, with the one column appended (docs/10 §3b; 751 asserts the
 --     old refusals and columns as well as the new).
 -- 3 · E3 rows in notification_outbox carry a worker's one-time activation
@@ -25,7 +25,7 @@
 --     password before they did. Nothing in the Back Office reads E3 rows:
 --     /inbox lists only the register's office emails (OFFICE_INBOX), and
 --     Accept / Resend queue E3 through definer RPCs, which do not meet
---     RLS. So, as 20260930210600 did for E11:
+--     RLS. So, as 20261001200600 did for E11:
 --       * a RESTRICTIVE select policy — an E3 row is visible only to a
 --         session with office_can('users') (an owner). Every other row
 --         reads as before;
@@ -57,7 +57,7 @@ begin
   if current_app_role() is distinct from 'admin' then
     raise exception 'not_authorised' using errcode = '42501';
   end if;
-  -- Users & access is the owner's (ADR-0050).
+  -- Users & access is the owner's (ADR-0056).
   if not office_can('users') then
     raise exception 'not_permitted' using errcode = '42501', detail = 'users';
   end if;
@@ -65,7 +65,7 @@ begin
   if v_target.id is null then
     raise exception 'unknown_account' using errcode = 'P0001';
   end if;
-  -- Two-step exists for Back Office logins only (ADR-0051).
+  -- Two-step exists for Back Office logins only (ADR-0057).
   if v_target.role <> 'admin' then
     raise exception 'not_office_login' using errcode = 'P0001';
   end if;
@@ -112,10 +112,10 @@ end;
 $$;
 
 comment on function public.admin_reset_two_step(uuid, text) is
-  'ADR-0054 (ADR-0051 recovery): remove a Back Office login''s two-step factors and end its sessions, so they sign in with their password and set two-step up again on /account. Owners only; never the caller''s own; a reason is required; refuses a login with no verified factor. Audited as account.two_step_reset.';
+  'ADR-0060 (ADR-0057 recovery): remove a Back Office login''s two-step factors and end its sessions, so they sign in with their password and set two-step up again on /account. Owners only; never the caller''s own; a reason is required; refuses a login with no verified factor. Audited as account.two_step_reset.';
 
 -- ---------------------------------------------------------------------
--- 2 · admin_accounts — 20260930210100's body, plus two_step
+-- 2 · admin_accounts — 20261001200100's body, plus two_step
 -- ---------------------------------------------------------------------
 drop function if exists public.admin_accounts(app_role);
 create function public.admin_accounts(p_role app_role default null)
@@ -144,7 +144,7 @@ begin
   if current_app_role() is distinct from 'admin' then
     raise exception 'not_authorised' using errcode = '42501';
   end if;
-  -- ADR-0050
+  -- ADR-0056
   if not office_can('users') then
     raise exception 'not_permitted' using errcode = '42501', detail = 'users';
   end if;
@@ -162,7 +162,7 @@ begin
            p.created_at,
            u.last_sign_in_at,
            coalesce(u.banned_until > now(), false),
-           -- ADR-0054: a verified factor, which /users can reset.
+           -- ADR-0060: a verified factor, which /users can reset.
            exists (select 1 from auth.mfa_factors f
                     where f.user_id = p.id and f.status::text = 'verified')
       from profiles p
@@ -175,7 +175,7 @@ end;
 $$;
 
 comment on function public.admin_accounts(app_role) is
-  '/users: every login with its role, office role, client, last sign-in, whether it is switched off and whether it has two-step on. Back Office owners only (office_can(''users''), ADR-0050).';
+  '/users: every login with its role, office role, client, last sign-in, whether it is switched off and whether it has two-step on. Back Office owners only (office_can(''users''), ADR-0056).';
 
 -- ---------------------------------------------------------------------
 -- 3 · E3 activation links: owners only, and gone once sent
@@ -187,9 +187,9 @@ create policy office_activation_links on notification_outbox
   using (template <> 'E3' or (select office_can('users')));
 
 comment on policy office_activation_links on notification_outbox is
-  'ADR-0054: an E3 row carries a worker''s one-time activation link; only a session with office_can(''users'') (an owner) may read it. 20260930220200.';
+  'ADR-0060: an E3 row carries a worker''s one-time activation link; only a session with office_can(''users'') (an owner) may read it. 20261001201200.';
 
--- 20260930210600's trigger function, now for E3 as well as E11.
+-- 20261001200600's trigger function, now for E3 as well as E11.
 create or replace function public.redact_finished_invite_link()
 returns trigger
 language plpgsql
@@ -206,7 +206,7 @@ end;
 $$;
 
 comment on function public.redact_finished_invite_link() is
-  'ADR-0052, ADR-0054: once an E11 (account set-up) or E3 (worker activation) row is sent or has failed for good, its one-time link is removed from the payload (linkRedacted: true).';
+  'ADR-0058, ADR-0060: once an E11 (account set-up) or E3 (worker activation) row is sent or has failed for good, its one-time link is removed from the payload (linkRedacted: true).';
 
 -- Rows that finished before this migration.
 update notification_outbox

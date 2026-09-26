@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 752 · E3 activation links: owners only, and gone once sent
---       (20260930220200, ADR-0054)
+--       (20261001201200, ADR-0060)
 --
 -- An E3 row's `payload.link` is a worker's one-time /activate link; whoever
 -- holds it sets that worker's password. Before this, every Back Office
@@ -94,7 +94,7 @@ select is((select payload ? 'link' from notification_outbox where key = 'E3:rese
 
 update notification_outbox set sent_at = now() where key = 'E11:invite:752:1';
 select is((select payload ->> 'linkRedacted' from notification_outbox where key = 'E11:invite:752:1'), 'true',
-  'E11 is still redacted by the same trigger (20260930210600 unchanged)');
+  'E11 is still redacted by the same trigger (20261001200600 unchanged)');
 update notification_outbox set sent_at = now() where key = 'E5:752:probe';
 select is((select payload ->> 'staffName' from notification_outbox where key = 'E5:752:probe'), 'Staff Alpha',
   'other templates keep their payload');

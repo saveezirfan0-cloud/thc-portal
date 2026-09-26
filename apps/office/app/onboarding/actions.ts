@@ -322,7 +322,7 @@ async function asAdmin(): Promise<boolean> {
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return false;
   // current_app_role(), not the profiles row: it also refuses a
-  // switched-off login and a two-step login below aal2 (20260930210500).
+  // switched-off login and a two-step login below aal2 (20261001200500).
   return sessionIsAdmin(supabase);
 }
 

@@ -13,7 +13,7 @@ import { openAs } from './_support/session';
 import { nextCode, stepAt, totp, wrongCode } from './_support/totp';
 
 /**
- * Two-step sign-in (ADR-0051).
+ * Two-step sign-in (ADR-0057).
  *
  * One manager, one authenticator — computed here from the secret the page
  * prints for typing by hand (RFC 6238, _support/totp.ts), exactly what the
@@ -27,7 +27,7 @@ import { nextCode, stepAt, totp, wrongCode } from './_support/totp';
  *   the right code lands on /dashboard, signed in.
  *
  * The login is this spec's own (seeded with psql, an owner by the insert
- * trigger, ADR-0050): two-step on the seeded admin would put every other
+ * trigger, ADR-0056): two-step on the seeded admin would put every other
  * office spec behind a code while they run. Needs psql on 54322 and a
  * Supabase stack with TOTP on (supabase/config.toml [auth.mfa.totp]);
  * skipped, with the reason, without the database.
@@ -72,7 +72,7 @@ async function signInWithPassword(page: Page, email: string): Promise<void> {
   await page.getByRole('button', { name: 'Sign in' }).click();
 }
 
-test('set up on /account; then the password alone stops at the code step until the right code (ADR-0051)', async ({
+test('set up on /account; then the password alone stops at the code step until the right code (ADR-0057)', async ({
   page,
 }) => {
   // The sign-in code must come from a later 30-second step than the set-up

@@ -1,8 +1,8 @@
 /**
  * Emailing a Back Office or Client Portal login its set-up link — E11
- * (ADR-0052).
+ * (ADR-0058).
  *
- * /users mints the link (ADR-0049) and then calls this with the signed-in
+ * /users mints the link (ADR-0055) and then calls this with the signed-in
  * manager's own client. `queue_account_invite` decides everything — admin
  * only, never a worker's, a switched-off or an already-used login, only an
  * /auth/invite link with a token — and reads the address and the name from
@@ -21,7 +21,7 @@ export type InviteEmailResult = { ok: true } | { ok: false; message: string };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** queue_account_invite's own refusals (20260930210200); the rest are ADR-0049's. */
+/** queue_account_invite's own refusals (20261001200200); the rest are ADR-0055's. */
 const MESSAGES: Readonly<Record<string, string>> = {
   invite_link_invalid:
     'The link could not be emailed because it is not a set-up link. Copy it and send it yourself.',

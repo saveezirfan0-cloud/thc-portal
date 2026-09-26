@@ -1,8 +1,8 @@
 -- =====================================================================
--- The account invitation email (E11) and the office inbox (ADR-0052)
+-- The account invitation email (E11) and the office inbox (ADR-0058)
 -- §1.4 logins, §8 register, §9.12 senders, §1.8 audit stamps
 --
--- ADR-0049 decision 3 showed a Back Office or Client Portal login's
+-- ADR-0055 decision 3 showed a Back Office or Client Portal login's
 -- one-time set-up link on /users instead of emailing it, because an email
 -- is a new entry in the §8 register and that is the contract's to add.
 -- THC has approved it: the register gains E11 (packages/notifications,
@@ -19,7 +19,7 @@
 --       * never a staff login: a worker's link is E3, made by Accept
 --         (§2.4, §2.7) with its own resend rules;
 --       * never a login that is switched off, or one that has ever been
---         signed in to (ADR-0049 3a: its owner uses Forgot password);
+--         signed in to (ADR-0055 3a: its owner uses Forgot password);
 --       * the link must be a set-up link — https (or http on 127.0.0.1 /
 --         localhost, for a local stack), path /auth/invite, a token in the
 --         query and nothing that could reshape it — because the function
@@ -78,7 +78,7 @@ alter table notification_outbox
   alter column queued_at set not null;
 
 comment on column notification_outbox.queued_at is
-  'When the row was queued. Set by default on insert and never changed (send_after moves on every claim and retry). Rows older than 20260930210200 carry the earliest stamp they had. Read by /inbox (ADR-0052).';
+  'When the row was queued. Set by default on insert and never changed (send_after moves on every claim and retry). Rows older than 20261001200200 carry the earliest stamp they had. Read by /inbox (ADR-0058).';
 
 create index if not exists notification_outbox_template_id_idx
   on notification_outbox (template, id desc);
@@ -110,7 +110,7 @@ as $$
 $$;
 
 comment on function public.account_invite_link_ok(text) is
-  'E11 (ADR-0052): true when the text is a Back Office / Client Portal set-up link — https (or http on 127.0.0.1/localhost), path /auth/invite, a GoTrue hashed token in the query, nothing else that could reshape it.';
+  'E11 (ADR-0058): true when the text is a Back Office / Client Portal set-up link — https (or http on 127.0.0.1/localhost), path /auth/invite, a GoTrue hashed token in the query, nothing else that could reshape it.';
 
 -- ---------------------------------------------------------------------
 -- 3 · queue_account_invite
@@ -159,7 +159,7 @@ begin
   if v_banned is not null and v_banned > now() then
     raise exception 'login_disabled' using errcode = 'P0001';
   end if;
-  -- ADR-0049 3a: a login in use gets no link; its owner resets their own.
+  -- ADR-0055 3a: a login in use gets no link; its owner resets their own.
   if v_signed_in is not null then
     raise exception 'already_signed_in' using errcode = 'P0001';
   end if;
@@ -210,7 +210,7 @@ end;
 $$;
 
 comment on function public.queue_account_invite(uuid, text) is
-  'E11 (ADR-0052): emails a Back Office or Client Portal login its one-time set-up link, from the admin sender, to the address on the login. Admin only; refuses staff, switched-off and already-used logins and anything that is not an /auth/invite link with a token. Key E11:invite:<user>:<n> — a new link is a new row, the same link twice is one; an older unsent E11 for the login is failed as superseded. Audited as account.invite_emailed, never with the link.';
+  'E11 (ADR-0058): emails a Back Office or Client Portal login its one-time set-up link, from the admin sender, to the address on the login. Admin only; refuses staff, switched-off and already-used logins and anything that is not an /auth/invite link with a token. Key E11:invite:<user>:<n> — a new link is a new row, the same link twice is one; an older unsent E11 for the login is failed as superseded. Audited as account.invite_emailed, never with the link.';
 
 -- ---------------------------------------------------------------------
 -- 4 · Grants. PUBLIC gets nothing by default (190_job_function_grants 2f)

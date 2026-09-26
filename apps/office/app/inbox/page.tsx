@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * /inbox — the emails the platform sent to the office and to payroll
- * (ADR-0052): what, about whom, when, and whether it went. Read-only.
+ * (ADR-0058): what, about whom, when, and whether it went. Read-only.
  * Filters live in the URL, as on /activity; "Older" pages on the outbox id.
  */
 export default async function Page({

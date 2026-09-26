@@ -47,7 +47,7 @@ const NO_ROWS =
   'The Dashboard read no rows. Every figure on this screen is admin-only, so this is what it looks like signed in as anything else.';
 
 /**
- * `finance: false` for an office role without it (ADR-0050): the weekly
+ * `finance: false` for an office role without it (ADR-0056): the weekly
  * money panel is not asked for — dashboard_week_finance_v would return no
  * row to that session anyway, and the ten-day list's rates come back NULL.
  */

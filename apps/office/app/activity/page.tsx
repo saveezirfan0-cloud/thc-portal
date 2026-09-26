@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * /activity — the audit trail (§1.7), readable: who did what, to whom,
- * when (ADR-0049). Filters live in the URL so a filtered view can be
+ * when (ADR-0055). Filters live in the URL so a filtered view can be
  * shared or bookmarked; "Older" pages on the log's id, and "Export CSV"
  * carries the same filters to /activity/export.
  */

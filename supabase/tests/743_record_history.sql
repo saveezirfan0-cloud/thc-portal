@@ -1,5 +1,5 @@
 -- =====================================================================
--- 743 · Record history (20260930210300)
+-- 743 · Record history (20261001200300)
 --
 -- admin_record_history(entity, id) is /activity cut down to one record,
 -- plus the rows that belong to it: a worker's documents, bookings and

@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Set up your login · THC Back Office' };
 
 /**
- * Where a Back Office invitation from /users lands (ADR-0049). Opening the
+ * Where a Back Office invitation from /users lands (ADR-0055). Opening the
  * page changes nothing; the token is spent when the password is saved.
  */
 export default async function Page({

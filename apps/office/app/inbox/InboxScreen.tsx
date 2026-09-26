@@ -14,7 +14,7 @@ const TYPES = OFFICE_INBOX.map(({ code, label }) => ({ code, label }));
 const ukStamp = (instant: Date) => formatDateTimeIn(instant, UK_ZONE);
 
 /**
- * /inbox — Inbox (ADR-0052, §8, §1.8).
+ * /inbox — Inbox (ADR-0058, §8, §1.8).
  *
  * The emails the platform sent to the office and to payroll — E5–E10, the
  * completion-letter emails CL3–CL6 and the Monday payroll email — newest
