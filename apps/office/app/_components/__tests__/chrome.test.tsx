@@ -159,7 +159,7 @@ const { SignedInAsProvider } = await import('../SignedInAs');
  * as a broken product.
  */
 describe('the Back Office menu per office role', () => {
-  const render = (officeRole?: 'owner' | 'manager' | 'scheduler') =>
+  const render = (officeRole?: 'owner' | 'manager' | 'scheduler' | 'viewer') =>
     renderToStaticMarkup(
       <SignedInAsProvider user={{ name: 'Test User', ...(officeRole ? { officeRole } : {}) }}>
         <OfficeShell activeHref="/dashboard" title="Dashboard">
@@ -195,5 +195,42 @@ describe('the Back Office menu per office role', () => {
 
   it('hides nothing when the role is unknown', () => {
     expect(render()).toContain('href="/users"');
+  });
+
+  it('gives a viewer the manager’s menu, Reports and Roles included (ADR-0054)', () => {
+    const markup = render('viewer');
+    expect(markup).not.toContain('href="/settings"');
+    expect(markup).not.toContain('href="/users"');
+    expect(markup).toContain('href="/reports"');
+    expect(markup).toContain('href="/roles"');
+  });
+});
+
+/**
+ * ADR-0054: a viewer reads everything their role shows and changes
+ * nothing. The database refuses their writes; the shell says so first, on
+ * every screen, from the same context the menu reads.
+ */
+describe('the read-only banner', () => {
+  const shell = (officeRole?: 'viewer' | 'manager') =>
+    renderToStaticMarkup(
+      <SignedInAsProvider
+        user={officeRole ? { name: 'Vera Viewer', role: 'Viewer', officeRole } : null}
+      >
+        <OfficeShell activeHref="/events" title="Scheduling">
+          <span />
+        </OfficeShell>
+      </SignedInAsProvider>,
+    );
+
+  it('tells a viewer their access is read-only', () => {
+    const markup = shell('viewer');
+    expect(markup).toContain('Read-only access');
+    expect(markup).toContain('role="status"');
+  });
+
+  it('is not drawn for any other role, or with nobody signed in', () => {
+    expect(shell('manager')).not.toContain('Read-only access');
+    expect(shell()).not.toContain('Read-only access');
   });
 });

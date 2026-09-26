@@ -1,18 +1,19 @@
 /**
- * Office roles — who in the Back Office may use what (ADR-0050).
+ * Office roles — who in the Back Office may use what (ADR-0050, ADR-0054).
  *
- * The database is the authority: `office_can()` in
- * 20260930210100_office_roles.sql gates the account functions, the
- * settings writes and every money-only table, view and report. This file
+ * The database is the authority: `office_can()` (20260930210100, and
+ * 20260930220100 for the viewer) gates the account functions, the
+ * settings writes and every money-only table, view and report, and the
+ * `office_read_only` triggers refuse every write a viewer makes. This file
  * mirrors that table so the screens can hide what the database would
  * refuse anyway — a nav item that always errors reads as broken, not as
  * "not for you". Pure, so the test pins it against the migration's matrix.
  */
 
-export type OfficeRole = 'owner' | 'manager' | 'scheduler';
-export type OfficePermission = 'users' | 'settings' | 'finance';
+export type OfficeRole = 'owner' | 'manager' | 'scheduler' | 'viewer';
+export type OfficePermission = 'users' | 'settings' | 'finance' | 'write';
 
-export const OFFICE_ROLES: readonly OfficeRole[] = ['owner', 'manager', 'scheduler'];
+export const OFFICE_ROLES: readonly OfficeRole[] = ['owner', 'manager', 'scheduler', 'viewer'];
 
 /** The default for a newly invited Back Office login (admin_register_account). */
 export const DEFAULT_OFFICE_ROLE: OfficeRole = 'manager';
@@ -21,6 +22,7 @@ export const OFFICE_ROLE_LABEL: Readonly<Record<OfficeRole, string>> = {
   owner: 'Owner',
   manager: 'Manager',
   scheduler: 'Scheduler',
+  viewer: 'Viewer',
 };
 
 /** One line per role, for the invite picker and the access note on /users. */
@@ -30,13 +32,16 @@ export const OFFICE_ROLE_SUMMARY: Readonly<Record<OfficeRole, string>> = {
     'Everything except Users & access and System settings — scheduling, compliance, staff, clients, rates, reports.',
   scheduler:
     'Scheduling, onboarding, compliance, check-in, staff, clients, venues and feedback — no pay or charge rates, margins, payroll, reports or bank details.',
+  viewer:
+    'Read-only: sees what a manager sees, reports and rates included, and cannot change anything — for an auditor, an accountant or someone shadowing the office.',
 };
 
 /** `office_can()`'s matrix, exactly. */
 const GRANTS: Readonly<Record<OfficeRole, readonly OfficePermission[]>> = {
-  owner: ['users', 'settings', 'finance'],
-  manager: ['finance'],
-  scheduler: [],
+  owner: ['users', 'settings', 'finance', 'write'],
+  manager: ['finance', 'write'],
+  scheduler: ['write'],
+  viewer: ['finance'],
 };
 
 export function isOfficeRole(value: unknown): value is OfficeRole {
@@ -58,6 +63,21 @@ export function officeCan(
   if (!role) return true;
   return GRANTS[role].includes(permission);
 }
+
+/**
+ * Is this a read-only login (ADR-0054)? Only a KNOWN viewer is: an unknown
+ * role is not treated as read-only, for the reason `officeCan` gives —
+ * the database refuses a viewer's writes whatever the screen shows.
+ */
+export function isReadOnly(role: OfficeRole | null | undefined): boolean {
+  return role === 'viewer';
+}
+
+/** The Back Office shell's banner for a viewer (ADR-0054). */
+export const READ_ONLY_BANNER = {
+  title: 'Read-only access',
+  body: 'You can open every screen your role shows, reports included, but you cannot change anything — a save, send or delete will be refused. Ask an owner if something needs changing.',
+} as const;
 
 /** Which permission a Back Office section needs, by its route root. */
 export const ROUTE_PERMISSION: Readonly<Record<string, OfficePermission>> = {
@@ -84,12 +104,22 @@ export function visibleNav<T extends { href: string }>(
 export const PERMISSION_NEEDS: Readonly<Record<OfficePermission, string>> = {
   users: 'Users & access is for owners.',
   settings: 'System settings are for owners.',
-  finance: 'Pay and charge rates, margins, payroll and reports are for owners and managers.',
+  finance:
+    'Pay and charge rates, margins, payroll and reports are for owners, managers and viewers.',
+  write: 'Your login is read-only.',
 };
 
-/** The database's refusals added by 20260930210100, in words a manager can act on. */
+/**
+ * The database's refusals added by 20260930210100 and 20260930220100 /
+ * 220200 (ADR-0054), in words a manager can act on.
+ */
 const MESSAGES: Readonly<Record<string, string>> = {
   not_permitted: 'Your office role does not allow this. Ask an owner.',
+  read_only:
+    'Your login is read-only (Viewer), so nothing was changed. Ask an owner if this needs doing.',
+  cannot_reset_own_two_step:
+    'You cannot reset your own two-step here — remove it from My profile, with a code from your phone.',
+  no_two_step: 'This login does not have two-step on, so there is nothing to reset.',
   office_role_required: 'Choose an office role for this login.',
   office_role_not_allowed: 'A Client Portal login has no office role.',
   not_office_login: 'Only a Back Office login has an office role.',

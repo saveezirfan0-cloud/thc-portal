@@ -89,6 +89,13 @@ create table auth.mfa_factors (id uuid not null primary key, user_id uuid not nu
   friendly_name text, factor_type auth.factor_type not null, status auth.factor_status not null, created_at timestamptz not null,
   updated_at timestamptz not null, secret text, phone text, last_challenged_at timestamptz, web_authn_credential jsonb,
   web_authn_aaguid uuid, last_webauthn_challenge_data jsonb);
+create type auth.aal_level as enum ('aal1', 'aal2', 'aal3');
+create table auth.sessions (id uuid not null primary key, user_id uuid not null references auth.users on delete cascade,
+  created_at timestamptz, updated_at timestamptz, factor_id uuid, aal auth.aal_level, not_after timestamptz,
+  refreshed_at timestamp, user_agent text, ip inet, tag text);
+create table auth.refresh_tokens (instance_id uuid, id bigserial primary key, token varchar(255), user_id varchar(255),
+  revoked boolean, created_at timestamptz, updated_at timestamptz, parent varchar(255),
+  session_id uuid references auth.sessions on delete cascade);
 create function auth.uid() returns uuid language sql stable as $$ select nullif(coalesce(current_setting('request.jwt.claim.sub', true), (nullif(current_setting('request.jwt.claims', true),'')::jsonb ->> 'sub')), '')::uuid $$;
 create function auth.role() returns text language sql stable as $$ select nullif(coalesce(current_setting('request.jwt.claim.role', true), (nullif(current_setting('request.jwt.claims', true),'')::jsonb ->> 'role')), '')::text $$;
 create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claim', true), ''), nullif(current_setting('request.jwt.claims', true), ''))::jsonb $$;

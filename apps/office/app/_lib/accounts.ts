@@ -41,10 +41,13 @@ export function normaliseEmail(value: string): string {
   return value.trim().toLowerCase();
 }
 
-/** The database's refusals (20260930210000), in words a manager can act on. */
+/** The database's refusals (20260930210000, 20260930220200), in words a manager can act on. */
 const MESSAGES: Record<string, string> = {
   not_signed_in: 'Your session has ended. Sign in again.',
   not_authorised: 'Only the office can do this.',
+  // ADR-0054: a viewer's write, refused by the office_read_only triggers.
+  read_only:
+    'Your login is read-only (Viewer), so nothing was changed. Ask an owner if this needs doing.',
   no_profile:
     'This login has no profile yet. Ask another admin to invite it again from Users & access.',
   use_staff_profile: 'A worker’s name is edited on their staff profile.',
@@ -68,6 +71,11 @@ const MESSAGES: Record<string, string> = {
   cannot_disable_self: 'You cannot switch off your own login.',
   reason_required: 'Give a reason — it goes in the activity log.',
   last_admin: 'This is the last working Back Office login. Invite another admin first.',
+  // ADR-0054: Reset two-step on /users.
+  not_office_login: 'Only a Back Office login has two-step sign-in.',
+  cannot_reset_own_two_step:
+    'You cannot reset your own two-step here — remove it from My profile, with a code from your phone.',
+  no_two_step: 'This login does not have two-step on, so there is nothing to reset.',
 };
 
 export function explainAccountError(message: string): string {
@@ -132,6 +140,7 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   'account.reinvited': 'Re-sent user invite',
   'account.invite_emailed': 'Emailed user invite',
   'account.role_changed': 'Changed office role',
+  'account.two_step_reset': 'Reset two-step sign-in',
   'account.disabled': 'Switched login off',
   'account.enabled': 'Switched login on',
   'settings.insert': 'Added setting',
