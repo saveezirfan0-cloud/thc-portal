@@ -8,6 +8,185 @@ export type Database = {
   };
   public: {
     Tables: {
+      application_referrals: {
+        Row: {
+          application_id: string;
+          candidate_staff_id: string;
+          code: string;
+          recorded_at: string;
+          referrer_staff_id: string;
+        };
+        Insert: {
+          application_id: string;
+          candidate_staff_id: string;
+          code: string;
+          recorded_at?: string;
+          referrer_staff_id: string;
+        };
+        Update: {
+          application_id?: string;
+          candidate_staff_id?: string;
+          code?: string;
+          recorded_at?: string;
+          referrer_staff_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'application_referrals_application_id_fkey';
+            columns: ['application_id'];
+            isOneToOne: true;
+            referencedRelation: 'applications';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_application_id_fkey';
+            columns: ['application_id'];
+            isOneToOne: true;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['application_id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_candidate_staff_id_fkey';
+            columns: ['candidate_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_candidate_staff_id_fkey';
+            columns: ['candidate_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_candidate_staff_id_fkey';
+            columns: ['candidate_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_candidate_staff_id_fkey';
+            columns: ['candidate_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_candidate_staff_id_fkey';
+            columns: ['candidate_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_candidate_staff_id_fkey';
+            columns: ['candidate_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_candidate_staff_id_fkey';
+            columns: ['candidate_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_candidate_staff_id_fkey';
+            columns: ['candidate_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_candidate_staff_id_fkey';
+            columns: ['candidate_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_candidate_staff_id_fkey';
+            columns: ['candidate_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_referrer_staff_id_fkey';
+            columns: ['referrer_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_referrer_staff_id_fkey';
+            columns: ['referrer_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_referrer_staff_id_fkey';
+            columns: ['referrer_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_referrer_staff_id_fkey';
+            columns: ['referrer_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_referrer_staff_id_fkey';
+            columns: ['referrer_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_referrer_staff_id_fkey';
+            columns: ['referrer_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_referrer_staff_id_fkey';
+            columns: ['referrer_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_referrer_staff_id_fkey';
+            columns: ['referrer_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_referrer_staff_id_fkey';
+            columns: ['referrer_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'application_referrals_referrer_staff_id_fkey';
+            columns: ['referrer_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       applications: {
         Row: {
           age_band: string;
@@ -2395,6 +2574,138 @@ export type Database = {
           },
         ];
       };
+      profile_change_requests: {
+        Row: {
+          applied_at: string | null;
+          created_at: string;
+          decided_at: string | null;
+          decided_by: string | null;
+          decision_reason: string | null;
+          evidence_path: string | null;
+          id: string;
+          kind: string;
+          previous_value: Json | null;
+          proposed_first_name: string | null;
+          proposed_last_name: string | null;
+          proposed_photo_path: string | null;
+          staff_id: string;
+          status: string;
+          worker_note: string | null;
+        };
+        Insert: {
+          applied_at?: string | null;
+          created_at?: string;
+          decided_at?: string | null;
+          decided_by?: string | null;
+          decision_reason?: string | null;
+          evidence_path?: string | null;
+          id?: string;
+          kind: string;
+          previous_value?: Json | null;
+          proposed_first_name?: string | null;
+          proposed_last_name?: string | null;
+          proposed_photo_path?: string | null;
+          staff_id: string;
+          status?: string;
+          worker_note?: string | null;
+        };
+        Update: {
+          applied_at?: string | null;
+          created_at?: string;
+          decided_at?: string | null;
+          decided_by?: string | null;
+          decision_reason?: string | null;
+          evidence_path?: string | null;
+          id?: string;
+          kind?: string;
+          previous_value?: Json | null;
+          proposed_first_name?: string | null;
+          proposed_last_name?: string | null;
+          proposed_photo_path?: string | null;
+          staff_id?: string;
+          status?: string;
+          worker_note?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'profile_change_requests_decided_by_fkey';
+            columns: ['decided_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'profile_change_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'profile_change_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'profile_change_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'profile_change_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'profile_change_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'profile_change_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'profile_change_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'profile_change_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'profile_change_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'profile_change_requests_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       profiles: {
         Row: {
           client_id: string | null;
@@ -2744,6 +3055,8 @@ export type Database = {
           max_attempts: number;
           next_attempt_at: string;
           outcome: string | null;
+          photo_path: string | null;
+          recommendation: string | null;
           report_path: string | null;
           requested_by: string | null;
           result: Json | null;
@@ -2754,6 +3067,7 @@ export type Database = {
           staff_id: string;
           started_at: string | null;
           status: string;
+          suggested_reason: string | null;
           updated_at: string;
           worker_reason: string | null;
         };
@@ -2768,6 +3082,8 @@ export type Database = {
           max_attempts?: number;
           next_attempt_at?: string;
           outcome?: string | null;
+          photo_path?: string | null;
+          recommendation?: string | null;
           report_path?: string | null;
           requested_by?: string | null;
           result?: Json | null;
@@ -2778,6 +3094,7 @@ export type Database = {
           staff_id: string;
           started_at?: string | null;
           status?: string;
+          suggested_reason?: string | null;
           updated_at?: string;
           worker_reason?: string | null;
         };
@@ -2792,6 +3109,8 @@ export type Database = {
           max_attempts?: number;
           next_attempt_at?: string;
           outcome?: string | null;
+          photo_path?: string | null;
+          recommendation?: string | null;
           report_path?: string | null;
           requested_by?: string | null;
           result?: Json | null;
@@ -2802,6 +3121,7 @@ export type Database = {
           staff_id?: string;
           started_at?: string | null;
           status?: string;
+          suggested_reason?: string | null;
           updated_at?: string;
           worker_reason?: string | null;
         };
@@ -2923,6 +3243,503 @@ export type Database = {
           value?: Json;
         };
         Relationships: [];
+      };
+      shift_offer_notices: {
+        Row: {
+          notified_at: string;
+          offer_id: string;
+          staff_id: string;
+        };
+        Insert: {
+          notified_at?: string;
+          offer_id: string;
+          staff_id: string;
+        };
+        Update: {
+          notified_at?: string;
+          offer_id?: string;
+          staff_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'shift_offer_notices_offer_id_fkey';
+            columns: ['offer_id'];
+            isOneToOne: false;
+            referencedRelation: 'shift_offers';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offer_notices_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offer_notices_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offer_notices_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offer_notices_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offer_notices_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offer_notices_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offer_notices_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offer_notices_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offer_notices_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offer_notices_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      shift_offers: {
+        Row: {
+          booking_id: string;
+          closed_at: string | null;
+          closed_reason: string | null;
+          created_at: string;
+          decided_by: string | null;
+          expires_at: string;
+          id: string;
+          mode: string;
+          note: string | null;
+          offered_by_staff_id: string;
+          shift_id: string;
+          status: string;
+          swap_group_id: string | null;
+          taken_by_booking_id: string | null;
+          taken_by_staff_id: string | null;
+          target_staff_id: string | null;
+        };
+        Insert: {
+          booking_id: string;
+          closed_at?: string | null;
+          closed_reason?: string | null;
+          created_at?: string;
+          decided_by?: string | null;
+          expires_at: string;
+          id?: string;
+          mode?: string;
+          note?: string | null;
+          offered_by_staff_id: string;
+          shift_id: string;
+          status?: string;
+          swap_group_id?: string | null;
+          taken_by_booking_id?: string | null;
+          taken_by_staff_id?: string | null;
+          target_staff_id?: string | null;
+        };
+        Update: {
+          booking_id?: string;
+          closed_at?: string | null;
+          closed_reason?: string | null;
+          created_at?: string;
+          decided_by?: string | null;
+          expires_at?: string;
+          id?: string;
+          mode?: string;
+          note?: string | null;
+          offered_by_staff_id?: string;
+          shift_id?: string;
+          status?: string;
+          swap_group_id?: string | null;
+          taken_by_booking_id?: string | null;
+          taken_by_staff_id?: string | null;
+          target_staff_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'shift_offers_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'checkin_monitor_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_lineup_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'payable_shifts_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_booking_id_fkey';
+            columns: ['booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_shift_history_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_decided_by_fkey';
+            columns: ['decided_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_offered_by_staff_id_fkey';
+            columns: ['offered_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_offered_by_staff_id_fkey';
+            columns: ['offered_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_offered_by_staff_id_fkey';
+            columns: ['offered_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_offered_by_staff_id_fkey';
+            columns: ['offered_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_offered_by_staff_id_fkey';
+            columns: ['offered_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_offered_by_staff_id_fkey';
+            columns: ['offered_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_offered_by_staff_id_fkey';
+            columns: ['offered_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_offered_by_staff_id_fkey';
+            columns: ['offered_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_offered_by_staff_id_fkey';
+            columns: ['offered_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_offered_by_staff_id_fkey';
+            columns: ['offered_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_shift_id_fkey';
+            columns: ['shift_id'];
+            isOneToOne: false;
+            referencedRelation: 'checkin_monitor_v';
+            referencedColumns: ['shift_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_shift_id_fkey';
+            columns: ['shift_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_lineup_v';
+            referencedColumns: ['shift_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_shift_id_fkey';
+            columns: ['shift_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_role_sections_v';
+            referencedColumns: ['shift_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_shift_id_fkey';
+            columns: ['shift_id'];
+            isOneToOne: false;
+            referencedRelation: 'dashboard_sections_v';
+            referencedColumns: ['shift_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_shift_id_fkey';
+            columns: ['shift_id'];
+            isOneToOne: false;
+            referencedRelation: 'dashboard_upcoming_v';
+            referencedColumns: ['shift_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_shift_id_fkey';
+            columns: ['shift_id'];
+            isOneToOne: false;
+            referencedRelation: 'payable_shifts_v';
+            referencedColumns: ['shift_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_shift_id_fkey';
+            columns: ['shift_id'];
+            isOneToOne: false;
+            referencedRelation: 'shift_requirements';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_shift_id_fkey';
+            columns: ['shift_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_shift_history_v';
+            referencedColumns: ['shift_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_booking_id_fkey';
+            columns: ['taken_by_booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'bookings';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_booking_id_fkey';
+            columns: ['taken_by_booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'checkin_monitor_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_booking_id_fkey';
+            columns: ['taken_by_booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_lineup_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_booking_id_fkey';
+            columns: ['taken_by_booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'payable_shifts_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_booking_id_fkey';
+            columns: ['taken_by_booking_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_shift_history_v';
+            referencedColumns: ['booking_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_staff_id_fkey';
+            columns: ['taken_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_staff_id_fkey';
+            columns: ['taken_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_staff_id_fkey';
+            columns: ['taken_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_staff_id_fkey';
+            columns: ['taken_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_staff_id_fkey';
+            columns: ['taken_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_staff_id_fkey';
+            columns: ['taken_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_staff_id_fkey';
+            columns: ['taken_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_staff_id_fkey';
+            columns: ['taken_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_staff_id_fkey';
+            columns: ['taken_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_taken_by_staff_id_fkey';
+            columns: ['taken_by_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_target_staff_id_fkey';
+            columns: ['target_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_target_staff_id_fkey';
+            columns: ['target_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_target_staff_id_fkey';
+            columns: ['target_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_target_staff_id_fkey';
+            columns: ['target_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_target_staff_id_fkey';
+            columns: ['target_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_target_staff_id_fkey';
+            columns: ['target_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_target_staff_id_fkey';
+            columns: ['target_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_target_staff_id_fkey';
+            columns: ['target_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_target_staff_id_fkey';
+            columns: ['target_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_target_staff_id_fkey';
+            columns: ['target_staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       shift_requirements: {
         Row: {
@@ -3255,6 +4072,111 @@ export type Database = {
           },
         ];
       };
+      staff_emergency_contacts: {
+        Row: {
+          name: string;
+          phone: string;
+          relationship: string;
+          staff_id: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        Insert: {
+          name: string;
+          phone: string;
+          relationship: string;
+          staff_id: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          name?: string;
+          phone?: string;
+          relationship?: string;
+          staff_id?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'staff_emergency_contacts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_emergency_contacts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_emergency_contacts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_emergency_contacts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_emergency_contacts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_emergency_contacts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_emergency_contacts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_emergency_contacts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_emergency_contacts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_emergency_contacts_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_emergency_contacts_updated_by_fkey';
+            columns: ['updated_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       staff_references: {
         Row: {
           email: string;
@@ -3351,6 +4273,98 @@ export type Database = {
             foreignKeyName: 'staff_references_staff_id_fkey';
             columns: ['staff_id'];
             isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      staff_referral_codes: {
+        Row: {
+          code: string;
+          created_at: string;
+          revoked_at: string | null;
+          staff_id: string;
+        };
+        Insert: {
+          code: string;
+          created_at?: string;
+          revoked_at?: string | null;
+          staff_id: string;
+        };
+        Update: {
+          code?: string;
+          created_at?: string;
+          revoked_at?: string | null;
+          staff_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'staff_referral_codes_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_referral_codes_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_referral_codes_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_referral_codes_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_referral_codes_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_referral_codes_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_referral_codes_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_referral_codes_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_referral_codes_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_referral_codes_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
             referencedRelation: 'student_visa_v';
             referencedColumns: ['id'];
           },
@@ -3477,6 +4491,104 @@ export type Database = {
           to_status?: Database['public']['Enums']['staff_status'];
         };
         Relationships: [];
+      };
+      staff_unavailability: {
+        Row: {
+          all_day: boolean;
+          created_at: string;
+          id: string;
+          period: unknown;
+          series_id: string | null;
+          staff_id: string;
+        };
+        Insert: {
+          all_day?: boolean;
+          created_at?: string;
+          id?: string;
+          period: unknown;
+          series_id?: string | null;
+          staff_id: string;
+        };
+        Update: {
+          all_day?: boolean;
+          created_at?: string;
+          id?: string;
+          period?: unknown;
+          series_id?: string | null;
+          staff_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'staff_unavailability_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_qualified_staff_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_unavailability_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'compliance_radar_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_unavailability_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_candidates_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_unavailability_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'onboarding_returning_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_unavailability_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_unavailability_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_block_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_unavailability_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_directory_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_unavailability_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_profile_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_unavailability_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_rejection_reason_v';
+            referencedColumns: ['staff_id'];
+          },
+          {
+            foreignKeyName: 'staff_unavailability_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: false;
+            referencedRelation: 'student_visa_v';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       storage_deletions: {
         Row: {
@@ -5412,6 +6524,8 @@ export type Database = {
           next_attempt_at: string | null;
           no_time_limit: boolean | null;
           outcome: string | null;
+          photo_path: string | null;
+          recommendation: string | null;
           record_name: string | null;
           reference_number: string | null;
           report_path: string | null;
@@ -5424,6 +6538,7 @@ export type Database = {
           started_at: string | null;
           status: string | null;
           stuck: boolean | null;
+          suggested_reason: string | null;
           term_time_limit_hours: number | null;
           worker_reason: string | null;
         };
@@ -6445,6 +7560,16 @@ export type Database = {
         };
         Returns: string;
       };
+      add_my_unavailability: {
+        Args: {
+          p_from_date: string;
+          p_from_time?: string;
+          p_repeat_weeks?: number;
+          p_to_date?: string;
+          p_to_time?: string;
+        };
+        Returns: Json;
+      };
       add_office_feedback: {
         Args: {
           p_event?: string;
@@ -6579,6 +7704,14 @@ export type Database = {
         }[];
       };
       auto_assign_first_round: { Args: { p_event: string }; Returns: Json };
+      auto_assign_unavailable: {
+        Args: { p_shift: string };
+        Returns: {
+          ends_at: string;
+          staff_id: string;
+          starts_at: string;
+        }[];
+      };
       block_worker: {
         Args: {
           p_cause?: string;
@@ -6755,6 +7888,7 @@ export type Database = {
           staff_id: string;
         }[];
       };
+      clear_my_emergency_contact: { Args: never; Returns: Json };
       client_portal_visible: { Args: { p_client_id: string }; Returns: boolean };
       close_filled_role_applications: {
         Args: { p_shift: string };
@@ -7177,6 +8311,7 @@ export type Database = {
         Returns: undefined;
       };
       job_run_start: { Args: { p_job: string }; Returns: number };
+      lapse_shift_offers: { Args: { p_now?: string }; Returns: number };
       link_staff_account: {
         Args: { p_staff: string; p_user: string };
         Returns: Json;
@@ -7185,6 +8320,24 @@ export type Database = {
       looks_like_relative: { Args: { p: string }; Returns: boolean };
       mark_feedback_read: { Args: { p_id: string }; Returns: Json };
       mark_ready: { Args: { p_booking: string }; Returns: Json };
+      my_emergency_contact: { Args: never; Returns: Json };
+      my_profile_change_requests: {
+        Args: never;
+        Returns: {
+          created_at: string;
+          decided_at: string;
+          decision_reason: string;
+          id: string;
+          kind: string;
+          proposed_first_name: string;
+          proposed_last_name: string;
+          proposed_photo_path: string;
+          status: string;
+          worker_note: string;
+        }[];
+      };
+      my_referral_code: { Args: never; Returns: string };
+      my_referral_summary: { Args: never; Returns: Json };
       my_rtw_checks: {
         Args: never;
         Returns: {
@@ -7194,6 +8347,18 @@ export type Database = {
           outcome: string;
           status: string;
           worker_reason: string;
+        }[];
+      };
+      my_unavailability: {
+        Args: { p_from?: string; p_to?: string };
+        Returns: {
+          all_day: boolean;
+          ends_at: string;
+          id: string;
+          series_count: number;
+          series_id: string;
+          series_index: number;
+          starts_at: string;
         }[];
       };
       n6_due_at: { Args: { p_starts_at: string }; Returns: string };
@@ -7265,12 +8430,108 @@ export type Database = {
       };
       normalise_msisdn: { Args: { p: string }; Returns: string };
       normalise_share_code: { Args: { p: string }; Returns: string };
+      notify_offer_candidates: {
+        Args: { p_offer: string; p_staff: string[] };
+        Returns: number;
+      };
+      offer_candidates: {
+        Args: { p_offer: string };
+        Returns: {
+          booking_status: string;
+          distance_km: number;
+          future_shifts: number;
+          gate: string;
+          qualified: boolean;
+          rating: number;
+          reliability: number;
+          staff_id: string;
+          venue_times: number;
+        }[];
+      };
+      offer_rounds_due: {
+        Args: { p_now?: string };
+        Returns: {
+          allocation: number;
+          event_id: string;
+          expires_at: string;
+          offer_id: string;
+          shift_id: string;
+        }[];
+      };
+      offer_shift: { Args: { p_booking: string }; Returns: Json };
+      offer_wave1_exhausted: { Args: { p_offer: string }; Returns: boolean };
       office_base_url: { Args: never; Returns: string };
+      office_clear_emergency_contact: {
+        Args: { p_staff: string };
+        Returns: Json;
+      };
+      office_decide_profile_change: {
+        Args: { p_approve: boolean; p_id: string; p_reason?: string };
+        Returns: Json;
+      };
+      office_decline_cover: {
+        Args: { p_note?: string; p_offer: string };
+        Returns: Json;
+      };
+      office_emergency_contact: { Args: { p_staff: string }; Returns: Json };
       office_invite_worker: {
         Args: { p_shift: string; p_staff: string };
         Returns: Json;
       };
       office_mark_no_show: { Args: { p_booking: string }; Returns: Json };
+      office_open_offer_to_pool: { Args: { p_offer: string }; Returns: Json };
+      office_profile_change_requests: {
+        Args: { p_decided?: boolean; p_limit?: number; p_staff?: string };
+        Returns: {
+          created_at: string;
+          current_first_name: string;
+          current_last_name: string;
+          current_photo_path: string;
+          decided_at: string;
+          decided_by_name: string;
+          decision_reason: string;
+          display_name: string;
+          employee_id: number;
+          evidence_path: string;
+          id: string;
+          kind: string;
+          previous_value: Json;
+          proposed_first_name: string;
+          proposed_last_name: string;
+          proposed_photo_path: string;
+          removed: boolean;
+          right_to_work_until: string;
+          rtw_branch: string;
+          staff_id: string;
+          staff_status: string;
+          status: string;
+          worker_note: string;
+        }[];
+      };
+      office_save_emergency_contact: {
+        Args: {
+          p_name: string;
+          p_phone: string;
+          p_relationship: string;
+          p_staff: string;
+        };
+        Returns: Json;
+      };
+      office_staff_referrals: { Args: { p_staff: string }; Returns: Json };
+      office_staff_unavailability: {
+        Args: { p_from?: string; p_staff: string; p_to?: string };
+        Returns: {
+          all_day: boolean;
+          bookings: Json;
+          created_at: string;
+          ends_at: string;
+          id: string;
+          series_count: number;
+          series_id: string;
+          series_last_start: string;
+          starts_at: string;
+        }[];
+      };
       office_submit_completion_letter: {
         Args: {
           p_awarding_institution?: string;
@@ -7650,6 +8911,13 @@ export type Database = {
       postgis_version: { Args: never; Returns: string };
       postgis_wagyu_version: { Args: never; Returns: string };
       prepare_finance_reports: { Args: { p_now?: string }; Returns: Json };
+      profile_change_transitions: {
+        Args: never;
+        Returns: {
+          from_status: string;
+          to_status: string;
+        }[];
+      };
       queue_application_push: {
         Args: { p_booking: string; p_code: string };
         Returns: undefined;
@@ -7674,6 +8942,10 @@ export type Database = {
         };
         Returns: Json;
       };
+      queue_offer_notice: {
+        Args: { p_code: string; p_offer: string; p_staff?: string };
+        Returns: undefined;
+      };
       queue_office_notifications: { Args: { p_rows: Json }; Returns: number };
       queue_self_cancel_email: {
         Args: { p_at: string; p_booking: string };
@@ -7687,6 +8959,10 @@ export type Database = {
       ready_deadline: { Args: { p_starts_at: string }; Returns: string };
       recompute_staff_rating: { Args: { p_staff: string }; Returns: number };
       reconfirm_booking: { Args: { p_booking: string }; Returns: Json };
+      record_application_referral: {
+        Args: { p_code: string; p_email: string };
+        Returns: undefined;
+      };
       record_document_extraction: {
         Args: {
           p_completion: string;
@@ -7741,6 +9017,10 @@ export type Database = {
         Returns: string;
       };
       remove_client_role: { Args: { p_id: string }; Returns: Json };
+      remove_my_unavailability: {
+        Args: { p_id: string; p_whole_series?: boolean };
+        Returns: Json;
+      };
       remove_staff_role: {
         Args: { p_role: string; p_staff: string };
         Returns: Json;
@@ -7750,9 +9030,24 @@ export type Database = {
         Returns: Json;
       };
       report_week_start: { Args: { p_now?: string }; Returns: string };
+      request_cover: {
+        Args: { p_booking: string; p_note?: string };
+        Returns: Json;
+      };
       request_my_p45: { Args: { p_reason?: string }; Returns: Json };
       request_p45: {
         Args: { p_now?: string; p_reason?: string; p_staff: string };
+        Returns: Json;
+      };
+      request_profile_change: {
+        Args: {
+          p_evidence_path?: string;
+          p_first?: string;
+          p_kind: string;
+          p_last?: string;
+          p_note?: string;
+          p_photo_path?: string;
+        };
         Returns: Json;
       };
       reset_to_candidate: {
@@ -7804,6 +9099,10 @@ export type Database = {
           p_starts: string;
         };
         Returns: Json;
+      };
+      rtw_check_attach_photo: {
+        Args: { p_check: string; p_photo_path: string };
+        Returns: undefined;
       };
       rtw_check_backoff: { Args: { p_attempt: number }; Returns: string };
       rtw_check_claim: {
@@ -7878,6 +9177,10 @@ export type Database = {
         Returns: string;
       };
       rtw_evidence_until: { Args: { p_staff: string }; Returns: string };
+      save_my_emergency_contact: {
+        Args: { p_name: string; p_phone: string; p_relationship: string };
+        Returns: Json;
+      };
       save_push_subscription: {
         Args: {
           p_auth: string;
@@ -7909,6 +9212,20 @@ export type Database = {
         }[];
       };
       shift_holiday_pay: { Args: { p_base: number }; Returns: number };
+      shift_offer_mode_transitions: {
+        Args: never;
+        Returns: {
+          from_mode: string;
+          to_mode: string;
+        }[];
+      };
+      shift_offer_transitions: {
+        Args: never;
+        Returns: {
+          from_status: string;
+          to_status: string;
+        }[];
+      };
       sign_contract: {
         Args: { p_agree: boolean; p_version: string };
         Returns: Json;
@@ -8503,6 +9820,17 @@ export type Database = {
       };
       staff_account_activated: { Args: { p_staff: string }; Returns: boolean };
       staff_account_activated_at: { Args: { p_staff: string }; Returns: string };
+      staff_booking_offers: {
+        Args: never;
+        Returns: {
+          auto_assign: boolean;
+          booking_id: string;
+          offer_expires_at: string;
+          offer_id: string;
+          offer_mode: string;
+          offer_note: string;
+        }[];
+      };
       staff_bookings: {
         Args: { p_staff?: string };
         Returns: {
@@ -8567,6 +9895,31 @@ export type Database = {
         }[];
       };
       staff_me: { Args: never; Returns: Json };
+      staff_open_offers: {
+        Args: { p_offer?: string };
+        Returns: {
+          distance_km: number;
+          dress_code: string;
+          ends_at: string;
+          event_date: string;
+          event_id: string;
+          event_title: string;
+          expires_at: string;
+          geofence_radius_m: number;
+          home_lat: number;
+          home_lng: number;
+          offer_id: string;
+          pay_rate: number;
+          qualified: boolean;
+          role: string;
+          shift_id: string;
+          starts_at: string;
+          venue_address: string;
+          venue_lat: number;
+          venue_lng: number;
+          venue_name: string;
+        }[];
+      };
       staff_open_shifts: {
         Args: { p_staff?: string };
         Returns: {
@@ -8649,6 +10002,10 @@ export type Database = {
         };
         Returns: boolean;
       };
+      staff_unavailable: {
+        Args: { p_ends: string; p_staff: string; p_starts: string };
+        Returns: boolean;
+      };
       staff_update_contact: {
         Args: { p_home_address: string; p_phone: string };
         Returns: Json;
@@ -8690,6 +10047,7 @@ export type Database = {
           p_first_name: string;
           p_last_name: string;
           p_phone: string;
+          p_referral_code?: string;
         };
         Returns: undefined;
       };
@@ -8743,6 +10101,7 @@ export type Database = {
             Returns: Json;
           };
       submit_quiz_attempt: { Args: { p_answers: Json }; Returns: Json };
+      take_offered_shift: { Args: { p_offer: string }; Returns: Json };
       term_letter_applies: {
         Args: { p_on?: string; p_staff: string };
         Returns: boolean;
@@ -8756,6 +10115,15 @@ export type Database = {
         Returns: number;
       };
       uk_local: { Args: { p_now?: string }; Returns: string };
+      unavailability_range: {
+        Args: {
+          p_from?: string;
+          p_from_date: string;
+          p_to?: string;
+          p_to_date?: string;
+        };
+        Returns: unknown;
+      };
       unblock_if_compliant: {
         Args: { p_on?: string; p_staff: string };
         Returns: boolean;
@@ -8993,6 +10361,8 @@ export type Database = {
       };
       withdraw_application: { Args: { p_booking: string }; Returns: Json };
       withdraw_booking: { Args: { p_booking: string }; Returns: Json };
+      withdraw_profile_change: { Args: { p_id: string }; Returns: Json };
+      withdraw_shift_offer: { Args: { p_offer: string }; Returns: Json };
       wtr_optout_do_cancel: { Args: { p_staff: string }; Returns: Json };
       wtr_optout_do_sign: {
         Args: {
@@ -9008,7 +10378,7 @@ export type Database = {
       app_role: 'admin' | 'client' | 'staff';
       application_outcome: 'candidate_created' | 'returning_applicant';
       block_kind: 'auto_document' | 'manual' | 'conviction_review';
-      booking_source: 'auto' | 'manual' | 'self' | 'escalation';
+      booking_source: 'auto' | 'manual' | 'self' | 'escalation' | 'offer';
       booking_status:
         'invited' | 'confirmed' | 'worked' | 'cancelled' | 'closed' | 'applied' | 'turned_away';
       cap_band:
@@ -9189,7 +10559,7 @@ export const Constants = {
       app_role: ['admin', 'client', 'staff'],
       application_outcome: ['candidate_created', 'returning_applicant'],
       block_kind: ['auto_document', 'manual', 'conviction_review'],
-      booking_source: ['auto', 'manual', 'self', 'escalation'],
+      booking_source: ['auto', 'manual', 'self', 'escalation', 'offer'],
       booking_status: [
         'invited',
         'confirmed',
