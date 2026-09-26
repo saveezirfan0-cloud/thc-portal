@@ -181,7 +181,10 @@ export function RoleBoard({
                   payrollExported={payrollExported}
                   // Checked in = `worked`, which §3.6 never cancels.
                   withdrawable={canCancelBooking(booking.status)}
-                  noShowAllowed={noShowAllowed}
+                  // A checked-in worker (`worked`, e.g. just got back) is not a
+                  // no-show: office_mark_no_show() refuses already_checked_in,
+                  // so the button is not offered.
+                  noShowAllowed={noShowAllowed && booking.status !== 'worked'}
                 />
               </div>
             </div>

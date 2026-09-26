@@ -5,6 +5,19 @@
  * scope) render this correctly without a second stylesheet.
  */
 
+/* --- The sheet sits over the bottom nav ------------------------------- *
+ * In the wireframe the scrim and the sheet are siblings of .bottom-nav and
+ * come after it, so the sheet (z 4) covers the bar. In the app they render
+ * inside .app-body, and `.app-frame > *` gives .app-body `z-index: 1` — a
+ * stacking context the sheet cannot rise out of — while the fixed bar sits
+ * at 3. The bar then painted over the bottom of the sheet and took its
+ * taps: "Request my P45", set apart at the very bottom (§10.6), could not
+ * be pressed on a phone (found by e2e staff.profile-requests.spec.ts).
+ * While a sheet is open the body is lifted above the bar instead. */
+.app-frame > .app-body:has(.sheet) {
+  z-index: 4;
+}
+
 /* --- The sheet's link list (Profile details / Security / Payment) ----- */
 .sheet-links {
   display: flex;
