@@ -50,6 +50,34 @@
 -- clause (fires once, when removed_at is first set), same security
 -- definer, same revokes. remove_worker() is still not restated.
 --
+-- With main's 20260930120100 (§1.7 audit D9; re-checked when this file
+-- was re-stamped after it). remove_worker() now scrubs the outbox itself.
+-- Its block_worker(…, 'removed', …) call sets removed_at first, so this
+-- trigger fires first and remove_worker()'s own scrub runs after it:
+--
+--   * it matches rows by recipient, by the worker's own ids in the key
+--     (staff, bookings, documents, declarations, applications, quiz,
+--     rtw checks) and by the id, email or NI number in the payload; it
+--     DELETES unsent matches and replaces a sent match's payload with
+--     {gdprRemoved, label}. That is the stronger treatment, and it takes
+--     every addition row addressed to the worker (RC2, RC3, OF1–OF4, OF6)
+--     and OF5:booking:<id>.
+--   * it does not collect profile_change_requests or shift_offers ids, and
+--     the admin@ copies (RC1:request, RC4:request, OF5:offer) carry the
+--     worker's NAME, not their id or email — so those are left to this
+--     trigger, which anonymises them and fails any still unsent.
+--
+-- The two never fight. What this trigger anonymises carries no id, email
+-- or NI number of the worker's for remove_worker() to match; where both
+-- match (OF5:booking:<id>), remove_worker() runs second and its treatment
+-- stands — an unsent row this trigger failed is then deleted (sent_at is
+-- still null), a sent one replaced by {gdprRemoved, label}.
+--
+-- audit_log: remove_worker() now strips personal keys from rows about the
+-- worker (main's decision in 20260930120100, superseding the append-only
+-- note below for §1.7). The additions write none into it: ids, kinds,
+-- changed field NAMES, has_note. This trigger still writes nothing there.
+--
 -- Forward-only. References 20260930200100, 20260930201100,
 -- 20260930202200 and 20260930203000 objects only; matches the OF5 key
 -- shape 20260930205000 introduces by string, so it does not depend on it.
@@ -77,7 +105,8 @@
 --                             offers and bookings: names → "Deleted
 --                             account #id", free text removed, unsent
 --                             rows failed 'gdpr_removed'             (new)
---   audit_log                 untouched — append-only
+--   audit_log                 untouched here (remove_worker() strips
+--                             personal keys; the additions' rows have none)
 -- ---------------------------------------------------------------------
 create or replace function public.staff_removed_purge_additions()
 returns trigger
@@ -161,7 +190,7 @@ create trigger staff_removed_purge_additions
   execute function staff_removed_purge_additions();
 
 comment on function public.staff_removed_purge_additions() is
-  '§1.7 GDPR removal for the docs/19 additions: deletes availability and the emergency contact, withdraws and anonymises change requests, revokes the referral code, lapses open offers and clears the office''s free-text decline note, and anonymises the RC1/RC3/RC4/OF5 outbox payloads (names → "Deleted account #id", free text removed, unsent rows failed gdpr_removed). audit_log is append-only and untouched. Fires once, after removed_at is first set. A trigger function: not an RPC.';
+  '§1.7 GDPR removal for the docs/19 additions: deletes availability and the emergency contact, withdraws and anonymises change requests, revokes the referral code, lapses open offers and clears the office''s free-text decline note, and anonymises the RC1/RC3/RC4/OF5 outbox payloads (names → "Deleted account #id", free text removed, unsent rows failed gdpr_removed) that remove_worker()''s own scrub (20260930120100, which runs after this trigger and wins where both match) does not reach. Writes nothing to audit_log; the additions'' audit rows carry no personal data. Fires once, after removed_at is first set. A trigger function: not an RPC.';
 
 -- Trigger functions are never RPCs (20260927161000, pgTAP 190).
 revoke execute on function public.staff_removed_purge_additions() from public, anon, authenticated;

@@ -31,8 +31,9 @@ disclose one person's employment status to another.
    restated once with an 8th argument `p_referral_code text default null`; after the
    application is written it calls owner-only `record_application_referral`, which
    skips a bad, revoked or self code, inserts `on conflict do nothing` and never raises.
-   The anon `submit_application` path is unchanged and records nothing; throttles are
-   untouched.
+   `submit_application` is unchanged and records nothing (service-role only since
+   main's `20260930120200`, so /apply reaches it only through the caller path);
+   throttles are untouched.
 5. **The office sees it.** `/onboarding/:id` shows "Referred by {name} ({employeeId})"
    linking to `/staff/:id`; the kanban card gets a "Referred" chip; `/staff/:id`
    Overview gets a "Referrals" card and a "Referred by" line. These are separate admin

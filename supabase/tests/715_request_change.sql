@@ -23,7 +23,7 @@
 --      count, and the other kind is not affected.
 -- =====================================================================
 begin;
-select plan(54);
+select plan(56);
 \ir _shared/fixtures.psql
 
 \set pcr_b '66500000-0000-4000-8000-0000000000b1'
@@ -110,6 +110,15 @@ select throws_ok(
 select throws_ok(
   format($$ select request_profile_change('photo', null, null, %L) $$, :'staffa' || '/../x.jpg'),
   'P0001', 'wrong_path', 'B: a path climbing out of the folder is refused');
+-- staff_set_photo()'s shape since main's 20260930120200: exactly
+-- `<own id>/<name>.jpg`, one level deep (20260930205100). Refused before
+-- the existence check, so the refusal is the shape's, not a missing file's.
+select throws_ok(
+  format($$ select request_profile_change('photo', null, null, %L) $$, :'staffa' || '/sub/deep.jpg'),
+  'P0001', 'wrong_path', 'B: a photo in a sub-folder of their own is refused — one level deep only');
+select throws_ok(
+  format($$ select request_profile_change('photo', null, null, %L) $$, :'staffa' || '/selfie.png'),
+  'P0001', 'wrong_path', 'B: and anything but a .jpg, as staff_set_photo() refuses it');
 select throws_ok(
   format($$ select request_profile_change('photo', null, null, %L) $$, :'staffa' || '/nothing-here.jpg'),
   'P0001', 'file_not_found', 'B: a photo that was never uploaded is refused');

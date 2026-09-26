@@ -41,7 +41,9 @@
 --
 -- Also here, because the vocabulary is shared and Phase 1 must not race
 -- for it: bookings_cancel_cause_check gains 'handed_over' (ADR-0045,
--- restated from 20260924120000 with the one value added). booking_source
+-- restated from 20260924120000 with the one value added), and
+-- booking_reopenable_by() classifies it 'never' (restated from main's
+-- 20260930110100, its latest body, with the one line added). booking_source
 -- gained 'offer' in 20260930200000, alone for the reason given there.
 --
 -- Forward-only. Nothing here edits an earlier migration.
@@ -70,6 +72,53 @@ alter table bookings add constraint bookings_cancel_cause_check check (
 
 comment on column bookings.cancel_cause is
   'Why the booking left the live states (Scope §3.6). cancelled: office_withdraw · ready_cutoff · self_cancel · handed_over (ADR-0045) · overlap_auto_withdraw · event_cancelled · blocked · blocked_invite · left · left_invite · gdpr · gdpr_invite. closed: slot_taken · declined · withdrawn_by_worker. Null while live. CANCEL_CAUSES in packages/domain/src/state.ts; bookings_cancel_cause_check.';
+
+-- ---------------------------------------------------------------------
+-- 0b · booking_reopenable_by() += 'handed_over' → 'never' (ADR-0045)
+--
+-- main's 20260930110100 (D33, ADR-0037) — the latest body — byte for byte
+-- with one `when` added. A completed hand-over sets self_cancelled, so
+-- invite_worker() and bookings_self_cancel_is_final already refuse to
+-- reopen the row; this makes the classification say so too, so the SQL
+-- and bookingReopenableBy() in packages/domain/src/reopen.ts agree cause
+-- for cause (pgTAP 701). Without it 'handed_over' fell to the `else` and
+-- read 'person'.
+-- ---------------------------------------------------------------------
+create or replace function public.booking_reopenable_by(p_status booking_status, p_cause text)
+returns text
+language sql
+immutable
+set search_path = public, extensions
+as $$
+  select case
+    when p_status = 'closed' then
+      case coalesce(p_cause, '')
+        when 'slot_taken' then 'anyone'
+        else 'person'                     -- declined · withdrawn_by_worker · legacy null
+      end
+    when p_status = 'cancelled' then
+      case coalesce(p_cause, '')
+        when 'self_cancel'     then 'never'
+        when 'handed_over'     then 'never'   -- ADR-0045: sets self_cancelled, the same bar
+        when 'event_cancelled' then 'never'
+        when 'gdpr'            then 'never'
+        when 'gdpr_invite'     then 'never'
+        when 'overlap_auto_withdraw' then 'anyone'
+        when 'blocked'         then 'anyone'
+        when 'blocked_invite'  then 'anyone'
+        when 'left'            then 'anyone'
+        when 'left_invite'     then 'anyone'
+        else 'person'                     -- office_withdraw · ready_cutoff · legacy null
+      end
+    else null                             -- a live row: invited, applied, confirmed, worked, turned_away
+  end
+$$;
+
+comment on function public.booking_reopenable_by(booking_status, text) is
+  'Who may reopen an ended booking row on the same section (§3.6, ADR-0037): ''never'' (self_cancel — RULE-04 — handed_over — ADR-0045, the same bar — event_cancelled, gdpr), ''anyone'' (ended by circumstance: slot_taken, overlap_auto_withdraw, a block/leave cascade — an auto-assign round may re-invite), ''person'' (ended by a decision: declined, withdrawn_by_worker, office_withdraw, ready_cutoff — only the office''s manual invite or the worker''s own Radar application reopens it). Null for a live row. Mirrors bookingReopenableBy() in packages/domain/src/state.ts.';
+
+revoke execute on function public.booking_reopenable_by(booking_status, text) from public, anon;
+grant  execute on function public.booking_reopenable_by(booking_status, text) to authenticated, service_role;
 
 -- ---------------------------------------------------------------------
 -- §1 · staff_unavailability (ADR-0042)

@@ -40,6 +40,13 @@
 --       then "you're still booked" is news to nobody, and the escalation
 --       job owns the section.
 --
+-- Rebased when re-stamped after main's 20260930100000–20260930140100
+-- (docs/10 §3b): take_offered_shift()'s overlap re-read follows
+-- accept_invite()'s latest body (20260930110000, D2 "worked is staffed")
+-- and counts a checked-in (worked) booking as well as a confirmed one.
+-- shift_fill() and auto_assign_candidates() are called, not restated, so
+-- main's versions of both apply here unchanged.
+--
 -- Forward-only. References only 20260930201100 and earlier objects.
 -- =====================================================================
 
@@ -499,14 +506,16 @@ begin
       end);
   end if;
 
-  -- accept_invite()'s own re-reads (20260928110400), kept literally: the
-  -- confirmed-only overlap with the 2 h different-venue gap, then RULE-20
-  -- with the right-to-work stop told apart.
+  -- accept_invite()'s own re-reads, kept literally from its latest body
+  -- (main's 20260930110000, D2): the overlap with the 2 h different-venue
+  -- gap against confirmed OR worked bookings — a shift the worker has
+  -- already checked in to is at least as confirmed — then RULE-20 with the
+  -- right-to-work stop told apart.
   if exists (
     select 1 from bookings x
       join shift_requirements sr2 on sr2.id = x.shift_id
       join events ev2 on ev2.id = sr2.event_id
-     where x.staff_id = v_me and x.status = 'confirmed' and x.shift_id <> sr.id
+     where x.staff_id = v_me and x.status in ('confirmed', 'worked') and x.shift_id <> sr.id
        and booked_elsewhere_conflict(sr.starts_at, sr.ends_at, ev.venue_id,
                                      sr2.starts_at, sr2.ends_at, ev2.venue_id, v_gap) <> 'clear'
   ) then

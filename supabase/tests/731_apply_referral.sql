@@ -6,7 +6,7 @@
 --   A. The grants: the restated submit_application_as_caller is still
 --      service-role only, and there is exactly one of it (the 7-argument
 --      one is gone, not left beside it). record_application_referral is
---      owner-only. The anon submit_application is unchanged.
+--      owner-only. submit_application is unchanged (service-role only since 20260930120200).
 --   B. A valid code records one row for a new candidate
 --      (candidate_created) — and NOTHING for a matched record
 --      (returning_applicant, security finding #5): knowing a worker's
@@ -19,7 +19,7 @@
 --      attached (docs/10 §3b): the per-caller hash rule and throttle, the
 --      per-email and per-mobile throttle, every validation message. A
 --      refused application records no referral and counts no hit.
---   E. The anon path records nothing; the response is identical with or
+--   E. The six-argument path records nothing; the response is identical with or
 --      without a code.
 -- =====================================================================
 begin;
@@ -79,10 +79,10 @@ select ok(
 select is(
   (select pg_get_function_identity_arguments('public.submit_application(text,text,text,text,date,boolean)'::regprocedure)),
   'p_first_name text, p_last_name text, p_email text, p_phone text, p_dob date, p_consent boolean',
-  'A: the anon submit_application is unchanged — six arguments, no code');
+  'A: submit_application is unchanged — six arguments, no code');
 select ok(
-  has_function_privilege('anon', 'public.submit_application(text,text,text,text,date,boolean)', 'execute'),
-  'A: and anon keeps it (120_apply, 190 2e)');
+  not has_function_privilege('anon', 'public.submit_application(text,text,text,text,date,boolean)', 'execute'),
+  'A: and, since main''s 20260930120200, anon does not hold it: /apply reaches it only through submit_application_as_caller');
 
 set local role service_role;
 set local "request.jwt.claims" = '{"role":"service_role"}';
@@ -282,13 +282,17 @@ select is(
   5, 'D: the refused sixth was not counted as a hit');
 
 -- =====================================================================
--- E · the anon path records nothing; the response does not change
+-- E · the six-argument path records nothing; the response does not change
+--
+-- submit_application() is service-role only since main's 20260930120200
+-- (it was the anon path when this file was written). It still takes no
+-- code and records nothing.
 -- =====================================================================
-set local role anon;
-set local "request.jwt.claims" = '{"role":"anon"}';
+set local role service_role;
+set local "request.jwt.claims" = '{"role":"service_role"}';
 select lives_ok(
   $$ select submit_application('Anon', 'Path', 'anon@t681.test', '+447700968401', date '1995-01-01', true) $$,
-  'E: the anon form path still works');
+  'E: the six-argument submit_application still works');
 reset role;
 select is(
   (select count(*)::int from application_referrals r join applications a on a.id = r.application_id

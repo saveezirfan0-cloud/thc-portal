@@ -65,8 +65,9 @@ Two ways to feed it into auto-assign were on the table:
 policy; **no staff policy and no client policy**. Workers read and write through
 `security definer` RPCs (`my_unavailability`, `add_my_unavailability`,
 `remove_my_unavailability`), the ADR-0031 pattern. `invite_worker` is restated once
-(from `20260928110200`) so `p_source in ('auto','escalation')` refuses
-`unavailable`; `'manual'` still invites.
+(written from `20260928110200`; rebased onto main's `20260930110100` — D9 switches at
+the insert, D33 reopen — when the two met) so `p_source in ('auto','escalation')`
+refuses `unavailable`; `'manual'` still invites.
 
 The TS twin is `packages/domain/src/availability.ts`, held to
 `availability.vectors.json` (Vitest and pgTAP 701). `HARD_GATES` in `scoring.ts` is

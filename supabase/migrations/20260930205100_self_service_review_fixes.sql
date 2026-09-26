@@ -46,6 +46,11 @@
 -- already turns into a sentence; too_many_requests (P0001), new, with its
 -- sentence in apps/staff/app/profile/change-requests.ts.
 --
+-- Re-stamped after main's 20260930100000–20260930140100 (docs/10 §3b):
+-- request_profile_change()'s photo path now also takes exactly
+-- `<own id>/<name>.jpg`, the shape main's 20260930120200 gave
+-- staff_set_photo(), since an approved request sets the same avatar.
+--
 -- Forward-only. pgTAP: 705 (G), 715 (G).
 -- =====================================================================
 
@@ -133,10 +138,15 @@ begin
     if v_photo is null then
       raise exception 'photo_required' using errcode = 'P0001';
     end if;
-    -- The worker's own folder only; the table CHECK says the same.
+    -- The worker's own folder only; the table CHECK says the same. And
+    -- exactly `<own id>/<name>.jpg`, one level deep — the shape main's
+    -- 20260930120200 gave staff_set_photo(), because an approved request
+    -- becomes the same locked avatar (re-checked when this file was
+    -- re-stamped after it; the Staff App uploads <id>/selfie-<epoch>.jpg).
     if not starts_with(v_photo, v_id::text || '/')
        or char_length(v_photo) <= char_length(v_id::text) + 1
-       or strpos(v_photo, '..') > 0 then
+       or strpos(v_photo, '..') > 0
+       or v_photo !~ ('^' || v_id::text || '/[A-Za-z0-9][A-Za-z0-9_-]*(\.[A-Za-z0-9_-]+)*\.jpg$') then
       raise exception 'wrong_path' using errcode = 'P0001';
     end if;
     if not exists (select 1 from storage.objects o

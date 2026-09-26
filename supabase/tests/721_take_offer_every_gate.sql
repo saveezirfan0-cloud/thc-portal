@@ -19,7 +19,7 @@
 -- the event afterwards. The calendar (ADR-0042) never refuses a take.
 -- =====================================================================
 begin;
-select plan(45);
+select plan(46);
 \ir _shared/fixtures.psql
 
 select cap_week_start(current_date) + 14 as w \gset
@@ -228,6 +228,12 @@ select is(pg_temp.take_as(7, :'offer'),    jsonb_build_object('ok', false, 'reas
 select is(pg_temp.take_as(8, :'offer'),    jsonb_build_object('ok', false, 'reason', 'self_cancelled'),  'A: self_cancelled off this event (RULE-04)');
 select is(pg_temp.take_as(9, :'offer'),    jsonb_build_object('ok', false, 'reason', 'overlap'),
   'A: overlap — confirmed across town until 90 minutes before: inside the 2 h different-venue gap');
+-- main's D2 (20260930110000, worked is staffed): a booking the worker has
+-- already checked in to overlaps as much as a confirmed one — in the pool
+-- gate and in the take's own accept_invite() re-read (20260930205000).
+update bookings set status = 'worked' where shift_id = :'s_far' and staff_id = :'t_over';
+select is(pg_temp.take_as(9, :'offer'),    jsonb_build_object('ok', false, 'reason', 'overlap'),
+  'A: overlap — and still when that booking across town is already checked in (worked)');
 select is(pg_temp.take_as(10, :'offer'),   jsonb_build_object('ok', false, 'reason', 'rtw_expired'),     'A: rtw_expired');
 select is(pg_temp.take_as(11, :'offer'),   jsonb_build_object('ok', false, 'reason', 'hours_limit'),     'A: hours_limit — 16 h + 8 h over the 20 h term cap (RULE-20)');
 select is(pg_temp.take_as(13, :'offer'),   jsonb_build_object('ok', false, 'reason', 'already_had_booking'),

@@ -15,7 +15,7 @@
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(42);
+select plan(43);
 \ir _shared/fixtures.psql
 
 \set ev      '67000000-0000-4000-8000-000000000001'
@@ -281,9 +281,15 @@ insert into shift_offers (booking_id, expires_at)
 select b.id, now() + interval '17 days'
   from bookings b where b.id in (:'b_c1', :'b_c2', :'b_c3', :'b_c4', :'b_c5', :'b_c6', :'b_c7', :'b_c8');
 
--- Withdraw (the board's update), the 12:05 cutoff, block, leave, GDPR and
--- check-in, as their writers leave the row.
-update bookings set status = 'cancelled', cancelled_at = now(), cancel_cause = 'office_withdraw' where id = :'b_c1';
+-- Withdraw through the board's RPC — main's withdraw_booking()
+-- (20260930110300), which replaced the board's direct update — then the
+-- 12:05 cutoff, block, leave, GDPR and check-in, as their writers leave
+-- the row.
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is(withdraw_booking(:'b_c1') ->> 'ok', 'true', 'D: the office withdraws an offered booking through withdraw_booking()');
+reset role;
+select set_config('request.jwt.claims', '', true);
 update bookings set status = 'cancelled', cancelled_at = now(), cancel_cause = 'ready_cutoff'    where id = :'b_c2';
 update bookings set status = 'cancelled', cancelled_at = now(), cancel_cause = 'blocked'         where id = :'b_c3';
 update bookings set status = 'cancelled', cancelled_at = now(), cancel_cause = 'left'            where id = :'b_c4';

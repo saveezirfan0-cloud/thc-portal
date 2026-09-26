@@ -20,7 +20,9 @@
 --   2 · submit_application_as_caller — RESTATED (docs/19 §0.6, the only
 --       restatement Agent D is allowed). Byte-for-byte the body of
 --       20260926100200, which is its latest and only definition (grep:
---       no later migration touches it), plus:
+--       no later migration touches it — re-checked after main's
+--       20260930100000–20260930140100 landed: 20260930120200 changes
+--       submit_application()'s grants, not this function), plus:
 --         · an 8th argument, p_referral_code text default null;
 --         · one clause right after `perform public.submit_application(…)`
 --           that calls record_application_referral when a code was sent.
@@ -32,8 +34,10 @@
 --
 -- What does NOT change (docs/10 §3b — pgTAP 731 asserts every gate
 -- together):
---   · submit_application() — the anon path. Not restated, takes no code,
---     records nothing. 120_apply and 190 still see exactly one of it.
+--   · submit_application() — not restated, takes no code, records
+--     nothing. 120_apply and 190 still see exactly one of it. (Since
+--     main's 20260930120200 it is service-role only, so this function is
+--     the only way /apply reaches it; nothing here depends on that.)
 --   · The per-caller throttle, the per-email / per-mobile throttle, every
 --     validation message, the §2.12 match. The referral is written only
 --     after all of them passed, and a refused application writes nothing.

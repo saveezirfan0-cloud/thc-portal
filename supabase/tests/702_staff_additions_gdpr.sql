@@ -242,11 +242,15 @@ select results_eq(
   $$ values (true, true, true) $$,
   'D: and, not yet sent, it is failed gdpr_removed — the drain never claims it');
 
+-- RC3 is addressed to the worker, so remove_worker()'s own scrub (main's
+-- 20260930120100, which runs after this trigger) matches it too and its
+-- stronger treatment stands: a sent row keeps only the fact of the send.
 select results_eq(
-  format($$ select payload ? 'reason', payload->>'change', sent_at is not null, failed_at is null, error
+  format($$ select payload ? 'reason', payload->>'gdprRemoved', payload->>'label',
+                   sent_at is not null, failed_at is null, error
               from notification_outbox where key = %L $$, 'RC3:request:' || :'pcr_photo'),
-  $$ values (false, 'photo'::text, true, true, null::text) $$,
-  'D: RC3 loses the office''s reason (it named them); a sent row keeps sent_at and is not failed');
+  $$ values (false, 'true'::text, 'Deleted account #90001'::text, true, true, null::text) $$,
+  'D: RC3 (to the worker) loses the office''s reason; remove_worker() keeps only the fact of the send, sent_at stays and it is not failed');
 
 select results_eq(
   format($$ select payload->>'name', payload->>'previousName', payload->>'approvedAt',
@@ -264,12 +268,12 @@ select results_eq(
          :'booking_a'),
   'D: OF5 keyed on the offer loses the cover note and the name; the event and ids stay');
 
-select results_eq(
-  format($$ select payload->>'name', payload ? 'note', sent_at is null, failed_at is not null,
-                   error like 'gdpr_removed%%'
-              from notification_outbox where key = %L $$, 'OF5:booking:' || :'booking_a'),
-  $$ values ('Deleted account #90001'::text, false, true, true, true) $$,
-  'D: OF5 keyed on the booking (20260930205000) is scrubbed too, and, unsent, is failed');
+-- OF5 on the booking key carries one of the worker's booking ids, so
+-- remove_worker() matches it after this trigger has failed it; still
+-- unsent, it is deleted — the stronger treatment (20260930120100) stands.
+select is_empty(
+  format($$ select 1 from notification_outbox where key = %L $$, 'OF5:booking:' || :'booking_a'),
+  'D: OF5 keyed on the booking (20260930205000), unsent, is gone — failed here, then deleted by remove_worker()');
 
 select is_empty(
   format($$ select key from notification_outbox

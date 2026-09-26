@@ -19,7 +19,7 @@
 --      (490 holds the whole vocabulary through bookingState.vectors.json).
 -- =====================================================================
 begin;
-select plan(57);
+select plan(59);
 \ir _shared/fixtures.psql
 \ir _shared/change_request_vectors.psql
 \ir _shared/shift_offer_vectors.psql
@@ -510,6 +510,14 @@ select lives_ok(
   format($$ insert into bookings (shift_id, staff_id, status, source, confirmed_at)
             values (%L, %L, 'confirmed', 'offer', now()) $$, :'shift_b', :'staffa'),
   'D: the taker''s booking is written with source offer');
+
+-- main's D33 (20260930110100) classifies who may reopen an ended row; a
+-- completed hand-over is 'never', like the self-cancel it stands for, and
+-- the SQL and bookingReopenableBy() (reopen.ts) agree (20260930200100 0b).
+select is(booking_reopenable_by('cancelled', 'handed_over'), 'never',
+  'D: a handed-over row is never reopened (booking_reopenable_by, ADR-0045)');
+select is(booking_reopenable_by('cancelled', 'self_cancel'), 'never',
+  'D: and the self-cancel it mirrors still reads never (main''s body kept)');
 
 select * from finish();
 rollback;

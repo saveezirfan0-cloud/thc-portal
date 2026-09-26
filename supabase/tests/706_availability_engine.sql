@@ -14,12 +14,14 @@
 --       shift_not_found, event_cancelled, not_bookable, wrong_role,
 --       do_not_return, blocked, self_cancelled, booked_elsewhere,
 --       rtw_expired, hours_limit, outside_radius, already_has_booking,
---       target_met — and a clean invitation with N5
+--       target_met — and a clean invitation with N5 — and, since the body
+--       is now main's 20260930110100, its auto_assign_off (D9) and the
+--       reopen of an ended row (D33)
 --
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(45);
+select plan(49);
 \ir _shared/fixtures.psql
 
 select cap_week_start(current_date) + 14 as w \gset
@@ -280,6 +282,24 @@ select is((select status::text from bookings where shift_id = :'s' and staff_id 
   'C: and the open invitation is untouched — never withdrawn by auto-assign (§3.4)');
 select is(invite_worker(:'s', :'w_ok', 'manual') ->> 'reason', 'already_has_booking',
   'C: a manual invitation skips the calendar and meets the one-booking rule');
+
+-- The body this restates is main's 20260930110100, so its two changes are
+-- held here together with the calendar clause (docs/10 §3b):
+--   D9  the switches are read at the insert, before any gate;
+--   D33 an ended row is reopened rather than refused — by a round only
+--       when it ended by circumstance, by the office whenever a person may.
+update shift_requirements set auto_assign = false where id = :'s';
+select is(invite_worker(:'s', :'w_ok') ->> 'reason', 'auto_assign_off',
+  'C: D9 — role switch off: an automatic invitation is refused at the insert, before the calendar');
+update shift_requirements set auto_assign = true where id = :'s';
+update bookings set status = 'closed', cancelled_at = now(), cancel_cause = 'slot_taken'
+ where shift_id = :'s' and staff_id = :'w_ok';
+select is(invite_worker(:'s', :'w_ok') ->> 'reason', 'unavailable',
+  'C: D33 — a slot_taken row a round could reopen, but she is away: the machine is still refused');
+select is(invite_worker(:'s', :'w_ok', 'manual') ->> 'reopened', 'true',
+  'C: and the office reopens it by hand (D33) — the calendar is never read on that path');
+select is((select status::text from bookings where shift_id = :'s' and staff_id = :'w_ok'), 'invited',
+  'C: the one row is invited again, not a second booking');
 
 select ok(has_function_privilege('authenticated', 'public.invite_worker(uuid, uuid, booking_source, boolean)', 'execute')
           and not has_function_privilege('anon', 'public.invite_worker(uuid, uuid, booking_source, boolean)', 'execute'),
