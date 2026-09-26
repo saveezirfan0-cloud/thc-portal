@@ -29,7 +29,12 @@
  * the documents THC sent on 26.09.2026 (Agency Worker Contract, H&S quiz
  * and induction deck, data protection policy), which set the "Received"
  * statuses. Version 1.1 folds back the edits PRs #67, #71 and #72 made to
- * docs/17 directly, so the Markdown twin is generated again.
+ * docs/17 directly, so the Markdown twin is generated again. Version 1.2
+ * (26.09) keeps items 1–23 numbered as they were and adds items 24 onwards:
+ * the gov.uk check sign-off (ADR-0041), Claude (ADR-0033), the gender
+ * question (ADR-0024), the defaults recorded in ADR-0035–0040, and the
+ * Staff App questions Q9–Q21 (docs/15, ADR-0043–0047); the migration
+ * sign-off is not needed and the build team is arranging the Willo keys.
  */
 
 import { createElement as h, Fragment } from 'react';
@@ -134,6 +139,7 @@ const ITEMS = [
     format: 'Three secret values + the stage list; secrets by password manager or on a call',
     who: 'Whoever administers THC’s Willo account, with Willo support',
     neededBy: 'UAT − 2 weeks',
+    status: 'In hand — the build team is arranging the keys (26.09)',
     sections: std({
       need: [
         {
@@ -442,6 +448,7 @@ const ITEMS = [
     format: 'Email: “signed off”, with corrections listed',
     who: 'Office manager, countersigned by a director',
     neededBy: 'Go-live − 2 weeks',
+    status: 'Not needed — no data migration (25.09)',
     sections: std({
       need: [
         'After the build team runs the import on staging, THC checks a sample and confirms in writing — an email is fine — that the migrated data is right, listing any corrections. A suggested sample: 20 workers across the statuses (compliant, blocked, inactive, students, visa holders) and 5 clients with their rate cards. For each, check:',
@@ -532,6 +539,8 @@ const ITEMS = [
       'Email: the owning email address for each account and the administrator; then accept invitations',
     who: 'Director / finance — the account owner and card holder',
     neededBy: 'Before UAT',
+    status:
+      'Vercel done — the apps run in THC’s own account (26.09); Supabase and GitHub to follow',
     sections: std({
       need: [
         {
@@ -841,8 +850,8 @@ const ITEMS = [
     neededBy: 'Before go-live',
     sections: std({
       need: [
-        'A yes or no: when a worker asks to be removed under GDPR, should the platform keep their **other** right-to-work evidence — passport copy, visa, share-code report, National Insurance evidence — for the length of their employment plus two years, the way it already keeps the University Completion Letter?',
-        'Background. THC’s completion-letter requirement says that letter is retained for the duration of employment plus two years, in line with right-to-work evidence retention. The Scope’s removal rule says contacts, documents and photo are wiped (§1.7). Where the two met, the build took the legal-obligation reading for the completion letter only: on removal the worker is anonymised to “Deleted account #id” and everything else is deleted, but the completion letter is held until two years after employment ended and is then deleted automatically, with an audit entry. Whether the same argument should hold passports, visas and share-code reports is a wider decision about §1.7 that the build did not make.',
+        'A yes or no: when a worker asks to be removed under GDPR, should the platform keep their **other** right-to-work evidence — passport copy, visa, the gov.uk share-code report and the photo gov.uk shows, National Insurance evidence — for the length of their employment plus two years, the way it already keeps the University Completion Letter?',
+        'Background. THC’s completion-letter requirement says that letter is retained for the duration of employment plus two years, in line with right-to-work evidence retention. The Scope’s removal rule says contacts, documents and photo are wiped (§1.7). Where the two met, the build took the legal-obligation reading for the completion letter only: on removal the worker is anonymised to “Deleted account #id” and everything else is deleted, but the completion letter is held until two years after employment ended and is then deleted automatically, with an audit entry. Whether the same argument should hold passports, visas, share-code reports and gov.uk photos is a wider decision about §1.7 that the build did not make.',
       ],
       why: [
         'An employer is expected to be able to produce right-to-work evidence for two years after employment ends; a removal that wipes it removes that protection. Against that, holding more of a removed person’s data than the law requires is exactly what GDPR guards against. This is THC’s call, or its solicitor’s.',
@@ -1034,6 +1043,319 @@ const ITEMS = [
       until: ['Not applicable — this is how every screen is built.'],
     }),
   },
+
+  // ── New since v1.1 (26.09): sign-offs and decisions ──────────────────────
+  {
+    id: 'G1',
+    title: 'Sign-off: the automated gov.uk share-code check',
+    short: 'Sign-off: the automated gov.uk share-code check',
+    why: 'The platform fills in the Home Office’s own right-to-work service itself; THC’s adviser must confirm that is acceptable before it is switched on (§2.3, §2.6)',
+    format: 'Email: “confirmed”, or the adviser’s conditions; plus THC’s legal name',
+    who: 'Director, with THC’s right-to-work or employment adviser',
+    neededBy: 'Before go-live',
+    sections: std({
+      need: [
+        {
+          ul: [
+            'Confirmation from THC’s adviser that it is acceptable for the platform to fill in the Home Office service “View a job applicant’s right to work details” automatically, with the share code and date of birth the worker entered, instead of a person typing them in.',
+            'Confirmation that the result page the platform saves as a PDF is an acceptable retained copy of the check.',
+            'THC’s full legal company name, exactly as it should appear on the check as the employer (today: “The Hospitality Company”).',
+          ],
+        },
+        'What was built, in plain terms: **no paid provider** — the platform uses the free Home Office service directly. The check runs by itself when a worker enters a share code, but **every result waits for a person in the office**, who compares the photo gov.uk shows with the worker’s selfie in the app and presses Verify or Reject. Nothing is verified or rejected automatically, including “not found”.',
+      ],
+      why: [
+        'For most workers who are not British or Irish the Home Office service is the only way to check the right to work, and doing it by hand for every applicant is slow. A human still makes every decision and checks the photo, which is what the Home Office guidance asks of an employer.',
+      ],
+      format: ['An email: “Confirmed”, or the adviser’s conditions; and the legal name.'],
+      send: ['Email.'],
+      until: [
+        'The check stays switched off. The office checks each share code on gov.uk by hand and types the right-to-work date into the platform, as today. Once signed off, the build team runs one live test on a consenting worker before switching it on.',
+      ],
+    }),
+  },
+  {
+    id: 'G2',
+    title: 'Confirm: Claude (Anthropic) reads uploaded documents, instead of Gemini',
+    short: 'Confirm: Claude reads documents instead of Gemini; an Anthropic key',
+    why: 'The Scope names Google Gemini for reading dates off uploaded letters (§2.6); the build uses Anthropic’s Claude',
+    format: 'A signed line, and an Anthropic API key by password manager',
+    who: 'Director; whoever sets up THC’s accounts',
+    neededBy: 'Before UAT',
+    sections: std({
+      need: [
+        'A line confirming that Anthropic’s **Claude** reads uploaded documents instead of Google’s Gemini, and an **Anthropic account in THC’s name** with an API key for the platform.',
+        'Claude only pre-fills dates — term dates, a course completion date, an expiry date — and how sure it is. A manager always checks the document and confirms; nothing is verified automatically. It has already been tuned on the sample letters THC sent on 26.09.',
+      ],
+      why: [
+        'Reading the dates saves the office typing them from every student’s letter. The privacy notice (item 13) must name Anthropic as the service that reads the documents.',
+      ],
+      format: ['A line in the reply: “Claude confirmed”, and the key shared securely.'],
+      send: [KEYS_NOT_BY_EMAIL],
+      until: [
+        'Nothing is pre-filled. Each upload waits in Compliance → Needs review and a manager reads the dates off the document, as today.',
+      ],
+    }),
+  },
+  {
+    id: 'G3',
+    title: 'Question: the gender question at onboarding step 7',
+    short: 'Gender question at step 7 (Male/Female)',
+    why: 'The New Starter report lists “Gender (M/F)” for HMRC (§9.9), so step 7 asks it',
+    format: 'Keep it, or remove it',
+    who: 'HR lead, with payroll',
+    neededBy: 'Before UAT',
+    sections: question({
+      ask: 'should step 7 of onboarding keep asking workers for their gender as Male or Female, for the New Starter report — or should the question be removed?',
+      today:
+        'Step 7 (the HMRC details) asks Male or Female, because the Scope’s New Starter report has a “Gender (M/F)” column. The answer is used only on that report.',
+      alternative:
+        'Remove the question and leave the column empty, if THC’s payroll provider does not need it. Please check with payroll first.',
+      where: '§2.8 (the HMRC New Starter checklist, step 7); §9.9 (New Starter report).',
+    }),
+  },
+  {
+    id: 'G4',
+    title: 'Confirm: rule choices made where the Scope was silent',
+    short: 'Confirm the rule choices made where the Scope was silent',
+    why: 'The build had to pick an answer where the Scope does not give one; each is a setting or a small change if THC prefers another',
+    format: '“Approved”, or the ones to change',
+    who: 'Operations manager, with payroll and compliance',
+    neededBy: 'Before UAT',
+    sections: std({
+      need: [
+        'Please confirm, or tell us which to change:',
+        {
+          ul: [
+            '**Left early** means checking out more than 15 minutes before the shift’s end, on or off site. An off-site check-out where the worker was last seen on site more than 30 minutes earlier goes to the office as “No check-out” to review, and does not count against their reliability.',
+            '**If the app can’t confirm something**, such as the phone’s location at check-out, it refuses rather than guesses; the check-out location reading waits up to 8 seconds.',
+            '**A worker who has checked in counts as filled.** Automatic invitation rounds never re-invite someone who declined, was withdrawn or was released at the 12:05 cut-off. Open shifts stop being offered once the headcount is met; buffer places are by invitation only.',
+            '**“Hours this week”** shows hours worked against the worker’s limit, with booked hours beneath. The client’s line-up is grouped by role.',
+            '**What a GDPR removal deletes**, including whether the payroll and new-starter files already produced are kept.',
+            '**The weekly-hours limits:** 10 hours in term for study below degree level (THC’s completion-letter document wins over the Scope’s changelog), the hour limits printed on a visa, and the National Insurance number check.',
+          ],
+        },
+      ],
+      why: [
+        'Each affects pay, fairness or compliance, so THC should know what the platform does before real workers use it.',
+      ],
+      format: ['A reply: “Approved”, or the items to change and how.'],
+      send: ['Email.'],
+      until: ['The platform runs as described above.'],
+    }),
+  },
+
+  // ── Staff App additions, Q9–Q21 (docs/15, ADR-0043–0047) ─────────────────
+  {
+    id: 'Q9',
+    title: 'Question: availability — can a manager still invite by hand?',
+    short: 'Q9 · Availability: gate or preference?',
+    why: 'Workers can mark days or times they cannot work (an addition to the Scope); it stops automatic invitations',
+    format: 'One-line answer',
+    who: 'Operations manager',
+    neededBy: 'Before UAT',
+    sections: question({
+      ask: 'when a worker has marked themselves unavailable, should a manager still be able to invite them by hand after a warning (what we do), or should it stop manual invitations too?',
+      today:
+        'Marking a day unavailable stops every automatic invitation and shift offer for it. A manager can still invite by hand after a warning (“{name} marked themselves unavailable for this time. Invite anyway?”), and the worker can still accept or apply. A shift they have already accepted is never cancelled by it.',
+      alternative: 'The mark also stops manual invitations, so “Invite anyway” goes.',
+      where: 'Staff App addition — availability calendar; touches §3.4 and §6.',
+    }),
+  },
+  {
+    id: 'Q10',
+    title: 'Question: availability — how far ahead, and a reason?',
+    short: 'Q10 · Availability: limits and reasons',
+    why: 'The availability calendar needs limits, and a reason field could collect health information',
+    format: 'One-line answer',
+    who: 'Operations manager, with the data protection lead',
+    neededBy: 'Before UAT',
+    sections: question({
+      ask: 'are these limits enough, or do you need longer patterns? Do you want workers to give a reason — knowing it may be health information?',
+      today:
+        'Single days, a date range of up to 31 days, or a time window on one day (UK time); “Repeat weekly” for up to 26 weeks; up to 12 months ahead. No reason is asked.',
+      alternative:
+        'Longer ranges or other patterns (fortnightly, term-time), and an optional reason visible to the office — which the privacy notice would then have to cover.',
+      where: 'Staff App addition — availability calendar.',
+    }),
+  },
+  {
+    id: 'Q11',
+    title: 'Question: should an emergency contact be mandatory?',
+    short: 'Q11 · Emergency contact: optional or mandatory?',
+    why: 'Workers can add an emergency contact (an addition to the Scope); today it is optional',
+    format: 'One-line answer',
+    who: 'Operations manager',
+    neededBy: 'Before UAT',
+    sections: question({
+      ask: 'should an emergency contact be mandatory? If so, should new workers give it during onboarding?',
+      today:
+        'Optional, kept in Profile details and seen only by the office — never on the allocation sheet or timesheet, which clients see. While it is empty the worker sees an amber “Emergency contact not set” reminder.',
+      alternative:
+        'Mandatory: a step in onboarding, or the app locked until it is given (existing workers asked on their next visit).',
+      where: 'Staff App addition — emergency contact; touches §10.1 and §1.7.',
+    }),
+  },
+  {
+    id: 'Q12',
+    title: 'Question: a leaver’s emergency contact',
+    short: 'Q12 · Emergency contact when a worker leaves',
+    why: 'An emergency contact is someone else’s personal data; how long to keep it is a §1.7 choice',
+    format: 'One-line answer',
+    who: 'Data protection lead',
+    neededBy: 'Before UAT',
+    sections: question({
+      ask: 'should we delete a worker’s emergency contact as soon as they leave, rather than only when they are removed?',
+      today:
+        'Kept while the worker’s record exists (they can re-join on the same record) and deleted on a GDPR removal.',
+      alternative: 'Deleted the moment the worker leaves (Request my P45).',
+      where: 'Staff App addition — emergency contact; §10.6, §1.7.',
+    }),
+  },
+  {
+    id: 'Q13',
+    title: 'Question: a name change and the right-to-work check',
+    short: 'Q13 · Name change: fresh right-to-work check?',
+    why: 'Workers can request a name change with evidence (an addition to the Scope); the office approves it',
+    format: 'One-line answer',
+    who: 'Compliance manager',
+    neededBy: 'Before UAT',
+    sections: question({
+      ask: 'when a worker changes their name, must it trigger a fresh right-to-work check, or is the office’s comparison against the evidence enough?',
+      today:
+        'The worker requests the change in the app with evidence; the office compares it with the right-to-work document and ticks that it matches before approving; payroll is emailed. Documents and payroll files already issued are never changed.',
+      alternative:
+        'Approving a name change sends the worker back through a right-to-work check before they can be booked again.',
+      where: 'Staff App addition — “Request a change”; touches §10.1.',
+    }),
+  },
+  {
+    id: 'Q14',
+    title: 'Question: limits on photo changes',
+    short: 'Q14 · Photo changes: any limit?',
+    why: 'Workers can request a new photo; the office approves every one',
+    format: 'One-line answer',
+    who: 'Operations manager',
+    neededBy: 'Before UAT',
+    sections: question({
+      ask: 'should photo changes be limited in any way?',
+      today:
+        'One request at a time, no limit on how often, and the office approves each one. The new photo appears on documents issued from then on; documents already issued keep the old one.',
+      alternative: 'A limit, for example one change a year, or changes without approval.',
+      where: 'Staff App addition — “Request a change”.',
+    }),
+  },
+  {
+    id: 'Q15',
+    title: 'Question: offering up a shift — barred from the event afterwards?',
+    short: 'Q15 · Offer up: barred from the event after?',
+    why: 'Workers can offer a confirmed shift to others (an addition to the Scope); it must not become a way round the cancellation rule',
+    format: 'One-line answer',
+    who: 'Operations manager',
+    neededBy: 'Before UAT',
+    sections: question({
+      ask: 'after a worker hands a shift over, should they stay barred from that event (as after a cancellation)?',
+      today:
+        'Once another worker takes the shift, the one who offered it is barred from that event, exactly as if they had cancelled (RULE-04).',
+      alternative: 'No bar: they can be invited to, or apply for, the same event again.',
+      where: 'Staff App addition — “Offer up a shift”; RULE-04.',
+    }),
+  },
+  {
+    id: 'Q16',
+    title: 'Question: offering up a shift — how close to the start?',
+    short: 'Q16 · Offer up: the 72-hour cut-off',
+    why: 'Offering a shift is allowed only while cancelling it still is',
+    format: 'One-line answer',
+    who: 'Operations manager',
+    neededBy: 'Before UAT',
+    sections: question({
+      ask: 'is 72 hours the right cut-off for offering a shift to other workers, or should it be closer, e.g. 24 hours?',
+      today:
+        'A worker can offer a shift while more than 72 hours remain (the same point at which they can no longer cancel). Inside 72 hours they can ask the office for cover, and the office decides.',
+      alternative: 'A closer cut-off, for example 24 hours.',
+      where: 'Staff App addition — “Offer up a shift”; RULE-04.',
+    }),
+  },
+  {
+    id: 'Q17',
+    title: 'Question: handing a shift to a named colleague, or swapping',
+    short: 'Q17 · Swaps with a named colleague',
+    why: 'Designed but switched off; only shifts offered to everyone are built',
+    format: 'Yes / No',
+    who: 'Operations manager',
+    neededBy: 'Before UAT',
+    sections: question({
+      ask: 'do you want workers to be able to hand a shift to a named colleague, or swap shifts with one?',
+      today: 'Off. A shift can be offered only to everyone eligible, never to a chosen person.',
+      alternative:
+        'On: the worker names a colleague by Employee ID (no staff list is shown); the colleague must be qualified for that client and role and pass every booking check.',
+      where: 'Staff App addition — “Offer up a shift”.',
+    }),
+  },
+  {
+    id: 'Q18',
+    title: 'Question: office emails when a shift is handed over',
+    short: 'Q18 · Offer up: office emails',
+    why: 'Deciding how much email the office receives about hand-overs',
+    format: 'One-line answer',
+    who: 'Operations manager',
+    neededBy: 'Before UAT',
+    sections: question({
+      ask: 'do you also want an email when a shift is handed over, or when an offer closes with nobody taking it?',
+      today:
+        'The office is emailed only when a worker asks for cover inside 72 hours. A hand-over shows on the event board as “Handed over: {from} → {to}”; nothing is lost, so no email is sent.',
+      alternative: 'An email on every hand-over, or when an offer lapses.',
+      where: 'Staff App addition — “Offer up a shift”; §8.',
+    }),
+  },
+  {
+    id: 'Q19',
+    title: 'Question: a reward for referring a friend?',
+    short: 'Q19 · Referral reward',
+    why: 'Workers can share a referral link (an addition to the Scope); the app promises nothing today',
+    format: 'No, or the reward and what earns it',
+    who: 'Director',
+    neededBy: 'Before UAT',
+    sections: question({
+      ask: 'do you want to reward referrals? If so, what is the reward, and what earns it (the friend applies, is hired, completes a number of shifts)?',
+      today:
+        'Referrals are recorded and the office sees “Referred by …” on the candidate. There is no reward and the app makes no promise of one.',
+      alternative: 'A reward, earned at a point THC chooses.',
+      where: 'Staff App addition — “Refer a friend”.',
+    }),
+  },
+  {
+    id: 'Q20',
+    title: 'Question: telling a referrer that their friend joined',
+    short: 'Q20 · Referral privacy',
+    why: 'Telling one person that another has been hired is personal data (§1.7)',
+    format: 'Yes / No, and the privacy-notice wording',
+    who: 'Data protection lead',
+    neededBy: 'Before UAT',
+    sections: question({
+      ask: 'may a referrer be told that their friend has joined? Please supply the privacy-notice wording for referrals.',
+      today:
+        'The referrer sees only a count (“N people have applied with your link”); the applicant never sees who referred them; the application form and the privacy page say “If a friend referred you, we record who referred you.” A notification telling the referrer their friend joined is written but not switched on.',
+      alternative: 'Tell the referrer when their friend joins.',
+      where: 'Staff App addition — “Refer a friend”; §1.7.',
+    }),
+  },
+  {
+    id: 'Q21',
+    title: 'Wording sign-off: the new Staff App messages',
+    short: 'Q21 · Wording: RC1–RC4 and OF1–OF6',
+    why: 'The new features send messages the Scope’s §8 register does not have; they are drafts in its tone',
+    format: '“Approved”, or replacement text',
+    who: 'Office manager / whoever owns worker communications',
+    neededBy: 'Before UAT',
+    sections: question({
+      ask: 'please confirm or rewrite the messages RC1–RC4 (Request a change) and OF1–OF6 (Offer up a shift), as you did for §8.',
+      today: 'The drafts are used as written. The build team can send them as a list on request.',
+      alternative: 'THC’s own wording.',
+      where: '§8 (notification register); Staff App additions.',
+    }),
+  },
 ];
 
 ITEMS.forEach((it, i) => {
@@ -1056,15 +1378,23 @@ const PARTS = [
     ids: ['D1', 'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6'],
   },
   { heading: 'Part 5 · Agreed changes to acknowledge', ids: ['A1', 'A2', 'A3'] },
+  {
+    heading: 'Part 6 · New since version 1.1: sign-offs and decisions',
+    ids: ['G1', 'G2', 'G3', 'G4'],
+  },
+  {
+    heading: 'Part 7 · Staff App additions: questions (proposed, awaiting THC)',
+    ids: ['Q9', 'Q10', 'Q11', 'Q12', 'Q13', 'Q14', 'Q15', 'Q16', 'Q17', 'Q18', 'Q19', 'Q20', 'Q21'],
+  },
 ].map((p) => ({ ...p, items: p.ids.map((id) => ITEMS.find((i) => i.id === id)) }));
 
 const DOC = {
   title: 'Inputs required from The Hospitality Company',
   subtitle: 'Staffing platform — build hand-over checklist',
   date: '26 September 2026',
-  version: '1.1',
+  version: '1.2',
   preparedFor: 'Prepared for THC by the build team',
-  footer: 'The Hospitality Company · Inputs required · v1.1',
+  footer: 'The Hospitality Company · Inputs required · v1.2',
   coverNote:
     'This document lists everything the build still needs from The Hospitality Company: content, decisions, keys, DNS records and data. Each item says what is needed, why, in what format, how to send it, and what the platform shows until it arrives. The tracker on page 3 is the working list; the sections after it are the detail. Nothing here is a build task, and nothing here needs THC to have seen the code.',
 
@@ -1085,32 +1415,32 @@ const DOC = {
         target: 'Two weeks before UAT starts',
       },
       {
-        item: `${byId('B1')} · Willo keys and stage mapping`,
+        item: `${byId('B2')} · Contract clause 28, approved`,
         whyLong:
-          'Needs the Willo account owner and probably Willo support; the first test delivery may show differences we then adjust.',
-        appendix: 'Start of the onboarding build',
-        target: 'Two weeks before UAT',
-      },
-      {
-        item: `${byId('B2')} · The zero-hours contract text`,
-        whyLong:
-          'A legal document, usually with a solicitor’s review; testers should sign the real text.',
+          'A go-live gate: no real candidate signs until THC (and its solicitor) approves the duty-to-disclose clause and the approved text is published as a clean version.',
         appendix: 'Before the contract step is built',
         target: 'Two weeks before UAT',
       },
       {
-        item: `${byId('B3')} · Sample term dates and completion letters`,
+        item: `${byId('C1')} · The quiz answer key`,
         whyLong:
-          'Collecting three to five of each from real students and redacting them; tuning the reader takes about a week after that.',
-        appendix: 'Start of the AI extraction work',
-        target: 'Three weeks before UAT',
+          'A go-live gate: a wrong key passes or fails real candidates wrongly, and the third failure rejects them.',
+        appendix: '—',
+        target: 'Two weeks before UAT',
       },
       {
-        item: `${byId('B5')} and ${byId('B6')} · Old-system export, then the dry-run sign-off`,
+        item: `${byId('C3')} · The privacy notice`,
         whyLong:
-          'Extracting from Accelerate, agreeing the columns, one import on staging, a checked sample.',
-        appendix: 'Four weeks before go-live; sign-off two weeks before',
-        target: 'As Appendix B',
+          'Legal text, usually drafted or checked by a solicitor; the application form links to it and asks for consent against it.',
+        appendix: '—',
+        target: 'Before go-live; ideally before UAT',
+      },
+      {
+        item: `${byId('G1')} · The gov.uk share-code check, signed off`,
+        whyLong:
+          'Needs THC’s right-to-work adviser, then one live test on a consenting worker before the check is switched on.',
+        appendix: '—',
+        target: 'Before go-live',
       },
     ],
     leadTimeNote:
@@ -1145,8 +1475,8 @@ const DOC = {
     [
       'Vercel',
       'Hosts the three web applications.',
-      'Build team (staging)',
-      'A production team owned by THC (item 8).',
+      'THC (since 26.09)',
+      'Done — the three apps run in THC’s own Vercel account and deploy automatically.',
     ],
     [
       'Anthropic (Claude API)',
@@ -1170,14 +1500,14 @@ const DOC = {
 
   closing: {
     howToReturn: [
-      `Reply to the covering email using the tracker numbers — for example “Item ${byId('B7')}: done, records added on 3 October”. Documents and spreadsheets: by email for anything that holds no personal data; by a shared drive folder restricted to the build team for anything that does. Keys and secrets — item ${byId('B1')}, and bank details if they are ever migrated under item ${byId('B5')} — by password-manager share or on a call, never by email or messaging app.`,
+      `Reply to the covering email using the tracker numbers — for example “Item ${byId('B7')}: done, records added on 3 October”. Documents and spreadsheets: by email for anything that holds no personal data; by a shared drive folder restricted to the build team for anything that does. Keys and secrets — the Anthropic key under item ${byId('G2')}, and anything else secret — by password-manager share or on a call, never by email or messaging app.`,
     ],
     contactLines: [
       'Build team contact: ______________________________________ (name · email · phone)',
       'THC contact for this checklist: __________________________________',
     ],
     next: [
-      `**What happens next.** When items ${byId('B7')}, ${byId('B8')} and ${byId('B1')} and the content items (${byId('B2')}, ${byId('C1')}, ${byId('C2')}, ${byId('W1')}, ${byId('W2')}) are in, the build team switches email and push on, sets up THC’s production accounts, and opens **UAT** on staging: THC’s office team walks every screen with real content — a worker onboarded end to end, an event built, filled by auto-assign, checked in, checked out and timesheeted; a client signing in to see their line-up. In parallel the old-system export (${byId('B5')}) is imported on staging for the **migration dry run** and the sample check (${byId('B6')}). After sign-off, **go-live** is the production import, the switch to the final web addresses if THC wants its own, and the first live applicants. The accounts and the code then transfer to THC at hand-over.`,
+      `**What happens next.** When items ${byId('B7')} and ${byId('B8')} and the content items (${byId('B2')}, ${byId('C1')}, ${byId('C3')}, ${byId('W1')}, ${byId('W2')}) are in — including the two go-live gates, clause 28 and the quiz answer key — the build team switches email and push on, sets up THC’s production accounts, and opens **UAT** on staging: THC’s office team walks every screen with real content — a worker onboarded end to end, an event built, filled by auto-assign, checked in, checked out and timesheeted; a client signing in to see their line-up. There is no data migration: THC starts on the new platform with new applicants. After sign-off, **go-live** is the switch to the final web addresses if THC wants its own, the gov.uk check once item ${byId('G1')} is signed off, and the first live applicants. The accounts and the code then transfer to THC at hand-over.`,
     ],
   },
 };
@@ -1788,9 +2118,15 @@ function Item(it) {
       const head = h(Text, { style: s.sub, minPresenceAhead: MPA }, sec.heading);
       // A short opening paragraph (a few lines) cannot be split, and
       // minPresenceAhead alone has let such a heading end a page on its
-      // own; keep the two together instead.
+      // own; keep the two together instead. A short note (a question's
+      // "Where it comes from") or quote ("The question") is kept with its
+      // heading the same way.
       const [first, ...rest] = sec.blocks;
-      if (typeof first === 'string' && first.length <= SHORT_PARA) {
+      const short =
+        (typeof first === 'string' && first.length <= SHORT_PARA) ||
+        (first && typeof first.note === 'string' && first.note.length <= SHORT_PARA) ||
+        (first && typeof first.quote === 'string' && first.quote.length <= SHORT_PARA);
+      if (short) {
         return h(
           View,
           { key: i },

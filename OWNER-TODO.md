@@ -5,7 +5,9 @@ below is a setting, a key, a deploy or content that a coding session cannot
 supply. Tick items off here as they are done. `docs/14-handover.md` §5 has the
 background for each.
 
-Last updated 25.09.2026 (after #59, #65 and #66): §3's keys, deploys and base URL done by a session; §4b (Claude document reading) added; the old-system import dropped. **§1 and §2 re-checked against the live project and
+Last updated 26.09.2026: the apps now live in THC's own Vercel account (`thc7`) at
+thc-portal-office.vercel.app, thc-portal-staff-two.vercel.app and
+thc-portal-client-beta.vercel.app, deployed from `main` automatically; the owner supplies the Resend and Willo keys; `docs/17` v1.2 carries every THC ask (items 24–40 new). Before that, 25.09.2026 (after #59, #65 and #66): §3's keys, deploys and base URL done by a session; §4b (Claude document reading) added; the old-system import dropped. **§1 and §2 re-checked against the live project and
 GitHub on 23.09** — both are still open, they are not stale entries.
 
 ## 1 · Supabase settings (dashboard)
@@ -13,9 +15,9 @@ GitHub on 23.09** — both are still open, they are not stale entries.
 - [ ] **Auth → Email OTP Expiration → `86400`.** Activation (E3) and reset links
       otherwise expire after an hour.
 - [ ] **Auth → URL Configuration → Redirect URLs**: add
-      `https://office-thc.vercel.app/auth/callback**`,
-      `https://thc-portal-staff.vercel.app/auth/callback**` and
-      `https://thc-portal-client.vercel.app/auth/callback**`. Forgot password
+      `https://thc-portal-office.vercel.app/auth/callback**`,
+      `https://thc-portal-staff-two.vercel.app/auth/callback**` and
+      `https://thc-portal-client-beta.vercel.app/auth/callback**`. Forgot password
       fails without them.
 - [ ] **Auth → turn on leaked-password protection.** The security advisor still
       reports it off (re-read 23.09). Of everything the advisor flags on this
@@ -41,6 +43,8 @@ GitHub on 23.09** — both are still open, they are not stale entries.
 Until this is done every notification waits in the outbox as "not configured".
 Nothing is lost; it all sends once the keys exist.
 
+- [ ] **Resend API key**: the owner has it (26.09). Paste it straight into the
+      function secrets below as `RESEND_API_KEY` — never into a chat or a commit.
 - [ ] Verify THC's sending domain in **Resend**: add the DKIM/SPF/DMARC records
       at THC's DNS host. The senders are `admin@` and `timesheets@`
       thehospitalitycompany.co.uk, editable on `/settings`.
@@ -73,9 +77,12 @@ Nothing is lost; it all sends once the keys exist.
 - [ ] Smoke test: send yourself a push from the Staff App's notifications screen,
       and trigger one email (for example, Send on an event's timesheet).
 
-## 4 · Willo, once THC sends the keys (ADR-0021)
+## 4 · Willo, once the keys arrive (ADR-0021)
 
-- [ ] `supabase secrets set WILLO_WEBHOOK_SECRET=… WILLO_API_KEY=… WILLO_INTERVIEW_KEY=… STAFF_APP_URL=https://thc-portal-staff.vercel.app`
+The owner is supplying the Willo keys (26.09; `docs/17` item 1). Set them as
+function secrets directly — never paste them into a chat or a commit.
+
+- [ ] `supabase secrets set WILLO_WEBHOOK_SECRET=… WILLO_API_KEY=… WILLO_INTERVIEW_KEY=… STAFF_APP_URL=https://thc-portal-staff-two.vercel.app`
 - [ ] `supabase functions deploy willo-webhook --no-verify-jwt`
 - [ ] In Willo, point the webhook at `{SUPABASE_URL}/functions/v1/willo-webhook`.
 - [ ] Check ADR-0021's "assumed about Willo" list against the first sandbox
@@ -174,9 +181,9 @@ as today.
 
 ## 7 · If the Staff App gets its own domain
 
-- [ ] Update `NEXT_PUBLIC_STAFF_URL` on the **office-thc** and
+- [ ] Update `NEXT_PUBLIC_STAFF_URL` on the **thc-portal-office** and
       **thc-portal-client** Vercel projects. Both are currently
-      `https://thc-portal-staff.vercel.app`.
+      `https://thc-portal-staff-two.vercel.app`.
 - [ ] Update the `STAFF_APP_URL` Supabase secret (Willo) to match.
 
 ## 8 · The automated gov.uk right-to-work check (ADR-0025, ADR-0041)
@@ -222,9 +229,12 @@ Settings the round depends on, and the choices it recorded as defaults.
 - [ ] **Supabase → Auth**: sign-ups **off**, minimum password length **10**
       with letters and digits, **secure password change** on — the values in
       `supabase/config.toml`.
-- [ ] **Vercel**, all three projects: `NEXT_PUBLIC_OFFICE_URL`,
+- [x] **Vercel**, all three projects: `NEXT_PUBLIC_OFFICE_URL`,
       `NEXT_PUBLIC_STAFF_URL`, `NEXT_PUBLIC_CLIENT_URL`. Forgot-password now
-      refuses in production rather than send a link to localhost.
+      refuses in production rather than send a link to localhost. **26.09:** each
+      app holds the ones it reads in THC's Vercel account (names checked, values
+      not read). Make sure they are the new addresses: `thc-portal-office`,
+      `thc-portal-staff-two` and `thc-portal-client-beta` `.vercel.app`.
 - [ ] **Vercel, thc-portal-staff**: keep `SUPABASE_SERVICE_ROLE_KEY` set —
       `/apply` now needs it.
 - [x] **Regenerate `packages/db/src/types.generated.ts`** once the round is

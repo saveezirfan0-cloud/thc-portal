@@ -76,9 +76,9 @@ Conventions on this page:
   (it read `false` on the morning of 23.09 per OWNER-TODO, so something was
   turned on since — §2.1 says what to check). The last `ci` run on `main`
   (#210) ran `deploy-database` to completion, so the three deploy secrets exist.
-- Vercel: three projects `office-thc`, `thc-portal-staff`, `thc-portal-client`
-  in team `saveezirfan0-3688s-projects`; the Staff App has only the domain
-  `thc-portal-staff.vercel.app`. The variables each holds are in §3.1.
+- Vercel: three projects `thc-portal-office`, `thc-portal-staff`, `thc-portal-client`
+  in team `thc7`; the Staff App has only the domain
+  `thc-portal-staff-two.vercel.app`. The variables each holds are in §3.1.
 - The security advisor's findings are the ones docs/14 §4 lists, plus two
   `extension_in_public` warnings (`postgis`, `pg_net`) that `20260921123503`
   chose to leave, and `rls_auto_enable()` no longer appears in the
@@ -154,8 +154,8 @@ above to reach a worker.
 the Staff App, and Auth only redirects to an allow-listed origin.
 
 - https://supabase.com/dashboard/project/dgxtqvalfiisfpbwodew/auth/url-configuration
-- **Site URL:** `https://thc-portal-staff.vercel.app`
-- **Redirect URLs:** add `https://thc-portal-staff.vercel.app/**` (the app's
+- **Site URL:** `https://thc-portal-staff-two.vercel.app`
+- **Redirect URLs:** add `https://thc-portal-staff-two.vercel.app/**` (the app's
   callback is `/auth/callback?next=/reset`; the glob covers the query string).
   Add the custom domain here too when §3.5 happens.
 
@@ -380,23 +380,27 @@ any branch can read them.
 
 ## 3 · Vercel
 
-Team `saveezirfan0-3688's projects` (slug `saveezirfan0-3688s-projects`). Env
+Team `thc7`, THC's own Vercel account: on 26.09.2026 the three apps moved there
+from the build team's account and deploy from `main` automatically. Env
 vars for a project:
-`https://vercel.com/saveezirfan0-3688s-projects/<project>/settings/environment-variables`
-with `<project>` one of `office-thc`, `thc-portal-staff`, `thc-portal-client`.
+`https://vercel.com/thc7/<project>/settings/environment-variables`
+with `<project>` one of `thc-portal-office`, `thc-portal-staff`, `thc-portal-client`.
 
 ### 3.1 The env-var matrix
 
 Status columns are what each project held on **23.09.2026** (names and scopes
-only; values are never read). "P" = Production, "Pv" = Preview.
+only; values are never read). Re-checked on **26.09.2026** in THC's account (names only): all three hold
+the Supabase URL and keys, `SUPABASE_SERVICE_ROLE_KEY`, `APP_TZ` and the app URLs they read;
+the Staff App holds `NEXT_PUBLIC_VAPID_PUBLIC_KEY` and `APPLY_THROTTLE_SALT`; no project holds a
+Mapbox token yet, so the maps draw without tiles. Everything is Production-only. "P" = Production, "Pv" = Preview.
 
-| Variable | office-thc | thc-portal-staff | thc-portal-client | Exposure | Why |
+| Variable | thc-portal-office | thc-portal-staff | thc-portal-client | Exposure | Why |
 |---|---|---|---|---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | set, P+Pv | set, P+Pv | set, **P only** | browser | Where the apps talk to. `packages/db/src/env.ts` throws without it; a build without it answers 503 on every route (docs/14 §7). |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | set, P+Pv | set, P+Pv | set, **P only** | browser | The public key; RLS is what protects the data (§1.4). |
 | `SUPABASE_SERVICE_ROLE_KEY` | set, P+Pv | set, P+Pv | set, P+Pv | **server only** | Server actions that must bypass RLS on purpose (Accept creates a login, Storage writes, admin-only tables). Never under a `NEXT_PUBLIC_` name. |
 | `APP_TZ` | set, P+Pv | set, P+Pv | set, P+Pv | server | Always `Europe/London` (§1.8); `next.config.ts` defaults it, the variable pins it. |
-| `NEXT_PUBLIC_STAFF_URL` | set, P+Pv | **add** | set, P+Pv | browser | Office: the origin E3's `/activate/:token` link is built on (`apps/office/app/onboarding/actions.ts` refuses Accept in production without it) and the `/privacy` link. Client: the `/privacy` link. **Staff: the origin password-reset links come back to** (`apps/staff/app/forgot/actions.ts`); without it the app falls back to `VERCEL_URL`, the deployment's unique per-build hostname. That used to mean a Vercel login wall; SSO protection was turned off on 25.09, so now it means something worse in one respect — the link resolves, but it points at one specific build, so it rots as soon as the next deploy lands. Set it. Value today: `https://thc-portal-staff.vercel.app`. |
+| `NEXT_PUBLIC_STAFF_URL` | set, P+Pv | **add** | set, P+Pv | browser | Office: the origin E3's `/activate/:token` link is built on (`apps/office/app/onboarding/actions.ts` refuses Accept in production without it) and the `/privacy` link. Client: the `/privacy` link. **Staff: the origin password-reset links come back to** (`apps/staff/app/forgot/actions.ts`); without it the app falls back to `VERCEL_URL`, the deployment's unique per-build hostname. That used to mean a Vercel login wall; SSO protection was turned off on 25.09, so now it means something worse in one respect — the link resolves, but it points at one specific build, so it rots as soon as the next deploy lands. Set it. Value today: `https://thc-portal-staff-two.vercel.app`. |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | — | **add in §4.5** | — | browser | The key the browser subscribes with (`apps/staff/lib/push.ts`). Absent, the app reports "Notifications are not available yet" and never asks permission. Must equal the Supabase `VAPID_PUBLIC_KEY`. |
 | `APPLY_CALLER_SALT` (or `APPLY_THROTTLE_SALT`) | — | **set** — present as `APPLY_THROTTLE_SALT`, P+Pv (23.09); either name is read | — | **server only** | HMAC salt for `/apply`'s per-caller limit (ADR-0024, §2.1, docs/14 §4 "unthrottled per caller"), read by `apps/staff/lib/callerKey.ts`. Only a hash of the caller's address is stored; rotating it resets the counters. See the note below. |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | optional | optional | — | browser | Raster tiles under the venue map (`apps/office/app/venues/VenueMap.tsx`) and the home-address pin (`apps/staff/app/onboarding/_components/PinMap.tsx`). Without it the maps draw their own surface with no tiles (ADR-0005). §6.2. |
@@ -438,7 +442,7 @@ https://supabase.com/dashboard/project/dgxtqvalfiisfpbwodew/settings/api
 
 Every variable, including server-only ones, is applied on the **next
 deployment**. After adding or changing one: Deployments →
-`https://vercel.com/saveezirfan0-3688s-projects/<project>/deployments` → the
+`https://vercel.com/thc7/<project>/deployments` → the
 latest Production deployment → ⋯ → **Redeploy**, and untick **Use existing
 Build Cache** for any `NEXT_PUBLIC_` variable (those are inlined at build time).
 
@@ -454,22 +458,22 @@ afternoon and back off.
 ### 3.5 A custom domain for the Staff App
 
 The Staff App is a PWA: install and Web Push need HTTPS on a real domain (§10.5,
-ADR-0001). `thc-portal-staff.vercel.app` already satisfies that; a domain on
+ADR-0001). `thc-portal-staff-two.vercel.app` already satisfies that; a domain on
 THC's name is a branding and trust step, not a technical one.
 
-1. `https://vercel.com/saveezirfan0-3688s-projects/thc-portal-staff/settings/domains`
+1. `https://vercel.com/thc7/thc-portal-staff/settings/domains`
    → Add → e.g. `app.thehospitalitycompany.co.uk`.
 2. At THC's DNS host, add the record Vercel shows: a `CNAME` for `app` to
    `cname.vercel-dns.com` (an apex domain needs an `A` record to Vercel's IP
    instead — Vercel prints it). Wait for **Valid Configuration** and the
    certificate.
 3. Then update, in this order, and redeploy each project (§3.3):
-   - `NEXT_PUBLIC_STAFF_URL` on **office-thc**, **thc-portal-client** and
+   - `NEXT_PUBLIC_STAFF_URL` on **thc-portal-office**, **thc-portal-client** and
      **thc-portal-staff** → `https://app.thehospitalitycompany.co.uk`
    - Supabase secret `STAFF_APP_URL` (§5.1) → the same value
    - Supabase Auth Site URL and Redirect URLs (§1.3a) → add the new origin
    - Willo's webhook URL is unaffected (it points at Supabase, not the app).
-4. **Keep `thc-portal-staff.vercel.app` serving** (Vercel keeps it as a second
+4. **Keep `thc-portal-staff-two.vercel.app` serving** (Vercel keeps it as a second
    domain). Push subscriptions and installed apps are per origin: workers who
    installed from the old domain keep receiving pushes only while the old
    origin still serves the service worker. New installs go on the new domain;
@@ -485,7 +489,7 @@ origin is referenced by other systems.
 email and per mobile (`20260922183012`) and the app now hashes the caller
 (ADR-0024); a Vercel Firewall rule is a third layer in front of the app.
 
-`https://vercel.com/saveezirfan0-3688s-projects/thc-portal-staff/firewall` →
+`https://vercel.com/thc7/thc-portal-staff/firewall` →
 Configure → **+ New Rule**: name `apply throttle`; conditions **Request Path**
 equals `/apply` **and** **Method** equals `POST` (Next.js server actions POST to
 the page's own path); action **Rate Limit**, e.g. 10 requests per 60 seconds
@@ -599,7 +603,7 @@ at again every 5 minutes; the other channel still sends.
 
 ### 4.5 `NEXT_PUBLIC_VAPID_PUBLIC_KEY` on the staff project
 
-`https://vercel.com/saveezirfan0-3688s-projects/thc-portal-staff/settings/environment-variables`
+`https://vercel.com/thc7/thc-portal-staff/settings/environment-variables`
 → Add → key `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, value the **same public key** as
 §4.4, Production and Preview → Save → **Redeploy without build cache** (§3.3).
 
@@ -791,7 +795,7 @@ https://supabase.com/dashboard/project/dgxtqvalfiisfpbwodew/logs/edge-functions.
 
 ### 4.9 The smoke test
 
-**Push.** On a phone, open `https://thc-portal-staff.vercel.app` as a worker
+**Push.** On a phone, open `https://thc-portal-staff-two.vercel.app` as a worker
 (iPhone: add to the home screen first and open it from there) → `/notifications`
 → **Turn on notifications** → allow. Then from the Back Office, invite that
 worker to a shift on an event page (N5, the first push in the register). Within
@@ -848,7 +852,7 @@ supabase secrets set \
   WILLO_WEBHOOK_SECRET=<the signing secret from Willo's webhook settings> \
   WILLO_API_KEY=<THC's Willo API key> \
   WILLO_INTERVIEW_KEY=<the key of the interview candidates are invited to> \
-  STAFF_APP_URL=https://thc-portal-staff.vercel.app
+  STAFF_APP_URL=https://thc-portal-staff-two.vercel.app
 ```
 
 | Secret | Read by | If missing |
@@ -1008,12 +1012,12 @@ answers "Address lookup is not configured in this environment (MAPBOX_TOKEN)".
 
 **Where they come from:** https://account.mapbox.com/access-tokens/.
 
-- A **public** token (`pk.`) for `NEXT_PUBLIC_MAPBOX_TOKEN` on `office-thc` and
+- A **public** token (`pk.`) for `NEXT_PUBLIC_MAPBOX_TOKEN` on `thc-portal-office` and
   `thc-portal-staff`. It is interpolated into tile URLs in the browser, so
   **restrict it by URL** in the Mapbox account to the three Vercel origins
   (ADR-0005: "or it is a bill anyone can run up").
 - A **secret** token (`sk.`) with only the geocoding scope for `MAPBOX_TOKEN` on
-  `office-thc`. Server-only.
+  `thc-portal-office`. Server-only.
 
 Redeploy after adding (§3.3). Mapbox's free tier covers this product's volume.
 
@@ -1075,7 +1079,7 @@ match (ADR-0025).
   push to `main` (root directories `apps/office`, `apps/staff`, `apps/client`;
   "skip unaffected projects" may skip an app whose dependencies did not change).
   Previews are off (§3.4). Progress and logs:
-  `https://vercel.com/saveezirfan0-3688s-projects/<project>/deployments`.
+  `https://vercel.com/thc7/<project>/deployments`.
 - **The database**: the `deploy-database` job runs `supabase db push` on a push
   to `main` after `build-test` passes on that same commit (§2.2). It runs one at
   a time; a third merge while one runs and one waits cancels the waiting one,
@@ -1234,7 +1238,7 @@ and what a session could confirm on 23.09.2026. Tick the last column in
 | §4 | ADR-0021 assumptions vs first sandbox delivery | §5.4 | — | [ ] |
 | §4 | Enable `willo-invite` (session), re-run `install_job_schedules()` | §5.6 | schedule row present, disabled | [ ] |
 | §5 | Content from THC: quiz, induction, contract, E2b/CL wording, privacy text, sample letters, retention decision, old-system export | not a setting; see OWNER-TODO §5 and docs/14 §5 | — | [ ] |
-| §6 | If the Staff App gets its own domain: `NEXT_PUBLIC_STAFF_URL` on office + client, `STAFF_APP_URL` secret | §3.5 | only `thc-portal-staff.vercel.app` today | [ ] |
+| §6 | If the Staff App gets its own domain: `NEXT_PUBLIC_STAFF_URL` on office + client, `STAFF_APP_URL` secret | §3.5 | only `thc-portal-staff-two.vercel.app` today | [ ] |
 | Done | Service role key rotated (22.09) | §3.2, §4.7 note | — | [x] |
 | Done | `ANTHROPIC_API_KEY` removed from the client project | — | not present on 23.09 | [x] |
 | Done | `SUPABASE_SERVICE_ROLE_KEY` on Office and Staff | §3.1 | present on all three | [x] |
