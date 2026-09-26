@@ -19,7 +19,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/dashboard` | Dashboard. Plus, below the KPI row, "Short-staffed — next 48 hours": role sections starting within 48 h with confirmed < headcount (`dashboard_short_staffed_v`); a scheduler sees no financial snapshot or margins (ADR-0050) | `backoffice/dashboard.html` (the short-staffed panel is not in the wireframe — ADR-0053) | 9.1 | reports |
 | `/onboarding` | Kanban (Active / Rejected) | `backoffice/onboarding.html` | 2.2 | onboarding |
 | `/onboarding/:id` | Candidate profile by phase | `backoffice/candidate.html` | 2.3 | onboarding |
-| `/events` | List · Calendar month/week/day. Filters live in the URL; "Save view" keeps named filter sets as chips, per browser (localStorage) — ADR-0053 | `backoffice/events.html` | 3.1 | scheduling |
+| `/events` | List · Calendar month/week/day. Filters live in the URL; "Save view" keeps named filter sets as chips, per manager across devices (`office_saved_views`, own rows, max 30); one-tap move of old browser views; read-only notice when the database refuses — ADR-0053 | `backoffice/events.html` | 3.1 | scheduling |
 | `/events/new`, `/events/:id/edit` | Shift Builder (`/events/new?from=<id>` opens it as Duplicate: roles copied, no staff, date blank) | `backoffice/shift-builder.html` | 3.2 | scheduling |
 | `/events/:id` | Event board | `backoffice/event-board.html` | 3.3–3.5, 11.4 | scheduling |
 | `/compliance` | Needs review · Radar | `backoffice/compliance.html` | 4.1 | compliance |

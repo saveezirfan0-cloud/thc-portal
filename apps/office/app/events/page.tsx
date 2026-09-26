@@ -7,6 +7,7 @@ import { EventToolbar, hrefFor } from './_components/EventToolbar';
 import { DayView, ListView, MonthView, WeekView } from './_components/EventViews';
 import { parseEventQuery } from './_lib/filters';
 import { SavedViewsBar } from './_lib/SavedViewsBar';
+import { listMySavedViews } from './_lib/saved-views-actions';
 import { bucketByDay, filterEventRows, periodCrumb, periodTotals, toEventRows } from './view-model';
 import './shift-builder.css';
 import './events.css';
@@ -36,9 +37,11 @@ export default async function Page({
   const { view, date } = query;
 
   const { from, to } = periodRange(view, date);
-  const [reference, { events, problem }] = await Promise.all([
+  const [reference, { events, problem }, savedViews] = await Promise.all([
     loadReferenceData(),
     loadEventsInRange(from, to),
+    // The manager's own saved views, read fresh on every open (ADR-0053).
+    listMySavedViews(),
   ]);
 
   const rows = filterEventRows(toEventRows(events), {
@@ -73,8 +76,8 @@ export default async function Page({
 
         <EventToolbar query={query} clients={reference.clients} />
 
-        {/* Named filter sets, kept in this browser (localStorage). */}
-        <SavedViewsBar query={query} clients={reference.clients} />
+        {/* Named filter sets, kept per manager in office_saved_views. */}
+        <SavedViewsBar query={query} clients={reference.clients} initial={savedViews} />
 
         {!problem && view === 'list' ? (
           <Panel flush className="stack" actions={null}>

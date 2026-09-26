@@ -2063,6 +2063,36 @@ export type Database = {
           },
         ];
       };
+      office_saved_views: {
+        Row: {
+          created_at: string;
+          id: string;
+          name: string;
+          owner: string;
+          query: Json;
+          scope: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          name: string;
+          owner?: string;
+          query: Json;
+          scope?: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          name?: string;
+          owner?: string;
+          query?: Json;
+          scope?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       onboarding_progress: {
         Row: {
           address_at: string | null;
@@ -7274,6 +7304,10 @@ export type Database = {
         Returns: Json;
       };
       office_mark_no_show: { Args: { p_booking: string }; Returns: Json };
+      office_saved_view_query_ok: {
+        Args: { p_query: Json; p_scope: string };
+        Returns: boolean;
+      };
       office_submit_completion_letter: {
         Args: {
           p_awarding_institution?: string;
