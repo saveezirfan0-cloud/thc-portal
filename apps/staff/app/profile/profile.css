@@ -5,6 +5,17 @@
  * scope) render this correctly without a second stylesheet.
  */
 
+/* --- A sheet sits over the bottom nav --------------------------------- *
+ * From main (#74): sheets render inside .app-body, and `.app-frame > *`
+ * gives .app-body `z-index: 1` — a stacking context the sheet cannot rise
+ * out of — while the fixed bar sits at 3, so the bar painted over the
+ * bottom of the sheet and took its taps. The Profile tab (ADR-0042) is a
+ * screen now, but the §10.6 P45 confirmation is still a sheet, so while a
+ * sheet is open the body is lifted above the bar. */
+.app-frame > .app-body:has(.sheet) {
+  z-index: 4;
+}
+
 /* --- The Profile tab (ADR-0042) ---------------------------------------- */
 .profile-hub {
   display: flex;
