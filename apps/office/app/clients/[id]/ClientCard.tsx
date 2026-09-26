@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useState } from 'react';
 import { Alert, Button, Chip, KpiTile, Panel, TileGrid } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
+import { RecordHistory } from '../../_components/history/RecordHistory';
 import { ClientModal } from '../ClientModal';
 import { ClientEvents } from './ClientEvents';
 import { QualifiedStaff } from './QualifiedStaff';
@@ -31,9 +32,23 @@ import './card.css';
  * singular `client_` prefix belongs to the portal and 050 forbids a money
  * column on anything carrying it (§11.1, ADR-0004).
  */
-export function ClientCard({ data }: { data: ClientCardData }) {
+export function ClientCard({
+  data,
+  ratesVisible = true,
+}: {
+  data: ClientCardData;
+  /** ADR-0061: the viewer's office_can('finance') — no margin, no rate controls without it. */
+  ratesVisible?: boolean;
+}) {
   const client = data.client as Client;
   const [editing, setEditing] = useState(false);
+  const eventsTile = (
+    <KpiTile
+      label="Events"
+      value={client.event_count}
+      description={`${data.events.filter((row) => row.status === 'upcoming' || row.status === 'ongoing').length} still to come`}
+    />
+  );
 
   return (
     <OfficeShell
@@ -114,27 +129,32 @@ export function ClientCard({ data }: { data: ClientCardData }) {
                 )}
               </span>
             </div>
-            <TileGrid columns={2}>
-              <KpiTile
-                label="Average margin"
-                value={client.avg_margin_pct === null ? '—' : `${client.avg_margin_pct}%`}
-                tone={marginTone(client.avg_margin_pct) === 'green' ? 'ok' : 'default'}
-                description={
-                  client.avg_margin_pct === null
-                    ? 'nothing delivered yet — no margin is not 0%'
-                    : 'across completed events · after holiday pay'
-                }
-              />
-              <KpiTile
-                label="Events"
-                value={client.event_count}
-                description={`${data.events.filter((row) => row.status === 'upcoming' || row.status === 'ongoing').length} still to come`}
-              />
-            </TileGrid>
+            {ratesVisible ? (
+              <TileGrid columns={2}>
+                <KpiTile
+                  label="Average margin"
+                  value={client.avg_margin_pct === null ? '—' : `${client.avg_margin_pct}%`}
+                  tone={marginTone(client.avg_margin_pct) === 'green' ? 'ok' : 'default'}
+                  description={
+                    client.avg_margin_pct === null
+                      ? 'nothing delivered yet — no margin is not 0%'
+                      : 'across completed events · after holiday pay'
+                  }
+                />
+                {eventsTile}
+              </TileGrid>
+            ) : (
+              eventsTile
+            )}
           </div>
         </Panel>
 
-        <RateCard clientId={client.id} rows={data.rateCard} roles={data.roles} />
+        <RateCard
+          clientId={client.id}
+          rows={data.rateCard}
+          roles={data.roles}
+          ratesVisible={ratesVisible}
+        />
 
         <QualifiedStaff
           clientId={client.id}
@@ -143,7 +163,18 @@ export function ClientCard({ data }: { data: ClientCardData }) {
           staff={data.staff}
         />
 
-        <ClientEvents rows={data.events} />
+        <ClientEvents rows={data.events} ratesVisible={ratesVisible} />
+
+        {/* The audit trail (ADR-0055), after the scope's four blocks. */}
+        <RecordHistory
+          entity="client"
+          id={client.id}
+          title={
+            <>
+              <span className="blk-n">5</span> History
+            </>
+          }
+        />
 
         <Alert tone="cyan">
           Changing a policy applies to events built from now on; existing events keep the policy

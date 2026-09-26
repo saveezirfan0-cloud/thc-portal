@@ -71,8 +71,9 @@ test('weights that do not sum to 1.00 are refused, with the total shown (§6)', 
   await expect(total).toHaveText('Total 1.10');
   await expect(total).toHaveClass(/coral/);
 
-  // saveWeights runs validateWeights before any write (actions.ts).
-  await weights.getByRole('button', { name: 'Save weights' }).click();
+  // saveWeights runs validateWeights before any write (actions.ts). A block
+  // with unsaved changes shows its Save in the sticky SaveBar, not the panel.
+  await page.getByRole('button', { name: 'Save weights' }).click();
   await expect(weights.locator('.alert.coral')).toHaveText(
     'The five weights must add up to 1.00 — they currently add up to 1.10.',
   );
@@ -92,8 +93,9 @@ test('a no-reply sender is refused: replies go to a monitored mailbox (§9.12)',
   await senders
     .getByLabel('Allocation sheets & timesheets')
     .fill('no-reply@thehospitalitycompany.co.uk');
-  // saveSenders runs validateSenders before any write (actions.ts).
-  await senders.getByRole('button', { name: 'Save senders' }).click();
+  // saveSenders runs validateSenders before any write (actions.ts); the
+  // dirty block's Save is in the SaveBar.
+  await page.getByRole('button', { name: 'Save senders' }).click();
   await expect(senders.locator('.alert.coral')).toHaveText(
     'Timesheets sender: no-reply addresses are not used — replies go to a monitored mailbox.',
   );
@@ -105,7 +107,9 @@ test('the rota guard fails closed and only offers Save once the choice changes (
   await openAsAdmin(page, '/settings');
   const guard = block(page, 'Rota guard');
   const mode = guard.getByLabel('Over the 48-hour limit');
-  const save = guard.getByRole('button', { name: 'Save rota guard' });
+  // In the block while it is clean, in the SaveBar once it is dirty — the
+  // name is unique on the page either way.
+  const save = page.getByRole('button', { name: 'Save rota guard' });
 
   await expect(mode).toHaveValue('block');
   await expect(save).toBeDisabled();

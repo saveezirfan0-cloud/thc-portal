@@ -19,6 +19,8 @@ export interface SummaryPanelProps {
   headcount: number;
   buffer: number;
   forecast: Forecast;
+  /** ADR-0061: false for an office role without finance — no money rows. */
+  ratesVisible: boolean;
 }
 
 /**
@@ -36,6 +38,7 @@ export function SummaryPanel({
   headcount,
   buffer,
   forecast,
+  ratesVisible,
 }: SummaryPanelProps) {
   const zone = useViewerZone();
   // A scheduled time shows both zones, with the local line dropped when they
@@ -78,20 +81,29 @@ export function SummaryPanel({
         <span>Payable hours (forecast)</span>
         <span className="v">{formatHours(forecast.payableHours)}</span>
       </div>
-      <div className="sumrow">
-        <span>Charge (forecast)</span>
-        <span className="v">{gbp(forecast.chargePence)}</span>
-      </div>
-      <div className="sumrow">
-        <span>Pay incl. holiday</span>
-        <span className="v">{gbp(forecast.basePayPence + forecast.holidayPence)}</span>
-      </div>
-      <div className="sumrow">
-        <span>Margin</span>
-        <span className={`v ${forecast.marginPence >= 0 ? 'green' : 'coral'}`}>
-          {gbp(forecast.marginPence)} · {forecast.marginPct.toFixed(1)}%
+      {ratesVisible ? (
+        <>
+          <div className="sumrow">
+            <span>Charge (forecast)</span>
+            <span className="v">{gbp(forecast.chargePence)}</span>
+          </div>
+          <div className="sumrow">
+            <span>Pay incl. holiday</span>
+            <span className="v">{gbp(forecast.basePayPence + forecast.holidayPence)}</span>
+          </div>
+          <div className="sumrow">
+            <span>Margin</span>
+            <span className={`v ${forecast.marginPence >= 0 ? 'green' : 'coral'}`}>
+              {gbp(forecast.marginPence)} · {forecast.marginPct.toFixed(1)}%
+            </span>
+          </div>
+        </>
+      ) : (
+        <span className="muted xs" data-testid="rates-hidden">
+          Rates hidden for your role — each role section is saved at the catalogue and rate-card
+          rates.
         </span>
-      </div>
+      )}
     </Panel>
   );
 }

@@ -33,11 +33,17 @@ import {
   Pill,
   Progress,
   Rating,
+  SaveBar,
   ScheduledWindow,
   Score,
   SearchInput,
   SegBar,
   Select,
+  Skeleton,
+  SkeletonKpis,
+  SkeletonPanel,
+  SkeletonScreen,
+  SkeletonText,
   StatStrip,
   StaticScreen,
   StatusBar,
@@ -210,6 +216,27 @@ export default function Page() {
               Link
             </Button>
             <Button disabled>Disabled</Button>
+          </div>
+          <hr />
+          {/* Disabled is one flat muted surface whatever the tone — never a
+              faded gradient — with a label that still clears 4.5:1. */}
+          <div className="toolbar">
+            <Button tone="primary" disabled>
+              Save rota guard
+            </Button>
+            <Button tone="purple" disabled>
+              Auto-assign
+            </Button>
+            <Button tone="danger" disabled>
+              Reject candidate
+            </Button>
+            <Button tone="outline" disabled>
+              Resend activation link
+            </Button>
+            <Button tone="ghost" disabled>
+              Withdraw
+            </Button>
+            <Input label="Locked field" value="17:00" disabled readOnly />
           </div>
           <hr />
           <div className="toolbar">
@@ -484,6 +511,47 @@ export default function Page() {
             <h3>No events on this day</h3>
             Nothing is scheduled for Sun 27 Sep.
           </EmptyState>
+        </Panel>
+
+        {/* ---------------- save bar ---------------- */}
+        <Panel title="Save bar">
+          <div className="ds-savebar-demo">
+            <p className="sm muted">
+              A long form&apos;s save action, pinned to the bottom of the content area (the Shift
+              Builder, /settings). Frosted like the rest of the chrome; on a phone it rides above
+              the tab bar. Place it as the last child of the form&apos;s container.
+            </p>
+            <SaveBar dirty hint="Rota guard · Sender addresses">
+              <Button>Cancel</Button>
+              <Button tone="primary">Save changes</Button>
+            </SaveBar>
+            <SaveBar hint="Choose a client · Set the event date">
+              <Button>Cancel</Button>
+              <Button tone="primary" disabled>
+                Save event
+              </Button>
+            </SaveBar>
+          </div>
+        </Panel>
+
+        {/* ---------------- skeletons ---------------- */}
+        <Panel title="Loading skeletons">
+          <SkeletonScreen label="Loading the example">
+            <div className="toolbar">
+              <Skeleton shape="avatar" />
+              <Skeleton shape="pill" />
+              <Skeleton shape="block" width={220} />
+            </div>
+            <SkeletonText lines={3} />
+            <SkeletonKpis count={3} />
+            <SkeletonPanel rows={3} avatar />
+          </SkeletonScreen>
+          <hr />
+          <Note>
+            Each Back Office route that reads on the server has a <code>loading.tsx</code> in this
+            shape, inside the same shell, so the sidebar and title never blink. The shimmer stops
+            for anyone who asks their device for reduced motion.
+          </Note>
         </Panel>
 
         {/* ---------------- people ---------------- */}

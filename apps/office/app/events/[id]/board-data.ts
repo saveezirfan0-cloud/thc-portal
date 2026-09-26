@@ -72,8 +72,12 @@ export interface BoardSection {
   endsAt: string;
   headcount: number;
   buffer: number;
-  chargeRate: number;
-  payRate: number;
+  /**
+   * From `shift_rates_v` (ADR-0061): null for an office role without
+   * finance, and the header then draws no rate line at all.
+   */
+  chargeRate: number | null;
+  payRate: number | null;
   dressCode: string;
   autoAssign: boolean;
   allocationPerHour: number;
@@ -209,11 +213,11 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
   if (!eventRow) return { event: null, problem: null };
   const event = eventRow as Record<string, string | boolean | null>;
 
-  const [sectionRes, clientRes, roleRes, settingRes] = await Promise.all([
+  const [sectionRes, clientRes, roleRes, settingRes, rateRes] = await Promise.all([
     supabase
       .from('shift_requirements')
       .select(
-        'id, role_id, starts_at, ends_at, headcount, buffer, charge_rate, pay_rate, dress_code, auto_assign, allocation_per_hour',
+        'id, role_id, starts_at, ends_at, headcount, buffer, dress_code, auto_assign, allocation_per_hour',
       )
       .eq('event_id', eventId)
       .order('starts_at'),
@@ -224,8 +228,14 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
       .maybeSingle(),
     supabase.from('roles').select('id, name'),
     supabase.from('settings').select('value').eq('key', 'scoring_weights').maybeSingle(),
+    // ADR-0061: the rates are not selectable on shift_requirements; this
+    // view returns them to an office role with finance and no row otherwise.
+    supabase
+      .from('shift_rates_v')
+      .select('shift_id, pay_rate, charge_rate')
+      .eq('event_id', eventId),
   ]);
-  const firstError = sectionRes.error ?? clientRes.error ?? roleRes.error;
+  const firstError = sectionRes.error ?? clientRes.error ?? roleRes.error ?? rateRes.error;
   if (firstError) {
     return { event: null, problem: `The event board could not be read: ${firstError.message}` };
   }
@@ -234,6 +244,15 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
   const weights = parseWeights((settingRes.data as { value?: unknown } | null)?.value);
 
   const sections = (sectionRes.data ?? []) as Record<string, string | number | boolean | null>[];
+  const rates = new Map(
+    (
+      (rateRes.data ?? []) as {
+        shift_id: string;
+        pay_rate: number | string;
+        charge_rate: number | string;
+      }[]
+    ).map((r) => [r.shift_id, r]),
+  );
   const roleNames = new Map(
     ((roleRes.data ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]),
   );
@@ -581,8 +600,8 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
           endsAt: section['ends_at'] as string,
           headcount: section['headcount'] as number,
           buffer: section['buffer'] as number,
-          chargeRate: Number(section['charge_rate']),
-          payRate: Number(section['pay_rate']),
+          chargeRate: rates.has(id) ? Number(rates.get(id)!.charge_rate) : null,
+          payRate: rates.has(id) ? Number(rates.get(id)!.pay_rate) : null,
           dressCode: (section['dress_code'] as string) ?? '',
           autoAssign: Boolean(section['auto_assign']),
           allocationPerHour: section['allocation_per_hour'] as number,

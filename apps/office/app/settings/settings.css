@@ -14,6 +14,32 @@
   align-items: start;
 }
 
+/* Each block's body is a column with air between its fields. Without it a
+   field's hint ran straight into the next field's label, and a note sat
+   flush against the hint above it — worst on a phone, where every block is
+   one long column. The save button keeps its own width. */
+.settings-grid .panel-b {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-16);
+}
+.settings-grid .panel-b > p {
+  margin: 0;
+}
+.settings-grid .panel-b > .btn {
+  align-self: flex-start;
+}
+.settings-grid .panel-b > hr {
+  margin: 0;
+}
+/* The radii table draws its own rules between rows. */
+.settings-grid .panel-b:has(> .radius-row) {
+  gap: 0;
+}
+.settings-grid .panel-b:has(> .radius-row) > p {
+  margin-bottom: var(--sp-8);
+}
+
 /* The §9.11 standard-radius table: label, slider, value, save. */
 .radius-row {
   display: grid;
@@ -45,4 +71,47 @@
 }
 .radius-feedback:empty {
   display: none;
+}
+
+/* A phone has no room for label, slider, value and button on one line:
+   the label and value share the first, the slider and button the second. */
+@media (max-width: 760px) {
+  .settings-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .radius-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: var(--sp-6);
+  }
+  .radius-slider {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .radius-value {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  .radius-row > .btn {
+    grid-column: 2;
+    grid-row: 2;
+  }
+}
+
+/* The save bar's actions are the dirty blocks' own Save buttons, portalled
+   in (SettingsScreen's SaveAction); the slot itself draws nothing. */
+.settings-savebar-slot {
+  display: contents;
+}
+@media (max-width: 760px) {
+  .settings-savebar-slot > .btn {
+    flex: 1 1 auto;
+  }
+}
+
+/* A range input's hit area is its 16px track; on a phone the whole row
+   height takes the finger (§1.2). */
+@media (max-width: 760px) {
+  .radius-slider {
+    min-height: var(--tap-min);
+  }
 }

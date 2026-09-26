@@ -3,6 +3,7 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
+import { sessionIsAdmin } from '../../_lib/sessionRole';
 import { createAdminClient } from '@thc/db/admin';
 import { validateEmergencyContact } from '@thc/domain';
 import type { EmergencyContactInput } from '@thc/domain';
@@ -70,13 +71,9 @@ async function asAdmin(): Promise<{ ok: true; userId: string } | { ok: false; me
   const { data: auth } = await supabase.auth.getUser();
   if (!auth.user) return { ok: false, message: 'Sign in to do this.' };
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', auth.user.id)
-    .maybeSingle<{ role: string }>();
-
-  if (profile?.role !== 'admin') {
+  // current_app_role(), not the profiles row: it also refuses a
+  // switched-off login and a two-step login below aal2 (20261001200500).
+  if (!(await sessionIsAdmin(supabase))) {
     return { ok: false, message: 'Only the office can do this.' };
   }
   return { ok: true, userId: auth.user.id };

@@ -2249,6 +2249,36 @@ export type Database = {
           },
         ];
       };
+      office_saved_views: {
+        Row: {
+          created_at: string;
+          id: string;
+          name: string;
+          owner: string;
+          query: Json;
+          scope: string;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          name: string;
+          owner?: string;
+          query: Json;
+          scope?: string;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          name?: string;
+          owner?: string;
+          query?: Json;
+          scope?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       onboarding_progress: {
         Row: {
           address_at: string | null;
@@ -2719,6 +2749,7 @@ export type Database = {
           created_at: string;
           full_name: string;
           id: string;
+          office_role: Database['public']['Enums']['office_role'] | null;
           role: Database['public']['Enums']['app_role'];
         };
         Insert: {
@@ -2726,6 +2757,7 @@ export type Database = {
           created_at?: string;
           full_name: string;
           id: string;
+          office_role?: Database['public']['Enums']['office_role'] | null;
           role: Database['public']['Enums']['app_role'];
         };
         Update: {
@@ -2733,6 +2765,7 @@ export type Database = {
           created_at?: string;
           full_name?: string;
           id?: string;
+          office_role?: Database['public']['Enums']['office_role'] | null;
           role?: Database['public']['Enums']['app_role'];
         };
         Relationships: [];
@@ -6498,6 +6531,15 @@ export type Database = {
           },
         ];
       };
+      rate_card_rates_v: {
+        Row: {
+          charge_rate: number | null;
+          client_id: string | null;
+          id: string | null;
+          role_id: string | null;
+        };
+        Relationships: [];
+      };
       report_first_shifts_v: {
         Row: {
           booking_id: string | null;
@@ -6578,6 +6620,13 @@ export type Database = {
           pay_rate?: number | null;
           rate_card_count?: never;
           section_count?: never;
+        };
+        Relationships: [];
+      };
+      role_rates_v: {
+        Row: {
+          pay_rate: number | null;
+          role_id: string | null;
         };
         Relationships: [];
       };
@@ -6723,6 +6772,15 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
+      };
+      shift_rates_v: {
+        Row: {
+          charge_rate: number | null;
+          event_id: string | null;
+          pay_rate: number | null;
+          shift_id: string | null;
+        };
+        Relationships: [];
       };
       staff_block_audit_v: {
         Row: {
@@ -8620,6 +8678,11 @@ export type Database = {
           starts_at: string;
         }[];
       };
+      office_rates_visible: { Args: never; Returns: boolean };
+      office_saved_view_query_ok: {
+        Args: { p_query: Json; p_scope: string };
+        Returns: boolean;
+      };
       office_submit_completion_letter: {
         Args: {
           p_awarding_institution?: string;
@@ -10496,6 +10559,7 @@ export type Database = {
       feedback_author: 'client' | 'office';
       hmrc_statement: 'A' | 'B' | 'C';
       notification_channel: 'push' | 'email' | 'sms';
+      office_role: 'owner' | 'manager' | 'scheduler' | 'viewer';
       review_status: 'pending' | 'verified' | 'rejected' | 'superseded';
       rtw_branch:
         'uk_irish' | 'eu_settled' | 'work_visa' | 'international_student' | 'dependant_other';
@@ -10686,6 +10750,7 @@ export const Constants = {
       feedback_author: ['client', 'office'],
       hmrc_statement: ['A', 'B', 'C'],
       notification_channel: ['push', 'email', 'sms'],
+      office_role: ['owner', 'manager', 'scheduler', 'viewer'],
       review_status: ['pending', 'verified', 'rejected', 'superseded'],
       rtw_branch: [
         'uk_irish',

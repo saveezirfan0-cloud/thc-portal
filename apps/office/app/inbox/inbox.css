@@ -1,0 +1,60 @@
+/* /inbox — layout only (ADR-0058); every value is a token. */
+
+.inbox-filters > select.input {
+  width: auto;
+  flex: 0 1 220px;
+}
+
+.inbox-when {
+  white-space: nowrap;
+}
+.inbox-to {
+  max-width: 260px;
+  overflow-wrap: anywhere;
+}
+.inbox-status {
+  max-width: 320px;
+}
+.inbox-status .sub {
+  margin-top: var(--sp-4);
+  overflow-wrap: anywhere;
+}
+.tbl .sub.inbox-error {
+  color: var(--coral-ink);
+}
+
+.inbox-pager {
+  display: flex;
+  gap: var(--sp-8);
+  padding: var(--sp-12) var(--sp-16);
+  border-top: 1px solid var(--line);
+}
+.inbox-pager:empty {
+  display: none;
+}
+
+/* Tablet width: five columns in ~590px broke each address every few letters
+   and stacked the email's name a word a line. The table takes a readable
+   width and scrolls inside its card (.table-scroll). */
+@media (min-width: 761px) and (max-width: 1024px) {
+  .inbox-table {
+    min-width: 800px;
+  }
+  /* Past packages/ui's 6.5rem floor for a scrolling table's cells. */
+  .table-scroll > table.tbl.inbox-table td.cell-title {
+    min-width: 12rem;
+  }
+  .table-scroll > table.tbl.inbox-table td.inbox-to {
+    min-width: 13rem;
+  }
+}
+
+@media (max-width: 760px) {
+  .inbox-filters > select.input {
+    flex: 1 1 160px;
+  }
+  .inbox-to,
+  .inbox-status {
+    max-width: none;
+  }
+}

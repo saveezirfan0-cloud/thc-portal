@@ -1,0 +1,18 @@
+/* History on a record page (ADR-0055) — layout only; every value is a token.
+   The table itself borrows /activity's classes (activity.css). */
+
+.record-history .history-alert {
+  padding: var(--sp-12) var(--sp-16) 0;
+}
+
+.history-who {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-8);
+}
+
+/* The scope line and the buttons wrap under the title on a narrow screen. */
+.record-history .panel-h .right {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}

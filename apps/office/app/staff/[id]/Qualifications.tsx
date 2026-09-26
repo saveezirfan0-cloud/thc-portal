@@ -105,7 +105,9 @@ export function Qualifications({
           </div>
         ) : (
           <TableScroll>
-            <table className="tbl">
+            {/* `card-rows`: below 760px each entry is a card titled by the
+                client, every other cell naming its column. */}
+            <table className="tbl card-rows">
               <thead>
                 <tr>
                   <th>Client</th>
@@ -120,13 +122,13 @@ export function Qualifications({
               <tbody>
                 {qualifications.map((row) => (
                   <tr key={row.id} className={row.do_not_return ? 'barred' : undefined}>
-                    <td>
+                    <td className="cell-title">
                       <b>{row.client_name}</b>
                     </td>
-                    <td>
+                    <td data-label="Role">
                       <Chip>{row.role_name}</Chip>
                     </td>
-                    <td className="sm">
+                    <td data-label="Granted by" className="sm">
                       {row.granted_how === 'automatic' ? (
                         <>
                           automatically from{' '}
@@ -139,9 +141,13 @@ export function Qualifications({
                         <>manual{row.granted_by_name ? ` by ${row.granted_by_name}` : ''}</>
                       )}
                     </td>
-                    <td className="mono sm">{formatUkDate(row.granted_at)}</td>
-                    <td className="sm">{row.note ?? <span className="muted">—</span>}</td>
-                    <td>
+                    <td data-label="Date" className="mono sm">
+                      {formatUkDate(row.granted_at)}
+                    </td>
+                    <td data-label="Note (internal)" className="sm">
+                      {row.note ?? <span className="muted">—</span>}
+                    </td>
+                    <td data-label="Do not return">
                       <Switch
                         checked={row.do_not_return}
                         disabled={pending || profile.removed}
@@ -161,7 +167,7 @@ export function Qualifications({
                         }}
                       />
                     </td>
-                    <td className="right-align">
+                    <td className="right-align cell-actions">
                       <Button
                         size="sm"
                         tone="ghost"

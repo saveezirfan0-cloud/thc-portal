@@ -1,0 +1,15 @@
+-- =====================================================================
+-- ADR-0060 · The read-only "viewer" office role — the enum value only
+--
+-- Owner-approved (ADR-0055's sketch had it; ADR-0056 left it unbuilt).
+-- A viewer reads what a manager reads, finance included, and writes
+-- nothing. What enforces that is 20261001201100.
+--
+-- On its own in this file on purpose: `alter type … add value` may run in
+-- a transaction, but the new label cannot be USED in the same one
+-- ("unsafe use of new value"), and the Supabase CLI applies each migration
+-- file as one transaction. office_can() below names 'viewer' in a SQL
+-- function body, which is parsed — and the literal coerced — when it is
+-- created, so it has to be a later file.
+-- =====================================================================
+alter type office_role add value if not exists 'viewer';

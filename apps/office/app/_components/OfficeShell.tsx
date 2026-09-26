@@ -2,6 +2,7 @@ import { Content, Logo, ModeSwitch, Shell, SignOut, Topbar } from '@thc/ui';
 import type { NavItem } from '@thc/ui';
 import { NAV_ICONS } from './navIcons';
 import { OfficeSidebar } from './OfficeSidebar';
+import { ReadOnlyBanner } from './ReadOnlyBanner';
 import { SignedInAs } from './SignedInAs';
 import type { ReactNode } from 'react';
 
@@ -16,7 +17,9 @@ import type { ReactNode } from 'react';
  * visual contract (CLAUDE.md).
  *
  * `/settings` is in none of the wireframes' sidebars, so it hangs last,
- * below a divider, where it does not disturb their order. It is the
+ * below a divider, where it does not disturb their order — and the three
+ * account screens (`/users`, `/activity`, `/account`, ADR-0055) hang
+ * under it for the same reason. It is the
  * Django-Admin replacement (§9.11, §9.12) and without a link an admin could
  * only reach it by typing the URL.
  *
@@ -41,6 +44,9 @@ import type { ReactNode } from 'react';
  * `primary` items are tabs — the day-of-operations screens a manager opens
  * from a phone — and everything else, with the sign-out and the appearance
  * switch, is one tap away under More.
+ *
+ * A viewer (ADR-0060) sees "Read-only access" at the top of every screen's
+ * content — `ReadOnlyBanner`, from the same context as the menu.
  */
 const ITEMS: readonly NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', primary: true },
@@ -55,6 +61,10 @@ const ITEMS: readonly NavItem[] = [
   { href: '/feedback', label: 'Feedback' },
   { href: '/venues', label: 'Venues' },
   { href: '/settings', label: 'Settings', dividerBefore: true },
+  { href: '/users', label: 'Users & access', short: 'Users' },
+  { href: '/activity', label: 'Activity log', short: 'Activity' },
+  { href: '/inbox', label: 'Inbox', short: 'Inbox' },
+  { href: '/account', label: 'My profile', short: 'Profile' },
 ];
 
 export const NAV: readonly NavItem[] = ITEMS.map((item) => ({
@@ -136,7 +146,10 @@ export function OfficeShell({
           </>
         }
       />
-      <Content>{children}</Content>
+      <Content>
+        <ReadOnlyBanner />
+        {children}
+      </Content>
     </Shell>
   );
 }

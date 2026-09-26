@@ -59,6 +59,11 @@
   font-size: var(--fs-11);
   color: var(--muted);
 }
+/* A time range is one reading: "17:00 – 23:30" never breaks inside itself.
+   At tablet width the column was squeezed to one number a line. */
+.monitor-tbl .win2 {
+  white-space: nowrap;
+}
 .monitor-tbl .stamp {
   font-variant-numeric: tabular-nums;
 }

@@ -306,3 +306,60 @@
 .superseded-group {
   opacity: 0.65;
 }
+
+/* ---- phone (390px) ----
+   The board's six columns are each most of the screen wide and snap
+   (packages/ui does this for .kanban; .six sets its own track above, so it
+   restates the phone track here). The profile header puts the actions on
+   their own line, so the name and its facts keep the width beside the
+   selfie — squeezed beside "Reject candidate" a phone number broke in two.
+   Every key/value grid stacks its label over its value, the report card's
+   thumbnail lets its content take the line, and the four quiz columns
+   (300px of fixed tracks) share what the phone has. */
+@media (max-width: 760px) {
+  .kanban.six {
+    grid-auto-columns: 84%;
+  }
+  .cand-head {
+    flex-wrap: wrap;
+  }
+  .cand-head .who {
+    flex: 1 1 12rem;
+  }
+  .cand-head .actions {
+    flex: 1 1 100%;
+    margin-left: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--sp-8);
+  }
+  .kv,
+  .kv.narrow {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--sp-4);
+  }
+  .kv > :not(.k) {
+    margin-bottom: var(--sp-6);
+    overflow-wrap: anywhere;
+  }
+  .pdfcard {
+    flex-wrap: wrap;
+  }
+  .pdfcard > :not(.thumb) {
+    flex: 1 1 12rem;
+    min-width: 0;
+  }
+  .attempt {
+    grid-template-columns: var(--sp-28) minmax(0, 1fr) auto auto;
+  }
+}
+
+/* On a phone the card's "Review interview on Willo" link is a finger
+   target (§1.2); the line it sits on grows, the text does not. */
+@media (max-width: 760px) {
+  .kcard a.willo {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--tap-min);
+  }
+}

@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState, useTransition } from 'react';
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Input, Note, Panel, Pill, Select } from '@thc/ui';
+import { Alert, Button, Input, Note, Panel, Pill, SaveBar, Select } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import {
   saveAutoAssignNumbers,
@@ -39,6 +40,23 @@ import './settings.css';
  * inline-alert-per-block feedback.
  */
 export function SettingsScreen({ data }: { data: SettingsData }) {
+  // The save bar (packages/ui SaveBar). A block with unsaved edits moves its
+  // own Save button into the bar at the bottom of the screen, so the action
+  // is in reach wherever the manager has scrolled to; a clean block keeps it
+  // in place. Each button keeps its label, its disabled rule and its action.
+  const [slot, setSlot] = useState<HTMLDivElement | null>(null);
+  const [dirty, setDirty] = useState<Readonly<Record<string, string>>>({});
+  const mark = useCallback((id: string, title: string, isDirty: boolean) => {
+    setDirty((current) => {
+      if (isDirty === id in current) return current;
+      const next = { ...current };
+      if (isDirty) next[id] = title;
+      else delete next[id];
+      return next;
+    });
+  }, []);
+  const titles = Object.values(dirty);
+
   return (
     <OfficeShell
       activeHref="/settings"
@@ -48,19 +66,61 @@ export function SettingsScreen({ data }: { data: SettingsData }) {
     >
       {data.problem ? <Alert tone="coral">{data.problem}</Alert> : null}
 
-      <div className="settings-grid">
-        <WeightsBlock weights={data.weights} />
-        <AutoAssignBlock
-          gapMinutes={data.bookedElsewhereGapMinutes}
-          escalationMiles={data.escalationRadiusMiles}
-        />
-        <RotaGuardBlock mode={data.rotaGuardMode} />
-        <WilloBlock map={data.willo} reviewUrlTemplate={data.willoReviewUrlTemplate} />
-        <SendersBlock senders={data.senders} recipients={data.recipients} />
-        <RadiiBlock types={data.venueTypes} />
-      </div>
+      <SaveSlot.Provider value={{ slot, mark }}>
+        <div className="settings-grid">
+          <WeightsBlock weights={data.weights} />
+          <AutoAssignBlock
+            gapMinutes={data.bookedElsewhereGapMinutes}
+            escalationMiles={data.escalationRadiusMiles}
+          />
+          <RotaGuardBlock mode={data.rotaGuardMode} />
+          <WilloBlock map={data.willo} reviewUrlTemplate={data.willoReviewUrlTemplate} />
+          <SendersBlock senders={data.senders} recipients={data.recipients} />
+          <RadiiBlock types={data.venueTypes} />
+        </div>
+
+        <SaveBar
+          label="Unsaved settings"
+          dirty
+          hint={titles.join(' · ')}
+          className={titles.length === 0 ? 'hide' : undefined}
+        >
+          <div className="settings-savebar-slot" ref={setSlot} />
+        </SaveBar>
+      </SaveSlot.Provider>
     </OfficeShell>
   );
+}
+
+const SaveSlot = createContext<{
+  slot: HTMLElement | null;
+  mark: (id: string, title: string, dirty: boolean) => void;
+} | null>(null);
+
+/**
+ * Where a block's Save button is drawn: in the block while it is clean, in
+ * the page's save bar while it has unsaved edits. The button is the same
+ * element either way — only its place on the screen changes.
+ */
+function SaveAction({
+  id,
+  title,
+  dirty,
+  children,
+}: {
+  id: string;
+  title: string;
+  dirty: boolean;
+  children: ReactNode;
+}) {
+  const bar = useContext(SaveSlot);
+  const mark = bar?.mark;
+  useEffect(() => {
+    mark?.(id, title, dirty);
+    return () => mark?.(id, title, false);
+  }, [mark, id, title, dirty]);
+  if (dirty && bar?.slot) return createPortal(children, bar.slot);
+  return <>{children}</>;
 }
 
 /** One block's save button, its pending state and its one line of feedback. */
@@ -112,6 +172,11 @@ function Block({
   );
 }
 
+/** Plain settings values (numbers, strings, flat records) compared by content. */
+function sameValue(a: unknown, b: unknown): boolean {
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 function Feedback({ note, error }: { note: string | null; error: string | null }) {
   if (error) return <Alert tone="coral">{error}</Alert>;
   if (note) return <Alert tone="green">{note}</Alert>;
@@ -158,9 +223,11 @@ function WeightsBlock({ weights }: { weights: ScoringWeights }) {
         be out-scored by proximity.
       </Note>
       <Feedback note={note} error={error} />
-      <Button tone="primary" disabled={pending} onClick={() => run(() => saveWeights(draft))}>
-        {pending ? 'Saving…' : 'Save weights'}
-      </Button>
+      <SaveAction id="weights" title="Scoring weights" dirty={!sameValue(draft, weights)}>
+        <Button tone="primary" disabled={pending} onClick={() => run(() => saveWeights(draft))}>
+          {pending ? 'Saving…' : 'Save weights'}
+        </Button>
+      </SaveAction>
     </Block>
   );
 }
@@ -200,13 +267,19 @@ function AutoAssignBlock({
         onChange={(event) => setMiles(Number(event.target.value))}
       />
       <Feedback note={note} error={error} />
-      <Button
-        tone="primary"
-        disabled={pending}
-        onClick={() => run(() => saveAutoAssignNumbers(gap, miles))}
+      <SaveAction
+        id="limits"
+        title="Auto-assign limits"
+        dirty={gap !== gapMinutes || miles !== escalationMiles}
       >
-        {pending ? 'Saving…' : 'Save limits'}
-      </Button>
+        <Button
+          tone="primary"
+          disabled={pending}
+          onClick={() => run(() => saveAutoAssignNumbers(gap, miles))}
+        >
+          {pending ? 'Saving…' : 'Save limits'}
+        </Button>
+      </SaveAction>
     </Block>
   );
 }
@@ -241,13 +314,15 @@ function RotaGuardBlock({ mode }: { mode: RotaGuardMode }) {
         every booking path.
       </Note>
       <Feedback note={note} error={error} />
-      <Button
-        tone="primary"
-        disabled={pending || draft === mode}
-        onClick={() => run(() => saveRotaGuardMode(draft))}
-      >
-        {pending ? 'Saving…' : 'Save rota guard'}
-      </Button>
+      <SaveAction id="rota" title="Rota guard" dirty={draft !== mode}>
+        <Button
+          tone="primary"
+          disabled={pending || draft === mode}
+          onClick={() => run(() => saveRotaGuardMode(draft))}
+        >
+          {pending ? 'Saving…' : 'Save rota guard'}
+        </Button>
+      </SaveAction>
     </Block>
   );
 }
@@ -304,9 +379,11 @@ function WilloBlock({
         </Select>
       ))}
       <Feedback note={note} error={error} />
-      <Button tone="primary" disabled={pending} onClick={() => run(() => saveWilloMap(draft))}>
-        {pending ? 'Saving…' : 'Save stage map'}
-      </Button>
+      <SaveAction id="willo-map" title="Willo stage map" dirty={!sameValue(draft, map)}>
+        <Button tone="primary" disabled={pending} onClick={() => run(() => saveWilloMap(draft))}>
+          {pending ? 'Saving…' : 'Save stage map'}
+        </Button>
+      </SaveAction>
       <hr />
       {/* §2.4: "The candidate profile carries a direct 'Review interview on
           Willo' link" — the template is the one B1 input, entered here so
@@ -320,13 +397,15 @@ function WilloBlock({
         onChange={(event) => setTemplate(event.target.value)}
       />
       <Feedback note={link.note} error={link.error} />
-      <Button
-        tone="primary"
-        disabled={link.pending}
-        onClick={() => link.run(() => saveWilloReviewUrlTemplate(template))}
-      >
-        {link.pending ? 'Saving…' : 'Save Willo link'}
-      </Button>
+      <SaveAction id="willo-link" title="Willo link" dirty={template !== (reviewUrlTemplate ?? '')}>
+        <Button
+          tone="primary"
+          disabled={link.pending}
+          onClick={() => link.run(() => saveWilloReviewUrlTemplate(template))}
+        >
+          {link.pending ? 'Saving…' : 'Save Willo link'}
+        </Button>
+      </SaveAction>
     </Block>
   );
 }
@@ -364,9 +443,11 @@ function SendersBlock({
         E5 and E6 to <b>{recipients.e5e6.join(', ')}</b>; E7 to <b>{recipients.e7.join(', ')}</b>.
       </Note>
       <Feedback note={note} error={error} />
-      <Button tone="primary" disabled={pending} onClick={() => run(() => saveSenders(draft))}>
-        {pending ? 'Saving…' : 'Save senders'}
-      </Button>
+      <SaveAction id="senders" title="Sender addresses" dirty={!sameValue(draft, senders)}>
+        <Button tone="primary" disabled={pending} onClick={() => run(() => saveSenders(draft))}>
+          {pending ? 'Saving…' : 'Save senders'}
+        </Button>
+      </SaveAction>
     </Block>
   );
 }

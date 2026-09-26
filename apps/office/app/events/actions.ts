@@ -25,8 +25,13 @@ export interface RoleSectionInput {
   end: string;
   headcount: number;
   buffer: number;
-  chargeRate: number;
-  payRate: number;
+  /**
+   * Null when the builder was opened by an office role without finance
+   * (ADR-0061): the rates are then not sent at all, and the database sets
+   * the catalogue rates on the section (`shift_rates_office_guard`).
+   */
+  chargeRate: number | null;
+  payRate: number | null;
   dressCode: string;
   autoAssign: boolean;
   allocationPerHour: number;
@@ -72,15 +77,14 @@ function validate(input: EventInput): string | null {
 function sectionRow(eventId: string, date: string, role: RoleSectionInput) {
   const { startsAt, endsAt } = ukRoleWindow(date, role.start, role.end);
   return {
-    ...(role.id ? { id: role.id } : {}),
     event_id: eventId,
     role_id: role.roleId,
     starts_at: startsAt.toISOString(),
     ends_at: endsAt.toISOString(),
     headcount: role.headcount,
     buffer: role.buffer,
-    charge_rate: role.chargeRate,
-    pay_rate: role.payRate,
+    ...(role.chargeRate === null ? {} : { charge_rate: role.chargeRate }),
+    ...(role.payRate === null ? {} : { pay_rate: role.payRate }),
     dress_code: role.dressCode || null,
     auto_assign: role.autoAssign,
     allocation_per_hour: role.allocationPerHour,
@@ -246,10 +250,31 @@ export async function updateEvent(input: EventInput): Promise<SaveResult> {
     await supabase.from('shift_requirements').delete().in('id', removed);
   }
 
-  const { error: sectionError } = await supabase
-    .from('shift_requirements')
-    .upsert(input.roles.map((role) => sectionRow(input.id!, input.date, role)));
-  if (sectionError) return { error: sectionError.message };
+  // Existing sections are UPDATEd and new ones INSERTed, not upserted: an
+  // upsert's ON CONFLICT … SET pay_rate = EXCLUDED.pay_rate reads the rate
+  // column, which no signed-in session may select since ADR-0061 — a
+  // manager's save would be refused. A plain UPDATE writes it without
+  // reading it.
+  const eventId = input.id;
+  const storedIds = new Set(before.map((s) => s.id));
+  for (const role of input.roles) {
+    if (!role.id || !storedIds.has(role.id)) continue;
+    const { error: updateError } = await supabase
+      .from('shift_requirements')
+      .update(sectionRow(eventId, input.date, role))
+      .eq('id', role.id)
+      .eq('event_id', eventId);
+    if (updateError) return { error: updateError.message };
+  }
+  // A section with no stored row — new in the builder, or one that
+  // disappeared under it — is inserted, as the upsert used to.
+  const added = input.roles.filter((role) => !role.id || !storedIds.has(role.id));
+  if (added.length > 0) {
+    const { error: insertError } = await supabase
+      .from('shift_requirements')
+      .insert(added.map((role) => sectionRow(eventId, input.date, role)));
+    if (insertError) return { error: insertError.message };
+  }
 
   const notifyFailed = await flagReconfirmations(supabase, input, before, {
     dateChanged: event.event_date !== input.date,

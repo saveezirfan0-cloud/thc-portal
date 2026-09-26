@@ -45,6 +45,8 @@ export interface RoleSectionProps {
   changed: Set<string>;
   original: RoleDraft | undefined;
   locked: boolean;
+  /** ADR-0061: false for an office role without finance — no rate fields, no margin. */
+  ratesVisible: boolean;
   onChange: (patch: Partial<RoleDraft>) => void;
   onRemove: () => void;
 }
@@ -62,6 +64,7 @@ export function RoleSection({
   changed,
   original,
   locked,
+  ratesVisible,
   onChange,
   onRemove,
 }: RoleSectionProps) {
@@ -116,7 +119,7 @@ export function RoleSection({
         </span>
         {/* Absolute buffer: "12 (+2)", never the total (§3.2). */}
         <Pill>{formatAllocationPair(role.headcount, role.buffer)}</Pill>
-        {role.chargeRate > 0 ? (
+        {ratesVisible && role.chargeRate > 0 ? (
           <span className={`mono sm ${margin >= 0 ? 'green' : 'coral'}`}>
             margin {signedPence(margin)}
           </span>
@@ -209,55 +212,63 @@ export function RoleSection({
                 })}
           />
 
-          <div className="field">
-            <label className="label" htmlFor={`${fieldId}-charge`}>
-              Charge rate
-            </label>
-            <div className="input-row">
-              <span className="addon l">£</span>
-              <input
-                id={`${fieldId}-charge`}
-                className={classes('input', 'mono', chargeFromCard && 'readonly')}
-                type="number"
-                step="0.01"
-                min={0}
-                readOnly={chargeFromCard}
-                value={money(role.chargeRate)}
-                onChange={(e) => onChange({ chargeRate: Number(e.target.value) })}
-              />
-            </div>
-            <span className="hint">
-              {client ? `${client.name} rate card` : 'From the rate card'}
-              {chargeFromCard ? (
-                <>
-                  {' · '}
-                  <button type="button" className="linkish" onClick={() => setChargeOverride(true)}>
-                    override
-                  </button>
-                </>
-              ) : null}
-            </span>
-          </div>
+          {ratesVisible ? (
+            <>
+              <div className="field">
+                <label className="label" htmlFor={`${fieldId}-charge`}>
+                  Charge rate
+                </label>
+                <div className="input-row">
+                  <span className="addon l">£</span>
+                  <input
+                    id={`${fieldId}-charge`}
+                    className={classes('input', 'mono', chargeFromCard && 'readonly')}
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    readOnly={chargeFromCard}
+                    value={money(role.chargeRate)}
+                    onChange={(e) => onChange({ chargeRate: Number(e.target.value) })}
+                  />
+                </div>
+                <span className="hint">
+                  {client ? `${client.name} rate card` : 'From the rate card'}
+                  {chargeFromCard ? (
+                    <>
+                      {' · '}
+                      <button
+                        type="button"
+                        className="linkish"
+                        onClick={() => setChargeOverride(true)}
+                      >
+                        override
+                      </button>
+                    </>
+                  ) : null}
+                </span>
+              </div>
 
-          <div className="field">
-            <label className="label" htmlFor={`${fieldId}-pay`}>
-              Pay rate (base)
-            </label>
-            <div className="input-row">
-              <span className="addon l">£</span>
-              <input
-                id={`${fieldId}-pay`}
-                className="input mono"
-                type="number"
-                step="0.01"
-                min={0}
-                value={money(role.payRate)}
-                onChange={(e) => onChange({ payRate: Number(e.target.value) })}
-              />
-            </div>
-            {/* Holiday is always broken out at 12.07%, never blended (§9.8). */}
-            <span className="hint">final £{money(finalRatePence / 100)} (+12.07%)</span>
-          </div>
+              <div className="field">
+                <label className="label" htmlFor={`${fieldId}-pay`}>
+                  Pay rate (base)
+                </label>
+                <div className="input-row">
+                  <span className="addon l">£</span>
+                  <input
+                    id={`${fieldId}-pay`}
+                    className="input mono"
+                    type="number"
+                    step="0.01"
+                    min={0}
+                    value={money(role.payRate)}
+                    onChange={(e) => onChange({ payRate: Number(e.target.value) })}
+                  />
+                </div>
+                {/* Holiday is always broken out at 12.07%, never blended (§9.8). */}
+                <span className="hint">final £{money(finalRatePence / 100)} (+12.07%)</span>
+              </div>
+            </>
+          ) : null}
         </div>
 
         <div className="f3">

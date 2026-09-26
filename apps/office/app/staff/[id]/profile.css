@@ -199,6 +199,20 @@
   }
 }
 
+/* The two referee cards sit side by side inside a half-width panel. Below a
+   wide desktop each card was ~115px and its values ran out of the card
+   (an email over the next panel at 820px); they stack instead, and a long
+   address or email breaks inside its own cell. */
+@media (max-width: 1100px) {
+  .grid.c2:has(> .card > .kv.tight) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.kv > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 /* A panel that runs the full width of a two-column tab. */
 .span-2 {
   grid-column: 1 / -1;
@@ -209,4 +223,27 @@
 .tbl tr.clickable:focus-visible {
   outline: 2px solid var(--focus-line);
   outline-offset: -2px;
+}
+
+/* The × that takes a role off the worker is 17px of glyph; on a phone its
+   hit area reaches the finger target without making the chip any larger. */
+@media (max-width: 760px) {
+  /* A do-not-return entry is a card here (card-rows): the whole card is
+     tinted, not each of its cells as separate strips. */
+  .tbl.card-rows tr.barred {
+    background: var(--coral-dim);
+  }
+  .tbl.card-rows tr.barred td {
+    background: none;
+  }
+  .roles-edit .x {
+    position: relative;
+  }
+  .roles-edit .x::after {
+    content: '';
+    position: absolute;
+    inset: calc((var(--tap-min) - 100%) / -2);
+    min-width: var(--tap-min);
+    min-height: var(--tap-min);
+  }
 }

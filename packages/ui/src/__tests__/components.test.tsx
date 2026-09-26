@@ -54,6 +54,15 @@ import {
   UserChip,
 } from '../components/Shell';
 import { Progress, Stepper } from '../components/Stepper';
+import { SaveBar } from '../components/SaveBar';
+import {
+  Skeleton,
+  SkeletonKpis,
+  SkeletonPanel,
+  SkeletonScreen,
+  SkeletonText,
+  SkeletonToolbar,
+} from '../components/Skeleton';
 
 /* The inlined logo is ~1.6kB of path coordinates that says nothing about a
    class contract, and that the component and brand/thc-mark.svg agree is
@@ -316,6 +325,81 @@ describe('DocRow', () => {
         </Panel>,
       ),
     ).toMatchSnapshot();
+  });
+});
+
+describe('SaveBar', () => {
+  it('renders the clean, dirty and blocked states', () => {
+    expect(
+      html(
+        <div>
+          <SaveBar>
+            <Button tone="primary">Save</Button>
+          </SaveBar>
+          <SaveBar dirty hint="Rota guard · Sender addresses" label="Unsaved settings">
+            <Button>Cancel</Button>
+            <Button tone="primary">Save changes</Button>
+          </SaveBar>
+          <SaveBar status="Saving…" hint="Choose a client">
+            <Button tone="primary" disabled>
+              Save event
+            </Button>
+          </SaveBar>
+        </div>,
+      ),
+    ).toMatchSnapshot();
+  });
+
+  it('says "Unsaved changes" only when the form is dirty, and is a named region', () => {
+    const clean = renderToStaticMarkup(
+      <SaveBar>
+        <Button>Save</Button>
+      </SaveBar>,
+    );
+    const dirty = renderToStaticMarkup(
+      <SaveBar dirty>
+        <Button>Save</Button>
+      </SaveBar>,
+    );
+    expect(clean).not.toContain('Unsaved changes');
+    expect(dirty).toContain('Unsaved changes');
+    expect(dirty).toMatch(/role="region"[^>]*aria-label="Save changes"/);
+    expect(dirty).toContain('class="savebar dirty"');
+  });
+});
+
+describe('Skeleton', () => {
+  it('renders every shape and the composites', () => {
+    expect(
+      html(
+        <SkeletonScreen label="Loading staff">
+          <Skeleton />
+          <Skeleton shape="block" width={220} />
+          <Skeleton shape="pill" />
+          <Skeleton shape="avatar" width={72} height={72} />
+          <Skeleton shape="tile" />
+          <Skeleton shape="card" height="12rem" />
+          <SkeletonText lines={2} />
+          <SkeletonToolbar controls={1} />
+          <SkeletonKpis count={3} />
+          <SkeletonPanel rows={2} avatar />
+        </SkeletonScreen>,
+      ),
+    ).toMatchSnapshot();
+  });
+
+  it('is announced once as busy and hides every shape from assistive technology', () => {
+    const markup = renderToStaticMarkup(
+      <SkeletonScreen label="Loading staff">
+        <Skeleton />
+        <SkeletonPanel rows={1} />
+      </SkeletonScreen>,
+    );
+    expect(markup).toMatch(/role="status" aria-busy="true"/);
+    expect(markup).toContain('Loading staff…');
+    for (const shape of markup.match(/<span[^>]*class="skel[ "][^>]*>/g) ?? []) {
+      expect(shape).toContain('aria-hidden="true"');
+    }
   });
 });
 

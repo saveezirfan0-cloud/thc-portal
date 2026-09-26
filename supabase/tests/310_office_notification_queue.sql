@@ -56,8 +56,8 @@ values (:'wrk', :'wrk_uid', 'Queue', 'Worker', 'queue-wrk@office.test', '+447700
 select bag_eq(
   $$ select p.polname::text || ':' || p.polcmd::text
        from pg_policy p where p.polrelid = 'notification_outbox'::regclass $$,
-  $$ values ('admin_read:r'::text) $$,
-  'and the fix did NOT add an insert policy: the table still carries exactly admin_read, select only');
+  $$ values ('admin_read:r'::text), ('office_users_invite_links:r'), ('office_activation_links:r') $$,
+  'and the fix did NOT add an insert policy: the table carries admin_read and the restrictive E11 (20261001200600) and E3 (20261001201200) read fences — all select only');
 
 -- ---------------------------------------------------------------------
 -- 2. The office's door, exercised as the role PostgREST actually uses.

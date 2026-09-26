@@ -10,6 +10,7 @@ import {
 } from '@thc/db';
 import { createClient } from '@thc/db/server';
 import { SIGN_IN_REFUSED } from './messages';
+import { nextLevelFor, verifyStepPath } from './two-step';
 
 /**
  * Email + password sign-in (§1.4).
@@ -77,6 +78,13 @@ export async function signIn(_prev: string | null, formData: FormData): Promise<
   // token refresh, route handlers, the browser client (packages/db/src/session.ts).
   const preference = keepSignedInCookie(persistence);
   cookieStore.set(preference.name, preference.value, preference.options);
+
+  // Two-step sign-in (ADR-0057): a password alone is aal1. A login with a
+  // verified authenticator goes to the code step before anything else, with
+  // `next` carried through; the middleware would send it there anyway, this
+  // just saves the round trip. Set after the preference cookie above, so the
+  // session the code step upgrades keeps this device's choice.
+  if (nextLevelFor(data?.user?.factors) === 'aal2') redirect(verifyStepPath(next));
 
   redirect(next);
 }

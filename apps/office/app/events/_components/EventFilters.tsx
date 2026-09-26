@@ -2,11 +2,10 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { EVENT_STATUS_LABEL, type EventStatus } from '@thc/domain';
+import { EVENT_STATUS_LABEL } from '@thc/domain';
 import { hrefFor, type ToolbarQuery } from './EventToolbar';
 import type { ClientOption } from '../data';
-
-const STATUSES: EventStatus[] = ['upcoming', 'ongoing', 'completed', 'cancelled'];
+import { EVENT_STATUSES } from '../_lib/filters';
 
 /**
  * Search and the two filters (§3.1).
@@ -25,7 +24,7 @@ export function EventFilters({ query, clients }: { query: ToolbarQuery; clients:
       className="row"
       onSubmit={(event) => {
         event.preventDefault();
-        router.push(hrefFor({ ...query, q }));
+        router.push(hrefFor({ ...query, q: q.trim() }));
       }}
     >
       <div className="search">
@@ -62,7 +61,7 @@ export function EventFilters({ query, clients }: { query: ToolbarQuery; clients:
         onChange={(event) => router.push(hrefFor({ ...query, status: event.target.value }))}
       >
         <option value="">Any status</option>
-        {STATUSES.map((status) => (
+        {EVENT_STATUSES.map((status) => (
           <option key={status} value={status}>
             {EVENT_STATUS_LABEL[status]}
           </option>

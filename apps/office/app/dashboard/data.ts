@@ -46,7 +46,12 @@ const NO_SUPABASE =
 const NO_ROWS =
   'The Dashboard read no rows. Every figure on this screen is admin-only, so this is what it looks like signed in as anything else.';
 
-export async function loadDashboard(): Promise<DashboardData> {
+/**
+ * `finance: false` for an office role without it (ADR-0056): the weekly
+ * money panel is not asked for — dashboard_week_finance_v would return no
+ * row to that session anyway, and the ten-day list's rates come back NULL.
+ */
+export async function loadDashboard({ finance: withFinance = true } = {}): Promise<DashboardData> {
   if (!supabaseConfigured()) {
     return { kpis: null, finance: null, upcoming: [], problem: NO_SUPABASE };
   }
@@ -57,7 +62,9 @@ export async function loadDashboard(): Promise<DashboardData> {
     // maybeSingle: the views return one row to an admin and none to
     // anybody else, which is the access rule, not an error.
     supabase.from('dashboard_kpis_v').select('*').maybeSingle(),
-    supabase.from('dashboard_week_finance_v').select('*').maybeSingle(),
+    withFinance
+      ? supabase.from('dashboard_week_finance_v').select('*').maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
     supabase
       .from('dashboard_upcoming_v')
       .select('*')

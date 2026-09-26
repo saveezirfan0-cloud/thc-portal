@@ -64,7 +64,7 @@ export function Availability({
                         {availabilityLength(row)}
                       </td>
                       <td data-label="Repeats">{repeats ?? <span className="muted">—</span>}</td>
-                      <td data-label="Overlaps a booking">
+                      <td data-label="Overlaps a booking" className="cell-wide">
                         {row.bookings.length === 0 ? (
                           <span className="muted">—</span>
                         ) : (

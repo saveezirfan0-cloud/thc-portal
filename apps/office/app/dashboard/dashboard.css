@@ -60,6 +60,57 @@
   align-items: baseline;
 }
 
+/* On a phone each role line becomes a small block of its own inside the
+   card: the role and its fill on the first line, the window (with §1.8's
+   "your time" under it) on the left below, and the allocation and margin
+   stacked on the right. In one row the five parts were squeezed until a
+   time printed one character per line. */
+@media (max-width: 760px) {
+  .dash-roles {
+    gap: 0;
+  }
+  .dash-roles .r {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      'role fill'
+      'win alloc'
+      'win margin';
+    column-gap: var(--sp-10);
+    row-gap: var(--sp-4);
+    align-items: start;
+    padding: var(--sp-10) 0;
+    border-top: 1px solid var(--line);
+    font-size: var(--fs-13);
+  }
+  .dash-roles .r:first-child {
+    border-top: 0;
+    padding-top: 0;
+  }
+  .dash-roles .r:last-child {
+    padding-bottom: 0;
+  }
+  .dash-roles .r > .chip {
+    grid-area: role;
+    min-width: 0;
+    justify-self: start;
+  }
+  .dash-roles .r > .pill {
+    grid-area: fill;
+  }
+  .dash-roles .r > .win {
+    grid-area: win;
+  }
+  .dash-roles .r > .alloc {
+    grid-area: alloc;
+    text-align: right;
+  }
+  .dash-roles .r > .margin {
+    grid-area: margin;
+    text-align: right;
+  }
+}
+
 @media (max-width: 1100px) {
   .dash-finance {
     grid-template-columns: minmax(0, 1fr);

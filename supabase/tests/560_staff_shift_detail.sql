@@ -155,7 +155,14 @@ select ok(pg_get_function_result('public.staff_shift_detail(uuid)'::regprocedure
 
 set local "request.jwt.claims" = '{"sub":"44444444-4444-4444-4444-444444444444","role":"authenticated"}';
 set local role authenticated;
-select ok((select to_jsonb(d)::text from staff_shift_detail(:'booking_a') d) !~ '22\.97',
+-- Compared field by field, not as text: the row carries now()-derived
+-- timestamps, and one stamped at hh:mm:22.97… matched a text search for
+-- '22.97' (PR #79 CI, 19:36:22.97).
+select ok(not exists (select 1
+                        from staff_shift_detail(:'booking_a') d,
+                             jsonb_each(to_jsonb(d)) e
+                       where e.value = to_jsonb(22.97::numeric)
+                          or e.value #>> '{}' = '22.97'),
   'C: and the section''s charge rate value appears nowhere in the row');
 
 -- ---------------------------------------------------------------------

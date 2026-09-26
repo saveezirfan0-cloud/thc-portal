@@ -39,4 +39,33 @@ describe('the rate card (§9.7, client-card.html)', () => {
     expect(html).toContain('No roles on this rate card');
     expect(html).not.toContain('placeholder="0.00"');
   });
+
+  it('ADR-0061: without finance it lists roles and dress codes — no rate, no margin, no controls', () => {
+    const hidden: RateCardRow = {
+      ...ROW,
+      charge_rate: null,
+      base_pay_rate: null,
+      final_pay_rate: null,
+      margin_per_hour: null,
+      margin_pct: null,
+    };
+    const html = renderToStaticMarkup(
+      <RateCard clientId="c1" rows={[hidden]} roles={ROLES} ratesVisible={false} />,
+    );
+    expect(html).toContain('Waiting Staff');
+    expect(html).toContain('Black &amp; whites');
+    expect(html).toContain('Rates hidden for your role');
+    for (const absent of [
+      'Charge rate',
+      'Base pay',
+      'Margin',
+      '£',
+      '—',
+      'Edit',
+      'Remove',
+      '+ Add role',
+    ]) {
+      expect(html).not.toContain(absent);
+    }
+  });
 });

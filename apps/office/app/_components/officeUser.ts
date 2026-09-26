@@ -3,13 +3,22 @@
    against a linked project, so `from('profiles')` resolves to `never`. Same
    narrowing the other office loaders use, for one row. */
 
+import { cache } from 'react';
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { type OfficeRole, OFFICE_ROLE_LABEL, isOfficeRole } from '../_lib/permissions';
 
 /** Who the sidebar foot names. Serialisable: it crosses to a client component. */
 export interface OfficeUser {
   name: string;
+  /** The line under the name: the office role's label (ADR-0056), or "Admin". */
   role?: string;
+  /**
+   * `profiles.office_role` — what the menu and the gated pages ask
+   * (`_lib/permissions.ts`). Absent when it could not be read; the screens
+   * then hide nothing and the database refuses what it must.
+   */
+  officeRole?: OfficeRole;
 }
 
 /** True when this environment has a Supabase project wired up (docs/04). */
@@ -32,8 +41,11 @@ function supabaseConfigured(): boolean {
  * Null rather than a placeholder when there is no project or no session: the
  * foot then shows the sign-out alone, which is honest, where a fake name is
  * not.
+ *
+ * Wrapped in React's `cache`, so the layout and a gated page (Reports,
+ * Settings, Users & access…) share one lookup per request.
  */
-export async function officeUser(): Promise<OfficeUser | null> {
+export const officeUser = cache(async (): Promise<OfficeUser | null> => {
   if (!supabaseConfigured()) return null;
 
   const supabase = createClient(await cookies()) as any;
@@ -42,7 +54,7 @@ export async function officeUser(): Promise<OfficeUser | null> {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('full_name')
+    .select('full_name, office_role')
     .eq('id', auth.user.id)
     .maybeSingle();
 
@@ -52,5 +64,20 @@ export async function officeUser(): Promise<OfficeUser | null> {
   // app_metadata, not the profiles row: it is what the middleware gated on
   // to admit this session to this app at all, and the user cannot edit it.
   const role = auth.user.app_metadata?.['role'];
-  return { name, ...(role === 'admin' ? { role: 'Admin' } : {}) };
+  if (role !== 'admin') return { name };
+  // The office role is read from profiles: it is not in the token, and a
+  // change on /users takes effect on the next request, as the database's
+  // office_can() does.
+  const officeRole: unknown = profile?.office_role;
+  return isOfficeRole(officeRole)
+    ? { name, role: OFFICE_ROLE_LABEL[officeRole], officeRole }
+    : { name, role: 'Admin' };
+});
+
+/**
+ * The signed-in operator's office role, for a server page's gate. Shares
+ * the layout's lookup (`cache`), so it costs no second round trip.
+ */
+export async function currentOfficeRole(): Promise<OfficeRole | null> {
+  return (await officeUser())?.officeRole ?? null;
 }
