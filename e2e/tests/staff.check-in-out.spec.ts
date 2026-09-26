@@ -220,7 +220,7 @@ test.describe('strict buffer: the headcount is already on site (§3.2, RULE-15)'
     // turnedAwayMessage(240) (packages/domain/src/staff.ts).
     const screen = page.locator('[data-static="turned_away"]');
     await expect(screen).toBeVisible();
-    await expect(screen.getByText('Not needed today')).toBeVisible();
+    await expect(screen.getByText('Not needed today', { exact: true })).toBeVisible();
     await expect(screen.getByRole('heading', { name: 'Thanks for coming' })).toBeVisible();
     await expect(screen).toContainText('this shift is already fully staffed');
     await expect(screen).toContainText('you’ll be paid for 4 hours');

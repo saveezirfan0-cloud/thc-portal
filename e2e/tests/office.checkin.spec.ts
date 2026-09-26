@@ -191,9 +191,25 @@ test('Get back on the event board registers the no-show as arrived, Late (§3.3)
   const row = page.locator('.prow', { hasText: `${dunlin!.firstName} D.` });
   await expect(row.getByText('No show', { exact: true })).toBeVisible();
   // No payroll export yet, so BookingActions runs it without the §3.3 warning.
+  // The board is a heavy client tree: a press before hydration is a click on
+  // inert server HTML, so wait for the page to settle first.
+  await page.waitForLoadState('networkidle');
   await row.getByRole('button', { name: 'Get back' }).click();
 
-  await expect(row.getByText('No show', { exact: true })).toHaveCount(0);
+  // BookingActions.tsx prints a refusal in the row as role="alert"; if one
+  // appears, fail with its words rather than a bare "still No show".
+  await expect
+    .poll(
+      async () => {
+        const refusal = (await row.getByRole('alert').allTextContents()).join(' ').trim();
+        if (refusal) return `refused: ${refusal}`;
+        return (await row.getByText('No show', { exact: true }).count()) === 0
+          ? 'got back'
+          : 'still No show';
+      },
+      { timeout: 10_000 },
+    )
+    .toBe('got back');
   await expect(row.getByRole('button', { name: 'Get back' })).toHaveCount(0);
 
   // Underneath: get_back() → resolve_violation() on the SAME entry the log

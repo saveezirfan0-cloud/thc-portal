@@ -27,6 +27,13 @@ import {
  */
 
 const AWARDS_NIGHT = '60000000-0000-4000-8000-000000000005';
+/**
+ * The Mark-as-read entry's event. A client leaves one entry per worker per
+ * event (`feedback_one_client_entry_per_event_staff`), and the unread one
+ * above already holds Awards Night; Mandarin Oriental is neither of the
+ * clients the filter test narrows by.
+ */
+const PRODUCT_LAUNCH = '60000000-0000-4000-8000-000000000002';
 const DORCHESTER = '40000000-0000-4000-8000-000000000003';
 const LEONARDO = '40000000-0000-4000-8000-000000000001';
 /** Gisela M., the seeded admin every office spec signs in as. */
@@ -199,7 +206,7 @@ test.describe('entries about one worker', () => {
     const readText = `Read e2e ${Date.now()}: excellent`;
     const id = sql(
       `insert into feedback (author_kind, author_id, staff_id, event_id, rating, text)
-       values ('client', null, ${lit(who!.staffId)}, ${lit(AWARDS_NIGHT)}, 4, ${lit(readText)})
+       values ('client', null, ${lit(who!.staffId)}, ${lit(PRODUCT_LAUNCH)}, 4, ${lit(readText)})
        returning id`,
     );
 
