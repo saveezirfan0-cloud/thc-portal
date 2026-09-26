@@ -1,5 +1,5 @@
 {
-  "description": "The booking state machine (Scope §3.6, with §3.3, §3.4, §3.5, §4.3, §5.2 RULE-15, §10.4, §10.6, §1.7) and the cancel_cause vocabulary. Held against BOOKING_TRANSITIONS / CANCEL_CAUSES in state.ts and against booking_transitions(), booking_transition_allowed(), the bookings_state_guard trigger and the bookings_cancel_cause_check constraint in 20260924120000_booking_state_machine.sql (edges restated in 20260930110100). Every pair of distinct statuses NOT listed under edges is illegal; staying in the same status is not a transition.",
+  "description": "The booking state machine (Scope §3.6, with §3.3, §3.4, §3.5, §4.3, §5.2 RULE-15, §10.4, §10.6, §1.7) and the cancel_cause vocabulary. Held against BOOKING_TRANSITIONS / CANCEL_CAUSES in state.ts and against booking_transitions(), booking_transition_allowed(), the bookings_state_guard trigger and the bookings_cancel_cause_check constraint in 20260924120000_booking_state_machine.sql (edges restated in 20260930110100; handed_over added by 20260930200100_staff_additions_schema.sql, ADR-0046). Every pair of distinct statuses NOT listed under edges is illegal; staying in the same status is not a transition.",
   "statuses": ["invited", "applied", "confirmed", "worked", "turned_away", "cancelled", "closed"],
   "edges": [
     {
@@ -83,6 +83,11 @@
       "cause": "self_cancel",
       "status": "cancelled",
       "ref": "§3.6 RULE-04 self-cancel, more than 72 h out"
+    },
+    {
+      "cause": "handed_over",
+      "status": "cancelled",
+      "ref": "ADR-0046 · RULE-04 §3.6 the worker offered the shift up and a confirmed replacement took it (take_offered_shift); sets self_cancelled"
     },
     {
       "cause": "overlap_auto_withdraw",

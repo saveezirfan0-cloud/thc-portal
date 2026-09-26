@@ -10,7 +10,9 @@ import { describe, expect, it } from 'vitest';
  * `import type`, which the deploy bundler still walks. `roundMayInvite`
  * (D33, ADR-0037) needs `bookingReopenableBy`, which is why that function
  * lives in `reopen.ts` with no imports rather than in `state.ts`, whose
- * own imports (`./rtwCheck` → `./onboarding`) carry no extension.
+ * own imports (`./rtwCheck` → `./onboarding`) carry no extension. The
+ * availability gate (ADR-0043) adds `availability.ts` → `time.ts`, both
+ * with explicit extensions for the same reason.
  */
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -32,6 +34,12 @@ describe('the Edge Function import path stays Deno-resolvable', () => {
         queue.push(spec.slice(2));
       }
     }
-    expect([...seen].sort()).toEqual(['autoAssign.ts', 'reopen.ts', 'scoring.ts']);
+    expect([...seen].sort()).toEqual([
+      'autoAssign.ts',
+      'availability.ts',
+      'reopen.ts',
+      'scoring.ts',
+      'time.ts',
+    ]);
   });
 });

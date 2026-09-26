@@ -110,7 +110,47 @@ export interface BoardData {
   candidates: CandidateRow[];
   returning: ReturningRow[];
   roles: RoleOption[];
+  /**
+   * Who arrived through a referral link (ADR-0047): a separate read of
+   * `application_referrals` — `onboarding_candidates_v` is not restated for
+   * it (docs/19 §0.6). Absent or empty draws no chip.
+   */
+  referred?: ReferredOnBoard;
+  /** Set when that read failed: the board says so, not "nobody referred" (D18). */
+  referredProblem?: string | null;
   problem: string | null;
+}
+
+/**
+ * One `application_referrals` row (20260930200100) with the referrer's
+ * `staff` row embedded. Admin-read only; the applicant never sees it.
+ */
+export interface ReferralRow {
+  application_id: string;
+  candidate_staff_id: string;
+  referrer_staff_id: string;
+  recorded_at: string;
+  referrer: {
+    first_name: string;
+    last_name: string;
+    employee_id: number | null;
+    removed_at: string | null;
+  } | null;
+}
+
+/** "Referred by {name} ({employeeId})" on /onboarding/:id (ADR-0047). */
+export interface CandidateReferral {
+  referrerId: string;
+  /** "Deleted account #id" once the referrer is removed (§1.7). */
+  referrerName: string;
+  referrerEmployeeId: number | null;
+  recordedAt: string;
+}
+
+/** The kanban's "Referred" chip: by candidate, and by returning application. */
+export interface ReferredOnBoard {
+  candidates: string[];
+  applications: string[];
 }
 
 /** One row of staff_documents_v (20260922094500), plus term dates. */
@@ -245,6 +285,10 @@ export interface CandidateData {
   rtwChecks?: RtwCheckRow[];
   /** settings.rtw_check.enabled. */
   rtwCheckEnabled?: boolean;
+  /** The latest referral that brought this person in (ADR-0047). */
+  referral?: CandidateReferral | null;
+  /** Set when that read failed: said on the screen, not "not referred" (D18). */
+  referralProblem?: string | null;
   /** The NI number and the right-to-work conditions (20260930130100/130400). */
   facts?: CandidateFacts | null;
   problem: string | null;

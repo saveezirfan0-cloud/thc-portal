@@ -208,6 +208,29 @@ describe('shift outcomes (§9.6)', () => {
       shiftOutcome({ ...SHIFT, booking_status: 'cancelled', kind: null, self_cancelled: false }),
     ).toBe('Cancelled');
   });
+
+  it('names a hand-over as one, not as a self-cancellation (ADR-0046)', () => {
+    // take_offered_shift sets self_cancelled = true on the original booking
+    // too (the event bar, Q15) — the cause is what tells the two apart.
+    expect(
+      shiftOutcome({
+        ...SHIFT,
+        booking_status: 'cancelled',
+        kind: null,
+        cancel_cause: 'handed_over',
+        self_cancelled: true,
+      }),
+    ).toBe('Handed over (offered up)');
+    expect(
+      shiftOutcome({
+        ...SHIFT,
+        booking_status: 'cancelled',
+        kind: null,
+        cancel_cause: 'self_cancel',
+        self_cancelled: true,
+      }),
+    ).toBe('Self-cancelled');
+  });
 });
 
 describe('payable hours (RULE-01)', () => {

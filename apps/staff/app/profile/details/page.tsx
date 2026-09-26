@@ -1,10 +1,12 @@
 import { redirect } from 'next/navigation';
 import { Alert } from '@thc/ui';
+import { LoadProblem } from '../../_components/LoadProblem';
 import { ProfileShell } from '../_components/ProfileShell';
 import { appLock, canReachProfileDetails } from '../lock';
-import { loadProfile, supabaseConfigured } from '../data';
+import { loadChangeRequests, loadEmergencyContact, loadProfile, supabaseConfigured } from '../data';
 import { signOwnPhoto } from '../photos';
 import { DetailsForm } from './DetailsForm';
+import { EmergencyContactSection } from './EmergencyContactSection';
 import '../profile.css';
 
 export const dynamic = 'force-dynamic';
@@ -43,7 +45,11 @@ export default async function Page() {
   if (!canReachProfileDetails(lock)) redirect('/profile');
 
   const name = `${profile.firstName} ${profile.lastName}`.trim();
-  const photoUrl = await signOwnPhoto(profile.photoPath);
+  const [photoUrl, contact, requests] = await Promise.all([
+    signOwnPhoto(profile.photoPath),
+    loadEmergencyContact(),
+    loadChangeRequests(),
+  ]);
 
   return (
     <ProfileShell
@@ -53,7 +59,19 @@ export default async function Page() {
       name={name}
       photoUrl={photoUrl}
     >
-      <DetailsForm profile={profile} photoUrl={photoUrl} />
+      <DetailsForm
+        profile={profile}
+        photoUrl={photoUrl}
+        requests={requests.rows}
+        requestsProblem={requests.problem !== null}
+      />
+      {/* ADR-0044. A failed read says so (audit D18) rather than offering an
+          empty form that would overwrite a contact we could not see. */}
+      {contact.problem ? (
+        <LoadProblem what="your emergency contact" />
+      ) : (
+        <EmergencyContactSection contact={contact.row} />
+      )}
     </ProfileShell>
   );
 }

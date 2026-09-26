@@ -3,12 +3,15 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { type CandidateRow, type ScoreWeights, parseWeights } from '@thc/domain';
 import { eventsDb, supabaseConfigured } from '../db';
 import {
+  type BoardOffer,
   type BoardPersonName,
   type BookingAttendance,
   type CheckLogRow,
   type EndedBooking,
+  type Handover,
   type PoolEntry,
   type UnavailableEntry,
+  type UnavailableWindow,
   type ViolationRow,
   attendanceOf,
   buildPool,
@@ -52,6 +55,11 @@ export interface BoardBooking extends BoardPersonName {
   /** An unresolved No-show (§3.3): badged in Confirmed, with Get back. */
   noShow: boolean;
   reconfirmRequired: boolean;
+  /**
+   * ADR-0046: the open offer on a confirmed booking — a chip, never a move:
+   * the worker stays confirmed until somebody takes it.
+   */
+  offer: BoardOffer | null;
   /** On shift / Checked out / Late / Left early / No check-out (wireframe). */
   attendance: BookingAttendance;
 }
@@ -82,6 +90,13 @@ export interface BoardSection {
   /** Why `pool` is null — shown on the section rather than hidden. */
   poolProblem: string | null;
   unavailable: UnavailableEntry[];
+  /**
+   * ADR-0043: set when `auto_assign_unavailable` could not be read. The
+   * pool is still shown, but it may list workers the engine will skip.
+   */
+  calendarProblem: string | null;
+  /** ADR-0046: completed hand-overs on this section, oldest first. */
+  handovers: Handover[];
   /** Under way: the pool is the escalation pool (radius, nearest first, §3.4). */
   escalation: boolean;
 }
@@ -131,6 +146,30 @@ interface StaffRow {
  * every proxy's limit and no single response meets the row cap.
  */
 const IN_CHUNK = 150;
+
+/** One `shift_offers` row as the board reads it (ADR-0046). */
+interface OfferRow {
+  id: string;
+  booking_id: string;
+  shift_id: string;
+  mode: 'pool' | 'office' | 'direct';
+  status: string;
+  note: string | null;
+  expires_at: string;
+  closed_at: string | null;
+  taken_by_booking_id: string | null;
+}
+
+/** `auto_assign_unavailable` (20260930201000), not yet in the generated types. */
+interface UnavailableRpc {
+  rpc(
+    fn: 'auto_assign_unavailable',
+    args: { p_shift: string },
+  ): PromiseLike<{
+    data: { staff_id: string; starts_at: string; ends_at: string }[] | null;
+    error: { message: string } | null;
+  }>;
+}
 
 async function selectIn<T>(
   supabase: SupabaseClient,
@@ -210,8 +249,9 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
       .map((s) => s['id'] as string),
   );
 
-  // Bookings, and the candidate pool per section — each computed now.
-  const [bookingRes, candidateRes] = await Promise.all([
+  // Bookings, the candidate pool and the availability calendar per
+  // section — each computed now.
+  const [bookingRes, candidateRes, awayRes, offerRes] = await Promise.all([
     sectionIds.length
       ? supabase
           .from('bookings')
@@ -231,6 +271,25 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
           .or('gate.is.null,gate.neq.wrong_role'),
       ),
     ),
+    // ADR-0043: who marked each ROLE SECTION's window unavailable (RULE-18).
+    // A new RPC, typed locally until the Phase 2 type regeneration.
+    Promise.all(
+      sectionIds.map((id) =>
+        (supabase as unknown as UnavailableRpc).rpc('auto_assign_unavailable', { p_shift: id }),
+      ),
+    ),
+    // ADR-0046: open offers (the Confirmed-row chips) and completed
+    // hand-overs (the section's history line). The office reads
+    // shift_offers through its admin_read policy.
+    sectionIds.length
+      ? supabase
+          .from('shift_offers')
+          .select(
+            'id, booking_id, shift_id, mode, status, note, expires_at, closed_at, taken_by_booking_id',
+          )
+          .in('shift_id', sectionIds)
+          .in('status', ['open', 'taken'])
+      : Promise.resolve({ data: [], error: null }),
   ]);
   if (bookingRes.error) {
     return {
@@ -238,7 +297,23 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
       problem: `The bookings on this event could not be read: ${bookingRes.error.message}`,
     };
   }
+  // An unread offer must not look like "nobody has offered anything up".
+  if (offerRes.error) {
+    return {
+      event: null,
+      problem: `The shift offers on this event could not be read: ${offerRes.error.message}`,
+    };
+  }
   const bookings = (bookingRes.data ?? []) as Record<string, string | boolean | null>[];
+  const offerRows = (offerRes.data ?? []) as OfferRow[];
+  const openOffers = new Map<string, BoardOffer>(
+    offerRows
+      .filter((o) => o.status === 'open')
+      .map((o) => [
+        o.booking_id,
+        { offerId: o.id, mode: o.mode, expiresAt: o.expires_at, note: o.note },
+      ]),
+  );
   const candidates = new Map<string, { rows: CandidateRow[] | null; problem: string | null }>(
     sectionIds.map((id, i) => {
       const res = candidateRes[i]!;
@@ -250,6 +325,30 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
               problem: `The candidate pool could not be computed: ${res.error.message}`,
             }
           : { rows: (res.data ?? []) as CandidateRow[], problem: null },
+      ];
+    }),
+  );
+
+  const away = new Map<
+    string,
+    { windows: Map<string, UnavailableWindow[]>; problem: string | null }
+  >(
+    sectionIds.map((id, i) => {
+      const res = awayRes[i]!;
+      const windows = new Map<string, UnavailableWindow[]>();
+      for (const row of res.data ?? []) {
+        const list = windows.get(row.staff_id) ?? [];
+        list.push({ startsAt: row.starts_at, endsAt: row.ends_at });
+        windows.set(row.staff_id, list);
+      }
+      return [
+        id,
+        {
+          windows,
+          problem: res.error
+            ? `The availability calendar could not be read: ${res.error.message}`
+            : null,
+        },
       ];
     }),
   );
@@ -399,12 +498,31 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
       qualified: qualified.has(`${person.staffId}:${roleId}`),
       noShow: noShows.has(row['id'] as string),
       reconfirmRequired: Boolean(row['reconfirm_required']),
+      offer: openOffers.get(row['id'] as string) ?? null,
       attendance: attendanceOf(
         logsByBooking.get(row['id'] as string) ?? [],
         violationsByBooking.get(row['id'] as string) ?? [],
       ),
     };
   };
+
+  // "Handed over: {from} → {to} · {date}" — both people hold a booking on
+  // the section (the original cancelled / handed_over, the taker's), so
+  // both are already named.
+  const bookingStaff = new Map(bookings.map((b) => [b['id'] as string, b['staff_id'] as string]));
+  const nameOf = (bookingId: string | null) => {
+    const staffId = bookingId ? bookingStaff.get(bookingId) : undefined;
+    return (staffId && people.get(staffId)?.name) || 'Deleted account';
+  };
+  const handovers = (shiftId: string): Handover[] =>
+    offerRows
+      .filter((o) => o.shift_id === shiftId && o.status === 'taken' && o.closed_at)
+      .sort((a, b) => (a.closed_at ?? '').localeCompare(b.closed_at ?? ''))
+      .map((o) => ({
+        fromName: nameOf(o.booking_id),
+        toName: nameOf(o.taken_by_booking_id),
+        at: o.closed_at!,
+      }));
 
   return {
     problem: null,
@@ -435,6 +553,7 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
           .map((b) => toBooking(b, roleId))
           .sort((a, b) => (a.appliedAt ?? a.createdAt).localeCompare(b.appliedAt ?? b.createdAt));
         const { rows, problem } = candidates.get(id)!;
+        const calendar = away.get(id)!;
 
         // Everyone with a live booking here is listed in its own section.
         const live = new Set(
@@ -484,11 +603,17 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
                   createdAt: a.createdAt,
                 })),
                 weights,
-                { ended, proximityFirst: escalating.has(id) },
+                {
+                  ended,
+                  proximityFirst: escalating.has(id),
+                  unavailable: new Set(calendar.windows.keys()),
+                },
               )
             : null,
           poolProblem: problem,
-          unavailable: buildUnavailable(rows, ended, people, live),
+          unavailable: buildUnavailable(rows, ended, people, live, calendar.windows),
+          calendarProblem: calendar.problem,
+          handovers: handovers(id),
           escalation: escalating.has(id),
         };
       }),

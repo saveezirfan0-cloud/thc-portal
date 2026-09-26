@@ -60,6 +60,7 @@ import {
   phaseIndex,
   phaseLabel,
   quizGate,
+  referredByLabel,
   stageAge,
   stageEnteredAt,
   studentLoanLabel,
@@ -480,6 +481,24 @@ function Facts({ row, data, phase }: { row: CandidateRow; data: CandidateData; p
     facts.push(
       <span key="addr">
         Address <b>{data.profile.home_address}</b>
+      </span>,
+    );
+  }
+  // ADR-0047: who referred them, on every phase — the office's to see,
+  // never the applicant's. The name opens the referrer's profile.
+  if (data.referralProblem) {
+    // Audit D18: a failed read is not "not referred".
+    facts.push(
+      <span key="referral" className="coral">
+        Referral could not be read: {data.referralProblem}
+      </span>,
+    );
+  } else if (data.referral) {
+    facts.push(
+      <span key="referral">
+        <Link href={`/staff/${data.referral.referrerId}`} className="cyan">
+          <b>{referredByLabel(data.referral)}</b>
+        </Link>
       </span>,
     );
   }

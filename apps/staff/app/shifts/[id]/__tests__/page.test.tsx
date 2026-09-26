@@ -72,6 +72,15 @@ vi.mock('../data', () => ({
 vi.mock('../../../data', () => ({
   loadBookings: async () => ({ rows: [], problem: null }),
   openInvites: () => [],
+  shiftsBadge: () => 0,
+}));
+
+/** Set to make `staff_booking_offers()` fail (audit D18, ADR-0046). */
+let offersFail = false;
+vi.mock('../../offers-data', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  loadBookingOffers: async () =>
+    offersFail ? { rows: [], problem: 'timeout' } : { rows: [], problem: null },
 }));
 
 const { default: Page } = await import('../page');
@@ -153,6 +162,7 @@ beforeEach(() => {
   shift.mockReset();
   profileFails = false;
   shiftFails = false;
+  offersFail = false;
 });
 
 describe('§10.1 the app lock stands in front of the shift screen', () => {
@@ -189,11 +199,13 @@ describe('§10.1 the app lock stands in front of the shift screen', () => {
     expect(html).not.toContain('Check in');
   });
 
-  it('uses the shell’s tabs, Documents included as a real link', async () => {
+  it('uses the shell’s tabs, Profile — the home of Documents — included as a real link', async () => {
     profile.mockResolvedValue(worker());
     shift.mockResolvedValue(detail());
     const html = await render();
-    expect(html).toContain('href="/documents"');
+    // ADR-0042: Shifts · Invites · Radar · Profile.
+    // The tab icon sits between the link and its label.
+    expect(html).toMatch(/<a href="\/profile">(?:(?!<\/a>).)*<span class="l">Profile<\/span><\/a>/);
   });
 
   it('is a 404 for a booking that is not the worker’s', async () => {
@@ -275,6 +287,28 @@ describe('audit D18 · a failed read is not a 404', () => {
   });
 });
 
+describe('audit D18 · a failed offer read never guesses the Offer panel (ADR-0046)', () => {
+  const days = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
+
+  it('says the offer could not be loaded, and offers neither Offer nor Ask the office', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail({ startsAt: days(5), endsAt: days(5.25) }));
+    offersFail = true;
+    const html = await render();
+    expect(html).toContain('We couldn’t load this shift’s offer');
+    expect(html).not.toContain('Ask the office for cover');
+    expect(html).not.toContain('Offer this shift');
+  });
+
+  it('with the read answered, the panel is drawn as before', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail({ startsAt: days(5), endsAt: days(5.25) }));
+    const html = await render();
+    expect(html).not.toContain('this shift’s offer');
+    expect(html).toContain('Ask the office for cover');
+  });
+});
+
 describe('§5.1 / §5.2b the live screen, phase by phase', () => {
   const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
   const ahead = (min: number) => new Date(Date.now() + min * 60_000).toISOString();
@@ -297,6 +331,25 @@ describe('§5.1 / §5.2b the live screen, phase by phase', () => {
     expect(html).toContain('Check-in opens at');
     expect(html).toContain('Unlocks after check-in');
     expect(disabledButton(html, 'Start break')).toBe(true);
+  });
+
+  it('counts down to the check-in window before it opens (start − 30 min)', async () => {
+    profile.mockResolvedValue(worker());
+    // Starts in 2 h 45 min: the window opens in 2 h 15 min.
+    shift.mockResolvedValue(detail({ startsAt: ahead(165), endsAt: ahead(600) }));
+    const html = await render();
+    expect(html).toMatch(/Check-in opens in 2 h 1[45] min/);
+  });
+
+  it('offers Directions, Add to calendar and a tap-to-call contact (§10.4)', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail({ startsAt: ahead(120), endsAt: ahead(600) }));
+    const html = await render();
+    expect(html).toContain(
+      'href="https://www.google.com/maps/dir/?api=1&amp;destination=51.502%2C-0.16"',
+    );
+    expect(html).toContain('href="/shifts/b1/calendar.ics"');
+    expect(html).toContain('Priya on <a href="tel:07700900999">07700 900999</a>');
   });
 
   it('draws no Breaks block at all where the client pays for breaks', async () => {
@@ -382,6 +435,8 @@ describe('§5.1 / §5.2b the live screen, phase by phase', () => {
     );
     expect(html).not.toContain('Check out');
     expect(html).not.toContain('12.07');
+    // A finished shift needs neither directions nor a diary entry.
+    expect(html).not.toContain('Add to calendar');
   });
 });
 

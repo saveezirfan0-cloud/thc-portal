@@ -9,7 +9,9 @@
  * Who may reopen an ended booking row on the same section (§3.6, §3.4,
  * §10.4; ADR-0037). `booking_reopenable_by()` in SQL is the same table.
  *
- *   never   self_cancel (RULE-04), event_cancelled, gdpr / gdpr_invite
+ *   never   self_cancel (RULE-04), handed_over (ADR-0046: the same bar,
+ *           since offering a shift up is leaving it), event_cancelled,
+ *           gdpr / gdpr_invite
  *   anyone  ended by circumstance — slot_taken, overlap_auto_withdraw, a
  *           block or leave cascade: an auto-assign round may invite again
  *   person  ended by a decision — declined, withdrawn_by_worker,
@@ -21,7 +23,13 @@
  */
 export type Reopener = 'never' | 'anyone' | 'person';
 
-const NEVER_REOPENED: readonly string[] = ['self_cancel', 'event_cancelled', 'gdpr', 'gdpr_invite'];
+const NEVER_REOPENED: readonly string[] = [
+  'self_cancel',
+  'handed_over',
+  'event_cancelled',
+  'gdpr',
+  'gdpr_invite',
+];
 const REOPENED_BY_ANYONE: readonly string[] = [
   'slot_taken',
   'overlap_auto_withdraw',

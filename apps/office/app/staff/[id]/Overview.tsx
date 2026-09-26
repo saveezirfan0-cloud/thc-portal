@@ -3,7 +3,15 @@
 import { Note, Panel, Pill } from '@thc/ui';
 import { RTW_LABEL, capReason, formatDateRange, formatUkDate } from '../staff';
 import { formatUkStamp, reviewLabel } from './profile';
-import type { DeclarationRow, ProfileRow, ReferenceRow } from './types';
+import { EmergencyContactCard } from './EmergencyContactCard';
+import { ReferralsCard } from './ReferralsCard';
+import type {
+  DeclarationRow,
+  EmergencyContact,
+  ProfileRow,
+  ReferenceRow,
+  Referrals,
+} from './types';
 
 /**
  * The Overview tab (§9.6): "everything collected during onboarding, in
@@ -35,12 +43,22 @@ export function Overview({
   references,
   declarations,
   locationStale = false,
+  emergencyContact = null,
+  emergencyContactProblem = null,
+  referrals = null,
+  referralsProblem = null,
 }: {
   profile: ProfileRow;
   references: ReferenceRow[];
   declarations: DeclarationRow[];
   /** The address moved and the pin could not follow (20260926110000). */
   locationStale?: boolean;
+  /** ADR-0044 — null reads "Not provided". */
+  emergencyContact?: EmergencyContact | null;
+  emergencyContactProblem?: string | null;
+  /** ADR-0047. */
+  referrals?: Referrals | null;
+  referralsProblem?: string | null;
 }) {
   return (
     <div className="grid c2">
@@ -95,6 +113,14 @@ export function Overview({
         </div>
       </Panel>
 
+      {/* ADR-0044: office-only, never on a client document. */}
+      <EmergencyContactCard
+        staffId={profile.id}
+        contact={emergencyContact}
+        problem={emergencyContactProblem}
+        editable={!profile.removed}
+      />
+
       <Panel
         title="Two references"
         actions={<span className="muted sm">not reviewed · supporting information only</span>}
@@ -121,6 +147,9 @@ export function Overview({
           </div>
         )}
       </Panel>
+
+      {/* ADR-0047: who referred them, and who applied with their code. */}
+      <ReferralsCard referrals={referrals} problem={referralsProblem} />
 
       <Panel
         title="Criminal convictions · history"

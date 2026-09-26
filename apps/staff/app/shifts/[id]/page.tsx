@@ -3,9 +3,10 @@ import { notFound, redirect } from 'next/navigation';
 import { Alert } from '@thc/ui';
 import { LoadProblem } from '../../_components/LoadProblem';
 import { StaffShell } from '../../_components/StaffShell';
-import { loadBookings, openInvites } from '../../data';
+import { loadBookings, openInvites, shiftsBadge } from '../../data';
 import { readProfile } from '../../profile/data';
 import { loadShift, supabaseConfigured } from './data';
+import { loadBookingOffers, offersByBooking } from '../offers-data';
 import { shiftScreenReachable } from './phase';
 import { ShiftScreen } from './ShiftScreen';
 import '../../staff-app.css';
@@ -50,11 +51,12 @@ export default async function Page({
 
   // `staff_shift_detail()` answers for the caller's own bookings only:
   // another worker's id returns nothing rather than their shift.
-  const [{ shift, problem }, { rows: bookings, problem: listProblem }, me] = await Promise.all([
-    loadShift(id),
-    loadBookings(),
-    readProfile(),
-  ]);
+  const [
+    { shift, problem },
+    { rows: bookings, problem: listProblem },
+    me,
+    { rows: offers, problem: offerProblem },
+  ] = await Promise.all([loadShift(id), loadBookings(), readProfile(), loadBookingOffers()]);
 
   // A read that FAILED is not a 404 (audit D18): "this shift doesn't exist"
   // to a worker who has one is how a No-show happens.
@@ -78,16 +80,16 @@ export default async function Page({
       active="/shifts"
       {...(listProblem
         ? {}
-        : {
-            shifts: bookings.filter((b) => b.status === 'confirmed' || b.status === 'worked')
-              .length,
-            invites: openInvites(bookings).length,
-          })}
+        : { shifts: shiftsBadge(bookings), invites: openInvites(bookings).length })}
     >
       <ShiftScreen
         shift={shift}
         firstName={me.kind === 'ok' ? me.profile.firstName || null : null}
         autoCheckIn={checkin === '1'}
+        offer={offersByBooking(offers).get(id) ?? null}
+        // Audit D18: an unread offer is not "no offer" — the panel would
+        // offer "Offer this shift" on a shift already out there.
+        offerProblem={offerProblem !== null}
       />
     </StaffShell>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Input, Note } from '@thc/ui';
 import {
@@ -11,6 +12,10 @@ import {
 } from '../actions';
 import type { StaffProfile } from '../types';
 import { PhotoField } from './PhotoField';
+import { LoadProblem } from '../../_components/LoadProblem';
+import { ChangeStatus } from './ChangeStatus';
+import { canRequest, requestHref, statusLine } from '../change-requests';
+import type { ChangeRequest } from '../change-requests';
 
 /**
  * Profile details — §10.1, `wireframes/staff/profile.html`.
@@ -21,6 +26,8 @@ import { PhotoField } from './PhotoField';
  *                 corrections go through the office." No function in
  *                 actions.ts writes it, so this is a statement of fact
  *                 rather than a disabled input hiding a live field.
+ *                 "Request a change" (ADR-0045) asks the office; the
+ *                 status line under it says where that request is.
  *   NI number     Masked and locked ONCE ENTERED. A worker who joined
  *                 without one — which is allowed (§2.10) — can add it
  *                 here, and doing so sends E6.
@@ -37,12 +44,23 @@ import { PhotoField } from './PhotoField';
 export function DetailsForm({
   profile,
   photoUrl,
+  requests = [],
+  requestsProblem = false,
 }: {
   profile: StaffProfile;
   photoUrl: string | null;
+  /** The worker's own change requests (ADR-0045), newest first. */
+  requests?: ChangeRequest[];
+  /**
+   * `my_profile_change_requests()` failed (audit D18). Not "no requests":
+   * the status lines are replaced by the load-problem state, and "Request
+   * a change" is not offered on a guess that nothing is pending.
+   */
+  requestsProblem?: boolean;
 }) {
   const router = useRouter();
   const name = `${profile.firstName} ${profile.lastName}`.trim();
+  const nameLine = statusLine(requests, 'name');
 
   const [phone, setPhone] = useState(profile.phone);
   const [address, setAddress] = useState(profile.homeAddress ?? '');
@@ -80,15 +98,34 @@ export function DetailsForm({
 
   return (
     <>
-      <PhotoField name={name} photoUrl={photoUrl} locked={profile.photoLocked} />
+      <PhotoField
+        name={name}
+        photoUrl={photoUrl}
+        locked={profile.photoLocked}
+        canRequestChange={!requestsProblem && canRequest(requests, 'photo')}
+        status={requestsProblem ? null : statusLine(requests, 'photo')}
+      />
 
       <div className="field lockf">
         <span className="label">Full name</span>
         <input className="input" value={name} readOnly />
         <span className="hint">
           Tied to your right-to-work check and payroll — corrections go through the office.
+          {requestsProblem ||
+          nameLine?.state === 'pending' ||
+          nameLine?.state === 'rejected' ? null : (
+            <>
+              {' '}
+              <Link href={requestHref('name')}>Request a change</Link>
+            </>
+          )}
         </span>
       </div>
+      {requestsProblem ? (
+        <LoadProblem what="your change requests" />
+      ) : (
+        <ChangeStatus kind="name" line={nameLine} />
+      )}
 
       {profile.hasNiNumber ? (
         <div className="field lockf">

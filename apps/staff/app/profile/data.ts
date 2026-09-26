@@ -1,8 +1,11 @@
 import { cookies } from 'next/headers';
 import { payableMinutes } from '@thc/domain';
 import { StaffLoadError, staffDb, supabaseConfigured } from '../db';
-import type { EarningsRow, StaffProfile } from './types';
+import type { Found, Loaded } from '../data';
+import type { EarningsRow, EmergencyContact, StaffProfile } from './types';
 import { basePenceFor } from './payments/earnings';
+import { toChangeRequest } from './change-requests';
+import type { ChangeRequest } from './change-requests';
 
 /**
  * Everything the profile screens read — §10.1.
@@ -155,6 +158,44 @@ export async function loadEarnings(): Promise<EarningsRow[]> {
       basePence: payableMin === null ? null : basePenceFor(payableMin, payRate),
     };
   });
+}
+
+/**
+ * The emergency contact (ADR-0044) — `my_emergency_contact()`, a separate
+ * read because `staff_me()` is frozen in Phase 1 (docs/19 §0.6).
+ *
+ * `row: null` is "none saved"; `problem` is "could not read" (audit D18),
+ * and the two are never folded together: an empty form offered over a
+ * contact we could not see would overwrite it, and a "not set" nudge on a
+ * network error would nag a worker who has one.
+ */
+export async function loadEmergencyContact(): Promise<Found<EmergencyContact>> {
+  if (!supabaseConfigured()) return { row: null, problem: null };
+  const { data, error } = await staffDb(await cookies()).rpc('my_emergency_contact', {});
+  if (error) return { row: null, problem: error.message || 'my_emergency_contact failed' };
+  if (!data) return { row: null, problem: null };
+  const row = data as Record<string, unknown>;
+  return {
+    row: {
+      name: (row['name'] as string) ?? '',
+      relationship: (row['relationship'] as string) ?? '',
+      phone: (row['phone'] as string) ?? '',
+    },
+    problem: null,
+  };
+}
+
+/**
+ * The worker's own name / photo change requests (ADR-0045) — newest first,
+ * never `decided_by` — or the failure (audit D18). A failed read is not "no
+ * requests": the pending line and its Withdraw would vanish, and a second
+ * form would be offered for a request already with the office.
+ */
+export async function loadChangeRequests(): Promise<Loaded<ChangeRequest>> {
+  if (!supabaseConfigured()) return { rows: [], problem: null };
+  const { data, error } = await staffDb(await cookies()).rpc('my_profile_change_requests', {});
+  if (error) return { rows: [], problem: error.message || 'my_profile_change_requests failed' };
+  return { rows: ((data ?? []) as Record<string, unknown>[]).map(toChangeRequest), problem: null };
 }
 
 /** `staff.rejection_cause`, or null for anything `staff_me()` does not say. */

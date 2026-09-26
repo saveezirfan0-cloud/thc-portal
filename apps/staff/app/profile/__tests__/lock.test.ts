@@ -31,13 +31,14 @@ const worker = (over: Partial<LockInput> = {}): LockInput => ({ ...base, ...over
 describe('appLock — §10.1 four cases', () => {
   it('lets a compliant worker with no blockers through', () => {
     expect(appLock(worker())).toBe('none');
-    expect(reachableTabs('none')).toEqual(['/documents', '/shifts', '/invites', '/radar']);
+    expect(reachableTabs('none')).toEqual(['/shifts', '/invites', '/radar', '/profile']);
   });
 
-  it('(1) leaves ONLY Documents when a document has expired', () => {
+  it('(1) leaves ONLY Profile — where Documents lives — when a document has expired', () => {
     const lock = appLock(worker({ blockers: ['document_expired:passport'] }));
     expect(lock).toBe('documents');
-    expect(reachableTabs(lock)).toEqual(['/documents']);
+    // ADR-0042: Documents moved inside the Profile tab.
+    expect(reachableTabs(lock)).toEqual(['/profile']);
   });
 
   it('(1) a compliant worker with a replacement in review is NOT locked (§4.3)', () => {

@@ -57,6 +57,13 @@ const REASONS: Record<string, string> = {
   pin_outside_uk: 'That postcode isn’t in the UK. Please check your address.',
   no_postcode: 'Please include your postcode at the end of your address, e.g. London E2 0RY.',
   bad_location: 'That didn’t go through. Please try again.',
+  // Emergency contact (ADR-0044, 20260930202100).
+  name_required: 'Enter their name.',
+  name_too_long: 'Keep the name to 100 characters.',
+  relationship_required: 'Say who they are to you, for example Parent.',
+  relationship_too_long: 'Keep this to 40 characters.',
+  bad_phone: 'Enter a full phone number, including the area code.',
+  account_closed: 'We couldn’t find your record. Please contact the office.',
 };
 
 async function db() {
@@ -300,6 +307,30 @@ export async function startPhotoUpload(): Promise<PhotoSlot> {
 /** Attach an uploaded file to the profile. Refused if a photo already exists. */
 export async function finishPhotoUpload(path: string): Promise<ActionResult> {
   return call('staff_set_photo', { p_path: path });
+}
+
+/**
+ * Emergency contact — ADR-0044. Optional, office-only, never on a client
+ * document. The phone arrives already assembled by the international
+ * picker (`toE164`); the RPC normalises and checks it again, trims both
+ * names, and refuses a leaver. Nothing is queued: no notification.
+ */
+export async function saveEmergencyContact(
+  name: string,
+  relationship: string,
+  phone: string,
+): Promise<ActionResult> {
+  const result = await call('save_my_emergency_contact', {
+    p_name: name,
+    p_relationship: relationship,
+    p_phone: phone,
+  });
+  return result.ok ? { ok: true, note: 'Emergency contact saved.' } : result;
+}
+
+export async function clearEmergencyContact(): Promise<ActionResult> {
+  const result = await call('clear_my_emergency_contact', {});
+  return result.ok ? { ok: true, note: 'Emergency contact removed.' } : result;
 }
 
 /**

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ADDITION_CODES,
   EXTENSION_CODES,
   REQUIREMENT_CODES,
   SCOPE_CODES,
@@ -47,6 +48,14 @@ const EMAIL_CODES = ['E1', 'E2', 'E3', 'E4', 'E5', 'E6', 'E7', 'E8', 'E9'];
 const REQUIREMENT_PUSH_CODES = ['CL1', 'CL2'];
 const REQUIREMENT_EMAIL_CODES = ['CL3', 'CL4', 'CL5', 'CL6'];
 
+/**
+ * The Staff App additions (docs/19 §3, §4, §6) — not §8's, not the
+ * requirement's. RC = Request a change (ADR-0045), OF = Offer up a shift
+ * (ADR-0046). RF1 (ADR-0047) is proposed only and must NOT be here.
+ */
+const ADDITION_PUSH_CODES = ['RC2', 'RC3', 'OF1', 'OF2', 'OF3', 'OF4', 'OF6'];
+const ADDITION_EMAIL_CODES = ['RC1', 'RC4', 'OF5'];
+
 const entries = Object.entries(TEMPLATES) as [TemplateCode, Template][];
 
 describe('notification register (§8)', () => {
@@ -64,6 +73,8 @@ describe('notification register (§8)', () => {
         ...REQUIREMENT_PUSH_CODES,
         ...REQUIREMENT_EMAIL_CODES,
         ...EXTENSION_CODES,
+        ...ADDITION_PUSH_CODES,
+        ...ADDITION_EMAIL_CODES,
       ].sort(),
     );
   });
@@ -81,16 +92,33 @@ describe('notification register (§8)', () => {
       expect(TEMPLATES[code as TemplateCode].channel).toBe('push');
     for (const code of REQUIREMENT_EMAIL_CODES)
       expect(TEMPLATES[code as TemplateCode].channel).toBe('email');
+    for (const code of ADDITION_PUSH_CODES)
+      expect(TEMPLATES[code as TemplateCode].channel, code).toBe('push');
+    for (const code of ADDITION_EMAIL_CODES)
+      expect(TEMPLATES[code as TemplateCode].channel, code).toBe('email');
   });
 
-  it('exports SCOPE_CODES, REQUIREMENT_CODES and EXTENSION_CODES as exactly the register, between them', () => {
+  it('exports SCOPE_CODES, REQUIREMENT_CODES, EXTENSION_CODES and ADDITION_CODES as exactly the register, between them', () => {
     expect([...SCOPE_CODES].sort()).toEqual([...PUSH_CODES, ...EMAIL_CODES].sort());
     expect([...REQUIREMENT_CODES].sort()).toEqual(
       [...REQUIREMENT_PUSH_CODES, ...REQUIREMENT_EMAIL_CODES].sort(),
     );
-    expect([...SCOPE_CODES, ...REQUIREMENT_CODES, ...EXTENSION_CODES].sort()).toEqual(
-      [...Object.keys(TEMPLATES)].sort(),
-    );
+    expect([...ADDITION_CODES]).toEqual([
+      'RC1',
+      'RC2',
+      'RC3',
+      'RC4',
+      'OF1',
+      'OF2',
+      'OF3',
+      'OF4',
+      'OF5',
+      'OF6',
+    ]);
+    const union = [...SCOPE_CODES, ...REQUIREMENT_CODES, ...EXTENSION_CODES, ...ADDITION_CODES];
+    // Disjoint: no code is counted in two lists.
+    expect(new Set(union).size).toBe(union.length);
+    expect(union.sort()).toEqual([...Object.keys(TEMPLATES)].sort());
   });
 
   it('keys every template by its register code', () => {
@@ -277,8 +305,8 @@ describe('§8 copy is verbatim', () => {
     // describes each send and quotes none, so they are pinned in their own
     // suite below.
     const pinned = new Set(SCOPE_BODIES.map(([code]) => code));
-    // Neither the requirement's codes nor the extensions are §8's.
-    const notScope = new Set<string>([...REQUIREMENT_CODES, ...EXTENSION_CODES]);
+    // Neither the requirement's codes, the extensions nor the additions are §8's.
+    const notScope = new Set<string>([...REQUIREMENT_CODES, ...EXTENSION_CODES, ...ADDITION_CODES]);
     const unpinned = Object.keys(TEMPLATES).filter(
       (code) => !pinned.has(code) && !notScope.has(code),
     );
@@ -316,6 +344,21 @@ describe('nothing worker-facing leaks office or client language', () => {
     'buffer',
     'confirmed 0',
     'mandatory',
+    // The Staff App additions' office vocabulary (docs/19 §3, §4): the offer
+    // machinery and the change-request queue are the office's words, and a
+    // worker push never names another worker's ID, payroll or a rule/ADR.
+    'handed_over',
+    'self-cancel',
+    'self_cancel',
+    'allocation',
+    'wave 1',
+    'wave 2',
+    'pool',
+    'payroll',
+    'employee id',
+    'change requests',
+    'rule-',
+    'adr-',
   ];
 
   it.each(Object.keys(TEMPLATES))('%s title and body are worker-safe', (code) => {
@@ -564,6 +607,333 @@ describe('N6 / N7 render from the payload booking_tick writes', () => {
     // The "I'm ready" / "Confirm today" buttons live on the /shifts card,
     // so the push opens there, not on the shift detail screen.
     expect(render(entry.deepLink ?? '', payload)).toBe('/shifts');
+  });
+});
+
+/**
+ * The Staff App additions (docs/19-staff-features-plan.md §3, §4, §6). Not
+ * §8's: ADR-0045 (RC, Request a change) and ADR-0046 (OF, Offer up a shift),
+ * both proposed — awaiting THC. The table below is written out again by hand
+ * from docs/19 so an edit to the register cannot silently reword one.
+ */
+describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/19 §6)', () => {
+  const placeholders = (text: string): string[] =>
+    [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1] ?? '');
+
+  type Row = {
+    code: TemplateCode;
+    channel: 'push' | 'email';
+    title: string;
+    body: string;
+    deepLink?: string;
+    timing: string;
+  };
+
+  // docs/19 §3 and §4, the Notifications tables. OF5's body is described
+  // there as a list of fields; it is pinned by structure in its own test.
+  const PLAN: Row[] = [
+    {
+      code: 'RC1',
+      channel: 'email',
+      title: 'Profile change requested — {name}, Employee ID {employeeId}',
+      body: '{name} has asked the office to change their {field}.\n\nRequested: {requestedAt} (UK time)\nNow: {current}\nRequested: {proposed}\nNote: {note}\n\nReview it in Staff → Change requests.',
+      timing: 'on request',
+    },
+    {
+      code: 'RC2',
+      channel: 'push',
+      title: 'Profile updated',
+      body: 'Your {field} has been updated.',
+      deepLink: '/profile/details',
+      timing: 'on approve',
+    },
+    {
+      code: 'RC3',
+      channel: 'push',
+      title: 'Change not made',
+      body: "We couldn't update your {field}: {reason}",
+      deepLink: '/profile/details',
+      timing: 'on reject',
+    },
+    {
+      code: 'RC4',
+      channel: 'email',
+      title: 'Name changed — {name}, Employee ID {employeeId}',
+      body: 'Previous name: {previousName}\nNew name: {name}\nApproved: {approvedAt} (UK time)',
+      timing: 'on approving a name',
+    },
+    {
+      code: 'OF1',
+      channel: 'push',
+      title: 'Shift up for grabs',
+      body: '{role} · {event} · {dateTime} · {rate}/h — tap to take it.',
+      deepLink: '/radar/offers/{offerId}',
+      timing: 'hourly, `allocation_per_hour` per round, wave 1 first, never after expiry',
+    },
+    {
+      code: 'OF2',
+      channel: 'push',
+      title: 'Shift handed over',
+      body: "{event} · {dateTime} has been taken by another worker. You're no longer booked on it.",
+      deepLink: '/shifts',
+      timing: 'on take',
+    },
+    {
+      code: 'OF3',
+      channel: 'push',
+      title: "You're still booked",
+      body: "Nobody took your {event} shift on {date} — you're still booked. If you can't make it, contact the office.",
+      deepLink: '/shifts/{bookingId}',
+      timing: 'on lapse by expiry only',
+    },
+    {
+      code: 'OF4',
+      channel: 'push',
+      title: "You're booked!",
+      body: '{event} on {date} is yours. Tap to view your shift details.',
+      deepLink: '/shifts/{bookingId}',
+      timing: 'on take',
+    },
+    {
+      code: 'OF6',
+      channel: 'push',
+      title: 'Cover request closed',
+      body: "The office has closed your cover request for {event} on {date}. You're still booked — contact the office if you can't make it.",
+      deepLink: '/shifts/{bookingId}',
+      timing: 'on decline',
+    },
+  ];
+
+  /**
+   * What each sender writes into the payload — the contract pgTAP 724 (OF,
+   * "every OF payload's keys equal its template placeholders", the 592
+   * pattern) and 715/716 (RC) hold the SQL side to. Title, body and deep
+   * link together must ask for exactly these keys, no more and no fewer.
+   */
+  const PAYLOAD_KEYS: Record<(typeof ADDITION_CODES)[number], string[]> = {
+    RC1: ['name', 'employeeId', 'field', 'requestedAt', 'current', 'proposed', 'note'],
+    RC2: ['field'],
+    RC3: ['field', 'reason'],
+    RC4: ['name', 'employeeId', 'previousName', 'approvedAt'],
+    OF1: ['role', 'event', 'dateTime', 'rate', 'offerId'],
+    OF2: ['event', 'dateTime'],
+    OF3: ['event', 'date', 'bookingId'],
+    OF4: ['event', 'date', 'bookingId'],
+    OF5: [
+      'event',
+      'role',
+      'date',
+      'name',
+      'employeeId',
+      'client',
+      'venue',
+      'dateTime',
+      'note',
+      'confirmed',
+      'headcount',
+      'buffer',
+      'autoAssign',
+    ],
+    OF6: ['event', 'date', 'bookingId'],
+  };
+
+  const asked = (code: TemplateCode) => {
+    const entry: Template = TEMPLATES[code];
+    return new Set([
+      ...placeholders(entry.title),
+      ...placeholders(entry.body ?? ''),
+      ...placeholders(entry.deepLink ?? ''),
+    ]);
+  };
+
+  it('is exactly the ten codes docs/19 §6 lists, and no RF1', () => {
+    expect([...ADDITION_CODES].sort()).toEqual(
+      [...ADDITION_PUSH_CODES, ...ADDITION_EMAIL_CODES].sort(),
+    );
+    expect(Object.keys(TEMPLATES)).not.toContain('RF1');
+    for (const code of ADDITION_CODES) {
+      expect(SCOPE_CODES as readonly string[], code).not.toContain(code);
+      expect(REQUIREMENT_CODES as readonly string[], code).not.toContain(code);
+      expect(EXTENSION_CODES as readonly string[], code).not.toContain(code);
+    }
+  });
+
+  it('names its ADR in every trigger — RC → ADR-0045, OF → ADR-0046', () => {
+    for (const code of ADDITION_CODES) {
+      const adr = code.startsWith('RC') ? 'ADR-0045' : 'ADR-0046';
+      expect(template(code).trigger, code).toContain(adr);
+      expect(template(code).trigger, code).toMatch(/Not in §8/);
+    }
+  });
+
+  it.each(PLAN.map((row) => [row.code, row] as const))(
+    '%s carries the docs/19 title, body, deep link and timing verbatim',
+    (code, row) => {
+      const entry = template(code);
+      expect(entry.channel).toBe(row.channel);
+      expect(entry.title).toBe(row.title);
+      expect(body(code)).toBe(row.body);
+      expect(entry.deepLink).toBe(row.deepLink);
+      expect(entry.timing).toBe(row.timing);
+    },
+  );
+
+  it('marks none of them mandatory: §8 does not list them', () => {
+    for (const code of ADDITION_CODES) expect(template(code).mandatory, code).toBeUndefined();
+  });
+
+  it('sends every addition email from admin@, never timesheets@', () => {
+    for (const code of ADDITION_EMAIL_CODES) {
+      expect(template(code as TemplateCode).sender, code).toBe('admin');
+    }
+  });
+
+  it("sends RC4 to exactly E7's recipients", () => {
+    expect(TEMPLATES.RC4.recipients).toEqual(TEMPLATES.E7.recipients);
+    expect(TEMPLATES.RC4.recipients).toEqual([
+      'admin@thehospitalitycompany.co.uk',
+      'thc_payroll@topsourceworldwide.com',
+    ]);
+  });
+
+  it('sends RC1 and OF5 to admin@ only — never payroll', () => {
+    expect(TEMPLATES.RC1.recipients).toEqual(['admin@thehospitalitycompany.co.uk']);
+    expect(TEMPLATES.OF5.recipients).toEqual(['admin@thehospitalitycompany.co.uk']);
+  });
+
+  it('pins OF5 to the fields docs/19 lists, in order, ending "still booked until you act"', () => {
+    expect(template('OF5').title).toBe('Cover requested — {event} · {role} · {date}');
+    expect(template('OF5').timing).toBe('immediately');
+    const copy = body('OF5');
+    const order = [
+      '{name}',
+      '{employeeId}',
+      '{event}',
+      '{client}',
+      '{venue}',
+      '{role}',
+      '{dateTime} (UK time)',
+      '{note}',
+      '{confirmed} of {headcount} (+{buffer})',
+      '{autoAssign}',
+      'They are still booked until you act.',
+    ];
+    let from = -1;
+    for (const part of order) {
+      const at = copy.indexOf(part, from + 1);
+      expect(at, part).toBeGreaterThan(from);
+      from = at;
+    }
+    expect(copy.endsWith('They are still booked until you act.')).toBe(true);
+  });
+
+  it('asks each template for exactly the keys its sender writes', () => {
+    for (const code of ADDITION_CODES) {
+      expect([...asked(code)].sort(), code).toEqual([...PAYLOAD_KEYS[code]].sort());
+    }
+  });
+
+  it('uses the names the register already uses for the same thing', () => {
+    // A placeholder an addition shares with an older code means the same
+    // value there; the new ones are listed so a typo ({bookingID}) fails.
+    const existing = new Set<string>();
+    for (const [code, entry] of entries) {
+      if ((ADDITION_CODES as readonly string[]).includes(code)) continue;
+      for (const text of [
+        entry.title,
+        entry.body ?? '',
+        entry.deepLink ?? '',
+        ...Object.values(entry.variants ?? {}).map((v) => v.body),
+      ]) {
+        for (const key of placeholders(text)) existing.add(key);
+      }
+    }
+    const NEW_KEYS = [
+      'field',
+      'current',
+      'proposed',
+      'note',
+      'previousName',
+      'approvedAt',
+      'offerId',
+    ];
+    for (const code of ADDITION_CODES) {
+      for (const key of asked(code)) {
+        expect(existing.has(key) || NEW_KEYS.includes(key), `${code} {${key}}`).toBe(true);
+      }
+    }
+    // And the new ones are genuinely new, not a rename of an existing key,
+    // with no exception. RC1–RC3 once said {change} for "name" / "photo"
+    // while N11b (ADR-0037) says {change} for a whole sentence; they now
+    // say {field} (20260930206000), so one placeholder means one thing.
+    for (const key of NEW_KEYS) {
+      expect(existing.has(key), key).toBe(false);
+    }
+    expect(existing.has('change'), 'N11b keeps {change}').toBe(true);
+    for (const code of ADDITION_CODES) {
+      expect(asked(code).has('change'), `${code} must not ask for {change}`).toBe(false);
+    }
+  });
+
+  it('renders every addition with no placeholder left', () => {
+    const values: Record<string, string> = {
+      name: 'Tom Reid',
+      employeeId: '10432',
+      field: 'name',
+      requestedAt: '25 Sep 2026 14:05',
+      current: 'Tom Reid',
+      proposed: 'Tom Reed',
+      note: '—',
+      reason: 'The evidence does not show the new name',
+      previousName: 'Tom Reid',
+      approvedAt: '26 Sep 2026 09:10',
+      role: 'Waiting Staff',
+      event: 'Gala Dinner',
+      date: 'Fri 09 Oct 2026',
+      dateTime: 'Fri 09 Oct 2026 17:00–23:30',
+      rate: '£13.50',
+      offerId: 'o1',
+      bookingId: 'b1',
+      client: 'Leonardo Royal',
+      venue: 'Leonardo Royal London City',
+      confirmed: '6',
+      headcount: '6',
+      buffer: '1',
+      autoAssign: 'on',
+    };
+    for (const code of ADDITION_CODES) {
+      const entry = template(code);
+      for (const text of [entry.title, body(code), entry.deepLink ?? '']) {
+        expect(render(text, values), code).not.toMatch(/[{}]/);
+      }
+    }
+    expect(render(body('OF5'), values)).toContain('Confirmed for this role now: 6 of 6 (+1)');
+    expect(render(template('OF1').deepLink ?? '', values)).toBe('/radar/offers/o1');
+  });
+
+  it('never tells a candidate who offered the shift (OF1)', () => {
+    for (const key of asked('OF1')) {
+      expect(['name', 'employeeId', 'firstName', 'offeredBy', 'offerer'], key).not.toContain(key);
+    }
+  });
+
+  it('never quotes money on a push beyond the base rate', () => {
+    for (const code of ADDITION_PUSH_CODES) {
+      const text = `${template(code as TemplateCode).title} ${body(code as TemplateCode)}`;
+      expect(text, code).not.toMatch(/holiday|12\.07|charge|margin|invoice/i);
+    }
+  });
+
+  it('keys the sends as docs/19 names them', () => {
+    expect(outboxKey('RC1', 'request', 7)).toBe('RC1:request:7');
+    expect(outboxKey('RC4', 'request', 7)).toBe('RC4:request:7');
+    expect(outboxKey('OF2', 'offer', 'o1')).toBe('OF2:offer:o1');
+    // OF1 is once per offer per candidate: the staff id rides as the suffix.
+    expect(outboxKey('OF1', 'offer', 'o1', 's9')).toBe('OF1:offer:o1:s9');
+    expect(outboxKey('OF1', 'offer', 'o1', 's9')).not.toBe(outboxKey('OF1', 'offer', 'o1', 's8'));
+    // OF5 is keyed on the BOOKING (20260930205000): asking for cover, withdrawing
+    // and asking again on one booking emails admin@ once.
+    expect(outboxKey('OF5', 'booking', 'b1')).toBe('OF5:booking:b1');
   });
 });
 

@@ -11,15 +11,19 @@ import type {
   CandidateFacts,
   CandidateDocument,
   CandidateMoney,
+  CandidateReferral,
   CandidateRow,
   ContractVersion,
   Declaration,
   HmrcChecklist,
   QuizAttempt,
   Reference,
+  ReferralRow,
+  ReferredOnBoard,
   ReturningRow,
   RoleOption,
 } from './types';
+import { candidateReferral, referredOnBoard } from './view-model';
 
 /**
  * Reads for /onboarding and /onboarding/:id (§2.2, §2.3).
@@ -59,6 +63,88 @@ const ON_BOARD: Database['public']['Enums']['staff_status'][] = [
   'rejected',
 ];
 
+// ---------------------------------------------------------------------
+// Refer a friend (ADR-0047) — a separate admin read of
+// `application_referrals`, NOT a column on `onboarding_candidates_v`
+// (frozen in Phase 1, docs/19 §0.6). The table has one admin_read policy
+// and nothing else (20260930200100), so this is the office's alone.
+//
+// A failed read never takes the pipeline down — but it is not "nobody was
+// referred" either (audit D18): it comes back as `problem`, and the board
+// and the candidate screen each say the referrals could not be read.
+// Typed by a narrow local interface until the Phase 2 type regen.
+// ---------------------------------------------------------------------
+type ReferralAnswer = PromiseLike<{
+  data: ReferralRow[] | null;
+  error: { message: string } | null;
+}>;
+
+export interface ReferralReader {
+  from(table: 'application_referrals'): {
+    select(columns: string): {
+      in(column: 'candidate_staff_id', values: string[]): ReferralAnswer;
+      eq(column: 'candidate_staff_id', value: string): ReferralAnswer;
+    };
+  };
+}
+
+/** The FK is named because `application_referrals` points at `staff` twice. */
+const REFERRAL_COLUMNS =
+  'application_id, candidate_staff_id, referrer_staff_id, recorded_at, ' +
+  'referrer:staff!application_referrals_referrer_staff_id_fkey(first_name, last_name, employee_id, removed_at)';
+
+/** Ids per request: keeps `in.(…)` well inside any URL limit. */
+const REFERRAL_CHUNK = 100;
+
+export async function loadBoardReferrals(
+  reader: ReferralReader,
+  staffIds: readonly string[],
+): Promise<{ referred: ReferredOnBoard; problem: string | null }> {
+  const ids = [...new Set(staffIds)];
+  const chunks: string[][] = [];
+  for (let i = 0; i < ids.length; i += REFERRAL_CHUNK)
+    chunks.push(ids.slice(i, i + REFERRAL_CHUNK));
+  try {
+    const answers = await Promise.all(
+      chunks.map((chunk) =>
+        reader
+          .from('application_referrals')
+          .select(REFERRAL_COLUMNS)
+          .in('candidate_staff_id', chunk),
+      ),
+    );
+    const failed = answers.find((answer) => answer.error)?.error;
+    if (failed) return { referred: referredOnBoard([]), problem: failed.message };
+    return {
+      referred: referredOnBoard(answers.flatMap((answer) => answer.data ?? [])),
+      problem: null,
+    };
+  } catch (error) {
+    return { referred: referredOnBoard([]), problem: messageOf(error) };
+  }
+}
+
+export async function loadCandidateReferral(
+  reader: ReferralReader,
+  staffId: string,
+): Promise<{ referral: CandidateReferral | null; problem: string | null }> {
+  try {
+    const answer = await reader
+      .from('application_referrals')
+      .select(REFERRAL_COLUMNS)
+      .eq('candidate_staff_id', staffId);
+    return answer.error
+      ? { referral: null, problem: answer.error.message }
+      : { referral: candidateReferral(answer.data ?? []), problem: null };
+  } catch (error) {
+    return { referral: null, problem: messageOf(error) };
+  }
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error && error.message ? error.message : 'the read failed';
+}
+
 export async function loadBoard(): Promise<BoardData> {
   if (!supabaseConfigured()) {
     return { candidates: [], returning: [], roles: [], problem: NOT_CONFIGURED };
@@ -81,12 +167,18 @@ export async function loadBoard(): Promise<BoardData> {
 
   const error = candidates.error ?? returning.error ?? roles.error;
   if (error) return { candidates: [], returning: [], roles: [], problem: error.message };
+  const referrals = await loadBoardReferrals(supabase as unknown as ReferralReader, [
+    ...(candidates.data ?? []).map((row) => row.id),
+    ...(returning.data ?? []).map((row) => row.staff_id),
+  ]);
   return {
     // §2.7: the onboarding selfie follows them through the whole system —
     // the card too, signed here as on every other office face.
     candidates: await withPhotoUrls(candidates.data ?? []),
     returning: returning.data ?? [],
     roles: roles.data ?? [],
+    referred: referrals.referred,
+    referredProblem: referrals.problem,
     problem: null,
   };
 }
@@ -150,6 +242,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     application,
     roles,
     rtw,
+    referral,
     facts,
   ] = await Promise.all([
     supabase.from('onboarding_candidates_v').select('*').eq('id', id).maybeSingle<CandidateRow>(),
@@ -202,6 +295,8 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
     // The automated gov.uk check (ADR-0025); best-effort, never an error panel.
     loadRtwChecks(supabase, id),
+    // Who referred them (ADR-0047); best-effort, never an error panel.
+    loadCandidateReferral(supabase as unknown as ReferralReader, id),
     // D43: the full NI number beside the NI evidence; D32/D36: the conditions.
     (supabase as unknown as FactsRead)
       .from('staff')
@@ -269,6 +364,8 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     roles: roles.data ?? [],
     rtwChecks: rtw.checks,
     rtwCheckEnabled: rtw.enabled,
+    referral: referral.referral,
+    referralProblem: referral.problem,
     facts: facts.error || !facts.data ? null : toFacts(facts.data),
     problem: null,
   };

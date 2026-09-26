@@ -115,8 +115,8 @@ export function TabLockedScreen({
       <div className="static-screen">
         <h2>{onboarding ? 'Not open to you yet' : 'Locked until your documents are in order'}</h2>
         <p>
-          Shifts, Invites and Radar are closed while your compliance is outstanding. Documents is
-          the one tab still open to you — everything reopens automatically once the office has
+          Shifts, Invites and Radar are closed while your compliance is outstanding. Your Documents,
+          under Profile, stay open to you — everything reopens automatically once the office has
           verified what is missing and nothing else has expired.
         </p>
         {onboarding ? (
@@ -124,7 +124,14 @@ export function TabLockedScreen({
           <Link className="btn primary block" href="/onboarding">
             Continue onboarding
           </Link>
-        ) : null}
+        ) : (
+          // Documents left the nav for the Profile tab (ADR-0042), so the
+          // one thing this worker can do gets a button of its own here
+          // rather than a two-tap detour.
+          <Link className="btn primary block" href="/documents">
+            Go to Documents
+          </Link>
+        )}
       </div>
     </>
   );

@@ -8,7 +8,7 @@
  * server" and a form can be edited by whoever is sitting in front of it.
  */
 
-import { ukToday } from '@thc/domain';
+import { isReferralCode, ukToday } from '@thc/domain';
 
 /**
  * Date of birth, not an age band — ADR-0008.
@@ -392,6 +392,27 @@ export interface ApplyState {
 }
 
 export const INITIAL_STATE: ApplyState = { errors: {}, values: EMPTY_VALUES };
+
+/**
+ * The referral code from `/apply?ref=` (ADR-0047, docs/19 §5), or null.
+ *
+ * Not a field and never an error: a code that is missing, mistyped or not
+ * a code at all is dropped here, and the application goes through exactly
+ * as it would without one. The applicant is told nothing either way, and
+ * never who referred them (Q20). Whether a well-formed code is known,
+ * revoked or their own is the database's to decide
+ * (`record_application_referral()`, which never refuses anything either).
+ * Next hands a repeated `?ref=` over as an array; the first one counts.
+ */
+export function referralCodeFrom(value: unknown): string | null {
+  const raw = Array.isArray(value) ? (value as unknown[])[0] : value;
+  if (typeof raw !== 'string') return null;
+  const code = raw.trim().toUpperCase();
+  return isReferralCode(code) ? code : null;
+}
+
+/** The hidden field the code travels in, from the page to the server action. */
+export const REFERRAL_FIELD = 'ref';
 
 /**
  * Where "Check your inbox" reads the address back from.

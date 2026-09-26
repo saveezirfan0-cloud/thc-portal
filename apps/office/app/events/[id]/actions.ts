@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { acceptApplicationRefusal, cancelEventRefusal, payrollWarning } from '@thc/domain';
 import { adminRefusal } from '../admin';
 import { eventsDb, supabaseConfigured } from '../db';
-import { inviteRefusal, withdrawRefusal } from './board-model';
+import { inviteRefusal, offerOfficeRefusal, withdrawRefusal } from './board-model';
 
 export type ActionResult = { error: string } | { ok: true; warning?: string };
 
@@ -320,4 +320,68 @@ export async function setRoleAutoAssign(
   }
   revalidatePath(`/events/${eventId}`);
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------
+// Offer up a shift — ADR-0046, docs/19 §4 point 3
+// ---------------------------------------------------------------------
+
+/**
+ * The two office RPCs (20260930201100), typed locally until the Phase 2
+ * type regeneration — the `(supabase as unknown as XRpc)` pattern.
+ */
+interface OfferOfficeRpc {
+  rpc(
+    fn: 'office_open_offer_to_pool' | 'office_decline_cover',
+    args: Record<string, string | null>,
+  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+}
+
+function offerOfficeError(raw: string): string {
+  if (/not_authorised/.test(raw)) return 'Only the office can act on a cover request.';
+  if (/offer_not_found/.test(raw)) return 'That request no longer exists.';
+  return raw;
+}
+
+/**
+ * Open to pool: a worker's cover request (inside 72 h) goes to the other
+ * workers, takeable until the section starts and pushed in the hourly OF1
+ * rounds while auto-assign is on. The worker stays booked until someone
+ * takes it. Admin only and audited, in `office_open_offer_to_pool()`.
+ */
+export async function openOfferToPool(eventId: string, offerId: string): Promise<ActionResult> {
+  if (!supabaseConfigured()) return { error: NO_SUPABASE };
+  const supabase = (await db()) as unknown as OfferOfficeRpc;
+  const { data, error } = await supabase.rpc('office_open_offer_to_pool', { p_offer: offerId });
+  if (error) return { error: offerOfficeError(error.message) };
+  revalidatePath(`/events/${eventId}`);
+  const result = (data ?? {}) as { ok?: boolean; reason?: string };
+  return result.ok === true
+    ? { ok: true }
+    : { error: offerOfficeRefusal(String(result.reason ?? '')) };
+}
+
+/**
+ * Decline: the office closes the cover request and OF6 tells the worker
+ * they are still booked. The note is the office's own record and is never
+ * sent. To cover the shift by hand instead, Withdraw the booking as usual.
+ */
+export async function declineCover(
+  eventId: string,
+  offerId: string,
+  note: string,
+): Promise<ActionResult> {
+  if (!supabaseConfigured()) return { error: NO_SUPABASE };
+  const supabase = (await db()) as unknown as OfferOfficeRpc;
+  const trimmed = note.trim();
+  const { data, error } = await supabase.rpc('office_decline_cover', {
+    p_offer: offerId,
+    p_note: trimmed === '' ? null : trimmed,
+  });
+  if (error) return { error: offerOfficeError(error.message) };
+  revalidatePath(`/events/${eventId}`);
+  const result = (data ?? {}) as { ok?: boolean; reason?: string };
+  return result.ok === true
+    ? { ok: true }
+    : { error: offerOfficeRefusal(String(result.reason ?? '')) };
 }

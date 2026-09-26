@@ -54,11 +54,14 @@ test('Request my P45: two confirmations, then the leaver screen — and the offi
   const reason = 'Moving to Leeds for a permanent job';
   await openAs(page, '/profile', leaver!.email, PASSWORD);
 
-  // ProfileSheet.tsx: below sign-out, the long form of the button while it
-  // is available.
-  const sheet = page.getByRole('dialog', { name: 'Your profile' });
-  await expect(sheet.getByText(`${leaver!.firstName} ${leaver!.lastName}`)).toBeVisible();
-  await sheet
+  // ProfileHub.tsx — the Profile tab is a screen since ADR-0042, not a
+  // modal sheet: below sign-out, the long form of the button while it is
+  // available.
+  const hub = page.locator('.profile-hub');
+  await expect(
+    hub.getByRole('region', { name: 'You' }).getByText(`${leaver!.firstName} ${leaver!.lastName}`),
+  ).toBeVisible();
+  await hub
     .getByRole('button', { name: 'Request my P45 — leaving The Hospitality Company' })
     .click();
 

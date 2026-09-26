@@ -1,9 +1,16 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Alert, Button, Modal } from '@thc/ui';
+import { Alert, Button, Modal, Textarea } from '@thc/ui';
 import { payrollWarning } from '@thc/domain';
-import { getBack, markNoShow, withdraw } from '../actions';
+import { declineCover, getBack, markNoShow, openOfferToPool, withdraw } from '../actions';
+import {
+  type BoardOffer,
+  DECLINE_COVER_PROMPT,
+  DECLINE_NOTE_MAX,
+  OPEN_TO_POOL_CONFIRM,
+  declineNoteCounter,
+} from '../board-model';
 
 type Result = { error: string } | { ok: true; warning?: string };
 
@@ -15,7 +22,9 @@ interface Pending {
 }
 
 /**
- * Withdraw, No show and Get back — Scope §3.3.
+ * Withdraw, No show and Get back — Scope §3.3. And, on a worker's cover
+ * request (ADR-0046), Open to pool and Decline; covering the shift by hand
+ * is the ordinary Withdraw, which lapses the request with the booking.
  *
  * There is no Confirm: the worker confirms in the app. Where the shift's
  * payroll has already been exported, the §3.3 warning is shown BEFORE the
@@ -35,6 +44,7 @@ export function BookingActions({
   payrollExported,
   withdrawable = true,
   noShowAllowed = false,
+  offer = null,
 }: {
   eventId: string;
   bookingId: string;
@@ -45,10 +55,15 @@ export function BookingActions({
   withdrawable?: boolean;
   /** `canMarkNoShow` for the section: from its start to two weeks after its end. */
   noShowAllowed?: boolean;
+  /** ADR-0046: the booking's open offer; a cover request gets two buttons. */
+  offer?: BoardOffer | null;
 }) {
   const [running, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState<Pending | null>(null);
+  // ADR-0046 Decline: the office's own note, asked in the Modal like every
+  // other question on the board (never a browser prompt).
+  const [declining, setDeclining] = useState<string | null>(null);
 
   const run = (action: () => Promise<Result>) => {
     setError(null);
@@ -109,6 +124,26 @@ export function BookingActions({
         </Button>
       ) : null}
 
+      {offer?.mode === 'office' ? (
+        <>
+          <Button
+            size="sm"
+            tone="outline"
+            disabled={running}
+            onClick={() =>
+              confirmThen(OPEN_TO_POOL_CONFIRM, 'Open to pool', 'Open to pool', () =>
+                openOfferToPool(eventId, offer.offerId),
+              )
+            }
+          >
+            Open to pool
+          </Button>
+          <Button size="sm" tone="ghost" disabled={running} onClick={() => setDeclining('')}>
+            Decline
+          </Button>
+        </>
+      ) : null}
+
       {withdrawable ? (
         <Button
           size="sm"
@@ -143,6 +178,40 @@ export function BookingActions({
       >
         <Alert tone="amber">{pending?.warning}</Alert>
       </Modal>
+
+      {offer?.mode === 'office' ? (
+        <Modal
+          open={declining !== null}
+          title="Decline cover request"
+          onClose={() => setDeclining(null)}
+          footer={
+            <>
+              <Button onClick={() => setDeclining(null)}>Cancel</Button>
+              <Button
+                tone="primary"
+                disabled={running || (declining ?? '').length > DECLINE_NOTE_MAX}
+                onClick={() => {
+                  const note = declining ?? '';
+                  setDeclining(null);
+                  run(() => declineCover(eventId, offer.offerId, note));
+                }}
+              >
+                Decline
+              </Button>
+            </>
+          }
+        >
+          <Textarea
+            label={DECLINE_COVER_PROMPT}
+            value={declining ?? ''}
+            onChange={(event) => setDeclining(event.target.value)}
+            rows={3}
+            // office_decline_cover() refuses note_too_long past 300.
+            maxLength={DECLINE_NOTE_MAX}
+            hint={declineNoteCounter(declining ?? '')}
+          />
+        </Modal>
+      ) : null}
     </>
   );
 }

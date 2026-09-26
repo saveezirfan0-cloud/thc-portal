@@ -1,0 +1,107 @@
+-- =====================================================================
+-- GENERATED FILE — do not edit.
+--
+-- Source: packages/domain/src/availability.vectors.json
+-- Regenerate: pnpm --filter @thc/domain gen:vectors
+--
+-- ADR-0043: unavailability_range() and staff_unavailable() against the
+-- cases availability.ts is held to. Dates and times are UK wall clock;
+-- lower/upper are the half-open range in UTC. `error` is the refusal the
+-- builder raises instead of a range.
+-- Included with \ir from supabase/tests/701_staff_additions_state.sql; the .psql
+-- extension keeps pg_prove from running it as a test of its own.
+-- =====================================================================
+
+create temporary table availability_range_vectors (
+  name text primary key,
+  from_date date not null,
+  to_date date,
+  from_time time,
+  to_time time,
+  lower_at timestamptz,
+  upper_at timestamptz,
+  hours numeric,
+  error text
+) on commit drop;
+
+insert into availability_range_vectors values
+  ('all_day_bst_12_oct', '2026-10-12', '2026-10-12', null, null, '2026-10-11T23:00:00.000Z', '2026-10-12T23:00:00.000Z', 24, null),
+  ('all_day_spring_forward_29_mar_is_23h', '2026-03-29', '2026-03-29', null, null, '2026-03-29T00:00:00.000Z', '2026-03-29T23:00:00.000Z', 23, null),
+  ('all_day_autumn_back_25_oct_is_25h', '2026-10-25', '2026-10-25', null, null, '2026-10-24T23:00:00.000Z', '2026-10-26T00:00:00.000Z', 25, null),
+  ('window_gmt_0900_1300', '2026-12-03', '2026-12-03', '09:00', '13:00', '2026-12-03T09:00:00.000Z', '2026-12-03T13:00:00.000Z', 4, null),
+  ('window_bst_0900_1300', '2026-07-01', '2026-07-01', '09:00', '13:00', '2026-07-01T08:00:00.000Z', '2026-07-01T12:00:00.000Z', 4, null),
+  ('overnight_gmt_2200_0200_crosses_into_next_uk_date', '2026-11-14', '2026-11-14', '22:00', '02:00', '2026-11-14T22:00:00.000Z', '2026-11-15T02:00:00.000Z', 4, null),
+  ('overnight_bst_2200_0200', '2026-07-04', '2026-07-04', '22:00', '02:00', '2026-07-04T21:00:00.000Z', '2026-07-05T01:00:00.000Z', 4, null),
+  ('seven_day_range_is_seven_days', '2026-12-07', '2026-12-13', null, null, '2026-12-07T00:00:00.000Z', '2026-12-14T00:00:00.000Z', 168, null),
+  ('timed_range_across_days', '2026-12-03', '2026-12-05', '18:00', '02:00', '2026-12-03T18:00:00.000Z', '2026-12-05T02:00:00.000Z', 32, null),
+  ('from_equals_to_is_bad_window', '2026-12-03', '2026-12-03', '10:00', '10:00', null, null, null, 'bad_window'),
+  ('one_time_without_the_other_is_bad_window', '2026-12-03', '2026-12-03', '10:00', null, null, null, null, 'bad_window'),
+  ('to_date_before_from_date_is_bad_window', '2026-12-05', '2026-12-03', null, null, null, null, null, 'bad_window');
+
+create temporary table availability_overlap_vectors (
+  name text primary key,
+  from_date date not null,
+  to_date date,
+  from_time time,
+  to_time time,
+  section_starts timestamptz not null,
+  section_ends timestamptz not null,
+  expect_overlap boolean not null
+) on commit drop;
+
+insert into availability_overlap_vectors values
+  ('entry_ending_at_section_start_misses', '2026-12-03', '2026-12-03', '09:00', '17:00', '2026-12-03T17:00:00.000Z', '2026-12-03T23:00:00.000Z', false),
+  ('entry_ending_one_minute_into_section_overlaps', '2026-12-03', '2026-12-03', '09:00', '17:01', '2026-12-03T17:00:00.000Z', '2026-12-03T23:00:00.000Z', true),
+  ('entry_starting_at_section_end_misses', '2026-12-03', '2026-12-03', '23:00', '01:00', '2026-12-03T17:00:00.000Z', '2026-12-03T23:00:00.000Z', false),
+  ('section_past_midnight_into_all_day_entry_overlaps', '2026-12-04', '2026-12-04', null, null, '2026-12-03T20:00:00.000Z', '2026-12-04T02:00:00.000Z', true),
+  ('bst_all_day_uses_uk_midnight', '2026-10-13', '2026-10-13', null, null, '2026-10-12T16:00:00.000Z', '2026-10-12T22:00:00.000Z', false),
+  ('bst_all_day_same_uk_day_overlaps', '2026-10-12', '2026-10-12', null, null, '2026-10-12T16:00:00.000Z', '2026-10-12T22:00:00.000Z', true);
+
+create temporary table availability_weekly_vectors (
+  name text not null,
+  week int not null,
+  from_date date not null,
+  to_date date,
+  from_time time,
+  to_time time,
+  lower_at timestamptz not null,
+  upper_at timestamptz not null,
+  primary key (name, week)
+) on commit drop;
+
+insert into availability_weekly_vectors values
+  ('weekly_x3_across_25_oct_keeps_1800_uk', 0, '2026-10-18', null, '18:00', '22:00', '2026-10-18T17:00:00.000Z', '2026-10-18T21:00:00.000Z'),
+  ('weekly_x3_across_25_oct_keeps_1800_uk', 1, '2026-10-18', null, '18:00', '22:00', '2026-10-25T18:00:00.000Z', '2026-10-25T22:00:00.000Z'),
+  ('weekly_x3_across_25_oct_keeps_1800_uk', 2, '2026-10-18', null, '18:00', '22:00', '2026-11-01T18:00:00.000Z', '2026-11-01T22:00:00.000Z'),
+  ('weekly_all_day_across_spring_forward', 0, '2027-03-21', null, null, null, '2027-03-21T00:00:00.000Z', '2027-03-22T00:00:00.000Z'),
+  ('weekly_all_day_across_spring_forward', 1, '2027-03-21', null, null, null, '2027-03-28T00:00:00.000Z', '2027-03-28T23:00:00.000Z');
+
+create temporary table availability_validation_vectors (
+  name text primary key,
+  now_at timestamptz not null,
+  input jsonb not null,
+  expect text
+) on commit drop;
+
+insert into availability_validation_vectors values
+  ('ok_all_day', '2026-09-25T10:00:00.000Z', '{"fromDate":"2026-10-12"}'::jsonb, null),
+  ('ok_today_all_day', '2026-09-25T10:00:00.000Z', '{"fromDate":"2026-09-25"}'::jsonb, null),
+  ('ok_today_later_window', '2026-09-25T10:00:00.000Z', '{"fromDate":"2026-09-25","fromTime":"18:00","toTime":"22:00"}'::jsonb, null),
+  ('past_date_is_in_past', '2026-09-25T10:00:00.000Z', '{"fromDate":"2026-09-24"}'::jsonb, 'in_past'),
+  ('today_window_already_over_is_in_past', '2026-09-25T10:00:00.000Z', '{"fromDate":"2026-09-25","fromTime":"08:00","toTime":"09:00"}'::jsonb, 'in_past'),
+  ('ok_exactly_365_days_ahead', '2026-09-25T10:00:00.000Z', '{"fromDate":"2027-09-25"}'::jsonb, null),
+  ('366_days_ahead_is_too_far', '2026-09-25T10:00:00.000Z', '{"fromDate":"2027-09-26"}'::jsonb, 'too_far'),
+  ('last_repeat_beyond_365_days_is_too_far', '2026-09-25T10:00:00.000Z', '{"fromDate":"2027-06-01","repeatWeeks":26}'::jsonb, 'too_far'),
+  ('ok_31_days', '2026-09-25T10:00:00.000Z', '{"fromDate":"2026-11-01","toDate":"2026-12-01"}'::jsonb, null),
+  ('ok_31_days_across_the_autumn_change', '2026-09-25T10:00:00.000Z', '{"fromDate":"2026-10-10","toDate":"2026-11-09"}'::jsonb, null),
+  ('32_days_is_too_long', '2026-09-25T10:00:00.000Z', '{"fromDate":"2026-11-01","toDate":"2026-12-02"}'::jsonb, 'too_long'),
+  ('from_equals_to_is_bad_window', '2026-09-25T10:00:00.000Z', '{"fromDate":"2026-10-12","fromTime":"10:00","toTime":"10:00"}'::jsonb, 'bad_window'),
+  ('ok_26_repeats', '2026-09-25T10:00:00.000Z', '{"fromDate":"2026-10-05","repeatWeeks":26}'::jsonb, null),
+  ('27_repeats_is_too_many', '2026-09-25T10:00:00.000Z', '{"fromDate":"2026-10-05","repeatWeeks":27}'::jsonb, 'too_many'),
+  ('ok_200_future_entries_exactly', '2026-09-25T10:00:00.000Z', '{"fromDate":"2026-10-05","repeatWeeks":10,"existingFuture":189}'::jsonb, null),
+  ('201_future_entries_is_too_many', '2026-09-25T10:00:00.000Z', '{"fromDate":"2026-10-05","repeatWeeks":10,"existingFuture":190}'::jsonb, 'too_many');
+
+\set availability_range_count 12
+\set availability_overlap_count 6
+\set availability_weekly_count 5
+\set availability_validation_count 16

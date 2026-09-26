@@ -1,6 +1,19 @@
 import { TURN_AWAY_PAY_MIN, turnedAwayMessage } from '@thc/domain';
 
 /**
+ * ADR-0046: the static screen for a shift the worker handed over — the
+ * sentence docs/19 §4 fixes, verbatim, under the wireframe's "Handed over"
+ * pill (`wireframes/staff/offer-shift.html` (g)). Here, not in
+ * `STATIC_SCREEN_COPY`, because Phase 0 left `packages/domain/src/staff.ts`
+ * unchanged on purpose (docs/19 §8).
+ */
+export const HANDED_OVER_COPY = {
+  badge: 'Handed over',
+  tone: 'amber',
+  title: "You handed this shift over — it's now someone else's.",
+} as const;
+
+/**
  * The message keys the check-in / check-out / break RPCs return, in the
  * worker's language (§5.1 copy). One table, read by the shift screen and
  * by the today card's check-in (§10.4).

@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { UK_ZONE, formatTimeIn, overlapVerdict } from '@thc/domain';
 import type { CancelCause, OpenShiftRow, StaffBooking, StaffBookingStatus } from '@thc/domain';
 import { staffDb, supabaseConfigured } from './db';
+import { isCurrent, isMine } from './shifts/model';
 
 /**
  * Everything the three working screens read — Scope §10.4.
@@ -267,14 +268,20 @@ export function openInvites(bookings: readonly BookingRow[], now: Date = new Dat
  * ("Shifts · 3").
  *
  * One reading, used by every screen that renders the shell: the bookings
- * the My shifts list shows, which are the confirmed ones and the ones under
- * way or just worked (`shifts/page.tsx`'s `mine`). It is the list the badge
- * points at, so the number and the cards behind it cannot disagree — which
- * they did while /invites counted confirmed only and /radar counted both,
- * and the badge changed as the worker moved between tabs.
+ * the UPCOMING part of My shifts shows — confirmed or worked, and still
+ * current (`isCurrent()` in shifts/model.ts: up to the end of RULE-02's
+ * check-out window, end + 4 h, or carrying an unresolved No check-out). It
+ * is the list the badge points at, so the number and the cards behind it
+ * cannot disagree — which they did while /invites counted confirmed only
+ * and /radar counted both, and again while this counted every confirmed
+ * booking ever made, so a shift from two weeks ago kept the badge up.
+ * The collapsed "Past shifts" section is history and is not counted.
  */
-export function shiftsBadge(bookings: readonly Pick<BookingRow, 'status'>[]): number {
-  return bookings.filter((b) => b.status === 'confirmed' || b.status === 'worked').length;
+export function shiftsBadge(
+  bookings: readonly Pick<BookingRow, 'status' | 'endsAt' | 'noCheckoutOpen'>[],
+  now: Date = new Date(),
+): number {
+  return bookings.filter((b) => isMine(b) && isCurrent(b, now)).length;
 }
 
 /**

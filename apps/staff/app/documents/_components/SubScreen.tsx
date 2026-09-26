@@ -30,7 +30,7 @@ export async function SubScreen({
 
   if (!supabaseConfigured()) {
     return (
-      <StaffShell title={heading} active="/documents">
+      <StaffShell title={heading} active="/profile">
         <Alert tone="coral">
           This environment has no Supabase project, so nothing can be uploaded. See
           docs/04-setup-github-vercel-supabase.md.
@@ -41,7 +41,7 @@ export async function SubScreen({
 
   const data = gate.open ? await loadDocuments() : null;
   return (
-    <StaffShell title={heading} active="/documents" ignoreLock={gate.ignoreLock}>
+    <StaffShell title={heading} active="/profile" ignoreLock={gate.ignoreLock}>
       {data ? (
         await children(data)
       ) : (

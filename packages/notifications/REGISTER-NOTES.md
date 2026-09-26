@@ -6,6 +6,9 @@ test holds the set of codes to the two §8 tables (`SCOPE_CODES`). Two sends §8
 does not list are carried as extensions (`EXTENSION_CODES`), each saying why in
 its own `trigger`: E2b (below, and 20260923170000), E10, the §9.12
 self-cancel email (see "Missing from §8"), and N10d / N11b (below, ADR-0037).
+The completion letter requirement's codes are `REQUIREMENT_CODES` (CL1–CL6), and
+the Staff App additions of docs/19 are `ADDITION_CODES` (RC1–RC4, OF1–OF6; see
+"Additions" at the end).
 
 Where §8 states a trigger in prose rather than the string that goes out, the
 copy is taken from the screen carrying the same wording — `wireframes/staff/
@@ -94,3 +97,65 @@ an N- or E-code THC assigns to §8 later (E10 is now the self-cancel email above
 
 **Confirm with THC:** all six are our wording; none is marked mandatory, since
 the requirement does not say.
+
+## Additions (ADR-0043–0046)
+
+`docs/19-staff-features-plan.md` adds five features to the Staff App, each an
+addition to scope v1.6 with its own ADR (0043–0047, **status: proposed —
+awaiting THC**). Two of them send: Request a change (ADR-0045) and Offer up a
+shift (ADR-0046). Availability (0042) and Emergency contact (0043) send
+nothing; Refer a friend (0047) has one proposed send that is **not**
+registered (RF1, below).
+
+The codes use family prefixes — `RC`, `OF`, and `RF` if RF1 is ever built —
+as `CL` does, so none can collide with an N- or E-number THC assigns to §8
+later. They sit in `ADDITION_CODES`, apart from `SCOPE_CODES`,
+`REQUIREMENT_CODES` and `EXTENSION_CODES`, and the test holds the union of the
+four lists to the register exactly. Every `trigger` names its ADR and says
+"Not in §8". None is marked `mandatory`, since §8 does not list them. All the
+wording is ours (docs/15 Q21): **every row below is "confirm with THC"**.
+
+| Code | ADR | Channel · to | Title / subject | What the register uses | Timing · key | Status |
+| --- | --- | --- | --- | --- | --- | --- |
+| RC1 | 0045 | email · admin@ (from admin@) | `Profile change requested — {name}, Employee ID {employeeId}` | who asked, what (`{field}`: `name` or `photo`), when (UK time), now → requested, the worker's note, "Review it in Staff → Change requests." | on request · `RC1:request:<id>` | confirm with THC |
+| RC2 | 0045 | push · worker → `/profile/details` | `Profile updated` | `Your {field} has been updated.` | on approve · `RC2:request:<id>` | confirm with THC |
+| RC3 | 0045 | push · worker → `/profile/details` | `Change not made` | `We couldn't update your {field}: {reason}` — the office's reason is required on reject and is shown to the worker (the `compliance_docs.rejection_reason` precedent) | on reject · `RC3:request:<id>` | confirm with THC |
+| RC4 | 0045 | email · admin@ + thc_payroll@ (E7's recipients, the same constant) | `Name changed — {name}, Employee ID {employeeId}` | previous name, new name, approved (UK time). Issued PDFs and payroll exports are not rewritten (§1.7); no automatic right-to-work re-check (Q13) | on approving a name · `RC4:request:<id>` | confirm with THC |
+| OF1 | 0046 | push · candidate → `/radar/offers/{offerId}` | `Shift up for grabs` | `{role} · {event} · {dateTime} · {rate}/h — tap to take it.` — the N5 line, base rate only, and never the offerer | hourly, `allocation_per_hour` per round, wave 1 first, never after expiry · `OF1:offer:<offer>:<staff>` | confirm with THC |
+| OF2 | 0046 | push · offerer → `/shifts` | `Shift handed over` | `{event} · {dateTime} has been taken by another worker. You're no longer booked on it.` — deep link to the list, as N10b's: the booking is now cancelled | on take · `OF2:offer:<id>` | confirm with THC |
+| OF3 | 0046 | push · offerer → `/shifts/{bookingId}` | `You're still booked` | `Nobody took your {event} shift on {date} — you're still booked. If you can't make it, contact the office.` | on lapse by expiry only (a lapse because the booking left confirmed for another cause is silent — that cause has its own push) · `OF3:offer:<id>` | confirm with THC |
+| OF4 | 0046 | push · taker → `/shifts/{bookingId}` | `You're booked!` | `{event} on {date} is yours. Tap to view your shift details.` — N10's title and closing line | on take · `OF4:offer:<id>` | confirm with THC |
+| OF5 | 0046 | email · admin@ only (from admin@) | `Cover requested — {event} · {role} · {date}` | the fields docs/19 lists, in its order, E10's layout: name, Employee ID, event, client, venue, role, `{dateTime} (UK time)`, note, `{confirmed} of {headcount} (+{buffer})` (buffer never added in), auto-assign on/off, then "They are still booked until you act." | immediately · `OF5:booking:<booking>` — once per booking however often cover is asked (20260930205000) | confirm with THC |
+| OF6 | 0046 | push · offerer → `/shifts/{bookingId}` | `Cover request closed` | `The office has closed your cover request for {event} on {date}. You're still booked — contact the office if you can't make it.` | on decline · `OF6:offer:<id>` | confirm with THC |
+
+Notes on the table:
+
+- **Payload keys.** The test lists, per code, exactly the keys the title,
+  body and deep link ask for. The SQL senders are held to the same lists by
+  pgTAP 724 (OF, the `592` pattern) and 715/716 (RC). New keys are
+  `change`, `current`, `proposed`, `note`, `previousName`, `approvedAt`,
+  `offerId`; everything else reuses an existing register name with the same
+  meaning (`{dateTime}` as in N5/N10b/E10, `{requestedAt}` as in E8, …).
+- **`{note}`** is optional on both forms. The sender writes `—` when the
+  worker left it blank; `render` never drops a line, and an unfilled
+  placeholder would ship a brace.
+- **Worker wording.** The worker pushes carry none of the office vocabulary the
+  test lists (`auto-assign`, `pool`, `wave 1`, `allocation`, `handed_over`,
+  `self-cancel`, `payroll`, `Employee ID`, `headcount`, `buffer`, …); that
+  language lives in `trigger`. "Up for grabs" and "handed over" are the
+  worker-facing names for the same things.
+- **OF1 never names the offerer.** Radar lists offers through an RPC that does
+  not return the offerer, and the push asks for no name or Employee ID.
+- **No office email on a pool hand-over or lapse.** No slot is lost, so only
+  a cover request inside 72 h emails the office (OF5). **Confirm** (Q18).
+
+### RF1 — proposed, not registered
+
+| Code | ADR | Channel · to | Copy (draft) | Status |
+| --- | --- | --- | --- | --- |
+| RF1 | 0047 | push · referrer | `Your friend {firstName} has joined The Hospitality Company.` | **proposed — not in `TEMPLATES`, not in `ADDITION_CODES`** |
+
+Held back because it tells one person another's employment status. It is
+built only if THC says yes to Q20 (docs/19 §5, Phase 2 item 4), and then with
+their privacy wording. Until then nothing can queue it: `messageFor` refuses a
+code the register does not name, and a test asserts `RF1` is absent.

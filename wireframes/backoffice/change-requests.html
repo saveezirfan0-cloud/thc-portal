@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Back Office · Change requests — THC wireframes</title>
+<link rel="stylesheet" href="../assets/thc.css">
+<script src="../assets/thc.js" defer></script>
+<style>
+  .req { border: 1px solid var(--line); background: var(--panel); display: flex; flex-direction: column; }
+  .req .rh { display: flex; gap: 12px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  .req .rh .who { font-weight: 600; }
+  .req .rb { display: grid; grid-template-columns: 1fr 24px 1fr 1.2fr; gap: 14px; padding: 14px 16px; align-items: start; }
+  .req .rb .arrow { color: var(--muted); font-size: 18px; text-align: center; padding-top: 20px; }
+  .req .rf { display: flex; gap: 8px; align-items: center; justify-content: flex-end; padding: 10px 16px; border-top: 1px solid var(--line); }
+  .side { display: flex; flex-direction: column; gap: 6px; }
+  .side .v { font-family: var(--font-head); font-size: 17px; font-weight: 600; }
+  .shot { width: 96px; height: 120px; border: 1px solid var(--line); background: var(--panel-2); display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); color: var(--muted); }
+  .kv { display: grid; grid-template-columns: 140px 1fr; gap: 8px 14px; font-size: 13px; align-items: baseline; }
+  .kv .k { font-family: var(--font-mono); font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+  .banner { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border: 1px solid var(--amber-line); background: var(--amber-dim); font-size: 13.5px; }
+  @media (max-width: 860px) { .req .rb { grid-template-columns: 1fr; } .req .rb .arrow { display: none; } }
+</style>
+</head>
+<body>
+<div class="wf-bar">
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Change requests · Staff profile additions</span><span class="pill cyan">/staff/requests</span><span class="pill cyan">/staff/:id</span><span class="pill">§10.1 · §9.6 · §1.7 · §8 RC1–RC4 · ADR-0043/0043/0044/0046 (proposed)</span>
+  <span class="spacer"></span>
+  <a href="staff-profile.html">Next: Staff profile →</a>
+</div>
+
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="logo round" title="two glasses logo in a cyan box">🥂</span>
+      <div><div class="name">The Hospitality Company</div><div class="sub">Back Office</div></div>
+    </div>
+    <nav>
+      <a href="dashboard.html"><span class="ico">▣</span>Dashboard</a>
+      <a href="onboarding.html"><span class="ico">◫</span>Onboarding</a>
+      <a href="events.html"><span class="ico">▦</span>Scheduling</a>
+      <a href="compliance.html"><span class="ico">◈</span>Compliance <span class="count">7</span></a>
+      <a href="checkin.html"><span class="ico">◉</span>Check In / Out</a>
+      <div class="divider"></div>
+      <a class="active" href="staff.html"><span class="ico">☷</span>Staff <span class="count">2</span></a>
+      <a href="clients.html"><span class="ico">▤</span>Clients</a>
+      <a href="roles.html"><span class="ico">≡</span>Roles</a>
+      <a href="reports.html"><span class="ico">▥</span>Reports</a>
+      <a href="feedback.html"><span class="ico">✎</span>Feedback</a>
+      <a href="venues.html"><span class="ico">◎</span>Venues</a>
+    </nav>
+    <div class="foot"><span class="avatar sm">GM</span><div><div class="sm strong">Gisela M.</div><div class="xs muted">Admin</div></div><a class="ml-auto xs" href="login.html">Sign out</a></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <button class="btn ghost sm icon" data-toggle-sidebar title="menu (tablet/phone)">☰</button>
+      <h1>Staff</h1>
+      <span class="crumbs"><a href="staff.html">Directory</a> / <b>Change requests</b></span>
+      <span class="spacer"></span>
+      <span class="tz">Viewer: Europe/London (UK)</span>
+    </header>
+
+    <div class="content">
+      <div class="note sm">Built by <b>directory</b> (docs/19 Phase 1-C; <code>apps/office/app/staff/requests/**</code>, <code>apps/office/app/staff/[id]/**</code>). The first five states are the <code>/staff/requests</code> queue; the last two are additions to <a href="staff-profile.html">/staff/:id</a>. <code>/staff</code> has a "Change requests (2)" link above the directory, and the Staff menu item carries the same count (<code>navCounts.ts</code>). The /staff/:id banner's <b>Review</b> opens the same dialog as the queue, starting from both sides with Reject and Approve. An empty emergency contact offers <b>Add</b> instead of Edit.</div>
+      <div class="wf-states" data-target="cr"><button data-state="pending">Pending</button><button data-state="approve">Approve name · dialog</button><button data-state="reject">Reject · dialog</button><button data-state="decided">Decided</button><button data-state="empty">Empty</button><button data-state="overview">/staff/:id · Overview cards</button><button data-state="availability">/staff/:id · Availability tab</button></div>
+
+      <!-- ================= PENDING ================= -->
+      <section data-state-of="cr" data-state="pending" class="stack" style="gap:14px">
+        <div class="tabs"><button class="active">Pending <span class="n alert">2</span></button><button>Decided</button></div>
+        <div class="req">
+          <div class="rh"><span class="avatar photo">TR</span><span class="who"><a href="staff-profile.html">Tom R.</a></span><span class="mono sm muted">THC-00412</span><span class="pill">Photo</span><span class="ml-auto mono sm muted">Requested Wed 17 Sep · 09:12 UK time</span></div>
+          <div class="rb">
+            <div class="side"><span class="label">Now</span><div class="shot">TR</div></div>
+            <div class="arrow">→</div>
+            <div class="side"><span class="label">Requested</span><div class="shot">TR·new</div><span class="xs muted">signed URL · expires in 10 min</span></div>
+            <div class="side"><span class="label">Note from Tom</span><div class="sm">"New haircut — the old photo doesn't look like me any more."</div></div>
+          </div>
+          <div class="rf"><span class="xs muted">Printed on timesheets from the next document; issued PDFs keep the old photo</span><button class="btn sm danger">Reject</button><button class="btn sm primary">Approve</button></div>
+        </div>
+        <div class="req">
+          <div class="rh"><span class="avatar photo">AK</span><span class="who"><a href="staff-profile.html">Amara K.</a></span><span class="mono sm muted">THC-00873</span><span class="pill">Name</span><span class="ml-auto mono sm muted">Requested Thu 18 Sep · 14:37 UK time</span></div>
+          <div class="rb">
+            <div class="side"><span class="label">Now</span><span class="v">Amara Kalu</span></div>
+            <div class="arrow">→</div>
+            <div class="side"><span class="label">Requested</span><span class="v">Amara Okafor</span></div>
+            <div class="side"><span class="label">Evidence · note</span><a class="sm" href="#" onclick="return false">marriage-certificate.jpg ↗</a><div class="sm">"Married in August."</div></div>
+          </div>
+          <div class="rf"><span class="xs muted">Right to work: Passport · verified 10.07.2026</span><button class="btn sm danger">Reject</button><button class="btn sm primary">Approve</button></div>
+        </div>
+        <span class="annot">oldest first · one pending request per worker per kind · the worker never sees who decided</span>
+      </section>
+
+      <!-- ================= APPROVE NAME ================= -->
+      <section data-state-of="cr" data-state="approve" class="hide">
+        <div class="modal-inline">
+          <div class="modal-back">
+            <div class="modal">
+              <div class="mh"><h3>Approve name change — Amara K.</h3></div>
+              <div class="mb stack" style="gap:10px">
+                <div class="kv"><span class="k">Now</span><span>Amara Kalu</span><span class="k">New name</span><span><b>Amara Okafor</b></span><span class="k">Evidence</span><span><a href="#" onclick="return false">marriage-certificate.jpg ↗</a></span></div>
+                <label class="check sm"><span class="box"></span>I've checked the evidence matches the right-to-work document</label>
+                <p class="xs muted">The name changes on her profile now. Payroll and admin@ are emailed (RC4); she gets a push (RC2). Timesheets, allocation sheets and payroll exports already issued are not changed. No new right-to-work check is started (Q13).</p>
+              </div>
+              <div class="mf"><button class="btn">Cancel</button><button class="btn primary disabled" title="tick the evidence check first">Approve</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= REJECT ================= -->
+      <section data-state-of="cr" data-state="reject" class="hide">
+        <div class="modal-inline">
+          <div class="modal-back">
+            <div class="modal">
+              <div class="mh"><h3>Reject photo change — Tom R.</h3></div>
+              <div class="mb stack" style="gap:10px">
+                <div class="field"><span class="label">Reason · shown to the worker</span><textarea class="input" style="min-height:70px">Your face is partly covered — please retake without sunglasses.</textarea><span class="hint">Required. Tom sees it in the app as "Not changed: {reason}" (RC3).</span></div>
+              </div>
+              <div class="mf"><button class="btn">Cancel</button><button class="btn danger solid">Reject</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= DECIDED ================= -->
+      <section data-state-of="cr" data-state="decided" class="stack hide" style="gap:14px">
+        <div class="tabs"><button>Pending <span class="n">0</span></button><button class="active">Decided</button></div>
+        <div class="panel">
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>Worker</th><th>Kind</th><th>Change</th><th>Requested (UK)</th><th>Decision</th><th>By</th><th>Decided (UK)</th></tr></thead>
+              <tbody>
+                <tr><td>Amara K. <span class="mono xs muted">THC-00873</span></td><td>Name</td><td>Amara Kalu → Amara Okafor</td><td class="mono sm">18.09.2026 14:37</td><td><span class="pill green">Approved</span></td><td>Gisela M.</td><td class="mono sm">18.09.2026 16:02</td></tr>
+                <tr><td>Tom R. <span class="mono xs muted">THC-00412</span></td><td>Photo</td><td>new photo</td><td class="mono sm">17.09.2026 09:12</td><td><span class="pill coral">Rejected</span><span class="sub xs muted">"Your face is partly covered — please retake without sunglasses."</span></td><td>Gisela M.</td><td class="mono sm">18.09.2026 10:12</td></tr>
+                <tr><td>Priya S. <span class="mono xs muted">THC-00655</span></td><td>Name</td><td>Priya Sharma → Priya Sharma-Bell</td><td class="mono sm">02.09.2026 11:40</td><td><span class="pill">Withdrawn</span></td><td class="muted">— the worker</td><td class="mono sm">02.09.2026 12:05</td></tr>
+                <tr><td>Deleted account #1042</td><td>Name</td><td class="muted">— anonymised</td><td class="mono sm">14.08.2026 08:30</td><td><span class="pill">Withdrawn</span></td><td class="muted">GDPR removal</td><td class="mono sm">20.08.2026 09:00</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= EMPTY ================= -->
+      <section data-state-of="cr" data-state="empty" class="stack hide" style="gap:14px">
+        <div class="tabs"><button class="active">Pending <span class="n">0</span></button><button>Decided</button></div>
+        <div class="empty"><h3>No change requests waiting</h3>Workers ask for a name or photo change from Profile details in the app. New requests arrive here and by email to admin@ (RC1).</div>
+      </section>
+
+      <!-- ================= /staff/:id · OVERVIEW CARDS ================= -->
+      <section data-state-of="cr" data-state="overview" class="stack hide" style="gap:14px">
+        <div class="banner"><span class="pill amber">Pending</span><span>Name change requested — <b>Amara Kalu → Amara Okafor</b> · 18.09.2026 14:37 UK time</span><a class="btn sm ml-auto" href="#cr=pending">Review</a></div>
+        <div class="tabs"><button class="active">Overview</button><button>Documents</button><button>Client qualification</button><button>Shifts</button><button>Feedback</button><button>Availability</button></div>
+        <div class="grid c2">
+          <div class="panel">
+            <div class="panel-h"><h3>Emergency contact</h3><span class="muted sm">office only · never on a client document</span><div class="right"><button class="btn sm ghost">Edit</button><button class="btn sm ghost">Clear</button></div></div>
+            <div class="panel-b kv">
+              <span class="k">Name</span><span>Grace Kalu</span>
+              <span class="k">Relationship</span><span>Parent</span>
+              <span class="k">Phone</span><span>🇬🇧 +44 7700 900456</span>
+              <span class="k">Updated</span><span class="mono sm muted">18.09.2026 14:36 UK time · by the worker</span>
+            </div>
+            <div class="panel-b" style="padding-top:0"><span class="annot">empty → "Not provided" · an office Edit / Clear is written to the audit log</span></div>
+          </div>
+          <div class="panel">
+            <div class="panel-h"><h3>Referrals</h3><span class="muted sm">recorded from /apply?ref= · no reward (Q19)</span></div>
+            <div class="panel-b kv">
+              <span class="k">Referred by</span><span><a href="staff-profile.html">Luca M.</a> <span class="mono xs muted">THC-00701</span></span>
+              <span class="k">Her code</span><span class="mono">K7M4Q2XP</span>
+              <span class="k">Applied with it</span><span>3 — <a href="candidate.html">Priya S.</a> (Compliant) · <a href="candidate.html">Jonah W.</a> (Blocked) · <a href="candidate.html">Deleted account #1042</a></span>
+            </div>
+          </div>
+        </div>
+        <span class="annot">the worker herself sees only the count; the office sees names and links (ADR-0047)</span>
+      </section>
+
+      <!-- ================= /staff/:id · AVAILABILITY TAB ================= -->
+      <section data-state-of="cr" data-state="availability" class="stack hide" style="gap:14px">
+        <div class="tabs"><button>Overview</button><button>Documents</button><button>Client qualification</button><button>Shifts</button><button>Feedback</button><button class="active">Availability</button></div>
+        <div class="panel">
+          <div class="panel-h"><h3>Marked unavailable · next 8 weeks</h3><span class="muted sm">read-only — the worker edits this in the app · UK time</span></div>
+          <div class="panel-b tight">
+            <table class="tbl">
+              <thead><tr><th>When (UK)</th><th>Length</th><th>Repeats</th><th>Overlaps a booking</th><th>Added</th></tr></thead>
+              <tbody>
+                <tr><td>Tue 23 Sep · all day</td><td class="mono sm">24 h</td><td class="muted">—</td><td><a href="event-board.html">Awards Night · Waiting Staff · 16:00 – 02:00</a> <span class="pill green">Confirmed</span></td><td class="mono sm">18.09.2026</td></tr>
+                <tr><td>Sat 27 Sep · all day</td><td class="mono sm">24 h</td><td class="muted">—</td><td class="muted">—</td><td class="mono sm">12.09.2026</td></tr>
+                <tr><td>Mon 29 Sep – Fri 3 Oct · all day</td><td class="mono sm">5 days</td><td class="muted">—</td><td class="muted">—</td><td class="mono sm">12.09.2026</td></tr>
+                <tr><td>Wed 1 Oct · 18:00 – 23:00</td><td class="mono sm">5 h</td><td>weekly · 6 (to Wed 5 Nov)</td><td class="muted">—</td><td class="mono sm">18.09.2026</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="note sm">Auto-assign skips her for any section overlapping these (first round, hourly rounds, refills, escalation, offer pushes). On the event board she appears under Unavailable as "Marked unavailable · {UK window}" with <b>Invite anyway</b> behind "Amara K. marked themselves unavailable for this time. Invite anyway?" (ADR-0043, Q9). A confirmed booking is never cancelled by an entry.</div>
+      </section>
+    </div>
+  </div>
+</div>
+
+<div class="wf-note note"><b>Behaviour notes.</b> Additions to Scope v1.6 (docs/19; ADR-0043, ADR-0044, ADR-0045, ADR-0047 — proposed, awaiting THC). <b>/staff/requests</b> (ADR-0045): pending requests oldest first, current and requested side by side (photos by signed URL), evidence link and note. <b>Approve</b> a name only after ticking "I've checked the evidence matches the right-to-work document" — writes the name and the audit log, pushes RC2, emails RC4 to admin@ and payroll; no automatic right-to-work re-check (Q13). <b>Approve</b> a photo repoints the profile photo despite the lock; the old file is kept. <b>Reject</b> needs a reason, shown to the worker (RC3). A decided request cannot be decided again. Issued PDFs and payroll exports are never changed. <b>/staff/:id</b>: a pending-request banner; an <b>Emergency contact</b> card (Edit / Clear, audited, "Not provided" when empty — ADR-0044); a <b>Referrals</b> card and "Referred by" (ADR-0047); a read-only <b>Availability</b> tab for the next 8 weeks in UK time (ADR-0043). The Client Portal, the allocation sheet and the timesheet show none of this. Stamps are UK time (§1.8).</div>
+</body>
+</html>

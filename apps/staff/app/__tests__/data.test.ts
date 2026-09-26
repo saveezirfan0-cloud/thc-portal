@@ -89,11 +89,33 @@ describe('shiftsBadge — one reading for every tab (§10.1)', () => {
     const rows = (
       ['confirmed', 'worked', 'invited', 'applied', 'closed', 'cancelled', 'confirmed'] as const
     ).map((status) => booking({ status }));
-    expect(shiftsBadge(rows)).toBe(3);
+    expect(shiftsBadge(rows, NOW)).toBe(3);
   });
 
   it('is zero with nothing booked', () => {
-    expect(shiftsBadge([booking({ status: 'invited' })])).toBe(0);
+    expect(shiftsBadge([booking({ status: 'invited' })], NOW)).toBe(0);
+  });
+
+  it('stops counting a shift once its check-out window (end + 4 h) has closed', () => {
+    // 11 Sep, 11:00–16:00 UK: the screenshot's stale "Confirmed" card.
+    const old = booking({
+      status: 'confirmed',
+      startsAt: new Date('2026-09-11T10:00:00Z'),
+      endsAt: new Date('2026-09-11T15:00:00Z'),
+    });
+    expect(shiftsBadge([old], NOW)).toBe(0);
+    expect(shiftsBadge([old], new Date('2026-09-11T18:59:00Z'))).toBe(1);
+    expect(shiftsBadge([old], new Date('2026-09-11T19:00:00Z'))).toBe(0);
+  });
+
+  it('keeps counting an unresolved No check-out — §10.4 keeps that card in the list', () => {
+    const locked = booking({
+      status: 'worked',
+      startsAt: new Date('2026-09-11T10:00:00Z'),
+      endsAt: new Date('2026-09-11T15:00:00Z'),
+      noCheckoutOpen: true,
+    });
+    expect(shiftsBadge([locked], NOW)).toBe(1);
   });
 });
 

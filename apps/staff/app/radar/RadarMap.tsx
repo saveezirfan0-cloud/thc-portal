@@ -19,7 +19,15 @@ const HEIGHT = 120;
  * body, or an event whose venue location was never set — because a map
  * with nothing on it says less than no map.
  */
-export function RadarMap({ shift }: { shift: OpenShift }) {
+export function RadarMap({
+  shift,
+}: {
+  /** An open shift, or an offered one (`/radar/offers/:id`, ADR-0046). */
+  shift: Pick<
+    OpenShift,
+    'distanceKm' | 'geofenceRadiusM' | 'homeLat' | 'homeLng' | 'venueLat' | 'venueLng' | 'venueName'
+  >;
+}) {
   if (shift.venueLat === null || shift.venueLng === null) return null;
   const home =
     shift.homeLat !== null && shift.homeLng !== null

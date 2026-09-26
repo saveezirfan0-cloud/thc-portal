@@ -128,7 +128,7 @@ test.describe('on site: check in, then check out (§5.1)', () => {
     page,
   }) => {
     await openAs(page, '/profile', worker!.email, PASSWORD);
-    // ProfileSheet.tsx: the unavailable button is plain "Request my P45",
+    // ProfileHub.tsx (ADR-0042): the unavailable button is plain "Request my P45",
     // with p45Availability()'s hint beside it (profile/lock.ts).
     await expect(page.getByRole('button', { name: 'Request my P45', exact: true })).toBeDisabled();
     await expect(page.getByText("Available once you've checked out")).toBeVisible();

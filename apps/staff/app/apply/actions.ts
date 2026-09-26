@@ -3,7 +3,14 @@
 import { cookies, headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { callerKey } from './caller';
-import { APPLY_UNAVAILABLE, SENT_TO_COOKIE, toE164, validate } from './form';
+import {
+  APPLY_UNAVAILABLE,
+  REFERRAL_FIELD,
+  SENT_TO_COOKIE,
+  referralCodeFrom,
+  toE164,
+  validate,
+} from './form';
 import type { ApplicationValues, ApplyState } from './form';
 
 function read(formData: FormData): ApplicationValues {
@@ -35,10 +42,14 @@ interface ApplicationArgs {
 
 type RpcAnswer = { error: { message: string; code?: string } | null };
 
+/**
+ * `p_referral_code` is 20260930204000's 8th argument (ADR-0047). Typed by
+ * hand here, like the rest of this call, until the Phase 2 type regen.
+ */
 interface AdminRpcClient {
   rpc(
     fn: 'submit_application_as_caller',
-    args: ApplicationArgs & { p_caller_hash: string | null },
+    args: ApplicationArgs & { p_caller_hash: string | null; p_referral_code?: string },
   ): Promise<RpcAnswer>;
 }
 
@@ -52,8 +63,18 @@ interface AdminRpcClient {
  * therefore cannot take an application at all, and says so (null) rather
  * than failing inside the database. Every deployed project carries the key
  * (docs/16, environment table); a developer's `supabase start` prints one.
+ *
+ * The referral code (ADR-0047) rides on the same call. The argument is sent
+ * only when there is a code, so a code-less call matches the function
+ * whichever migration the database is on; and if the database does not yet
+ * know the 8th argument (PostgREST's PGRST202, "no such function"), the
+ * application is sent again without it — a referral never costs anybody
+ * their application.
  */
-async function submit(args: ApplicationArgs): Promise<RpcAnswer | null> {
+async function submit(
+  args: ApplicationArgs,
+  referralCode: string | null,
+): Promise<RpcAnswer | null> {
   if (!process.env['SUPABASE_SERVICE_ROLE_KEY']) {
     console.error(
       '[apply] SUPABASE_SERVICE_ROLE_KEY is not set — /apply cannot reach submit_application_as_caller (ADR-0024).',
@@ -62,10 +83,14 @@ async function submit(args: ApplicationArgs): Promise<RpcAnswer | null> {
   }
   const { createAdminClient } = await import('@thc/db/admin');
   const admin = createAdminClient() as unknown as AdminRpcClient;
-  return admin.rpc('submit_application_as_caller', {
-    ...args,
-    p_caller_hash: callerKey(await headers()),
+  const base = { ...args, p_caller_hash: callerKey(await headers()) };
+  if (!referralCode) return admin.rpc('submit_application_as_caller', base);
+  const answer = await admin.rpc('submit_application_as_caller', {
+    ...base,
+    p_referral_code: referralCode,
   });
+  if (answer.error?.code === 'PGRST202') return admin.rpc('submit_application_as_caller', base);
+  return answer;
 }
 
 /**
@@ -94,14 +119,18 @@ export async function apply(_prev: ApplyState, formData: FormData): Promise<Appl
 
   const email = values.email.trim().toLowerCase();
 
-  const answer = await submit({
-    p_first_name: values.firstName.trim(),
-    p_last_name: values.lastName.trim(),
-    p_email: email,
-    p_phone: toE164(values.dialCode, values.mobile),
-    p_dob: values.dob.trim(),
-    p_consent: values.consent,
-  });
+  const answer = await submit(
+    {
+      p_first_name: values.firstName.trim(),
+      p_last_name: values.lastName.trim(),
+      p_email: email,
+      p_phone: toE164(values.dialCode, values.mobile),
+      p_dob: values.dob.trim(),
+      p_consent: values.consent,
+    },
+    // Shape-checked again here: the hidden field is as editable as any other.
+    referralCodeFrom(formData.get(REFERRAL_FIELD)),
+  );
   if (!answer) return { errors: {}, values, failure: APPLY_UNAVAILABLE };
 
   const { error } = answer;

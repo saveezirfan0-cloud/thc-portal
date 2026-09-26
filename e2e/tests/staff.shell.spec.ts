@@ -243,7 +243,7 @@ test.describe('The shell around a compliant worker (§10.1)', () => {
     if (serviceKey && supabaseUrl) await setStaff(COMPLIANT);
   });
 
-  test('the bottom navigation is Documents · Shifts · Invites · Radar, in that order', async ({
+  test('the bottom navigation is Shifts · Invites · Radar · Profile, in that order (ADR-0042)', async ({
     page,
   }) => {
     await page.goto('/shifts');
@@ -251,30 +251,43 @@ test.describe('The shell around a compliant worker (§10.1)', () => {
     await expect(nav).toBeVisible();
     // Direct children only: each tab carries inner spans for its label and
     // its count, and matching those would count eleven tabs.
-    await expect(nav.locator('> a, > span')).toHaveText([
-      /Documents/,
-      /Shifts/,
-      /Invites/,
-      /Radar/,
-    ]);
-    // Nothing is locked for a compliant worker: all four tabs are links
-    // (Documents since S4), and none of them carries the locked state.
+    await expect(nav.locator('> a, > span')).toHaveText([/Shifts/, /Invites/, /Radar/, /Profile/]);
+    // Nothing is locked for a compliant worker: all four tabs are links,
+    // and none of them carries the locked state.
     await expect(nav.locator('> a')).toHaveCount(4);
     await expect(nav.locator('.locked')).toHaveCount(0);
+    // A named landmark, and the lit tab announced as the current page.
+    await expect(page.getByRole('navigation', { name: 'Main' })).toBeVisible();
+    await expect(nav.locator('[aria-current="page"]')).toHaveText(/Shifts/);
   });
 
-  test('the avatar is the way into the profile, on every tab (§10.1)', async ({ page }) => {
-    // The sheet itself is /profile (#42) — its three links, the help line
-    // and the §10.6 P45 flow are asserted by that session's own tests. What
-    // belongs to the chrome is that every screen carries the avatar, that
-    // it goes there, and that there is no profile TAB competing with it.
+  test('the avatar and the Profile tab both lead to the profile (§10.1, ADR-0042)', async ({
+    page,
+  }) => {
     for (const path of ['/shifts', '/invites', '/radar']) {
       await page.goto(path);
       const avatar = page.locator('header.app-header a.avatar-btn');
       await expect(avatar).toHaveAttribute('href', '/profile');
       await expect(avatar).toHaveAccessibleName('Your profile');
-      await expect(page.locator('nav.bottom-nav').getByText('Profile')).toHaveCount(0);
+      await expect(
+        page.locator('nav.bottom-nav').getByRole('link', { name: 'Profile' }),
+      ).toHaveAttribute('href', '/profile');
     }
+  });
+
+  test('Documents lives under Profile, which is lit while it is open (ADR-0042)', async ({
+    page,
+  }) => {
+    await page.goto('/profile');
+    await expect(page.getByRole('link', { name: 'Edit profile' })).toHaveAttribute(
+      'href',
+      '/profile/details',
+    );
+    await page.getByRole('link', { name: /^Documents/ }).click();
+    await expect(page).toHaveURL(/\/documents$/);
+    await expect(page.locator('nav.bottom-nav a.active')).toHaveText(/Profile/);
+    await expect(page.locator('nav.bottom-nav a.active')).toHaveAttribute('aria-current', 'page');
+    await expect(page.getByRole('link', { name: '‹ Profile' })).toHaveAttribute('href', '/profile');
   });
 });
 
@@ -336,12 +349,10 @@ test.describe('App lock — the four cases (§10.1)', () => {
     // pressable is a different promise from one that is not.
     const nav = page.locator('nav.bottom-nav');
     await expect(nav.locator('[aria-disabled="true"]')).toHaveCount(3);
-    // Documents is the only tab not locked, and the only link (S4).
+    // Profile — the home of Documents (ADR-0042) — is the only tab not
+    // locked, and the only link.
     await expect(nav.locator('a')).toHaveCount(1);
-    await expect(nav.getByRole('link', { name: 'Documents' })).toHaveAttribute(
-      'href',
-      '/documents',
-    );
+    await expect(nav.getByRole('link', { name: 'Profile' })).toHaveAttribute('href', '/profile');
     await expect(nav.locator('.locked')).toHaveCount(3);
   });
 
@@ -403,10 +414,11 @@ test.describe('App lock — the four cases (§10.1)', () => {
     await page.goto('/notifications');
     await expect(page.getByRole('button', { name: /Turn on notifications/ })).toBeVisible();
     // …while the navigation shows the three tabs they cannot reach closed,
-    // and Documents — the one tab a document-blocked worker keeps (§4, "sees
-    // ONLY the Documents tab") — open, now that /documents exists (S4).
+    // and Profile — where Documents lives since ADR-0042, so the one tab a
+    // document-blocked worker keeps (§4, "sees ONLY the Documents tab") —
+    // open.
     const links = page.locator('nav.bottom-nav a');
     await expect(links).toHaveCount(1);
-    await expect(links.first()).toHaveAttribute('href', '/documents');
+    await expect(links.first()).toHaveAttribute('href', '/profile');
   });
 });

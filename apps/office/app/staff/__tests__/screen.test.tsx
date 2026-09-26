@@ -143,4 +143,21 @@ describe('the Inactive tab carries what the office works through (§9.6, §10.6)
     );
     expect(html).toContain('20 h — term time until 13.12.2026');
   });
+
+  it('links to the change-request queue with the pending count (ADR-0045)', () => {
+    const html = renderToStaticMarkup(
+      <StaffScreen staff={[WORKER]} students={[]} problem={null} pendingRequests={2} />,
+    );
+    expect(html).toContain('href="/staff/requests"');
+    expect(html).toContain('Change requests (2)');
+  });
+
+  it('never claims "(0)" when the count could not be read (audit D18)', () => {
+    const html = renderToStaticMarkup(
+      <StaffScreen staff={[WORKER]} students={[]} problem={null} pendingRequests={null} />,
+    );
+    expect(html).toContain('Change requests (?)');
+    expect(html).not.toContain('Change requests (0)');
+    expect(html).toContain('The pending count could not be read');
+  });
 });

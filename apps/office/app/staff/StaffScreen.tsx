@@ -33,6 +33,11 @@ export interface StaffScreenProps {
   initialView?: 'directory' | 'student';
   /** The tab to open on — the Inactive tab is its own table (§9.6). */
   initialFilter?: Filter;
+  /**
+   * Pending name/photo change requests (ADR-0045) — "Change requests (N)".
+   * Null when the count could not be read: "(?)", never a claimed 0 (D18).
+   */
+  pendingRequests?: number | null;
 }
 
 /** The pager's two sizes, as the wireframe offers them ("15 / page", "50 / page"). */
@@ -59,6 +64,7 @@ export function StaffScreen({
   problem,
   initialView = 'directory',
   initialFilter = 'all',
+  pendingRequests = 0,
 }: StaffScreenProps) {
   const [view, setView] = useState<'directory' | 'student'>(initialView);
   const [filter, setFilter] = useState<Filter>(initialFilter);
@@ -123,6 +129,19 @@ export function StaffScreen({
       }
     >
       {problem ? <Alert tone="coral">{problem}</Alert> : null}
+
+      {/* ADR-0045: the office's queue for the name and photo §10.1 locks. */}
+      <div className="staff-requests-link">
+        <Link
+          href="/staff/requests"
+          className="btn sm ghost"
+          {...(pendingRequests === null
+            ? { title: 'The pending count could not be read — open the queue to see it.' }
+            : {})}
+        >
+          Change requests ({pendingRequests ?? '?'})
+        </Link>
+      </div>
 
       <div className="toolbar">
         <SegToggle

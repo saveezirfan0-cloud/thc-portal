@@ -18,6 +18,8 @@ import type { BoardBooking, BoardSection } from '../board-data';
 import {
   type UnavailableEntry,
   canToggleAutoAssign,
+  handedOverLine,
+  offerChip,
   rateLine,
   roleBlockOpen,
 } from '../board-model';
@@ -26,6 +28,7 @@ import { ApplicationActions } from './ApplicationActions';
 import { AttendancePills, AttendanceStamp } from './Attendance';
 import { AutoAssignSwitch } from './AutoAssignSwitch';
 import { BookingActions } from './BookingActions';
+import { InviteAnyway } from './InviteAnyway';
 import { PotentialPool } from './PotentialPool';
 import { RoleBlock } from './RoleBlock';
 
@@ -155,6 +158,13 @@ export function RoleBoard({
             the worker confirms in the app — no Confirm button here, only Withdraw
           </span>
         </div>
+        {/* ADR-0046: who handed this section's shift to whom. The line-up
+            changed only when the booking did, as for a Withdraw and re-fill. */}
+        {section.handovers.map((handover) => (
+          <div className="prow muted sm" key={`${handover.at}:${handover.toName}`}>
+            {handedOverLine(handover)}
+          </div>
+        ))}
         {section.confirmed.length === 0 ? (
           <div className="prow muted">Nobody has confirmed yet.</div>
         ) : (
@@ -171,6 +181,10 @@ export function RoleBoard({
               {/* A no-show stays here, badged — never moved to its own list (§3.3). */}
               {booking.noShow ? <Pill tone="coral">No show</Pill> : null}
               {booking.reconfirmRequired ? <Pill tone="amber">Awaiting re-confirm</Pill> : null}
+              {/* ADR-0046: still confirmed, still counted — only a chip. */}
+              {booking.offer ? (
+                <Pill tone={offerChip(booking.offer).tone}>{offerChip(booking.offer).label}</Pill>
+              ) : null}
               <div className="right">
                 <AttendancePills attendance={booking.attendance} />
                 <BookingActions
@@ -185,6 +199,7 @@ export function RoleBoard({
                   // no-show: office_mark_no_show() refuses already_checked_in,
                   // so the button is not offered.
                   noShowAllowed={noShowAllowed && booking.status !== 'worked'}
+                  offer={live ? booking.offer : null}
                 />
               </div>
             </div>
@@ -275,14 +290,22 @@ export function RoleBoard({
         </div>
       ) : null}
 
-      {live && section.unavailable.length > 0 ? (
-        // Collapsed by default (wireframe "Unavailable ▸ collapsed").
-        <details className="sub">
+      {live && (section.unavailable.length > 0 || section.calendarProblem) ? (
+        // Collapsed by default (wireframe "Unavailable ▸ collapsed") — but
+        // open when the calendar could not be read, so that is not hidden.
+        <details className="sub" open={section.calendarProblem ? true : undefined}>
           <summary className="subh">
             <span className="car" aria-hidden="true" />
             Unavailable <span className="n">{section.unavailable.length}</span>
             <span className="right muted sm">wrong-role never produces a row here</span>
           </summary>
+          {section.calendarProblem ? (
+            // ADR-0043: without the calendar the pool above may list workers
+            // the engine will skip. Say so rather than show a quiet list.
+            <div className="prow coral sm" role="alert">
+              {section.calendarProblem}
+            </div>
+          ) : null}
           {section.unavailable.map((person) => (
             <div className="prow" key={person.staffId}>
               <Person
@@ -295,6 +318,16 @@ export function RoleBoard({
               <div className="right">
                 <Pill tone={person.tone}>{person.label}</Pill>
                 {person.detail ? <span className="muted xs">{person.detail}</span> : null}
+                {/* ADR-0043: the calendar holds back the machine, not the
+                    office — behind a confirm, the ordinary manual invite. */}
+                {person.inviteAnyway && canInvite && showPools ? (
+                  <InviteAnyway
+                    eventId={eventId}
+                    shiftId={section.id}
+                    staffId={person.staffId}
+                    name={person.name}
+                  />
+                ) : null}
               </div>
             </div>
           ))}
@@ -317,6 +350,8 @@ function confirmedLine(booking: BoardBooking, roleName: string): string {
       : "I'm ready — not yet",
   );
   if (booking.source === 'self') parts.push('self-applied via Radar');
+  // ADR-0046: booked by taking a shift another worker offered up.
+  if (booking.source === 'offer') parts.push('took an offered shift');
   return parts.join(' · ');
 }
 

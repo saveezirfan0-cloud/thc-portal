@@ -29,10 +29,14 @@ import {
   turnedAwayReply,
 } from './phase';
 import type { ShiftPhase } from './phase';
+import { checkInCountdown, directionsUrl, phoneFromContact } from './links';
 import { pressCheckOut } from './press';
 import { ShiftMap } from './ShiftMap';
 import { StaticShiftScreen } from './StaticShiftScreen';
 import { TurnedAwayScreen } from './TurnedAwayScreen';
+import { OfferPanel } from './OfferPanel';
+import { LoadProblem } from '../../_components/LoadProblem';
+import type { BookingOffer } from '../offers';
 import type { ShiftDetail } from './types';
 
 /**
@@ -67,6 +71,8 @@ export function ShiftScreen({
   shift,
   firstName = null,
   autoCheckIn = false,
+  offer = null,
+  offerProblem = false,
 }: {
   shift: ShiftDetail;
   /** "Shift complete — thank you, Amara". */
@@ -76,6 +82,13 @@ export function ShiftScreen({
    * inside the geofence arrives, the check-in goes without a second press.
    */
   autoCheckIn?: boolean;
+  /**
+   * ADR-0046: the booking's open offer and the auto-assign switch
+   * (`staff_booking_offers()`), for Offer this shift / Ask the office.
+   */
+  offer?: BookingOffer | null;
+  /** `staff_booking_offers()` failed: say so, never guess the panel (audit D18). */
+  offerProblem?: boolean;
 }) {
   const router = useRouter();
   // `shift` is read straight from props, not copied into state: after a
@@ -230,6 +243,8 @@ export function ShiftScreen({
   }, [autoCheckIn, phase, inside, busy]);
 
   const window_ = checkInWindow(shift);
+  const countdown = phase === 'before_window' ? checkInCountdown(shift.startsAt, now) : null;
+  const directions = directionsUrl(shift);
   const earnings = shiftEarnings(shift, now);
   const today = sameUkDay(shift.startsAt, now);
   // §5.1: the ROLE section has started (RULE-18), so check-out is open.
@@ -356,7 +371,9 @@ export function ShiftScreen({
           {shift.onsiteContact ? (
             <div className="kv">
               <span className="k">On-site contact</span>
-              <span className="v">{shift.onsiteContact}</span>
+              <span className="v">
+                <OnsiteContact contact={shift.onsiteContact} />
+              </span>
             </div>
           ) : null}
           {shift.notes ? (
@@ -366,6 +383,24 @@ export function ShiftScreen({
             </div>
           ) : null}
         </div>
+        {/* Getting there and keeping it in the diary. Not on a closed
+            shift — by then neither is any use. */}
+        {phase !== 'closed' ? (
+          <div className="shift-links">
+            {directions ? (
+              <a className="btn outline sm" href={directions} target="_blank" rel="noreferrer">
+                Directions
+              </a>
+            ) : null}
+            {/* A plain <a>, not <Link>: the response is a text/calendar
+                file for the phone's calendar app, not a page. No `download`
+                attribute — on iOS it would save to Files instead of opening
+                the Add to Calendar sheet. */}
+            <a className="btn outline sm" href={`/shifts/${shift.bookingId}/calendar.ics`}>
+              Add to calendar
+            </a>
+          </div>
+        ) : null}
       </MobileCard>
 
       <ShiftMap
@@ -390,11 +425,28 @@ export function ShiftScreen({
           <Button block size="lg" tone="primary" disabled>
             Check in — verify GPS
           </Button>
+          {countdown ? <p className="sm countdown">{countdown}</p> : null}
           <p className="xs muted">
             Check-in opens {today ? '' : `${ukDay(window_.opens)} `}at <UkTime at={window_.opens} />
             , 30 min before the start, within {shift.geofenceRadiusM} m of the venue.
           </p>
           {shift.breaksLogged ? <BreaksBlock shift={shift} locked formatTime={local} /> : null}
+          {/* ADR-0046: offer it up, or ask the office for cover. Only
+              before the shift: once check-in opens it is too late for
+              either, and the escalation job owns the section. */}
+          {offerProblem ? (
+            shift.status === 'confirmed' ? (
+              <LoadProblem what="this shift’s offer" />
+            ) : null
+          ) : (
+            <OfferPanel
+              bookingId={shift.bookingId}
+              startsAt={shift.startsAt}
+              status={shift.status}
+              offer={offer}
+              now={now}
+            />
+          )}
         </>
       ) : null}
 
@@ -626,6 +678,22 @@ function BreaksBlock({
         </ul>
       )}
     </MobileCard>
+  );
+}
+
+/**
+ * The on-site contact as the office typed it, with any phone number in it
+ * made a `tel:` link — the worker at the door needs to ring, not copy.
+ */
+function OnsiteContact({ contact }: { contact: string }) {
+  const phone = phoneFromContact(contact);
+  if (!phone) return <>{contact}</>;
+  return (
+    <>
+      {phone.before}
+      <a href={phone.href}>{phone.display}</a>
+      {phone.after}
+    </>
   );
 }
 
