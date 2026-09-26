@@ -45,8 +45,25 @@
   display: none;
 }
 
+/* Tablet width (the History panels use this table too): five columns in
+   ~590px squeezed Details to a word a line ("23.09.202 / 6"). The table
+   takes a readable width and scrolls inside its card (.table-scroll). */
+@media (min-width: 761px) and (max-width: 1024px) {
+  .activity-table {
+    min-width: 760px;
+  }
+  /* Past packages/ui's 6.5rem floor for a scrolling table's cells. */
+  .table-scroll > table.tbl.activity-table td.activity-details {
+    min-width: 14rem;
+  }
+}
+
 @media (max-width: 760px) {
   .activity-details {
     max-width: none;
+  }
+  /* The actor is a filter button: a finger target on a phone. */
+  .activity-who .linkish {
+    min-height: var(--tap-min);
   }
 }

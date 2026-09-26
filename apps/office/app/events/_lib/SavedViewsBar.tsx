@@ -1,77 +1,94 @@
 'use client';
 
 import Link from 'next/link';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type FormEvent, useEffect, useState, useTransition } from 'react';
 import { Button, Chip } from '@thc/ui';
 import type { ClientOption } from '../data';
 import { type EventQuery, applyFilterSet, eventsHref, filterSetOf } from './filters';
 import {
-  SAVED_VIEWS_KEY,
+  MAX_VIEW_NAME,
   type SavedView,
-  type ViewStorage,
   activeSavedView,
   browserStorage,
+  clearSavedViews,
   describeFilterSet,
-  findSavedView,
   readSavedViews,
-  removeSavedView,
-  upsertSavedView,
-  writeSavedViews,
 } from './saved-views';
+import {
+  type SavedViewsOutcome,
+  deleteMyView,
+  moveLocalViews,
+  saveMyView,
+} from './saved-views-actions';
 
 /**
- * Saved views above the Scheduling list and calendar.
+ * Saved views above the Scheduling list and calendar (ADR-0053).
  *
  * Each saved view is a chip that is a LINK — to the period on screen now,
  * seen through that view's filters — so it opens in a new tab, and the back
  * button undoes it like any other filter change. The × deletes it (with an
  * Undo, since there is no confirmation step).
  *
- * Views live in this browser's localStorage (`saved-views.ts`). Storage is
- * read after mount, never during render, so the server's markup and the
- * first client render agree; with storage unavailable the bar says so and
- * the rest of the screen is untouched.
+ * Views live in `office_saved_views`, per manager, across devices. The page
+ * reads them on the server (`initial`), so chips are in the first paint;
+ * every write goes through a server action on the manager's own session
+ * and comes back with the fresh list.
+ *
+ * Views saved before the table existed are still in this browser's
+ * localStorage. They are read after mount, never during render; when the
+ * account has none yet, the bar offers a one-tap move and clears the old
+ * copy once the database has it.
+ *
+ * When the database refuses — no project in this environment, or a login
+ * that may not write — the bar stays: the chips still open (they are only
+ * links), with a read-only notice instead of Save and ×.
  */
-export function SavedViewsBar({ query, clients }: { query: EventQuery; clients: ClientOption[] }) {
-  // undefined: not yet checked (server render and first paint); null: unavailable.
-  const [storage, setStorage] = useState<ViewStorage | null | undefined>(undefined);
-  const [views, setViews] = useState<SavedView[]>([]);
+export function SavedViewsBar({
+  query,
+  clients,
+  initial,
+}: {
+  query: EventQuery;
+  clients: ClientOption[];
+  initial: SavedViewsOutcome;
+}) {
+  const [views, setViews] = useState<SavedView[]>(initial.ok ? initial.views : []);
+  // null: writable. A string: why the bar is read-only.
+  const [readOnly, setReadOnly] = useState<string | null>(initial.ok ? null : initial.message);
+  // This browser's pre-table views; read after mount.
+  const [local, setLocal] = useState<SavedView[]>([]);
   const [naming, setNaming] = useState(false);
   const [name, setName] = useState('');
   const [note, setNote] = useState<string | null>(null);
-  const [undo, setUndo] = useState<SavedView[] | null>(null);
+  const [undo, setUndo] = useState<SavedView | null>(null);
+  const [pending, startTransition] = useTransition();
 
   useEffect(() => {
-    const found = browserStorage();
-    setStorage(found);
-    setViews(readSavedViews(found));
+    setLocal(readSavedViews(browserStorage()));
   }, []);
-
-  // A view saved or deleted in another tab shows up here too.
-  useEffect(() => {
-    if (!storage) return undefined;
-    const onStorage = (event: StorageEvent) => {
-      if (event.key === SAVED_VIEWS_KEY) setViews(readSavedViews(storage));
-    };
-    window.addEventListener('storage', onStorage);
-    return () => window.removeEventListener('storage', onStorage);
-  }, [storage]);
 
   const clientName = (id: string) => clients.find((client) => client.id === id)?.name;
   const current = filterSetOf(query);
-  const active = activeSavedView(views, current);
+  const loaded = initial.ok;
+  // With the table unreadable, this browser's own views still open.
+  const shown = loaded ? views : local;
+  const active = activeSavedView(shown, current);
+  const offerMove = loaded && readOnly === null && views.length === 0 && local.length > 0;
 
-  const commit = (next: SavedView[]): boolean => {
-    if (!writeSavedViews(storage, next)) {
-      setNote('This browser would not store the view.');
-      return false;
+  /** Apply an action's answer: the fresh list, or the reason and maybe read-only. */
+  const settle = (result: SavedViewsOutcome, success?: string): boolean => {
+    if (result.ok) {
+      setViews(result.views);
+      setNote(success ?? result.message ?? null);
+      return true;
     }
-    setViews(next);
-    return true;
+    if (result.readOnly) setReadOnly(result.message);
+    setNote(result.message);
+    return false;
   };
 
   const startNaming = () => {
-    setName(describeFilterSet(current, clientName));
+    setName(describeFilterSet(current, clientName).slice(0, MAX_VIEW_NAME));
     setNote(null);
     setUndo(null);
     setNaming(true);
@@ -79,50 +96,49 @@ export function SavedViewsBar({ query, clients }: { query: EventQuery; clients: 
 
   const save = (event: FormEvent) => {
     event.preventDefault();
-    const replacing = findSavedView(views, name);
-    const next = upsertSavedView(views, name, current);
-    if (next === views) {
-      setNote('Give the view a name.');
-      return;
-    }
-    if (commit(next)) {
-      setNote(replacing ? `Updated “${replacing.name}”.` : 'View saved.');
-      setNaming(false);
-    }
+    startTransition(async () => {
+      if (settle(await saveMyView(name, current))) setNaming(false);
+    });
   };
 
   const remove = (view: SavedView) => {
-    const before = views;
-    if (commit(removeSavedView(views, view.name))) {
-      setUndo(before);
-      setNote(`Deleted “${view.name}”.`);
-    }
+    if (!view.id) return;
+    const id = view.id;
+    startTransition(async () => {
+      if (settle(await deleteMyView(id), `Deleted “${view.name}”.`)) setUndo(view);
+    });
   };
 
   const restore = () => {
-    if (undo && commit(undo)) setNote(null);
+    const view = undo;
     setUndo(null);
+    if (!view) return;
+    startTransition(async () => {
+      settle(await saveMyView(view.name, view.filters), `Restored “${view.name}”.`);
+    });
   };
 
-  if (storage === null) {
-    return (
-      <div className="row wrap saved-views">
-        <span className="muted sm">
-          Saved views are unavailable: this browser is not allowing site storage.
-        </span>
-      </div>
-    );
-  }
+  const move = () => {
+    const moving = local;
+    startTransition(async () => {
+      if (settle(await moveLocalViews(moving))) {
+        clearSavedViews(browserStorage());
+        setLocal([]);
+      }
+    });
+  };
+
+  const writable = loaded && readOnly === null;
 
   return (
     <div className="row wrap saved-views" role="group" aria-label="Saved views">
       <span className="lbl muted sm">Saved views</span>
 
-      {views.map((view) => {
+      {shown.map((view) => {
         const on = view === active;
         return (
           <Chip
-            key={view.name}
+            key={view.id ?? view.name}
             tone={on ? 'cyan' : 'neutral'}
             title={describeFilterSet(view.filters, clientName)}
           >
@@ -132,30 +148,47 @@ export function SavedViewsBar({ query, clients }: { query: EventQuery; clients: 
             >
               {view.name}
             </Link>
-            <button
-              type="button"
-              className="x"
-              aria-label={`Delete saved view ${view.name}`}
-              onClick={() => remove(view)}
-            >
-              ×
-            </button>
+            {writable && view.id ? (
+              <button
+                type="button"
+                className="x"
+                aria-label={`Delete saved view ${view.name}`}
+                disabled={pending}
+                onClick={() => remove(view)}
+              >
+                ×
+              </button>
+            ) : null}
           </Chip>
         );
       })}
 
-      {views.length === 0 && storage !== undefined && !naming ? (
+      {writable && views.length === 0 && !naming && !offerMove ? (
         <span className="muted sm">None yet. Set the filters, then save them here.</span>
       ) : null}
 
-      {naming ? (
+      {offerMove ? (
+        <span className="muted sm">
+          {local.length} saved view{local.length === 1 ? ' is' : 's are'} still only in this
+          browser.{' '}
+          <Button size="sm" tone="primary" disabled={pending} onClick={move}>
+            Move my saved views to my account
+          </Button>
+        </span>
+      ) : null}
+
+      {!writable ? (
+        <span className="muted sm" role="status">
+          Saved views are read-only here: {readOnly}
+        </span>
+      ) : naming ? (
         <form className="row" onSubmit={save}>
           <input
             className="input"
             style={{ height: 32, width: 240 }}
             aria-label="Name this view"
             placeholder="Name this view"
-            maxLength={60}
+            maxLength={MAX_VIEW_NAME}
             value={name}
             autoFocus
             onChange={(event) => setName(event.target.value)}
@@ -163,7 +196,7 @@ export function SavedViewsBar({ query, clients }: { query: EventQuery; clients: 
               if (event.key === 'Escape') setNaming(false);
             }}
           />
-          <Button type="submit" size="sm" tone="primary">
+          <Button type="submit" size="sm" tone="primary" disabled={pending}>
             Save
           </Button>
           <Button size="sm" onClick={() => setNaming(false)}>
@@ -171,18 +204,18 @@ export function SavedViewsBar({ query, clients }: { query: EventQuery; clients: 
           </Button>
         </form>
       ) : (
-        <Button size="sm" disabled={storage === undefined} onClick={startNaming}>
+        <Button size="sm" disabled={pending} onClick={startNaming}>
           Save view
         </Button>
       )}
 
-      {note ? (
+      {note && note !== readOnly ? (
         <span className="muted sm" role="status">
           {note}
           {undo ? (
             <>
               {' '}
-              <Button tone="link" onClick={restore}>
+              <Button tone="link" disabled={pending} onClick={restore}>
                 Undo
               </Button>
             </>

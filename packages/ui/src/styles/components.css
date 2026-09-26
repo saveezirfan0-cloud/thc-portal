@@ -2447,6 +2447,11 @@ textarea.input {
   :is(.panel, .panel-b, .table-scroll) > table.tbl :is(td, th):not(:empty) {
     min-width: 6.5rem;
   }
+  /* …except the avatar cell, which is the avatar's width, not a column of
+     text (the users table spent 104px on a 28px avatar at 820px). */
+  :is(.panel, .panel-b, .table-scroll) > table.tbl td.cell-lead {
+    min-width: 0;
+  }
   /* A panel header's title and its controls — a note, a search, a button —
      wrap under each other instead of squeezing the button until its label
      is cut off (the client card's "+ Add staff" at 820px). */
@@ -2457,6 +2462,18 @@ textarea.input {
   .panel-h .right {
     flex-wrap: wrap;
     min-width: 0;
+  }
+  /* A tab strip wider than the content (the staff profile's seven tabs at
+     820px) scrolls inside itself, as it does on a phone, rather than
+     pushing the whole page sideways or wrapping a tab name onto two lines. */
+  .tabs {
+    max-width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tabs > :is(button, a) {
+    flex: 0 0 auto;
+    white-space: nowrap;
   }
 }
 @media (max-width: 760px) {
