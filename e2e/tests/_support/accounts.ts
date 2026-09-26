@@ -1,4 +1,10 @@
-import { expect, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import {
+  expect,
+  type Browser,
+  type BrowserContext,
+  type Locator,
+  type Page,
+} from '@playwright/test';
 import { databaseUnreachable, lit, sql } from './db';
 import { openAsAdmin } from './session';
 
@@ -19,6 +25,27 @@ import { openAsAdmin } from './session';
  *                         (renaming the seeded admin would change the name
  *                         every other spec signs in as, while they run).
  */
+
+/**
+ * The office roles as /users labels them (ADR-0050, OFFICE_ROLE_LABEL in
+ * apps/office/app/_lib/permissions.ts). By label, not value: the option
+ * text is what a manager picks.
+ */
+export type OfficeRoleLabel = 'Owner' | 'Manager' | 'Scheduler';
+
+/**
+ * Chooses an office role in an "Office role" select (Invite, Change role).
+ * By the start of the option's text rather than `selectOption({ label })`,
+ * because the Invite picker marks its default "Manager (default)" and an
+ * exact label would miss it.
+ */
+export async function pickOfficeRole(select: Locator, role: OfficeRoleLabel): Promise<void> {
+  const option = select.locator('option', { hasText: new RegExp(`^\\s*${role}\\b`) });
+  await expect(option).toHaveCount(1);
+  const value = await option.getAttribute('value');
+  if (!value) throw new Error(`the ${role} option has no value`);
+  await select.selectOption(value);
+}
 
 /** The same ports as playwright.config.ts: the invite journeys cross apps. */
 export const OFFICE_URL = 'http://127.0.0.1:3000';
@@ -167,6 +194,11 @@ export async function inviteFromUsers(
     email: string;
     jobTitle?: string;
     clientName?: string;
+    /**
+     * The Back Office login's office role (ADR-0050), picked in the modal's
+     * "Office role" select. Left out, the modal's default stands (Manager).
+     */
+    officeRole?: OfficeRoleLabel;
   },
 ): Promise<string> {
   await openAsAdmin(page, `${OFFICE_URL}/users`);
@@ -182,6 +214,9 @@ export async function inviteFromUsers(
   await form.getByLabel('Full name', { exact: true }).fill(invitee.fullName);
   await form.getByLabel('Email', { exact: true }).fill(invitee.email);
   if (invitee.role === 'admin') {
+    if (invitee.officeRole) {
+      await pickOfficeRole(form.getByLabel('Office role', { exact: true }), invitee.officeRole);
+    }
     if (invitee.jobTitle) {
       await form.getByLabel('Job title (optional)', { exact: true }).fill(invitee.jobTitle);
     }
