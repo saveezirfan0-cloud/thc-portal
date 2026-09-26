@@ -4,7 +4,7 @@ import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
 import type { OfficeRole } from '../_lib/permissions';
 
-/** One login, as `admin_accounts()` (20260930210000, 20260930210100) returns it. */
+/** One login, as `admin_accounts()` (20260930210000, 20260930210100, 20260930220200) returns it. */
 export interface AccountRow {
   id: string;
   email: string | null;
@@ -20,6 +20,8 @@ export interface AccountRow {
   created_at: string;
   last_sign_in_at: string | null;
   disabled: boolean;
+  /** A verified two-step factor (ADR-0051), which an owner can reset (ADR-0054). */
+  two_step: boolean;
 }
 
 export interface UsersPageData {

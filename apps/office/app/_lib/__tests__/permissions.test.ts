@@ -5,20 +5,24 @@ import {
   canOpen,
   explainOfficeError,
   isOfficeRole,
+  isReadOnly,
   officeCan,
   visibleNav,
 } from '../permissions';
+import { actionLabel, explainAccountError } from '../accounts';
 
 /**
- * ADR-0050. The matrix below is `office_can()` in
- * 20260930210100_office_roles.sql, and 651_office_roles asserts the same
- * rows in the database. If one changes, both change.
+ * ADR-0050, ADR-0054. The matrix below is `office_can()` in
+ * 20260930220100_viewer_role_read_only.sql, and 741_office_roles /
+ * 750_viewer_role assert the same rows in the database. If one changes,
+ * both change.
  */
 describe('office roles', () => {
   const matrix = {
-    owner: { users: true, settings: true, finance: true },
-    manager: { users: false, settings: false, finance: true },
-    scheduler: { users: false, settings: false, finance: false },
+    owner: { users: true, settings: true, finance: true, write: true },
+    manager: { users: false, settings: false, finance: true, write: true },
+    scheduler: { users: false, settings: false, finance: false, write: true },
+    viewer: { users: false, settings: false, finance: true, write: false },
   } as const;
 
   for (const role of OFFICE_ROLES) {
@@ -26,8 +30,17 @@ describe('office roles', () => {
       expect(officeCan(role, 'users')).toBe(matrix[role].users);
       expect(officeCan(role, 'settings')).toBe(matrix[role].settings);
       expect(officeCan(role, 'finance')).toBe(matrix[role].finance);
+      expect(officeCan(role, 'write')).toBe(matrix[role].write);
     });
   }
+
+  it('only a known viewer is read-only', () => {
+    expect(isReadOnly('viewer')).toBe(true);
+    for (const role of ['owner', 'manager', 'scheduler'] as const) {
+      expect(isReadOnly(role)).toBe(false);
+    }
+    expect(isReadOnly(null)).toBe(false);
+  });
 
   it('a new Back Office login defaults to manager', () => {
     expect(DEFAULT_OFFICE_ROLE).toBe('manager');
@@ -38,9 +51,10 @@ describe('office roles', () => {
     expect(officeCan(undefined, 'finance')).toBe(true);
   });
 
-  it('recognises only the three roles', () => {
+  it('recognises only the four roles', () => {
     expect(isOfficeRole('owner')).toBe(true);
-    expect(isOfficeRole('viewer')).toBe(false);
+    expect(isOfficeRole('viewer')).toBe(true);
+    expect(isOfficeRole('auditor')).toBe(false);
     expect(isOfficeRole(null)).toBe(false);
   });
 });
@@ -86,6 +100,10 @@ describe('navigation per role', () => {
     }
   });
 
+  it('a viewer sees what a manager sees, Reports and Roles & rates included', () => {
+    expect(hrefs('viewer')).toEqual(hrefs('manager'));
+  });
+
   it('a route with no gate is open to every role', () => {
     expect(canOpen('scheduler', '/checkin')).toBe(true);
   });
@@ -96,6 +114,15 @@ describe('the database refusals, in words', () => {
     expect(explainOfficeError('last_owner')).toMatch(/last working owner/);
     expect(explainOfficeError('not_permitted')).toMatch(/office role/);
     expect(explainOfficeError('cannot_change_own_role')).toMatch(/own role/);
+    expect(explainOfficeError('read_only')).toMatch(/read-only/);
+    expect(explainOfficeError('no_two_step')).toMatch(/two-step/);
+  });
+
+  it('the shared account explainer knows the viewer and two-step refusals (ADR-0054)', () => {
+    expect(explainAccountError('read_only')).toMatch(/read-only \(Viewer\)/);
+    expect(explainAccountError('cannot_reset_own_two_step')).toMatch(/My profile/);
+    expect(explainAccountError('no_two_step')).toMatch(/nothing to reset/);
+    expect(actionLabel('account.two_step_reset')).toBe('Reset two-step sign-in');
   });
 
   it('returns null for anything else, so the caller keeps its own message', () => {

@@ -20,7 +20,9 @@ Supabase Auth has TOTP multi-factor built in. `enroll` returns a QR code (an SVG
 
 ## Recovery (lost or replaced phone)
 
-Nobody can reset another person's factor from the app today. There is no button on `/users` for it, and the owner cannot do it from `/account` either. On the Supabase project, someone with dashboard access does it:
+**Since ADR-0054, an owner does this on `/users`.** "Reset two-step" appears on a Back Office row that has two-step on, but never on your own row. It asks for a reason, and it removes the login's factors and ends every session it has. The step is `admin_reset_two_step()`: owners only, Back Office logins only, audited as `account.two_step_reset` with the reason. Step 1 below still applies: confirm who is asking by phone first. The manager then signs in with their password alone and sets two-step up again from `/account`.
+
+If there is no working owner, or the owner is the one who lost the phone, someone with dashboard access does it on the Supabase project:
 
 1. **Confirm who is asking** by a route other than email, such as a call to a number already on file. Someone who holds the password but not the phone is exactly who this feature keeps out.
 2. **Remove the factor.** Go to Dashboard → Authentication → Users, open the user, and remove the factor under multi-factor authentication. Where the dashboard version offers no such control, run this in the SQL editor, using the user's id from the same Users page:
@@ -30,7 +32,7 @@ Nobody can reset another person's factor from the app today. There is no button 
    The `auth.admin.mfa.deleteFactor({ userId, id })` call with the service key does the same thing.
 3. The manager signs in with their password alone and sets two-step up again from `/account`.
 
-A dashboard reset writes no `audit_log` row. Note it by hand until the follow-up below exists.
+A dashboard reset writes no `audit_log` row, so note it by hand. The `/users` reset writes one.
 
 ## Known limits
 
@@ -41,7 +43,7 @@ A dashboard reset writes no `audit_log` row. Note it by hand until the follow-up
 ## Follow-ups
 
 1. **Make it mandatory for every Back Office login.** Add a `settings` key (e.g. `office_two_step_required`, with a start date so managers get notice). While it is on, the middleware sends an admin whose `nextLevel` is `aal1` (no factor yet) to a set-up-only page before anything else, and the database enforcement above changes to "admin requires aal2", with no exception for logins without a factor. Enforcement in the database has to come first. Making the app strict while the data stays reachable at aal1 would only look like protection.
-2. **Reset from `/users`.** The owner or another admin removes a manager's factor with the service key (`auth.admin.mfa.deleteFactor`), after an `admin_*` function checks the caller and writes the audit row, following ADR-0049's "the service key mints, the database decides".
+2. ~~**Reset from `/users`.**~~ **Built (ADR-0054).** No service key was needed: `admin_reset_two_step()` checks the caller, deletes the factor rows and sessions in `auth`, and writes the audit row in one transaction.
 3. Recovery codes, once THC decides whether managers should be trusted to keep them.
 
 ## Consequences

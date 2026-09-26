@@ -260,6 +260,31 @@ export async function changeOfficeRole(userId: string, officeRole: string): Prom
   return { ok: true, message: changed ? 'Role changed.' : 'That is already their role.' };
 }
 
+/**
+ * Reset a Back Office login's two-step sign-in (ADR-0054, ADR-0051
+ * "Recovery"): a lost or replaced phone. The database refuses anyone but
+ * an owner, the caller's own login (that is /account), a login without
+ * two-step and a missing reason; it removes the factor, ends every
+ * session and writes `account.two_step_reset` with the reason.
+ */
+export async function resetTwoStep(userId: string, reason: string): Promise<UsersResult> {
+  if (!reason.trim()) return { ok: false, message: explainAccountError('reason_required') };
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const supabase = session(await cookies());
+  const { error } = await supabase.rpc('admin_reset_two_step', {
+    p_user: userId,
+    p_reason: reason.trim(),
+  });
+  if (error) return { ok: false, message: explainAccountError(error.message) };
+  revalidatePath('/users');
+  revalidatePath('/activity');
+  return {
+    ok: true,
+    message:
+      'Two-step is off for them and they are signed out everywhere. They sign in with their password and set it up again on My profile.',
+  };
+}
+
 export async function setLoginDisabled(
   userId: string,
   disabled: boolean,

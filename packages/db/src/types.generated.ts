@@ -9073,7 +9073,7 @@ export type Database = {
       feedback_author: 'client' | 'office';
       hmrc_statement: 'A' | 'B' | 'C';
       notification_channel: 'push' | 'email' | 'sms';
-      office_role: 'owner' | 'manager' | 'scheduler';
+      office_role: 'owner' | 'manager' | 'scheduler' | 'viewer';
       review_status: 'pending' | 'verified' | 'rejected' | 'superseded';
       rtw_branch:
         'uk_irish' | 'eu_settled' | 'work_visa' | 'international_student' | 'dependant_other';
@@ -9264,7 +9264,7 @@ export const Constants = {
       feedback_author: ['client', 'office'],
       hmrc_statement: ['A', 'B', 'C'],
       notification_channel: ['push', 'email', 'sms'],
-      office_role: ['owner', 'manager', 'scheduler'],
+      office_role: ['owner', 'manager', 'scheduler', 'viewer'],
       review_status: ['pending', 'verified', 'rejected', 'superseded'],
       rtw_branch: [
         'uk_irish',

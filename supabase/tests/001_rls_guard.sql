@@ -34,6 +34,8 @@
 -- are unchanged on purpose. 700_staff_additions_rls holds the rest.
 -- 20260930210100 (ADR-0050) added assertions 10 and 10b: the office-role
 -- gates are restrictive policies, pinned by exact set.
+-- 20260930220200 (ADR-0054) added office_activation_links to assertions 8
+-- and 10: E3 rows (a worker's activation link) are owners' only, as E11.
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
@@ -322,8 +324,8 @@ select is_empty(
 select bag_eq(
   $$ select p.polname::text || ':' || p.polcmd::text
        from pg_policy p where p.polrelid = 'notification_outbox'::regclass $$,
-  $$ values ('admin_read:r'::text), ('office_users_invite_links:r') $$,
-  'notification_outbox carries admin_read (select only, matching audit_log and report_sends) and, since 20260930210600, the restrictive office_users_invite_links that keeps E11 set-up links to owners — still nothing that writes'
+  $$ values ('admin_read:r'::text), ('office_users_invite_links:r'), ('office_activation_links:r') $$,
+  'notification_outbox carries admin_read (select only, matching audit_log and report_sends) and two restrictive read fences — office_users_invite_links (E11, 20260930210600) and office_activation_links (E3, 20260930220200) keep one-time links to owners — still nothing that writes'
 );
 
 -- ---------------------------------------------------------------------
@@ -377,8 +379,9 @@ select bag_eq(
             ('client_rate_cards.office_finance_delete:d'),
             ('bank_details.office_finance_read:r'), ('payroll_export_lines.office_finance_read:r'),
             ('report_sends.office_finance_read:r'),
-            ('notification_outbox.office_users_invite_links:r') $$,
-  'ADR-0050: exactly sixteen restrictive policies (the sixteenth, 20260930210600, keeps E11 set-up links to owners) — settings writes on settings / venue_types, finance writes on roles / client_rate_cards, finance reads on bank_details / payroll_export_lines / report_sends'
+            ('notification_outbox.office_users_invite_links:r'),
+            ('notification_outbox.office_activation_links:r') $$,
+  'ADR-0050: exactly seventeen restrictive policies (the sixteenth, 20260930210600, keeps E11 set-up links to owners; the seventeenth, 20260930220200 / ADR-0054, E3 activation links) — settings writes on settings / venue_types, finance writes on roles / client_rate_cards, finance reads on bank_details / payroll_export_lines / report_sends'
 );
 
 -- 10b. And each of them asks office_can(), for a signed-in session only.

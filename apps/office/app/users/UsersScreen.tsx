@@ -32,6 +32,7 @@ import {
   changeOfficeRole,
   inviteUser,
   newInviteLink,
+  resetTwoStep,
   setLoginDisabled,
 } from './actions';
 import type { AccountRow, UsersPageData } from './data';
@@ -48,10 +49,12 @@ import '../account/account.css';
  * through. What each kind of login can see is stated on the page, because
  * that — not a toggle here — is where the access rules live (RLS).
  *
- * Back Office logins carry an office role (ADR-0050): owner, manager or
- * scheduler. The role is chosen on Invite and changed with Change role;
- * both are the database's decision (`admin_register_account`,
- * `admin_set_office_role`), and this whole page is an owner's.
+ * Back Office logins carry an office role (ADR-0050, ADR-0054): owner,
+ * manager, scheduler or viewer (read-only). The role is chosen on Invite
+ * and changed with Change role; both are the database's decision
+ * (`admin_register_account`, `admin_set_office_role`), and this whole page
+ * is an owner's. So is Reset two-step (`admin_reset_two_step`), for
+ * someone who has lost the phone their codes come from (ADR-0051).
  */
 
 type Tab = 'admin' | 'client' | 'staff';
@@ -61,7 +64,7 @@ const STAFF_LIMIT = 100;
 
 const ACCESS_NOTE: Record<Tab, string> = {
   admin:
-    'Back Office, by office role — Owner: everything. Manager: everything except Users & access and System settings. Scheduler: scheduling, onboarding, compliance, check-in, staff, clients, venues and feedback, without pay or charge rates, margins, payroll, reports or bank details. Every change is recorded in the activity log with the person’s name.',
+    'Back Office, by office role — Owner: everything. Manager: everything except Users & access and System settings. Scheduler: scheduling, onboarding, compliance, check-in, staff, clients, venues and feedback, without pay or charge rates, margins, payroll, reports or bank details. Viewer: reads what a manager reads and changes nothing. Every change is recorded in the activity log with the person’s name.',
   client:
     'Client Portal: only their own company’s events and line-up, and feedback. No pay rates, charges or totals, and no worker personal details beyond the line-up.',
   staff:
@@ -84,6 +87,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
   const [inviting, setInviting] = useState(false);
   const [switching, setSwitching] = useState<AccountRow | null>(null);
   const [reroling, setReroling] = useState<AccountRow | null>(null);
+  const [resetting, setResetting] = useState<AccountRow | null>(null);
   const [issued, setIssued] = useState<{
     account: AccountRow;
     link: string;
@@ -176,6 +180,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
                     self={account.id === data.selfId}
                     onSwitch={() => setSwitching(account)}
                     onChangeRole={() => setReroling(account)}
+                    onResetTwoStep={() => setResetting(account)}
                     onIssued={(link, emailed, emailNote) =>
                       setIssued({ account, link, emailed, ...(emailNote ? { emailNote } : {}) })
                     }
@@ -198,9 +203,16 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
           Each Back Office login has an office role, and the database enforces it — a page hidden
           from a role is also refused to it if opened another way. <b>Owner</b>:{' '}
           {OFFICE_ROLE_SUMMARY.owner} <b>Manager</b>: {OFFICE_ROLE_SUMMARY.manager} <b>Scheduler</b>
-          : {OFFICE_ROLE_SUMMARY.scheduler} New logins are managers unless you choose otherwise.
-          Nobody can change their own role, and there is always at least one working owner. Role
-          changes are in the <Link href="/activity">activity log</Link> under the owner’s name.
+          : {OFFICE_ROLE_SUMMARY.scheduler} <b>Viewer</b>: {OFFICE_ROLE_SUMMARY.viewer} New logins
+          are managers unless you choose otherwise. Nobody can change their own role, and there is
+          always at least one working owner. Role changes are in the{' '}
+          <Link href="/activity">activity log</Link> under the owner’s name.
+        </p>
+        <p className="sm muted users-plain">
+          <b>Reset two-step</b> is for someone who has lost or replaced the phone their sign-in
+          codes come from. Check it is really them first — by phone, not by email — because a
+          password without the phone is exactly what two-step keeps out. It signs them out
+          everywhere; they sign in with their password and set two-step up again on My profile.
         </p>
         <p className="sm muted users-plain">
           Not hidden from a scheduler yet: the pay and charge rates on the event builder and event
@@ -218,6 +230,9 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
       ) : null}
       {switching ? <SwitchModal account={switching} onClose={() => setSwitching(null)} /> : null}
       {reroling ? <RoleModal account={reroling} onClose={() => setReroling(null)} /> : null}
+      {resetting ? (
+        <ResetTwoStepModal account={resetting} onClose={() => setResetting(null)} />
+      ) : null}
       {issued ? (
         <LinkModal
           name={issued.account.full_name}
@@ -239,6 +254,7 @@ function UserRow({
   self,
   onSwitch,
   onChangeRole,
+  onResetTwoStep,
   onIssued,
 }: {
   account: AccountRow;
@@ -246,6 +262,7 @@ function UserRow({
   self: boolean;
   onSwitch: () => void;
   onChangeRole: () => void;
+  onResetTwoStep: () => void;
   onIssued: (link: string, emailed: boolean, emailNote?: string) => void;
 }) {
   const [error, setError] = useState<string | null>(null);
@@ -298,6 +315,7 @@ function UserRow({
       </td>
       <td data-label="Status">
         <Pill tone={status.tone}>{status.label}</Pill>
+        {tab === 'admin' && account.two_step ? <span className="sub">Two-step on</span> : null}
       </td>
       <td className="cell-actions">
         {tab === 'staff' ? (
@@ -320,6 +338,13 @@ function UserRow({
             {tab === 'admin' && !self ? (
               <Button size="sm" tone="ghost" onClick={onChangeRole}>
                 Change role
+              </Button>
+            ) : null}
+            {/* ADR-0054: only where there is a verified factor to reset, and
+                never your own row — that is My profile, with a code. */}
+            {tab === 'admin' && account.two_step && !self ? (
+              <Button size="sm" tone="ghost" onClick={onResetTwoStep}>
+                Reset two-step
               </Button>
             ) : null}
             {!self ? (
@@ -667,6 +692,83 @@ function RoleModal({ account, onClose }: { account: AccountRow; onClose: () => v
           It applies from their next page load — no need to sign them out. The change is recorded in
           the activity log.
         </p>
+        {result && !result.ok ? <Alert tone="coral">{result.message}</Alert> : null}
+      </div>
+    </Modal>
+  );
+}
+
+/**
+ * Reset two-step (ADR-0054). A reason is required — it is the activity
+ * log's record of why a second factor was taken off — and the database
+ * refuses anyone but an owner, your own login and a login without it.
+ */
+function ResetTwoStepModal({ account, onClose }: { account: AccountRow; onClose: () => void }) {
+  const router = useRouter();
+  const [reason, setReason] = useState('');
+  const [result, setResult] = useState<UsersResult | null>(null);
+  const [pending, start] = useTransition();
+
+  const submit = () => {
+    setResult(null);
+    start(async () => {
+      const outcome = await resetTwoStep(account.id, reason);
+      setResult(outcome);
+      if (outcome.ok) router.refresh();
+    });
+  };
+
+  if (result?.ok) {
+    return (
+      <Modal
+        open
+        title="Two-step reset"
+        onClose={onClose}
+        footer={
+          <Button tone="primary" onClick={onClose}>
+            Done
+          </Button>
+        }
+      >
+        <div className="account-form">
+          <Alert tone="green">{result.message}</Alert>
+        </div>
+      </Modal>
+    );
+  }
+
+  return (
+    <Modal
+      open
+      title={`Reset ${account.full_name}’s two-step?`}
+      onClose={onClose}
+      footer={
+        <>
+          <Button tone="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button tone="danger" solid disabled={pending || !reason.trim()} onClick={submit}>
+            {pending ? 'Resetting…' : 'Reset two-step'}
+          </Button>
+        </>
+      }
+    >
+      <div className="account-form">
+        <p className="sm">
+          Their authenticator app stops working for this login, and they are signed out everywhere.
+          They sign in with their password alone and set two-step up again on My profile.
+        </p>
+        <Note tone="amber">
+          Only do this once you are sure it is them — ring a number you already have, do not rely on
+          an email. Someone with their password but not their phone is who two-step keeps out.
+        </Note>
+        <Input
+          label="Reason"
+          value={reason}
+          placeholder="e.g. Lost phone, confirmed by call on 30 Sep"
+          hint="Recorded in the activity log."
+          onChange={(event) => setReason(event.target.value)}
+        />
         {result && !result.ok ? <Alert tone="coral">{result.message}</Alert> : null}
       </div>
     </Modal>

@@ -55,8 +55,9 @@ select id, :'booking_a', :'staffa', :'event_a', 'exported', current_date, 480, 1
 -- ---------------------------------------------------------------------
 -- 1 · Shape
 -- ---------------------------------------------------------------------
-select enum_has_labels('public', 'office_role', array['owner', 'manager', 'scheduler'],
-  'office_role is owner / manager / scheduler');
+-- 20260930220000 (ADR-0054) appended 'viewer'; 750_viewer_role holds it.
+select enum_has_labels('public', 'office_role', array['owner', 'manager', 'scheduler', 'viewer'],
+  'office_role is owner / manager / scheduler, and since ADR-0054 viewer');
 select is((select office_role::text from profiles where id = :'admin_uid'), 'owner',
   'an admin row made outside the invite (the fixture, the dashboard, the seed) is an owner — what every admin was before');
 select is((select count(*)::int from profiles where role <> 'admin' and office_role is not null), 0,
