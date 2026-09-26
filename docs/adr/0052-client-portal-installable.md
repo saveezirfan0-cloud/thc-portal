@@ -20,11 +20,9 @@ The Staff App got there with a manifest, icons and a Serwist service worker (ADR
 
    The client middleware's matcher already excludes `/manifest.webmanifest` and every `.png`. The browser can therefore read the manifest and the icons before anyone signs in. The test pins that, because a manifest behind a login redirect makes the app silently uninstallable.
 
-2. **No service worker, not even a pass-through one.** Chrome's install criteria no longer require one. The published criteria are HTTPS, a manifest with a `name` or `short_name`, 192 px and 512 px icons, a `start_url`, a `display` of `standalone`, `fullscreen`, `minimal-ui` or `window-controls-overlay`, no `prefer_related_applications: true`, and a user-engagement heuristic. A service worker with a fetch handler is not among them. Sources:
-   - Chrome for Developers / web.dev, "What does it take to be installable?", https://web.dev/articles/install-criteria.
-   - The Chrome team's note that the fetch-handler requirement was dropped (Chrome 108 on Android, Chrome 112 on desktop).
+2. **No service worker, not even a pass-through one.** Chrome no longer needs one to install from its menu. The criteria are HTTPS, a manifest with a `name` or `short_name`, 192 px and 512 px icons, a `start_url`, a `display` of `standalone`, `fullscreen`, `minimal-ui` or `window-controls-overlay`, no `prefer_related_applications: true`, and a user-engagement heuristic. Chrome removed the service-worker-with-`fetch()` requirement for menu installation in **Chrome 108 on mobile and Chrome 112 on desktop**. Verified 26.09.2026 against the Chrome team's post, "Revisiting Chrome's installability criteria" (https://developer.chrome.com/blog/update-install-criteria), and the ChromeStatus entry "Skip service worker no-op fetch handler" (https://chromestatus.com/feature/5136946693668864).
 
-   **Not re-fetched while writing this.** The build sandbox could not reach either page, so the Chrome version numbers need checking against the live page before this ADR is quoted to THC. The behaviour does not depend on them: any current Chrome installs without a worker.
+   **What that costs.** The same post says Chrome's *automatic* install prompt (the mini-infobar and `beforeinstallprompt`) could still require a `fetch()` handler. So on Android a client installs the portal from the browser menu ("Install app" / "Add to Home screen") rather than being offered it unprompted. We accept that. A client adds the portal once, and the office can tell them where the menu item is. A worker that exists only to earn the prompt would be the kind of no-op handler Chrome dropped the rule to discourage, and it would sit between a shared device and every page.
 
    iOS "Add to Home Screen" has never needed a service worker. Safari reads the manifest's `display` and `name` (iOS 11.3+) and the `apple-*` tags below.
 
@@ -43,7 +41,7 @@ The Staff App got there with a manifest, icons and a Serwist service worker (ADR
 
    The test reads `packages/ui/src/styles/tokens.css` and fails if either ground moves without the literals following. A manifest can only carry literals.
 
-   The media query follows the OS setting, not the in-app Appearance switch. Someone on a light OS who picks dark in the portal gets a cream title bar over a navy page until `AppearanceScript` also rewrites `<meta name="theme-color">`. That lives in `packages/ui` and is left as a follow-up.
+   The media query alone would follow the OS setting, not the in-app Appearance switch: someone on a light OS who picks dark in the portal would get a cream title bar over a navy page. So `packages/ui` (`syncThemeColor`, called from the head script, the mount repair and `applyMode`) writes one more `<meta name="theme-color">`, with no `media` and first in `<head>`. The HTML spec takes the first theme-color whose media matches, so that one wins and follows the switch. The media pair stays as the fallback for a browser without script. `THEME_COLOR` mirrors the two `--bg` tokens, and `appearance.test.ts` fails if they drift. This was checked in a production build: on a light-scheme browser, choosing Dark turned the meta navy, it stayed navy after a reload, and no hydration warnings appeared.
 
    The Staff App's `theme_color` is `#04080F`, the §1.6 scope-style navy rather than the warm one it actually renders. That is not changed here, because the Staff App is not this slice's to edit.
 
@@ -80,10 +78,9 @@ The Staff App got there with a manifest, icons and a Serwist service worker (ADR
 
 ## Consequences
 
-- Chrome on Android and desktop offers installation after the usual engagement heuristic. iOS users add the portal from the Share sheet. It opens standalone at `/client`, or at `/login` when the session has lapsed.
+- Chrome on Android and desktop installs from the browser menu. The automatic prompt may not be offered without a service worker (§2). iOS users add the portal from the Share sheet. It opens standalone at `/client`, or at `/login` when the session has lapsed.
 - Nothing about workers is cached by the app itself. Sign-out on a shared device leaves no copy in Cache Storage.
 - No offline fallback: opening the installed app with no signal shows the browser's own offline page. That is acceptable for a read-only portal whose data is only useful live.
 - Follow-ups outside this slice:
-  - `AppearanceScript` syncs `theme-color` with the in-app switch (`packages/ui`);
   - `.ctop` safe-area padding, if `black-translucent` is ever wanted;
   - the Staff App's `theme_color` could move to the warm navy.

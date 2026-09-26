@@ -30,8 +30,9 @@ export const viewport: Viewport = {
   // The two grounds of packages/ui tokens.css: light `--bg` (cream) and the
   // warm-style dark `--bg` (navy). The dark value is the manifest's
   // `theme_color`; a browser that finds the two disagreeing paints the
-  // installed app's title bar one colour and the splash another. The media
-  // query follows the OS setting, not the in-app switch (ADR-0052 §3).
+  // installed app's title bar one colour and the splash another. This pair
+  // follows the OS setting; packages/ui's syncThemeColor puts a media-less
+  // theme-color first in <head> that follows the in-app switch (ADR-0052 §3).
   themeColor: [
     { media: '(prefers-color-scheme: light)', color: '#FAF7F4' },
     { media: '(prefers-color-scheme: dark)', color: '#0A0E18' },
