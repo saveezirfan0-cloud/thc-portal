@@ -15,7 +15,13 @@ import { documentLink } from '../../onboarding/actions';
 import { useReviewDialogs } from '../../compliance/ReviewDialogs';
 import { CompletionLetterUpload, RtwReportUpload } from '../../compliance/EvidenceUploads';
 import { canAttachReport, canUploadCompletionLetter } from '../../compliance/conditions';
-import { actionsFor, queueByRecord, verifyAllowed, verifyHint } from '../../compliance/queue';
+import {
+  actionsFor,
+  queueByRecord,
+  verifyAllowed,
+  verifyHint,
+  withLatestCheck,
+} from '../../compliance/queue';
 import type { ActionResult, QueueRow } from '../../compliance/types';
 import { RtwCheckPanel } from '../../_components/RtwCheckPanel';
 import { checksByDocument } from '../../_lib/rtwCheck';
@@ -65,6 +71,11 @@ import type { DeclarationRow, DocumentRow, ProfileRow, ReviewStatus } from './ty
  * the queue row's `rtw_manual_allowed`); before that the check verifies it.
  * A share code verified before the date was required carries "Confirm
  * date" (the queue's `rtw_date` row, 20260927160000).
+ *
+ * ADR-0041: every check result waits for the admin. When the check
+ * recommends Verify, the Verify dialog confirms gov.uk's date read-only
+ * after the photos under the row are compared; when it recommends Reject,
+ * the Reject box opens with its suggested N8 text, editable.
  *
  * What the office adds itself (20260930130400): "Attach gov.uk report" on a
  * share code with none on file, on the manual path only (the automated
@@ -135,7 +146,12 @@ export function Documents({
   const [notice, setNotice] = useState<string | null>(null);
 
   const checks = checksByDocument(rtwChecks);
-  const queue = queueByRecord(reviewQueue);
+  // ADR-0041: the latest check's recommendation, suggested N8 text and photo
+  // come from rtw_checks_latest_v (rtwChecks), not the queue view — merged in
+  // so the shared dialogs confirm gov.uk's date read-only and pre-fill Reject.
+  const queue = queueByRecord(
+    reviewQueue.map((row) => withLatestCheck(row, checks.get(row.item_id))),
+  );
   const sorted = [...documents].sort(documentOrder);
   const live = sorted.filter((row) => !row.superseded);
   const superseded = sorted.filter((row) => row.superseded);

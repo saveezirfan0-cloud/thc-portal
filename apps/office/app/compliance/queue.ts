@@ -3,7 +3,8 @@
  * screen shows lives here, so it is tested without a database or a browser;
  * the components only lay it out.
  */
-import type { RtwCheckRow } from '../_lib/rtwCheck';
+import { rtwLockedUntil } from '../_lib/rtwCheck';
+import type { RtwCheckRow, RtwLockedUntil } from '../_lib/rtwCheck';
 import { conditionFieldFor, formatNi, niEvidenceLine } from './conditions';
 import { rtwDateRule } from './rtw';
 import type { QueueRow, RadarRow, RadarState } from './types';
@@ -211,7 +212,51 @@ export function queueRowCheck(row: QueueRow): RtwCheckRow | null {
     stuck:
       row.rtw_manual_allowed === true &&
       (row.rtw_check_status === 'queued' || row.rtw_check_status === 'running'),
+    recommendation: row.rtw_check_recommendation ?? null,
+    photo_path: row.rtw_check_photo_path ?? null,
+    suggested_reason: row.rtw_check_suggested_reason ?? null,
   };
+}
+
+/**
+ * The queue row with what ADR-0041 added to the latest check — the
+ * recommendation, the office-only suggested N8 text and the photo — which
+ * compliance_review_queue_v does not carry: they are read from
+ * rtw_checks_latest_v by document id and merged here. Only when it is the
+ * SAME check the queue row names, so a check that moved on between the two
+ * reads never lends its recommendation to another.
+ */
+export function withLatestCheck(row: QueueRow, check: RtwCheckRow | null | undefined): QueueRow {
+  if (!check || row.kind !== 'document' || row.item_type !== 'share_code_report') return row;
+  if (!row.rtw_check_id || check.check_id !== row.rtw_check_id) return row;
+  return {
+    ...row,
+    rtw_check_recommendation: check.recommendation,
+    rtw_check_suggested_reason: check.suggested_reason,
+    rtw_check_photo_path: check.photo_path,
+  };
+}
+
+/**
+ * gov.uk's right-to-work date, confirmed read-only on Verify (ADR-0041),
+ * or null where the reviewer types it: a pending share code whose latest
+ * check recommends verifying.
+ */
+export function queueRowLockedUntil(row: QueueRow): RtwLockedUntil | null {
+  if (row.kind !== 'document' || row.item_type !== 'share_code_report') return null;
+  return rtwLockedUntil(queueRowCheck(row), 'pending');
+}
+
+/**
+ * What the Reject box opens with: the check's suggested N8 text on a share
+ * code it recommends rejecting (ADR-0041), editable; otherwise empty.
+ */
+export function rejectPrefill(row: QueueRow): string {
+  if (row.kind !== 'document' || row.item_type !== 'share_code_report') return '';
+  if (row.rtw_check_status !== 'needs_review' || row.rtw_check_recommendation !== 'reject') {
+    return '';
+  }
+  return row.rtw_check_suggested_reason ?? '';
 }
 
 /**
@@ -450,6 +495,12 @@ export function verifyHint(row: QueueRow): string | null {
   }
   if (row.item_type === 'share_code_report' && !verifyAllowed(row)) {
     return 'Verified by the automatic gov.uk check — run it again from here';
+  }
+  if (row.kind === 'document' && queueRowLockedUntil(row)) {
+    return 'Compare the gov.uk photo with the worker’s selfie → Verify confirms the date gov.uk returned';
+  }
+  if (rejectPrefill(row)) {
+    return 'gov.uk recommends Reject → the reason is pre-filled; edit it before it goes to the worker (N8)';
   }
   if (row.item_type === 'university_completion_letter') {
     return 'Approve → confirm the completion date and visa expiry → 48 h/week from the completion date, never past the visa';

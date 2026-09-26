@@ -8,11 +8,21 @@ vi.mock('../rtwCheckActions', () => ({
   runRtwCheckAgain: vi.fn(),
   markRtwCheckReviewed: vi.fn(),
   rtwReportLink: vi.fn(),
+  // Never settles: the photo pair stays "Loading the photos…" in these tests.
+  rtwCheckPhotos: vi.fn(() => new Promise(() => {})),
 }));
 
-const { parseRtwCheckRow, rtwCheckView, ukStampFull } = await import('../rtwCheck');
-const { queueRowCheck, verifyAllowed, verifyHint, documentLine } =
-  await import('../../compliance/queue');
+const { parseRtwCheckRow, rtwCheckView, rtwLockedLabel, rtwLockedValue, ukStampFull } =
+  await import('../rtwCheck');
+const {
+  queueRowCheck,
+  queueRowLockedUntil,
+  rejectPrefill,
+  verifyAllowed,
+  verifyHint,
+  documentLine,
+  withLatestCheck,
+} = await import('../../compliance/queue');
 const { RtwCheckPanel } = await import('../../_components/RtwCheckPanel');
 
 /** ADR-0025. Every value here is synthetic. */
@@ -41,6 +51,9 @@ const row = (over: Partial<RtwCheckRow> = {}): RtwCheckRow => ({
   report_path: 's1/share-code-report/rtw-check-k1.pdf',
   reviewed_at: null,
   stuck: false,
+  recommendation: null,
+  photo_path: null,
+  suggested_reason: null,
   ...over,
 });
 
@@ -235,5 +248,202 @@ describe('RtwCheckPanel', () => {
     expect(
       renderToStaticMarkup(<RtwCheckPanel row={null} docId="d1" docStatus="verified" enabled />),
     ).toBe('');
+  });
+});
+
+describe('ADR-0041: every result waits for the admin', () => {
+  const verifyRec = (over: Partial<RtwCheckRow> = {}) =>
+    row({
+      status: 'needs_review',
+      source: 'govuk',
+      recommendation: 'verify',
+      review_reason:
+        'gov.uk confirms a right to work until 31.03.2028. Compare the gov.uk photo with the worker’s selfie, then Verify.',
+      photo_path: 's1/share-code-report/rtw-check-k1-photo.png',
+      ...over,
+    });
+  const rejectRec = (over: Partial<RtwCheckRow> = {}) =>
+    row({
+      status: 'needs_review',
+      source: 'govuk',
+      outcome: 'not_found',
+      right_to_work_until: null,
+      conditions: [],
+      recommendation: 'reject',
+      review_reason: 'gov.uk found no record for this share code and date of birth.',
+      suggested_reason: 'We could not find your share code on gov.uk — please re-enter it.',
+      ...over,
+    });
+
+  it('verify: green "Passed — compare the photo", the gov.uk date locked while pending', () => {
+    const view = rtwCheckView(verifyRec(), { docStatus: 'pending', enabled: true });
+    expect(view.status).toEqual({ tone: 'green', label: 'Passed — compare the photo' });
+    expect(view.recommendation).toBe('verify');
+    expect(view.lockedUntil).toEqual({ date: '2028-03-31', noTimeLimit: false });
+    expect(view.suggestedReason).toBeNull();
+    // Still the needs-review semantics underneath (the one Verify path).
+    expect(view.manualAllowed).toBe(true);
+  });
+
+  it('verify on settled status locks "no time limit"', () => {
+    const view = rtwCheckView(verifyRec({ right_to_work_until: null, no_time_limit: true }), {
+      docStatus: 'pending',
+      enabled: true,
+    });
+    expect(view.lockedUntil).toEqual({ date: null, noTimeLimit: true });
+    expect(rtwLockedValue(view.lockedUntil!)).toBe('infinity');
+    expect(rtwLockedLabel(view.lockedUntil!)).toBe('no time limit — settled status');
+  });
+
+  it('lockedUntil is only for verify on a pending document', () => {
+    for (const docStatus of ['verified', 'rejected', 'read_only', 'superseded']) {
+      expect(rtwCheckView(verifyRec(), { docStatus, enabled: true }).lockedUntil).toBeNull();
+    }
+    expect(
+      rtwCheckView(rejectRec(), { docStatus: 'pending', enabled: true }).lockedUntil,
+    ).toBeNull();
+    expect(
+      rtwCheckView(verifyRec({ recommendation: 'review' }), { docStatus: 'pending', enabled: true })
+        .lockedUntil,
+    ).toBeNull();
+    expect(
+      rtwCheckView(verifyRec({ recommendation: null }), { docStatus: 'pending', enabled: true })
+        .lockedUntil,
+    ).toBeNull();
+    // A verify recommendation with no date to confirm falls back to typing it.
+    expect(
+      rtwCheckView(verifyRec({ right_to_work_until: null }), {
+        docStatus: 'pending',
+        enabled: true,
+      }).lockedUntil,
+    ).toBeNull();
+  });
+
+  it('reject: amber "Recommend reject" and the office-only suggested reason', () => {
+    const view = rtwCheckView(rejectRec(), { docStatus: 'pending', enabled: true });
+    expect(view.status).toEqual({ tone: 'amber', label: 'Recommend reject' });
+    expect(view.suggestedReason).toBe(
+      'We could not find your share code on gov.uk — please re-enter it.',
+    );
+    expect(view.lockedUntil).toBeNull();
+    // Never shown as the worker's own "asked to re-enter" line.
+    expect(view.lines.map((l) => l.k)).not.toContain('Worker asked to re-enter');
+  });
+
+  it('review / none: unchanged', () => {
+    const review = rtwCheckView(
+      row({ status: 'needs_review', recommendation: 'review', review_reason: 'Name differs.' }),
+      { docStatus: 'pending', enabled: true },
+    );
+    expect(review.status).toEqual({ tone: 'coral', label: 'Needs review' });
+    expect(review.suggestedReason).toBeNull();
+    expect(review.lockedUntil).toBeNull();
+    expect(
+      rtwCheckView(row({ status: 'needs_review' }), { docStatus: 'pending', enabled: true }).status,
+    ).toEqual({ tone: 'coral', label: 'Needs review' });
+    // A passed check (admin_confirms off) is the plain pass.
+    expect(
+      rtwCheckView(row({ recommendation: 'verify' }), { docStatus: 'verified', enabled: true })
+        .status,
+    ).toEqual({ tone: 'green', label: 'Passed' });
+  });
+
+  it('parses the new columns, and reads their absence as null', () => {
+    const before = { ...row() } as Record<string, unknown>;
+    delete before['recommendation'];
+    delete before['photo_path'];
+    delete before['suggested_reason'];
+    expect(parseRtwCheckRow(before)).toMatchObject({
+      recommendation: null,
+      photo_path: null,
+      suggested_reason: null,
+    });
+    expect(
+      parseRtwCheckRow({
+        ...rejectRec({ photo_path: 's1/share-code-report/p.png' }),
+      } as unknown as Record<string, unknown>),
+    ).toMatchObject({
+      recommendation: 'reject',
+      photo_path: 's1/share-code-report/p.png',
+      suggested_reason: 'We could not find your share code on gov.uk — please re-enter it.',
+    });
+    expect(
+      parseRtwCheckRow({ ...row(), recommendation: 'approve', suggested_reason: '' } as Record<
+        string,
+        unknown
+      >),
+    ).toMatchObject({ recommendation: null, suggested_reason: null });
+  });
+
+  describe('on the queue', () => {
+    const base = {
+      kind: 'document',
+      item_id: 'd1',
+      staff_id: 's1',
+      item_type: 'share_code_report',
+      submitted_at: '2026-09-25T06:00:00Z',
+      rtw_check_id: 'k1',
+      rtw_check_status: 'needs_review',
+      rtw_check_outcome: 'right_to_work',
+      rtw_check_until: '2028-03-31',
+      rtw_manual_allowed: true,
+    } as unknown as QueueRow;
+
+    it('merges the latest check by document — only the same check', () => {
+      const merged = withLatestCheck(base, verifyRec());
+      expect(merged.rtw_check_recommendation).toBe('verify');
+      expect(merged.rtw_check_photo_path).toBe('s1/share-code-report/rtw-check-k1-photo.png');
+      expect(withLatestCheck(base, verifyRec({ check_id: 'k0' }))).toBe(base);
+      expect(withLatestCheck(base, undefined)).toBe(base);
+      expect(
+        withLatestCheck({ ...base, item_type: 'passport' }, verifyRec()).rtw_check_recommendation,
+      ).toBeUndefined();
+      expect(queueRowCheck(merged)).toMatchObject({ recommendation: 'verify' });
+    });
+
+    it('locks gov.uk’s date on a verify recommendation, and says what Verify does', () => {
+      const merged = withLatestCheck(base, verifyRec());
+      expect(queueRowLockedUntil(merged)).toEqual({ date: '2028-03-31', noTimeLimit: false });
+      expect(verifyHint(merged)).toMatch(/Verify confirms the date gov\.uk returned/);
+      expect(queueRowLockedUntil(base)).toBeNull();
+      expect(queueRowLockedUntil({ ...merged, kind: 'rtw_date' })).toBeNull();
+    });
+
+    it('pre-fills Reject with the suggested reason on a reject recommendation only', () => {
+      const rejected = withLatestCheck(
+        { ...base, rtw_check_outcome: 'not_found', rtw_check_until: null },
+        rejectRec(),
+      );
+      expect(rejectPrefill(rejected)).toBe(
+        'We could not find your share code on gov.uk — please re-enter it.',
+      );
+      expect(verifyHint(rejected)).toMatch(/reason is pre-filled/);
+      expect(rejectPrefill(withLatestCheck(base, verifyRec()))).toBe('');
+      expect(rejectPrefill(base)).toBe('');
+      expect(rejectPrefill({ ...rejected, item_type: 'passport' })).toBe('');
+    });
+  });
+
+  it('the panel sets the photos beside each other on a finished check', () => {
+    const html = renderToStaticMarkup(
+      <RtwCheckPanel row={verifyRec()} docId="d1" docStatus="pending" enabled />,
+    );
+    expect(html).toContain('Passed — compare the photo');
+    expect(html).toContain('Compare the photos before you verify');
+    expect(html).toContain('rtwcheck-reason verify');
+    // Never a storage path in the markup: the server action signs it.
+    expect(html).not.toContain('rtw-check-k1-photo.png');
+  });
+
+  it('no photos while the check is in flight', () => {
+    const html = renderToStaticMarkup(
+      <RtwCheckPanel
+        row={row({ status: 'running', outcome: null, finished_at: null })}
+        docId="d1"
+        docStatus="pending"
+        enabled
+      />,
+    );
+    expect(html).not.toContain('Compare the photos');
   });
 });
