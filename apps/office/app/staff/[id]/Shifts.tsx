@@ -98,7 +98,9 @@ export function Shifts({
           </div>
         ) : (
           <TableScroll>
-            <table className="tbl">
+            {/* `card-rows`: below 760px each shift is a card titled by its
+                event, every other cell naming its column. */}
+            <table className="tbl card-rows">
               <thead>
                 <tr>
                   <th>Date</th>
@@ -114,16 +116,18 @@ export function Shifts({
               <tbody>
                 {listed.map((row) => (
                   <tr key={row.booking_id}>
-                    <td className="mono sm">{formatUkDate(row.event_date)}</td>
-                    <td>{row.event_title}</td>
-                    <td className="sm">
+                    <td data-label="Date" className="mono sm">
+                      {formatUkDate(row.event_date)}
+                    </td>
+                    <td className="cell-title">{row.event_title}</td>
+                    <td data-label="Client · Venue" className="sm">
                       {row.client_name}
                       <span className="sub">{row.venue_name}</span>
                     </td>
-                    <td>
+                    <td data-label="Role">
                       <Chip>{row.role_name}</Chip>
                     </td>
-                    <td className="mono sm">
+                    <td data-label="Scheduled" className="mono sm">
                       {/* §1.8: a scheduled window is UK time, plus "your
                           time" when the reader is elsewhere. */}
                       <ScheduledWindow
@@ -132,7 +136,7 @@ export function Shifts({
                         separator="–"
                       />
                     </td>
-                    <td className="mono sm">
+                    <td data-label="Check in / out" className="mono sm">
                       {row.check_in_at || row.check_out_at ? (
                         <>
                           {formatLocalTime(row.check_in_at)} · {formatLocalTime(row.check_out_at)}
@@ -141,8 +145,10 @@ export function Shifts({
                         <span className="muted">—</span>
                       )}
                     </td>
-                    <td className="mono sm">{payableHours(row)}</td>
-                    <td>
+                    <td data-label="Payable" className="mono sm">
+                      {payableHours(row)}
+                    </td>
+                    <td data-label="Status">
                       <Pill tone={row.kind === 'no_show' ? 'coral' : undefined}>
                         {shiftOutcome(row)}
                       </Pill>
@@ -178,7 +184,7 @@ export function Shifts({
           </div>
         ) : (
           <TableScroll>
-            <table className="tbl">
+            <table className="tbl card-rows">
               <thead>
                 <tr>
                   <th>Event</th>
@@ -202,7 +208,7 @@ export function Shifts({
                             style: row.resolved ? { opacity: 0.6 } : undefined,
                           })}
                     >
-                      <td>
+                      <td className="cell-title">
                         {row.event_title} — {row.client_name}
                         <span className="sub">
                           {row.role_name} ·{' '}
@@ -213,7 +219,7 @@ export function Shifts({
                           />
                         </span>
                       </td>
-                      <td>
+                      <td data-label="Violation">
                         <b>{VIOLATION_LABEL[row.type]}</b>
                         {row.minutes_late !== null ? (
                           <span className="sub">{row.minutes_late} min</span>
@@ -225,13 +231,15 @@ export function Shifts({
                           </span>
                         ) : null}
                       </td>
-                      <td className="mono sm">{formatLocalStamp(row.detected_at, zone)}</td>
-                      <td>
+                      <td data-label="Time (your time)" className="mono sm">
+                        {formatLocalStamp(row.detected_at, zone)}
+                      </td>
+                      <td data-label="Status">
                         <Pill tone={row.resolved ? 'green' : 'coral'}>
                           {row.resolved ? 'Resolved' : 'Unresolved'}
                         </Pill>
                       </td>
-                      <td style={{ textAlign: 'right' }}>
+                      <td className="right-align cell-actions">
                         {openRow ? (
                           <Button
                             size="sm"

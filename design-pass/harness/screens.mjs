@@ -153,6 +153,7 @@ const complianceDb = {
 };
 
 import * as R from './rows.mjs';
+import extra from './extra.mjs';
 
 const PROFILE = O + 'staff/[id]/page.tsx';
 const profileDb = {
@@ -161,6 +162,7 @@ const profileDb = {
   staff_client_qualifications_v: R.qualificationRows,
   staff_shift_history_v: R.shiftRows,
   staff_violations_v: R.profileViolationRows,
+  violations: R.profileViolationRows,
   feedback_entries_v: R.feedbackRows,
   staff_references: R.referenceRows,
   criminal_declarations: R.declarationRows,
@@ -188,7 +190,7 @@ const portalDb = {
   client_event_documents_v: [],
 };
 
-export default {
+const base = {
   checkin: { app: 'office', page: O + 'checkin/page.tsx', pathname: '/checkin' },
   compliance: {
     app: 'office',
@@ -475,5 +477,7 @@ export default {
     db: { ...portalDb, client_events_v: [R.portalEvents[2]] },
   },
 };
+
+export default { ...base, ...extra(profileTab) };
 
 export { iso, C };
