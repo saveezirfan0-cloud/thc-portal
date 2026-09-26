@@ -3,9 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 /**
  * apply() with `/apply?ref=` (ADR-0040, docs/18 §5).
  *
- *   - the code travels on the service-role path ONLY, as the 8th argument
- *     of submit_application_as_caller (20260930140000);
- *   - the anon `submit_application` never receives one;
+ *   - the code travels as the 8th argument of submit_application_as_caller
+ *     (20260930140000) — since 20260930120200 the only path /apply has:
+ *     the anon `submit_application` is service-role only now too;
  *   - a malformed code is dropped, never an error;
  *   - with or without a code the applicant gets the same answer: the
  *     redirect to "Check your inbox";
@@ -130,21 +130,13 @@ describe('apply() — the referral code on the service-role path', () => {
   });
 });
 
-describe('apply() — the anon path never carries a code', () => {
-  it('calls submit_application with its six arguments only', async () => {
+describe('apply() — without the service-role key there is no application at all', () => {
+  it('sends nothing, to either function, and says so rather than failing in the database', async () => {
     delete process.env.SUPABASE_SERVICE_ROLE_KEY;
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-    expect(await submit(form('K7M4Q2XP'))).toBe('REDIRECT /apply/submitted');
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const answer = await submit(form('K7M4Q2XP'));
+    expect(answer).toMatch(/^STATE /);
     expect(adminRpc).not.toHaveBeenCalled();
-    const [fn, args] = sessionRpc.mock.calls[0]!;
-    expect(fn).toBe('submit_application');
-    expect(Object.keys(args).sort()).toEqual([
-      'p_consent',
-      'p_dob',
-      'p_email',
-      'p_first_name',
-      'p_last_name',
-      'p_phone',
-    ]);
+    expect(sessionRpc).not.toHaveBeenCalled();
   });
 });

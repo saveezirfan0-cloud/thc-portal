@@ -1,14 +1,16 @@
 import { Alert } from '@thc/ui';
+import { LoadProblem } from '../_components/LoadProblem';
 import { loadBookings } from '../data';
 import { ProfileShell } from './_components/ProfileShell';
 import { ProfileHub } from './_components/ProfileHub';
 import { LockScreen } from './_components/LockScreen';
 import { appLock, canReachProfileDetails } from './lock';
-import { loadEarnings, loadEmergencyContact, loadProfile, supabaseConfigured } from './data';
+import { loadEarnings, loadEmergencyContact, readProfile } from './data';
 import { signOwnPhoto } from './photos';
 import { expiringDocument } from './document-expiry';
 import { nextPay } from './payments/earnings';
 import { loadDocuments } from '../documents/data';
+import '../chrome.css';
 import './profile.css';
 
 export const dynamic = 'force-dynamic';
@@ -30,10 +32,14 @@ export const metadata = { title: 'Profile · THC Staff' };
  * what `reachableTabs()` says and what the nav shows.
  */
 export default async function Page() {
-  if (!supabaseConfigured()) return <NotConfigured />;
+  const read = await readProfile();
+  if (read.kind === 'unconfigured') return <NotConfigured />;
+  // "Could not load" is not "not configured" (audit D18): the worker gets
+  // their own words and a retry, never a pointer at a setup document. And no
+  // sheet — the P45 action behind it must not be offered on a guess (D16).
+  if (read.kind === 'problem') return <CouldNotLoad />;
 
-  const profile = await loadProfile();
-  if (!profile) return <NotConfigured />;
+  const profile = read.profile;
 
   const lock = appLock(profile);
   const name = `${profile.firstName} ${profile.lastName}`.trim();
@@ -52,10 +58,13 @@ export default async function Page() {
   // only for a worker who has the Documents and Payment rows at all, and
   // either read failing costs its line, never the page.
   const working = canReachProfileDetails(lock);
-  const [photoUrl, bookings, earnings, documents, contact] = await Promise.all([
+  const [photoUrl, { rows: bookings }, earnings, documents, contact] = await Promise.all([
     signOwnPhoto(profile.photoPath),
     // The real number the §10.6 sheet quotes: confirmed bookings whose
-    // shift has not started, exactly the set `request_p45()` releases.
+    // shift has not started, exactly the set `request_p45()` releases. A
+    // failed read leaves the count at 0, which the sheet renders as the
+    // plain "taken off every shift you're booked on" — still true, just
+    // without a number it could not vouch for.
     loadBookings(),
     working ? loadEarnings().catch(() => []) : Promise.resolve([]),
     working ? loadDocuments().catch(() => null) : Promise.resolve(null),
@@ -77,6 +86,14 @@ export default async function Page() {
         expiring={documents ? expiringDocument(documents) : null}
         emergencyContactSet={contact === undefined ? null : contact !== null}
       />
+    </ProfileShell>
+  );
+}
+
+function CouldNotLoad() {
+  return (
+    <ProfileShell title="Profile" lock="none" name="THC" nav={false}>
+      <LoadProblem what="your profile" />
     </ProfileShell>
   );
 }

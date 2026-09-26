@@ -77,7 +77,7 @@ export function RolesScreen({ roles, problem }: RolesScreenProps) {
         actions={
           <span className="hol-lbl">
             <Pill tone="amber">Holiday +12.07%</Pill>
-            <span className="muted xs">calculated, never stored (§1.5)</span>
+            <span className="muted xs">calculated, never stored</span>
           </span>
         }
         flush
@@ -150,14 +150,14 @@ export function RolesScreen({ roles, problem }: RolesScreenProps) {
       <div className="grid c2">
         <Note>
           <b>Final rate</b> = base + holiday (12.07%). All margin across the system is calculated
-          from this figure: margin/h = the client&rsquo;s charge rate − the final rate (§9.8, §9.1).
-          In the app the worker only ever sees the base rate — never the +12.07% (§9.8, §10.1).
+          from this figure: margin/h = the client&rsquo;s charge rate − the final rate. In the app
+          the worker only ever sees the base rate — never the +12.07%.
         </Note>
         <Note>
           <b>Dress code is not set here</b> — it is client-specific, not role-specific (Waiting
           Staff at the Dorchester vs at the Mandarin Oriental). It is managed per client on that
-          client&rsquo;s rate card (§9.7) and pulled from there when an event is built (§3.2).
-          Charge rates likewise live on the client card only.
+          client&rsquo;s rate card and pulled from there when an event is built. Charge rates
+          likewise live on the client card only.
         </Note>
       </div>
 

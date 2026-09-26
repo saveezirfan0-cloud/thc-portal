@@ -34,7 +34,10 @@ export const metadata = { title: 'Up for grabs · THC Staff' };
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [offers, bookings] = await Promise.all([loadOpenOffers(id), loadBookings()]);
+  const [offers, { rows: bookings, problem: bookingsProblem }] = await Promise.all([
+    loadOpenOffers(id),
+    loadBookings(),
+  ]);
   const offer = offers.find((o) => o.offerId === id);
   if (!offer) notFound();
 
@@ -45,8 +48,10 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       title={`${offer.eventTitle} · ${offer.role}`}
       sub={<Link href="/radar">‹ Radar</Link>}
       active="/radar"
-      shifts={shiftsBadge(bookings)}
-      invites={openInvites(bookings).length}
+      // A failed read has no count to show, and a 0 badge would be a claim.
+      {...(bookingsProblem
+        ? {}
+        : { shifts: shiftsBadge(bookings), invites: openInvites(bookings).length })}
     >
       <div className="card-head">
         <Pill tone="cyan">{UP_FOR_GRABS}</Pill>

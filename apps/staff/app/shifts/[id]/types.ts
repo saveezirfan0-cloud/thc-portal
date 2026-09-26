@@ -33,6 +33,13 @@ export interface ShiftDetail {
   /** An unresolved RULE-02 No check-out violation stands on this booking. */
   noCheckoutOpen: boolean;
   /**
+   * A Left early violation stands on this booking, resolved or not — it
+   * blocks RULE-14's floor (§5.2, audit D8). `staff_shift_detail()` returns
+   * it (20260930100100); optional so a detail built elsewhere (fixtures,
+   * tests) need not carry it, and `earnings.ts` then reads the check-out.
+   */
+  leftEarly?: boolean;
+  /**
    * §3.2 strict buffer policy: the logged turn-away attempt
    * (`check_logs.attempted_at`), null where there was none. The screen
    * does not read it — on time or late is `turnedAwayPayMin`, the

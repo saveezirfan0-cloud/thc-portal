@@ -9,13 +9,20 @@ import type { StaffProfile } from '../../../profile/types';
  * app is locked to (§10.1, `appLock()`), so the URL is no way round the lock.
  */
 const shift = vi.fn<() => Promise<ShiftDetail | null>>();
+/** Set to make a read FAIL rather than find nothing (audit D16, D18). */
+const fails = vi.hoisted(() => ({ shift: false, profile: false }));
 vi.mock('../data', () => ({
   supabaseConfigured: () => true,
-  loadShift: () => shift(),
+  loadShift: async () =>
+    fails.shift ? { shift: null, problem: 'timeout' } : { shift: await shift(), problem: null },
 }));
 const profile = vi.fn<() => Promise<StaffProfile | null>>();
 vi.mock('../../../profile/data', () => ({
-  loadProfile: () => profile(),
+  readProfile: async () => {
+    if (fails.profile) return { kind: 'problem', message: 'timeout' };
+    const p = await profile();
+    return p ? { kind: 'ok', profile: p } : { kind: 'unconfigured' };
+  },
 }));
 
 const me = (over: Partial<StaffProfile> = {}): StaffProfile => ({
@@ -84,12 +91,23 @@ const get = () =>
   });
 
 beforeEach(() => {
+  fails.shift = false;
+  fails.profile = false;
   shift.mockReset();
   profile.mockReset();
   profile.mockResolvedValue(me());
 });
 
 describe('GET /shifts/:id/calendar.ics', () => {
+  it('a read that failed is a 503, never a 404 that says the shift is not theirs', async () => {
+    shift.mockResolvedValue(detail());
+    fails.shift = true;
+    expect((await get()).status).toBe(503);
+    fails.shift = false;
+    fails.profile = true;
+    expect((await get()).status).toBe(503);
+  });
+
   it('answers a confirmed booking with text/calendar, never cached', async () => {
     shift.mockResolvedValue(detail());
     const res = await get();

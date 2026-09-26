@@ -96,7 +96,9 @@ export function formatCountdown(ms: number): string {
  * it has opened. The window is `checkInWindow()` (start − 30 min, §5.1).
  */
 export function checkInCountdown(startsAt: string, now: Date): string | null {
-  const opens = checkInWindow(startsAt).opens.getTime();
+  // The opening depends on the start alone (start − 30 min); the end and
+  // the confirmation time move only the lock, which this does not read.
+  const opens = checkInWindow({ startsAt, endsAt: startsAt, confirmedAt: null }).opens.getTime();
   const left = opens - now.getTime();
   return left > 0 ? `Check-in opens in ${formatCountdown(left)}` : null;
 }

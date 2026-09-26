@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { payableMinutes } from '@thc/domain';
-import { staffDb, supabaseConfigured } from '../db';
+import { StaffLoadError, staffDb, supabaseConfigured } from '../db';
 import type { EarningsRow, EmergencyContact, StaffProfile } from './types';
 import { basePenceFor } from './payments/earnings';
 import { toChangeRequest } from './change-requests';
@@ -18,15 +18,49 @@ import type { ChangeRequest } from './change-requests';
  * `roles`, which carry the charge rate and every other worker's record.
  */
 
-export { supabaseConfigured };
+export { StaffLoadError, supabaseConfigured };
 
-export async function loadProfile(): Promise<StaffProfile | null> {
-  if (!supabaseConfigured()) return null;
+/**
+ * The three answers a profile read can give, kept apart (audit D16, D18).
+ *
+ *   unconfigured  no Supabase project in this environment (docs/04). A
+ *                 developer's machine; nothing to lock on, nothing to show.
+ *   ok            the worker's own row.
+ *   problem       the project is there and the read failed, or came back
+ *                 with no row for a signed-in worker. This is NOT "no
+ *                 profile": the app lock is computed from this row, so a
+ *                 screen that treated it as unlocked would show a blocked
+ *                 worker their shifts on the strength of a timeout. Every
+ *                 caller fails CLOSED on it.
+ */
+export type ProfileRead =
+  | { kind: 'unconfigured' }
+  | { kind: 'ok'; profile: StaffProfile }
+  | { kind: 'problem'; message: string };
+
+export async function readProfile(): Promise<ProfileRead> {
+  if (!supabaseConfigured()) return { kind: 'unconfigured' };
   const supabase = staffDb(await cookies());
-  const { data } = await supabase.rpc('staff_me');
-  if (!data) return null;
+  const { data, error } = await supabase.rpc('staff_me');
+  if (error) return { kind: 'problem', message: error.message || 'staff_me failed' };
+  if (!data) return { kind: 'problem', message: 'staff_me returned no row' };
+  return { kind: 'ok', profile: toProfile(data as Record<string, unknown>) };
+}
 
-  const row = data as Record<string, unknown>;
+/**
+ * The profile, or null where no project is configured. A failed read
+ * THROWS (into `app/error.tsx`) rather than returning null, because null
+ * used to read as "nothing to lock on" (audit D16).
+ */
+export async function loadProfile(): Promise<StaffProfile | null> {
+  const read = await readProfile();
+  if (read.kind === 'unconfigured') return null;
+  if (read.kind === 'problem') throw new StaffLoadError(read.message);
+  return read.profile;
+}
+
+/** One `staff_me()` object in the screens' shape. */
+export function toProfile(row: Record<string, unknown>): StaffProfile {
   return {
     staffId: row['staffId'] as string,
     firstName: (row['firstName'] as string) ?? '',
@@ -75,7 +109,10 @@ export async function loadProfile(): Promise<StaffProfile | null> {
 export async function loadEarnings(): Promise<EarningsRow[]> {
   if (!supabaseConfigured()) return [];
   const supabase = staffDb(await cookies());
-  const { data } = await supabase.rpc('staff_earnings');
+  const { data, error } = await supabase.rpc('staff_earnings');
+  // A failed read is not "No earnings yet" (audit D18): it goes to the
+  // error boundary, which says so and offers the retry.
+  if (error) throw new StaffLoadError(error.message || 'staff_earnings failed');
 
   return ((data ?? []) as Record<string, unknown>[]).map((row) => {
     const startsAt = new Date(row['starts_at'] as string);

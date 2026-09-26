@@ -206,7 +206,7 @@ describe('Needs review (§4.1)', () => {
     expect(foundLine(expired)).toEqual({ text: '2 holiday ranges', confidence: 'manual' });
     expect(reviewFlag(expired)).toEqual({
       label: 'Letter expired',
-      detail: 'every term date on it is in the past — not accepted (§4.2)',
+      detail: 'every term date on it is in the past — not accepted',
     });
     expect(verifyHint(expired)).toContain('Verify is refused');
     expect(verifyHint(expired)).toContain('Reject');
@@ -360,7 +360,10 @@ describe('what Verify does — shared by /compliance and the staff profile', () 
 
   it('approves a completion letter with its dates, and verifies anything else on the click', () => {
     expect(verifyStep({ ...ROW, item_type: 'university_completion_letter' })).toBe('approve');
-    expect(verifyStep(ROW)).toBe('verify');
+    // ROW is a student's term letter: its Verify asks for the course level
+    // beside it (D32, 20260930130100), so the plain click is a passport's.
+    expect(verifyStep(ROW)).toBe('confirm');
+    expect(verifyStep({ ...ROW, item_type: 'passport', rtw_branch: 'uk_irish' })).toBe('verify');
     expect(verifyStep({ ...ROW, kind: 'declaration', item_type: 'criminal_declaration' })).toBe(
       'verify',
     );

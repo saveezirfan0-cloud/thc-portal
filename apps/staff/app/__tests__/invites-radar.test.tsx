@@ -41,42 +41,53 @@ vi.mock('../actions', () => ({
 }));
 vi.mock('../profile/photos', () => ({ signOwnPhoto: async () => null }));
 vi.mock('../profile/data', () => ({
-  loadProfile: async (): Promise<StaffProfile> => ({
-    staffId: 's1',
-    firstName: 'Amara',
-    lastName: 'Kalu',
-    employeeId: 417,
-    email: 'amara@example.test',
-    phone: '+447700900123',
-    homeAddress: null,
-    photoPath: null,
-    photoLocked: true,
-    status: 'compliant',
-    blockKind: null,
-    leftAt: null,
-    rtwBranch: 'uk_irish',
-    niMasked: null,
-    hasNiNumber: true,
-    rating: null,
-    reliability: null,
-    quizAttempts: 1,
-    roles: ['Waiting Staff', 'Bar Staff'],
-    blockers: [],
-    checkedIn: false,
-    bank: null,
+  readProfile: async (): Promise<{ kind: 'ok'; profile: StaffProfile }> => ({
+    kind: 'ok',
+    profile: {
+      staffId: 's1',
+      firstName: 'Amara',
+      lastName: 'Kalu',
+      employeeId: 417,
+      email: 'amara@example.test',
+      phone: '+447700900123',
+      homeAddress: null,
+      photoPath: null,
+      photoLocked: true,
+      status: 'compliant',
+      blockKind: null,
+      leftAt: null,
+      rtwBranch: 'uk_irish',
+      niMasked: null,
+      hasNiNumber: true,
+      rating: null,
+      reliability: null,
+      quizAttempts: 1,
+      roles: ['Waiting Staff', 'Bar Staff'],
+      blockers: [],
+      checkedIn: false,
+      bank: null,
+    },
   }),
 }));
 
 const bookings = vi.fn<() => Promise<BookingRow[]>>();
 const openShifts = vi.fn<() => Promise<OpenShift[]>>();
 const meter = vi.fn<() => Promise<WeekMeter | null>>();
+// The loaders hand back { rows | row, problem } (audit D18); these reads
+// all succeed, so `problem` is null throughout.
 vi.mock('../data', async (importOriginal) => ({
   ...(await importOriginal<typeof Data>()),
-  loadBookings: () => bookings(),
-  loadOpenShifts: () => openShifts(),
-  loadWeekMeter: () => meter(),
-  findBooking: async (id: string) => (await bookings()).find((b) => b.bookingId === id) ?? null,
-  findOpenShift: async (id: string) => (await openShifts()).find((s) => s.shiftId === id) ?? null,
+  loadBookings: async () => ({ rows: await bookings(), problem: null }),
+  loadOpenShifts: async () => ({ rows: await openShifts(), problem: null }),
+  loadWeekMeter: async () => ({ row: await meter(), problem: null }),
+  findBooking: async (id: string) => ({
+    row: (await bookings()).find((b) => b.bookingId === id) ?? null,
+    problem: null,
+  }),
+  findOpenShift: async (id: string) => ({
+    row: (await openShifts()).find((s) => s.shiftId === id) ?? null,
+    problem: null,
+  }),
 }));
 
 const { default: InvitesPage } = await import('../invites/page');

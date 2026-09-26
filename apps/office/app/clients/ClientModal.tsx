@@ -170,7 +170,7 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
         }
         value={contactPoint}
         onChange={(event) => setContactPoint(event.target.value)}
-        hint="The on-site contact the staff see at the venue — pre-fills the event form’s on-site contact (§3.2)."
+        hint="The on-site contact the staff see at the venue — pre-fills the event form’s on-site contact."
         required
       />
 
@@ -215,7 +215,7 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
         </div>
         <span className="hint" id="client-email-hint">
           The allocation sheet and the timesheet go to every address here, from
-          timesheets@thehospitalitycompany.co.uk (§11.4).
+          timesheets@thehospitalitycompany.co.uk.
         </span>
       </div>
 
@@ -234,8 +234,8 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
             }
           />
           <span className="hint">
-            Off = staff get Start / Finish break buttons; break time is deducted from pay and charge
-            (§3.2, §5.2b).
+            Off = staff get Start / Finish break buttons; break time is deducted from pay and
+            charge.
           </span>
         </div>
         <div className="field">
@@ -253,15 +253,14 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
           />
           <span className="hint">
             Off = strict: surplus workers are turned away at check-in and paid a fixed 4 h if on
-            time (RULE-15).
+            time.
           </span>
         </div>
       </div>
 
       <div className="note">
         Rate card (roles, charge rates, dress codes) and qualified staff are added on the client
-        card after creation (§9.7). Neither switch has a &ldquo;not set&rdquo; state — both are
-        mandatory.
+        card after creation. Neither switch has a &ldquo;not set&rdquo; state — both are mandatory.
       </div>
     </Modal>
   );

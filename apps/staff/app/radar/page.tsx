@@ -13,6 +13,7 @@ import {
 import { StaffShell } from '../_components/StaffShell';
 import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
+import { LoadProblem } from '../_components/LoadProblem';
 import { withdrawApplication } from '../actions';
 import { loadBookings, loadOpenShifts, loadWeekMeter, openInvites, shiftsBadge } from '../data';
 import type { OpenShift } from '../data';
@@ -48,7 +49,12 @@ export const metadata = { title: 'Radar · THC Staff' };
  * this week's hours under "This week".
  */
 export default async function Page() {
-  const [shifts, bookings, meter, offers] = await Promise.all([
+  const [
+    { rows: shifts, problem },
+    { rows: bookings, problem: bookingsProblem },
+    { row: meter },
+    offers,
+  ] = await Promise.all([
     loadOpenShifts(),
     loadBookings(),
     loadWeekMeter(),
@@ -62,6 +68,7 @@ export default async function Page() {
   );
 
   const empty =
+    !problem &&
     offers.length === 0 &&
     groups.qualified.length === 0 &&
     groups.other.length === 0 &&
@@ -71,9 +78,14 @@ export default async function Page() {
     <StaffShell
       title="Radar"
       active="/radar"
-      shifts={shiftsBadge(bookings)}
-      invites={openInvites(bookings).length}
+      {...(bookingsProblem
+        ? {}
+        : { shifts: shiftsBadge(bookings), invites: openInvites(bookings).length })}
     >
+      {problem ? (
+        // Audit D18: a failed read is not "Nothing open nearby".
+        <LoadProblem what="open shifts" />
+      ) : null}
       {meter ? (
         <WeekMeter
           label={`This week (${weekLabel(meter.weekStart, meter.weekEnd)})`}

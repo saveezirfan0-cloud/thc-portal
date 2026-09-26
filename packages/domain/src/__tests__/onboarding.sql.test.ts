@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { SHARE_CODE_SQL_PATTERN } from '../shareCode.ts';
 import { deriveStatement } from '../hmrc.ts';
 import {
+  CONTRACT_VERSION_CLAUSE_28_PENDING,
   POSTCODE_SQL_PATTERN,
   RELATIVE_SQL_PATTERN,
   UK_PIN_BOUNDS,
@@ -138,5 +139,17 @@ describe('HMRC (§2.8) — SQL and TypeScript agree', () => {
     for (const [q1, q2, q3, want] of cases) {
       expect(deriveStatement({ q1OtherJob: q1, q2Pension: q2, q3Since6April: q3 })).toBe(want);
     }
+  });
+});
+
+describe('the agreement awaiting clause 28 (§2.11) — SQL and TypeScript agree', () => {
+  it('is the version 20260930140100 publishes, flagged, with clause 28 in it', () => {
+    const contract = readFileSync(
+      join(MIGRATIONS, '20260930140100_thc_agency_worker_contract.sql'),
+      'utf8',
+    );
+    expect(contract).toContain(`'${CONTRACT_VERSION_CLAUSE_28_PENDING}',`);
+    expect(contract).toMatch(/\$contract\$, E'\\n'\),\n\s+now\(\),\n\s+true\n\)/);
+    expect(contract).toContain('28. DUTY TO DISCLOSE CRIMINAL CONVICTIONS.');
   });
 });

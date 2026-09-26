@@ -176,9 +176,9 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
           </Panel>
           <Note>
             <b>Events</b> is how many events have taken place at this venue. The geofence radius
-            (100–3000 m) is what the check-in button checks against (§5.1) and what background
-            tracking watches for exits (BG-06/07). Editing opens the same modal titled with the
-            venue&rsquo;s name, pre-filled with its pin, address and radius.
+            (100–3000 m) is what the check-in button checks against and what background tracking
+            watches for exits. Editing opens the same modal titled with the venue&rsquo;s name,
+            pre-filled with its pin, address and radius.
           </Note>
         </>
       ) : (
@@ -196,8 +196,7 @@ export function VenuesScreen({ venues, venueTypes }: VenuesScreenProps) {
           />
           <Note>
             Every venue&rsquo;s geofence circle at once on a single full-width map — where they are
-            and how big they are relative to each other (§9.11). Clicking a pin opens its Edit
-            modal.
+            and how big they are relative to each other. Clicking a pin opens its Edit modal.
           </Note>
         </>
       )}

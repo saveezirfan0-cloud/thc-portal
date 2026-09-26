@@ -30,7 +30,7 @@ const EVENT_COLUMNS =
   'id, title, venue_name, venue_address, event_date, po_number, onsite_contact, starts_at, ends_at, status';
 const SECTION_COLUMNS = 'shift_id, event_id, role, starts_at, ends_at, headcount, confirmed';
 const LINEUP_COLUMNS =
-  'booking_id, event_id, role, starts_at, ends_at, name, photo_path, sort_key, feedback_given';
+  'booking_id, event_id, shift_id, role, starts_at, ends_at, name, photo_path, sort_key, feedback_given';
 
 /* eslint-disable @typescript-eslint/no-explicit-any -- the generated types
    predate these views; regenerating them is `pnpm --filter @thc/db gen:types`
@@ -68,6 +68,9 @@ function toLineup(r: Row): LineupRow {
   return {
     bookingId: r.booking_id,
     eventId: r.event_id,
+    // The role section (20260930110400): two sections of one role are two
+    // groups on the event page, as on the §11.3 PDF.
+    shiftId: r.shift_id ?? null,
     role: r.role,
     startsAt: r.starts_at,
     endsAt: r.ends_at,
@@ -82,32 +85,39 @@ export interface EventListData {
   events: PortalEvent[];
   sections: RoleSection[];
   lineup: LineupRow[];
+  /** The caller's own company (`client_company_v`), for "Events · <client>". */
+  company: string | null;
   problem: string | null;
 }
 
 /** §11.1 · every event this customer has, with its counts and its faces. */
 export async function loadEventList(): Promise<EventListData> {
   if (!supabaseConfigured()) {
-    return { events: [], sections: [], lineup: [], problem: NO_PROJECT };
+    return { events: [], sections: [], lineup: [], company: null, problem: NO_PROJECT };
   }
 
   const supabase = createClient(await cookies()) as any;
 
-  const [events, sections, lineup] = await Promise.all([
+  const [events, sections, lineup, company] = await Promise.all([
     supabase.from('client_events_v').select(EVENT_COLUMNS),
     supabase.from('client_role_sections_v').select(SECTION_COLUMNS),
     supabase.from('client_lineup_v').select(LINEUP_COLUMNS),
+    // wireframes/client/events.html titles the panel with the customer's
+    // own name. One row, the caller's company only (ADR-0004).
+    supabase.from('client_company_v').select('name').maybeSingle(),
   ]);
 
   const failed = [events, sections, lineup].find((r) => r.error);
   if (failed?.error) {
-    return { events: [], sections: [], lineup: [], problem: failed.error.message };
+    return { events: [], sections: [], lineup: [], company: null, problem: failed.error.message };
   }
 
   return {
     events: (events.data ?? []).map(toEvent),
     sections: (sections.data ?? []).map(toSection),
     lineup: (lineup.data ?? []).map(toLineup),
+    // The name decorates the title; failing to read it withholds nothing.
+    company: company.error ? null : (company.data?.name ?? null),
     problem: null,
   };
 }

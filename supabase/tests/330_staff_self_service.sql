@@ -189,10 +189,14 @@ select throws_ok(
   format($$ select staff_set_photo(%L) $$, :'mate' || '/selfie-1.jpg'),
   'P0001', 'wrong_path',
   'a worker cannot attach a file from somebody else''s folder to their profile');
+-- The upload itself, through the worker's own session: staff_set_photo()
+-- requires the object to be in the bucket (20260930120200).
+insert into storage.objects (bucket_id, name) values ('photos', :'me' || '/selfie-1.jpg');
 select lives_ok(format($$ select staff_set_photo(%L) $$, :'me' || '/selfie-1.jpg'),
   'a worker with no photo may supply one');
 select is((select photo_path from staff where id = :'me'), :'me' || '/selfie-1.jpg',
   'and it lands on the profile, which is what the whole system renders (§1.6)');
+insert into storage.objects (bucket_id, name) values ('photos', :'me' || '/selfie-2.jpg');
 select throws_ok(format($$ select staff_set_photo(%L) $$, :'me' || '/selfie-2.jpg'),
   'P0001', 'photo_locked',
   '§10.1: set once and then locked — changing it afterwards goes through the office');

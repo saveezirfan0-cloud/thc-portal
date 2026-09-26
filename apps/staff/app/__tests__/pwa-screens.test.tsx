@@ -72,6 +72,14 @@ describe('/notifications (§10.5, §8 register)', () => {
     expect(html).toContain('You can change this later in your phone’s settings.');
   });
 
+  it('labels the rows in plain words, never with the register’s internal codes', () => {
+    const html = renderToStaticMarkup(<NotificationsScreen initialState="default" />);
+    for (const label of ['Invitations', 'Deadline', 'Check-in', 'Documents']) {
+      expect(html).toContain(`<span class="pill purple">${label}</span>`);
+    }
+    expect(html).not.toMatch(/>N\d+b?</);
+  });
+
   it('granted: says so, and the button is done', () => {
     const html = renderToStaticMarkup(<NotificationsScreen initialState="granted" />);
     expect(html).toContain('Notifications are on.');

@@ -423,3 +423,11 @@ export const REFERRAL_FIELD = 'ref';
  * may only export async functions.
  */
 export const SENT_TO_COOKIE = 'thc_apply_sent_to';
+
+/**
+ * What the applicant reads when this deployment cannot take applications:
+ * no SUPABASE_SERVICE_ROLE_KEY, so no route to submit_application_as_caller
+ * (ADR-0024; anon lost submit_application in 20260930120200).
+ */
+export const APPLY_UNAVAILABLE =
+  'Applications are not open on this site yet. Please try again later, or email admin@thehospitalitycompany.co.uk.';

@@ -16,7 +16,7 @@
 -- THC's real questions turn out to be.
 -- =====================================================================
 begin;
-select plan(37);
+select plan(47);
 
 \set pass_uid  'c3930000-0000-4000-8000-000000000001'
 \set fail_uid  'c3930000-0000-4000-8000-000000000002'
@@ -53,8 +53,21 @@ create temporary table sheet as
 grant select on sheet to authenticated;
 
 select ok((select total from sheet) >= 5, 'the quiz is configured');
-select ok((select count(*) from quiz_questions where active and is_placeholder) = (select total from sheet),
-  'and every active question is still the flagged PLACEHOLDER set until THC''s arrive (§2.9, Appendix B)');
+-- THC's own ten (20260930140000). The answer key is inferred (THC's sheet
+-- marks none) and Q8 is reworded from free text — both await THC (docs/17).
+select is((select total from sheet), 10, 'THC''s ten questions are the active quiz (§2.9, Appendix B)');
+select results_eq(
+  $$ select position from quiz_questions where active and is_placeholder $$,
+  $$ values (8) $$,
+  'exactly one of them is still flagged placeholder: Q8, reworded from THC''s free-text question');
+select is((select count(*)::int from quiz_questions where not active and is_placeholder), 10,
+  'the ten placeholder questions are kept, inactive — attempts marked against them stay readable');
+select is((select image_path from quiz_questions where active and position = 7), '/quiz/coshh-toxic.svg',
+  'Q7 ("what does this symbol mean?") carries the COSHH pictogram');
+select throws_ok(
+  $$ insert into quiz_questions (position, prompt, options, correct_index, active, image_path)
+     values (901, 'Probe?', array['a', 'b'], 0, false, 'https://example.com/x.png') $$,
+  '23514', null, 'a picture is a path under the Staff App''s /quiz folder, nothing else');
 
 -- =====================================================================
 -- 1. Gates
@@ -75,6 +88,11 @@ select is((select count(*)::int from onboarding_quiz_questions()), (select total
   'now every question is served');
 select ok(pg_get_function_result('public.onboarding_quiz_questions()'::regprocedure) !~ 'correct',
   'without its answer: the function has no column that could carry the key');
+select is(pg_get_function_result('public.onboarding_quiz_questions()'::regprocedure),
+  'TABLE(id uuid, question_no integer, prompt text, options text[], image_path text)',
+  'it returns exactly the question, its number, its options and its picture — never correct_index');
+select is((select image_path from onboarding_quiz_questions() where question_no = 7), '/quiz/coshh-toxic.svg',
+  'and the worker receives Q7''s picture with it');
 
 set local role authenticated;
 select is((select count(*)::int from quiz_questions), 0, 'and the key table is closed to the worker');
@@ -89,6 +107,26 @@ select throws_ok(
   format($$ select submit_quiz_attempt(%L::jsonb) $$,
          (select all_right || jsonb_build_object((select id::text from quiz_questions where active order by position limit 1), 99) from sheet)),
   'P0001', 'bad_answer', 'an index outside the options is refused');
+
+-- The quiz replaced under a worker's feet (20260930140000): a sheet built
+-- from the old questions is refused as such, before anything is written.
+select throws_ok(
+  format($$ select submit_quiz_attempt(%L::jsonb) $$,
+         (select jsonb_object_agg(id::text, correct_index) from quiz_questions
+           where not active and is_placeholder)),
+  'P0001', 'quiz_changed',
+  'answers keyed by the deactivated placeholder questions are refused as quiz_changed, not quiz_incomplete');
+select throws_ok(
+  format($$ select submit_quiz_attempt(%L::jsonb) $$,
+         (select all_right || jsonb_build_object(
+                   (select id::text from quiz_questions where not active order by position limit 1), 0)
+            from sheet)),
+  'P0001', 'quiz_changed',
+  'so is a full current sheet carrying one old question');
+select is((select count(*)::int from quiz_attempts where staff_id = :'pass'), 0,
+  'neither wrote an attempt');
+select is((select quiz_attempts from staff where id = :'pass'), 0,
+  'nor used one up');
 
 select is(
   (select submit_quiz_attempt(three_wrong)->>'outcome' from sheet), 'retry',

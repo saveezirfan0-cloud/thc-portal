@@ -45,12 +45,17 @@ function Meta({ line }: { line: Line }) {
   );
 }
 
-/** "Review interview on Willo ↗" — live once THC's Willo account is configured (§2.4). */
+/**
+ * "Review interview on Willo ↗" — live once THC's Willo account is configured
+ * (§2.4). Until then a neutral, disabled line: a fact about the set-up, not a
+ * warning about the candidate.
+ */
 function WilloLink({ url }: { url: string | null }) {
   if (!url) {
     return (
       <span
         className="willo off"
+        aria-disabled="true"
         title="Willo is not connected yet — the link appears once THC's Willo account is set up in Settings"
       >
         Review interview on Willo — not connected
@@ -195,11 +200,6 @@ export function OnboardingBoard({
             value={filter}
             onChange={setFilter}
           />
-          <span className="annot">
-            {filter === 'active'
-              ? 'same filter pattern as the Staff directory (§9.6) — rejected cards are hidden by default (§2.2)'
-              : 'rejected cards stay reachable without leaving this screen; they sit in the column where they were rejected'}
-          </span>
           <div className="right">
             <SearchInput
               aria-label="Search candidates"
@@ -240,7 +240,7 @@ export function OnboardingBoard({
             <b>No &quot;Applied&quot; stage.</b> Submitting /apply creates the candidate straight in{' '}
             <b>Interview requested</b> and Willo sends the interview invitation (E1) itself. Cards
             move between the first two columns on their own from the Willo webhook; the manager
-            decides <i>inside Willo</i> (§2.4).
+            decides <i>inside Willo</i>.
           </Alert>
         ) : null}
 
@@ -264,10 +264,10 @@ export function OnboardingBoard({
 
         {filter === 'rejected' ? (
           <Alert tone="neutral">
-            Rejection is final on this record — there is no &quot;un-reject&quot; (§2.3). If the
-            person applies again via /apply, the duplicate check (email, or mobile + DOB) routes
-            them to the office as a <b>Returning applicant</b> card in Interview requested, where
-            the manager presses <b>Reset to candidate</b> or rejects the application (§2.12).
+            Rejection is final on this record — there is no &quot;un-reject&quot;. If the person
+            applies again via /apply, the duplicate check (email, or mobile + DOB) routes them to
+            the office as a <b>Returning applicant</b> card in Interview requested, where the
+            manager presses <b>Reset to candidate</b> or rejects the application.
           </Alert>
         ) : null}
       </div>
@@ -304,13 +304,12 @@ export function OnboardingBoard({
               <div className="note">
                 Same record, same Employee ID. Status goes back to Interview requested; every
                 document, the share-code result, the HMRC checklist, the declaration, the quiz and
-                the contract are marked superseded and must be supplied again. History stays
-                (§2.12).
+                the contract are marked superseded and must be supplied again. History stays.
               </div>
             ) : (
               <div className="note">
-                The applicant receives E2. They are never told why a previous record was blocked
-                (§2.12). The existing record is not changed.
+                The applicant receives E2. They are never told why a previous record was blocked.
+                The existing record is not changed.
               </div>
             )}
             <Textarea
@@ -389,17 +388,28 @@ function Column({
       {filter === 'active' && column.key === 'contract' ? (
         <Note>
           Signed → the card leaves the kanban, Employee ID is generated and the person appears in{' '}
-          <Link href="/staff">Staff</Link> as Compliant (§2.7).
+          <Link href="/staff">Staff</Link> as Compliant.
         </Note>
       ) : null}
     </KanbanColumn>
   );
 }
 
-function CardTop({ name, age, tone }: { name: string; age: string; tone?: string }) {
+function CardTop({
+  name,
+  age,
+  tone,
+  photo,
+}: {
+  name: string;
+  age: string;
+  tone?: string;
+  /** The onboarding selfie, signed on the server (_lib/photos.ts); initials until there is one. */
+  photo?: string | null;
+}) {
   return (
     <div className="top">
-      <Avatar size="sm" name={name} />
+      <Avatar size="sm" name={name} src={photo ?? undefined} />
       <div className="nm">{name}</div>
       <span className={tone && tone !== 'ok' ? `age ${tone}` : 'age'}>{age}</span>
     </div>
@@ -436,7 +446,7 @@ function CandidateCard({
   const interview = column === 'interview_requested' || column === 'interview_completed';
   return (
     <KanbanCard onOpen={() => onOpen(row)}>
-      <CardTop name={row.display_name} age={age.label} tone={age.tone} />
+      <CardTop name={row.display_name} age={age.label} tone={age.tone} photo={row.photo_url} />
       {/* Role chips from Documents onwards: picked right after the Willo
           acceptance (§2.4). "Referred" (ADR-0040) from the first column. */}
       <RoleChips roles={interview ? [] : row.role_names} referred={referred} />
@@ -462,7 +472,11 @@ function RejectedCard({
 }) {
   return (
     <KanbanCard onOpen={() => onOpen(row)}>
-      <CardTop name={row.display_name} age={row.rejected_at ? shortDay(row.rejected_at) : '—'} />
+      <CardTop
+        name={row.display_name}
+        age={row.rejected_at ? shortDay(row.rejected_at) : '—'}
+        photo={row.photo_url}
+      />
       <RoleChips roles={row.role_names} referred={referred} />
       <span>
         <Pill tone="coral">{rejectedPill(row)}</Pill>

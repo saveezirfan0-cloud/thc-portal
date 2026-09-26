@@ -38,6 +38,9 @@ insert into booking_edge_vectors values
   ('applied', 'cancelled'),
   ('applied', 'closed'),
   ('closed', 'applied'),
+  ('closed', 'invited'),
+  ('cancelled', 'invited'),
+  ('cancelled', 'applied'),
   ('confirmed', 'worked'),
   ('confirmed', 'turned_away'),
   ('confirmed', 'cancelled');
@@ -75,5 +78,5 @@ insert into legacy_cause_vectors values
   ('compliance_block', 'blocked');
 
 \set booking_status_count 7
-\set booking_edge_count 10
+\set booking_edge_count 13
 \set cancel_cause_count 15

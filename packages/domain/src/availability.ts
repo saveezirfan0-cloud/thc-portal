@@ -30,8 +30,8 @@
  * overlay below sets the gate on a candidate row the SQL pool left ungated.
  */
 
-import type { CandidateRow } from './autoAssign';
-import { UK_ZONE, ukInstant } from './time';
+import type { CandidateRow } from './autoAssign.ts';
+import { UK_ZONE, ukInstant } from './time.ts';
 
 /** The gate name a calendar entry puts on a candidate row. */
 export const CALENDAR_GATE = 'unavailable' as const;

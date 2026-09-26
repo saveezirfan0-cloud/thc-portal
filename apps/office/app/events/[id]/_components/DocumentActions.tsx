@@ -97,7 +97,7 @@ export function DocumentActions({ eventId, started }: { eventId: string; started
             <p className="sm">
               A fresh {LABEL[confirming].noun} goes, as one PDF for the whole event with the PO
               number on it, from <b>timesheets@thehospitalitycompany.co.uk</b> to every contact
-              email on the client card (§9.7, §11.4).
+              email on the client card.
             </p>
           ) : null}
         </div>

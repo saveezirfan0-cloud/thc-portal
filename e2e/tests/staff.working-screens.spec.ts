@@ -120,7 +120,14 @@ test.describe('Shifts (§10.4, §3.5)', () => {
     expect(count).toBeGreaterThan(0);
     for (let i = 0; i < count; i += 1) {
       const head = cards.nth(i).locator('.card-head');
-      await expect(head.getByText(/^(Today|Needs confirmation|Confirmed)$/)).toHaveCount(1);
+      // Today is a WHEN, not a state: a today card carries it beside its
+      // on-day state (wireframes/staff/shifts.html) — Confirmed, Not
+      // confirmed today, or Checked in.
+      await expect(
+        head.getByText(
+          /^(Needs confirmation|Confirmed|Not confirmed today|Checked in|Time changed)$/,
+        ),
+      ).toHaveCount(1);
       // "Time changed" always travels with "Awaiting" (§3.5).
       const changed = await head.getByText('Time changed', { exact: true }).count();
       await expect(head.getByText('Awaiting', { exact: true })).toHaveCount(changed);

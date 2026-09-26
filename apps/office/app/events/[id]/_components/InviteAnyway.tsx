@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Button } from '@thc/ui';
+import { Button, Modal } from '@thc/ui';
 import { inviteWorker } from '../actions';
 import { inviteAnywayPrompt } from '../board-model';
 
@@ -14,6 +14,9 @@ import { inviteAnywayPrompt } from '../board-model';
  * invite (`office_invite_worker`): every hard gate is re-checked and N5 is
  * queued exactly as from the Potential pool. The calendar is never read on
  * that path — only the machine's own sources are refused `unavailable`.
+ *
+ * The question is asked in the design system's Modal, as every question on
+ * the event board is (ADR-0037 point 8, confirm-dialogs.test) — never `window.confirm`.
  */
 export function InviteAnyway({
   eventId,
@@ -28,9 +31,10 @@ export function InviteAnyway({
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [asking, setAsking] = useState(false);
 
   const press = () => {
-    if (!window.confirm(inviteAnywayPrompt(name))) return;
+    setAsking(false);
     setError(null);
     startTransition(async () => {
       const result = await inviteWorker(eventId, shiftId, staffId);
@@ -41,9 +45,25 @@ export function InviteAnyway({
   return (
     <>
       {error ? <span className="error sm">{error}</span> : null}
-      <Button size="sm" tone="outline" disabled={pending} onClick={press}>
+      <Button size="sm" tone="outline" disabled={pending} onClick={() => setAsking(true)}>
         Invite anyway
       </Button>
+
+      <Modal
+        open={asking}
+        title="Invite anyway"
+        onClose={() => setAsking(false)}
+        footer={
+          <>
+            <Button onClick={() => setAsking(false)}>Cancel</Button>
+            <Button tone="primary" disabled={pending} onClick={press}>
+              Invite {name}
+            </Button>
+          </>
+        }
+      >
+        <p>{inviteAnywayPrompt(name)}</p>
+      </Modal>
     </>
   );
 }

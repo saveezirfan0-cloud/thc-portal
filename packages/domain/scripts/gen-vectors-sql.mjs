@@ -43,6 +43,7 @@ const GROUPS = [
   ['vec_check_out', 'checkOut'],
   ['vec_pay', 'pay'],
   ['vec_turn_away', 'turnAway'],
+  ['vec_breaks', 'breaks'],
 ];
 
 const text = (value) => `'${value.replaceAll("'", "''")}'`;

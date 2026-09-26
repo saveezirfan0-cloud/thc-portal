@@ -222,7 +222,7 @@ const EMERGENCY_MESSAGES: Record<string, string> = {
   bad_phone: 'Enter the number with its country code, for example +44 7700 900123.',
   bad_name: 'Enter their name (up to 100 characters).',
   bad_relationship: 'Say who they are to the worker, for example Parent (up to 40 characters).',
-  staff_removed: 'This worker was removed under §1.7; nothing personal can be added back.',
+  staff_removed: 'This worker was removed under GDPR; nothing personal can be added back.',
   not_authorised: 'Only the office can do this.',
 };
 

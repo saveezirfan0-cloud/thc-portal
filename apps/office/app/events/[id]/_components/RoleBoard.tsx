@@ -1,13 +1,15 @@
-import { Avatar, Panel, Pill } from '@thc/ui';
+import { Avatar, Pill } from '@thc/ui';
 import {
   type EventStatus,
   type ScoreWeights,
   UK_ZONE,
   appliedAgo,
   canCancelBooking,
+  canMarkNoShow,
   formatAllocationPair,
   formatHours,
   formatTimeIn,
+  openSlots,
   roleBoardHeader,
   sectionHours,
   showsCandidatePools,
@@ -19,13 +21,16 @@ import {
   handedOverLine,
   offerChip,
   rateLine,
+  roleBlockOpen,
 } from '../board-model';
 import { ScheduledWindow } from '../../_components/ScheduledWindow';
 import { ApplicationActions } from './ApplicationActions';
+import { AttendancePills, AttendanceStamp } from './Attendance';
 import { AutoAssignSwitch } from './AutoAssignSwitch';
 import { BookingActions } from './BookingActions';
 import { InviteAnyway } from './InviteAnyway';
 import { PotentialPool } from './PotentialPool';
+import { RoleBlock } from './RoleBlock';
 
 function Person({ person, sub }: { person: BoardBooking | UnavailableEntry; sub: string }) {
   return (
@@ -47,7 +52,14 @@ function Person({ person, sub }: { person: BoardBooking | UnavailableEntry; sub:
  * invitation fills nothing. The header also carries the role's own window
  * (UK, plus "your time" outside the UK — §1.8), its dress code, pay with
  * the holiday-inclusive final rate and the margin (§9.8), and the role's
- * auto-assign switch (§3.4).
+ * auto-assign switch (§3.4). Clicking the heading collapses the block; a
+ * block whose window is over starts collapsed; Unavailable starts collapsed
+ * (wireframe).
+ *
+ * Confirmed rows carry the day's attendance from `check_logs` and
+ * `violations` — On shift / Checked out HH:MM / Late / Left early / No
+ * check-out with the way to the Violation log — and "No show" only once
+ * the section has started (`canMarkNoShow`).
  */
 export function RoleBoard({
   section,
@@ -82,12 +94,19 @@ export function RoleBoard({
   const rate = rateLine(section.payRate, section.chargeRate);
   // RULE-16: nothing is offered on a section that is over.
   const canInvite = live && now < endsAt;
+  const windowEnded = now > endsAt;
+  const noShowAllowed = canMarkNoShow({ startsAt, endsAt }, now);
+  // §3.4: the 10-minute escalation owns a started section that is short.
+  const escalating =
+    live && section.escalation && openSlots(counts) > 0 && section.autoAssign && eventAutoAssign;
+  // "Ongoing but has re-opened slots": Invited and the pool came back.
+  const reopened = status === 'ongoing' && openSlots(counts) > 0;
 
   return (
-    <Panel
-      flush
-      title={
-        <span className="row" style={{ gap: 10, flexWrap: 'wrap' }}>
+    <RoleBlock
+      defaultOpen={roleBlockOpen(section, status, now)}
+      heading={
+        <>
           <b>{section.roleName}</b>
           <span className="mono sm">{roleBoardHeader(counts)}</span>
           <ScheduledWindow
@@ -107,15 +126,21 @@ export function RoleBoard({
             Pay <b>{rate.pay}</b> · final {rate.final} · charge <b>{rate.charge}</b> ·{' '}
             <span className={rate.marginTone}>{rate.margin}</span>
           </span>
-        </span>
+        </>
       }
       actions={
         <span className="row sm muted" style={{ gap: 10 }}>
+          {windowEnded ? <Pill>window ended</Pill> : null}
           {/* Absolute buffer, never the total (§3.2). */}
           <Pill>{formatAllocationPair(section.headcount, section.buffer)}</Pill>
-          <span className="xs">
-            target {section.headcount + section.buffer} · allocation {section.allocationPerHour}/h
-          </span>
+          {escalating ? (
+            <Pill tone="purple">Escalation · every 10 min · radius pool</Pill>
+          ) : (
+            <span className="xs">
+              target {section.headcount + section.buffer} · allocation {section.allocationPerHour}
+              /h
+            </span>
+          )}
           <AutoAssignSwitch
             eventId={eventId}
             shiftId={section.id}
@@ -144,8 +169,9 @@ export function RoleBoard({
           <div className="prow muted">Nobody has confirmed yet.</div>
         ) : (
           section.confirmed.map((booking) => (
-            <div className="prow" key={booking.bookingId}>
+            <div className={booking.noShow ? 'prow noshow' : 'prow'} key={booking.bookingId}>
               <Person person={booking} sub={confirmedLine(booking, section.roleName)} />
+              <AttendanceStamp attendance={booking.attendance} />
               {booking.qualified ? (
                 <Pill tone="cyan">
                   Qualified — {clientName} · {section.roleName}
@@ -160,6 +186,7 @@ export function RoleBoard({
                 <Pill tone={offerChip(booking.offer).tone}>{offerChip(booking.offer).label}</Pill>
               ) : null}
               <div className="right">
+                <AttendancePills attendance={booking.attendance} />
                 <BookingActions
                   eventId={eventId}
                   bookingId={booking.bookingId}
@@ -168,6 +195,7 @@ export function RoleBoard({
                   payrollExported={payrollExported}
                   // Checked in = `worked`, which §3.6 never cancels.
                   withdrawable={canCancelBooking(booking.status)}
+                  noShowAllowed={noShowAllowed}
                   offer={live ? booking.offer : null}
                 />
               </div>
@@ -181,7 +209,10 @@ export function RoleBoard({
           <div className="subh">
             Invited · awaiting response <span className="n">{section.invited.length}</span>
             <span className="right muted sm">
-              invitations have no deadline and are never withdrawn by auto-assign (§3.6)
+              {reopened ? <Pill tone="purple">re-opened</Pill> : null}
+              {section.escalation
+                ? 'escalation invites, proximity first'
+                : 'invitations have no deadline and are never withdrawn by auto-assign'}
             </span>
           </div>
           {section.invited.length === 0 ? (
@@ -226,6 +257,7 @@ export function RoleBoard({
           weights={weights}
           problem={null}
           canInvite={canInvite}
+          escalation={section.escalation}
         />
       ) : null}
 
@@ -256,11 +288,14 @@ export function RoleBoard({
       ) : null}
 
       {live && (section.unavailable.length > 0 || section.calendarProblem) ? (
-        <div className="sub">
-          <div className="subh">
+        // Collapsed by default (wireframe "Unavailable ▸ collapsed") — but
+        // open when the calendar could not be read, so that is not hidden.
+        <details className="sub" open={section.calendarProblem ? true : undefined}>
+          <summary className="subh">
+            <span className="car" aria-hidden="true" />
             Unavailable <span className="n">{section.unavailable.length}</span>
-            <span className="right muted sm">wrong-role never produces a row here (§6)</span>
-          </div>
+            <span className="right muted sm">wrong-role never produces a row here</span>
+          </summary>
           {section.calendarProblem ? (
             // ADR-0036: without the calendar the pool above may list workers
             // the engine will skip. Say so rather than show a quiet list.
@@ -293,9 +328,9 @@ export function RoleBoard({
               </div>
             </div>
           ))}
-        </div>
+        </details>
       ) : null}
-    </Panel>
+    </RoleBlock>
   );
 }
 

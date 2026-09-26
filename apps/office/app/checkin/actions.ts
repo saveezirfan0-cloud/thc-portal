@@ -11,13 +11,18 @@ export type ResolveResult = { error: string } | { ok: true; warning?: string };
  * `packages/db`'s generated types are still the Phase 0 placeholder, whose
  * `Functions` map is empty, so supabase-js types every RPC's arguments as
  * `undefined` (see apps/office/app/venues/actions.ts for the same note).
- * The argument names have to match 20260921153000_checkin_write_paths.sql;
+ * The argument names have to match 20260930100000_check_in_out_corrections.sql;
  * regenerating with `pnpm --filter @thc/db gen:types` makes this redundant.
  */
 interface RpcClient {
   rpc(
     fn: 'resolve_violation',
-    args: { p_violation: string; p_note: string; p_actual_finish: string | null },
+    args: {
+      p_violation: string;
+      p_note: string;
+      p_actual_finish: string | null;
+      p_arrived_at: string | null;
+    },
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
 }
 
@@ -34,6 +39,7 @@ export async function resolveViolation(
   violationId: string,
   note: string,
   actualFinishIso: string | null,
+  arrivedAtIso: string | null = null,
 ): Promise<ResolveResult> {
   if (!supabaseConfigured()) {
     return {
@@ -47,11 +53,15 @@ export async function resolveViolation(
     p_violation: violationId,
     p_note: note,
     p_actual_finish: actualFinishIso,
+    // A No-show's "Arrived at (UK time)" (audit D17); null = the press.
+    p_arrived_at: arrivedAtIso,
   });
 
   if (error) return { error: REASONS[error.message] ?? error.message };
 
   revalidatePath('/checkin');
+  // A resolved No-show is the board's Get back (§3.3).
+  revalidatePath('/events/[id]', 'page');
   // The same window resolves from the profile's Shifts tab (§9.6).
   revalidatePath('/staff/[id]', 'page');
 
@@ -74,4 +84,14 @@ const REASONS: Record<string, string> = {
   actual_finish_before_check_in:
     'That finish time is before the worker checked in. Enter the time they actually left.',
   admins_only: 'Only a manager can resolve a violation.',
+  arrived_at_required:
+    'The shift has ended, so enter when the worker actually arrived (UK time) before resolving.',
+  arrived_at_in_future:
+    'That arrival time is in the future. Enter when the worker actually arrived.',
+  arrived_at_too_early:
+    'That arrival time is before check-in opened (30 minutes before the start). Enter when the worker actually arrived.',
+  actual_finish_before_arrival:
+    'That finish time is before the arrival. Enter the time the worker actually left.',
+  finish_already_recorded:
+    'This shift already has a finish time. Resolve the No-show without one; the recorded finish stands.',
 };

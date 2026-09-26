@@ -5,13 +5,18 @@ import { eventsDb, supabaseConfigured } from '../db';
 import {
   type BoardOffer,
   type BoardPersonName,
-  type Handover,
+  type BookingAttendance,
+  type CheckLogRow,
   type EndedBooking,
+  type Handover,
   type PoolEntry,
   type UnavailableEntry,
   type UnavailableWindow,
+  type ViolationRow,
+  attendanceOf,
   buildPool,
   buildUnavailable,
+  sectionInEscalation,
   shortName,
 } from './board-model';
 
@@ -27,6 +32,10 @@ import {
  * time the event page is opened, not a cached snapshot"): the pool and the
  * Unavailable reasons come from `auto_assign_candidates`, the same function
  * the engine rounds read, and are ranked with the engine's own ranking.
+ * Once a section has started, the pool is the ESCALATION pool
+ * (`p_escalation`): the radius gate and nearest-first, as the 10-minute
+ * job sees it (§3.4). Attendance on Confirmed rows is read from
+ * `check_logs` and `violations` on the same open.
  *
  * A failed query is reported, never mistaken for an empty or missing
  * event: the page shows `problem` in an Alert. Only a query that SUCCEEDS
@@ -43,6 +52,7 @@ export interface BoardBooking extends BoardPersonName {
   appliedAt: string | null;
   /** §9.6: qualified at THIS client and THIS role — the Wave 1 chip. */
   qualified: boolean;
+  /** An unresolved No-show (§3.3): badged in Confirmed, with Get back. */
   noShow: boolean;
   reconfirmRequired: boolean;
   /**
@@ -50,6 +60,8 @@ export interface BoardBooking extends BoardPersonName {
    * the worker stays confirmed until somebody takes it.
    */
   offer: BoardOffer | null;
+  /** On shift / Checked out / Late / Left early / No check-out (wireframe). */
+  attendance: BookingAttendance;
 }
 
 export interface BoardSection {
@@ -85,6 +97,8 @@ export interface BoardSection {
   calendarProblem: string | null;
   /** ADR-0039: completed hand-overs on this section, oldest first. */
   handovers: Handover[];
+  /** Under way: the pool is the escalation pool (radius, nearest first, §3.4). */
+  escalation: boolean;
 }
 
 export interface BoardEvent {
@@ -179,7 +193,7 @@ async function selectIn<T>(
   return { rows: results.flatMap((r) => (r.data ?? []) as T[]), error: null };
 }
 
-export async function loadBoard(eventId: string): Promise<BoardLoad> {
+export async function loadBoard(eventId: string, now: Date = new Date()): Promise<BoardLoad> {
   if (!supabaseConfigured()) return { event: null, problem: NO_SUPABASE };
   const supabase = eventsDb(await cookies());
 
@@ -224,6 +238,16 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
     ((roleRes.data ?? []) as { id: string; name: string }[]).map((r) => [r.id, r.name]),
   );
   const sectionIds = sections.map((s) => s['id'] as string);
+  const escalating = new Set(
+    sections
+      .filter((s) =>
+        sectionInEscalation(
+          { startsAt: s['starts_at'] as string, endsAt: s['ends_at'] as string },
+          now,
+        ),
+      )
+      .map((s) => s['id'] as string),
+  );
 
   // Bookings, the candidate pool and the availability calendar per
   // section — each computed now.
@@ -243,7 +267,7 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
     Promise.all(
       sectionIds.map((id) =>
         supabase
-          .rpc('auto_assign_candidates', { p_shift: id })
+          .rpc('auto_assign_candidates', { p_shift: id, p_escalation: escalating.has(id) })
           .or('gate.is.null,gate.neq.wrong_role'),
       ),
     ),
@@ -338,7 +362,8 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
   }
   const staffIds = [...named];
 
-  const [staffRes, staffRoleRes, qualRes, violationRes] = await Promise.all([
+  const bookingIds = bookings.map((b) => b['id'] as string);
+  const [staffRes, staffRoleRes, qualRes, violationRes, checkLogRes] = await Promise.all([
     selectIn<StaffRow>(
       supabase,
       'staff',
@@ -358,19 +383,42 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
       .select('staff_id, role_id')
       .eq('client_id', event['client_id'] as string)
       .eq('do_not_return', false),
-    selectIn<{ booking_id: string }>(
+    selectIn<{
+      booking_id: string;
+      type: string;
+      resolved: boolean;
+      minutes_late: number | null;
+      actual_finish_at: string | null;
+    }>(
       supabase,
       'violations',
+      'booking_id, type, resolved, minutes_late, actual_finish_at',
       'booking_id',
+      bookingIds,
+    ),
+    selectIn<{
+      booking_id: string;
+      outcome: string;
+      check_in_at: string | null;
+      check_out_at: string | null;
+      manager_finish_at: string | null;
+    }>(
+      supabase,
+      'check_logs',
+      'booking_id, outcome, check_in_at, check_out_at, manager_finish_at',
       'booking_id',
-      bookings.map((b) => b['id'] as string),
-      { type: 'no_show' },
+      bookingIds,
     ),
   ]);
-  // A failed read of the no-show badges must not show nobody as a no-show,
-  // so it is a problem like the rest rather than an empty set.
+  // A failed read of the no-show badges or the attendance must not show
+  // nobody as a no-show or everyone as absent, so it is a problem like the
+  // rest rather than an empty set.
   const peopleError =
-    staffRes.error ?? staffRoleRes.error ?? qualRes.error?.message ?? violationRes.error;
+    staffRes.error ??
+    staffRoleRes.error ??
+    qualRes.error?.message ??
+    violationRes.error ??
+    checkLogRes.error;
   if (peopleError) {
     return { event: null, problem: `The workers on this event could not be read: ${peopleError}` };
   }
@@ -401,7 +449,33 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
       (q) => `${q.staff_id}:${q.role_id}`,
     ),
   );
-  const noShows = new Set(violationRes.rows.map((v) => v.booking_id));
+  const violationsByBooking = new Map<string, ViolationRow[]>();
+  for (const v of violationRes.rows) {
+    const list = violationsByBooking.get(v.booking_id) ?? [];
+    list.push({
+      type: v.type,
+      resolved: Boolean(v.resolved),
+      minutesLate: v.minutes_late,
+      actualFinishAt: v.actual_finish_at,
+    });
+    violationsByBooking.set(v.booking_id, list);
+  }
+  const logsByBooking = new Map<string, CheckLogRow[]>();
+  for (const l of checkLogRes.rows) {
+    const list = logsByBooking.get(l.booking_id) ?? [];
+    list.push({
+      outcome: l.outcome,
+      checkInAt: l.check_in_at,
+      checkOutAt: l.check_out_at,
+      managerFinishAt: l.manager_finish_at,
+    });
+    logsByBooking.set(l.booking_id, list);
+  }
+  // Recorded by hand or at start + 30, and not yet reversed by Get back /
+  // Resolve (§3.3, §9.5).
+  const noShows = new Set(
+    violationRes.rows.filter((v) => v.type === 'no_show' && !v.resolved).map((v) => v.booking_id),
+  );
 
   const toBooking = (
     row: Record<string, string | boolean | null>,
@@ -425,6 +499,10 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
       noShow: noShows.has(row['id'] as string),
       reconfirmRequired: Boolean(row['reconfirm_required']),
       offer: openOffers.get(row['id'] as string) ?? null,
+      attendance: attendanceOf(
+        logsByBooking.get(row['id'] as string) ?? [],
+        violationsByBooking.get(row['id'] as string) ?? [],
+      ),
     };
   };
 
@@ -490,6 +568,9 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
             status: b['status'] as string,
             cancelCause: (b['cancel_cause'] as string) ?? null,
             appliedAt: (b['applied_at'] as string) ?? null,
+            // invite_worker never reopens a booking with history (D33).
+            hasHistory:
+              logsByBooking.has(b['id'] as string) || violationsByBooking.has(b['id'] as string),
           }));
 
         return {
@@ -522,13 +603,18 @@ export async function loadBoard(eventId: string): Promise<BoardLoad> {
                   createdAt: a.createdAt,
                 })),
                 weights,
-                new Set(calendar.windows.keys()),
+                {
+                  ended,
+                  proximityFirst: escalating.has(id),
+                  unavailable: new Set(calendar.windows.keys()),
+                },
               )
             : null,
           poolProblem: problem,
           unavailable: buildUnavailable(rows, ended, people, live, calendar.windows),
           calendarProblem: calendar.problem,
           handovers: handovers(id),
+          escalation: escalating.has(id),
         };
       }),
     },

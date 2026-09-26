@@ -74,6 +74,22 @@ describe('safeNextPath', () => {
     expect(() => safeNextPath('//evil.example', 'https://evil.example')).toThrow(/fallback/);
   });
 
+  // audit D12: the office's deleted /login/safeNext.ts normalised these to
+  // `//evil.com` and redirected there. The shared guard resolves them and
+  // refuses what the resolution produces.
+  it.each([
+    '/..//evil.com',
+    '/.//evil.com',
+    '/a/..//evil.com',
+    '/%2e%2e//evil.com',
+    '/../..//evil.com',
+  ])('dot-segment smuggling %s falls back and stays on the origin', (input) => {
+    expect(safeRelativePath(input, ORIGIN)).toBeNull();
+    const path = safeNextPath(input, '/reset', ORIGIN);
+    expect(path).toBe('/reset');
+    expect(new URL(path, ORIGIN).origin).toBe(ORIGIN);
+  });
+
   it('never yields something a browser would read as another host', () => {
     // Belt and braces: whatever comes back, resolving it keeps the origin.
     for (const input of ['//x', '/\\x', '/\t/x', '///x', '/./\\x', '/%09/x']) {

@@ -76,6 +76,20 @@ export interface Template {
    */
   action?: string;
   /**
+   * Routes the row's `link` payload value may pick instead of `deepLink`,
+   * for a push whose right landing depends on who receives it (N8: a
+   * candidate re-uploads in the onboarding wizard, a worker on the Documents
+   * hub). Anything else in `link` is ignored and `deepLink` is used: the
+   * payload never names an arbitrary URL.
+   */
+  deepLinkOptions?: readonly string[];
+  /**
+   * The notification's collapse tag, `{placeholder}` style. A second push
+   * with the same rendered tag replaces the first on the device. Absent, or
+   * left with an unfilled placeholder, the deep link is the tag.
+   */
+  tag?: string;
+  /**
    * One code, two halves. §8 gives N9 as a pair — the sender picks the half,
    * and the outbox key must carry the variant so the two do not collide.
    */
@@ -186,8 +200,15 @@ export const TEMPLATES = {
     body: 'Document rejected — {reason}. Re-upload.',
     trigger: 'Document rejected',
     timing: 'on reject',
+    // A worker re-uploads on the Documents hub; a candidate's app is locked
+    // to the onboarding wizard, which is where their re-upload is. The row
+    // says which (`link`, n8_link() in SQL, 20260930130200).
     deepLink: '/documents',
+    deepLinkOptions: ['/documents', '/onboarding'],
     action: 'Re-upload',
+    // One notification per rejected document: a second rejection of the
+    // same one replaces it, two documents stay two.
+    tag: 'N8:{documentId}',
   },
 
   // Check-in / check-out / breaks (§5).
@@ -250,6 +271,20 @@ export const TEMPLATES = {
     mandatory: true,
     deepLink: '/shifts',
   },
+  // §8 N10b's trigger — the manager presses Withdraw — covers an open
+  // invitation too, but its copy ("You've been removed from …") tells a
+  // worker they had a shift they never accepted. Same trigger, the
+  // invitation's own words (withdraw_booking(), 20260930110300).
+  N10d: {
+    code: 'N10d',
+    channel: 'push',
+    title: 'Invitation withdrawn',
+    body: 'Your invitation to {event} · {dateTime} has been withdrawn.',
+    trigger:
+      'The office withdraws an open invitation (manager presses Withdraw on an Invited row). Not in §8: N10b covers the Withdraw, but its copy says the worker was removed from a shift they had, which an invitee never did (ADR-0037)',
+    timing: 'on change, in the same transaction as the withdrawal',
+    deepLink: '/invites',
+  },
   N10c: {
     code: 'N10c',
     channel: 'push',
@@ -270,6 +305,21 @@ export const TEMPLATES = {
     trigger: 'Event time / date changed (start time OR end time — either one triggers this push)',
     timing:
       'on change — delivered as a standard device-level push (FCM/APNs, §1.3), reaching the worker even if the Staffing App is closed',
+    deepLink: '/shifts/{bookingId}',
+  },
+  // §3.5 sends the same re-confirmation for a venue address or dress-code
+  // change, but §8 only gives N11's copy, which says the TIME changed. A
+  // worker told "Shift time changed — now 17:00–23:00" about a dress code
+  // would look at the clock and miss the change. Same flow, own words.
+  N11b: {
+    code: 'N11b',
+    channel: 'push',
+    title: 'Shift details changed',
+    body: 'Shift details changed — {change}. Please confirm in the app.',
+    trigger:
+      'Venue address or dress code changed on a booked shift (§3.5: "If the event time / date, venue address, or dress code changes → everyone booked must re-confirm … + push"). Not in §8: N11 is the only re-confirmation push §8 lists, and its copy is about the time (20260930110000 round, ADR-0037)',
+    timing:
+      'on change — the same device-level push and "Awaiting" state as N11; sent instead of N11 when the time did not move',
     deepLink: '/shifts/{bookingId}',
   },
   N12: {
@@ -358,7 +408,7 @@ export const TEMPLATES = {
     title: 'Your application to The Hospitality Company',
     body: 'Thank you for the time you have given to your application with The Hospitality Company. On this occasion we will not be taking your application further. We wish you the very best.',
     trigger:
-      'Rejected after the interview stage (documents, quiz stage, additional info), or a returning applicant declined. Not in §8: E2 thanks the candidate for completing their interview, which is untrue for these, so this is E2 without the interview (20260923170000)',
+      'Rejected before completing the interview (Interview requested, no Willo response) or after the interview stage (documents, quiz stage, additional info), or a returning applicant declined. Not in §8: E2 thanks the candidate for completing their interview, which is untrue for these, so this is E2 without the interview (20260923170000, 20260930130300)',
     timing: 'on the rejection decision',
     mandatory: true,
   },
@@ -716,11 +766,18 @@ export const REQUIREMENT_CODES = [
 /**
  * Codes the register carries that §8 does not name, each with its `trigger`
  * saying why. E2b exists because §8's own copy would have been untrue where
- * it was about to be sent; E10 because §9.12 requires a send §8 never lists.
- * Kept apart from SCOPE_CODES so the test can still hold that list to the
- * scope exactly.
+ * it was about to be sent; E10 because §9.12 requires a send §8 never lists;
+ * N10d and N11b for the same reason as E2b — §8's copy (N10b, N11) would
+ * tell an invitee they had a shift, or tell a worker the time moved when it
+ * was the dress code (ADR-0037). Kept apart from SCOPE_CODES so the test can
+ * still hold that list to the scope exactly.
  */
-export const EXTENSION_CODES = ['E2b', 'E10'] as const satisfies readonly TemplateCode[];
+export const EXTENSION_CODES = [
+  'E2b',
+  'E10',
+  'N10d',
+  'N11b',
+] as const satisfies readonly TemplateCode[];
 
 /**
  * Codes for the Staff App additions (docs/18-staff-features-plan.md §6): RC

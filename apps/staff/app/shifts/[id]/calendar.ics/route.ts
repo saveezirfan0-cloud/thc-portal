@@ -1,5 +1,5 @@
 import { loadShift, supabaseConfigured } from '../data';
-import { loadProfile } from '../../../profile/data';
+import { readProfile } from '../../../profile/data';
 import { appLock } from '../../../profile/lock';
 import { shiftScreenReachable, shiftPhase, isEndScreen } from '../phase';
 import { buildShiftIcs, icsFilename } from '../ics';
@@ -28,10 +28,16 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!supabaseConfigured()) return new Response('Not found', { status: 404 });
-  const profile = await loadProfile();
-  if (!profile || appLock(profile) !== 'none') return new Response('Not found', { status: 404 });
+  // A failed read is not "no such shift" (audit D18): it says so, and the
+  // lock is never guessed from a profile that could not be read (D16).
+  const me = await readProfile();
+  if (me.kind === 'problem') return new Response('Could not load', { status: 503 });
+  if (me.kind !== 'ok' || appLock(me.profile) !== 'none') {
+    return new Response('Not found', { status: 404 });
+  }
   const { id } = await params;
-  const shift = await loadShift(id);
+  const { shift, problem } = await loadShift(id);
+  if (problem) return new Response('Could not load', { status: 503 });
   if (!shift || shift.status === 'invited' || !shiftScreenReachable(shift)) {
     return new Response('Not found', { status: 404 });
   }

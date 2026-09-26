@@ -208,3 +208,13 @@
     animation: none;
   }
 }
+
+/* A read that failed (audit D18): the alert and its retry, never an empty
+   state. Also the shell's fail-closed screen when the profile cannot be
+   read (D16), and the error boundary's body. */
+.load-problem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-10);
+  width: 100%;
+}
