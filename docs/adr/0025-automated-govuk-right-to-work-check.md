@@ -1,6 +1,6 @@
 # ADR-0025 · The automated gov.uk right-to-work check: provider first, our own gov.uk check as fallback, fully automatic
 
-**Status:** Accepted, 25.09.2026 — built and tested; **switched off until THC chooses a provider and the keys exist** (OWNER-TODO §8)
+**Status:** Accepted, 25.09.2026 — built and tested; **switched off until THC chooses a provider and the keys exist** (OWNER-TODO §8) · **Amended by [ADR-0041](0041-rtw-check-admin-confirms-no-provider.md) (01.10.2026):** no provider (gov.uk is the only route) and every result waits for an admin's Verify or Reject after a photo comparison; §1–§2's automatic verify/reject stays behind `settings.rtw_check.admin_confirms = false`
 **Supersedes:** ADR-0002 (gov.uk share-code check without a public API — its option 1, the assisted check, is what runs while this is switched off) · **Amends:** ADR-0018 (the right-to-work date is confirmed on Verify) · **Builds on:** ADR-0019 (retention), ADR-0021 (building on an assumed, configurable API), and the 26.09 round's `20260927150000` (the rota guard refuses a non-UK worker whose verified right to work has no date), `20260927160000` (the Needs review `rtw_date` row), `20260927160300` (the guarded `edge_base_url`) and `20260927160400` (the prefix purge)
 **Scope:** §2.3, §2.5, §2.6, §4.4 · **Code:** migrations `20260928100000_rtw_check.sql`, `20260928100100_rtw_check_schedule.sql`; pgTAP `600`, `601` (and the lists in `001`, `190`); `packages/domain/src/rtwCheck.ts`; `apps/office/app/api/jobs/rtw-check/`; the office and Staff App screens below
 

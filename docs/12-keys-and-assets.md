@@ -148,9 +148,9 @@ Do not chase these now. Each is listed against the phase that first needs it.
 | `RESEND_API_KEY` | https://resend.com/api-keys — a **Sending access** key for the verified domain | P2, every email (`notify-drain`) — see below |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Generated, not obtained. Run `npx web-push generate-vapid-keys`; the subject is `mailto:admin@thehospitalitycompany.co.uk` | P2, every push (`notify-drain`) — see below |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | https://account.mapbox.com/access-tokens/ | Phase 2, the venues map |
-| `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` (+ optional `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX`, `RTW_PROVIDER_TIMEOUT_MS`) | The right-to-work provider THC signs up with (not chosen yet). **Vercel, Back Office only, server-side.** See "The automated right-to-work check" below | Switching on the gov.uk check (ADR-0025) |
+| `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` (+ optional `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX`, `RTW_PROVIDER_TIMEOUT_MS`) | **Not needed** (ADR-0041: no provider; gov.uk is the only route). Only if THC ever sets `settings.rtw_check.primary = 'provider'` | — |
 | `RTW_JOB_SECRET` | Generated, not obtained: `openssl rand -base64 48`. **Vercel, Back Office only**, and the same value in the Supabase vault as `rtw_job_secret` | Same |
-| `RTW_GOVUK_ENABLED` (+ optional `RTW_GOVUK_START_URL`, `RTW_GOVUK_TIMEOUT_MS`, `RTW_CHECK_BATCH`, and `RTW_CHROMIUM_EXECUTABLE_PATH` for local development only) | Not obtained. `true` turns on the gov.uk browser fallback. **Vercel, Back Office only** | Same |
+| `RTW_GOVUK_ENABLED` (+ optional `RTW_GOVUK_START_URL`, `RTW_GOVUK_TIMEOUT_MS`, `RTW_CHECK_BATCH`, and `RTW_CHROMIUM_EXECUTABLE_PATH` for local development only) | Not obtained. `true` turns on the gov.uk check, which is the **only** route (ADR-0041). **Vercel, Back Office only** | Switching on the gov.uk check (ADR-0025, ADR-0041) |
 
 Anything used by a background function goes in Supabase rather than Vercel:
 
@@ -267,9 +267,9 @@ Supabase secrets:
 | Variable | What it is | If it is missing |
 |---|---|---|
 | `RTW_JOB_SECRET` | At least 32 characters, random. pg_cron sends it as `Authorization: Bearer …` | The route refuses every call (503). Nothing is checked |
-| `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` | The provider's check endpoint and key. The request and response shape are assumed in `apps/office/app/api/jobs/rtw-check/_lib/provider.config.ts` — confirm against the provider's docs | The provider is skipped; the gov.uk fallback runs alone if enabled |
+| `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` | Not needed (ADR-0041). Only for `primary = 'provider'`: the provider's check endpoint and key. The request and response shape are assumed in `apps/office/app/api/jobs/rtw-check/_lib/provider.config.ts` — confirm against the provider's docs | The provider is skipped; the gov.uk fallback runs alone if enabled |
 | `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX` | Default `Authorization` / `Bearer `. An empty prefix is allowed | Defaults |
-| `RTW_GOVUK_ENABLED` | `true` to allow our own gov.uk browser check as the fallback | No fallback |
+| `RTW_GOVUK_ENABLED` | `true` to run our own gov.uk browser check — the only route (ADR-0041) | Nothing is checked; the route claims nothing |
 | `RTW_CHECK_BATCH` | Checks per run, 1–10 (default 3) | 3 |
 | `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL` | Already set on the Back Office | The route answers 503 |
 
@@ -294,8 +294,9 @@ select vault.create_secret('<RTW_JOB_SECRET>', 'rtw_job_secret');
 update settings set value = value || '{"enabled": true}' where key = 'rtw_check';
 ```
 
-`settings.rtw_check` also holds `primary` (`provider`), `fallback` (`govuk`, or null for
-provider-only), `company_name` (what gov.uk is told is checking), `max_attempts` (5),
+`settings.rtw_check` also holds `primary` (`govuk` — ADR-0041, no provider), `fallback`
+(null), `admin_confirms` (true: every result waits for an admin's Verify or Reject after the
+photo comparison; false restores ADR-0025's automatic verify / reject), `company_name` (what gov.uk is told is checking), `max_attempts` (5),
 `stale_after_minutes` (60: a check the runner has not touched for this long shows in
 Needs review with the hand-typed date allowed) and `reenter_per_day` (5: how often a
 candidate may re-enter a share code in 24 hours).
