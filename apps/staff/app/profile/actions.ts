@@ -57,7 +57,7 @@ const REASONS: Record<string, string> = {
   pin_outside_uk: 'That postcode isn’t in the UK. Please check your address.',
   no_postcode: 'Please include your postcode at the end of your address, e.g. London E2 0RY.',
   bad_location: 'That didn’t go through. Please try again.',
-  // Emergency contact (ADR-0037, 20260930120100).
+  // Emergency contact (ADR-0043, 20260930202100).
   name_required: 'Enter their name.',
   name_too_long: 'Keep the name to 100 characters.',
   relationship_required: 'Say who they are to you, for example Parent.',
@@ -310,7 +310,7 @@ export async function finishPhotoUpload(path: string): Promise<ActionResult> {
 }
 
 /**
- * Emergency contact — ADR-0037. Optional, office-only, never on a client
+ * Emergency contact — ADR-0043. Optional, office-only, never on a client
  * document. The phone arrives already assembled by the international
  * picker (`toE164`); the RPC normalises and checks it again, trims both
  * names, and refuses a leaver. Nothing is queued: no notification.

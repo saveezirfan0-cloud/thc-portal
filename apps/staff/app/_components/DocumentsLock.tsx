@@ -125,7 +125,7 @@ export function TabLockedScreen({
             Continue onboarding
           </Link>
         ) : (
-          // Documents left the nav for the Profile tab (ADR-0035), so the
+          // Documents left the nav for the Profile tab (ADR-0041), so the
           // one thing this worker can do gets a button of its own here
           // rather than a two-tap detour.
           <Link className="btn primary block" href="/documents">

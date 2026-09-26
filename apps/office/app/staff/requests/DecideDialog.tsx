@@ -18,7 +18,7 @@ import './requests.css';
 export type DecideStage = 'review' | 'approve' | 'reject';
 
 /**
- * The office's Approve / Reject on a change request (ADR-0038),
+ * The office's Approve / Reject on a change request (ADR-0044),
  * `wireframes/backoffice/change-requests.html` — the "Approve name" and
  * "Reject" states. Used by the /staff/requests queue (which opens straight
  * on Approve or Reject) and the /staff/:id banner (which opens on Review:

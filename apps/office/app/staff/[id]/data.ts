@@ -79,10 +79,10 @@ interface ActivatedRpc {
 }
 
 /**
- * The docs/18 office reads (20260930130000): definers with the admin check
+ * The docs/19 office reads (20260930203000): definers with the admin check
  * in their own body — the tables are admin_read, but the cards also name
  * who saved or referred, from `profiles`/`staff`, which a plain select could
- * not. Typed by hand until `gen:types` (docs/18 §8, Phase 2.1).
+ * not. Typed by hand until `gen:types` (docs/19 §8, Phase 2.1).
  */
 type RpcError = { message: string } | null;
 interface AdditionsRpc {
@@ -204,7 +204,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
       .eq('staff_id', id)
       .order('submitted_at', { ascending: true })
       .returns<QueueRow[]>(),
-    // docs/18 additions. Each fails on its own — a card that cannot be read
+    // docs/19 additions. Each fails on its own — a card that cannot be read
     // says so; it never takes the profile down.
     (supabase as unknown as AdditionsRpc).rpc('office_emergency_contact', { p_staff: id }),
     (supabase as unknown as AdditionsRpc).rpc('office_staff_referrals', { p_staff: id }),

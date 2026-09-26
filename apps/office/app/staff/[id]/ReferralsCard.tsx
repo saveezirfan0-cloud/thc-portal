@@ -7,7 +7,7 @@ import type { StaffStatus } from '../types';
 import type { ReferralPerson, Referrals } from './types';
 
 /**
- * The Referrals card on the Overview tab (ADR-0040),
+ * The Referrals card on the Overview tab (ADR-0046),
  * `wireframes/backoffice/change-requests.html` → "Overview cards".
  *
  * Who referred this worker, their own code, and everyone who applied with
@@ -87,7 +87,7 @@ export function ReferralsCard({
       )}
       {!problem && referred.length > 0 ? (
         <Note>
-          The worker sees only the count in the app; the names are for the office (ADR-0040).
+          The worker sees only the count in the app; the names are for the office (ADR-0046).
         </Note>
       ) : null}
     </Panel>

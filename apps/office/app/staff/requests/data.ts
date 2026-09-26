@@ -6,19 +6,19 @@ import type { ChangeRequestRow, ChangeRequestView } from './types';
 
 /**
  * Reads for the change-request queue (/staff/requests) and the /staff/:id
- * banner — ADR-0038.
+ * banner — ADR-0044.
  *
  * Through `office_profile_change_requests()` rather than the table, for one
  * reason: the Decided tab names the manager who decided, and an admin can
  * read only their own `profiles` row. The function is a definer with the
- * admin check in its own body (20260930130000), so a session that is not
+ * admin check in its own body (20260930203000), so a session that is not
  * the office's is refused, not shown an empty queue.
  *
  * Both photos are keys in the private `photos` bucket; they are signed here
  * through the manager's own session (`_lib/photos.ts`), short-lived.
  */
 
-/** Typed by hand until `gen:types` runs against the live project (docs/18 §8). */
+/** Typed by hand until `gen:types` runs against the live project (docs/19 §8). */
 interface QueueRpc {
   rpc(
     fn: 'office_profile_change_requests',

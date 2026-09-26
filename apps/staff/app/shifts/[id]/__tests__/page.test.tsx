@@ -194,7 +194,7 @@ describe('§10.1 the app lock stands in front of the shift screen', () => {
     profile.mockResolvedValue(worker());
     shift.mockResolvedValue(detail());
     const html = await render();
-    // ADR-0035: Shifts · Invites · Radar · Profile.
+    // ADR-0041: Shifts · Invites · Radar · Profile.
     // The tab icon sits between the link and its label.
     expect(html).toMatch(/<a href="\/profile">(?:(?!<\/a>).)*<span class="l">Profile<\/span><\/a>/);
   });

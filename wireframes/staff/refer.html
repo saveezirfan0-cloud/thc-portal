@@ -21,13 +21,13 @@
 </head>
 <body>
 <div class="wf-bar">
-  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Refer a friend</span><span class="pill cyan">/profile/refer</span><span class="pill">§2.1 · §10.1 · §1.7 · ADR-0040 (proposed)</span>
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Refer a friend</span><span class="pill cyan">/profile/refer</span><span class="pill">§2.1 · §10.1 · §1.7 · ADR-0046 (proposed)</span>
   <span class="spacer"></span>
   <a href="offer-shift.html">Next: Offer up a shift →</a>
 </div>
 
 <div class="wf-section">
-  <h2>Refer a friend — a personal link to /apply, recorded, no reward<small>This screen built by <b>staff-pwa</b> (docs/18 §5, Phase 1): <code>apps/staff/app/profile/refer/</code>, RPCs in 20260930120300; the /apply side is <b>onboarding</b>'s. Share shows only where the phone has the Web Share API; Copy link is then the primary button. Compliant workers only. The worker sees a count, never names; the applicant never sees who referred them. No reward copy anywhere (Q19).</small></h2>
+  <h2>Refer a friend — a personal link to /apply, recorded, no reward<small>This screen built by <b>staff-pwa</b> (docs/19 §5, Phase 1): <code>apps/staff/app/profile/refer/</code>, RPCs in 20260930202300; the /apply side is <b>onboarding</b>'s. Share shows only where the phone has the Web Share API; Copy link is then the primary button. Compliant workers only. The worker sees a count, never names; the applicant never sees who referred them. No reward copy anywhere (Q19).</small></h2>
 
   <div class="phones">
 
@@ -98,6 +98,6 @@
   </div>
 </div>
 
-<div class="wf-note note"><b>Behaviour notes.</b> Addition to Scope v1.6 (ADR-0040, proposed — awaiting THC; docs/18 §5). The Profile row "Refer a friend" and this screen appear for <b>compliant</b> workers only. The link is <code>{origin}/apply?ref={code}</code>; the code is 8 characters from A–H, J–N, P–Z, 2–9, minted once and stable. <b>Share</b> uses the Web Share API; <b>Copy link</b> copies it; the QR is the existing activation QR component. The count is "N people have applied with your link" — never names or outcomes. <b>No reward copy</b>: THC has not decided one (Q19). A "your friend joined" push (RF1) is proposed, not built (Q20). On <code>/apply</code> the code travels in a hidden field on the service-role path only; the applicant never sees the referrer's name; the consent line and <code>/privacy</code> gain "If a friend referred you, we record who referred you." The office sees "Referred by {name} ({employeeId})" on <code>/onboarding/:id</code>, a "Referred" chip on the kanban card, and a Referrals card on <a href="../backoffice/change-requests.html#cr=overview">/staff/:id</a>. No money anywhere: nothing reaches PDFs, reports or payroll. The client sees nothing. On GDPR removal the code is revoked and the referral rows read "Deleted account #id".</div>
+<div class="wf-note note"><b>Behaviour notes.</b> Addition to Scope v1.6 (ADR-0046, proposed — awaiting THC; docs/19 §5). The Profile row "Refer a friend" and this screen appear for <b>compliant</b> workers only. The link is <code>{origin}/apply?ref={code}</code>; the code is 8 characters from A–H, J–N, P–Z, 2–9, minted once and stable. <b>Share</b> uses the Web Share API; <b>Copy link</b> copies it; the QR is the existing activation QR component. The count is "N people have applied with your link" — never names or outcomes. <b>No reward copy</b>: THC has not decided one (Q19). A "your friend joined" push (RF1) is proposed, not built (Q20). On <code>/apply</code> the code travels in a hidden field on the service-role path only; the applicant never sees the referrer's name; the consent line and <code>/privacy</code> gain "If a friend referred you, we record who referred you." The office sees "Referred by {name} ({employeeId})" on <code>/onboarding/:id</code>, a "Referred" chip on the kanban card, and a Referrals card on <a href="../backoffice/change-requests.html#cr=overview">/staff/:id</a>. No money anywhere: nothing reaches PDFs, reports or payroll. The client sees nothing. On GDPR removal the code is revoked and the referral rows read "Deleted account #id".</div>
 </body>
 </html>

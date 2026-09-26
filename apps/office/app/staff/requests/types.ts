@@ -1,7 +1,7 @@
 /**
- * The row shape of `office_profile_change_requests()` (20260930130000),
- * ADR-0038. Typed by hand until `gen:types` runs against the live project
- * (docs/18 §8, Phase 2.1).
+ * The row shape of `office_profile_change_requests()` (20260930203000),
+ * ADR-0044. Typed by hand until `gen:types` runs against the live project
+ * (docs/19 §8, Phase 2.1).
  *
  * A removed worker's row comes back already anonymised by the function:
  * "Deleted account #id", no current name, photo or evidence path (§1.7).

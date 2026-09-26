@@ -4,7 +4,7 @@ import type { StaffProfile } from '../types';
 import type { ChangeRequest } from '../change-requests';
 
 /**
- * Request a change — ADR-0038, docs/18 §3.
+ * Request a change — ADR-0044, docs/19 §3.
  *
  *   - the status line: pending "with the office" + Withdraw, rejected
  *     "Not changed: {reason}" + Request again, nothing otherwise;
@@ -235,7 +235,7 @@ describe('the requests', () => {
     expect(result).toEqual({ ok: false, message: CHANGE_REASONS['already_pending'] });
   });
 
-  it('says the 24-hour ceiling in words (20260930150100)', async () => {
+  it('says the 24-hour ceiling in words (20260930205100)', async () => {
     rpc.mockResolvedValue({ data: null, error: { message: 'too_many_requests' } });
     const result = await actions.requestPhotoChange('staff-1/selfie-3.jpg', '');
     expect(result).toEqual({ ok: false, message: CHANGE_REASONS['too_many_requests'] });

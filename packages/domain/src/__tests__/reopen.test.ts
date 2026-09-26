@@ -17,7 +17,7 @@ const EXPECTED: Record<string, Reopener> = {
   office_withdraw: 'person',
   ready_cutoff: 'person',
   self_cancel: 'never',
-  // ADR-0039: a completed hand-over bars the event exactly as a self-cancel.
+  // ADR-0045: a completed hand-over bars the event exactly as a self-cancel.
   handed_over: 'never',
   overlap_auto_withdraw: 'anyone',
   event_cancelled: 'never',
@@ -44,7 +44,7 @@ describe('bookingReopenableBy', () => {
     }
   });
 
-  it('of the causes a worker or the office brings about, only self-cancel and a hand-over bar for good (RULE-04, §3.6, ADR-0039)', () => {
+  it('of the causes a worker or the office brings about, only self-cancel and a hand-over bar for good (RULE-04, §3.6, ADR-0045)', () => {
     const never = CANCEL_CAUSES.filter((c) => EXPECTED[c] === 'never');
     // The other three are dead ends rather than exclusions: the event is
     // cancelled, or the person is gone (GDPR).

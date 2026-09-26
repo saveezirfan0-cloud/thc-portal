@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Refer a friend · THC Staff' };
 
 /**
- * /profile/refer — Refer a friend (ADR-0040, docs/18 §5,
+ * /profile/refer — Refer a friend (ADR-0046, docs/19 §5,
  * `wireframes/staff/refer.html`).
  *
  * Compliant workers only, with nothing locking the app: a worker who is not

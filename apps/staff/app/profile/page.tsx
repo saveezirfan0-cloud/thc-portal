@@ -17,11 +17,11 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Profile · THC Staff' };
 
 /**
- * /profile — the Profile tab (§10.1's profile sheet, ADR-0035), and the
+ * /profile — the Profile tab (§10.1's profile sheet, ADR-0041), and the
  * app lock that decides whether the worker sees it at all.
  *
  * It was a sheet over whatever screen the avatar was tapped on. Since
- * ADR-0035 it is the fourth tab and the home of Documents, so it is a
+ * ADR-0041 it is the fourth tab and the home of Documents, so it is a
  * screen: the avatar still opens it, and so does the nav.
  *
  * Three of §10.1's four lock cases replace it entirely — and the fourth,
@@ -68,7 +68,7 @@ export default async function Page() {
     loadBookings(),
     working ? loadEarnings().catch(() => []) : Promise.resolve([]),
     working ? loadDocuments().catch(() => null) : Promise.resolve(null),
-    // ADR-0037: only to decide the "Emergency contact not set" nudge.
+    // ADR-0043: only to decide the "Emergency contact not set" nudge.
     working ? loadEmergencyContact().catch(() => undefined) : Promise.resolve(undefined),
   ]);
   const now = Date.now();

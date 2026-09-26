@@ -1,11 +1,11 @@
 import { TURN_AWAY_PAY_MIN, turnedAwayMessage } from '@thc/domain';
 
 /**
- * ADR-0039: the static screen for a shift the worker handed over — the
- * sentence docs/18 §4 fixes, verbatim, under the wireframe's "Handed over"
+ * ADR-0045: the static screen for a shift the worker handed over — the
+ * sentence docs/19 §4 fixes, verbatim, under the wireframe's "Handed over"
  * pill (`wireframes/staff/offer-shift.html` (g)). Here, not in
  * `STATIC_SCREEN_COPY`, because Phase 0 left `packages/domain/src/staff.ts`
- * unchanged on purpose (docs/18 §8).
+ * unchanged on purpose (docs/19 §8).
  */
 export const HANDED_OVER_COPY = {
   badge: 'Handed over',

@@ -149,15 +149,15 @@ real environment to prove it in.
    confirm the switch from the scope's Gemini.
 6. **Nothing else is open in code** beyond §4's notes. The 25.09 round closed
    the last three gaps (below).
-7. **Next build: five Staff App additions — [`18-staff-features-plan.md`](18-staff-features-plan.md).**
+7. **Next build: five Staff App additions — [`19-staff-features-plan.md`](19-staff-features-plan.md).**
    Availability calendar, emergency contact, request a name/photo change, offer up a
-   shift, refer a friend — each an addition to Scope v1.6 with its own ADR (0036–0040,
+   shift, refer a friend — each an addition to Scope v1.6 with its own ADR (0042–0046,
    *proposed — awaiting THC*) and THC questions Q9–Q21 in `docs/15`, every one with a
-   working default so the build does not wait. Build in docs/18 §8's order: **Phase 0**
+   working default so the build does not wait. Build in docs/19 §8's order: **Phase 0**
    (Agent 0: 0-A schema + domain, 0-B notifications, 0-C docs and wireframe stubs —
    done — then 0-D `gen:types`) merges first; **Phase 1** is four agents on disjoint
    files (A `scheduling`, B `staff-pwa`, C `directory`, D `onboarding`); **Phase 2** the
-   serial follow-ups. Migration and pgTAP numbers are reserved in docs/18 §0.
+   serial follow-ups. Migration and pgTAP numbers are reserved in docs/19 §0.
 
 ---
 

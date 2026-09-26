@@ -59,7 +59,7 @@ export default async function Page() {
       photoUrl={photoUrl}
     >
       <DetailsForm profile={profile} photoUrl={photoUrl} requests={requests} />
-      {/* ADR-0037. A failed read hides the section rather than offering an
+      {/* ADR-0043. A failed read hides the section rather than offering an
           empty form that would overwrite a contact we could not see. */}
       {contact === undefined ? null : <EmergencyContactSection contact={contact} />}
     </ProfileShell>

@@ -17,9 +17,9 @@ import type { CandidateRow } from '../autoAssign';
 import { HARD_GATES } from '../scoring';
 
 /**
- * ADR-0036 (docs/18 §1). availability.vectors.json is the contract between
+ * ADR-0042 (docs/19 §1). availability.vectors.json is the contract between
  * this module and unavailability_range() / staff_unavailable() / the
- * staff_unavailability CHECKs; pgTAP 651 runs the same cases through the
+ * staff_unavailability CHECKs; pgTAP 701 runs the same cases through the
  * generated availability_vectors.psql.
  */
 const here = dirname(fileURLToPath(import.meta.url));
@@ -43,7 +43,7 @@ describe('unavailabilityRange — shared vectors (TS ↔ SQL unavailability_rang
     expect(period!.allDay).toBe(c.input.fromTime === null);
   });
 
-  it('carries every case the plan names (docs/18 §1)', () => {
+  it('carries every case the plan names (docs/19 §1)', () => {
     const names = vectors.ranges.map((c) => c.name);
     for (const name of [
       'all_day_bst_12_oct',
@@ -106,7 +106,7 @@ describe('validateUnavailability — the Add sheet (Q10)', () => {
   });
 });
 
-describe('withAvailability — the calendar as a gate, not a score (ADR-0036)', () => {
+describe('withAvailability — the calendar as a gate, not a score (ADR-0042)', () => {
   const row = (staff_id: string, gate: string | null = null): CandidateRow => ({
     staff_id,
     gate,

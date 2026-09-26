@@ -9,8 +9,8 @@ import {
 import type { UnavailabilityInput, UnavailabilityRefusal } from '@thc/domain';
 
 /**
- * Availability — the pure half of `/profile/availability` (ADR-0036,
- * docs/18 §1, `wireframes/staff/availability.html`).
+ * Availability — the pure half of `/profile/availability` (ADR-0042,
+ * docs/19 §1, `wireframes/staff/availability.html`).
  *
  * Everything here is a function of the rows `my_unavailability()` returns
  * and the Add sheet's fields, so the list, the labels and the refusal copy
@@ -42,7 +42,7 @@ export interface AvailabilityConflict {
   endsAt: Date;
 }
 
-/** The wireframe's warning, verbatim (docs/18 §1, ADR-0036). */
+/** The wireframe's warning, verbatim (docs/19 §1, ADR-0042). */
 export const CONFLICT_COPY =
   'Marking yourself unavailable doesn’t cancel this shift — use Cancel or Offer on the shift.';
 
@@ -209,7 +209,7 @@ export function saveLabel(form: Pick<AddForm, 'repeatWeeks'>): string {
 /**
  * The hint under "Repeat weekly for · weeks". With a repeat it names the
  * weekday and the last date — "Every Wednesday to Wed 5 Nov." — and, for a
- * time window, that the UK time holds across a clock change (ADR-0036 §3).
+ * time window, that the UK time holds across a clock change (ADR-0042 §3).
  */
 export function repeatHint(form: AddForm): string {
   const weeks = Math.floor(form.repeatWeeks);

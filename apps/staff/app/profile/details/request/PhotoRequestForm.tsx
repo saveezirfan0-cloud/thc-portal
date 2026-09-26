@@ -9,7 +9,7 @@ import { SELFIE_MIME, squareJpeg } from '../selfie';
 import { requestPhotoChange, startChangePhotoUpload } from './actions';
 
 /**
- * `?kind=photo` — a new profile photo for the office to approve (ADR-0038).
+ * `?kind=photo` — a new profile photo for the office to approve (ADR-0044).
  *
  * The selfie capture again (`squareJpeg`, the front camera through
  * `capture="user"`), so the proposal is the same square JPEG the photos

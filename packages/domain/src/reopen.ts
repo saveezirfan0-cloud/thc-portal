@@ -9,7 +9,7 @@
  * Who may reopen an ended booking row on the same section (§3.6, §3.4,
  * §10.4; ADR-0037). `booking_reopenable_by()` in SQL is the same table.
  *
- *   never   self_cancel (RULE-04), handed_over (ADR-0039: the same bar,
+ *   never   self_cancel (RULE-04), handed_over (ADR-0045: the same bar,
  *           since offering a shift up is leaving it), event_cancelled,
  *           gdpr / gdpr_invite
  *   anyone  ended by circumstance — slot_taken, overlap_auto_withdraw, a

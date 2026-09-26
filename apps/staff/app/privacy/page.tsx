@@ -66,7 +66,7 @@ export default function Page() {
                 are passed to Willo, our video-interview provider, so it can send you the interview
                 invitation.
               </li>
-              {/* ADR-0040 (Refer a friend, proposed): the /apply?ref= link.
+              {/* ADR-0046 (Refer a friend, proposed): the /apply?ref= link.
                   Placeholder wording — THC's legal text is pending (Q20). The
                   office sees who referred whom; the person who referred you
                   sees a count only, never your name. */}

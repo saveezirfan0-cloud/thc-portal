@@ -17,7 +17,7 @@ import { requestNameChange, startEvidenceUpload } from './actions';
 const EVIDENCE_ACCEPT = '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png';
 
 /**
- * `?kind=name` — a new first and last name, the evidence, a note (ADR-0038).
+ * `?kind=name` — a new first and last name, the evidence, a note (ADR-0044).
  *
  * The name is tied to the right-to-work check and payroll, so the office
  * checks the evidence before anything changes (Q13). The file is uploaded

@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 /**
- * `/apply?ref=` as the applicant sees it (ADR-0040,
+ * `/apply?ref=` as the applicant sees it (ADR-0046,
  * `wireframes/staff/refer.html` "/apply?ref=K7M4Q2XP"): the form exactly
  * as `/apply`, with the code in a hidden field — and nothing about the
  * referrer. The consent line and `/privacy` say referrals are recorded.

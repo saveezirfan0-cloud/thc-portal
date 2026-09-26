@@ -7,7 +7,7 @@ import '../../activate/activate.css';
 import { EMPTY_COPY, EMPTY_TITLE, INTRO_COPY, appliedLine, shareData } from './model';
 
 /**
- * Refer a friend — `wireframes/staff/refer.html` (ADR-0040).
+ * Refer a friend — `wireframes/staff/refer.html` (ADR-0046).
  *
  * The link, **Share** (the Web Share API, where the phone has it), **Copy
  * link**, the QR (the activation screen's own `AppQr`, so both QR codes in

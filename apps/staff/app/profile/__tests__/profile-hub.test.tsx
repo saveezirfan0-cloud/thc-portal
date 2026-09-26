@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { StaffProfile } from '../types';
 
 /**
- * The Profile tab — ADR-0035.
+ * The Profile tab — ADR-0041.
  *
  * Documents left the bottom navigation for this screen, so what this pins
  * is that it arrived: a Documents row, first, carrying the same verdict
@@ -57,7 +57,7 @@ const render = (profile: StaffProfile) =>
 const html = (profile: StaffProfile) => render(profile);
 const hrefs = (html: string) => [...html.matchAll(/href="([^"]+)"/g)].map((m) => m[1]);
 
-describe('the Profile tab (ADR-0035)', () => {
+describe('the Profile tab (ADR-0041)', () => {
   it('opens with Edit profile, then Documents first in the list', () => {
     const html = render(worker());
     expect(hrefs(html)).toEqual([
@@ -93,7 +93,7 @@ describe('the Profile tab (ADR-0035)', () => {
     expect(html).not.toContain('Up to date');
   });
 
-  it('offers Availability only when nothing locks the app (ADR-0036)', () => {
+  it('offers Availability only when nothing locks the app (ADR-0042)', () => {
     expect(hrefs(render(worker()))).toContain('/profile/availability');
     expect(html(worker({ blockers: ['document_expired:passport'] }))).not.toContain(
       '/profile/availability',
@@ -103,7 +103,7 @@ describe('the Profile tab (ADR-0035)', () => {
     );
   });
 
-  it('offers Refer a friend to a compliant worker only, with no reward copy (ADR-0040)', () => {
+  it('offers Refer a friend to a compliant worker only, with no reward copy (ADR-0046)', () => {
     expect(hrefs(render(worker()))).toContain('/profile/refer');
     expect(html(worker({ blockers: ['document_expired:passport'] }))).not.toContain(
       '/profile/refer',

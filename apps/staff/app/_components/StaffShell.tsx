@@ -28,7 +28,7 @@ import '../chrome.css';
  * is theirs; the app-wide gate is this.
  *
  * The four tabs are `STAFF_TABS` — Shifts · Invites · Radar · Profile, with
- * Documents inside Profile (ADR-0035). Counts are passed in rather than
+ * Documents inside Profile (ADR-0041). Counts are passed in rather than
  * fetched here so the nav badge and the list it points at can never
  * disagree.
  */
@@ -97,7 +97,7 @@ export async function StaffShell({
   const unlocked = reachableTabs(lock);
 
   // Profile is the one tab an auto-blocked worker keeps (§10.1 case 1):
-  // Documents lives inside it now (ADR-0035).
+  // Documents lives inside it now (ADR-0041).
   const counts: Partial<Record<StaffTab, number | undefined>> = {
     '/shifts': shifts,
     '/invites': invites,

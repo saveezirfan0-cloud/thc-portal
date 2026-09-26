@@ -22,7 +22,7 @@ const HEIGHT = 120;
 export function RadarMap({
   shift,
 }: {
-  /** An open shift, or an offered one (`/radar/offers/:id`, ADR-0039). */
+  /** An open shift, or an offered one (`/radar/offers/:id`, ADR-0045). */
   shift: Pick<
     OpenShift,
     'distanceKm' | 'geofenceRadiusM' | 'homeLat' | 'homeLng' | 'venueLat' | 'venueLng' | 'venueName'

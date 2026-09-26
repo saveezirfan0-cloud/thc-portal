@@ -3,7 +3,7 @@ import type { ChangeKind } from '@thc/domain';
 
 /**
  * Request a change — what the worker reads about their own requests
- * (ADR-0038, docs/18 §3, `wireframes/staff/request-change.html`).
+ * (ADR-0044, docs/19 §3, `wireframes/staff/request-change.html`).
  *
  * §10.1's name and photo locks never move; a request is the in-app route
  * to the office, which decides on /staff/requests. This file turns the rows
@@ -102,11 +102,11 @@ export function requestHref(kind: ChangeKind): string {
   return `/profile/details/request?kind=${kind}`;
 }
 
-/** The RPC's refusal codes, as sentences (20260930120200). */
+/** The RPC's refusal codes, as sentences (20260930202200). */
 export const CHANGE_REASONS: Record<string, string> = {
   already_pending:
     'You already have a request with the office. Withdraw it first if you want to change it.',
-  // 20260930150100: at most three requests of a kind in any 24 hours, so a
+  // 20260930205100: at most three requests of a kind in any 24 hours, so a
   // request/withdraw loop cannot flood admin@ with RC1 emails.
   too_many_requests:
     'You’ve sent three requests for this in the last 24 hours. Please try again tomorrow, or contact the office at admin@thehospitalitycompany.co.uk.',

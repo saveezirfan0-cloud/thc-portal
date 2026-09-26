@@ -1,5 +1,5 @@
 /**
- * Request a change — name and photo. ADR-0038, docs/18 §3 (an addition to
+ * Request a change — name and photo. ADR-0044, docs/19 §3 (an addition to
  * Scope v1.6: §10.1 "corrections go through the office" gains an in-app
  * route; §9.6; §8 RC1–RC4; §1.5 ProfileChangeRequest).
  *
@@ -74,7 +74,7 @@ export function validateNameChange(
 }
 
 /**
- * A rejection must say why, and the worker is shown it (docs/18 §3, the
+ * A rejection must say why, and the worker is shown it (docs/19 §3, the
  * `compliance_docs.rejection_reason` precedent). An approval needs none.
  */
 export function decisionNeedsReason(approve: boolean): boolean {

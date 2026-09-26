@@ -9,7 +9,7 @@ import { AVAILABILITY_REASONS } from './model';
 
 /**
  * The Add sheet and Delete — `add_my_unavailability()` and
- * `remove_my_unavailability()` (20260930120000, ADR-0036).
+ * `remove_my_unavailability()` (20260930202000, ADR-0042).
  *
  * The rules are the RPC's. `validateUnavailability()` runs first only so a
  * refusal the phone can already see costs no round trip; the database

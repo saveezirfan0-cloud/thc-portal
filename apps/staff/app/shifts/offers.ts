@@ -10,7 +10,7 @@ import {
 } from '@thc/domain';
 
 /**
- * Offer up a shift, as the worker sees it — ADR-0039, docs/18 §4,
+ * Offer up a shift, as the worker sees it — ADR-0045, docs/19 §4,
  * `wireframes/staff/offer-shift.html`.
  *
  * Pure, so the screens' choices are unit-tested. The rule itself is
@@ -18,7 +18,7 @@ import {
  * `offerExpiresAt()` from `@thc/domain`; the database is what decides a
  * press (`offer_shift`, `request_cover`, `take_offered_shift`). What lives
  * here is which panel a confirmed shift shows and the words on it — the
- * sentences docs/18 §4 fixes are copied verbatim.
+ * sentences docs/19 §4 fixes are copied verbatim.
  */
 
 export interface Refusal {
@@ -54,7 +54,7 @@ export const OFFER_LEAD =
   'Can’t make it? Offer it to other workers — you stay booked until someone takes it.';
 export const OFFER_DIALOG_TITLE = 'Offer this shift?';
 
-/** docs/18 §4, verbatim, with the UK close time filled in. */
+/** docs/19 §4, verbatim, with the UK close time filled in. */
 export function offerDialogBody(startsAt: Date): string {
   return `We'll offer this shift to other workers. You stay booked until someone takes it — then it's theirs, and you can't be booked on this event again. Offers close ${ukDateTime(offerExpiresAt(startsAt))} (UK time), 72 hours before the start.`;
 }
@@ -93,7 +93,7 @@ export function offeredCardLine(expiresAt: Date): string {
 
 export const WITHDRAW_OFFER_BUTTON = 'Withdraw offer';
 
-/** docs/18 §4: "Can't make it? **Ask the office for cover**". */
+/** docs/19 §4: "Can't make it? **Ask the office for cover**". */
 export const COVER_LEAD = "Can't make it?";
 export const COVER_BUTTON = 'Ask the office for cover';
 export const COVER_EXPLAINER =
@@ -101,7 +101,7 @@ export const COVER_EXPLAINER =
 export const COVER_EXPLAINER_AUTO_OFF =
   'The office is arranging this shift by hand, so it arranges cover too. You’re still booked until they confirm.';
 export const COVER_NOTE_LABEL = 'Note to the office · optional';
-/** docs/18 §4, verbatim. */
+/** docs/19 §4, verbatim. */
 export const COVER_REQUESTED =
   "Cover requested — the office will be in touch. You're still booked until they confirm.";
 export const COVER_CHIP = 'Cover requested';
@@ -119,7 +119,7 @@ export type OfferPanel =
   | 'none';
 
 /**
- * Which offer panel a booking shows (docs/18 §4). The server re-decides
+ * Which offer panel a booking shows (docs/19 §4). The server re-decides
  * every press; this only keeps the screen from offering one it would refuse.
  */
 export function offerPanel(

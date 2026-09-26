@@ -26,7 +26,7 @@ const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
  * Written only by `security definer` RPCs and the service role. The seven
- * staff additions (docs/18 §0.2–0.3, 20260930100100) are admin-read with no
+ * staff additions (docs/19 §0.2–0.3, 20260930200100) are admin-read with no
  * staff policy at all: the worker's and the office's writes are all RPCs.
  */
 const OWNED_BY_RPC = [

@@ -261,7 +261,7 @@ export function documentOrder(a: DocumentRow, b: DocumentRow): number {
  */
 export function shiftOutcome(row: ShiftRow): string {
   if (row.booking_status === 'cancelled') {
-    // ADR-0039: the worker offered the shift up and a confirmed replacement
+    // ADR-0045: the worker offered the shift up and a confirmed replacement
     // took it. The row also carries self_cancelled (it bars them from the
     // event like a self-cancel, Q15), so it is asked first — "Self-cancelled"
     // would tell the office the section lost a worker, and it did not.

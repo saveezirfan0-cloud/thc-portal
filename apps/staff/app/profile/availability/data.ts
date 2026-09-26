@@ -3,10 +3,10 @@ import { staffDb, supabaseConfigured } from '../../db';
 import type { AvailabilityConflict, UnavailabilityEntry } from './model';
 
 /**
- * The worker's availability entries — `my_unavailability()` (20260930120000).
+ * The worker's availability entries — `my_unavailability()` (20260930202000).
  *
  * A security-definer RPC that resolves the caller itself: the staff role
- * holds no policy on `staff_unavailability` at all (docs/18 §0.2), so this
+ * holds no policy on `staff_unavailability` at all (docs/19 §0.2), so this
  * is the only read there is, and nothing here names a worker.
  */
 export async function loadUnavailability(): Promise<UnavailabilityEntry[]> {

@@ -8,8 +8,8 @@ import {
 } from '../additions';
 
 /**
- * The docs/18 additions on /staff/:id — ADR-0036 (Availability tab),
- * ADR-0037 (Emergency contact card). Every date and hour is UK wall clock:
+ * The docs/19 additions on /staff/:id — ADR-0042 (Availability tab),
+ * ADR-0043 (Emergency contact card). Every date and hour is UK wall clock:
  * the entries are built from UK dates (unavailability_range), so an
  * all-day entry across a clock change is 23 h or 25 h, not 24.
  */

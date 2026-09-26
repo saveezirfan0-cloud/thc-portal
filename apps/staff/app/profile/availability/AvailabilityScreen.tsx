@@ -43,7 +43,7 @@ export type EntryWire = Omit<UnavailabilityEntry, 'startsAt' | 'endsAt'> & {
 };
 
 /**
- * Availability — `wireframes/staff/availability.html` (ADR-0036).
+ * Availability — `wireframes/staff/availability.html` (ADR-0042).
  *
  * The list by week, the Add sheet, the warning when a new entry lands on a
  * confirmed shift, and Delete (one, or the rest of a series). Times are

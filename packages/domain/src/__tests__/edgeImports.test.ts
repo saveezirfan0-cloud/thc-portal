@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
  * (D33, ADR-0037) needs `bookingReopenableBy`, which is why that function
  * lives in `reopen.ts` with no imports rather than in `state.ts`, whose
  * own imports (`./rtwCheck` → `./onboarding`) carry no extension. The
- * availability gate (ADR-0036) adds `availability.ts` → `time.ts`, both
+ * availability gate (ADR-0042) adds `availability.ts` → `time.ts`, both
  * with explicit extensions for the same reason.
  */
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '..');

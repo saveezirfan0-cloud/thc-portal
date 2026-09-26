@@ -393,7 +393,7 @@ describe('Unavailable names the real reason (§3.3, §3.4, §9.6)', () => {
 
 // ---------------------------------------------------------------------
 
-describe('Marked unavailable — the calendar on the board (ADR-0036)', () => {
+describe('Marked unavailable — the calendar on the board (ADR-0042)', () => {
   const none = new Set<string>();
   // Thursday 15 Oct 2026, BST (UTC+1).
   const allDay = { startsAt: '2026-10-14T23:00:00.000Z', endsAt: '2026-10-15T23:00:00.000Z' };
@@ -476,7 +476,7 @@ describe('Marked unavailable — the calendar on the board (ADR-0036)', () => {
   });
 
   it('an away worker with a reopenable ended booking lands under Unavailable, never nowhere', () => {
-    // D33 puts a declined invitation back in the pool; ADR-0036 takes the
+    // D33 puts a declined invitation back in the pool; ADR-0042 takes the
     // away out of it. The two together must still show the worker once.
     const rows = [row('priya', { booking_status: 'closed' }), row('ella')];
     const ended: EndedBooking[] = [
@@ -495,7 +495,7 @@ describe('Marked unavailable — the calendar on the board (ADR-0036)', () => {
   });
 });
 
-describe('Offered up and cover requests on the board (ADR-0039)', () => {
+describe('Offered up and cover requests on the board (ADR-0045)', () => {
   it('a pool offer is a chip on the Confirmed row with its UK close time', () => {
     expect(
       offerChip({
@@ -529,7 +529,7 @@ describe('Offered up and cover requests on the board (ADR-0039)', () => {
   });
 });
 
-describe('Handed over (ADR-0039)', () => {
+describe('Handed over (ADR-0045)', () => {
   it('names a hand-over, not a self-cancel, though both bar the worker from the event', () => {
     const [kai] = buildUnavailable(
       [row('kai', { gate: 'self_cancelled', booking_status: 'cancelled' })],

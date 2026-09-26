@@ -140,7 +140,7 @@ describe('cancel_cause — one vocabulary (docs/14 B3)', () => {
     }
   });
 
-  it('only a self-cancel and a completed hand-over exclude the worker from the event (RULE-04, ADR-0039)', () => {
+  it('only a self-cancel and a completed hand-over exclude the worker from the event (RULE-04, ADR-0045)', () => {
     expect(CANCEL_CAUSES.filter(excludesFromEvent)).toEqual(['self_cancel', 'handed_over']);
     expect(excludesFromEvent('handed_over')).toBe(true);
     expect(cancelCauseStatus('handed_over')).toBe('cancelled');

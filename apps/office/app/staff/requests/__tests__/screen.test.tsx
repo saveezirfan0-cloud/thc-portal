@@ -11,7 +11,7 @@ vi.mock('../actions', () => ({ decideChangeRequest: vi.fn(), changeEvidenceLink:
 
 const { RequestsScreen, PendingCard, DecidedTable } = await import('../RequestsScreen');
 
-/** ADR-0038 · wireframes/backoffice/change-requests.html. */
+/** ADR-0044 · wireframes/backoffice/change-requests.html. */
 const row = (over: Partial<ChangeRequestView> = {}): ChangeRequestView => ({
   id: 'r1',
   staff_id: 's1',

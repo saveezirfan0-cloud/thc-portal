@@ -4,11 +4,11 @@
 -- Source: packages/domain/src/shiftOffer.vectors.json
 -- Regenerate: pnpm --filter @thc/domain gen:vectors
 --
--- ADR-0039: shift_offer_transitions(), shift_offer_mode_transitions() and
+-- ADR-0045: shift_offer_transitions(), shift_offer_mode_transitions() and
 -- the state guard against the cases state.ts and shiftOffer.ts are held
 -- to; take and visibility cases (defaults merged) for take_offered_shift()
--- and the Radar read in Agent A's 20260930110100.
--- Included with \ir from supabase/tests/651_staff_additions_state.sql; the .psql
+-- and the Radar read in Agent A's 20260930201100.
+-- Included with \ir from supabase/tests/701_staff_additions_state.sql; the .psql
 -- extension keeps pg_prove from running it as a test of its own.
 -- =====================================================================
 

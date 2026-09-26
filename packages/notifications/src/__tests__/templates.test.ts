@@ -49,9 +49,9 @@ const REQUIREMENT_PUSH_CODES = ['CL1', 'CL2'];
 const REQUIREMENT_EMAIL_CODES = ['CL3', 'CL4', 'CL5', 'CL6'];
 
 /**
- * The Staff App additions (docs/18 §3, §4, §6) — not §8's, not the
- * requirement's. RC = Request a change (ADR-0038), OF = Offer up a shift
- * (ADR-0039). RF1 (ADR-0040) is proposed only and must NOT be here.
+ * The Staff App additions (docs/19 §3, §4, §6) — not §8's, not the
+ * requirement's. RC = Request a change (ADR-0044), OF = Offer up a shift
+ * (ADR-0045). RF1 (ADR-0046) is proposed only and must NOT be here.
  */
 const ADDITION_PUSH_CODES = ['RC2', 'RC3', 'OF1', 'OF2', 'OF3', 'OF4', 'OF6'];
 const ADDITION_EMAIL_CODES = ['RC1', 'RC4', 'OF5'];
@@ -344,7 +344,7 @@ describe('nothing worker-facing leaks office or client language', () => {
     'buffer',
     'confirmed 0',
     'mandatory',
-    // The Staff App additions' office vocabulary (docs/18 §3, §4): the offer
+    // The Staff App additions' office vocabulary (docs/19 §3, §4): the offer
     // machinery and the change-request queue are the office's words, and a
     // worker push never names another worker's ID, payroll or a rule/ADR.
     'handed_over',
@@ -611,12 +611,12 @@ describe('N6 / N7 render from the payload booking_tick writes', () => {
 });
 
 /**
- * The Staff App additions (docs/18-staff-features-plan.md §3, §4, §6). Not
- * §8's: ADR-0038 (RC, Request a change) and ADR-0039 (OF, Offer up a shift),
+ * The Staff App additions (docs/19-staff-features-plan.md §3, §4, §6). Not
+ * §8's: ADR-0044 (RC, Request a change) and ADR-0045 (OF, Offer up a shift),
  * both proposed — awaiting THC. The table below is written out again by hand
- * from docs/18 so an edit to the register cannot silently reword one.
+ * from docs/19 so an edit to the register cannot silently reword one.
  */
-describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/18 §6)', () => {
+describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/19 §6)', () => {
   const placeholders = (text: string): string[] =>
     [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1] ?? '');
 
@@ -629,7 +629,7 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/18 §6)', () => {
     timing: string;
   };
 
-  // docs/18 §3 and §4, the Notifications tables. OF5's body is described
+  // docs/19 §3 and §4, the Notifications tables. OF5's body is described
   // there as a list of fields; it is pinned by structure in its own test.
   const PLAN: Row[] = [
     {
@@ -705,9 +705,9 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/18 §6)', () => {
   ];
 
   /**
-   * What each sender writes into the payload — the contract pgTAP 674 (OF,
+   * What each sender writes into the payload — the contract pgTAP 724 (OF,
    * "every OF payload's keys equal its template placeholders", the 592
-   * pattern) and 665/666 (RC) hold the SQL side to. Title, body and deep
+   * pattern) and 715/716 (RC) hold the SQL side to. Title, body and deep
    * link together must ask for exactly these keys, no more and no fewer.
    */
   const PAYLOAD_KEYS: Record<(typeof ADDITION_CODES)[number], string[]> = {
@@ -746,7 +746,7 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/18 §6)', () => {
     ]);
   };
 
-  it('is exactly the ten codes docs/18 §6 lists, and no RF1', () => {
+  it('is exactly the ten codes docs/19 §6 lists, and no RF1', () => {
     expect([...ADDITION_CODES].sort()).toEqual(
       [...ADDITION_PUSH_CODES, ...ADDITION_EMAIL_CODES].sort(),
     );
@@ -758,16 +758,16 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/18 §6)', () => {
     }
   });
 
-  it('names its ADR in every trigger — RC → ADR-0038, OF → ADR-0039', () => {
+  it('names its ADR in every trigger — RC → ADR-0044, OF → ADR-0045', () => {
     for (const code of ADDITION_CODES) {
-      const adr = code.startsWith('RC') ? 'ADR-0038' : 'ADR-0039';
+      const adr = code.startsWith('RC') ? 'ADR-0044' : 'ADR-0045';
       expect(template(code).trigger, code).toContain(adr);
       expect(template(code).trigger, code).toMatch(/Not in §8/);
     }
   });
 
   it.each(PLAN.map((row) => [row.code, row] as const))(
-    '%s carries the docs/18 title, body, deep link and timing verbatim',
+    '%s carries the docs/19 title, body, deep link and timing verbatim',
     (code, row) => {
       const entry = template(code);
       expect(entry.channel).toBe(row.channel);
@@ -801,7 +801,7 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/18 §6)', () => {
     expect(TEMPLATES.OF5.recipients).toEqual(['admin@thehospitalitycompany.co.uk']);
   });
 
-  it('pins OF5 to the fields docs/18 lists, in order, ending "still booked until you act"', () => {
+  it('pins OF5 to the fields docs/19 lists, in order, ending "still booked until you act"', () => {
     expect(template('OF5').title).toBe('Cover requested — {event} · {role} · {date}');
     expect(template('OF5').timing).toBe('immediately');
     const copy = body('OF5');
@@ -936,14 +936,14 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/18 §6)', () => {
     }
   });
 
-  it('keys the sends as docs/18 names them', () => {
+  it('keys the sends as docs/19 names them', () => {
     expect(outboxKey('RC1', 'request', 7)).toBe('RC1:request:7');
     expect(outboxKey('RC4', 'request', 7)).toBe('RC4:request:7');
     expect(outboxKey('OF2', 'offer', 'o1')).toBe('OF2:offer:o1');
     // OF1 is once per offer per candidate: the staff id rides as the suffix.
     expect(outboxKey('OF1', 'offer', 'o1', 's9')).toBe('OF1:offer:o1:s9');
     expect(outboxKey('OF1', 'offer', 'o1', 's9')).not.toBe(outboxKey('OF1', 'offer', 'o1', 's8'));
-    // OF5 is keyed on the BOOKING (20260930150000): asking for cover, withdrawing
+    // OF5 is keyed on the BOOKING (20260930205000): asking for cover, withdrawing
     // and asking again on one booking emails admin@ once.
     expect(outboxKey('OF5', 'booking', 'b1')).toBe('OF5:booking:b1');
   });

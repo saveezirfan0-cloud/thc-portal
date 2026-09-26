@@ -23,16 +23,16 @@ import {
 } from '../state';
 
 /**
- * ADR-0038 (docs/18 §3). The machine exists twice — CHANGE_REQUEST_TRANSITIONS
+ * ADR-0044 (docs/19 §3). The machine exists twice — CHANGE_REQUEST_TRANSITIONS
  * and profile_change_transitions() + profile_change_requests_state_guard in
- * 20260930100100 — and both are held to changeRequest.vectors.json: here, and
- * in pgTAP 651 through change_request_vectors.psql.
+ * 20260930200100 — and both are held to changeRequest.vectors.json: here, and
+ * in pgTAP 701 through change_request_vectors.psql.
  */
 const here = dirname(fileURLToPath(import.meta.url));
 const script = resolve(here, '../../scripts/gen-vectors-sql.mjs');
 const generated = resolve(here, '../../../../supabase/tests/_shared/change_request_vectors.psql');
 const sql = readFileSync(
-  resolve(here, '../../../../supabase/migrations/20260930100100_staff_additions_schema.sql'),
+  resolve(here, '../../../../supabase/migrations/20260930200100_staff_additions_schema.sql'),
   'utf8',
 );
 
@@ -89,7 +89,7 @@ describe('change request machine — shared vectors (TS ↔ SQL profile_change_t
   });
 
   it('every edge carries its reference', () => {
-    for (const e of vectors.edges) expect(e.ref).toMatch(/ADR-0038/);
+    for (const e of vectors.edges) expect(e.ref).toMatch(/ADR-0044/);
   });
 });
 

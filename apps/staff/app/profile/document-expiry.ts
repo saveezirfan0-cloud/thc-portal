@@ -4,7 +4,7 @@ import type { DocumentsData } from '../documents/types';
 
 /**
  * "Passport expires in 12 days" — the sub-line on the Profile tab's
- * Documents row (ADR-0035), so a document running out is visible from the
+ * Documents row (ADR-0041), so a document running out is visible from the
  * tab the worker opens, not only inside Documents.
  *
  * The window is the first rung of the §4.2 reminder ladder — "1 month

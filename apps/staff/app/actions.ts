@@ -194,12 +194,12 @@ export async function withdrawApplication(bookingId: string): Promise<ActionResu
 }
 
 // ---------------------------------------------------------------------
-// Offer up a shift — ADR-0039, docs/18 §4
+// Offer up a shift — ADR-0045, docs/19 §4
 // ---------------------------------------------------------------------
 
 /**
- * The offer RPCs (20260930110100), typed locally until the Phase 2 type
- * regeneration (docs/18 §8) — the `(supabase as unknown as XRpc)` pattern.
+ * The offer RPCs (20260930201100), typed locally until the Phase 2 type
+ * regeneration (docs/19 §8) — the `(supabase as unknown as XRpc)` pattern.
  */
 interface OfferRpc {
   rpc(

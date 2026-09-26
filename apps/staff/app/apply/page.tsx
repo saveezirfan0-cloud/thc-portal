@@ -13,7 +13,7 @@ export const metadata = {
  * middleware already lists it as public; it deliberately renders none of the
  * app's chrome.
  *
- * `/apply?ref={code}` (ADR-0040) is the same page: the code is checked for
+ * `/apply?ref={code}` (ADR-0046) is the same page: the code is checked for
  * shape and carried to the server action in a hidden field. Nothing on the
  * page changes with it — the applicant is never shown who referred them.
  */

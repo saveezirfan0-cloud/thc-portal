@@ -9,7 +9,7 @@ import { nameBefore, nameRequested, ukStamp } from '../requests/model';
 import type { ChangeRequestView } from '../requests/types';
 
 /**
- * The pending change-request banner on /staff/:id (ADR-0038),
+ * The pending change-request banner on /staff/:id (ADR-0044),
  * `wireframes/backoffice/change-requests.html` → "Overview cards".
  *
  * One line per pending request — at most one name and one photo, the

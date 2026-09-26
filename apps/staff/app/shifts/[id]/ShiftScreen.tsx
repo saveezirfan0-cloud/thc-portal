@@ -81,7 +81,7 @@ export function ShiftScreen({
    */
   autoCheckIn?: boolean;
   /**
-   * ADR-0039: the booking's open offer and the auto-assign switch
+   * ADR-0045: the booking's open offer and the auto-assign switch
    * (`staff_booking_offers()`), for Offer this shift / Ask the office.
    */
   offer?: BookingOffer | null;
@@ -427,7 +427,7 @@ export function ShiftScreen({
             , 30 min before the start, within {shift.geofenceRadiusM} m of the venue.
           </p>
           {shift.breaksLogged ? <BreaksBlock shift={shift} locked formatTime={local} /> : null}
-          {/* ADR-0039: offer it up, or ask the office for cover. Only
+          {/* ADR-0045: offer it up, or ask the office for cover. Only
               before the shift: once check-in opens it is too late for
               either, and the escalation job owns the section. */}
           <OfferPanel

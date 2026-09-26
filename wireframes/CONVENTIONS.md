@@ -56,5 +56,5 @@ Use `.annot` spans sparingly to call out a rule on the canvas (amber mono text),
 ## File naming (must match the hub links)
 Back Office: `backoffice/{login,dashboard,onboarding,candidate,events,shift-builder,event-board,compliance,checkin,staff,staff-profile,change-requests,clients,client-card,roles,reports,feedback,venues}.html`
 Staff app: `staff/{auth,onboarding-1,onboarding-2,onboarding-3,shifts,shift-detail,offer-shift,radar,invites,documents,profile,availability,request-change,refer,locks}.html`
-Additions planned in `docs/18` (ADR-0036–0040, proposed) are stubs: `staff/{availability,request-change,refer,offer-shift}.html`, `backoffice/change-requests.html`.
+Additions planned in `docs/19` (ADR-0042–0046, proposed) are stubs: `staff/{availability,request-change,refer,offer-shift}.html`, `backoffice/change-requests.html`.
 Public: `public/{apply,activate}.html` · Client Portal: `client/{login,events,event,timesheet}.html`

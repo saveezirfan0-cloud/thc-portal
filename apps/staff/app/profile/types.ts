@@ -76,7 +76,7 @@ export interface EarningsRow {
 }
 
 /**
- * The worker's emergency contact — `my_emergency_contact()` (ADR-0037).
+ * The worker's emergency contact — `my_emergency_contact()` (ADR-0043).
  * Optional; office-only; never on a client document. The phone is E.164.
  */
 export interface EmergencyContact {

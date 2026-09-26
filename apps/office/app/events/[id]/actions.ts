@@ -323,11 +323,11 @@ export async function setRoleAutoAssign(
 }
 
 // ---------------------------------------------------------------------
-// Offer up a shift — ADR-0039, docs/18 §4 point 3
+// Offer up a shift — ADR-0045, docs/19 §4 point 3
 // ---------------------------------------------------------------------
 
 /**
- * The two office RPCs (20260930110100), typed locally until the Phase 2
+ * The two office RPCs (20260930201100), typed locally until the Phase 2
  * type regeneration — the `(supabase as unknown as XRpc)` pattern.
  */
 interface OfferOfficeRpc {

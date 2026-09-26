@@ -16,7 +16,7 @@ import {
 import type { AddForm, UnavailabilityEntry } from '../model';
 
 /**
- * /profile/availability's labels and the Add sheet's shaping (ADR-0036).
+ * /profile/availability's labels and the Add sheet's shaping (ADR-0042).
  * The rules are @thc/domain's and the RPC's; this pins what the worker
  * reads, in UK time, across the October clock change.
  */
@@ -187,7 +187,7 @@ describe('copy', () => {
     }
   });
 
-  it('carries the conflict warning verbatim (docs/18 §1)', () => {
+  it('carries the conflict warning verbatim (docs/19 §1)', () => {
     expect(CONFLICT_COPY.replace(/’/g, "'")).toBe(
       "Marking yourself unavailable doesn't cancel this shift — use Cancel or Offer on the shift.",
     );

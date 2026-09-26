@@ -53,10 +53,10 @@ export function Overview({
   declarations: DeclarationRow[];
   /** The address moved and the pin could not follow (20260926110000). */
   locationStale?: boolean;
-  /** ADR-0037 — null reads "Not provided". */
+  /** ADR-0043 — null reads "Not provided". */
   emergencyContact?: EmergencyContact | null;
   emergencyContactProblem?: string | null;
-  /** ADR-0040. */
+  /** ADR-0046. */
   referrals?: Referrals | null;
   referralsProblem?: string | null;
 }) {
@@ -113,7 +113,7 @@ export function Overview({
         </div>
       </Panel>
 
-      {/* ADR-0037: office-only, never on a client document. */}
+      {/* ADR-0043: office-only, never on a client document. */}
       <EmergencyContactCard
         staffId={profile.id}
         contact={emergencyContact}
@@ -148,7 +148,7 @@ export function Overview({
         )}
       </Panel>
 
-      {/* ADR-0040: who referred them, and who applied with their code. */}
+      {/* ADR-0046: who referred them, and who applied with their code. */}
       <ReferralsCard referrals={referrals} problem={referralsProblem} />
 
       <Panel

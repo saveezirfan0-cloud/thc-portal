@@ -160,8 +160,8 @@ export async function loadEarnings(): Promise<EarningsRow[]> {
 }
 
 /**
- * The emergency contact (ADR-0037) — `my_emergency_contact()`, a separate
- * read because `staff_me()` is frozen in Phase 1 (docs/18 §0.6). Null when
+ * The emergency contact (ADR-0043) — `my_emergency_contact()`, a separate
+ * read because `staff_me()` is frozen in Phase 1 (docs/19 §0.6). Null when
  * none is saved; `undefined` when the read failed, so the Profile hub can
  * leave its "not set" nudge off rather than nag on a network error.
  */
@@ -179,7 +179,7 @@ export async function loadEmergencyContact(): Promise<EmergencyContact | null | 
 }
 
 /**
- * The worker's own name / photo change requests (ADR-0038) — newest first,
+ * The worker's own name / photo change requests (ADR-0044) — newest first,
  * never `decided_by`. A failed read is an empty list: the status line is
  * then absent and "Request a change" still works (the RPC refuses a second
  * pending request by itself).

@@ -10,7 +10,7 @@ import type { StatusLine } from '../change-requests';
 import { withdrawChange } from './request/actions';
 
 /**
- * The status line under a locked field (ADR-0038):
+ * The status line under a locked field (ADR-0044):
  *
  *   pending   amber — "Name change requested · with the office" + Withdraw
  *   rejected  coral — "Not changed: {reason}" + Request again

@@ -10,7 +10,7 @@ import { decisionMessage } from './model';
 import type { DecisionResult } from './types';
 
 /**
- * The office's decision on a name/photo change request — ADR-0038.
+ * The office's decision on a name/photo change request — ADR-0044.
  *
  * `office_decide_profile_change` is a definer with the admin check in its
  * own body and `auth.uid()` as the decider, so it is called through the

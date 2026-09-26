@@ -24,7 +24,7 @@
 </head>
 <body>
 <div class="wf-bar">
-  <a href="../index.html">← Hub</a><span class="t">Back Office · Change requests · Staff profile additions</span><span class="pill cyan">/staff/requests</span><span class="pill cyan">/staff/:id</span><span class="pill">§10.1 · §9.6 · §1.7 · §8 RC1–RC4 · ADR-0036/0037/0038/0040 (proposed)</span>
+  <a href="../index.html">← Hub</a><span class="t">Back Office · Change requests · Staff profile additions</span><span class="pill cyan">/staff/requests</span><span class="pill cyan">/staff/:id</span><span class="pill">§10.1 · §9.6 · §1.7 · §8 RC1–RC4 · ADR-0042/0043/0044/0046 (proposed)</span>
   <span class="spacer"></span>
   <a href="staff-profile.html">Next: Staff profile →</a>
 </div>
@@ -62,7 +62,7 @@
     </header>
 
     <div class="content">
-      <div class="note sm">Built by <b>directory</b> (docs/18 Phase 1-C; <code>apps/office/app/staff/requests/**</code>, <code>apps/office/app/staff/[id]/**</code>). The first five states are the <code>/staff/requests</code> queue; the last two are additions to <a href="staff-profile.html">/staff/:id</a>. <code>/staff</code> has a "Change requests (2)" link above the directory, and the Staff menu item carries the same count (<code>navCounts.ts</code>). The /staff/:id banner's <b>Review</b> opens the same dialog as the queue, starting from both sides with Reject and Approve. An empty emergency contact offers <b>Add</b> instead of Edit.</div>
+      <div class="note sm">Built by <b>directory</b> (docs/19 Phase 1-C; <code>apps/office/app/staff/requests/**</code>, <code>apps/office/app/staff/[id]/**</code>). The first five states are the <code>/staff/requests</code> queue; the last two are additions to <a href="staff-profile.html">/staff/:id</a>. <code>/staff</code> has a "Change requests (2)" link above the directory, and the Staff menu item carries the same count (<code>navCounts.ts</code>). The /staff/:id banner's <b>Review</b> opens the same dialog as the queue, starting from both sides with Reject and Approve. An empty emergency contact offers <b>Add</b> instead of Edit.</div>
       <div class="wf-states" data-target="cr"><button data-state="pending">Pending</button><button data-state="approve">Approve name · dialog</button><button data-state="reject">Reject · dialog</button><button data-state="decided">Decided</button><button data-state="empty">Empty</button><button data-state="overview">/staff/:id · Overview cards</button><button data-state="availability">/staff/:id · Availability tab</button></div>
 
       <!-- ================= PENDING ================= -->
@@ -171,7 +171,7 @@
             </div>
           </div>
         </div>
-        <span class="annot">the worker herself sees only the count; the office sees names and links (ADR-0040)</span>
+        <span class="annot">the worker herself sees only the count; the office sees names and links (ADR-0046)</span>
       </section>
 
       <!-- ================= /staff/:id · AVAILABILITY TAB ================= -->
@@ -191,12 +191,12 @@
             </table>
           </div>
         </div>
-        <div class="note sm">Auto-assign skips her for any section overlapping these (first round, hourly rounds, refills, escalation, offer pushes). On the event board she appears under Unavailable as "Marked unavailable · {UK window}" with <b>Invite anyway</b> behind "Amara K. marked themselves unavailable for this time. Invite anyway?" (ADR-0036, Q9). A confirmed booking is never cancelled by an entry.</div>
+        <div class="note sm">Auto-assign skips her for any section overlapping these (first round, hourly rounds, refills, escalation, offer pushes). On the event board she appears under Unavailable as "Marked unavailable · {UK window}" with <b>Invite anyway</b> behind "Amara K. marked themselves unavailable for this time. Invite anyway?" (ADR-0042, Q9). A confirmed booking is never cancelled by an entry.</div>
       </section>
     </div>
   </div>
 </div>
 
-<div class="wf-note note"><b>Behaviour notes.</b> Additions to Scope v1.6 (docs/18; ADR-0036, ADR-0037, ADR-0038, ADR-0040 — proposed, awaiting THC). <b>/staff/requests</b> (ADR-0038): pending requests oldest first, current and requested side by side (photos by signed URL), evidence link and note. <b>Approve</b> a name only after ticking "I've checked the evidence matches the right-to-work document" — writes the name and the audit log, pushes RC2, emails RC4 to admin@ and payroll; no automatic right-to-work re-check (Q13). <b>Approve</b> a photo repoints the profile photo despite the lock; the old file is kept. <b>Reject</b> needs a reason, shown to the worker (RC3). A decided request cannot be decided again. Issued PDFs and payroll exports are never changed. <b>/staff/:id</b>: a pending-request banner; an <b>Emergency contact</b> card (Edit / Clear, audited, "Not provided" when empty — ADR-0037); a <b>Referrals</b> card and "Referred by" (ADR-0040); a read-only <b>Availability</b> tab for the next 8 weeks in UK time (ADR-0036). The Client Portal, the allocation sheet and the timesheet show none of this. Stamps are UK time (§1.8).</div>
+<div class="wf-note note"><b>Behaviour notes.</b> Additions to Scope v1.6 (docs/19; ADR-0042, ADR-0043, ADR-0044, ADR-0046 — proposed, awaiting THC). <b>/staff/requests</b> (ADR-0044): pending requests oldest first, current and requested side by side (photos by signed URL), evidence link and note. <b>Approve</b> a name only after ticking "I've checked the evidence matches the right-to-work document" — writes the name and the audit log, pushes RC2, emails RC4 to admin@ and payroll; no automatic right-to-work re-check (Q13). <b>Approve</b> a photo repoints the profile photo despite the lock; the old file is kept. <b>Reject</b> needs a reason, shown to the worker (RC3). A decided request cannot be decided again. Issued PDFs and payroll exports are never changed. <b>/staff/:id</b>: a pending-request banner; an <b>Emergency contact</b> card (Edit / Clear, audited, "Not provided" when empty — ADR-0043); a <b>Referrals</b> card and "Referred by" (ADR-0046); a read-only <b>Availability</b> tab for the next 8 weeks in UK time (ADR-0042). The Client Portal, the allocation sheet and the timesheet show none of this. Stamps are UK time (§1.8).</div>
 </body>
 </html>

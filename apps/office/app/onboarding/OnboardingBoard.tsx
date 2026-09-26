@@ -91,7 +91,7 @@ interface Referred {
 }
 
 /**
- * ADR-0040: the person applied through a colleague's referral link. The
+ * ADR-0046: the person applied through a colleague's referral link. The
  * name of the referrer is on the profile ("Referred by …"), not the card.
  */
 function ReferredChip() {
@@ -130,7 +130,7 @@ export function OnboardingBoard({
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, start] = useTransition();
 
-  // ADR-0040: who arrived through a referral link — a separate admin read,
+  // ADR-0046: who arrived through a referral link — a separate admin read,
   // not a column of the pipeline view (data.ts).
   const referred = useMemo<Referred>(
     () => ({
@@ -448,7 +448,7 @@ function CandidateCard({
     <KanbanCard onOpen={() => onOpen(row)}>
       <CardTop name={row.display_name} age={age.label} tone={age.tone} photo={row.photo_url} />
       {/* Role chips from Documents onwards: picked right after the Willo
-          acceptance (§2.4). "Referred" (ADR-0040) from the first column. */}
+          acceptance (§2.4). "Referred" (ADR-0046) from the first column. */}
       <RoleChips roles={interview ? [] : row.role_names} referred={referred} />
       {lines.slice(0, 1).map((line) => (
         <Meta key={line.text} line={line} />
@@ -501,7 +501,7 @@ function ReturningCard({
 }: {
   row: ReturningRow;
   now: Date;
-  /** THIS application came through a referral link (ADR-0040). */
+  /** THIS application came through a referral link (ADR-0046). */
   referred: boolean;
   onResolve: (row: ReturningRow, action: 'reset' | 'reject') => void;
 }) {

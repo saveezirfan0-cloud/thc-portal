@@ -12,8 +12,8 @@ import {
 } from '../emergencyContact';
 
 /**
- * ADR-0037 (docs/18 §2). emergencyContact.vectors.json is the contract
- * between this module and the staff_emergency_contacts CHECKs; pgTAP 650
+ * ADR-0043 (docs/19 §2). emergencyContact.vectors.json is the contract
+ * between this module and the staff_emergency_contacts CHECKs; pgTAP 700
  * runs the same cases through emergency_contact_vectors.psql.
  */
 const here = dirname(fileURLToPath(import.meta.url));
@@ -24,7 +24,7 @@ const generated = resolve(
 );
 const MIGRATION = resolve(
   here,
-  '../../../../supabase/migrations/20260930100100_staff_additions_schema.sql',
+  '../../../../supabase/migrations/20260930200100_staff_additions_schema.sql',
 );
 
 describe('the phone — E.164, the /apply rule', () => {

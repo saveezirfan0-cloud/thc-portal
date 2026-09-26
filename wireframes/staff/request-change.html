@@ -25,13 +25,13 @@
 </head>
 <body>
 <div class="wf-bar">
-  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Profile details — Request a change · Emergency contact</span><span class="pill cyan">/profile/details/request</span><span class="pill">§10.1 · §9.6 · §1.7 · §8 RC2/RC3 · ADR-0037 · ADR-0038 (proposed)</span>
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Profile details — Request a change · Emergency contact</span><span class="pill cyan">/profile/details/request</span><span class="pill">§10.1 · §9.6 · §1.7 · §8 RC2/RC3 · ADR-0043 · ADR-0044 (proposed)</span>
   <span class="spacer"></span>
   <a href="refer.html">Next: Refer a friend →</a>
 </div>
 
 <div class="wf-section">
-  <h2>Request a change — the in-app route for what §10.1 locks<small>Built by <b>staff-pwa</b> (docs/18 §2–§3, Phase 1): <code>apps/staff/app/profile/details/</code> (Emergency contact, Request a change links, status line) and <code>/profile/details/request</code>; RPCs in 20260930120100 and 20260930120200. Name and photo stay locked; the worker asks the office, which approves or rejects on <a href="../backoffice/change-requests.html">/staff/requests</a>. Profile details also gains an optional Emergency contact, office-only and never on a client document.</small></h2>
+  <h2>Request a change — the in-app route for what §10.1 locks<small>Built by <b>staff-pwa</b> (docs/19 §2–§3, Phase 1): <code>apps/staff/app/profile/details/</code> (Emergency contact, Request a change links, status line) and <code>/profile/details/request</code>; RPCs in 20260930202100 and 20260930202200. Name and photo stay locked; the worker asks the office, which approves or rejects on <a href="../backoffice/change-requests.html">/staff/requests</a>. Profile details also gains an optional Emergency contact, office-only and never on a client document.</small></h2>
 
   <div class="phones">
 
@@ -56,7 +56,7 @@
 
     <!-- ============ Profile details · Emergency contact ============ -->
     <div class="phone-wrap" id="emergency">
-      <div class="cap">Profile details · <b>Scrolled ↓ — Emergency contact (optional)</b> (ADR-0037)</div>
+      <div class="cap">Profile details · <b>Scrolled ↓ — Emergency contact (optional)</b> (ADR-0043)</div>
       <div class="phone">
         <div class="statusbar"><span>14:36</span><span>●●● 5G ▮</span></div>
         <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title"><span class="back">‹ Profile</span>Profile details</div><span class="avatar photo">AK</span></div>
@@ -177,6 +177,6 @@
   </div>
 </div>
 
-<div class="wf-note note"><b>Behaviour notes.</b> Additions to Scope v1.6 (ADR-0037 and ADR-0038, proposed — awaiting THC; docs/18 §2–§3). <b>Request a change</b>: name and photo stay locked (§10.1); the locked name row and the locked photo gain <b>Request a change</b> → <code>/profile/details/request?kind=name|photo</code>. A name needs first and last name (1–100 each), an evidence upload (signed upload into the documents bucket) and an optional note (≤ 500); a photo reuses the selfie camera. One pending request per kind; withdrawable while pending. The office approves or rejects on <a href="../backoffice/change-requests.html">/staff/requests</a>: approval updates the name (RC2 to the worker, RC4 to admin@ and payroll) or repoints the photo (RC2); a rejection needs a reason, which the worker sees (RC3). No automatic right-to-work re-check (Q13). Issued PDFs and payroll exports are never changed. <b>Emergency contact</b>: optional (Q11) — name, relationship (suggestions Parent / Partner / Sibling / Friend / Other), phone in E.164 with the international picker; Save and Remove. Only the office sees it (Staff profile, and later the check-in monitor); it is never on the allocation sheet, the timesheet or anything in the Client Portal. A leaver can read but not edit it; it is deleted on GDPR removal (Q12).</div>
+<div class="wf-note note"><b>Behaviour notes.</b> Additions to Scope v1.6 (ADR-0043 and ADR-0044, proposed — awaiting THC; docs/19 §2–§3). <b>Request a change</b>: name and photo stay locked (§10.1); the locked name row and the locked photo gain <b>Request a change</b> → <code>/profile/details/request?kind=name|photo</code>. A name needs first and last name (1–100 each), an evidence upload (signed upload into the documents bucket) and an optional note (≤ 500); a photo reuses the selfie camera. One pending request per kind; withdrawable while pending. The office approves or rejects on <a href="../backoffice/change-requests.html">/staff/requests</a>: approval updates the name (RC2 to the worker, RC4 to admin@ and payroll) or repoints the photo (RC2); a rejection needs a reason, which the worker sees (RC3). No automatic right-to-work re-check (Q13). Issued PDFs and payroll exports are never changed. <b>Emergency contact</b>: optional (Q11) — name, relationship (suggestions Parent / Partner / Sibling / Friend / Other), phone in E.164 with the international picker; Save and Remove. Only the office sees it (Staff profile, and later the check-in monitor); it is never on the allocation sheet, the timesheet or anything in the Client Portal. A leaver can read but not edit it; it is deleted on GDPR removal (Q12).</div>
 </body>
 </html>

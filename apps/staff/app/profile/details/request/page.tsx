@@ -16,8 +16,8 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Request a change · THC Staff' };
 
 /**
- * /profile/details/request?kind=name|photo — Request a change (ADR-0038,
- * docs/18 §3, `wireframes/staff/request-change.html`).
+ * /profile/details/request?kind=name|photo — Request a change (ADR-0044,
+ * docs/19 §3, `wireframes/staff/request-change.html`).
  *
  * The in-app route for what §10.1 locks. The name and the photo stay
  * locked; this asks the office, which decides on /staff/requests.

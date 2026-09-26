@@ -1,11 +1,11 @@
 /**
- * Emergency contact — ADR-0037, docs/18 §2 (an addition to Scope v1.6:
+ * Emergency contact — ADR-0043, docs/19 §2 (an addition to Scope v1.6:
  * §1.5 Staff, §9.6, §10.1 Profile details, §1.7 GDPR).
  *
  * One optional contact per worker, in `staff_emergency_contacts`: office-only
  * worker personal data. It is NEVER on a client document — §11.3's
  * allocation sheet and timesheet are the client's — and no `client_*` view
- * reads the table (ADR-0004/0026, pgTAP 650). GDPR removal deletes it.
+ * reads the table (ADR-0004/0026, pgTAP 700). GDPR removal deletes it.
  *
  * The phone is stored in E.164, the `/apply` rule
  * (`^\+[1-9][0-9]{6,14}$`, `staff_emergency_contacts_phone`). The form's
@@ -13,7 +13,7 @@
  * between — spaces, dashes, brackets — is stripped here before the check,
  * and a number without its country code is refused rather than guessed.
  * emergencyContact.vectors.json holds this and the table's CHECKs to the
- * same cases (Vitest here, pgTAP 650 there).
+ * same cases (Vitest here, pgTAP 700 there).
  */
 
 import { isPhone } from './onboarding';

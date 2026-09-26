@@ -4,7 +4,7 @@ import { DIAL_CODES, toE164 } from '../../apply/form';
  * The international phone control, shared with `/apply` (§2.1, ADR-0009).
  *
  * The emergency contact's phone uses the same picker and the same E.164
- * assembly the application form does (docs/18 §2: "the same international
+ * assembly the application form does (docs/19 §2: "the same international
  * picker"), so the two cannot disagree about what "+44 07700 900123" is.
  * This file adds only the reverse: splitting a stored E.164 number back
  * into the picker's code and the national part, for editing.

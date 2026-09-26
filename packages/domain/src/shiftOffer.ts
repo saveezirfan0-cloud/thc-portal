@@ -1,5 +1,5 @@
 /**
- * Offer up a shift ("release to the pool") — ADR-0039, docs/18 §4 (an
+ * Offer up a shift ("release to the pool") — ADR-0045, docs/19 §4 (an
  * addition to Scope v1.6: §3.6 cause `handed_over` and source `offer`,
  * RULE-04 §7, §10.4, §3.3, §3.4 offer rounds, §8 OF1–OF6, §9.12).
  *
@@ -15,12 +15,12 @@
  *   - The taker passes every hard gate the auto-assign pool applies, by
  *     name, and RULE-17's order: an unqualified taker waits (`not_yet`)
  *     until wave 1 is exhausted.
- *   - Being marked unavailable (ADR-0036) does NOT refuse a take. The
+ *   - Being marked unavailable (ADR-0042) does NOT refuse a take. The
  *     calendar gates what the machine does, never what the worker chooses.
  *   - A completed hand-over bars the offerer from the event like a
  *     self-cancel (`excludesFromEvent('handed_over')`, Q15).
  *
- * `take_offered_shift()` (Agent A, 20260930110100) is authoritative: it
+ * `take_offered_shift()` (Agent A, 20260930201100) is authoritative: it
  * re-reads everything under the section's row lock. This is the same
  * decision in the same order, for a screen explaining a refusal and a test
  * pinning the order.
@@ -174,7 +174,7 @@ export function takeOffer(input: TakeOfferInput, now: Date = new Date()): TakeOf
     return { ok: false, reason: 'section_started' };
   }
   if (input.gate === undefined) return { ok: false, reason: 'not_bookable' };
-  // ADR-0036: the calendar never refuses the worker's own choice.
+  // ADR-0042: the calendar never refuses the worker's own choice.
   if (input.gate !== null && input.gate !== CALENDAR_GATE) {
     return { ok: false, reason: GATE_REFUSAL[input.gate] ?? 'not_bookable' };
   }
@@ -236,7 +236,7 @@ const MAY_SEE: ReadonlySet<BookingStatus> = new Set(['invited', 'applied', 'clos
 
 /**
  * Whether Radar's "Up for grabs" shows this offer to this worker (RULE-17
- * visibility, docs/18 §4). Never the offerer's own; never an `office`
+ * visibility, docs/19 §4). Never the offerer's own; never an `office`
  * cover request (the office has not opened it); a `direct` offer only to
  * its one colleague; a pool offer to wave 1 first and to everyone else once
  * wave 1 is exhausted — at once when auto-assign is off

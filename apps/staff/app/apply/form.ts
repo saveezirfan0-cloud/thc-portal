@@ -394,7 +394,7 @@ export interface ApplyState {
 export const INITIAL_STATE: ApplyState = { errors: {}, values: EMPTY_VALUES };
 
 /**
- * The referral code from `/apply?ref=` (ADR-0040, docs/18 §5), or null.
+ * The referral code from `/apply?ref=` (ADR-0046, docs/19 §5), or null.
  *
  * Not a field and never an error: a code that is missing, mistyped or not
  * a code at all is dropped here, and the application goes through exactly

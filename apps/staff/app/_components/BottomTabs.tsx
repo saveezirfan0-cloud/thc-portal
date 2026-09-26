@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import '../chrome.css';
 
 /**
- * The frosted bottom navigation — §10.1, as ADR-0035 reorders it:
+ * The frosted bottom navigation — §10.1, as ADR-0041 reorders it:
  * Shifts · Invites · Radar · Profile (`STAFF_TABS` in profile/lock.ts).
  *
  * Why this is not `BottomNav` from packages/ui

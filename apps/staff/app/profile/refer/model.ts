@@ -1,5 +1,5 @@
 /**
- * Refer a friend — the pure half of `/profile/refer` (ADR-0040, docs/18 §5,
+ * Refer a friend — the pure half of `/profile/refer` (ADR-0046, docs/19 §5,
  * `wireframes/staff/refer.html`).
  *
  * No reward copy anywhere (Q19): THC has not decided one, and a reward

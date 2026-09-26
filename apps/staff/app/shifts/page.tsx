@@ -70,7 +70,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
     loadBookings(),
     loadOpenShifts(),
     loadWeekMeter(),
-    // ADR-0039: the open offer on each confirmed booking, for the chip.
+    // ADR-0045: the open offer on each confirmed booking, for the chip.
     loadBookingOffers(),
   ]);
   const now = new Date();
@@ -240,7 +240,7 @@ function ShiftCardView({
   booking: BookingRow;
   group: ShiftGroup;
   now: Date;
-  /** ADR-0039: the open offer on this booking, if any. */
+  /** ADR-0045: the open offer on this booking, if any. */
   offer: BookingOffer | null;
 }) {
   const card = myShiftCard(booking, now);

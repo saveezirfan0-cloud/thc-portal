@@ -1,5 +1,5 @@
 /**
- * Refer a friend — ADR-0040, docs/18 §5 (an addition to Scope v1.6: §2.1
+ * Refer a friend — ADR-0046, docs/19 §5 (an addition to Scope v1.6: §2.1
  * `/apply?ref=`, §2.3, §9.6, §10.1, §1.7 privacy notice, §1.5).
  *
  * A compliant worker gets one code (`staff_referral_codes`), minted lazily
@@ -25,7 +25,7 @@ export function isReferralCode(value: string): boolean {
 /**
  * What `/apply?ref=` passes on: trimmed and upper-cased, or null when it
  * cannot be a code. A bad code is dropped silently — the application still
- * goes through and the applicant is told nothing (docs/18 §5, 681).
+ * goes through and the applicant is told nothing (docs/19 §5, 731).
  */
 export function normaliseReferralCode(value: string | null | undefined): string | null {
   const code = (value ?? '').trim().toUpperCase();

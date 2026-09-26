@@ -119,7 +119,7 @@ export interface PoolOptions {
    */
   proximityFirst?: boolean;
   /**
-   * ADR-0036: staff marked unavailable for this section
+   * ADR-0042: staff marked unavailable for this section
    * (`auto_assign_unavailable`). The engine never invites them, so they
    * are not in the ranked pool either — they sit under Unavailable with
    * "Invite anyway". A Radar applicant stays: applying was their choice.
@@ -150,7 +150,7 @@ export function buildPool(
   const eligible = rows.filter((row) => {
     if (row.gate !== null) return false;
     if (row.booking_status === 'applied') return applied.has(row.staff_id);
-    // ADR-0036: the calendar-unavailable sit under Unavailable instead.
+    // ADR-0042: the calendar-unavailable sit under Unavailable instead.
     if (unavailable.has(row.staff_id)) return false;
     if (row.booking_status === null) return true;
     const end = endedByStaff.get(row.staff_id);
@@ -307,7 +307,7 @@ export type UnavailableTone = 'coral' | 'amber' | 'neutral';
 export interface UnavailableEntry extends BoardPersonName {
   /**
    * A live gate from auto_assign_candidates, `unavailable` for a calendar
-   * entry (ADR-0036), or the booking's cancel_cause.
+   * entry (ADR-0042), or the booking's cancel_cause.
    */
   reason: string;
   label: string;
@@ -315,7 +315,7 @@ export interface UnavailableEntry extends BoardPersonName {
   tone: UnavailableTone;
   appliedAt: string | null;
   /**
-   * ADR-0036: the one row the manager may still invite from — the worker
+   * ADR-0042: the one row the manager may still invite from — the worker
    * passes every hard gate and holds no booking here; only their calendar
    * keeps the machine away. The board asks before it sends.
    */
@@ -364,7 +364,7 @@ export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
     detail: 'marked Do not return at this client',
     tone: 'coral',
   },
-  // ADR-0036. The label carries the window (`unavailableLabel`); this is
+  // ADR-0042. The label carries the window (`unavailableLabel`); this is
   // the fallback when the window could not be read.
   [CALENDAR_GATE]: {
     label: 'Marked unavailable',
@@ -399,7 +399,7 @@ export const CAUSE_COPY: Readonly<Record<string, ReasonCopy>> = {
     tone: 'amber',
   },
   self_cancel: GATE_COPY['self_cancelled']!,
-  // ADR-0039: offered the shift up and a confirmed replacement took it.
+  // ADR-0045: offered the shift up and a confirmed replacement took it.
   // Barred from the event like a self-cancel (Q15), but not the same act.
   handed_over: {
     label: 'Handed over',
@@ -505,7 +505,7 @@ export function ukWindowLabel(window: UnavailableWindow): string {
     : `${day(start)} ${from} – ${day(end)} ${to} UK`;
 }
 
-/** "Marked unavailable · Thu 12 Oct 06:00–09:00 UK" (ADR-0036, docs/18 §1). */
+/** "Marked unavailable · Thu 12 Oct 06:00–09:00 UK" (ADR-0042, docs/19 §1). */
 export function unavailableLabel(windows: readonly UnavailableWindow[]): string {
   if (windows.length === 0) return GATE_COPY[CALENDAR_GATE]!.label;
   const sorted = [...windows].sort((a, b) => a.startsAt.localeCompare(b.startsAt));
@@ -550,7 +550,7 @@ export function buildUnavailable(
   ended: readonly EndedBooking[],
   people: ReadonlyMap<string, BoardPersonName>,
   listedElsewhere: ReadonlySet<string>,
-  /** ADR-0036: `auto_assign_unavailable(section)`, by worker. */
+  /** ADR-0042: `auto_assign_unavailable(section)`, by worker. */
   away: ReadonlyMap<string, readonly UnavailableWindow[]> = new Map(),
 ): UnavailableEntry[] {
   const out = new Map<string, UnavailableEntry>();
@@ -560,7 +560,7 @@ export function buildUnavailable(
     if (!row.gate || row.gate === 'wrong_role') continue;
     if (listedElsewhere.has(row.staff_id)) continue;
     // A completed hand-over sets the same event-wide bar as a self-cancel
-    // (ADR-0039); where this section's booking says so, say what happened.
+    // (ADR-0045); where this section's booking says so, say what happened.
     const handedOver =
       row.gate === 'self_cancelled' &&
       endedByStaff.get(row.staff_id)?.cancelCause === 'handed_over';
@@ -576,7 +576,7 @@ export function buildUnavailable(
     });
   }
 
-  // ADR-0036: ungated, unbooked (or with an ended booking the office may
+  // ADR-0042: ungated, unbooked (or with an ended booking the office may
   // reopen, D33), and away. Every hard gate is the truer reason, so the
   // calendar only labels a worker nothing else holds back. buildPool leaves
   // exactly these out of the pool, so they must land here.
@@ -840,7 +840,7 @@ export function roleBlockOpen(
 }
 
 // ---------------------------------------------------------------------
-// Offer up a shift (ADR-0039, docs/18 §4) — what the board shows
+// Offer up a shift (ADR-0045, docs/19 §4) — what the board shows
 // ---------------------------------------------------------------------
 
 /** An open offer on a confirmed booking, as the board reads `shift_offers`. */

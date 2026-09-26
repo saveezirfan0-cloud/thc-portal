@@ -23,7 +23,7 @@ export const metadata = { title: 'Documents · THC Staff' };
  * reason at the top and the Upload beside the row that caused it. Every
  * other lock is the shell's to draw.
  *
- * It lives under the Profile tab (ADR-0035) — hence "‹ Profile" above the
+ * It lives under the Profile tab (ADR-0041) — hence "‹ Profile" above the
  * title and Profile lit in the nav — but keeps its own URL, because every
  * §8 deep link about a document points here.
  */

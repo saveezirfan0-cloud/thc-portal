@@ -111,16 +111,16 @@ export interface BoardData {
   returning: ReturningRow[];
   roles: RoleOption[];
   /**
-   * Who arrived through a referral link (ADR-0040): a separate, best-effort
+   * Who arrived through a referral link (ADR-0046): a separate, best-effort
    * read of `application_referrals` — `onboarding_candidates_v` is not
-   * restated for it (docs/18 §0.6). Absent or empty draws no chip.
+   * restated for it (docs/19 §0.6). Absent or empty draws no chip.
    */
   referred?: ReferredOnBoard;
   problem: string | null;
 }
 
 /**
- * One `application_referrals` row (20260930100100) with the referrer's
+ * One `application_referrals` row (20260930200100) with the referrer's
  * `staff` row embedded. Admin-read only; the applicant never sees it.
  */
 export interface ReferralRow {
@@ -136,7 +136,7 @@ export interface ReferralRow {
   } | null;
 }
 
-/** "Referred by {name} ({employeeId})" on /onboarding/:id (ADR-0040). */
+/** "Referred by {name} ({employeeId})" on /onboarding/:id (ADR-0046). */
 export interface CandidateReferral {
   referrerId: string;
   /** "Deleted account #id" once the referrer is removed (§1.7). */
@@ -283,7 +283,7 @@ export interface CandidateData {
   rtwChecks?: RtwCheckRow[];
   /** settings.rtw_check.enabled. */
   rtwCheckEnabled?: boolean;
-  /** The latest referral that brought this person in (ADR-0040); best-effort. */
+  /** The latest referral that brought this person in (ADR-0046); best-effort. */
   referral?: CandidateReferral | null;
   /** The NI number and the right-to-work conditions (20260930130100/130400). */
   facts?: CandidateFacts | null;

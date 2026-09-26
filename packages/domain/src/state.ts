@@ -105,7 +105,7 @@ export const CANCELLED_CAUSES = [
   'office_withdraw',
   'ready_cutoff',
   'self_cancel',
-  // ADR-0039: the worker offered the shift up and a confirmed replacement
+  // ADR-0045: the worker offered the shift up and a confirmed replacement
   // took it (take_offered_shift). Sets self_cancelled like a self-cancel.
   'handed_over',
   'overlap_auto_withdraw',
@@ -137,7 +137,7 @@ export function cancelCauseStatus(cause: CancelCause): 'cancelled' | 'closed' {
  * Self-cancel permanently excludes the worker from that event: no self-apply,
  * no auto-assign invitation and no manual invitation (§3.6, RULE-04).
  *
- * A completed hand-over does too (ADR-0039, Q15): offering a shift up is the
+ * A completed hand-over does too (ADR-0045, Q15): offering a shift up is the
  * worker leaving it under the same 72 h boundary, and without the bar it
  * would be a way round RULE-04's exclusion. `take_offered_shift()` sets
  * `self_cancelled = true` on the original booking for exactly this reason.
@@ -329,11 +329,11 @@ export function noSeatLeft(confirmed: number, headcount: number): boolean {
 export const APPLICATION_NOT_TAKEN_CAUSE = 'slot_taken' satisfies CancelCause;
 
 /**
- * Request a change — name and photo (ADR-0038, docs/18 §3). One
+ * Request a change — name and photo (ADR-0044, docs/19 §3). One
  * `profile_change_requests` row per request. The database holds the same
  * edges in `profile_change_transitions()` and refuses any other status
  * change in the `profile_change_requests_state_guard` trigger
- * (20260930100100); changeRequest.vectors.json holds both.
+ * (20260930200100); changeRequest.vectors.json holds both.
  *
  *   pending → approved    the office approved it (office_decide_profile_change)
  *   pending → rejected    the office refused it, with a reason the worker sees
@@ -371,10 +371,10 @@ export function assertChangeRequestTransition(
 }
 
 /**
- * Offer up a shift (ADR-0039, docs/18 §4). One `shift_offers` row per
+ * Offer up a shift (ADR-0045, docs/19 §4). One `shift_offers` row per
  * offer. The database holds the same edges in `shift_offer_transitions()`
  * and refuses any other status change in the `shift_offers_state_guard`
- * trigger (20260930100100); shiftOffer.vectors.json holds both.
+ * trigger (20260930200100); shiftOffer.vectors.json holds both.
  *
  *   open → taken       a confirmed replacement took it (take_offered_shift)
  *   open → withdrawn   the worker withdrew the offer

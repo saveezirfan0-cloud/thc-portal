@@ -64,7 +64,7 @@ export interface RoundOptions {
    */
   proximityFirst?: boolean;
   /**
-   * ADR-0036: staff ids with a calendar entry overlapping this section
+   * ADR-0042: staff ids with a calendar entry overlapping this section
    * (`auto_assign_unavailable(shift)`). A hard gate for the machine — the
    * round never invites them — and nothing more: a manager may still
    * invite by hand, and open invitations are never withdrawn (§3.4).
@@ -194,7 +194,7 @@ export function selectInvitees(
 
 /**
  * Booking statuses on THIS section that rule a worker out of an offer push
- * (ADR-0039). The offerer and anyone else already confirmed hold the shift;
+ * (ADR-0045). The offerer and anyone else already confirmed hold the shift;
  * a worked or turned-away row is history; a cancelled row is a worker who
  * left it — `take_offered_shift` refuses them `already_had_booking`, so a
  * push would only invite a refusal. An open invitation, a Radar application
@@ -213,14 +213,14 @@ export interface OfferRoundOptions {
   allocation: number;
   /** Staff already pushed this offer (`shift_offer_notices`): rounds are additive. */
   notified: Iterable<string>;
-  /** ADR-0036: the calendar gate applies to offer pushes too. */
+  /** ADR-0042: the calendar gate applies to offer pushes too. */
   unavailable?: Iterable<string>;
   weights?: ScoreWeights;
 }
 
 /**
  * Who this hour's OF1 push for an open pool offer goes to, best first
- * (ADR-0039, docs/18 §4). The same pool and the same order as an invitation
+ * (ADR-0045, docs/19 §4). The same pool and the same order as an invitation
  * round — gated rows dropped, the calendar gate overlaid, wave 1 (qualified
  * at client + role, RULE-17) exhausted before wave 2, each by §6 score —
  * minus everyone already told about this offer, so each round reaches new

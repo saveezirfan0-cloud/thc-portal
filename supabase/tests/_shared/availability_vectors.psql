@@ -4,11 +4,11 @@
 -- Source: packages/domain/src/availability.vectors.json
 -- Regenerate: pnpm --filter @thc/domain gen:vectors
 --
--- ADR-0036: unavailability_range() and staff_unavailable() against the
+-- ADR-0042: unavailability_range() and staff_unavailable() against the
 -- cases availability.ts is held to. Dates and times are UK wall clock;
 -- lower/upper are the half-open range in UTC. `error` is the refusal the
 -- builder raises instead of a range.
--- Included with \ir from supabase/tests/651_staff_additions_state.sql; the .psql
+-- Included with \ir from supabase/tests/701_staff_additions_state.sql; the .psql
 -- extension keeps pg_prove from running it as a test of its own.
 -- =====================================================================
 

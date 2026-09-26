@@ -27,19 +27,19 @@
 </head>
 <body>
 <div class="wf-bar">
-  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Availability — days you can't work</span><span class="pill cyan">/profile/availability</span><span class="pill">§9.6 · §10.1 · §3.4 · RULE-18 · §1.8 · ADR-0036 (proposed)</span>
+  <a href="../index.html">← Hub</a><span class="t">Staff App (PWA) · Availability — days you can't work</span><span class="pill cyan">/profile/availability</span><span class="pill">§9.6 · §10.1 · §3.4 · RULE-18 · §1.8 · ADR-0042 (proposed)</span>
   <span class="spacer"></span>
   <a href="request-change.html">Next: Request a change →</a>
 </div>
 
 <div class="wf-section">
-  <h2>Availability — a hard gate for automated invitations, advisory for people<small>Built by <b>staff-pwa</b> (docs/18 §1, Phase 1): <code>apps/staff/app/profile/availability/</code>, RPCs in 20260930120000. The worker marks days or times they can't work. Auto-assign's rounds, refills, escalation and offer pushes skip them; a manager can still invite by hand after a warning, and the worker can still accept or apply. No reason field. Copy other than the conflict line is draft.</small></h2>
+  <h2>Availability — a hard gate for automated invitations, advisory for people<small>Built by <b>staff-pwa</b> (docs/19 §1, Phase 1): <code>apps/staff/app/profile/availability/</code>, RPCs in 20260930202000. The worker marks days or times they can't work. Auto-assign's rounds, refills, escalation and offer pushes skip them; a manager can still invite by hand after a warning, and the worker can still accept or apply. No reason field. Copy other than the conflict line is draft.</small></h2>
 
   <div class="phones">
 
     <!-- ============ Profile tab · new rows ============ -->
     <div class="phone-wrap">
-      <div class="cap">Profile tab · <b>New rows — Availability, Refer a friend; "Emergency contact not set"</b> (ADR-0035 hub)</div>
+      <div class="cap">Profile tab · <b>New rows — Availability, Refer a friend; "Emergency contact not set"</b> (ADR-0041 hub)</div>
       <div class="phone">
         <div class="statusbar"><span>14:32</span><span>●●● 5G ▮</span></div>
         <div class="app-header"><span class="logo round">🥂</span><div class="title">Profile</div><span class="avatar photo">AK</span></div>
@@ -55,7 +55,7 @@
             <a class="link" href="profile.html#security"><div><div class="t">Security settings</div><div class="s">Password, signed-in devices</div></div><span class="chev">›</span></a>
             <a class="link" href="#"><div><div class="t">Notifications</div><div class="s">Allowed on this device</div></div><span class="chev">›</span></a>
           </div>
-          <span class="annot">amber subline only while no emergency contact is saved — a nudge, never a lock (ADR-0037, Q11). Availability shows only when nothing locks the app (ADR-0036); Refer a friend for compliant workers only (ADR-0040). Payment and Security keep the ADR-0035 hub's order</span>
+          <span class="annot">amber subline only while no emergency contact is saved — a nudge, never a lock (ADR-0043, Q11). Availability shows only when nothing locks the app (ADR-0042); Refer a friend for compliant workers only (ADR-0046). Payment and Security keep the ADR-0041 hub's order</span>
           <button class="btn block">Sign out</button>
           <div class="xs muted" style="text-align:center">Need help? Please contact us at: <b class="cyan">admin@thehospitalitycompany.co.uk</b></div>
           <div class="p45"><a class="xs muted" href="profile.html#p45" style="text-decoration:underline">Request my P45</a></div>
@@ -214,6 +214,6 @@
   </div>
 </div>
 
-<div class="wf-note note"><b>Behaviour notes.</b> Addition to Scope v1.6 (ADR-0036, proposed — awaiting THC; docs/18 §1). An entry is one day (all day = UK midnight to UK midnight, so 23 h or 25 h on a clock-change day), a date range of up to 31 days, or a time window on one day in <b>UK time</b> — labelled "(UK time)", with a "your time" line when the phone's zone differs (§1.8); a window whose end is at or before its start runs overnight. "Repeat weekly" makes up to 26 entries sharing one series, keeping the UK wall-clock time across a clock change. Limits: nothing in the past, nothing more than 12 months ahead, at most 200 future entries. <b>No reason field</b> (Q10). <b>What it does:</b> auto-assign's first round, hourly rounds, cutoff refills, same-day escalation and offer pushes (OF1) skip a worker whose entry overlaps the <b>role section</b> window (RULE-18). <b>What it does not do:</b> withdraw an open invitation (§3.4), cancel a confirmed booking (the worker is warned and pointed at Cancel / Offer), or stop the worker accepting, applying on Radar or taking an offered shift. A manager can still invite by hand after "{name} marked themselves unavailable for this time. Invite anyway?" (Q9). The office sees the entries read-only on <a href="../backoffice/change-requests.html#cr=availability">/staff/:id → Availability</a>. The client sees nothing. GDPR removal deletes the entries.</div>
+<div class="wf-note note"><b>Behaviour notes.</b> Addition to Scope v1.6 (ADR-0042, proposed — awaiting THC; docs/19 §1). An entry is one day (all day = UK midnight to UK midnight, so 23 h or 25 h on a clock-change day), a date range of up to 31 days, or a time window on one day in <b>UK time</b> — labelled "(UK time)", with a "your time" line when the phone's zone differs (§1.8); a window whose end is at or before its start runs overnight. "Repeat weekly" makes up to 26 entries sharing one series, keeping the UK wall-clock time across a clock change. Limits: nothing in the past, nothing more than 12 months ahead, at most 200 future entries. <b>No reason field</b> (Q10). <b>What it does:</b> auto-assign's first round, hourly rounds, cutoff refills, same-day escalation and offer pushes (OF1) skip a worker whose entry overlaps the <b>role section</b> window (RULE-18). <b>What it does not do:</b> withdraw an open invitation (§3.4), cancel a confirmed booking (the worker is warned and pointed at Cancel / Offer), or stop the worker accepting, applying on Radar or taking an offered shift. A manager can still invite by hand after "{name} marked themselves unavailable for this time. Invite anyway?" (Q9). The office sees the entries read-only on <a href="../backoffice/change-requests.html#cr=availability">/staff/:id → Availability</a>. The client sees nothing. GDPR removal deletes the entries.</div>
 </body>
 </html>

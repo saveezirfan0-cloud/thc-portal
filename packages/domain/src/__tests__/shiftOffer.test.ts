@@ -29,18 +29,18 @@ import {
 import { canCancelShift, cancelDeadline } from '../staff';
 
 /**
- * ADR-0039 (docs/18 §4). The offer machine exists twice —
+ * ADR-0045 (docs/19 §4). The offer machine exists twice —
  * SHIFT_OFFER_TRANSITIONS / SHIFT_OFFER_MODE_TRANSITIONS and
  * shift_offer_transitions() / shift_offer_mode_transitions() +
- * shift_offers_state_guard in 20260930100100 — and both are held to
- * shiftOffer.vectors.json (pgTAP 651). The take and visibility cases are the
+ * shift_offers_state_guard in 20260930200100 — and both are held to
+ * shiftOffer.vectors.json (pgTAP 701). The take and visibility cases are the
  * contract take_offered_shift() and the Radar read are held to (Agent A).
  */
 const here = dirname(fileURLToPath(import.meta.url));
 const script = resolve(here, '../../scripts/gen-vectors-sql.mjs');
 const generated = resolve(here, '../../../../supabase/tests/_shared/shift_offer_vectors.psql');
 const sql = readFileSync(
-  resolve(here, '../../../../supabase/migrations/20260930100100_staff_additions_schema.sql'),
+  resolve(here, '../../../../supabase/migrations/20260930200100_staff_additions_schema.sql'),
   'utf8',
 );
 
@@ -182,7 +182,7 @@ describe('takeOffer — the order take_offered_shift() checks in', () => {
     });
   });
 
-  it('with auto-assign off, wave 2 takes at once (RULE-17 deadlock, ADR-0039 review fixes)', () => {
+  it('with auto-assign off, wave 2 takes at once (RULE-17 deadlock, ADR-0045 review fixes)', () => {
     const base = takeInput(
       cases.find((x) => x.name === 'not_yet_before_wave1_is_exhausted')!.input,
     );
@@ -191,7 +191,7 @@ describe('takeOffer — the order take_offered_shift() checks in', () => {
     expect(takeOffer({ ...base, autoAssign: false }, now)).toEqual({ ok: true, takerFrom: 'none' });
   });
 
-  it('the calendar never refuses a take (ADR-0036)', () => {
+  it('the calendar never refuses a take (ADR-0042)', () => {
     const c = cases.find((x) => x.name === 'unavailable_does_not_refuse')!;
     expect(takeOffer(takeInput(c.input), new Date(c.input['now'] as string)).ok).toBe(true);
   });

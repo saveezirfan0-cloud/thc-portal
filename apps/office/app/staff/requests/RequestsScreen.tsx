@@ -26,7 +26,7 @@ import './requests.css';
 type Tab = 'pending' | 'decided';
 
 /**
- * /staff/requests — ADR-0038, `wireframes/backoffice/change-requests.html`
+ * /staff/requests — ADR-0044, `wireframes/backoffice/change-requests.html`
  * (Pending, Approve name, Reject, Decided, Empty).
  *
  * Pending oldest first — a worker who asked first is answered first — with

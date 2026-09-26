@@ -26,8 +26,8 @@ import type { BookingOffer } from '../offers';
 import { YourTimeAt } from '../YourTimeAt';
 
 /**
- * Offer this shift / Withdraw offer / Ask the office for cover — ADR-0039,
- * docs/18 §4, `wireframes/staff/offer-shift.html` (a)–(f).
+ * Offer this shift / Withdraw offer / Ask the office for cover — ADR-0045,
+ * docs/19 §4, `wireframes/staff/offer-shift.html` (a)–(f).
  *
  * Which panel shows is `offerPanel()` (../offers.ts): more than 72 hours
  * out with auto-assign on, the worker offers it to other workers and stays

@@ -64,10 +64,10 @@ const ON_BOARD: Database['public']['Enums']['staff_status'][] = [
 ];
 
 // ---------------------------------------------------------------------
-// Refer a friend (ADR-0040) — a separate admin read of
+// Refer a friend (ADR-0046) — a separate admin read of
 // `application_referrals`, NOT a column on `onboarding_candidates_v`
-// (frozen in Phase 1, docs/18 §0.6). The table has one admin_read policy
-// and nothing else (20260930100100), so this is the office's alone.
+// (frozen in Phase 1, docs/19 §0.6). The table has one admin_read policy
+// and nothing else (20260930200100), so this is the office's alone.
 //
 // Best-effort, like the gov.uk checks: a failed read draws no chip and no
 // "Referred by" line, never an error panel over the pipeline. Typed by a
@@ -283,7 +283,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     supabase.from('roles').select('id, name').order('name').returns<RoleOption[]>(),
     // The automated gov.uk check (ADR-0025); best-effort, never an error panel.
     loadRtwChecks(supabase, id),
-    // Who referred them (ADR-0040); best-effort, never an error panel.
+    // Who referred them (ADR-0046); best-effort, never an error panel.
     loadCandidateReferral(supabase as unknown as ReferralReader, id),
     // D43: the full NI number beside the NI evidence; D32/D36: the conditions.
     (supabase as unknown as FactsRead)

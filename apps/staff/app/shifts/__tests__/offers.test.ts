@@ -19,7 +19,7 @@ import { HANDED_OVER_COPY } from '../[id]/messages';
 import { isStaticPhase, shiftPhase, shiftScreenReachable } from '../[id]/phase';
 
 /**
- * Offer up a shift in the Staff App — ADR-0039, docs/18 §4,
+ * Offer up a shift in the Staff App — ADR-0045, docs/19 §4,
  * wireframes/staff/offer-shift.html.
  */
 
@@ -63,7 +63,7 @@ describe('which offer panel a confirmed shift shows (RULE-04 boundary)', () => {
   });
 });
 
-describe('the words, as docs/18 §4 fixes them', () => {
+describe('the words, as docs/19 §4 fixes them', () => {
   it('the Offer dialog, verbatim, closing 72 hours before the start in UK time', () => {
     expect(offerDialogBody(START)).toBe(
       "We'll offer this shift to other workers. You stay booked until someone takes it — then it's theirs, and you can't be booked on this event again. Offers close Sun 20 Sep, 16:00 (UK time), 72 hours before the start.",

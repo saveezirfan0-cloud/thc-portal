@@ -13,7 +13,7 @@ import { AppHeader, Avatar, Logo, useCollapsedHeader } from '@thc/ui';
  * scroll listener, and the state has to live in a client component, which
  * is why the header sits here rather than in the server shell.
  *
- * The avatar opens the profile (§10.1). Since ADR-0035 the Profile tab
+ * The avatar opens the profile (§10.1). Since ADR-0041 the Profile tab
  * does too — the tabs are Shifts · Invites · Radar · Profile, with
  * Documents inside Profile — and the avatar stays because §10.1 and every
  * worker's habit put it there. It LINKS to /profile rather than opening a

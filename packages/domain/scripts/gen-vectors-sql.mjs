@@ -2,15 +2,15 @@
  * *.vectors.json → supabase/tests/_shared/*_vectors.psql
  *
  *   pay.vectors.json               → pay_vectors.psql               (§5.1–5.2)
- *   availability.vectors.json      → availability_vectors.psql      (ADR-0036)
- *   emergencyContact.vectors.json  → emergency_contact_vectors.psql (ADR-0037)
- *   changeRequest.vectors.json     → change_request_vectors.psql    (ADR-0038)
- *   shiftOffer.vectors.json        → shift_offer_vectors.psql       (ADR-0039)
+ *   availability.vectors.json      → availability_vectors.psql      (ADR-0042)
+ *   emergencyContact.vectors.json  → emergency_contact_vectors.psql (ADR-0043)
+ *   changeRequest.vectors.json     → change_request_vectors.psql    (ADR-0044)
+ *   shiftOffer.vectors.json        → shift_offer_vectors.psql       (ADR-0045)
  *
  * The vectors are the contract between packages/domain and the Postgres
  * functions, triggers and CHECKs that repeat the same rules (pay.ts and
- * 0005_checkin_checkout.sql; the four staff additions of docs/18 and
- * 20260930100100_staff_additions_schema.sql). Vitest reads the JSON
+ * 0005_checkin_checkout.sql; the four staff additions of docs/19 and
+ * 20260930200100_staff_additions_schema.sql). Vitest reads the JSON
  * directly; pgTAP cannot, because `supabase test db` runs pg_prove with only
  * supabase/ in reach — so the same cases are generated into a .psql the test
  * includes with \ir. Each domain test compares the committed file with a
@@ -82,7 +82,7 @@ export function render(vectors) {
 }
 
 // ---------------------------------------------------------------------
-// The staff additions (docs/18, ADR-0036–0039)
+// The staff additions (docs/19, ADR-0042–0045)
 // ---------------------------------------------------------------------
 
 /** A SQL literal for a JSON scalar: null, a boolean, a number or a string. */
@@ -146,8 +146,8 @@ export function renderAvailability(v) {
     lit(i.fromTime ?? null),
     lit(i.toTime ?? null),
   ];
-  const out = header('availability.vectors.json', 'supabase/tests/651_staff_additions_state.sql', [
-    'ADR-0036: unavailability_range() and staff_unavailable() against the',
+  const out = header('availability.vectors.json', 'supabase/tests/701_staff_additions_state.sql', [
+    'ADR-0042: unavailability_range() and staff_unavailable() against the',
     'cases availability.ts is held to. Dates and times are UK wall clock;',
     'lower/upper are the half-open range in UTC. `error` is the refusal the',
     'builder raises instead of a range.',
@@ -246,9 +246,9 @@ export function renderAvailability(v) {
 export function renderEmergencyContact(v) {
   const out = header(
     'emergencyContact.vectors.json',
-    'supabase/tests/650_staff_additions_rls.sql',
+    'supabase/tests/700_staff_additions_rls.sql',
     [
-      'ADR-0037: the staff_emergency_contacts CHECKs against the cases',
+      'ADR-0043: the staff_emergency_contacts CHECKs against the cases',
       'emergencyContact.ts is held to. `storable`: the raw string passes the',
       'phone CHECK as it is. `normalised`: what the form stores (null = refused).',
     ],
@@ -293,8 +293,8 @@ export function renderEmergencyContact(v) {
 }
 
 export function renderChangeRequest(v) {
-  const out = header('changeRequest.vectors.json', 'supabase/tests/651_staff_additions_state.sql', [
-    'ADR-0038: profile_change_transitions(), the state guard and the',
+  const out = header('changeRequest.vectors.json', 'supabase/tests/701_staff_additions_state.sql', [
+    'ADR-0044: profile_change_transitions(), the state guard and the',
     'profile_change_requests CHECKs against the cases state.ts and',
     'changeRequest.ts are held to. `refusal` null = the name is accepted.',
   ]);
@@ -335,11 +335,11 @@ export function renderChangeRequest(v) {
 }
 
 export function renderShiftOffer(v) {
-  const out = header('shiftOffer.vectors.json', 'supabase/tests/651_staff_additions_state.sql', [
-    'ADR-0039: shift_offer_transitions(), shift_offer_mode_transitions() and',
+  const out = header('shiftOffer.vectors.json', 'supabase/tests/701_staff_additions_state.sql', [
+    'ADR-0045: shift_offer_transitions(), shift_offer_mode_transitions() and',
     'the state guard against the cases state.ts and shiftOffer.ts are held',
     'to; take and visibility cases (defaults merged) for take_offered_shift()',
-    "and the Radar read in Agent A's 20260930110100.",
+    "and the Radar read in Agent A's 20260930201100.",
   ]);
   out.push(...statusTables('shift_offer', v));
   out.push(

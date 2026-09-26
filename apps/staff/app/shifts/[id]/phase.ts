@@ -28,9 +28,9 @@ import type { ShiftDetail } from './types';
  */
 /**
  * The static screens: §10.4's three dead ends, and a shift the worker
- * handed over to someone else (ADR-0039 — `cancel_cause = 'handed_over'`).
+ * handed over to someone else (ADR-0045 — `cancel_cause = 'handed_over'`).
  * The fourth lives here rather than in `staticScreenCase()`, which Phase 0
- * left unchanged on purpose (docs/18 §8): it is this screen's case only.
+ * left unchanged on purpose (docs/19 §8): it is this screen's case only.
  */
 export type StaticPhase = StaticScreenCase | 'handed_over';
 
@@ -53,13 +53,13 @@ const STATIC_PHASES: readonly ShiftPhase[] = [
 
 /**
  * True for the phases that replace the whole shift screen: §10.4's three
- * and the hand-over (ADR-0039).
+ * and the hand-over (ADR-0045).
  */
 export function isStaticPhase(phase: ShiftPhase): phase is StaticPhase {
   return STATIC_PHASES.includes(phase);
 }
 
-/** ADR-0039: the worker offered this shift up and somebody took it. */
+/** ADR-0045: the worker offered this shift up and somebody took it. */
 function handedOver(shift: Pick<ShiftDetail, 'status' | 'cancelCause'>): boolean {
   return shift.status === 'cancelled' && shift.cancelCause === 'handed_over';
 }

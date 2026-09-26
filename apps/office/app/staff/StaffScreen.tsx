@@ -33,7 +33,7 @@ export interface StaffScreenProps {
   initialView?: 'directory' | 'student';
   /** The tab to open on — the Inactive tab is its own table (§9.6). */
   initialFilter?: Filter;
-  /** Pending name/photo change requests (ADR-0038) — "Change requests (N)". */
+  /** Pending name/photo change requests (ADR-0044) — "Change requests (N)". */
   pendingRequests?: number;
 }
 
@@ -127,7 +127,7 @@ export function StaffScreen({
     >
       {problem ? <Alert tone="coral">{problem}</Alert> : null}
 
-      {/* ADR-0038: the office's queue for the name and photo §10.1 locks. */}
+      {/* ADR-0044: the office's queue for the name and photo §10.1 locks. */}
       <div className="staff-requests-link">
         <Link href="/staff/requests" className="btn sm ghost">
           Change requests ({pendingRequests})

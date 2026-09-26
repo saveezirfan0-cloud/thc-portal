@@ -209,7 +209,7 @@ describe('shift outcomes (§9.6)', () => {
     ).toBe('Cancelled');
   });
 
-  it('names a hand-over as one, not as a self-cancellation (ADR-0039)', () => {
+  it('names a hand-over as one, not as a self-cancellation (ADR-0045)', () => {
     // take_offered_shift sets self_cancelled = true on the original booking
     // too (the event bar, Q15) — the cause is what tells the two apart.
     expect(

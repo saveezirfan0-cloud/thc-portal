@@ -262,8 +262,8 @@ pgTAP vectors — and the Rejected view's alert on `/onboarding` would be rewrit
 
 ## Q9 · Availability — gate or preference?
 
-**Where:** an addition to the scope — the availability calendar, ADR-0036 (proposed),
-`docs/18` §1. Touches §3.4 and §6.
+**Where:** an addition to the scope — the availability calendar, ADR-0042 (proposed),
+`docs/19` §1. Touches §3.4 and §6.
 
 A worker can mark days or times they cannot work. §6's five scoring weights are
 contractual, so the calendar is not a sixth factor (a factor can be outscored, and the
@@ -290,7 +290,7 @@ confirm dialog on the event board is removed.
 
 ## Q10 · Availability — shape
 
-**Where:** ADR-0036 (proposed), `docs/18` §1.
+**Where:** ADR-0042 (proposed), `docs/19` §1.
 
 **Default:** single days, a date range of up to 31 days, or a time window on a day
 (UK time); "Repeat weekly" for up to 26 weeks; up to 12 months ahead. **No reason
@@ -309,7 +309,7 @@ reason is one column, one field and a line in the privacy notice.
 
 ## Q11 · Emergency contact
 
-**Where:** an addition to the scope, ADR-0037 (proposed), `docs/18` §2. Touches §10.1 and
+**Where:** an addition to the scope, ADR-0043 (proposed), `docs/19` §2. Touches §10.1 and
 §1.7.
 
 **Default:** optional, kept in Profile details, visible to the office only (on the staff
@@ -331,7 +331,7 @@ asked on their next visit.
 
 ## Q12 · Emergency contact — leavers
 
-**Where:** ADR-0037 (proposed), §10.6, §1.7.
+**Where:** ADR-0043 (proposed), §10.6, §1.7.
 
 **Default:** a leaver's emergency contact is kept while their record exists (they can
 re-join on the same record, §2.12) and deleted only on **Remove (GDPR)**.
@@ -347,7 +347,7 @@ re-join on the same record, §2.12) and deleted only on **Remove (GDPR)**.
 
 ## Q13 · Name change
 
-**Where:** an addition to the scope — "Request a change", ADR-0038 (proposed), `docs/18`
+**Where:** an addition to the scope — "Request a change", ADR-0044 (proposed), `docs/19`
 §3. Touches §10.1's "corrections go through the office".
 
 **Default:** the worker requests the change in the app with an evidence upload; the
@@ -368,7 +368,7 @@ Documents lock until it is cleared.
 
 ## Q14 · Photo change
 
-**Where:** ADR-0038 (proposed).
+**Where:** ADR-0044 (proposed).
 
 **Default:** one pending photo request at a time, no limit on how often, and the office
 approves every one. The new photo replaces the one printed on timesheets from the next
@@ -382,7 +382,7 @@ document issued; issued documents keep the old photo.
 
 ## Q15 · Offer up — exclusion
 
-**Where:** an addition to the scope — "Offer up a shift", ADR-0039 (proposed), `docs/18`
+**Where:** an addition to the scope — "Offer up a shift", ADR-0045 (proposed), `docs/19`
 §4. Touches RULE-04.
 
 **Default:** once another worker takes the shift, the offerer is barred from that event
@@ -401,7 +401,7 @@ again.
 
 ## Q16 · Offer up — window
 
-**Where:** ADR-0039 (proposed), RULE-04.
+**Where:** ADR-0045 (proposed), RULE-04.
 
 **Default:** a worker can offer a shift to the pool while more than 72 hours remain (the
 same boundary as Cancel shift), and only while auto-assign is on for that role. The offer
@@ -420,7 +420,7 @@ decline it, or cover it by hand.
 
 ## Q17 · Peer-to-peer swaps
 
-**Where:** ADR-0039 (proposed) — designed, not built.
+**Where:** ADR-0045 (proposed) — designed, not built.
 
 **Default:** off (`shift_offers_direct_enabled = false`). If wanted: the worker names a
 colleague by Employee ID (no staff directory is shown), the colleague must be qualified
@@ -434,7 +434,7 @@ the shift being given away.
 
 ## Q18 · Offer up — office emails
 
-**Where:** ADR-0039 (proposed), §8.
+**Where:** ADR-0045 (proposed), §8.
 
 **Default:** the office is emailed only for a cover request inside 72 hours (OF5). A pool
 hand-over sends no email — no slot is lost — and shows on the event board as "Handed
@@ -449,7 +449,7 @@ over: {from} → {to}". A lapsed offer sends nothing to the office.
 
 ## Q19 · Referral reward
 
-**Where:** an addition to the scope — "Refer a friend", ADR-0040 (proposed), `docs/18`
+**Where:** an addition to the scope — "Refer a friend", ADR-0046 (proposed), `docs/19`
 §5.
 
 **Default:** referrals are recorded and shown to the office ("Referred by …" on the
@@ -462,7 +462,7 @@ candidate). There is no reward and the app makes no promise of one.
 
 ## Q20 · Referral privacy
 
-**Where:** ADR-0040 (proposed), §1.7.
+**Where:** ADR-0046 (proposed), §1.7.
 
 **Default:** the referrer sees a count only ("N people have applied with your link"); the
 applicant never sees the referrer's name; `/apply` and `/privacy` say "If a friend
@@ -480,7 +480,7 @@ employment.
 **Where:** §8, `packages/notifications` (`ADDITION_CODES`).
 
 **Default:** RC1–RC4 (Request a change) and OF1–OF6 (Offer up a shift) are drafts written
-to match the §8 register's tone; the copy is in `docs/18` §3 and §4.
+to match the §8 register's tone; the copy is in `docs/19` §3 and §4.
 
 > **Ask:** please confirm or rewrite RC1–RC4 and OF1–OF6, as you did for §8.
 
