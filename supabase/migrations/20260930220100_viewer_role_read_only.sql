@@ -27,7 +27,10 @@
 --       The allow-list is one table, `profiles`: a viewer changes their
 --     own name, job title and phone through update_my_profile() (/account).
 --     profiles has no write policy, and every other definer that writes it
---     is owners-only (/users) or also writes a guarded table.
+--     is owners-only (/users) or also writes a guarded table. (A table
+--     created by a LATER migration is not reached by this loop: it adds
+--     the trigger itself or is argued onto 750's allow-list —
+--     office_saved_views, 20260930222000, a viewer's own filter chips.)
 --       audit_log is guarded for UPDATE / DELETE / TRUNCATE; its INSERT is
 --     item 3, because update_my_profile() writes the audit row too.
 -- 3 · audit_log_office_read_only — an AFTER INSERT statement trigger with

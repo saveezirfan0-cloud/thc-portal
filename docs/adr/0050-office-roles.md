@@ -10,7 +10,7 @@ Every Back Office login is `profiles.role = 'admin'`, and every policy and RPC a
 
 ### The roles
 
-`profiles.office_role` — enum `office_role` (`owner`, `manager`, `scheduler`). A check constraint makes it non-null for admin rows and null for client and staff rows. Every admin that existed at migration time became `owner` (they all had full access). A newly invited Back Office login is a `manager` unless the inviting owner chooses otherwise. An admin row inserted any other way (the Supabase dashboard, `seed.sql`, a test fixture) is given `owner` by an insert trigger — whoever does that already holds the database. ADR-0049's sketch had a fourth role, `viewer`; it was not approved and is not built.
+`profiles.office_role` — enum `office_role` (`owner`, `manager`, `scheduler`). A check constraint makes it non-null for admin rows and null for client and staff rows. Every admin that existed at migration time became `owner` (they all had full access). A newly invited Back Office login is a `manager` unless the inviting owner chooses otherwise. An admin row inserted any other way (the Supabase dashboard, `seed.sql`, a test fixture) is given `owner` by an insert trigger — whoever does that already holds the database. ADR-0049's sketch had a fourth role, `viewer`; it was not approved at the time. It has since been approved and built — see ADR-0054.
 
 | Permission | What it covers | owner | manager | scheduler |
 |---|---|---|---|---|
@@ -78,4 +78,8 @@ Stated plainly, because a claim of protection that is not there is worse than no
 
 - `20260930210700` rewrites every `public` policy that called `current_app_role()` or `office_can()` bare to `(select …)`, so each runs once per statement instead of once per row (the stricter `current_app_role()` of `20260930210500` had tripled per-row cost). The rule is unchanged; pgTAP 747 fails if a bare call comes back.
 - The service-key server actions (`staff/[id]`, `onboarding`, `users`) now ask `current_app_role()` through `sessionIsAdmin()` instead of reading `profiles.role`, so a switched-off login or a two-step login below aal2 cannot reach the service key even if it got past the middleware.
-- Still open, older than this work: E3 activation links (workers) sit in `notification_outbox` readable by every Back Office login. Fencing them like E11 needs a decision on which office roles run Onboarding.
+- ~~Still open, older than this work: E3 activation links (workers) sit in `notification_outbox` readable by every Back Office login.~~ **Closed by `20260930220200` (ADR-0054):** E3 rows are owners' only, like E11, and the link is removed once the row is sent or failed. Every office role still runs Onboarding: Accept and Resend queue E3 through definer RPCs and never read it back.
+
+## Update — the viewer role (ADR-0054)
+
+A fourth role, `viewer`, reads what a manager reads (finance included) and writes nothing. `office_can()` gains the viewer and a fourth permission, `write` (owner, manager, scheduler). The database enforces read-only with an `office_read_only` statement trigger on every public table, which covers definer RPCs as well, and an audit-actor trigger for the service-key paths. `001_rls_guard` now pins seventeen restrictive policies (E3's fence is the seventeenth). See ADR-0054 for the mechanism, the allow-list and the residual gaps.

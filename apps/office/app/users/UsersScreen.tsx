@@ -204,15 +204,15 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
           from a role is also refused to it if opened another way. <b>Owner</b>:{' '}
           {OFFICE_ROLE_SUMMARY.owner} <b>Manager</b>: {OFFICE_ROLE_SUMMARY.manager} <b>Scheduler</b>
           : {OFFICE_ROLE_SUMMARY.scheduler} <b>Viewer</b>: {OFFICE_ROLE_SUMMARY.viewer} New logins
-          are managers unless you choose otherwise.
-          Nobody can change their own role, and there is always at least one working owner. Role
-          changes are in the <Link href="/activity">activity log</Link> under the owner’s name.
+          are managers unless you choose otherwise. Nobody can change their own role, and there is
+          always at least one working owner. Role changes are in the{' '}
+          <Link href="/activity">activity log</Link> under the owner’s name.
         </p>
         <p className="sm muted users-plain">
-          <b>Reset two-step</b> is for someone who has lost or replaced the phone their sign-in codes
-          come from. Check it is really them first — by phone, not by email — because a password
-          without the phone is exactly what two-step keeps out. It signs them out everywhere; they
-          sign in with their password and set two-step up again on My profile.
+          <b>Reset two-step</b> is for someone who has lost or replaced the phone their sign-in
+          codes come from. Check it is really them first — by phone, not by email — because a
+          password without the phone is exactly what two-step keeps out. It signs them out
+          everywhere; they sign in with their password and set two-step up again on My profile.
         </p>
         <p className="sm muted users-plain">
           Not hidden from a scheduler yet: the pay and charge rates on the event builder and event
@@ -747,12 +747,7 @@ function ResetTwoStepModal({ account, onClose }: { account: AccountRow; onClose:
           <Button tone="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            tone="danger"
-            solid
-            disabled={pending || !reason.trim()}
-            onClick={submit}
-          >
+          <Button tone="danger" solid disabled={pending || !reason.trim()} onClick={submit}>
             {pending ? 'Resetting…' : 'Reset two-step'}
           </Button>
         </>
@@ -764,8 +759,8 @@ function ResetTwoStepModal({ account, onClose }: { account: AccountRow; onClose:
           They sign in with their password alone and set two-step up again on My profile.
         </p>
         <Note tone="amber">
-          Only do this once you are sure it is them — ring a number you already have, do not rely
-          on an email. Someone with their password but not their phone is who two-step keeps out.
+          Only do this once you are sure it is them — ring a number you already have, do not rely on
+          an email. Someone with their password but not their phone is who two-step keeps out.
         </Note>
         <Input
           label="Reason"

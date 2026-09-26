@@ -5,18 +5,19 @@
 --   * office_can() for the viewer (finance yes; users, settings, write no)
 --     and 'write' for the other three roles;
 --   * EVERY public table carries the office_read_only statement trigger,
---     with an explicit allow-list (profiles) — a new table that forgets it
---     fails here, not in production;
+--     with an explicit allow-list (profiles, office_saved_views) — a new
+--     table that forgets it fails here, not in production;
 --   * a viewer reads the office's rows, money included;
 --   * a viewer's write is refused on every path: PostgREST insert / update
 --     / delete / truncate, a zero-row statement, a security definer RPC,
 --     settings and money tables, and the service-key RPCs that name the
 --     viewer as p_actor (auth.uid() null);
---   * what a viewer may still do: update_my_profile (/account);
+--   * what a viewer may still do: update_my_profile (/account) and save
+--     their own Scheduling views (office_saved_views, ADR-0053);
 --   * nobody else is touched: owner, manager, scheduler, a worker, a job.
 -- =====================================================================
 begin;
-select plan(40);
+select plan(42);
 \ir _shared/fixtures.psql
 
 \set viewer    '75000000-0000-4000-8000-000000000001'
@@ -42,7 +43,11 @@ select enum_has_labels('public', 'office_role', array['owner', 'manager', 'sched
 -- the guard, before insert / update / delete / truncate, per STATEMENT —
 -- except the allow-list. audit_log's INSERT is its own trigger (below).
 -- A new table fails this until it gets the trigger (copy 20260930220100's
--- loop body) or is argued onto the allow-list in ADR-0054.
+-- loop body) or is argued onto the allow-list in ADR-0054. The allow-list:
+--   profiles           — update_my_profile(), the viewer's own name;
+--   office_saved_views — a viewer's own filter chips on /events: own-row
+--                        policies only, a preference, not office data
+--                        (20260930222000, ADR-0053).
 select is_empty(
   $$ select c.relname::text
        from pg_class c join pg_namespace n on n.oid = c.relnamespace
@@ -50,7 +55,7 @@ select is_empty(
         and not exists (select 1 from pg_depend d
                          where d.classid = 'pg_class'::regclass
                            and d.objid = c.oid and d.deptype = 'e')
-        and c.relname not in ('profiles')  -- ALLOW-LIST (ADR-0054)
+        and c.relname not in ('profiles', 'office_saved_views')  -- ALLOW-LIST (ADR-0054)
         and not exists (
               select 1 from pg_trigger t
                where t.tgrelid = c.oid
@@ -61,12 +66,13 @@ select is_empty(
                  and (t.tgtype & 2) = 2          -- before
                  and (t.tgtype & 56) = 56        -- delete, update, truncate
                  and ((t.tgtype & 4) = 4 or c.relname = 'audit_log')) $$,  -- insert
-  'ADR-0054: every public table carries the office_read_only statement trigger (allow-list: profiles)');
+  'ADR-0054: every public table carries the office_read_only statement trigger (allow-list: profiles, office_saved_views)');
 
 select is_empty(
-  $$ select tgname::text from pg_trigger
-      where tgrelid = 'public.profiles'::regclass and tgname = 'office_read_only' $$,
-  'the allow-list is not stale: profiles really has no guard (update_my_profile writes it)');
+  $$ select tgrelid::regclass::text from pg_trigger
+      where tgrelid in ('public.profiles'::regclass, 'public.office_saved_views'::regclass)
+        and tgname = 'office_read_only' $$,
+  'the allow-list is not stale: its tables really have no guard');
 
 select ok(exists (
     select 1 from pg_trigger t
@@ -156,6 +162,11 @@ select throws_ok(format($$ select onboarding_resend_activation_check(%L) $$, :'s
 -- What a viewer may still do: their own name, on /account.
 select lives_ok($$ select update_my_profile('Vera V. Viewer', null, 'Auditor') $$,
   'update_my_profile still works for a viewer (profiles is the allow-list)');
+select lives_ok($$ insert into office_saved_views (name, query)
+                   values ('Audit week', '{"view":"week","q":"","clientId":"","status":""}') $$,
+  'and saves their own Scheduling view (office_saved_views is on the allow-list)');
+select is((select count(*)::int from office_saved_views where name = 'Audit week'), 1,
+  'which is theirs to read back');
 reset role;
 select is((select full_name from profiles where id = :'viewer'), 'Vera V. Viewer', 'and the name changed');
 select is((select count(*)::int from audit_log where actor = :'viewer' and action = 'profile.updated'), 1,
