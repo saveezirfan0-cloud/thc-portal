@@ -8,6 +8,8 @@
 -- This pins the DATABASE half: the same token used straight against the
 -- API gets no role, so every policy and admin RPC refuses it.
 -- =====================================================================
+-- auth.mfa_factors rows carry every NOT NULL column GoTrue's table has
+-- (id has no default there; the local harness stub now matches).
 begin;
 select plan(12);
 \ir _shared/fixtures.psql
@@ -22,13 +24,15 @@ select set_config('request.jwt.claims', :'admin_claims_aal1', true);
 select is(current_app_role()::text, 'admin', 'an admin without two-step keeps the admin role at aal1');
 
 -- An unfinished set-up (unverified factor) changes nothing.
-insert into auth.mfa_factors (user_id, status) values (:'admin_uid', 'unverified');
+insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at)
+  values (gen_random_uuid(), :'admin_uid', '745 unfinished', 'totp', 'unverified', now(), now());
 select is(current_app_role()::text, 'admin', 'an unverified factor does not demand the code step');
 
 -- ---------------------------------------------------------------------
 -- 2 · A verified factor: aal1 gets nothing, aal2 gets admin
 -- ---------------------------------------------------------------------
-insert into auth.mfa_factors (user_id, status) values (:'admin_uid', 'verified');
+insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at)
+  values (gen_random_uuid(), :'admin_uid', '745 phone', 'totp', 'verified', now(), now());
 select is(current_app_role(), null, 'with two-step on, a password-only (aal1) session has no role');
 select is(office_can('finance'), false, 'and no office permission');
 set local role authenticated;
@@ -41,7 +45,8 @@ select is(current_app_role()::text, 'admin', 'after the code step (aal2) the adm
 select is(office_can('users'), true, 'with the owner''s permissions');
 
 -- Client logins are not affected by the office's two-step rule.
-insert into auth.mfa_factors (user_id, status) values (:'clienta_uid', 'verified');
+insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, created_at, updated_at)
+  values (gen_random_uuid(), :'clienta_uid', '745 client phone', 'totp', 'verified', now(), now());
 select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
 select is(current_app_role()::text, 'client', 'the two-step rule is the Back Office''s; a client login is unchanged');
 

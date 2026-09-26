@@ -83,9 +83,12 @@ create table auth.users (instance_id uuid, id uuid primary key, aud text, role t
   is_sso_user boolean default false, deleted_at timestamptz, banned_until timestamptz, is_anonymous boolean default false);
 create table auth.identities (id uuid default gen_random_uuid() primary key, provider_id text, user_id uuid references auth.users on delete cascade,
   identity_data jsonb, provider text, last_sign_in_at timestamptz, created_at timestamptz, updated_at timestamptz, email text);
-create table auth.mfa_factors (id uuid default gen_random_uuid() primary key, user_id uuid not null references auth.users on delete cascade,
-  friendly_name text, factor_type text default 'totp', status text not null default 'unverified', created_at timestamptz default now(),
-  updated_at timestamptz default now(), secret text);
+create type auth.factor_type as enum ('totp', 'webauthn', 'phone');
+create type auth.factor_status as enum ('unverified', 'verified');
+create table auth.mfa_factors (id uuid not null primary key, user_id uuid not null references auth.users on delete cascade,
+  friendly_name text, factor_type auth.factor_type not null, status auth.factor_status not null, created_at timestamptz not null,
+  updated_at timestamptz not null, secret text, phone text, last_challenged_at timestamptz, web_authn_credential jsonb,
+  web_authn_aaguid uuid, last_webauthn_challenge_data jsonb);
 create function auth.uid() returns uuid language sql stable as $$ select nullif(coalesce(current_setting('request.jwt.claim.sub', true), (nullif(current_setting('request.jwt.claims', true),'')::jsonb ->> 'sub')), '')::uuid $$;
 create function auth.role() returns text language sql stable as $$ select nullif(coalesce(current_setting('request.jwt.claim.role', true), (nullif(current_setting('request.jwt.claims', true),'')::jsonb ->> 'role')), '')::text $$;
 create function auth.jwt() returns jsonb language sql stable as $$ select coalesce(nullif(current_setting('request.jwt.claim', true), ''), nullif(current_setting('request.jwt.claims', true), ''))::jsonb $$;
