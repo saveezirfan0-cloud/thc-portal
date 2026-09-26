@@ -2,7 +2,13 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { decideRtwCheck } from '@thc/domain';
-import { createGovukChecker, driveGovuk, govukConfig, parseGovukResult } from '../govuk';
+import {
+  createGovukChecker,
+  driveGovuk,
+  govukConfig,
+  govukPhoto,
+  parseGovukResult,
+} from '../govuk';
 import type { GovukBrowser, GovukLocator, GovukPage } from '../govuk';
 
 /**
@@ -314,5 +320,52 @@ describe('createGovukChecker', () => {
       close: async () => undefined,
     }))!.check(INPUT);
     expect(out.result.error).toBe('govuk_timeout');
+  });
+});
+
+describe('govukPhoto (ADR-0041)', () => {
+  const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]);
+  function pageWith(image: { css: string; bytes: Uint8Array } | null): GovukPage {
+    const none: GovukLocator = {
+      count: async () => 0,
+      first: () => none,
+      isVisible: async () => false,
+      fill: async () => undefined,
+      click: async () => undefined,
+      innerText: async () => '',
+    };
+    const img: GovukLocator = {
+      ...none,
+      count: async () => 1,
+      first: () => img,
+      isVisible: async () => true,
+      screenshot: async () => image!.bytes,
+    };
+    return {
+      goto: async () => undefined,
+      setDefaultTimeout: () => undefined,
+      waitForLoadState: async () => undefined,
+      getByLabel: () => none,
+      getByRole: () => none,
+      locator: (css) => (image && css === image.css ? img : none),
+      pdf: async () => new Uint8Array(),
+    };
+  }
+
+  it('screenshots the applicant photo as a PNG', async () => {
+    expect(await govukPhoto(pageWith({ css: 'main img[alt*="photo" i]', bytes: PNG }))).toEqual(
+      PNG,
+    );
+  });
+
+  it('is null when the page shows no photo — the admin uses the one in the PDF', async () => {
+    expect(await govukPhoto(pageWith(null))).toBeNull();
+  });
+
+  it('is null when what it captured is not a PNG', async () => {
+    const notPng = new TextEncoder().encode('not an image');
+    expect(
+      await govukPhoto(pageWith({ css: 'main img[alt*="photo" i]', bytes: notPng })),
+    ).toBeNull();
   });
 });

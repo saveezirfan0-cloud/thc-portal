@@ -4,7 +4,7 @@ import type { RtwCheckResult, RtwCheckSource } from '@thc/domain';
 import { checkJobSecret } from '../auth';
 import { parseUkDate, ukToday } from '../checker';
 import type { CheckOutput, RightToWorkChecker } from '../checker';
-import { reportPath, runOrchestrated, runRtwCheckSweep } from '../sweep';
+import { photoPath, reportPath, runOrchestrated, runRtwCheckSweep } from '../sweep';
 import type { ClaimedCheck, RecordInput } from '../sweep';
 
 /** Every result here is SYNTHETIC (ADR-0025). */
@@ -240,6 +240,65 @@ describe('runRtwCheckSweep', () => {
     await runRtwCheckSweep(t.d);
     expect(t.uploads).toEqual([]);
     expect(t.recorded[0]).toMatchObject({ decision: { action: 'retry' }, reportPath: null });
+  });
+
+  describe('the gov.uk photo, for the admin to compare (ADR-0041)', () => {
+    const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0]);
+
+    it('is uploaded beside the report, under the worker, and filed on the check before the record', async () => {
+      const order: string[] = [];
+      const t = deps(checker('govuk', { result: pass('govuk'), report: PDF, photo: PNG }), {
+        uploadPhoto: async (path: string) => {
+          order.push(`upload ${path}`);
+        },
+        attachPhoto: async (checkId: string, path: string) => {
+          order.push(`attach ${checkId} ${path}`);
+        },
+      });
+      const record = t.d.record;
+      t.d.record = async (input) => {
+        order.push('record');
+        return record(input);
+      };
+      await runRtwCheckSweep(t.d);
+      expect(photoPath('s1', 'c1', 1)).toBe('s1/share-code-report/rtw-check-c1-a1-photo.png');
+      expect(order).toEqual([
+        'upload s1/share-code-report/rtw-check-c1-a1-photo.png',
+        'attach c1 s1/share-code-report/rtw-check-c1-a1-photo.png',
+        'record',
+      ]);
+    });
+
+    it('a photo that cannot be filed is removed, and the check still records', async () => {
+      const t = deps(checker('govuk', { result: pass('govuk'), report: PDF, photo: PNG }), {
+        uploadPhoto: async () => undefined,
+        attachPhoto: async () => {
+          throw new Error('attach failed');
+        },
+      });
+      await runRtwCheckSweep(t.d);
+      expect(t.removed).toEqual(['s1/share-code-report/rtw-check-c1-a1-photo.png']);
+      expect(t.recorded).toHaveLength(1);
+    });
+
+    it('a retry keeps no photo either', async () => {
+      const uploaded: string[] = [];
+      const t = deps(
+        checker('govuk', {
+          result: rtwCheckError('govuk', 'govuk_timeout'),
+          report: PDF,
+          photo: PNG,
+        }),
+        {
+          uploadPhoto: async (path: string) => {
+            uploaded.push(path);
+          },
+          attachPhoto: async () => undefined,
+        },
+      );
+      await runRtwCheckSweep(t.d);
+      expect(uploaded).toEqual([]);
+    });
   });
 
   it('logs no share code, date of birth or name', async () => {

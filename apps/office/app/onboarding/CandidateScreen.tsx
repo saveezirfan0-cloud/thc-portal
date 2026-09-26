@@ -78,7 +78,7 @@ import {
   RtwReportUpload,
 } from '../compliance/EvidenceUploads';
 import { RtwCheckPanel } from '../_components/RtwCheckPanel';
-import { checksByDocument, rtwCheckView } from '../_lib/rtwCheck';
+import { checksByDocument, rtwCheckView, rtwLockedLabel, rtwLockedValue } from '../_lib/rtwCheck';
 import type { RtwCheckRow } from '../_lib/rtwCheck';
 import type {
   ActionResult,
@@ -110,7 +110,7 @@ const ICON: Record<string, string> = {
 
 type Reject =
   | { kind: 'candidate' }
-  | { kind: 'document'; doc: CandidateDocument }
+  | { kind: 'document'; doc: CandidateDocument; suggested?: string }
   | { kind: 'declaration'; declaration: Declaration }
   | null;
 
@@ -187,9 +187,11 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
           expiry: input.expiry ?? null,
         }),
       ),
-    onReject: (d: CandidateDocument) => {
-      setReason('');
-      setReject({ kind: 'document', doc: d });
+    onReject: (d: CandidateDocument, suggested?: string) => {
+      // ADR-0041: a share code the gov.uk check recommends rejecting opens
+      // with its suggested N8 text, editable.
+      setReason(suggested ?? '');
+      setReject({ kind: 'document', doc: d, suggested });
     },
     onOpen: open,
   };
@@ -349,6 +351,12 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
                     ? ` · AI ${Math.round(reject.doc.ai_confidence * 100)}%`
                     : ''}
                 </div>
+                {reject.suggested ? (
+                  <Note tone="amber">
+                    The automatic gov.uk check recommends Reject. The reason below is its suggestion
+                    — edit it before it goes to the worker.
+                  </Note>
+                ) : null}
               </>
             ) : null}
             <Textarea
@@ -768,7 +776,8 @@ interface DocHandlers {
   /** The candidate's right-to-work branch (§2.5): decides whether settled status may be confirmed. */
   branch: string | null;
   onVerify: (doc: CandidateDocument, input?: VerifyChoice) => void;
-  onReject: (doc: CandidateDocument) => void;
+  /** `suggested`: the gov.uk check's N8 text to pre-fill the reason with (ADR-0041). */
+  onReject: (doc: CandidateDocument, suggested?: string) => void;
   onOpen: (docId: string, which: 'file' | 'report') => void;
 }
 
@@ -899,6 +908,11 @@ function DocumentLine({
  * refused without it, because it is the worker's right-to-work expiry and
  * the last day they can be rostered (ADR-0018). On the EU settled branch,
  * settled status is confirmed explicitly as no time limit.
+ *
+ * ADR-0041: every result now waits for the admin. A check that recommends
+ * Verify shows gov.uk's date read-only — the admin compares the photos in
+ * the panel and Verify sends exactly that date; one that recommends Reject
+ * opens the Reject box with its suggested N8 text.
  */
 function ShareCodeCard({
   doc,
@@ -913,13 +927,30 @@ function ShareCodeCard({
 }) {
   const view = rtwCheckView(check, { docStatus: doc.review_status, enabled: checkEnabled });
   const pill = view.status ?? REVIEW_PILL[doc.review_status];
-  const manual = check ? check.status === 'needs_review' : doc.needs_manual_review && !checkEnabled;
+  // ADR-0041: a check that recommends Verify or Reject is the check's own
+  // pill ("Recommend verify — compare the photo", "Recommend reject"), not "Manual review".
+  const recommended =
+    check?.status === 'needs_review' &&
+    (check.recommendation === 'verify' || check.recommendation === 'reject');
+  const manual = check
+    ? check.status === 'needs_review' && !recommended
+    : doc.needs_manual_review && !checkEnabled;
   const actionable = !handlers.readOnly && doc.review_status === 'pending';
-  const typing = actionable && view.manualAllowed;
+  // gov.uk's date, confirmed read-only on Verify (ADR-0041), else typed.
+  const locked = actionable ? view.lockedUntil : null;
+  const typing = actionable && view.manualAllowed && !locked;
   const rule = rtwDateRule(doc.doc_type, handlers.branch);
-  const [until, setUntil] = useState(doc.right_to_work_until ?? '');
+  // ADR-0041: gov.uk's date waits on the check (admin-only), not on the
+  // worker-readable document, so a typed date starts from it.
+  const [until, setUntil] = useState(
+    doc.right_to_work_until ??
+      (check?.outcome === 'right_to_work' ? check.right_to_work_until : null) ??
+      '',
+  );
   const [noTimeLimit, setNoTimeLimit] = useState(false);
-  const problem = rtwDateProblem(rule, until, noTimeLimit);
+  const problem = locked
+    ? rtwDateProblem(rule, locked.date ?? '', locked.noTimeLimit)
+    : rtwDateProblem(rule, until, noTimeLimit);
   return (
     <div className="pdfcard">
       <div className="thumb">
@@ -932,7 +963,11 @@ function ShareCodeCard({
           <b>gov.uk right-to-work report</b>
           <Pill tone={manual ? 'coral' : pill.tone}>{manual ? 'Manual review' : pill.label}</Pill>
           <span className={manual ? 'ai manual' : 'ai hi'}>
-            {manual ? 'needs manual review' : 'automatic check'}
+            {manual
+              ? 'needs manual review'
+              : recommended
+                ? 'automatic check · your decision'
+                : 'automatic check'}
           </span>
         </div>
         <div className="kv">
@@ -944,7 +979,15 @@ function ShareCodeCard({
             </span>
           </span>
           <span className="k">Right to work until</span>
-          {typing ? (
+          {locked ? (
+            <span>
+              <b className="mono">{rtwLockedLabel(locked)}</b>{' '}
+              <span className="muted sm">
+                — returned by gov.uk; Verify confirms it as it is. It becomes the expiry used for
+                reminders and the last day they can be rostered
+              </span>
+            </span>
+          ) : typing ? (
             <span className="stack">
               <span className="row wrap">
                 <input
@@ -998,13 +1041,17 @@ function ShareCodeCard({
               Download gov.uk report
             </Button>
           ) : null}
-          {typing ? (
+          {typing || locked ? (
             <Button
               size="sm"
               tone="green"
               disabled={handlers.busy || problem !== null}
               title={problem ?? undefined}
-              onClick={() => handlers.onVerify(doc, { expiry: rtwDateValue(until, noTimeLimit) })}
+              onClick={() =>
+                handlers.onVerify(doc, {
+                  expiry: locked ? rtwLockedValue(locked) : rtwDateValue(until, noTimeLimit),
+                })
+              }
             >
               Verify
             </Button>
@@ -1014,7 +1061,7 @@ function ShareCodeCard({
               size="sm"
               tone="danger"
               disabled={handlers.busy}
-              onClick={() => handlers.onReject(doc)}
+              onClick={() => handlers.onReject(doc, view.suggestedReason ?? undefined)}
             >
               Reject
             </Button>

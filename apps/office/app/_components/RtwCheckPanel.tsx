@@ -6,6 +6,7 @@ import { Button, Pill } from '@thc/ui';
 import { rtwCheckView } from '../_lib/rtwCheck';
 import type { RtwCheckRow } from '../_lib/rtwCheck';
 import { markRtwCheckReviewed, rtwReportLink, runRtwCheckAgain } from '../_lib/rtwCheckActions';
+import { RtwCheckPhotos } from './RtwCheckPhotos';
 import './rtwCheck.css';
 
 /**
@@ -16,6 +17,10 @@ import './rtwCheck.css';
  *
  * The same panel on /onboarding/:id, /staff/:id (Documents) and /compliance,
  * so the three never disagree. Every decision it shows is rtwCheckView's.
+ *
+ * ADR-0041: a finished check (needs review, or passed) sets the gov.uk
+ * photo beside the worker's selfie — the admin compares them, then presses
+ * the document's own Verify or Reject.
  */
 export function RtwCheckPanel({
   row,
@@ -62,7 +67,19 @@ export function RtwCheckPanel({
           <Pill>Not run yet</Pill>
         )}
       </div>
-      {view.reason ? <div className="rtwcheck-reason sm">{view.reason}</div> : null}
+      {view.reason ? (
+        <div
+          className={
+            view.recommendation === 'verify'
+              ? 'rtwcheck-reason verify sm'
+              : view.recommendation === 'reject'
+                ? 'rtwcheck-reason reject sm'
+                : 'rtwcheck-reason sm'
+          }
+        >
+          {view.reason}
+        </div>
+      ) : null}
       {view.lines.length > 0 ? (
         <dl className="rtwcheck-kv">
           {view.lines.map((line) => (
@@ -72,6 +89,9 @@ export function RtwCheckPanel({
             </div>
           ))}
         </dl>
+      ) : null}
+      {row && (row.status === 'needs_review' || row.status === 'passed') ? (
+        <RtwCheckPhotos key={row.check_id} checkId={row.check_id} />
       ) : null}
       {view.hasReport || view.canRunAgain || view.canMarkReviewed ? (
         <div className="row wrap">

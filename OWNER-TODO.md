@@ -155,6 +155,12 @@ as today.
 
 ## 6 · Decisions
 
+- [ ] **Keep gov.uk reports and photos after a GDPR removal?** The Home Office asks
+      employers to keep the right-to-work check result for the employment plus two years.
+      Today a removal erases the share-code report and the gov.uk photo with everything else
+      (ADR-0019 holds only the completion letter; ADR-0041 does not extend it). Say if they
+      should be held like the completion letter.
+
 - [ ] **Office pin editor?** When a worker's postcode lookup fails, their
       profile shows "location out of date" until they re-save a findable
       address. Say if managers should be able to move the pin themselves.
@@ -173,31 +179,30 @@ as today.
       `https://thc-portal-staff.vercel.app`.
 - [ ] Update the `STAFF_APP_URL` Supabase secret (Willo) to match.
 
-## 8 · The automated gov.uk right-to-work check (ADR-0025)
+## 8 · The automated gov.uk right-to-work check (ADR-0025, ADR-0041)
 
 Built and tested, and **switched off**. Until it is on, the office verifies share codes by
-hand as before (ADR-0018). THC has accepted that a passing check verifies a worker
-**without the Home Office photo match**, which may cost THC the statutory excuse
-(ADR-0025).
+hand as before (ADR-0018). **No provider is needed** (ADR-0041): the system fills in the
+Home Office form itself, and every result waits for an admin, who compares the gov.uk photo
+with the worker's selfie and presses Verify or Reject.
 
-- [ ] **Choose a right-to-work provider** (an IDSP / right-to-work checking service with an
-      API that returns the gov.uk result and its PDF). Sign up and get a sandbox key.
-- [ ] Give its API documentation to a session, to check ADR-0025's "Assumed" items 1–6
-      against it and change `apps/office/app/api/jobs/rtw-check/_lib/provider.config.ts` if
-      they differ.
-- [ ] **Confirm with THC** that gov.uk's terms of use allow our own browser check as the
-      fallback (ADR-0002 flagged it). If they do not, leave `RTW_GOVUK_ENABLED` unset:
-      provider only.
-- [ ] Vercel, **Back Office project**: `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` (plus
-      `RTW_PROVIDER_AUTH_HEADER` / `RTW_PROVIDER_AUTH_PREFIX` if the provider's differ),
-      `RTW_JOB_SECRET` (`openssl rand -base64 48`), and `RTW_GOVUK_ENABLED=true` if
-      allowed. Redeploy. Check the plan allows the route's `maxDuration = 300`.
+- [ ] **Legal, first:** THC's adviser confirms that driving the Home Office "View a job
+      applicant's right to work details" service with an automated browser is acceptable
+      (ADR-0002 flagged it; ADR-0025 item 11), and that the printed result PDF is an
+      acceptable retained copy.
+- [ ] **Vercel Pro** on the Back Office project (commercial use; the route's
+      `maxDuration = 300`).
+- [ ] Vercel, **Back Office project**: `RTW_JOB_SECRET` (`openssl rand -base64 48`) and
+      `RTW_GOVUK_ENABLED=true`. Redeploy. No `RTW_PROVIDER_*` variables.
 - [ ] SQL editor: create two **vault** secrets (`docs/12`): `office_base_url` (the Back
       Office's https origin — not a settings row, so an admin session cannot redirect the
       job secret) and `rtw_job_secret` (the same value as `RTW_JOB_SECRET`).
-- [ ] With the check still off, run **one** check by hand on a consenting worker's share
-      code. Ask a session to confirm ADR-0025's items 7–12 (gov.uk's pages and wording)
-      and item 13 (Chromium on Vercel).
+- [ ] Set the name gov.uk prints as the checker, if it is not "The Hospitality Company":
+      `update settings set value = value || '{"company_name": "<legal name>"}' where key = 'rtw_check';`
+- [ ] **Live test** with the check still off: run **one** check by hand on a consenting
+      worker's share code, then a wrong date of birth, then each branch (EU settled, EU
+      pre-settled, work visa, student, dependant). Ask a session to confirm ADR-0025's
+      items 7–13 and ADR-0041's photo selector against what gov.uk actually shows.
 - [ ] `update settings set value = value || '{"enabled": true}' where key = 'rtw_check';`
 - [ ] Ask a session to **enable the `rtw-check` schedule**. That is a migration plus test
       `190`, not a dashboard change. Then re-run `select install_job_schedules();`

@@ -93,6 +93,14 @@ export interface QueueRow {
   rtw_check_report_path?: string | null;
   /** Share codes only: whether ADR-0018's hand-typed date is allowed now. */
   rtw_manual_allowed?: boolean | null;
+  // ADR-0041 (20260930150000): NOT columns of compliance_review_queue_v —
+  // merged in from rtw_checks_latest_v by document id (withLatestCheck).
+  /** What the latest check recommends: verify, reject or review. */
+  rtw_check_recommendation?: 'verify' | 'reject' | 'review' | null;
+  /** Office-only: the N8 text the Reject box is pre-filled with on a reject recommendation. */
+  rtw_check_suggested_reason?: string | null;
+  /** The gov.uk photo's storage key. Reaches the admin's page as a key only (the bucket denies every signed-in role); rtwCheckPhotos() signs it. */
+  rtw_check_photo_path?: string | null;
   // 20260930130400 (optional: absent before it).
   /** The full NI number, on NI evidence and `ni_check` rows only (D43). */
   ni_number?: string | null;

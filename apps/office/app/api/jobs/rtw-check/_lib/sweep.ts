@@ -115,6 +115,10 @@ export interface SweepDeps {
   uploadReport(path: string, bytes: Uint8Array): Promise<void>;
   /** Delete an uploaded report nothing will reference (best effort). */
   removeReport(path: string): Promise<void>;
+  /** Upload the gov.uk photo (PNG) to the private documents bucket (ADR-0041). */
+  uploadPhoto?(path: string, bytes: Uint8Array): Promise<void>;
+  /** File the uploaded photo on the running check (rtw_check_attach_photo). */
+  attachPhoto?(checkId: string, path: string): Promise<void>;
   record(input: RecordInput): Promise<{ status: string }>;
   /**
    * After a failed record: is the check still `running` (so nothing was
@@ -139,6 +143,15 @@ export interface SweepCounts {
 /** Where a check's report lives: under the worker, as every document does. */
 export function reportPath(staffId: string, checkId: string): string {
   return `${staffId}/share-code-report/rtw-check-${checkId}.pdf`;
+}
+
+/**
+ * Where the gov.uk photo goes: beside the report, under the worker's own
+ * folder, one file per attempt — a retry queues the earlier attempt's
+ * photo for deletion, so the next attempt must not reuse its name.
+ */
+export function photoPath(staffId: string, checkId: string, attempt: number): string {
+  return `${staffId}/share-code-report/rtw-check-${checkId}-a${attempt}-photo.png`;
 }
 
 const BRANCHES: readonly RtwBranch[] = [
@@ -208,6 +221,22 @@ export async function runRtwCheckSweep(
         // §2.6 stores the report; a pass is not complete without it.
         if (decision.action === 'verify')
           decision = { action: 'retry', error: 'report_upload_failed' };
+      }
+    }
+
+    // The photo is for the admin's comparison (ADR-0041). Best effort: a
+    // check without one still stands — the same photo is in the PDF.
+    let photo: string | null = null;
+    if (output.photo && decision.action !== 'retry' && deps.uploadPhoto && deps.attachPhoto) {
+      const target = photoPath(row.staff_id, row.check_id, row.attempt);
+      try {
+        await deps.uploadPhoto(target, output.photo);
+        photo = target;
+        await deps.attachPhoto(row.check_id, target);
+      } catch {
+        log(`rtw-check ${row.check_id}: photo not filed`);
+        if (photo) await deps.removeReport(photo).catch(() => undefined);
+        photo = null;
       }
     }
 

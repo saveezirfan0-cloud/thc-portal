@@ -45,6 +45,12 @@ export interface GovukSelectors {
   next: Strategy[];
   /** Where the result is read from. */
   resultRoot: Strategy[];
+  /**
+   * The applicant's photograph on the result page, for the admin to compare
+   * with the app selfie (ADR-0041). Fragility: HIGH — layout-dependent.
+   * When nothing matches, the admin compares against the photo in the PDF.
+   */
+  photo: Strategy[];
 }
 
 export const GOVUK_SELECTORS: GovukSelectors = {
@@ -72,6 +78,7 @@ export const GOVUK_SELECTORS: GovukSelectors = {
     { css: 'button[type="submit"]' },
   ],
   resultRoot: [{ css: 'main' }, { css: '#main-content' }, { css: 'body' }],
+  photo: [{ css: 'main img[alt*="photo" i]' }, { css: 'main img[alt*="image of" i]' }],
 };
 
 /**
