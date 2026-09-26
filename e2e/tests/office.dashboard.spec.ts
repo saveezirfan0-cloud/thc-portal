@@ -30,6 +30,11 @@ async function withoutData(page: Page): Promise<boolean> {
   return (await page.locator('.alert', { hasText: 'no Supabase project' }).count()) > 0;
 }
 
+// One worker, in file order, for this file only (the config is fully
+// parallel): the short-staffed test at the end seeds two open seats and
+// removes them, and "Open positions = 35" above must not run beside it.
+test.describe.configure({ mode: 'default' });
+
 test('the four operational KPIs sit on one row (§9.1)', async ({ page }) => {
   await openAsAdmin(page, '/dashboard');
 
