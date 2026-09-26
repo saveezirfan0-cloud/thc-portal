@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { DocumentKind, LineupRow, PortalEvent, RoleSection } from '../rules';
 
 /**
- * §11.1 against its ADR-0034 additions, state by state, as the first paint
+ * §11.1 against its ADR-0049 additions, state by state, as the first paint
  * draws them (static markup, so the list opens on the Upcoming tab with no
  * filters): the tab label, the "Next up" strip, the phone card's bar and
  * role split, the feedback nudge, the download's weight, the venue select
@@ -92,6 +92,7 @@ const sections: RoleSection[] = [
 const worker = (name: string, eventId: string, feedbackGiven = false): LineupRow => ({
   bookingId: `b-${eventId}-${name}`,
   eventId,
+  shiftId: null,
   role: 'Waiting',
   startsAt: '2026-09-19T16:00:00Z',
   endsAt: '2026-09-19T22:30:00Z',
@@ -130,7 +131,7 @@ const card = (markup: string, title: string): string => {
   return cards.find((c) => c.includes(`<div class="t">${title}</div>`)) ?? '';
 };
 
-describe('the tabs fit a phone (ADR-0034)', () => {
+describe('the tabs fit a phone (ADR-0049)', () => {
   it('labels the first tab "Upcoming", still counting ongoing events in it', () => {
     const markup = render([gala, launch, lunch]);
     expect(markup).toContain('Upcoming<span class="n">2</span>');
@@ -138,7 +139,7 @@ describe('the tabs fit a phone (ADR-0034)', () => {
   });
 });
 
-describe('the "Next up" strip (ADR-0034)', () => {
+describe('the "Next up" strip (ADR-0049)', () => {
   it('points at the event running now, with its UK end time and its fill', () => {
     const markup = render([gala, launch, lunch]);
     const open = '<a href="/client/events/ev-gala" class="ev-next live">';
@@ -162,7 +163,7 @@ describe('the "Next up" strip (ADR-0034)', () => {
   });
 });
 
-describe('the phone card carries the fill bar and the role split (§11.1, ADR-0034)', () => {
+describe('the phone card carries the fill bar and the role split (§11.1, ADR-0049)', () => {
   it('draws the bar and "Waiting 8/10 · Bar 5/7" under "13 of 17 confirmed"', () => {
     const galaCard = card(render([gala]), 'Gala Dinner');
     expect(galaCard).toContain('<b>13</b> of 17 confirmed');
@@ -186,7 +187,7 @@ describe('the phone card carries the fill bar and the role split (§11.1, ADR-00
   });
 });
 
-describe('the feedback nudge (§11.2, ADR-0034)', () => {
+describe('the feedback nudge (§11.2, ADR-0049)', () => {
   it('counts the workers still to rate on a started event, leaving out a removed one', () => {
     const galaCard = card(render([gala]), 'Gala Dinner');
     expect(galaCard).toContain(
@@ -199,7 +200,7 @@ describe('the feedback nudge (§11.2, ADR-0034)', () => {
   });
 });
 
-describe('the document is the primary action (ADR-0034)', () => {
+describe('the document is the primary action (ADR-0049)', () => {
   it('fills a live download and pairs it with a bordered Details', () => {
     const galaCard = card(render([gala]), 'Gala Dinner');
     expect(galaCard).toContain(
@@ -217,7 +218,7 @@ describe('the document is the primary action (ADR-0034)', () => {
   });
 });
 
-describe("the signed timesheet's status (§11.3, ADR-0034)", () => {
+describe("the signed timesheet's status (§11.3, ADR-0049)", () => {
   it('says plainly whether it has been issued', () => {
     expect(renderToStaticMarkup(<TimesheetStatus status="ready" />)).toContain(
       'Signed timesheet ready',
@@ -234,7 +235,7 @@ describe("the signed timesheet's status (§11.3, ADR-0034)", () => {
   });
 });
 
-describe('the filters (ADR-0034)', () => {
+describe('the filters (ADR-0049)', () => {
   it('offers From and To dates and the search', () => {
     const markup = render([gala, launch]);
     expect(markup.match(/type="date"/g)).toHaveLength(2);
@@ -254,7 +255,7 @@ describe('the filters (ADR-0034)', () => {
   });
 });
 
-describe('an empty list says why (ADR-0034)', () => {
+describe('an empty list says why (ADR-0049)', () => {
   it('with no events at all', () => {
     const markup = render([]);
     expect(markup).toContain('No events yet');
@@ -286,7 +287,7 @@ describe('an empty list says why (ADR-0034)', () => {
   });
 });
 
-describe('arrival counts on the day (ADR-0038)', () => {
+describe('arrival counts on the day (ADR-0053)', () => {
   const counts = (confirmed: number, arrived: number) => ({ confirmed, arrived, bySection: {} });
   const withArrivals = (events: PortalEvent[]) =>
     renderToStaticMarkup(

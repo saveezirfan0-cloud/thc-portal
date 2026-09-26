@@ -3,7 +3,7 @@ import { buildIcs, escapeText, foldLine, icsFileName, icsUtc, lineupUrlFor } fro
 import type { PortalEvent } from '../rules';
 
 /**
- * "Add to calendar" (ADR-0035): the RFC 5545 file, byte for byte where it
+ * "Add to calendar" (ADR-0050): the RFC 5545 file, byte for byte where it
  * matters — TEXT escaping, 75-octet folding, CRLF, UTC stamps — and what
  * it must never carry: a worker's name or money.
  */

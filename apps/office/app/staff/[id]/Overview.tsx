@@ -2,8 +2,16 @@
 
 import { Note, Panel, Pill } from '@thc/ui';
 import { RTW_LABEL, capReason, formatDateRange, formatUkDate } from '../staff';
-import { formatUkStamp } from './profile';
-import type { DeclarationRow, ProfileRow, ReferenceRow } from './types';
+import { formatUkStamp, reviewLabel } from './profile';
+import { EmergencyContactCard } from './EmergencyContactCard';
+import { ReferralsCard } from './ReferralsCard';
+import type {
+  DeclarationRow,
+  EmergencyContact,
+  ProfileRow,
+  ReferenceRow,
+  Referrals,
+} from './types';
 
 /**
  * The Overview tab (§9.6): "everything collected during onboarding, in
@@ -35,12 +43,22 @@ export function Overview({
   references,
   declarations,
   locationStale = false,
+  emergencyContact = null,
+  emergencyContactProblem = null,
+  referrals = null,
+  referralsProblem = null,
 }: {
   profile: ProfileRow;
   references: ReferenceRow[];
   declarations: DeclarationRow[];
   /** The address moved and the pin could not follow (20260926110000). */
   locationStale?: boolean;
+  /** ADR-0044 — null reads "Not provided". */
+  emergencyContact?: EmergencyContact | null;
+  emergencyContactProblem?: string | null;
+  /** ADR-0047. */
+  referrals?: Referrals | null;
+  referralsProblem?: string | null;
 }) {
   return (
     <div className="grid c2">
@@ -87,16 +105,21 @@ export function Overview({
           <span>
             {profile.wtr_optout ? 'Signed' : <span className="muted">Not signed</span>}
             {profile.rtw_branch === 'international_student' ? (
-              <span className="muted xs">
-                {' '}
-                — a visa condition beats the opt-out in term time (RULE-20)
-              </span>
+              <span className="muted xs"> — a visa condition beats the opt-out in term time</span>
             ) : null}
           </span>
           <span className="k">Joined</span>
           <span>{formatUkDate(profile.joined_at)}</span>
         </div>
       </Panel>
+
+      {/* ADR-0044: office-only, never on a client document. */}
+      <EmergencyContactCard
+        staffId={profile.id}
+        contact={emergencyContact}
+        problem={emergencyContactProblem}
+        editable={!profile.removed}
+      />
 
       <Panel
         title="Two references"
@@ -125,11 +148,12 @@ export function Overview({
         )}
       </Panel>
 
+      {/* ADR-0047: who referred them, and who applied with their code. */}
+      <ReferralsCard referrals={referrals} problem={referralsProblem} />
+
       <Panel
         title="Criminal convictions · history"
-        actions={
-          <span className="muted sm">declarations are never edited or overwritten (§1.5)</span>
-        }
+        actions={<span className="muted sm">declarations are never edited or overwritten</span>}
       >
         {declarations.length === 0 ? (
           <Note>No declaration on file.</Note>
@@ -161,7 +185,7 @@ export function Overview({
                               : 'amber'
                       }
                     >
-                      {row.review_status === 'pending' ? 'Under review' : row.review_status}
+                      {reviewLabel(row.review_status)}
                     </Pill>
                   </div>
                 </span>
@@ -223,7 +247,7 @@ export function Overview({
       <Panel
         className="span-2"
         title="Term dates &amp; calculated weekly limit"
-        actions={<Pill>read-only · RULE-20</Pill>}
+        actions={<Pill>read-only · calculated</Pill>}
       >
         <div className="row wrap" style={{ gap: 24 }}>
           <div>
@@ -254,8 +278,8 @@ export function Overview({
           </div>
         </div>
         <Note>
-          The cap is calculated live from this evidence, never stored (RULE-20). Correcting a date
-          on the Documents tab changes it from that moment.
+          The cap is calculated live from this evidence, never stored. Correcting a date on the
+          Documents tab changes it from that moment.
         </Note>
       </Panel>
     </div>

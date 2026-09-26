@@ -5,7 +5,7 @@ import { buildIcs, icsFileName, lineupUrlFor } from '../../ics';
 import type { PortalEvent } from '../../rules';
 
 /**
- * "Add to calendar" in the event page's header (ADR-0035).
+ * "Add to calendar" in the event page's header (ADR-0050).
  *
  * Builds the .ics in the browser from the event the page already holds —
  * no request, no new view, nothing the client role could not already read.

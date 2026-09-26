@@ -2,7 +2,7 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import { PASSWORD_MIN_LENGTH } from '@thc/domain';
 
 /**
- * Change password on "Your account" (ADR-0036).
+ * Change password on "Your account" (ADR-0051).
  *
  * The rules are /reset's (@thc/domain password.ts). The current password is
  * re-verified server-side against the SESSION's email on a cookie-less

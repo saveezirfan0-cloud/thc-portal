@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ArrivalRow, EventArrivals } from '../arrivals';
 
 /**
- * "11 of 13 arrived" (ADR-0038). Counts only, from `client_arrivals_v`, under
+ * "11 of 13 arrived" (ADR-0053). Counts only, from `client_arrivals_v`, under
  * the caller's own session (ADR-0004). The loader must never break the page,
  * and the pill must never say more than two numbers.
  */

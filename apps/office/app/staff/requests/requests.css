@@ -1,0 +1,126 @@
+/*
+ * Change requests (ADR-0045): the /staff/requests queue, the decide dialog
+ * and the /staff/:id pending banner. Mirrors the inline <style> block in
+ * wireframes/backoffice/change-requests.html. Tokens only (CLAUDE.md).
+ */
+
+/* A button that reads as a link: the evidence file. */
+.cr-link {
+  background: none;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: var(--cyan-ink);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.cr-link:disabled {
+  color: var(--muted);
+  cursor: default;
+  text-decoration: none;
+}
+
+/* The dialog's key/value grid (the profile's .kv lives in its own page CSS). */
+.cr-dialog .kv {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: var(--sp-8) var(--sp-14);
+  font-size: var(--fs-13);
+  align-items: baseline;
+}
+.cr-dialog .kv .k,
+.cr-card .label {
+  font-family: var(--font-label);
+  font-size: var(--label-size);
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
+  color: var(--muted);
+  font-weight: var(--label-weight);
+}
+
+/* Now → requested, side by side. */
+.cr-sides {
+  display: grid;
+  grid-template-columns: 1fr 24px 1fr 1.2fr;
+  gap: var(--sp-14);
+  align-items: start;
+}
+.cr-sides .side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+.cr-sides .side .v {
+  font-family: var(--font-head);
+  font-size: var(--fs-17);
+  font-weight: 600;
+}
+.cr-sides .arrow {
+  color: var(--muted);
+  font-size: var(--fs-17);
+  text-align: center;
+  padding-top: var(--sp-20);
+}
+
+/* One pending request in the queue. */
+.cr-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  background: var(--panel);
+}
+.cr-card .rh {
+  display: flex;
+  gap: var(--sp-12);
+  align-items: center;
+  flex-wrap: wrap;
+  padding: var(--sp-12) var(--sp-16);
+  border-bottom: 1px solid var(--line);
+}
+.cr-card .rh .who {
+  font-weight: 600;
+}
+.cr-card .rb {
+  padding: var(--sp-14) var(--sp-16);
+}
+.cr-card .rf {
+  display: flex;
+  gap: var(--sp-8);
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  padding: var(--sp-10) var(--sp-16);
+  border-top: 1px solid var(--line);
+}
+.cr-card .rf .xs {
+  margin-right: auto;
+}
+
+/* /staff/:id — a pending request, above the tabs. */
+.cr-banner {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-12);
+  flex-wrap: wrap;
+  padding: var(--sp-10) var(--sp-16);
+  border: 1px solid var(--amber-line);
+  border-radius: var(--r-card);
+  background: var(--amber-dim);
+  font-size: var(--fs-14);
+}
+.cr-banner .ml-auto {
+  margin-left: auto;
+}
+
+@media (max-width: 860px) {
+  .cr-sides {
+    grid-template-columns: 1fr;
+  }
+  .cr-sides .arrow {
+    display: none;
+  }
+  .cr-dialog .kv {
+    grid-template-columns: 1fr;
+  }
+}

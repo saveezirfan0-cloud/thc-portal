@@ -3,7 +3,7 @@ import { ACCOUNT_COPY } from './copy';
 import { PasswordForm } from './PasswordForm';
 
 /**
- * "Your account" (ADR-0036) — a deliberate, recorded addition to §11.
+ * "Your account" (ADR-0051) — a deliberate, recorded addition to §11.
  *
  * Everything on it is read-only except the password: there is no input for
  * the name, the sign-in email, the company or the recipients, because

@@ -7,7 +7,7 @@ import { PASSWORD_MIN_LENGTH, checkPassword, passwordOk } from '@thc/domain';
 import { changePassword } from './actions';
 
 /**
- * "Change password" on Your account (ADR-0036).
+ * "Change password" on Your account (ADR-0051).
  *
  * The checklist is /reset's (apps/client/app/reset/ResetForm.tsx): same
  * rules, same function, same wording, so a password ticked here is never

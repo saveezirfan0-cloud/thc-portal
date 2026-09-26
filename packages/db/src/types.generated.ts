@@ -332,6 +332,13 @@ export type Database = {
             foreignKeyName: 'bookings_shift_id_fkey';
             columns: ['shift_id'];
             isOneToOne: false;
+            referencedRelation: 'client_lineup_v';
+            referencedColumns: ['shift_id'];
+          },
+          {
+            foreignKeyName: 'bookings_shift_id_fkey';
+            columns: ['shift_id'];
+            isOneToOne: false;
             referencedRelation: 'client_role_sections_v';
             referencedColumns: ['shift_id'];
           },
@@ -967,6 +974,9 @@ export type Database = {
           manual_review_reason: string | null;
           mime_type: string | null;
           needs_manual_review: boolean;
+          ni_matched_at: string | null;
+          ni_matched_by: string | null;
+          ni_recheck: boolean;
           rejection_reason: string | null;
           retain_until: string | null;
           review_status: Database['public']['Enums']['review_status'];
@@ -998,6 +1008,9 @@ export type Database = {
           manual_review_reason?: string | null;
           mime_type?: string | null;
           needs_manual_review?: boolean;
+          ni_matched_at?: string | null;
+          ni_matched_by?: string | null;
+          ni_recheck?: boolean;
           rejection_reason?: string | null;
           retain_until?: string | null;
           review_status?: Database['public']['Enums']['review_status'];
@@ -1029,6 +1042,9 @@ export type Database = {
           manual_review_reason?: string | null;
           mime_type?: string | null;
           needs_manual_review?: boolean;
+          ni_matched_at?: string | null;
+          ni_matched_by?: string | null;
+          ni_recheck?: boolean;
           rejection_reason?: string | null;
           retain_until?: string | null;
           review_status?: Database['public']['Enums']['review_status'];
@@ -1043,6 +1059,13 @@ export type Database = {
           uploaded_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: 'compliance_docs_ni_matched_by_fkey';
+            columns: ['ni_matched_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
           {
             foreignKeyName: 'compliance_docs_reviewed_by_fkey';
             columns: ['reviewed_by'];
@@ -2610,6 +2633,7 @@ export type Database = {
           correct_index: number;
           created_at: string;
           id: string;
+          image_path: string | null;
           is_placeholder: boolean;
           options: string[];
           position: number;
@@ -2620,6 +2644,7 @@ export type Database = {
           correct_index: number;
           created_at?: string;
           id?: string;
+          image_path?: string | null;
           is_placeholder?: boolean;
           options: string[];
           position: number;
@@ -2630,6 +2655,7 @@ export type Database = {
           correct_index?: number;
           created_at?: string;
           id?: string;
+          image_path?: string | null;
           is_placeholder?: boolean;
           options?: string[];
           position?: number;
@@ -3084,6 +3110,7 @@ export type Database = {
           status: Database['public']['Enums']['staff_status'];
           term_dates: unknown[];
           user_id: string | null;
+          visa_weekly_hour_limit: number | null;
           willo_answers_done: number | null;
           willo_answers_total: number | null;
           willo_candidate_id: string | null;
@@ -3143,6 +3170,7 @@ export type Database = {
           status?: Database['public']['Enums']['staff_status'];
           term_dates?: unknown[];
           user_id?: string | null;
+          visa_weekly_hour_limit?: number | null;
           willo_answers_done?: number | null;
           willo_answers_total?: number | null;
           willo_candidate_id?: string | null;
@@ -3202,6 +3230,7 @@ export type Database = {
           status?: Database['public']['Enums']['staff_status'];
           term_dates?: unknown[];
           user_id?: string | null;
+          visa_weekly_hour_limit?: number | null;
           willo_answers_done?: number | null;
           willo_answers_total?: number | null;
           willo_candidate_id?: string | null;
@@ -3630,6 +3659,7 @@ export type Database = {
           resolved_at: string | null;
           resolved_by: string | null;
           staff_id: string;
+          stale_fix_review: boolean;
           type: Database['public']['Enums']['violation_type'];
         };
         Insert: {
@@ -3643,6 +3673,7 @@ export type Database = {
           resolved_at?: string | null;
           resolved_by?: string | null;
           staff_id: string;
+          stale_fix_review?: boolean;
           type: Database['public']['Enums']['violation_type'];
         };
         Update: {
@@ -3656,6 +3687,7 @@ export type Database = {
           resolved_at?: string | null;
           resolved_by?: string | null;
           staff_id?: string;
+          stale_fix_review?: boolean;
           type?: Database['public']['Enums']['violation_type'];
         };
         Relationships: [
@@ -4049,6 +4081,7 @@ export type Database = {
           name: string | null;
           photo_path: string | null;
           role: string | null;
+          shift_id: string | null;
           sort_key: string | null;
           starts_at: string | null;
         };
@@ -4425,8 +4458,15 @@ export type Database = {
           actor: string | null;
           actor_name: string | null;
           at: string | null;
+          below_degree_level: boolean | null;
+          branch: string | null;
+          branch_before: string | null;
+          check_outcome: string | null;
+          check_source: string | null;
           completion_date: string | null;
           completion_date_claimed: string | null;
+          condition: string | null;
+          doc_type: string | null;
           document_id: string | null;
           effective_from: string | null;
           employee_id: number | null;
@@ -4438,9 +4478,13 @@ export type Database = {
           reason: string | null;
           record_type: string | null;
           retain_until: string | null;
+          rtw_no_time_limit: boolean | null;
+          rtw_until: string | null;
+          rtw_until_before: string | null;
           staff_id: string | null;
           uploaded_at: string | null;
           visa_expiry: string | null;
+          visa_hour_limit: number | null;
           worker: string | null;
         };
         Relationships: [];
@@ -4472,6 +4516,7 @@ export type Database = {
         Row: {
           ai_confidence: number | null;
           awarding_institution: string | null;
+          below_degree_level: boolean | null;
           block_kind: Database['public']['Enums']['block_kind'] | null;
           block_reason: string | null;
           completion_date_claimed: string | null;
@@ -4484,6 +4529,7 @@ export type Database = {
           evidence_form: string | null;
           expiry_date: string | null;
           file_path: string | null;
+          gov_report_path: string | null;
           is_candidate: boolean | null;
           is_reupload: boolean | null;
           item_id: string | null;
@@ -4493,6 +4539,7 @@ export type Database = {
           manual_review_reason: string | null;
           mime_type: string | null;
           needs_manual_review: boolean | null;
+          ni_number: string | null;
           photo_path: string | null;
           previous_rejection: string | null;
           review_reason: string | null;
@@ -4506,6 +4553,7 @@ export type Database = {
           rtw_check_report_path: string | null;
           rtw_check_source: string | null;
           rtw_check_status: string | null;
+          rtw_check_term_limit: number | null;
           rtw_check_until: string | null;
           rtw_checked_at: string | null;
           rtw_manual_allowed: boolean | null;
@@ -4516,6 +4564,7 @@ export type Database = {
           status: Database['public']['Enums']['staff_status'] | null;
           submitted_at: string | null;
           term_dates: unknown[] | null;
+          visa_weekly_hour_limit: number | null;
         };
         Relationships: [];
       };
@@ -5674,6 +5723,7 @@ export type Database = {
           weekly_cap_band: Database['public']['Enums']['cap_band'] | null;
           weekly_cap_hours: number | null;
           weekly_cap_until: string | null;
+          weekly_worked_hours: number | null;
           wtr_optout: boolean | null;
         };
         Relationships: [];
@@ -5691,6 +5741,7 @@ export type Database = {
           gov_report_path: string | null;
           id: string | null;
           needs_manual_review: boolean | null;
+          ni_recheck: boolean | null;
           rejection_reason: string | null;
           review_status: Database['public']['Enums']['review_status'] | null;
           reviewed_at: string | null;
@@ -5891,15 +5942,18 @@ export type Database = {
           home_address: string | null;
           id: string | null;
           joined_at: string | null;
+          last_shift_at: string | null;
           leave_reason: string | null;
           left_at: string | null;
           ni_number_masked: string | null;
           no_shows: number | null;
+          p45_requested_at: string | null;
           phone: string | null;
           photo_path: string | null;
           qualification_count: number | null;
           quiz_attempts: number | null;
           rating: number | null;
+          released_shift_count: number | null;
           reliability: number | null;
           removed: boolean | null;
           right_to_work_until: string | null;
@@ -5914,6 +5968,7 @@ export type Database = {
           weekly_cap_band: Database['public']['Enums']['cap_band'] | null;
           weekly_cap_hours: number | null;
           weekly_cap_until: string | null;
+          weekly_worked_hours: number | null;
           wtr_optout: boolean | null;
         };
         Relationships: [];
@@ -6501,6 +6556,7 @@ export type Database = {
       auto_assign_candidates: {
         Args: { p_escalation?: boolean; p_shift: string };
         Returns: {
+          booking_cause: string;
           booking_status: string;
           distance_km: number;
           future_shifts: number;
@@ -6568,6 +6624,18 @@ export type Database = {
         Args: { p_booking: string };
         Returns: boolean;
       };
+      booking_push_payload: { Args: { p_booking: string }; Returns: Json };
+      booking_reminder_key: {
+        Args: { p_booking: string; p_code: string; p_starts_at: string };
+        Returns: string;
+      };
+      booking_reopenable_by: {
+        Args: {
+          p_cause: string;
+          p_status: Database['public']['Enums']['booking_status'];
+        };
+        Returns: string;
+      };
       booking_tick: { Args: { p_now?: string }; Returns: Json };
       booking_transition_allowed: {
         Args: {
@@ -6584,6 +6652,17 @@ export type Database = {
         }[];
       };
       booking_venue_point: { Args: { p_booking: string }; Returns: Json };
+      break_window_minutes: {
+        Args: {
+          p_break_end: string;
+          p_break_start: string;
+          p_check_in_at: string;
+          p_ends_at: string;
+          p_finish_at: string;
+          p_starts_at: string;
+        };
+        Returns: number;
+      };
       can_roster: {
         Args: { p_shift_date: string; p_visa_expiry: string };
         Returns: boolean;
@@ -6698,6 +6777,10 @@ export type Database = {
         Args: { p_completion: string; p_verified: string };
         Returns: string;
       };
+      compliance_attach_rtw_report: {
+        Args: { p_doc: string; p_path: string };
+        Returns: Json;
+      };
       compliance_blockers: {
         Args: { p_on?: string; p_staff: string };
         Returns: {
@@ -6720,6 +6803,18 @@ export type Database = {
       };
       compliance_reject_document_as: {
         Args: { p_doc: string; p_reason: string; p_reviewer: string };
+        Returns: Json;
+      };
+      compliance_resolve_ni_check: {
+        Args: { p_doc: string; p_matches: boolean; p_reason?: string };
+        Returns: Json;
+      };
+      compliance_set_below_degree_level: {
+        Args: { p_below: boolean; p_staff: string };
+        Returns: Json;
+      };
+      compliance_set_visa_hour_limit: {
+        Args: { p_hours: number; p_staff: string };
         Returns: Json;
       };
       compliance_verify_declaration: {
@@ -7102,7 +7197,12 @@ export type Database = {
         }[];
       };
       n6_due_at: { Args: { p_starts_at: string }; Returns: string };
+      n7_closes_at: { Args: { p_starts_at: string }; Returns: string };
       n7_due_at: { Args: { p_starts_at: string }; Returns: string };
+      n8_link: {
+        Args: { p_status: Database['public']['Enums']['staff_status'] };
+        Returns: string;
+      };
       new_starter_export_rows: {
         Args: { p_send: number };
         Returns: {
@@ -7171,6 +7271,16 @@ export type Database = {
         Returns: Json;
       };
       office_mark_no_show: { Args: { p_booking: string }; Returns: Json };
+      office_submit_completion_letter: {
+        Args: {
+          p_awarding_institution?: string;
+          p_completion_date: string;
+          p_evidence_form: string;
+          p_file_path: string;
+          p_staff: string;
+        };
+        Returns: Json;
+      };
       onboarding_accept: {
         Args: {
           p_activation_link: string;
@@ -7291,6 +7401,7 @@ export type Database = {
           status: Database['public']['Enums']['staff_status'];
           term_dates: unknown[];
           user_id: string | null;
+          visa_weekly_hour_limit: number | null;
           willo_answers_done: number | null;
           willo_answers_total: number | null;
           willo_candidate_id: string | null;
@@ -7317,6 +7428,7 @@ export type Database = {
         Args: never;
         Returns: {
           id: string;
+          image_path: string;
           options: string[];
           prompt: string;
           question_no: number;
@@ -7653,7 +7765,12 @@ export type Database = {
         Returns: Json;
       };
       resolve_violation: {
-        Args: { p_actual_finish?: string; p_note: string; p_violation: string };
+        Args: {
+          p_actual_finish?: string;
+          p_arrived_at?: string;
+          p_note: string;
+          p_violation: string;
+        };
         Returns: Json;
       };
       retained_storage_paths: { Args: { p_staff: string }; Returns: string[] };
@@ -8506,6 +8623,7 @@ export type Database = {
           event_date: string;
           event_title: string;
           geofence_radius_m: number;
+          left_early: boolean;
           no_checkout_open: boolean;
           notes: string;
           onsite_contact: string;
@@ -8763,6 +8881,29 @@ export type Database = {
               isOneToOne: true;
               isSetofReturn: false;
             };
+          }
+        | {
+            Args: {
+              p_below_degree_level: boolean;
+              p_completion_date: string;
+              p_completion_letter_verified: boolean;
+              p_optout_48h: boolean;
+              p_optout_cancelled_from: string;
+              p_term_state: string;
+              p_under18: boolean;
+              p_verified_on: string;
+              p_visa_expiry: string;
+              p_visa_hour_limit: number;
+              p_visa_limited: boolean;
+              p_week_start: string;
+            };
+            Returns: Database['public']['CompositeTypes']['cap_assessment'];
+            SetofOptions: {
+              from: '*';
+              to: 'cap_assessment';
+              isOneToOne: true;
+              isSetofReturn: false;
+            };
           };
       weekly_cap_band: {
         Args: { p_date: string; p_staff: string };
@@ -8851,6 +8992,7 @@ export type Database = {
         Returns: undefined;
       };
       withdraw_application: { Args: { p_booking: string }; Returns: Json };
+      withdraw_booking: { Args: { p_booking: string }; Returns: Json };
       wtr_optout_do_cancel: { Args: { p_staff: string }; Returns: Json };
       wtr_optout_do_sign: {
         Args: {
@@ -8876,7 +9018,8 @@ export type Database = {
         | 'standard_48'
         | 'uncapped'
         | 'visa_expired_0'
-        | 'student_term_10';
+        | 'student_term_10'
+        | 'visa_limit';
       checklog_outcome: 'checked_in' | 'turned_away' | 'out_of_radius';
       declaration_source: 'onboarding' | 'in_employment';
       doc_type:
@@ -9064,6 +9207,7 @@ export const Constants = {
         'uncapped',
         'visa_expired_0',
         'student_term_10',
+        'visa_limit',
       ],
       checklog_outcome: ['checked_in', 'turned_away', 'out_of_radius'],
       declaration_source: ['onboarding', 'in_employment'],

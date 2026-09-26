@@ -7,11 +7,11 @@ import { createClient } from '@thc/db/server';
 import { PASSWORD_COPY } from './copy';
 
 /**
- * Change password on "Your account" (ADR-0036).
+ * Change password on "Your account" (ADR-0051).
  *
  * The one input on the page. It changes how the customer signs in, not any
  * business data, which is why it sits beside §11.1's "Read-only — no
- * editing whatsoever" rather than against it (ADR-0036).
+ * editing whatsoever" rather than against it (ADR-0051).
  *
  * The order matters:
  *

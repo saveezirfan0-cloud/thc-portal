@@ -75,6 +75,16 @@ export interface EarningsRow {
   basePence: number | null;
 }
 
+/**
+ * The worker's emergency contact — `my_emergency_contact()` (ADR-0044).
+ * Optional; office-only; never on a client document. The phone is E.164.
+ */
+export interface EmergencyContact {
+  name: string;
+  relationship: string;
+  phone: string;
+}
+
 export type ActionResult = { ok: true; note?: string } | { ok: false; message: string };
 
 export const HELP_EMAIL = 'admin@thehospitalitycompany.co.uk';

@@ -3,7 +3,9 @@
  * screen shows lives here, so it is tested without a database or a browser;
  * the components only lay it out.
  */
-import type { RtwCheckRow } from '../_lib/rtwCheck';
+import { rtwLockedUntil } from '../_lib/rtwCheck';
+import type { RtwCheckRow, RtwLockedUntil } from '../_lib/rtwCheck';
+import { conditionFieldFor, formatNi, niEvidenceLine } from './conditions';
 import { rtwDateRule } from './rtw';
 import type { QueueRow, RadarRow, RadarState } from './types';
 
@@ -210,7 +212,51 @@ export function queueRowCheck(row: QueueRow): RtwCheckRow | null {
     stuck:
       row.rtw_manual_allowed === true &&
       (row.rtw_check_status === 'queued' || row.rtw_check_status === 'running'),
+    recommendation: row.rtw_check_recommendation ?? null,
+    photo_path: row.rtw_check_photo_path ?? null,
+    suggested_reason: row.rtw_check_suggested_reason ?? null,
   };
+}
+
+/**
+ * The queue row with what ADR-0041 added to the latest check — the
+ * recommendation, the office-only suggested N8 text and the photo — which
+ * compliance_review_queue_v does not carry: they are read from
+ * rtw_checks_latest_v by document id and merged here. Only when it is the
+ * SAME check the queue row names, so a check that moved on between the two
+ * reads never lends its recommendation to another.
+ */
+export function withLatestCheck(row: QueueRow, check: RtwCheckRow | null | undefined): QueueRow {
+  if (!check || row.kind !== 'document' || row.item_type !== 'share_code_report') return row;
+  if (!row.rtw_check_id || check.check_id !== row.rtw_check_id) return row;
+  return {
+    ...row,
+    rtw_check_recommendation: check.recommendation,
+    rtw_check_suggested_reason: check.suggested_reason,
+    rtw_check_photo_path: check.photo_path,
+  };
+}
+
+/**
+ * gov.uk's right-to-work date, confirmed read-only on Verify (ADR-0041),
+ * or null where the reviewer types it: a pending share code whose latest
+ * check recommends verifying.
+ */
+export function queueRowLockedUntil(row: QueueRow): RtwLockedUntil | null {
+  if (row.kind !== 'document' || row.item_type !== 'share_code_report') return null;
+  return rtwLockedUntil(queueRowCheck(row), 'pending');
+}
+
+/**
+ * What the Reject box opens with: the check's suggested N8 text on a share
+ * code it recommends rejecting (ADR-0041), editable; otherwise empty.
+ */
+export function rejectPrefill(row: QueueRow): string {
+  if (row.kind !== 'document' || row.item_type !== 'share_code_report') return '';
+  if (row.rtw_check_status !== 'needs_review' || row.rtw_check_recommendation !== 'reject') {
+    return '';
+  }
+  return row.rtw_check_suggested_reason ?? '';
 }
 
 /**
@@ -229,6 +275,10 @@ export function verifyAllowed(row: QueueRow): boolean {
 /** The wording of the 'rtw_date' row when the view sends none (it always does; this is the fallback). */
 export const RTW_DATE_MISSING = 'Right-to-work date missing — re-verify';
 
+/** The wording of the 'ni_check' row when the view sends none (D43). */
+export const NI_CHECK_REASON =
+  'NI number entered after the NI evidence was verified — compare them';
+
 /** The sub-line under the document name. */
 export function documentLine(row: QueueRow): string {
   if (row.kind === 'rtw_date') {
@@ -242,9 +292,14 @@ export function documentLine(row: QueueRow): string {
   if (row.kind === 'rtw_check') {
     return 'gov.uk returned no right to work — the worker has been asked to re-enter the share code (N8)';
   }
+  if (row.kind === 'ni_check') {
+    return [row.review_reason ?? NI_CHECK_REASON, 'compare the number with the evidence'].join(
+      ' · ',
+    );
+  }
   if (row.kind === 'declaration') {
     const source =
-      row.declaration_source === 'in_employment' ? 'declared from the app (§10.7)' : 'onboarding';
+      row.declaration_source === 'in_employment' ? 'declared from the app' : 'onboarding';
     return `Answer: Yes · ${source}`;
   }
   const parts: string[] = [];
@@ -253,6 +308,7 @@ export function documentLine(row: QueueRow): string {
     parts.push('optional document, International student branch');
   }
   if (row.awarding_institution) parts.push(row.awarding_institution);
+  if (row.item_type === 'ni_evidence') parts.push(niEvidenceLine(row.ni_number));
   const kind = fileKind(row.mime_type);
   const size = fileSize(row.size_bytes);
   if (kind || size) parts.push([kind, size].filter(Boolean).join(' '));
@@ -274,6 +330,15 @@ export function foundLine(row: QueueRow): {
     // No upload for an extractor to read: only a human can close this one.
     return {
       text: 'No right-to-work date on file — re-run the gov.uk check',
+      confidence: 'manual',
+    };
+  }
+  if (row.kind === 'ni_check') {
+    // The number, in full, beside the evidence it has to match (D43).
+    return {
+      text: row.ni_number
+        ? `NI number on the profile: ${formatNi(row.ni_number)}`
+        : 'No NI number on the profile',
       confidence: 'manual',
     };
   }
@@ -333,7 +398,7 @@ export function reviewFlag(row: QueueRow): { label: string; detail: string } | n
   if (row.manual_review_reason === LETTER_EXPIRED) {
     return {
       label: 'Letter expired',
-      detail: 'every term date on it is in the past — not accepted (§4.2)',
+      detail: 'every term date on it is in the past — not accepted',
     };
   }
   return { label: 'Flagged', detail: row.manual_review_reason };
@@ -342,7 +407,9 @@ export function reviewFlag(row: QueueRow): { label: string; detail: string } | n
 /** The "Uploaded" cell's sub-line: how long it has waited, and for the rtw_date row, what the stamp is. */
 export function uploadedLine(row: QueueRow, now: Date = new Date()): string {
   const age = ageLabel(row.submitted_at, now);
-  return row.kind === 'rtw_date' ? `verified without a date · ${age}` : age;
+  if (row.kind === 'rtw_date') return `verified without a date · ${age}`;
+  if (row.kind === 'ni_check') return `verified before the NI number · ${age}`;
+  return age;
 }
 
 /**
@@ -356,6 +423,9 @@ export function actionsFor(row: QueueRow): { verify: string; reject: boolean } {
   if (row.kind === 'rtw_date') return { verify: 'Confirm date', reject: false };
   // ADR-0025: the check's document is already rejected; Mark reviewed is on its panel.
   if (row.kind === 'rtw_check') return { verify: 'Verify', reject: false };
+  // D43: the evidence is already verified; the question is whether the
+  // number matches it. Reject ("does not match") takes a reason (N8).
+  if (row.kind === 'ni_check') return { verify: 'Matches', reject: true };
   return { verify: 'Verify', reject: true };
 }
 
@@ -366,18 +436,31 @@ export function actionsFor(row: QueueRow): { verify: string; reject: boolean } {
  *     and visa expiry (requirement §2.2) — approve_completion_letter();
  *   - `confirm_date`: a visa document, status document or share code
  *     report, verified on the right-to-work date it carries (20260923200000),
- *     or an rtw_date row, whose date alone is confirmed (20260927160000);
+ *     or an rtw_date row, whose date alone is confirmed (20260927160000) —
+ *     with the course level or the visa's hours limit beside it where the
+ *     route has one (D32, D36);
+ *   - `confirm`: a document with no date but something to check beside it —
+ *     NI evidence against the NI number, shown in full (D43), or a
+ *     student's term letter with the course level (D32);
+ *   - `ni_match`: the ni_check row's "Matches", recorded on the click;
  *   - `verify`: everything else, on the click.
  */
-export type VerifyStep = 'approve' | 'confirm_date' | 'verify';
+export type VerifyStep = 'approve' | 'confirm_date' | 'confirm' | 'ni_match' | 'verify';
 
 export function verifyStep(row: QueueRow): VerifyStep {
+  if (row.kind === 'ni_check') return 'ni_match';
   if (row.item_type === 'university_completion_letter') return 'approve';
   if (
     (row.kind === 'document' || row.kind === 'rtw_date') &&
     rtwDateRule(row.item_type, row.rtw_branch)
   ) {
     return 'confirm_date';
+  }
+  if (
+    row.kind === 'document' &&
+    (row.item_type === 'ni_evidence' || conditionFieldFor(row.item_type, row.rtw_branch))
+  ) {
+    return 'confirm';
   }
   return 'verify';
 }
@@ -407,8 +490,17 @@ export function verifyHint(row: QueueRow): string | null {
   if (row.kind === 'rtw_check') {
     return 'Act on it (contact the worker, block if needed), then Mark reviewed';
   }
+  if (row.kind === 'ni_check') {
+    return 'Matches → recorded as compared · Reject → the evidence is rejected and the worker asked to re-upload (N8)';
+  }
   if (row.item_type === 'share_code_report' && !verifyAllowed(row)) {
     return 'Verified by the automatic gov.uk check — run it again from here';
+  }
+  if (row.kind === 'document' && queueRowLockedUntil(row)) {
+    return 'Compare the gov.uk photo with the worker’s selfie → Verify confirms the date gov.uk returned';
+  }
+  if (rejectPrefill(row)) {
+    return 'gov.uk recommends Reject → the reason is pre-filled; edit it before it goes to the worker (N8)';
   }
   if (row.item_type === 'university_completion_letter') {
     return 'Approve → confirm the completion date and visa expiry → 48 h/week from the completion date, never past the visa';
@@ -416,13 +508,13 @@ export function verifyHint(row: QueueRow): string | null {
   if (row.kind === 'document' && row.manual_review_reason === LETTER_EXPIRED) {
     // compliance_verify_document() raises term_letter_expired on this row
     // (20260928110300); the screen says so before the button does.
-    return 'Verify is refused — an already-expired letter is not accepted (§4.2) · Reject → N8 with Re-upload, the worker sends the current year’s letter';
+    return 'Verify is refused — an already-expired letter is not accepted · Reject → N8 with Re-upload, the worker sends the current year’s letter';
   }
   if (row.kind === 'declaration' && row.declaration_source === 'in_employment') {
     return 'Verify → re-check → N15 "your shifts are open again" · Reject → converts to a manual block';
   }
   if (row.status === 'blocked') {
-    return 'Verify → full compliance re-check → unblocks only if everything else is valid (§4.3)';
+    return 'Verify → full compliance re-check → unblocks only if everything else is valid';
   }
   return null;
 }

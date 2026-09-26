@@ -1,12 +1,12 @@
 import type { MetadataRoute } from 'next';
 
 /**
- * Web app manifest (ADR-0037): what lets a client add the portal to a
+ * Web app manifest (ADR-0052): what lets a client add the portal to a
  * phone's home screen and open it without browser chrome.
  *
  * Deliberately no service worker beside it. The portal shows worker names
  * and photos, and nothing of that may outlive the session on a shared
- * device; Chrome's install criteria no longer ask for one (ADR-0037 §2).
+ * device; Chrome's install criteria no longer ask for one (ADR-0052 §2).
  *
  * The middleware matcher already lets `/manifest.webmanifest` and every
  * `.png` through without a session, so the browser can read both before

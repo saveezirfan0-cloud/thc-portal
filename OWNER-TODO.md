@@ -100,25 +100,74 @@ as today.
 
 ## 5 · From THC (content the app shows as placeholders)
 
-- [ ] Health & Safety **quiz**: the 10 questions and answers.
-- [ ] **Induction** slides.
-- [ ] Employment **contract** text (goes into `contract_versions`).
+- [x] 26.09: Health & Safety **quiz** received ("Health and Safety Presentation
+      Questions") and live as the step 6 quiz (migration `20260930140000`). THC
+      still has to confirm the items below. **The first two are go-live gates: no
+      real candidate sits the quiz until they are done.**
+  - [ ] **GATE — THC confirms the quiz answer key.** THC's sheet marks no answers,
+        so the build team inferred them (C, B, B, A, D, A, C, D, C, A; the ones the
+        induction deck covers agree with it). A wrong key passes or fails real
+        candidates wrongly, and the third failure rejects them;
+  - [ ] **GATE — THC approves Q8**, reworded from free text ("Name three (3) foods, which can cause
+        an allergic reaction?") to multiple choice ("Which of these foods can cause
+        an allergic reaction?" Peanuts · Milk · Shellfish · All the above); it is
+        the one question still flagged placeholder;
+  - [ ] **Q9–Q10 have no correct option as worded**: 16 kg / 25 kg (the answers
+        marked correct, the closest offered) are HSE's figures between knuckle and
+        elbow height; at elbow height HSE gives 13 kg / 20 kg. Reword to "knuckle
+        height" or change the options (`docs/17` item 9);
+  - [ ] **Q4, Q5, Q8** (allergies) and **Q9–Q10** (weight limits) are not covered
+        by the induction deck — add slides, or change the questions.
+- [x] 26.09: **Induction** slides received ("General Health & Safety Awareness", 21 slides) and
+      live in the Staff App's step 5 as supplied. The deck still has empty photo
+      boxes on slides 1, 2, 3, 11 and 20; send a finished file to replace it.
+- [x] 26.09: Employment **contract** received ("Agency Worker Contract For
+      Services", 20 pages) and published as version `thc-agency-worker-2026-09`
+      (migration `20260930140100`), still flagged placeholder because of clause 28.
+      THC (and its solicitor) to confirm the items below. **The first is a go-live
+      gate: no real candidate signs until it is done.**
+  - [ ] **GATE — THC approves clause 28, the duty to disclose criminal
+        convictions**, and the approved text is published as a new, UNFLAGGED
+        version (a new `contract_versions` row, `is_placeholder = false`). THC's
+        document has none; §2.11 requires it, so the build team added it (wording
+        in `docs/17` item 2). Every signature records its version, so anyone who
+        signs the flagged one has signed text THC has not approved;
+  - [ ] **pay "to the nearest quarter hour"** (clause 1, "Rate of Pay" and
+        "Qualifying Period Rate of Pay", applied by clause 6) — the platform pays to
+        the minute (RULE-01/02). Which is right?
+  - [ ] **clause 8, time sheets "signed by an authorised representative of the
+        Client"** — the platform's record is the digital check-in/out and the
+        sign-out timesheet (§11.3); the clause should refer to them;
+  - [ ] the document's own slips, listed in `docs/17` item 2 (e.g. "SI 1988/1833",
+        "[24] hours", the holiday year "31 March to 1 April").
 - [ ] Wording sign-off: **E2b** (rejection after the interview, ADR-0017) and
       the completion-letter emails **CL1–CL6**, including which are mandatory.
-- [ ] **Privacy notice** legal text for `/privacy`.
-- [ ] Sample **completion letters** and **term-dates letters**, to tune the document-reading
-      prompt (Claude, ADR-0033) before real workers' documents go through it.
+- [ ] **Privacy notice** legal text for `/privacy`. The "Data protection policy for
+      Workers" THC sent on 26.09 is an internal policy, not this notice — it refers
+      to "the Company's privacy notice for workers" itself. `/privacy` stays as it
+      is until that notice arrives.
+- [x] 26.09: sample **term-dates letters** (3) and a **completion letter** received. The
+      document-reading prompt (ADR-0033) now refuses course or stage dates as
+      terms and never takes a letter's own date as the completion date. The
+      letters are personal data and are not kept in the repository.
 - [ ] Decide: should right-to-work documents other than the completion letter
       also be kept for employment + 2 years after a removal (ADR-0019)?
 
 ## 6 · Decisions
 
+- [ ] **Keep gov.uk reports and photos after a GDPR removal?** The Home Office asks
+      employers to keep the right-to-work check result for the employment plus two years.
+      Today a removal erases the share-code report and the gov.uk photo with everything else
+      (ADR-0019 holds only the completion letter; ADR-0041 does not extend it). Say if they
+      should be held like the completion letter.
+
 - [ ] **Office pin editor?** When a worker's postcode lookup fails, their
       profile shows "location out of date" until they re-save a findable
       address. Say if managers should be able to move the pin themselves.
-- [ ] **Close `/apply`'s last bypass?** Revoking anon from `submit_application`
-      makes the per-caller limit unbypassable, but then `/apply` depends on
-      `SUPABASE_SERVICE_ROLE_KEY` being set on the Staff App (it is today).
+- [x] ~~**Close `/apply`'s last bypass?**~~ **Done in the 25.09 audit fix round
+      (ADR-0039):** `submit_application` is service-role only and `/apply`
+      refuses in plain words without `SUPABASE_SERVICE_ROLE_KEY` on the Staff
+      App. The security advisor's anon-callable definer count drops by one.
 - [ ] **Gender at step 7** is asked as Male/Female because §9.9's New Starter
       report says "Gender (M/F)" (HMRC). Confirm with THC, or ask a session to
       remove it (ADR-0024).
@@ -130,36 +179,79 @@ as today.
       `https://thc-portal-staff.vercel.app`.
 - [ ] Update the `STAFF_APP_URL` Supabase secret (Willo) to match.
 
-## 8 · The automated gov.uk right-to-work check (ADR-0025)
+## 8 · The automated gov.uk right-to-work check (ADR-0025, ADR-0041)
 
 Built and tested, and **switched off**. Until it is on, the office verifies share codes by
-hand as before (ADR-0018). THC has accepted that a passing check verifies a worker
-**without the Home Office photo match**, which may cost THC the statutory excuse
-(ADR-0025).
+hand as before (ADR-0018). **No provider is needed** (ADR-0041): the system fills in the
+Home Office form itself, and every result waits for an admin, who compares the gov.uk photo
+with the worker's selfie and presses Verify or Reject.
 
-- [ ] **Choose a right-to-work provider** (an IDSP / right-to-work checking service with an
-      API that returns the gov.uk result and its PDF). Sign up and get a sandbox key.
-- [ ] Give its API documentation to a session, to check ADR-0025's "Assumed" items 1–6
-      against it and change `apps/office/app/api/jobs/rtw-check/_lib/provider.config.ts` if
-      they differ.
-- [ ] **Confirm with THC** that gov.uk's terms of use allow our own browser check as the
-      fallback (ADR-0002 flagged it). If they do not, leave `RTW_GOVUK_ENABLED` unset:
-      provider only.
-- [ ] Vercel, **Back Office project**: `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` (plus
-      `RTW_PROVIDER_AUTH_HEADER` / `RTW_PROVIDER_AUTH_PREFIX` if the provider's differ),
-      `RTW_JOB_SECRET` (`openssl rand -base64 48`), and `RTW_GOVUK_ENABLED=true` if
-      allowed. Redeploy. Check the plan allows the route's `maxDuration = 300`.
+- [ ] **Legal, first:** THC's adviser confirms that driving the Home Office "View a job
+      applicant's right to work details" service with an automated browser is acceptable
+      (ADR-0002 flagged it; ADR-0025 item 11), and that the printed result PDF is an
+      acceptable retained copy.
+- [ ] **Vercel Pro** on the Back Office project (commercial use; the route's
+      `maxDuration = 300`).
+- [ ] Vercel, **Back Office project**: `RTW_JOB_SECRET` (`openssl rand -base64 48`) and
+      `RTW_GOVUK_ENABLED=true`. Redeploy. No `RTW_PROVIDER_*` variables.
 - [ ] SQL editor: create two **vault** secrets (`docs/12`): `office_base_url` (the Back
       Office's https origin — not a settings row, so an admin session cannot redirect the
       job secret) and `rtw_job_secret` (the same value as `RTW_JOB_SECRET`).
-- [ ] With the check still off, run **one** check by hand on a consenting worker's share
-      code. Ask a session to confirm ADR-0025's items 7–12 (gov.uk's pages and wording)
-      and item 13 (Chromium on Vercel).
+- [ ] Set the name gov.uk prints as the checker, if it is not "The Hospitality Company":
+      `update settings set value = value || '{"company_name": "<legal name>"}' where key = 'rtw_check';`
+- [ ] **Live test** with the check still off: run **one** check by hand on a consenting
+      worker's share code, then a wrong date of birth, then each branch (EU settled, EU
+      pre-settled, work visa, student, dependant). Ask a session to confirm ADR-0025's
+      items 7–13 and ADR-0041's photo selector against what gov.uk actually shows.
 - [ ] `update settings set value = value || '{"enabled": true}' where key = 'rtw_check';`
 - [ ] Ask a session to **enable the `rtw-check` schedule**. That is a migration plus test
       `190`, not a dashboard change. Then re-run `select install_job_schedules();`
 - [ ] Share codes filed before the switch have no check. Press **Run gov.uk check** on each
       in Compliance → Needs review.
+
+## 9 · After the 25.09 audit fix round (`docs/18-audit-2026-09-25.md`)
+
+Settings the round depends on, and the choices it recorded as defaults.
+
+- [ ] **Supabase → Auth → Email Templates → Reset Password**: paste
+      `supabase/templates/recovery.html`. The link goes to
+      `/auth/confirm?token_hash=…`, so it works from any browser or mail app
+      (ADR-0039).
+- [ ] **Supabase → Auth → URL Configuration → Redirect URLs**: for each of the
+      three apps add `<url>/auth/callback**` **and** `<url>/auth/confirm**`.
+- [ ] **Supabase → Auth**: sign-ups **off**, minimum password length **10**
+      with letters and digits, **secure password change** on — the values in
+      `supabase/config.toml`.
+- [ ] **Vercel**, all three projects: `NEXT_PUBLIC_OFFICE_URL`,
+      `NEXT_PUBLIC_STAFF_URL`, `NEXT_PUBLIC_CLIENT_URL`. Forgot-password now
+      refuses in production rather than send a link to localhost.
+- [ ] **Vercel, thc-portal-staff**: keep `SUPABASE_SERVICE_ROLE_KEY` set —
+      `/apply` now needs it.
+- [x] **Regenerate `packages/db/src/types.generated.ts`** once the round is
+      live — done 26.09 from the live project (all 145 migrations applied).
+- [ ] **Before any real data**: change the six seed passwords (`password123`)
+      or delete the seed users on the live project.
+- [ ] **On the morning of a client walk-through**: re-run
+      `supabase/demo/review-data.sql` so the "today" event sits around the
+      current hour, and put a few sample files in Storage so document and photo
+      previews are not empty.
+- [ ] **THC decisions recorded as defaults** — confirm or change:
+      - ADR-0035 — Left early = a check-out more than 15 min before the
+        section's end (on or off site); an off-site check-out whose last
+        on-site fix is over 30 min old goes to review as No check-out, and
+        that review does not count against the show-rate.
+      - ADR-0036 — Staff App failure states (fail closed), the 8-second
+        check-out GPS reading, the schematic map.
+      - ADR-0037 — a checked-in (`worked`) booking counts as staffed;
+        automatic rounds never re-invite someone who declined, was withdrawn
+        or was released at 12:05; Radar stops offering at headcount (buffer
+        seats by invitation).
+      - ADR-0038 — "Hours this week" shows worked / cap with booked beneath;
+        the client line-up is grouped per role section.
+      - ADR-0039 — GDPR removal scope (including whether the payroll /
+        new-starter CSVs in the `reports` bucket are kept after a removal).
+      - ADR-0040 — the 10 h below-degree band (the completion-letter PDF wins
+        over the v1.5 changelog), visa hour limits, the NI number check.
 
 ## Done
 

@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
 
 /**
- * The top bar's account menu reaches "Your account" (ADR-0036). The menu
+ * The top bar's account menu reaches "Your account" (ADR-0051). The menu
  * is the portal's only chrome (§11.1: top bar, no sidebar), so a page it
  * does not link to is a page nobody finds.
  */

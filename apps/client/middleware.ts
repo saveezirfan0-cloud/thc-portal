@@ -134,7 +134,11 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // Static files are skipped only at the top level, where public/ serves
+  // them (favicon, icons). `[^/]+`, not `.*`: a nested path that merely
+  // ENDS in an image extension (/staff/x.png) is a page route and must
+  // pass the gate like any other (audit D52).
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|manifest.webmanifest|sw.js|.*\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)',
+    '/((?!_next/static|_next/image|(?:favicon\\.ico|manifest\\.webmanifest|sw\\.js)$|[^/]+\\.(?:png|jpg|jpeg|svg|webp|ico)$).*)',
   ],
 };

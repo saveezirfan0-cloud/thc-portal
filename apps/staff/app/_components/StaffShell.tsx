@@ -4,11 +4,14 @@ import { AppChrome } from './AppChrome';
 import { BottomTabs } from './BottomTabs';
 import { TabLockedScreen } from './DocumentsLock';
 import { PushStatus } from './PushStatus';
+import { LoadProblem } from './LoadProblem';
 import { LockScreen } from '../profile/_components/LockScreen';
-import { appLock, reachableTabs, showsBottomNav } from '../profile/lock';
-import { loadProfile } from '../profile/data';
+import { appLock, reachableTabs, showsBottomNav, STAFF_TABS } from '../profile/lock';
+import type { StaffTab } from '../profile/lock';
+import { readProfile } from '../profile/data';
 import { signOwnPhoto } from '../profile/photos';
 import type { StaffProfile } from '../profile/types';
+import '../chrome.css';
 
 /**
  * The Staff App chrome (§10.1): frosted header, body, frosted bottom nav,
@@ -24,11 +27,12 @@ import type { StaffProfile } from '../profile/types';
  * /shifts, and §10.1 says "ONLY the Documents tab is available". The rule
  * is theirs; the app-wide gate is this.
  *
- * The four tabs are the ones §10.4 names, in the wireframes' order. Counts
- * are passed in rather than fetched here so the nav badge and the list it
- * points at can never disagree.
+ * The four tabs are `STAFF_TABS` — Shifts · Invites · Radar · Profile, with
+ * Documents inside Profile (ADR-0042). Counts are passed in rather than
+ * fetched here so the nav badge and the list it points at can never
+ * disagree.
  */
-export type StaffTab = '/shifts' | '/invites' | '/radar' | '/documents';
+export type { StaffTab };
 
 export async function StaffShell({
   title,
@@ -61,10 +65,29 @@ export async function StaffShell({
   pushStatus?: boolean;
   children: ReactNode;
 }) {
-  const profile = await loadProfile();
-  // No profile (no database wired up, docs/04) means nothing to lock on.
-  // Locking on an absent row would black out the whole app on the strength
-  // of a failed query, which is a worse failure than the one it prevents.
+  const read = await readProfile();
+
+  // The lock is computed from this row, so a read that FAILED cannot be
+  // treated as "nothing to lock on" (audit D16): that would show a held or
+  // auto-blocked worker their shifts whenever `staff_me()` timed out. It
+  // fails closed — no tabs, no content, a retry. Only an environment with
+  // no project at all (docs/04, a developer's machine) runs unlocked.
+  //
+  // A screen that renders whatever the lock says (`ignoreLock`: /install,
+  // /notifications) keeps its content, since no lock would have hidden it;
+  // it still loses the tabs, which a failed read cannot vouch for.
+  if (read.kind === 'problem') {
+    return (
+      <AppFrame>
+        <AppChrome title={ignoreLock ? title : 'The Hospitality Company'} worker={null} />
+        <AppBody className={ignoreLock ? undefined : 'center'}>
+          {ignoreLock ? children : <LoadProblem what="your account" />}
+        </AppBody>
+      </AppFrame>
+    );
+  }
+
+  const profile = read.kind === 'ok' ? read.profile : null;
   const lock = profile ? appLock(profile) : 'none';
   // §10.1: the selfie "becomes their photo across the whole system (falling
   // back to initials)" — the header included. `signOwnPhoto` is memoised
@@ -73,14 +96,21 @@ export async function StaffShell({
   const photoUrl = await signOwnPhoto(profile?.photoPath ?? null);
   const unlocked = reachableTabs(lock);
 
-  const items = [
-    // Documents is the compliance domain's screen (§10.4, §4.2) — and the
-    // one tab an auto-blocked worker keeps (§10.1).
-    { href: '/documents', label: 'Documents' },
-    { href: '/shifts', label: 'Shifts', ...(shifts ? { count: shifts } : {}) },
-    { href: '/invites', label: 'Invites', ...(invites ? { count: invites } : {}) },
-    { href: '/radar', label: 'Radar' },
-  ].map((item) => ({ ...item, locked: !unlocked.includes(item.href) }));
+  // Profile is the one tab an auto-blocked worker keeps (§10.1 case 1):
+  // Documents lives inside it now (ADR-0042).
+  const counts: Partial<Record<StaffTab, number | undefined>> = {
+    '/shifts': shifts,
+    '/invites': invites,
+  };
+  const items = STAFF_TABS.map((tab) => {
+    const count = counts[tab.href];
+    return {
+      href: tab.href,
+      label: tab.label,
+      ...(count ? { count } : {}),
+      locked: !unlocked.includes(tab.href),
+    };
+  });
 
   // `showsBottomNav` (#42): the leaver keeps the bar with all four closed,
   // because the wireframe does; a hold, a rejection and a removal get no

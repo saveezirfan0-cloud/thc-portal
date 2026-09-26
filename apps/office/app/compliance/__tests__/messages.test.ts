@@ -10,7 +10,7 @@ describe('what a refusal means to the manager (messages.ts)', () => {
   it('maps term_letter_expired to a plain sentence, whatever date the database appends (§4.2, 20260928110300)', () => {
     const raw = 'term_letter_expired: every term date on this letter is before 2026-09-25';
     expect(reviewErrorMessage(raw)).toBe(
-      'This letter has expired: every term date on it is before today. Reject it and ask the worker for a current letter (§4.2).',
+      'This letter has expired: every term date on it is before today. Reject it and ask the worker for a current letter.',
     );
     expect(reviewErrorMessage('term_letter_expired')).toBe(reviewErrorMessage(raw));
     expect(reviewErrorMessage(raw)).not.toContain('term_letter_expired');
@@ -18,7 +18,7 @@ describe('what a refusal means to the manager (messages.ts)', () => {
 
   it('keeps the term letter refusals apart from the generic expiry one', () => {
     expect(reviewErrorMessage('already_expired: 2026-09-01')).toBe(
-      'This document has already expired (01.09.2026) and cannot be accepted — reject it and ask for a current one (§4.2).',
+      'This document has already expired (01.09.2026) and cannot be accepted — reject it and ask for a current one.',
     );
     expect(reviewErrorMessage('term_dates_invalid')).toBe(
       'A holiday range needs both a start and an end date.',

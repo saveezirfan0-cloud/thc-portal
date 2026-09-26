@@ -19,7 +19,7 @@ export const metadata = { title: 'Your events · THC Client Portal' };
 export const dynamic = 'force-dynamic';
 
 export default async function ClientEventsPage() {
-  const { events, sections, lineup, problem } = await loadEventList();
+  const { events, sections, lineup, company, problem } = await loadEventList();
   // The documents ride alongside the events, one query for the page, so the
   // list can tell a real download from a copy the office has not issued yet.
   const [signed, documents, arrivals] = await Promise.all([
@@ -38,6 +38,7 @@ export default async function ClientEventsPage() {
         photos={Object.fromEntries(signed)}
         documents={kindsByEvent(documents)}
         arrivals={arrivals}
+        company={company}
         now={new Date().toISOString()}
       />
     </>

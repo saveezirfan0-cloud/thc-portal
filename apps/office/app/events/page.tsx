@@ -12,7 +12,7 @@ import { loadEventsInRange, loadReferenceData } from './data';
 import { OfficeShell } from '../_components/OfficeShell';
 import { EventToolbar, hrefFor, type ToolbarQuery } from './_components/EventToolbar';
 import { DayView, ListView, MonthView, WeekView } from './_components/EventViews';
-import { bucketByDay, filterEventRows, periodTotals, toEventRows } from './view-model';
+import { bucketByDay, filterEventRows, periodCrumb, periodTotals, toEventRows } from './view-model';
 import './shift-builder.css';
 import './events.css';
 
@@ -75,7 +75,12 @@ export default async function Page({
     <OfficeShell
       activeHref="/events"
       title="Scheduling"
-      crumbs={null}
+      // The wireframe's "events · Thu 18 Sep 2026": the period being read.
+      crumbs={
+        <>
+          events · <b>{periodCrumb(date)}</b>
+        </>
+      }
       actions={
         // §3.1: the same place in every view, not in a sub-toolbar.
         <Link className="btn primary sm" href="/events/new">

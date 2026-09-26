@@ -167,9 +167,7 @@ export default async function Page() {
           title={
             <>
               Upcoming events <span className="muted sm">· next 10 days</span>{' '}
-              <span className="muted sm">
-                Event window = earliest role start → latest role end (RULE-18)
-              </span>
+              <span className="muted sm">Event window = earliest role start → latest role end</span>
             </>
           }
           actions={

@@ -92,7 +92,7 @@ export default async function ClientPortalLayout({ children }: { children: React
               <span className="sm">{person}</span>
             </span>
           ) : null}
-          {/* "Your account" (ADR-0036): the customer's details, their
+          {/* "Your account" (ADR-0051): the customer's details, their
               timesheet recipients and a password change. Wrapped so the
               phone panel draws it as one of its rows. */}
           <span className="account">

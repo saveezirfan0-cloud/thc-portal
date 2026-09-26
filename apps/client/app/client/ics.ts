@@ -1,5 +1,5 @@
 /**
- * "Add to calendar" on the event page (ADR-0035): an RFC 5545 iCalendar
+ * "Add to calendar" on the event page (ADR-0050): an RFC 5545 iCalendar
  * file built in the browser from the event already on the page.
  *
  * Pure: no DOM, no clock of its own — the caller passes the page's origin

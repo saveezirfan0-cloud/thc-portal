@@ -159,13 +159,17 @@ site_url = "http://127.0.0.1:3000"
 # The public URL that Auth serves on. Defaults to the API external URL with `/auth/v1` appended.
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
-# Each app's /auth/callback is where its password-reset email lands (§10.2 A1→A3):
-# office :3000, staff :3001, client :3002.
+# Each app's /auth/confirm is where its password-reset email lands (§10.2 A1→A3,
+# supabase/templates/recovery.html, ADR-0039), and /auth/callback is kept for
+# the PKCE code exchange: office :3000, staff :3001, client :3002. The hosted
+# project needs the same six patterns on each app's public URL.
 additional_redirect_urls = [
-  "https://127.0.0.1:3000",
   "http://127.0.0.1:3000/auth/callback**",
+  "http://127.0.0.1:3000/auth/confirm**",
   "http://127.0.0.1:3001/auth/callback**",
+  "http://127.0.0.1:3001/auth/confirm**",
   "http://127.0.0.1:3002/auth/callback**",
+  "http://127.0.0.1:3002/auth/confirm**",
 ]
 # How long tokens are valid for, in seconds. Defaults to 3600 (1 hour), maximum 604,800 (1 week).
 jwt_expiry = 3600
@@ -179,16 +183,23 @@ enable_refresh_token_rotation = true
 # Requires enable_refresh_token_rotation = true.
 refresh_token_reuse_interval = 10
 # Allow/disallow new user signups to your project.
-enable_signup = true
+# Off: nobody self-registers (§1.4). Admin and client logins are created by the
+# office; a worker's login is created by the admin API's invite
+# (packages/db/src/provision.ts), which does not need public sign-up. Leave
+# [auth.email] enable_signup alone: the CLI maps it to the email PROVIDER, and
+# turning it off would stop email + password sign-in altogether.
+enable_signup = false
 # Allow/disallow anonymous sign-ins to your project.
 enable_anonymous_sign_ins = false
 # Allow/disallow testing manual linking of accounts
 enable_manual_linking = false
 # Passwords shorter than this value will be rejected as weak. Minimum 6, recommended 8 or more.
-minimum_password_length = 6
+# 10 and letters + digits: the rule every set-password screen already enforces
+# (packages/domain checkPassword), now enforced by Auth as well.
+minimum_password_length = 10
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
-password_requirements = ""
+password_requirements = "letters_digits"
 
 # Configure passkey sign-ins.
 # [auth.passkey]
@@ -231,7 +242,10 @@ double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
 enable_confirmations = false
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
-secure_password_change = false
+# On: a stolen session cannot silently take the account. Every password change
+# in the apps runs on a fresh session (the reset link, the activation link, or
+# the Staff App's security screen, which signs in with the current password first).
+secure_password_change = true
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.
 max_frequency = "1s"
 # Number of characters used in the email OTP.
@@ -251,6 +265,13 @@ otp_expiry = 86400
 # pass = "env(SENDGRID_API_KEY)"
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
+
+# The recovery email links to each app's /auth/confirm with a token_hash, so a
+# reset link works in any browser on any device (ADR-0039, audit D13). The
+# hosted project's template is set in the dashboard to the same body.
+[auth.email.template.recovery]
+subject = "Reset your password — The Hospitality Company"
+content_path = "./supabase/templates/recovery.html"
 
 # Uncomment to customize email template
 # [auth.email.template.invite]

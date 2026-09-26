@@ -63,6 +63,7 @@ const lineup: LineupRow[] = [
   {
     bookingId: 'b-1',
     eventId: EVENT_ID,
+    shiftId: 's-chef',
     role: 'Chef',
     startsAt: '2026-09-19T06:00:00Z',
     endsAt: '2026-09-19T14:00:00Z',
@@ -74,6 +75,7 @@ const lineup: LineupRow[] = [
   {
     bookingId: 'b-2',
     eventId: EVENT_ID,
+    shiftId: 's-chef',
     role: 'Chef',
     startsAt: '2026-09-19T06:00:00Z',
     endsAt: '2026-09-19T14:00:00Z',
@@ -169,7 +171,7 @@ describe('completed (event.html:247-273)', () => {
     expect(markup).toContain(
       `<div class="k">Timesheet</div><div class="v">Sign-out timesheet generated ${stamp}`,
     );
-    expect(markup).toContain('by email to the contacts on your client card (§11.4)');
+    expect(markup).toContain('by email to the contacts on your client card');
   });
 
   it('marks a row already rated "✓ Feedback sent" and leaves the others live', () => {
@@ -228,7 +230,7 @@ describe('the feedback popup (event.html:223-229)', () => {
   });
 });
 
-describe('arrival counts on the day (ADR-0038)', () => {
+describe('arrival counts on the day (ADR-0053)', () => {
   const arrivals = {
     confirmed: 2,
     arrived: 1,

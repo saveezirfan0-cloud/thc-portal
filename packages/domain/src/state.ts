@@ -84,9 +84,13 @@ export const BOOKING_TRANSITIONS: Readonly<Record<BookingStatus, readonly Bookin
   confirmed: ['worked', 'turned_away', 'cancelled'],
   worked: [],
   turned_away: [],
-  cancelled: [],
-  // §10.4: a dead offer may be applied for again on Radar.
-  closed: ['applied'],
+  // §3.6: only self-cancel excludes permanently, so any other cancelled row
+  // may be offered again (invite_worker) or applied for again (Radar). Who
+  // may reopen which row is `bookingReopenableBy` (ADR-0037); a
+  // self-cancelled row never leaves `cancelled` (bookings_self_cancel_is_final).
+  cancelled: ['invited', 'applied'],
+  // §10.4: a dead offer may be applied for again on Radar, or made again.
+  closed: ['applied', 'invited'],
 };
 
 /**
@@ -101,6 +105,9 @@ export const CANCELLED_CAUSES = [
   'office_withdraw',
   'ready_cutoff',
   'self_cancel',
+  // ADR-0046: the worker offered the shift up and a confirmed replacement
+  // took it (take_offered_shift). Sets self_cancelled like a self-cancel.
+  'handed_over',
   'overlap_auto_withdraw',
   'event_cancelled',
   'blocked',
@@ -129,10 +136,21 @@ export function cancelCauseStatus(cause: CancelCause): 'cancelled' | 'closed' {
 /**
  * Self-cancel permanently excludes the worker from that event: no self-apply,
  * no auto-assign invitation and no manual invitation (§3.6, RULE-04).
+ *
+ * A completed hand-over does too (ADR-0046, Q15): offering a shift up is the
+ * worker leaving it under the same 72 h boundary, and without the bar it
+ * would be a way round RULE-04's exclusion. `take_offered_shift()` sets
+ * `self_cancelled = true` on the original booking for exactly this reason.
  */
 export function excludesFromEvent(cause: CancelCause): boolean {
-  return cause === 'self_cancel';
+  return cause === 'self_cancel' || cause === 'handed_over';
 }
+
+// Who may reopen an ended row (D33, ADR-0037). In its own module with no
+// imports, because autoAssign.ts reaches it from the Deno Edge Function
+// (supabase/functions/auto-staffing), which needs every specifier on the
+// path to name its file.
+export { bookingReopenableBy, type Reopener } from './reopen';
 
 /** Blocked, inactive and removed workers get no invitations and are out of the scoring pool (§2.12). */
 export function isBookable(status: StaffStatus): boolean {
@@ -163,7 +181,7 @@ export function canCancelBooking(status: string): boolean {
 
 export class IllegalTransitionError extends Error {
   constructor(
-    readonly machine: 'staff' | 'booking' | 'rtw_check',
+    readonly machine: 'staff' | 'booking' | 'rtw_check' | 'change_request' | 'shift_offer',
     readonly from: string,
     readonly to: string,
   ) {
@@ -225,9 +243,12 @@ export function assertRtwCheckTransition(from: RtwCheckStatus, to: RtwCheckStatu
  *
  * `gate` is the auto-assign hard gate for this worker on this section
  * (`auto_assign_candidates`): `null` for none, `undefined` when the worker
- * has no candidate row at all (removed §1.7, left §10.6). Fill counts ONLY
- * confirmed and the buffer is absolute, so the role is full at
- * `headcount + buffer`.
+ * has no candidate row at all (removed §1.7, left §10.6, or not a worker).
+ * Fill counts confirmed and checked-in (`worked`) bookings only. An
+ * application is for a seat, so it is refused — and the pending ones close
+ * with N10c — once no seat is left against HEADCOUNT: the same point Radar
+ * stops offering the shift (D39, ADR-0037). The buffer is filled by
+ * invitations.
  *
  * There is no Decline: §10.4 and §8 end an application only by N10 (taken
  * forward), N10c (the role filled), the worker withdrawing it, or N12 (the
@@ -254,14 +275,14 @@ export interface ApplicationAcceptInput {
   status: BookingStatus;
   eventCancelled: boolean;
   shiftEndsAt: Date;
+  /** Confirmed and checked-in (`worked`) bookings on the section. */
   confirmed: number;
   headcount: number;
-  buffer: number;
   gate: string | null | undefined;
 }
 
 export type ApplicationAcceptOutcome =
-  | { ok: true; to: 'confirmed'; fillsRole: boolean }
+  | { ok: true; to: 'confirmed'; closesApplications: boolean }
   | { ok: false; reason: ApplicationAcceptRefusal };
 
 export function acceptApplication(
@@ -271,7 +292,7 @@ export function acceptApplication(
   if (input.eventCancelled) return { ok: false, reason: 'event_cancelled' };
   if (input.status !== 'applied') return { ok: false, reason: 'not_applied' };
   if (now.getTime() >= input.shiftEndsAt.getTime()) return { ok: false, reason: 'event_ended' };
-  if (roleFilled(input.confirmed, input.headcount, input.buffer)) {
+  if (noSeatLeft(input.confirmed, input.headcount)) {
     return { ok: false, reason: 'full' };
   }
   if (input.gate === undefined) return { ok: false, reason: 'not_bookable' };
@@ -288,19 +309,132 @@ export function acceptApplication(
   return {
     ok: true,
     to: 'confirmed',
-    fillsRole: roleFilled(input.confirmed + 1, input.headcount, input.buffer),
+    closesApplications: noSeatLeft(input.confirmed + 1, input.headcount),
   };
 }
 
 /**
- * §8 N10c: the moment a role is fully confirmed — headcount + buffer, only
- * confirmed counting — every still-pending application on it closes
- * (`closed`, cause `slot_taken`) and its worker is told the shift filled.
- * `close_filled_role_applications()` in the database.
+ * §8 N10c / §10.4: the moment a role has no seat left — confirmed (or
+ * checked in) >= headcount, the point Radar stops offering it — every
+ * still-pending application on it closes (`closed`, cause `slot_taken`)
+ * and its worker is told the shift filled. One threshold for Radar,
+ * `apply_to_shift`, `accept_application` and
+ * `close_filled_role_applications()` (20260930110200, ADR-0037).
  */
-export function roleFilled(confirmed: number, headcount: number, buffer: number): boolean {
-  return confirmed >= headcount + buffer;
+export function noSeatLeft(confirmed: number, headcount: number): boolean {
+  return confirmed >= headcount;
 }
 
 /** The cause an application closes with when the role fills without it (N10c). */
 export const APPLICATION_NOT_TAKEN_CAUSE = 'slot_taken' satisfies CancelCause;
+
+/**
+ * Request a change — name and photo (ADR-0045, docs/19 §3). One
+ * `profile_change_requests` row per request. The database holds the same
+ * edges in `profile_change_transitions()` and refuses any other status
+ * change in the `profile_change_requests_state_guard` trigger
+ * (20260930200100); changeRequest.vectors.json holds both.
+ *
+ *   pending → approved    the office approved it (office_decide_profile_change)
+ *   pending → rejected    the office refused it, with a reason the worker sees
+ *   pending → withdrawn   the worker withdrew it, or GDPR removal (§1.7)
+ *
+ * The three outcomes are terminal: "Request again" is a new row.
+ */
+export const CHANGE_REQUEST_STATUSES = ['pending', 'approved', 'rejected', 'withdrawn'] as const;
+
+export type ChangeRequestStatus = (typeof CHANGE_REQUEST_STATUSES)[number];
+
+export const CHANGE_REQUEST_TRANSITIONS: Readonly<
+  Record<ChangeRequestStatus, readonly ChangeRequestStatus[]>
+> = {
+  pending: ['approved', 'rejected', 'withdrawn'],
+  approved: [],
+  rejected: [],
+  withdrawn: [],
+};
+
+export function canTransitionChangeRequest(
+  from: ChangeRequestStatus,
+  to: ChangeRequestStatus,
+): boolean {
+  return from === to || CHANGE_REQUEST_TRANSITIONS[from].includes(to);
+}
+
+export function assertChangeRequestTransition(
+  from: ChangeRequestStatus,
+  to: ChangeRequestStatus,
+): void {
+  if (!canTransitionChangeRequest(from, to)) {
+    throw new IllegalTransitionError('change_request', from, to);
+  }
+}
+
+/**
+ * Offer up a shift (ADR-0046, docs/19 §4). One `shift_offers` row per
+ * offer. The database holds the same edges in `shift_offer_transitions()`
+ * and refuses any other status change in the `shift_offers_state_guard`
+ * trigger (20260930200100); shiftOffer.vectors.json holds both.
+ *
+ *   open → taken       a confirmed replacement took it (take_offered_shift)
+ *   open → withdrawn   the worker withdrew the offer
+ *   open → lapsed      it expired (start − 72 h, OF3), or the booking left
+ *                      `confirmed` by another cause, or GDPR removal
+ *   open → cancelled   the office declined a cover request (OF6)
+ *
+ * The four outcomes are terminal: offering again is a new row.
+ */
+export const SHIFT_OFFER_STATUSES = ['open', 'taken', 'withdrawn', 'lapsed', 'cancelled'] as const;
+
+export type ShiftOfferStatus = (typeof SHIFT_OFFER_STATUSES)[number];
+
+export const SHIFT_OFFER_TRANSITIONS: Readonly<
+  Record<ShiftOfferStatus, readonly ShiftOfferStatus[]>
+> = {
+  open: ['taken', 'withdrawn', 'lapsed', 'cancelled'],
+  taken: [],
+  withdrawn: [],
+  lapsed: [],
+  cancelled: [],
+};
+
+/**
+ * Who an offer is for. `pool` — every eligible worker, RULE-17 order;
+ * `office` — a cover request inside 72 h, seen only by the office until it
+ * opens it to the pool; `direct` — one named colleague (designed, not built:
+ * settings.shift_offers_direct_enabled = false, Q17).
+ */
+export const SHIFT_OFFER_MODES = ['pool', 'office', 'direct'] as const;
+
+export type ShiftOfferMode = (typeof SHIFT_OFFER_MODES)[number];
+
+/**
+ * The one mode change there is: the office opens a cover request to the
+ * pool (`office_open_offer_to_pool`), and only while the offer is open.
+ * `shift_offer_mode_transitions()` in SQL.
+ */
+export const SHIFT_OFFER_MODE_TRANSITIONS: Readonly<
+  Record<ShiftOfferMode, readonly ShiftOfferMode[]>
+> = {
+  pool: [],
+  office: ['pool'],
+  direct: [],
+};
+
+export function canTransitionShiftOffer(from: ShiftOfferStatus, to: ShiftOfferStatus): boolean {
+  return from === to || SHIFT_OFFER_TRANSITIONS[from].includes(to);
+}
+
+export function assertShiftOfferTransition(from: ShiftOfferStatus, to: ShiftOfferStatus): void {
+  if (!canTransitionShiftOffer(from, to)) throw new IllegalTransitionError('shift_offer', from, to);
+}
+
+/** Whether an offer in `status` may move from mode `from` to mode `to`. */
+export function canChangeShiftOfferMode(
+  from: ShiftOfferMode,
+  to: ShiftOfferMode,
+  status: ShiftOfferStatus,
+): boolean {
+  if (from === to) return true;
+  return status === 'open' && SHIFT_OFFER_MODE_TRANSITIONS[from].includes(to);
+}

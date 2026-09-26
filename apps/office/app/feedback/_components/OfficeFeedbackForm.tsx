@@ -126,7 +126,7 @@ export function OfficeFeedbackForm({
         <div className="panel-h">
           <h3>New office feedback</h3>
           <span className="muted sm">
-            author = {managerName ?? 'you'} · counts toward the rating immediately (§9.10)
+            author = {managerName ?? 'you'} · counts toward the rating immediately
           </span>
         </div>
         <div className="panel-b stack">
@@ -150,7 +150,6 @@ export function OfficeFeedbackForm({
         <h3>New feedback</h3>
         <span className="muted sm">
           not every client uses the portal — a complaint or a compliment often arrives by phone
-          (§9.10)
         </span>
         <div className="right">
           <Pill tone="purple">author: {managerName ?? 'you'}</Pill>
@@ -195,7 +194,7 @@ export function OfficeFeedbackForm({
         <div className="row fb-form-full">
           <span className="muted xs">
             No limit on how many entries a person can have. Also available from the worker&rsquo;s
-            profile (§9.6).
+            profile.
           </span>
           <Button tone="primary" className="ml-auto" onClick={submit} disabled={pending}>
             {pending ? 'Saving…' : 'Add feedback'}

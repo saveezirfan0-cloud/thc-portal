@@ -24,6 +24,8 @@ import {
   type ScoreInput,
   type ScoreWeights,
 } from './scoring.ts';
+import { withAvailability } from './availability.ts';
+import { bookingReopenableBy } from './reopen.ts';
 
 /**
  * One row of `auto_assign_candidates`. Postgres `numeric` arrives as a
@@ -37,6 +39,12 @@ export interface CandidateRow {
   qualified: boolean;
   /** 'invited' | 'confirmed' | … when this worker already holds one. */
   booking_status: string | null;
+  /**
+   * That booking's `cancel_cause` once it has ended (20260930110000) — what
+   * tells a slot somebody else took from an invitation the worker declined.
+   * Optional so a row read before the column existed still parses.
+   */
+  booking_cause?: string | null;
   reliability: number | string | null;
   rating: number | string | null;
   distance_km: number | string | null;
@@ -55,6 +63,13 @@ export interface RoundOptions {
    * RULE-17's qualified-first holds in escalation too.
    */
   proximityFirst?: boolean;
+  /**
+   * ADR-0043: staff ids with a calendar entry overlapping this section
+   * (`auto_assign_unavailable(shift)`). A hard gate for the machine — the
+   * round never invites them — and nothing more: a manager may still
+   * invite by hand, and open invitations are never withdrawn (§3.4).
+   */
+  unavailable?: Iterable<string>;
 }
 
 /**
@@ -124,13 +139,31 @@ export function rankCandidateRows<R extends CandidateRow>(
 }
 
 /**
+ * Whether an automatic round may invite this row at all, booking-wise: no
+ * booking on the section, or an ended one that ended by circumstance
+ * (`bookingReopenableBy` → 'anyone': a slot somebody else took, an
+ * overlap auto-withdrawal, a block or leave cascade). An ended row that a
+ * PERSON decided — declined, withdrawn by the worker or the office,
+ * released at the 12:05 cutoff — is reopened only by the office's manual
+ * invite or the worker's own application, never by a round (ADR-0037);
+ * a self-cancel never (RULE-04, and it is gated `self_cancelled` anyway).
+ */
+export function roundMayInvite(
+  row: Pick<CandidateRow, 'booking_status' | 'booking_cause'>,
+): boolean {
+  if (row.booking_status === null) return true;
+  return bookingReopenableBy(row.booking_status, row.booking_cause ?? null) === 'anyone';
+}
+
+/**
  * Who this round invites, best first.
  *
  * Two filters before the ranking, and the second is the one that matters:
  *
  *   * Gated candidates are dropped — `rankPool` does that, and a gated
  *     worker is never scored at all (§3.4).
- *   * Anyone already holding a booking on this section is dropped here.
+ *   * Anyone already holding a LIVE booking on this section, or an ended
+ *     one a round may not reopen (`roundMayInvite`), is dropped here.
  *     `invite_worker` would refuse them anyway with `already_has_booking`,
  *     so this is not about correctness — it is about the round not
  *     spending its allocation on refusals. A section whose pool is mostly
@@ -139,10 +172,10 @@ export function rankCandidateRows<R extends CandidateRow>(
  */
 export function selectInvitees(
   rows: readonly CandidateRow[],
-  { allocation, weights = DEFAULT_WEIGHTS, proximityFirst = false }: RoundOptions,
+  { allocation, weights = DEFAULT_WEIGHTS, proximityFirst = false, unavailable = [] }: RoundOptions,
 ): string[] {
   if (allocation <= 0) return [];
-  const open = rows.filter((row) => row.booking_status === null);
+  const open = withAvailability(rows, unavailable).filter(roundMayInvite);
   const ranked = rankPool(
     open.map((row) => toCandidate(row, row)),
     weights,
@@ -157,4 +190,57 @@ export function selectInvitees(
     );
   }
   return ranked.slice(0, Math.trunc(allocation)).map((r) => r.subject.staff_id);
+}
+
+/**
+ * Booking statuses on THIS section that rule a worker out of an offer push
+ * (ADR-0046). The offerer and anyone else already confirmed hold the shift;
+ * a worked or turned-away row is history; a cancelled row is a worker who
+ * left it — `take_offered_shift` refuses them `already_had_booking`, so a
+ * push would only invite a refusal. An open invitation, a Radar application
+ * or a closed offer can still take it (`invited`/`applied` → confirmed,
+ * `closed` → applied → confirmed), so those are pushed like anyone else.
+ */
+const OFFER_EXCLUDED_BOOKINGS: ReadonlySet<string> = new Set([
+  'confirmed',
+  'worked',
+  'turned_away',
+  'cancelled',
+]);
+
+export interface OfferRoundOptions {
+  /** `allocation_per_hour` for the section: the size of one OF1 round. */
+  allocation: number;
+  /** Staff already pushed this offer (`shift_offer_notices`): rounds are additive. */
+  notified: Iterable<string>;
+  /** ADR-0043: the calendar gate applies to offer pushes too. */
+  unavailable?: Iterable<string>;
+  weights?: ScoreWeights;
+}
+
+/**
+ * Who this hour's OF1 push for an open pool offer goes to, best first
+ * (ADR-0046, docs/19 §4). The same pool and the same order as an invitation
+ * round — gated rows dropped, the calendar gate overlaid, wave 1 (qualified
+ * at client + role, RULE-17) exhausted before wave 2, each by §6 score —
+ * minus everyone already told about this offer, so each round reaches new
+ * people and nobody is pushed twice.
+ */
+export function selectOfferRecipients(
+  rows: readonly CandidateRow[],
+  { allocation, notified, unavailable = [], weights = DEFAULT_WEIGHTS }: OfferRoundOptions,
+): string[] {
+  if (allocation <= 0) return [];
+  const told = new Set(notified);
+  const open = withAvailability(rows, unavailable).filter(
+    (row) =>
+      !told.has(row.staff_id) &&
+      (row.booking_status === null || !OFFER_EXCLUDED_BOOKINGS.has(row.booking_status)),
+  );
+  return rankPool(
+    open.map((row) => toCandidate(row, row)),
+    weights,
+  )
+    .slice(0, Math.trunc(allocation))
+    .map((r) => r.subject.staff_id);
 }

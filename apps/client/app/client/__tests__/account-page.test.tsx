@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * "Your account" (ADR-0036): read-only details, the timesheet recipients,
+ * "Your account" (ADR-0051): read-only details, the timesheet recipients,
  * a password change and a way to ask the office.
  *
  * Pinned here: where every value comes from (the caller's own profiles row,

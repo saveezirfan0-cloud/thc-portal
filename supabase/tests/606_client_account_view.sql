@@ -1,7 +1,7 @@
 -- =====================================================================
--- 606 · client_account_v — the Client Portal's "Your account" (ADR-0036)
+-- 606 · client_account_v — the Client Portal's "Your account" (ADR-0051)
 --
--- 20260929100000. The account page shows the customer their company and
+-- 20261001100000. The account page shows the customer their company and
 -- the addresses THC emails its documents to (§9.7, §11.4). Both live on
 -- `clients`, where the client role holds no policy and must not be given
 -- one (ADR-0004, ADR-0026). They come through an owner-rights client_*

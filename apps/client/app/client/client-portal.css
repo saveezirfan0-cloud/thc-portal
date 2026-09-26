@@ -101,7 +101,7 @@
   width: 220px;
 }
 
-/* ---- the list's filters: search, venue, a UK date range (ADR-0034) ----
+/* ---- the list's filters: search, venue, a UK date range (ADR-0049) ----
    A .toolbar so the shared phone rules (packages/ui components.css) wrap
    it: the search takes a line, the fields share the next. Bottom-aligned
    because the fields carry a label above and the search does not. */
@@ -165,7 +165,7 @@
   font-weight: 600;
 }
 
-/* ---- the per-role split under the fill bar (ADR-0034) ---- */
+/* ---- the per-role split under the fill bar (ADR-0049) ---- */
 .ev-roles {
   display: block;
   font-size: var(--fs-12);
@@ -188,7 +188,7 @@
   color: var(--amber-ink);
 }
 
-/* ---- the feedback nudge and the timesheet's status (ADR-0034) ---- */
+/* ---- the feedback nudge and the timesheet's status (ADR-0049) ---- */
 .ev-nudge {
   font-size: var(--fs-12);
   font-weight: 600;
@@ -230,7 +230,7 @@
   min-width: 120px;
 }
 
-/* The arrivals pill (ADR-0038) sits in the fill cell's column, and a flex
+/* The arrivals pill (ADR-0053) sits in the fill cell's column, and a flex
    column would otherwise stretch it to the cell's width. */
 .fill-cell > .arrivals,
 .ev-fill > .arrivals {
@@ -411,7 +411,7 @@
 }
 
 /* The download (filled) and Details (bordered) are a matched pair: equal
-   halves of the foot, so neither reads as the afterthought (ADR-0034). */
+   halves of the foot, so neither reads as the afterthought (ADR-0049). */
 .ecard .foot > * {
   flex: 1 1 0;
   min-width: 0;
@@ -543,7 +543,7 @@
   }
 
   /* Up to three full-width buttons on a completed event (two documents and
-     Add to calendar, ADR-0035): each takes its own line rather than the row
+     Add to calendar, ADR-0050): each takes its own line rather than the row
      running off the phone. */
   .ehead .actions {
     margin-left: 0;

@@ -1,7 +1,7 @@
 import { DEFAULT_SENDER_ADDRESSES } from '@thc/notifications';
 
 /**
- * "Your account" copy (ADR-0036), in a plain module so the server action,
+ * "Your account" copy (ADR-0051), in a plain module so the server action,
  * the page and their tests read one string. A `'use server'` file may
  * export only async functions.
  */

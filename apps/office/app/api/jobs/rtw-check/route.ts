@@ -116,6 +116,20 @@ export async function POST(request: Request) {
       removeReport: async (path) => {
         await admin.storage.from('documents').remove([path]);
       },
+      uploadPhoto: async (path, bytes) => {
+        const { error } = await admin.storage.from('documents').upload(path, bytes, {
+          contentType: 'image/png',
+          upsert: true,
+        });
+        if (error) throw new Error('upload failed');
+      },
+      attachPhoto: async (checkId, path) => {
+        const { error } = await db.rpc('rtw_check_attach_photo', {
+          p_check: checkId,
+          p_photo_path: path,
+        });
+        if (error) throw new Error('attach failed');
+      },
       stillRunning: async (checkId) => {
         const { data, error } = await (admin as unknown as StatusRead)
           .from('rtw_checks')

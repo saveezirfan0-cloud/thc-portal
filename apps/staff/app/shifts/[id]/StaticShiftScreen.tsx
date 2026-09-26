@@ -9,11 +9,13 @@ import {
   formatDateIn,
   formatTimeIn,
 } from '@thc/domain';
-import type { StaticScreenCase } from '@thc/domain';
+import { HANDED_OVER_COPY } from './messages';
+import type { StaticPhase } from './phase';
 import type { ShiftDetail } from './types';
 
 /**
- * §10.4's three dead ends, `wireframes/staff/shift-detail.html` (n1–n3).
+ * §10.4's three dead ends, `wireframes/staff/shift-detail.html` (n1–n3),
+ * and the hand-over (ADR-0046, `wireframes/staff/offer-shift.html` (g)).
  *
  * Instead of the shift screen, not on top of it: no map, no distance line,
  * no check-in or check-out, no breaks block. The copy is @thc/domain's
@@ -27,12 +29,13 @@ export function StaticShiftScreen({
   shift,
   localTime,
 }: {
-  kind: StaticScreenCase;
+  kind: StaticPhase;
   shift: Pick<ShiftDetail, 'eventTitle' | 'venueName' | 'startsAt' | 'endsAt' | 'checkInAt'>;
   /** Actual stamps are viewer-local only (§1.8). */
   localTime: (iso: string) => string;
 }) {
-  const copy = STATIC_SCREEN_COPY[kind];
+  const copy: { badge: string; tone: 'coral' | 'amber'; title: string; body?: string } =
+    kind === 'handed_over' ? HANDED_OVER_COPY : STATIC_SCREEN_COPY[kind];
   const uk = (iso: string) => formatTimeIn(new Date(iso), UK_ZONE);
   const day = formatDateIn(new Date(shift.startsAt), UK_ZONE, { weekday: 'short' });
 
@@ -45,7 +48,7 @@ export function StaticShiftScreen({
           `${uk(shift.startsAt)} – ${uk(shift.endsAt)} UK`,
           shift.checkInAt ? `checked in ${localTime(shift.checkInAt)}` : null,
         ]
-      : kind === 'withdrawn'
+      : kind === 'withdrawn' || kind === 'handed_over'
         ? [shift.eventTitle, day, `${uk(shift.startsAt)} – ${uk(shift.endsAt)} UK`]
         : [shift.eventTitle, day, shift.venueName];
 

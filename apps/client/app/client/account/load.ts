@@ -10,7 +10,7 @@ import type { AccountDetails } from './AccountScreen';
 import { ACCOUNT_COPY } from './copy';
 
 /**
- * The reads behind "Your account" (ADR-0036), under the caller's own session:
+ * The reads behind "Your account" (ADR-0051), under the caller's own session:
  *
  *   · the name from their own `profiles` row (profiles_self);
  *   · the sign-in email from auth.getUser();

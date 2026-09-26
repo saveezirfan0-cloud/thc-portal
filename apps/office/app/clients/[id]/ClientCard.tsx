@@ -64,9 +64,7 @@ export function ClientCard({ data }: { data: ClientCardData }) {
               <Button size="sm" onClick={() => setEditing(true)}>
                 Edit
               </Button>
-              <span className="muted xs">
-                no Delete — a client record is only ever edited (§9.7)
-              </span>
+              <span className="muted xs">no Delete — a client record is only ever edited</span>
             </>
           }
         >
@@ -95,23 +93,23 @@ export function ClientCard({ data }: { data: ClientCardData }) {
               <span>
                 {client.pays_breaks ? (
                   <>
-                    Pays for breaks — break time is <b>not</b> deducted from the charge (§3.2)
+                    Pays for breaks — break time is <b>not</b> deducted from the charge
                   </>
                 ) : (
                   <>
                     Does <b>not</b> pay for breaks — staff log Start / Finish break and the time is
-                    deducted from pay and charge (§3.2)
+                    deducted from pay and charge
                   </>
                 )}
               </span>
               <span className="k">Buffer policy</span>
               <span>
                 {client.pays_buffer ? (
-                  <>Pays for the buffer — everyone accepted works and is paid normally (§3.2)</>
+                  <>Pays for the buffer — everyone accepted works and is paid normally</>
                 ) : (
                   <>
                     Not charged for the buffer — the first {'{headcount}'} check-ins work and later
-                    ones are turned away under RULE-15 (§3.2)
+                    ones are turned away at check-in
                   </>
                 )}
               </span>
@@ -149,8 +147,8 @@ export function ClientCard({ data }: { data: ClientCardData }) {
 
         <Alert tone="cyan">
           Changing a policy applies to events built from now on; existing events keep the policy
-          they were built with (§3.2). The rate card and the qualified pool are edited on this card,
-          not in the Edit dialog.
+          they were built with. The rate card and the qualified pool are edited on this card, not in
+          the Edit dialog.
         </Alert>
       </div>
 

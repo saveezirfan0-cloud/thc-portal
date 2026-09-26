@@ -22,10 +22,10 @@ screen it names is now built; what is left is listed in §2 and §4 below.
 ## 1 · What is genuinely built
 
 **Every screen in the product now exists.** Three Next.js apps on one Supabase
-database, **120 migrations**, **94 pgTAP files (3,171 assertions)**, **2,202 Vitest
-tests across 147 files** in eight packages, seven Edge Functions (`auto-staffing`,
+database, **124 migrations**, **97 pgTAP files (3,314 assertions)**, **2,506 Vitest
+tests across 166 files** in eight packages, seven Edge Functions (`auto-staffing`,
 `booking-tick`, `compliance-daily`, `finance-reports`, `gdpr-purge`,
-`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0031` (31 files;
+`notify-drain`, `willo-webhook`, plus `_shared`), and ADRs up to `0033` (33 files;
 `0025`, the automated gov.uk check, landed with #59). CI runs
 lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 `deploy-database` pushes migrations to the live project on merge to `main`.
@@ -34,10 +34,11 @@ lint, typecheck, Vitest, `supabase test db` and Playwright on every push, and
 
 | Check | Result |
 |---|---|
-| All 120 migrations applied in order to an **empty** database | clean |
-| `scripts/pgtest-local.sh` — all 94 pgTAP files | 3,171 assertions, **2 failures**, both expected (below) |
-| `turbo lint typecheck test build` | 29/29 tasks, 2,202 tests in 147 files (27.09, one pass on the final tree) |
-| Live Supabase project vs the repo | 112 applied through `20260928100100` (#59); the 27.09 round's ten files (`20260928110000`–`110900`, renumbered above #59's at the merge) deploy with the next merge to `main`, then `gen:types` |
+| All 124 migrations applied in order to an **empty** database | clean |
+| `scripts/pgtest-local.sh` — all 97 pgTAP files | 3,314 assertions, **2 failures**, both expected (below) |
+| `turbo lint typecheck test` | 29/29 tasks, 2,506 tests in 166 files |
+| Live Supabase project vs the repo | **in sync** — all 124 applied, last is `20260928120100_extraction_never_clears_worker_input`. The pending-deploy note that stood here is closed: #63 added the Edge Function deploy to `deploy-database`, so a merge to `main` now pushes the migrations *and* redeploys all seven functions |
+| Edge Functions on the live project | **all seven ACTIVE** (it was two until 25.09). `willo-webhook` is the only one with `verify_jwt: false`, which is right — Willo signs its own deliveries (ADR-0021) |
 
 `002` assertions **6 and 7** fail in every local harness and **that pair is the
 clean baseline**: they record that on Supabase `anon` *can* write
@@ -108,10 +109,13 @@ real environment to prove it in.
    (ADR-0021) on an *assumed* signing scheme and API shape, all configurable.
    Check ADR-0021's list against Willo's first sandbox delivery, then enable the
    `willo-invite` schedule and add it to `190`'s list in the same commit.
-3. **THC content, flagged as placeholders in the code:** the 10 quiz questions,
-   the induction slides, the contract text (`contract_versions`), E2b and
-   CL1–CL6 wording, the `/privacy` legal text, and sample completion letters for
-   the Claude extractor (ADR-0033).
+3. **THC content, flagged as placeholders in the code:** E2b and CL1–CL6
+   wording and the `/privacy` legal text. Received 26.09 and live: the induction
+   slides, sample letters for the Claude extractor (ADR-0033), THC's 10 quiz
+   questions (`20260930140000`; the answer key is inferred and Q8 reworded, both
+   for THC to confirm) and THC's agency worker contract (`20260930140100`,
+   still flagged because clause 28, the duty to disclose, is ours) — the open
+   points are in `docs/17` items 2 and 9.
 4. **Browser passes against the live project.** No new screen has been clicked
    through for real; coverage is render tests, view-model tests and pgTAP. A
    `qa-reviewer` pass per wireframe and Playwright journeys for the wizard,
@@ -145,6 +149,15 @@ real environment to prove it in.
    confirm the switch from the scope's Gemini.
 6. **Nothing else is open in code** beyond §4's notes. The 25.09 round closed
    the last three gaps (below).
+7. **Next build: five Staff App additions — [`19-staff-features-plan.md`](19-staff-features-plan.md).**
+   Availability calendar, emergency contact, request a name/photo change, offer up a
+   shift, refer a friend — each an addition to Scope v1.6 with its own ADR (0042–0046,
+   *proposed — awaiting THC*) and THC questions Q9–Q21 in `docs/15`, every one with a
+   working default so the build does not wait. Build in docs/19 §8's order: **Phase 0**
+   (Agent 0: 0-A schema + domain, 0-B notifications, 0-C docs and wireframe stubs —
+   done — then 0-D `gen:types`) merges first; **Phase 1** is four agents on disjoint
+   files (A `scheduling`, B `staff-pwa`, C `directory`, D `onboarding`); **Phase 2** the
+   serial follow-ups. Migration and pgTAP numbers are reserved in docs/19 §0.
 
 ---
 
@@ -355,7 +368,7 @@ here so a reader can tell a deliberate finding from a new one.
 | Functions with a mutable `search_path` | **0** | closed 22.09 and held since, guarded by an invariant over `pg_proc` in `002` |
 | `SECURITY DEFINER` callable by `anon` | **6** | all deliberate: 3 are PostGIS's own `st_estimatedextent` overloads, plus `current_app_role`, `current_client_id` and `submit_application` — reasons in the migration headers. Re-verified 27.09 on the tree: `190` 2e holds exactly those three of ours, and `190` 2f now also asserts no definer keeps PUBLIC's default EXECUTE (`20260928110800` closed the two invoker functions that did) |
 | `SECURITY DEFINER` callable by `authenticated` | **86** | the product's RPC surface; every one is guarded internally. It grew with the build and is not in itself a defect, but it is the number to watch |
-| `SECURITY DEFINER` views | **11** (once `20260929100000`/`100100` are deployed) | the ADR-0004 owner-rights pattern — it is the mechanism that keeps money and worker data away from the client role, not a lapse. 9 since `20260927120000` added `client_company_v` (deliberate: two named columns, `current_client_id()` + `client_portal_visible()` in the body, pinned by `570`); 10 with `client_account_v` (ADR-0036: name + timesheet recipients, pinned by `606`) and 11 with `client_arrivals_v` (ADR-0038: arrival counts per role section, no names or times, pinned by `607`). Any further one is a finding |
+| `SECURITY DEFINER` views | **11** (once `20261001100000`/`100100` are deployed) | the ADR-0004 owner-rights pattern — it is the mechanism that keeps money and worker data away from the client role, not a lapse. 9 since `20260927120000` added `client_company_v` (deliberate: two named columns, `current_client_id()` + `client_portal_visible()` in the body, pinned by `570`); 10 with `client_account_v` (ADR-0051: name + timesheet recipients, pinned by `606`) and 11 with `client_arrivals_v` (ADR-0053: arrival counts per role section, no names or times, pinned by `607`). Any further one is a finding |
 | `spatial_ref_sys` without RLS | 1 | ADR-0010, known gap, needs `supabase_admin` |
 | **Leaked-password protection** | off | **still owed — see §5.** The only advisor finding that is nobody's design decision |
 

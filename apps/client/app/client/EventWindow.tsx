@@ -16,7 +16,7 @@ import { dayMarker, daysLaterIn } from './format';
  * wireframe's "11:00 – 16:00 UK time" even for a reader in London), and the
  * second line is a `.sub`.
  *
- * Each line carries its own overnight marker (ADR-0035): " (+1 day)" when
+ * Each line carries its own overnight marker (ADR-0050): " (+1 day)" when
  * the end falls on a later calendar day than the start IN THAT LINE'S ZONE.
  * 07:00 – 23:30 in London needs none; the same window read in Dubai is
  * 10:00 – 02:30 and does. That marker is why this no longer delegates to

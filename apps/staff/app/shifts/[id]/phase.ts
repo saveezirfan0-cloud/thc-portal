@@ -26,8 +26,16 @@ import type { ShiftDetail } from './types';
  * button locks at end+4h, before the job has written the violation, so the
  * screen never shows a live check-out the server would refuse.
  */
+/**
+ * The static screens: §10.4's three dead ends, and a shift the worker
+ * handed over to someone else (ADR-0046 — `cancel_cause = 'handed_over'`).
+ * The fourth lives here rather than in `staticScreenCase()`, which Phase 0
+ * left unchanged on purpose (docs/19 §8): it is this screen's case only.
+ */
+export type StaticPhase = StaticScreenCase | 'handed_over';
+
 export type ShiftPhase =
-  | StaticScreenCase // 'event_cancelled' | 'withdrawn' | 'no_checkout' — static (§10.4)
+  | StaticPhase // 'event_cancelled' | 'withdrawn' | 'no_checkout' | 'handed_over' — static
   | 'before_window' // too early to check in
   | 'check_in' // the window is open
   | 'locked' // start+30 passed with no check-in (§5.1)
@@ -36,11 +44,24 @@ export type ShiftPhase =
   | 'on_break'
   | 'closed'; // checked out
 
-const STATIC_PHASES: readonly ShiftPhase[] = ['event_cancelled', 'withdrawn', 'no_checkout'];
+const STATIC_PHASES: readonly ShiftPhase[] = [
+  'event_cancelled',
+  'withdrawn',
+  'no_checkout',
+  'handed_over',
+];
 
-/** True for the three phases that replace the whole shift screen (§10.4). */
-export function isStaticPhase(phase: ShiftPhase): phase is StaticScreenCase {
+/**
+ * True for the phases that replace the whole shift screen: §10.4's three
+ * and the hand-over (ADR-0046).
+ */
+export function isStaticPhase(phase: ShiftPhase): phase is StaticPhase {
   return STATIC_PHASES.includes(phase);
+}
+
+/** ADR-0046: the worker offered this shift up and somebody took it. */
+function handedOver(shift: Pick<ShiftDetail, 'status' | 'cancelCause'>): boolean {
+  return shift.status === 'cancelled' && shift.cancelCause === 'handed_over';
 }
 
 /**
@@ -66,6 +87,8 @@ export function shiftScreenReachable(
   if (shift.status === 'confirmed' || shift.status === 'worked' || shift.status === 'turned_away') {
     return true;
   }
+  // A stale OF2 push, or the worker's own history: say what happened to it.
+  if (handedOver(shift)) return true;
   return (
     staticScreenCase({
       status: shift.status,
@@ -104,6 +127,7 @@ export function shiftPhase({ shift, openBreak, now }: PhaseInput): ShiftPhase {
     noCheckoutOpen: shift.noCheckoutOpen,
   });
   if (dead) return dead;
+  if (handedOver(shift)) return 'handed_over';
 
   // §3.2 strict buffer: the attempt was turned away and the booking is
   // terminal. "Thanks for coming" replaces the shift, however late the
@@ -121,12 +145,8 @@ export function shiftPhase({ shift, openBreak, now }: PhaseInput): ShiftPhase {
 
   if (now < addMinutes(startsAt, -CHECK_IN_OPENS_MIN)) return 'before_window';
 
-  // The lock, and its one exception: a booking confirmed AFTER the shift
-  // had already started keeps its button until the shift ends, because a
-  // window measured from a start they were not booked for means nothing.
-  const confirmedAfterStart = shift.confirmedAt !== null && new Date(shift.confirmedAt) > startsAt;
-  const locksAt = confirmedAfterStart ? endsAt : addMinutes(startsAt, CHECK_IN_GRACE_MIN);
-  return now >= locksAt ? 'locked' : 'check_in';
+  const { locks } = checkInWindow(shift);
+  return now >= locks ? 'locked' : 'check_in';
 }
 
 /**
@@ -142,13 +162,30 @@ export function turnedAwayReply(reply: Record<string, unknown>): { payMin: numbe
   return { payMin: payMin === null || payMin === undefined ? null : Number(payMin) };
 }
 
-/** The check-in window the screen quotes back: "Check-in window 16:30 – 17:30". */
-export function checkInWindow(startsAt: string): { opens: Date; locks: Date } {
-  const start = new Date(startsAt);
+/**
+ * The check-in window the screen quotes back: "Check-in window 16:30 –
+ * 17:30". The lock, and its one exception: a booking confirmed AFTER the
+ * shift had already started keeps its button until the shift ends (§3.4),
+ * because a window measured from a start they were not booked for means
+ * nothing — so the screen must not quote start+30 to them either.
+ */
+export function checkInWindow(shift: Pick<ShiftDetail, 'startsAt' | 'endsAt' | 'confirmedAt'>): {
+  opens: Date;
+  locks: Date;
+  confirmedAfterStart: boolean;
+} {
+  const start = new Date(shift.startsAt);
+  const confirmedAfterStart = shift.confirmedAt !== null && new Date(shift.confirmedAt) > start;
   return {
     opens: addMinutes(start, -CHECK_IN_OPENS_MIN),
-    locks: addMinutes(start, CHECK_IN_GRACE_MIN),
+    locks: confirmedAfterStart ? new Date(shift.endsAt) : addMinutes(start, CHECK_IN_GRACE_MIN),
+    confirmedAfterStart,
   };
+}
+
+/** The instant check-out locks and RULE-02 takes over: end + 4 h. */
+export function checkOutLocksAt(endsAt: string): Date {
+  return addMinutes(new Date(endsAt), NO_CHECK_OUT_AFTER_MIN);
 }
 
 /** Metres between two WGS-84 points — the same haversine the venue map uses. */

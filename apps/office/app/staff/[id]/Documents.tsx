@@ -13,7 +13,15 @@ import {
 } from './profile';
 import { documentLink } from '../../onboarding/actions';
 import { useReviewDialogs } from '../../compliance/ReviewDialogs';
-import { actionsFor, queueByRecord, verifyAllowed, verifyHint } from '../../compliance/queue';
+import { CompletionLetterUpload, RtwReportUpload } from '../../compliance/EvidenceUploads';
+import { canAttachReport, canUploadCompletionLetter } from '../../compliance/conditions';
+import {
+  actionsFor,
+  queueByRecord,
+  verifyAllowed,
+  verifyHint,
+  withLatestCheck,
+} from '../../compliance/queue';
 import type { ActionResult, QueueRow } from '../../compliance/types';
 import { RtwCheckPanel } from '../../_components/RtwCheckPanel';
 import { checksByDocument } from '../../_lib/rtwCheck';
@@ -63,6 +71,20 @@ import type { DeclarationRow, DocumentRow, ProfileRow, ReviewStatus } from './ty
  * the queue row's `rtw_manual_allowed`); before that the check verifies it.
  * A share code verified before the date was required carries "Confirm
  * date" (the queue's `rtw_date` row, 20260927160000).
+ *
+ * ADR-0041: every check result waits for the admin. When the check
+ * recommends Verify, the Verify dialog confirms gov.uk's date read-only
+ * after the photos under the row are compared; when it recommends Reject,
+ * the Reject box opens with its suggested N8 text, editable.
+ *
+ * What the office adds itself (20260930130400): "Attach gov.uk report" on a
+ * share code with none on file, on the manual path only (the automated
+ * check stores its own, D31), and "Upload completion letter" on a live
+ * Student-visa profile with none waiting (D47) — it lands in Needs review
+ * like the worker's own upload. NI evidence is verified with the NI number
+ * beside it and comes back to compare once the number arrives (D43); a
+ * right-to-work Verify carries the course level or the visa's hours limit
+ * (D32, D36). All of that is the shared dialogs'.
  */
 function meta(row: DocumentRow): string {
   const parts: string[] = [];
@@ -124,7 +146,12 @@ export function Documents({
   const [notice, setNotice] = useState<string | null>(null);
 
   const checks = checksByDocument(rtwChecks);
-  const queue = queueByRecord(reviewQueue);
+  // ADR-0041: the latest check's recommendation, suggested N8 text and photo
+  // come from rtw_checks_latest_v (rtwChecks), not the queue view — merged in
+  // so the shared dialogs confirm gov.uk's date read-only and pre-fill Reject.
+  const queue = queueByRecord(
+    reviewQueue.map((row) => withLatestCheck(row, checks.get(row.item_id))),
+  );
   const sorted = [...documents].sort(documentOrder);
   const live = sorted.filter((row) => !row.superseded);
   const superseded = sorted.filter((row) => row.superseded);
@@ -187,7 +214,7 @@ export function Documents({
     const hint = item
       ? verifyHint(item)
       : underReview && reviewClosed
-        ? 'No longer needs review — this person is Rejected or Removed (§4.1)'
+        ? 'No longer needs review — this person is Rejected or Removed'
         : null;
     if (!hint) return line;
     return (
@@ -226,7 +253,7 @@ export function Documents({
       title="Documents"
       actions={
         <span className="muted sm">
-          statuses + download · verification stamps in UK time (audit, §1.8)
+          statuses + download · verification stamps in UK time (audit)
         </span>
       }
     >
@@ -257,8 +284,15 @@ export function Documents({
                   {queue.get(row.id)?.kind === 'rtw_date' ? (
                     <Pill tone="coral">re-verify</Pill>
                   ) : null}
+                  {queue.get(row.id)?.kind === 'ni_check' ? (
+                    <Pill tone="amber">compare NI number</Pill>
+                  ) : null}
                   {reviewButtons(queue.get(row.id))}
                   {downloads(row)}
+                  {!reviewClosed &&
+                  canAttachReport(row, checks.get(row.id) ?? null, rtwCheckEnabled) ? (
+                    <RtwReportUpload docId={row.id} staffId={profile.id} />
+                  ) : null}
                 </>
               }
             />
@@ -318,12 +352,16 @@ export function Documents({
           />
         ) : null}
 
+        {canUploadCompletionLetter(profile, documents) ? (
+          <CompletionLetterUpload staffId={profile.id} />
+        ) : null}
+
         {superseded.length > 0 || supersededDeclarations.length > 0 ? (
           <div className="superseded-group stack">
             <div className="label">Superseded · read-only</div>
             <div className="muted sm">
               the record of what was held during a previous period — never used to satisfy the
-              current check (§2.12)
+              current check
             </div>
             {superseded.map((row) => (
               <DocRow

@@ -17,7 +17,7 @@
 --   · each step refused out of order and out of stage.
 -- =====================================================================
 begin;
-select plan(53);
+select plan(56);
 
 \set chloe_uid 'c3950000-0000-4000-8000-000000000001'
 \set dev_uid   'c3950000-0000-4000-8000-000000000002'
@@ -148,11 +148,19 @@ select isnt_empty(
 -- =====================================================================
 -- 5. Step 10 — the contract (§2.11)
 -- =====================================================================
-select is(current_contract_version(), 'placeholder-2026-09',
-  'the current version is the flagged PLACEHOLDER until THC''s agreement is published (Appendix B)');
+select is(current_contract_version(), 'thc-agency-worker-2026-09',
+  'the current version is THC''s own Agency Worker Contract for Services (20260930140100, Appendix B)');
 select ok((select body ~* 'declare any unspent criminal conviction' from contract_versions
             where version = current_contract_version()),
   'and it carries the ongoing duty to disclose convictions (§2.11, §10.7)');
+select ok((select body ~ 'AGENCY WORKER' or body ~ 'Temporary Worker' from contract_versions
+            where version = current_contract_version()),
+  'it is THC''s text — the agreement between the Employment Business and the Temporary Worker');
+select is((select is_placeholder from contract_versions where version = current_contract_version()), true,
+  'still flagged: clause 28, the duty to disclose, is ours and awaits THC''s approval');
+select ok((select body ~ '\n1\. INTERPRETATION\.\n\n1\.1 The definitions' from contract_versions
+            where version = current_contract_version()),
+  'each clause heading stands as its own "N. HEADING." paragraph, which the app draws bold');
 select throws_ok($$ select sign_contract(current_contract_version(), false) $$,
   'P0001', 'agreement_required', 'unticked is not a signature');
 select throws_ok($$ select sign_contract('some-older-version', true) $$,
@@ -165,12 +173,12 @@ select is(
 select results_eq(
   $$ select status::text, contract_version, contract_signed_at = now(), employee_id is not null
        from staff where id = 'c3960000-0000-4000-8000-000000000001' $$,
-  $$ values ('compliant'::text, 'placeholder-2026-09'::text, true, true) $$,
+  $$ values ('compliant'::text, 'thc-agency-worker-2026-09'::text, true, true) $$,
   'the candidate becomes compliant, with the version signed, the time, and an Employee ID (§2.7)');
 select isnt_empty(
   $$ select 1 from audit_log where action = 'contract_signed'
       and entity_id = 'c3960000-0000-4000-8000-000000000001'
-      and data->>'version' = 'placeholder-2026-09' $$,
+      and data->>'version' = 'thc-agency-worker-2026-09' $$,
   'the signature is also in the audit log, which survives Reset to candidate');
 select throws_ok($$ select sign_contract(current_contract_version(), true) $$,
   'P0001', 'wrong_stage', 'it cannot be signed twice');

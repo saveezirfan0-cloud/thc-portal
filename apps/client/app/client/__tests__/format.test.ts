@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { dayMarker, daysLaterIn } from '../format';
 
 /**
- * The overnight marker's date maths (ADR-0035): how many calendar days an
+ * The overnight marker's date maths (ADR-0050): how many calendar days an
  * end falls after its start, judged on the wall clock of one zone. The
  * clock changes are the cases that matter — Europe/London goes to GMT at
  * 01:00 UTC on 25 Oct 2026 (a 25-hour Sunday) and to BST at 01:00 UTC on

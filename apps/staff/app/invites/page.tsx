@@ -4,8 +4,10 @@ import { explainLimit, formatDistance, sectionHours } from '@thc/domain';
 import { StaffShell } from '../_components/StaffShell';
 import { ShiftTime } from '../_components/ShiftTime';
 import { ActionButton } from '../_components/ActionButton';
+import { LoadProblem } from '../_components/LoadProblem';
 import { acceptInvite, declineInvite } from '../actions';
 import { loadBookings, openInvites, overlapWarning, shiftsBadge } from '../data';
+import { invitedAgo } from './ago';
 import '../staff-app.css';
 
 export const dynamic = 'force-dynamic';
@@ -35,17 +37,20 @@ export const metadata = { title: 'Invites · THC Staff' };
  *     worker taps. `accept_invite` still refuses it; the line is a warning.
  */
 export default async function Page() {
-  const bookings = await loadBookings();
+  const { rows: bookings, problem } = await loadBookings();
   const invites = openInvites(bookings);
+  const now = new Date();
 
   return (
     <StaffShell
       title="Invites"
       active="/invites"
-      shifts={shiftsBadge(bookings)}
-      invites={invites.length}
+      {...(problem ? {} : { shifts: shiftsBadge(bookings), invites: invites.length })}
     >
-      {invites.length === 0 ? (
+      {problem ? (
+        // Audit D18: a failed read is not "No open invitations".
+        <LoadProblem what="your invitations" />
+      ) : invites.length === 0 ? (
         <EmptyState>
           <h3>No open invitations</h3>
           New invitations arrive as notifications.
@@ -67,7 +72,7 @@ export default async function Page() {
                 {invite.hoursLimit ? (
                   <Pill tone="coral">Limit Reached</Pill>
                 ) : (
-                  <Pill tone="cyan">Invited</Pill>
+                  <Pill tone="cyan">{invitedAgo(invite.createdAt, now)}</Pill>
                 )}
                 {invite.distanceKm !== null ? (
                   <span className="km">{formatDistance(invite.distanceKm)}</span>

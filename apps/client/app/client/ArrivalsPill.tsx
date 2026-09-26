@@ -2,7 +2,7 @@ import { Pill } from '@thc/ui';
 import type { ArrivalCount, EventArrivals } from './arrivals';
 
 /**
- * "11 of 13 arrived" — on-the-day arrival COUNTS for the customer (ADR-0038).
+ * "11 of 13 arrived" — on-the-day arrival COUNTS for the customer (ADR-0053).
  *
  * A green-dot Pill, the same `dot` pattern the list uses for "Ongoing". It
  * shows two numbers and nothing else: no names, no times, no Late / No-show

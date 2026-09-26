@@ -2,6 +2,7 @@ import { cookies } from 'next/headers';
 import { UK_ZONE, formatTimeIn, overlapVerdict } from '@thc/domain';
 import type { CancelCause, OpenShiftRow, StaffBooking, StaffBookingStatus } from '@thc/domain';
 import { staffDb, supabaseConfigured } from './db';
+import { isCurrent, isMine } from './shifts/model';
 
 /**
  * Everything the three working screens read — Scope §10.4.
@@ -90,10 +91,37 @@ export interface WeekMeter {
 
 const date = (value: unknown): Date | null => (value ? new Date(value as string) : null);
 
-export async function loadBookings(): Promise<BookingRow[]> {
-  if (!supabaseConfigured()) return [];
+/**
+ * What a list loader hands back: the rows, and whether reading them failed.
+ *
+ * A failed read is NOT an empty list. A worker told "No shifts booked" when
+ * the database simply did not answer does not turn up, and becomes a
+ * No-show (audit D18). So the error travels with the rows, and every screen
+ * that shows an empty state checks `problem` first and shows
+ * `<LoadProblem>` instead.
+ */
+export interface Loaded<T> {
+  rows: T[];
+  /** The RPC's own error message, for logs. Never rendered to the worker. */
+  problem: string | null;
+}
+
+/** One row by id, with the same distinction: not found is not "could not read". */
+export interface Found<T> {
+  row: T | null;
+  problem: string | null;
+}
+
+export async function loadBookings(): Promise<Loaded<BookingRow>> {
+  if (!supabaseConfigured()) return { rows: [], problem: null };
   const supabase = staffDb(await cookies());
-  const { data } = await supabase.rpc('staff_bookings');
+  const { data, error } = await supabase.rpc('staff_bookings');
+  if (error) return { rows: [], problem: error.message || 'staff_bookings failed' };
+  return { rows: toBookings(data), problem: null };
+}
+
+/** `staff_bookings()` rows in the screens' shape. */
+export function toBookings(data: unknown): BookingRow[] {
   return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
     bookingId: row['booking_id'] as string,
     status: row['status'] as StaffBookingStatus,
@@ -134,10 +162,16 @@ export async function loadBookings(): Promise<BookingRow[]> {
   }));
 }
 
-export async function loadOpenShifts(): Promise<OpenShift[]> {
-  if (!supabaseConfigured()) return [];
+export async function loadOpenShifts(): Promise<Loaded<OpenShift>> {
+  if (!supabaseConfigured()) return { rows: [], problem: null };
   const supabase = staffDb(await cookies());
-  const { data } = await supabase.rpc('staff_open_shifts');
+  const { data, error } = await supabase.rpc('staff_open_shifts');
+  if (error) return { rows: [], problem: error.message || 'staff_open_shifts failed' };
+  return { rows: toOpenShifts(data), problem: null };
+}
+
+/** `staff_open_shifts()` rows in the screens' shape. */
+export function toOpenShifts(data: unknown): OpenShift[] {
   return ((data ?? []) as Record<string, unknown>[]).map((row) => ({
     shiftId: row['shift_id'] as string,
     eventId: row['event_id'] as string,
@@ -173,30 +207,39 @@ function coordinate(value: unknown): number | null {
   return value === null || value === undefined ? null : Number(value);
 }
 
-export async function loadWeekMeter(): Promise<WeekMeter | null> {
-  if (!supabaseConfigured()) return null;
+/**
+ * The Radar header strip. `row` is null where the function has nothing to
+ * say (no week yet); `problem` says the read itself failed, so the strip is
+ * not silently dropped as if the worker had no cap (audit D18).
+ */
+export async function loadWeekMeter(): Promise<Found<WeekMeter>> {
+  if (!supabaseConfigured()) return { row: null, problem: null };
   const supabase = staffDb(await cookies());
-  const { data } = await supabase.rpc('staff_week_meter');
+  const { data, error } = await supabase.rpc('staff_week_meter');
+  if (error) return { row: null, problem: error.message || 'staff_week_meter failed' };
   const row = data as Record<string, unknown> | null;
-  if (!row || !row['weekStart']) return null;
+  if (!row || !row['weekStart']) return { row: null, problem: null };
   return {
-    weekStart: row['weekStart'] as string,
-    weekEnd: row['weekEnd'] as string,
-    bookedHours: Number(row['bookedHours'] ?? 0),
-    capHours:
-      row['capHours'] === null || row['capHours'] === undefined ? null : Number(row['capHours']),
-    roles: (row['roles'] as string[]) ?? [],
+    row: {
+      weekStart: row['weekStart'] as string,
+      weekEnd: row['weekEnd'] as string,
+      bookedHours: Number(row['bookedHours'] ?? 0),
+      capHours:
+        row['capHours'] === null || row['capHours'] === undefined ? null : Number(row['capHours']),
+      roles: (row['roles'] as string[]) ?? [],
+    },
+    problem: null,
   };
 }
 
-export async function findBooking(bookingId: string): Promise<BookingRow | null> {
-  const all = await loadBookings();
-  return all.find((b) => b.bookingId === bookingId) ?? null;
+export async function findBooking(bookingId: string): Promise<Found<BookingRow>> {
+  const { rows, problem } = await loadBookings();
+  return { row: rows.find((b) => b.bookingId === bookingId) ?? null, problem };
 }
 
-export async function findOpenShift(shiftId: string): Promise<OpenShift | null> {
-  const all = await loadOpenShifts();
-  return all.find((s) => s.shiftId === shiftId) ?? null;
+export async function findOpenShift(shiftId: string): Promise<Found<OpenShift>> {
+  const { rows, problem } = await loadOpenShifts();
+  return { row: rows.find((s) => s.shiftId === shiftId) ?? null, problem };
 }
 
 /**
@@ -225,14 +268,20 @@ export function openInvites(bookings: readonly BookingRow[], now: Date = new Dat
  * ("Shifts · 3").
  *
  * One reading, used by every screen that renders the shell: the bookings
- * the My shifts list shows, which are the confirmed ones and the ones under
- * way or just worked (`shifts/page.tsx`'s `mine`). It is the list the badge
- * points at, so the number and the cards behind it cannot disagree — which
- * they did while /invites counted confirmed only and /radar counted both,
- * and the badge changed as the worker moved between tabs.
+ * the UPCOMING part of My shifts shows — confirmed or worked, and still
+ * current (`isCurrent()` in shifts/model.ts: up to the end of RULE-02's
+ * check-out window, end + 4 h, or carrying an unresolved No check-out). It
+ * is the list the badge points at, so the number and the cards behind it
+ * cannot disagree — which they did while /invites counted confirmed only
+ * and /radar counted both, and again while this counted every confirmed
+ * booking ever made, so a shift from two weeks ago kept the badge up.
+ * The collapsed "Past shifts" section is history and is not counted.
  */
-export function shiftsBadge(bookings: readonly Pick<BookingRow, 'status'>[]): number {
-  return bookings.filter((b) => b.status === 'confirmed' || b.status === 'worked').length;
+export function shiftsBadge(
+  bookings: readonly Pick<BookingRow, 'status' | 'endsAt' | 'noCheckoutOpen'>[],
+  now: Date = new Date(),
+): number {
+  return bookings.filter((b) => isMine(b) && isCurrent(b, now)).length;
 }
 
 /**

@@ -6,6 +6,7 @@ import { Alert, Avatar, Chip, EmptyState, Note, Panel, Pill, SegToggle, Select }
 import { OfficeShell } from '../_components/OfficeShell';
 import { StudentVisaView } from './StudentVisaView';
 import {
+  CAP_FILTER_LABEL,
   capReason,
   employeeId,
   formatRating,
@@ -19,7 +20,7 @@ import {
   sortRows,
   statusLabel,
 } from './staff';
-import type { Filter, Sort } from './staff';
+import type { CapFilter, Filter, Sort } from './staff';
 import { formatUkStamp } from './[id]/profile';
 import type { StaffRow, StudentRow } from './types';
 import './staff.css';
@@ -32,9 +33,16 @@ export interface StaffScreenProps {
   initialView?: 'directory' | 'student';
   /** The tab to open on — the Inactive tab is its own table (§9.6). */
   initialFilter?: Filter;
+  /**
+   * Pending name/photo change requests (ADR-0045) — "Change requests (N)".
+   * Null when the count could not be read: "(?)", never a claimed 0 (D18).
+   */
+  pendingRequests?: number | null;
 }
 
-const PAGE_SIZE = 15;
+/** The pager's two sizes, as the wireframe offers them ("15 / page", "50 / page"). */
+export const PAGE_SIZES = [15, 50] as const;
+type PageSize = (typeof PAGE_SIZES)[number];
 
 /**
  * /staff — the worker directory (§9.6) and the §4.5 Student visa view.
@@ -56,9 +64,12 @@ export function StaffScreen({
   problem,
   initialView = 'directory',
   initialFilter = 'all',
+  pendingRequests = 0,
 }: StaffScreenProps) {
   const [view, setView] = useState<'directory' | 'student'>(initialView);
   const [filter, setFilter] = useState<Filter>(initialFilter);
+  const [capFilter, setCapFilter] = useState<CapFilter>('all');
+  const [pageSize, setPageSize] = useState<PageSize>(PAGE_SIZES[0]);
   const [role, setRole] = useState('');
   const [sort, setSort] = useState<Sort>('name');
   const [query, setQuery] = useState('');
@@ -94,9 +105,9 @@ export function StaffScreen({
     return sortRows(rows, filter, sort);
   }, [staff, filter, query, role, sort]);
 
-  const pages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const current = Math.min(page, pages - 1);
-  const shown = filtered.slice(current * PAGE_SIZE, current * PAGE_SIZE + PAGE_SIZE);
+  const shown = filtered.slice(current * pageSize, current * pageSize + pageSize);
 
   const reset =
     <T,>(set: (value: T) => void) =>
@@ -118,6 +129,19 @@ export function StaffScreen({
       }
     >
       {problem ? <Alert tone="coral">{problem}</Alert> : null}
+
+      {/* ADR-0045: the office's queue for the name and photo §10.1 locks. */}
+      <div className="staff-requests-link">
+        <Link
+          href="/staff/requests"
+          className="btn sm ghost"
+          {...(pendingRequests === null
+            ? { title: 'The pending count could not be read — open the queue to see it.' }
+            : {})}
+        >
+          Change requests ({pendingRequests ?? '?'})
+        </Link>
+      </div>
 
       <div className="toolbar">
         <SegToggle
@@ -187,20 +211,35 @@ export function StaffScreen({
                 <option value="newest">Sort: newest</option>
               </Select>
             </>
-          ) : null}
+          ) : (
+            // The Student visa view's own filter (wireframe: All caps ·
+            // 20 h · term time · 48 h · holiday · 48 h · graduated · Blocked).
+            <Select
+              value={capFilter}
+              onChange={(event) => setCapFilter(event.target.value as CapFilter)}
+              aria-label="Filter by weekly cap"
+              style={{ height: 32, width: 170 }}
+            >
+              {(Object.keys(CAP_FILTER_LABEL) as CapFilter[]).map((key) => (
+                <option key={key} value={key}>
+                  {CAP_FILTER_LABEL[key]}
+                </option>
+              ))}
+            </Select>
+          )}
         </div>
       </div>
 
       {view === 'student' ? (
-        <StudentVisaView students={students} query={query} />
+        <StudentVisaView students={students} query={query} capFilter={capFilter} />
       ) : (
         <>
           {filter === 'inactive' ? (
             <Alert tone="cyan">
-              Everyone who left through the app (&ldquo;Request my P45&rdquo;, §10.6) — one place to
-              work through outstanding P45s and final pay. Leaving is not a punishment: show-rate,
-              rating and feedback are untouched. The only way back is <b>Reset to candidate</b> on
-              the profile (§2.12).
+              Everyone who left through the app (&ldquo;Request my P45&rdquo;) — one place to work
+              through outstanding P45s and final pay. Leaving is not a punishment: show-rate, rating
+              and feedback are untouched. The only way back is <b>Reset to candidate</b> on the
+              profile.
             </Alert>
           ) : null}
 
@@ -261,10 +300,10 @@ export function StaffScreen({
                 </table>
               )}
             </div>
-            {filtered.length > PAGE_SIZE ? (
+            {filtered.length > PAGE_SIZES[0] ? (
               <div className="panel-h pager">
                 <span className="muted sm">
-                  Showing {current * PAGE_SIZE + 1}–{current * PAGE_SIZE + shown.length} of{' '}
+                  Showing {current * pageSize + 1}–{current * pageSize + shown.length} of{' '}
                   {filtered.length.toLocaleString('en-GB')}
                 </span>
                 <div className="right">
@@ -287,6 +326,20 @@ export function StaffScreen({
                   >
                     Next ›
                   </button>
+                  <Select
+                    value={String(pageSize)}
+                    onChange={(event) =>
+                      reset<PageSize>(setPageSize)(Number(event.target.value) as PageSize)
+                    }
+                    aria-label="Rows per page"
+                    style={{ height: 28, width: 90 }}
+                  >
+                    {PAGE_SIZES.map((size) => (
+                      <option key={size} value={size}>
+                        {size} / page
+                      </option>
+                    ))}
+                  </Select>
                 </div>
               </div>
             ) : null}
@@ -300,14 +353,14 @@ export function StaffScreen({
             </span>
             <span>
               &ldquo;Limit reached&rdquo; is a per-week condition, not a status — it never replaces
-              Compliant / Blocked / Removed (§9.6, RULE-20).
+              Compliant / Blocked / Removed.
             </span>
           </div>
 
           <Note>
-            A removed worker stays in the list as &ldquo;Deleted account #id&rdquo;: §1.7 anonymises
-            the person and keeps the history, so their roles and rating are still here (§1.7).
-            Blocking, unblocking and Reset to candidate live on the profile (§4.3, §2.12).
+            A removed worker stays in the list as &ldquo;Deleted account #id&rdquo;: removal
+            anonymises the person and keeps the history, so their roles and rating are still here.
+            Blocking, unblocking and Reset to candidate live on the profile.
           </Note>
         </>
       )}

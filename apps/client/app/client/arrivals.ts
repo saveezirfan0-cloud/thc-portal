@@ -3,7 +3,7 @@ import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from './data';
 
 /**
- * "11 of 13 arrived" (ADR-0038) — the client-approved addition to §11.
+ * "11 of 13 arrived" (ADR-0053) — the client-approved addition to §11.
  *
  * COUNTS ONLY. `client_arrivals_v` carries four columns (shift_id, event_id,
  * confirmed, arrived) and nothing else: no name, no check-in time, no Late /

@@ -26,7 +26,7 @@ export function ukDateShort(iso: string): string {
 
 /**
  * How many calendar days an end falls after its start on the wall clock of
- * `zone`: 0 for a same-day window, 1 for 17:00–01:30 (ADR-0035).
+ * `zone`: 0 for a same-day window, 1 for 17:00–01:30 (ADR-0050).
  *
  * Each line of a window is judged in its own zone: 07:00–23:30 in London is
  * one day, while the same instants in Dubai run 10:00–02:30 and cross

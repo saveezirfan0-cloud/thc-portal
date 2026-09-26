@@ -4,7 +4,7 @@ import { loadAccount } from './load';
 import './account.css';
 
 /**
- * /client/account — "Your account" (ADR-0036).
+ * /client/account — "Your account" (ADR-0051).
  *
  * The customer's own details and the addresses their documents go to,
  * read-only, plus a password change. Read on the server under the caller's

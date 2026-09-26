@@ -1,5 +1,5 @@
 import { cookies } from 'next/headers';
-import { staffDb, supabaseConfigured } from '../db';
+import { StaffLoadError, staffDb, supabaseConfigured } from '../db';
 import { mapOnboardingState } from './state';
 import type { OnboardingState } from './state';
 import type { HmrcGender } from '@thc/domain';
@@ -15,7 +15,10 @@ export { supabaseConfigured };
 export async function loadOnboarding(): Promise<OnboardingState | null> {
   if (!supabaseConfigured()) return null;
   const supabase = staffDb(await cookies());
-  const { data } = await supabase.rpc('onboarding_state');
+  const { data, error } = await supabase.rpc('onboarding_state');
+  // A failed read is not "we couldn't find your onboarding" (audit D18):
+  // it goes to the error boundary, which offers the retry.
+  if (error) throw new StaffLoadError(error.message || 'onboarding_state failed');
   return mapOnboardingState(data);
 }
 
@@ -37,10 +40,12 @@ export interface QuizQuestion {
   n: number;
   prompt: string;
   options: string[];
+  /** A picture shown above the options (Q7's COSHH symbol), a path under /public. */
+  image: string | null;
 }
 
 /**
- * The quiz WITHOUT its key (`onboarding_quiz_questions()`, 20260923120100).
+ * The quiz WITHOUT its key (`onboarding_quiz_questions()`, 20260930140000).
  * Null when the database refuses — out of stage, before the induction, or
  * no attempts left — and the screen says so rather than guessing.
  */
@@ -54,5 +59,6 @@ export async function loadQuizQuestions(): Promise<QuizQuestion[] | null> {
     n: Number(row['question_no']),
     prompt: String(row['prompt']),
     options: (row['options'] as string[]) ?? [],
+    image: typeof row['image_path'] === 'string' ? row['image_path'] : null,
   }));
 }

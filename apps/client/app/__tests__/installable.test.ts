@@ -7,7 +7,7 @@ import { metadata, viewport } from '../layout';
 import { config as middlewareConfig } from '../../middleware';
 
 /**
- * The Client Portal is installable to a home screen (ADR-0037). These hold
+ * The Client Portal is installable to a home screen (ADR-0052). These hold
  * the parts a browser judges, the colours against the tokens they copy, and
  * the one thing the ADR rules out: a service worker that could keep worker
  * names and photos on a shared device.
@@ -116,7 +116,7 @@ describe('what the browser fetches before sign-in', () => {
   });
 });
 
-describe('no service worker (ADR-0037 §2)', () => {
+describe('no service worker (ADR-0052 §2)', () => {
   function sources(dir: string): string[] {
     return readdirSync(dir).flatMap((name) => {
       const p = join(dir, name);

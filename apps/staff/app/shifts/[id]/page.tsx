@@ -1,9 +1,12 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { Alert } from '@thc/ui';
+import { LoadProblem } from '../../_components/LoadProblem';
 import { StaffShell } from '../../_components/StaffShell';
-import { loadBookings, openInvites } from '../../data';
+import { loadBookings, openInvites, shiftsBadge } from '../../data';
+import { readProfile } from '../../profile/data';
 import { loadShift, supabaseConfigured } from './data';
+import { loadBookingOffers, offersByBooking } from '../offers-data';
 import { shiftScreenReachable } from './phase';
 import { ShiftScreen } from './ShiftScreen';
 import '../../staff-app.css';
@@ -23,8 +26,16 @@ export const dynamic = 'force-dynamic';
  * The shell also owns the header and the four tabs, in the one order the
  * rest of the app uses.
  */
-export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+export default async function Page({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  /** `?checkin=1` — the today card's Check in (§10.4) opened this screen. */
+  searchParams?: Promise<{ checkin?: string }>;
+}) {
   const { id } = await params;
+  const { checkin } = (await searchParams) ?? {};
   const back = <Link href="/shifts">‹ Shifts</Link>;
 
   if (!supabaseConfigured()) {
@@ -40,7 +51,22 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   // `staff_shift_detail()` answers for the caller's own bookings only:
   // another worker's id returns nothing rather than their shift.
-  const [shift, bookings] = await Promise.all([loadShift(id), loadBookings()]);
+  const [
+    { shift, problem },
+    { rows: bookings, problem: listProblem },
+    me,
+    { rows: offers, problem: offerProblem },
+  ] = await Promise.all([loadShift(id), loadBookings(), readProfile(), loadBookingOffers()]);
+
+  // A read that FAILED is not a 404 (audit D18): "this shift doesn't exist"
+  // to a worker who has one is how a No-show happens.
+  if (problem) {
+    return (
+      <StaffShell title="Shift" sub={back} active="/shifts">
+        <LoadProblem what="this shift" />
+      </StaffShell>
+    );
+  }
   if (!shift) notFound();
 
   // An invitation has its own screen, with Accept and Decline.
@@ -52,10 +78,19 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       title={`${shift.eventTitle} · ${shift.roleName}`}
       sub={back}
       active="/shifts"
-      shifts={bookings.filter((b) => b.status === 'confirmed' || b.status === 'worked').length}
-      invites={openInvites(bookings).length}
+      {...(listProblem
+        ? {}
+        : { shifts: shiftsBadge(bookings), invites: openInvites(bookings).length })}
     >
-      <ShiftScreen shift={shift} />
+      <ShiftScreen
+        shift={shift}
+        firstName={me.kind === 'ok' ? me.profile.firstName || null : null}
+        autoCheckIn={checkin === '1'}
+        offer={offersByBooking(offers).get(id) ?? null}
+        // Audit D18: an unread offer is not "no offer" — the panel would
+        // offer "Offer this shift" on a shift already out there.
+        offerProblem={offerProblem !== null}
+      />
     </StaffShell>
   );
 }

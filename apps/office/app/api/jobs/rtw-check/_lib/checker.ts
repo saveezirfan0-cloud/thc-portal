@@ -27,6 +27,8 @@ export interface CheckOutput {
   result: RtwCheckResult;
   /** The PDF report to store on the profile (§2.6), when the check produced one. */
   report: Uint8Array | null;
+  /** The applicant's photo gov.uk showed (PNG), for the admin to compare with the selfie (ADR-0041). */
+  photo?: Uint8Array | null;
 }
 
 export interface RightToWorkChecker {
@@ -61,6 +63,20 @@ export function looksLikePdf(bytes: Uint8Array | null | undefined): bytes is Uin
     bytes[2] === 0x44 &&
     bytes[3] === 0x46 &&
     bytes[4] === 0x2d
+  );
+}
+
+export const MAX_PHOTO_BYTES = 2 * 1024 * 1024;
+
+export function looksLikePng(bytes: Uint8Array | null | undefined): bytes is Uint8Array {
+  return (
+    !!bytes &&
+    bytes.length > 8 &&
+    bytes.length <= MAX_PHOTO_BYTES &&
+    bytes[0] === 0x89 &&
+    bytes[1] === 0x50 &&
+    bytes[2] === 0x4e &&
+    bytes[3] === 0x47
   );
 }
 

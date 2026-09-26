@@ -1,6 +1,19 @@
 import { TURN_AWAY_PAY_MIN, turnedAwayMessage } from '@thc/domain';
 
 /**
+ * ADR-0046: the static screen for a shift the worker handed over — the
+ * sentence docs/19 §4 fixes, verbatim, under the wireframe's "Handed over"
+ * pill (`wireframes/staff/offer-shift.html` (g)). Here, not in
+ * `STATIC_SCREEN_COPY`, because Phase 0 left `packages/domain/src/staff.ts`
+ * unchanged on purpose (docs/19 §8).
+ */
+export const HANDED_OVER_COPY = {
+  badge: 'Handed over',
+  tone: 'amber',
+  title: "You handed this shift over — it's now someone else's.",
+} as const;
+
+/**
  * The message keys the check-in / check-out / break RPCs return, in the
  * worker's language (§5.1 copy). One table, read by the shift screen and
  * by the today card's check-in (§10.4).
@@ -17,11 +30,18 @@ export const CHECK_IN_MESSAGES: Record<string, string> = {
   already_checked_in: 'You’re already checked in.',
 };
 
+/**
+ * §5.1 / RULE-02 second trigger, word for word: off site, and no on-site
+ * fix after check-in. The full-screen state (FullScreens.tsx) and the
+ * message table say the same sentence.
+ */
+export const NO_ON_SITE_FIX =
+  'We couldn’t confirm when you left the venue — the office will confirm your finish time with you.';
+
 export const MESSAGES: Record<string, string> = {
   ...CHECK_IN_MESSAGES,
   checked_out: 'You’re checked out.',
-  no_check_out_office_confirms:
-    'We couldn’t confirm when you left the venue — the office will confirm your finish time with you.',
+  no_check_out_office_confirms: NO_ON_SITE_FIX,
   no_check_out_locked: 'Check-out has closed. The office will confirm your finish time with you.',
   // §5.1: check-out is enabled "once the shift has started" — a press
   // before the ROLE section's start (RULE-18) is refused by check_out().

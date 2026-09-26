@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { LineupRow, PortalEvent, RoleSection } from '../rules';
 
 /**
- * "Add to calendar" in the event page's header (ADR-0035): shown beside
+ * "Add to calendar" in the event page's header (ADR-0050): shown beside
  * the download, hidden for a cancelled event, and on click a Blob download
  * named after the event, built from the page's own origin. The file's
  * contents are ics.test.ts's; this covers the wiring.
@@ -50,6 +50,7 @@ const lineup: LineupRow[] = [
   {
     bookingId: 'b-1',
     eventId: EVENT_ID,
+    shiftId: null,
     role: 'Chef',
     startsAt: '2026-09-19T06:00:00Z',
     endsAt: '2026-09-19T14:00:00Z',

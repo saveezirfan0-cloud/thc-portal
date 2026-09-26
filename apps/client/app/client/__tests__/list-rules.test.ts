@@ -16,7 +16,7 @@ import {
 import type { LineupRow, PortalEvent, RoleSection } from '../rules';
 
 /**
- * The event list's additions (ADR-0034): the role split, the feedback
+ * The event list's additions (ADR-0049): the role split, the feedback
  * nudge, the timesheet's status, the filters, the empty state's reason and
  * the "Next up" strip. Presentation only, from the rows the list already
  * has, so every one of them is a pure function pinned here.
@@ -35,6 +35,7 @@ const section = (over: Partial<RoleSection> & Pick<RoleSection, 'role'>): RoleSe
 const person = (over: Partial<LineupRow> & Pick<LineupRow, 'name'>): LineupRow => ({
   bookingId: `b-${over.name}`,
   eventId: 'ev-1',
+  shiftId: null,
   role: 'Waiting Staff',
   startsAt: '2026-09-19T16:00:00Z',
   endsAt: '2026-09-19T22:30:00Z',
@@ -58,7 +59,7 @@ const event = (over: Partial<PortalEvent> = {}): PortalEvent => ({
   ...over,
 });
 
-describe('the per-role split under the fill bar (§11.1, ADR-0034)', () => {
+describe('the per-role split under the fill bar (§11.1, ADR-0049)', () => {
   it('orders roles by their own start (RULE-18), not alphabetically', () => {
     const roles = roleBreakdown([
       section({ role: 'Waiting', startsAt: '2026-09-19T16:00:00Z', headcount: 10, confirmed: 8 }),
@@ -93,7 +94,7 @@ describe('the per-role split under the fill bar (§11.1, ADR-0034)', () => {
   });
 });
 
-describe('the feedback nudge (§11.2, ADR-0034)', () => {
+describe('the feedback nudge (§11.2, ADR-0049)', () => {
   const started = new Date('2026-09-19T08:00:00Z');
   const thirteen = Array.from({ length: 13 }, (_, i) =>
     person({ name: `Worker ${i + 1}`, feedbackGiven: i < 8 }),
@@ -156,7 +157,7 @@ describe('the feedback nudge (§11.2, ADR-0034)', () => {
   });
 });
 
-describe("the signed timesheet's status on a past event (§11.3, ADR-0034)", () => {
+describe("the signed timesheet's status on a past event (§11.3, ADR-0049)", () => {
   it('is ready exactly when the final copy has been issued', () => {
     expect(timesheetStatus('completed', ['allocation', 'signout'])).toBe('ready');
   });
@@ -173,7 +174,7 @@ describe("the signed timesheet's status on a past event (§11.3, ADR-0034)", () 
   });
 });
 
-describe('the search, venue and date filters (ADR-0034)', () => {
+describe('the search, venue and date filters (ADR-0049)', () => {
   const gala = event();
   const lunch = event({
     id: 'ev-2',
@@ -264,7 +265,7 @@ describe('the search, venue and date filters (ADR-0034)', () => {
   });
 });
 
-describe('why the list is empty (ADR-0034)', () => {
+describe('why the list is empty (ADR-0049)', () => {
   it('says nothing while there are rows', () => {
     expect(emptyReason(3, 2, 1)).toBeNull();
   });
@@ -279,7 +280,7 @@ describe('why the list is empty (ADR-0034)', () => {
   });
 });
 
-describe('the "Next up" strip (ADR-0034)', () => {
+describe('the "Next up" strip (ADR-0049)', () => {
   const morning = new Date('2026-09-19T05:00:00Z'); // 06:00 BST, Sat 19 Sep
 
   it('shows the soonest upcoming event, today, in UK time', () => {

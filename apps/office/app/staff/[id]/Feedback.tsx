@@ -52,9 +52,9 @@ export function Feedback({
       <div className="stack">
         {profile.removed ? (
           <Note>
-            This worker has been removed (§1.7), so no new feedback can be added. Their history
-            stays: office entries can still be edited to redact a name, and client entries deleted
-            if asked.
+            This worker has been removed, so no new feedback can be added. Their history stays:
+            office entries can still be edited to redact a name, and client entries deleted if
+            asked.
           </Note>
         ) : (
           <OfficeFeedbackForm
@@ -68,7 +68,7 @@ export function Feedback({
           Client feedback here is read-only — it arrives from the Client Portal and &ldquo;Mark as
           read&rdquo; lives only on the <Link href="/feedback">Feedback screen</Link>; it counts
           toward the rating only once marked read. Office entries can be edited or deleted from here
-          or from the Feedback screen (§9.10).
+          or from the Feedback screen.
         </Note>
       </div>
 

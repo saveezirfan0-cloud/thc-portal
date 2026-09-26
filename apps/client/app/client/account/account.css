@@ -1,5 +1,5 @@
 /*
- * "Your account" — ADR-0036. Imported by account/page.tsx only.
+ * "Your account" — ADR-0051. Imported by account/page.tsx only.
  *
  * Tokens only (packages/ui), so the page follows both the ground switch
  * (light / dark) and the style axis without knowing which one is on

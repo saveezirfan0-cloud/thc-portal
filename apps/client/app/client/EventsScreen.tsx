@@ -27,6 +27,7 @@ import {
   byDateDescending,
   documentOffer,
   emptyReason,
+  eventsPanelTitle,
   feedbackToGo,
   fillOf,
   filterByTab,
@@ -60,7 +61,7 @@ import type {
  * come from `client_events_v` and `client_role_sections_v`, neither of
  * which carries a rate (§11.1).
  *
- * ADR-0034 adds presentation only, from the same rows: a "Next up" strip, a
+ * ADR-0049 adds presentation only, from the same rows: a "Next up" strip, a
  * per-role breakdown under the fill bar, a feedback nudge, the signed
  * timesheet's status, venue and date filters, and an empty state that says
  * why it is empty. No new data, no editing, no money.
@@ -92,6 +93,7 @@ export function EventsScreen({
   lineup,
   photos,
   documents = {},
+  company = null,
   arrivals = {},
   now,
 }: {
@@ -101,7 +103,9 @@ export function EventsScreen({
   photos: Record<string, string>;
   /** Which §11.3 PDFs the office has issued, per event (`client_event_documents_v`). */
   documents?: Record<string, DocumentKind[]>;
-  /** On-the-day check-in counts per event (ADR-0038); counts only, never who. */
+  /** The caller's own company (`client_company_v`): "Events · <client>". */
+  company?: string | null;
+  /** On-the-day check-in counts per event (ADR-0053); counts only, never who. */
   arrivals?: ArrivalsByEvent;
   /** Fixed on the server so the first paint cannot disagree with hydration. */
   now: string;
@@ -137,11 +141,13 @@ export function EventsScreen({
       <div className="page-head">
         <div>
           <h1>Your events</h1>
-          <div className="desc">Confirmed line-ups and timesheets · read-only</div>
+          <div className="desc">
+            Confirmed line-ups and timesheets{company ? ` for ${company}` : ''} · read-only
+          </div>
         </div>
         <div className="actions">
           {/* "Upcoming" is upcoming AND ongoing (filterByTab); the longer
-              label did not fit three options on a phone (ADR-0034). */}
+              label did not fit three options on a phone (ADR-0049). */}
           <SegToggle
             value={tab}
             onChange={(v) => setTab(v as Tab)}
@@ -215,7 +221,12 @@ export function EventsScreen({
 
       <Panel
         className="events-panel"
-        title="Events"
+        title={
+          <>
+            {eventsPanelTitle(company)}{' '}
+            <span className="muted sm">only your events · newest first</span>
+          </>
+        }
         actions={<Pill>{rows.length === 1 ? '1 event' : `${rows.length} events`}</Pill>}
         flush
       >
@@ -377,7 +388,7 @@ export function EventsScreen({
 }
 
 /**
- * An empty list that says why (ADR-0034, reason from `emptyReason`): the
+ * An empty list that says why (ADR-0049, reason from `emptyReason`): the
  * customer has no events yet; this tab has none, which the filters cannot
  * change, so the way out is another tab; or the search and filters hid
  * every row of the tab, so the way out is "Clear filters".
@@ -430,7 +441,7 @@ export function EmptyList({
 
 /**
  * "Next · Gala Dinner · today 07:00 UK time · 13 of 17 confirmed", or
- * "Happening now: …" while one is running (ADR-0034). Independent of the tab
+ * "Happening now: …" while one is running (ADR-0049). Independent of the tab
  * and the filters: it answers "what is next for me", not "what is in this
  * view". A scheduled time, so dual zone (§1.8): the UK line is rendered on
  * the server, and the viewer's own "your time" is added once mounted, only
@@ -478,7 +489,7 @@ function NextUp({
 
 /**
  * The per-role split under the fill bar: "Waiting 8/10 · Bar 5/7" (§11.1,
- * ADR-0034). Confirmed only, against the booked headcount (§3.2). A single
+ * ADR-0049). Confirmed only, against the booked headcount (§3.2). A single
  * role would only repeat "N of M confirmed", so it draws nothing then.
  */
 function RoleLine({ sections }: { sections: RoleSection[] }) {
@@ -501,7 +512,7 @@ function RoleLine({ sections }: { sections: RoleSection[] }) {
 }
 
 /**
- * "Leave feedback · 5 of 13 to go" (§11.2, ADR-0034). A link to the event
+ * "Leave feedback · 5 of 13 to go" (§11.2, ADR-0049). A link to the event
  * page, where the per-worker buttons are; the list itself writes nothing.
  */
 function FeedbackNudge({ eventId, toGo, total }: { eventId: string; toGo: number; total: number }) {
@@ -513,7 +524,7 @@ function FeedbackNudge({ eventId, toGo, total }: { eventId: string; toGo: number
 }
 
 /**
- * A completed event's signed timesheet, said in words (§11.3, ADR-0034).
+ * A completed event's signed timesheet, said in words (§11.3, ADR-0049).
  * Exported for its test: static rendering always opens on the Upcoming
  * tab, where no completed event is listed.
  */
@@ -531,7 +542,7 @@ export function TimesheetStatus({ status }: { status: 'ready' | 'pending' }) {
  * has issued that kind; the same label, disabled, until it has; and the
  * wireframe's "No document" for a cancelled event.
  *
- * A live download is the row's primary action, filled (ADR-0034): next to
+ * A live download is the row's primary action, filled (ADR-0049): next to
  * the bordered "Details →" the plain `btn` read as greyed out. The disabled
  * stub stays the plain, faded button, so a copy not yet issued still looks
  * unavailable rather than like a primary that does nothing.

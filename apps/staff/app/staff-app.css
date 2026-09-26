@@ -195,3 +195,111 @@
   padding: 2px var(--sp-6);
   border-radius: var(--r-pill);
 }
+
+/* ---- My shifts (wireframes/staff/shifts.html, §10.4) ------------------ */
+
+/* One header and its cards: Today · Tomorrow · This week · Later. */
+.shift-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-12);
+}
+
+/* The date leads the card; the chips sit to its right. */
+.shift-card .card-head {
+  align-items: flex-start;
+}
+.shift-card .when .shift-time {
+  align-items: flex-start;
+}
+.shift-card .when .mono:first-child {
+  font-weight: 600;
+  color: var(--text);
+}
+.shift-card .chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-6);
+  margin-left: auto;
+  justify-content: flex-end;
+}
+
+/* The event · role link reads as the card's title, not as a link colour. */
+.shift-card a.t {
+  color: var(--text);
+}
+
+/* Venue name first and plain; the address under it, one line, truncated —
+   the full address is on the shift screen. */
+.shift-card .venue {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 2px;
+}
+.shift-card .venue-name {
+  font-size: var(--fs-14);
+  font-weight: 600;
+}
+.shift-card .venue-addr {
+  font-size: var(--fs-12);
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Past shifts: collapsed by default, one line each. */
+.past-shifts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+}
+.past-shifts > summary {
+  cursor: pointer;
+  list-style: none;
+  min-height: 44px; /* touch target */
+}
+.past-shifts > summary::-webkit-details-marker {
+  display: none;
+}
+.past-shifts > summary::before {
+  content: '▸';
+}
+.past-shifts[open] > summary::before {
+  content: '▾';
+}
+.past-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  padding: var(--sp-8) var(--sp-12);
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+  background: var(--card-glass);
+  color: var(--text);
+  font-size: var(--fs-12);
+  min-height: 44px;
+}
+.past-row:hover {
+  text-decoration: none;
+}
+.past-row .past-date {
+  flex: 0 0 auto;
+  color: var(--muted);
+}
+.past-row .past-what {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+}
+.past-row .past-title,
+.past-row .past-venue {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.past-row .past-venue {
+  color: var(--muted);
+}

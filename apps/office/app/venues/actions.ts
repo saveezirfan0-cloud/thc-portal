@@ -21,6 +21,20 @@ import type { ActionResult, UpcomingEvent, VenueDraft } from './types';
 const NOT_CONFIGURED =
   'This environment has no Supabase project, so venues cannot be saved. See docs/04-setup-github-vercel-supabase.md.';
 
+/** True only for a signed-in admin (§1.4), read through the session. */
+async function callerIsAdmin(): Promise<boolean> {
+  if (!supabaseConfigured()) return false;
+  const supabase = createClient(await cookies());
+  const { data: auth } = await supabase.auth.getUser();
+  if (!auth.user) return false;
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', auth.user.id)
+    .maybeSingle<{ role: string }>();
+  return profile?.role === 'admin';
+}
+
 /**
  * `packages/db`'s generated types are still the Phase 0 placeholder, whose
  * `Functions` map is empty, so supabase-js types every RPC's arguments as
@@ -121,6 +135,14 @@ export type GeocodeResult = { ok: true; address: string } | { ok: false; message
 export async function reverseGeocode(lat: number, lng: number): Promise<GeocodeResult> {
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
     return { ok: false, message: 'Drop the pin on the map first.' };
+  }
+
+  // A server action is a public POST endpoint, and this one spends the
+  // Mapbox token and touches no RLS on the way. So it checks the caller
+  // itself: a signed-in admin, read through the session and `profiles`'
+  // own policy — never a claim the browser sent (audit D52).
+  if (!(await callerIsAdmin())) {
+    return { ok: false, message: 'Only the office can look up addresses.' };
   }
 
   const token = process.env.MAPBOX_TOKEN ?? process.env.NEXT_PUBLIC_MAPBOX_TOKEN;

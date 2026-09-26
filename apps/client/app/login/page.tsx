@@ -1,5 +1,6 @@
 import { isSafeRelativePath } from '@thc/db';
 import { AuthCard } from '@thc/ui';
+import { LEAD } from './copy';
 import { LoginForm } from './LoginForm';
 
 export const metadata = { title: 'Sign in · THC Client Portal' };
@@ -35,6 +36,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ n
         </>
       }
     >
+      {/* login.html:62: what this portal is, under the heading. */}
+      <p className="sm muted lead">{LEAD}</p>
       {/* Not reflected into the form unless it is a path on this app (§1.4). */}
       <LoginForm next={isSafeRelativePath(next) ? next : undefined} />
     </AuthCard>

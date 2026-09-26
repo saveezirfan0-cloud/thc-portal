@@ -11,7 +11,7 @@ import { ukDateLong, ukDateShort } from '../../format';
 import {
   feedbackOpen,
   fillOf,
-  groupByRole,
+  groupBySection,
   headerDocuments,
   isRemoved,
   statusTone,
@@ -61,18 +61,20 @@ export function EventScreen({
   now: string;
   /** Which §11.3 PDFs the office has produced for this event. */
   documents?: IssuedDocument[];
-  /** On-the-day check-in counts (ADR-0038); counts only, never who. */
+  /** On-the-day check-in counts (ADR-0053); counts only, never who. */
   arrivals?: EventArrivals;
 }) {
   const [rating, setRating] = useState<LineupRow | null>(null);
 
   const at = useMemo(() => new Date(now), [now]);
-  const groups = useMemo(() => groupByRole(lineup, sections), [lineup, sections]);
+  const groups = useMemo(() => groupBySection(lineup, sections), [lineup, sections]);
+  // Two sections of one role are two panels but still one role.
+  const roleCount = useMemo(() => new Set(groups.map((g) => g.role)).size, [groups]);
   const fill = useMemo(() => fillOf(sections), [sections]);
   const open = feedbackOpen(event, at);
   const cancelled = event.status === 'cancelled';
   const completed = event.status === 'completed';
-  // "On the day" (ADR-0038): the count is live information about the shift in
+  // "On the day" (ADR-0053): the count is live information about the shift in
   // progress. Once the event is over the signed timesheet is the record.
   const live = event.status === 'ongoing' ? arrivals : undefined;
   const downloads = headerDocuments(
@@ -135,7 +137,7 @@ export function EventScreen({
                 </Button>
               );
             })}
-            {/* ADR-0035: an .ics built in the browser; none when cancelled. */}
+            {/* ADR-0050: an .ics built in the browser; none when cancelled. */}
             <CalendarButton event={event} />
           </div>
         </div>
@@ -155,7 +157,7 @@ export function EventScreen({
             <div className="k">{completed ? 'Staff on the day' : 'Confirmed staff'}</div>
             <div className="v">
               <b>{fill.confirmed}</b> of {fill.headcount} ·{' '}
-              {groups.length === 1 ? '1 role' : `${groups.length} roles`}
+              {roleCount === 1 ? '1 role' : `${roleCount} roles`}
             </div>
           </div>
           {timesheet ? (
@@ -167,7 +169,7 @@ export function EventScreen({
                     the view carries no recipient count, so none is claimed. */}
                 Sign-out timesheet generated{' '}
                 {formatDateTimeIn(new Date(timesheet.issuedAt), UK_ZONE)}
-                <span className="sub">by email to the contacts on your client card (§11.4)</span>
+                <span className="sub">by email to the contacts on your client card</span>
               </div>
             </div>
           ) : null}
@@ -202,7 +204,7 @@ export function EventScreen({
         ? null
         : groups.map((group) => (
             <Panel
-              key={group.role}
+              key={group.key}
               className="role-panel"
               title={
                 <span className="role-title">
@@ -217,7 +219,7 @@ export function EventScreen({
                   </Pill>
                   <Arrivals
                     counts={live}
-                    shiftIds={sections.filter((s) => s.role === group.role).map((s) => s.shiftId)}
+                    shiftIds={[group.key]}
                     startsAt={group.startsAt}
                     now={at}
                   />

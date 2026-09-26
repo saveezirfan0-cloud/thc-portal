@@ -1,0 +1,156 @@
+-- =====================================================================
+-- GENERATED FILE — do not edit.
+--
+-- Source: packages/domain/src/shiftOffer.vectors.json
+-- Regenerate: pnpm --filter @thc/domain gen:vectors
+--
+-- ADR-0046: shift_offer_transitions(), shift_offer_mode_transitions() and
+-- the state guard against the cases state.ts and shiftOffer.ts are held
+-- to; take and visibility cases (defaults merged) for take_offered_shift()
+-- and the Radar read in Agent A's 20260930201100.
+-- Included with \ir from supabase/tests/701_staff_additions_state.sql; the .psql
+-- extension keeps pg_prove from running it as a test of its own.
+-- =====================================================================
+
+create temporary table shift_offer_status_vectors (
+  status text primary key
+) on commit drop;
+
+insert into shift_offer_status_vectors values
+  ('open'),
+  ('taken'),
+  ('withdrawn'),
+  ('lapsed'),
+  ('cancelled');
+
+create temporary table shift_offer_edge_vectors (
+  from_status text not null,
+  to_status text not null
+) on commit drop;
+
+insert into shift_offer_edge_vectors values
+  ('open', 'taken'),
+  ('open', 'withdrawn'),
+  ('open', 'lapsed'),
+  ('open', 'cancelled');
+
+create temporary table shift_offer_mode_vectors (
+  mode text primary key
+) on commit drop;
+
+insert into shift_offer_mode_vectors values
+  ('pool'),
+  ('office'),
+  ('direct');
+
+create temporary table shift_offer_mode_edge_vectors (
+  from_mode text not null,
+  to_mode text not null
+) on commit drop;
+
+insert into shift_offer_mode_edge_vectors values
+  ('office', 'pool');
+
+create temporary table shift_offer_can_offer_vectors (
+  name text primary key,
+  starts_at timestamptz not null,
+  now_at timestamptz not null,
+  expect boolean not null
+) on commit drop;
+
+insert into shift_offer_can_offer_vectors values
+  ('72h_plus_1ms_remain', '2026-10-10T17:00:00.000Z', '2026-10-07T16:59:59.999Z', true),
+  ('exactly_72h_remain', '2026-10-10T17:00:00.000Z', '2026-10-07T17:00:00.000Z', false),
+  ('71h_remain', '2026-10-10T17:00:00.000Z', '2026-10-07T18:00:00.000Z', false),
+  ('thirty_days_out', '2026-10-10T17:00:00.000Z', '2026-09-10T17:00:00.000Z', true);
+
+create temporary table shift_offer_expires_vectors (
+  name text primary key,
+  starts_at timestamptz not null,
+  opened_by_office boolean not null,
+  expect timestamptz not null
+) on commit drop;
+
+insert into shift_offer_expires_vectors values
+  ('pool_offer_closes_at_start_minus_72h', '2026-10-10T17:00:00.000Z', false, '2026-10-07T17:00:00.000Z'),
+  ('cover_opened_by_the_office_runs_to_the_start', '2026-10-10T17:00:00.000Z', true, '2026-10-10T17:00:00.000Z'),
+  ('across_the_autumn_change_is_72_absolute_hours', '2026-10-26T18:00:00.000Z', false, '2026-10-23T18:00:00.000Z');
+
+create temporary table shift_offer_take_vectors (
+  name text primary key,
+  input jsonb not null,
+  expect jsonb not null
+) on commit drop;
+
+insert into shift_offer_take_vectors values
+  ('ok_wave1_new_row', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":true,"takerFrom":"none"}'::jsonb),
+  ('event_cancelled_first', '{"eventCancelled":true,"offerStatus":"taken","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":"blocked","candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"event_cancelled"}'::jsonb),
+  ('offer_not_open_taken_race', '{"eventCancelled":false,"offerStatus":"taken","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-08T00:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"offer_not_open"}'::jsonb),
+  ('offer_not_open_withdrawn', '{"eventCancelled":false,"offerStatus":"withdrawn","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"offer_not_open"}'::jsonb),
+  ('offer_expired_beats_original_not_confirmed', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-08T00:00:00.000Z","originalStatus":"cancelled","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"offer_expired"}'::jsonb),
+  ('offer_expired_exactly_at_expiry', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-07T17:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"offer_expired"}'::jsonb),
+  ('original_not_confirmed_beats_own_offer', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"cancelled","offeredBy":"offerer","taker":"offerer","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"original_not_confirmed"}'::jsonb),
+  ('own_offer_beats_gate', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"offerer","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":"blocked","candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"own_offer"}'::jsonb),
+  ('section_started_beats_gate', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-11T00:00:00.000Z","now":"2026-10-10T17:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":"hours_limit","candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"section_started"}'::jsonb),
+  ('no_candidate_row_is_not_bookable', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":false,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"not_bookable"}'::jsonb),
+  ('gate_wrong_role', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":"wrong_role","candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"wrong_role"}'::jsonb),
+  ('gate_do_not_return', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":"do_not_return","candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"do_not_return"}'::jsonb),
+  ('gate_blocked', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":"blocked","candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"blocked"}'::jsonb),
+  ('gate_self_cancelled', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":"self_cancelled","candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"self_cancelled"}'::jsonb),
+  ('gate_booked_elsewhere_is_overlap', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":"booked_elsewhere","candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"overlap"}'::jsonb),
+  ('gate_rtw_expired', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":"rtw_expired","candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"rtw_expired"}'::jsonb),
+  ('gate_hours_limit', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":"hours_limit","candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"hours_limit"}'::jsonb),
+  ('unknown_gate_is_not_bookable', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":"outside_radius","candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"not_bookable"}'::jsonb),
+  ('gate_beats_not_yet', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":"hours_limit","candidate":true,"qualified":false,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"hours_limit"}'::jsonb),
+  ('unavailable_does_not_refuse', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":"unavailable","candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":true,"takerFrom":"none"}'::jsonb),
+  ('unavailable_and_unqualified_still_waits_for_wave1', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":"unavailable","candidate":true,"qualified":false,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"not_yet"}'::jsonb),
+  ('cancelled_row_is_already_had_booking', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":"cancelled"}'::jsonb, '{"ok":false,"reason":"already_had_booking"}'::jsonb),
+  ('confirmed_row_is_already_had_booking', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":"confirmed"}'::jsonb, '{"ok":false,"reason":"already_had_booking"}'::jsonb),
+  ('already_had_booking_beats_not_yet', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":false,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":"cancelled"}'::jsonb, '{"ok":false,"reason":"already_had_booking"}'::jsonb),
+  ('not_yet_before_wave1_is_exhausted', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":false,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"not_yet"}'::jsonb),
+  ('ok_wave2_after_wave1_is_exhausted', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":false,"wave1Exhausted":true,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":true,"takerFrom":"none"}'::jsonb),
+  ('ok_from_an_open_invitation', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":"invited"}'::jsonb, '{"ok":true,"takerFrom":"invited"}'::jsonb),
+  ('ok_from_a_radar_application', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":"applied"}'::jsonb, '{"ok":true,"takerFrom":"applied"}'::jsonb),
+  ('ok_from_a_closed_offer', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":"closed"}'::jsonb, '{"ok":true,"takerFrom":"closed"}'::jsonb),
+  ('office_cover_request_is_not_open', '{"eventCancelled":false,"offerStatus":"open","mode":"office","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"offer_not_open"}'::jsonb),
+  ('office_cover_request_beats_offer_expired', '{"eventCancelled":false,"offerStatus":"open","mode":"office","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-08T00:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"offer_not_open"}'::jsonb),
+  ('direct_to_someone_else_is_not_open', '{"eventCancelled":false,"offerStatus":"open","mode":"direct","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null,"targetStaffId":"someone_else","directEnabled":true}'::jsonb, '{"ok":false,"reason":"offer_not_open"}'::jsonb),
+  ('direct_while_disabled_is_not_open', '{"eventCancelled":false,"offerStatus":"open","mode":"direct","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":true,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null,"targetStaffId":"taker","directEnabled":false}'::jsonb, '{"ok":false,"reason":"offer_not_open"}'::jsonb),
+  ('direct_to_its_colleague_skips_the_waves', '{"eventCancelled":false,"offerStatus":"open","mode":"direct","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":false,"wave1Exhausted":false,"autoAssign":true,"takerBookingStatus":null,"targetStaffId":"taker","directEnabled":true}'::jsonb, '{"ok":true,"takerFrom":"none"}'::jsonb),
+  ('auto_assign_off_wave2_takes_at_once', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":false,"wave1Exhausted":false,"autoAssign":false,"takerBookingStatus":null}'::jsonb, '{"ok":true,"takerFrom":"none"}'::jsonb),
+  ('auto_assign_off_gate_still_refuses', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":"blocked","candidate":true,"qualified":false,"wave1Exhausted":false,"autoAssign":false,"takerBookingStatus":null}'::jsonb, '{"ok":false,"reason":"blocked"}'::jsonb),
+  ('auto_assign_off_already_had_booking_still_refuses', '{"eventCancelled":false,"offerStatus":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","now":"2026-10-01T12:00:00.000Z","originalStatus":"confirmed","offeredBy":"offerer","taker":"taker","sectionStartsAt":"2026-10-10T17:00:00.000Z","gate":null,"candidate":true,"qualified":false,"wave1Exhausted":false,"autoAssign":false,"takerBookingStatus":"cancelled"}'::jsonb, '{"ok":false,"reason":"already_had_booking"}'::jsonb);
+
+create temporary table shift_offer_visibility_vectors (
+  name text primary key,
+  input jsonb not null,
+  expect jsonb not null
+) on commit drop;
+
+insert into shift_offer_visibility_vectors values
+  ('pool_wave1_sees_it', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":null,"candidate":true,"qualified":true,"bookingStatus":null,"wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'true'::jsonb),
+  ('pool_wave2_waits', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":null,"candidate":true,"qualified":false,"bookingStatus":null,"wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'false'::jsonb),
+  ('pool_wave2_after_exhaustion', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":null,"candidate":true,"qualified":false,"bookingStatus":null,"wave1Exhausted":true,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'true'::jsonb),
+  ('never_the_offerer', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"offerer","gate":null,"candidate":true,"qualified":true,"bookingStatus":null,"wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'false'::jsonb),
+  ('office_cover_request_is_hidden', '{"status":"open","mode":"office","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":null,"candidate":true,"qualified":true,"bookingStatus":null,"wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'false'::jsonb),
+  ('direct_offer_to_its_colleague', '{"status":"open","mode":"direct","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":"viewer","autoAssign":true,"viewer":"viewer","gate":null,"candidate":true,"qualified":true,"bookingStatus":null,"wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'true'::jsonb),
+  ('direct_offer_hidden_from_others', '{"status":"open","mode":"direct","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":"someone_else","autoAssign":true,"viewer":"viewer","gate":null,"candidate":true,"qualified":true,"bookingStatus":null,"wave1Exhausted":true,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'false'::jsonb),
+  ('expired_is_hidden', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":null,"candidate":true,"qualified":true,"bookingStatus":null,"wave1Exhausted":false,"now":"2026-10-07T17:00:00.000Z"}'::jsonb, 'false'::jsonb),
+  ('taken_is_hidden', '{"status":"taken","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":null,"candidate":true,"qualified":true,"bookingStatus":null,"wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'false'::jsonb),
+  ('gated_worker_never_sees_it', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":"blocked","candidate":true,"qualified":true,"bookingStatus":null,"wave1Exhausted":true,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'false'::jsonb),
+  ('unavailable_worker_still_sees_it', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":"unavailable","candidate":true,"qualified":true,"bookingStatus":null,"wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'true'::jsonb),
+  ('no_candidate_row_never_sees_it', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":null,"candidate":false,"qualified":true,"bookingStatus":null,"wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'false'::jsonb),
+  ('auto_assign_off_wave2_sees_it_at_once', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":false,"viewer":"viewer","gate":null,"candidate":true,"qualified":false,"bookingStatus":null,"wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'true'::jsonb),
+  ('auto_assign_off_gated_still_never_sees_it', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":false,"viewer":"viewer","gate":"blocked","candidate":true,"qualified":false,"bookingStatus":null,"wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'false'::jsonb),
+  ('auto_assign_off_office_request_still_hidden', '{"status":"open","mode":"office","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":false,"viewer":"viewer","gate":null,"candidate":true,"qualified":true,"bookingStatus":null,"wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'false'::jsonb),
+  ('invited_viewer_sees_it', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":null,"candidate":true,"qualified":true,"bookingStatus":"invited","wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'true'::jsonb),
+  ('applied_viewer_sees_it', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":null,"candidate":true,"qualified":true,"bookingStatus":"applied","wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'true'::jsonb),
+  ('closed_viewer_sees_it', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":null,"candidate":true,"qualified":true,"bookingStatus":"closed","wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'true'::jsonb),
+  ('confirmed_viewer_never_sees_it', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":null,"candidate":true,"qualified":true,"bookingStatus":"confirmed","wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'false'::jsonb),
+  ('worked_viewer_never_sees_it', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":null,"candidate":true,"qualified":true,"bookingStatus":"worked","wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'false'::jsonb),
+  ('turned_away_viewer_never_sees_it', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":null,"candidate":true,"qualified":true,"bookingStatus":"turned_away","wave1Exhausted":false,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'false'::jsonb),
+  ('cancelled_viewer_never_sees_it', '{"status":"open","mode":"pool","expiresAt":"2026-10-07T17:00:00.000Z","offeredBy":"offerer","targetStaffId":null,"autoAssign":true,"viewer":"viewer","gate":null,"candidate":true,"qualified":true,"bookingStatus":"cancelled","wave1Exhausted":true,"now":"2026-10-01T12:00:00.000Z"}'::jsonb, 'false'::jsonb);
+
+\set shift_offer_status_count 5
+\set shift_offer_edge_count 4
+\set shift_offer_mode_edge_count 1

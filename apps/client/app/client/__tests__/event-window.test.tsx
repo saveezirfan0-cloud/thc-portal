@@ -21,7 +21,7 @@ describe('EventWindow (§1.8)', () => {
 
   it('adds the "your time" line, as a .sub, for a reader in Berlin', () => {
     // 23:30 in London is 00:30 the next day in Berlin: the Berlin line
-    // crosses midnight and says so; the UK line does not (ADR-0035).
+    // crosses midnight and says so; the UK line does not (ADR-0050).
     const markup = renderToStaticMarkup(
       <EventWindow startsAt={STARTS} endsAt={ENDS} zone="Europe/Berlin" className="win" />,
     );

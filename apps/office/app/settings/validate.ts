@@ -112,7 +112,7 @@ export function validateWillo(map: WilloStageMap): string | null {
   // §2.4: "Rejected in Willo → the system rejects automatically." Pointing
   // it anywhere else turns an automatic rejection into an advancement.
   if (map.rejected !== 'rejected') {
-    return 'A Willo rejection must map to the Rejected stage (§2.4).';
+    return 'A Willo rejection must map to the Rejected stage.';
   }
   return null;
 }
@@ -156,7 +156,7 @@ export function validateSenders(senders: Senders): string | null {
   for (const [label, address] of entries) {
     if (!EMAIL.test(address.trim())) return `${label} is not a valid email address.`;
     if (/^no-?reply@/i.test(address.trim())) {
-      return `${label}: no-reply addresses are not used — replies go to a monitored mailbox (§9.12).`;
+      return `${label}: no-reply addresses are not used — replies go to a monitored mailbox.`;
     }
   }
   return null;
@@ -169,7 +169,7 @@ export const MAX_RADIUS_M = 3000;
 export function validateRadius(label: string, metres: number): string | null {
   if (!Number.isInteger(metres)) return `${label}: the radius is a whole number of metres.`;
   if (metres < MIN_RADIUS_M || metres > MAX_RADIUS_M) {
-    return `${label}: the radius must be between ${MIN_RADIUS_M} m and ${MAX_RADIUS_M} m (§9.11).`;
+    return `${label}: the radius must be between ${MIN_RADIUS_M} m and ${MAX_RADIUS_M} m.`;
   }
   return null;
 }

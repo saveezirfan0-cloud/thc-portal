@@ -49,6 +49,8 @@ export interface RoleSection {
 export interface LineupRow {
   bookingId: string;
   eventId: string;
+  /** The role section (`shift_requirements.id`) the booking is on. */
+  shiftId: string | null;
   role: string;
   startsAt: string;
   endsAt: string;
@@ -169,40 +171,104 @@ export function feedbackOpen(event: Pick<PortalEvent, 'status' | 'startsAt'>, no
 }
 
 /**
- * The line-up as §11.2 shows it: grouped by role, and inside a role ordered
- * the way §11.3 orders the PDF, so the screen and the document list the
- * same people in the same sequence.
+ * The line-up as §11.2 shows it: one group per role SECTION, and inside a
+ * section ordered the way §11.3 orders the PDF, so the screen and the
+ * document list the same people in the same sequence.
  *
- * Role groups follow the role's own start time (RULE-18) — Chef at 07:00
- * before Waiting Staff at 17:00 — and ties break by name so the order is
- * total rather than merely sorted.
+ * A section is a `shift_requirements` row, keyed by its `shift_id`. Two
+ * sections of one role (Waiting Staff 07:00–15:00 and Waiting Staff
+ * 17:00–23:30) are two groups with two windows, exactly as the PDF keys
+ * them (`packages/pdf/src/sheet.ts` `sectionKey`); grouping by role name
+ * merged them under the first section's window. A row without a shift id
+ * falls back to role + window, which is the PDF's own fallback.
+ *
+ * Groups follow the section's own start time (RULE-18), so Chef at 07:00
+ * comes before Waiting Staff at 17:00, and ties break by role name and
+ * then by key so the order is total rather than merely sorted.
  */
-export function groupByRole(
+export interface LineupGroup {
+  /** The shift id, or role + window when the row carries none. */
+  key: string;
+  role: string;
+  startsAt: string;
+  endsAt: string;
+  confirmed: number;
+  people: LineupRow[];
+}
+
+function sectionKey(row: Pick<LineupRow, 'shiftId' | 'role' | 'startsAt' | 'endsAt'>): string {
+  return row.shiftId ?? `${row.role}|${row.startsAt}|${row.endsAt}`;
+}
+
+export function groupBySection(
   lineup: readonly LineupRow[],
   sections: readonly RoleSection[],
-): { role: string; startsAt: string; endsAt: string; confirmed: number; people: LineupRow[] }[] {
-  const byRole = new Map<string, LineupRow[]>();
+): LineupGroup[] {
+  const bySection = new Map<string, LineupRow[]>();
   for (const row of lineup) {
-    const list = byRole.get(row.role);
+    const key = sectionKey(row);
+    const list = bySection.get(key);
     if (list) list.push(row);
-    else byRole.set(row.role, [row]);
+    else bySection.set(key, [row]);
   }
 
-  return [...byRole.entries()]
-    .map(([role, people]) => {
+  return [...bySection.entries()]
+    .map(([key, people]) => {
       // The section carries the role's window; fall back to the booking's
       // own times if a section is missing, so a row is never dropped.
-      const section = sections.find((s) => s.role === role);
-      const first = people[0];
+      const first = people[0]!;
+      const section = sections.find((s) => s.shiftId === key);
       return {
-        role,
-        startsAt: section?.startsAt ?? first?.startsAt ?? '',
-        endsAt: section?.endsAt ?? first?.endsAt ?? '',
+        key,
+        role: section?.role ?? first.role,
+        startsAt: section?.startsAt ?? first.startsAt,
+        endsAt: section?.endsAt ?? first.endsAt,
         confirmed: people.length,
         people: [...people].sort((a, b) => a.sortKey.localeCompare(b.sortKey)),
       };
     })
-    .sort((a, b) => a.startsAt.localeCompare(b.startsAt) || a.role.localeCompare(b.role));
+    .sort(
+      (a, b) =>
+        a.startsAt.localeCompare(b.startsAt) ||
+        a.role.localeCompare(b.role) ||
+        a.key.localeCompare(b.key),
+    );
+}
+
+/**
+ * The list panel's title (wireframes/client/events.html: "Events · Leonardo
+ * Hotel St Pauls"). Plain "Events" when the company could not be read.
+ */
+export function eventsPanelTitle(company: string | null | undefined): string {
+  const name = company?.trim();
+  return name ? `Events · ${name}` : 'Events';
+}
+
+/**
+ * The customer's sentence for a refused `submit_client_feedback()` (§11.5).
+ *
+ * The RPC raises SQLSTATE 22023 for two different things: a rating outside
+ * 1–5 ("Rating must be between 1 and 5") and an event that has not started
+ * ("Feedback opens once the event has started"). Keyed on the code alone,
+ * a bad rating read as "not started yet", so the message decides which.
+ */
+export function feedbackErrorMessage(error: {
+  code?: string | null;
+  message?: string | null;
+}): string {
+  const message = (error.message ?? '').toLowerCase();
+  switch (error.code) {
+    case '22023':
+      if (message.includes('rating')) return 'Choose a rating between 1 and 5 stars.';
+      if (message.includes('started')) return 'Feedback opens once the event has started.';
+      return 'That could not be saved.';
+    case '23505':
+      return 'Feedback has already been left for this person on this event.';
+    case '42501':
+      return 'That booking is not on one of your events.';
+    default:
+      return 'That could not be saved.';
+  }
 }
 
 /**
@@ -210,7 +276,7 @@ export function groupByRole(
  *
  * "Upcoming" is anything whose window has not yet ended — upcoming AND
  * ongoing. The label was shortened so the three options fit a phone
- * (ADR-0034); the rule was not. So an event running right now stays in the
+ * (ADR-0049); the rule was not. So an event running right now stays in the
  * tab the customer is looking at rather than jumping to Past the moment it
  * starts. A cancelled event is
  * neither upcoming nor past work: it is filed by its date like any other
@@ -254,7 +320,7 @@ export interface RoleFill {
 }
 
 /**
- * "Waiting 8/10 · Bar 5/7" under the list's fill bar (§11.1, ADR-0034).
+ * "Waiting 8/10 · Bar 5/7" under the list's fill bar (§11.1, ADR-0049).
  *
  * The same numbers `fillOf` adds up, split by role: confirmed only against
  * the booked headcount, never the buffer (§3.2). Two sections of the same
@@ -286,7 +352,7 @@ export function roleBreakdown(sections: readonly RoleSection[]): RoleFill[] {
 }
 
 /**
- * "Leave feedback · 5 of 13 to go" on a list row (§11.2, ADR-0034).
+ * "Leave feedback · 5 of 13 to go" on a list row (§11.2, ADR-0049).
  *
  * Only once the event has started (the same `feedbackOpen` test the event
  * page's buttons use) and only for an ongoing or completed event, so an
@@ -309,7 +375,7 @@ export function feedbackToGo(
 }
 
 /**
- * Whether a completed event's signed timesheet is out yet (§11.3, ADR-0034).
+ * Whether a completed event's signed timesheet is out yet (§11.3, ADR-0049).
  *
  * Read straight off `documentOffer`, so the words and the button cannot
  * disagree: "ready" exactly when the button is a live download. An event
@@ -326,7 +392,7 @@ export function timesheetStatus(
 }
 
 /**
- * The list's filters, on top of the tab (ADR-0034). Dates are `yyyy-mm-dd`
+ * The list's filters, on top of the tab (ADR-0049). Dates are `yyyy-mm-dd`
  * as an `<input type="date">` gives them, read as UK calendar days; an
  * empty string means "no bound".
  */
@@ -350,7 +416,7 @@ export function venuesOf(events: readonly PortalEvent[]): string[] {
 }
 
 /**
- * The search, venue and date range, combined (ADR-0034).
+ * The search, venue and date range, combined (ADR-0049).
  *
  * The day an event is filed under is the UK calendar day it starts on, the
  * day the list's Date column prints (`ukDateShort`), evaluated in
@@ -381,7 +447,7 @@ export function applyFilters(events: readonly PortalEvent[], f: EventFilters): P
 }
 
 /**
- * Why the list is empty, so the empty state can say so (ADR-0034): the
+ * Why the list is empty, so the empty state can say so (ADR-0049): the
  * customer has no events at all; the tab has none (so clearing the filters
  * would not help); or the tab has some and the search and filters hid them
  * all. Null when there are rows to show.
@@ -398,7 +464,7 @@ export function emptyReason(
 }
 
 /**
- * The "Next up" strip above the list (ADR-0034).
+ * The "Next up" strip above the list (ADR-0049).
  *
  * An event running now wins ("Happening now"), the earliest-started first
  * if several overlap; otherwise the soonest upcoming one. Cancelled and

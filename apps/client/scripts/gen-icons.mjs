@@ -1,5 +1,5 @@
 /**
- * The Client Portal's home-screen icons (ADR-0037) — apps/client/public/
+ * The Client Portal's home-screen icons (ADR-0052) — apps/client/public/
  * icon-192.png, icon-512.png, icon-maskable-512.png, apple-touch-icon.png.
  *
  * Generated from brand/thc-mark.svg, never hand-placed (brand/README.md,

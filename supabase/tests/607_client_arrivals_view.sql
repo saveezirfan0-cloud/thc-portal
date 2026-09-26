@@ -1,7 +1,7 @@
 -- =====================================================================
--- 607 · client_arrivals_v — "11 of 13 arrived" (§11 addition, ADR-0038)
+-- 607 · client_arrivals_v — "11 of 13 arrived" (§11 addition, ADR-0053)
 --
--- 20260929100100. Counts only, per role section, once the event has
+-- 20261001100100. Counts only, per role section, once the event has
 -- started. Asserted here:
 --   * the ADR-0004 shape (owner rights, security barrier, the predicate in
 --     the body, exactly four named columns, SELECT to authenticated only);

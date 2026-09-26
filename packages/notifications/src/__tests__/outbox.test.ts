@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { UnsendableRow, messageFor, outboxBackoffMs } from '../outbox';
 import type { OutboxRow } from '../outbox';
+import { ADDITION_CODES, TEMPLATES } from '../templates';
 
 const push = (over: Partial<OutboxRow> = {}): OutboxRow => ({
   id: 1,
@@ -227,5 +228,61 @@ describe('the office\u2019s own rows render, rather than shipping braces (§8)',
     for (const text of [msg.title, msg.body, msg.url ?? '']) {
       expect(text, `${code}: "${text}"`).not.toMatch(/[{}]/);
     }
+  });
+});
+
+/**
+ * The Staff App additions (docs/19 §6, ADR-0045/0045) go through the same
+ * drain. `messageFor` looks a code up in TEMPLATES and nowhere else, so
+ * registering RC/OF is all it takes — this holds that to be true.
+ */
+describe('the RC and OF additions are sendable rows', () => {
+  it.each([...ADDITION_CODES])('%s renders on the channel the register gives it', (code) => {
+    const entry = TEMPLATES[code];
+    const msg = messageFor(
+      entry.channel === 'push'
+        ? push({ template: code, key: `${code}:x:1` })
+        : email({ template: code, key: `${code}:x:1` }),
+    );
+    expect(msg.kind).toBe(entry.channel);
+  });
+
+  it('sends RC4 to admin@ and payroll, as E7, whatever the row says', () => {
+    const msg = messageFor(
+      email({
+        template: 'RC4',
+        key: 'RC4:request:1',
+        recipient_emails: ['someone@example.com'],
+        payload: { name: 'Tom Reed', employeeId: '10432' },
+      }),
+    );
+    expect(msg.kind === 'email' && msg.to).toEqual([
+      'admin@thehospitalitycompany.co.uk',
+      'thc_payroll@topsourceworldwide.com',
+    ]);
+    expect(msg.kind === 'email' && msg.subject).toBe('Name changed — Tom Reed, Employee ID 10432');
+  });
+
+  it('deep-links OF1 to the offer, not to the offerer', () => {
+    const msg = messageFor(
+      push({
+        template: 'OF1',
+        key: 'OF1:offer:o1:s9',
+        payload: {
+          role: 'Waiting Staff',
+          event: 'Gala Dinner',
+          dateTime: 'Fri 09 Oct 2026 17:00–23:30',
+          rate: '£13.50',
+          offerId: 'o1',
+        },
+      }),
+    );
+    expect(msg).toEqual({
+      kind: 'push',
+      staffId: 'staff-1',
+      title: 'Shift up for grabs',
+      body: 'Waiting Staff · Gala Dinner · Fri 09 Oct 2026 17:00–23:30 · £13.50/h — tap to take it.',
+      url: '/radar/offers/o1',
+    });
   });
 });

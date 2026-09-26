@@ -137,7 +137,7 @@ export function RoleSection({
             disabled={booked > 0}
             title={
               booked > 0
-                ? 'This section has people on it. Withdraw them on the event board first (§3.3).'
+                ? 'This section has people on it. Withdraw them on the event board first.'
                 : undefined
             }
           >
@@ -267,7 +267,7 @@ export function RoleSection({
             onChange={(e) => onChange({ dressCode: e.target.value })}
             hint={
               dressCodes.length > 0
-                ? `${client?.name}'s list for this role (§9.7), plus "Other" for this event only`
+                ? `${client?.name}'s list for this role, plus "Other" for this event only`
                 : 'No list on the rate card for this role yet — use "Other"'
             }
           >
@@ -291,7 +291,7 @@ export function RoleSection({
               label="Other — dress code for this event only"
               value={role.dressCodeOther}
               onChange={(e) => onChange({ dressCodeOther: e.target.value })}
-              hint="Not saved back to the client's list (§9.7)."
+              hint="Not saved back to the client's list."
             />
           ) : null}
 
@@ -308,7 +308,7 @@ export function RoleSection({
                   hint: `Invites per hourly round · default headcount + buffer = ${defaultAllocationPerHour(
                     role.headcount,
                     role.buffer,
-                  )} · editable (§3.4)`,
+                  )} · editable`,
                 })}
           />
 
@@ -328,15 +328,15 @@ export function RoleSection({
 
         {lengthIssue === 'below_minimum_hours' ? (
           <Alert tone="coral">
-            This role section cannot be saved: its end time is less than 4 hours after its own start
-            (§3.2). A role may end after midnight, but its end can never fall before its start on
-            the same calendar day.
+            This role section cannot be saved: its end time is less than 4 hours after its own
+            start. A role may end after midnight, but its end can never fall before its start on the
+            same calendar day.
           </Alert>
         ) : null}
 
         {lengthIssue === 'end_before_start' ? (
           <Alert tone="coral">
-            This role section cannot be saved: its end falls before its own start (§3.2).
+            This role section cannot be saved: its end falls before its own start.
           </Alert>
         ) : null}
 
@@ -349,7 +349,7 @@ export function RoleSection({
             </b>{' '}
             → the {confirmed} worker{confirmed === 1 ? '' : 's'} confirmed on {roleName} move to
             &ldquo;Awaiting&rdquo; and get push N11 (&ldquo;Time Changed&rdquo; tag + &ldquo;Confirm
-            new time&rdquo;). The other role sections are untouched (§3.2, §3.5).
+            new time&rdquo;). The other role sections are untouched.
           </Alert>
         ) : null}
 
@@ -358,8 +358,7 @@ export function RoleSection({
             <b>
               Headcount {original.headcount} → {role.headcount} with {confirmed} confirmed:
             </b>{' '}
-            nobody is auto-removed. The manager withdraws people by hand on the event board (§3.2,
-            §3.3).
+            nobody is auto-removed. The manager withdraws people by hand on the event board.
           </Alert>
         ) : null}
       </div>

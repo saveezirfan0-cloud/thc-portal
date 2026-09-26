@@ -10,7 +10,7 @@ import {
   cancelCauseStatus,
   cancelEventRefusal,
   canTransitionBooking,
-  roleFilled,
+  noSeatLeft,
   type ApplicationAcceptInput,
 } from '../index';
 
@@ -26,23 +26,28 @@ const base: ApplicationAcceptInput = {
   shiftEndsAt: new Date('2026-10-02T22:00:00Z'),
   confirmed: 2,
   headcount: 3,
-  buffer: 1,
   gate: null,
 };
 
 describe('acceptApplication', () => {
   it('confirms a pending application with no gate while the role has room', () => {
-    expect(acceptApplication(base, NOW)).toEqual({ ok: true, to: 'confirmed', fillsRole: false });
+    expect(acceptApplication({ ...base, confirmed: 1 }, NOW)).toEqual({
+      ok: true,
+      to: 'confirmed',
+      closesApplications: false,
+    });
     expect(canTransitionBooking('applied', 'confirmed')).toBe(true);
   });
 
-  it('the buffer is absolute: headcount 3 (+1) takes a 4th confirmation, and that one fills it', () => {
-    expect(acceptApplication({ ...base, confirmed: 3 }, NOW)).toEqual({
+  it('an application is for a seat: the one that takes the last seat of headcount closes the rest (N10c)', () => {
+    expect(acceptApplication({ ...base, confirmed: 2 }, NOW)).toEqual({
       ok: true,
       to: 'confirmed',
-      fillsRole: true,
+      closesApplications: true,
     });
-    expect(acceptApplication({ ...base, confirmed: 4 }, NOW)).toEqual({
+    // One threshold with Radar (D39): no seat left at headcount, whatever
+    // the buffer — the buffer is filled by invitations.
+    expect(acceptApplication({ ...base, confirmed: 3 }, NOW)).toEqual({
       ok: false,
       reason: 'full',
     });
@@ -55,7 +60,6 @@ describe('acceptApplication', () => {
       shiftEndsAt: new Date(NOW.getTime() - 1),
       confirmed: 9,
       headcount: 3,
-      buffer: 1,
       gate: 'blocked',
     };
     expect(acceptApplication(everything, NOW)).toEqual({ ok: false, reason: 'event_cancelled' });
@@ -87,9 +91,10 @@ describe('acceptApplication', () => {
     });
   });
 
-  it('only confirmed counts toward the fill', () => {
-    expect(roleFilled(3, 3, 1)).toBe(false);
-    expect(roleFilled(4, 3, 1)).toBe(true);
+  it('no seat is left at headcount — the Radar threshold, not headcount + buffer', () => {
+    expect(noSeatLeft(2, 3)).toBe(false);
+    expect(noSeatLeft(3, 3)).toBe(true);
+    expect(noSeatLeft(4, 3)).toBe(true);
   });
 
   it('closes a not-taken application with a `closed` cause (N10c), so the worker can apply again', () => {

@@ -144,6 +144,18 @@
         "mode": "block"
       },
       "expect": { "verdict": "block", "reason": "visa_cap" }
+    },
+    {
+      "name": "visa_limit_over_blocks_even_in_warn_mode",
+      "input": {
+        "canRoster": true,
+        "capHours": 20,
+        "band": "visa_limit",
+        "bookedHours": 16,
+        "shiftHours": 8,
+        "mode": "warn"
+      },
+      "expect": { "verdict": "block", "reason": "visa_cap" }
     }
   ]
 }

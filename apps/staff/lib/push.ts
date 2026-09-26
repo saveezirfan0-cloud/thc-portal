@@ -48,10 +48,17 @@ export interface PushEnvironment {
  * Which state the app is in. Ordered by what blocks what: a browser that
  * cannot do push at all is not "denied", and an iPhone in a Safari tab is
  * not "default" — the permission prompt there produces nothing.
+ *
+ * iOS-in-a-tab comes FIRST, before the feature test. Safari only exposes
+ * `PushManager` to an installed web app, so a Safari tab reports
+ * `supported: false` — and with the feature test first, every iPhone
+ * worker who had not installed yet was told "This browser cannot show
+ * notifications. Open the app in Safari…" while standing in Safari. The
+ * truth for them is "install first", whatever the tab exposes.
  */
 export function pushState(env: PushEnvironment): PushState {
-  if (!env.supported) return 'unsupported';
   if (env.ios && !env.standalone) return 'needs-install';
+  if (!env.supported) return 'unsupported';
   if (env.permission === 'denied') return 'denied';
   if (!env.configured) return 'unconfigured';
   if (env.permission === 'granted') return 'granted';

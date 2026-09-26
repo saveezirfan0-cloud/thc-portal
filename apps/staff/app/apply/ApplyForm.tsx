@@ -3,7 +3,15 @@
 import { useActionState, useState } from 'react';
 import { Alert, Button, Checkbox, Input, InputRow } from '@thc/ui';
 import { apply } from './actions';
-import { DIAL_CODES, INITIAL_STATE, ageOn, errorBanner, parseDob, validate } from './form';
+import {
+  DIAL_CODES,
+  INITIAL_STATE,
+  REFERRAL_FIELD,
+  ageOn,
+  errorBanner,
+  parseDob,
+  validate,
+} from './form';
 import type { ApplicationField, ApplicationValues, FieldErrors } from './form';
 
 /**
@@ -11,8 +19,12 @@ import type { ApplicationField, ApplicationValues, FieldErrors } from './form';
  * `wireframes/public/apply.html`: errors in coral under the field, a banner
  * counting them, and the submit button disabled until the two rules the
  * wireframe shows disabled — 18 or over, and consent — are both satisfied.
+ *
+ * `referralCode` (ADR-0047, `wireframes/staff/refer.html` "/apply?ref="):
+ * already shape-checked by the page, carried in a hidden field and nowhere
+ * else. The form reads exactly the same with or without it.
  */
-export function ApplyForm() {
+export function ApplyForm({ referralCode = null }: { referralCode?: string | null } = {}) {
   const [state, formAction, pending] = useActionState(apply, INITIAL_STATE);
   const [values, setValues] = useState<ApplicationValues>(state.values);
   const [touched, setTouched] = useState(false);
@@ -65,6 +77,8 @@ export function ApplyForm() {
       style={{ display: 'flex', flexDirection: 'column', gap: 14 }}
       noValidate
     >
+      {referralCode ? <input type="hidden" name={REFERRAL_FIELD} value={referralCode} /> : null}
+
       <p className="lead">
         Two minutes. Straight after you submit, you&apos;ll get an email with a link to a short
         video interview.
@@ -184,6 +198,10 @@ export function ApplyForm() {
         >
           I agree to The Hospitality Company storing and processing the details on this form to
           assess my application, as described in the <a href="/privacy">Privacy notice</a>.{' '}
+          {/* ADR-0047 / Q20: shown to every applicant, referred or not.
+              THC's legal wording is pending; this sentence is the placeholder
+              the wireframe (staff/refer.html) draws. */}
+          If a friend referred you, we record who referred you.{' '}
           <span className="muted">(GDPR consent — required)</span>
         </Checkbox>
       </div>
