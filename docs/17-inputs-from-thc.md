@@ -37,18 +37,18 @@ Appendix B’s “needed by” dates were set against the build; the build is do
 | # | Item | Why the system needs it | Format wanted | Who at THC | Needed by | Status |
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Willo API key, interview key, stage mapping (B1) | The application form creates the candidate in Willo and Willo moves the kanban card (§2.4) | Three secret values + the stage list; secrets by password manager or on a call | Whoever administers THC’s Willo account, with Willo support | UAT − 2 weeks | ☐ |
-| 2 | Zero-hours contract text (B2) | Stored as versioned text; the version each worker signed is recorded against them (§2.11) | Word or PDF, final, with a version label and date | HR lead or director, with THC’s employment solicitor | UAT − 2 weeks | ☐ |
+| 2 | Zero-hours contract text (B2) | Stored as versioned text; the version each worker signed is recorded against them (§2.11) | Word or PDF, final, with a version label and date | HR lead or director, with THC’s employment solicitor | UAT − 2 weeks | Received 26.09 — clause 28, quarter-hour pay and clause 8 to confirm |
 | 3 | Sample term dates and completion letters, 3–5 each (B3) | The document reader is tuned and tested against real layouts, not idealised ones (§2.6, §4.5) | PDF or JPG, 3–5 of each, personal data blacked out | Onboarding / compliance manager | UAT − 3 weeks | ☐ |
 | 4 | Hi-res logo (B4) | One name and one logo across all three applications (§1.6) | Received — nothing further unless the logo changes | Marketing / brand owner | Received | Done |
 | 5 | Old-system (Accelerate) export, workers and clients (B5) | Migration is a one-off import, run on staging first and then production (Appendix B5, §4.3) | CSV (UTF-8, header row), one file per table, columns as proposed | Whoever administers Accelerate, with the office manager | Go-live − 4 weeks | ☐ |
 | 6 | Migration dry-run sign-off (B6) | THC checks a sample of migrated workers and clients on staging before the real import (Appendix B6) | Email: “signed off”, with corrections listed | Office manager, countersigned by a director | Go-live − 2 weeks | ☐ |
 | 7 | DNS records for the two sender addresses (B7) | Without them the platform’s email is filed as spam or rejected (§9.12) | Records added at THC’s DNS host; reply when done | Whoever manages the thehospitalitycompany.co.uk domain — IT provider, web agency or the registrar login | UAT − 2 weeks | ☐ |
 | 8 | Production hosting decision and accounts (B8) | Production runs in THC’s own account and the code is transferred in full (§1.1) | Email: the owning email address for each account and the administrator; then accept invitations | Director / finance — the account owner and card holder | Before UAT | ☐ |
-| 9 | Health & Safety quiz: 10 questions with answers | Step 6 of onboarding; 80% pass mark, three attempts, automatic rejection on the third failure (§2.9) | Word or Excel: question, four options, the correct one | H&S trainer — the author of “Health and Safety Presentation Questions” | UAT − 2 weeks | ☐ |
-| 10 | Induction slides | Step 5 of onboarding; the deck is shown as supplied, slide by slide (§10.3) | PDF (or PowerPoint), one page per slide | H&S trainer | UAT − 2 weeks | ☐ |
+| 9 | Health & Safety quiz: 10 questions with answers | Step 6 of onboarding; 80% pass mark, three attempts, automatic rejection on the third failure (§2.9) | Word or Excel: question, four options, the correct one | H&S trainer — the author of “Health and Safety Presentation Questions” | UAT − 2 weeks | Received 26.09 — answer key, Q8 and deck coverage to confirm |
+| 10 | Induction slides | Step 5 of onboarding; the deck is shown as supplied, slide by slide (§10.3) | PDF (or PowerPoint), one page per slide | H&S trainer | UAT − 2 weeks | Received 26.09 |
 | 11 | Wording: E2b rejection email | E2 thanks the candidate for completing an interview, which is untrue for a rejection at a later stage (§2.7, §8) | “Approved”, or the replacement text | Office manager / recruitment lead | Before UAT | ☐ |
 | 12 | Wording: CL1–CL6, and which are mandatory | THC’s University Completion Letter requirement §5 adds six sends the §8 register does not name | “Approved” or replacement text, plus the list of mandatory ones | Office manager / compliance manager | Before UAT | ☐ |
-| 13 | Privacy notice legal text | The application form asks for GDPR consent and links to it (§1.7, §2.1) | Word or PDF, final legal text | Data protection lead / solicitor | Before go-live; ideally before UAT | ☐ |
+| 13 | Privacy notice legal text | The application form asks for GDPR consent and links to it (§1.7, §2.1) | Word or PDF, final legal text | Data protection lead / solicitor | Before go-live; ideally before UAT | ☐ (26.09: the data protection policy is not the notice) |
 | 14 | Retention of right-to-work evidence after a GDPR removal | The completion letter is already held for employment + 2 years; whether the rest should be is a §1.7 decision | Yes / No, with a line on why | Data protection lead / HR | Before go-live | ☐ |
 | 15 | Q1 · Replacement arriving late to a full shift | Two rules meet: the No-show exemption for late-confirmed replacements (§5.1) and turn-away pay measured from the scheduled start (RULE-15) | One-line answer | Operations manager, with payroll | Before UAT | ☐ |
 | 16 | Q2 · A break with no end | §5.2b allows several breaks a shift and deducts the total, but does not say what a break with no end is worth | One of three options | Payroll | Before UAT | ☐ |
@@ -132,25 +132,21 @@ Word or PDF. If the contract exists in Accelerate or on paper today, send that a
 
 Email or shared drive — the text is not personal data.
 
-**What the platform does until it arrives**
+**Received 26.09.2026 — what THC must still confirm**
 
-The app shows a draft written by the build team, titled “Casual worker agreement — The Hospitality Company Ltd” (version placeholder-2026-09), and the step tells the worker it is a placeholder. Anyone who signs during testing signs that draft. Because every signature records its version, your text goes in as a new version and nothing already signed is rewritten. The draft in full, so you can approve it or replace it:
+THC’s own **“Agency Worker Contract For Services”** (20 pages) is live as the contract at step 10, as version **thc-agency-worker-2026-09**, titled “Agency Worker Contract for Services — The Hospitality Company (London) Limited”. The text is THC’s, taken from the PDF without rewording: the cover page, the contents page, the page footers and the signature block are left out (in the app, ticking “I agree” is the signature), each clause heading is followed by a full stop so the app can print it in bold, and line breaks and two words split by the PDF (“f uture”, “self -certification”) are repaired. The draft placeholder-2026-09 stays in the database unchanged, because anyone who signed it during testing signed that text.
 
-> 1. Status. This is a zero-hours agreement. The Company is under no obligation to offer you work and you are under no obligation to accept any work offered. Each assignment you accept is a separate engagement.
->
-> 2. Pay. You are paid at the base hourly rate shown for each shift, calculated on the payable time recorded through the app (check-in to check-out within the scheduled shift, less unpaid breaks where the client does not pay for breaks). Holiday pay is accrued and paid in accordance with the Working Time Regulations. Pay is made on the Friday following the Mon–Sun week worked.
->
-> 3. Confirmations and attendance. You agree to confirm each accepted shift the day before by 12:00, to check in and out on site using the app, and that a confirmed shift not re-confirmed by that deadline may be reallocated.
->
-> 4. Right to work. You confirm the right-to-work information and documents you have supplied are true and complete, and you will supply renewed documents before they expire.
->
-> 5. Ongoing duty to disclose convictions. You confirm that the criminal-conviction declaration you made during onboarding is accurate, and you undertake to declare any unspent criminal conviction that arises during your engagement, as soon as reasonably practicable, using the "Declare a criminal conviction" route in the app. The Company may pause your assignments while such a declaration is reviewed.
->
-> 6. Conduct on site. You will follow the client’s reasonable instructions, the dress code for the shift and the Health & Safety induction you have completed.
->
-> 7. Data. Your personal data, including your location while checked in to a shift, is processed as described in the Privacy Notice.
->
-> 8. Ending the agreement. Either party may end this agreement at any time; you may do so from the app ("Request my P45").
+The version is still marked as a placeholder, and the contract step tells the worker “Clause 28, the duty to disclose convictions, is awaiting THC’s approval”, until THC confirms:
+
+- **Clause 28 — the duty to disclose criminal convictions.** THC’s document has no such clause, and §2.11 requires one (the platform refuses a version without the words “unspent criminal conviction”). The build team added it after clause 27, in the contract’s own defined terms. Approve it, or send your solicitor’s wording:
+
+> 28. DUTY TO DISCLOSE CRIMINAL CONVICTIONS. The Temporary Worker confirms that the criminal-conviction declaration made during onboarding is accurate, and undertakes to declare any unspent criminal conviction that arises during this Agreement, as soon as reasonably practicable, using the "Declare a criminal conviction" route in the Staff App. The Employment Business may pause Assignments while such a declaration is reviewed.
+
+- **Pay to the nearest quarter hour, or to the minute?** The definitions of “Rate of Pay” and “Qualifying Period Rate of Pay” (clause 1, applied by clause 6) pay “for each hour worked during an Assignment (to the nearest quarter hour)”. The platform pays to the minute: payable time is check-in to check-out within the scheduled shift, with the 15-minute check-out grace, unpaid breaks deducted and the 4-hour minimum (RULE-01/02). Say which is right — the contract or the platform.
+- **Time sheets (clause 8).** Clauses 6 and 8 make pay subject to a time sheet “signed by an authorised representative of the Client”. The platform’s record is digital: the worker’s check-in and check-out in the app, and the sign-out timesheet the platform generates and sends to the client after each event (§11.3). The clause should refer to those, so that the contract describes how hours are actually recorded.
+- **Slips in the document**, left exactly as written because they are THC’s text — correct them in the next version if they are wrong: the Working Time Regulations are cited as “(SI 1988/1833)” (should be SI 1998/1833); clause 5.3 still has “[24] hours” and clause 18.1 “[admin@thehospitalitycompany.co.uk]” in square brackets; clause 24.1.2 reads “admin@thehospitalitycompany.co.uk s(in the case of …”; clause 9.3 says the holiday year “runs from 31 March to 1 April”; clause 2.2 says “Temporary Agency Worker”; clause 16.1 points to a “Privacy notice which is on the intranet” (workers have no intranet — the app’s /privacy page, item 13); the opening line “THIS AGREEMENT is dated this ______ day of ______ 2026” has nothing to fill it in the app (the signature timestamp is the date).
+
+When THC approves, the approved text goes in as a new version; nothing already signed is rewritten.
 
 #### 3 · Sample University Term Dates Letters and Official University Completion Letters
 
@@ -396,69 +392,27 @@ A table, one row per question:
 
 Email or shared drive, together with the induction deck (item 10) so the two match.
 
-**What the platform does until it arrives**
+**Received 26.09.2026 — what THC must still confirm**
 
-Ten placeholder questions written by the build team from the placeholder induction slides, marked as placeholders in the database. **Since THC's own deck went live (26.09) they no longer match it** — THC's ten questions are now the next thing needed here. Replacing them is a data change, not a release. If you are content with these, say so and the placeholder flag is removed. They are:
+THC’s **“Health and Safety Presentation Questions”** is live as the step 6 quiz: THC’s ten questions in THC’s order and wording (one typo corrected: “Personnel Protective Equipment” → “Personal”), 80% to pass, three attempts. Q7’s COSHH symbol is shown above its options as a clean drawing of the same pictogram. The ten placeholder questions are switched off, not deleted. THC must still confirm:
 
-- **1. You discover a small fire in the kitchen. What should you do first?**
-- A. Try to put it out with water
-- B. Raise the alarm and alert the people around you  (correct)
-- C. Finish the service you're on, then report it
-- D. Open the windows to let the smoke out
+- **The answer key.** THC’s sheet marks no answers, so the build team inferred them. Where the induction deck covers a question, the key agrees with it (Q1 slide 4, Q2 slide 5, Q3 slide 8, Q6 slide 14, Q7 slide 9). Please confirm or correct each one:
 
-- **2. The fire alarm sounds during an event. Where do you go?**
-- A. To the assembly point given in the venue briefing  (correct)
-- B. Back to the staff area for your belongings
-- C. To the nearest lift
-- D. Wherever the guests seem to be going
+| # | Question | Answer we mark correct |
+| --- | --- | --- |
+| 1 | What fire extinguisher from these listed would be utilised on an electrical fire? | C — Carbon Dioxide |
+| 2 | What percentage of Accidents within the workplace are caused by Natural Causes? | B — 2% |
+| 3 | How long should you stay away from work after a bout of sickness or diarrhea? | B — 48 Hours |
+| 4 | Anaphylaxis is a severe condition caused by? | A — An Allergic Reaction to a certain food |
+| 5 | What symptoms are associated with an Allergic Reaction? | D — All the above |
+| 6 | When must you use Personal Protective Equipment (PPE)? | A — When using Chemicals |
+| 7 | COSHH – what does this symbol mean? (skull and crossbones) | C — Toxic |
+| 8 | Which of these foods can cause an allergic reaction? | D — All the above |
+| 9 | What are the recommended weight limits for women when carrying a load at Elbow height? | C — 16 Kgs |
+| 10 | What are the recommended weight limits for men when carrying a load at Elbow height? | A — 25 Kgs |
 
-- **3. A guest slips on a wet floor but says they are fine. What do you do?**
-- A. Nothing — they said they're fine
-- B. Ask them to sign something saying so
-- C. Mop the floor and carry on
-- D. Tell your supervisor so it is recorded, and make the area safe  (correct)
-
-- **4. How should you lift a heavy crate of glassware?**
-- A. Bend your back and lift quickly
-- B. Lift it above your head to clear the guests
-- C. Bend your knees, keep the load close and lift with your legs  (correct)
-- D. Drag it along the floor with one hand
-
-- **5. You spot a spill on the floor during service. What do you do?**
-- A. Walk around it
-- B. Put out a wet-floor sign and get it cleaned straight away  (correct)
-- C. Warn one guest and carry on
-- D. Leave it for the cleaners at the end of the night
-
-- **6. A guest asks whether a dish contains nuts and you are not sure. What do you say?**
-- A. That it probably doesn't
-- B. That they should pick something else
-- C. That you will check the allergen information with the kitchen before they order  (correct)
-- D. That another guest had it and was fine
-
-- **7. You cut your hand on broken glass. What do you do?**
-- A. Get it seen by the first aider and tell your supervisor  (correct)
-- B. Wrap it in a napkin and keep serving
-- C. Carry on and deal with it after the shift
-- D. Leave the event without telling anyone
-
-- **8. Which of these must you never do with a cleaning chemical?**
-- A. Read the label first
-- B. Wear gloves when the label says to
-- C. Put it back where it is stored
-- D. Mix it with another product  (correct)
-
-- **9. A fire exit is blocked by stacked chairs. What do you do?**
-- A. Leave it — it is only for emergencies
-- B. Clear it or report it straight away  (correct)
-- C. Put a sign on the chairs
-- D. Wait until the event is over
-
-- **10. Who do you report an accident or a near miss to?**
-- A. Nobody, if no one was hurt
-- B. Only the client
-- C. Your supervisor or the THC manager on site  (correct)
-- D. The other staff on your shift
+- **Q8’s rewording.** THC’s Q8 is free text (“Name three (3) foods, which can cause an allergic reaction?”, with three blank lines), which a multiple-choice quiz cannot mark. It now reads “Which of these foods can cause an allergic reaction?” A. Peanuts · B. Milk · C. Shellfish · D. All the above. It is the one question still marked as a placeholder: approve it, or send a multiple-choice replacement.
+- **Questions the induction deck does not cover.** THC’s sheet says “All questions below have been covered in the presentation you have just seen”, but the deck has nothing on allergies (**Q4, Q5, Q8**) and gives no weight limits (**Q9, Q10** — its manual-handling slides say “know your limits” and mention 25 kg cartons, but not the limits at elbow height for women and men). Either add slides that cover them, or change those questions.
 
 #### 10 · Health & Safety induction slides
 
@@ -631,6 +585,8 @@ Email.
 **What the platform does until it arrives**
 
 The placeholder is live. It is headed **“How we use your personal data”** with the sections **What we hold · Who can see it · How long we keep it · Having your data removed · Contact**, and carries the note: “This is a summary. THC’s full legal privacy notice will replace this page.” It names no lawful bases, no controller details and no ICO route.
+
+**26.09.2026:** THC sent a **“Data protection policy for Workers”**. That is THC’s internal policy on how the Company handles personal data — not the notice this item asks for; it itself tells workers to “refer to the Company’s privacy notice for workers”. /privacy stays as it is until that notice arrives.
 
 ### Part 4 · Decisions and product questions
 
