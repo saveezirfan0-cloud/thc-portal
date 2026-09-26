@@ -65,8 +65,9 @@ select bag_eq(
             ('rtw_checks'),
             ('staff_unavailability'),('staff_emergency_contacts'),('profile_change_requests'),
             ('shift_offers'),('shift_offer_notices'),('staff_referral_codes'),
-            ('application_referrals') $$,
-  'RLS is enabled on all 47 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047)'
+            ('application_referrals'),
+            ('office_saved_views') $$,
+  'RLS is enabled on all 48 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), and office_saved_views (ADR-0053, 20260930222000)'
 );
 
 -- ---------------------------------------------------------------------
@@ -140,7 +141,8 @@ select bag_eq(
             ('rtw_checks'),
             ('staff_unavailability'),('staff_emergency_contacts'),('profile_change_requests'),
             ('shift_offers'),('shift_offer_notices'),('staff_referral_codes'),
-            ('application_referrals') $$,
+            ('application_referrals'),
+            ('office_saved_views') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );
 

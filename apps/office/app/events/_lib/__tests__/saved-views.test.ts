@@ -1,23 +1,29 @@
 import { describe, expect, it } from 'vitest';
 import type { EventFilterSet } from '../filters';
 import {
+  MAX_FILTER_TEXT,
   MAX_SAVED_VIEWS,
+  MAX_VIEW_NAME,
   SAVED_VIEWS_KEY,
   type SavedView,
   type ViewStorage,
   activeSavedView,
+  clearSavedViews,
   describeFilterSet,
+  explainSavedViewError,
+  findSavedView,
+  isPermissionRefusal,
   normaliseViewName,
   parseSavedViews,
   readSavedViews,
-  removeSavedView,
-  serialiseSavedViews,
-  upsertSavedView,
-  writeSavedViews,
+  savedViewQuery,
+  savedViewsFromRows,
+  viewsToMove,
 } from '../saved-views';
 
+const CLIENT = 'aaaaaaaa-0000-4000-8000-000000000001';
 const ALL: EventFilterSet = { view: 'list', q: '', clientId: '', status: '' };
-const CANCELLED: EventFilterSet = { view: 'month', q: '', clientId: 'c-1', status: 'cancelled' };
+const CANCELLED: EventFilterSet = { view: 'month', q: '', clientId: CLIENT, status: 'cancelled' };
 
 function memoryStorage(initial: Record<string, string> = {}): ViewStorage & {
   data: Record<string, string>;
@@ -26,8 +32,8 @@ function memoryStorage(initial: Record<string, string> = {}): ViewStorage & {
   return {
     data,
     getItem: (key) => data[key] ?? null,
-    setItem: (key, value) => {
-      data[key] = value;
+    removeItem: (key) => {
+      delete data[key];
     },
   };
 }
@@ -36,63 +42,42 @@ const throwing: ViewStorage = {
   getItem: () => {
     throw new Error('SecurityError');
   },
-  setItem: () => {
-    throw new Error('QuotaExceededError');
+  removeItem: () => {
+    throw new Error('SecurityError');
   },
 };
 
-describe('naming', () => {
-  it('trims, collapses whitespace and caps the length', () => {
-    expect(normaliseViewName('  Client   A \n cancelled ')).toBe('Client A cancelled');
-    expect(normaliseViewName('x'.repeat(80))).toHaveLength(40);
-    expect(normaliseViewName('   ')).toBe('');
-  });
+const view = (name: string, filters: EventFilterSet = ALL, id?: string): SavedView => ({
+  ...(id ? { id } : {}),
+  name,
+  filters,
 });
 
-describe('upsert and remove', () => {
-  it('appends a new view', () => {
-    const list = upsertSavedView([], 'Weddings', CANCELLED);
-    expect(list).toEqual([{ name: 'Weddings', filters: CANCELLED }]);
+describe('naming', () => {
+  it('trims, collapses whitespace and caps the length at the database limit', () => {
+    expect(normaliseViewName('  Client   A \n cancelled ')).toBe('Client A cancelled');
+    expect(normaliseViewName('x'.repeat(80))).toHaveLength(MAX_VIEW_NAME);
+    expect(MAX_VIEW_NAME).toBe(60);
+    expect(normaliseViewName('   ')).toBe('');
   });
 
-  it('replaces a view of the same name in place, case-insensitively', () => {
-    const list = upsertSavedView(
-      upsertSavedView(upsertSavedView([], 'Weddings', ALL), 'Other', ALL),
-      'weddings',
-      CANCELLED,
-    );
-    expect(list.map((view) => view.name)).toEqual(['weddings', 'Other']);
-    expect(list[0]!.filters).toEqual(CANCELLED);
-  });
-
-  it('refuses a nameless view by returning the same list', () => {
-    const list: SavedView[] = [];
-    expect(upsertSavedView(list, '   ', ALL)).toBe(list);
-  });
-
-  it('drops the oldest past the cap', () => {
-    let list: SavedView[] = [];
-    for (let i = 0; i < MAX_SAVED_VIEWS + 2; i += 1) list = upsertSavedView(list, `v${i}`, ALL);
-    expect(list).toHaveLength(MAX_SAVED_VIEWS);
-    expect(list[0]!.name).toBe('v2');
-  });
-
-  it('removes by name, case-insensitively', () => {
-    const list = upsertSavedView(upsertSavedView([], 'A', ALL), 'B', ALL);
-    expect(removeSavedView(list, ' a ').map((view) => view.name)).toEqual(['B']);
+  it('finds a view by name, case-insensitively', () => {
+    const list = [view('Weddings'), view('Other')];
+    expect(findSavedView(list, ' weddings ')?.name).toBe('Weddings');
+    expect(findSavedView(list, 'Nope')).toBeUndefined();
   });
 });
 
 describe('which saved view is on screen', () => {
   it('matches on the filter set', () => {
-    const list = upsertSavedView(upsertSavedView([], 'All', ALL), 'Cancelled', CANCELLED);
+    const list = [view('All'), view('Cancelled', CANCELLED)];
     expect(activeSavedView(list, { ...CANCELLED })?.name).toBe('Cancelled');
     expect(activeSavedView(list, { ...CANCELLED, view: 'week' })).toBeUndefined();
   });
 });
 
 describe('describeFilterSet', () => {
-  const names = (id: string) => (id === 'c-1' ? 'Savoy Events' : undefined);
+  const names = (id: string) => (id === CLIENT ? 'Savoy Events' : undefined);
 
   it('names the client, status, search and view', () => {
     expect(describeFilterSet({ ...CANCELLED, q: 'gala' }, names)).toBe(
@@ -109,12 +94,107 @@ describe('describeFilterSet', () => {
   });
 });
 
-describe('parsing what is in storage', () => {
-  it('round-trips', () => {
-    const list = upsertSavedView(upsertSavedView([], 'All', ALL), 'Cancelled', CANCELLED);
-    expect(parseSavedViews(serialiseSavedViews(list))).toEqual(list);
+describe('savedViewQuery — the same rules as office_saved_view_query_ok', () => {
+  it('keeps exactly the four filter keys, trimmed', () => {
+    const smuggled = {
+      ...CANCELLED,
+      q: ' gala ',
+      redirect: 'https://evil.example',
+    } as EventFilterSet;
+    const result = savedViewQuery(smuggled);
+    expect(result).toEqual({
+      ok: true,
+      query: { view: 'month', q: 'gala', clientId: CLIENT, status: 'cancelled' },
+    });
+    if (result.ok)
+      expect(Object.keys(result.query).sort()).toEqual(['clientId', 'q', 'status', 'view']);
   });
 
+  it('refuses a search over the limit, a control character, a non-UUID client and unknown values', () => {
+    expect(savedViewQuery({ ...ALL, q: 'x'.repeat(MAX_FILTER_TEXT) }).ok).toBe(true);
+    expect(savedViewQuery({ ...ALL, q: 'x'.repeat(MAX_FILTER_TEXT + 1) })).toEqual({
+      ok: false,
+      message: 'Shorten the search to 100 characters to save it.',
+    });
+    expect(savedViewQuery({ ...ALL, q: 'a\u0000b' }).ok).toBe(false);
+    expect(savedViewQuery({ ...ALL, clientId: 'javascript:alert(1)' }).ok).toBe(false);
+    expect(savedViewQuery({ ...ALL, status: 'draft' }).ok).toBe(false);
+    expect(savedViewQuery({ ...ALL, view: 'year' as EventFilterSet['view'] }).ok).toBe(false);
+  });
+});
+
+describe('rows from the table', () => {
+  it('become views with their ids; bad rows and duplicate names are dropped', () => {
+    expect(
+      savedViewsFromRows([
+        {
+          id: 'r1',
+          name: 'Weddings',
+          query: { view: 'week', q: 'x', clientId: '', status: 'ongoing' },
+        },
+        { id: 'r2', name: 'weddings', query: { view: 'list' } },
+        { id: 'r3', name: 'Broken', query: 'not an object' },
+        { id: 'r4', name: 'Stale', query: { view: 'day', status: 'draft' } },
+      ]),
+    ).toEqual([
+      {
+        id: 'r1',
+        name: 'Weddings',
+        filters: { view: 'week', q: 'x', clientId: '', status: 'ongoing' },
+      },
+      { id: 'r4', name: 'Stale', filters: { view: 'day', q: '', clientId: '', status: '' } },
+    ]);
+    expect(savedViewsFromRows(null)).toEqual([]);
+  });
+});
+
+describe('viewsToMove — this browser → the account', () => {
+  it('moves the valid ones and skips names already saved', () => {
+    const { views, skipped } = viewsToMove(
+      [view('Weddings', CANCELLED), view('Mine'), view('Bad', { ...ALL, clientId: 'c-1' })],
+      [view('mine', ALL, 'r1')],
+    );
+    expect(views).toEqual([
+      { name: 'Weddings', query: { view: 'month', q: '', clientId: CLIENT, status: 'cancelled' } },
+    ]);
+    expect(skipped).toBe(2);
+  });
+
+  it('stops at the cap', () => {
+    const remote = Array.from({ length: MAX_SAVED_VIEWS - 1 }, (_, i) =>
+      view(`r${i}`, ALL, `id${i}`),
+    );
+    const { views, skipped } = viewsToMove([view('One'), view('Two')], remote);
+    expect(views.map((v) => v.name)).toEqual(['One']);
+    expect(skipped).toBe(1);
+  });
+});
+
+describe('explaining a refusal', () => {
+  it('turns the database reasons into sentences', () => {
+    expect(explainSavedViewError({ code: '23514', message: 'saved_views_cap' })).toBe(
+      'You already have 30 saved views. Delete one to save another.',
+    );
+    expect(explainSavedViewError({ code: '23505', message: 'duplicate key' })).toMatch(
+      /already exists/,
+    );
+    expect(
+      explainSavedViewError({ code: '23514', message: 'office_saved_views_query_shape' }),
+    ).toMatch(/not valid/);
+    expect(explainSavedViewError({ code: '42501', message: 'row-level security' })).toBe(
+      'This login is not allowed to change saved views.',
+    );
+    expect(explainSavedViewError(null)).toMatch(/could not be reached/);
+  });
+
+  it('treats only a permission refusal as read-only', () => {
+    expect(isPermissionRefusal({ code: '42501' })).toBe(true);
+    expect(isPermissionRefusal({ code: '23505' })).toBe(false);
+    expect(isPermissionRefusal(null)).toBe(false);
+  });
+});
+
+describe('the old per-browser store', () => {
   it('survives nothing, junk and foreign shapes', () => {
     expect(parseSavedViews(null)).toEqual([]);
     expect(parseSavedViews('{not json')).toEqual([]);
@@ -127,7 +207,7 @@ describe('parsing what is in storage', () => {
       { name: 'good', filters: { view: 'list' } },
       { name: 'Bad view', filters: { view: 'year' } },
       { name: '', filters: { view: 'list' } },
-      { name: 'Stale status', filters: { view: 'day', status: 'draft' } },
+      { id: 'forged', name: 'Stale status', filters: { view: 'day', status: 'draft' } },
       42,
       null,
     ]);
@@ -136,21 +216,22 @@ describe('parsing what is in storage', () => {
       { name: 'Stale status', filters: { view: 'day', q: '', clientId: '', status: '' } },
     ]);
   });
-});
 
-describe('storage is optional', () => {
-  it('reads and writes through a working store under the versioned key', () => {
-    const store = memoryStorage();
-    const list = upsertSavedView([], 'All', ALL);
-    expect(writeSavedViews(store, list)).toBe(true);
-    expect(Object.keys(store.data)).toEqual([SAVED_VIEWS_KEY]);
-    expect(readSavedViews(store)).toEqual(list);
+  it('reads under the versioned key and clears it after the move', () => {
+    const store = memoryStorage({
+      [SAVED_VIEWS_KEY]: JSON.stringify([{ name: 'All', filters: ALL }]),
+      other: 'kept',
+    });
+    expect(readSavedViews(store)).toEqual([{ name: 'All', filters: ALL }]);
+    expect(clearSavedViews(store)).toBe(true);
+    expect(store.data).toEqual({ other: 'kept' });
+    expect(readSavedViews(store)).toEqual([]);
   });
 
   it('never throws when storage throws or is missing', () => {
     expect(readSavedViews(throwing)).toEqual([]);
-    expect(writeSavedViews(throwing, [])).toBe(false);
+    expect(clearSavedViews(throwing)).toBe(false);
     expect(readSavedViews(null)).toEqual([]);
-    expect(writeSavedViews(undefined, [])).toBe(false);
+    expect(clearSavedViews(undefined)).toBe(false);
   });
 });
