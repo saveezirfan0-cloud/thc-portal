@@ -57,7 +57,7 @@ export function ContractStep({
       />
       {isPlaceholder ? (
         <div className="note xs">
-          Draft wording: THC’s own agreement replaces this text before go-live. Each published
+          Clause 28, the duty to disclose convictions, is awaiting THC’s approval. Each published
           version is kept exactly as signed.
         </div>
       ) : null}
@@ -65,7 +65,9 @@ export function ContractStep({
         <h4>{title}</h4>
         {contractParagraphs(body).map((p, i) => (
           <p key={i}>
-            {p.heading ? <b>{p.heading}</b> : null} {p.text}
+            {p.heading ? <b>{p.heading}</b> : null}
+            {p.heading && p.text ? ' ' : null}
+            {p.text}
           </p>
         ))}
       </div>

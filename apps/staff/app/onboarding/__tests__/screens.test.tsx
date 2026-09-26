@@ -557,6 +557,9 @@ describe('9/11 – 11/11', () => {
       />,
     );
     expect(html).toContain('<b>5. Ongoing duty to disclose convictions.</b>');
+    expect(html).toContain(
+      'Clause 28, the duty to disclose convictions, is awaiting THC’s approval.',
+    );
     expect(html).toContain('Tick “I agree” to sign and continue');
     expect(footer(html).disabled).toBe(true);
   });
@@ -571,6 +574,7 @@ describe('9/11 – 11/11', () => {
         signedStamp="18.09.2026 14:42 UK time"
       />,
     );
+    expect(html).not.toContain('awaiting THC’s approval');
     expect(html).toContain(
       'Signed electronically · 18.09.2026 14:42 UK time — this timestamp is your signature',
     );

@@ -1733,8 +1733,8 @@ function ContractPhase({ row, contract }: { row: CandidateRow; contract: Contrac
           </div>
           {contract?.is_placeholder ? (
             <Note>
-              Placeholder wording until THC supplies the agreement text (docs/17). Every version
-              carries the ongoing duty to disclose an unspent conviction.
+              Clause 28, the ongoing duty to disclose an unspent conviction, is awaiting THC’s
+              approval. Every version carries it.
             </Note>
           ) : null}
           <label className={signed ? 'check sel' : 'check'}>
