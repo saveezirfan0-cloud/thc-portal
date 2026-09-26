@@ -5,6 +5,7 @@ import type { Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { QueueRow } from '../../../compliance/types';
 import type { DeclarationRow, DocumentRow, ProfileRow } from '../types';
+import type { RtwCheckRow } from '../../../_lib/rtwCheck';
 
 /**
  * Verify / Reject on the /staff/:id Documents tab (§4.1, §9.6).
@@ -21,6 +22,8 @@ vi.mock('../../../_lib/rtwCheckActions', () => ({
   runRtwCheckAgain: vi.fn(),
   markRtwCheckReviewed: vi.fn(),
   rtwReportLink: vi.fn(),
+  // Never settles: the photo pair stays "Loading the photos…" in these tests.
+  rtwCheckPhotos: vi.fn(() => new Promise(() => {})),
 }));
 const ok = () => Promise.resolve({ ok: true as const, message: 'Verified.' });
 vi.mock('../../../compliance/actions', () => ({
@@ -320,5 +323,149 @@ describe('every click lands in /compliance’s own actions', () => {
       'x2',
       'Offence relevant to the role',
     );
+  });
+});
+
+describe('ADR-0041: the admin decides every gov.uk check', () => {
+  const shareDoc = doc({ doc_type: 'share_code_report', doc_label: 'Share code' });
+  const check = (over: Partial<RtwCheckRow>): RtwCheckRow => ({
+    check_id: 'k1',
+    document_id: 'd1',
+    staff_id: 's1',
+    status: 'needs_review',
+    source: 'govuk',
+    outcome: 'right_to_work',
+    attempts: 1,
+    max_attempts: 5,
+    next_attempt_at: null,
+    created_at: '2026-09-25T06:10:00Z',
+    started_at: '2026-09-25T06:11:00Z',
+    finished_at: '2026-09-25T06:12:00Z',
+    right_to_work_until: '2028-03-31',
+    no_time_limit: false,
+    conditions: [],
+    term_time_limit_hours: null,
+    record_name: null,
+    reference_number: null,
+    review_reason:
+      'gov.uk confirms a right to work until 31.03.2028. Compare the gov.uk photo with the worker’s selfie, then Verify.',
+    worker_reason: null,
+    error: null,
+    report_path: 's1/share-code-report/rtw-check-k1.pdf',
+    reviewed_at: null,
+    stuck: false,
+    recommendation: 'verify',
+    photo_path: 's1/share-code-report/rtw-check-k1-photo.png',
+    suggested_reason: null,
+    ...over,
+  });
+  const shareRow = (over: Partial<QueueRow> = {}) =>
+    queued({
+      item_type: 'share_code_report',
+      item_label: 'Share code',
+      rtw_check_id: 'k1',
+      rtw_check_status: 'needs_review',
+      rtw_check_outcome: 'right_to_work',
+      rtw_check_until: '2028-03-31',
+      rtw_manual_allowed: true,
+      ...over,
+    });
+
+  it('verify: gov.uk’s date is shown read-only and sent exactly on Verify', async () => {
+    render({
+      documents: [shareDoc],
+      rtwChecks: [check({})],
+      rtwCheckEnabled: true,
+      reviewQueue: [shareRow()],
+    });
+    expect(container.textContent).toContain('Recommend verify — compare the photo');
+    expect(container.textContent).toContain('Compare the photos before you verify');
+    await click(buttons('Verify')[0]);
+    const box = dialog();
+    expect(box.querySelector('input[type="date"]')).toBeNull();
+    expect(box.querySelector('[data-testid="rtw-locked-until"]')?.textContent).toContain(
+      '31.03.2028',
+    );
+    expect(box.textContent).toContain('recommends Verify');
+    await click(buttons('Verify', box)[0]);
+    expect(actions.verifyDocument).toHaveBeenCalledExactlyOnceWith('d1', {
+      rightToWorkUntil: '2028-03-31',
+    });
+  });
+
+  it('verify on settled status sends the no-time-limit value', async () => {
+    render({
+      documents: [shareDoc],
+      rtwChecks: [check({ right_to_work_until: null, no_time_limit: true })],
+      rtwCheckEnabled: true,
+      reviewQueue: [
+        shareRow({
+          rtw_branch: 'eu_settled',
+          rtw_check_until: null,
+          rtw_check_no_time_limit: true,
+        }),
+      ],
+    });
+    await click(buttons('Verify')[0]);
+    expect(dialog().textContent).toContain('no time limit — settled status');
+    expect(dialog().querySelector('input[type="checkbox"]')).toBeNull();
+    await click(buttons('Verify', dialog())[0]);
+    expect(actions.verifyDocument).toHaveBeenCalledExactlyOnceWith('d1', {
+      rightToWorkUntil: 'infinity',
+    });
+  });
+
+  it('review: the date is still typed by the admin', async () => {
+    render({
+      documents: [shareDoc],
+      rtwChecks: [check({ recommendation: 'review', review_reason: 'Name differs.' })],
+      rtwCheckEnabled: true,
+      reviewQueue: [shareRow()],
+    });
+    await click(buttons('Verify')[0]);
+    expect(dialog().querySelector('input[type="date"]')).not.toBeNull();
+    expect(dialog().querySelector('[data-testid="rtw-locked-until"]')).toBeNull();
+  });
+
+  it('reject: the Reject box opens with the suggested reason, editable', async () => {
+    const suggested = 'We could not find your share code on gov.uk — please re-enter it.';
+    render({
+      documents: [shareDoc],
+      rtwChecks: [
+        check({
+          outcome: 'not_found',
+          right_to_work_until: null,
+          recommendation: 'reject',
+          review_reason: 'gov.uk found no record for this share code and date of birth.',
+          suggested_reason: suggested,
+        }),
+      ],
+      rtwCheckEnabled: true,
+      reviewQueue: [shareRow({ rtw_check_outcome: 'not_found', rtw_check_until: null })],
+    });
+    expect(container.textContent).toContain('Recommend reject');
+    // Office-only until the admin rejects: not on the page before Reject is opened.
+    expect(container.textContent).not.toContain(suggested);
+    await click(buttons('Reject')[0]);
+    const textarea = dialog().querySelector('textarea')!;
+    expect(textarea.value).toBe(suggested);
+    expect(dialog().textContent).toContain('recommends Reject');
+    type(textarea, 'Share code not found — please check it and enter it again.');
+    await click(buttons('Reject document', dialog())[0]);
+    expect(actions.rejectDocument).toHaveBeenCalledExactlyOnceWith(
+      'd1',
+      'Share code not found — please check it and enter it again.',
+    );
+  });
+
+  it('a stale check (not the one the queue names) lends nothing', async () => {
+    render({
+      documents: [shareDoc],
+      rtwChecks: [check({ check_id: 'k0', recommendation: 'reject', suggested_reason: 'x' })],
+      rtwCheckEnabled: true,
+      reviewQueue: [shareRow()],
+    });
+    await click(buttons('Reject')[0]);
+    expect(dialog().querySelector('textarea')!.value).toBe('');
   });
 });

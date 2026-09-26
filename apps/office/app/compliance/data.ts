@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
-import { loadRtwCheckEnabled } from '../_lib/rtwCheckData';
+import { loadRtwCheckEnabled, loadRtwChecksForDocuments } from '../_lib/rtwCheckData';
+import { withLatestCheck } from './queue';
 import type { AuditRow, CompliancePageData, QueueRow, RadarRow, WarningRow } from './types';
 
 /**
@@ -60,8 +61,22 @@ export async function loadCompliance(): Promise<CompliancePageData> {
   const problem = queue.error?.message ?? radar.error?.message ?? warnings.error?.message ?? null;
   if (problem) return { ...empty, problem };
 
+  // ADR-0041: the recommendation, the suggested N8 text and the photo live on
+  // rtw_checks_latest_v, not on the queue view — one read for every share
+  // code on the queue, merged by document id.
+  const rows = queue.data ?? [];
+  const checks = await loadRtwChecksForDocuments(
+    supabase,
+    rows
+      .filter(
+        (row) =>
+          row.kind === 'document' && row.item_type === 'share_code_report' && row.rtw_check_id,
+      )
+      .map((row) => row.item_id),
+  );
+
   return {
-    queue: queue.data ?? [],
+    queue: rows.map((row) => withLatestCheck(row, checks.get(row.item_id))),
     radar: radar.data ?? [],
     warnings: warnings.data ?? [],
     // Mirrors rota_guard_mode(): anything but an explicit 'warn' is block.

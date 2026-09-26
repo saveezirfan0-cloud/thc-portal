@@ -6,6 +6,7 @@ import {
   rtwCheckInFlight,
 } from '@thc/domain';
 import type { RtwCheckSource, RtwCheckStatus } from '@thc/domain';
+import { rtwDateValue } from '../compliance/rtw';
 
 /**
  * The automated gov.uk right-to-work check, as the office sees it (§2.6,
@@ -14,6 +15,12 @@ import type { RtwCheckSource, RtwCheckStatus } from '@thc/domain';
  *
  * `rtw_checks_latest_v` is security_invoker over the admin-read table, so a
  * session that is not the office's reads nothing.
+ *
+ * ADR-0041 (option C): with settings.rtw_check.admin_confirms on, the check
+ * runs by itself but every result waits for an admin — needs_review with a
+ * recommendation. "verify" shows gov.uk's date read-only for the admin to
+ * confirm after comparing the photos; "reject" pre-fills the Reject box
+ * with the office-only suggested N8 text; "review" is the old needs-review.
  */
 
 /** One row of rtw_checks_latest_v (20260928100000). */
@@ -47,13 +54,43 @@ export interface RtwCheckRow {
    * (rtw_check_stuck). The office may verify by hand.
    */
   stuck: boolean;
+  /**
+   * What the check recommends the admin does (ADR-0041): with
+   * settings.rtw_check.admin_confirms on, every result waits in
+   * needs_review carrying one of these, and the admin decides through the
+   * one Verify / Reject path. Null on a check still in flight, and on a
+   * row read before 20260930150000.
+   */
+  recommendation: RtwRecommendation | null;
+  /**
+   * The applicant photo gov.uk showed (a key in the private documents
+   * bucket), for the admin to compare with the app selfie. The key reaches
+   * the admin's page (these are client components) but is useless there:
+   * the bucket denies every signed-in role, and only rtwCheckPhotos()
+   * signs it, on the server, after an admin check.
+   */
+  photo_path: string | null;
+  /**
+   * OFFICE-ONLY: the worker-facing N8 text the Reject box is pre-filled
+   * with when the recommendation is reject. It reaches the worker only if
+   * the admin rejects with it; nothing here may show it to the worker.
+   */
+  suggested_reason: string | null;
+}
+
+export type RtwRecommendation = 'verify' | 'reject' | 'review';
+
+function isRecommendation(value: unknown): value is RtwRecommendation {
+  return value === 'verify' || value === 'reject' || value === 'review';
 }
 
 export const RTW_CHECK_COLUMNS =
   'check_id, document_id, staff_id, status, source, outcome, attempts, max_attempts, ' +
   'next_attempt_at, created_at, started_at, finished_at, right_to_work_until, no_time_limit, ' +
   'conditions, term_time_limit_hours, record_name, reference_number, review_reason, ' +
-  'worker_reason, error, report_path, reviewed_at, stuck';
+  'worker_reason, error, report_path, reviewed_at, stuck, ' +
+  // 20260930150000 (ADR-0041), appended to the view.
+  'recommendation, photo_path, suggested_reason';
 
 /** A row read from the view, with anything it could not type set safely. */
 export function parseRtwCheckRow(raw: Record<string, unknown>): RtwCheckRow | null {
@@ -90,6 +127,10 @@ export function parseRtwCheckRow(raw: Record<string, unknown>): RtwCheckRow | nu
     report_path: text(raw['report_path']),
     reviewed_at: text(raw['reviewed_at']),
     stuck: raw['stuck'] === true,
+    // Absent before 20260930150000: read as "no recommendation".
+    recommendation: isRecommendation(raw['recommendation']) ? raw['recommendation'] : null,
+    photo_path: text(raw['photo_path']),
+    suggested_reason: text(raw['suggested_reason']),
   };
 }
 
@@ -144,10 +185,68 @@ export interface RtwCheckView {
    */
   canMarkReviewed: boolean;
   inFlight: boolean;
+  /** The check's recommendation (ADR-0041), or null. */
+  recommendation: RtwRecommendation | null;
+  /**
+   * The N8 text to pre-fill the Reject box with — only when the check
+   * recommends rejecting. Office-only: never render it anywhere the worker
+   * can see it.
+   */
+  suggestedReason: string | null;
+  /**
+   * The right-to-work date gov.uk confirmed, which the admin CONFIRMS on
+   * Verify rather than types (ADR-0041). Non-null only when the check
+   * recommends verifying and the document is still pending; Verify sends
+   * exactly this (rtwLockedValue).
+   */
+  lockedUntil: RtwLockedUntil | null;
 }
 
+/** gov.uk's date, read-only on Verify: a date, or "no time limit" (settled status). */
+export interface RtwLockedUntil {
+  date: string | null;
+  noTimeLimit: boolean;
+}
+
+/**
+ * The gov.uk date the admin confirms on Verify, or null when the date is
+ * theirs to type (ADR-0041). Only a check that recommends verifying, on a
+ * document still pending, with a result that carries a date or "no time
+ * limit" — anything less falls back to the hand-typed date.
+ */
+export function rtwLockedUntil(row: RtwCheckRow | null, docStatus: string): RtwLockedUntil | null {
+  if (!row || docStatus !== 'pending') return null;
+  if (row.status !== 'needs_review' || row.recommendation !== 'verify') return null;
+  if (row.outcome !== null && row.outcome !== 'right_to_work') return null;
+  if (row.no_time_limit) return { date: null, noTimeLimit: true };
+  if (!row.right_to_work_until) return null;
+  return { date: row.right_to_work_until.slice(0, 10), noTimeLimit: false };
+}
+
+/**
+ * What Verify sends for a locked date: the date, or the 'infinity' value the
+ * database reads as "confirmed: no time limit" (compliance/rtw.ts).
+ */
+export function rtwLockedValue(locked: RtwLockedUntil): string {
+  return rtwDateValue(locked.date ?? '', locked.noTimeLimit);
+}
+
+/** "31.03.2028", or the settled-status wording. */
+export function rtwLockedLabel(locked: RtwLockedUntil): string {
+  return locked.noTimeLimit ? 'no time limit — settled status' : ukDateOnly(locked.date);
+}
+
+/** The pill of a needs-review check that carries a recommendation (ADR-0041). */
+const RECOMMENDATION_STATUS: Partial<Record<RtwRecommendation, { tone: RtwTone; label: string }>> =
+  {
+    // Cyan, not green: green means Verified on these screens (the
+    // wireframes' "Valid"), and nothing is verified until the admin clicks.
+    verify: { tone: 'cyan', label: 'Recommend verify — compare the photo' },
+    reject: { tone: 'amber', label: 'Recommend reject' },
+  };
+
 export const STUCK_REASON =
-  'The automatic gov.uk check has not run — the schedule, its secret or the provider may be missing. Verify by hand from the report, and check job_runs.';
+  'The automatic gov.uk check has not run — the schedule, its secret or RTW_GOVUK_ENABLED may be missing. Verify by hand from the report, and check job_runs.';
 
 const TONE: Record<RtwCheckStatus, RtwTone> = {
   queued: 'cyan',
@@ -174,6 +273,12 @@ export function rtwCheckView(
       ['rejected', 'verified', 'superseded'].includes(context.docStatus) &&
       !row.reviewed_at,
     inFlight,
+    recommendation: row?.recommendation ?? null,
+    suggestedReason:
+      row?.recommendation === 'reject' && row.status === 'needs_review'
+        ? row.suggested_reason
+        : null,
+    lockedUntil: rtwLockedUntil(row, context.docStatus),
   };
   if (!row) {
     return { ...base, status: null, lines: [], reason: null };
@@ -216,7 +321,12 @@ export function rtwCheckView(
     ...base,
     status: stuck
       ? { tone: 'coral', label: 'Not running' }
-      : { tone: TONE[row.status], label: RTW_CHECK_STATUS_LABEL[row.status] },
+      : row.status === 'needs_review' && row.recommendation
+        ? (RECOMMENDATION_STATUS[row.recommendation] ?? {
+            tone: TONE[row.status],
+            label: RTW_CHECK_STATUS_LABEL[row.status],
+          })
+        : { tone: TONE[row.status], label: RTW_CHECK_STATUS_LABEL[row.status] },
     lines,
     reason:
       row.status === 'needs_review'
