@@ -730,3 +730,21 @@ export function signatureStamp(instant: Date): string {
 export function signatureLine(instant: Date): string {
   return `Signed electronically · ${signatureStamp(instant)} — this timestamp is your signature`;
 }
+
+// ---------------------------------------------------------------------
+// The agreement's placeholder flag (§2.11)
+// ---------------------------------------------------------------------
+
+/**
+ * THC's own agreement (migration 20260930140100). It is flagged
+ * is_placeholder for one reason: clause 28, the ongoing duty to disclose
+ * convictions that §2.11 requires, is the build team's wording and awaits
+ * THC's approval. Both apps name clause 28 for THIS version only; any other
+ * flagged version gets the generic draft note. Publishing THC's approved
+ * text is a new, unflagged version, and the note goes away by itself.
+ */
+export const CONTRACT_VERSION_CLAUSE_28_PENDING = 'thc-agency-worker-2026-09';
+
+export function contractClause28Pending(version: string | null | undefined): boolean {
+  return version === CONTRACT_VERSION_CLAUSE_28_PENDING;
+}

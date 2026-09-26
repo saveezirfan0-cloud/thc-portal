@@ -102,26 +102,36 @@ as today.
 
 - [x] 26.09: Health & Safety **quiz** received ("Health and Safety Presentation
       Questions") and live as the step 6 quiz (migration `20260930140000`). THC
-      still has to confirm, before go-live:
-  - [ ] the **answer key** — THC's sheet marks no answers, so the build team
-        inferred them (C, B, B, A, D, A, C, D, C, A; the ones the induction deck
-        covers agree with it);
-  - [ ] **Q8**, reworded from free text ("Name three (3) foods, which can cause
+      still has to confirm the items below. **The first two are go-live gates: no
+      real candidate sits the quiz until they are done.**
+  - [ ] **GATE — THC confirms the quiz answer key.** THC's sheet marks no answers,
+        so the build team inferred them (C, B, B, A, D, A, C, D, C, A; the ones the
+        induction deck covers agree with it). A wrong key passes or fails real
+        candidates wrongly, and the third failure rejects them;
+  - [ ] **GATE — THC approves Q8**, reworded from free text ("Name three (3) foods, which can cause
         an allergic reaction?") to multiple choice ("Which of these foods can cause
         an allergic reaction?" Peanuts · Milk · Shellfish · All the above); it is
         the one question still flagged placeholder;
-  - [ ] **Q4, Q5, Q8** (allergies) and **Q9–Q10** (weight limits at elbow height)
-        are not covered by the induction deck — add slides, or change the questions.
+  - [ ] **Q9–Q10 have no correct option as worded**: 16 kg / 25 kg (the answers
+        marked correct, the closest offered) are HSE's figures between knuckle and
+        elbow height; at elbow height HSE gives 13 kg / 20 kg. Reword to "knuckle
+        height" or change the options (`docs/17` item 9);
+  - [ ] **Q4, Q5, Q8** (allergies) and **Q9–Q10** (weight limits) are not covered
+        by the induction deck — add slides, or change the questions.
 - [x] 26.09: **Induction** slides received ("General Health & Safety Awareness", 21 slides) and
       live in the Staff App's step 5 as supplied. The deck still has empty photo
       boxes on slides 1, 2, 3, 11 and 20; send a finished file to replace it.
 - [x] 26.09: Employment **contract** received ("Agency Worker Contract For
       Services", 20 pages) and published as version `thc-agency-worker-2026-09`
       (migration `20260930140100`), still flagged placeholder because of clause 28.
-      THC (and its solicitor) to confirm:
-  - [ ] **clause 28, the duty to disclose criminal convictions** — THC's document
-        has none; §2.11 requires it, so the build team added it (wording in `docs/17`
-        item 2);
+      THC (and its solicitor) to confirm the items below. **The first is a go-live
+      gate: no real candidate signs until it is done.**
+  - [ ] **GATE — THC approves clause 28, the duty to disclose criminal
+        convictions**, and the approved text is published as a new, UNFLAGGED
+        version (a new `contract_versions` row, `is_placeholder = false`). THC's
+        document has none; §2.11 requires it, so the build team added it (wording
+        in `docs/17` item 2). Every signature records its version, so anyone who
+        signs the flagged one has signed text THC has not approved;
   - [ ] **pay "to the nearest quarter hour"** (clause 1, "Rate of Pay" and
         "Qualifying Period Rate of Pay", applied by clause 6) — the platform pays to
         the minute (RULE-01/02). Which is right?

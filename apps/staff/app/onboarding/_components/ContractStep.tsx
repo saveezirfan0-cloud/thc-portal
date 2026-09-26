@@ -3,6 +3,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button } from '@thc/ui';
+import { contractClause28Pending } from '@thc/domain';
 import { contractParagraphs } from '../content/contract';
 import { signContract } from '../actions';
 import { WizardFoot, WizardTop } from './Wizard';
@@ -57,8 +58,10 @@ export function ContractStep({
       />
       {isPlaceholder ? (
         <div className="note xs">
-          Clause 28, the duty to disclose convictions, is awaiting THC’s approval. Each published
-          version is kept exactly as signed.
+          {contractClause28Pending(version)
+            ? 'Clause 28, the duty to disclose convictions, is awaiting THC’s approval.'
+            : 'Draft wording: THC’s own agreement replaces this text before go-live.'}{' '}
+          Each published version is kept exactly as signed.
         </div>
       ) : null}
       <div className={`contract ${signed ? 'short' : ''}`} tabIndex={0} aria-label={title}>

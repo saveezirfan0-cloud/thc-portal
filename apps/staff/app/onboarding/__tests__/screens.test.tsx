@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
+import { CONTRACT_VERSION_CLAUSE_28_PENDING } from '@thc/domain';
 import type { RtwForm } from '@thc/domain';
 
 /**
@@ -557,11 +558,30 @@ describe('9/11 – 11/11', () => {
       />,
     );
     expect(html).toContain('<b>5. Ongoing duty to disclose convictions.</b>');
-    expect(html).toContain(
-      'Clause 28, the duty to disclose convictions, is awaiting THC’s approval.',
-    );
+    // "v1" is not the version clause 28 was added to: the generic draft note.
+    expect(html).toContain('Draft wording: THC’s own agreement replaces this text before go-live.');
+    expect(html).not.toContain('Clause 28');
     expect(html).toContain('Tick “I agree” to sign and continue');
     expect(footer(html).disabled).toBe(true);
+  });
+
+  it('contract, THC’s agreement: the note names clause 28, and only for that version', () => {
+    const html = renderToStaticMarkup(
+      <ContractStep
+        version={CONTRACT_VERSION_CLAUSE_28_PENDING}
+        title="Agency Worker Contract for Services"
+        body={
+          '1. INTERPRETATION.\n\n28. DUTY TO DISCLOSE CRIMINAL CONVICTIONS. The Temporary Worker undertakes to declare any unspent criminal conviction.'
+        }
+        isPlaceholder
+        signedStamp={null}
+      />,
+    );
+    expect(html).toContain(
+      'Clause 28, the duty to disclose convictions, is awaiting THC’s approval. Each published version is kept exactly as signed.',
+    );
+    expect(html).not.toContain('Draft wording');
+    expect(html).toContain('<b>1. INTERPRETATION.</b>');
   });
 
   it('contract, signed: the UK-time stamp is the signature', () => {
