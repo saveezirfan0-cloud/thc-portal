@@ -244,6 +244,7 @@ const ITEMS = [
     format: 'PDF or JPG, 3–5 of each, personal data blacked out',
     who: 'Onboarding / compliance manager',
     neededBy: 'UAT − 3 weeks',
+    status: 'Received 26.09',
     sections: std({
       need: [
         {
@@ -264,8 +265,9 @@ const ITEMS = [
       send: [
         'Email or a shared drive folder — once redacted they hold no personal data. If redacting is awkward, put the originals in a shared folder restricted to the build team and we will redact and return them. Do not email unredacted letters.',
       ],
+      untilHeading: 'Received 26.09.2026',
       until: [
-        'The reader is tested against made-up letters written by the build team. On a real one it may be less sure of itself, and a low-confidence reading is flagged “needs manual review” rather than written to the profile (§2.6) — the manager then types the dates. Nothing is verified without a manager, so the cost of waiting is extra manual work, never a wrong limit.',
+        'Three term dates letters and three completion letters (one of them a student-status letter giving the programme end date). The reader now refuses course, stage or placement dates as terms and never takes a letter’s own date as the completion date. Two of the three term letters give no holiday dates at all (only course dates, or a link to a website), so those go to a manager to enter from the university’s published calendar; one completion letter congratulates the award without saying when the course ended. The letters are personal data and are not kept in the repository.',
       ],
     }),
   },
@@ -310,6 +312,7 @@ const ITEMS = [
     format: 'CSV (UTF-8, header row), one file per table, columns as proposed',
     who: 'Whoever administers Accelerate, with the office manager',
     neededBy: 'Go-live − 4 weeks',
+    status: 'Not needed — THC will not migrate data (25.09)',
     sections: std({
       need: [
         'Two spreadsheets exported from Accelerate — **workers** and **clients** — one row per record, saved as CSV. Three optional extras make the migration complete: client rate cards, venues, and each worker’s documents with their expiry dates. The columns below are a proposal from the platform’s data model (§1.5). If Accelerate cannot produce a column, leave it out and say so — please do not invent values.',

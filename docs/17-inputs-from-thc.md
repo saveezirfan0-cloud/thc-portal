@@ -38,9 +38,9 @@ Appendix B’s “needed by” dates were set against the build; the build is do
 | --- | --- | --- | --- | --- | --- | --- |
 | 1 | Willo API key, interview key, stage mapping (B1) | The application form creates the candidate in Willo and Willo moves the kanban card (§2.4) | Three secret values + the stage list; secrets by password manager or on a call | Whoever administers THC’s Willo account, with Willo support | UAT − 2 weeks | ☐ |
 | 2 | Zero-hours contract text (B2) | Stored as versioned text; the version each worker signed is recorded against them (§2.11) | Word or PDF, final, with a version label and date | HR lead or director, with THC’s employment solicitor | UAT − 2 weeks | Received 26.09 — clause 28, quarter-hour pay and clause 8 to confirm |
-| 3 | Sample term dates and completion letters, 3–5 each (B3) | The document reader is tuned and tested against real layouts, not idealised ones (§2.6, §4.5) | PDF or JPG, 3–5 of each, personal data blacked out | Onboarding / compliance manager | UAT − 3 weeks | ☐ |
+| 3 | Sample term dates and completion letters, 3–5 each (B3) | The document reader is tuned and tested against real layouts, not idealised ones (§2.6, §4.5) | PDF or JPG, 3–5 of each, personal data blacked out | Onboarding / compliance manager | UAT − 3 weeks | Received 26.09 |
 | 4 | Hi-res logo (B4) | One name and one logo across all three applications (§1.6) | Received — nothing further unless the logo changes | Marketing / brand owner | Received | Done |
-| 5 | Old-system (Accelerate) export, workers and clients (B5) | Migration is a one-off import, run on staging first and then production (Appendix B5, §4.3) | CSV (UTF-8, header row), one file per table, columns as proposed | Whoever administers Accelerate, with the office manager | Go-live − 4 weeks | ☐ |
+| 5 | Old-system (Accelerate) export, workers and clients (B5) | Migration is a one-off import, run on staging first and then production (Appendix B5, §4.3) | CSV (UTF-8, header row), one file per table, columns as proposed | Whoever administers Accelerate, with the office manager | Go-live − 4 weeks | Not needed — THC will not migrate data (25.09) |
 | 6 | Migration dry-run sign-off (B6) | THC checks a sample of migrated workers and clients on staging before the real import (Appendix B6) | Email: “signed off”, with corrections listed | Office manager, countersigned by a director | Go-live − 2 weeks | ☐ |
 | 7 | DNS records for the two sender addresses (B7) | Without them the platform’s email is filed as spam or rejected (§9.12) | Records added at THC’s DNS host; reply when done | Whoever manages the thehospitalitycompany.co.uk domain — IT provider, web agency or the registrar login | UAT − 2 weeks | ☐ |
 | 8 | Production hosting decision and accounts (B8) | Production runs in THC’s own account and the code is transferred in full (§1.1) | Email: the owning email address for each account and the administrator; then accept invitations | Director / finance — the account owner and card holder | Before UAT | ☐ |
@@ -171,9 +171,9 @@ PDF or JPG, one file per letter, named so they sort: term-letter-01-UCL.pdf, com
 
 Email or a shared drive folder — once redacted they hold no personal data. If redacting is awkward, put the originals in a shared folder restricted to the build team and we will redact and return them. Do not email unredacted letters.
 
-**What the platform does until it arrives**
+**Received 26.09.2026**
 
-The reader is tested against made-up letters written by the build team. On a real one it may be less sure of itself, and a low-confidence reading is flagged “needs manual review” rather than written to the profile (§2.6) — the manager then types the dates. Nothing is verified without a manager, so the cost of waiting is extra manual work, never a wrong limit.
+Three term dates letters and three completion letters (one of them a student-status letter giving the programme end date). The reader now refuses course, stage or placement dates as terms and never takes a letter’s own date as the completion date. Two of the three term letters give no holiday dates at all (only course dates, or a link to a website), so those go to a manager to enter from the university’s published calendar; one completion letter congratulates the award without saying when the course ended. The letters are personal data and are not kept in the repository.
 
 #### 4 · Hi-res logo (SVG and PNG)
 
