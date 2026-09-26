@@ -21,9 +21,18 @@
 --      too_many_requests and at most three RC1s are queued. The ceiling
 --      is per kind and rolling: a request older than 24 hours does not
 --      count, and the other kind is not affected.
+--   H. (20260930206000) The locks: a MANUAL hold (§10.1 case 2, no
+--      profile actions) is refused not_editable for both kinds and
+--      queues no RC1; a documents block and a conviction review (§10.1
+--      case 1 — the worker keeps their profile) may still ask. The RPC
+--      mirrors canReachProfileDetails() in apps/staff/app/profile/lock.ts.
+--   B also holds staff_set_photo()'s 200-character path ceiling
+--   (20260930206000).
+--   RC1's payload names the kind {field} (20260930206000; it was
+--   {change}, which main's N11b uses for a sentence).
 -- =====================================================================
 begin;
-select plan(56);
+select plan(63);
 \ir _shared/fixtures.psql
 
 \set pcr_b '66500000-0000-4000-8000-0000000000b1'
@@ -35,7 +44,9 @@ insert into storage.objects (bucket_id, name, metadata) values
   ('documents', :'staffb' || '/change-requests/ev-b.pdf', '{"mimetype":"application/pdf","size":2048}'),
   ('photos',    :'staffa' || '/selfie-old.jpg',            '{"mimetype":"image/jpeg","size":40000}'),
   ('photos',    :'staffa' || '/selfie-new.jpg',            '{"mimetype":"image/jpeg","size":40000}'),
-  ('photos',    :'staffb' || '/selfie-b.jpg',              '{"mimetype":"image/jpeg","size":40000}');
+  ('photos',    :'staffb' || '/selfie-b.jpg',              '{"mimetype":"image/jpeg","size":40000}'),
+  -- 201 characters in all: uploaded, and still longer than staff_set_photo() takes.
+  ('photos',    :'staffa' || '/' || repeat('a', 160) || '.jpg', '{"mimetype":"image/jpeg","size":40000}');
 update staff set photo_path = :'staffa' || '/selfie-old.jpg' where id = :'staffa';
 
 -- Staff Bravo's own pending photo request.
@@ -119,6 +130,12 @@ select throws_ok(
 select throws_ok(
   format($$ select request_profile_change('photo', null, null, %L) $$, :'staffa' || '/selfie.png'),
   'P0001', 'wrong_path', 'B: and anything but a .jpg, as staff_set_photo() refuses it');
+-- 20260930206000: staff_set_photo()'s 200-character ceiling too. The
+-- object IS in Storage, so the refusal is the length's, not a missing file's.
+select throws_ok(
+  format($$ select request_profile_change('photo', null, null, %L) $$,
+         :'staffa' || '/' || repeat('a', 160) || '.jpg'),
+  'P0001', 'wrong_path', 'B: a photo path over 200 characters is refused, as staff_set_photo() refuses it');
 select throws_ok(
   format($$ select request_profile_change('photo', null, null, %L) $$, :'staffa' || '/nothing-here.jpg'),
   'P0001', 'file_not_found', 'B: a photo that was never uploaded is refused');
@@ -158,11 +175,11 @@ select results_eq(
 select bag_eq(
   format($$ select jsonb_object_keys(payload) from notification_outbox where key = 'RC1:request:' || %L $$,
          :'pcr_name'),
-  $$ values ('name'), ('employeeId'), ('change'), ('requestedAt'), ('current'), ('proposed'), ('note') $$,
+  $$ values ('name'), ('employeeId'), ('field'), ('requestedAt'), ('current'), ('proposed'), ('note') $$,
   'C: RC1''s payload keys are exactly the template''s placeholders');
 
 select results_eq(
-  format($$ select payload ->> 'name', payload ->> 'employeeId', payload ->> 'change',
+  format($$ select payload ->> 'name', payload ->> 'employeeId', payload ->> 'field',
                    payload ->> 'current', payload ->> 'proposed', payload ->> 'note'
               from notification_outbox where key = 'RC1:request:' || %L $$, :'pcr_name'),
   $$ values ('Staff Alpha'::text, '90001'::text, 'name'::text, 'Staff Alpha'::text,
@@ -186,7 +203,7 @@ select is(
   2, 'D: one pending per KIND — a name and a photo may wait together');
 reset role;
 select results_eq(
-  format($$ select payload ->> 'change', payload ->> 'current', payload ->> 'note'
+  format($$ select payload ->> 'field', payload ->> 'current', payload ->> 'note'
               from notification_outbox where key = 'RC1:request:' || %L $$, :'pcr_photo'),
   $$ values ('photo'::text, 'The current profile photo'::text, 'New haircut'::text) $$,
   'D: RC1 for a photo names the change and carries the note');
@@ -322,6 +339,54 @@ select lives_ok(
   format($$ select request_profile_change('name', 'Stafford', 'Bravo', null, %L) $$,
          :'staffb' || '/change-requests/ev-b.pdf'),
   'G: once one of the three is older than 24 hours, the worker can ask again');
+
+-- =====================================================================
+-- H · The locks (Staff Bravo, requests cleared as the table owner)
+-- =====================================================================
+reset role;
+delete from profile_change_requests where staff_id = :'staffb';
+select count(*)::int as rc1_h from notification_outbox where template = 'RC1' \gset
+
+-- H1 · A manual hold: a static screen, nothing behind it.
+update staff set status = 'blocked', block_kind = 'manual', block_reason = 'Conduct review'
+ where id = :'staffb';
+select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(
+  format($$ select request_profile_change('name', 'Stafford', 'Bravo', null, %L) $$,
+         :'staffb' || '/change-requests/ev-b.pdf'),
+  'P0001', 'not_editable', 'H: a worker on a manual hold cannot ask for a name change');
+select throws_ok(
+  format($$ select request_profile_change('photo', null, null, %L) $$, :'staffb' || '/selfie-b.jpg'),
+  'P0001', 'not_editable', 'H: nor for a photo change');
+reset role;
+select is(
+  (select count(*)::int from profile_change_requests where staff_id = :'staffb')
+    + (select count(*)::int from notification_outbox where template = 'RC1') - :rc1_h, 0,
+  'H: the manual hold wrote no request and queued no RC1');
+
+-- H2 · A documents block (§10.1 case 1): the worker keeps their profile.
+update staff set block_kind = 'auto_document', block_reason = null where id = :'staffb';
+select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select lives_ok(
+  format($$ select request_profile_change('name', 'Stafford', 'Bravo', null, %L) $$,
+         :'staffb' || '/change-requests/ev-b.pdf'),
+  'H: a documents-blocked worker may still ask for a name correction');
+
+-- H3 · A conviction under review: Documents with its own copy, same case.
+reset role;
+update staff set block_kind = 'conviction_review' where id = :'staffb';
+select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select lives_ok(
+  format($$ select request_profile_change('photo', null, null, %L) $$, :'staffb' || '/selfie-b.jpg'),
+  'H: so may a worker whose declaration is under review');
+
+reset role;
+select is(
+  (select count(*)::int from notification_outbox where template = 'RC1'), :rc1_h + 2,
+  'H: two requests from the documents locks, two RC1s');
 
 reset role;
 select * from finish();

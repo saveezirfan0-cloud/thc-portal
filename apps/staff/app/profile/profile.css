@@ -255,6 +255,12 @@
   font-weight: 600;
 }
 
+/* A sub-line whose read failed — "We couldn’t load your next pay …" (audit D18). */
+.hub-row .s.coral {
+  color: var(--coral-ink);
+  font-weight: 600;
+}
+
 /* --- Availability (ADR-0042, wireframes/staff/availability.html) ------- */
 .avail {
   display: flex;

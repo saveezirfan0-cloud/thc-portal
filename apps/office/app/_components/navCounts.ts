@@ -34,7 +34,7 @@ export async function officeNavCounts(): Promise<NavCounts> {
     ]);
     const counts: Record<string, number> = {};
     if (!compliance.error && compliance.count) counts['/compliance'] = compliance.count;
-    if (requests > 0) counts['/staff'] = requests;
+    if (requests !== null && requests > 0) counts['/staff'] = requests;
     return counts;
   } catch {
     return {};

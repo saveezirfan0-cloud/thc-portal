@@ -245,7 +245,8 @@ describe('loadBoardReferrals()', () => {
         : [],
       error: null,
     }));
-    const referred = await loadBoardReferrals(db, ids);
+    const { referred, problem } = await loadBoardReferrals(db, ids);
+    expect(problem).toBeNull();
     expect(db.calls).toHaveLength(3);
     expect(db.calls.every((call) => call.table === 'application_referrals')).toBe(true);
     expect(db.calls[0]!.columns).toContain('staff!application_referrals_referrer_staff_id_fkey');
@@ -253,14 +254,27 @@ describe('loadBoardReferrals()', () => {
     expect(referred).toEqual({ candidates: ['s-7'], applications: ['a-7'] });
   });
 
-  it('draws no chip rather than an error when the read fails', async () => {
+  it('reports a failed read as a problem, not as "nobody referred" (audit D18)', async () => {
     const db = reader(() => ({ data: null, error: { message: 'permission denied' } }));
-    expect(await loadBoardReferrals(db, ['c-1'])).toEqual({ candidates: [], applications: [] });
+    expect(await loadBoardReferrals(db, ['c-1'])).toEqual({
+      referred: { candidates: [], applications: [] },
+      problem: 'permission denied',
+    });
+  });
+
+  it('reports a thrown read as a problem too', async () => {
+    const db = reader(() => {
+      throw new Error('fetch failed');
+    });
+    expect((await loadBoardReferrals(db, ['c-1'])).problem).toBe('fetch failed');
   });
 
   it('asks nothing for an empty board', async () => {
     const db = reader(() => ({ data: [], error: null }));
-    expect(await loadBoardReferrals(db, [])).toEqual({ candidates: [], applications: [] });
+    expect(await loadBoardReferrals(db, [])).toEqual({
+      referred: { candidates: [], applications: [] },
+      problem: null,
+    });
     expect(db.calls).toHaveLength(0);
   });
 });
@@ -268,14 +282,15 @@ describe('loadBoardReferrals()', () => {
 describe('loadCandidateReferral()', () => {
   it('reads this candidate only', async () => {
     const db = reader(() => ({ data: [referral()], error: null }));
-    const r = await loadCandidateReferral(db, 'c-1');
+    const { referral: r, problem } = await loadCandidateReferral(db, 'c-1');
+    expect(problem).toBeNull();
     expect(db.calls[0]).toMatchObject({ column: 'candidate_staff_id', value: 'c-1' });
     expect(r && referredByLabel(r)).toBe('Referred by Luca Moretti (THC-00701)');
   });
 
-  it('is null, not an error panel, when the read fails', async () => {
+  it('reports a failed read as a problem, not as "not referred" (audit D18)', async () => {
     const db = reader(() => ({ data: null, error: { message: 'boom' } }));
-    expect(await loadCandidateReferral(db, 'c-1')).toBeNull();
+    expect(await loadCandidateReferral(db, 'c-1')).toEqual({ referral: null, problem: 'boom' });
   });
 });
 
@@ -310,11 +325,26 @@ describe('/onboarding/:id — "Referred by"', () => {
   it('shows nothing about referrals for someone who was not referred', () => {
     const html = renderToStaticMarkup(<CandidateScreen data={candidateData()} now={NOW} />);
     expect(html).not.toContain('Referred by');
+    expect(html).not.toContain('Referral could not be read');
+  });
+
+  it('says the referral could not be read when the read failed (audit D18)', () => {
+    const html = renderToStaticMarkup(
+      <CandidateScreen
+        data={candidateData({ referral: null, referralProblem: 'boom' })}
+        now={NOW}
+      />,
+    );
+    expect(html).toContain('Referral could not be read: boom');
+    expect(html).not.toContain('Referred by');
   });
 });
 
 describe('/onboarding — the "Referred" chip', () => {
-  const board = (referred?: { candidates: string[]; applications: string[] }) =>
+  const board = (
+    referred?: { candidates: string[]; applications: string[] },
+    referredProblem: string | null = null,
+  ) =>
     renderToStaticMarkup(
       <OnboardingBoard
         data={{
@@ -330,6 +360,7 @@ describe('/onboarding — the "Referred" chip', () => {
           returning: [RETURNING],
           roles: [],
           ...(referred ? { referred } : {}),
+          referredProblem,
           problem: null,
         }}
         now={NOW}
@@ -367,9 +398,17 @@ describe('/onboarding — the "Referred" chip', () => {
     expect(card(html, 'Returning applicant')).toContain('>Referred<');
   });
 
-  it('draws no chip when there are no referrals, or the read failed', () => {
+  it('draws no chip when there are no referrals', () => {
     expect(chips(board())).toBe(0);
     expect(chips(board({ candidates: [], applications: [] }))).toBe(0);
+    expect(board()).not.toContain('The referrals could not be read');
+  });
+
+  it('says the referrals could not be read, rather than showing nobody referred (audit D18)', () => {
+    const html = board({ candidates: [], applications: [] }, 'permission denied');
+    expect(chips(html)).toBe(0);
+    expect(html).toContain('The referrals could not be read');
+    expect(html).toContain('permission denied');
   });
 
   it('never names the referrer on the card', () => {

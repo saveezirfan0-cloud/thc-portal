@@ -257,6 +257,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     availability: availability.error ? [] : (availability.data ?? []),
     availabilityProblem: availability.error ? availability.error.message : null,
     changeRequests: changeRequests.rows,
+    changeRequestsProblem: changeRequests.problem,
     problem: null,
   };
 }

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Pill } from '@thc/ui';
 import { formatDistance, formatHours, sectionHours } from '@thc/domain';
+import { LoadProblem } from '../../../_components/LoadProblem';
 import { StaffShell } from '../../../_components/StaffShell';
 import { ShiftTime } from '../../../_components/ShiftTime';
 import { ActionButton } from '../../../_components/ActionButton';
@@ -9,7 +10,7 @@ import { takeOfferedShift } from '../../../actions';
 import { loadBookings, openInvites, shiftsBadge } from '../../../data';
 import { RadarMap } from '../../RadarMap';
 import { TAKE_BUTTON, TAKE_NOTE, UP_FOR_GRABS, ukDateTime } from '../../../shifts/offers';
-import { loadOpenOffers } from '../../../shifts/offers-data';
+import { findOpenOffer } from '../../../shifts/offers-data';
 import { YourTimeAt } from '../../../shifts/YourTimeAt';
 import '../../../staff-app.css';
 
@@ -27,18 +28,33 @@ export const metadata = { title: 'Up for grabs · THC Staff' };
  * returns who offered it; an offer this worker may not see is a 404, like
  * any other shift that is not theirs to take. The button re-checks every
  * hard gate under the section lock (`take_offered_shift()`), and each
- * refusal is answered in Radar's existing words (wireframe (j)).
+ * refusal is answered in Radar's existing words (wireframe (j)). A read
+ * that FAILED is not that 404 (audit D18): it says so, with the retry.
  *
  * The dress code is shown before the worker decides; the on-site contact
  * and the break policy appear once booked, on the shift screen (§3.2).
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [offers, { rows: bookings, problem: bookingsProblem }] = await Promise.all([
-    loadOpenOffers(id),
-    loadBookings(),
-  ]);
-  const offer = offers.find((o) => o.offerId === id);
+  const [{ row: offer, problem }, { rows: bookings, problem: bookingsProblem }] = await Promise.all(
+    [findOpenOffer(id), loadBookings()],
+  );
+  // A failed read has no count to show, and a 0 badge would be a claim.
+  const badges = bookingsProblem
+    ? {}
+    : { shifts: shiftsBadge(bookings), invites: openInvites(bookings).length };
+  if (problem) {
+    return (
+      <StaffShell
+        title={UP_FOR_GRABS}
+        sub={<Link href="/radar">‹ Radar</Link>}
+        active="/radar"
+        {...badges}
+      >
+        <LoadProblem what="this shift" />
+      </StaffShell>
+    );
+  }
   if (!offer) notFound();
 
   const hours = sectionHours({ startsAt: offer.startsAt, endsAt: offer.endsAt });
@@ -48,10 +64,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       title={`${offer.eventTitle} · ${offer.role}`}
       sub={<Link href="/radar">‹ Radar</Link>}
       active="/radar"
-      // A failed read has no count to show, and a 0 badge would be a claim.
-      {...(bookingsProblem
-        ? {}
-        : { shifts: shiftsBadge(bookings), invites: openInvites(bookings).length })}
+      {...badges}
     >
       <div className="card-head">
         <Pill tone="cyan">{UP_FOR_GRABS}</Pill>

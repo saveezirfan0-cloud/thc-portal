@@ -38,6 +38,7 @@ vi.mock('../actions', () => ({
   confirmToday: vi.fn(),
   markReady: vi.fn(),
   reconfirm: vi.fn(),
+  takeOfferedShift: vi.fn(),
 }));
 vi.mock('../profile/photos', () => ({ signOwnPhoto: async () => null }));
 vi.mock('../profile/data', () => ({
@@ -90,11 +91,27 @@ vi.mock('../data', async (importOriginal) => ({
   }),
 }));
 
+// ADR-0045's two offer reads (audit D18): they succeed with nothing unless
+// a test says otherwise.
+type OfferLoad = { rows: never[]; problem: string | null };
+const offerReads = vi.hoisted(() => ({
+  booking: { rows: [], problem: null } as { rows: never[]; problem: string | null },
+  open: { rows: [], problem: null } as { rows: never[]; problem: string | null },
+  one: { row: null, problem: null } as { row: null; problem: string | null },
+}));
+vi.mock('../shifts/offers-data', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  loadBookingOffers: async (): Promise<OfferLoad> => offerReads.booking,
+  loadOpenOffers: async (): Promise<OfferLoad> => offerReads.open,
+  findOpenOffer: async () => offerReads.one,
+}));
+
 const { default: InvitesPage } = await import('../invites/page');
 const { default: InvitePage } = await import('../invites/[id]/page');
 const { default: RadarPage } = await import('../radar/page');
 const { default: RadarDetailPage } = await import('../radar/[id]/page');
 const { default: ShiftsPage } = await import('../shifts/page');
+const { default: RadarOfferPage } = await import('../radar/offers/[id]/page');
 
 // Every fixture is placed against the real clock, because RULE-16 is.
 const NOW = Date.now();
@@ -298,6 +315,9 @@ const disabledButton = (html: string, label: string) =>
   new RegExp(`<button[^>]*disabled=""[^>]*>${label}</button>`).test(html);
 
 beforeEach(() => {
+  offerReads.booking = { rows: [], problem: null };
+  offerReads.open = { rows: [], problem: null };
+  offerReads.one = { row: null, problem: null };
   bookings.mockReset().mockResolvedValue(FIXTURE_BOOKINGS);
   openShifts.mockReset().mockResolvedValue(FIXTURE_SHIFTS);
   meter.mockReset().mockResolvedValue(FIXTURE_METER);
@@ -498,5 +518,55 @@ describe('/radar/:id', () => {
     const html = await render(RadarDetailPage({ params: Promise.resolve({ id: 's-board' }) }));
     expect(html).toContain('class="map radar-map"');
     expect(html).not.toContain('class="me"');
+  });
+});
+
+/**
+ * Audit D18 on ADR-0045's offer reads: a failed read shows `<LoadProblem>`,
+ * never "Nothing open nearby", a missing Offered chip, or a 404.
+ */
+describe('offer reads that fail (audit D18)', () => {
+  const TIMEOUT = 'canceling statement due to timeout';
+
+  it('/radar: a failed offer read is the load-problem state, not "Nothing open nearby"', async () => {
+    openShifts.mockResolvedValue([]);
+    offerReads.open = { rows: [], problem: TIMEOUT };
+    const html = await render(RadarPage());
+    expect(html).toContain('data-load-problem');
+    expect(html).toContain('We couldn’t load shifts up for grabs');
+    expect(html).not.toContain('Nothing open nearby');
+  });
+
+  it('/radar: with every read answered and nothing open, the empty state stands', async () => {
+    openShifts.mockResolvedValue([]);
+    const html = await render(RadarPage());
+    expect(html).toContain('Nothing open nearby');
+    expect(html).not.toContain('data-load-problem');
+  });
+
+  it('/radar/offers/:id: a failed read is the load-problem state, never a 404', async () => {
+    offerReads.one = { row: null, problem: TIMEOUT };
+    const html = await render(RadarOfferPage({ params: Promise.resolve({ id: 'o1' }) }));
+    expect(html).toContain('data-load-problem');
+    expect(html).toContain('We couldn’t load this shift');
+  });
+
+  it('/radar/offers/:id: an offer this worker may not see is still a 404', async () => {
+    await expect(RadarOfferPage({ params: Promise.resolve({ id: 'o1' }) })).rejects.toThrow(
+      'NEXT_NOT_FOUND',
+    );
+  });
+
+  it('/shifts: a failed offer read says so above the booked shifts', async () => {
+    offerReads.booking = { rows: [], problem: TIMEOUT };
+    const html = await render(ShiftsPage({ searchParams: Promise.resolve({}) }));
+    expect(html).toContain('We couldn’t load your shift offers');
+    // The shifts themselves are still there: only the offers are unknown.
+    expect(html).toContain('Awards Night · Waiting Staff');
+  });
+
+  it('/shifts: no load-problem line when the offer read succeeded', async () => {
+    const html = await render(ShiftsPage({ searchParams: Promise.resolve({}) }));
+    expect(html).not.toContain('your shift offers');
   });
 });

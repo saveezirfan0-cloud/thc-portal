@@ -23,6 +23,9 @@
 --
 -- Fixture rows are written as the owner, never through Agent B's
 -- request_profile_change (docs/19 §8).
+--
+-- RC2/RC3 name the kind {field} (20260930206000 — it was {change}, which
+-- main's N11b uses for a sentence).
 -- =====================================================================
 begin;
 select plan(39);
@@ -95,7 +98,7 @@ select results_eq(
 select results_eq(
   format($$ select channel::text, recipient_staff_id, payload from notification_outbox where key = %L $$,
          'RC2:request:' || :'pcr_name_b'),
-  format($$ values ('push'::text, %L::uuid, '{"change": "name"}'::jsonb) $$, :'staffb'),
+  format($$ values ('push'::text, %L::uuid, '{"field": "name"}'::jsonb) $$, :'staffb'),
   'B: RC2 "Your name has been updated." to the worker, keyed RC2:request:<id>');
 select results_eq(
   format($$ select channel::text, recipient_emails from notification_outbox where key = %L $$,
@@ -139,7 +142,7 @@ select is((select previous_value from profile_change_requests where id = :'pcr_p
   jsonb_build_object('photoPath', :'staffa' || '/selfie-1.jpg'),
   'C: the old path is the snapshot — the object itself is kept');
 select is((select payload from notification_outbox where key = 'RC2:request:' || :'pcr_photo_a'),
-  '{"change": "photo"}'::jsonb, 'C: RC2 "Your photo has been updated."');
+  '{"field": "photo"}'::jsonb, 'C: RC2 "Your photo has been updated."');
 select is((select count(*)::int from notification_outbox where key = 'RC4:request:' || :'pcr_photo_a'), 0,
   'C: no RC4 — payroll hears about names, not photos');
 select is((select decision_reason from profile_change_requests where id = :'pcr_photo_a'), null,
@@ -170,7 +173,7 @@ select results_eq(
   'D: rejected, the trimmed reason stored for the worker, the manager recorded');
 select is(
   (select payload from notification_outbox where key = 'RC3:request:' || :'pcr_name_a'),
-  '{"change": "name", "reason": "The document shows a different surname."}'::jsonb,
+  '{"field": "name", "reason": "The document shows a different surname."}'::jsonb,
   'D: RC3 carries exactly {change, reason} — "We couldn''t update your name: …"');
 select results_eq(
   format($$ select first_name, last_name from staff where id = %L $$, :'staffa'),

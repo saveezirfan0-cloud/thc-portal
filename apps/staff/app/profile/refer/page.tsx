@@ -1,12 +1,13 @@
-import { cookies, headers } from 'next/headers';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { Alert } from '@thc/ui';
 import { isReferralCode, referralLink } from '@thc/domain';
+import { LoadProblem } from '../../_components/LoadProblem';
 import { ProfileShell } from '../_components/ProfileShell';
 import { appLock } from '../lock';
 import { loadProfile, supabaseConfigured } from '../data';
 import { signOwnPhoto } from '../photos';
-import { staffDb } from '../../db';
+import { loadReferral } from './data';
 import { publicOrigin } from './model';
 import { ReferScreen } from './ReferScreen';
 import '../profile.css';
@@ -21,7 +22,9 @@ export const metadata = { title: 'Refer a friend · THC Staff' };
  * Compliant workers only, with nothing locking the app: a worker who is not
  * working for THC right now has no link to share. The code is minted the
  * first time this screen opens (`my_referral_code()`) and never changes;
- * the count is `my_referral_summary()`'s — a number, never names.
+ * the count is `my_referral_summary()`'s — a number, never names. Either
+ * read failing says so (audit D18): no link is not "no link", and no count
+ * is not "No one yet".
  */
 export default async function Page() {
   if (!supabaseConfigured()) {
@@ -45,16 +48,13 @@ export default async function Page() {
   const lock = appLock(profile);
   if (lock !== 'none' || profile.status !== 'compliant') redirect('/profile');
 
-  const supabase = staffDb(await cookies());
-  const [photoUrl, minted, summary, head] = await Promise.all([
+  const [photoUrl, referral, head] = await Promise.all([
     signOwnPhoto(profile.photoPath),
-    supabase.rpc('my_referral_code', {}),
-    supabase.rpc('my_referral_summary', {}),
+    loadReferral(),
     headers(),
   ]);
   const name = `${profile.firstName} ${profile.lastName}`.trim();
-  const code = typeof minted.data === 'string' ? minted.data : null;
-  const applied = Number((summary.data as { applied?: number } | null)?.applied ?? 0);
+  const code = referral.code.row;
   const origin = publicOrigin(
     {
       NEXT_PUBLIC_STAFF_URL: process.env['NEXT_PUBLIC_STAFF_URL'],
@@ -76,8 +76,13 @@ export default async function Page() {
       name={name}
       photoUrl={photoUrl}
     >
-      {origin && code && isReferralCode(code) ? (
-        <ReferScreen link={referralLink(origin, code)} applied={applied} />
+      {referral.code.problem ? (
+        <LoadProblem what="your link" />
+      ) : origin && code && isReferralCode(code) ? (
+        <ReferScreen
+          link={referralLink(origin, code)}
+          applied={referral.applied.problem ? null : (referral.applied.row ?? 0)}
+        />
       ) : (
         <Alert tone="coral">We couldn’t load your link. Please try again.</Alert>
       )}

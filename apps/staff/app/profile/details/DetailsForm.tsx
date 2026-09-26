@@ -12,6 +12,7 @@ import {
 } from '../actions';
 import type { StaffProfile } from '../types';
 import { PhotoField } from './PhotoField';
+import { LoadProblem } from '../../_components/LoadProblem';
 import { ChangeStatus } from './ChangeStatus';
 import { canRequest, requestHref, statusLine } from '../change-requests';
 import type { ChangeRequest } from '../change-requests';
@@ -44,11 +45,18 @@ export function DetailsForm({
   profile,
   photoUrl,
   requests = [],
+  requestsProblem = false,
 }: {
   profile: StaffProfile;
   photoUrl: string | null;
   /** The worker's own change requests (ADR-0044), newest first. */
   requests?: ChangeRequest[];
+  /**
+   * `my_profile_change_requests()` failed (audit D18). Not "no requests":
+   * the status lines are replaced by the load-problem state, and "Request
+   * a change" is not offered on a guess that nothing is pending.
+   */
+  requestsProblem?: boolean;
 }) {
   const router = useRouter();
   const name = `${profile.firstName} ${profile.lastName}`.trim();
@@ -94,8 +102,8 @@ export function DetailsForm({
         name={name}
         photoUrl={photoUrl}
         locked={profile.photoLocked}
-        canRequestChange={canRequest(requests, 'photo')}
-        status={statusLine(requests, 'photo')}
+        canRequestChange={!requestsProblem && canRequest(requests, 'photo')}
+        status={requestsProblem ? null : statusLine(requests, 'photo')}
       />
 
       <div className="field lockf">
@@ -103,7 +111,9 @@ export function DetailsForm({
         <input className="input" value={name} readOnly />
         <span className="hint">
           Tied to your right-to-work check and payroll — corrections go through the office.
-          {nameLine?.state === 'pending' || nameLine?.state === 'rejected' ? null : (
+          {requestsProblem ||
+          nameLine?.state === 'pending' ||
+          nameLine?.state === 'rejected' ? null : (
             <>
               {' '}
               <Link href={requestHref('name')}>Request a change</Link>
@@ -111,7 +121,11 @@ export function DetailsForm({
           )}
         </span>
       </div>
-      <ChangeStatus kind="name" line={nameLine} />
+      {requestsProblem ? (
+        <LoadProblem what="your change requests" />
+      ) : (
+        <ChangeStatus kind="name" line={nameLine} />
+      )}
 
       {profile.hasNiNumber ? (
         <div className="field lockf">

@@ -111,11 +111,13 @@ export interface BoardData {
   returning: ReturningRow[];
   roles: RoleOption[];
   /**
-   * Who arrived through a referral link (ADR-0046): a separate, best-effort
-   * read of `application_referrals` — `onboarding_candidates_v` is not
-   * restated for it (docs/19 §0.6). Absent or empty draws no chip.
+   * Who arrived through a referral link (ADR-0046): a separate read of
+   * `application_referrals` — `onboarding_candidates_v` is not restated for
+   * it (docs/19 §0.6). Absent or empty draws no chip.
    */
   referred?: ReferredOnBoard;
+  /** Set when that read failed: the board says so, not "nobody referred" (D18). */
+  referredProblem?: string | null;
   problem: string | null;
 }
 
@@ -283,8 +285,10 @@ export interface CandidateData {
   rtwChecks?: RtwCheckRow[];
   /** settings.rtw_check.enabled. */
   rtwCheckEnabled?: boolean;
-  /** The latest referral that brought this person in (ADR-0046); best-effort. */
+  /** The latest referral that brought this person in (ADR-0046). */
   referral?: CandidateReferral | null;
+  /** Set when that read failed: said on the screen, not "not referred" (D18). */
+  referralProblem?: string | null;
   /** The NI number and the right-to-work conditions (20260930130100/130400). */
   facts?: CandidateFacts | null;
   problem: string | null;

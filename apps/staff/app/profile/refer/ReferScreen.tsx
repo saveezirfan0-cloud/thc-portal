@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Button, EmptyState, Toast } from '@thc/ui';
 import { AppQr } from '../../activate/done/ActivatedScreen';
+import { LoadProblem } from '../../_components/LoadProblem';
 import '../../activate/activate.css';
 import { EMPTY_COPY, EMPTY_TITLE, INTRO_COPY, appliedLine, shareData } from './model';
 
@@ -12,9 +13,10 @@ import { EMPTY_COPY, EMPTY_TITLE, INTRO_COPY, appliedLine, shareData } from './m
  * The link, **Share** (the Web Share API, where the phone has it), **Copy
  * link**, the QR (the activation screen's own `AppQr`, so both QR codes in
  * the app are drawn the same way), and the count. No reward copy (Q19);
- * no names (Q20).
+ * no names (Q20). `applied` is null when the count could not be read
+ * (audit D18) — the load-problem state, never "No one yet".
  */
-export function ReferScreen({ link, applied }: { link: string; applied: number }) {
+export function ReferScreen({ link, applied }: { link: string; applied: number | null }) {
   const [canShare, setCanShare] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -70,7 +72,9 @@ export function ReferScreen({ link, applied }: { link: string; applied: number }
         <AppQr url={link} />
         <div className="xs muted">Or let them scan this from your phone.</div>
       </div>
-      {applied > 0 ? (
+      {applied === null ? (
+        <LoadProblem what="how many people applied with your link" />
+      ) : applied > 0 ? (
         <div className="refer-count">
           <span className="v">{applied}</span>
           <span className="sm">{appliedLine(applied).replace(/^\d+ /, '')}</span>

@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { payableMinutes } from '@thc/domain';
 import { StaffLoadError, staffDb, supabaseConfigured } from '../db';
+import type { Found, Loaded } from '../data';
 import type { EarningsRow, EmergencyContact, StaffProfile } from './types';
 import { basePenceFor } from './payments/earnings';
 import { toChangeRequest } from './change-requests';
@@ -161,34 +162,40 @@ export async function loadEarnings(): Promise<EarningsRow[]> {
 
 /**
  * The emergency contact (ADR-0043) — `my_emergency_contact()`, a separate
- * read because `staff_me()` is frozen in Phase 1 (docs/19 §0.6). Null when
- * none is saved; `undefined` when the read failed, so the Profile hub can
- * leave its "not set" nudge off rather than nag on a network error.
+ * read because `staff_me()` is frozen in Phase 1 (docs/19 §0.6).
+ *
+ * `row: null` is "none saved"; `problem` is "could not read" (audit D18),
+ * and the two are never folded together: an empty form offered over a
+ * contact we could not see would overwrite it, and a "not set" nudge on a
+ * network error would nag a worker who has one.
  */
-export async function loadEmergencyContact(): Promise<EmergencyContact | null | undefined> {
-  if (!supabaseConfigured()) return undefined;
+export async function loadEmergencyContact(): Promise<Found<EmergencyContact>> {
+  if (!supabaseConfigured()) return { row: null, problem: null };
   const { data, error } = await staffDb(await cookies()).rpc('my_emergency_contact', {});
-  if (error) return undefined;
-  if (!data) return null;
+  if (error) return { row: null, problem: error.message || 'my_emergency_contact failed' };
+  if (!data) return { row: null, problem: null };
   const row = data as Record<string, unknown>;
   return {
-    name: (row['name'] as string) ?? '',
-    relationship: (row['relationship'] as string) ?? '',
-    phone: (row['phone'] as string) ?? '',
+    row: {
+      name: (row['name'] as string) ?? '',
+      relationship: (row['relationship'] as string) ?? '',
+      phone: (row['phone'] as string) ?? '',
+    },
+    problem: null,
   };
 }
 
 /**
  * The worker's own name / photo change requests (ADR-0044) — newest first,
- * never `decided_by`. A failed read is an empty list: the status line is
- * then absent and "Request a change" still works (the RPC refuses a second
- * pending request by itself).
+ * never `decided_by` — or the failure (audit D18). A failed read is not "no
+ * requests": the pending line and its Withdraw would vanish, and a second
+ * form would be offered for a request already with the office.
  */
-export async function loadChangeRequests(): Promise<ChangeRequest[]> {
-  if (!supabaseConfigured()) return [];
+export async function loadChangeRequests(): Promise<Loaded<ChangeRequest>> {
+  if (!supabaseConfigured()) return { rows: [], problem: null };
   const { data, error } = await staffDb(await cookies()).rpc('my_profile_change_requests', {});
-  if (error) return [];
-  return ((data ?? []) as Record<string, unknown>[]).map(toChangeRequest);
+  if (error) return { rows: [], problem: error.message || 'my_profile_change_requests failed' };
+  return { rows: ((data ?? []) as Record<string, unknown>[]).map(toChangeRequest), problem: null };
 }
 
 /** `staff.rejection_cause`, or null for anything `staff_me()` does not say. */

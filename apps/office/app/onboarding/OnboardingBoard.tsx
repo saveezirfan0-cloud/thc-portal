@@ -189,6 +189,13 @@ export function OnboardingBoard({
     >
       <div className="stack">
         {data.problem ? <Alert tone="coral">{data.problem}</Alert> : null}
+        {data.referredProblem ? (
+          // Audit D18: no chip because the read failed is not "nobody referred".
+          <Alert tone="coral">
+            The referrals could not be read, so no card shows its Referred chip:{' '}
+            {data.referredProblem}
+          </Alert>
+        ) : null}
 
         <div className="toolbar">
           <SegToggle<BoardFilter>

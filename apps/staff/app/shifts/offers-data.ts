@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { staffDb, supabaseConfigured } from '../db';
+import type { Found, Loaded } from '../data';
 import type { BookingOffer } from './offers';
 
 /**
@@ -9,6 +10,12 @@ import type { BookingOffer } from './offers';
  * caller themselves, like `staff_bookings()` and `staff_open_shifts()`:
  * the staff role holds no policy on `shift_offers`, and nothing here names
  * a worker. `staff_open_offers()` never returns the offerer.
+ *
+ * Both hand back `Loaded` — the rows and whether reading them failed —
+ * like `loadBookings()` (audit D18). A failed offer read is not "nobody
+ * has offered anything": on My shifts it would drop the Offered chip and,
+ * on the shift screen, offer "Offer this shift" on a shift already out
+ * there; on Radar it would read as "Nothing open nearby".
  */
 
 /** The new RPCs, typed locally until the Phase 2 type regeneration. */
@@ -36,11 +43,16 @@ export function toBookingOffer(row: Record<string, unknown>): BookingOffer {
   };
 }
 
-/** The caller's live confirmed bookings, each with its open offer, by booking id. */
-export async function loadBookingOffers(): Promise<Map<string, BookingOffer>> {
-  if (!supabaseConfigured()) return new Map();
-  const { data } = await (await db()).rpc('staff_booking_offers');
-  const rows = ((data ?? []) as Record<string, unknown>[]).map(toBookingOffer);
+/** The caller's live confirmed bookings, each with its open offer (audit D18: or the failure). */
+export async function loadBookingOffers(): Promise<Loaded<BookingOffer>> {
+  if (!supabaseConfigured()) return { rows: [], problem: null };
+  const { data, error } = await (await db()).rpc('staff_booking_offers');
+  if (error) return { rows: [], problem: error.message || 'staff_booking_offers failed' };
+  return { rows: ((data ?? []) as Record<string, unknown>[]).map(toBookingOffer), problem: null };
+}
+
+/** `loadBookingOffers()` rows by booking id — the chip's and the panel's lookup. */
+export function offersByBooking(rows: readonly BookingOffer[]): Map<string, BookingOffer> {
   return new Map(rows.map((row) => [row.bookingId, row]));
 }
 
@@ -100,10 +112,23 @@ export function toOpenOffer(row: Record<string, unknown>): OpenOffer {
 
 /**
  * "Up for grabs" — the open offers this worker may take (RULE-17
- * visibility, decided in SQL). With an id, that one offer or nothing.
+ * visibility, decided in SQL), or the failure (audit D18).
  */
-export async function loadOpenOffers(offerId?: string): Promise<OpenOffer[]> {
-  if (!supabaseConfigured()) return [];
-  const { data } = await (await db()).rpc('staff_open_offers', { p_offer: offerId ?? null });
-  return ((data ?? []) as Record<string, unknown>[]).map(toOpenOffer);
+export async function loadOpenOffers(): Promise<Loaded<OpenOffer>> {
+  if (!supabaseConfigured()) return { rows: [], problem: null };
+  const { data, error } = await (await db()).rpc('staff_open_offers', { p_offer: null });
+  if (error) return { rows: [], problem: error.message || 'staff_open_offers failed' };
+  return { rows: ((data ?? []) as Record<string, unknown>[]).map(toOpenOffer), problem: null };
+}
+
+/**
+ * One offer by id — or nothing, when this worker may not see it. "Could
+ * not read" is kept apart from "not found", so a timeout is not a 404.
+ */
+export async function findOpenOffer(offerId: string): Promise<Found<OpenOffer>> {
+  if (!supabaseConfigured()) return { row: null, problem: null };
+  const { data, error } = await (await db()).rpc('staff_open_offers', { p_offer: offerId });
+  if (error) return { row: null, problem: error.message || 'staff_open_offers failed' };
+  const rows = ((data ?? []) as Record<string, unknown>[]).map(toOpenOffer);
+  return { row: rows.find((o) => o.offerId === offerId) ?? null, problem: null };
 }

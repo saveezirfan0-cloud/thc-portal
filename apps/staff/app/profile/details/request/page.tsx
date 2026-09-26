@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Alert } from '@thc/ui';
 import { isChangeKind } from '@thc/domain';
+import { LoadProblem } from '../../../_components/LoadProblem';
 import { ProfileShell } from '../../_components/ProfileShell';
 import { appLock, canReachProfileDetails } from '../../lock';
 import { loadChangeRequests, loadProfile, supabaseConfigured } from '../../data';
@@ -27,7 +28,9 @@ export const metadata = { title: 'Request a change · THC Staff' };
  * a hold is sent back to /profile. A photo request needs a photo to
  * replace — a worker without one sets it directly on Profile details. And
  * while a request of this kind is pending, the page shows it (with
- * Withdraw) instead of a second form the database would refuse.
+ * Withdraw) instead of a second form the database would refuse. When the
+ * requests cannot be read, neither is shown (audit D18): the page says so,
+ * with the retry, rather than guessing there is nothing pending.
  */
 export default async function Page({
   searchParams,
@@ -58,14 +61,16 @@ export default async function Page({
   if (kind === 'photo' && !profile.photoLocked) redirect('/profile/details');
 
   const name = `${profile.firstName} ${profile.lastName}`.trim();
-  const [photoUrl, requests] = await Promise.all([
+  const [photoUrl, { rows: requests, problem }] = await Promise.all([
     signOwnPhoto(profile.photoPath),
     loadChangeRequests(),
   ]);
 
   return (
     <ProfileShell title={title} back={back} lock={lock} name={name} photoUrl={photoUrl}>
-      {canRequest(requests, kind) ? (
+      {problem ? (
+        <LoadProblem what="your change requests" />
+      ) : canRequest(requests, kind) ? (
         kind === 'name' ? (
           <NameRequestForm firstName={profile.firstName} lastName={profile.lastName} />
         ) : (

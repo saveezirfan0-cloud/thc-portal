@@ -17,7 +17,8 @@ export const metadata = { title: 'Staff · THC Back Office' };
 export default async function Page({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
   const [{ staff, students, problem }, pendingRequests] = await Promise.all([
     loadStaff(),
-    // ADR-0044: "Change requests (N)". A failed count reads 0, never an error.
+    // ADR-0044: "Change requests (N)". A failed count is null — never a
+    // claimed 0 (audit D18), never an error over the directory.
     supabaseConfigured()
       ? cookies().then((jar) => countPendingChangeRequests(createClient(jar)))
       : Promise.resolve(0),

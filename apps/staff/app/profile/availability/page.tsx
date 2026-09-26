@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { Alert } from '@thc/ui';
+import { LoadProblem } from '../../_components/LoadProblem';
 import { ProfileShell } from '../_components/ProfileShell';
 import { appLock } from '../lock';
 import { loadProfile, supabaseConfigured } from '../data';
@@ -46,10 +47,7 @@ export default async function Page() {
   const name = `${profile.firstName} ${profile.lastName}`.trim();
   const [photoUrl, entries] = await Promise.all([
     signOwnPhoto(profile.photoPath),
-    loadUnavailability().then(
-      (rows) => ({ ok: true as const, rows }),
-      () => ({ ok: false as const, rows: [] }),
-    ),
+    loadUnavailability(),
   ]);
 
   return (
@@ -60,7 +58,10 @@ export default async function Page() {
       name={name}
       photoUrl={photoUrl}
     >
-      {entries.ok ? (
+      {entries.problem ? (
+        // Audit D18: a failed read is not an empty calendar.
+        <LoadProblem what="your availability" />
+      ) : (
         <AvailabilityScreen
           entries={entries.rows.map((e) => ({
             ...e,
@@ -68,8 +69,6 @@ export default async function Page() {
             endsAt: e.endsAt.toISOString(),
           }))}
         />
-      ) : (
-        <Alert tone="coral">We couldn’t load your availability. Please try again.</Alert>
       )}
     </ProfileShell>
   );

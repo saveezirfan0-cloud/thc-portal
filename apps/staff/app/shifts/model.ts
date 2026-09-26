@@ -22,6 +22,10 @@ import {
  * the shift is history. The card state is `shiftCard()` from @thc/domain,
  * with the three ended cases the domain folds into `past` told apart,
  * because they read differently to a worker.
+ *
+ * The collapsed "Past shifts" section below the upcoming list is
+ * ADR-0047 (docs/adr/0047-past-shifts-section.md): the wireframe draws only
+ * the live cards, and history is one tap away rather than in the way.
  */
 
 /** The statuses My shifts shows at all: booked, or under way / worked. */

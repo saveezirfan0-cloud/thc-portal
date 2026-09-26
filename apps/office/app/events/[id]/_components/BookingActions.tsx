@@ -4,7 +4,13 @@ import { useState, useTransition } from 'react';
 import { Alert, Button, Modal, Textarea } from '@thc/ui';
 import { payrollWarning } from '@thc/domain';
 import { declineCover, getBack, markNoShow, openOfferToPool, withdraw } from '../actions';
-import { type BoardOffer, DECLINE_COVER_PROMPT, OPEN_TO_POOL_CONFIRM } from '../board-model';
+import {
+  type BoardOffer,
+  DECLINE_COVER_PROMPT,
+  DECLINE_NOTE_MAX,
+  OPEN_TO_POOL_CONFIRM,
+  declineNoteCounter,
+} from '../board-model';
 
 type Result = { error: string } | { ok: true; warning?: string };
 
@@ -183,7 +189,7 @@ export function BookingActions({
               <Button onClick={() => setDeclining(null)}>Cancel</Button>
               <Button
                 tone="primary"
-                disabled={running}
+                disabled={running || (declining ?? '').length > DECLINE_NOTE_MAX}
                 onClick={() => {
                   const note = declining ?? '';
                   setDeclining(null);
@@ -200,6 +206,9 @@ export function BookingActions({
             value={declining ?? ''}
             onChange={(event) => setDeclining(event.target.value)}
             rows={3}
+            // office_decline_cover() refuses note_too_long past 300.
+            maxLength={DECLINE_NOTE_MAX}
+            hint={declineNoteCounter(declining ?? '')}
           />
         </Modal>
       ) : null}

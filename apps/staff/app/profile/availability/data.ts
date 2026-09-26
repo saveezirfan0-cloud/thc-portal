@@ -1,5 +1,6 @@
 import { cookies } from 'next/headers';
 import { staffDb, supabaseConfigured } from '../../db';
+import type { Loaded } from '../../data';
 import type { AvailabilityConflict, UnavailabilityEntry } from './model';
 
 /**
@@ -8,12 +9,16 @@ import type { AvailabilityConflict, UnavailabilityEntry } from './model';
  * A security-definer RPC that resolves the caller itself: the staff role
  * holds no policy on `staff_unavailability` at all (docs/19 §0.2), so this
  * is the only read there is, and nothing here names a worker.
+ *
+ * `Loaded`, like `loadBookings()` (audit D18): a failed read is not "no
+ * entries". A worker shown an empty calendar would re-enter days already
+ * marked, or believe auto-assign may invite them on a day it will not.
  */
-export async function loadUnavailability(): Promise<UnavailabilityEntry[]> {
-  if (!supabaseConfigured()) return [];
+export async function loadUnavailability(): Promise<Loaded<UnavailabilityEntry>> {
+  if (!supabaseConfigured()) return { rows: [], problem: null };
   const { data, error } = await staffDb(await cookies()).rpc('my_unavailability', {});
-  if (error) throw new Error(error.message);
-  return ((data ?? []) as Record<string, unknown>[]).map(toEntry);
+  if (error) return { rows: [], problem: error.message || 'my_unavailability failed' };
+  return { rows: ((data ?? []) as Record<string, unknown>[]).map(toEntry), problem: null };
 }
 
 export function toEntry(row: Record<string, unknown>): UnavailabilityEntry {

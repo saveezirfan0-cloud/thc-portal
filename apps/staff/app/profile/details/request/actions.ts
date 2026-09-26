@@ -29,21 +29,43 @@ import type { ActionResult } from '../../types';
 const NOT_CONFIGURED =
   'This environment has no Supabase project, so nothing can be saved. See docs/04-setup-github-vercel-supabase.md.';
 const TRY_AGAIN = 'That didn’t go through. Please try again.';
+/** A read that failed is not "we couldn't find your record" (audit D18) — main's words. */
+const COULD_NOT_READ = 'We couldn’t reach your profile just now. Please try again.';
 
 async function db() {
   return staffDb(await cookies());
 }
 
-/** The caller, from their own session — `staff_me()`, no id to forge. */
-async function me(): Promise<{ staffId: string; status: string } | null> {
-  const { data } = await (await db()).rpc('staff_me', {});
+/**
+ * The caller, from their own session — `staff_me()`, no id to forge — or
+ * why not. A failed read is `COULD_NOT_READ`, kept apart from "no record"
+ * (audit D18), the way `startPhotoUpload()` keeps them apart.
+ */
+async function me(): Promise<
+  | { ok: true; staffId: string; status: string; blockKind: string | null }
+  | { ok: false; message: string }
+> {
+  const { data, error } = await (await db()).rpc('staff_me', {});
+  if (error) return { ok: false, message: COULD_NOT_READ };
   const row = data as Record<string, unknown> | null;
-  if (!row?.['staffId']) return null;
-  return { staffId: row['staffId'] as string, status: row['status'] as string };
+  if (!row?.['staffId']) return { ok: false, message: changeReason('unknown_staff') };
+  return {
+    ok: true,
+    staffId: row['staffId'] as string,
+    status: row['status'] as string,
+    blockKind: (row['blockKind'] as string | null) ?? null,
+  };
 }
 
-/** The statuses `request_profile_change()` accepts; asked here only to fail early. */
-const MAY_REQUEST = new Set(['compliant', 'blocked']);
+/**
+ * Whether `request_profile_change()` would accept this worker — asked here
+ * only to fail before an upload. Compliant, or blocked on documents or a
+ * conviction review; never a manual hold (20260930206000).
+ */
+function mayRequest(worker: { status: string; blockKind: string | null }): boolean {
+  if (worker.status === 'compliant') return true;
+  return worker.status === 'blocked' && worker.blockKind !== 'manual';
+}
 
 export type UploadSlot = { ok: true; path: string; token: string } | { ok: false; message: string };
 
@@ -58,8 +80,8 @@ export async function startEvidenceUpload(file: {
   if (problem) return { ok: false, message: DOCUMENT_UPLOAD_REASONS[problem] ?? TRY_AGAIN };
 
   const worker = await me();
-  if (!worker) return { ok: false, message: changeReason('unknown_staff') };
-  if (!MAY_REQUEST.has(worker.status)) return { ok: false, message: changeReason('not_editable') };
+  if (!worker.ok) return { ok: false, message: worker.message };
+  if (!mayRequest(worker)) return { ok: false, message: changeReason('not_editable') };
 
   // evidenceFileProblem() has admitted only pdf / jpg / jpeg / png.
   const ext = file.name.slice(file.name.lastIndexOf('.') + 1).toLowerCase();
@@ -87,8 +109,8 @@ export type PhotoSlot = { ok: true; path: string } | { ok: false; message: strin
 export async function startChangePhotoUpload(): Promise<PhotoSlot> {
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
   const worker = await me();
-  if (!worker) return { ok: false, message: changeReason('unknown_staff') };
-  if (!MAY_REQUEST.has(worker.status)) return { ok: false, message: changeReason('not_editable') };
+  if (!worker.ok) return { ok: false, message: worker.message };
+  if (!mayRequest(worker)) return { ok: false, message: changeReason('not_editable') };
   return { ok: true, path: photoPathFor(worker.staffId) };
 }
 

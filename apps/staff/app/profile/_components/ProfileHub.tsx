@@ -11,6 +11,8 @@ import { expiryLine } from '../document-expiry';
 import type { ExpiringDocument } from '../document-expiry';
 import { formatMoney } from '../payments/earnings';
 import { formatPayDate } from '../payments/pay-date';
+import { loadProblemCopy } from '../../_components/LoadProblem';
+import { RetryButton } from '../../_components/RetryButton';
 import { P45Flow } from './P45Flow';
 
 /**
@@ -42,6 +44,7 @@ export function ProfileHub({
   nextPay = null,
   expiring = null,
   emergencyContactSet = null,
+  unread = {},
 }: {
   profile: StaffProfile;
   photoUrl: string | null;
@@ -56,6 +59,13 @@ export function ProfileHub({
    * read that failed) draws nothing.
    */
   emergencyContactSet?: boolean | null;
+  /**
+   * The sub-line reads that FAILED (audit D18). A failed read is not
+   * "nothing owed", "nothing expiring" or "contact not set": the row says
+   * it could not load, in `LoadProblem`'s words, and the hub offers the
+   * retry (and pull-to-refresh) once.
+   */
+  unread?: { nextPay?: boolean; documents?: boolean; emergencyContact?: boolean };
 }) {
   const [leaving, setLeaving] = useState(false);
   const name = `${profile.firstName} ${profile.lastName}`.trim();
@@ -65,6 +75,8 @@ export function ProfileHub({
   // them back here and `/documents` is the wizard's step 4, not this list.
   const working = canReachProfileDetails(lock);
   const documents = documentsStatus(profile);
+  const anyUnread =
+    working && Boolean(unread.nextPay || unread.documents || unread.emergencyContact);
 
   return (
     <div className="profile-hub">
@@ -99,8 +111,14 @@ export function ProfileHub({
           <HubRow
             href="/documents"
             title="Documents"
-            sub={expiring ? expiryLine(expiring) : 'Right to work, ID, declarations'}
-            subTone={expiring ? 'amber' : null}
+            sub={
+              unread.documents
+                ? loadProblemCopy('your documents')
+                : expiring
+                  ? expiryLine(expiring)
+                  : 'Right to work, ID, declarations'
+            }
+            subTone={unread.documents ? 'coral' : expiring ? 'amber' : null}
             status={documents}
           />
         ) : null}
@@ -108,9 +126,11 @@ export function ProfileHub({
           href="/profile/details"
           title="Profile details"
           sub="Mobile, email, home address"
-          {...(working && emergencyContactSet === false
-            ? { note: 'Emergency contact not set' }
-            : {})}
+          {...(working && unread.emergencyContact
+            ? { note: loadProblemCopy('your emergency contact'), noteTone: 'coral' as const }
+            : working && emergencyContactSet === false
+              ? { note: 'Emergency contact not set' }
+              : {})}
         />
         {/* ADR-0042: only for a worker auto-assign can invite at all. */}
         {lock === 'none' ? (
@@ -123,7 +143,12 @@ export function ProfileHub({
         <HubRow
           href="/profile/payments"
           title="Payment information"
-          sub={nextPayLine(nextPay) ?? 'Earnings history, bank details'}
+          sub={
+            working && unread.nextPay
+              ? loadProblemCopy('your next pay')
+              : (nextPayLine(nextPay) ?? 'Earnings history, bank details')
+          }
+          subTone={working && unread.nextPay ? 'coral' : null}
         />
         <HubRow
           href="/profile/security"
@@ -136,6 +161,8 @@ export function ProfileHub({
           sub="Invites, shift changes and reminders on this phone"
         />
       </nav>
+
+      {anyUnread ? <RetryButton /> : null}
 
       <SignOut tone="default" size="md" block />
 
@@ -171,15 +198,21 @@ function HubRow({
   sub,
   subTone = null,
   note = null,
+  noteTone = 'amber',
   status,
 }: {
   href: string;
   title: string;
   sub: string;
-  /** A second, amber line under the sub — "Emergency contact not set". */
+  /** A second line under the sub — "Emergency contact not set". */
   note?: string | null;
-  /** Amber for something that needs the worker soon (a document expiring). */
-  subTone?: 'amber' | null;
+  /** Amber for a nudge; coral when the read behind it failed (audit D18). */
+  noteTone?: 'amber' | 'coral';
+  /**
+   * Amber for something that needs the worker soon (a document expiring);
+   * coral when the read behind the line failed (audit D18).
+   */
+  subTone?: 'amber' | 'coral' | null;
   status?: DocumentsStatus | null;
 }) {
   return (
@@ -187,7 +220,7 @@ function HubRow({
       <span className="hub-copy">
         <span className="t">{title}</span>
         <span className={subTone ? `s ${subTone}` : 's'}>{sub}</span>
-        {note ? <span className="s amber">{note}</span> : null}
+        {note ? <span className={`s ${noteTone}`}>{note}</span> : null}
       </span>
       <span className="right">
         {status ? (

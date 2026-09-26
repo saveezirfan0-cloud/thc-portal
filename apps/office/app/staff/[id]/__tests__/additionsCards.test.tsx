@@ -195,4 +195,13 @@ describe('Pending change-request banner (ADR-0044)', () => {
   it('renders nothing when nothing is pending', () => {
     expect(renderToStaticMarkup(<ChangeRequestBanner requests={[]} />)).toBe('');
   });
+
+  it('says the requests could not be read, never "nothing pending" (audit D18)', () => {
+    const html = renderToStaticMarkup(
+      <ChangeRequestBanner requests={[]} problem="canceling statement due to timeout" />,
+    );
+    expect(html).toContain('The change requests could not be read');
+    expect(html).toContain('canceling statement due to timeout');
+    expect(html).toContain('href="/staff/requests"');
+  });
 });

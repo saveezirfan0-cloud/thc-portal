@@ -72,16 +72,21 @@ export async function readChangeRequests(
   };
 }
 
-/** "Change requests (N)" on /staff and the sidebar. Any failure is "no count". */
-export async function countPendingChangeRequests(supabase: SessionClient): Promise<number> {
+/**
+ * "Change requests (N)" on /staff and the sidebar. Null when the count
+ * could not be read — not 0 (audit D18): "(0)" would tell the office the
+ * queue is empty when it simply was not read. The sidebar, which is
+ * chrome, draws no counter either way.
+ */
+export async function countPendingChangeRequests(supabase: SessionClient): Promise<number | null> {
   try {
     const { count, error } = await (supabase as unknown as CountClient)
       .from('profile_change_requests')
       .select('id', { count: 'exact', head: true })
       .eq('status', 'pending');
-    return error || !count ? 0 : count;
+    return error ? null : (count ?? 0);
   } catch {
-    return 0;
+    return null;
   }
 }
 

@@ -27,6 +27,12 @@ office has no queue, no evidence and no record of what changed.
 2. **One pending request per kind.** The worker sees a status line ("Name change
    requested · with the office", or "Not changed: {reason}" with **Request again**) and
    can withdraw while pending.
+   - **Who may ask** is who can reach Profile details (`canReachProfileDetails()`): a
+     compliant worker, and a worker in §10.1 case 1 (a documents block or a conviction
+     under review — they keep their profile, and the passport they re-upload may carry
+     the new name). A **manual hold** (§10.1 case 2) has no profile actions, so
+     `request_profile_change` refuses it `not_editable`, as it refuses a leaver or a
+     candidate still in the wizard (20260930206000).
 3. **The office decides in one queue**, `/staff/requests`: pending oldest first, current
    and requested side by side (signed photo URLs), evidence link, note. **Approve** — for
    a name, with "I've checked the evidence matches the right-to-work document";
@@ -98,10 +104,12 @@ Bodies are in `docs/19` §3 and `packages/notifications`. Every send is a
 - The `audit_log` rows (`profile_change.approve` / `.reject`) carry the request id
   and kind, not the names: the request row holds the values and is anonymised on
   GDPR removal; `audit_log` is not.
-- Payloads carry exactly the register's placeholders: RC2 `{change}`, RC3
-  `{change, reason}`, RC4 `{name, employeeId, previousName, approvedAt}` with
-  `approvedAt` in UK time (`DD Mon YYYY HH24:MI`, E8's shape). `{change}` is
-  `name` or `photo`.
+- Payloads carry exactly the register's placeholders: RC2 `{field}`, RC3
+  `{field, reason}`, RC4 `{name, employeeId, previousName, approvedAt}` with
+  `approvedAt` in UK time (`DD Mon YYYY HH24:MI`, E8's shape). `{field}` is
+  `name` or `photo`, and RC1 carries it too. It was `{change}` until
+  20260930206000: main's N11b (ADR-0037) uses `{change}` for a whole sentence, so
+  ours was renamed and the register's new-keys test no longer carries an exception.
 - The evidence tick is enforced twice: the dialog's Approve stays disabled without
   it, and the server action re-reads the request's kind and refuses a name
   approval without it (the database cannot see a tick).

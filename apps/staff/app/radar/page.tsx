@@ -53,7 +53,7 @@ export default async function Page() {
     { rows: shifts, problem },
     { rows: bookings, problem: bookingsProblem },
     { row: meter },
-    offers,
+    { rows: offers, problem: offersProblem },
   ] = await Promise.all([
     loadOpenShifts(),
     loadBookings(),
@@ -69,6 +69,7 @@ export default async function Page() {
 
   const empty =
     !problem &&
+    !offersProblem &&
     offers.length === 0 &&
     groups.qualified.length === 0 &&
     groups.other.length === 0 &&
@@ -103,6 +104,10 @@ export default async function Page() {
         </EmptyState>
       ) : null}
 
+      {offersProblem ? (
+        // Audit D18: an unread offer list is not "nothing up for grabs".
+        <LoadProblem what="shifts up for grabs" />
+      ) : null}
       {offers.length > 0 ? (
         <>
           <div className="grp cyan">{UP_FOR_GRABS}</div>

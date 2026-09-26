@@ -54,9 +54,11 @@ export default async function Page() {
   }
 
   // Everything after the profile is independent of everything else, so it
-  // is read at once. The two sub-lines (next pay, a document expiring) are
-  // only for a worker who has the Documents and Payment rows at all, and
-  // either read failing costs its line, never the page.
+  // is read at once. The sub-lines (next pay, a document expiring, the
+  // emergency-contact nudge) are only for a worker who has those rows at
+  // all. A read that fails never costs the page — but it is not "nothing
+  // owed" or "nothing expiring" either (audit D18): the row says it could
+  // not load, and the hub offers the retry.
   const working = canReachProfileDetails(lock);
   const [photoUrl, { rows: bookings }, earnings, documents, contact] = await Promise.all([
     signOwnPhoto(profile.photoPath),
@@ -66,10 +68,24 @@ export default async function Page() {
     // plain "taken off every shift you're booked on" — still true, just
     // without a number it could not vouch for.
     loadBookings(),
-    working ? loadEarnings().catch(() => []) : Promise.resolve([]),
-    working ? loadDocuments().catch(() => null) : Promise.resolve(null),
+    working
+      ? loadEarnings().then(
+          (rows) => ({ rows, problem: false }),
+          () => ({ rows: [], problem: true }),
+        )
+      : Promise.resolve({ rows: [], problem: false }),
+    // `staff_documents()` answers every signed-in worker, so null here is a
+    // failed read (the unconfigured case returned above).
+    working
+      ? loadDocuments().then(
+          (data) => ({ data, problem: data === null }),
+          () => ({ data: null, problem: true }),
+        )
+      : Promise.resolve({ data: null, problem: false }),
     // ADR-0043: only to decide the "Emergency contact not set" nudge.
-    working ? loadEmergencyContact().catch(() => undefined) : Promise.resolve(undefined),
+    working
+      ? loadEmergencyContact().catch(() => ({ row: null, problem: 'my_emergency_contact threw' }))
+      : Promise.resolve(null),
   ]);
   const now = Date.now();
   const futureShifts = bookings.filter(
@@ -82,9 +98,14 @@ export default async function Page() {
         profile={profile}
         photoUrl={photoUrl}
         futureShifts={futureShifts}
-        nextPay={nextPay(earnings)}
-        expiring={documents ? expiringDocument(documents) : null}
-        emergencyContactSet={contact === undefined ? null : contact !== null}
+        nextPay={nextPay(earnings.rows)}
+        expiring={documents.data ? expiringDocument(documents.data) : null}
+        emergencyContactSet={!contact || contact.problem ? null : contact.row !== null}
+        unread={{
+          nextPay: earnings.problem,
+          documents: documents.problem,
+          emergencyContact: Boolean(contact?.problem),
+        }}
       />
     </ProfileShell>
   );

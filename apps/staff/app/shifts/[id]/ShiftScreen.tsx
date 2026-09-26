@@ -35,6 +35,7 @@ import { ShiftMap } from './ShiftMap';
 import { StaticShiftScreen } from './StaticShiftScreen';
 import { TurnedAwayScreen } from './TurnedAwayScreen';
 import { OfferPanel } from './OfferPanel';
+import { LoadProblem } from '../../_components/LoadProblem';
 import type { BookingOffer } from '../offers';
 import type { ShiftDetail } from './types';
 
@@ -71,6 +72,7 @@ export function ShiftScreen({
   firstName = null,
   autoCheckIn = false,
   offer = null,
+  offerProblem = false,
 }: {
   shift: ShiftDetail;
   /** "Shift complete — thank you, Amara". */
@@ -85,6 +87,8 @@ export function ShiftScreen({
    * (`staff_booking_offers()`), for Offer this shift / Ask the office.
    */
   offer?: BookingOffer | null;
+  /** `staff_booking_offers()` failed: say so, never guess the panel (audit D18). */
+  offerProblem?: boolean;
 }) {
   const router = useRouter();
   // `shift` is read straight from props, not copied into state: after a
@@ -430,13 +434,19 @@ export function ShiftScreen({
           {/* ADR-0045: offer it up, or ask the office for cover. Only
               before the shift: once check-in opens it is too late for
               either, and the escalation job owns the section. */}
-          <OfferPanel
-            bookingId={shift.bookingId}
-            startsAt={shift.startsAt}
-            status={shift.status}
-            offer={offer}
-            now={now}
-          />
+          {offerProblem ? (
+            shift.status === 'confirmed' ? (
+              <LoadProblem what="this shift’s offer" />
+            ) : null
+          ) : (
+            <OfferPanel
+              bookingId={shift.bookingId}
+              startsAt={shift.startsAt}
+              status={shift.status}
+              offer={offer}
+              now={now}
+            />
+          )}
         </>
       ) : null}
 

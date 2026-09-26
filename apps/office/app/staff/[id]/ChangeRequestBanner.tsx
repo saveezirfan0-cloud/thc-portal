@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useState } from 'react';
-import { Button, Pill } from '@thc/ui';
+import { Alert, Button, Pill } from '@thc/ui';
 import { DecideDialog } from '../requests/DecideDialog';
 import type { DecideStage } from '../requests/DecideDialog';
 import { nameBefore, nameRequested, ukStamp } from '../requests/model';
@@ -15,11 +15,27 @@ import type { ChangeRequestView } from '../requests/types';
  * One line per pending request — at most one name and one photo, the
  * database allows no more — with Review opening the same decide dialog the
  * /staff/requests queue uses, so the two places cannot decide differently.
+ * When the requests could not be read it says so (audit D18): no banner
+ * would tell the office nothing is pending.
  */
-export function ChangeRequestBanner({ requests }: { requests: ChangeRequestView[] }) {
+export function ChangeRequestBanner({
+  requests,
+  problem = null,
+}: {
+  requests: ChangeRequestView[];
+  problem?: string | null;
+}) {
   const [open, setOpen] = useState<{ id: string; stage: DecideStage } | null>(null);
   const current = requests.find((row) => row.id === open?.id) ?? null;
 
+  if (problem) {
+    return (
+      <Alert tone="coral">
+        The change requests could not be read: {problem}{' '}
+        <Link href="/staff/requests">Open the queue</Link>
+      </Alert>
+    );
+  }
   if (requests.length === 0) return null;
   return (
     <>

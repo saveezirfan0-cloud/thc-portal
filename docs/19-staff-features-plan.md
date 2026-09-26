@@ -18,6 +18,7 @@ None of these loosens an existing rule.
 6. **Frozen in Phase 1:** nobody restates `staff_me`, `staff_profile_v`, `onboarding_candidates_v`, `auto_assign_candidates`, `accept_invite`, `accept_application`, `self_cancel_booking` or `remove_worker`. New data is read with separate queries/RPCs. Only two restatements are allowed — `invite_worker` (Agent A) and `submit_application_as_caller` (Agent D) — each byte-for-byte from the latest definition plus one clause, with a pgTAP that asserts every earlier gate *together* (docs/10 §3b).
 7. **GDPR removal by trigger.** `staff_removed_purge_additions` fires `after update of removed_at on staff`, so `remove_worker()` is not restated. Not RPC-callable (the `20260927161000` pattern).
 8. **Migration timestamps sort after `20260929160200`** (after `20260930140100` since the renumbering below), the newest on `main` (the session clock reads 25.09; a clock-stamped file would be refused by `deploy-database`, the #43/#57 failure). Use the reserved blocks below. An unmerged migration that ends up below `main`'s newest is re-stamped before merge; merged files are never renamed. Run `NODE_USE_ENV_PROXY=1 pnpm check:overlap` and `node scripts/check-file-numbering.mjs` before every PR.
+9. **A failed read is never an empty list** (audit D18, docs/18). Every loader the additions brought returns `Loaded` / `Found` (`apps/staff/app/data.ts`) or its office equivalent (`{ …, problem }`), and a screen checks `problem` before its empty state: the Staff App shows `<LoadProblem>` (or its words, `loadProblemCopy()`, on a Profile hub row), the Back Office its coral `Alert` "… could not be read". A 404 is only ever "not found", never "could not read" (20260930206000).
 
 ### Reserved numbers
 
@@ -94,7 +95,7 @@ None of these loosens an existing rule.
 
 **pgTAP:** 700 · 701 vectors · 702 GDPR anonymises proposed names, withdraws pending · 715 (B) second pending refused, withdraw, foreign photo path refused, non-existent object refused, name equal to current refused · 716 (C) approving a name updates `staff.first_name/last_name` and queues RC2+RC4; approving a photo sets `photo_path` despite `photo_locked`; reject without reason refused; reject queues RC3; already-decided refused; non-admin refused.
 
-**RPCs.** B: `request_profile_change(p_kind, p_first, p_last, p_photo_path, p_evidence_path, p_note)` (queues RC1), `withdraw_profile_change(p_id)`, `my_profile_change_requests()` (never `decided_by`). C: `office_decide_profile_change(p_id, p_approve, p_reason)` — name: writes name + `audit_log`, queues RC4 to payroll, **no** automatic right-to-work re-check (Q13); photo: repoints `photo_path`, keeps the old object (purged with the prefix on GDPR removal). Issued PDFs and payroll exports are never touched (§1.7, never corrected retroactively).
+**RPCs.** B: `request_profile_change(p_kind, p_first, p_last, p_photo_path, p_evidence_path, p_note)` (queues RC1; refuses a manual hold `not_editable`, while a documents or conviction-review lock may still ask — the same rule as `canReachProfileDetails()`, 20260930206000), `withdraw_profile_change(p_id)`, `my_profile_change_requests()` (never `decided_by`). C: `office_decide_profile_change(p_id, p_approve, p_reason)` — name: writes name + `audit_log`, queues RC4 to payroll, **no** automatic right-to-work re-check (Q13); photo: repoints `photo_path`, keeps the old object (purged with the prefix on GDPR removal). Issued PDFs and payroll exports are never touched (§1.7, never corrected retroactively).
 
 **Domain (Phase 0):** `changeRequest.ts` (`CHANGE_KINDS`, `validateNameChange()`, `decisionNeedsReason()`); `state.ts` (`CHANGE_REQUEST_STATUSES`, `CHANGE_REQUEST_TRANSITIONS`, `canTransitionChangeRequest()`, `assertChangeRequestTransition()`; `IllegalTransitionError.machine` += `'change_request'`); `changeRequest.vectors.json`.
 
@@ -102,10 +103,12 @@ None of these loosens an existing rule.
 
 | Code | Channel · to | Title / subject | Body | Timing · key |
 |---|---|---|---|---|
-| RC1 | email · admin@ | `Profile change requested — {name}, Employee ID {employeeId}` | `{name} has asked the office to change their {change}.\n\nRequested: {requestedAt} (UK time)\nNow: {current}\nRequested: {proposed}\nNote: {note}\n\nReview it in Staff → Change requests.` | on request · `RC1:request:<id>` |
-| RC2 | push · worker | `Profile updated` | `Your {change} has been updated.` → `/profile/details` | on approve · `RC2:request:<id>` |
-| RC3 | push · worker | `Change not made` | `We couldn't update your {change}: {reason}` → `/profile/details` | on reject · `RC3:request:<id>` |
+| RC1 | email · admin@ | `Profile change requested — {name}, Employee ID {employeeId}` | `{name} has asked the office to change their {field}.\n\nRequested: {requestedAt} (UK time)\nNow: {current}\nRequested: {proposed}\nNote: {note}\n\nReview it in Staff → Change requests.` | on request · `RC1:request:<id>` |
+| RC2 | push · worker | `Profile updated` | `Your {field} has been updated.` → `/profile/details` | on approve · `RC2:request:<id>` |
+| RC3 | push · worker | `Change not made` | `We couldn't update your {field}: {reason}` → `/profile/details` | on reject · `RC3:request:<id>` |
 | RC4 | email · admin@ + thc_payroll@ (E7's recipients) | `Name changed — {name}, Employee ID {employeeId}` | `Previous name: {previousName}\nNew name: {name}\nApproved: {approvedAt} (UK time)` | on approving a name · `RC4:request:<id>` |
+
+`{field}` is the word `name` or `photo`. It was `{change}` until 20260930206000, which renamed it because main's N11b (ADR-0037) uses `{change}` for a whole sentence; one placeholder name now means one thing across the register.
 
 **Staff App (B):** `/profile/details` — the locked name row and `PhotoField.tsx`'s locked state gain **Request a change**; a status line ("Name change requested · with the office" / "Not changed: {reason}" + Request again). New `/profile/details/request?kind=name|photo`: name → first/last, evidence upload (signed upload into `documents`), optional note; photo → camera capture reusing the selfie capture, uploaded to a fresh name in `photos/<own id>/` (existing INSERT policy; no Storage policy change); withdraw while pending.
 

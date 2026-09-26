@@ -98,7 +98,9 @@ export interface PendingApplication {
 
 /**
  * Whether the manager's Invite can reopen this ended booking (§3.6, D33):
- * any end but a self-cancel, an event cancellation or a GDPR removal
+ * any end but a self-cancel, a hand-over (`handed_over`, ADR-0045 — the
+ * worker offered the shift up and another took it, which is the same bar
+ * as leaving it), an event cancellation or a GDPR removal
  * (`bookingReopenableBy` → 'anyone' | 'person'), and never a row that
  * carries check-in history or a violation — that belongs to the booking
  * that ended (`invite_worker`, 20260930110100).
@@ -899,6 +901,18 @@ export function offerOfficeRefusal(reason: string): string {
 /** The prompt in front of Decline. The note is the office's own record. */
 export const DECLINE_COVER_PROMPT =
   'Decline this cover request? The worker stays booked and is told the office has closed it (OF6). Add a note for the office record (optional):';
+
+/**
+ * The longest note Decline takes — `office_decline_cover()` refuses
+ * `note_too_long` past 300 characters (20260930205000), so the dialog stops
+ * the typing there and counts, rather than letting the database refuse it.
+ */
+export const DECLINE_NOTE_MAX = 300;
+
+/** "12 / 300" under the Decline note. */
+export function declineNoteCounter(note: string): string {
+  return `${note.length} / ${DECLINE_NOTE_MAX}`;
+}
 
 /** The confirm in front of Open to pool. */
 export const OPEN_TO_POOL_CONFIRM =

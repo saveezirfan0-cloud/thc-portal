@@ -109,11 +109,11 @@ insert into shift_offer_notices (offer_id, staff_id) values
 -- (20260930205000's shape). Bravo: an unsent RC1 and OF5 that stay as they are.
 insert into notification_outbox (key, channel, template, recipient_staff_id, recipient_emails, payload, sent_at) values
   ('RC1:request:' || :'pcr_name', 'email', 'RC1', null, array['admin@thehospitalitycompany.co.uk'],
-   jsonb_build_object('name', 'Staff Alpha', 'employeeId', '90001', 'change', 'name',
+   jsonb_build_object('name', 'Staff Alpha', 'employeeId', '90001', 'field', 'name',
                       'requestedAt', '01 Oct 2026 10:00', 'current', 'Staff Alpha',
                       'proposed', 'Mariana Alpha-Smith', 'note', 'I got married'), null),
   ('RC3:request:' || :'pcr_photo', 'push', 'RC3', :'staffa', null,
-   jsonb_build_object('change', 'photo', 'reason', 'Mariana, the photo is too dark.'), now()),
+   jsonb_build_object('field', 'photo', 'reason', 'Mariana, the photo is too dark.'), now()),
   ('RC4:request:' || :'pcr_old', 'email', 'RC4', null,
    array['admin@thehospitalitycompany.co.uk', 'thc_payroll@topsourceworldwide.com'],
    jsonb_build_object('name', 'Stafford Alpha', 'employeeId', '90001',
@@ -125,7 +125,7 @@ insert into notification_outbox (key, channel, template, recipient_staff_id, rec
    jsonb_build_object('offerId', :'decl_a2', 'bookingId', :'booking_a', 'event', 'Fixture Event A',
                       'name', 'Staff Alpha', 'employeeId', '90001', 'note', 'Exam that day'), null),
   ('RC1:request:' || :'pcr_b', 'email', 'RC1', null, array['admin@thehospitalitycompany.co.uk'],
-   jsonb_build_object('name', 'Staff Bravo', 'employeeId', '90002', 'change', 'photo',
+   jsonb_build_object('name', 'Staff Bravo', 'employeeId', '90002', 'field', 'photo',
                       'requestedAt', '01 Oct 2026 10:00', 'current', 'The current profile photo',
                       'proposed', 'A new photo', 'note', 'New glasses'), null),
   ('OF5:booking:' || :'booking_b2', 'email', 'OF5', null, array['admin@thehospitalitycompany.co.uk'],
@@ -231,7 +231,7 @@ select is((select count(*)::int from shift_offer_notices where offer_id in (:'of
 -- =====================================================================
 select results_eq(
   format($$ select payload->>'name', payload ? 'current', payload ? 'proposed', payload ? 'note',
-                   payload->>'employeeId', payload->>'change'
+                   payload->>'employeeId', payload->>'field'
               from notification_outbox where key = %L $$, 'RC1:request:' || :'pcr_name'),
   $$ values ('Deleted account #90001'::text, false, false, false, '90001'::text, 'name'::text) $$,
   'D: RC1 loses what they asked for and why; the name reads "Deleted account #90001"');

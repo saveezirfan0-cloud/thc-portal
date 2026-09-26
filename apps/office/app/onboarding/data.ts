@@ -69,9 +69,10 @@ const ON_BOARD: Database['public']['Enums']['staff_status'][] = [
 // (frozen in Phase 1, docs/19 §0.6). The table has one admin_read policy
 // and nothing else (20260930200100), so this is the office's alone.
 //
-// Best-effort, like the gov.uk checks: a failed read draws no chip and no
-// "Referred by" line, never an error panel over the pipeline. Typed by a
-// narrow local interface until the Phase 2 type regen.
+// A failed read never takes the pipeline down — but it is not "nobody was
+// referred" either (audit D18): it comes back as `problem`, and the board
+// and the candidate screen each say the referrals could not be read.
+// Typed by a narrow local interface until the Phase 2 type regen.
 // ---------------------------------------------------------------------
 type ReferralAnswer = PromiseLike<{
   data: ReferralRow[] | null;
@@ -98,7 +99,7 @@ const REFERRAL_CHUNK = 100;
 export async function loadBoardReferrals(
   reader: ReferralReader,
   staffIds: readonly string[],
-): Promise<ReferredOnBoard> {
+): Promise<{ referred: ReferredOnBoard; problem: string | null }> {
   const ids = [...new Set(staffIds)];
   const chunks: string[][] = [];
   for (let i = 0; i < ids.length; i += REFERRAL_CHUNK)
@@ -112,26 +113,36 @@ export async function loadBoardReferrals(
           .in('candidate_staff_id', chunk),
       ),
     );
-    if (answers.some((answer) => answer.error)) return referredOnBoard([]);
-    return referredOnBoard(answers.flatMap((answer) => answer.data ?? []));
-  } catch {
-    return referredOnBoard([]);
+    const failed = answers.find((answer) => answer.error)?.error;
+    if (failed) return { referred: referredOnBoard([]), problem: failed.message };
+    return {
+      referred: referredOnBoard(answers.flatMap((answer) => answer.data ?? [])),
+      problem: null,
+    };
+  } catch (error) {
+    return { referred: referredOnBoard([]), problem: messageOf(error) };
   }
 }
 
 export async function loadCandidateReferral(
   reader: ReferralReader,
   staffId: string,
-): Promise<CandidateReferral | null> {
+): Promise<{ referral: CandidateReferral | null; problem: string | null }> {
   try {
     const answer = await reader
       .from('application_referrals')
       .select(REFERRAL_COLUMNS)
       .eq('candidate_staff_id', staffId);
-    return answer.error ? null : candidateReferral(answer.data ?? []);
-  } catch {
-    return null;
+    return answer.error
+      ? { referral: null, problem: answer.error.message }
+      : { referral: candidateReferral(answer.data ?? []), problem: null };
+  } catch (error) {
+    return { referral: null, problem: messageOf(error) };
   }
+}
+
+function messageOf(error: unknown): string {
+  return error instanceof Error && error.message ? error.message : 'the read failed';
 }
 
 export async function loadBoard(): Promise<BoardData> {
@@ -156,7 +167,7 @@ export async function loadBoard(): Promise<BoardData> {
 
   const error = candidates.error ?? returning.error ?? roles.error;
   if (error) return { candidates: [], returning: [], roles: [], problem: error.message };
-  const referred = await loadBoardReferrals(supabase as unknown as ReferralReader, [
+  const referrals = await loadBoardReferrals(supabase as unknown as ReferralReader, [
     ...(candidates.data ?? []).map((row) => row.id),
     ...(returning.data ?? []).map((row) => row.staff_id),
   ]);
@@ -166,7 +177,8 @@ export async function loadBoard(): Promise<BoardData> {
     candidates: await withPhotoUrls(candidates.data ?? []),
     returning: returning.data ?? [],
     roles: roles.data ?? [],
-    referred,
+    referred: referrals.referred,
+    referredProblem: referrals.problem,
     problem: null,
   };
 }
@@ -352,7 +364,8 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     roles: roles.data ?? [],
     rtwChecks: rtw.checks,
     rtwCheckEnabled: rtw.enabled,
-    referral,
+    referral: referral.referral,
+    referralProblem: referral.problem,
     facts: facts.error || !facts.data ? null : toFacts(facts.data),
     problem: null,
   };

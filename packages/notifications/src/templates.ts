@@ -606,7 +606,7 @@ export const TEMPLATES = {
     sender: 'admin',
     recipients: OFFICE,
     title: 'Profile change requested — {name}, Employee ID {employeeId}',
-    body: '{name} has asked the office to change their {change}.\n\nRequested: {requestedAt} (UK time)\nNow: {current}\nRequested: {proposed}\nNote: {note}\n\nReview it in Staff → Change requests.',
+    body: '{name} has asked the office to change their {field}.\n\nRequested: {requestedAt} (UK time)\nNow: {current}\nRequested: {proposed}\nNote: {note}\n\nReview it in Staff → Change requests.',
     trigger:
       'A worker asks the office to change their locked name or photo (request_profile_change, §10.1). Not in §8: an addition to scope v1.6, ADR-0044 (proposed — awaiting THC)',
     timing: 'on request',
@@ -615,7 +615,7 @@ export const TEMPLATES = {
     code: 'RC2',
     channel: 'push',
     title: 'Profile updated',
-    body: 'Your {change} has been updated.',
+    body: 'Your {field} has been updated.',
     trigger:
       'The office approves a name or photo change request (office_decide_profile_change). Not in §8: an addition to scope v1.6, ADR-0044 (proposed — awaiting THC)',
     timing: 'on approve',
@@ -625,7 +625,7 @@ export const TEMPLATES = {
     code: 'RC3',
     channel: 'push',
     title: 'Change not made',
-    body: "We couldn't update your {change}: {reason}",
+    body: "We couldn't update your {field}: {reason}",
     trigger:
       'The office rejects a name or photo change request, with the reason the worker is shown (office_decide_profile_change). Not in §8: an addition to scope v1.6, ADR-0044 (proposed — awaiting THC)',
     timing: 'on reject',

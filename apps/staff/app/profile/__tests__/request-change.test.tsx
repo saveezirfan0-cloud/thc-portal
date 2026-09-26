@@ -169,6 +169,15 @@ describe('Profile details', () => {
     expect(html).toContain('request?kind=photo');
   });
 
+  it('a failed requests read offers no "Request a change" on a guess (audit D18)', () => {
+    const html = renderToStaticMarkup(
+      <DetailsForm profile={worker} photoUrl={null} requests={[]} requestsProblem />,
+    );
+    expect(html).toContain('We couldn’t load your change requests');
+    expect(html).not.toContain('request?kind=');
+    expect(html).toContain('Profile photo · locked');
+  });
+
   it('after a rejection, shows the reason and Request again', () => {
     const html = render([
       request({ kind: 'photo', status: 'rejected', decisionReason: 'Too dark.' }),
@@ -205,6 +214,47 @@ describe('the upload slots', () => {
   it('refuses a leaver either slot', async () => {
     rpc.mockResolvedValue({ data: { staffId: 'staff-1', status: 'inactive' }, error: null });
     expect((await actions.startChangePhotoUpload()).ok).toBe(false);
+  });
+
+  it('refuses a manual hold either slot, as request_profile_change() does (20260930206000)', async () => {
+    rpc.mockResolvedValue({
+      data: { staffId: 'staff-1', status: 'blocked', blockKind: 'manual' },
+      error: null,
+    });
+    expect(await actions.startChangePhotoUpload()).toEqual({
+      ok: false,
+      message: changeReason('not_editable'),
+    });
+    expect(
+      (await actions.startEvidenceUpload({ name: 'a.pdf', type: 'application/pdf', size: 10 })).ok,
+    ).toBe(false);
+    expect(createSignedUploadUrl).not.toHaveBeenCalled();
+  });
+
+  it('gives a documents-blocked worker a slot — they keep their profile (§10.1 case 1)', async () => {
+    rpc.mockResolvedValue({
+      data: { staffId: 'staff-1', status: 'blocked', blockKind: 'auto_document' },
+      error: null,
+    });
+    expect((await actions.startChangePhotoUpload()).ok).toBe(true);
+  });
+
+  it('a failed staff_me() read is "could not reach", never "no record" (audit D18)', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: 'canceling statement due to timeout' } });
+    const slot = await actions.startChangePhotoUpload();
+    expect(slot).toEqual({
+      ok: false,
+      message: 'We couldn’t reach your profile just now. Please try again.',
+    });
+    expect(slot.ok === false && slot.message).not.toBe(changeReason('unknown_staff'));
+    const evidence = await actions.startEvidenceUpload({
+      name: 'a.pdf',
+      type: 'application/pdf',
+      size: 10,
+    });
+    expect(evidence.ok === false && evidence.message).toBe(
+      'We couldn’t reach your profile just now. Please try again.',
+    );
   });
 });
 

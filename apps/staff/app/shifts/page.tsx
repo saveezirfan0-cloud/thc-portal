@@ -28,7 +28,7 @@ import { checkOutClosesAt, myShiftCard, myShifts } from './model';
 import type { MyShiftCard, ShiftGroup } from './model';
 import { COVER_CHIP, offeredCardLine } from './offers';
 import type { BookingOffer } from './offers';
-import { loadBookingOffers } from './offers-data';
+import { loadBookingOffers, offersByBooking } from './offers-data';
 import { YourTimeAt } from './YourTimeAt';
 import { checkInWindow } from './[id]/phase';
 import '../staff-app.css';
@@ -65,7 +65,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
     { rows: bookings, problem: bookingsProblem },
     { rows: openShifts, problem: openProblem },
     { row: meter },
-    offers,
+    { rows: offerRows, problem: offersProblem },
   ] = await Promise.all([
     loadBookings(),
     loadOpenShifts(),
@@ -73,6 +73,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
     // ADR-0045: the open offer on each confirmed booking, for the chip.
     loadBookingOffers(),
   ]);
+  const offers = offersByBooking(offerRows);
   const now = new Date();
   // §10.4 names them — "Shifts for your roles: Waiting Staff · Bar Staff" —
   // because "your roles" is otherwise a claim the worker cannot check.
@@ -189,6 +190,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
               bookedHours={meter.bookedHours}
               capHours={meter.capHours}
             />
+          ) : null}
+          {offersProblem && current.length > 0 ? (
+            // Audit D18: an unread offer is not "no offer" — the Offered
+            // chip would be missing from a shift that is out there.
+            <LoadProblem what="your shift offers" />
           ) : null}
           {current.length === 0 ? (
             <EmptyState>

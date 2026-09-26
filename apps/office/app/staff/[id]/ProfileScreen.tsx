@@ -357,7 +357,10 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
         </TileGrid>
 
         {/* ADR-0044: a pending name/photo change, decided here or in the queue. */}
-        <ChangeRequestBanner requests={data.changeRequests ?? []} />
+        <ChangeRequestBanner
+          requests={data.changeRequests ?? []}
+          problem={data.changeRequestsProblem ?? null}
+        />
 
         <Tabs
           value={tab}

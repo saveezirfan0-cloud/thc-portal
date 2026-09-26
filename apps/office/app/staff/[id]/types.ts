@@ -299,6 +299,8 @@ export interface ProfileData {
   availabilityProblem?: string | null;
   /** This worker's PENDING change requests, photos signed — the Overview banner. */
   changeRequests?: ChangeRequestView[];
+  /** Set when those could not be read: the banner says so, not "none pending" (D18). */
+  changeRequestsProblem?: string | null;
   problem: string | null;
 }
 

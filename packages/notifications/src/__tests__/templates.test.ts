@@ -636,14 +636,14 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/19 §6)', () => {
       code: 'RC1',
       channel: 'email',
       title: 'Profile change requested — {name}, Employee ID {employeeId}',
-      body: '{name} has asked the office to change their {change}.\n\nRequested: {requestedAt} (UK time)\nNow: {current}\nRequested: {proposed}\nNote: {note}\n\nReview it in Staff → Change requests.',
+      body: '{name} has asked the office to change their {field}.\n\nRequested: {requestedAt} (UK time)\nNow: {current}\nRequested: {proposed}\nNote: {note}\n\nReview it in Staff → Change requests.',
       timing: 'on request',
     },
     {
       code: 'RC2',
       channel: 'push',
       title: 'Profile updated',
-      body: 'Your {change} has been updated.',
+      body: 'Your {field} has been updated.',
       deepLink: '/profile/details',
       timing: 'on approve',
     },
@@ -651,7 +651,7 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/19 §6)', () => {
       code: 'RC3',
       channel: 'push',
       title: 'Change not made',
-      body: "We couldn't update your {change}: {reason}",
+      body: "We couldn't update your {field}: {reason}",
       deepLink: '/profile/details',
       timing: 'on reject',
     },
@@ -711,9 +711,9 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/19 §6)', () => {
    * link together must ask for exactly these keys, no more and no fewer.
    */
   const PAYLOAD_KEYS: Record<(typeof ADDITION_CODES)[number], string[]> = {
-    RC1: ['name', 'employeeId', 'change', 'requestedAt', 'current', 'proposed', 'note'],
-    RC2: ['change'],
-    RC3: ['change', 'reason'],
+    RC1: ['name', 'employeeId', 'field', 'requestedAt', 'current', 'proposed', 'note'],
+    RC2: ['field'],
+    RC3: ['field', 'reason'],
     RC4: ['name', 'employeeId', 'previousName', 'approvedAt'],
     OF1: ['role', 'event', 'dateTime', 'rate', 'offerId'],
     OF2: ['event', 'dateTime'],
@@ -849,7 +849,7 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/19 §6)', () => {
       }
     }
     const NEW_KEYS = [
-      'change',
+      'field',
       'current',
       'proposed',
       'note',
@@ -862,28 +862,16 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/19 §6)', () => {
         expect(existing.has(key) || NEW_KEYS.includes(key), `${code} {${key}}`).toBe(true);
       }
     }
-    // And the new ones are genuinely new, not a rename of an existing key —
-    // except {change}, which N11b (ADR-0037, landed on main in parallel)
-    // also uses: there it is a sentence ("Dress code changed by the office
-    // (was …)"), in RC2/RC3 the word "name" or "photo". Each row carries
-    // its own payload, so nothing renders wrongly; the overlap is named
-    // here so it is a known one rather than a silent one.
-    const SHARED_BY_NAME_ONLY: Record<string, readonly string[]> = { change: ['N11b'] };
+    // And the new ones are genuinely new, not a rename of an existing key,
+    // with no exception. RC1–RC3 once said {change} for "name" / "photo"
+    // while N11b (ADR-0037) says {change} for a whole sentence; they now
+    // say {field} (20260930206000), so one placeholder means one thing.
     for (const key of NEW_KEYS) {
-      const sharedWith = SHARED_BY_NAME_ONLY[key];
-      if (sharedWith) {
-        const users = entries
-          .filter(([code]) => !(ADDITION_CODES as readonly string[]).includes(code))
-          .filter(([, entry]) =>
-            [entry.title, entry.body ?? '', entry.deepLink ?? ''].some((t) =>
-              placeholders(t).includes(key),
-            ),
-          )
-          .map(([code]) => code);
-        expect(users.sort(), key).toEqual([...sharedWith].sort());
-      } else {
-        expect(existing.has(key), key).toBe(false);
-      }
+      expect(existing.has(key), key).toBe(false);
+    }
+    expect(existing.has('change'), 'N11b keeps {change}').toBe(true);
+    for (const code of ADDITION_CODES) {
+      expect(asked(code).has('change'), `${code} must not ask for {change}`).toBe(false);
     }
   });
 
@@ -891,7 +879,7 @@ describe('Staff App additions — RC1–RC4, OF1–OF6 (docs/19 §6)', () => {
     const values: Record<string, string> = {
       name: 'Tom Reid',
       employeeId: '10432',
-      change: 'name',
+      field: 'name',
       requestedAt: '25 Sep 2026 14:05',
       current: 'Tom Reid',
       proposed: 'Tom Reed',

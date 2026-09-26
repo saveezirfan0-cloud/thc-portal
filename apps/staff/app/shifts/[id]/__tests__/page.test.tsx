@@ -75,6 +75,14 @@ vi.mock('../../../data', () => ({
   shiftsBadge: () => 0,
 }));
 
+/** Set to make `staff_booking_offers()` fail (audit D18, ADR-0045). */
+let offersFail = false;
+vi.mock('../../offers-data', async (importOriginal) => ({
+  ...(await importOriginal<object>()),
+  loadBookingOffers: async () =>
+    offersFail ? { rows: [], problem: 'timeout' } : { rows: [], problem: null },
+}));
+
 const { default: Page } = await import('../page');
 
 const worker = (over: Partial<StaffProfile> = {}): StaffProfile => ({
@@ -154,6 +162,7 @@ beforeEach(() => {
   shift.mockReset();
   profileFails = false;
   shiftFails = false;
+  offersFail = false;
 });
 
 describe('§10.1 the app lock stands in front of the shift screen', () => {
@@ -275,6 +284,28 @@ describe('audit D18 · a failed read is not a 404', () => {
     const html = await render();
     expect(html).toContain('We couldn’t load this shift — pull to refresh or try again.');
     expect(html).toContain('Try again');
+  });
+});
+
+describe('audit D18 · a failed offer read never guesses the Offer panel (ADR-0045)', () => {
+  const days = (n: number) => new Date(Date.now() + n * 86_400_000).toISOString();
+
+  it('says the offer could not be loaded, and offers neither Offer nor Ask the office', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail({ startsAt: days(5), endsAt: days(5.25) }));
+    offersFail = true;
+    const html = await render();
+    expect(html).toContain('We couldn’t load this shift’s offer');
+    expect(html).not.toContain('Ask the office for cover');
+    expect(html).not.toContain('Offer this shift');
+  });
+
+  it('with the read answered, the panel is drawn as before', async () => {
+    profile.mockResolvedValue(worker());
+    shift.mockResolvedValue(detail({ startsAt: days(5), endsAt: days(5.25) }));
+    const html = await render();
+    expect(html).not.toContain('this shift’s offer');
+    expect(html).toContain('Ask the office for cover');
   });
 });
 
