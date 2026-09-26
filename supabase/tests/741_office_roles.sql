@@ -350,7 +350,7 @@ select throws_ok($$ select * from finance_report(current_date, current_date, 'we
 -- ---------------------------------------------------------------------
 select set_config('request.jwt.claims', json_build_object('sub', :'scheduler', 'role', 'authenticated')::text, true);
 select is((select name from roles where id = :'role_id'), 'RLS Fixture Role',
-  'a scheduler reads role names — scheduling needs them (the pay_rate beside them is ADR-0056''s residual gap)');
+  'a scheduler reads role names — scheduling needs them (the pay_rate beside them is no longer readable at all, ADR-0061 / 753)');
 with u as (update roles set pay_rate = 99 where id = :'role_id' returning 1)
 select is((select count(*)::int from u), 0, 'a scheduler''s pay-rate change on a role changes no row');
 select throws_ok($$ insert into roles (name, pay_rate) values ('Scheduler role', 12) $$,
@@ -364,18 +364,21 @@ select lives_ok(format($$ insert into shift_requirements (id, event_id, role_id,
                           values (%L, %L, %L, now() + interval '7 days', now() + interval '7 days 4 hours', 2, 0, 22.97, 14.00) $$,
                        :'new_sh', :'event_a', :'role_id'),
   'a scheduler adds a role section at the catalogue rates');
-select throws_ok(format($$ insert into shift_requirements (event_id, role_id, starts_at, ends_at, headcount, buffer, charge_rate, pay_rate)
+-- ADR-0061: a scheduler's own rates are REPLACED by the catalogue's, not
+-- refused — a refusal that depends on the value typed would let them
+-- search for a rate they can no longer read. 753 asserts the stored values.
+select lives_ok(format($$ insert into shift_requirements (event_id, role_id, starts_at, ends_at, headcount, buffer, charge_rate, pay_rate)
                           values (%L, %L, now() + interval '7 days', now() + interval '7 days 4 hours', 2, 0, 22.97, 20.00) $$,
                        :'event_a', :'role_id'),
-  '42501', 'rates_need_finance', 'but not at a pay rate of their own');
-select throws_ok(format($$ insert into shift_requirements (event_id, role_id, starts_at, ends_at, headcount, buffer, charge_rate, pay_rate)
+  'a pay rate of their own is not refused (it would be an oracle) — the catalogue''s is stored instead (ADR-0061)');
+select lives_ok(format($$ insert into shift_requirements (event_id, role_id, starts_at, ends_at, headcount, buffer, charge_rate, pay_rate)
                           values (%L, %L, now() + interval '8 days', now() + interval '8 days 4 hours', 2, 0, 30.00, 14.00) $$,
                        :'event_b', :'role_id'),
-  '42501', 'rates_need_finance', 'nor charge a client with no rate card for the role anything but 0');
+  'nor is a charge on a client with no rate card for the role — 0 is stored (ADR-0061)');
 select lives_ok(format($$ update shift_requirements set headcount = 3, charge_rate = 22.97, pay_rate = 14.00 where id = %L $$, :'new_sh'),
   'a scheduler edits a section''s headcount, the rates resent unchanged');
-select throws_ok(format($$ update shift_requirements set pay_rate = 15 where id = %L $$, :'new_sh'),
-  '42501', 'rates_need_finance', 'but cannot re-price it');
+select lives_ok(format($$ update shift_requirements set pay_rate = 15 where id = %L $$, :'new_sh'),
+  'a scheduler''s re-price is not refused either — the stored rate is kept (ADR-0061; 753 reads it back)');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'manager', 'role', 'authenticated')::text, true);
 select lives_ok(format($$ update shift_requirements set pay_rate = 15 where id = %L $$, :'new_sh'),

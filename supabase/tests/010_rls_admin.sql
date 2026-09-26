@@ -34,13 +34,16 @@ select is((select count(*)::int from violations             where id in (:'viola
 select is((select count(*)::int from feedback               where id in (:'feedback_a', :'feedback_b')), 2, 'admin reads every feedback row');
 select is((select count(*)::int from clients                where id in (:'clienta', :'clientb')),   2, 'admin reads every client');
 select is((select count(*)::int from venues                 where id = :'venue_id'),                 1, 'admin reads venues');
-select is((select count(*)::int from roles                  where id = :'role_id'),                  1, 'admin reads roles (incl. pay_rate)');
+select is((select count(*)::int from roles                  where id = :'role_id'),                  1, 'admin reads roles (pay_rate through role_rates_v since ADR-0061)');
 select is((select count(*)::int from client_rate_cards      where id = :'ratecard_a'),               1, 'admin reads charge rates');
 select is((select count(*)::int from settings               where key = 'rls_fixture_probe'),        1, 'admin reads settings');
 
--- admin sees money, which is the whole point of the Back Office (§9.8, §9.9)
-select is((select charge_rate from shift_requirements where id = :'shift_a'), 22.97::numeric, 'admin sees charge_rate on a role section');
-select is((select pay_rate    from shift_requirements where id = :'shift_a'), 14.00::numeric, 'admin sees pay_rate on a role section');
+-- admin sees money, which is the whole point of the Back Office (§9.8, §9.9).
+-- Since ADR-0061 the rate columns are not selectable on the table by any
+-- API session; an office login with finance reads them from shift_rates_v
+-- (753 covers every office role).
+select is((select charge_rate from shift_rates_v where shift_id = :'shift_a'), 22.97::numeric, 'admin sees charge_rate on a role section');
+select is((select pay_rate    from shift_rates_v where shift_id = :'shift_a'), 14.00::numeric, 'admin sees pay_rate on a role section');
 
 -- ---- the tables 0004_rls_gaps policed ---------------------------------
 select is((select count(*)::int from bank_details          where staff_id in (:'staffa', :'staffb')), 2, 'admin reads every worker''s bank details (payroll)');

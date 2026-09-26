@@ -12,6 +12,8 @@ import './clients.css';
 export interface ClientsScreenProps {
   clients: Client[];
   problem: string | null;
+  /** ADR-0061: false for an office role without finance — no margin anywhere. */
+  ratesVisible?: boolean;
 }
 
 type Sort = 'name' | 'events' | 'margin';
@@ -30,7 +32,7 @@ const PAGE_SIZE = 8;
  * explicit that a client record can be edited at any time but never
  * removed from the system.
  */
-export function ClientsScreen({ clients, problem }: ClientsScreenProps) {
+export function ClientsScreen({ clients, problem, ratesVisible = true }: ClientsScreenProps) {
   const router = useRouter();
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<Sort>('name');
@@ -112,14 +114,16 @@ export function ClientsScreen({ clients, problem }: ClientsScreenProps) {
         >
           <option value="name">Sort: name A–Z</option>
           <option value="events">Sort: most events</option>
-          <option value="margin">Sort: margin</option>
+          {ratesVisible ? <option value="margin">Sort: margin</option> : null}
         </Select>
-        <div className="right">
-          <span className="muted sm">
-            Average margin = (charge − final pay) ÷ charge across completed events, after holiday
-            pay
-          </span>
-        </div>
+        {ratesVisible ? (
+          <div className="right">
+            <span className="muted sm">
+              Average margin = (charge − final pay) ÷ charge across completed events, after holiday
+              pay
+            </span>
+          </div>
+        ) : null}
       </div>
 
       <Panel flush>
@@ -143,7 +147,7 @@ export function ClientsScreen({ clients, problem }: ClientsScreenProps) {
                   <th>Rate card roles</th>
                   <th>Policies</th>
                   <th className="num">Events</th>
-                  <th className="num">Avg margin</th>
+                  {ratesVisible ? <th className="num">Avg margin</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -188,13 +192,15 @@ export function ClientsScreen({ clients, problem }: ClientsScreenProps) {
                     <td data-label="Events" className="num">
                       {client.event_count}
                     </td>
-                    <td data-label="Avg margin" className="num margin">
-                      {client.avg_margin_pct === null ? (
-                        <span className="muted">—</span>
-                      ) : (
-                        `${client.avg_margin_pct.toFixed(1)}%`
-                      )}
-                    </td>
+                    {ratesVisible ? (
+                      <td data-label="Avg margin" className="num margin">
+                        {client.avg_margin_pct === null ? (
+                          <span className="muted">—</span>
+                        ) : (
+                          `${client.avg_margin_pct.toFixed(1)}%`
+                        )}
+                      </td>
+                    ) : null}
                   </tr>
                 ))}
               </tbody>

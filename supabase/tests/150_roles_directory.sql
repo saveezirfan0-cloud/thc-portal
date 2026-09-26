@@ -60,7 +60,7 @@ select is((select section_count from role_directory_v where id = :'role_id'), 2,
 select lives_ok(
   $$ select create_role('  Event Supervisor  ', 18.00, '  Runs a team of up to 15 on site  ') $$,
   'admin adds a role to the catalogue');
-select is((select name from roles where pay_rate = 18.00), 'Event Supervisor',
+select is((select name from role_directory_v where pay_rate = 18.00), 'Event Supervisor',
   'create_role trims the name');
 select is((select description from roles where name = 'Event Supervisor'),
   'Runs a team of up to 15 on site', 'and trims the internal description');

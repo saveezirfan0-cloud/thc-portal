@@ -9,12 +9,23 @@ import { eventsDb, supabaseConfigured } from './db';
  * (§9.6), venues (§9.11) and roles & rates (§9.10). Nothing here writes.
  * RLS is what protects these rows; the middleware only keeps the wrong role
  * out of the wrong app.
+ *
+ * Rates (ADR-0061): no signed-in session may select a rate column on
+ * `roles`, `client_rate_cards` or `shift_requirements`. They are read from
+ * `role_rates_v`, `rate_card_rates_v` and `shift_rates_v`, which answer an
+ * office role with finance and return no row to a scheduler — so for a
+ * scheduler every rate here is 0 and the screens do not draw it
+ * (`ratesVisible`). What is saved never depends on these figures for a
+ * scheduler: the database sets the catalogue rates on their sections.
  */
 
 export interface RoleOption {
   id: string;
   name: string;
-  /** Base £/h from Roles & rates. Editable per role section on this screen. */
+  /**
+   * Base £/h from Roles & rates. Editable per role section on this screen.
+   * 0 when the viewer's office role has no finance (ADR-0061).
+   */
   payRate: number;
 }
 
@@ -60,8 +71,12 @@ interface ClientRow {
 interface RateCardRow {
   client_id: string;
   role_id: string;
-  charge_rate: number | string;
   dress_codes: string[] | null;
+}
+interface RateCardChargeRow {
+  client_id: string;
+  role_id: string;
+  charge_rate: number | string;
 }
 interface VenueRow {
   id: string;
@@ -73,6 +88,9 @@ interface VenueRow {
 interface RoleRow {
   id: string;
   name: string;
+}
+interface RoleRateRow {
+  role_id: string;
   pay_rate: number | string;
 }
 
@@ -83,24 +101,29 @@ export async function loadReferenceData(): Promise<ReferenceData> {
 
   const supabase = eventsDb(await cookies());
 
-  const [clients, rateCards, venues, venueTypes, roles] = await Promise.all([
+  const [clients, rateCards, venues, venueTypes, roles, charges, payRates] = await Promise.all([
     supabase
       .from('clients')
       .select('id, name, staff_contact_point, contact_emails, pays_breaks, pays_buffer')
       .order('name'),
-    supabase.from('client_rate_cards').select('client_id, role_id, charge_rate, dress_codes'),
+    supabase.from('client_rate_cards').select('client_id, role_id, dress_codes'),
     supabase
       .from('venues')
       .select('id, name, address, venue_type, geofence_radius_m')
       .is('deleted_at', null)
       .order('name'),
     supabase.from('venue_types').select('key, label'),
-    supabase.from('roles').select('id, name, pay_rate').order('name'),
+    supabase.from('roles').select('id, name').order('name'),
+    // ADR-0061: empty for an office role without finance.
+    supabase.from('rate_card_rates_v').select('client_id, role_id, charge_rate'),
+    supabase.from('role_rates_v').select('role_id, pay_rate'),
   ]);
 
   // A failed read is reported, not rendered as "no clients" — the builder
   // would otherwise offer an empty picker with no explanation.
-  const failed = [clients, rateCards, venues, venueTypes, roles].find((r) => r.error)?.error;
+  const failed = [clients, rateCards, venues, venueTypes, roles, charges, payRates].find(
+    (r) => r.error,
+  )?.error;
   if (failed) {
     return {
       clients: [],
@@ -114,11 +137,21 @@ export async function loadReferenceData(): Promise<ReferenceData> {
     ((venueTypes.data ?? []) as { key: string; label: string }[]).map((t) => [t.key, t.label]),
   );
 
+  const chargeOf = new Map(
+    ((charges.data ?? []) as RateCardChargeRow[]).map((c) => [
+      `${c.client_id}:${c.role_id}`,
+      Number(c.charge_rate),
+    ]),
+  );
+  const payOf = new Map(
+    ((payRates.data ?? []) as RoleRateRow[]).map((r) => [r.role_id, Number(r.pay_rate)]),
+  );
+
   const cardsByClient = new Map<string, ClientOption['rateCard']>();
   for (const card of (rateCards.data ?? []) as RateCardRow[]) {
     const forClient = cardsByClient.get(card.client_id) ?? {};
     forClient[card.role_id] = {
-      chargeRate: Number(card.charge_rate),
+      chargeRate: chargeOf.get(`${card.client_id}:${card.role_id}`) ?? 0,
       dressCodes: card.dress_codes ?? [],
     };
     cardsByClient.set(card.client_id, forClient);
@@ -145,7 +178,7 @@ export async function loadReferenceData(): Promise<ReferenceData> {
     roles: ((roles.data ?? []) as RoleRow[]).map((r) => ({
       id: r.id,
       name: r.name,
-      payRate: Number(r.pay_rate),
+      payRate: payOf.get(r.id) ?? 0,
     })),
   };
 }
@@ -208,11 +241,16 @@ interface SectionRow {
   ends_at: string;
   headcount: number;
   buffer: number;
-  charge_rate: number | string;
-  pay_rate: number | string;
   dress_code: string | null;
   auto_assign: boolean;
   allocation_per_hour: number;
+}
+
+/** `shift_rates_v` (ADR-0061) — no row for an office role without finance. */
+export interface SectionRateRow {
+  shift_id: string;
+  pay_rate: number | string;
+  charge_rate: number | string;
 }
 
 /** A booking that still ties a worker to the shift (§3.6). */
@@ -243,15 +281,21 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
   const event = data as EventRow | null;
   if (!event) return null;
 
-  const { data: sectionData, error: sectionError } = await supabase
-    .from('shift_requirements')
-    .select(
-      'id, role_id, starts_at, ends_at, headcount, buffer, charge_rate, pay_rate, dress_code, auto_assign, allocation_per_hour',
-    )
-    .eq('event_id', id)
-    .order('starts_at');
-  if (sectionError) throw new Error(`The event could not be read: ${sectionError.message}`);
+  const [{ data: sectionData, error: sectionError }, { data: rateData, error: rateError }] =
+    await Promise.all([
+      supabase
+        .from('shift_requirements')
+        .select(
+          'id, role_id, starts_at, ends_at, headcount, buffer, dress_code, auto_assign, allocation_per_hour',
+        )
+        .eq('event_id', id)
+        .order('starts_at'),
+      supabase.from('shift_rates_v').select('shift_id, pay_rate, charge_rate').eq('event_id', id),
+    ]);
+  const readError = sectionError ?? rateError;
+  if (readError) throw new Error(`The event could not be read: ${readError.message}`);
   const sections = (sectionData ?? []) as SectionRow[];
+  const rates = new Map(((rateData ?? []) as SectionRateRow[]).map((r) => [r.shift_id, r]));
 
   const ids = sections.map((s) => s.id);
   const confirmed = new Map<string, number>();
@@ -289,8 +333,8 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
       end: ukTime(s.ends_at),
       headcount: s.headcount,
       buffer: s.buffer,
-      chargeRate: Number(s.charge_rate),
-      payRate: Number(s.pay_rate),
+      chargeRate: Number(rates.get(s.id)?.charge_rate ?? 0),
+      payRate: Number(rates.get(s.id)?.pay_rate ?? 0),
       dressCode: s.dress_code ?? '',
       autoAssign: s.auto_assign,
       allocationPerHour: s.allocation_per_hour,

@@ -4,6 +4,8 @@ import { createEvent } from '../actions';
 import { loadEvent, loadReferenceData } from '../data';
 import { preselectClient } from './preselect';
 import { OfficeShell } from '../../_components/OfficeShell';
+import { currentOfficeRole } from '../../_components/officeUser';
+import { officeCan } from '../../_lib/permissions';
 import { ViewerZone } from '../_components/ViewerZone';
 import { ShiftBuilder } from '../_components/ShiftBuilder';
 import { type EventDraft, draftFromSaved } from '../draft';
@@ -53,10 +55,14 @@ export default async function Page({
   const rawFrom = params['from'];
   const from = (Array.isArray(rawFrom) ? rawFrom[0] : rawFrom) ?? '';
 
-  const [reference, source] = await Promise.all([
+  const [reference, source, officeRole] = await Promise.all([
     loadReferenceData(),
     UUID.test(from) ? loadEvent(from) : Promise.resolve(null),
+    currentOfficeRole(),
   ]);
+  // ADR-0061: a scheduler builds sections without seeing a rate; the
+  // database gives them the catalogue rates.
+  const ratesVisible = officeCan(officeRole, 'finance');
 
   // "+ New event for this client" on /clients/:id (§9.7) opens this page as
   // /events/new?client=<id>. The id is only honoured if it names a client in
@@ -94,8 +100,8 @@ export default async function Page({
         {source ? (
           <Alert tone="cyan">
             <b>Duplicating {source.title}.</b> The roles are copied — times, headcount, buffer,
-            rates, dress code — but <b>not the staff</b>: the new event starts filling from zero.
-            Set the new date, then save.{' '}
+            {ratesVisible ? ' rates,' : ''} dress code — but <b>not the staff</b>: the new event
+            starts filling from zero. Set the new date, then save.{' '}
             <Link href={`/events/${source.id}`}>Back to the original</Link>
           </Alert>
         ) : null}
@@ -107,6 +113,7 @@ export default async function Page({
           confirmed={{}}
           booked={{}}
           locked={false}
+          ratesVisible={ratesVisible}
           save={createEvent}
         />
       </div>

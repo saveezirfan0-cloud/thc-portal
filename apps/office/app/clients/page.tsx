@@ -1,3 +1,5 @@
+import { currentOfficeRole } from '../_components/officeUser';
+import { officeCan } from '../_lib/permissions';
 import { loadClients } from './data';
 import { ClientsScreen } from './ClientsScreen';
 
@@ -11,6 +13,17 @@ export const metadata = { title: 'Clients · THC Back Office' };
  * finished percentage.
  */
 export default async function Page() {
-  const { clients, problem } = await loadClients();
-  return <ClientsScreen clients={clients} problem={problem} />;
+  const [{ clients, problem }, officeRole] = await Promise.all([
+    loadClients(),
+    currentOfficeRole(),
+  ]);
+  // ADR-0061: no margin column for an office role without finance — the
+  // view returns none, and an empty column of dashes reads as "no margin".
+  return (
+    <ClientsScreen
+      clients={clients}
+      problem={problem}
+      ratesVisible={officeCan(officeRole, 'finance')}
+    />
+  );
 }
