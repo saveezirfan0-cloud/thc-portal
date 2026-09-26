@@ -124,7 +124,7 @@ test('the event list offers the tabs the scope names, and each holds its own doc
   page,
 }) => {
   await openAsClient(page, '/client');
-  for (const label of ['Upcoming & ongoing', 'Past', 'All']) {
+  for (const label of ['Upcoming', 'Past', 'All']) {
     // Anchored at the start: the segment's accessible name carries its count
     // ("All 2"), so not exact — but "↓ Allocation sheet" must not match "All".
     await expect(
@@ -135,7 +135,7 @@ test('the event list offers the tabs the scope names, and each holds its own doc
   }
   await expect(page.getByPlaceholder('Search events')).toBeVisible();
 
-  // Upcoming & ongoing is the default: the Gala Dinner, with the
+  // Upcoming (which includes ongoing) is the default: the Gala Dinner, with the
   // allocation sheet (downloadable before AND during, §11.3).
   const rows = page.locator('table.tbl tbody tr');
   await expect(rows.filter({ hasText: 'Gala Dinner' })).toHaveCount(1);
@@ -196,7 +196,7 @@ test('a row is name · venue · date/time · "N of M confirmed" · faces · docu
   await expect(page).toHaveURL(new RegExp(`/client/events/${GALA_DINNER}$`));
 });
 
-test('no money reaches the Client Portal, on the list or on either event (§11.1)', async ({
+test('no money reaches the Client Portal, on the list, either event or the account page (§11.1)', async ({
   page,
 }) => {
   // The views underneath carry no such column, so this is a belt-and-braces
@@ -207,6 +207,7 @@ test('no money reaches the Client Portal, on the list or on either event (§11.1
     '/client',
     `/client/events/${GALA_DINNER}`,
     `/client/events/${LUNCH_SERVICE}`,
+    '/client/account',
   ]) {
     await page.goto(path);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
@@ -215,6 +216,23 @@ test('no money reaches the Client Portal, on the list or on either event (§11.1
       expect(body, `${path} must not show "${word}"`).not.toContain(word);
     }
   }
+});
+
+test('a filter that matches nothing says so, and Clear filters brings the list back (ADR-0049)', async ({
+  page,
+}) => {
+  await openAsClient(page, '/client');
+  await page.getByRole('button', { name: /^All/ }).click();
+  const rows = page.locator('table.tbl tbody tr');
+  await expect(rows.first()).toBeVisible();
+
+  await page.getByLabel('From (UK date)').fill('2099-01-01');
+  await expect(page.getByRole('heading', { name: 'No events match your filters' })).toBeVisible();
+  await expect(rows).toHaveCount(0);
+
+  await page.locator('.ev-empty').getByRole('button', { name: 'Clear filters' }).click();
+  await expect(page.getByLabel('From (UK date)')).toHaveValue('');
+  await expect(rows.first()).toBeVisible();
 });
 
 test('the event page shows confirmed staff only, by role, with the role window (§11.2)', async ({

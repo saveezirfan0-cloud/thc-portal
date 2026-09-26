@@ -20,12 +20,57 @@ describe('EventWindow (§1.8)', () => {
   });
 
   it('adds the "your time" line, as a .sub, for a reader in Berlin', () => {
+    // 23:30 in London is 00:30 the next day in Berlin: the Berlin line
+    // crosses midnight and says so; the UK line does not (ADR-0050).
     const markup = renderToStaticMarkup(
       <EventWindow startsAt={STARTS} endsAt={ENDS} zone="Europe/Berlin" className="win" />,
     );
     expect(markup).toBe(
-      '<span class="win">07:00 – 23:30 UK time<span class="sub">08:00 – 00:30 your time</span></span>',
+      '<span class="win">07:00 – 23:30 UK time<span class="sub">08:00 – 00:30 your time (+1 day)</span></span>',
     );
+  });
+
+  it('marks only the line that crosses midnight in its own zone (Dubai)', () => {
+    const markup = renderToStaticMarkup(
+      <EventWindow startsAt={STARTS} endsAt={ENDS} zone="Asia/Dubai" />,
+    );
+    expect(markup).toBe(
+      '<span>07:00 – 23:30 UK time<span class="sub">10:00 – 02:30 your time (+1 day)</span></span>',
+    );
+  });
+
+  it('marks the UK line of an overnight role, and not a reader line that stays on one day', () => {
+    // 17:00 – 01:30 BST is 12:00 – 20:30 in New York: one side of midnight.
+    const markup = renderToStaticMarkup(
+      <EventWindow
+        startsAt="2026-09-19T16:00:00Z"
+        endsAt="2026-09-20T00:30:00Z"
+        zone="America/New_York"
+      />,
+    );
+    expect(markup).toBe(
+      '<span>17:00 – 01:30 UK time (+1 day)<span class="sub">12:00 – 20:30 your time</span></span>',
+    );
+  });
+
+  it('writes "+2 days" for a window over two midnights', () => {
+    const markup = renderToStaticMarkup(
+      <EventWindow
+        startsAt="2026-09-18T16:00:00Z"
+        endsAt="2026-09-20T01:00:00Z"
+        zone="Europe/London"
+      />,
+    );
+    expect(markup).toBe('<span>17:00 – 02:00 UK time (+2 days)</span>');
+  });
+
+  it('keeps the UK marker in the server render, which has no second line', () => {
+    // The UK line's marker is computed in Europe/London, so it is the same
+    // string on the server and in the browser: no hydration mismatch.
+    const markup = renderToStaticMarkup(
+      <EventWindow startsAt="2026-09-19T16:00:00Z" endsAt="2026-09-20T00:30:00Z" />,
+    );
+    expect(markup).toBe('<span>17:00 – 01:30 UK time (+1 day)</span>');
   });
 
   it("is UK-only on the server, where the reader's zone is unknown", () => {
