@@ -32,6 +32,37 @@ describe('root boundaries', () => {
     expect(existsSync(join(app, 'loading.tsx'))).toBe(false);
   });
 
+  it('has no loading.tsx where streaming breaks the page (PR #79 CI)', async () => {
+    // Three ways a segment loading boundary broke a screen in CI:
+    //  - /events: query-only navigation froze on the old period (above);
+    //  - a page that calls notFound(): the 200 is already sent by the time
+    //    the fallback streams, so an unknown id answered 200, not 404;
+    //  - /dashboard: the fallback's top bar and the page's were in the
+    //    document together while it swapped, so the zone note was twice.
+    const { existsSync, readdirSync, readFileSync, statSync } = await import('node:fs');
+    const { join, dirname } = await import('node:path');
+    const { fileURLToPath } = await import('node:url');
+    const app = join(dirname(fileURLToPath(import.meta.url)), '..');
+    expect(existsSync(join(app, 'events', 'loading.tsx'))).toBe(false);
+    expect(existsSync(join(app, 'dashboard', 'loading.tsx'))).toBe(false);
+
+    const offenders: string[] = [];
+    const walk = (dir: string) => {
+      for (const name of readdirSync(dir)) {
+        const path = join(dir, name);
+        if (statSync(path).isDirectory()) {
+          if (name !== 'node_modules' && !name.startsWith('.')) walk(path);
+          continue;
+        }
+        if (name !== 'page.tsx') continue;
+        if (!/\bnotFound\(/.test(readFileSync(path, 'utf8'))) continue;
+        if (existsSync(join(dir, 'loading.tsx'))) offenders.push(dir.slice(app.length) || '/');
+      }
+    };
+    walk(app);
+    expect(offenders).toEqual([]);
+  });
+
   it('error shows the digest, never the exception text', () => {
     const error = Object.assign(new Error('relation "secret_table" does not exist'), {
       digest: 'abc123',
