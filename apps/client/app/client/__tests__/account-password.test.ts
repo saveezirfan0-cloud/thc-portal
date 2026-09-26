@@ -24,11 +24,24 @@ const state = vi.hoisted(() => ({
   verifierSignOuts: [] as unknown[],
   updates: [] as unknown[],
   sessionSignOuts: [] as unknown[],
+  // The per-account limit (20261001100200, security review L2).
+  allowed: true as unknown,
+  allowedError: null as null | { code?: string; message: string },
+  recordError: null as null | { code?: string; message: string },
+  rpcs: [] as string[],
 }));
 
 vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
 vi.mock('@thc/db/server', () => ({
   createClient: () => ({
+    rpc: async (fn: string) => {
+      state.rpcs.push(fn);
+      if (fn === 'password_check_allowed') {
+        return { data: state.allowedError ? null : state.allowed, error: state.allowedError };
+      }
+      if (fn === 'record_password_check_failure') return { data: null, error: state.recordError };
+      throw new Error(`unexpected rpc ${fn}`);
+    },
     auth: {
       getUser: async () => ({ data: { user: state.user } }),
       updateUser: async (attrs: unknown) => {
@@ -98,6 +111,10 @@ beforeEach(() => {
   state.verifierSignOuts = [];
   state.updates = [];
   state.sessionSignOuts = [];
+  state.allowed = true;
+  state.allowedError = null;
+  state.recordError = null;
+  state.rpcs = [];
 });
 
 describe('Change password · the rules are /reset’s', () => {
@@ -210,5 +227,78 @@ describe('Change password · the change', () => {
     expect(out.ok).toBe(false);
     expect(out.message).toBe(PASSWORD_COPY[key]);
     expect(state.sessionSignOuts).toEqual([]);
+  });
+});
+
+describe('Change password · 5 wrong current passwords per account per 15 minutes (review L2)', () => {
+  const recorded = () => state.rpcs.filter((fn) => fn === 'record_password_check_failure');
+
+  it('checks the limit on the caller’s own session before re-verifying', async () => {
+    await changePassword(null, valid());
+    expect(state.rpcs[0]).toBe('password_check_allowed');
+    expect(state.verifiedWith).toHaveLength(1);
+  });
+
+  it('past the limit says "too many" and never calls signInWithPassword', async () => {
+    state.allowed = false;
+    const out = await changePassword(null, valid());
+    expect(out).toEqual({ ok: false, message: PASSWORD_COPY.tooMany, round: 0 });
+    expect(state.verifiedWith).toEqual([]);
+    expect(state.verifierOptions).toEqual([]);
+    expect(state.updates).toEqual([]);
+    expect(recorded()).toEqual([]);
+  });
+
+  it('fails closed when the limit cannot be read', async () => {
+    state.allowedError = { code: 'PGRST202', message: 'function not found' };
+    const out = await changePassword(null, valid());
+    expect(out).toEqual({ ok: false, message: PASSWORD_COPY.failed, round: 0 });
+    expect(state.verifiedWith).toEqual([]);
+    expect(state.updates).toEqual([]);
+  });
+
+  it('treats anything but a plain true as not allowed', async () => {
+    state.allowed = null;
+    const out = await changePassword(null, valid());
+    expect(out.message).toBe(PASSWORD_COPY.tooMany);
+    expect(state.verifiedWith).toEqual([]);
+  });
+
+  it('a wrong current password records exactly one failure', async () => {
+    state.verifyError = { status: 400, code: 'invalid_credentials', message: 'Invalid login' };
+    const out = await changePassword(null, valid());
+    expect(out.message).toBe(PASSWORD_COPY.currentWrong);
+    expect(recorded()).toHaveLength(1);
+  });
+
+  it('a correct current password records none', async () => {
+    const out = await changePassword(null, valid());
+    expect(out.ok).toBe(true);
+    expect(recorded()).toEqual([]);
+  });
+
+  it.each([
+    [
+      'Supabase’s own rate limit',
+      { status: 429, code: 'over_request_rate_limit', message: 'Too many' },
+    ],
+    ['a network or server failure', { status: 500, message: 'upstream error' }],
+  ] as const)('%s is not counted as a wrong password', async (_, error) => {
+    state.verifyError = error;
+    await changePassword(null, valid());
+    expect(recorded()).toEqual([]);
+  });
+
+  it('still says the password is wrong when the failure cannot be recorded', async () => {
+    state.verifyError = { status: 400, code: 'invalid_credentials', message: 'Invalid login' };
+    state.recordError = { message: 'connection reset' };
+    const out = await changePassword(null, valid());
+    expect(out.message).toBe(PASSWORD_COPY.currentWrong);
+    expect(state.updates).toEqual([]);
+  });
+
+  it('a rule failure spends no attempt and reads no limit', async () => {
+    await changePassword(null, valid({ password: 'short1', confirm: 'short1' }));
+    expect(state.rpcs).toEqual([]);
   });
 });

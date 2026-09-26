@@ -23,6 +23,12 @@ import { PASSWORD_COPY } from './copy';
  *      The check runs on a throwaway, cookie-less client, so it cannot
  *      overwrite this device's session cookies or its "keep me signed in"
  *      choice (ADR-0032), and the extra session it creates is ended at once.
+ *      It is throttled per ACCOUNT first (security review L2,
+ *      20261001100200): 5 wrong current passwords in 15 minutes and the
+ *      action refuses without calling signInWithPassword. Every attempt
+ *      leaves from Vercel's addresses, so Supabase's per-IP limit would
+ *      never bind somebody guessing from a left-open session, and would
+ *      lock out every other portal user instead.
  *   3. updateUser on the caller's OWN session. Running it on the check's
  *      session instead would make Supabase treat that one as "current" and
  *      sign this device out.
@@ -65,6 +71,22 @@ export async function changePassword(
   if (!user?.email) return fail(PASSWORD_COPY.signedOut);
 
   // ---- 2. is it really them? -------------------------------------------
+  // The per-account limit comes first, on the caller's own session. If it
+  // cannot be read, fail closed: no answer is not a "yes".
+  // The RPCs are not in @thc/db's generated types until gen:types runs
+  // after deploy (ADR-0051), hence the casts.
+  const { data: allowed, error: limitError } = await supabase.rpc(
+    'password_check_allowed' as never,
+  );
+  if (limitError) {
+    console.error('[account] password attempt limit could not be read', {
+      code: limitError.code,
+      message: limitError.message,
+    });
+    return fail(PASSWORD_COPY.failed);
+  }
+  if ((allowed as unknown) !== true) return fail(PASSWORD_COPY.tooMany);
+
   const verifier = createStatelessClient(url, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
   });
@@ -81,6 +103,15 @@ export async function changePassword(
       return fail(PASSWORD_COPY.tooMany);
     }
     if (verifyError.code === 'invalid_credentials' || verifyError.status === 400) {
+      // Only a wrong password counts towards the limit — never Supabase's
+      // own rate limit (above) or a network failure (below).
+      const { error: recordError } = await supabase.rpc('record_password_check_failure' as never);
+      if (recordError) {
+        console.error('[account] failed password check could not be recorded', {
+          code: recordError.code,
+          message: recordError.message,
+        });
+      }
       return fail(PASSWORD_COPY.currentWrong);
     }
     return fail(PASSWORD_COPY.failed);
