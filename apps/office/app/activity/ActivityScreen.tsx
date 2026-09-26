@@ -54,7 +54,7 @@ export function ActivityScreen({
     <OfficeShell
       activeHref="/activity"
       title="Activity log"
-      crumbs={<>Who did what, and when · every change the platform records · §1.7</>}
+      crumbs={<>Who did what, and when · every change the platform records</>}
       actions={
         // A download, not a navigation: a plain link to the route, carrying
         // the filters on screen (not the page — the file starts at the newest).

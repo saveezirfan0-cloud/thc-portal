@@ -30,7 +30,7 @@ export function InboxScreen({ data, filters }: { data: InboxPageData; filters: I
     <OfficeShell
       activeHref="/inbox"
       title="Inbox"
-      crumbs={<>Emails the platform sent to the office and payroll · §8</>}
+      crumbs={<>Emails the platform sent to the office and payroll</>}
     >
       {data.problem ? <Alert tone="coral">{data.problem}</Alert> : null}
       {data.failedInPeriod > 0 && filters.status !== 'failed' ? (

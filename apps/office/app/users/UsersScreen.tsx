@@ -63,7 +63,7 @@ const ACCESS_NOTE: Record<Tab, string> = {
   admin:
     'Back Office, by office role — Owner: everything. Manager: everything except Users & access and System settings. Scheduler: scheduling, onboarding, compliance, check-in, staff, clients, venues and feedback, without pay or charge rates, margins, payroll, reports or bank details. Every change is recorded in the activity log with the person’s name.',
   client:
-    'Client Portal: only their own company’s events and line-up, and feedback. No pay rates, charges or totals, and no worker personal details beyond the line-up (§11.1).',
+    'Client Portal: only their own company’s events and line-up, and feedback. No pay rates, charges or totals, and no worker personal details beyond the line-up.',
   staff:
     'Staff App: only their own onboarding, documents, invites, shifts and check-in. Created when a candidate is accepted in Onboarding; closed by Block or Remove on the staff profile.',
 };
@@ -115,7 +115,7 @@ export function UsersScreen({ data }: { data: UsersPageData }) {
     <OfficeShell
       activeHref="/users"
       title="Users & access"
-      crumbs={<>Who can sign in to each app, and what they can see · §1.4</>}
+      crumbs={<>Who can sign in to each app, and what they can see</>}
       actions={
         <Button tone="primary" onClick={() => setInviting(true)}>
           + Invite user

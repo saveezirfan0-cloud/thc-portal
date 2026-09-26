@@ -38,6 +38,12 @@ export const OFFICE_INBOX = [
   { code: 'CL5', label: '48-hour opt-out signed' },
   { code: 'CL6', label: '48-hour opt-out cancelled' },
   { code: 'BG08', label: 'Weekly payroll email' },
+  // The Staff App additions (main #76): the office is told of a name or
+  // photo change request (RC1, ADR-0045), payroll of an approved name change
+  // (RC4, as E7), and the office of a cover request inside 72 hours (OF5, ADR-0046).
+  { code: 'RC1', label: 'Name or photo change requested' },
+  { code: 'RC4', label: 'Name change approved (payroll)' },
+  { code: 'OF5', label: 'Cover requested' },
 ] as const;
 
 export type OfficeInboxCode = (typeof OFFICE_INBOX)[number]['code'];
