@@ -72,6 +72,35 @@ eVisas it is the only acceptable check for most of them.
   appended to `rtw_checks_latest_v` (admin-only). `compliance_review_queue_v` is not
   restated; the office reads the three columns from `rtw_checks_latest_v` by document.
 
+### Hardening from the security review (01.10)
+
+- **The worker learns nothing before the admin decides.**
+  - `my_rtw_checks()` withholds the outcome while a check is `needs_review`.
+  - With `admin_confirms` on, gov.uk's date is **not** pre-filled on
+    `compliance_docs`, which its worker can read. It waits on the check, in
+    `rtw_checks_latest_v` (admin-only), and that is where the read-only Verify date
+    comes from. Otherwise a date appearing on the document would tell someone using a
+    borrowed share code that gov.uk passed it.
+- **The photo is evidence.**
+  - `evidence_path_discardable()` refuses a check's photo and any `rtw-check-*` file
+    under the worker's folder. Without this, a worker naming the path in a refused
+    upload could have had the service key delete the photo before the comparison.
+  - `retained_storage_paths()` keeps the photo with its report if a legal hold ever
+    applies.
+- **A retry drops the earlier attempt's photo** (queued for the purge). Each attempt
+  writes its own `rtw-check-<id>-a<attempt>-photo.png`, so the purge never removes a
+  later attempt's file.
+- **Only a JSON `false` turns review off.** A missing, mistyped or string
+  `admin_confirms` keeps the admin's click.
+- **The photo and report actions return fixed messages**, never database text.
+- **Left as they are, and recorded here:**
+  - If the attach RPC lands but its response is lost, the runner deletes the photo, and
+    the panel shows "could not open", with the PDF as the fallback. This affects
+    availability only.
+  - The read-only Verify date is enforced in the office UI, not the database.
+    `compliance_verify_document` still takes an admin's date, as it does for every
+    document. Enforcing it would mean restating the one Verify path.
+
 ## Consequences
 
 - **Legal.** THC no longer has to accept the risk of skipping the Home Office photo check.

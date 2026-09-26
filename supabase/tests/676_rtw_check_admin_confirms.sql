@@ -20,7 +20,7 @@
 -- Every gov.uk result here is SYNTHETIC.
 -- =====================================================================
 begin;
-select plan(33);
+select plan(38);
 \ir _shared/fixtures.psql
 
 \set u1 'c6760000-0000-4000-8000-0000000000a1'
@@ -32,6 +32,8 @@ select plan(33);
 \set d2 'c6770000-0000-4000-8000-000000000002'
 \set d3 'c6770000-0000-4000-8000-000000000003'
 \set d4 'c6770000-0000-4000-8000-000000000004'
+\set w5 'c6760000-0000-4000-8000-000000000005'
+\set d5 'c6770000-0000-4000-8000-000000000005'
 
 select (now() at time zone 'Europe/London')::date as today \gset
 
@@ -53,6 +55,9 @@ select results_eq(
   'A: gov.uk is the only route — no provider — and the admin confirms every result');
 
 update settings set value = value || '{"enabled": true}'::jsonb where key = 'rtw_check';
+-- A malformed value is not a way to switch the review off: only JSON
+-- false does that. Everything below runs with this string in place.
+update settings set value = value || '{"admin_confirms": "off"}'::jsonb where key = 'rtw_check';
 
 insert into compliance_docs (id, staff_id, doc_type, share_code, review_status, needs_manual_review, uploaded_at) values
   (:'d1', :'w1', 'share_code_report', 'W67600001', 'pending', true, clock_timestamp()),
@@ -79,6 +84,13 @@ select throws_like(format($$ select rtw_check_attach_photo(%L, %L) $$, :'c1', :'
   '%rtw_photo_path_invalid%', 'B: never under another worker''s folder');
 select throws_like(format($$ select rtw_check_attach_photo(%L, %L) $$, :'c1', :'w1' || '/share-code-report/x.pdf'),
   '%rtw_photo_path_invalid%', 'B: and only a PNG');
+insert into storage.objects (bucket_id, name) values
+  ('documents', :'w1' || '/share-code-report/rtw-check-c1-photo.png'),
+  ('documents', :'w1' || '/share-code-report/rtw-check-c1-a2-photo.png');
+select is(evidence_path_discardable(:'w1', :'w1' || '/share-code-report/rtw-check-c1-photo.png'), false,
+  'B: a worker cannot have the service key discard the filed photo (security review 01.10)');
+select is(evidence_path_discardable(:'w1', :'w1' || '/share-code-report/rtw-check-c1-a2-photo.png'), false,
+  'B: nor a runner file not yet filed');
 select ok(has_function_privilege('service_role', 'rtw_check_attach_photo(uuid,text)', 'execute')
       and not has_function_privilege('authenticated', 'rtw_check_attach_photo(uuid,text)', 'execute')
       and not has_function_privilege('anon', 'rtw_check_attach_photo(uuid,text)', 'execute'),
@@ -99,8 +111,10 @@ select results_eq(
   'C: a clean pass is needs_review with the recommendation verify');
 select results_eq(
   format($$ select review_status::text, right_to_work_until, gov_report_path from compliance_docs where id = %L $$, :'d1'),
-  format($$ values ('pending'::text, %L::date, %L::text) $$, :'today'::date + 400, :'w1' || '/share-code-report/rtw-check-c1.pdf'),
-  'C: nothing is verified — the document is pending with gov.uk''s date pre-filled and the report on the profile');
+  format($$ values ('pending'::text, null::date, %L::text) $$, :'w1' || '/share-code-report/rtw-check-c1.pdf'),
+  'C: nothing is verified — the document is pending, the report on the profile, and gov.uk''s date NOT on the worker-readable document');
+select is((select right_to_work_until from rtw_checks_latest_v where document_id = :'d1'), :'today'::date + 400,
+  'C: the date waits on the check, where only the office reads it');
 select ok((select review_reason ~ 'photo' from rtw_checks where id = :'c1'),
   'C: the office is told to compare the photo before verifying');
 select is((select count(*)::int from audit_log where action = 'rtw_check.needs_review' and entity_id = :'d1'
@@ -140,9 +154,9 @@ select results_eq(format($$ select worker_reason, suggested_reason from rtw_chec
 
 select set_config('request.jwt.claims', json_build_object('sub', :'u1', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select results_eq($$ select status, worker_reason from my_rtw_checks() $$,
-  $$ values ('needs_review'::text, null::text) $$,
-  'D: the worker sees the check is with the office, and no reason yet');
+select results_eq($$ select status, outcome, worker_reason from my_rtw_checks() $$,
+  $$ values ('needs_review'::text, null::text, null::text) $$,
+  'D: the worker sees the check is with the office — no outcome and no reason yet');
 reset role;
 
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
@@ -184,6 +198,28 @@ select results_eq(
   'F: settled status waits for the admin too');
 select ok((select review_reason ~ 'no time limit' from rtw_checks where id = :'c4'),
   'F: and says "no time limit"');
+
+-- =====================================================================
+-- F2 · A retry drops the earlier attempt's photo
+-- =====================================================================
+reset role;
+insert into staff (id, employee_id, first_name, last_name, email, phone, dob, status, rtw_branch, share_code)
+values (:'w5', 97605, 'Tom', 'Reyes', 'tom@rtw676.test', '+447700967605', date '1990-06-06', 'compliant', 'work_visa', 'W67600005');
+insert into compliance_docs (id, staff_id, doc_type, share_code, review_status, needs_manual_review, uploaded_at)
+values (:'d5', :'w5', 'share_code_report', 'W67600005', 'pending', true, clock_timestamp());
+select set_config('request.jwt.claims', '{"role":"service_role"}', true);
+select check_id as c5 from rtw_check_claim(10, 600) where document_id = :'d5' \gset
+select rtw_check_attach_photo(:'c5', :'w5' || '/share-code-report/rtw-check-c5-a1-photo.png');
+select is(rtw_check_record(:'c5',
+    jsonb_build_object('outcome', 'error', 'source', 'govuk', 'error', 'govuk_timeout', 'checkedAt', now()),
+    jsonb_build_object('action', 'retry', 'error', 'govuk_timeout')) ->> 'status', 'queued',
+  'F2: an error is retried');
+select results_eq(
+  format($$ select (select photo_path from rtw_checks where id = %L),
+                   (select count(*)::int from storage_deletions where path = %L) $$,
+         :'c5', :'w5' || '/share-code-report/rtw-check-c5-a1-photo.png'),
+  $$ values (null::text, 1) $$,
+  'F2: and its photo is dropped and owed to the purge, so it never sits beside a later result');
 
 -- =====================================================================
 -- G · Who reads the new columns

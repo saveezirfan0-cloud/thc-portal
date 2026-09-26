@@ -166,7 +166,9 @@ declare
   d          compliance_docs;
   s          staff;
   v_action   text := p_decision ->> 'action';
-  v_confirm  boolean := coalesce((rtw_check_config() ->> 'admin_confirms')::boolean, true);
+  -- Only a real JSON false turns the admin's review off; anything else
+  -- (missing, a string, a typo) keeps it on (security review 01.10).
+  v_confirm  boolean := not coalesce(rtw_check_config() -> 'admin_confirms' = 'false'::jsonb, false);
   v_result   jsonb;
   v_outcome  text;
   v_status   text;
@@ -301,7 +303,13 @@ begin
     raise exception 'rtw_decision_invalid: %', coalesce(v_action, 'null') using errcode = '22023';
   end if;
 
-  if v_status = 'needs_review'
+  -- Pre-filling the pending document is ADR-0025's path only. With the
+  -- admin confirming, the date stays on the check (rtw_checks_latest_v,
+  -- admin-only): compliance_docs is readable by its worker, and a
+  -- right-to-work date appearing there would tell someone using a
+  -- borrowed share code that gov.uk passed it before anyone has compared
+  -- the photo (security review 01.10).
+  if v_status = 'needs_review' and not v_confirm
      and (select review_status from compliance_docs where id = d.id) = 'pending' then
     update compliance_docs
        set needs_manual_review = true,
@@ -313,8 +321,17 @@ begin
      where id = d.id;
   end if;
 
+  -- A retry starts again: an earlier attempt's photo must not sit beside
+  -- a later attempt's result (security review 01.10). Owed to the purge.
+  if v_status = 'queued' and c.photo_path is not null then
+    insert into storage_deletions (bucket, path, staff_id)
+    values ('documents', c.photo_path, c.staff_id)
+    on conflict (bucket, path) do nothing;
+  end if;
+
   update rtw_checks
      set status           = v_status,
+         photo_path       = case when v_status = 'queued' then null else photo_path end,
          source           = v_result ->> 'source',
          outcome          = v_outcome,
          result           = v_result,
@@ -399,3 +416,94 @@ order by c.compliance_doc_id, c.created_at desc, c.id desc;
 
 comment on view rtw_checks_latest_v is
   'The latest automated right-to-work check per document, for the candidate profile, the staff profile and /compliance (ADR-0025, ADR-0041: recommendation, the gov.uk photo and the suggested N8 reason appended). security_invoker over admin-read rtw_checks: nobody else reads a row.';
+
+-- ---------------------------------------------------------------------
+-- 6 · The photo is evidence, not a discardable upload; and the worker
+--     learns nothing before the admin decides (security review 01.10).
+--
+-- evidence_path_discardable(), restated from 20260928100000 §3c (its
+-- latest definition) with two more lines: a check's photo is referenced,
+-- and nothing named rtw-check-* under the worker's share-code-report
+-- folder is ever the worker's to discard — only the runner writes those
+-- names, and between its upload and its attach nothing references the
+-- object yet. Without this a worker naming the photo's path in a refused
+-- upload could have had the service key delete it before the admin
+-- compared it.
+-- ---------------------------------------------------------------------
+create or replace function public.evidence_path_discardable(p_staff uuid, p_path text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, extensions
+as $$
+  select p_staff is not null
+     and p_path is not null
+     and p_path like p_staff::text || '/%'
+     and p_path !~ '(^|/)\.\.(/|$)'
+     and p_path !~ ('^' || p_staff::text || '/share-code-report/rtw-check-')
+     and not exists (select 1 from compliance_docs d
+                      where d.file_path = p_path or d.gov_report_path = p_path)
+     and not exists (select 1 from staff s where s.wtr_optout_copy_path = p_path)
+     and not exists (select 1 from rtw_checks c where c.report_path = p_path or c.photo_path = p_path)
+     and exists (select 1 from storage.objects o
+                  where o.bucket_id = 'documents'
+                    and o.name = p_path
+                    and o.created_at > now() - interval '1 hour')
+$$;
+
+comment on function public.evidence_path_discardable(uuid, text) is
+  'True only for a documents-bucket object under the worker''s own folder, uploaded within the hour, that no compliance_docs row, opt-out copy or automated right-to-work check (report or photo) references, and that is not one of the runner''s rtw-check-* files (ADR-0025, ADR-0041). The Staff App asks this before removing a refused upload with the service key.';
+
+-- The photo is held with its report if THC ever extends the legal hold.
+create or replace function public.retained_storage_paths(p_staff uuid)
+returns setof text
+language sql
+stable
+security definer
+set search_path = public, extensions
+as $$
+  select d.file_path from compliance_docs d
+   where d.staff_id = p_staff and d.retain_until is not null and d.file_path is not null
+  union
+  select d.gov_report_path from compliance_docs d
+   where d.staff_id = p_staff and d.retain_until is not null and d.gov_report_path is not null
+  union
+  select c.report_path from rtw_checks c
+    join compliance_docs d on d.id = c.compliance_doc_id
+   where d.staff_id = p_staff and d.retain_until is not null and c.report_path is not null
+  union
+  select c.photo_path from rtw_checks c
+    join compliance_docs d on d.id = c.compliance_doc_id
+   where d.staff_id = p_staff and d.retain_until is not null and c.photo_path is not null
+$$;
+
+-- The worker's own view: while the result waits for the admin, the
+-- outcome is withheld too — "with the office", nothing more.
+create or replace function public.my_rtw_checks()
+returns table (
+  document_id   uuid,
+  status        text,
+  outcome       text,
+  worker_reason text,
+  created_at    timestamptz,
+  checked_at    timestamptz
+)
+language sql
+stable
+security definer
+set search_path = public, extensions
+as $$
+  select distinct on (c.compliance_doc_id)
+         c.compliance_doc_id, c.status,
+         case when c.status = 'needs_review' then null else c.outcome end,
+         c.worker_reason, c.created_at, c.finished_at
+    from rtw_checks c
+    join staff s on s.id = c.staff_id
+   where s.user_id = auth.uid()
+     and auth.uid() is not null
+   order by c.compliance_doc_id, c.created_at desc, c.id desc
+$$;
+
+comment on function public.my_rtw_checks() is
+  'The signed-in worker''s latest check per share-code document: status, outcome (withheld while the check waits for the office, ADR-0041), the N8 reason, when. Never the gov.uk name, conditions, report or photo, the office''s reason or the suggested reason (ADR-0025).';

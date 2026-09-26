@@ -102,7 +102,7 @@ export async function rtwReportLink(checkId: string): Promise<RtwActionResult> {
     .select('report_path')
     .eq('id', checkId)
     .maybeSingle();
-  if (error) return { ok: false, message: error.message };
+  if (error) return { ok: false, message: 'Could not open the report.' };
   if (!data?.report_path) return { ok: false, message: 'This check stored no report.' };
 
   let admin: ReturnType<typeof createAdminClient>;
@@ -194,7 +194,8 @@ export async function rtwCheckPhotos(checkId: string): Promise<RtwPhotosResult> 
     .select('staff_id, status, photo_path')
     .eq('check_id', checkId)
     .maybeSingle();
-  if (error) return { ok: false, message: error.message };
+  // Never the database's own text: it can echo the id back (security review 01.10).
+  if (error) return { ok: false, message: 'Could not load the photos.' };
   if (!check) return { ok: false, message: 'This is no longer the latest gov.uk check.' };
 
   const { data: staff } = await supabase

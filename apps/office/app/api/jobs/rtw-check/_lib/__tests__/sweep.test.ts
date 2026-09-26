@@ -261,10 +261,10 @@ describe('runRtwCheckSweep', () => {
         return record(input);
       };
       await runRtwCheckSweep(t.d);
-      expect(photoPath('s1', 'c1')).toBe('s1/share-code-report/rtw-check-c1-photo.png');
+      expect(photoPath('s1', 'c1', 1)).toBe('s1/share-code-report/rtw-check-c1-a1-photo.png');
       expect(order).toEqual([
-        'upload s1/share-code-report/rtw-check-c1-photo.png',
-        'attach c1 s1/share-code-report/rtw-check-c1-photo.png',
+        'upload s1/share-code-report/rtw-check-c1-a1-photo.png',
+        'attach c1 s1/share-code-report/rtw-check-c1-a1-photo.png',
         'record',
       ]);
     });
@@ -277,7 +277,7 @@ describe('runRtwCheckSweep', () => {
         },
       });
       await runRtwCheckSweep(t.d);
-      expect(t.removed).toEqual(['s1/share-code-report/rtw-check-c1-photo.png']);
+      expect(t.removed).toEqual(['s1/share-code-report/rtw-check-c1-a1-photo.png']);
       expect(t.recorded).toHaveLength(1);
     });
 

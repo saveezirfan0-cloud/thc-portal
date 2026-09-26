@@ -145,9 +145,13 @@ export function reportPath(staffId: string, checkId: string): string {
   return `${staffId}/share-code-report/rtw-check-${checkId}.pdf`;
 }
 
-/** Where the gov.uk photo goes: beside the report, under the worker's own folder. */
-export function photoPath(staffId: string, checkId: string): string {
-  return `${staffId}/share-code-report/rtw-check-${checkId}-photo.png`;
+/**
+ * Where the gov.uk photo goes: beside the report, under the worker's own
+ * folder, one file per attempt — a retry queues the earlier attempt's
+ * photo for deletion, so the next attempt must not reuse its name.
+ */
+export function photoPath(staffId: string, checkId: string, attempt: number): string {
+  return `${staffId}/share-code-report/rtw-check-${checkId}-a${attempt}-photo.png`;
 }
 
 const BRANCHES: readonly RtwBranch[] = [
@@ -224,7 +228,7 @@ export async function runRtwCheckSweep(
     // check without one still stands — the same photo is in the PDF.
     let photo: string | null = null;
     if (output.photo && decision.action !== 'retry' && deps.uploadPhoto && deps.attachPhoto) {
-      const target = photoPath(row.staff_id, row.check_id);
+      const target = photoPath(row.staff_id, row.check_id, row.attempt);
       try {
         await deps.uploadPhoto(target, output.photo);
         photo = target;
