@@ -228,6 +228,14 @@
 /* The × that takes a role off the worker is 17px of glyph; on a phone its
    hit area reaches the finger target without making the chip any larger. */
 @media (max-width: 760px) {
+  /* A do-not-return entry is a card here (card-rows): the whole card is
+     tinted, not each of its cells as separate strips. */
+  .tbl.card-rows tr.barred {
+    background: var(--coral-dim);
+  }
+  .tbl.card-rows tr.barred td {
+    background: none;
+  }
   .roles-edit .x {
     position: relative;
   }
