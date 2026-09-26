@@ -408,11 +408,12 @@ THC’s **“Health and Safety Presentation Questions”** is live as the step 6
 | 6 | When must you use Personal Protective Equipment (PPE)? | A — When using Chemicals |
 | 7 | COSHH – what does this symbol mean? (skull and crossbones) | C — Toxic |
 | 8 | Which of these foods can cause an allergic reaction? | D — All the above |
-| 9 | What are the recommended weight limits for women when carrying a load at Elbow height? | C — 16 Kgs |
-| 10 | What are the recommended weight limits for men when carrying a load at Elbow height? | A — 25 Kgs |
+| 9 | What are the recommended weight limits for women when carrying a load at Elbow height? | C — 16 Kgs (the closest option — see below) |
+| 10 | What are the recommended weight limits for men when carrying a load at Elbow height? | A — 25 Kgs (the closest option — see below) |
 
 - **Q8’s rewording.** THC’s Q8 is free text (“Name three (3) foods, which can cause an allergic reaction?”, with three blank lines), which a multiple-choice quiz cannot mark. It now reads “Which of these foods can cause an allergic reaction?” A. Peanuts · B. Milk · C. Shellfish · D. All the above. It is the one question still marked as a placeholder: approve it, or send a multiple-choice replacement.
 - **Questions the induction deck does not cover.** THC’s sheet says “All questions below have been covered in the presentation you have just seen”, but the deck has nothing on allergies (**Q4, Q5, Q8**) and gives no weight limits (**Q9, Q10** — its manual-handling slides say “know your limits” and mention 25 kg cartons, but not the limits at elbow height for women and men). Either add slides that cover them, or change those questions.
+- **Q9 and Q10 have no correct option as worded.** 16 kg (women) and 25 kg (men) are the Health and Safety Executive’s guideline figures for a load held close to the body between **knuckle** and elbow height. At elbow height and above, up to the shoulder, HSE gives **13 kg** for women and **20 kg** for men, and neither figure is among THC’s options. The quiz marks 16 kg and 25 kg correct because they are the closest of the options offered, not because they answer the question as written. Please either reword Q9 and Q10 to “at knuckle height” (the options can then stay) or change the options to 13 kg and 20 kg.
 
 #### 10 · Health & Safety induction slides
 

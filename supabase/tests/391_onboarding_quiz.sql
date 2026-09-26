@@ -16,7 +16,7 @@
 -- THC's real questions turn out to be.
 -- =====================================================================
 begin;
-select plan(43);
+select plan(47);
 
 \set pass_uid  'c3930000-0000-4000-8000-000000000001'
 \set fail_uid  'c3930000-0000-4000-8000-000000000002'
@@ -107,6 +107,26 @@ select throws_ok(
   format($$ select submit_quiz_attempt(%L::jsonb) $$,
          (select all_right || jsonb_build_object((select id::text from quiz_questions where active order by position limit 1), 99) from sheet)),
   'P0001', 'bad_answer', 'an index outside the options is refused');
+
+-- The quiz replaced under a worker's feet (20260930140000): a sheet built
+-- from the old questions is refused as such, before anything is written.
+select throws_ok(
+  format($$ select submit_quiz_attempt(%L::jsonb) $$,
+         (select jsonb_object_agg(id::text, correct_index) from quiz_questions
+           where not active and is_placeholder)),
+  'P0001', 'quiz_changed',
+  'answers keyed by the deactivated placeholder questions are refused as quiz_changed, not quiz_incomplete');
+select throws_ok(
+  format($$ select submit_quiz_attempt(%L::jsonb) $$,
+         (select all_right || jsonb_build_object(
+                   (select id::text from quiz_questions where not active order by position limit 1), 0)
+            from sheet)),
+  'P0001', 'quiz_changed',
+  'so is a full current sheet carrying one old question');
+select is((select count(*)::int from quiz_attempts where staff_id = :'pass'), 0,
+  'neither wrote an attempt');
+select is((select quiz_attempts from staff where id = :'pass'), 0,
+  'nor used one up');
 
 select is(
   (select submit_quiz_attempt(three_wrong)->>'outcome' from sheet), 'retry',
