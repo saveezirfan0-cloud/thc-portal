@@ -45,6 +45,9 @@ const REASONS: Record<string, string> = {
   induction_first: 'Finish the Health & Safety induction first.',
   no_attempts_left: 'You have no attempts left.',
   quiz_incomplete: 'Answer every question before you submit.',
+  // The quiz was replaced between loading and submitting (20260930140000):
+  // the screen reloads the current questions (QuizStep).
+  quiz_changed: 'The quiz has been updated — here are the current questions.',
   bad_answer: 'One of the answers wasn’t recognised. Please try again.',
   quiz_not_configured: 'The quiz isn’t available yet. Please contact the office.',
   answer_required: 'Answer the questions shown.',
@@ -70,11 +73,22 @@ const REASONS: Record<string, string> = {
 export const NOT_CONFIGURED =
   'This environment has no Supabase project, so nothing can be saved. See docs/04-setup-github-vercel-supabase.md.';
 
-export function reasonMessage(raw: string | null | undefined): string {
+/**
+ * The refusal code a database message carries, when it is one of ours — for
+ * the screens that do something besides showing the sentence (QuizStep
+ * reloads on `quiz_changed`).
+ */
+export function reasonCode(raw: string | null | undefined): string | null {
   const text = raw ?? '';
   // `missing_document:<key>` carries which one; the screen already names it.
-  for (const [code, sentence] of Object.entries(REASONS)) {
-    if (text === code || text.startsWith(`${code}:`) || text.includes(`${code}`)) return sentence;
+  for (const code of Object.keys(REASONS)) {
+    if (text === code || text.startsWith(`${code}:`) || text.includes(`${code}`)) return code;
   }
+  return null;
+}
+
+export function reasonMessage(raw: string | null | undefined): string {
+  const code = reasonCode(raw);
+  if (code) return REASONS[code]!;
   return 'Something went wrong. Please try again, or contact the office at admin@thehospitalitycompany.co.uk.';
 }

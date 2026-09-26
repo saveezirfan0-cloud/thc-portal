@@ -100,14 +100,52 @@ as today.
 
 ## 5 · From THC (content the app shows as placeholders)
 
-- [ ] Health & Safety **quiz**: the 10 questions and answers.
+- [x] 26.09: Health & Safety **quiz** received ("Health and Safety Presentation
+      Questions") and live as the step 6 quiz (migration `20260930140000`). THC
+      still has to confirm the items below. **The first two are go-live gates: no
+      real candidate sits the quiz until they are done.**
+  - [ ] **GATE — THC confirms the quiz answer key.** THC's sheet marks no answers,
+        so the build team inferred them (C, B, B, A, D, A, C, D, C, A; the ones the
+        induction deck covers agree with it). A wrong key passes or fails real
+        candidates wrongly, and the third failure rejects them;
+  - [ ] **GATE — THC approves Q8**, reworded from free text ("Name three (3) foods, which can cause
+        an allergic reaction?") to multiple choice ("Which of these foods can cause
+        an allergic reaction?" Peanuts · Milk · Shellfish · All the above); it is
+        the one question still flagged placeholder;
+  - [ ] **Q9–Q10 have no correct option as worded**: 16 kg / 25 kg (the answers
+        marked correct, the closest offered) are HSE's figures between knuckle and
+        elbow height; at elbow height HSE gives 13 kg / 20 kg. Reword to "knuckle
+        height" or change the options (`docs/17` item 9);
+  - [ ] **Q4, Q5, Q8** (allergies) and **Q9–Q10** (weight limits) are not covered
+        by the induction deck — add slides, or change the questions.
 - [x] 26.09: **Induction** slides received ("General Health & Safety Awareness", 21 slides) and
       live in the Staff App's step 5 as supplied. The deck still has empty photo
       boxes on slides 1, 2, 3, 11 and 20; send a finished file to replace it.
-- [ ] Employment **contract** text (goes into `contract_versions`).
+- [x] 26.09: Employment **contract** received ("Agency Worker Contract For
+      Services", 20 pages) and published as version `thc-agency-worker-2026-09`
+      (migration `20260930140100`), still flagged placeholder because of clause 28.
+      THC (and its solicitor) to confirm the items below. **The first is a go-live
+      gate: no real candidate signs until it is done.**
+  - [ ] **GATE — THC approves clause 28, the duty to disclose criminal
+        convictions**, and the approved text is published as a new, UNFLAGGED
+        version (a new `contract_versions` row, `is_placeholder = false`). THC's
+        document has none; §2.11 requires it, so the build team added it (wording
+        in `docs/17` item 2). Every signature records its version, so anyone who
+        signs the flagged one has signed text THC has not approved;
+  - [ ] **pay "to the nearest quarter hour"** (clause 1, "Rate of Pay" and
+        "Qualifying Period Rate of Pay", applied by clause 6) — the platform pays to
+        the minute (RULE-01/02). Which is right?
+  - [ ] **clause 8, time sheets "signed by an authorised representative of the
+        Client"** — the platform's record is the digital check-in/out and the
+        sign-out timesheet (§11.3); the clause should refer to them;
+  - [ ] the document's own slips, listed in `docs/17` item 2 (e.g. "SI 1988/1833",
+        "[24] hours", the holiday year "31 March to 1 April").
 - [ ] Wording sign-off: **E2b** (rejection after the interview, ADR-0017) and
       the completion-letter emails **CL1–CL6**, including which are mandatory.
-- [ ] **Privacy notice** legal text for `/privacy`.
+- [ ] **Privacy notice** legal text for `/privacy`. The "Data protection policy for
+      Workers" THC sent on 26.09 is an internal policy, not this notice — it refers
+      to "the Company's privacy notice for workers" itself. `/privacy` stays as it
+      is until that notice arrives.
 - [x] 26.09: sample **term-dates letters** (3) and a **completion letter** received. The
       document-reading prompt (ADR-0033) now refuses course or stage dates as
       terms and never takes a letter's own date as the completion date. The

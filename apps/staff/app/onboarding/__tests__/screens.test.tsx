@@ -1,5 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it, vi } from 'vitest';
+import { CONTRACT_VERSION_CLAUSE_28_PENDING } from '@thc/domain';
 import type { RtwForm } from '@thc/domain';
 
 /**
@@ -353,8 +354,10 @@ describe('5/11 and 6/11', () => {
           {
             id: 'q1',
             n: 1,
-            prompt: 'You discover a small fire in the kitchen. What should you do first?',
-            options: ['A', 'B', 'C', 'D'],
+            prompt:
+              'What fire extinguisher from these listed would be utilised on an electrical fire?',
+            options: ['Water', 'Foam', 'Carbon Dioxide'],
+            image: null,
           },
         ]}
         previous={[{ attemptNo: 1, correct: 7, total: 10, passed: false }]}
@@ -363,13 +366,37 @@ describe('5/11 and 6/11', () => {
     expect(html).toContain('Question 1 of 1');
     expect(html).toContain('Attempt 2 of 3');
     expect(html).toContain('Your answers are checked at the end, not one by one.');
+    expect(html).not.toContain('<img');
+  });
+
+  it('the quiz: a question with a picture shows it above the options (THC’s Q7)', () => {
+    const html = renderToStaticMarkup(
+      <QuizStep
+        firstName="Amara"
+        questions={[
+          {
+            id: 'q7',
+            n: 1,
+            prompt: 'COSHH – what does this symbol mean?',
+            options: ['Oxidising', 'Corrosive', 'Toxic'],
+            image: '/quiz/coshh-toxic.svg',
+          },
+        ]}
+        previous={[]}
+      />,
+    );
+    expect(html).toContain(
+      '<img class="quiz-img" src="/quiz/coshh-toxic.svg" alt="COSHH hazard symbol"/>',
+    );
+    expect(html.indexOf('quiz-img')).toBeLessThan(html.indexOf('quiz-opt'));
   });
 
   const question = {
     id: 'q1',
     n: 1,
-    prompt: 'You discover a small fire in the kitchen. What should you do first?',
-    options: ['A', 'B', 'C', 'D'],
+    prompt: 'What fire extinguisher from these listed would be utilised on an electrical fire?',
+    options: ['Water', 'Foam', 'Carbon Dioxide'],
+    image: null,
   };
   const quizResult = (over: Partial<Parameters<typeof QuizStep>[0]['initialResult'] & object>) =>
     renderToStaticMarkup(
@@ -531,8 +558,30 @@ describe('9/11 – 11/11', () => {
       />,
     );
     expect(html).toContain('<b>5. Ongoing duty to disclose convictions.</b>');
+    // "v1" is not the version clause 28 was added to: the generic draft note.
+    expect(html).toContain('Draft wording: THC’s own agreement replaces this text before go-live.');
+    expect(html).not.toContain('Clause 28');
     expect(html).toContain('Tick “I agree” to sign and continue');
     expect(footer(html).disabled).toBe(true);
+  });
+
+  it('contract, THC’s agreement: the note names clause 28, and only for that version', () => {
+    const html = renderToStaticMarkup(
+      <ContractStep
+        version={CONTRACT_VERSION_CLAUSE_28_PENDING}
+        title="Agency Worker Contract for Services"
+        body={
+          '1. INTERPRETATION.\n\n28. DUTY TO DISCLOSE CRIMINAL CONVICTIONS. The Temporary Worker undertakes to declare any unspent criminal conviction.'
+        }
+        isPlaceholder
+        signedStamp={null}
+      />,
+    );
+    expect(html).toContain(
+      'Clause 28, the duty to disclose convictions, is awaiting THC’s approval. Each published version is kept exactly as signed.',
+    );
+    expect(html).not.toContain('Draft wording');
+    expect(html).toContain('<b>1. INTERPRETATION.</b>');
   });
 
   it('contract, signed: the UK-time stamp is the signature', () => {
@@ -545,6 +594,7 @@ describe('9/11 – 11/11', () => {
         signedStamp="18.09.2026 14:42 UK time"
       />,
     );
+    expect(html).not.toContain('awaiting THC’s approval');
     expect(html).toContain(
       'Signed electronically · 18.09.2026 14:42 UK time — this timestamp is your signature',
     );

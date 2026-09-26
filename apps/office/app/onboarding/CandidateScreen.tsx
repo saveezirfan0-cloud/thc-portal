@@ -20,6 +20,7 @@ import {
   Stepper,
   Textarea,
 } from '@thc/ui';
+import { contractClause28Pending } from '@thc/domain';
 import { OfficeShell } from '../_components/OfficeShell';
 import {
   RTW_LABEL,
@@ -1774,8 +1775,10 @@ function ContractPhase({ row, contract }: { row: CandidateRow; contract: Contrac
           </div>
           {contract?.is_placeholder ? (
             <Note>
-              Placeholder wording until THC supplies the agreement text (docs/17). Every version
-              carries the ongoing duty to disclose an unspent conviction.
+              {contractClause28Pending(contract.version)
+                ? 'Clause 28, the ongoing duty to disclose an unspent conviction, is awaiting THC’s approval.'
+                : 'Placeholder wording until THC supplies the agreement text.'}{' '}
+              Every version carries the ongoing duty to disclose an unspent conviction.
             </Note>
           ) : null}
           <label className={signed ? 'check sel' : 'check'}>
