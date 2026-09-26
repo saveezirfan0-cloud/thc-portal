@@ -185,7 +185,7 @@ test('Save limits writes the settings row and says so (§3.4)', async ({ page })
     // Any .alert, not only the green one: a refusal is a coral alert
     // carrying the server's message, and that message is the diagnosis
     // (the first run of this test found "permission denied for function
-    // is_edge_base_url" on every save; 20260930150000).
+    // is_edge_base_url" on every save; 20260930150100).
     await expect(limits.locator('.alert')).toHaveText('Saved.');
     await expect(limits.locator('.alert')).toHaveClass(/\bgreen\b/);
     expect(

@@ -1,6 +1,6 @@
 -- =====================================================================
--- 676 · The office can write settings; edge_base_url is still guarded
---   20260930150000_settings_guard_runs_as_its_owner.sql
+-- 677 · The office can write settings; edge_base_url is still guarded
+--   20260930150100_settings_guard_runs_as_its_owner.sql
 --
 -- The edge_base_url guard ran as the caller and called a function the
 -- caller may not execute, so every write to `settings` through PostgREST
@@ -17,7 +17,7 @@
 begin;
 select plan(7);
 
-\set admin_uid '67600000-0000-4000-8000-000000000001'
+\set admin_uid '67700000-0000-4000-8000-000000000001'
 insert into auth.users (id, email) values (:'admin_uid', 'settings-admin@rls.test');
 insert into profiles (id, role, full_name) values (:'admin_uid', 'admin', 'Settings Admin');
 
@@ -30,7 +30,7 @@ select lives_ok(
       on conflict (key) do update set value = excluded.value, updated_at = excluded.updated_at$$,
   'an admin saves the different-venue gap (the Save limits upsert)');
 select lives_ok(
-  $$insert into settings (key, value, updated_at) values ('e2e_676_new_key', '"x"'::jsonb, now())
+  $$insert into settings (key, value, updated_at) values ('e2e_677_new_key', '"x"'::jsonb, now())
       on conflict (key) do update set value = excluded.value$$,
   'an admin inserts a settings row');
 

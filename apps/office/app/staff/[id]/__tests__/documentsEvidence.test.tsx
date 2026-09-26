@@ -24,6 +24,8 @@ vi.mock('../../../_lib/rtwCheckActions', () => ({
   runRtwCheckAgain: vi.fn(),
   markRtwCheckReviewed: vi.fn(),
   rtwReportLink: vi.fn(),
+  // Never settles: the photo pair stays "Loading the photos…" in these tests.
+  rtwCheckPhotos: vi.fn(() => new Promise(() => {})),
 }));
 vi.mock('@thc/db/browser', () => ({ createClient: vi.fn() }));
 const ok = () => Promise.resolve({ ok: true as const, message: 'Done.' });
@@ -145,6 +147,9 @@ const check = (over: Partial<RtwCheckRow>): RtwCheckRow => ({
   report_path: null,
   reviewed_at: null,
   stuck: false,
+  recommendation: null,
+  photo_path: null,
+  suggested_reason: null,
   ...over,
 });
 

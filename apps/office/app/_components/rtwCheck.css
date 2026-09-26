@@ -48,3 +48,61 @@
   border-left: 3px solid var(--coral-line);
   padding-left: 8px;
 }
+
+.rtwcheck-reason.verify {
+  color: var(--green-ink);
+  border-left-color: var(--green-line);
+}
+.rtwcheck-reason.reject {
+  color: var(--amber-ink);
+  border-left-color: var(--amber-line);
+}
+
+/* ADR-0041: the gov.uk photo beside the app selfie. Two columns down to 390px. */
+.rtwcheck-photos {
+  display: grid;
+  gap: 6px;
+}
+.rtwcheck-photo-pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  max-width: 360px;
+}
+.rtwcheck.compact .rtwcheck-photo-pair {
+  max-width: 260px;
+}
+.rtwcheck-photo {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  min-width: 0;
+}
+.rtwcheck-photo img,
+.rtwcheck-photo-missing {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+  background: var(--panel-2);
+}
+.rtwcheck-photo img {
+  display: block;
+  object-fit: cover;
+}
+.rtwcheck-photo-missing {
+  display: grid;
+  place-items: center;
+  padding: 8px;
+  text-align: center;
+  color: var(--muted);
+  box-sizing: border-box;
+}
+.rtwcheck-photo figcaption {
+  font-family: var(--font-label);
+  font-size: 10.5px;
+  letter-spacing: var(--label-track);
+  text-transform: var(--label-case);
+  color: var(--muted);
+  font-weight: var(--label-weight);
+}

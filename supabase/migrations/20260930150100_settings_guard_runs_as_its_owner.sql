@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20260930150000 · the office can save /settings again
+-- Migration 20260930150100 · the office can save /settings again
 --
 -- 20260927160300 put a BEFORE INSERT OR UPDATE trigger on `settings`,
 -- settings_edge_base_url_guard(), and in the same file revoked EXECUTE on
@@ -21,7 +21,7 @@
 -- trigger fires regardless of EXECUTE, so no grant is needed and none is
 -- given). is_edge_base_url() stays revoked from authenticated: the guard
 -- is the only caller that needs it. The rule itself is unchanged.
--- 676_settings_writable_by_the_office pins both halves.
+-- 677_settings_writable_by_the_office pins both halves.
 -- =====================================================================
 
 create or replace function public.settings_edge_base_url_guard()

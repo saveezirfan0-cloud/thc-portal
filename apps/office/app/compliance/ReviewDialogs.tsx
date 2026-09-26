@@ -23,8 +23,16 @@ import {
   niEvidenceLine,
   visaLimitProblem,
 } from './conditions';
-import { EVIDENCE_FORM_LABEL, ukDate, ukStamp, verifyStep } from './queue';
+import {
+  EVIDENCE_FORM_LABEL,
+  queueRowLockedUntil,
+  rejectPrefill,
+  ukDate,
+  ukStamp,
+  verifyStep,
+} from './queue';
 import { rtwDateProblem, rtwDateRule, rtwDateValue } from './rtw';
+import { rtwLockedLabel, rtwLockedValue } from '../_lib/rtwCheck';
 import type { RtwDateRule } from './rtw';
 import type { ActionResult, QueueRow } from './types';
 
@@ -314,7 +322,11 @@ function RejectModal({
   onClose: () => void;
   onReject: (reason: string) => void;
 }) {
-  const [reason, setReason] = useState('');
+  // ADR-0041: a share code the gov.uk check recommends rejecting opens with
+  // its suggested N8 text — the admin reads it, edits it if need be, and it
+  // reaches the worker only when they press Reject.
+  const suggested = rejectPrefill(row);
+  const [reason, setReason] = useState(suggested);
   const inEmployment = row.kind === 'declaration' && row.declaration_source === 'in_employment';
   const niCheck = row.kind === 'ni_check';
   return (
@@ -352,6 +364,13 @@ function RejectModal({
         </div>
       </div>
       {niCheck && row.ni_number ? <div className="sm">{niEvidenceLine(row.ni_number)}</div> : null}
+      {suggested ? (
+        <Note tone="amber">
+          <b>The automatic gov.uk check recommends Reject.</b>{' '}
+          {row.rtw_check_reason ?? 'Check the gov.uk report first.'} The reason below is its
+          suggestion — edit it before it goes to the worker.
+        </Note>
+      ) : null}
       <Textarea
         label={
           <>
@@ -492,11 +511,20 @@ function RightToWorkModal({
 }) {
   const conditions = useConditions(row);
   const [date, setDate] = useState(
-    (rule.field === 'expiry' ? row.expiry_date : row.doc_right_to_work_until) ?? '',
+    (rule.field === 'expiry'
+      ? row.expiry_date
+      : // With the admin confirming (ADR-0041) gov.uk's date waits on the
+        // check, not the worker-readable document: start from it.
+        (row.doc_right_to_work_until ?? row.rtw_check_until)) ?? '',
   );
   const [noTimeLimit, setNoTimeLimit] = useState(false);
-  const problem = rtwDateProblem(rule, date, noTimeLimit);
   const reverify = row.kind === 'rtw_date';
+  // ADR-0041: when the gov.uk check recommends Verify, its date is confirmed
+  // as it is — shown read-only and sent exactly — not typed.
+  const locked = reverify ? null : queueRowLockedUntil(row);
+  const problem = locked
+    ? rtwDateProblem(rule, locked.date ?? '', locked.noTimeLimit)
+    : rtwDateProblem(rule, date, noTimeLimit);
   return (
     <Modal
       open
@@ -514,7 +542,7 @@ function RightToWorkModal({
             onClick={() =>
               onVerify(
                 rule.field,
-                rtwDateValue(date, noTimeLimit),
+                locked ? rtwLockedValue(locked) : rtwDateValue(date, noTimeLimit),
                 reverify ? {} : conditions.confirmed,
               )
             }
@@ -537,19 +565,30 @@ function RightToWorkModal({
           ) : null}
         </div>
       </div>
-      <Input
-        type="date"
-        label={
-          <>
-            {rule.label} <span className="coral">*</span>
-          </>
-        }
-        value={noTimeLimit ? '' : date}
-        disabled={noTimeLimit}
-        onChange={(event) => setDate(event.target.value)}
-        hint={rule.hint}
-      />
-      {rule.allowNoTimeLimit ? (
+      {locked ? (
+        <div className="stack" data-testid="rtw-locked-until">
+          <div className="sm">
+            {rule.label}: <b className="mono">{rtwLockedLabel(locked)}</b>
+          </div>
+          <div className="muted xs">
+            Returned by gov.uk — confirmed as it is, not typed. {rule.hint}
+          </div>
+        </div>
+      ) : (
+        <Input
+          type="date"
+          label={
+            <>
+              {rule.label} <span className="coral">*</span>
+            </>
+          }
+          value={noTimeLimit ? '' : date}
+          disabled={noTimeLimit}
+          onChange={(event) => setDate(event.target.value)}
+          hint={rule.hint}
+        />
+      )}
+      {rule.allowNoTimeLimit && !locked ? (
         <label className="row sm">
           <input
             type="checkbox"
@@ -561,7 +600,14 @@ function RightToWorkModal({
         </label>
       ) : null}
       {reverify ? null : conditions.fields}
-      {row.rtw_check_reason ? (
+      {locked ? (
+        <Note tone="green">
+          <b>The automatic gov.uk check recommends Verify.</b>{' '}
+          {row.rtw_check_reason ??
+            'Compare the gov.uk photo with the worker’s selfie, then Verify.'}{' '}
+          The photos are on the row, under the check.
+        </Note>
+      ) : row.rtw_check_reason ? (
         <Note tone="coral">
           <b>Why the automatic gov.uk check did not verify it:</b> {row.rtw_check_reason} The date
           gov.uk returned, if any, is pre-filled — confirm it against the report.
@@ -582,7 +628,9 @@ function RightToWorkModal({
           date across the worker’s current evidence is kept.
         </Note>
       ) : null}
-      {problem && (date !== '' || noTimeLimit) ? <div className="coral sm">{problem}</div> : null}
+      {problem && (locked || date !== '' || noTimeLimit) ? (
+        <div className="coral sm">{problem}</div>
+      ) : null}
     </Modal>
   );
 }
