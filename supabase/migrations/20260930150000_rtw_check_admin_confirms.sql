@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261001090000 · the gov.uk check waits for an admin, and
+-- Migration 20260930150000 · the gov.uk check waits for an admin, and
 --                            needs no provider (ADR-0041, amending ADR-0025)
 --
 -- ADR-0025 built the check to the first brief: provider first, gov.uk as
@@ -119,6 +119,13 @@ begin
      or p_photo_path !~ ('^' || c.staff_id::text || '/share-code-report/[A-Za-z0-9][A-Za-z0-9._-]*\.png$') then
     raise exception 'rtw_photo_path_invalid' using errcode = '22023';
   end if;
+  -- A photo this one replaces (a re-claim after a lapsed lease) is owed
+  -- to the purge, not left behind with nothing pointing at it.
+  if c.photo_path is not null and c.photo_path <> p_photo_path then
+    insert into storage_deletions (bucket, path, staff_id)
+    values ('documents', c.photo_path, c.staff_id)
+    on conflict (bucket, path) do nothing;
+  end if;
   update rtw_checks set photo_path = p_photo_path, updated_at = now() where id = c.id;
 end $$;
 
@@ -167,7 +174,7 @@ declare
   s          staff;
   v_action   text := p_decision ->> 'action';
   -- Only a real JSON false turns the admin's review off; anything else
-  -- (missing, a string, a typo) keeps it on (security review 01.10).
+  -- (missing, a string, a typo) keeps it on (security review 26.09).
   v_confirm  boolean := not coalesce(rtw_check_config() -> 'admin_confirms' = 'false'::jsonb, false);
   v_result   jsonb;
   v_outcome  text;
@@ -275,10 +282,15 @@ begin
       v_suggest := v_worker;
       v_worker := null;
       v_status := 'needs_review';
-      v_reason := coalesce(v_reason, case v_outcome
-        when 'not_found' then 'gov.uk found no record for this share code and date of birth. Check the report, then Reject — the reason below goes to the worker.'
-        else 'gov.uk shows no right to work in the UK. Check the report, then Reject — the reason below goes to the worker.'
-      end);
+      -- The office's words are the database's here, never the runner's:
+      -- the runner's reasons were written for ADR-0025's automatic reject
+      -- ("the worker has been asked to re-enter it") and are false while
+      -- the admin decides (QA 26.09). "Not found" has no report or photo:
+      -- gov.uk shows nothing for a code it does not know.
+      v_reason := case v_outcome
+        when 'not_found' then 'gov.uk found no record for this share code and date of birth. Check both against what the worker entered, then Reject — the reason below goes to the worker.'
+        else 'gov.uk shows NO right to work in the UK for this share code. Read the report and compare the photo, then Reject — the reason below goes to the worker. Do not roster them on this evidence.'
+      end;
     else
       perform compliance_reject_document_as(null, d.id, v_worker);
       v_status := case when v_reason is null then 'rejected' else 'needs_review' end;
@@ -308,7 +320,7 @@ begin
   -- admin-only): compliance_docs is readable by its worker, and a
   -- right-to-work date appearing there would tell someone using a
   -- borrowed share code that gov.uk passed it before anyone has compared
-  -- the photo (security review 01.10).
+  -- the photo (security review 26.09).
   if v_status = 'needs_review' and not v_confirm
      and (select review_status from compliance_docs where id = d.id) = 'pending' then
     update compliance_docs
@@ -322,7 +334,7 @@ begin
   end if;
 
   -- A retry starts again: an earlier attempt's photo must not sit beside
-  -- a later attempt's result (security review 01.10). Owed to the purge.
+  -- a later attempt's result (security review 26.09). Owed to the purge.
   if v_status = 'queued' and c.photo_path is not null then
     insert into storage_deletions (bucket, path, staff_id)
     values ('documents', c.photo_path, c.staff_id)
@@ -419,7 +431,7 @@ comment on view rtw_checks_latest_v is
 
 -- ---------------------------------------------------------------------
 -- 6 · The photo is evidence, not a discardable upload; and the worker
---     learns nothing before the admin decides (security review 01.10).
+--     learns nothing before the admin decides (security review 26.09).
 --
 -- evidence_path_discardable(), restated from 20260928100000 §3c (its
 -- latest definition) with two more lines: a check's photo is referenced,

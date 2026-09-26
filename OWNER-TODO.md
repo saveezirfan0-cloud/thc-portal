@@ -155,6 +155,12 @@ as today.
 
 ## 6 · Decisions
 
+- [ ] **Keep gov.uk reports and photos after a GDPR removal?** The Home Office asks
+      employers to keep the right-to-work check result for the employment plus two years.
+      Today a removal erases the share-code report and the gov.uk photo with everything else
+      (ADR-0019 holds only the completion letter; ADR-0041 does not extend it). Say if they
+      should be held like the completion letter.
+
 - [ ] **Office pin editor?** When a worker's postcode lookup fails, their
       profile shows "location out of date" until they re-save a findable
       address. Say if managers should be able to move the pin themselves.

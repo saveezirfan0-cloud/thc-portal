@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 676 · The gov.uk check waits for an admin, and needs no provider
---   20261001090000_rtw_check_admin_confirms.sql · ADR-0041 (amends ADR-0025)
+--   20260930150000_rtw_check_admin_confirms.sql · ADR-0041 (amends ADR-0025)
 --
 --   A. Defaults: gov.uk is the only route (no provider), and the admin
 --      confirms every result.
@@ -20,7 +20,7 @@
 -- Every gov.uk result here is SYNTHETIC.
 -- =====================================================================
 begin;
-select plan(38);
+select plan(42);
 \ir _shared/fixtures.psql
 
 \set u1 'c6760000-0000-4000-8000-0000000000a1'
@@ -88,9 +88,16 @@ insert into storage.objects (bucket_id, name) values
   ('documents', :'w1' || '/share-code-report/rtw-check-c1-photo.png'),
   ('documents', :'w1' || '/share-code-report/rtw-check-c1-a2-photo.png');
 select is(evidence_path_discardable(:'w1', :'w1' || '/share-code-report/rtw-check-c1-photo.png'), false,
-  'B: a worker cannot have the service key discard the filed photo (security review 01.10)');
+  'B: a worker cannot have the service key discard the filed photo (security review 26.09)');
 select is(evidence_path_discardable(:'w1', :'w1' || '/share-code-report/rtw-check-c1-a2-photo.png'), false,
   'B: nor a runner file not yet filed');
+select lives_ok(format($$ select rtw_check_attach_photo(%L, %L) $$, :'c1', :'w1' || '/share-code-report/rtw-check-c1-a2-photo.png'),
+  'B: a later attempt''s photo replaces it');
+select results_eq(
+  format($$ select (select photo_path from rtw_checks where id = %L), (select count(*)::int from storage_deletions where path = %L) $$,
+         :'c1', :'w1' || '/share-code-report/rtw-check-c1-photo.png'),
+  format($$ values (%L::text, 1) $$, :'w1' || '/share-code-report/rtw-check-c1-a2-photo.png'),
+  'B: and the replaced photo is owed to the purge, not left behind');
 select ok(has_function_privilege('service_role', 'rtw_check_attach_photo(uuid,text)', 'execute')
       and not has_function_privilege('authenticated', 'rtw_check_attach_photo(uuid,text)', 'execute')
       and not has_function_privilege('anon', 'rtw_check_attach_photo(uuid,text)', 'execute'),
@@ -143,10 +150,12 @@ select results_eq(
     jsonb_build_object('outcome', 'not_found', 'source', 'govuk', 'checkedAt', now()),
     jsonb_build_object('action', 'reject',
                        'workerReason', 'gov.uk did not recognise this share code with your date of birth — check both and try again'),
-    %L) r) x $$, :'c2', :'w2' || '/share-code-report/rtw-check-c2.pdf'),
+    null) r) x $$, :'c2'),
   $$ values ('needs_review'::text, 'reject'::text) $$,
   'D: not_found is needs_review with the recommendation reject — never rejected automatically');
 select is((select review_status::text from compliance_docs where id = :'d2'), 'pending', 'D: the document is still pending');
+select ok((select review_reason ~ 'what the worker entered' and review_reason !~ 'report' from rtw_checks where id = :'c2'),
+  'D: the office is pointed at the code and date of birth — gov.uk shows no report for a code it does not know');
 select is((select count(*)::int from notification_outbox where key = 'N8:doc:' || :'d2'), 0, 'D: no N8 has gone out');
 select results_eq(format($$ select worker_reason, suggested_reason from rtw_checks where id = %L $$, :'c2'),
   $$ values (null::text, 'gov.uk did not recognise this share code with your date of birth — check both and try again'::text) $$,
@@ -176,13 +185,14 @@ select set_config('request.jwt.claims', '{"role":"service_role"}', true);
 select results_eq(
   format($$ select r ->> 'status', r ->> 'recommendation' from (select rtw_check_record(%L,
     jsonb_build_object('outcome', 'no_right_to_work', 'source', 'govuk', 'fullName', 'HADDAD, Omar', 'checkedAt', now()),
-    jsonb_build_object('action', 'reject', 'workerReason', 'gov.uk does not show a current right to work. Please contact the office.'),
+    jsonb_build_object('action', 'reject', 'workerReason', 'gov.uk does not show a current right to work. Please contact the office.',
+                       'officeReason', 'gov.uk returned NO right to work for this share code. The worker has been asked to re-enter it; do not roster them on this evidence — read the report and contact them.'),
     %L) r) x $$, :'c3', :'w3' || '/share-code-report/rtw-check-c3.pdf'),
   $$ values ('needs_review'::text, 'reject'::text) $$,
   'E: no right to work is needs_review, recommendation reject');
-select ok((select review_reason ~ 'no right to work' and suggested_reason is not null and worker_reason is null
+select ok((select review_reason ~* 'no right to work' and review_reason !~ 're-enter' and suggested_reason is not null and worker_reason is null
              from rtw_checks where id = :'c3'),
-  'E: with its own office reason and the N8 text held back');
+  'E: the office reason is the database''s — never the runner''s "asked to re-enter", which would be false — and the N8 text is held back');
 select is((select review_status::text from compliance_docs where id = :'d3'), 'pending', 'E: nothing rejected');
 
 -- =====================================================================
@@ -220,6 +230,8 @@ select results_eq(
          :'c5', :'w5' || '/share-code-report/rtw-check-c5-a1-photo.png'),
   $$ values (null::text, 1) $$,
   'F2: and its photo is dropped and owed to the purge, so it never sits beside a later result');
+select throws_like(format($$ select rtw_check_attach_photo(%L, %L) $$, :'c5', :'w5' || '/share-code-report/rtw-check-c5-a2-photo.png'),
+  '%rtw_check_not_running%', 'F2: a photo is filed only on a running check');
 
 -- =====================================================================
 -- G · Who reads the new columns
@@ -228,7 +240,7 @@ select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', '
 set local role authenticated;
 select results_eq(
   format($$ select recommendation, photo_path from rtw_checks_latest_v where document_id = %L $$, :'d1'),
-  format($$ values ('verify'::text, %L::text) $$, :'w1' || '/share-code-report/rtw-check-c1-photo.png'),
+  format($$ values ('verify'::text, %L::text) $$, :'w1' || '/share-code-report/rtw-check-c1-a2-photo.png'),
   'G: the office reads the recommendation and the photo path');
 select is((select suggested_reason from rtw_checks_latest_v where document_id = :'d3'),
   'gov.uk does not show a current right to work. Please contact the office.', 'G: and the suggested reason');
@@ -250,7 +262,7 @@ reset role;
 select remove_worker(:'w1');
 select is((select count(*)::int from rtw_checks where staff_id = :'w1'), 0, 'H: the worker''s checks are gone');
 select is((select count(*)::int from storage_deletions
-            where bucket = 'documents' and path = :'w1' || '/share-code-report/rtw-check-c1-photo.png'), 1,
+            where bucket = 'documents' and path = :'w1' || '/share-code-report/rtw-check-c1-a2-photo.png'), 1,
   'H: and the gov.uk photo is owed to the purge');
 
 select * from finish();

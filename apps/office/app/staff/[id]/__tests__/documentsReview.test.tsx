@@ -378,7 +378,7 @@ describe('ADR-0041: the admin decides every gov.uk check', () => {
       rtwCheckEnabled: true,
       reviewQueue: [shareRow()],
     });
-    expect(container.textContent).toContain('Passed — compare the photo');
+    expect(container.textContent).toContain('Recommend verify — compare the photo');
     expect(container.textContent).toContain('Compare the photos before you verify');
     await click(buttons('Verify')[0]);
     const box = dialog();

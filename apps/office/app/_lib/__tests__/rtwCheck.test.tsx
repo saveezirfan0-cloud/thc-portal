@@ -275,9 +275,9 @@ describe('ADR-0041: every result waits for the admin', () => {
       ...over,
     });
 
-  it('verify: green "Passed — compare the photo", the gov.uk date locked while pending', () => {
+  it('verify: cyan "Recommend verify — compare the photo", the gov.uk date locked while pending', () => {
     const view = rtwCheckView(verifyRec(), { docStatus: 'pending', enabled: true });
-    expect(view.status).toEqual({ tone: 'green', label: 'Passed — compare the photo' });
+    expect(view.status).toEqual({ tone: 'cyan', label: 'Recommend verify — compare the photo' });
     expect(view.recommendation).toBe('verify');
     expect(view.lockedUntil).toEqual({ date: '2028-03-31', noTimeLimit: false });
     expect(view.suggestedReason).toBeNull();
@@ -428,7 +428,7 @@ describe('ADR-0041: every result waits for the admin', () => {
     const html = renderToStaticMarkup(
       <RtwCheckPanel row={verifyRec()} docId="d1" docStatus="pending" enabled />,
     );
-    expect(html).toContain('Passed — compare the photo');
+    expect(html).toContain('Recommend verify — compare the photo');
     expect(html).toContain('Compare the photos before you verify');
     expect(html).toContain('rtwcheck-reason verify');
     // Never a storage path in the markup: the server action signs it.

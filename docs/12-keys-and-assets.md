@@ -260,7 +260,7 @@ sub-processor list must name Anthropic in place of Google (ADR-0033).
 ### The automated right-to-work check (ADR-0025)
 
 The gov.uk share-code check is a **Back Office route**, `POST /api/jobs/rtw-check`, not an
-Edge Function, because its gov.uk fallback drives a headless Chromium, which Supabase's
+Edge Function, because its gov.uk check (the only route since ADR-0041) drives a headless Chromium, which Supabase's
 Deno runtime cannot run. So its keys go on the **Back Office Vercel project**, not in
 Supabase secrets:
 

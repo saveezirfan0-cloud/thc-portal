@@ -78,11 +78,7 @@ export const GOVUK_SELECTORS: GovukSelectors = {
     { css: 'button[type="submit"]' },
   ],
   resultRoot: [{ css: 'main' }, { css: '#main-content' }, { css: 'body' }],
-  photo: [
-    { css: 'main img[alt*="photo" i]' },
-    { css: 'main img[alt*="image of" i]' },
-    { css: 'main img:not([src$=".svg"]):not([alt*="crown" i])' },
-  ],
+  photo: [{ css: 'main img[alt*="photo" i]' }, { css: 'main img[alt*="image of" i]' }],
 };
 
 /**

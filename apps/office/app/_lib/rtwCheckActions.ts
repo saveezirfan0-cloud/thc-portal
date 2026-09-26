@@ -194,7 +194,7 @@ export async function rtwCheckPhotos(checkId: string): Promise<RtwPhotosResult> 
     .select('staff_id, status, photo_path')
     .eq('check_id', checkId)
     .maybeSingle();
-  // Never the database's own text: it can echo the id back (security review 01.10).
+  // Never the database's own text: it can echo the id back (security review 26.09).
   if (error) return { ok: false, message: 'Could not load the photos.' };
   if (!check) return { ok: false, message: 'This is no longer the latest gov.uk check.' };
 

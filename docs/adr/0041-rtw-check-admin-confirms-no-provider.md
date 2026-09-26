@@ -1,6 +1,6 @@
 # ADR-0041 · The gov.uk check needs no provider, and an admin confirms every result
 
-**Status:** Accepted, 01.10.2026 · **Amends:** ADR-0025 §1–§2 (the automated gov.uk right-to-work check) · **Code:** migration `20261001090000_rtw_check_admin_confirms.sql`; pgTAP `676` (and `600`, `190`); `apps/office/app/api/jobs/rtw-check/_lib/{govuk,govuk.config,checker,sweep}.ts`, `route.ts`; the office's `RtwCheckPanel` and its callers
+**Status:** Accepted, 26.09.2026 · **Amends:** ADR-0025 §1–§2 (the automated gov.uk right-to-work check) · **Code:** migration `20260930150000_rtw_check_admin_confirms.sql`; pgTAP `676` (and `600`, `190`); `apps/office/app/api/jobs/rtw-check/_lib/{govuk,govuk.config,checker,sweep}.ts`, `route.ts`; the office's `RtwCheckPanel` and its callers
 
 ## Context
 
@@ -41,8 +41,8 @@ eVisas it is the only acceptable check for most of them.
   |---|---|---|
   | a right to work that fits the profile (name, branch, date, RULE-20 hours) | `verify` | "gov.uk confirms a right to work until …. Compare the gov.uk photo with the worker's selfie, then Verify." The date is shown **read-only** and sent on Verify |
   | settled status | `verify` | the same, "with no time limit" (EU settled branch only, ADR-0018) |
-  | not found | `reject` | the report, and the Reject box **pre-filled** with the worker-facing reason |
-  | no right to work | `reject` | the same, with its own reason |
+  | not found | `reject` | "check the share code and date of birth the worker entered" (gov.uk shows no report or photo for a code it does not know), and the Reject box **pre-filled** with the worker-facing reason |
+  | no right to work | `reject` | the report and photo, "do not roster them on this evidence", and the pre-filled reason |
   | a name, condition or branch that does not fit; repeated errors | `review` | ADR-0025's reasons, unchanged; the date is typed by hand from the report |
 
   So the following all work unchanged:
@@ -72,7 +72,7 @@ eVisas it is the only acceptable check for most of them.
   appended to `rtw_checks_latest_v` (admin-only). `compliance_review_queue_v` is not
   restated; the office reads the three columns from `rtw_checks_latest_v` by document.
 
-### Hardening from the security review (01.10)
+### Hardening from the security review (26.09)
 
 - **The worker learns nothing before the admin decides.**
   - `my_rtw_checks()` withholds the outcome while a check is `needs_review`.
@@ -100,6 +100,21 @@ eVisas it is the only acceptable check for most of them.
   - The read-only Verify date is enforced in the office UI, not the database.
     `compliance_verify_document` still takes an admin's date, as it does for every
     document. Enforcing it would mean restating the one Verify path.
+
+- **The office's wording for a recommended reject is the database's**, not the runner's:
+  the runner's reasons were written for ADR-0025's automatic reject ("the worker has been
+  asked to re-enter it") and would be false while the admin decides (QA 26.09).
+- **A replaced photo** (a re-claim after a lapsed lease) is queued for the purge by
+  `rtw_check_attach_photo()`.
+
+### Deviation from the wireframes
+
+`wireframes/backoffice/candidate.html`, `staff-profile.html` and `compliance.html` predate
+this decision. They show neither the photo pair, the recommendation pills ("Recommend
+verify — compare the photo" in cyan, "Recommend reject" in amber), the "automatic check ·
+your decision" badge nor the read-only gov.uk date. The screens follow this ADR. The
+recommend-verify pill is cyan rather than green on purpose: green means Verified on these
+screens (the wireframes' "Valid"), and nothing is verified until the admin clicks.
 
 ## Consequences
 

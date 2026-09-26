@@ -909,7 +909,7 @@ function ShareCodeCard({
   const view = rtwCheckView(check, { docStatus: doc.review_status, enabled: checkEnabled });
   const pill = view.status ?? REVIEW_PILL[doc.review_status];
   // ADR-0041: a check that recommends Verify or Reject is the check's own
-  // pill ("Passed — compare the photo", "Recommend reject"), not "Manual review".
+  // pill ("Recommend verify — compare the photo", "Recommend reject"), not "Manual review".
   const recommended =
     check?.status === 'needs_review' &&
     (check.recommendation === 'verify' || check.recommendation === 'reject');
@@ -921,7 +921,13 @@ function ShareCodeCard({
   const locked = actionable ? view.lockedUntil : null;
   const typing = actionable && view.manualAllowed && !locked;
   const rule = rtwDateRule(doc.doc_type, handlers.branch);
-  const [until, setUntil] = useState(doc.right_to_work_until ?? '');
+  // ADR-0041: gov.uk's date waits on the check (admin-only), not on the
+  // worker-readable document, so a typed date starts from it.
+  const [until, setUntil] = useState(
+    doc.right_to_work_until ??
+      (check?.outcome === 'right_to_work' ? check.right_to_work_until : null) ??
+      '',
+  );
   const [noTimeLimit, setNoTimeLimit] = useState(false);
   const problem = locked
     ? rtwDateProblem(rule, locked.date ?? '', locked.noTimeLimit)

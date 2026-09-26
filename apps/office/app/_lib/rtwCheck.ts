@@ -59,13 +59,15 @@ export interface RtwCheckRow {
    * settings.rtw_check.admin_confirms on, every result waits in
    * needs_review carrying one of these, and the admin decides through the
    * one Verify / Reject path. Null on a check still in flight, and on a
-   * row read before 20261001090000.
+   * row read before 20260930150000.
    */
   recommendation: RtwRecommendation | null;
   /**
    * The applicant photo gov.uk showed (a key in the private documents
-   * bucket), for the admin to compare with the app selfie. Never handed to
-   * the browser: rtwCheckPhotos() signs it on the server.
+   * bucket), for the admin to compare with the app selfie. The key reaches
+   * the admin's page (these are client components) but is useless there:
+   * the bucket denies every signed-in role, and only rtwCheckPhotos()
+   * signs it, on the server, after an admin check.
    */
   photo_path: string | null;
   /**
@@ -87,7 +89,7 @@ export const RTW_CHECK_COLUMNS =
   'next_attempt_at, created_at, started_at, finished_at, right_to_work_until, no_time_limit, ' +
   'conditions, term_time_limit_hours, record_name, reference_number, review_reason, ' +
   'worker_reason, error, report_path, reviewed_at, stuck, ' +
-  // 20261001090000 (ADR-0041), appended to the view.
+  // 20260930150000 (ADR-0041), appended to the view.
   'recommendation, photo_path, suggested_reason';
 
 /** A row read from the view, with anything it could not type set safely. */
@@ -125,7 +127,7 @@ export function parseRtwCheckRow(raw: Record<string, unknown>): RtwCheckRow | nu
     report_path: text(raw['report_path']),
     reviewed_at: text(raw['reviewed_at']),
     stuck: raw['stuck'] === true,
-    // Absent before 20261001090000: read as "no recommendation".
+    // Absent before 20260930150000: read as "no recommendation".
     recommendation: isRecommendation(raw['recommendation']) ? raw['recommendation'] : null,
     photo_path: text(raw['photo_path']),
     suggested_reason: text(raw['suggested_reason']),
@@ -237,7 +239,9 @@ export function rtwLockedLabel(locked: RtwLockedUntil): string {
 /** The pill of a needs-review check that carries a recommendation (ADR-0041). */
 const RECOMMENDATION_STATUS: Partial<Record<RtwRecommendation, { tone: RtwTone; label: string }>> =
   {
-    verify: { tone: 'green', label: 'Passed — compare the photo' },
+    // Cyan, not green: green means Verified on these screens (the
+    // wireframes' "Valid"), and nothing is verified until the admin clicks.
+    verify: { tone: 'cyan', label: 'Recommend verify — compare the photo' },
     reject: { tone: 'amber', label: 'Recommend reject' },
   };
 

@@ -511,7 +511,11 @@ function RightToWorkModal({
 }) {
   const conditions = useConditions(row);
   const [date, setDate] = useState(
-    (rule.field === 'expiry' ? row.expiry_date : row.doc_right_to_work_until) ?? '',
+    (rule.field === 'expiry'
+      ? row.expiry_date
+      : // With the admin confirming (ADR-0041) gov.uk's date waits on the
+        // check, not the worker-readable document: start from it.
+        (row.doc_right_to_work_until ?? row.rtw_check_until)) ?? '',
   );
   const [noTimeLimit, setNoTimeLimit] = useState(false);
   const reverify = row.kind === 'rtw_date';

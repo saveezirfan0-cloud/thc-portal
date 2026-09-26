@@ -218,7 +218,7 @@ describe('the share code on the candidate profile (ADR-0041)', () => {
   it('verify: gov.uk’s date read-only, and Verify sends exactly it', async () => {
     render(shareOnly(check({})));
     const card = shareCard();
-    expect(card.textContent).toContain('Passed — compare the photo');
+    expect(card.textContent).toContain('Recommend verify — compare the photo');
     expect(card.textContent).toContain('31.03.2028');
     expect(card.textContent).toContain('Compare the photos before you verify');
     expect(card.querySelector('input[type="date"]')).toBeNull();
