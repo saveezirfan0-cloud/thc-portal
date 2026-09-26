@@ -511,6 +511,13 @@ export type Database = {
             foreignKeyName: 'bookings_shift_id_fkey';
             columns: ['shift_id'];
             isOneToOne: false;
+            referencedRelation: 'client_arrivals_v';
+            referencedColumns: ['shift_id'];
+          },
+          {
+            foreignKeyName: 'bookings_shift_id_fkey';
+            columns: ['shift_id'];
+            isOneToOne: false;
             referencedRelation: 'client_lineup_v';
             referencedColumns: ['shift_id'];
           },
@@ -3519,6 +3526,13 @@ export type Database = {
             foreignKeyName: 'shift_offers_shift_id_fkey';
             columns: ['shift_id'];
             isOneToOne: false;
+            referencedRelation: 'client_arrivals_v';
+            referencedColumns: ['shift_id'];
+          },
+          {
+            foreignKeyName: 'shift_offers_shift_id_fkey';
+            columns: ['shift_id'];
+            isOneToOne: false;
             referencedRelation: 'client_lineup_v';
             referencedColumns: ['shift_id'];
           },
@@ -5012,6 +5026,80 @@ export type Database = {
             referencedRelation: 'student_visa_v';
             referencedColumns: ['id'];
           },
+          {
+            foreignKeyName: 'shift_requirements_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'client_events_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_requirements_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'clients_event_list_v';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_requirements_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'events';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'shift_requirements_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_feedback_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'shift_requirements_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_shift_history_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'shift_requirements_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'staff_violations_v';
+            referencedColumns: ['event_id'];
+          },
+          {
+            foreignKeyName: 'shift_requirements_event_id_fkey';
+            columns: ['event_id'];
+            isOneToOne: false;
+            referencedRelation: 'venue_upcoming_events_v';
+            referencedColumns: ['event_id'];
+          },
+        ];
+      };
+      client_account_v: {
+        Row: {
+          contact_emails: string[] | null;
+          name: string | null;
+        };
+        Insert: {
+          contact_emails?: string[] | null;
+          name?: string | null;
+        };
+        Update: {
+          contact_emails?: string[] | null;
+          name?: string | null;
+        };
+        Relationships: [];
+      };
+      client_arrivals_v: {
+        Row: {
+          arrived: number | null;
+          confirmed: number | null;
+          event_id: string | null;
+          shift_id: string | null;
+        };
+        Relationships: [
           {
             foreignKeyName: 'shift_requirements_event_id_fkey';
             columns: ['event_id'];
@@ -8772,6 +8860,7 @@ export type Database = {
       };
       onboarding_uk_today: { Args: never; Returns: string };
       outbox_backoff: { Args: { p_attempt: number }; Returns: string };
+      password_check_allowed: { Args: never; Returns: boolean };
       payable_minutes: {
         Args: {
           p_check_in_at: string;
@@ -8986,6 +9075,7 @@ export type Database = {
         };
         Returns: string;
       };
+      record_password_check_failure: { Args: never; Returns: undefined };
       record_ping: {
         Args: { p_booking: string; p_lat: number; p_lng: number };
         Returns: Json;

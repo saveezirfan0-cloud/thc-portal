@@ -73,11 +73,7 @@ export async function changePassword(
   // ---- 2. is it really them? -------------------------------------------
   // The per-account limit comes first, on the caller's own session. If it
   // cannot be read, fail closed: no answer is not a "yes".
-  // The RPCs are not in @thc/db's generated types until gen:types runs
-  // after deploy (ADR-0051), hence the casts.
-  const { data: allowed, error: limitError } = await supabase.rpc(
-    'password_check_allowed' as never,
-  );
+  const { data: allowed, error: limitError } = await supabase.rpc('password_check_allowed');
   if (limitError) {
     console.error('[account] password attempt limit could not be read', {
       code: limitError.code,
@@ -85,7 +81,7 @@ export async function changePassword(
     });
     return fail(PASSWORD_COPY.failed);
   }
-  if ((allowed as unknown) !== true) return fail(PASSWORD_COPY.tooMany);
+  if (allowed !== true) return fail(PASSWORD_COPY.tooMany);
 
   const verifier = createStatelessClient(url, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -105,7 +101,7 @@ export async function changePassword(
     if (verifyError.code === 'invalid_credentials' || verifyError.status === 400) {
       // Only a wrong password counts towards the limit — never Supabase's
       // own rate limit (above) or a network failure (below).
-      const { error: recordError } = await supabase.rpc('record_password_check_failure' as never);
+      const { error: recordError } = await supabase.rpc('record_password_check_failure');
       if (recordError) {
         console.error('[account] failed password check could not be recorded', {
           code: recordError.code,

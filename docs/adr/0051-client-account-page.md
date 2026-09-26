@@ -32,6 +32,6 @@ The codebase has no single "office email" the client can read. The office's mail
 ## Consequences
 
 - `client_account_v` is the tenth owner-rights view the Supabase advisor will list as `security_definer_view`. As with the other nine, this is the ADR-0004 mechanism and not a lapse. `docs/14-handover.md`'s count ("9 since `20260927120000`") should become 10.
-- `packages/db` generated types do not include the view until `pnpm --filter @thc/db gen:types` runs against the project after deploy. Until then the loader reads it untyped, as the layout does for `client_company_v`.
+- `packages/db`'s generated types include `client_account_v`, `client_arrivals_v` and the two password-limit RPCs since they were regenerated from live after #78 deployed. The RPC calls in `actions.ts` are typed. The loader still reads the view through the untyped client, as the layout does for `client_company_v`.
 - `docs/08-screen-inventory.md` needs a row for `/client/account` pointing at this ADR, since there is no wireframe.
 - Supabase's "secure password change" setting, if it is turned on, asks for a reauthentication nonce when the session is more than 24 h old. The action reports this as "sign out and sign back in, then change your password straight away" rather than failing silently.
