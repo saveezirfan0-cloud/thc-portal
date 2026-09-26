@@ -15,12 +15,17 @@ export interface RateCardRow {
   role_id: string;
   role_name: string;
   role_description: string | null;
-  charge_rate: number;
+  /**
+   * The money columns are null when the card was read for an office role
+   * without finance (ADR-0061): the row then comes from `client_rate_cards`
+   * itself — role and dress codes only.
+   */
+  charge_rate: number | null;
   /** From the §9.8 catalogue, never from the client. */
-  base_pay_rate: number;
+  base_pay_rate: number | null;
   /** base × 1.1207, through final_rate() (§9.8). */
-  final_pay_rate: number;
-  margin_per_hour: number;
+  final_pay_rate: number | null;
+  margin_per_hour: number | null;
   /** Of the charge: the share of what the client pays that THC keeps. */
   margin_pct: number | null;
   dress_codes: string[];
@@ -72,7 +77,8 @@ export interface ClientEventRow {
 export interface RoleOption {
   id: string;
   name: string;
-  pay_rate: number;
+  /** From `role_rates_v` (ADR-0061); null when it could not be read. */
+  pay_rate: number | null;
 }
 
 export interface StaffOption {

@@ -91,7 +91,11 @@ export function RoleBoard({
   const showPools = showsCandidatePools(status, counts);
   // §3.3 wireframe: no Unavailable on a Completed or Cancelled event either.
   const live = status === 'upcoming' || status === 'ongoing';
-  const rate = rateLine(section.payRate, section.chargeRate);
+  // ADR-0061: no rates for an office role without finance — then no line.
+  const rate =
+    section.payRate === null || section.chargeRate === null
+      ? null
+      : rateLine(section.payRate, section.chargeRate);
   // RULE-16: nothing is offered on a section that is over.
   const canInvite = live && now < endsAt;
   const windowEnded = now > endsAt;
@@ -122,10 +126,12 @@ export function RoleBoard({
             </span>
           ) : null}
           {/* Base, then base + 12.07% holiday broken out (§9.8), then the margin. */}
-          <span className="rate sm muted">
-            Pay <b>{rate.pay}</b> · final {rate.final} · charge <b>{rate.charge}</b> ·{' '}
-            <span className={rate.marginTone}>{rate.margin}</span>
-          </span>
+          {rate ? (
+            <span className="rate sm muted">
+              Pay <b>{rate.pay}</b> · final {rate.final} · charge <b>{rate.charge}</b> ·{' '}
+              <span className={rate.marginTone}>{rate.margin}</span>
+            </span>
+          ) : null}
         </>
       }
       actions={

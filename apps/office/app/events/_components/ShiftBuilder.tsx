@@ -36,10 +36,17 @@ export interface ShiftBuilderProps {
   booked: Record<string, number>;
   /** §3.2: the event has started, so nothing can be changed. */
   locked: boolean;
+  /**
+   * ADR-0061: may the viewer see pay and charge rates (`office_can('finance')`)?
+   * False for a scheduler: no rate, charge, margin or forecast money is
+   * drawn, none is sent on save, and the database gives their sections the
+   * catalogue rates.
+   */
+  ratesVisible: boolean;
   save: (input: EventInput) => Promise<{ error: string } | { ok: true; id: string }>;
 }
 
-function toInput(draft: EventDraft, id: string | null): EventInput {
+function toInput(draft: EventDraft, id: string | null, ratesVisible: boolean): EventInput {
   return {
     id,
     clientId: draft.clientId,
@@ -57,8 +64,8 @@ function toInput(draft: EventDraft, id: string | null): EventInput {
       end: role.end,
       headcount: role.headcount,
       buffer: role.buffer,
-      chargeRate: role.chargeRate,
-      payRate: role.payRate,
+      chargeRate: ratesVisible ? role.chargeRate : null,
+      payRate: ratesVisible ? role.payRate : null,
       dressCode: effectiveDressCode(role),
       autoAssign: role.autoAssign,
       allocationPerHour: role.allocationPerHour,
@@ -82,6 +89,7 @@ export function ShiftBuilder({
   confirmed,
   booked,
   locked,
+  ratesVisible,
   save,
 }: ShiftBuilderProps) {
   const [draft, setDraft] = useState<EventDraft>(initial);
@@ -195,7 +203,7 @@ export function ShiftBuilder({
   function onSave() {
     setError(null);
     startTransition(async () => {
-      const result = await save(toInput(draft, saved?.id ?? null));
+      const result = await save(toInput(draft, saved?.id ?? null, ratesVisible));
       if (result && 'error' in result) setError(result.error);
     });
   }
@@ -242,7 +250,8 @@ export function ShiftBuilder({
               {draft.poNumber ? ` · PO ${draft.poNumber}` : ''}.
             </b>{' '}
             Allowed up to the event&rsquo;s start. Every field — venue, date and time, headcount,
-            buffer, charge rate, dress code, PO Number — is editable the same way as at creation.
+            buffer, {ratesVisible ? 'charge rate, ' : ''}dress code, PO Number — is editable the
+            same way as at creation.
           </Alert>
         ) : null}
 
@@ -455,6 +464,7 @@ export function ShiftBuilder({
                 changed={changesByKey.get(role.key) ?? new Set()}
                 original={role.id ? originals.get(role.id) : undefined}
                 mode={mode}
+                ratesVisible={ratesVisible}
                 booked={role.id ? (booked[role.id] ?? 0) : 0}
                 locked={readOnly}
                 onChange={(patch) =>
@@ -523,6 +533,7 @@ export function ShiftBuilder({
           headcount={headcount}
           buffer={buffer}
           forecast={forecast}
+          ratesVisible={ratesVisible}
         />
 
         {mode === 'edit' && !readOnly ? (
@@ -533,8 +544,8 @@ export function ShiftBuilder({
                 · dress code → everyone booked on <b>that role</b> re-confirms (push N11).
               </div>
               <div>
-                <span className="muted">○</span> Headcount · buffer · charge rate · PO Number ·
-                notes → applied silently.
+                <span className="muted">○</span> Headcount · buffer ·{' '}
+                {ratesVisible ? 'charge rate · ' : ''}PO Number · notes → applied silently.
               </div>
             </div>
           </Panel>
@@ -551,8 +562,8 @@ export function ShiftBuilder({
           >
             <span className="sm muted">
               Multi-day = separate events created via <b>Duplicate</b> on the event board. The clone
-              copies the roles (times, headcount, buffer, rates, dress code), <b>not the staff</b>,
-              and starts filling from zero.
+              copies the roles (times, headcount, buffer, {ratesVisible ? 'rates, ' : ''}dress
+              code), <b>not the staff</b>, and starts filling from zero.
             </span>
           </Panel>
         ) : null}

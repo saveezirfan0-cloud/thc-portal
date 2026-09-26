@@ -115,8 +115,11 @@ select is(office_can('write'), false, 'a worker: no office write');
 set local "request.jwt.claims" = '{"sub":"75000000-0000-4000-8000-000000000001","role":"authenticated"}';
 select is((select count(*)::int from events where id in (:'event_a', :'event_b')), 2,
   'a viewer reads events');
-select is((select count(*)::int from shift_requirements where id = :'shift_a' and pay_rate = 14.00), 1,
-  'and role sections with their rates');
+-- ADR-0061: the rate columns are selectable by no API session; an office
+-- role with finance — the viewer included — reads them from shift_rates_v.
+select is((select count(*)::int from shift_requirements s join shift_rates_v r on r.shift_id = s.id
+            where s.id = :'shift_a' and r.pay_rate = 14.00), 1,
+  'and role sections with their rates (through shift_rates_v since ADR-0061 — a viewer has finance)');
 select is((select count(*)::int from bank_details where staff_id in (:'staffa', :'staffb')), 2,
   'and money-only tables (bank details): a viewer has finance');
 select is((select count(*)::int from report_sends where error = 'rls_fixture_probe'), 1,

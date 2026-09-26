@@ -4,6 +4,8 @@ import { isEditLocked, ukRoleWindow } from '@thc/domain';
 import { updateEvent } from '../../actions';
 import { loadEvent, loadReferenceData } from '../../data';
 import { OfficeShell } from '../../../_components/OfficeShell';
+import { currentOfficeRole } from '../../../_components/officeUser';
+import { officeCan } from '../../../_lib/permissions';
 import { ViewerZone } from '../../_components/ViewerZone';
 import { ShiftBuilder } from '../../_components/ShiftBuilder';
 import { draftFromSaved } from '../../draft';
@@ -24,8 +26,14 @@ export const metadata = { title: 'Edit event · THC Back Office' };
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const [reference, event] = await Promise.all([loadReferenceData(), loadEvent(id)]);
+  const [reference, event, officeRole] = await Promise.all([
+    loadReferenceData(),
+    loadEvent(id),
+    currentOfficeRole(),
+  ]);
   if (!event) notFound();
+  // ADR-0061: no rate is shown to, or sent by, an office role without finance.
+  const ratesVisible = officeCan(officeRole, 'finance');
 
   const dressCodesFor = (roleId: string) =>
     reference.clients.find((c) => c.id === event.clientId)?.rateCard[roleId]?.dressCodes ?? [];
@@ -55,6 +63,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
         confirmed={confirmed}
         booked={booked}
         locked={locked}
+        ratesVisible={ratesVisible}
         save={updateEvent}
       />
     </OfficeShell>

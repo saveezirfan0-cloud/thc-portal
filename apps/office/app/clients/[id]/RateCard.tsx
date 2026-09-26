@@ -29,8 +29,27 @@ import type { RateCardRow, RoleOption } from './types';
  * SQL is the single definition of the 12.07% (§9.8) and every margin in
  * the system is derived from it; a second implementation in TypeScript is
  * how two screens come to disagree about what a client is worth.
+ *
+ * ADR-0061: an office role without finance (a scheduler) gets the same
+ * block as a list of roles and their dress codes — no rate, no margin and
+ * none of the add / edit / remove controls the database would refuse.
  */
 export function RateCard({
+  clientId,
+  rows,
+  roles,
+  ratesVisible = true,
+}: {
+  clientId: string;
+  rows: RateCardRow[];
+  roles: RoleOption[];
+  ratesVisible?: boolean;
+}) {
+  if (!ratesVisible) return <RateCardWithoutRates rows={rows} />;
+  return <EditableRateCard clientId={clientId} rows={rows} roles={roles} />;
+}
+
+function EditableRateCard({
   clientId,
   rows,
   roles,
@@ -68,7 +87,7 @@ export function RateCard({
   const open = (row: RateCardRow) => {
     setDraft(null);
     setEditing(row.id);
-    setRate(row.charge_rate.toFixed(2));
+    setRate((row.charge_rate ?? 0).toFixed(2));
     setCodes(row.dress_codes);
     setCodeDraft('');
   };
@@ -210,7 +229,7 @@ export function RateCard({
                     <td className="right-align mono">{gbp(row.base_pay_rate)}</td>
                     <td className="right-align mono">{gbp(row.final_pay_rate)}</td>
                     <td className={`right-align mono ${marginTone(row.margin_pct)}`}>
-                      {row.margin_per_hour >= 0 ? '+' : ''}
+                      {(row.margin_per_hour ?? 0) >= 0 ? '+' : ''}
                       {gbp(row.margin_per_hour)}/h
                       <span className="sub muted">
                         {row.margin_pct === null ? '—' : `${row.margin_pct}%`}
@@ -260,6 +279,70 @@ export function RateCard({
           as a share of the charge. Both staff pay and charge rates change during the year, so
           editing stays open. This dress-code list is what the event form offers for this client and
           role; the event-level &ldquo;Other&rdquo; is a one-off and is not saved back here.
+        </span>
+      </div>
+    </Panel>
+  );
+}
+
+/**
+ * The rate card for an office role without finance (ADR-0061): the roles
+ * this client is set up for and the dress codes the event form offers —
+ * what scheduling needs — and nothing that costs or earns.
+ */
+function RateCardWithoutRates({ rows }: { rows: RateCardRow[] }) {
+  return (
+    <Panel
+      title={
+        <>
+          <span className="blk-n">2</span> Rate card
+        </>
+      }
+      actions={<span className="muted sm">Rates hidden for your role</span>}
+      flush
+    >
+      {rows.length === 0 ? (
+        <div className="empty">
+          <h3>No roles on this rate card</h3>
+          <p>An owner or manager adds roles, charge rates and dress codes here.</p>
+        </div>
+      ) : (
+        <TableScroll>
+          <table className="tbl">
+            <thead>
+              <tr>
+                <th>Role</th>
+                <th>Dress codes for this client</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((row) => (
+                <tr key={row.id}>
+                  <td>
+                    <b>{row.role_name}</b>
+                  </td>
+                  <td>
+                    <div className="dcs">
+                      {row.dress_codes.length === 0 ? (
+                        <span className="muted sm">
+                          None yet — the event form will offer only &ldquo;Other&rdquo; for this
+                          role
+                        </span>
+                      ) : (
+                        row.dress_codes.map((code) => <Chip key={code}>{code}</Chip>)
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </TableScroll>
+      )}
+      <div className="panel-b">
+        <span className="muted sm">
+          Owners and managers set the rates. This dress-code list is what the event form offers for
+          this client and role.
         </span>
       </div>
     </Panel>

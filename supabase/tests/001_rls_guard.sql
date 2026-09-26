@@ -39,6 +39,9 @@
 -- 20261001100000/100100 (ADR-0051, ADR-0053) added assertion 11 (10 on main): the
 -- owner-rights views, pinned by name, so the next one is caught by CI and
 -- reviewed rather than found later by the Supabase advisor.
+-- 20261001203000 (ADR-0061) added shift_rates_v, role_rates_v and
+-- rate_card_rates_v to assertion 11: the only read path left to the rate
+-- columns, gated in their own body by office_rates_visible() (753).
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
@@ -427,8 +430,9 @@ select bag_eq(
             ('client_event_documents_v'), ('client_events_v'), ('client_lineup_v'),
             ('client_role_sections_v'), ('event_windows'), ('feedback_authors_v'),
             ('feedback_entries_v'), ('report_first_shifts_v'), ('report_payroll_lines_v'),
-            ('staff_block_reason_v'), ('staff_rejection_reason_v') $$,
-  'the owner-rights views in public are exactly these fourteen (ADR-0004); a new one is a reviewed addition'
+            ('staff_block_reason_v'), ('staff_rejection_reason_v'),
+            ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v') $$,
+  'the owner-rights views in public are exactly these seventeen (ADR-0004; the three rate views ADR-0061); a new one is a reviewed addition'
 );
 select bag_eq(
   $$ select c.relname::text
@@ -444,8 +448,9 @@ select bag_eq(
   $$ values ('client_account_v'::text), ('client_arrivals_v'), ('client_company_v'),
             ('client_event_documents_v'), ('client_events_v'), ('client_lineup_v'),
             ('client_role_sections_v'), ('feedback_authors_v'), ('feedback_entries_v'),
-            ('staff_block_reason_v'), ('staff_rejection_reason_v') $$,
-  'eleven of them are selectable by a signed-in caller (the advisor''s count); event_windows and the two report views are not'
+            ('staff_block_reason_v'), ('staff_rejection_reason_v'),
+            ('shift_rates_v'), ('role_rates_v'), ('rate_card_rates_v') $$,
+  'fourteen of them are selectable by a signed-in caller (the advisor''s count); event_windows and the two report views are not'
 );
 
 select * from finish();
