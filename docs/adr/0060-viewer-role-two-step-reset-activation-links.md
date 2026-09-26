@@ -93,3 +93,9 @@ Stated plainly, as in ADR-0056:
 - `packages/db/src/types.generated.ts`: the `office_role` enum gains `viewer` (hand-edited; regenerate after deploy).
 - Back Office: `_lib/permissions.ts`, `_lib/accounts.ts`, `_components/ReadOnlyBanner.tsx`, `_components/OfficeShell.tsx`, `users/**`.
 - ADR-0056 and ADR-0057 carry update notes pointing here.
+
+## Update — security review of the second round (20261001204000, pgTAP 756)
+
+- **Closed:** `auto_assign_first_round()` passed a viewer (admin check only) and posted a round to the auto-staffing Edge Function, which then invites workers with no user session — outside the write guard. It now calls `assert_not_read_only()` first.
+- **Closed:** a token outliving its session. `admin_reset_two_step`, switch off and "sign out other devices" delete sessions, but an issued token ran on for up to an hour (and after a reset no longer needed aal2). `current_app_role()` now requires, for a Back Office login, that the token's `session_id` still exists in `auth.sessions`.
+- **Open, older than this work:** `onboarding_resend_activation` and `onboarding_accept_with_account` check the activation link's path shape (`/activate/<token>`) but not its host, so an office login could call them directly and send a candidate a genuine E3 whose link points elsewhere. Anchoring the host needs the Staff App's origin in the database per environment (e.g. a `staff_app_origin` settings row, seeded on each project) and both functions checking against it; Accept breaks until it is set, so it ships with that setting, not in this PR.
