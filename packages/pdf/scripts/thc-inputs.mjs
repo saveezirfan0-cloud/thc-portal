@@ -539,6 +539,8 @@ const ITEMS = [
       'Email: the owning email address for each account and the administrator; then accept invitations',
     who: 'Director / finance — the account owner and card holder',
     neededBy: 'Before UAT',
+    status:
+      'Vercel done — the apps run in THC’s own account (26.09); Supabase and GitHub to follow',
     sections: std({
       need: [
         {
@@ -1473,8 +1475,8 @@ const DOC = {
     [
       'Vercel',
       'Hosts the three web applications.',
-      'Build team (staging)',
-      'A production team owned by THC (item 8).',
+      'THC (since 26.09)',
+      'Done — the three apps run in THC’s own Vercel account and deploy automatically.',
     ],
     [
       'Anthropic (Claude API)',

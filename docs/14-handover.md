@@ -433,7 +433,7 @@ root. Tick it there. This section keeps the background for each item.
 - **Turn on leaked-password protection** in Supabase Auth. The advisor still
   reports it off.
 - ~~**Vercel env**~~ **Done 24.09:** `SUPABASE_SERVICE_ROLE_KEY` was already on
-  Office and Staff; `NEXT_PUBLIC_STAFF_URL=https://thc-portal-staff.vercel.app`
+  Office and Staff; `NEXT_PUBLIC_STAFF_URL=https://thc-portal-staff-two.vercel.app`
   added to Office and Client. Change both if the Staff App gets a custom domain.
 - **Supabase Auth → Email OTP Expiration → 86400.** Activation and reset links
   otherwise die after an hour. (Not reachable from a session's tools.)
@@ -448,7 +448,7 @@ root. Tick it there. This section keeps the background for each item.
   4. Only then `select install_job_schedules();` (needs `settings.edge_base_url`
      and the vault secret `service_role_key`), and watch `job_runs`.
 - **Willo, once THC's keys exist** (ADR-0021):
-  `supabase secrets set WILLO_WEBHOOK_SECRET=… WILLO_API_KEY=… WILLO_INTERVIEW_KEY=… STAFF_APP_URL=https://thc-portal-staff.vercel.app`,
+  `supabase secrets set WILLO_WEBHOOK_SECRET=… WILLO_API_KEY=… WILLO_INTERVIEW_KEY=… STAFF_APP_URL=https://thc-portal-staff-two.vercel.app`,
   `supabase functions deploy willo-webhook --no-verify-jwt`, point Willo's
   webhook at `{SUPABASE_URL}/functions/v1/willo-webhook`, then enable
   `willo-invite` (with `190`) and re-run `install_job_schedules()`.
