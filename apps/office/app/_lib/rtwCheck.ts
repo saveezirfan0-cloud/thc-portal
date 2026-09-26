@@ -242,7 +242,7 @@ const RECOMMENDATION_STATUS: Partial<Record<RtwRecommendation, { tone: RtwTone; 
   };
 
 export const STUCK_REASON =
-  'The automatic gov.uk check has not run — the schedule, its secret or the provider may be missing. Verify by hand from the report, and check job_runs.';
+  'The automatic gov.uk check has not run — the schedule, its secret or RTW_GOVUK_ENABLED may be missing. Verify by hand from the report, and check job_runs.';
 
 const TONE: Record<RtwCheckStatus, RtwTone> = {
   queued: 'cyan',
