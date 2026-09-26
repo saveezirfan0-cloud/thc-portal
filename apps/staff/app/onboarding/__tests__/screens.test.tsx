@@ -353,8 +353,10 @@ describe('5/11 and 6/11', () => {
           {
             id: 'q1',
             n: 1,
-            prompt: 'You discover a small fire in the kitchen. What should you do first?',
-            options: ['A', 'B', 'C', 'D'],
+            prompt:
+              'What fire extinguisher from these listed would be utilised on an electrical fire?',
+            options: ['Water', 'Foam', 'Carbon Dioxide'],
+            image: null,
           },
         ]}
         previous={[{ attemptNo: 1, correct: 7, total: 10, passed: false }]}
@@ -363,13 +365,37 @@ describe('5/11 and 6/11', () => {
     expect(html).toContain('Question 1 of 1');
     expect(html).toContain('Attempt 2 of 3');
     expect(html).toContain('Your answers are checked at the end, not one by one.');
+    expect(html).not.toContain('<img');
+  });
+
+  it('the quiz: a question with a picture shows it above the options (THC’s Q7)', () => {
+    const html = renderToStaticMarkup(
+      <QuizStep
+        firstName="Amara"
+        questions={[
+          {
+            id: 'q7',
+            n: 1,
+            prompt: 'COSHH – what does this symbol mean?',
+            options: ['Oxidising', 'Corrosive', 'Toxic'],
+            image: '/quiz/coshh-toxic.svg',
+          },
+        ]}
+        previous={[]}
+      />,
+    );
+    expect(html).toContain(
+      '<img class="quiz-img" src="/quiz/coshh-toxic.svg" alt="COSHH hazard symbol"/>',
+    );
+    expect(html.indexOf('quiz-img')).toBeLessThan(html.indexOf('quiz-opt'));
   });
 
   const question = {
     id: 'q1',
     n: 1,
-    prompt: 'You discover a small fire in the kitchen. What should you do first?',
-    options: ['A', 'B', 'C', 'D'],
+    prompt: 'What fire extinguisher from these listed would be utilised on an electrical fire?',
+    options: ['Water', 'Foam', 'Carbon Dioxide'],
+    image: null,
   };
   const quizResult = (over: Partial<Parameters<typeof QuizStep>[0]['initialResult'] & object>) =>
     renderToStaticMarkup(

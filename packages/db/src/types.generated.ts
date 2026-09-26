@@ -2610,6 +2610,7 @@ export type Database = {
           correct_index: number;
           created_at: string;
           id: string;
+          image_path: string | null;
           is_placeholder: boolean;
           options: string[];
           position: number;
@@ -2620,6 +2621,7 @@ export type Database = {
           correct_index: number;
           created_at?: string;
           id?: string;
+          image_path?: string | null;
           is_placeholder?: boolean;
           options: string[];
           position: number;
@@ -2630,6 +2632,7 @@ export type Database = {
           correct_index?: number;
           created_at?: string;
           id?: string;
+          image_path?: string | null;
           is_placeholder?: boolean;
           options?: string[];
           position?: number;
@@ -7317,6 +7320,7 @@ export type Database = {
         Args: never;
         Returns: {
           id: string;
+          image_path: string;
           options: string[];
           prompt: string;
           question_no: number;

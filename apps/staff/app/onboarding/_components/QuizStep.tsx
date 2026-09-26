@@ -168,6 +168,10 @@ export function QuizStep({
       />
       <Progress value={index + (answered ? 1 : 0)} max={total} tone="green" />
       <div className="q">{q.prompt}</div>
+      {q.image ? (
+        // THC's Q7 asks what a symbol means: the picture IS the question.
+        <img className="quiz-img" src={q.image} alt="COSHH hazard symbol" />
+      ) : null}
       <div role="radiogroup" aria-label={q.prompt} className="wiz-options">
         {q.options.map((option, i) => (
           <button
