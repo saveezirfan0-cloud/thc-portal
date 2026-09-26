@@ -189,7 +189,10 @@ test('Get back on the event board registers the no-show as arrived, Late (§3.3)
   // RoleBoard.tsx: the no-show stays in Confirmed, badged, with Get back
   // beside it. The board names people "First L." (board-model.ts shortName).
   const row = page.locator('.prow', { hasText: `${dunlin!.firstName} D.` });
-  await expect(row.getByText('No show', { exact: true })).toBeVisible();
+  // The badge is the coral Pill (RoleBoard.tsx); BookingActions' "No show"
+  // BUTTON carries the same words, so match the pill, not the text.
+  const badge = row.locator('.pill', { hasText: /^No show$/ });
+  await expect(badge).toBeVisible();
   // No payroll export yet, so BookingActions runs it without the §3.3 warning.
   // The board is a heavy client tree: a press before hydration is a click on
   // inert server HTML, so wait for the page to settle first.
@@ -203,14 +206,14 @@ test('Get back on the event board registers the no-show as arrived, Late (§3.3)
       async () => {
         const refusal = (await row.getByRole('alert').allTextContents()).join(' ').trim();
         if (refusal) return `refused: ${refusal}`;
-        return (await row.getByText('No show', { exact: true }).count()) === 0
-          ? 'got back'
-          : 'still No show';
+        return (await badge.count()) === 0 ? 'got back' : 'still No show';
       },
       { timeout: 10_000 },
     )
     .toBe('got back');
   await expect(row.getByRole('button', { name: 'Get back' })).toHaveCount(0);
+  // Now checked in, so the manual No-show is not offered either.
+  await expect(row.getByRole('button', { name: 'No show' })).toHaveCount(0);
 
   // Underneath: get_back() → resolve_violation() on the SAME entry the log
   // showed — reclassified to Late, resolved, with the board's own note;
