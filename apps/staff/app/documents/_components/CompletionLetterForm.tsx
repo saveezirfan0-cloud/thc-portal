@@ -21,7 +21,14 @@ import { EVIDENCE_ACCEPT, uploadEvidence } from './upload';
  *     because a worker who thinks uploading lifted their limit will accept
  *     a 30-hour week and be refused.
  */
-export function CompletionLetterForm({ currentLimit }: { currentLimit: string }) {
+export function CompletionLetterForm({
+  currentLimit,
+  doneHref = '/documents?sent=completion',
+}: {
+  currentLimit: string;
+  /** Where a sent letter lands: Documents, or back into the onboarding wizard. */
+  doneHref?: string;
+}) {
   const router = useRouter();
   const [form, setForm] = useState<CompletionEvidenceForm | null>(null);
   const [date, setDate] = useState('');
@@ -51,7 +58,7 @@ export function CompletionLetterForm({ currentLimit }: { currentLimit: string })
         setError(result.message);
         return;
       }
-      router.replace('/documents?sent=completion');
+      router.replace(doneHref);
       router.refresh();
     });
   }

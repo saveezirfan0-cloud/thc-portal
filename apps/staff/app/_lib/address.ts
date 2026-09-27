@@ -22,7 +22,7 @@ export interface HomeAddressParts {
   /** "22", "22a", "4–6", or a house name such as "Rose Cottage". */
   house: string;
   street: string;
-  /** A second line — district or locality — optional. */
+  /** District, locality or county — required, like everything but the flat. */
   area: string;
   town: string;
   postcode: string;
@@ -90,10 +90,15 @@ function splitLine(line: string): Pick<HomeAddressParts, 'flat' | 'house' | 'str
   return { flat: '', house: '', street: segs[0] ?? '', area: '' };
 }
 
-/** The first thing still missing, in the order the boxes appear; null when complete. */
+/**
+ * The first thing still missing, in the order the boxes appear; null when
+ * complete. Everything but the flat is required: a candidate cannot move
+ * past 2/11 without a full address.
+ */
 export function homeAddressMissing(a: HomeAddressParts): string | null {
   if (!tidy(a.house)) return 'Enter your house number or name';
   if (!tidy(a.street)) return 'Enter your street name';
+  if (!tidy(a.area)) return 'Enter your area or county';
   if (!tidy(a.town)) return 'Enter your town or city';
   if (!isPostcode(a.postcode)) return 'Enter a UK postcode, e.g. E2 0RY';
   return null;

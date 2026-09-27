@@ -32,7 +32,7 @@ const { ReferencesStep } = await import('../_components/ReferencesStep');
 const { BankStep } = await import('../_components/BankStep');
 const { ContractStep } = await import('../_components/ContractStep');
 const { TutorialStep } = await import('../_components/TutorialStep');
-const { requirementRows, mapOnboardingState } = await import('../state');
+const { completionLetterDoc, requirementRows, mapOnboardingState } = await import('../state');
 
 const TODAY = '2026-09-23';
 const blank: RtwForm = {
@@ -175,7 +175,7 @@ describe('2/11 Home address', () => {
           flat: 'Flat 4',
           house: '22',
           street: 'Roman Road',
-          area: '',
+          area: 'Bethnal Green',
           town: 'London',
           postcode: 'E2 0RY',
           lat: 51.529,
@@ -188,6 +188,26 @@ describe('2/11 Home address', () => {
     for (const label of ['Flat / apartment', 'House no. or name', 'Street name', 'Town / city']) {
       expect(html).toContain(label);
     }
+    // Everything but the flat is required and marked.
+    expect(html.match(/ required=""/g)?.length).toBe(5);
+  });
+  it('no area → Continue stays disabled and says why', () => {
+    const html = renderToStaticMarkup(
+      <AddressStep
+        initial={{
+          flat: '',
+          house: '22',
+          street: 'Roman Road',
+          area: '',
+          town: 'London',
+          postcode: 'E2 0RY',
+          lat: 51.529,
+          lng: -0.045,
+        }}
+      />,
+    );
+    expect(footer(html).disabled).toBe(true);
+    expect(html).toContain('Enter your area or county');
     // The office is told (E7), in words: the register code is not shown.
     expect(html).toContain('the office is notified of the');
     expect(html).not.toContain('(E7)');
@@ -214,7 +234,7 @@ describe('3/11 Profile selfie', () => {
   });
 });
 
-const state = mapOnboardingState({
+const rawState = {
   status: 'documents',
   firstName: 'Amara',
   lastName: 'Kalu',
@@ -231,7 +251,8 @@ const state = mapOnboardingState({
       uploadedAt: '2026-09-18T10:24:00Z',
     },
   ],
-})!;
+};
+const state = mapOnboardingState(rawState)!;
 
 describe('4/11 Documents', () => {
   it('student branch, term letter missing: Upload, the share code as entered, Submit disabled', () => {
@@ -251,6 +272,54 @@ describe('4/11 Documents', () => {
     expect(html).toContain('“No” is recorded as verified straight away');
     expect(html).toContain('Upload your University Term Dates Letter to continue');
     expect(footer(html)).toEqual({ label: 'Submit documents', disabled: true });
+  });
+
+  it('a Student-visa candidate is offered the optional completion letter; it never blocks Submit', () => {
+    const html = renderToStaticMarkup(
+      <DocumentsStep
+        branchTitle="International student"
+        rows={requirementRows(state)}
+        shareCode="W123AB4CD"
+        today={TODAY}
+        completionLetter={completionLetterDoc(state)}
+      />,
+    );
+    expect(html).toContain('University completion letter');
+    expect(html).toContain('Optional · finished your course already?');
+    expect(html).toContain('href="/onboarding/completion-letter"');
+    // Still the term letter that holds Submit, not the optional letter.
+    expect(html).toContain('Upload your University Term Dates Letter to continue');
+    // Any other branch: no row at all.
+    const uk = mapOnboardingState({ ...rawState, rtwBranch: 'uk_irish' })!;
+    expect(completionLetterDoc(uk)).toBeUndefined();
+  });
+
+  it('the review hub shows a completion letter in review', () => {
+    const withLetter = mapOnboardingState({
+      ...rawState,
+      documents: [
+        ...rawState.documents,
+        {
+          id: 'c1',
+          docType: 'university_completion_letter',
+          status: 'pending',
+          fileName: 'letter.pdf',
+          uploadedAt: '2026-09-19T10:00:00Z',
+        },
+      ],
+    })!;
+    const html = renderToStaticMarkup(
+      <ReviewHub
+        rows={requirementRows(withLetter)}
+        shareDoc={null}
+        dob={null}
+        declaration={null}
+        completionLetter={completionLetterDoc(withLetter)}
+      />,
+    );
+    expect(html).toContain('University completion letter');
+    expect(html).toContain('With the office for review');
+    expect(html).not.toContain('href="/onboarding/completion-letter"');
   });
 
   it('after Submit: In review, the No declaration verified, onboarding paused at 4 of 11', () => {

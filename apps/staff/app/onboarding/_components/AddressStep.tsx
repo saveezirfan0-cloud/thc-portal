@@ -96,13 +96,7 @@ export function AddressStep({
     if (!pin) return;
     setError(null);
     start(async () => {
-      const result = await saveAddress({
-        line,
-        town: address.town,
-        postcode: address.postcode,
-        lat: pin.lat,
-        lng: pin.lng,
-      });
+      const result = await saveAddress({ address, lat: pin.lat, lng: pin.lng });
       if (!result.ok) setError(result.message);
       else router.push('/onboarding/3');
     });

@@ -82,6 +82,27 @@ describe('startUpload()', () => {
     expect((slot as { path: string }).path).toMatch(new RegExp(`^${STAFF}/completion-letter/`));
   });
 
+  it('a candidate in the wizard can send a completion letter, but no other document', async () => {
+    for (const status of ['documents', 'quiz', 'contract']) {
+      worker(status);
+      const slot = await startUpload({ kind: 'completion-letter' }, PDF);
+      expect(slot.ok).toBe(true);
+    }
+    worker('documents');
+    const other = await startUpload({ kind: 'document', docType: 'passport' }, PDF);
+    expect(other.ok).toBe(false);
+  });
+
+  it('refuses the completion letter before the wizard and after leaving', async () => {
+    for (const status of ['interview_requested', 'interview_completed', 'inactive', 'rejected']) {
+      createSignedUploadUrl.mockClear();
+      worker(status);
+      const slot = await startUpload({ kind: 'completion-letter' }, PDF);
+      expect(slot.ok).toBe(false);
+      expect(createSignedUploadUrl).not.toHaveBeenCalled();
+    }
+  });
+
   it('refuses a file the rules refuse before anything is signed', async () => {
     worker('compliant');
     const slot = await startUpload(

@@ -8,8 +8,18 @@ import './address-fields.css';
 /**
  * The home address, one box per part — the wizard's 2/11 and Profile
  * details share it so the two cannot drift. Saved as one line
- * (`joinHomeAddress()`, `_lib/address.ts`).
+ * (`joinHomeAddress()`, `_lib/address.ts`). Every box but the flat is
+ * required and starred; `homeAddressMissing()` is the rule.
  */
+/** A box the worker must fill: the label carries the star (as step 4's declaration does). */
+function required(text: string) {
+  return (
+    <>
+      {text} <span className="coral">*</span>
+    </>
+  );
+}
+
 export function AddressFields({
   value,
   onChange,
@@ -31,26 +41,35 @@ export function AddressFields({
       <div className="row">
         <div className="house-field">
           <Input
-            label="House no. or name"
+            label={required('House no. or name')}
             placeholder="e.g. 22"
+            required
             value={value.house}
             onChange={set('house')}
           />
         </div>
         <div className="grow">
           <Input
-            label="Street name"
+            label={required('Street name')}
             placeholder="e.g. Roman Road"
+            required
             value={value.street}
             onChange={set('street')}
           />
         </div>
       </div>
-      <Input label="Area (optional)" value={value.area} onChange={set('area')} />
+      <Input
+        label={required('Area / county')}
+        placeholder="e.g. Bethnal Green"
+        required
+        value={value.area}
+        onChange={set('area')}
+      />
       <div className="row">
         <div className="grow">
           <Input
-            label="Town / city"
+            label={required('Town / city')}
+            required
             value={value.town}
             onChange={set('town')}
             autoComplete="address-level2"
@@ -58,14 +77,18 @@ export function AddressFields({
         </div>
         <div className="postcode-field">
           <Input
-            label="Postcode"
+            label={required('Postcode')}
             mono
+            required
             value={value.postcode}
             onChange={set('postcode')}
             onBlur={() => onChange({ ...value, postcode: formatPostcode(value.postcode) })}
             autoComplete="postal-code"
           />
         </div>
+      </div>
+      <div className="xs muted">
+        <span className="coral">*</span> Required. Only the flat or apartment can be left blank.
       </div>
     </>
   );

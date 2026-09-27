@@ -84,8 +84,12 @@ async function me(): Promise<Me | null> {
   };
 }
 
+/** The candidate stages the onboarding wizard runs in (§2.3–§2.12). */
+const IN_WIZARD: ReadonlySet<StaffStatus> = new Set(['documents', 'quiz', 'contract']);
+
 function refresh() {
   revalidatePath('/documents');
+  revalidatePath('/onboarding', 'layout');
   revalidatePath('/', 'layout');
 }
 
@@ -128,9 +132,14 @@ export async function startUpload(
     }
     folder = documentFolder(purpose.docType);
   } else {
+    // The completion letter is open to a working Student-visa worker and,
+    // since some candidates have already finished their course, to a
+    // candidate still in the wizard (submit_completion_letter() takes
+    // both). It is optional and never holds onboarding up.
     if (
       purpose.kind === 'completion-letter' &&
-      !canActOnDocuments(worker.status, worker.blockKind)
+      !canActOnDocuments(worker.status, worker.blockKind) &&
+      !IN_WIZARD.has(worker.status)
     ) {
       return { ok: false, message: COMPLETION_UPLOAD_REASONS['not_eligible']! };
     }
