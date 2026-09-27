@@ -22,6 +22,15 @@
   flex-direction: column;
   gap: var(--sp-16);
 }
+/* Room under the last item (Request my P45) so it scrolls clear of the
+   fixed bottom tabs and the iPhone home bar. Safari leaves the scrolling
+   body's own bottom padding out of the scroll height, which put the P45
+   link under the tabs; a real box inside the hub always counts. */
+.profile-hub::after {
+  content: '';
+  flex-shrink: 0;
+  height: calc(var(--sp-28) + env(safe-area-inset-bottom));
+}
 /* Who they are, and the one button most of them came here for. */
 .profile-id {
   display: flex;
