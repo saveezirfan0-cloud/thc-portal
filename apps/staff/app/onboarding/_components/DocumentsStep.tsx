@@ -7,7 +7,8 @@ import { formatFileSize, formatShareCode } from '@thc/domain';
 import type { DocRequirement } from '@thc/domain';
 import { submitDocuments } from '../actions';
 import { allUploaded, docIcon } from '../state';
-import type { RequirementRow } from '../state';
+import type { RequirementRow, UploadedDoc } from '../state';
+import { CompletionLetterOption } from './CompletionLetterOption';
 import { UploadSheet } from './UploadSheet';
 import { WizardFoot, WizardTop } from './Wizard';
 
@@ -25,11 +26,14 @@ export function DocumentsStep({
   rows,
   shareCode,
   today,
+  completionLetter,
 }: {
   branchTitle: string;
   rows: RequirementRow[];
   shareCode: string | null;
   today: string;
+  /** `completionLetterDoc()`: undefined hides the optional row (not a Student visa). */
+  completionLetter?: UploadedDoc | null;
 }) {
   const router = useRouter();
   const [sheet, setSheet] = useState<DocRequirement | null>(null);
@@ -115,6 +119,7 @@ export function DocumentsStep({
             </div>
           </div>
         ) : null}
+        {completionLetter !== undefined ? <CompletionLetterOption doc={completionLetter} /> : null}
       </div>
 
       <div className="mcard">

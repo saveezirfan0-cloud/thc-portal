@@ -11,7 +11,7 @@ import { RefreshWhileChecking } from '../_components/RefreshWhileChecking';
 import { loadMyRtwChecks } from '../_lib/rtwCheck';
 import { WizardFrame, workerFor } from './_components/Wizard';
 import { loadOnboarding, supabaseConfigured } from './data';
-import { requirementRows, shareCodeDoc, wizardFacts } from './state';
+import { completionLetterDoc, requirementRows, shareCodeDoc, wizardFacts } from './state';
 import './onboarding.css';
 
 export const dynamic = 'force-dynamic';
@@ -138,6 +138,7 @@ export default async function Page() {
           shareCheck={shareCheck}
           dob={state.dob}
           declaration={state.declaration}
+          completionLetter={completionLetterDoc(state)}
         />
       </WizardFrame>
     );

@@ -53,6 +53,7 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 | `/login`, `/forgot`, `/forgot/sent`, `/reset` | A0–A3 | `staff/auth.html` | 10.2 | staff-pwa |
 | `/install`, `/notifications`, `/offline` | Install + push permission; offline fallback | `staff/auth.html` | 10.5 | staff-pwa |
 | `/onboarding`, `/onboarding/:step` | Wizard, 11 steps. `/onboarding` resolves where the worker is and sends them on; each step really is its own path segment (`apps/staff/app/onboarding/[step]/page.tsx`). | `staff/onboarding-1.html`, `-2`, `-3` | 10.3, 2.5–2.11 | onboarding |
+| `/onboarding/completion-letter` | Optional University completion letter for a Student-visa candidate who has already finished their course — offered on step 4 and the review hub; same form and `submit_completion_letter()` as `/documents/completion-letter`, never holds onboarding up | `staff/documents.html` | completion letter req. §2.1, 10.3 | onboarding |
 | `/documents` | Documents hub — reached from the Profile tab since ADR-0042 (URL unchanged for §8 deep links) | `staff/onboarding-3.html`, `staff/documents.html` | 10.4 | compliance |
 | `/documents/upload/:docType` | Upload / re-upload a document | `staff/documents.html` | 10.4 | compliance |
 | `/documents/completion-letter` | University completion letter (three forms) | `staff/documents.html` | completion letter req. §2.1 | compliance |

@@ -8,6 +8,8 @@ import { isDocType, uploadError, uploadKind, UPLOAD_MAX_BYTES, UPLOAD_MIME } fro
 import type { DocType, HmrcGender, StudentLoanPlan } from '@thc/domain';
 import { staffDb, supabaseConfigured } from '../db';
 import { geocodePostcode } from '../_lib/postcode';
+import { addressLine, homeAddressMissing } from '../_lib/address';
+import type { HomeAddressParts } from '../_lib/address';
 import { photoPathFor } from '../profile/photos';
 import { extractAfterResponse } from '../../lib/extract';
 import { NOT_CONFIGURED, reasonCode, reasonMessage } from './messages';
@@ -106,16 +108,19 @@ export async function reenterShareCode(input: { shareCode: string; dob: string }
 // 2/11 Home address
 // ---------------------------------------------------------------------
 export async function saveAddress(input: {
-  line: string;
-  town: string;
-  postcode: string;
+  address: HomeAddressParts;
   lat: number;
   lng: number;
 }): Promise<Result> {
+  // Every box but the flat is required (homeAddressMissing). The screen
+  // keeps Continue disabled until then; this is the same rule on the
+  // server, because onboarding_save_address() only sees the joined line.
+  const missing = homeAddressMissing(input.address);
+  if (missing) return { ok: false, message: `${missing}.`, reason: 'address_required' };
   return call('onboarding_save_address', {
-    p_line: input.line,
-    p_town: input.town,
-    p_postcode: input.postcode,
+    p_line: addressLine(input.address),
+    p_town: input.address.town,
+    p_postcode: input.address.postcode,
     p_lat: input.lat,
     p_lng: input.lng,
   });

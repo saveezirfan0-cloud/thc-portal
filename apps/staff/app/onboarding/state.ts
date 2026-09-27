@@ -241,6 +241,21 @@ export function shareCodeDoc(s: OnboardingState): UploadedDoc | null {
   return s.documents.find((d) => d.docType === 'share_code_report') ?? null;
 }
 
+/**
+ * The optional University Completion Letter (completion letter requirement
+ * §2.1) — offered in the wizard to a Student-visa candidate who has already
+ * finished their course. `undefined` for any other branch: the option does
+ * not exist for them. Never part of `requirementRows()`, so it never holds
+ * Submit or the quiz gate up (compliance_blockers() skips it too).
+ */
+export function completionLetterDoc(s: OnboardingState): UploadedDoc | null | undefined {
+  if (s.rtwBranch !== 'international_student') return undefined;
+  const letters = s.documents
+    .filter((d) => d.docType === 'university_completion_letter')
+    .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
+  return letters[0] ?? null;
+}
+
 /** Every requirement has a file on it — Submit can be pressed (§10.3). */
 export function allUploaded(rows: readonly RequirementRow[]): boolean {
   return rows.length > 0 && rows.every((r) => r.doc && r.doc.status !== 'rejected');

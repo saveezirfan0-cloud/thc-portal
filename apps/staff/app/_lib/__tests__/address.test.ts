@@ -74,18 +74,24 @@ describe('the stored line → boxes', () => {
 });
 
 describe('what is still missing', () => {
+  const complete = { ...roman, area: 'Bethnal Green' };
+
   it('names the first empty box, in screen order', () => {
     expect(homeAddressMissing(EMPTY_ADDRESS)).toBe('Enter your house number or name');
     expect(homeAddressMissing({ ...roman, street: ' ' })).toBe('Enter your street name');
-    expect(homeAddressMissing({ ...roman, town: '' })).toBe('Enter your town or city');
-    expect(homeAddressMissing({ ...roman, postcode: 'nope' })).toBe(
+    expect(homeAddressMissing({ ...roman, area: '' })).toBe('Enter your area or county');
+    expect(homeAddressMissing({ ...complete, town: '' })).toBe('Enter your town or city');
+    expect(homeAddressMissing({ ...complete, postcode: 'nope' })).toBe(
       'Enter a UK postcode, e.g. E2 0RY',
     );
-    expect(homeAddressMissing(roman)).toBeNull();
+    expect(homeAddressMissing(complete)).toBeNull();
   });
 
-  it('the flat and area are optional', () => {
-    expect(homeAddressMissing({ ...roman, flat: '', area: '' })).toBeNull();
+  it('every box but the flat is required', () => {
+    expect(homeAddressMissing({ ...complete, flat: '' })).toBeNull();
+    for (const key of ['house', 'street', 'area', 'town', 'postcode'] as const) {
+      expect(homeAddressMissing({ ...complete, [key]: '' })).not.toBeNull();
+    }
     expect(isBlankAddress(EMPTY_ADDRESS)).toBe(true);
     expect(isBlankAddress(roman)).toBe(false);
   });

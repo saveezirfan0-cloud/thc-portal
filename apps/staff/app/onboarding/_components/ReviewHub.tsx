@@ -12,6 +12,7 @@ import {
 import type { DocRequirement, RtwCheckStatus } from '@thc/domain';
 import { docIcon } from '../state';
 import type { DocStatus, RequirementRow, UploadedDoc } from '../state';
+import { CompletionLetterOption } from './CompletionLetterOption';
 import { UploadSheet } from './UploadSheet';
 import { ShareCodeSheet } from './ShareCodeSheet';
 
@@ -68,6 +69,7 @@ export function ReviewHub({
   shareCheck = null,
   dob,
   declaration,
+  completionLetter,
 }: {
   rows: RequirementRow[];
   shareDoc: UploadedDoc | null;
@@ -75,6 +77,8 @@ export function ReviewHub({
   shareCheck?: { status: RtwCheckStatus } | null;
   dob: string | null;
   declaration: { answer: boolean; status: DocStatus; declaredAt: string } | null;
+  /** `completionLetterDoc()`: undefined hides the optional row (not a Student visa). */
+  completionLetter?: UploadedDoc | null;
 }) {
   const [sheet, setSheet] = useState<DocRequirement | null>(null);
   const [shareSheet, setShareSheet] = useState(false);
@@ -186,6 +190,7 @@ export function ReviewHub({
             </div>
           </div>
         ) : null}
+        {completionLetter !== undefined ? <CompletionLetterOption doc={completionLetter} /> : null}
       </div>
 
       <div className="mcard muted">
