@@ -3,6 +3,7 @@ import { Alert } from '@thc/ui';
 import { BRANCH_HEADING, TOTAL_STEPS, canEditStep, stepAccess, ukToday } from '@thc/domain';
 import { signOwnPhoto } from '../../profile/photos';
 import { AddressStep } from '../_components/AddressStep';
+import { splitHomeAddress } from '../../_lib/address';
 import { BankStep } from '../_components/BankStep';
 import { ContractStep } from '../_components/ContractStep';
 import { DocumentsStep } from '../_components/DocumentsStep';
@@ -170,13 +171,9 @@ async function render(n: number, s: OnboardingState, photoUrl: string | null) {
 
 /**
  * The saved address is one line — "Flat 4, 22 Roman Road, London E2 0RY"
- * (onboarding_save_address). Splitting it back is best effort, for a
- * worker editing before they submit.
+ * (onboarding_save_address). Splitting it back into the boxes is best
+ * effort, for a worker editing before they submit.
  */
 function splitAddress(s: OnboardingState) {
-  const base = { line: '', town: '', postcode: '', lat: s.homeLat, lng: s.homeLng };
-  if (!s.homeAddress) return base;
-  const m = /^(.*),\s*([^,]+?)\s+([A-Z]{1,2}\d[A-Z\d]?\s?\d[A-Z]{2})$/i.exec(s.homeAddress);
-  if (!m) return { ...base, line: s.homeAddress };
-  return { ...base, line: m[1]!, town: m[2]!, postcode: m[3]!.toUpperCase() };
+  return { ...splitHomeAddress(s.homeAddress), lat: s.homeLat, lng: s.homeLng };
 }

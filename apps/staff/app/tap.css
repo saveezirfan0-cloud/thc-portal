@@ -22,3 +22,59 @@
 .seg a {
   height: var(--tap-min);
 }
+
+/*
+ * Taps land first time. `manipulation` drops the browser's wait to see
+ * whether a tap is the first half of a double-tap zoom (pinch-zoom stays,
+ * for WCAG 1.4.4); on a touch screen the desktop hover lift and sheen are
+ * switched off, so a tap is never spent on a hover state, and a pressed
+ * control dims while the finger is down so the tap is seen to register.
+ */
+html {
+  touch-action: manipulation;
+}
+@media (hover: none) {
+  .btn:hover,
+  .btn:active {
+    transform: none;
+  }
+  .btn:hover::after {
+    transform: translateX(-120%);
+  }
+  :is(a[href], button:not(:disabled), .btn):active {
+    opacity: 0.7;
+  }
+}
+
+/* NavProgress: the bar that answers a tapped link at once. */
+.nav-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 1000;
+  pointer-events: none;
+  background: var(--cyan-solid);
+  transform: scaleX(0);
+  transform-origin: left;
+  opacity: 0;
+}
+.nav-progress[data-busy='true'] {
+  opacity: 1;
+  animation: nav-progress 6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+}
+@keyframes nav-progress {
+  from {
+    transform: scaleX(0.08);
+  }
+  to {
+    transform: scaleX(0.92);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-progress[data-busy='true'] {
+    animation: none;
+    transform: scaleX(0.6);
+  }
+}
