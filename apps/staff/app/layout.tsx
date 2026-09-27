@@ -1,7 +1,9 @@
+import { Suspense } from 'react';
 import type { Metadata, Viewport } from 'next';
 import { AppearanceScript } from '@thc/ui';
 import '@thc/ui/styles.css';
 import './tap.css';
+import { NavProgress } from './_components/NavProgress';
 import { ServiceWorkerRegistrar } from './_components/ServiceWorkerRegistrar';
 
 export const metadata: Metadata = {
@@ -35,6 +37,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppearanceScript />
       </head>
       <body>
+        {/* useSearchParams() needs a Suspense boundary on static pages. */}
+        <Suspense fallback={null}>
+          <NavProgress />
+        </Suspense>
         {children}
         <ServiceWorkerRegistrar />
       </body>

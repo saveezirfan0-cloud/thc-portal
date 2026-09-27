@@ -4,6 +4,9 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Input } from '@thc/ui';
 import { addressErrors, formatPostcode, pinInUk } from '@thc/domain';
+import { AddressFields } from '../../_components/AddressFields';
+import { addressLine, homeAddressMissing } from '../../_lib/address';
+import type { HomeAddressParts } from '../../_lib/address';
 import { lookupPostcode, saveAddress } from '../actions';
 import { DEFAULT_CENTRE } from '../geo';
 import type { LatLng } from '../geo';
@@ -15,17 +18,25 @@ import { WizardFoot, WizardTop } from './Wizard';
  *
  * The pin is the point of the step: "needed to calculate the home ↔ venue
  * distance" — §6 proximity and Radar's distances. The lines are what the
- * office and payroll read. The postcode search only moves the map.
+ * office and payroll read: one box per part (flat, house, street, area,
+ * town, postcode), sent to the RPC as its `line, town, postcode`. The
+ * postcode search only moves the map, and fills the Postcode box.
  */
 export function AddressStep({
   initial,
 }: {
-  initial: { line: string; town: string; postcode: string; lat: number | null; lng: number | null };
+  initial: HomeAddressParts & { lat: number | null; lng: number | null };
 }) {
   const router = useRouter();
-  const [line, setLine] = useState(initial.line);
-  const [town, setTown] = useState(initial.town);
-  const [postcode, setPostcode] = useState(initial.postcode);
+  const [address, setAddress] = useState<HomeAddressParts>({
+    flat: initial.flat,
+    house: initial.house,
+    street: initial.street,
+    area: initial.area,
+    town: initial.town,
+    postcode: initial.postcode,
+  });
+  const [search, setSearch] = useState(initial.postcode);
   const [pin, setPin] = useState<LatLng | null>(
     initial.lat !== null && initial.lng !== null ? { lat: initial.lat, lng: initial.lng } : null,
   );
@@ -34,14 +45,15 @@ export function AddressStep({
   const [locating, setLocating] = useState(false);
   const [pending, start] = useTransition();
 
+  const line = addressLine(address);
   const errors = addressErrors({
     line,
-    town,
-    postcode,
+    town: address.town,
+    postcode: address.postcode,
     lat: pin?.lat ?? null,
     lng: pin?.lng ?? null,
   });
-  const missing = Object.values(errors)[0] ?? null;
+  const missing = homeAddressMissing(address) ?? errors.lat ?? null;
 
   function locate() {
     setNote(null);
@@ -69,11 +81,13 @@ export function AddressStep({
   function findPostcode() {
     setNote(null);
     start(async () => {
-      const found = await lookupPostcode(postcode);
+      const found = await lookupPostcode(search);
       if (!found.ok) setNote(found.message);
       else {
         setPin({ lat: found.lat, lng: found.lng });
-        setPostcode(formatPostcode(postcode));
+        const pc = formatPostcode(search);
+        setSearch(pc);
+        setAddress((a) => ({ ...a, postcode: pc }));
       }
     });
   }
@@ -82,7 +96,13 @@ export function AddressStep({
     if (!pin) return;
     setError(null);
     start(async () => {
-      const result = await saveAddress({ line, town, postcode, lat: pin.lat, lng: pin.lng });
+      const result = await saveAddress({
+        line,
+        town: address.town,
+        postcode: address.postcode,
+        lat: pin.lat,
+        lng: pin.lng,
+      });
       if (!result.ok) setError(result.message);
       else router.push('/onboarding/3');
     });
@@ -101,11 +121,11 @@ export function AddressStep({
           <Input
             aria-label="Postcode search"
             placeholder="Your postcode, e.g. E2 0RY"
-            value={postcode}
-            onChange={(e) => setPostcode(e.target.value)}
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
           />
         </div>
-        <Button onClick={findPostcode} disabled={pending || postcode.trim() === ''}>
+        <Button onClick={findPostcode} disabled={pending || search.trim() === ''}>
           Find
         </Button>
       </div>
@@ -118,32 +138,7 @@ export function AddressStep({
       />
       {note ? <Alert tone="amber">{note}</Alert> : null}
 
-      <Input
-        label="Address line"
-        value={line}
-        onChange={(e) => setLine(e.target.value)}
-        autoComplete="address-line1"
-      />
-      <div className="row">
-        <div className="grow">
-          <Input
-            label="Town / city"
-            value={town}
-            onChange={(e) => setTown(e.target.value)}
-            autoComplete="address-level2"
-          />
-        </div>
-        <div className="postcode-field">
-          <Input
-            label="Postcode"
-            mono
-            value={postcode}
-            onChange={(e) => setPostcode(e.target.value)}
-            onBlur={() => setPostcode((p) => formatPostcode(p))}
-            autoComplete="postal-code"
-          />
-        </div>
-      </div>
+      <AddressFields value={address} onChange={setAddress} />
       <div className="xs muted">
         You can change your address later in Profile details — the office is notified of the change.
       </div>

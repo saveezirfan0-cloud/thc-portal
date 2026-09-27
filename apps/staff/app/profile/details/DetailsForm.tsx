@@ -14,6 +14,14 @@ import type { StaffProfile } from '../types';
 import { PhotoField } from './PhotoField';
 import { LoadProblem } from '../../_components/LoadProblem';
 import { ChangeStatus } from './ChangeStatus';
+import { AddressFields } from '../../_components/AddressFields';
+import {
+  homeAddressMissing,
+  isBlankAddress,
+  joinHomeAddress,
+  splitHomeAddress,
+} from '../../_lib/address';
+import type { HomeAddressParts } from '../../_lib/address';
 import { canRequest, requestHref, statusLine } from '../change-requests';
 import type { ChangeRequest } from '../change-requests';
 
@@ -40,6 +48,8 @@ import type { ChangeRequest } from '../change-requests';
  *                 drives the home-to-venue distance in §6 scoring. The
  *                 postcode is geocoded on save and moves home_location;
  *                 a failed lookup keeps the old pin, flagged stale.
+ *                 Typed one box per part (AddressFields) and saved as
+ *                 the one line the wizard writes (`joinHomeAddress()`).
  */
 export function DetailsForm({
   profile,
@@ -63,17 +73,32 @@ export function DetailsForm({
   const nameLine = statusLine(requests, 'name');
 
   const [phone, setPhone] = useState(profile.phone);
-  const [address, setAddress] = useState(profile.homeAddress ?? '');
+  const [saved] = useState<HomeAddressParts>(() => splitHomeAddress(profile.homeAddress));
+  const [address, setAddress] = useState<HomeAddressParts>(saved);
   const [ni, setNi] = useState('');
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
+  // Untouched boxes send the saved line back exactly as it was, so a phone
+  // change never reads as an address change (and never sends E7). An
+  // edited address has to be complete; an empty one is left as it was.
+  const addressEdited =
+    !isBlankAddress(address) && joinHomeAddress(address) !== joinHomeAddress(saved);
+  const addressProblem = addressEdited ? homeAddressMissing(address) : null;
+
   function save() {
     setNote(null);
     setError(null);
+    if (addressProblem) {
+      setError(`${addressProblem}.`);
+      return;
+    }
     start(async () => {
-      const result = await saveContactDetails(phone, address);
+      const result = await saveContactDetails(
+        phone,
+        addressEdited ? joinHomeAddress(address) : (profile.homeAddress ?? ''),
+      );
       if (!result.ok) setError(result.message);
       else {
         setNote(result.note ?? 'Saved.');
@@ -159,12 +184,13 @@ export function DetailsForm({
 
       <EmailField current={profile.email} />
 
-      <Input
-        label="Home address"
-        value={address}
-        onChange={(event) => setAddress(event.target.value)}
-        hint="Used for venue distances. Changing it notifies the office."
-      />
+      <div className="field address-set" role="group" aria-labelledby="home-address-label">
+        <span className="label" id="home-address-label">
+          Home address
+        </span>
+        <AddressFields value={address} onChange={setAddress} />
+        <span className="hint">Used for venue distances. Changing it notifies the office.</span>
+      </div>
 
       {error ? <Alert tone="coral">{error}</Alert> : null}
       {note ? <Alert tone="green">{note}</Alert> : null}
@@ -174,9 +200,9 @@ export function DetailsForm({
       </Button>
 
       <Note>
-        When you change your address we look up the postcode at the end of it and move your location
-        to match, so venue distances stay right. If we can’t find the postcode, your address is
-        still saved and the office is told your location needs updating.
+        When you change your address we look up its postcode and move your location to match, so
+        venue distances stay right. If we can’t find the postcode, your address is still saved and
+        the office is told your location needs updating.
       </Note>
     </>
   );

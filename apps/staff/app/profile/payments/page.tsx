@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { Alert, EmptyState } from '@thc/ui';
+import { Alert, EmptyState, Note } from '@thc/ui';
 import { ProfileShell } from '../_components/ProfileShell';
 import { appLock, canReachPayments } from '../lock';
 import { loadEarnings, loadProfile, supabaseConfigured } from '../data';
@@ -25,6 +25,9 @@ export const metadata = { title: 'Payment information · THC Staff' };
  *
  * The tabs are two URLs rather than client state, so the back button works
  * and a link into Bank & payroll lands there.
+ *
+ * Payslips are not in this app: they come from the payroll provider's
+ * MyEPayWindow portal, so both tabs say where to find them.
  */
 export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   const { tab } = await searchParams;
@@ -74,6 +77,11 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
         </Link>
       </div>
 
+      <Note>
+        <b>Looking for your payslips?</b> View them by logging into your MyEPayWindow Portal. The
+        registration email is sent out at the time your first payment is made.
+      </Note>
+
       {bankTab ? (
         <BankForm bank={profile.bank} />
       ) : paid.length === 0 ? (
@@ -88,9 +96,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
             <div className="paid-total">
               <span className="label">Paid so far · {payMonthLabel(`${month.month}-01`)}</span>
               <span className="v">{formatMoney(month.totalPence)}</span>
-              <span className="xs muted">
-                Base pay only. Payslips and holiday pay come from payroll, not this app.
-              </span>
             </div>
           ) : null}
           {paid.map((row) => (

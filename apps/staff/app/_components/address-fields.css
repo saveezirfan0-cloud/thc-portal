@@ -1,0 +1,12 @@
+/* The home address boxes (AddressFields): a narrow house-number box beside
+   the street, and the postcode beside the town. */
+.house-field {
+  width: 110px;
+}
+.postcode-field {
+  width: 120px;
+}
+/* Profile details: the boxes under one "Home address" heading. */
+.field.address-set {
+  gap: var(--sp-10);
+}

@@ -151,7 +151,18 @@ describe('1/11 Right to work', () => {
 describe('2/11 Home address', () => {
   it('asks for the pin; Continue waits for it', () => {
     const html = renderToStaticMarkup(
-      <AddressStep initial={{ line: '', town: '', postcode: '', lat: null, lng: null }} />,
+      <AddressStep
+        initial={{
+          flat: '',
+          house: '',
+          street: '',
+          area: '',
+          town: '',
+          postcode: '',
+          lat: null,
+          lng: null,
+        }}
+      />,
     );
     expect(html).toContain('Where do you live?');
     expect(html).toContain('Use my location');
@@ -161,7 +172,10 @@ describe('2/11 Home address', () => {
     const html = renderToStaticMarkup(
       <AddressStep
         initial={{
-          line: 'Flat 4, 22 Roman Road',
+          flat: 'Flat 4',
+          house: '22',
+          street: 'Roman Road',
+          area: '',
           town: 'London',
           postcode: 'E2 0RY',
           lat: 51.529,
@@ -170,6 +184,10 @@ describe('2/11 Home address', () => {
       />,
     );
     expect(footer(html).disabled).toBe(false);
+    // One box per part of the address.
+    for (const label of ['Flat / apartment', 'House no. or name', 'Street name', 'Town / city']) {
+      expect(html).toContain(label);
+    }
     // The office is told (E7), in words: the register code is not shown.
     expect(html).toContain('the office is notified of the');
     expect(html).not.toContain('(E7)');
