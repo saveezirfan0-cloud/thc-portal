@@ -81,9 +81,10 @@
 
 /*
  * Request my P45 (§10.6): "below the sign-out link, set apart from the
- * everyday links and not styled as a primary action". The dashed rule and
- * the muted, underlined text are what "set apart" and "not primary" mean
- * here — this block is deliberately the quietest thing on the sheet.
+ * everyday links and not styled as a primary action". The dashed rule is
+ * "set apart"; the button is a coral OUTLINE, never filled, which is "not
+ * primary" — findable at a glance, which the muted text link was not
+ * (ADR-0062).
  */
 .p45-slot {
   margin-top: var(--sp-10);
@@ -93,21 +94,6 @@
   flex-direction: column;
   gap: var(--sp-4);
   text-align: center;
-}
-.p45-slot .p45-link {
-  font-size: var(--fs-11);
-  color: var(--muted);
-  text-decoration: underline;
-  background: none;
-  border: 0;
-  padding: 0;
-  cursor: pointer;
-  font-family: inherit;
-  /* Quiet, but still a finger-sized target (§1.2). */
-  min-height: var(--tap-min);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 .p45-slot .p45-link[disabled] {
   opacity: 0.5;

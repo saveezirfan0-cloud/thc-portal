@@ -34,8 +34,9 @@ import { P45Flow } from './P45Flow';
  *     one link among three; this is the button workers were looking for.
  *
  * The help line is still TEXT (§10.1 — "not a separate tappable screen"),
- * and Request my P45 is still the quietest thing on the screen, below
- * sign-out behind a dashed rule (§10.6).
+ * and Request my P45 sits last, below sign-out behind a dashed rule
+ * (§10.6): a full-width coral OUTLINE button, easy to find but never a
+ * primary (filled) action (ADR-0062).
  */
 export function ProfileHub({
   profile,
@@ -177,7 +178,7 @@ export function ProfileHub({
         <div className="p45-slot">
           <button
             type="button"
-            className="p45-link"
+            className="btn danger block p45-link"
             disabled={!p45.available}
             onClick={() => setLeaving(true)}
           >

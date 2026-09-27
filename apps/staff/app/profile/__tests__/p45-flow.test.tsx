@@ -107,6 +107,9 @@ describe('the P45 action on the sheet (§10.6)', () => {
     const link = container.querySelector<HTMLButtonElement>('.p45-slot .p45-link');
     expect(link).not.toBeNull();
     expect(link!.className).not.toContain('primary');
+    // ADR-0062: a full-width coral outline button — findable, never filled.
+    expect(link!.className.split(' ')).toEqual(expect.arrayContaining(['btn', 'danger', 'block']));
+    expect(link!.className).not.toContain('solid');
     const html = container.innerHTML;
     expect(html.indexOf('Sign out')).toBeLessThan(html.indexOf('Need help?'));
     expect(html.indexOf('Need help?')).toBeLessThan(html.indexOf('p45-slot'));
