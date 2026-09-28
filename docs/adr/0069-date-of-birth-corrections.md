@@ -41,19 +41,30 @@ from the Back Office and from the Staff App. Every change must be deliberate and
 
   Both are held to the `dobs` group of `changeRequest.vectors.json` (Vitest `dob.test.ts`,
   pgTAP `717` B).
-- **The effect.** `staff_dob_apply()` is internal and granted to no API role. It:
+- **The effect.** `staff_dob_apply()` is internal: no API role may execute it (the
+  service role keeps the default grant every function has). It:
   1. writes `staff.dob`;
   2. writes one `audit_log` row with the dates under the `dob` key (`{from, to}`) and the
      actor's name (`actorName`, ADR-0055). The dates go under `dob` only because
      `remove_worker()`'s §1.7 scrub already strips `dob` from every row about the worker
-     (`v_pii_keys`), so the log keeps the event but not the dates;
-  3. when asked, re-runs the gov.uk check of a **pending** share code while
-     `rtw_check_enabled()`:
+     (`v_pii_keys`), so the log keeps the event but not the dates. The office's free-text
+     `reason` is not a key that scrub knows, and a reason can name a date, so
+     `staff_removed_purge_additions()` (restated) overwrites `reason` with "Removed under
+     GDPR (§1.7)" and drops any `note` on the worker's `staff.dob_corrected` and
+     `staff.dob_claimed_with_share_code` rows — as it already does to a change request's
+     `decision_reason`. The dialog's hint says not to type the date there;
+  3. closes any **other** pending date-of-birth change request: withdrawn when it asked for
+     exactly this date (no RC3 — the date is theirs), otherwise rejected with the reason
+     the worker reads ("The office has since set your date of birth to dd.mm.yyyy.") and
+     RC3;
+  4. for the office's routes, clears a date a worker entered with a pending share code
+     (`claimed_dob`, route 2) — the office's date wins — and re-runs the gov.uk check of a
+     **pending** share code while `rtw_check_enabled()`:
 
      | Check state | What happens | `rtwCheck` |
      |---|---|---|
      | None open | `rtw_check_enqueue(doc, actor)` adds a new row. `rtw_checks_latest_v` takes the newest row per document, so a finished `needs_review` check is superseded (717 E) | `queued` |
-     | Still **queued** | Left alone: the runner reads `staff.dob` when it claims the check | `queued` |
+     | Still **queued** | Left alone: the runner reads the date when it claims the check (717 E) | `queued` |
      | Already **running** | Asks gov.uk with the old date, so it is reported. The office presses "Run check again" once it lands | `running` |
      | Check switched off | Nothing to queue; checked by hand | `off` |
      | No pending share code | Nothing to re-run | `none` |
@@ -111,19 +122,43 @@ from the Back Office and from the Staff App. Every change must be deliberate and
      form is no way to try dates against a code. A refused date files nothing.
   3. `submit_document_upload('share_code_report', …)` files the code exactly as before.
      It is not restated.
-  4. Only if the filing succeeded, `staff.dob` is written in the same transaction, audited
-     as the worker (`staff.dob_changed_with_share_code`, `source: staff_app`, the
-     document id).
+  4. Only if the filing succeeded, the date is kept **on that document**, not on the
+     profile: `compliance_docs.claimed_dob` (new, nullable, share-code rows only), audited
+     as the worker (`staff.dob_claimed_with_share_code`, `source: staff_app`, the
+     document id, the dates under `dob`).
 
-  The insert trigger queues the gov.uk check. The runner claims it after commit, so it
-  asks with the corrected date.
-- **Why self-serve is safe here.** gov.uk checks the code and date as a pair, and an
-  admin decides every result (ADR-0041).
+  The insert trigger queues the gov.uk check. `rtw_check_claim()` (restated) asks gov.uk
+  with `coalesce(claimed_dob, staff.dob)`.
+- **When the profile takes the date.** Only when an admin **verifies** that document. A
+  trigger on `review_status → verified` (`compliance_docs_claimed_dob_verified`) calls
+  `staff_dob_apply()` — audited `staff.dob_corrected`, `source: share_code_verified`, the
+  reviewer as actor, `optOutSignedUnder18` flagged — whichever verify path set it, so no
+  verify function is restated. The rule is checked again at that moment; an unchanged
+  date writes nothing. A not-found, a rejected or a superseded document never changes
+  `staff.dob`.
+- **Who may write `claimed_dob`.** Definer code only. `compliance_docs_claimed_dob_guard`
+  refuses it from any API session (`anon`, `authenticated`), because the office's
+  `admin_all` policy would otherwise let any Back Office login — a scheduler included —
+  set a date that Verify then copies. §1.7 removal clears it on every row, held
+  right-to-work evidence included.
+- **What the office sees.** `share_code_dob_claims_v` (security invoker) lists each pending
+  share code whose worker entered a different date. `/compliance`, `/staff/:id` Documents
+  and `/onboarding/:id` show, beside the gov.uk check, "Date of birth entered with this
+  code: 15.06.1995 (profile: 31.12.1994)" and that Verify also changes the profile's date
+  — plus "ask them to sign it again" when that date would put a signed 48-hour opt-out
+  before their 18th birthday. When it happens, the flag is also on the audit row and in
+  the activity log.
+- **Why self-serve is safe now.** The worker's date is a claim, not a change: it is only
+  what gov.uk is asked with. gov.uk checks the code and date as a pair, and nothing
+  reaches the profile until an admin compares the result and presses Verify (ADR-0041)
+  with the two dates in front of them. A worker cannot use the form to overwrite an
+  office correction; an office correction clears a pending claim.
 - **Copy.**
   - "What happens next" now says the office confirms the result. Before, it said "If
     gov.uk confirms your right to work, it is verified", which has not been true since
     ADR-0041.
-  - "If your date of birth on file is wrong, tell the office" is gone.
+  - "If your date of birth on file is wrong, tell the office" is gone. Instead: "The date
+    above is used for this check, and saved to your profile once the office verifies it."
   - With the check off, the share-code form gets its own "The office checks it with
     gov.uk, with the date of birth above".
   - The Documents page flash `share` now points at the row below as the source of truth.
@@ -209,19 +244,28 @@ That case is **flagged, not refused, and not revoked**:
 ## Consequences
 
 - **Tests.**
-  - pgTAP `717` (85 assertions) covers:
+  - pgTAP `717` (118 assertions) covers:
     - shape and grants;
     - the vectors;
     - owner/manager allowed; scheduler, viewer, worker, client and anon refused;
     - every refusal, including a removed profile;
     - staff.dob and the audit row;
-    - the re-queue (queued, superseding needs_review in `rtw_checks_latest_v`), running,
-      off and none;
+    - the re-queue (queued, superseding needs_review in `rtw_checks_latest_v`), a check
+      still queued left alone, running, off and none;
     - the opt-out flag;
-    - the share-code path (changed, refused, unchanged, the cap, manual hold);
+    - the share-code path: the date claimed on the document, never on the profile;
+      `rtw_check_claim()` sends the claimed date; reject leaves `staff.dob`; verify copies
+      it (`share_code_verified`); an office correction clears a pending claim; the office's
+      view; nobody writes `claimed_dob` directly; the cap; manual hold; anon, a client and
+      an office session refused;
     - the dob change request (refusals, RC1 keys, the worker's read, scheduler/viewer
-      refused, manager approves → dob, RC2, audit, no RC4, reject → RC3);
-    - §1.7 removal (proposed date → 1900-01-01, no audit row keeps the dates).
+      refused, a worker `not_authorised`, manager approves → dob, RC2, audit, no RC4,
+      reject → RC3; closed as withdrawn / rejected when another route sets the date);
+    - §1.7 removal (proposed date → 1900-01-01, snapshot / reason / note cleared, RC1's
+      dates and note gone, no audit row keeps the dates or the office's reason, no
+      `claimed_dob` left).
+  - The `dobs` vectors carry a leap-day pair with their own `today` (born 29.02.2008:
+    under 18 on 28.02.2026, 18 on 01.03.2026).
   - Every existing file passes unchanged (700, 701, 702, 715, 716, 741, 750, 600, 676,
     430, 230, 670 …). Only 002 6–7 fail locally, as they always do (ADR-0010).
   - Vitest:
@@ -239,6 +283,7 @@ That case is **flagged, not refused, and not revoked**:
   - `staff_removed_purge_additions` (20260930205200)
   - `office_decide_profile_change` (20260930206000)
   - `staff_me` (20260928110700)
+  - `rtw_check_claim` (20260928100000)
   - `my_profile_change_requests` (20260930202200)
   - `office_profile_change_requests` (20260930203000)
 
@@ -246,8 +291,12 @@ That case is **flagged, not refused, and not revoked**:
   they are dropped and created, with grants re-issued.
 - **Generated types.** `packages/db/src/types.generated.ts`: `proposed_dob` hand-added;
   regenerate after deploy.
-- **The activity log.** "Corrected date of birth" and "Changed date of birth with a new
-  share code". A `{from, to}` pair under any key reads "Key: from → to".
+- **The activity log.** "Corrected date of birth" and "Entered a different date of birth
+  with a share code". A `{from, to}` pair under any key reads "Key: from → to", dates as
+  dd.mm.yyyy.
+- **An approved date-of-birth request** says what happened, as "Correct" does: the gov.uk
+  re-check and the opt-out warning, above the queue or the banner once the request has
+  left it.
 
 ### Deviations from the wireframes
 
