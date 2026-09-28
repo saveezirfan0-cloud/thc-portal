@@ -17,7 +17,12 @@ const state = vi.hoisted(() => ({
   rpcError: null as { message: string } | null,
 }));
 
-const rpc = vi.fn(async () => ({ data: { ok: true }, error: state.rpcError }));
+const rpc = vi.fn(
+  async (): Promise<{ data: Record<string, unknown>; error: { message: string } | null }> => ({
+    data: { ok: true },
+    error: state.rpcError,
+  }),
+);
 const createAdminClient = vi.fn(() => ({ rpc }));
 
 vi.mock('next/headers', () => ({ cookies: async () => ({}) }));
@@ -74,7 +79,13 @@ describe('decideChangeRequest (ADR-0045)', () => {
     expect(!result.ok && result.message).toMatch(/shows this date of birth/);
     expect(rpc).not.toHaveBeenCalled();
     rpc.mockResolvedValueOnce({
-      data: { ok: true, status: 'approved', kind: 'dob', rtwCheck: 'queued', optOutSignedUnder18: true },
+      data: {
+        ok: true,
+        status: 'approved',
+        kind: 'dob',
+        rtwCheck: 'queued',
+        optOutSignedUnder18: true,
+      },
       error: null,
     });
     const approved = await decideChangeRequest('r1', true, '', true);
