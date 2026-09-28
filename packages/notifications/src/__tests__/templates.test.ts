@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ADDITION_CODES,
+  MESSAGE_CODES,
   EXTENSION_CODES,
   REQUIREMENT_CODES,
   SCOPE_CODES,
@@ -56,6 +57,9 @@ const REQUIREMENT_EMAIL_CODES = ['CL3', 'CL4', 'CL5', 'CL6'];
 const ADDITION_PUSH_CODES = ['RC2', 'RC3', 'OF1', 'OF2', 'OF3', 'OF4', 'OF6'];
 const ADDITION_EMAIL_CODES = ['RC1', 'RC4', 'OF5'];
 
+/** Office messages (ADR-0069): the manager writes the body. */
+const MESSAGE_PUSH_CODES = ['OM1'];
+
 const entries = Object.entries(TEMPLATES) as [TemplateCode, Template][];
 
 describe('notification register (§8)', () => {
@@ -75,6 +79,7 @@ describe('notification register (§8)', () => {
         ...EXTENSION_CODES,
         ...ADDITION_PUSH_CODES,
         ...ADDITION_EMAIL_CODES,
+        ...MESSAGE_PUSH_CODES,
       ].sort(),
     );
   });
@@ -115,7 +120,14 @@ describe('notification register (§8)', () => {
       'OF5',
       'OF6',
     ]);
-    const union = [...SCOPE_CODES, ...REQUIREMENT_CODES, ...EXTENSION_CODES, ...ADDITION_CODES];
+    expect([...MESSAGE_CODES]).toEqual(MESSAGE_PUSH_CODES);
+    const union = [
+      ...SCOPE_CODES,
+      ...REQUIREMENT_CODES,
+      ...EXTENSION_CODES,
+      ...ADDITION_CODES,
+      ...MESSAGE_CODES,
+    ];
     // Disjoint: no code is counted in two lists.
     expect(new Set(union).size).toBe(union.length);
     expect(union.sort()).toEqual([...Object.keys(TEMPLATES)].sort());
@@ -305,8 +317,14 @@ describe('§8 copy is verbatim', () => {
     // describes each send and quotes none, so they are pinned in their own
     // suite below.
     const pinned = new Set(SCOPE_BODIES.map(([code]) => code));
-    // Neither the requirement's codes, the extensions nor the additions are §8's.
-    const notScope = new Set<string>([...REQUIREMENT_CODES, ...EXTENSION_CODES, ...ADDITION_CODES]);
+    // Neither the requirement's codes, the extensions, the additions nor the
+    // office messages are §8's.
+    const notScope = new Set<string>([
+      ...REQUIREMENT_CODES,
+      ...EXTENSION_CODES,
+      ...ADDITION_CODES,
+      ...MESSAGE_CODES,
+    ]);
     const unpinned = Object.keys(TEMPLATES).filter(
       (code) => !pinned.has(code) && !notScope.has(code),
     );
@@ -974,5 +992,49 @@ describe('N10d / N11b — the extensions for a withdrawn invitation and a detail
       'Shift details changed — Dress code changed by the office (was Black & whites). Please confirm in the app.',
     );
     expect(template('N11b').deepLink).toBe(template('N11').deepLink);
+  });
+});
+
+/**
+ * Office messages (ADR-0069). The manager writes the body; the register
+ * still fixes the title, the deep link and the tag, and the payload carries
+ * exactly the keys `send_event_message` writes (pgTAP 758).
+ */
+describe('office message — OM1 (ADR-0069)', () => {
+  const values = {
+    event: 'Summer Gala',
+    date: 'Sat 03 Oct',
+    message: 'Use the staff entrance on King St — the front is closed. {not a placeholder}',
+    bookingId: 'b-1',
+    messageId: 'm-1',
+  };
+
+  it('is a push that says it is not §8 and names its ADR', () => {
+    const entry = template('OM1');
+    expect(entry.channel).toBe('push');
+    expect(entry.trigger).toMatch(/Not in §8/);
+    expect(entry.trigger).toContain('ADR-0069');
+    expect(entry.mandatory).toBeUndefined();
+    expect(SCOPE_CODES as readonly string[]).not.toContain('OM1');
+  });
+
+  it('asks for exactly the keys the sender writes', () => {
+    const entry: Template = TEMPLATES.OM1;
+    const keys = new Set(
+      [entry.title, entry.body ?? '', entry.deepLink ?? '', entry.tag ?? ''].flatMap((t) =>
+        [...t.matchAll(/\{(\w+)\}/g)].map((m) => m[1]),
+      ),
+    );
+    expect([...keys].sort()).toEqual(Object.keys(values).sort());
+  });
+
+  it("sends the manager's words as they were typed, braces and all", () => {
+    expect(render(template('OM1').title, values)).toBe('Summer Gala · Sat 03 Oct');
+    expect(render(body('OM1'), values)).toBe(values.message);
+  });
+
+  it('gives every message its own notification, so a second does not replace the first', () => {
+    expect(render(template('OM1').tag!, values)).toBe('OM1:m-1');
+    expect(render(template('OM1').deepLink!, values)).toBe('/shifts/b-1');
   });
 });

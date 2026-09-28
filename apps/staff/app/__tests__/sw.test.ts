@@ -28,22 +28,45 @@ const sw = vi.hoisted(() => {
   >(async () => undefined);
   const openWindow = vi.fn<(url: string) => Promise<null>>(async () => null);
   let windows: { focus: () => Promise<void>; navigate: (url: string) => Promise<void> }[] = [];
+  // Tags of the notifications "still in the notification centre".
+  let showing: string[] = [];
+  const getNotifications = async ({ tag }: { tag?: string } = {}) =>
+    showing.filter((t) => tag === undefined || t === tag).map((t) => ({ tag: t }));
+  const setAppBadge = vi.fn<(n?: number) => Promise<void>>(async () => undefined);
+  const store = new Map<string, string>();
+  const caches = {
+    open: async () => ({
+      match: async (key: string) => (store.has(key) ? new Response(store.get(key)) : undefined),
+      put: async (key: string, response: Response) => {
+        store.set(key, await response.text());
+      },
+    }),
+  };
   const self = {
     __SW_MANIFEST: [],
     addEventListener: (type: string, handler: Handler) => handlers.set(type, handler),
-    registration: { showNotification, pushManager: { subscribe: vi.fn() } },
+    registration: { showNotification, getNotifications, pushManager: { subscribe: vi.fn() } },
     clients: {
       matchAll: async () => windows,
       openWindow,
     },
+    navigator: { setAppBadge, clearAppBadge: vi.fn(async () => undefined) },
+    caches,
   };
   return {
     handlers,
     showNotification,
     openWindow,
+    setAppBadge,
     self,
     setWindows(next: typeof windows) {
       windows = next;
+    },
+    setShowing(next: string[]) {
+      showing = next;
+    },
+    resetBadge() {
+      store.clear();
     },
   };
 });
@@ -75,6 +98,31 @@ beforeEach(() => {
   sw.showNotification.mockClear();
   sw.openWindow.mockClear();
   sw.setWindows([]);
+  sw.setShowing([]);
+  sw.setAppBadge.mockClear();
+  sw.resetBadge();
+});
+
+describe('the red count on the app icon', () => {
+  it('goes up by one with each push, like a native app', async () => {
+    await push({ title: 'New invitation', body: 'x', url: '/invites/1' });
+    await push({ title: 'New invitation', body: 'y', url: '/invites/2' });
+    expect(sw.setAppBadge.mock.calls.map((c) => c[0])).toEqual([1, 2]);
+  });
+
+  it('does not count a push that only replaces one still on screen (same tag)', async () => {
+    await push({ title: 'Document rejected', body: 'x', url: '/documents', tag: 'N8:doc-1' });
+    sw.setShowing(['N8:doc-1']);
+    await push({ title: 'Document rejected', body: 'y', url: '/documents', tag: 'N8:doc-1' });
+    expect(sw.setAppBadge.mock.calls.map((c) => c[0])).toEqual([1]);
+    expect(sw.showNotification).toHaveBeenCalledTimes(2);
+  });
+
+  it('still shows the notification when the badge cannot be painted', async () => {
+    sw.setAppBadge.mockRejectedValueOnce(new Error('NotAllowedError'));
+    await push({ title: 'Your shift today', body: 'Time to check in', url: '/shifts/41' });
+    expect(sw.showNotification).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe('push (§8)', () => {

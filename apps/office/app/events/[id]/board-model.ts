@@ -701,6 +701,71 @@ export function withdrawRefusal(reason: string): string {
   return WITHDRAW_REFUSAL_COPY[reason] ?? `The worker was not withdrawn (${reason || 'unknown'}).`;
 }
 
+// ---------------------------------------------------------------------
+// Message the line-up (ADR-0069) — send_event_message's refusals
+// ---------------------------------------------------------------------
+
+/** iOS shows about 178 characters on the lock screen; the rest on a long press. */
+export const MESSAGE_MAX = 300;
+
+const MESSAGE_REFUSAL_COPY: Readonly<Record<string, string>> = {
+  message_required: 'Write the message first.',
+  message_too_long: `Keep the message to ${MESSAGE_MAX} characters — a phone cuts off anything longer.`,
+  event_cancelled: 'This event is cancelled. Everyone on it has already been told (N12).',
+  event_over: 'This event is over — every role has ended, so there is nobody left to tell.',
+  section_not_on_event: 'That role is no longer on this event. Reload the page and try again.',
+  nobody_to_message: 'Nobody is booked on that yet — there is nobody to message.',
+};
+
+/**
+ * `includeInvited` only changes one refusal: with the box unticked, "nobody
+ * to message" can still be answered by ticking it; with it ticked, it can't.
+ */
+export function messageRefusal(reason: string, includeInvited = false): string {
+  const copy = MESSAGE_REFUSAL_COPY[reason];
+  if (!copy) return `The message was not sent (${reason || 'unknown'}).`;
+  if (reason === 'nobody_to_message' && !includeInvited)
+    return `${copy} Tick "Also invited" to reach the people who have not answered.`;
+  return copy;
+}
+
+const DY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * The event date as OM1's title shows it — send_event_message() writes
+ * `to_char(event_date, 'Dy DD Mon')`: "Sat 03 Oct", "Tue 01 Sep". Spelled
+ * out rather than Intl, whose en-GB short month for September is "Sept".
+ * A calendar date (yyyy-mm-dd), so no time zone is involved.
+ */
+export function pushDate(isoDate: string): string {
+  const [y, m, d] = isoDate.split('-').map(Number) as [number, number, number];
+  const day = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return `${DY[day]} ${String(d).padStart(2, '0')} ${MON[m - 1]}`;
+}
+
+/** Message length as the database counts it (`char_length`: code points, not UTF-16 units). */
+export function messageLength(message: string): number {
+  return [...message.trim()].length;
+}
+
+/** What the manager is told after a send: how many, and whom to phone. */
+export function messageSentSummary(sent: number, withoutPush: readonly string[]): string {
+  const head = `Sent to ${sent} ${sent === 1 ? 'person' : 'people'}.`;
+  if (withoutPush.length === 0) return head;
+  const who = withoutPush.length === 1 ? 'This person has' : 'These people have';
+  return `${head} ${who} notifications off and will not get it — phone them: ${withoutPush.join(', ')}.`;
+}
+
+/**
+ * Whether Message staff is offered (ADR-0069): up to the end of the event.
+ * A cancelled event already told everyone (N12); a completed one has nobody
+ * left to tell anything useful.
+ */
+export function canMessageLineUp(status: string): boolean {
+  return status === 'upcoming' || status === 'ongoing';
+}
+
 /**
  * Whether the auto-assign switches may be pressed (§3.4). Auto-assign
  * stops for a cancelled event (§3.3) and has nothing to fill once every

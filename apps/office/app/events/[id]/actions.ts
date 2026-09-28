@@ -5,7 +5,13 @@ import { revalidatePath } from 'next/cache';
 import { acceptApplicationRefusal, cancelEventRefusal, payrollWarning } from '@thc/domain';
 import { adminRefusal } from '../admin';
 import { eventsDb, supabaseConfigured } from '../db';
-import { inviteRefusal, offerOfficeRefusal, withdrawRefusal } from './board-model';
+import {
+  messageRefusal,
+  messageSentSummary,
+  inviteRefusal,
+  offerOfficeRefusal,
+  withdrawRefusal,
+} from './board-model';
 
 export type ActionResult = { error: string } | { ok: true; warning?: string };
 
@@ -171,6 +177,56 @@ export async function cancelEvent(eventId: string, reason: string): Promise<Acti
   revalidatePath(`/events/${eventId}`);
   revalidatePath('/events');
   return { ok: true };
+}
+
+/**
+ * Message the line-up (ADR-0069): a push with the manager's own words to
+ * everyone on the event, or on one role — last-minute information that
+ * has no §8 code (a moved entrance, parking, what to bring).
+ *
+ * One RPC, `send_event_message()` (20261001209000). It picks the recipients
+ * from the bookings itself — the page sends a section id at most, never a
+ * list of workers — and answers with the names of anyone who has
+ * notifications off, which is returned as the success line so the manager
+ * knows whom to phone.
+ */
+export async function messageLineUp(
+  eventId: string,
+  input: { sectionId: string | null; includeInvited: boolean; message: string },
+): Promise<{ error: string } | { ok: true; summary: string; everyoneReached: boolean }> {
+  if (!input.message.trim()) return { error: messageRefusal('message_required') };
+  if (!supabaseConfigured()) return { error: NO_SUPABASE };
+  const supabase = await db();
+  const refused = await adminRefusal(supabase);
+  if (refused) return { error: refused };
+
+  const { data, error } = await supabase.rpc('send_event_message', {
+    p_event: eventId,
+    p_section: input.sectionId,
+    p_include_invited: input.includeInvited,
+    p_message: input.message,
+  });
+  if (error) {
+    if (/event_not_found/.test(error.message)) return { error: 'That event no longer exists.' };
+    if (/read_only/.test(error.message))
+      return { error: 'A view-only login cannot send messages.' };
+    return { error: `The message was not sent: ${error.message}` };
+  }
+  const result = (data ?? {}) as {
+    ok?: boolean;
+    reason?: string;
+    sent?: number;
+    withoutPush?: string[];
+  };
+  if (result.ok !== true)
+    return { error: messageRefusal(String(result.reason ?? ''), input.includeInvited) };
+  revalidatePath(`/events/${eventId}`);
+  const withoutPush = result.withoutPush ?? [];
+  return {
+    ok: true,
+    summary: messageSentSummary(result.sent ?? 0, withoutPush),
+    everyoneReached: withoutPush.length === 0,
+  };
 }
 
 /**
