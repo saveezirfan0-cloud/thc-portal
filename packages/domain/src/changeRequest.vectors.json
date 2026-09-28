@@ -1,5 +1,5 @@
 {
-  "description": "ADR-0045 request a change (docs/19 §3). The contract between CHANGE_REQUEST_TRANSITIONS / validateNameChange / validateDecision in packages/domain and profile_change_transitions(), the profile_change_requests_state_guard trigger and the profile_change_requests CHECKs in 20260930200100_staff_additions_schema.sql. Every pair of distinct statuses NOT listed under edges is illegal; staying in the same status is not a transition. Regenerate the pgTAP half with: node packages/domain/scripts/gen-vectors-sql.mjs",
+  "description": "ADR-0045 request a change (docs/19 §3). The contract between CHANGE_REQUEST_TRANSITIONS / validateNameChange / validateDecision / dobChangeProblem in packages/domain and profile_change_transitions(), the profile_change_requests_state_guard trigger and the profile_change_requests CHECKs in 20260930200100_staff_additions_schema.sql; `dobs` holds dobChangeProblem() (dob.ts) and dob_change_problem() in 20261001208000_date_of_birth_corrections.sql to the same cases (ADR-0069). Every pair of distinct statuses NOT listed under edges is illegal; staying in the same status is not a transition. Regenerate the pgTAP half with: node packages/domain/scripts/gen-vectors-sql.mjs",
   "statuses": ["pending", "approved", "rejected", "withdrawn"],
   "edges": [
     {
@@ -182,5 +182,77 @@
       "reason": "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR",
       "expect": "reason_too_long"
     }
-  ]
+  ],
+  "dobs": {
+    "today": "2026-09-28",
+    "current": "1995-01-01",
+    "cases": [
+      {
+        "name": "an_earlier_date",
+        "input": "1994-12-31",
+        "expect": null,
+        "ref": "ADR-0069 a real correction"
+      },
+      {
+        "name": "a_day_later",
+        "input": "1995-01-02",
+        "expect": null,
+        "ref": "ADR-0069 day and month swapped by a day is still a change"
+      },
+      {
+        "name": "the_date_on_file",
+        "input": "1995-01-01",
+        "expect": "unchanged",
+        "ref": "ADR-0069 a no-op is refused, so the audit trail only records changes"
+      },
+      {
+        "name": "no_date",
+        "input": null,
+        "expect": "dob_required",
+        "ref": "ADR-0069 a correction names a date"
+      },
+      {
+        "name": "tomorrow",
+        "input": "2026-09-29",
+        "expect": "dob_invalid",
+        "ref": "§2.1 not in the future"
+      },
+      {
+        "name": "eighteen_today",
+        "input": "2008-09-28",
+        "expect": null,
+        "ref": "§2.1 18 on the day, in UK time"
+      },
+      {
+        "name": "eighteen_tomorrow",
+        "input": "2008-09-29",
+        "expect": "under_18",
+        "ref": "§2.1 under 18 is refused out loud"
+      },
+      {
+        "name": "born_today",
+        "input": "2026-09-28",
+        "expect": "under_18",
+        "ref": "§2.1 today is not the future, but it is under 18"
+      },
+      {
+        "name": "a_leap_day",
+        "input": "2008-02-29",
+        "expect": null,
+        "ref": "§2.1 a 29 February birthday counts from 1 March in a common year"
+      },
+      {
+        "name": "one_hundred",
+        "input": "1926-09-28",
+        "expect": null,
+        "ref": "§2.1 100 completed years is the oldest accepted (MAX_AGE)"
+      },
+      {
+        "name": "one_hundred_and_one",
+        "input": "1925-09-28",
+        "expect": "dob_invalid",
+        "ref": "§2.1 older than 100 is a typo, not a worker"
+      }
+    ]
+  }
 }
