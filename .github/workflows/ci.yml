@@ -138,6 +138,16 @@ jobs:
           NEXT_PUBLIC_STAFF_URL: http://127.0.0.1:3001
           NEXT_PUBLIC_CLIENT_URL: http://127.0.0.1:3002
           APP_TZ: Europe/London
+      # A failed browser test leaves its trace, screenshot and page snapshot
+      # in e2e/test-results; without this they vanished with the runner and a
+      # failure on `main` could only be guessed at from the log (the §10.6
+      # P45 test, 27–28.09). Seeded test data only; kept a week.
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-results
+          path: e2e/test-results
+          retention-days: 7
 
   # =====================================================================
   # Deploy the database
