@@ -51,6 +51,9 @@ test.beforeEach(async ({ page }) => {
 test('Request my P45: two confirmations, then the leaver screen — and the office is told (§10.6)', async ({
   page,
 }) => {
+  // The leaver screen below may take up to 45 s on a loaded runner; the
+  // default 30 s test budget would end the test before the poll does.
+  test.setTimeout(90_000);
   const reason = 'Moving to Leeds for a permanent job';
   await openAs(page, '/profile', leaver!.email, PASSWORD);
 
@@ -85,7 +88,8 @@ test('Request my P45: two confirmations, then the leaver screen — and the offi
   // action (request_my_p45's cascade, then a layout-wide revalidate) followed
   // by router.replace + refresh: up to three dynamic renders of /profile,
   // which on a loaded CI runner outlast the default 5 s — the one step this
-  // spec kept failing on (runs 306, 313, 319), retry included. So it polls,
+  // spec kept failing on (runs 306, 313, 319, and at 20 s in 357), retry
+  // included. So it polls, for up to 45 s,
   // as office.checkin does for Get back, and a refusal the sheet prints
   // (P45Flow.tsx's Alert, role="status") fails with its own words rather than
   // a bare "heading not found".
@@ -97,7 +101,7 @@ test('Request my P45: two confirmations, then the leaver screen — and the offi
         const refusal = (await flow.getByRole('status').allTextContents()).join(' ').trim();
         return refusal ? `refused: ${refusal}` : 'waiting';
       },
-      { timeout: 20_000 },
+      { timeout: 45_000 },
     )
     .toBe('left');
   await expect(
