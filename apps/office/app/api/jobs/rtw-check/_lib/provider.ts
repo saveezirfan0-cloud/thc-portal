@@ -1,5 +1,5 @@
 import { rtwCheckError } from '@thc/domain';
-import { looksLikePdf, MAX_REPORT_BYTES } from './checker';
+import { looksLikePdf, looksLikePng, MAX_REPORT_BYTES } from './checker';
 import type { CheckInput, CheckOutput, EnvReader, RightToWorkChecker } from './checker';
 import {
   authHeaders,
@@ -79,7 +79,18 @@ export function createProviderChecker(
       } else if (mapped.reportUrl) {
         report = await fetchReport(mapped.reportUrl);
       }
-      return { result: mapped.result, report };
+      // The photo is best effort, as on the gov.uk route: anything that is
+      // not a PNG under the size limit is dropped, and the PDF stands in.
+      let photo: Uint8Array | null = null;
+      if (
+        mapped.photoBase64 &&
+        mapped.result.outcome !== 'not_found' &&
+        mapped.result.outcome !== 'error'
+      ) {
+        const bytes = Uint8Array.from(Buffer.from(mapped.photoBase64, 'base64'));
+        photo = looksLikePng(bytes) ? bytes : null;
+      }
+      return { result: mapped.result, report, photo };
     },
   };
 }
