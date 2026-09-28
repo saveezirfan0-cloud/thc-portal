@@ -1053,21 +1053,31 @@ payroll recipients from `settings.payroll_recipients`, not from the environment.
 | *(no variable)* | `apps/staff/lib/postcodes.ts` (ADR-0014) | the home-address postcode is looked up at `api.postcodes.io` — open data, no key; unreachable means the address saves without a location |
 | `NEXT_PUBLIC_MAPBOX_TOKEN`, `MAPBOX_TOKEN` | §6.2 | optional |
 | `VERCEL_URL` | `apps/staff/app/forgot/actions.ts` | Vercel's own; only a fallback |
-| `RTW_JOB_SECRET`, `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` (+ `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX`, `RTW_PROVIDER_TIMEOUT_MS`, `RTW_GOVUK_ENABLED`, `RTW_GOVUK_START_URL`, `RTW_GOVUK_TIMEOUT_MS`, `RTW_CHECK_BATCH`) | `apps/office/app/api/jobs/rtw-check/` (ADR-0025) | **Back Office only.** The automated gov.uk right-to-work check, shipped switched off; §6.5 |
+| `RTW_JOB_SECRET`, `RTW_GOVUK_ENABLED` (+ optional `RTW_GOVUK_START_URL`, `RTW_GOVUK_TIMEOUT_MS`, `RTW_CHECK_BATCH`; `RTW_PROVIDER_*` not needed, ADR-0041) | `apps/office/app/api/jobs/rtw-check/` (ADR-0025, ADR-0041) | **Back Office only.** The automated gov.uk right-to-work check, shipped switched off; §6.5 |
 
-### 6.5 The automated gov.uk right-to-work check (ADR-0025)
+### 6.5 The automated gov.uk right-to-work check (ADR-0025, ADR-0041)
 
-Built, and switched off until THC chooses a provider. It is a Back Office route, not an
-Edge Function, so its keys go on the **office** Vercel project, and pg_cron reaches it at
-the Vault secret `office_base_url` (an https origin; kept out of `settings`, which an admin
-session can write, because whoever sets it receives the bearer) with its own Vault secret
+Built, and switched off until the live test passes. THC's right-to-work adviser signed it
+off on 28.09.2026 (docs/17 item 24). **No provider** (ADR-0041): the Back Office drives the
+Home Office service "View a job applicant's right to work details" itself in a headless
+Chromium, and **every result waits for an admin**, who compares the photo gov.uk shows with
+the worker's app selfie and presses Verify or Reject in Compliance → Needs review. Nothing
+is verified or rejected automatically, "not found" included.
+
+It is a Back Office route (`POST /api/jobs/rtw-check`), not an Edge Function, so its
+variables go on the **office** Vercel project (`RTW_JOB_SECRET`, `RTW_GOVUK_ENABLED=true`;
+no `RTW_PROVIDER_*`). pg_cron and the share-code nudge reach it at the Vault secret
+`office_base_url` (an https origin; kept out of `settings`, which an admin session can
+write, because whoever sets it receives the bearer) with its own Vault secret
 `rtw_job_secret`, never the service key. Commands:
 `select vault.create_secret('https://<office origin>', 'office_base_url');` and
-`select vault.create_secret('<RTW_JOB_SECRET>', 'rtw_job_secret');`. The
-full list of variables, the SQL and the switch-on order are in
-`docs/12-keys-and-assets.md` ("The automated right-to-work check") and `OWNER-TODO.md`
-§8. THC has accepted that a passing check verifies a worker without the Home Office photo
-match (ADR-0025).
+`select vault.create_secret('<RTW_JOB_SECRET>', 'rtw_job_secret');`.
+
+While `settings.rtw_check.enabled` is false the route claims nothing and "Run gov.uk
+check" is refused, so the live test is run with the switch on and the 10-minute schedule
+still off — safe, because an admin decides every result. The steps, the full variable list
+and the switch-on order are in `OWNER-TODO.md` §8 and `docs/12-keys-and-assets.md` ("The
+automated right-to-work check").
 
 ---
 

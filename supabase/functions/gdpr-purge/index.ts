@@ -21,10 +21,11 @@
  *   · a PREFIX (`<staff_id>/`) — the worker's whole folder in that bucket,
  *     listed recursively and removed, EXCEPT the paths
  *     `retained_storage_paths()` still names (a completion letter held
- *     under ADR-0019's retention). This is what erases an object that
- *     reached the bucket without a row: an upload whose finish…() never
- *     ran, a selfie whose staff_set_photo() raised. A prefix with nothing
- *     under it completes cleanly.
+ *     under ADR-0019's retention; right-to-work evidence, its gov.uk
+ *     reports and photos, under ADR-0065's). This is what erases an
+ *     object that reached the bucket without a row: an upload whose
+ *     finish…() never ran, a selfie whose staff_set_photo() raised. A
+ *     prefix with nothing under it completes cleanly.
  *
  * Idempotent by construction. Supabase's `remove` does not error on a
  * path that is already gone, so a row claimed twice — or an object a

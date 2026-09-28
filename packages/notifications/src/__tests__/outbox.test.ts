@@ -48,13 +48,13 @@ describe('backoff agrees with outbox_backoff() in SQL', () => {
 
 describe('push rows', () => {
   it('renders title, body and deep link from the register', () => {
-    const msg = messageFor(push());
+    const msg = messageFor(push({ payload: { bookingId: 'b1' } }));
     expect(msg).toEqual({
       kind: 'push',
       staffId: 'staff-1',
       title: 'Event cancelled',
       body: 'This event has been cancelled',
-      url: '/shifts',
+      url: '/shifts/b1',
     });
   });
 
@@ -207,6 +207,15 @@ describe('the office\u2019s own rows render, rather than shipping braces (§8)',
     expect((msg as { body: string }).body).toBe(
       "You've been removed from Gala Dinner · 25 Sep, 17:00",
     );
+  });
+
+  // §10.4: the removed / cancelled screens live on the booking's own page;
+  // the /shifts list drops a cancelled booking, so a push to it lands nowhere.
+  it.each(['N10b', 'N12'])('%s opens the booking it is about', (code) => {
+    const msg = messageFor(
+      row(code, { event: 'Gala Dinner', dateTime: '25 Sep, 17:00', bookingId: 'b1' }) as never,
+    );
+    expect((msg as { url?: string }).url).toBe('/shifts/b1');
   });
 
   it('N12 needs no values at all, and must not gain any', () => {

@@ -178,7 +178,7 @@ The report is right-to-work evidence on the share-code document. It is kept and 
 
 - A GDPR removal deletes the document, which cascades to its checks. The report paths are owed to the Storage purge twice over: `remove_worker()` already queues `gov_report_path`, and an `AFTER DELETE` trigger on `rtw_checks` queues every check's `report_path`, including a report an earlier run left.
 - **No orphaned reports.** The runner uploads a report only when this run's outcome stores it (never on a retry). If recording then fails, it asks whether the check is still `running`: if so, nothing references the report and it is deleted; if the record may have landed (a lost response), it is kept.
-- If THC extends ADR-0019's two-year hold to other right-to-work evidence (OWNER-TODO §5), the check rows follow the document's `retain_until`, because they are only deleted when it is.
+- If THC extends ADR-0019's two-year hold to other right-to-work evidence (OWNER-TODO §5), the check rows follow the document's `retain_until`, because they are only deleted when it is. (Done 28.09.2026, [ADR-0065](0065-right-to-work-evidence-held-after-removal.md): a verified share code's finished checks are held with it, free text scrubbed.)
 
 The audit trail keeps these rows, with no share code, date of birth or name:
 
