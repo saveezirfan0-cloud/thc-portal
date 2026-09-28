@@ -27,6 +27,8 @@ The scope (§1.3, §5.1) fixes Flutter because of **background GPS tracking**: "
 
 **Option A — PWA-only v1, degraded tracking (fastest).**
 Track only while the app is open; keep the Screen Wake Lock on during an active shift and show a persistent "Keep this screen open during your shift" bar. Off-site departures are caught at check-out time (server compares the check-out fix with the geofence) and via the existing "No check-out" flow. Report to THC that BG-06/BG-07 are partially met.
+
+*Built:* `apps/staff/app/shifts/[id]/wakeLock.ts` holds the wake lock from check-in to check-out (re-acquired whenever the page is visible again), `KeepOpenBar` in `ShiftScreen.tsx` is the bar, and a location ping goes the moment the worker returns to the page as well as every 2 minutes. A browser with no wake lock still gets the bar, worded for a screen that may lock.
 *Cost:* nothing extra. *Risk:* THC treats BG-06 as a contractual core requirement (§5.1 says it is).
 
 **Option B — PWA + Capacitor shell (recommended).**

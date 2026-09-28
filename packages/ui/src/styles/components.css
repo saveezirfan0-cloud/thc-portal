@@ -2138,6 +2138,22 @@ textarea.input {
 .app-frame > .bottom-nav {
   position: fixed;
 }
+/* Wider than a phone: the Staff App is a phone app (§1.2), so it keeps a
+   phone-width column centred on the ground instead of stretching. The fixed
+   bottom bar takes the same column (left/right 0 + max-width + auto margins
+   centre it in the viewport, scrollbar excluded, as the column is). */
+@media (min-width: 600px) {
+  .app-frame {
+    width: 100%;
+    max-width: var(--app-col);
+    margin-inline: auto;
+    border-inline: 1px solid var(--line);
+  }
+  .app-frame > .bottom-nav {
+    max-width: var(--app-col);
+    margin-inline: auto;
+  }
+}
 /* The icon-only appearance switch (ADR-0007), as the Staff App header
    carries it: at 390px the title keeps its line, so the control is a glyph.
    Pressed = dark is on, and it takes the accent so the state is not left to

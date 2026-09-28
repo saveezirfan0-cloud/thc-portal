@@ -269,7 +269,10 @@ export const TEMPLATES = {
     trigger: 'Shift cancelled by the office (manager presses Withdraw)',
     timing: 'on change (confirmed 14.07.2026)',
     mandatory: true,
-    deepLink: '/shifts',
+    // The booking's own screen, which shows §10.4's "You've been removed
+    // from this shift". /shifts lists only live and worked bookings, so a
+    // withdrawn one is not there to tap.
+    deepLink: '/shifts/{bookingId}',
   },
   // §8 N10b's trigger — the manager presses Withdraw — covers an open
   // invitation too, but its copy ("You've been removed from …") tells a
@@ -331,7 +334,9 @@ export const TEMPLATES = {
       'Event cancelled by the office (client cancelled the booking) — reaches every Confirmed and Invited worker, plus anyone with an open Radar application for this event (Booking.source = self, still pending), not just Confirmed/Invited (confirmed 08.09.2026)',
     timing: 'on cancel',
     mandatory: true,
-    deepLink: '/shifts',
+    // As N10b: the booking's own screen shows "This event has been
+    // cancelled"; the /shifts list no longer carries the booking.
+    deepLink: '/shifts/{bookingId}',
   },
 
   // Compliance outcomes.

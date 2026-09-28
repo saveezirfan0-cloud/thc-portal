@@ -164,3 +164,11 @@
 .center-note {
   text-align: center;
 }
+
+/* docs/06 Option A: "Keep this screen open during your shift", above the
+   timer for as long as the worker is checked in. A .note.cyan for colour. */
+.keep-open {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
