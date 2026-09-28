@@ -225,9 +225,10 @@ real environment to prove it in.
   `public`. It only adds protection; left in place, not mirrored in a migration
   (locally every migration enables RLS itself, and 001 asserts it).
 - `docs/08-screen-inventory.md` lists the routes that exist.
-- Workers verified on a share code with no date: the live project has 5, all
-  seed demo accounts (`@example.com`, EU settled). None real; recheck after any
-  data import (query in `20260923200000`'s header).
+- Workers verified on a share code with no date: **none on the live project**
+  (re-checked 28.09.2026; the five seed demo accounts counted here before are
+  gone). Recheck after any data import (query in `20260923200000`'s header); any
+  that appear show in Needs review as "Right-to-work date missing — re-verify".
 
 ## 3a · Closed on 25.09
 
@@ -381,18 +382,20 @@ New from the 24.09 wave:
 
 From the 23.09 build:
 
-- **Workers verified on a share code before 23.09 with no date still have
-  none** — nothing to backfill from. Re-verify them; the query that finds them
-  is in the header of `20260923200000`.
+- ~~**Workers verified on a share code before 23.09 with no date still have
+  none**~~ **None left on the live project (28.09).** The query that finds any
+  is in the header of `20260923200000`, and the Needs review queue lists them.
 - **The share-code date is confirmed by the office** while the automated
   gov.uk check is switched off; §2.3 says nobody types it (ADR-0018). The
-  check itself is built (ADR-0025, 25.09; ADR-0041, 26.09: gov.uk only, an
-  admin confirms every result). It waits for THC's adviser's sign-off and a
-  live test (OWNER-TODO §8), and once on, the office types a date only for a
-  check in needs_review. **For a demo** it can run against the sandbox
-  provider (ADR-0063, 28.09): `RTW_PROVIDER_URL=sandbox:` plus
-  `supabase/demo/rtw-check-sandbox-on.sql`, with the demo share codes and
-  the run sheet in the ADR.
+  check itself is built (ADR-0025, 25.09; ADR-0041, 26.09): **no provider** —
+  our own gov.uk browser check — and **an admin confirms every result**
+  against the gov.uk photo, so on a "verify" recommendation the date is shown,
+  not typed. THC's adviser signed it off on 28.09 (docs/17 item 24). What is
+  left is the Vault secrets, Vercel Pro, one live test and the switch
+  (OWNER-TODO §8). **For a demo** it can run against the sandbox provider
+  (ADR-0063, 28.09): `RTW_PROVIDER_URL=sandbox:` plus
+  `supabase/demo/rtw-check-sandbox-on.sql`, with the demo share codes and the
+  run sheet in the ADR.
 - **Unverified on real infrastructure:** the `finance-reports` Edge Function has
   not been run under Deno (ADR-0006's `../../../packages` import question); Storage
   image transforms may be off (photos then fall back to the original); GoTrue's
@@ -456,8 +459,9 @@ root. Tick it there. This section keeps the background for each item.
   webhook at `{SUPABASE_URL}/functions/v1/willo-webhook`, then enable
   `willo-invite` (with `190`) and re-run `install_job_schedules()`.
 - **Confirm with THC:** E2b's wording (ADR-0017); the CL1–CL6 wording and which
-  are mandatory; whether ADR-0019's retention-over-removal extends to other
-  right-to-work documents; the `/privacy` legal text.
+  are mandatory; the `/privacy` legal text. (ADR-0019's retention-over-removal
+  now extends to all verified right-to-work evidence — decided 28.09,
+  ADR-0065.)
 - **Chase THC for the Appendix B inputs**: the contract text, sample completion
   letters, the Willo keys, DNS for the two senders, and the export from the old
   system. Several phases stop dead without them.

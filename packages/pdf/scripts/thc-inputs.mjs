@@ -35,6 +35,8 @@
  * question (ADR-0024), the defaults recorded in ADR-0035–0040, and the
  * Staff App questions Q9–Q21 (docs/15, ADR-0043–0047); the migration
  * sign-off is not needed and the build team is arranging the Willo keys.
+ * Version 1.3 (28.09) records the gov.uk check sign-off (item 24) and the
+ * retention decision (item 14).
  */
 
 import { createElement as h, Fragment } from 'react';
@@ -848,6 +850,7 @@ const ITEMS = [
     format: 'Yes / No, with a line on why',
     who: 'Data protection lead / HR',
     neededBy: 'Before go-live',
+    status: 'Decided 28.09 by the product owner — yes; THC to confirm',
     sections: std({
       need: [
         'A yes or no: when a worker asks to be removed under GDPR, should the platform keep their **other** right-to-work evidence — passport copy, visa, the gov.uk share-code report and the photo gov.uk shows, National Insurance evidence — for the length of their employment plus two years, the way it already keeps the University Completion Letter?',
@@ -860,8 +863,9 @@ const ITEMS = [
         '“Yes — hold all right-to-work evidence the same way” or “No — completion letter only, as today”, with a line on why, so the privacy notice (item 13) can say the same thing.',
       ],
       send: ['Email.'],
+      untilHeading: 'Decided 28.09.2026 by the product owner: yes — THC to confirm',
       until: [
-        'Completion letter held; everything else wiped at removal. The placeholder privacy notice says so.',
+        'Right-to-work evidence an employed worker was verified on — passport, national ID, visa and status documents, the share-code report with its gov.uk PDF and photo, a birth certificate with the National Insurance document paired with it, and university term dates letters — is now held for the employment plus two years, like the completion letter, and then deleted automatically with an audit entry (ADR-0065). National Insurance evidence on its own is payroll evidence and is still deleted at removal. The privacy notice (item 13) should say the same. If THC’s data protection lead decides otherwise, the list of documents held is one change.',
       ],
     }),
   },
@@ -1053,6 +1057,7 @@ const ITEMS = [
     format: 'Email: “confirmed”, or the adviser’s conditions; plus THC’s legal name',
     who: 'Director, with THC’s right-to-work or employment adviser',
     neededBy: 'Before go-live',
+    status: 'Signed off 28.09',
     sections: std({
       need: [
         {
@@ -1069,8 +1074,9 @@ const ITEMS = [
       ],
       format: ['An email: “Confirmed”, or the adviser’s conditions; and the legal name.'],
       send: ['Email.'],
+      untilHeading: 'Signed off 28.09.2026',
       until: [
-        'The check stays switched off. The office checks each share code on gov.uk by hand and types the right-to-work date into the platform, as today. Once signed off, the build team runs one live test on a consenting worker before switching it on.',
+        'THC’s adviser confirmed the automated check and the saved PDF on 28.09.2026; the employer name stays “The Hospitality Company”. The check stays switched off until one live test on a consenting worker has passed. Until then the office checks each share code on gov.uk by hand and types the right-to-work date into the platform, as today.',
       ],
     }),
   },
@@ -1391,10 +1397,10 @@ const PARTS = [
 const DOC = {
   title: 'Inputs required from The Hospitality Company',
   subtitle: 'Staffing platform — build hand-over checklist',
-  date: '26 September 2026',
-  version: '1.2',
+  date: '28 September 2026',
+  version: '1.3',
   preparedFor: 'Prepared for THC by the build team',
-  footer: 'The Hospitality Company · Inputs required · v1.2',
+  footer: 'The Hospitality Company · Inputs required · v1.3',
   coverNote:
     'This document lists everything the build still needs from The Hospitality Company: content, decisions, keys, DNS records and data. Each item says what is needed, why, in what format, how to send it, and what the platform shows until it arrives. The tracker on page 3 is the working list; the sections after it are the detail. Nothing here is a build task, and nothing here needs THC to have seen the code.',
 
@@ -1434,13 +1440,6 @@ const DOC = {
           'Legal text, usually drafted or checked by a solicitor; the application form links to it and asks for consent against it.',
         appendix: '—',
         target: 'Before go-live; ideally before UAT',
-      },
-      {
-        item: `${byId('G1')} · The gov.uk share-code check, signed off`,
-        whyLong:
-          'Needs THC’s right-to-work adviser, then one live test on a consenting worker before the check is switched on.',
-        appendix: '—',
-        target: 'Before go-live',
       },
     ],
     leadTimeNote:
@@ -1507,7 +1506,7 @@ const DOC = {
       'THC contact for this checklist: __________________________________',
     ],
     next: [
-      `**What happens next.** When items ${byId('B7')} and ${byId('B8')} and the content items (${byId('B2')}, ${byId('C1')}, ${byId('C3')}, ${byId('W1')}, ${byId('W2')}) are in — including the two go-live gates, clause 28 and the quiz answer key — the build team switches email and push on, sets up THC’s production accounts, and opens **UAT** on staging: THC’s office team walks every screen with real content — a worker onboarded end to end, an event built, filled by auto-assign, checked in, checked out and timesheeted; a client signing in to see their line-up. There is no data migration: THC starts on the new platform with new applicants. After sign-off, **go-live** is the switch to the final web addresses if THC wants its own, the gov.uk check once item ${byId('G1')} is signed off, and the first live applicants. The accounts and the code then transfer to THC at hand-over.`,
+      `**What happens next.** When items ${byId('B7')} and ${byId('B8')} and the content items (${byId('B2')}, ${byId('C1')}, ${byId('C3')}, ${byId('W1')}, ${byId('W2')}) are in — including the two go-live gates, clause 28 and the quiz answer key — the build team switches email and push on, sets up THC’s production accounts, and opens **UAT** on staging: THC’s office team walks every screen with real content — a worker onboarded end to end, an event built, filled by auto-assign, checked in, checked out and timesheeted; a client signing in to see their line-up. There is no data migration: THC starts on the new platform with new applicants. After sign-off, **go-live** is the switch to the final web addresses if THC wants its own, the gov.uk check (item ${byId('G1')}, signed off 28.09) once its live test has passed, and the first live applicants. The accounts and the code then transfer to THC at hand-over.`,
     ],
   },
 };

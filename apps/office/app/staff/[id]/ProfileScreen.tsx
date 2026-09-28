@@ -583,15 +583,15 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
         <Alert tone="coral">
           <b>This cannot be undone.</b> Personal data is anonymised irreversibly: the name becomes
           &ldquo;Deleted account #{profile.employee_id ?? 'unknown'}&rdquo;, contacts, documents and
-          photo are wiped, login is disabled, future bookings are released and the status becomes
-          Removed.
+          photo are wiped (except the right-to-work evidence the law requires us to hold), login is
+          disabled, future bookings are released and the status becomes Removed.
         </Alert>
         <div className="two sm">
           <div className="card">
             <h4>Gone</h4>
             <ul>
               <li>Name, photo, email, phone, address, date of birth</li>
-              <li>Every document and the share-code report</li>
+              <li>Every other document, and every upload never verified</li>
               <li>NI number, bank details, HMRC checklist</li>
               <li>Conviction details — the fact one existed and its outcome stay</li>
             </ul>
@@ -605,6 +605,13 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
                 entry if asked
               </li>
               <li>Roles and rating on the anonymised row</li>
+              {/* ADR-0019, ADR-0065: the legal hold, only if they were employed */}
+              <li>
+                If they were employed: verified right-to-work evidence (passport, ID card, or birth
+                certificate with its NI document; visa or status document; share-code report and
+                gov.uk check; term letter) and the completion letter — held until two years after
+                employment ended, then deleted automatically
+              </li>
               <li>
                 Timesheets already sent keep the real name; a regenerated copy prints the new label
               </li>

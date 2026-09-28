@@ -572,9 +572,10 @@ other way round, pg_cron spends the gap posting at a 404.
 > The extractor NEVER verifies. It writes what it found plus a confidence, and flags for
 > manual review. A manager verifies.
 >
-> The gov.uk share-code check is built (ADR-0025, superseding ADR-0002): a provider's
-> API first, our own gov.uk browser check as the fallback, fully automatic. What is left is
-> THC's provider and keys (OWNER-TODO §8).
+> The gov.uk share-code check is built (ADR-0025, superseding ADR-0002; amended by
+> ADR-0041): no provider, our own gov.uk browser check, and an admin confirms every result
+> against the gov.uk photo. THC's adviser signed it off on 28.09. What is left is set-up,
+> one live test and the switch (OWNER-TODO §8).
 >
 > Done when: a sandbox Willo interview moves a candidate, and extraction populates an
 > expiry with a confidence without ever setting verified.

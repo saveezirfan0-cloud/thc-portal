@@ -137,8 +137,14 @@ select is(
 -- ---------------------------------------------------------------------
 -- Documents and the evidence sets that are nothing but personal data.
 -- ---------------------------------------------------------------------
-select is((select r->>'documentsDeleted' from t_rm), '1', 'every compliance document is deleted, not superseded — this is not a reset');
-select is((select count(*)::int from compliance_docs  where staff_id = :'gdpr'), 0, 'and none is left behind');
+-- Grace was employed (Employee ID 91042) and her passport was verified:
+-- since ADR-0065 it is right-to-work evidence held for employment + 2
+-- years, not deleted. 678 covers what is held and what is not.
+select is((select (r->>'documentsDeleted') || '/' || (r->>'documentsHeld') from t_rm), '0/1',
+  'the verified passport of someone employed is held under ADR-0065 — neither deleted nor superseded, this is not a reset');
+select is((select count(*)::int from compliance_docs
+            where staff_id = :'gdpr' and (retain_until is null or review_status <> 'verified')), 0,
+  'and nothing is left behind that is not held evidence');
 select is((select count(*)::int from bank_details     where staff_id = :'gdpr'), 0, 'bank details go');
 select is((select count(*)::int from staff_references where staff_id = :'gdpr'), 0, 'referees are other people''s personal data and go too');
 select is((select count(*)::int from hmrc_checklists  where staff_id = :'gdpr'), 0, 'the HMRC checklist goes');
