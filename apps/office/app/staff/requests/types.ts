@@ -51,4 +51,11 @@ export interface ChangeRequestView extends ChangeRequestRow {
   proposed_photo_url: string | null;
 }
 
-export type DecisionResult = { ok: true } | { ok: false; message: string };
+/**
+ * `note` / `warning` only for an approved date of birth (ADR-0069): what
+ * happened to the pending share code's gov.uk check, and the under-18
+ * opt-out warning — the office correction's own words (`dobCorrectionOutcome`).
+ */
+export type DecisionResult =
+  | { ok: true; note?: string; warning?: string | null }
+  | { ok: false; message: string };

@@ -79,6 +79,8 @@ import {
 } from '../compliance/EvidenceUploads';
 import { RtwCheckPanel } from '../_components/RtwCheckPanel';
 import { DobCorrection } from '../_components/DobCorrection';
+import { DobClaimNote } from '../_components/DobClaimNote';
+import type { DobClaim } from '../_lib/dobCorrection';
 import { checksByDocument, rtwCheckView, rtwLockedLabel, rtwLockedValue } from '../_lib/rtwCheck';
 import type { RtwCheckRow } from '../_lib/rtwCheck';
 import type {
@@ -421,7 +423,7 @@ function Facts({
       name={row.display_name}
       dob={row.dob}
       display={formatUkDate(row.dob)}
-      allowed={canCorrectDob}
+      allowed={canCorrectDob && row.status !== 'removed'}
     />
   ) : null;
   if (phase <= 1) {
@@ -950,11 +952,14 @@ function ShareCodeCard({
   handlers,
   check,
   checkEnabled,
+  claim = null,
 }: {
   doc: CandidateDocument;
   handlers: DocHandlers;
   check: RtwCheckRow | null;
   checkEnabled: boolean;
+  /** ADR-0069: a date of birth entered with this code, when it differs. */
+  claim?: DobClaim | null;
 }) {
   const view = rtwCheckView(check, { docStatus: doc.review_status, enabled: checkEnabled });
   const pill = view.status ?? REVIEW_PILL[doc.review_status];
@@ -1066,6 +1071,7 @@ function ShareCodeCard({
           docStatus={handlers.readOnly ? 'read_only' : doc.review_status}
           enabled={checkEnabled}
         />
+        {doc.review_status === 'pending' ? <DobClaimNote claim={claim} /> : null}
         <div className="row wrap">
           {doc.gov_report_path && !check?.report_path ? (
             <Button size="sm" onClick={() => handlers.onOpen(doc.id, 'report')}>
@@ -1351,6 +1357,7 @@ function DocumentsPhase({
               handlers={doc}
               check={checks.get(d.id) ?? null}
               checkEnabled={data.rtwCheckEnabled ?? false}
+              claim={(data.dobClaims ?? []).find((c) => c.documentId === d.id) ?? null}
             />
           ))}
           {!doc.readOnly && canUploadCompletionLetter(row, data.documents) ? (

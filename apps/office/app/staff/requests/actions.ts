@@ -7,6 +7,8 @@ import { createAdminClient } from '@thc/db/admin';
 import { validateDecision } from '@thc/domain';
 import { supabaseConfigured } from '../data';
 import { decisionMessage } from './model';
+import { dobCorrectionOutcome } from '../../_lib/dobCorrection';
+import type { DobCorrectionAnswer } from '../../_lib/dobCorrection';
 import type { DecisionResult } from './types';
 
 /**
@@ -93,7 +95,7 @@ export async function decideChangeRequest(
     return { ok: false, message: decisionMessage('evidence_unchecked_dob') };
   }
 
-  const { error } = await (supabase as unknown as DecideRpc).rpc('office_decide_profile_change', {
+  const { data, error } = await (supabase as unknown as DecideRpc).rpc('office_decide_profile_change', {
     p_id: id,
     p_approve: approve,
     // An approval stores no reason; a rejection's is shown to the worker.
@@ -108,6 +110,11 @@ export async function decideChangeRequest(
     // A date of birth re-runs a pending share code's gov.uk check.
     revalidatePath(`/onboarding/${request.facts.staff_id}`);
     revalidatePath('/compliance');
+    // Approved: say what happened to gov.uk, and the opt-out, as the
+    // office's own Correct does (ADR-0069).
+    if (approve) {
+      return { ok: true, ...dobCorrectionOutcome((data ?? null) as DobCorrectionAnswer | null) };
+    }
   }
   return { ok: true };
 }

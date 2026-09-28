@@ -148,7 +148,7 @@ export function DobCorrection({
             value={reason}
             maxLength={DOB_CORRECTION_REASON_MAX}
             error={errors.reason}
-            hint={`Required, ${DOB_CORRECTION_REASON_MIN}–${DOB_CORRECTION_REASON_MAX} characters — e.g. “Passport shows 05.06.1998; typed 06.05 at interview”.`}
+            hint={`Required, ${DOB_CORRECTION_REASON_MIN}–${DOB_CORRECTION_REASON_MAX} characters — say how you checked it, e.g. “Passport checked in the office”. Don’t type the date here: the log already records it.`}
             onChange={(event) => setReason(event.target.value)}
           />
           <Note>

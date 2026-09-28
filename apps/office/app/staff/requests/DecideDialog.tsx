@@ -45,6 +45,7 @@ export function DecideDialog({
   onStage,
   onClose,
   canDecideDob = false,
+  onDone,
 }: {
   request: ChangeRequestView | null;
   stage: DecideStage;
@@ -52,6 +53,12 @@ export function DecideDialog({
   onClose: () => void;
   /** ADR-0069: owners and managers decide a date-of-birth request. */
   canDecideDob?: boolean;
+  /**
+   * An approved date of birth's outcome — the gov.uk re-check and the
+   * opt-out warning — for the screen to keep showing once the request has
+   * left the queue and this dialog with it.
+   */
+  onDone?: (outcome: { note: string; warning: string | null }) => void;
 }) {
   const [checked, setChecked] = useState(false);
   const [reason, setReason] = useState('');
@@ -73,8 +80,10 @@ export function DecideDialog({
     setProblem(null);
     start(async () => {
       const result = await decideChangeRequest(request.id, approve, reason, checked);
-      if (result.ok) close();
-      else setProblem(result.message);
+      if (result.ok) {
+        if (result.note) onDone?.({ note: result.note, warning: result.warning ?? null });
+        close();
+      } else setProblem(result.message);
     });
   };
 
