@@ -180,6 +180,12 @@ export interface ProviderMapped {
   reportBase64: string | null;
   /** Or a URL to fetch it from, with the same credentials. */
   reportUrl: string | null;
+  /**
+   * The applicant's photo as the Home Office holds it (PNG, base64), for the
+   * admin's comparison with the app selfie (ADR-0041). Optional: without it
+   * the office compares against the photo in the PDF.
+   */
+  photoBase64: string | null;
 }
 
 /**
@@ -191,7 +197,7 @@ export function mapProviderResponse(
   body: unknown,
   checkedAt: string,
 ): ProviderMapped {
-  const none = { reportBase64: null, reportUrl: null };
+  const none = { reportBase64: null, reportUrl: null, photoBase64: null };
   const b = obj(body);
 
   // The first of these places that holds a word we recognise: a body may
@@ -277,6 +283,7 @@ export function mapProviderResponse(
   }
 
   const report = obj(pick(b, ['report']));
+  const photo = obj(pick(b, ['photo']));
   return {
     result: {
       outcome,
@@ -294,6 +301,9 @@ export function mapProviderResponse(
       text(pick(b, ['report_pdf_base64', 'pdf_base64', 'report.pdf_base64'])) ??
       text(report['base64']),
     reportUrl: text(pick(b, ['report_url', 'pdf_url', 'report.url'])),
+    photoBase64:
+      text(pick(b, ['photo_png_base64', 'photo_base64', 'applicant_photo_base64'])) ??
+      text(photo['base64']),
   };
 }
 
