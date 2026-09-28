@@ -73,6 +73,12 @@ function isChange(value: unknown): value is { from?: unknown; to?: unknown } {
   );
 }
 
+/** A `yyyy-mm-dd` as the office writes dates, "05.06.1998" (§9.6); anything else as `short()`. */
+function dated(value: unknown): string {
+  const m = typeof value === 'string' ? /^(\d{4})-(\d{2})-(\d{2})$/.exec(value) : null;
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : short(value);
+}
+
 function words(key: string): string {
   const known = KEY_LABEL[key];
   if (known) return known;
@@ -97,7 +103,7 @@ export function describe(row: Pick<ActivityRow, 'data'>): string[] {
   for (const [key, value] of Object.entries(data)) {
     if (HIDDEN.has(key) || value === null || value === undefined || value === '') continue;
     if (isChange(value)) {
-      out.push(`${words(key)}: ${short(value.from)} → ${short(value.to)}`);
+      out.push(`${words(key)}: ${dated(value.from)} → ${dated(value.to)}`);
       continue;
     }
     out.push(`${words(key)}: ${short(value)}`);

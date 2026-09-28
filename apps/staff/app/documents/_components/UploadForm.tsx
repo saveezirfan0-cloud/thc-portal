@@ -18,9 +18,11 @@ import { EVIDENCE_ACCEPT, uploadEvidence } from './upload';
  * date pre-filled from the profile the way the onboarding re-entry sheet
  * pre-fills it (ADR-0069): gov.uk matches the pair, so a wrong date on
  * file is corrected here, with the code, rather than being a dead end.
- * `submit_share_code_with_dob()` writes a changed date in the same call
- * that files the code. The file is optional. Every other document is a
- * file: PDF, JPG or PNG, up to 10 MB.
+ * `submit_share_code_with_dob()` files the code and keeps a changed date
+ * WITH it: gov.uk is asked with that date, and the profile takes it only
+ * when the office verifies the code — a code that is not found or is
+ * rejected changes nothing. The file is optional. Every other document is
+ * a file: PDF, JPG or PNG, up to 10 MB.
  *
  * The copy says what happens next and nothing more. Since ADR-0041 the
  * office confirms every gov.uk result, so it says that.
@@ -123,7 +125,8 @@ export function UploadForm({
           </div>
           <div className="xs muted">
             If gov.uk doesn’t recognise the code with that date, the office will tell you why and
-            you can enter them again. A changed date of birth is saved to your profile.
+            you can enter them again. The date above is used for this check, and saved to your
+            profile once the office verifies it.
           </div>
         </div>
       ) : share ? (
@@ -135,7 +138,8 @@ export function UploadForm({
           </div>
           <div className="xs muted">
             If it can’t be accepted, you’ll get a notification with the reason and can enter it
-            again. A changed date of birth is saved to your profile.
+            again. The date above is used for this check, and saved to your profile once the office
+            verifies it.
           </div>
         </div>
       ) : (

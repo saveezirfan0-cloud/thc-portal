@@ -32,7 +32,7 @@ describe('activity rows', () => {
         },
       }),
     ).toEqual([
-      'Date of birth: 1995-01-01 → 1994-12-31',
+      'Date of birth: 01.01.1995 → 31.12.1994',
       'Reason: Passport shows 31 December',
       'gov.uk check: queued',
     ]);

@@ -72,7 +72,8 @@ describe('the New share code form', () => {
     expect(out).toContain('the office confirms the result');
     expect(out).not.toContain('it is verified —');
     expect(out).not.toContain('tell the office');
-    expect(out).toContain('A changed date of birth is saved to your profile.');
+    expect(out).toContain('saved to your');
+    expect(out).toContain('profile once the office verifies it.');
   });
 
   it('with the check off, the office checks it with gov.uk — same date field', () => {
@@ -97,7 +98,7 @@ describe('finishShareCode — one call, as the worker', () => {
     });
     expect(result).toEqual({
       ok: true,
-      note: 'Sent, with your corrected date of birth. The office will confirm the result.',
+      note: 'Sent. gov.uk is asked with the date of birth you entered; it’s saved to your profile once the office verifies the code.',
     });
   });
 

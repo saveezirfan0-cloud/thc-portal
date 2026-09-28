@@ -243,8 +243,9 @@ export async function finishDocumentUpload(
  * and the date of birth gov.uk will be asked with, in one call. A changed
  * date is checked first (a refused one files nothing), then the code is
  * filed exactly as `submit_document_upload()` files it, then the date is
- * written — same transaction, audited as the worker. The date the form
- * shows is the one on file; sending it unchanged changes nothing.
+ * kept on that document — audited as the worker. The profile takes it only
+ * when the office verifies the code. The date the form shows is the one on
+ * file; sending it unchanged claims nothing.
  */
 export async function finishShareCode(
   path: string | null,
@@ -281,7 +282,7 @@ export async function finishShareCode(
     ok: true,
     note:
       answer['dobChanged'] === true
-        ? 'Sent, with your corrected date of birth. The office will confirm the result.'
+        ? 'Sent. gov.uk is asked with the date of birth you entered; it’s saved to your profile once the office verifies the code.'
         : 'Sent. The office will confirm the result.',
   };
 }
