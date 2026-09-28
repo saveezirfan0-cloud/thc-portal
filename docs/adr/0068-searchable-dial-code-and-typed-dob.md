@@ -45,3 +45,12 @@ Owner feedback on the live `/apply` (28.09):
   - `apps/staff/app/apply/__tests__/dial-and-dob.test.ts` covers the search ranking and the date formatting.
   - `pickers.test.tsx` drives both controls in jsdom.
   - `emergency-contact.test.tsx` now checks the picker's button instead of `<option selected>`.
+
+## Update — the date-typing helpers live in packages/domain (ADR-0069)
+
+`formatDobTyping`, `dobValueFrom` and `dobShownFrom` moved to `packages/domain/src/dob.ts`
+so the Back Office's "Correct date of birth" dialog types a date exactly as `/apply` does;
+`apps/staff/app/apply/dob.ts` re-exports them, so every Staff App import is unchanged.
+`DobInput` itself stays in the Staff App and is now also used by the Documents hub's New
+share code form and Request a change → Date of birth. See
+[ADR-0069](0069-date-of-birth-corrections.md).

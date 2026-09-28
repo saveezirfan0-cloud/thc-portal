@@ -22,7 +22,7 @@ import {
   splitHomeAddress,
 } from '../../_lib/address';
 import type { HomeAddressParts } from '../../_lib/address';
-import { canRequest, requestHref, statusLine } from '../change-requests';
+import { canRequest, dobLine, requestHref, statusLine } from '../change-requests';
 import type { ChangeRequest } from '../change-requests';
 
 /**
@@ -36,6 +36,10 @@ import type { ChangeRequest } from '../change-requests';
  *                 rather than a disabled input hiding a live field.
  *                 "Request a change" (ADR-0045) asks the office; the
  *                 status line under it says where that request is.
+ *   Date of birth LOCKED (ADR-0069). gov.uk matches it with the share code;
+ *                 "Request a change" asks the office, with evidence. A
+ *                 worker renewing a share code corrects it on the
+ *                 Documents hub's New share code form instead.
  *   NI number     Masked and locked ONCE ENTERED. A worker who joined
  *                 without one — which is allowed (§2.10) — can add it
  *                 here, and doing so sends E6.
@@ -71,6 +75,7 @@ export function DetailsForm({
   const router = useRouter();
   const name = `${profile.firstName} ${profile.lastName}`.trim();
   const nameLine = statusLine(requests, 'name');
+  const dobStatus = statusLine(requests, 'dob');
 
   const [phone, setPhone] = useState(profile.phone);
   const [saved] = useState<HomeAddressParts>(() => splitHomeAddress(profile.homeAddress));
@@ -151,6 +156,27 @@ export function DetailsForm({
       ) : (
         <ChangeStatus kind="name" line={nameLine} />
       )}
+
+      {profile.dob ? (
+        <>
+          <div className="field lockf">
+            <span className="label">Date of birth</span>
+            <input className="input mono" value={dobLine(profile.dob)} readOnly />
+            <span className="hint">
+              Checked with gov.uk alongside your share code — corrections go through the office.
+              {requestsProblem ||
+              dobStatus?.state === 'pending' ||
+              dobStatus?.state === 'rejected' ? null : (
+                <>
+                  {' '}
+                  <Link href={requestHref('dob')}>Request a change</Link>
+                </>
+              )}
+            </span>
+          </div>
+          {requestsProblem ? null : <ChangeStatus kind="dob" line={dobStatus} />}
+        </>
+      ) : null}
 
       {profile.hasNiNumber ? (
         <div className="field lockf">

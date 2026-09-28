@@ -13,6 +13,7 @@ vi.mock('next/link', () => ({
 vi.mock('../actions', () => ({}));
 vi.mock('../../compliance/actions', () => ({}));
 vi.mock('../../_lib/rtwCheckActions', () => ({}));
+vi.mock('../../_lib/dobCorrectionActions', () => ({ correctDob: vi.fn() }));
 vi.mock('@thc/db/browser', () => ({ createClient: vi.fn() }));
 vi.mock('../../_components/OfficeShell', () => ({
   OfficeShell: ({ children }: { children: ReactNode }) => <main>{children}</main>,
@@ -220,6 +221,21 @@ describe('the candidate profile, Documents phase', () => {
     const html = render(data());
     expect(html).not.toContain('class="annot');
     expect(html).not.toContain('ml-auto annot');
+  });
+});
+
+describe('the candidate profile · date of birth (ADR-0069)', () => {
+  it('shows the DOB with Correct to an owner or a manager', () => {
+    const html = renderToStaticMarkup(
+      <CandidateScreen data={data()} now="2026-09-23T10:00:00Z" canCorrectDob />,
+    );
+    expect(html).toContain('DOB <b>03.04.2005</b>');
+    expect(html).toContain('>Correct<');
+  });
+
+  it('and the DOB alone to anyone else', () => {
+    expect(render(data())).toContain('DOB <b>03.04.2005</b>');
+    expect(render(data())).not.toContain('>Correct<');
   });
 });
 

@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import { Alert } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
+import { currentOfficeRole } from '../../_components/officeUser';
+import { officeCan } from '../../_lib/permissions';
 import { loadCandidate } from '../data';
 import { CandidateScreen } from '../CandidateScreen';
 
@@ -16,7 +18,7 @@ export const dynamic = 'force-dynamic';
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const data = await loadCandidate(id);
+  const [data, role] = await Promise.all([loadCandidate(id), currentOfficeRole()]);
 
   if (data.problem) {
     return (
@@ -27,5 +29,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   }
   if (!data.candidate) notFound();
 
-  return <CandidateScreen data={data} now={new Date().toISOString()} />;
+  return (
+    <CandidateScreen
+      data={data}
+      now={new Date().toISOString()}
+      canCorrectDob={officeCan(role, 'identity')}
+    />
+  );
 }

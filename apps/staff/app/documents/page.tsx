@@ -38,8 +38,11 @@ const HEADING = (
 
 const FLASH: Record<string, string> = {
   '1': 'Sent to the office for review. Nothing changes on your account until they verify it.',
-  // A share code filed while the automated check is on (ADR-0025).
-  share: 'Checking your share code with gov.uk. The result appears here in a minute or two.',
+  // A share code filed while the automated check is on (ADR-0025). Since
+  // ADR-0041 the office confirms every result, so the row below — "with the
+  // office" until they decide — is the source of truth, not this line.
+  share:
+    'Checking your share code with gov.uk. The office confirms the result — your share code row below shows where it is.',
   completion:
     'Completion letter received. Your weekly limit does not change until the office approves it.',
   optout: 'Opt-out signed. The office has been told.',

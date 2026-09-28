@@ -297,3 +297,102 @@ describe('the requests', () => {
     expect(rpc).toHaveBeenCalledWith('withdraw_profile_change', { p_id: 'r1' });
   });
 });
+
+describe('the date of birth (ADR-0069)', () => {
+  const worker: StaffProfile = {
+    staffId: 'staff-1',
+    firstName: 'Amara',
+    lastName: 'Kalu',
+    employeeId: 417,
+    email: 'amara@example.test',
+    phone: '+447700900123',
+    homeAddress: null,
+    photoPath: 'staff-1/selfie-1.jpg',
+    photoLocked: true,
+    status: 'compliant',
+    blockKind: null,
+    leftAt: null,
+    rtwBranch: 'work_visa',
+    dob: '1995-06-05',
+    niMasked: '●●●●●●●2B',
+    hasNiNumber: true,
+    rating: null,
+    reliability: null,
+    quizAttempts: 1,
+    roles: [],
+    blockers: [],
+    checkedIn: false,
+    bank: null,
+  };
+  const render = (requests: ChangeRequest[] = []) =>
+    renderToStaticMarkup(<DetailsForm profile={worker} photoUrl={null} requests={requests} />);
+  const dobRequest = (over: Partial<ChangeRequest> = {}) =>
+    request({
+      kind: 'dob',
+      proposedFirstName: null,
+      proposedLastName: null,
+      proposedDob: '1995-05-06',
+      ...over,
+    });
+
+  it('shows it locked on Profile details, with Request a change', () => {
+    const html = render();
+    expect(html).toContain('Date of birth');
+    expect(html).toContain('value="05/06/1995"');
+    expect(html).toContain('Checked with gov.uk alongside your share code');
+    expect(html).toContain('href="/profile/details/request?kind=dob"');
+  });
+
+  it('while a request is pending: the status line and Withdraw, no second request', () => {
+    const html = render([dobRequest()]);
+    expect(html).not.toContain('request?kind=dob"');
+    expect(html).toContain('Date of birth change requested · with the office');
+    expect(statusLine([dobRequest()], 'dob')).toMatchObject({
+      state: 'pending',
+      detail: expect.stringContaining('Requested: 06/05/1995'),
+    });
+  });
+
+  it('after a rejection, the reason and Request again', () => {
+    const html = render([
+      dobRequest({ status: 'rejected', decisionReason: 'The passport says 5 June.' }),
+    ]);
+    expect(html).toContain('Not changed: The passport says 5 June.');
+    expect(html).toContain('href="/profile/details/request?kind=dob"');
+  });
+
+  it('asks with request_dob_change(): the date, the evidence, the note — no staff id', async () => {
+    const result = await actions.requestDobChange(
+      '1995-05-06',
+      'staff-1/change-requests/p.pdf',
+      ' ',
+    );
+    expect(rpc).toHaveBeenCalledWith('request_dob_change', {
+      p_dob: '1995-05-06',
+      p_evidence_path: 'staff-1/change-requests/p.pdf',
+      p_note: null,
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it('says the date rule’s refusals in words', async () => {
+    for (const code of ['under_18', 'dob_invalid', 'dob_required', 'unchanged']) {
+      rpc.mockResolvedValue({ data: null, error: { message: code } });
+      const result = await actions.requestDobChange(
+        '1995-05-06',
+        'staff-1/change-requests/p.pdf',
+        '',
+      );
+      expect(result).toEqual({ ok: false, message: CHANGE_REASONS[code] });
+    }
+  });
+
+  it('the request form: now, the typed date, the evidence', async () => {
+    const { DobRequestForm } = await import('../details/request/DobRequestForm');
+    const html = renderToStaticMarkup(<DobRequestForm dob="1995-06-05" />);
+    expect(html).toContain('value="05/06/1995"');
+    expect(html).toContain('placeholder="DD/MM/YYYY"');
+    expect(html).toContain('passport');
+    expect(html).toContain('Send to the office');
+  });
+});

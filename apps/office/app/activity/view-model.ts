@@ -56,7 +56,26 @@ function short(value: unknown): string {
   return json.length > 80 ? `${json.slice(0, 77)}…` : json;
 }
 
+/** Keys whose readable form is not their code made readable. */
+const KEY_LABEL: Readonly<Record<string, string>> = {
+  dob: 'Date of birth',
+  rtwCheck: 'gov.uk check',
+  optOutSignedUnder18: 'Opt-out signed under 18',
+};
+
+/** A `{from, to}` pair nested under a key — "Date of birth: 1995-01-01 → 1994-12-31" (ADR-0069). */
+function isChange(value: unknown): value is { from?: unknown; to?: unknown } {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    ('from' in value || 'to' in value)
+  );
+}
+
 function words(key: string): string {
+  const known = KEY_LABEL[key];
+  if (known) return known;
   const spaced = key
     .replace(/([a-z])([A-Z])/g, '$1 $2')
     .replace(/_/g, ' ')
@@ -77,6 +96,10 @@ export function describe(row: Pick<ActivityRow, 'data'>): string[] {
   }
   for (const [key, value] of Object.entries(data)) {
     if (HIDDEN.has(key) || value === null || value === undefined || value === '') continue;
+    if (isChange(value)) {
+      out.push(`${words(key)}: ${short(value.from)} → ${short(value.to)}`);
+      continue;
+    }
     out.push(`${words(key)}: ${short(value)}`);
   }
   return out;

@@ -6,8 +6,12 @@ import { CHANGE_REASON_MAX } from '@thc/domain';
 import { changeEvidenceLink, decideChangeRequest } from './actions';
 import {
   canApprove,
+  dobBefore,
+  dobRequested,
   evidenceName,
+  evidenceTick,
   kindLabel,
+  mayDecide,
   nameBefore,
   nameRequested,
   requestedAt,
@@ -28,17 +32,26 @@ export type DecideStage = 'review' | 'approve' | 'reject';
  * right-to-work document" — the button stays disabled without it, and the
  * server action asks again. Rejecting needs a reason, labelled "shown to
  * the worker": it is what the app prints after "Not changed:" (RC3).
+ *
+ * A DATE OF BIRTH (ADR-0069) is shown now → requested with its evidence;
+ * approving it needs "I've checked the evidence shows this date of birth",
+ * and only an owner or a manager may decide it (`canDecideDob`, from
+ * `officeCan(role, 'identity')`; the database refuses anyone else). Any
+ * other office role sees the request and a line saying who decides it.
  */
 export function DecideDialog({
   request,
   stage,
   onStage,
   onClose,
+  canDecideDob = false,
 }: {
   request: ChangeRequestView | null;
   stage: DecideStage;
   onStage: (stage: DecideStage) => void;
   onClose: () => void;
+  /** ADR-0069: owners and managers decide a date-of-birth request. */
+  canDecideDob?: boolean;
 }) {
   const [checked, setChecked] = useState(false);
   const [reason, setReason] = useState('');
@@ -90,55 +103,77 @@ export function DecideDialog({
         ? `Reject ${kind} change — ${request.display_name}`
         : `${kindLabel(request.kind)} change — ${request.display_name}`;
 
-  const footer =
-    stage === 'approve' ? (
-      <>
-        <Button tone="ghost" onClick={close}>
-          Cancel
-        </Button>
-        <Button
-          tone="primary"
-          disabled={pending || !canApprove(request.kind, checked)}
-          title={canApprove(request.kind, checked) ? undefined : 'Tick the evidence check first'}
-          onClick={() => decide(true)}
-        >
-          Approve
-        </Button>
-      </>
-    ) : stage === 'reject' ? (
-      <>
-        <Button tone="ghost" onClick={close}>
-          Cancel
-        </Button>
-        <Button
-          tone="danger"
-          solid
-          disabled={pending || reason.trim() === ''}
-          onClick={() => decide(false)}
-        >
-          Reject
-        </Button>
-      </>
-    ) : (
-      <>
-        <Button tone="ghost" onClick={close}>
-          Cancel
-        </Button>
-        <Button tone="danger" disabled={pending} onClick={() => onStage('reject')}>
-          Reject
-        </Button>
-        <Button tone="primary" disabled={pending} onClick={() => onStage('approve')}>
-          Approve
-        </Button>
-      </>
-    );
+  const footer = !mayDecide(request.kind, canDecideDob) ? (
+    <Button tone="ghost" onClick={close}>
+      Close
+    </Button>
+  ) : stage === 'approve' ? (
+    <>
+      <Button tone="ghost" onClick={close}>
+        Cancel
+      </Button>
+      <Button
+        tone="primary"
+        disabled={pending || !canApprove(request.kind, checked)}
+        title={canApprove(request.kind, checked) ? undefined : 'Tick the evidence check first'}
+        onClick={() => decide(true)}
+      >
+        Approve
+      </Button>
+    </>
+  ) : stage === 'reject' ? (
+    <>
+      <Button tone="ghost" onClick={close}>
+        Cancel
+      </Button>
+      <Button
+        tone="danger"
+        solid
+        disabled={pending || reason.trim() === ''}
+        onClick={() => decide(false)}
+      >
+        Reject
+      </Button>
+    </>
+  ) : (
+    <>
+      <Button tone="ghost" onClick={close}>
+        Cancel
+      </Button>
+      <Button tone="danger" disabled={pending} onClick={() => onStage('reject')}>
+        Reject
+      </Button>
+      <Button tone="primary" disabled={pending} onClick={() => onStage('approve')}>
+        Approve
+      </Button>
+    </>
+  );
 
   return (
     <Modal open title={title} onClose={close} footer={footer} wide={request.kind === 'photo'}>
       <div className="stack cr-dialog">
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
 
-        {request.kind === 'name' ? (
+        {request.kind === 'dob' ? (
+          <div className="kv">
+            <span className="k">Now</span>
+            <span>{dobBefore(request) ?? '—'}</span>
+            <span className="k">{stage === 'approve' ? 'New date' : 'Requested'}</span>
+            <span>
+              <b>{dobRequested(request) ?? '—'}</b>
+            </span>
+            <span className="k">Evidence</span>
+            <span>{evidenceLink}</span>
+            {request.worker_note ? (
+              <>
+                <span className="k">Note</span>
+                <span>&ldquo;{request.worker_note}&rdquo;</span>
+              </>
+            ) : null}
+            <span className="k">Requested</span>
+            <span className="mono sm">{requestedAt(request.created_at)}</span>
+          </div>
+        ) : request.kind === 'name' ? (
           <div className="kv">
             <span className="k">Now</span>
             <span>{nameBefore(request) ?? '—'}</span>
@@ -188,10 +223,31 @@ export function DecideDialog({
           </div>
         )}
 
+        {!mayDecide(request.kind, canDecideDob) ? (
+          <p className="xs muted">
+            Deciding a date of birth is for owners and managers — gov.uk matches the share code
+            against it.
+          </p>
+        ) : null}
+
+        {stage === 'approve' && request.kind === 'dob' && mayDecide(request.kind, canDecideDob) ? (
+          <>
+            <Checkbox checked={checked} onChange={setChecked}>
+              {evidenceTick('dob')}
+            </Checkbox>
+            <p className="xs muted">
+              The date of birth changes on the profile now and is written to the activity log with
+              your name. If a share code is waiting for review, gov.uk is asked again with the new
+              date. {first} gets a push (RC2). Documents and payroll exports already issued are not
+              changed.
+            </p>
+          </>
+        ) : null}
+
         {stage === 'approve' && request.kind === 'name' ? (
           <>
             <Checkbox checked={checked} onChange={setChecked}>
-              I&rsquo;ve checked the evidence matches the right-to-work document
+              {evidenceTick('name')}
             </Checkbox>
             <p className="xs muted">
               The name changes on the profile now. Payroll and admin@ are emailed (RC4); {first}{' '}
@@ -209,7 +265,7 @@ export function DecideDialog({
           </p>
         ) : null}
 
-        {stage === 'reject' ? (
+        {stage === 'reject' && mayDecide(request.kind, canDecideDob) ? (
           <Textarea
             label="Reason · shown to the worker"
             value={reason}

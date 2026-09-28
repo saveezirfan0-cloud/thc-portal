@@ -66,7 +66,9 @@ describe('validateDobCorrection â€” the office dialog, in office_correct_dob()â€
   const reason = 'Passport shows 31 December';
 
   it('accepts a real change with a reason, trimmed', () => {
-    expect(validateDobCorrection({ dob: '1994-12-31', reason: `  ${reason} ` }, '1995-01-01', today)).toEqual({
+    expect(
+      validateDobCorrection({ dob: '1994-12-31', reason: `  ${reason} ` }, '1995-01-01', today),
+    ).toEqual({
       ok: true,
       dob: '1994-12-31',
       reason,
@@ -87,18 +89,20 @@ describe('validateDobCorrection â€” the office dialog, in office_correct_dob()â€
     ['x'.repeat(DOB_CORRECTION_REASON_MIN - 1), 'reason_too_short'],
     ['x'.repeat(DOB_CORRECTION_REASON_MAX + 1), 'reason_too_long'],
   ])('reason %j â†’ %s', (text, code) => {
-    expect(validateDobCorrection({ dob: '1994-12-31', reason: text }, '1995-01-01', today)).toEqual({
-      ok: false,
-      field: 'reason',
-      reason: code,
-    });
+    expect(validateDobCorrection({ dob: '1994-12-31', reason: text }, '1995-01-01', today)).toEqual(
+      {
+        ok: false,
+        field: 'reason',
+        reason: code,
+      },
+    );
   });
 
   it('takes exactly the minimum and the maximum', () => {
     for (const n of [DOB_CORRECTION_REASON_MIN, DOB_CORRECTION_REASON_MAX]) {
-      expect(validateDobCorrection({ dob: '1994-12-31', reason: 'r'.repeat(n) }, '1995-01-01', today).ok).toBe(
-        true,
-      );
+      expect(
+        validateDobCorrection({ dob: '1994-12-31', reason: 'r'.repeat(n) }, '1995-01-01', today).ok,
+      ).toBe(true);
     }
   });
 

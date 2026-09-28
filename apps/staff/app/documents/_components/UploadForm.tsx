@@ -3,40 +3,54 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { Alert, Button, Input } from '@thc/ui';
-import { parseShareCode } from '@thc/domain';
+import { DOCUMENT_UPLOAD_REASONS, dobProblem, parseShareCode, ukToday } from '@thc/domain';
 import type { DocType } from '@thc/domain';
-import { finishDocumentUpload } from '../actions';
+import { DobInput } from '../../apply/DobInput';
+import { finishDocumentUpload, finishShareCode } from '../actions';
 import { EVIDENCE_ACCEPT, uploadEvidence } from './upload';
 
 /**
  * Upload / Re-upload for one document (§10.4, §4.1).
  *
- * A share code is TYPED (§2.5) and checked against gov.uk with the date of
- * birth on the profile — automatically when the check is on (ADR-0025), by
- * the office otherwise — so that row asks for the code and makes the file
- * optional. Every other document is a file: PDF, JPG or PNG, up to 10 MB.
+ * A share code is TYPED (§2.5) and checked against gov.uk with a date of
+ * birth — automatically when the check is on (ADR-0025), by the office
+ * otherwise — so that row asks for the code AND the date of birth, the
+ * date pre-filled from the profile the way the onboarding re-entry sheet
+ * pre-fills it (ADR-0069): gov.uk matches the pair, so a wrong date on
+ * file is corrected here, with the code, rather than being a dead end.
+ * `submit_share_code_with_dob()` writes a changed date in the same call
+ * that files the code. The file is optional. Every other document is a
+ * file: PDF, JPG or PNG, up to 10 MB.
  *
- * The copy says what happens next and nothing more.
+ * The copy says what happens next and nothing more. Since ADR-0041 the
+ * office confirms every gov.uk result, so it says that.
  */
 export function UploadForm({
   docType,
   label,
   automaticCheck = false,
+  dob = null,
 }: {
   docType: DocType;
   label: string;
   /** settings.rtw_check.enabled: a share code is checked with gov.uk at once. */
   automaticCheck?: boolean;
+  /** `yyyy-mm-dd` on file — the share code form's date of birth starts here. */
+  dob?: string | null;
 }) {
   const router = useRouter();
   const share = docType === 'share_code_report';
   const [file, setFile] = useState<File | null>(null);
   const [code, setCode] = useState('');
+  const [birth, setBirth] = useState(dob?.slice(0, 10) ?? '');
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
   const codeOk = !share || parseShareCode(code) !== null;
-  const ready = share ? codeOk : file !== null;
+  // Only a complete, real date is judged; half-typed is simply not ready.
+  const birthProblem = share ? dobProblem(birth, ukToday()) : null;
+  const birthComplete = /^\d{4}-\d{2}-\d{2}$/.test(birth);
+  const ready = share ? codeOk && birthProblem === null : file !== null;
 
   function submit() {
     setError(null);
@@ -50,7 +64,9 @@ export function UploadForm({
         }
         path = up.path;
       }
-      const result = await finishDocumentUpload(docType, path, share ? code : null);
+      const result = share
+        ? await finishShareCode(path, code, birth)
+        : await finishDocumentUpload(docType, path, null);
       if (!result.ok) {
         setError(result.message);
         return;
@@ -74,6 +90,18 @@ export function UploadForm({
         />
       ) : null}
 
+      {share ? (
+        <DobInput
+          label="Date of birth"
+          value={birth}
+          onChange={setBirth}
+          hint="Must match the date of birth gov.uk holds for you."
+          {...(birthComplete && birthProblem
+            ? { error: DOCUMENT_UPLOAD_REASONS[birthProblem] ?? 'Check your date of birth.' }
+            : {})}
+        />
+      ) : null}
+
       <label className="file-pick field">
         <span className="label">
           {share ? 'The gov.uk report · optional' : `${label} · PDF, JPG or PNG, up to 10 MB`}
@@ -89,13 +117,25 @@ export function UploadForm({
         <div className="notice">
           <div className="strong">What happens next</div>
           <div>
-            We check it with gov.uk straight away, with the date of birth on your profile. If gov.uk
-            confirms your right to work, it is verified — your current one keeps counting until
-            then.
+            We check it with gov.uk straight away, with the date of birth above, and the office
+            confirms the result. Nothing changes on your account until they do — your current right
+            to work keeps counting until then.
           </div>
           <div className="xs muted">
-            If gov.uk doesn’t recognise it, you’ll get a notification saying why and can enter it
-            again. If your date of birth on file is wrong, tell the office.
+            If gov.uk doesn’t recognise the code with that date, the office will tell you why and
+            you can enter them again. A changed date of birth is saved to your profile.
+          </div>
+        </div>
+      ) : share ? (
+        <div className="notice">
+          <div className="strong">What happens next</div>
+          <div>
+            The office checks it with gov.uk, with the date of birth above. Nothing changes on your
+            account until they verify it — your current right to work keeps counting until then.
+          </div>
+          <div className="xs muted">
+            If it can’t be accepted, you’ll get a notification with the reason and can enter it
+            again. A changed date of birth is saved to your profile.
           </div>
         </div>
       ) : (

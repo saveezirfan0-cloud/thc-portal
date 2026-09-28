@@ -13,7 +13,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
  *   · the emergency contact is validated by the domain rule first.
  */
 const state = vi.hoisted(() => ({
-  kind: 'name' as 'name' | 'photo',
+  kind: 'name' as 'name' | 'photo' | 'dob',
   rpcError: null as { message: string } | null,
 }));
 
@@ -66,6 +66,14 @@ describe('decideChangeRequest (ADR-0045)', () => {
       p_reason: null,
     });
     expect(createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it('refuses to approve a date of birth without its evidence tick (ADR-0069)', async () => {
+    state.kind = 'dob';
+    const result = await decideChangeRequest('r1', true, '', false);
+    expect(!result.ok && result.message).toMatch(/shows this date of birth/);
+    expect(rpc).not.toHaveBeenCalled();
+    expect(await decideChangeRequest('r1', true, '', true)).toEqual({ ok: true });
   });
 
   it('approves a photo without any tick', async () => {

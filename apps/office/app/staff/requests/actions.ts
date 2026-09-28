@@ -10,7 +10,8 @@ import { decisionMessage } from './model';
 import type { DecisionResult } from './types';
 
 /**
- * The office's decision on a name/photo change request — ADR-0045.
+ * The office's decision on a name/photo/date-of-birth change request —
+ * ADR-0045, ADR-0069.
  *
  * `office_decide_profile_change` is a definer with the admin check in its
  * own body and `auth.uid()` as the decider, so it is called through the
@@ -19,8 +20,11 @@ import type { DecisionResult } from './types';
  *
  * The evidence tick is asked again here. The database cannot see it, and a
  * confirmation that exists only in the browser is not one (the Remove
- * pattern in ../[id]/actions.ts): a name is approved only with it, and the
- * kind is read from the request itself, never taken from the browser.
+ * pattern in ../[id]/actions.ts): a name — and a date of birth — is
+ * approved only with it, and the kind is read from the request itself,
+ * never taken from the browser. Who may decide a date of birth (owners and
+ * managers) is the database's to say: `office_decide_profile_change()`
+ * asks `office_can('identity')` for a dob request.
  */
 
 const NOT_CONFIGURED =
@@ -46,7 +50,11 @@ interface RequestRead {
   };
 }
 
-type RequestFacts = { kind: 'name' | 'photo'; staff_id: string; evidence_path: string | null };
+type RequestFacts = {
+  kind: 'name' | 'photo' | 'dob';
+  staff_id: string;
+  evidence_path: string | null;
+};
 
 async function readRequest(
   supabase: ReturnType<typeof createClient>,
@@ -81,6 +89,9 @@ export async function decideChangeRequest(
   if (approve && request.facts.kind === 'name' && !evidenceChecked) {
     return { ok: false, message: decisionMessage('evidence_unchecked') };
   }
+  if (approve && request.facts.kind === 'dob' && !evidenceChecked) {
+    return { ok: false, message: decisionMessage('evidence_unchecked_dob') };
+  }
 
   const { error } = await (supabase as unknown as DecideRpc).rpc('office_decide_profile_change', {
     p_id: id,
@@ -93,11 +104,16 @@ export async function decideChangeRequest(
   revalidatePath('/staff/requests');
   revalidatePath('/staff');
   revalidatePath(`/staff/${request.facts.staff_id}`);
+  if (request.facts.kind === 'dob') {
+    // A date of birth re-runs a pending share code's gov.uk check.
+    revalidatePath(`/onboarding/${request.facts.staff_id}`);
+    revalidatePath('/compliance');
+  }
   return { ok: true };
 }
 
 /**
- * A short-lived link to a name change's evidence, in the private
+ * A short-lived link to a name (or date-of-birth) change's evidence, in the private
  * `documents` bucket. The path is read through the SESSION first (admin_read
  * decides whether this manager may see the request), so what is signed is
  * never a path the browser supplied; the signing itself needs the service

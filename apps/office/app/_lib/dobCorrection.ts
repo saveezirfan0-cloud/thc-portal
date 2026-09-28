@@ -23,8 +23,7 @@ export interface DobCorrectionAnswer {
 }
 
 export type DobCorrectionResult =
-  | { ok: true; note: string; warning: string | null }
-  | { ok: false; message: string };
+  { ok: true; note: string; warning: string | null } | { ok: false; message: string };
 
 const MESSAGES: Readonly<Record<string, string>> = {
   ...DOB_CORRECTION_MESSAGES,

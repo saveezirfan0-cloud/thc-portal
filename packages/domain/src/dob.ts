@@ -81,10 +81,7 @@ export const DOB_CORRECTION_REASON_MIN = 10;
 export const DOB_CORRECTION_REASON_MAX = 300;
 
 export type DobCorrectionRefusal =
-  | DobChangeRefusal
-  | 'reason_required'
-  | 'reason_too_short'
-  | 'reason_too_long';
+  DobChangeRefusal | 'reason_required' | 'reason_too_short' | 'reason_too_long';
 
 export type DobCorrectionValidation =
   | { ok: true; dob: string; reason: string }

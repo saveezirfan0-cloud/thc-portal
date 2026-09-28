@@ -126,6 +126,9 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   'rtw.changed': 'Changed right to work',
   'rtw_check.requested': 'Requested gov.uk check',
   'rtw_check.reviewed': 'Reviewed gov.uk check',
+  // ADR-0069.
+  'staff.dob_corrected': 'Corrected date of birth',
+  'staff.dob_changed_with_share_code': 'Changed date of birth with a new share code',
   'document.uploaded': 'Uploaded document',
   'wtr_optout.signed': 'Signed 48-hour opt-out',
   'wtr_optout.cancelled': 'Cancelled 48-hour opt-out',

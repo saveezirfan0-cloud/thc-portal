@@ -11,8 +11,11 @@ import {
   changeSummary,
   decidedBy,
   decisionLabel,
+  dobBefore,
+  dobRequested,
   evidenceName,
   kindLabel,
+  mayDecide,
   nameBefore,
   nameRequested,
   oldestFirst,
@@ -39,10 +42,13 @@ export function RequestsScreen({
   pending,
   decided,
   problem,
+  canDecideDob = false,
 }: {
   pending: ChangeRequestView[];
   decided: ChangeRequestView[];
   problem: string | null;
+  /** ADR-0069: `officeCan(role, 'identity')` — owners and managers decide a date of birth. */
+  canDecideDob?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>('pending');
   const [open, setOpen] = useState<{ id: string; stage: DecideStage } | null>(null);
@@ -77,8 +83,8 @@ export function RequestsScreen({
             <EmptyState>
               <h3>No change requests waiting</h3>
               <p>
-                Workers ask for a name or photo change from Profile details in the app. New requests
-                arrive here and by email to admin@ (RC1).
+                Workers ask for a name, photo or date-of-birth change from Profile details in the
+                app. New requests arrive here and by email to admin@ (RC1).
               </p>
             </EmptyState>
           ) : (
@@ -87,6 +93,7 @@ export function RequestsScreen({
                 <PendingCard
                   key={row.id}
                   row={row}
+                  canDecideDob={canDecideDob}
                   onDecide={(stage) => setOpen({ id: row.id, stage })}
                 />
               ))}
@@ -107,6 +114,7 @@ export function RequestsScreen({
         stage={open?.stage ?? 'approve'}
         onStage={(stage) => setOpen((was) => (was ? { ...was, stage } : was))}
         onClose={() => setOpen(null)}
+        canDecideDob={canDecideDob}
       />
     </OfficeShell>
   );
@@ -115,9 +123,11 @@ export function RequestsScreen({
 export function PendingCard({
   row,
   onDecide,
+  canDecideDob = false,
 }: {
   row: ChangeRequestView;
   onDecide: (stage: DecideStage) => void;
+  canDecideDob?: boolean;
 }) {
   const first = row.display_name.split(' ')[0] ?? row.display_name;
   const [problem, setProblem] = useState<string | null>(null);
@@ -143,18 +153,22 @@ export function PendingCard({
       </div>
       <div className="rb">
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
-        {row.kind === 'name' ? (
+        {row.kind === 'name' || row.kind === 'dob' ? (
           <div className="cr-sides">
             <div className="side">
               <span className="label">Now</span>
-              <span className="v">{nameBefore(row) ?? '—'}</span>
+              <span className="v">
+                {(row.kind === 'dob' ? dobBefore(row) : nameBefore(row)) ?? '—'}
+              </span>
             </div>
             <div className="arrow" aria-hidden>
               →
             </div>
             <div className="side">
               <span className="label">Requested</span>
-              <span className="v">{nameRequested(row) ?? '—'}</span>
+              <span className="v">
+                {(row.kind === 'dob' ? dobRequested(row) : nameRequested(row)) ?? '—'}
+              </span>
             </div>
             <div className="side">
               <span className="label">Evidence · note</span>
@@ -199,14 +213,22 @@ export function PendingCard({
             ? `Right to work: ${row.rtw_branch ? (RTW_LABEL[row.rtw_branch] ?? row.rtw_branch) : '—'}${
                 row.right_to_work_until ? ` · until ${formatUkDate(row.right_to_work_until)}` : ''
               }`
-            : 'Printed on timesheets from the next document; issued PDFs keep the old photo'}
+            : row.kind === 'dob'
+              ? 'gov.uk matches the share code against it — a pending share code is checked again on approval'
+              : 'Printed on timesheets from the next document; issued PDFs keep the old photo'}
         </span>
-        <Button size="sm" tone="danger" onClick={() => onDecide('reject')}>
-          Reject
-        </Button>
-        <Button size="sm" tone="primary" onClick={() => onDecide('approve')}>
-          Approve
-        </Button>
+        {mayDecide(row.kind, canDecideDob) ? (
+          <>
+            <Button size="sm" tone="danger" onClick={() => onDecide('reject')}>
+              Reject
+            </Button>
+            <Button size="sm" tone="primary" onClick={() => onDecide('approve')}>
+              Approve
+            </Button>
+          </>
+        ) : (
+          <span className="xs muted">Owners and managers decide a date of birth</span>
+        )}
       </div>
     </article>
   );

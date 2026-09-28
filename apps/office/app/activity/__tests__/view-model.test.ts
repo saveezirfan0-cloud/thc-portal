@@ -21,6 +21,24 @@ describe('activity rows', () => {
     ).toEqual(['Reason: Late twice', 'Fields: full_name, phone']);
   });
 
+  it('a date-of-birth correction reads Date of birth: from → to (ADR-0069)', () => {
+    expect(
+      describeRow({
+        data: {
+          staffId: 'x',
+          dob: { from: '1995-01-01', to: '1994-12-31' },
+          reason: 'Passport shows 31 December',
+          rtwCheck: 'queued',
+        },
+      }),
+    ).toEqual([
+      'Date of birth: 1995-01-01 → 1994-12-31',
+      'Reason: Passport shows 31 December',
+      'gov.uk check: queued',
+    ]);
+    expect(actionLabel('staff.dob_corrected')).toBe('Corrected date of birth');
+  });
+
   it('no actor is the system; an actor with no profile left is a former user', () => {
     expect(actorName({ actor: null, actor_name: null })).toBe('System');
     expect(actorName({ actor: 'u', actor_name: null })).toBe('Former user');

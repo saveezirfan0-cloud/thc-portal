@@ -127,3 +127,13 @@ not by `office_decide_profile_change`, which takes no parameter for it. Only an 
 session can call that function, and the office UI is the only caller, so this is accepted
 under Q13's default. If THC answers Q13 with a mandatory right-to-work re-check, the
 database function should take the attestation as an argument and refuse without it.
+
+## Amended by ADR-0069 (28.09.2026)
+
+The product owner asked for the date of birth to be correctable. `kind` gains `'dob'`
+(with `proposed_dob`, evidence required as for a name), requested through
+`request_dob_change()` — `request_profile_change()` is unchanged and still takes only
+`name` / `photo` — and decided in this same queue by owners and managers only
+(`office_can('identity')`). Approving it writes `staff.dob`, audits `staff.dob_corrected`
+and re-runs the gov.uk check of a pending share code. RC1–RC3 carry `{field}` = "date of
+birth"; RC4 stays name-only. See [ADR-0069](0069-date-of-birth-corrections.md).

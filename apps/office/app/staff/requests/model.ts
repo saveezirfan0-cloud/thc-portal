@@ -1,4 +1,6 @@
 import { formatLocalStamp, formatUkStamp } from '../[id]/profile';
+import { formatUkDate } from '../staff';
+import { DOB_CORRECTION_MESSAGES } from '@thc/domain';
 import type { ChangeKind, ChangeRequestRow, ChangeStatus } from './types';
 
 /**
@@ -11,7 +13,7 @@ import type { ChangeKind, ChangeRequestRow, ChangeStatus } from './types';
 export const UK = 'Europe/London';
 
 export function kindLabel(kind: ChangeKind): string {
-  return kind === 'name' ? 'Name' : 'Photo';
+  return kind === 'name' ? 'Name' : kind === 'dob' ? 'Date of birth' : 'Photo';
 }
 
 function join(first: string | null | undefined, last: string | null | undefined): string | null {
@@ -36,10 +38,28 @@ export function nameRequested(row: ChangeRequestRow): string | null {
   return join(row.proposed_first_name, row.proposed_last_name);
 }
 
+/**
+ * The date of birth a dob request was measured against (ADR-0069), as the
+ * office writes dates ("05.06.1998"): the snapshot once decided, the
+ * profile while pending — the rule `nameBefore()` follows.
+ */
+export function dobBefore(row: ChangeRequestRow): string | null {
+  const iso =
+    row.status !== 'pending' && row.previous_value?.dob !== undefined
+      ? row.previous_value.dob
+      : (row.current_dob ?? null);
+  return iso ? formatUkDate(iso) : null;
+}
+
+export function dobRequested(row: ChangeRequestRow): string | null {
+  return row.proposed_dob ? formatUkDate(row.proposed_dob) : null;
+}
+
 /** The Decided table's Change column: "Amara Kalu → Amara Okafor", "new photo". */
 export function changeSummary(row: ChangeRequestRow): string {
   if (row.removed) return '— anonymised';
   if (row.kind === 'photo') return 'new photo';
+  if (row.kind === 'dob') return `${dobBefore(row) ?? '—'} → ${dobRequested(row) ?? '—'}`;
   return `${nameBefore(row) ?? '—'} → ${nameRequested(row) ?? '—'}`;
 }
 
@@ -105,17 +125,46 @@ const MESSAGES: Record<string, string> = {
   not_authorised: 'Only the office can do this.',
   evidence_unchecked:
     'Tick “I’ve checked the evidence matches the right-to-work document” before approving a name.',
+  // ADR-0069: a date-of-birth request.
+  evidence_unchecked_dob:
+    'Tick “I’ve checked the evidence shows this date of birth” before approving a date of birth.',
+  not_permitted: 'Deciding a date of birth is for owners and managers. Ask one of them.',
+  read_only:
+    'Your login is read-only (Viewer), so nothing was changed. Ask an owner if this needs doing.',
+  unchanged: 'The date of birth on file already matches — reject this request with a note instead.',
+  under_18: DOB_CORRECTION_MESSAGES.under_18,
+  dob_invalid: DOB_CORRECTION_MESSAGES.dob_invalid,
 };
 
 export function decisionMessage(message: string): string {
+  // The exact code first: `evidence_unchecked` is a prefix of `_dob`.
+  const exact = message.split(':')[0]?.trim() ?? '';
+  if (MESSAGES[exact]) return MESSAGES[exact] as string;
   const key = Object.keys(MESSAGES).find((code) => message.includes(code));
   return key ? (MESSAGES[key] as string) : message;
 }
 
 /**
- * Approve is enabled for a name only once the evidence tick is on; a photo
- * has no evidence to tick (ADR-0045 §3). The server action asks again.
+ * Approve is enabled for a name — and a date of birth (ADR-0069) — only
+ * once the evidence tick is on; a photo has no evidence to tick (ADR-0045
+ * §3). The server action asks again.
  */
 export function canApprove(kind: ChangeKind, evidenceChecked: boolean): boolean {
   return kind === 'photo' || evidenceChecked;
+}
+
+/** The evidence tick's words: a name is matched to the right-to-work document, a date to its evidence. */
+export function evidenceTick(kind: ChangeKind): string {
+  return kind === 'dob'
+    ? 'I’ve checked the evidence shows this date of birth'
+    : 'I’ve checked the evidence matches the right-to-work document';
+}
+
+/**
+ * Whether this office role may decide this request: a date of birth is for
+ * owners and managers (`office_can('identity')`, ADR-0069); a name or a
+ * photo for any office login, as before.
+ */
+export function mayDecide(kind: ChangeKind, canDecideDob: boolean): boolean {
+  return kind !== 'dob' || canDecideDob;
 }

@@ -6,7 +6,8 @@
  * A removed worker's row comes back already anonymised by the function:
  * "Deleted account #id", no current name, photo or evidence path (§1.7).
  */
-export type ChangeKind = 'name' | 'photo';
+/** `dob` since ADR-0069 (20261001208000). */
+export type ChangeKind = 'name' | 'photo' | 'dob';
 export type ChangeStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn';
 
 export interface ChangeRequestRow {
@@ -28,12 +29,20 @@ export interface ChangeRequestRow {
   proposed_photo_path: string | null;
   evidence_path: string | null;
   worker_note: string | null;
-  /** The profile at the moment of the decision: {firstName, lastName} or {photoPath}. */
-  previous_value: { firstName?: string; lastName?: string; photoPath?: string | null } | null;
+  /** The profile at the moment of the decision: {firstName, lastName}, {photoPath} or {dob}. */
+  previous_value: {
+    firstName?: string;
+    lastName?: string;
+    photoPath?: string | null;
+    dob?: string | null;
+  } | null;
   created_at: string;
   decided_at: string | null;
   decided_by_name: string | null;
   decision_reason: string | null;
+  /** ADR-0069, appended by 20261001208000: null for a removed worker. */
+  current_dob?: string | null;
+  proposed_dob?: string | null;
 }
 
 /** A row with its two photos signed for the page (`_lib/photos.ts`). */
