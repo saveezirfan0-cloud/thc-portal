@@ -7,7 +7,7 @@
  * (`canSignOptOut`, RULE-20) and what the HMRC New Starter report carries
  * (§9.9). Since 28.09.2026 it can be corrected after onboarding by three
  * routes, each held to the same rule, `dobChangeProblem()`, and to
- * `dob_change_problem()` in SQL (20261001208000) — both driven by the
+ * `dob_change_problem()` in SQL (20261001209000) — both driven by the
  * `dobs` group of changeRequest.vectors.json:
  *
  *   - the office's "Correct" on /staff/:id and /onboarding/:id

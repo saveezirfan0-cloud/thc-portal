@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 717 · Date of birth corrections (ADR-0069)
---   20261001208000_date_of_birth_corrections.sql
+--   20261001209000_date_of_birth_corrections.sql
 --
 --   A. Shape: the three new RPCs are authenticated-only definers; the rule
 --      and the effect are granted to nobody; kind 'dob' is allowed and

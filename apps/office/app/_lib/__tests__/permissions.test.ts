@@ -13,7 +13,7 @@ import { actionLabel, explainAccountError } from '../accounts';
 
 /**
  * ADR-0056, ADR-0060, ADR-0069. The matrix below is `office_can()` in
- * 20261001208000_date_of_birth_corrections.sql (restated from
+ * 20261001209000_date_of_birth_corrections.sql (restated from
  * 20261001201100 with `identity`), and 741_office_roles / 750_viewer_role /
  * 717_date_of_birth_corrections assert the same rows in the database. If
  * one changes, both change.

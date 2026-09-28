@@ -1,6 +1,6 @@
 # ADR-0069 · Date of birth corrections — from the Back Office and from the Staff App
 
-**Status:** Accepted, 28.09.2026 (product owner) · **Amends:** [ADR-0045](0045-request-a-change-name-and-photo.md) (Request a change gains `dob`), scope §10.1's locked-field list, [ADR-0056](0056-office-roles.md) (a fifth permission, `identity`), [ADR-0068](0068-searchable-dial-code-and-typed-dob.md) (its date-typing helpers move to `packages/domain`) · **Code:** migration `20261001208000_date_of_birth_corrections.sql`; pgTAP `717` (with `change_request_vectors.psql`); `packages/domain/src/dob.ts`; `apps/office/app/_components/DobCorrection.tsx`, `_lib/dobCorrection*.ts`; `apps/staff/app/documents/_components/UploadForm.tsx`; `apps/staff/app/profile/details/request/DobRequestForm.tsx`
+**Status:** Accepted, 28.09.2026 (product owner) · **Amends:** [ADR-0045](0045-request-a-change-name-and-photo.md) (Request a change gains `dob`), scope §10.1's locked-field list, [ADR-0056](0056-office-roles.md) (a fifth permission, `identity`), [ADR-0068](0068-searchable-dial-code-and-typed-dob.md) (its date-typing helpers move to `packages/domain`) · **Code:** migration `20261001209000_date_of_birth_corrections.sql`; pgTAP `717` (with `change_request_vectors.psql`); `packages/domain/src/dob.ts`; `apps/office/app/_components/DobCorrection.tsx`, `_lib/dobCorrection*.ts`; `apps/staff/app/documents/_components/UploadForm.tsx`; `apps/staff/app/profile/details/request/DobRequestForm.tsx`
 
 ## Context
 

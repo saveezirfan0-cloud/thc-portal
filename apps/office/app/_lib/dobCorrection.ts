@@ -10,7 +10,7 @@ import { explainOfficeError } from './permissions';
  * `office_correct_dob()` repeats; this file only speaks.
  */
 
-/** What `office_correct_dob()` returns (20261001208000). */
+/** What `office_correct_dob()` returns (20261001209000). */
 export interface DobCorrectionAnswer {
   ok?: boolean;
   dob?: string;

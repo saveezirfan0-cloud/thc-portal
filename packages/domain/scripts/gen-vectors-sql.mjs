@@ -331,7 +331,7 @@ export function renderChangeRequest(v) {
     ),
   );
   // ADR-0069: the date-of-birth rule, dob_change_problem() in
-  // 20261001208000 — held to it by supabase/tests/717_date_of_birth_corrections.sql.
+  // 20261001209000 — held to it by supabase/tests/717_date_of_birth_corrections.sql.
   out.push(
     ...table(
       'change_request_dob_vectors',

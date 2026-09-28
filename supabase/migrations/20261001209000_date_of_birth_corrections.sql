@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261001208000 · date of birth corrections (ADR-0069)
+-- Migration 20261001209000 · date of birth corrections (ADR-0069)
 --   §10.1 (the locked fields) · ADR-0045 (Request a change) amended ·
 --   ADR-0041 / ADR-0025 (the gov.uk check) · ADR-0056 / ADR-0060 (office
 --   roles) · RULE-20 (the under-18 opt-out) · §2.1 (the age gate)
@@ -81,7 +81,7 @@
 -- office's dialog turns into "ask them to sign it again".
 --
 -- Restated from their latest definitions, every line carried, with only
--- the lines marked 20261001208000 added:
+-- the lines marked 20261001209000 added:
 --   office_can                          20261001201100 + 'identity'
 --   profile_change_requests_state_guard 20260930200100 + proposed_dob immutable
 --   staff_removed_purge_additions       20260930205200 + proposed_dob → 1900-01-01
@@ -236,7 +236,7 @@ begin
 
   -- The office approves exactly what was asked. The one exception is §1.7:
   -- a removed worker's proposed name is anonymised.
-  -- 20261001208000 (ADR-0069): proposed_dob is a proposed value like the rest.
+  -- 20261001209000 (ADR-0069): proposed_dob is a proposed value like the rest.
   if (new.proposed_first_name, new.proposed_last_name, new.proposed_photo_path, new.evidence_path,
       new.proposed_dob)
        is distinct from
@@ -250,7 +250,7 @@ begin
 end $$;
 
 comment on function public.profile_change_requests_state_guard() is
-  'Refuses any profile_change_requests status change that is not an edge of profile_change_transitions(), a request inserted already decided, and any change to the proposed values — names, photo, evidence, and since 20261001208000 the date of birth — except the §1.7 anonymisation of a removed worker. Stamps decided_at on leaving pending. The DB half of assertChangeRequestTransition() in packages/domain.';
+  'Refuses any profile_change_requests status change that is not an edge of profile_change_transitions(), a request inserted already decided, and any change to the proposed values — names, photo, evidence, and since 20261001209000 the date of birth — except the §1.7 anonymisation of a removed worker. Stamps decided_at on leaving pending. The DB half of assertChangeRequestTransition() in packages/domain.';
 
 revoke execute on function public.profile_change_requests_state_guard() from public, anon, authenticated;
 
@@ -273,7 +273,7 @@ begin
      set status              = case when status = 'pending' then 'withdrawn' else status end,
          proposed_first_name = case when proposed_first_name is not null then 'Deleted' end,
          proposed_last_name  = case when proposed_last_name  is not null then 'account' end,
-         -- 20261001208000 (ADR-0069): a requested date of birth is personal
+         -- 20261001209000 (ADR-0069): a requested date of birth is personal
          -- data. The 1900-01-01 sentinel, as staff.dob and applications.dob
          -- get on removal: the dob shape CHECK needs a value on a dob row.
          proposed_dob        = case when proposed_dob is not null then date '1900-01-01' end,
@@ -336,7 +336,7 @@ begin
 end $$;
 
 comment on function public.staff_removed_purge_additions() is
-  '§1.7 GDPR removal for the docs/19 additions: deletes availability and the emergency contact, withdraws and anonymises change requests (a requested date of birth becomes 1900-01-01 since 20261001208000), revokes the referral code, lapses open offers and clears the office''s free-text decline note, and anonymises the RC1/RC3/RC4/OF5 outbox payloads (names → "Deleted account #id", free text removed, unsent rows failed gdpr_removed) that remove_worker()''s own scrub (20260930120100, which runs after this trigger and wins where both match) does not reach. Writes nothing to audit_log; the additions'' audit rows carry no personal data. Fires once, after removed_at is first set. A trigger function: not an RPC.';
+  '§1.7 GDPR removal for the docs/19 additions: deletes availability and the emergency contact, withdraws and anonymises change requests (a requested date of birth becomes 1900-01-01 since 20261001209000), revokes the referral code, lapses open offers and clears the office''s free-text decline note, and anonymises the RC1/RC3/RC4/OF5 outbox payloads (names → "Deleted account #id", free text removed, unsent rows failed gdpr_removed) that remove_worker()''s own scrub (20260930120100, which runs after this trigger and wins where both match) does not reach. Writes nothing to audit_log; the additions'' audit rows carry no personal data. Fires once, after removed_at is first set. A trigger function: not an RPC.';
 
 -- Trigger functions are never RPCs (20260927161000, pgTAP 190).
 revoke execute on function public.staff_removed_purge_additions() from public, anon, authenticated;
@@ -701,7 +701,7 @@ declare
   v_field   text;
   v_prev    jsonb;
   v_now     timestamptz := now();
-  -- 20261001208000 (ADR-0069): the date-of-birth branch.
+  -- 20261001209000 (ADR-0069): the date-of-birth branch.
   v_problem text;
   v_extra   jsonb := '{}'::jsonb;
 begin
@@ -716,7 +716,7 @@ begin
   if r.id is null then
     raise exception 'request_not_found' using errcode = 'P0002';
   end if;
-  -- 20261001208000 (ADR-0069): a date of birth is corrected by an owner or
+  -- 20261001209000 (ADR-0069): a date of birth is corrected by an owner or
   -- a manager only — the office_correct_dob() gate — and a request for one
   -- is decided by the same people, either way. A viewer is read-only
   -- (ADR-0060) and is told so first.
@@ -793,7 +793,7 @@ begin
   elsif r.kind = 'dob' then
     v_prev := jsonb_build_object('dob', s.dob);
 
-    -- 20261001208000 (ADR-0069): the office correction's effect, through
+    -- 20261001209000 (ADR-0069): the office correction's effect, through
     -- the same helper — staff.dob, the staff.dob_corrected audit row, and
     -- a fresh gov.uk check of a pending share code. The rule is checked
     -- again against the profile NOW: the office may have corrected it
@@ -919,7 +919,7 @@ begin
                              || right(s.ni_number, 2)
                       end,
     'hasNiNumber',    s.ni_number is not null,
-    -- 20261001208000 (ADR-0069): Profile details shows it locked, with
+    -- 20261001209000 (ADR-0069): Profile details shows it locked, with
     -- Request a change; the worker's own date, nobody else's.
     'dob',            s.dob,
     'rating',         s.rating,
@@ -934,7 +934,7 @@ begin
 end $$;
 
 comment on function public.staff_me() is
-  'The worker''s own profile for the §10.1 profile sheet, plus the app-lock inputs. Never returns block_reason or rejection_reason; rejectionCause (willo / manager / quiz_failed) decides which terminal screen shows. reliability is staff_show_rate() since 20260928110700, null with no history. dob since 20261001208000: Profile details shows it locked (ADR-0069).';
+  'The worker''s own profile for the §10.1 profile sheet, plus the app-lock inputs. Never returns block_reason or rejection_reason; rejectionCause (willo / manager / quiz_failed) decides which terminal screen shows. reliability is staff_show_rate() since 20260928110700, null with no history. dob since 20261001209000: Profile details shows it locked (ADR-0069).';
 
 -- ---------------------------------------------------------------------
 -- 12 · The two reads gain the date — appended columns, so drop + create.
@@ -952,7 +952,7 @@ returns table (
   decision_reason     text,
   created_at          timestamptz,
   decided_at          timestamptz,
-  -- 20261001208000 (ADR-0069), appended.
+  -- 20261001209000 (ADR-0069), appended.
   proposed_dob        date
 )
 language plpgsql
@@ -1013,7 +1013,7 @@ create or replace function public.office_profile_change_requests(
   decided_at          timestamptz,
   decided_by_name     text,
   decision_reason     text,
-  -- 20261001208000 (ADR-0069), appended; null for a removed worker.
+  -- 20261001209000 (ADR-0069), appended; null for a removed worker.
   current_dob         date,
   proposed_dob        date
 )
@@ -1059,7 +1059,7 @@ begin
 end $$;
 
 comment on function public.office_profile_change_requests(uuid, boolean, int) is
-  'ADR-0045: the /staff/requests queue — pending oldest first, or decided newest first — optionally for one worker (the /staff/:id banner). Admin only. Names the decider (profiles.full_name, which an admin cannot read directly). A removed worker reads "Deleted account #id" with no photo, evidence path or date of birth. current_dob / proposed_dob appended by 20261001208000 (ADR-0069).';
+  'ADR-0045: the /staff/requests queue — pending oldest first, or decided newest first — optionally for one worker (the /staff/:id banner). Admin only. Names the decider (profiles.full_name, which an admin cannot read directly). A removed worker reads "Deleted account #id" with no photo, evidence path or date of birth. current_dob / proposed_dob appended by 20261001209000 (ADR-0069).';
 
 -- ---------------------------------------------------------------------
 -- 13 · Privileges

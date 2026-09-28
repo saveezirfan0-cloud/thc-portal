@@ -18,12 +18,12 @@ import {
 
 /**
  * ADR-0069. dobChangeProblem() and dob_change_problem() in
- * 20261001208000 are held to the `dobs` group of changeRequest.vectors.json
+ * 20261001209000 are held to the `dobs` group of changeRequest.vectors.json
  * — here, and in pgTAP 717 through change_request_vectors.psql.
  */
 const here = dirname(fileURLToPath(import.meta.url));
 const migration = readFileSync(
-  resolve(here, '../../../../supabase/migrations/20261001208000_date_of_birth_corrections.sql'),
+  resolve(here, '../../../../supabase/migrations/20261001209000_date_of_birth_corrections.sql'),
   'utf8',
 );
 

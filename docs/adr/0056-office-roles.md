@@ -89,6 +89,6 @@ A fourth role, `viewer`, reads what a manager reads (finance included) and write
 A fifth permission, `identity`: correcting a worker's date of birth
 (`office_correct_dob`) and deciding a date-of-birth change request. Owner and manager
 hold it; scheduler and viewer do not. `office_can()` is restated in
-`20261001208000_date_of_birth_corrections.sql`, `permissions.ts` and its test carry the
+`20261001209000_date_of_birth_corrections.sql`, `permissions.ts` and its test carry the
 fifth column, and pgTAP 717 asserts the row per role. See
 [ADR-0069](0069-date-of-birth-corrections.md).
