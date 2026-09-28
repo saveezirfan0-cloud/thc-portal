@@ -132,7 +132,7 @@ as today.
       Questions") and live as the step 6 quiz (migration `20260930140000`). THC
       confirmed the answers on 28.09, so both go-live gates below are closed.
   - [x] 28.09: **GATE — THC confirmed the quiz answer key** as inferred (C, B, B, A,
-        D, A, C, D, C, A). pgTAP 391 now pins it (migration `20261001206000`);
+        D, A, C, D, C, A). pgTAP 391 now pins it (migration `20261001207000`);
   - [x] 28.09: **GATE — THC approved Q8**'s multiple-choice rewording ("Which of these
         foods can cause an allergic reaction?" Peanuts · Milk · Shellfish · All the
         above); its placeholder flag is cleared, so no active question is a placeholder;

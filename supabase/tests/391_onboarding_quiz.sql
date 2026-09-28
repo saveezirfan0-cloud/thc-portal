@@ -54,7 +54,7 @@ grant select on sheet to authenticated;
 
 select ok((select total from sheet) >= 5, 'the quiz is configured');
 -- THC's own ten (20260930140000). THC confirmed the answer key and Q8's
--- multiple-choice rewording on 28.09 (20261001206000, docs/17 item 9).
+-- multiple-choice rewording on 28.09 (20261001207000, docs/17 item 9).
 select is((select total from sheet), 10, 'THC''s ten questions are the active quiz (§2.9, Appendix B)');
 select is_empty(
   $$ select position from quiz_questions where active and is_placeholder $$,
