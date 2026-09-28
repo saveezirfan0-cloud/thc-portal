@@ -1,6 +1,7 @@
 import { createHmac } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import {
+  describeShape,
   DEFAULT_API_BASE,
   eventTime,
   isPermanentRefusal,
@@ -256,6 +257,7 @@ describe('the payload → a settings.willo_stage_map key', () => {
       event: {
         deliveryId: 'evt_1',
         willoCandidateId: 'W-abc',
+        candidateKeys: ['W-abc'],
         eventKey: 'accepted',
         rawType: 'Stage Change',
         stage: 'Accepted',
@@ -319,6 +321,80 @@ describe('the payload → a settings.willo_stage_map key', () => {
       ok: false,
       reason: 'no_stage',
     });
+  });
+
+  // 28.09: THC's first real deliveries carried no event name under any
+  // path we read ("no_event_type"). The address we register names the event,
+  // and the participant's key is found by its form, not its field name.
+  const OURS = '5b046807a81e41278fa24f0e8ad8f3fb';
+  const INTERVIEW = '91510e13269d47ada281bb9553613ae0';
+
+  it('takes the event from the webhook address when the body does not name it', () => {
+    const body = JSON.stringify({ participant: { key: OURS }, interview: { key: INTERVIEW } });
+    expect(parseWilloEvent(body)).toEqual({ ok: false, reason: 'no_event_type' });
+    expect(parseWilloEvent(body, { eventHint: 'new_response' })).toMatchObject({
+      ok: true,
+      event: { eventKey: 'new_response', candidateKeys: [OURS, INTERVIEW] },
+    });
+  });
+
+  it('the body’s own event name still wins over the address', () => {
+    const body = JSON.stringify({ event: 'stage_change', candidate_key: OURS, stage: 'Rejected' });
+    expect(parseWilloEvent(body, { eventHint: 'new_response' })).toMatchObject({
+      ok: true,
+      event: { eventKey: 'rejected' },
+    });
+  });
+
+  it('finds 32-hex keys anywhere, a named path first, each once', () => {
+    const body = JSON.stringify({
+      results: [{ response: { interview: INTERVIEW, participant: OURS, again: OURS } }],
+    });
+    const out = parseWilloEvent(body, { eventHint: 'new_response' });
+    expect(out).toMatchObject({ ok: true, event: { candidateKeys: [INTERVIEW, OURS] } });
+    const named = parseWilloEvent(JSON.stringify({ interview: INTERVIEW, candidate_key: OURS }), {
+      eventHint: 'new_response',
+    });
+    expect(named).toMatchObject({
+      ok: true,
+      event: { willoCandidateId: OURS, candidateKeys: [OURS, INTERVIEW] },
+    });
+  });
+
+  it('finds the stage under any stage key, before a bare status', () => {
+    const body = JSON.stringify({
+      status: 'active',
+      response: { participant: OURS, stage: { title: 'To Review' } },
+    });
+    expect(parseWilloEvent(body, { eventHint: 'stage_change' })).toMatchObject({
+      ok: true,
+      event: { eventKey: 'to_review', stage: 'To Review' },
+    });
+    const statusOnly = JSON.stringify({ participant: { key: OURS, status: 'Accepted' } });
+    expect(parseWilloEvent(statusOnly, { eventHint: 'stage_change' })).toMatchObject({
+      ok: true,
+      event: { eventKey: 'accepted' },
+    });
+  });
+
+  it('describes a delivery without a name, an email or an answer in it', () => {
+    const shape = describeShape(
+      JSON.stringify({
+        event: 'New Response',
+        participant: { key: OURS, name: 'Saveez Irfan', email: 'someone@example.com' },
+        stage: { name: 'To Review' },
+        answers: [{ text: 'I love hospitality' }],
+      }),
+    ).join('\n');
+    expect(shape).toContain('event: string = "New Response"');
+    expect(shape).toContain('participant.key: string (32-hex key)');
+    expect(shape).toContain('stage.name: string = "To Review"');
+    expect(shape).toContain('answers: array(1)');
+    expect(shape).not.toContain('Saveez');
+    expect(shape).not.toContain('example.com');
+    expect(shape).not.toContain('hospitality');
+    expect(shape).not.toContain(OURS);
+    expect(describeShape('nope')).toEqual(['<not json>']);
   });
 
   it('normalises like the /settings map keys', () => {

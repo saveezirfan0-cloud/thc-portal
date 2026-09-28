@@ -51,6 +51,19 @@ an empty secret is awkward to set in the dashboard for the third, so both became
    current system — and `the-hospitality-company.4-com.pro`). Ours is added beside them;
    removing theirs is THC's call once Accelerate is retired.
 
+7. **The event is named in the address; the participant is found by its key's form**
+   (28.09, after the first real deliveries). THC's `new_response` deliveries carried
+   no event name under any path `parseWilloEvent` reads (`no_event_type`, 400). Each
+   webhook sends one event, so each address now names it:
+   `…/willo-webhook?token=<secret>&event=new_response` and `…&event=stage_change`;
+   a body that does name its event still wins. The participant's key is taken from a
+   named path if present, else from any 32-hex string in the body, and the receiver
+   asks `willo_event_plan` which one is ours (the interview's key, also 32 hex, is
+   skipped). A stage is read from any `stage`-like key before a bare `status`. Every
+   delivery's shape (paths and types; values only for event/stage keys, never a
+   name, email or answer) is logged as `[willo-webhook] delivery`, so the payload
+   can be pinned down from the function log without logging personal data.
+
 ## Consequences
 
 - The token appears in the request URL, so Supabase's edge request log (visible to

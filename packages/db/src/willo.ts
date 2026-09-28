@@ -249,7 +249,16 @@ export async function verifyWilloSignature(
 export interface WilloEvent {
   /** Willo's own id for the delivery, when it sends one. Logging only. */
   deliveryId: string | null;
+  /** The first of `candidateKeys`. */
   willoCandidateId: string;
+  /**
+   * Every value in the delivery that could be the participant's key, best
+   * first: a named path, then any 32-hex string anywhere in the body
+   * (Willo's key form, e.g. `5b046807a81e41278fa24f0e8ad8f3fb`). The
+   * receiver asks the database which one is ours — the interview's own key
+   * is also 32 hex and simply matches nobody.
+   */
+  candidateKeys: string[];
   /** The key looked up in settings.willo_stage_map, or `progress`. */
   eventKey: string;
   rawType: string;
@@ -361,7 +370,120 @@ const STAGE_PATHS = [
 const TIME_PATHS = ['occurred_at', 'created_at', 'timestamp', 'data.created_at', 'data.updated_at'];
 const DELIVERY_PATHS = ['id', 'event_id', 'delivery_id', 'uuid'];
 
-export function parseWilloEvent(rawBody: string): ParsedWilloEvent {
+const WILLO_KEY = /^[0-9a-f]{32}$/i;
+const STAGE_KEYS = new Set(['stage', 'new_stage', 'to_stage', 'stage_name']);
+const STATUS_KEYS = new Set(['status']);
+const MAX_DEPTH = 6;
+
+/** Every 32-hex string in the body, in document order, once each. */
+function hexKeys(root: unknown, depth = 0, out: string[] = []): string[] {
+  if (depth > MAX_DEPTH) return out;
+  if (typeof root === 'string') {
+    if (WILLO_KEY.test(root) && !out.includes(root)) out.push(root);
+  } else if (Array.isArray(root)) {
+    for (const item of root) hexKeys(item, depth + 1, out);
+  } else if (isObject(root)) {
+    for (const value of Object.values(root)) hexKeys(value, depth + 1, out);
+  }
+  return out;
+}
+
+/**
+ * A stage named under any stage-like key: a string, or an object's
+ * name/title. Stage-named keys are searched through the whole body before
+ * a bare `status`, which could as well be the webhook's own "active".
+ */
+function deepStage(root: unknown): string | null {
+  return deepNamed(root, STAGE_KEYS, 0) ?? deepNamed(root, STATUS_KEYS, 0);
+}
+
+function deepNamed(root: unknown, keys: Set<string>, depth: number): string | null {
+  if (depth > MAX_DEPTH || !isObject(root)) return null;
+  for (const [key, value] of Object.entries(root)) {
+    if (keys.has(key.toLowerCase())) {
+      if (typeof value === 'string' && value.trim() !== '') return value.trim();
+      const named = firstText(value, ['name', 'title', 'label']);
+      if (named) return named;
+    }
+  }
+  for (const value of Object.values(root)) {
+    const found = Array.isArray(value)
+      ? (value.map((item) => deepNamed(item, keys, depth + 1)).find(Boolean) ?? null)
+      : deepNamed(value, keys, depth + 1);
+    if (found) return found;
+  }
+  return null;
+}
+
+const SHAPE_VALUE_KEYS = new Set([
+  'event',
+  'type',
+  'event_type',
+  'eventtype',
+  'trigger',
+  'action',
+  'stage',
+  'new_stage',
+  'to_stage',
+  'status',
+  'api_version',
+]);
+
+/**
+ * The shape of a delivery for the log: every path with its type, and the
+ * value only for keys that name an event or a stage — never a name, an
+ * email or an answer. How an unexpected Willo payload gets fixed without
+ * logging a candidate's personal data (ADR-0066, "still unverified").
+ */
+export function describeShape(rawBody: string, limit = 60): string[] {
+  let body: unknown;
+  try {
+    body = JSON.parse(rawBody);
+  } catch {
+    return ['<not json>'];
+  }
+  const out: string[] = [];
+  const walk = (node: unknown, path: string, key: string, depth: number) => {
+    if (out.length >= limit) return;
+    if (Array.isArray(node)) {
+      out.push(`${path || '<root>'}: array(${node.length})`);
+      if (node.length > 0 && depth < MAX_DEPTH) walk(node[0], `${path}[0]`, key, depth + 1);
+      return;
+    }
+    if (isObject(node)) {
+      if (depth >= MAX_DEPTH) {
+        out.push(`${path}: object`);
+        return;
+      }
+      for (const [k, v] of Object.entries(node)) walk(v, path ? `${path}.${k}` : k, k, depth + 1);
+      return;
+    }
+    const kind = node === null ? 'null' : typeof node;
+    const shown =
+      typeof node === 'string' &&
+      (SHAPE_VALUE_KEYS.has(key.toLowerCase()) ||
+        /(^|\.)(stage|new_stage|to_stage)\.(name|title)$/.test(path))
+        ? ` = ${JSON.stringify(node.slice(0, 40))}`
+        : typeof node === 'string' && WILLO_KEY.test(node)
+          ? ' (32-hex key)'
+          : typeof node === 'string'
+            ? `(${node.length})`
+            : '';
+    out.push(`${path}: ${kind}${shown}`);
+  };
+  walk(body, '', '', 0);
+  return out;
+}
+
+/**
+ * `eventHint` is the event our webhook address names (`?event=new_response`):
+ * Willo sends one event per webhook, so the address we registered says which
+ * one this is even when the body does not.
+ */
+export function parseWilloEvent(
+  rawBody: string,
+  options: { eventHint?: string | null } = {},
+): ParsedWilloEvent {
   let body: unknown;
   try {
     body = JSON.parse(rawBody);
@@ -370,13 +492,16 @@ export function parseWilloEvent(rawBody: string): ParsedWilloEvent {
   }
   if (!isObject(body)) return { ok: false, reason: 'not_json' };
 
-  const rawType = firstText(body, TYPE_PATHS);
+  const hint = options.eventHint?.trim() || null;
+  const rawType = firstText(body, TYPE_PATHS) ?? hint;
   if (!rawType || stageMapKey(rawType) === '') return { ok: false, reason: 'no_event_type' };
-  const candidate = firstText(body, CANDIDATE_PATHS);
+  const named = firstText(body, CANDIDATE_PATHS);
+  const candidateKeys = [...(named ? [named] : []), ...hexKeys(body).filter((k) => k !== named)];
+  const candidate = candidateKeys[0];
   if (!candidate) return { ok: false, reason: 'no_candidate' };
 
   const type = stageMapKey(rawType);
-  const stage = firstText(body, STAGE_PATHS);
+  const stage = firstText(body, STAGE_PATHS) ?? deepStage(body);
   let eventKey: string;
   if (STAGE_CHANGE_TYPES.has(type)) {
     if (!stage || stageMapKey(stage) === '') return { ok: false, reason: 'no_stage' };
@@ -415,6 +540,7 @@ export function parseWilloEvent(rawBody: string): ParsedWilloEvent {
     event: {
       deliveryId: firstText(body, DELIVERY_PATHS),
       willoCandidateId: candidate,
+      candidateKeys,
       eventKey,
       rawType,
       stage,

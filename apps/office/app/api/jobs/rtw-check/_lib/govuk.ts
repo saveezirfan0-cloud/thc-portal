@@ -80,7 +80,11 @@ const any = (patterns: readonly RegExp[], text: string) => patterns.some((p) => 
 
 /** The work conditions: the lines under a Conditions heading, and any line that reads as one. */
 export function govukConditions(text: string): string[] {
-  const lines = text.split('\n').map((l) => l.trim());
+  const advice = (line: string) => any(GOVUK_RESULT.notCondition, line);
+  const lines = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => !advice(l));
   const found: string[] = [];
   const heading = lines.findIndex((l) => GOVUK_RESULT.conditionsHeading.test(l));
   if (heading >= 0) {

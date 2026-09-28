@@ -31,6 +31,7 @@
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
 import { runJob } from '../_shared/job.ts';
 import {
+  describeShape,
   eventTime,
   isPermanentRefusal,
   parseWilloEvent,
@@ -120,29 +121,57 @@ async function webhook(request: Request): Promise<Response> {
     return json(401, { error: 'invalid signature' });
   }
 
-  const parsed = parseWilloEvent(raw);
+  // Willo sends one event per webhook, and each of ours names its event in
+  // the address (`&event=new_response`), so the address says what the body
+  // may not (ADR-0066). The shape — paths and types, values only for event
+  // and stage keys, never a name or an email — is logged for every delivery
+  // until THC's payload is pinned down.
+  const eventHint = new URL(request.url).searchParams.get('event');
+  const shape = describeShape(raw);
+  const parsed = parseWilloEvent(raw, { eventHint });
   if (!parsed.ok) {
-    console.warn('[willo-webhook] unreadable delivery', { reason: parsed.reason });
+    console.warn('[willo-webhook] unreadable delivery', {
+      reason: parsed.reason,
+      eventHint,
+      shape,
+    });
     return json(400, { error: parsed.reason });
   }
+  console.log('[willo-webhook] delivery', { eventHint, shape });
   const event = parsed.event;
   const at = eventTime(event.occurredAt, Date.now());
+
+  const db = serviceClient();
+
+  // Which of the delivery's keys is one of our candidates: the named path
+  // first, then any 32-hex value (the interview's own key matches nobody).
+  const interviewKey = env('WILLO_INTERVIEW_KEY')?.trim();
+  const keys = event.candidateKeys.filter((key) => key !== interviewKey);
+  let plan: unknown = null;
+  for (const key of keys) {
+    const { data, error: planError } = await db.rpc('willo_event_plan', {
+      p_willo_candidate_id: key,
+      p_event: event.eventKey,
+    });
+    if (planError) {
+      console.error('[willo-webhook] plan failed', {
+        candidate: key,
+        event: event.eventKey,
+        error: planError.message,
+      });
+      return json(500, { error: 'plan failed' });
+    }
+    if (data) {
+      event.willoCandidateId = key;
+      plan = data;
+      break;
+    }
+  }
   const log = {
     delivery: event.deliveryId,
     candidate: event.willoCandidateId,
     event: event.eventKey,
   };
-
-  const db = serviceClient();
-
-  const { data: plan, error: planError } = await db.rpc('willo_event_plan', {
-    p_willo_candidate_id: event.willoCandidateId,
-    p_event: event.eventKey,
-  });
-  if (planError) {
-    console.error('[willo-webhook] plan failed', { ...log, error: planError.message });
-    return json(500, { error: 'plan failed' });
-  }
   if (!plan) {
     // Created in Willo by hand, or removed (§1.7) since. Nothing to move.
     console.warn('[willo-webhook] unknown Willo candidate', log);

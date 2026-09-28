@@ -126,6 +126,9 @@ describe('condition lines are recognised whole, never by a substring (QA 25.09)'
     'They cannot work full-time during official vacations unless approved',
     'Can work 10 hours a week',
     'They must not work more than 48 hours a week',
+    'On their current visa, they can work in any job except as a doctor',
+    'On their current visa, they can work in any job except those listed below, and only for their sponsor',
+    'They cannot work as a professional sportsperson or coach, or in any job paying under the threshold',
   ])('%s → the office', (line) => {
     expect(unrecognisedConditions([line])).toEqual([line]);
   });
@@ -140,6 +143,9 @@ describe('condition lines are recognised whole, never by a substring (QA 25.09)'
     'They can work full-time during official vacations',
     'They cannot be self-employed.',
     'They can work in the UK with no time limit',
+    // Live gov.uk wording, 28.09.2026.
+    'On their current visa, they can work in any job except those listed in the conditions below.',
+    'They cannot work as a professional sportsperson or coach.',
   ])('%s → recognised', (line) => {
     expect(unrecognisedConditions([line])).toEqual([]);
   });
