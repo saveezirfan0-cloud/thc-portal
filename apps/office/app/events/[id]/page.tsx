@@ -18,11 +18,12 @@ import { ViewerZone } from '../_components/ViewerZone';
 import { StatusPill } from '../_components/EventViews';
 import { ScheduledWindow } from '../_components/ScheduledWindow';
 import { loadBoard } from './board-data';
-import { canToggleAutoAssign } from './board-model';
+import { canMessageLineUp, canToggleAutoAssign, pushDate } from './board-model';
 import { AutoAssignSwitch } from './_components/AutoAssignSwitch';
 import { RoleBoard } from './_components/RoleBoard';
 import { CancelEvent } from './_components/CancelEvent';
 import { DocumentActions } from './_components/DocumentActions';
+import { MessageStaff } from './_components/MessageStaff';
 import '../shift-builder.css';
 import '../event-board.css';
 
@@ -120,6 +121,17 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
               started={status === 'ongoing' || status === 'completed'}
             />
           )}
+          {/* ADR-0069: last-minute information to the line-up, by push. */}
+          {canMessageLineUp(status) ? (
+            <MessageStaff
+              eventId={event.id}
+              pushTitle={`${event.title} · ${pushDate(event.date)}`}
+              sections={sections.map((section) => ({
+                id: section.id,
+                label: `${section.roleName} · ${ukClock(section.startsAt)}–${ukClock(new Date(section.endsAt))} (UK time)`,
+              }))}
+            />
+          ) : null}
           {status === 'cancelled' ? null : <CancelEvent eventId={event.id} affected={attached} />}
         </span>
       }
@@ -227,6 +239,17 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       </div>
     </OfficeShell>
   );
+}
+
+const UK_CLOCK = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/London',
+  hour: '2-digit',
+  minute: '2-digit',
+});
+
+/** "17:00" — a role's scheduled time, in UK time (§1.8). */
+function ukClock(at: Date): string {
+  return UK_CLOCK.format(at);
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
