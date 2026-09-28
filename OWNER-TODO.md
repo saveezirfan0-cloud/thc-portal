@@ -162,11 +162,10 @@ as today.
 
 ## 6 · Decisions
 
-- [ ] **Keep gov.uk reports and photos after a GDPR removal?** The Home Office asks
-      employers to keep the right-to-work check result for the employment plus two years.
-      Today a removal erases the share-code report and the gov.uk photo with everything else
-      (ADR-0019 holds only the completion letter; ADR-0041 does not extend it). Say if they
-      should be held like the completion letter.
+- [x] ~~**Keep gov.uk reports and photos after a GDPR removal?**~~ **Decided 28.09:
+      yes.** Right-to-work evidence an employed worker was verified on is held for the
+      employment plus two years, like the completion letter (RTW_RETENTION_ADR). The
+      privacy notice (docs/17 item 13) should say the same.
 
 - [ ] **Office pin editor?** When a worker's postcode lookup fails, their
       profile shows "location out of date" until they re-save a findable
@@ -193,28 +192,56 @@ hand as before (ADR-0018). **No provider is needed** (ADR-0041): the system fill
 Home Office form itself, and every result waits for an admin, who compares the gov.uk photo
 with the worker's selfie and presses Verify or Reject.
 
-- [ ] **Legal, first:** THC's adviser confirms that driving the Home Office "View a job
-      applicant's right to work details" service with an automated browser is acceptable
-      (ADR-0002 flagged it; ADR-0025 item 11), and that the printed result PDF is an
-      acceptable retained copy.
-- [ ] **Vercel Pro** on the Back Office project (commercial use; the route's
-      `maxDuration = 300`).
-- [ ] Vercel, **Back Office project**: `RTW_JOB_SECRET` (`openssl rand -base64 48`) and
-      `RTW_GOVUK_ENABLED=true`. Redeploy. No `RTW_PROVIDER_*` variables.
+- [x] **Legal, first:** THC's adviser confirms that driving the Home Office "View a job
+      applicant's right to work details" service with an automated browser is acceptable,
+      and that the printed result PDF is an acceptable retained copy. **Signed off
+      28.09.2026** (docs/17 item 24).
+- [ ] **Vercel Pro** on team `thc7`. Hobby is for non-commercial use only, which covers all
+      three apps, not just this route. The route's `maxDuration = 300` fits either plan.
+- [x] Vercel, **Back Office project**: `RTW_JOB_SECRET` (`openssl rand -base64 48`) and
+      `RTW_GOVUK_ENABLED=true`. Redeploy. No `RTW_PROVIDER_*` variables. (Reported done
+      28.09.)
 - [ ] SQL editor: create two **vault** secrets (`docs/12`): `office_base_url` (the Back
-      Office's https origin — not a settings row, so an admin session cannot redirect the
-      job secret) and `rtw_job_secret` (the same value as `RTW_JOB_SECRET`).
-- [ ] Set the name gov.uk prints as the checker, if it is not "The Hospitality Company":
-      `update settings set value = value || '{"company_name": "<legal name>"}' where key = 'rtw_check';`
-- [ ] **Live test** with the check still off: run **one** check by hand on a consenting
-      worker's share code, then a wrong date of birth, then each branch (EU settled, EU
-      pre-settled, work visa, student, dependant). Ask a session to confirm ADR-0025's
-      items 7–13 and ADR-0041's photo selector against what gov.uk actually shows.
-- [ ] `update settings set value = value || '{"enabled": true}' where key = 'rtw_check';`
+      Office's https origin, no trailing slash — not a settings row, so an admin session
+      cannot redirect the job secret) and `rtw_job_secret` (the same value as
+      `RTW_JOB_SECRET`). **Not on the live project as of 28.09** (vault holds `job_secret`,
+      `service_role_key` and the two VAPID keys only). Without them nothing reaches the
+      route.
+      ```sql
+      select vault.create_secret('https://<office origin>', 'office_base_url');
+      select vault.create_secret('<the RTW_JOB_SECRET value>', 'rtw_job_secret');
+      ```
+- [x] The name gov.uk prints as the checker: "The Hospitality Company" (the default in
+      `settings.rtw_check.company_name`; confirmed 28.09).
+- [ ] **Live test.** While `enabled` is false the route claims nothing and "Run gov.uk
+      check" is refused, so the test runs with the check **on** and the 10-minute
+      **schedule still off**. That is safe: an admin decides every result, and only share
+      codes filed or re-run from now on are checked.
+      1. Switch on:
+         `update settings set value = value || '{"enabled": true}' where key = 'rtw_check';`
+      2. **A real pass.** A consenting worker enters their share code in the Staff App
+         (onboarding step 4, or Documents → Share code). Filing it queues a check and
+         nudges the route. For a share code already waiting in Compliance → Needs review,
+         press **Run gov.uk check** instead.
+      3. Within a minute or two the item shows the result: the recommendation, the
+         right-to-work date, the PDF and the gov.uk photo next to the selfie. Check that the
+         name, the date and the conditions (e.g. student hours) match what gov.uk shows
+         when you check the same code by hand. Then Verify.
+      4. **"Not found".** On a test candidate account, not a real worker, enter a made-up
+         code (e.g. `W12345678`). Expect "Recommend reject" with the reason pre-filled.
+         Reject it, which sends that account N8.
+      5. **Other branches** as consenting workers are available: EU settled, EU
+         pre-settled, work visa, student, dependant.
+      6. If a result does not appear or looks wrong, read the latest runs —
+         `select started_at, ok, counts, error from job_runs where job = 'rtw-check' order by started_at desc limit 5;`
+         — and the office project's logs for `/api/jobs/rtw-check` in Vercel, then ask a
+         session to compare `govuk.config.ts` (ADR-0025 items 7–13, ADR-0041's photo
+         selector) with what gov.uk showed. To pause at any point:
+         `update settings set value = value || '{"enabled": false}' where key = 'rtw_check';`
 - [ ] Ask a session to **enable the `rtw-check` schedule**. That is a migration plus test
       `190`, not a dashboard change. Then re-run `select install_job_schedules();`
 - [ ] Share codes filed before the switch have no check. Press **Run gov.uk check** on each
-      in Compliance → Needs review.
+      in Compliance → Needs review (one on the live project on 28.09).
 
 ## 9 · After the 25.09 audit fix round (`docs/18-audit-2026-09-25.md`)
 
