@@ -81,10 +81,25 @@ test('Request my P45: two confirmations, then the leaver screen — and the offi
   await expect(sure).toBeVisible();
   await sure.getByRole('button', { name: 'Request my P45', exact: true }).click();
 
-  // LockScreen.tsx, the leaver case (§10.6 step 7).
-  await expect(
-    page.getByRole('heading', { name: 'You’ve left The Hospitality Company.' }),
-  ).toBeVisible();
+  // LockScreen.tsx, the leaver case (§10.6 step 7). The confirm is a server
+  // action (request_my_p45's cascade, then a layout-wide revalidate) followed
+  // by router.replace + refresh: up to three dynamic renders of /profile,
+  // which on a loaded CI runner outlast the default 5 s — the one step this
+  // spec kept failing on (runs 306, 313, 319), retry included. So it polls,
+  // as office.checkin does for Get back, and a refusal the sheet prints
+  // (P45Flow.tsx's Alert, role="status") fails with its own words rather than
+  // a bare "heading not found".
+  const left = page.getByRole('heading', { name: 'You’ve left The Hospitality Company.' });
+  await expect
+    .poll(
+      async () => {
+        if (await left.isVisible()) return 'left';
+        const refusal = (await flow.getByRole('status').allTextContents()).join(' ').trim();
+        return refusal ? `refused: ${refusal}` : 'waiting';
+      },
+      { timeout: 20_000 },
+    )
+    .toBe('left');
   await expect(
     page.getByText('Your P45 has been requested and the office will be in touch.'),
   ).toBeVisible();
