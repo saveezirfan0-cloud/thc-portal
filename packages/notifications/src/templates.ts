@@ -738,6 +738,25 @@ export const TEMPLATES = {
     timing: 'on decline',
     deepLink: '/shifts/{bookingId}',
   },
+
+  // The one push whose words are the office's, not the register's
+  // (ADR-0069). The register still owns the title, the deep link and the
+  // tag; `{message}` is what the manager typed on the event board, stored in
+  // the row's payload like every other value and rendered by the drain.
+  // `render` replaces in one pass, so braces inside the message stay text.
+  OM1: {
+    code: 'OM1',
+    channel: 'push',
+    title: '{event} · {date}',
+    body: '{message}',
+    trigger:
+      'A manager sends a message to the line-up from the event board (send_event_message): last-minute information — a changed entrance, parking, what to bring. Not in §8: an addition to scope v1.6, ADR-0069',
+    timing: 'immediately, on send',
+    deepLink: '/shifts/{bookingId}',
+    // One notification per message: without it the tag is the deep link,
+    // and a second message about the same shift would replace the first.
+    tag: 'OM1:{messageId}',
+  },
 } as const satisfies Record<string, Template>;
 
 export type TemplateCode = keyof typeof TEMPLATES;
@@ -826,6 +845,13 @@ export const ADDITION_CODES = [
   'OF5',
   'OF6',
 ] as const satisfies readonly TemplateCode[];
+
+/**
+ * Office messages (ADR-0069): a push whose body the manager writes, sent to
+ * an event's line-up from the event board. Kept in a list of its own because
+ * it is the one family whose copy is not fixed here.
+ */
+export const MESSAGE_CODES = ['OM1'] as const satisfies readonly TemplateCode[];
 
 export function template(code: TemplateCode): Template {
   return TEMPLATES[code];
