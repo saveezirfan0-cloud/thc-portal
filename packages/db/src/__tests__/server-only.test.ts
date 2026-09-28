@@ -49,6 +49,7 @@ describe("'server-only' marker", () => {
   it.each([
     'provision.ts',
     'willo.ts',
+    'job-auth.ts',
     'browser.ts',
     'roles.ts',
     'activation.ts',

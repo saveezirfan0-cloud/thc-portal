@@ -664,7 +664,8 @@ supabase functions list
 
 lists the six as `ACTIVE`; https://supabase.com/dashboard/project/dgxtqvalfiisfpbwodew/functions
 shows them. Call one directly — the gateway checks the JWT and `_shared/job.ts`
-checks the bearer against its own service key:
+checks the caller holds the service role (`packages/db/src/job-auth.ts`: a key
+the platform injected, or a `service_role` token Auth itself confirms):
 
 ```bash
 curl -s -X POST "https://dgxtqvalfiisfpbwodew.supabase.co/functions/v1/notify-drain" \
@@ -708,10 +709,14 @@ select value #>> '{}' as edge_base_url from public.settings where key = 'edge_ba
 
 **Step 2 — the Vault secret.** The value is the **legacy `service_role` JWT**
 from §3.2 — the same string the Vercel projects hold as
-`SUPABASE_SERVICE_ROLE_KEY` — because `supabase/functions/_shared/job.ts`
-compares the bearer token character for character with the
-`SUPABASE_SERVICE_ROLE_KEY` Supabase injects into every function. A different
-key form is a permanent 401. The name must be exactly `service_role_key`.
+`SUPABASE_SERVICE_ROLE_KEY`. It must be a JWT: six of the seven functions run
+behind Supabase's JWT check, which refuses an `sb_secret_…` key in the
+`Authorization` header. `supabase/functions/_shared/job.ts` then accepts it
+whether or not it is the exact string Supabase injects as
+`SUPABASE_SERVICE_ROLE_KEY` — on this project it is not, and until 28.09.2026 a
+character-for-character compare refused every scheduled call — by asking Auth
+whether the token holds the service role (`packages/db/src/job-auth.ts`). The
+name must be exactly `service_role_key`.
 
 ```sql
 select vault.create_secret(

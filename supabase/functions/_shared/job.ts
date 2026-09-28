@@ -15,9 +15,7 @@
  */
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
-import { timingSafeEqual } from '../../../packages/db/src/willo.ts';
-
-const encoder = new TextEncoder();
+import { holdsServiceRole } from '../../../packages/db/src/job-auth.ts';
 
 export interface JobResult {
   ok: boolean;
@@ -32,26 +30,24 @@ function serviceClient(): SupabaseClient {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-/**
- * The bearer the caller presented equals the expected key. Constant time
- * over equal-length inputs (timingSafeEqual visits every byte whatever the
- * first difference), so the response time never says how long a prefix a
- * guess shared. V8's `===` short-circuits on the first differing byte,
- * which is what the earlier "compare lengths first" version still leaked.
- * Exported for the test.
- */
-export function bearerMatches(header: string | null, expected: string | undefined): boolean {
-  if (!expected) return false;
-  const token = header?.startsWith('Bearer ') ? header.slice(7) : '';
-  return timingSafeEqual(encoder.encode(token), encoder.encode(expected));
-}
+/** Service-role tokens Auth has confirmed in this isolate (job-auth.ts). */
+const verified = new Map<string, number>();
 
-/** The caller must hold the service key. pg_net sends it as a bearer token. */
-function authorised(request: Request): boolean {
-  return bearerMatches(
-    request.headers.get('Authorization'),
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
-  );
+/**
+ * The caller must hold the service role. pg_net sends the vault's legacy
+ * `service_role` JWT as a bearer; a byte compare with the injected
+ * SUPABASE_SERVICE_ROLE_KEY refused it on every call (28.09.2026), so
+ * `holdsServiceRole` accepts any key the platform gave this function, or a
+ * token Auth itself confirms as service_role. See packages/db/src/job-auth.ts.
+ */
+function authorised(request: Request): Promise<boolean> {
+  return holdsServiceRole(request.headers, {
+    env: (name) => Deno.env.get(name),
+    fetch: (url, init) => fetch(url, init),
+    nowMs: () => Date.now(),
+    verified,
+    warn: (message, details) => console.warn(message, details ?? {}),
+  });
 }
 
 /**
@@ -67,7 +63,7 @@ export async function runJob(
   request: Request,
   work: (db: SupabaseClient) => Promise<Record<string, unknown>>,
 ): Promise<Response> {
-  if (!authorised(request)) {
+  if (!(await authorised(request))) {
     return new Response(JSON.stringify({ error: 'service role required' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
