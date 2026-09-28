@@ -17,7 +17,7 @@ export interface DialCodePickerProps {
 }
 
 /**
- * The international dialling-code picker (§2.1, ADR-0063; supersedes the
+ * The international dialling-code picker (§2.1, ADR-0064; supersedes the
  * native `<select>` of ADR-0009).
  *
  * Closed, it is the wireframe's short `🇬🇧 +44` control. Open, it is a

@@ -4,7 +4,7 @@ import { dobValueFrom, formatDobTyping } from '../dob';
 import { DIAL_CODES, parseDob } from '../form';
 
 /**
- * ADR-0063: the searchable dialling-code picker and the typed date of birth.
+ * ADR-0064: the searchable dialling-code picker and the typed date of birth.
  * Pure halves only; `pickers.test.tsx` drives the components.
  */
 
