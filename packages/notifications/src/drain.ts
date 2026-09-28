@@ -247,8 +247,9 @@ async function sendPush(
 /**
  * The document emails (BG08/D1/D2) sign off with their sender's address. The
  * copy names the default (`documents.ts` keeps THC's wording readable); when
- * `/settings` has moved that sender, the signature follows the From line
- * rather than contradicting it.
+ * `/settings` has moved that sender, the signature follows it — to the
+ * reply-to address when one is set, since that is the inbox a reader who
+ * writes back should use.
  */
 export function signedBy(
   body: string,
@@ -300,8 +301,8 @@ async function sendEmail(
       from: sender.from,
       to: message.to,
       subject: message.subject,
-      text: signedBy(message.body, message.sender, sender.address),
-      replyTo: sender.address,
+      text: signedBy(message.body, message.sender, sender.replyTo),
+      replyTo: sender.replyTo,
       ...(attachments ? { attachments } : {}),
     },
     apiKey,

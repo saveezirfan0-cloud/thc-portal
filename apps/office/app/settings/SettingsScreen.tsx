@@ -431,16 +431,32 @@ function SendersBlock({
         onChange={(event) => setDraft({ ...draft, timesheets: event.target.value })}
       />
       <Input
+        label="Timesheet replies go to · optional"
+        type="email"
+        value={draft.timesheets_reply_to ?? ''}
+        hint="Leave blank to receive replies at the address above."
+        onChange={(event) => setDraft({ ...draft, timesheets_reply_to: event.target.value })}
+      />
+      <Input
         label="Everything else"
         type="email"
         value={draft.admin}
         hint="Password resets, activation and invitation emails, finance reports, and the office alerts (E5–E9)."
         onChange={(event) => setDraft({ ...draft, admin: event.target.value })}
       />
+      <Input
+        label="Admin replies go to · optional"
+        type="email"
+        value={draft.admin_reply_to ?? ''}
+        hint="Leave blank to receive replies at the address above."
+        onChange={(event) => setDraft({ ...draft, admin_reply_to: event.target.value })}
+      />
       <Note>
-        Replies to both go to a monitored THC mailbox — no-reply addresses are not used, and this
-        form refuses one. The office and payroll notifications go to fixed addresses, not a setting:
-        E5 and E6 to <b>{recipients.e5e6.join(', ')}</b>; E7 to <b>{recipients.e7.join(', ')}</b>.
+        Replies go to a monitored THC mailbox — no-reply addresses are not used, and this form
+        refuses one. If the senders are on a sending-only subdomain (e.g. updates.…), set where
+        replies go so they reach the real inbox. The office and payroll notifications go to fixed
+        addresses, not a setting: E5 and E6 to <b>{recipients.e5e6.join(', ')}</b>; E7 to{' '}
+        <b>{recipients.e7.join(', ')}</b>.
       </Note>
       <Feedback note={note} error={error} />
       <SaveAction id="senders" title="Sender addresses" dirty={!sameValue(draft, senders)}>
