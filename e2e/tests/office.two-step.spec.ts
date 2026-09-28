@@ -10,7 +10,7 @@ import {
 } from './_support/accounts';
 import { databaseUnreachable, lit, sql } from './_support/db';
 import { openAs } from './_support/session';
-import { nextCode, stepAt, totp, wrongCode } from './_support/totp';
+import { awayFromStepEnd, nextCode, stepAt, totp, wrongCode } from './_support/totp';
 
 /**
  * Two-step sign-in (ADR-0057).
@@ -99,11 +99,14 @@ test('set up on /account; then the password alone stops at the code step until t
       // Not on until the first code: an unfinished factor is unverified.
       expect(factorStatus(me!.userId)).toBe('unverified');
 
+      await awayFromStepEnd();
       const now = Date.now();
       await panel.getByLabel('6-digit code', { exact: true }).fill(totp(key, now));
       await panel.getByRole('button', { name: 'Turn on two-step sign-in' }).click();
 
-      await expect(panel.getByText('On', { exact: true })).toBeVisible();
+      // The verify is a server action plus a refresh of /account; on a loaded
+      // CI runner that outlasted the default 5 s (run 357).
+      await expect(panel.getByText('On', { exact: true })).toBeVisible({ timeout: 15_000 });
       await expect(panel).toContainText('E2E phone');
       await expect(panel.getByRole('button', { name: 'Remove' })).toBeVisible();
       expect(factorStatus(me!.userId)).toBe('verified');

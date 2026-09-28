@@ -54,6 +54,18 @@ export function hotp(secret: Buffer, counter: number): string {
   return String(binary % 10 ** DIGITS).padStart(DIGITS, '0');
 }
 
+/**
+ * Wait out the tail of the current 30-second step when fewer than
+ * `marginSeconds` are left, so a code typed now is still current when a
+ * slow server checks it. On a loaded CI runner a code typed in the step's
+ * last second reached GoTrue in the next one (run 357).
+ */
+export async function awayFromStepEnd(marginSeconds = 6): Promise<void> {
+  const intoStep = (Date.now() / 1000) % STEP_SECONDS;
+  const left = STEP_SECONDS - intoStep;
+  if (left < marginSeconds) await new Promise((r) => setTimeout(r, left * 1000 + 250));
+}
+
 /** The code an authenticator shows for this base32 secret at this moment. */
 export function totp(secret: string, ms: number = Date.now()): string {
   return hotp(base32Decode(secret), stepAt(ms));
