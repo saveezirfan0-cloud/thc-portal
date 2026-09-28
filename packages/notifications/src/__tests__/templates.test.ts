@@ -1003,7 +1003,7 @@ describe('N10d / N11b — the extensions for a withdrawn invitation and a detail
 describe('office message — OM1 (ADR-0069)', () => {
   const values = {
     event: 'Summer Gala',
-    date: 'Sat 3 Oct',
+    date: 'Sat 03 Oct',
     message: 'Use the staff entrance on King St — the front is closed. {not a placeholder}',
     bookingId: 'b-1',
     messageId: 'm-1',
@@ -1029,7 +1029,7 @@ describe('office message — OM1 (ADR-0069)', () => {
   });
 
   it("sends the manager's words as they were typed, braces and all", () => {
-    expect(render(template('OM1').title, values)).toBe('Summer Gala · Sat 3 Oct');
+    expect(render(template('OM1').title, values)).toBe('Summer Gala · Sat 03 Oct');
     expect(render(body('OM1'), values)).toBe(values.message);
   });
 

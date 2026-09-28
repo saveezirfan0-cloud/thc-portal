@@ -1,5 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { canMessageLineUp, messageRefusal, messageSentSummary } from '../board-model';
+import {
+  canMessageLineUp,
+  messageLength,
+  messageRefusal,
+  messageSentSummary,
+  pushDate,
+} from '../board-model';
 
 /**
  * Message staff (ADR-0069). The action names the event, one section at
@@ -63,7 +69,7 @@ describe('messageLineUp', () => {
       p_include_invited: true,
       p_message: 'Staff entrance is on King St',
     });
-    expect(result).toEqual({ ok: true, summary: 'Sent to 12 people.' });
+    expect(result).toEqual({ ok: true, summary: 'Sent to 12 people.', everyoneReached: true });
     expect(state.revalidated).toEqual(['/events/evt-1']);
   });
 
@@ -81,6 +87,7 @@ describe('messageLineUp', () => {
       ok: true,
       summary:
         'Sent to 3 people. These people have notifications off and will not get it — phone them: Amy Lee, Sam Roe.',
+      everyoneReached: false,
     });
   });
 
@@ -102,7 +109,21 @@ describe('messageLineUp', () => {
       message: 'x',
     });
     expect(result).toEqual({ error: messageRefusal('nobody_to_message') });
+    expect((result as { error: string }).error).toMatch(/Tick "Also invited"/);
     expect(state.revalidated).toEqual([]);
+  });
+
+  it('does not suggest ticking "Also invited" when it was already ticked', async () => {
+    state.rpc.mockResolvedValueOnce({
+      data: { ok: false, reason: 'nobody_to_message' },
+      error: null,
+    });
+    const result = await messageLineUp('evt-1', {
+      sectionId: null,
+      includeInvited: true,
+      message: 'x',
+    });
+    expect(result).toEqual({ error: 'Nobody is booked on that yet — there is nobody to message.' });
   });
 
   it('refuses a signed-in account that is not the office', async () => {
@@ -130,6 +151,7 @@ describe('the words around it', () => {
       'message_required',
       'message_too_long',
       'event_cancelled',
+      'event_over',
       'section_not_on_event',
       'nobody_to_message',
     ]) {
@@ -143,6 +165,15 @@ describe('the words around it', () => {
     expect(messageSentSummary(1, ['Amy Lee'])).toBe(
       'Sent to 1 person. This person has notifications off and will not get it — phone them: Amy Lee.',
     );
+  });
+
+  it('counts characters as the database does, so an emoji is one', () => {
+    expect(messageLength('  🍾 Bring shoes  ')).toBe(13);
+  });
+
+  it("shows the date the push title will carry — to_char(..., 'Dy DD Mon')", () => {
+    expect(pushDate('2026-10-03')).toBe('Sat 03 Oct');
+    expect(pushDate('2026-09-01')).toBe('Tue 01 Sep');
   });
 
   it('is offered while the event is upcoming or under way, not once it is over or cancelled', () => {

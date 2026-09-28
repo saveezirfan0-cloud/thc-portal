@@ -133,6 +133,7 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   'booking.manual_invite': 'Invited to a shift',
   'booking.application_accepted': 'Accepted shift application',
   'event.cancelled': 'Cancelled event',
+  'event.message_sent': 'Messaged the line-up',
   do_not_return_on: 'Marked do not return',
   do_not_return_off: 'Cleared do not return',
   'profile.updated': 'Updated own profile',

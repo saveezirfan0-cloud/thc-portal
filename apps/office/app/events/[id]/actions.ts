@@ -193,7 +193,7 @@ export async function cancelEvent(eventId: string, reason: string): Promise<Acti
 export async function messageLineUp(
   eventId: string,
   input: { sectionId: string | null; includeInvited: boolean; message: string },
-): Promise<{ error: string } | { ok: true; summary: string }> {
+): Promise<{ error: string } | { ok: true; summary: string; everyoneReached: boolean }> {
   if (!input.message.trim()) return { error: messageRefusal('message_required') };
   if (!supabaseConfigured()) return { error: NO_SUPABASE };
   const supabase = await db();
@@ -218,9 +218,15 @@ export async function messageLineUp(
     sent?: number;
     withoutPush?: string[];
   };
-  if (result.ok !== true) return { error: messageRefusal(String(result.reason ?? '')) };
+  if (result.ok !== true)
+    return { error: messageRefusal(String(result.reason ?? ''), input.includeInvited) };
   revalidatePath(`/events/${eventId}`);
-  return { ok: true, summary: messageSentSummary(result.sent ?? 0, result.withoutPush ?? []) };
+  const withoutPush = result.withoutPush ?? [];
+  return {
+    ok: true,
+    summary: messageSentSummary(result.sent ?? 0, withoutPush),
+    everyoneReached: withoutPush.length === 0,
+  };
 }
 
 /**

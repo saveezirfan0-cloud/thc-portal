@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Alert, Button, Checkbox, Modal, Select, Textarea } from '@thc/ui';
 import { messageLineUp } from '../actions';
-import { MESSAGE_MAX } from '../board-model';
+import { MESSAGE_MAX, messageLength } from '../board-model';
 
 export interface MessageSection {
   id: string;
@@ -24,11 +24,12 @@ export interface MessageSection {
  */
 export function MessageStaff({
   eventId,
-  eventTitle,
+  pushTitle,
   sections,
 }: {
   eventId: string;
-  eventTitle: string;
+  /** The push's title as the worker will see it: "Summer Gala · Sat 03 Oct". */
+  pushTitle: string;
   sections: MessageSection[];
 }) {
   const [open, setOpen] = useState(false);
@@ -36,10 +37,10 @@ export function MessageStaff({
   const [sectionId, setSectionId] = useState('');
   const [includeInvited, setIncludeInvited] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sent, setSent] = useState<string | null>(null);
+  const [sent, setSent] = useState<{ summary: string; everyoneReached: boolean } | null>(null);
   const [pending, startTransition] = useTransition();
 
-  const length = message.trim().length;
+  const length = messageLength(message);
   const tooLong = length > MESSAGE_MAX;
 
   function reset() {
@@ -64,7 +65,7 @@ export function MessageStaff({
         message,
       });
       if ('error' in result) setError(result.error);
-      else setSent(result.summary);
+      else setSent({ summary: result.summary, everyoneReached: result.everyoneReached });
     });
   }
 
@@ -94,7 +95,7 @@ export function MessageStaff({
         }
       >
         {sent ? (
-          <Alert tone={/phone them/.test(sent) ? 'amber' : 'green'}>{sent}</Alert>
+          <Alert tone={sent.everyoneReached ? 'green' : 'amber'}>{sent.summary}</Alert>
         ) : (
           <div className="stack">
             {error ? <Alert tone="coral">{error}</Alert> : null}
@@ -123,7 +124,7 @@ export function MessageStaff({
               hint={
                 tooLong
                   ? undefined
-                  : `${length} / ${MESSAGE_MAX}. Sent as a push titled “${eventTitle} · date”; tapping it opens their shift.`
+                  : `${length} / ${MESSAGE_MAX}. Sent as a push titled “${pushTitle}”; tapping it opens their shift.`
               }
             />
             <span className="muted xs">

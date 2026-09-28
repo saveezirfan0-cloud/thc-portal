@@ -2,9 +2,11 @@
 -- 757 · Message the line-up (ADR-0069)
 --   20261001208000_office_event_message.sql
 --
---   1. Admin only — not anon, not a worker, not the client.
+--   1. Admin only — not anon, not a worker, not the client, not a
+--      read-only viewer (ADR-0060).
 --   2. Refusals: blank, over 300 characters, unknown section, cancelled
---      event, nobody to message. None of them queues anything.
+--      event, an event that is over, nobody to message. None of them
+--      queues anything.
 --   3. Recipients come from the bookings: confirmed and worked; invited
 --      only when asked; never applied, closed or cancelled. One push per
 --      worker even across two sections, deep-linked to their first one.
@@ -13,11 +15,15 @@
 --   5. The answer names the recipients with no push subscription.
 -- =====================================================================
 begin;
-select plan(24);
+select plan(27);
 \ir _shared/fixtures.psql
 
 \set ev  '75700000-0000-4000-8000-000000000001'
 \set evx '75700000-0000-4000-8000-000000000002'
+\set evp '75700000-0000-4000-8000-000000000003'
+\set sp  '75710000-0000-4000-8000-000000000004'
+\set bp  '75720000-0000-4000-8000-000000000008'
+\set viewer '75740000-0000-4000-8000-000000000001'
 \set s1  '75710000-0000-4000-8000-000000000001'
 \set s2  '75710000-0000-4000-8000-000000000002'
 \set sx  '75710000-0000-4000-8000-000000000003'
@@ -47,13 +53,17 @@ insert into events (id, client_id, venue_id, venue_name, venue_address, venue_lo
    true, true, true, null, null),
   (:'evx', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
    st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Called Off', current_date + 5,
-   true, true, false, now(), 'Client cancelled');
+   true, true, false, now(), 'Client cancelled'),
+  (:'evp', :'clienta', :'venue_id', 'RLS Fixture Venue', '1 Test Street, London',
+   st_setsrid(st_makepoint(-0.1000, 51.5000), 4326)::geography, 150, 'Last Week', current_date - 7,
+   true, true, false, null, null);
 
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
                                 charge_rate, pay_rate, allocation_per_hour, auto_assign) values
   (:'s1', :'ev',  :'role_id', now() + interval '1 hour',  now() + interval '7 hours',  5, 1, 20, 12, 5, true),
   (:'s2', :'ev',  :'role_id', now() + interval '3 hours', now() + interval '9 hours',  5, 1, 20, 12, 5, true),
-  (:'sx', :'evx', :'role_id', now() + interval '5 days',  now() + interval '5 days 6 hours', 5, 0, 20, 12, 5, false);
+  (:'sx', :'evx', :'role_id', now() + interval '5 days',  now() + interval '5 days 6 hours', 5, 0, 20, 12, 5, false),
+  (:'sp', :'evp', :'role_id', now() - interval '7 days',  now() - interval '7 days' + interval '6 hours', 5, 0, 20, 12, 5, false);
 
 insert into bookings (id, shift_id, staff_id, status, source, confirmed_at, applied_at, cancelled_at, cancel_cause) values
   (:'b1a', :'s1', :'w1', 'confirmed', 'auto', now(), null, null, null),
@@ -61,7 +71,12 @@ insert into bookings (id, shift_id, staff_id, status, source, confirmed_at, appl
   (:'b2',  :'s1', :'w2', 'worked',    'auto', now(), null, null, null),
   (:'b3',  :'s2', :'w3', 'invited',   'auto', null,  null, null, null),
   (:'b4',  :'s2', :'w4', 'applied',   'self', null,  now(), null, null),
-  (:'b5',  :'s2', :'w5', 'closed',    'auto', null,  null, now(), 'declined');
+  (:'b5',  :'s2', :'w5', 'closed',    'auto', null,  null, now(), 'declined'),
+  (:'bp',  :'sp', :'w5', 'worked',    'auto', now() - interval '8 days', null, null, null);
+
+-- A read-only Back Office login (ADR-0060).
+insert into auth.users (id, email) values (:'viewer', 'viewer.757@rls.test');
+insert into profiles (id, role, office_role, full_name) values (:'viewer', 'admin', 'viewer', 'Vera Viewer');
 
 -- Only w1 has notifications on.
 insert into push_subscriptions (staff_id, endpoint, p256dh, auth) values
@@ -85,6 +100,12 @@ select throws_ok(format($$ select send_event_message(%L, null, false, 'hi') $$, 
   'nor can the client whose event it is');
 reset role;
 
+select set_config('request.jwt.claims', json_build_object('sub', :'viewer', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(format($$ select send_event_message(%L, null, false, 'hi') $$, :'ev'), '42501', 'read_only',
+  'nor can a view-only Back Office login (ADR-0060)');
+reset role;
+
 -- ---------------------------------------------------------------------
 -- 2 · Refusals
 -- ---------------------------------------------------------------------
@@ -99,10 +120,15 @@ select is(send_event_message(:'ev', :'sx', false, 'hi'),
   jsonb_build_object('ok', false, 'reason', 'section_not_on_event'), 'a section from another event is refused');
 select is(send_event_message(:'evx', null, true, 'hi'),
   jsonb_build_object('ok', false, 'reason', 'event_cancelled'), 'a cancelled event is refused');
+select is(send_event_message(:'evp', null, false, 'hi'),
+  jsonb_build_object('ok', false, 'reason', 'event_over'),
+  'an event whose every role has ended is refused, though someone worked it');
 select throws_ok($$ select send_event_message('75700000-0000-4000-8000-00000000dead', null, false, 'hi') $$,
   'P0002', 'event_not_found', 'an unknown event raises');
 select is((select count(*)::int from notification_outbox where template = 'OM1'), 0,
   'and none of that queued anything');
+select is((select count(*)::int from audit_log where action = 'event.message_sent'), 0,
+  'nor wrote any history');
 
 -- ---------------------------------------------------------------------
 -- 3 · Recipients — the whole event, confirmed and worked

@@ -8,7 +8,7 @@ Every push in §8 has fixed copy. The office had no way to pass on last-minute i
 
 ## Decision
 
-**Where:** a **Message staff** button in the event board header (`/events/:id`), next to Duplicate and Cancel event. It shows while the event is Upcoming or Ongoing. It is hidden once the event is Completed, and hidden when it is Cancelled, because N12 has already told everyone.
+**Where:** a **Message staff** button in the event board header (`/events/:id`), next to Duplicate and Cancel event. It shows while the event is Upcoming or Ongoing. It is hidden once the event is Completed, and hidden when it is Cancelled, because N12 has already told everyone. The database refuses both cases too (`event_over`, `event_cancelled`), not only the page.
 
 **The form:**
 
@@ -33,7 +33,7 @@ It goes through `notification_outbox` like every other send, with a unique key p
 
 **Notifications off:** the answer names every recipient with no push subscription. The manager sees "These people have notifications off and will not get it — phone them: …". Their rows are still queued, and the drain fails them as "no push subscription", as it does for any push.
 
-**Access:** admin only (`current_app_role()`), and refused for a viewer login (ADR-0060, `assert_not_read_only()`). Every send writes `event.message_sent` to `audit_log`, with the text, so it appears in the event's history. GDPR removal already scrubs the worker's outbox rows by recipient (20260930120100).
+**Access:** admin only (`current_app_role()`), and refused for a viewer login (ADR-0060, `assert_not_read_only()`). Every send writes `event.message_sent` to `audit_log`, with the text, so it appears in the event's history. GDPR removal already scrubs the worker's outbox rows by recipient (20260930120100). It matches ids, emails and NI numbers, not names, so a message that *names* a worker who is later removed keeps that name in `audit_log` and in the other recipients' sent rows. Managers should refer to people by role, not by name, in these messages.
 
 ## Not done
 

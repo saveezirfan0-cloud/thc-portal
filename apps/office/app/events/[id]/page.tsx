@@ -18,7 +18,7 @@ import { ViewerZone } from '../_components/ViewerZone';
 import { StatusPill } from '../_components/EventViews';
 import { ScheduledWindow } from '../_components/ScheduledWindow';
 import { loadBoard } from './board-data';
-import { canMessageLineUp, canToggleAutoAssign } from './board-model';
+import { canMessageLineUp, canToggleAutoAssign, pushDate } from './board-model';
 import { AutoAssignSwitch } from './_components/AutoAssignSwitch';
 import { RoleBoard } from './_components/RoleBoard';
 import { CancelEvent } from './_components/CancelEvent';
@@ -125,7 +125,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
           {canMessageLineUp(status) ? (
             <MessageStaff
               eventId={event.id}
-              eventTitle={event.title}
+              pushTitle={`${event.title} · ${pushDate(event.date)}`}
               sections={sections.map((section) => ({
                 id: section.id,
                 label: `${section.roleName} · ${ukClock(section.startsAt)}–${ukClock(new Date(section.endsAt))} (UK time)`,

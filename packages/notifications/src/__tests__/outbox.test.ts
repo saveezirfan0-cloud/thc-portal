@@ -47,6 +47,31 @@ describe('backoff agrees with outbox_backoff() in SQL', () => {
 });
 
 describe('push rows', () => {
+  it("sends OM1 with the manager's words untouched, its own tag and the shift link (ADR-0069)", () => {
+    const message = 'Entrance on King St {x} — bring $& and $1';
+    const msg = messageFor(
+      push({
+        key: 'OM1:m-1:b-1',
+        template: 'OM1',
+        payload: {
+          event: 'Summer Gala',
+          date: 'Sat 03 Oct',
+          message,
+          bookingId: 'b-1',
+          messageId: 'm-1',
+        },
+      }),
+    );
+    expect(msg).toEqual({
+      kind: 'push',
+      staffId: 'staff-1',
+      title: 'Summer Gala · Sat 03 Oct',
+      body: message,
+      url: '/shifts/b-1',
+      tag: 'OM1:m-1',
+    });
+  });
+
   it('renders title, body and deep link from the register', () => {
     const msg = messageFor(push({ payload: { bookingId: 'b1' } }));
     expect(msg).toEqual({

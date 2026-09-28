@@ -30,7 +30,8 @@
 -- Refusals are answers, not exceptions, the cancel_event() shape:
 --   message_required · message_too_long (over 300 characters — iOS shows
 --   about 178 on the lock screen, the rest on a long press) ·
---   event_cancelled · section_not_on_event · nobody_to_message.
+--   event_cancelled · event_over (every role has ended) ·
+--   section_not_on_event · nobody_to_message.
 -- =====================================================================
 
 create or replace function public.send_event_message(
@@ -71,6 +72,11 @@ begin
   end if;
   if ev.cancelled_at is not null then
     return jsonb_build_object('ok', false, 'reason', 'event_cancelled');
+  end if;
+  -- Over once every role section has ended — the board's Completed, and
+  -- the same gate the page applies before it offers the button.
+  if not exists (select 1 from shift_requirements where event_id = ev.id and ends_at > now()) then
+    return jsonb_build_object('ok', false, 'reason', 'event_over');
   end if;
   if p_section is not null and not exists (
     select 1 from shift_requirements where id = p_section and event_id = ev.id
@@ -136,7 +142,7 @@ begin
 end $$;
 
 comment on function public.send_event_message(uuid, uuid, boolean, text) is
-  'ADR-0069: the office messages an event''s line-up. Queues one OM1 push per worker — confirmed and worked, plus invited when asked; one role section or the whole event — with the manager''s text (1–300 characters) in the payload. Returns sent, and withoutPush: the names of recipients with no push subscription, for the manager to phone. Refusals: message_required / message_too_long / event_cancelled / section_not_on_event / nobody_to_message. Admin only (20261001208000).';
+  'ADR-0069: the office messages an event''s line-up. Queues one OM1 push per worker — confirmed and worked, plus invited when asked; one role section or the whole event — with the manager''s text (1–300 characters) in the payload. Returns sent, and withoutPush: the names of recipients with no push subscription, for the manager to phone. Refusals: message_required / message_too_long / event_cancelled / event_over / section_not_on_event / nobody_to_message. Admin only, not a viewer (20261001208000).';
 
 -- Supabase's default privileges grant EXECUTE to anon and authenticated by
 -- name, so revoking from PUBLIC alone leaves anon open (docs/14 O7).
