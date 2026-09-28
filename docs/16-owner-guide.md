@@ -958,13 +958,11 @@ select created_at, action, details
 
 ### 5.6 Enable the `willo-invite` schedule
 
-The schedule is registered **disabled** and pgTAP `190` lists the enabled ones,
-so enabling it is a migration plus a test change, not a dashboard toggle. Ask a
-session: "enable the `willo-invite` schedule (migration) and add it to `190`'s
-list in the same commit." Once that deploys:
+Done 28.09: `20261001206000` enables the row, with pgTAP `190` and `482` in the
+same commit. Once that migration has been applied:
 
 ```sql
-select public.install_job_schedules();   -- now 8
+select public.install_job_schedules();   -- willo-invite now included
 select jobname, schedule from cron.job where jobname = 'willo-invite';
 ```
 
@@ -1246,7 +1244,7 @@ and what a session could confirm on 23.09.2026. Tick the last column in
 | §4 | `willo-webhook --no-verify-jwt` | §5.2 | not deployed | [ ] |
 | §4 | Webhook URL in Willo | §5.3 | — | [ ] |
 | §4 | ADR-0021 assumptions vs first sandbox delivery | §5.4 | — | [ ] |
-| §4 | Enable `willo-invite` (session), re-run `install_job_schedules()` | §5.6 | schedule row present, disabled | [ ] |
+| §4 | Enable `willo-invite` (done 28.09, `20261001206000`), re-run `install_job_schedules()` | §5.6 | schedule row present, enabled | [ ] |
 | §5 | Content from THC: quiz, induction, contract, E2b/CL wording, privacy text, sample letters, retention decision, old-system export | not a setting; see OWNER-TODO §5 and docs/14 §5 | — | [ ] |
 | §6 | If the Staff App gets its own domain: `NEXT_PUBLIC_STAFF_URL` on office + client, `STAFF_APP_URL` secret | §3.5 | only `thc-portal-staff-two.vercel.app` today | [ ] |
 | Done | Service role key rotated (22.09) | §3.2, §4.7 note | — | [x] |
