@@ -26,7 +26,10 @@ vi.mock('@thc/db/server', () => ({ createClient: () => ({ rpc }) }));
 vi.mock('@thc/db/admin', () => ({ createAdminClient }));
 
 const { correctDob } = await import('../../_lib/dobCorrectionActions');
-const { dobCorrectionMessage, dobCorrectionOutcome } = await import('../../_lib/dobCorrection');
+const { dobClaimLine, dobCorrectionMessage, dobCorrectionOutcome, parseDobClaim } = await import(
+  '../../_lib/dobCorrection'
+);
+const { DobClaimNote } = await import('../DobClaimNote');
 const { DobCorrection } = await import('../DobCorrection');
 
 beforeAll(() => {
@@ -41,7 +44,7 @@ beforeEach(() => {
   refresh.mockClear();
 });
 
-const REASON = 'Passport shows 31 December';
+const REASON = 'Passport checked in the office';
 
 describe('correctDob — the server action', () => {
   it('calls office_correct_dob through the session with the trimmed reason', async () => {
@@ -194,5 +197,63 @@ describe('<DobCorrection>', () => {
     expect(host.textContent).not.toContain('Correct date of birth — Amara Kalu');
     expect(host.textContent).toMatch(/checked with gov\.uk again/);
     expect(refresh).toHaveBeenCalled();
+  });
+});
+
+describe('a date entered with a share code (ADR-0069, route 2)', () => {
+  const claim = parseDobClaim({
+    document_id: 'd1',
+    staff_id: 's1',
+    claimed_dob: '1995-06-15',
+    profile_dob: '1994-12-31',
+    opt_out_signed_under_18: false,
+  });
+
+  it('says both dates, and that Verify changes the profile', () => {
+    const line = dobClaimLine(claim);
+    expect(line?.text).toBe(
+      'Date of birth entered with this code: 15.06.1995 (profile: 31.12.1994)',
+    );
+    expect(line?.detail).toMatch(/Verify also changes the profile/);
+    expect(line?.warning).toBeNull();
+    const html = renderToStaticMarkup(<DobClaimNote claim={claim} />);
+    expect(html).toContain('Date of birth entered with this code: 15.06.1995 (profile: 31.12.1994)');
+  });
+
+  it('warns when verifying would put a signed opt-out before the eighteenth birthday', () => {
+    const line = dobClaimLine({ ...claim!, optOutSignedUnder18: true });
+    expect(line?.warning).toMatch(/ask them to sign it again/);
+  });
+
+  it('says nothing when the dates agree, or there is no claim', () => {
+    expect(dobClaimLine({ ...claim!, profileDob: '1995-06-15' })).toBeNull();
+    expect(dobClaimLine(null)).toBeNull();
+    expect(renderToStaticMarkup(<DobClaimNote claim={null} />)).toBe('');
+    expect(parseDobClaim({ document_id: 'd1' })).toBeNull();
+  });
+
+  it('the reason hint does not invite a date — the reason is scrubbed on removal, the dates live in `dob`', () => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    act(() =>
+      root.render(
+        <DobCorrection
+          staffId="s1"
+          name="Amara Kalu"
+          dob="1995-01-01"
+          display="01.01.1995"
+          allowed
+        />,
+      ),
+    );
+    act(() =>
+      [...host.querySelectorAll('button')].find((b) => b.textContent === 'Correct')!.click(),
+    );
+    expect(host.textContent).toContain('Passport checked in the office');
+    expect(host.textContent).toContain('Don’t type the date here');
+    expect(host.textContent).not.toMatch(/\d{2}\.\d{2}\.\d{4};/);
+    act(() => root.unmount());
+    host.remove();
   });
 });

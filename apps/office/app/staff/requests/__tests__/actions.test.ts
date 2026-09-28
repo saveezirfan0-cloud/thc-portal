@@ -73,7 +73,16 @@ describe('decideChangeRequest (ADR-0045)', () => {
     const result = await decideChangeRequest('r1', true, '', false);
     expect(!result.ok && result.message).toMatch(/shows this date of birth/);
     expect(rpc).not.toHaveBeenCalled();
-    expect(await decideChangeRequest('r1', true, '', true)).toEqual({ ok: true });
+    rpc.mockResolvedValueOnce({
+      data: { ok: true, status: 'approved', kind: 'dob', rtwCheck: 'queued', optOutSignedUnder18: true },
+      error: null,
+    });
+    const approved = await decideChangeRequest('r1', true, '', true);
+    expect(approved).toEqual({
+      ok: true,
+      note: expect.stringMatching(/checked with gov\.uk again/),
+      warning: expect.stringMatching(/ask them to sign it again/),
+    });
   });
 
   it('approves a photo without any tick', async () => {

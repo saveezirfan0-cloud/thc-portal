@@ -155,6 +155,7 @@ describe('a date-of-birth request (ADR-0069)', () => {
     expect(mayDecide('name', false)).toBe(true);
     expect(mayDecide('photo', false)).toBe(true);
     expect(decisionMessage('not_permitted')).toMatch(/owners and managers/);
-    expect(decisionMessage('unchanged')).toMatch(/already matches/);
+    expect(decisionMessage('unchanged')).toMatch(/already on the profile/);
+    expect(decisionMessage('unchanged')).not.toMatch(/reject/i);
   });
 });

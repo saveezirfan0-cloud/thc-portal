@@ -79,6 +79,33 @@ describe('Documents tab (§9.6)', () => {
     expect(html).toContain('no file to download');
   });
 
+  it('says when a pending share code carries a different date of birth (ADR-0069)', () => {
+    const html = renderToStaticMarkup(
+      <Documents
+        profile={PROFILE}
+        documents={[
+          doc({
+            id: 'sc1',
+            doc_type: 'share_code_report',
+            doc_label: 'Share code',
+            review_status: 'pending',
+            share_code: 'W12345678',
+          }),
+        ]}
+        dobClaims={[
+          {
+            documentId: 'sc1',
+            staffId: 's1',
+            claimedDob: '1995-06-15',
+            profileDob: '1994-12-31',
+            optOutSignedUnder18: false,
+          },
+        ]}
+      />,
+    );
+    expect(html).toContain('Date of birth entered with this code: 15.06.1995 (profile: 31.12.1994)');
+  });
+
   it('offers the gov.uk report where one is stored', () => {
     const html = renderToStaticMarkup(
       <Documents
