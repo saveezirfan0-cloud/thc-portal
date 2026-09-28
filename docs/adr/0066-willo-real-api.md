@@ -31,8 +31,9 @@ an empty secret is awkward to set in the dashboard for the third, so both became
    refuses every delivery (503). If a signature header is present it is what is checked,
    so a good token never rescues a bad signature; the signed path stays for a Willo that
    starts signing.
-2. **Create candidate** is `POST /participants/` with `interview, first_name, last_name,
-   email, phone, external_id, send_invite`. Willo is a Django REST API and ignores fields it
+2. **Create candidate** is `POST /participants/` with `interview, name, first_name, last_name,
+   email, phone, external_id, send_invite`. `name` (the full name) is **required**: the
+   first live call on 28.09 was refused `400 {"name":["This field is required."]}`. Willo is a Django REST API and ignores fields it
    does not know, so `external_id` and `send_invite` are harmless if unused.
    `WILLO_INVITE_PATH` still overrides the path, and `{interviewKey}` is still replaced in it.
 3. **The key goes bare.** `WILLO_API_AUTH_PREFIX` names a scheme (`Bearer`, `Token`) and

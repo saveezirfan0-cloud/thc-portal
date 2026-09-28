@@ -369,6 +369,7 @@ describe('create candidate in Willo', () => {
     expect(spec.headers['Authorization']).toBe('key-1');
     expect(JSON.parse(spec.body)).toEqual({
       interview: 'int 1',
+      name: 'Mei Lin',
       first_name: 'Mei',
       last_name: 'Lin',
       email: 'mei@example.com',
@@ -376,6 +377,22 @@ describe('create candidate in Willo', () => {
       external_id: 's-1',
       send_invite: true,
     });
+  });
+
+  it('sends the full name Willo requires, without stray spaces', () => {
+    const config = willoApiConfig(env({ WILLO_API_KEY: 'k', WILLO_INTERVIEW_KEY: 'i' }))!;
+    const body = (firstName: string, lastName: string) =>
+      JSON.parse(
+        willoInviteRequest(config, {
+          staffId: 's',
+          firstName,
+          lastName,
+          email: 'a@example.com',
+          phone: null,
+        }).body,
+      ).name;
+    expect(body(' Ana ', ' Silva ')).toBe('Ana Silva');
+    expect(body('Cher', '')).toBe('Cher');
   });
 
   it('a named auth scheme gets its space; none and empty mean the bare key', () => {
