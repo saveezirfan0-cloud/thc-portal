@@ -33,7 +33,13 @@ export function MonitorTable({ rows }: { rows: MonitorRow[] }) {
   const uk = (iso: string) => formatTimeIn(new Date(iso), UK_ZONE);
 
   if (rows.length === 0) {
-    return <p className="muted sm">No shifts on the board for today.</p>;
+    // The panel is `flush` (the table runs edge to edge), so the message
+    // brings its own body padding — bare, the card's corner clipped it.
+    return (
+      <div className="panel-b">
+        <p className="muted sm">No shifts on the board for today.</p>
+      </div>
+    );
   }
 
   return (
