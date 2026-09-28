@@ -15,6 +15,12 @@
  * are therefore NOT known here, and every place that depends on them is
  * either configuration or a tolerant reader:
  *
+ *   - authenticity: Willo does NOT sign deliveries (its webhook object is
+ *     url, event, interviews, status — no secret; checked against THC's
+ *     account 28.09, ADR-0066). The secret therefore travels in the
+ *     address we register: `…/willo-webhook?token=<WILLO_WEBHOOK_SECRET>`,
+ *     compared in constant time. The signed path below stays for a Willo
+ *     that starts signing:
  *   - signature: HMAC-SHA256 over the raw body with WILLO_WEBHOOK_SECRET,
  *     hex or base64, optionally `sha256=`-prefixed, in a header named by
  *     WILLO_SIGNATURE_HEADER (default `x-willo-signature`). If
@@ -28,8 +34,10 @@
  *     of those keys move a card is `settings.willo_stage_map`, editable on
  *     /settings (§2.4), so a surprise in Willo's naming is a settings
  *     change, not a release.
- *   - create candidate: POST {WILLO_API_BASE}{WILLO_INVITE_PATH} with the
- *     API key in WILLO_API_AUTH_HEADER / WILLO_API_AUTH_PREFIX.
+ *   - create candidate: POST {WILLO_API_BASE}{WILLO_INVITE_PATH} (Willo's
+ *     `/participants/`, the interview key in the body) with the API key in
+ *     WILLO_API_AUTH_HEADER, bare unless WILLO_API_AUTH_PREFIX names a
+ *     scheme (ADR-0066).
  *
  * The first real delivery from THC's account settles all of it; ADR-0021
  * lists what to check.
@@ -78,6 +86,7 @@ export type SignatureFailure =
   | 'signature_missing'
   | 'signature_malformed'
   | 'signature_mismatch'
+  | 'token_mismatch'
   | 'timestamp_missing'
   | 'timestamp_malformed'
   | 'timestamp_out_of_window';
@@ -167,6 +176,19 @@ export function parseTimestamp(value: string): number | null {
 }
 
 /**
+ * The token from the webhook address against the secret. Both are hashed
+ * first, so the comparison is over two 32-byte digests whatever the
+ * lengths, and the time taken says nothing about either.
+ */
+export async function tokenMatches(token: string, secret: string): Promise<boolean> {
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest('SHA-256', encoder.encode(token)),
+    crypto.subtle.digest('SHA-256', encoder.encode(secret)),
+  ]);
+  return timingSafeEqual(new Uint8Array(a), new Uint8Array(b));
+}
+
+/**
  * Verify one delivery. `rawBody` must be the exact bytes received, as
  * text, BEFORE any JSON parsing — a re-serialised body is a different
  * message and would never verify.
@@ -182,8 +204,18 @@ export async function verifyWilloSignature(
   headers: HeaderReader,
   config: WilloSignatureConfig,
   nowSeconds: number,
+  urlToken: string | null = null,
 ): Promise<SignatureVerdict> {
   if (!config.secret) return { ok: false, reason: 'secret_missing' };
+
+  // Willo does not sign (ADR-0066): the secret is in the address we gave
+  // it. A signature header, when present, still wins — a delivery is
+  // never accepted on the weaker check when the stronger one was offered.
+  if (urlToken !== null && !headers.get(config.signatureHeader)) {
+    return (await tokenMatches(urlToken, config.secret))
+      ? { ok: true }
+      : { ok: false, reason: 'token_mismatch' };
+  }
 
   let message = rawBody;
   if (config.timestampHeader) {
@@ -452,7 +484,18 @@ export interface WilloApiConfig {
 }
 
 export const DEFAULT_API_BASE = 'https://api.willotalent.com/api/integrations/v2';
-export const DEFAULT_INVITE_PATH = '/interviews/{interviewKey}/candidates/';
+/** Willo's "Invite Participant" (ADR-0066); the interview goes in the body. */
+export const DEFAULT_INVITE_PATH = '/participants/';
+
+/**
+ * Willo takes the bare key (`Authorization: <API Key>`, its API reference;
+ * ADR-0066). A scheme can be named (`Bearer`, `Token`) and gets its space;
+ * `none` is the same as unset.
+ */
+function authPrefix(value: string | null): string {
+  if (!value || /^(none|off)$/i.test(value)) return '';
+  return `${value} `;
+}
 
 /** Null when either key is missing: the caller logs and does nothing. */
 export function willoApiConfig(env: EnvReader): WilloApiConfig | null {
@@ -465,9 +508,7 @@ export function willoApiConfig(env: EnvReader): WilloApiConfig | null {
     apiBase: (envText(env, 'WILLO_API_BASE') ?? DEFAULT_API_BASE).replace(/\/+$/, ''),
     invitePath: envText(env, 'WILLO_INVITE_PATH') ?? DEFAULT_INVITE_PATH,
     authHeader: envText(env, 'WILLO_API_AUTH_HEADER') ?? 'Authorization',
-    // Explicitly empty is allowed (`WILLO_API_AUTH_PREFIX=` → the bare key);
-    // unset means a bearer token.
-    authPrefix: env('WILLO_API_AUTH_PREFIX') ?? 'Bearer ',
+    authPrefix: authPrefix(envText(env, 'WILLO_API_AUTH_PREFIX')),
   };
 }
 
@@ -500,10 +541,11 @@ export function willoInviteRequest(
       [config.authHeader]: `${config.authPrefix}${config.apiKey}`,
     },
     body: JSON.stringify({
+      interview: config.interviewKey,
       first_name: candidate.firstName,
       last_name: candidate.lastName,
       email: candidate.email,
-      phone_number: candidate.phone,
+      phone: candidate.phone,
       // Ours, so a delivery can be traced back without trusting a name.
       external_id: candidate.staffId,
       send_invite: true,
@@ -569,7 +611,7 @@ export function readInviteAnswer(status: number, bodyText: string): InviteAnswer
 // WHAT IS ASSUMED for (2), all of it configuration, none of it verified
 // against Willo's documentation (Appendix B, B1):
 //   - GET {WILLO_API_BASE}{WILLO_LOOKUP_PATH}, default
-//     `/interviews/{interviewKey}/candidates/?external_id={externalId}`,
+//     `/participants/?interview={interviewKey}&external_id={externalId}`,
 //     same auth header as the create. `WILLO_LOOKUP_PATH=off` disables it.
 //   - Willo stores and echoes the `external_id` the create sends. A
 //     candidate is accepted only if it CARRIES our staff id, so an endpoint
@@ -581,7 +623,7 @@ export function readInviteAnswer(status: number, bodyText: string): InviteAnswer
 // ---------------------------------------------------------------------
 
 export const DEFAULT_LOOKUP_PATH =
-  '/interviews/{interviewKey}/candidates/?external_id={externalId}';
+  '/participants/?interview={interviewKey}&external_id={externalId}';
 
 /** The lookup path, or null when turned off (`WILLO_LOOKUP_PATH=off`). */
 export function willoLookupPath(env: EnvReader): string | null {

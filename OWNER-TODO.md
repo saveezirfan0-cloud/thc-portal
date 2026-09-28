@@ -77,16 +77,36 @@ Nothing is lost; it all sends once the keys exist.
 - [ ] Smoke test: send yourself a push from the Staff App's notifications screen,
       and trigger one email (for example, Send on an event's timesheet).
 
-## 4 · Willo, once the keys arrive (ADR-0021)
+## 4 · Willo (ADR-0021, ADR-0066)
 
-The owner is supplying the Willo keys (26.09; `docs/17` item 1). Set them as
-function secrets directly — never paste them into a chat or a commit.
+28.09: THC's account was read through the API. Willo does not sign webhooks and has no
+Add button for them, so the secret is ours and goes in the address, and the webhook is
+created with a command. Interview key found: `91510e13269d47ada281bb9553613ae0`. Set
+secrets in Supabase → Edge Functions → Secrets (not Vercel) — never in a chat or commit.
 
-- [ ] `supabase secrets set WILLO_WEBHOOK_SECRET=… WILLO_API_KEY=… WILLO_INTERVIEW_KEY=… STAFF_APP_URL=https://thc-portal-staff-two.vercel.app`
-- [ ] `supabase functions deploy willo-webhook --no-verify-jwt`
-- [ ] In Willo, point the webhook at `{SUPABASE_URL}/functions/v1/willo-webhook`.
-- [ ] Check ADR-0021's "assumed about Willo" list against the first sandbox
-      delivery: signature header, payload shape, create-candidate endpoint.
+- [ ] Secrets: `WILLO_API_KEY` (Willo → Integrations → Developer tools), `WILLO_INTERVIEW_KEY`
+      (above), `STAFF_APP_URL=https://thc-portal-staff-two.vercel.app`, and
+      `WILLO_WEBHOOK_SECRET` = the output of `openssl rand -hex 32`.
+- [x] 28.09: the 401s on every job were not a wrong Vault key (it is a valid service key
+      for this project) but a byte-for-byte check against the functions' own copy, which
+      differs. Fixed in code (ADR-0067): Supabase Auth now confirms the key. After the
+      merge, `job_runs` should show `booking-tick` succeeding every minute.
+- [ ] 28.09: our `stage_change` webhook exists (key `f0331db76cb24b91b84c25e1fdde8ca7`,
+      our interview only) but was created with the placeholder `YOUR_WEBHOOK_SECRET` in
+      its address. Correct it with the real secret — same URL, `-X PATCH` to
+      `…/webhooks/f0331db76cb24b91b84c25e1fdde8ca7/`, body `{"url":"…?token=<secret>"}`.
+- [ ] Create our two webhooks (leave Sam's two — Accelerate and 4-com.pro — alone). In
+      Terminal, with the key and secret filled in, once for `stage_change` and once for
+      `new_response`:
+      ```
+      curl -X POST https://api.willotalent.com/api/integrations/v2/webhooks/ \
+        -H "Authorization: YOUR_WILLO_API_KEY" -H "Content-Type: application/json" \
+        -d '{"url":"https://dgxtqvalfiisfpbwodew.supabase.co/functions/v1/willo-webhook?token=YOUR_WEBHOOK_SECRET","event":"stage_change","follow_all_interviews":false,"interviews":["91510e13269d47ada281bb9553613ae0"]}'
+      ```
+- [ ] Set `settings.willo_stage_map` on `/settings` to THC's real stage names, and
+      `willo_review_url_template`.
+- [ ] One test candidate end to end; check the first delivery against ADR-0066's
+      "still unverified" list.
 - [ ] Ask a session to enable the `willo-invite` schedule. That is a migration
       plus test `190`, not a dashboard change. Then re-run
       `select install_job_schedules();`
