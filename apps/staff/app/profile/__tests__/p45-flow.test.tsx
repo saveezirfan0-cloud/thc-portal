@@ -34,6 +34,8 @@ vi.mock('next/link', () => ({
   ),
 }));
 vi.mock('../actions', () => ({ requestP45: (reason: string) => requestP45(reason) }));
+const closeToLeaverScreen = vi.hoisted(() => vi.fn());
+vi.mock('../_components/leaverNavigation', () => ({ closeToLeaverScreen }));
 
 const { ProfileHub } = await import('../_components/ProfileHub');
 
@@ -206,9 +208,8 @@ describe('the two-step sheet (§10.6)', () => {
     await tap('Request my P45');
     expect(requestP45).toHaveBeenCalledTimes(1);
     expect(requestP45).toHaveBeenCalledWith('Moving away');
-    // Step 7: the whole app is now the leaver screen.
-    expect(router.replace).toHaveBeenCalledWith('/profile');
-    expect(router.refresh).toHaveBeenCalled();
+    // Step 7: the whole app is now the leaver screen, by a full page load.
+    expect(closeToLeaverScreen).toHaveBeenCalledTimes(1);
   });
 
   it('a refusal from the server is shown on the sheet and the flow stays open', async () => {
@@ -225,6 +226,6 @@ describe('the two-step sheet (§10.6)', () => {
     expect(container.querySelector('.alert')!.textContent).toContain(
       'checked in to a shift right now',
     );
-    expect(router.replace).not.toHaveBeenCalled();
+    expect(closeToLeaverScreen).not.toHaveBeenCalled();
   });
 });
