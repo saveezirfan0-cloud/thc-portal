@@ -97,12 +97,26 @@ secrets in Supabase → Edge Functions → Secrets (not Vercel) — never in a c
       `…/webhooks/f0331db76cb24b91b84c25e1fdde8ca7/`, body `{"url":"…?token=<secret>"}`.
 - [ ] Create our two webhooks (leave Sam's two — Accelerate and 4-com.pro — alone). In
       Terminal, with the key and secret filled in, once for `stage_change` and once for
-      `new_response`:
+      `new_response` — the address ends `&event=<the same event>` (ADR-0066 §7):
       ```
       curl -X POST https://api.willotalent.com/api/integrations/v2/webhooks/ \
         -H "Authorization: YOUR_WILLO_API_KEY" -H "Content-Type: application/json" \
-        -d '{"url":"https://dgxtqvalfiisfpbwodew.supabase.co/functions/v1/willo-webhook?token=YOUR_WEBHOOK_SECRET","event":"stage_change","follow_all_interviews":false,"interviews":["91510e13269d47ada281bb9553613ae0"]}'
+        -d '{"url":"https://dgxtqvalfiisfpbwodew.supabase.co/functions/v1/willo-webhook?token=YOUR_WEBHOOK_SECRET&event=stage_change","event":"stage_change","follow_all_interviews":false,"interviews":["91510e13269d47ada281bb9553613ae0"]}'
       ```
+- [ ] 28.09: both of our webhooks still call `…/willo-webhook?token=<secret>` with no
+      `&event=`. THC's bodies name no event, so every delivery is refused
+      (`unreadable delivery { reason: "no_event_type" }`, 400) and the card stays in
+      Interview requested — the first real candidate's completed interview (28.09
+      14:28 and 14:31 UK) was lost this way. Add the event to each address, same
+      secret: list them with `curl -H "Authorization: YOUR_WILLO_API_KEY"
+      https://api.willotalent.com/api/integrations/v2/webhooks/`, then for each of ours
+      ```
+      curl -X PATCH https://api.willotalent.com/api/integrations/v2/webhooks/WEBHOOK_KEY/ \
+        -H "Authorization: YOUR_WILLO_API_KEY" -H "Content-Type: application/json" \
+        -d '{"url":"https://dgxtqvalfiisfpbwodew.supabase.co/functions/v1/willo-webhook?token=YOUR_WEBHOOK_SECRET&event=new_response"}'
+      ```
+      (`&event=stage_change` on the `stage_change` one). Needs #96 deployed: the
+      function log then shows `[willo-webhook] delivery { eventHint: … }`.
 - [ ] Set `settings.willo_stage_map` on `/settings` to THC's real stage names, and
       `willo_review_url_template`.
 - [ ] One test candidate end to end; check the first delivery against ADR-0066's
