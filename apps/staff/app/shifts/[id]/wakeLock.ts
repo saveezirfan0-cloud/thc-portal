@@ -9,12 +9,13 @@ import { useEffect, useState } from 'react';
  * arriving for as long as the page is open, which is what off-site check-out
  * reads (§5.1) instead of falling back to the check-in fix.
  *
+ * `checking` — before the first answer (and on the server).
  * `on` — the lock is held. `off` — asked for and not held (the tab is
  * hidden, battery saver refused it, or it was released). `unsupported` —
  * this browser has no wake lock (iOS before 16.4, older Firefox); the
  * "keep this screen open" bar is still shown, so the worker is told either way.
  */
-export type WakeState = 'on' | 'off' | 'unsupported';
+export type WakeState = 'checking' | 'on' | 'off' | 'unsupported';
 
 interface Sentinel {
   release(): Promise<void>;
@@ -30,9 +31,9 @@ function wakeLockApi(): WakeLockApi | null {
 }
 
 export function useWakeLock(active: boolean): WakeState {
-  // Starts `off` on the server and the client alike, so the first render
-  // hydrates; the effect finds out what this browser can do.
-  const [state, setState] = useState<WakeState>('off');
+  // Starts `checking` on the server and the client alike, so the first
+  // render hydrates; the effect finds out what this browser can do.
+  const [state, setState] = useState<WakeState>('checking');
 
   useEffect(() => {
     const api = wakeLockApi();
@@ -42,12 +43,16 @@ export function useWakeLock(active: boolean): WakeState {
     }
     if (!active) return;
     let sentinel: Sentinel | null = null;
+    // A request still in flight: a visibilitychange in that gap must not
+    // ask for a second lock, which would overwrite the first unreleased.
+    let pending = false;
     let stopped = false;
 
     const acquire = async () => {
       // The browser only grants the lock to a visible page, and drops it
       // whenever the page is hidden — so it is asked for again on return.
-      if (stopped || sentinel || document.visibilityState !== 'visible') return;
+      if (stopped || sentinel || pending || document.visibilityState !== 'visible') return;
+      pending = true;
       try {
         const next = await api.request('screen');
         if (stopped) {
@@ -62,7 +67,9 @@ export function useWakeLock(active: boolean): WakeState {
         });
       } catch {
         // Refused (battery saver, permissions policy). Nothing to undo.
-        setState('off');
+        if (!stopped) setState('off');
+      } finally {
+        pending = false;
       }
     };
 

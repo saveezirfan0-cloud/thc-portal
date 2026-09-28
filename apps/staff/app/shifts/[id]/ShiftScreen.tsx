@@ -749,8 +749,10 @@ export function KeepOpenBar({ wake }: { wake: WakeState }) {
       <strong>Keep this screen open during your shift</strong>
       <span className="xs">
         {wake === 'on'
-          ? 'Your screen will stay on while this page is open.'
-          : 'Your phone may lock the screen — if it does, open the app again.'}{' '}
+          ? 'Your screen will stay on while this page is open. '
+          : wake === 'checking'
+            ? ''
+            : 'Your phone may lock the screen — if it does, open the app again. '}
         We can only see you’re on site while the app is open, and that’s what your check-out time is
         based on if you leave the venue first.
       </span>

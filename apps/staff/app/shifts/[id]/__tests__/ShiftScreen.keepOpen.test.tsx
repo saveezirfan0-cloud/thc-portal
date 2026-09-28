@@ -141,6 +141,34 @@ describe('keep this screen open (docs/06 Option A)', () => {
     root = createRoot(container);
   });
 
+  it('releases the lock on check-out, with the screen still open', async () => {
+    await mount(shift());
+    expect(release).not.toHaveBeenCalled();
+    // router.refresh() hands the checked-out booking down to the same screen.
+    await mount(shift({ checkOutAt: new Date().toISOString(), status: 'worked' }));
+    expect(release).toHaveBeenCalledTimes(1);
+    expect(container.textContent).not.toContain(BAR);
+  });
+
+  it('asks for one lock only, however often the page flickers while it waits', async () => {
+    let grant: (s: unknown) => void = () => {};
+    request.mockImplementation(() => new Promise((ok) => (grant = ok)));
+    await mount(shift());
+    await setVisibility('hidden');
+    await setVisibility('visible');
+    expect(request).toHaveBeenCalledTimes(1);
+    await act(async () => grant({ release, addEventListener: vi.fn() }));
+    await mount(shift({ checkOutAt: new Date().toISOString(), status: 'worked' }));
+    expect(release).toHaveBeenCalledTimes(1);
+  });
+
+  it('a refused lock: the bar says the phone may lock', async () => {
+    request.mockImplementation(() => Promise.reject(new Error('NotAllowedError')));
+    await mount(shift());
+    expect(container.textContent).toContain(BAR);
+    expect(container.textContent).toContain('if it does, open the app again');
+  });
+
   it('no wake lock in this browser: the bar still says to keep the app open', async () => {
     Object.defineProperty(navigator, 'wakeLock', { configurable: true, value: undefined });
     await mount(shift());
