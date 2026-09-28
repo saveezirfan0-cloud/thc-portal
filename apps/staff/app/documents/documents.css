@@ -110,9 +110,13 @@
   background: var(--accent);
 }
 
-/* Sub-screens: "‹ Documents" above the title. */
+/* Sub-screens: "‹ Documents" above the title. Block-level (the wireframe's
+   `.title .back{display:block}`) so the title starts on its own line —
+   inline-flex ran "‹ Profile" and "Documents" together — and fit-content
+   so the tap target stays the width of the words. */
 .back-link {
-  display: inline-flex;
+  display: flex;
+  width: fit-content;
   align-items: center;
   min-height: var(--tap-min);
   font-family: var(--font-label);
