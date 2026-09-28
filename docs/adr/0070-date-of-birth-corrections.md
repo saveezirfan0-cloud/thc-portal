@@ -107,6 +107,12 @@ from the Back Office and from the Staff App. Every change must be deliberate and
     but a DOB correction has nothing to do with money, and the next person to change the
     finance matrix would silently change who can correct a date of birth.
 
+- **No direct writes.** `staff_dob_guard` refuses any change to `staff.dob` from an API
+  session (anon or authenticated), so the office's `admin_all` policy on `staff` cannot be used
+  to rewrite a date around `identity` and the audit row. Only the audited definer routes write
+  it (QA re-review, 28.09.2026). `compliance_docs_claimed_dob_guard` does the same for a
+  share-code claim.
+
 ### Route 2 · the worker, with a new share code
 
 - **The form.** The Documents hub's **New share code** form now has a **Date of birth**

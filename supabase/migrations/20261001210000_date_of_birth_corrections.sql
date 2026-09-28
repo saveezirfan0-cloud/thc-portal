@@ -258,6 +258,35 @@ create trigger compliance_docs_claimed_dob_guard
 comment on function public.compliance_docs_claimed_dob_guard() is
   'ADR-0070: refuses compliance_docs.claimed_dob from any API session (anon, authenticated); definer code (submit_share_code_with_dob, staff_dob_apply, the §1.7 purge) writes it. A trigger function: not an RPC.';
 
+-- The same rule for the date itself. staff.dob changes only through definer
+-- code — office_correct_dob / the approved request / a verified share-code
+-- claim (all staff_dob_apply), onboarding's own RPCs, /apply (service role)
+-- and the §1.7 purge. Without this, the office's admin_all policy on staff
+-- lets any Back Office login — a scheduler included — rewrite a date of
+-- birth with a plain UPDATE, around office_can('identity') and the audit
+-- row (QA re-review, 28.09.2026). No app writes staff.dob directly.
+create or replace function public.staff_dob_guard()
+returns trigger
+language plpgsql
+set search_path = public, extensions
+as $$
+begin
+  if current_user in ('anon', 'authenticated')
+     and new.dob is distinct from old.dob then
+    raise exception 'dob_rpc_only' using errcode = '42501',
+      hint = 'ADR-0070: a date of birth is corrected with office_correct_dob(), a share code, or Request a change.';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists staff_dob_guard on staff;
+create trigger staff_dob_guard
+  before update of dob on staff
+  for each row execute function staff_dob_guard();
+
+comment on function public.staff_dob_guard() is
+  'ADR-0070: refuses a change to staff.dob from any API session (anon, authenticated); the audited definer routes write it. A trigger function: not an RPC.';
+
 -- ---------------------------------------------------------------------
 -- 4 · profile_change_requests_state_guard — 20260930200100 + proposed_dob
 -- ---------------------------------------------------------------------
@@ -345,7 +374,7 @@ begin
 
   -- 20261001210000 (ADR-0070): the date-of-birth audit rows keep what
   -- happened, not what anyone wrote about it. remove_worker() strips the
-  -- dates (`dob`, v_pii_keys) after this trigger; the office's free-text
+  -- dates (`dob`, v_pii_keys) before this trigger fires; the office's free-text
   -- reason and any note are not personal-data keys it knows, so they are
   -- overwritten here, as decision_reason is above.
   update audit_log l
@@ -877,6 +906,7 @@ comment on function public.compliance_docs_claimed_dob_verified() is
 
 revoke execute on function public.compliance_docs_claimed_dob_verified() from public, anon, authenticated;
 revoke execute on function public.compliance_docs_claimed_dob_guard()    from public, anon, authenticated;
+revoke execute on function public.staff_dob_guard()                     from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------
 -- 8d · What the office sees beside the check: the date entered with a

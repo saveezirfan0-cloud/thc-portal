@@ -36,7 +36,7 @@
 --      claimed_dob.
 -- =====================================================================
 begin;
-select plan(118);
+select plan(121);
 \ir _shared/fixtures.psql
 \ir _shared/change_request_vectors.psql
 
@@ -376,6 +376,15 @@ select results_eq(
 select throws_ok(
   format($$ update compliance_docs set claimed_dob = date '1990-01-01' where id = %L $$, :'g_doc1'),
   '42501', 'claimed_dob_rpc_only', 'G: no office login (a scheduler here) can write a claimed date directly');
+select throws_ok(
+  format($$ update staff set dob = date '1990-01-01' where id = %L $$, :'staffa'),
+  '42501', 'dob_rpc_only', 'G: nor a date of birth itself, around office_can(''identity'') and the audit row');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'manager', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(
+  format($$ update staff set dob = date '1990-01-01' where id = %L $$, :'staffa'),
+  '42501', 'dob_rpc_only', 'G: a manager too goes through office_correct_dob(), which writes the audit row');
 reset role;
 
 -- G3 · gov.uk is asked with the claimed date.
@@ -692,6 +701,10 @@ select ok(
 select is_empty(
   format($$ select id from compliance_docs where staff_id = %L and claimed_dob is not null $$, :'staffa'),
   'I: no share code keeps a claimed date — held right-to-work evidence included');
+select ok(
+  exists (select 1 from compliance_docs where staff_id = :'staffa' and doc_type = 'share_code_report'
+            and review_status = 'verified' and retain_until is not null),
+  'I: …and that held share code is still there (ADR-0065), so the check above is not vacuous');
 select ok(
   exists (select 1 from audit_log where action = 'staff.dob_claimed_with_share_code' and entity_id = :'staffa'),
   'I: the rows themselves are kept — history');
