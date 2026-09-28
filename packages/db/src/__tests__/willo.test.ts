@@ -369,6 +369,7 @@ describe('create candidate in Willo', () => {
     expect(spec.headers['Authorization']).toBe('key-1');
     expect(JSON.parse(spec.body)).toEqual({
       interview: 'int 1',
+      name: 'Mei Lin',
       first_name: 'Mei',
       last_name: 'Lin',
       email: 'mei@example.com',

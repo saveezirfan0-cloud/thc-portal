@@ -542,6 +542,10 @@ export function willoInviteRequest(
     },
     body: JSON.stringify({
       interview: config.interviewKey,
+      // Required: the live API answered 400 {"name":["This field is
+      // required."]} to every invite without it (28.09). The split names
+      // stay, for any template or view that reads them.
+      name: `${candidate.firstName} ${candidate.lastName}`.trim(),
       first_name: candidate.firstName,
       last_name: candidate.lastName,
       email: candidate.email,
