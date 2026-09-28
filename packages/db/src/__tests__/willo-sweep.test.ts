@@ -272,8 +272,8 @@ describe('lookup configuration', () => {
   it('builds a GET with the key in a header and the staff id encoded', () => {
     const spec = willoLookupRequest(CONFIG, DEFAULT_LOOKUP_PATH, 'a b');
     expect(spec.method).toBe('GET');
-    expect(spec.url).toContain('/interviews/int-1/candidates/?external_id=a%20b');
+    expect(spec.url).toContain('/participants/?interview=int-1&external_id=a%20b');
     expect(spec.url).not.toContain('key-1');
-    expect(spec.headers['Authorization']).toBe('Bearer key-1');
+    expect(spec.headers['Authorization']).toBe('key-1');
   });
 });

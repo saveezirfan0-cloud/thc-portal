@@ -2,11 +2,13 @@
  * willo-webhook — Willo in both directions (§2.4, §2.12, Appendix B B1,
  * ADR-0021).
  *
- *   POST /willo-webhook          Willo's webhook. Signed by Willo, not by
- *                                us, so this function is deployed with
- *                                `--no-verify-jwt` and checks the
- *                                signature itself before reading a byte of
- *                                the body as JSON.
+ *   POST /willo-webhook?token=…  Willo's webhook. Willo sends no Supabase
+ *                                JWT and signs nothing, so this function is
+ *                                deployed with `--no-verify-jwt` and checks
+ *                                the token in the address it was registered
+ *                                with (WILLO_WEBHOOK_SECRET, ADR-0063) — or a
+ *                                signature, if one is sent — before reading a
+ *                                byte of the body as JSON.
  *   POST /willo-webhook/invite   "Create the candidate in Willo" (Willo
  *                                then sends E1). Service key only: the
  *                                database's nudge trigger and the
@@ -106,6 +108,7 @@ async function webhook(request: Request): Promise<Response> {
     request.headers,
     willoSignatureConfig(env),
     Math.floor(Date.now() / 1000),
+    new URL(request.url).searchParams.get('token'),
   );
   if (!verdict.ok) {
     if (verdict.reason === 'secret_missing') {

@@ -108,6 +108,41 @@ describe('the signature', () => {
     ).resolves.toEqual({ ok: false, reason: 'signature_malformed' });
   });
 
+  describe('the token in the webhook address (Willo does not sign; ADR-0063)', () => {
+    it('the right token is accepted with no signature header', async () => {
+      await expect(verifyWilloSignature(BODY, headers({}), BASE, NOW, SECRET)).resolves.toEqual({
+        ok: true,
+      });
+    });
+
+    it('a wrong, empty or near-miss token is refused', async () => {
+      for (const token of ['nope', '', `${SECRET}x`, SECRET.slice(0, -1)]) {
+        await expect(verifyWilloSignature(BODY, headers({}), BASE, NOW, token)).resolves.toEqual({
+          ok: false,
+          reason: 'token_mismatch',
+        });
+      }
+    });
+
+    it('no secret configured refuses even the "right" token', async () => {
+      await expect(
+        verifyWilloSignature(BODY, headers({}), { ...BASE, secret: null }, NOW, ''),
+      ).resolves.toEqual({ ok: false, reason: 'secret_missing' });
+    });
+
+    it('a signature, when offered, is what is checked — a good token cannot rescue a bad one', async () => {
+      await expect(
+        verifyWilloSignature(
+          BODY,
+          headers({ 'x-willo-signature': hex(BODY, 'wrong') }),
+          BASE,
+          NOW,
+          SECRET,
+        ),
+      ).resolves.toEqual({ ok: false, reason: 'signature_mismatch' });
+    });
+  });
+
   it('several digests may be offered (secret rotation); one match is enough', async () => {
     const value = `${hex(BODY, 'old-secret')}, ${hex(BODY)}`;
     await expect(
@@ -328,17 +363,31 @@ describe('create candidate in Willo', () => {
       email: 'mei@example.com',
       phone: '+447700900001',
     });
-    expect(spec.url).toBe(`${DEFAULT_API_BASE}/interviews/int%201/candidates/`);
+    // Willo's Invite Participant: the interview in the body, the bare key.
+    expect(spec.url).toBe(`${DEFAULT_API_BASE}/participants/`);
     expect(spec.url).not.toContain('key-1');
-    expect(spec.headers['Authorization']).toBe('Bearer key-1');
+    expect(spec.headers['Authorization']).toBe('key-1');
     expect(JSON.parse(spec.body)).toEqual({
+      interview: 'int 1',
       first_name: 'Mei',
       last_name: 'Lin',
       email: 'mei@example.com',
-      phone_number: '+447700900001',
+      phone: '+447700900001',
       external_id: 's-1',
       send_invite: true,
     });
+  });
+
+  it('a named auth scheme gets its space; none and empty mean the bare key', () => {
+    const base = { WILLO_API_KEY: 'k', WILLO_INTERVIEW_KEY: 'i' };
+    expect(willoApiConfig(env({ ...base, WILLO_API_AUTH_PREFIX: 'Bearer' }))!.authPrefix).toBe(
+      'Bearer ',
+    );
+    expect(willoApiConfig(env({ ...base, WILLO_API_AUTH_PREFIX: 'Token ' }))!.authPrefix).toBe(
+      'Token ',
+    );
+    expect(willoApiConfig(env({ ...base, WILLO_API_AUTH_PREFIX: 'none' }))!.authPrefix).toBe('');
+    expect(willoApiConfig(env({ ...base, WILLO_API_AUTH_PREFIX: '' }))!.authPrefix).toBe('');
   });
 
   it('the auth header and prefix are configuration (an empty prefix is allowed)', () => {
