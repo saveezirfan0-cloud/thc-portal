@@ -7,7 +7,8 @@ import { EMERGENCY_RELATIONSHIP_SUGGESTIONS, validateEmergencyContact } from '@t
 import type { EmergencyContactField } from '@thc/domain';
 import { clearEmergencyContact, saveEmergencyContact } from '../actions';
 import type { EmergencyContact } from '../types';
-import { DIAL_CODES, splitE164, toE164 } from './phone';
+import { DialCodePicker } from '../../apply/DialCodePicker';
+import { splitE164, toE164 } from './phone';
 
 /**
  * Emergency contact — ADR-0044, `wireframes/staff/request-change.html#emergency`.
@@ -138,21 +139,7 @@ export function EmergencyContactSection({
           Phone
         </span>
         <InputRow>
-          <div className="ec-dial">
-            <select
-              className="input"
-              aria-label="Country code"
-              value={dialCode}
-              disabled={readOnly}
-              onChange={(event) => setDialCode(event.target.value)}
-            >
-              {DIAL_CODES.map((c, i) => (
-                <option key={`${c.code}-${i}`} value={c.code}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          <DialCodePicker value={dialCode} disabled={readOnly} onChange={setDialCode} />
           <input
             className={`input mono${errors.phone ? ' err' : ''}`}
             type="tel"

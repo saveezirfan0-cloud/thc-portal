@@ -384,24 +384,6 @@
   cursor: pointer;
   font: inherit;
 }
-.ec-dial {
-  position: relative;
-  flex: 0 0 118px;
-}
-.ec-dial select.input {
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: var(--sp-28);
-}
-.ec-dial::after {
-  content: '▾';
-  position: absolute;
-  right: var(--sp-12);
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--muted);
-  pointer-events: none;
-}
 .ec-actions {
   gap: var(--sp-8);
 }

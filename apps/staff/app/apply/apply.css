@@ -32,28 +32,6 @@
   margin: 0;
 }
 
-/* Native select with the wireframe's caret, drawn exactly as apply.html
-   draws it: a `.caret` wrapper whose ::after is a ▾ in `--muted`, so it
-   follows the theme like every other mark. (A caret baked into a
-   data-URL SVG carried a hex colour the token grep could not see.) */
-.apply-page select.input {
-  appearance: none;
-  -webkit-appearance: none;
-  padding-right: var(--sp-28);
-}
-.apply-page .caret {
-  position: relative;
-}
-.apply-page .caret::after {
-  content: '▾';
-  position: absolute;
-  right: var(--sp-12);
-  top: 50%;
-  transform: translateY(-50%);
-  color: var(--muted);
-  pointer-events: none;
-}
-
 /* The consent tick (§1.7) is the shared `Checkbox` from packages/ui (D1).
    What is left here: the 2px nudge that lines the transparent input up with
    this page's taller text and that text's line height (the wireframe's `.txt`).

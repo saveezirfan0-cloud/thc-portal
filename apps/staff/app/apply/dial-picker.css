@@ -1,0 +1,114 @@
+/* The searchable dialling-code picker (ADR-0063) — /apply and the emergency
+   contact's phone. Tokens only: the popover is a panel on the card's own
+   ground, so it follows both appearance modes like every other surface. */
+
+.dial-picker {
+  position: relative;
+  flex: 0 0 118px;
+}
+
+/* Closed: the wireframe's `🇬🇧 +44 ▾` control, as the native select drew it. */
+.dial-picker .dial-trigger {
+  display: flex;
+  align-items: center;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+  padding-right: var(--sp-28);
+  font-family: var(--font-body);
+}
+.dial-picker .dial-trigger:disabled {
+  cursor: default;
+}
+.dial-picker::after {
+  content: '▾';
+  position: absolute;
+  right: var(--sp-12);
+  top: calc(var(--input-h) / 2);
+  transform: translateY(-50%);
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.dial-pop {
+  position: absolute;
+  top: calc(100% + var(--sp-6));
+  left: 0;
+  z-index: 20;
+  /* Wider than its 118px trigger, never wider than a phone screen. */
+  width: min(320px, calc(100vw - var(--sp-32)));
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-8);
+  padding: var(--sp-8);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r-tile);
+  box-shadow: var(--shadow-card);
+}
+
+.dial-pop .dial-search {
+  width: 100%;
+}
+
+.dial-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: min(320px, 50vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.dial-group {
+  padding: var(--sp-8) var(--sp-10) var(--sp-4);
+  font-size: var(--fs-11);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.dial-option {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-10);
+  /* 40px rows: a comfortable thumb target on the phone (§1.2). */
+  min-height: 40px;
+  padding: var(--sp-6) var(--sp-10);
+  font-size: var(--fs-14);
+  color: var(--text);
+  cursor: pointer;
+  border-radius: var(--r-control);
+}
+.dial-option.active {
+  background: var(--row-hover);
+}
+.dial-option[aria-selected='true'] {
+  color: var(--cyan-ink);
+  font-weight: 600;
+}
+
+.dial-option .dial-flag {
+  flex: 0 0 auto;
+}
+.dial-option .dial-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dial-option .dial-code {
+  flex: 0 0 auto;
+  font-family: var(--font-num);
+  font-size: var(--fs-13);
+  color: var(--muted);
+}
+
+.dial-empty {
+  margin: 0;
+  padding: var(--sp-10);
+  font-size: var(--fs-13);
+  color: var(--muted);
+}
