@@ -41,7 +41,7 @@ judgement call is listed below, for THC to confirm before anything sends.
 | --- | --- | --- | --- |
 | E1 | Sender "Willo — interview invitation (email only)" | an entry with `sender: 'willo'` and no THC copy | Willo sends it; the copy lives in Willo. The entry exists so the register matches §8 code for code, and the `willo` sender marks it as one this system must never send. |
 | E2, E3, E5, E6, E7 | no subject line | subjects derived from the trigger, E5–E7 in the `— {name}, Employee ID {employeeId}` shape §8 gives E8/E9 | §8 only specifies subjects for E8 and E9. **These five subjects need THC's wording.** |
-| E3 | "activation + password + 'download the app'" | password link plus a download-the-app line (`{link}`, `{installLink}`) | §8 and §2.7 both describe the email rather than quote it. The body carries all three elements §8 names so nothing is silently dropped, but **E3 is the only mandatory system email and has no copy anywhere in the scope** — the wording here is a placeholder and needs THC's before activation can ship. |
+| E3 | "activation + password + 'download the app'" | subject `You're in — set up your THC account`; a greeting, two numbered steps (1. set your password `{link}`, 2. download the app `{installLink}`), what onboarding in the app involves, and what to do if the link has stopped working. The HTML part draws each step as a card with a button ("Set my password", "Get the app") | §8 and §2.7 both describe the email rather than quote it. The body carries all three elements §8 names so nothing is silently dropped. It was rewritten on 28.09 from a two-line placeholder that read as a bare link dump, but **E3 is the only mandatory system email and has no copy anywhere in the scope** — THC to confirm the wording. |
 | E4 | "the Health & Safety Assessment — Unsuccessful wording in §10.1" | §10.1 verbatim, split as subject + body | §10.1 says the in-app terminal screen carries the email's wording "plus the same contact line". It is not clear whether the contact line (`Need help? Please contact us at: admin@thehospitalitycompany.co.uk`) belongs to the email too; the register leaves it out. **Confirm.** |
 | E5, E6, E7 | recipients, no body | a factual body naming the worker, Employee ID and what changed | §8 names the recipients and the trigger but no wording. The bodies here are a minimum; they invent no fact the scope does not state. |
 | E10 | not in §8 — §9.12: "an immediate email to admin@thehospitalitycompany.co.uk, flagging which event/role/shift lost a confirmed worker" | extension E10: sender `admin`, recipient admin@, subject `Confirmed worker self-cancelled — {event} · {role} · {date}`, body naming event, client, venue, role, the section's UK window, the worker, and the fill after the cancel as `{confirmed} of {headcount} (+{buffer})` with whether auto-assign is on | §9.12 asks for event/role/shift; the fill and the auto-assign switch are what tell the office whether it needs to act "if auto-assign doesn't backfill it in time". Queued inside `self_cancel_booking()` (20260927140200), keyed `E10:booking:<id>`. Not marked `mandatory`: that flag is §8's Phase column, and §8 does not list it — though §9.12's "triggers" leaves no opt-out. **Confirm the wording, and the number.** |
@@ -162,3 +162,18 @@ Held back because it tells one person another's employment status. It is
 built only if THC says yes to Q20 (docs/19 §5, Phase 2 item 4), and then with
 their privacy wording. Until then nothing can queue it: `messageFor` refuses a
 code the register does not name, and a test asserts `RF1` is absent.
+
+## HTML layout (every email)
+
+Every email now goes out with an HTML part beside the plain text
+(`src/email-html.ts`, 28.09). The words are the register's — the HTML is
+built from the same rendered text, so the two cannot disagree — and only
+the layout is added: the app's warm cream ground and rounded white card,
+Plus Jakarta Sans, the teal→violet gradient pill button, navy for clients
+that honour dark mode (ADR-0007). A numbered line ("1. Set your password")
+becomes a step card, a block of `Label: value` lines (the office and payroll
+emails) becomes a details table, a document email lists its attachments,
+and a link a template names in `email.buttons` becomes a button. Emails to
+THC's own inboxes (fixed `recipients`) get an office footer instead of
+"Questions? Just reply". The header shows the Staff App icon from
+`STAFF_APP_URL` when that secret is set, and the wordmark alone when not.

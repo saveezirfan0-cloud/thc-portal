@@ -26,6 +26,7 @@
 
 import type { DocumentBucket } from './documents.ts';
 import { documentMessageFor, isDocumentEmail } from './documents.ts';
+import { emailPresentationFor, renderEmailHtml } from './email-html.ts';
 import type { OutboxRow, PushMessage } from './outbox.ts';
 import { UnsendableRow, messageFor, outboxBackoffMs } from './outbox.ts';
 import type { ResendAttachment } from './resend.ts';
@@ -49,6 +50,12 @@ export interface DrainConfig {
   vapid: VapidKeys | null;
   /** Names of the secrets that are absent, for the one log line. */
   missing: string[];
+  /**
+   * The app icon for the email header, from `STAFF_APP_URL` (the secret
+   * willo-webhook already reads for E3's links). Optional: without it the
+   * header is the wordmark alone, and nothing is held.
+   */
+  logoUrl?: string | null;
 }
 
 /** Read the secrets. Absent or blank is "not configured", never a throw. */
@@ -66,10 +73,16 @@ export function readDrainConfig(env: (name: string) => string | undefined): Drai
   if (!publicKey) missing.push('VAPID_PUBLIC_KEY');
   if (!privateKey) missing.push('VAPID_PRIVATE_KEY');
   if (!subject) missing.push('VAPID_SUBJECT');
+  const staffApp = get('STAFF_APP_URL');
+  const logoUrl =
+    staffApp && /^https:\/\/[^\s/]+/i.test(staffApp)
+      ? `${staffApp.replace(/\/+$/, '')}/icon-192.png`
+      : null;
   return {
     resendApiKey,
     vapid: publicKey && privateKey && subject ? { publicKey, privateKey, subject } : null,
     missing,
+    logoUrl,
   };
 }
 
@@ -265,6 +278,7 @@ async function sendEmail(
   apiKey: string,
   sendersSetting: unknown,
   ports: DrainPorts,
+  logoUrl: string | null = null,
 ): Promise<Settlement> {
   // Rendered first, so a row that can never be sent fails as such even when
   // Resend is not configured — the caller only reaches here with a key.
@@ -296,12 +310,24 @@ async function sendEmail(
     }
   }
 
+  const text = signedBy(message.body, message.sender, sender.replyTo);
+  const presentation = emailPresentationFor(row.template, row.payload ?? {});
+  const html = renderEmailHtml({
+    subject: message.subject,
+    text,
+    ...presentation,
+    ...(document ? { attachments: document.attachments.map((a) => a.filename) } : {}),
+    replyTo: sender.replyTo,
+    logoUrl,
+  });
+
   const request = buildResendRequest(
     {
       from: sender.from,
       to: message.to,
       subject: message.subject,
-      text: signedBy(message.body, message.sender, sender.replyTo),
+      text,
+      html,
       replyTo: sender.replyTo,
       ...(attachments ? { attachments } : {}),
     },
@@ -358,7 +384,13 @@ export async function drainRow(
         else messageFor(row);
         return { id: row.id, key: row.key, verdict: 'unconfigured', error: NOT_CONFIGURED.email };
       }
-      return await sendEmail(row, config.resendApiKey, sendersSetting, ports);
+      return await sendEmail(
+        row,
+        config.resendApiKey,
+        sendersSetting,
+        ports,
+        config.logoUrl ?? null,
+      );
     }
     throw new UnsendableRow(`channel ${String(row.channel)} is neither push nor email`);
   } catch (cause) {

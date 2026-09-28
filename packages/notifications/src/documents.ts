@@ -27,6 +27,7 @@
 
 import type { EmailMessage, OutboxRow } from './outbox.ts';
 import { UnsendableRow } from './outbox.ts';
+import type { EmailPresentation } from './templates.ts';
 import { TEMPLATES, render } from './templates.ts';
 
 export type DocumentBucket = 'reports' | 'timesheets';
@@ -43,6 +44,8 @@ export interface DocumentEmailTemplate {
   body: string;
   trigger: string;
   timing: string;
+  /** The HTML part's layout, as on `Template` (email-html.ts). */
+  email?: EmailPresentation;
 }
 
 export const DOCUMENT_EMAILS = {

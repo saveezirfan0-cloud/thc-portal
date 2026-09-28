@@ -24,6 +24,8 @@ export interface ResendEmail {
   to: readonly string[];
   subject: string;
   text: string;
+  /** The HTML part (`email-html.ts`); `text` stays the plain alternative. */
+  html?: string;
   /** Replies go to the sender's monitored mailbox (§9.12). */
   replyTo?: string;
   attachments?: readonly ResendAttachment[];
@@ -52,6 +54,7 @@ export function buildResendRequest(
     subject: email.subject,
     text: email.text,
   };
+  if (email.html) body.html = email.html;
   if (email.replyTo) body.reply_to = email.replyTo;
   if (email.attachments && email.attachments.length > 0) {
     body.attachments = email.attachments.map((a) => ({ filename: a.filename, content: a.content }));

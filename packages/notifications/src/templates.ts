@@ -94,6 +94,24 @@ export interface Template {
    * and the outbox key must carry the variant so the two do not collide.
    */
   variants?: Readonly<Record<string, { body: string }>>;
+  /**
+   * Email only: how the HTML part lays the body out (`email-html.ts`). The
+   * words stay in `body` — this adds a heading, a pill, the inbox preview
+   * line and which link placeholders are drawn as buttons. Absent, the
+   * subject is the heading and every link is a plain link.
+   */
+  email?: EmailPresentation;
+}
+
+export interface EmailPresentation {
+  /** The card's heading; `{placeholder}`s allowed, dropped when unfilled. */
+  heading?: string;
+  /** A small pill above the heading. */
+  eyebrow?: string;
+  /** The line an inbox shows beside the subject. */
+  preheader?: string;
+  /** Placeholder → button label, e.g. `{ link: 'Set my password' }`. */
+  buttons?: Readonly<Record<string, string>>;
 }
 
 const PAYROLL = [
@@ -421,8 +439,18 @@ export const TEMPLATES = {
     code: 'E3',
     channel: 'email',
     sender: 'admin',
-    title: 'Activate your account',
-    body: 'Your application was accepted. Set your password to start onboarding: {link}\n\nThen download the app and add it to your home screen: {installLink}',
+    title: "You're in — set up your THC account",
+    // Two numbered steps, each with its link on its own line: the HTML part
+    // draws each step as a card with a button (email-html.ts), and a
+    // text-only client still reads it top to bottom. "Works once" is the
+    // activation screen's own line (apps/staff/app/activate/copy.ts).
+    body: "Hello {name},\n\nGreat news — your application to The Hospitality Company has been accepted. Two quick steps and you're ready to start onboarding.\n\n1. Set your password\nThis link is personal to you and works once: {link}\n\n2. Download the app and add it to your home screen\nOpen this link on your phone: {installLink}\n\nIn the app you'll finish onboarding — upload your documents, complete a short Health & Safety quiz and sign your contract. Then you can start picking up shifts.\n\nIf the password link has stopped working, reply to this email and we'll send you a new one.\n\nThe Hospitality Company",
+    email: {
+      eyebrow: 'Application accepted',
+      heading: 'Welcome to the team!',
+      preheader: 'Set your password and get the app — two quick steps to start onboarding.',
+      buttons: { link: 'Set my password', installLink: 'Get the app' },
+    },
     trigger: 'Accepted after the interview — activation + password + "download the app"',
     timing: 'on acceptance. The only mandatory system email (§8)',
     mandatory: true,
@@ -526,6 +554,12 @@ export const TEMPLATES = {
     sender: 'admin',
     title: 'Your THC {app} login',
     body: 'Hello {name},\n\nYou have been given a login to the THC {app}. Set your password to sign in: {link}\n\nThe link works once and expires after 24 hours. If it has expired, reply to this email and we will send you a new one.\n\nYou sign in with this email address.\n\nThe Hospitality Company',
+    email: {
+      eyebrow: 'THC {app}',
+      heading: 'Your login is ready',
+      preheader: 'Set your password to sign in — the link works once and expires after 24 hours.',
+      buttons: { link: 'Set my password' },
+    },
     trigger:
       'The office invites a Back Office or Client Portal login on /users, or issues it a new set-up link (ADR-0055, ADR-0058). Not in §8: §1.4 gives the office and the client a login by email and password, and §8 has no send for it, so THC approved the next free E-number',
     timing:

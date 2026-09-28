@@ -25,6 +25,8 @@
  * Secrets, set with `supabase secrets set` (docs/12-keys-and-assets.md):
  *   RESEND_API_KEY                                     email
  *   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT Web Push
+ *   STAFF_APP_URL (optional)                          the app icon in the
+ *                                                      email header
  * With either set missing, that channel's rows are held with the reason on
  * the row and one log line per run; the other channel still sends.
  */
