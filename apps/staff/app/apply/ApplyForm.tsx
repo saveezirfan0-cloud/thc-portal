@@ -3,15 +3,9 @@
 import { useActionState, useState } from 'react';
 import { Alert, Button, Checkbox, Input, InputRow } from '@thc/ui';
 import { apply } from './actions';
-import {
-  DIAL_CODES,
-  INITIAL_STATE,
-  REFERRAL_FIELD,
-  ageOn,
-  errorBanner,
-  parseDob,
-  validate,
-} from './form';
+import { DialCodePicker } from './DialCodePicker';
+import { DobInput } from './DobInput';
+import { INITIAL_STATE, REFERRAL_FIELD, ageOn, errorBanner, parseDob, validate } from './form';
 import type { ApplicationField, ApplicationValues, FieldErrors } from './form';
 
 /**
@@ -125,22 +119,12 @@ export function ApplyForm({ referralCode = null }: { referralCode?: string | nul
           Mobile
         </span>
         <InputRow>
-          {/* `.caret` draws the wireframe's ▾ from a token (apply.css). */}
-          <div className="caret" style={{ flex: '0 0 118px' }}>
-            <select
-              className="input"
-              name="dialCode"
-              aria-label="Country code"
-              value={values.dialCode}
-              onChange={(e) => set('dialCode', e.target.value)}
-            >
-              {DIAL_CODES.map((c, i) => (
-                <option key={`${c.code}-${i}`} value={c.code}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Searchable: name, initials, ISO code or digits (ADR-0068). */}
+          <DialCodePicker
+            name="dialCode"
+            value={values.dialCode}
+            onChange={(code) => set('dialCode', code)}
+          />
           <input
             className={`input${errors.mobile ? ' err' : ''}`}
             name="mobile"
@@ -164,18 +148,16 @@ export function ApplyForm({ referralCode = null }: { referralCode?: string | nul
         ) : null}
       </div>
 
-      {/* A native date input opens the OS wheel picker on the phone browsers
-          §2.1 says applicants use. No `max`: capping it at today minus
+      {/* Typed as digits, or picked from the browser's own calendar — the
+          OS wheel on a phone (ADR-0068). No `max`: capping it at today minus
           eighteen years hides the under-18 case instead of refusing it, and
           both §1.7 and the wireframe refuse it out loud. */}
-      <Input
+      <DobInput
         label="Date of birth"
         name="dob"
-        type="date"
-        autoComplete="bday"
         hint="You must be 18 or over to work with us."
         value={values.dob}
-        onChange={(e) => set('dob', e.target.value)}
+        onChange={(dob) => set('dob', dob)}
         error={errors.dob}
       />
 

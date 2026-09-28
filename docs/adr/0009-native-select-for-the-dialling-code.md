@@ -1,6 +1,6 @@
 # ADR-0009 · /apply's dialling-code picker is a native `<select>`
 
-**Status:** Accepted for v1 — revisit when `packages/ui` has a combobox. **Amended** to record what shipped: the code has the wireframe's literal option 1 below, not the option 2 this ADR first chose. The option-2 design is kept as the follow-up.
+**Status:** Superseded by ADR-0068 (searchable picker, 28.09). Was: accepted for v1 — revisit when `packages/ui` has a combobox. **Amended** to record what shipped: the code has the wireframe's literal option 1 below, not the option 2 this ADR first chose. The option-2 design is kept as the follow-up.
 
 ## Context
 

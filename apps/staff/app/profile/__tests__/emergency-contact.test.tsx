@@ -54,8 +54,7 @@ describe('the section', () => {
     expect(html).not.toContain('Remove');
     for (const s of ['Parent', 'Partner', 'Sibling', 'Friend', 'Other']) expect(html).toContain(s);
     // The /apply picker, opening on the UK.
-    expect(html).toContain('aria-label="Country code"');
-    expect(html).toMatch(/<option value="\+44" selected="">/);
+    expect(html).toContain('aria-label="Country code: United Kingdom +44"');
   });
 
   it('splits a saved number back into the picker for editing, with Save and Remove', () => {
@@ -65,7 +64,7 @@ describe('the section', () => {
       />,
     );
     expect(html).not.toContain('Not set');
-    expect(html).toMatch(/<option value="\+353" selected="">/);
+    expect(html).toContain('aria-label="Country code: Ireland +353"');
     expect(html).toContain('value="871234567"');
     expect(html).toContain('Remove');
   });

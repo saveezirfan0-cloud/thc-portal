@@ -1,0 +1,39 @@
+/* Date of birth, typed or picked (ADR-0068). The calendar is the shared
+   `.addon` welded to the box's right, the same shape as a password field's
+   Show/Hide; the browser's date input lies invisibly over it. */
+
+.dob-row .dob-cal {
+  position: relative;
+  padding: 0 var(--sp-14);
+  color: var(--muted);
+  cursor: pointer;
+}
+.dob-row .dob-cal:hover {
+  color: var(--text);
+}
+
+.dob-row .dob-native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+/* Chromium opens its calendar only from this indicator: stretch it over the
+   whole button so a click anywhere on the icon lands on it. */
+.dob-row .dob-native::-webkit-calendar-picker-indicator {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 0;
+  cursor: pointer;
+}
