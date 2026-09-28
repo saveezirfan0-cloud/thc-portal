@@ -344,7 +344,7 @@ export function renderChangeRequest(v) {
       ],
       v.dobs.cases.map((c) => [
         lit(c.name),
-        lit(v.dobs.today),
+        lit(c.today ?? v.dobs.today),
         lit(v.dobs.current),
         lit(c.input),
         lit(c.expect),

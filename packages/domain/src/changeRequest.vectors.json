@@ -242,6 +242,20 @@
         "ref": "§2.1 a 29 February birthday counts from 1 March in a common year"
       },
       {
+        "name": "a_leap_day_the_day_before",
+        "input": "2008-02-29",
+        "today": "2026-02-28",
+        "expect": "under_18",
+        "ref": "§2.1 a 29 February birthday is not 18 on 28 February in a common year"
+      },
+      {
+        "name": "a_leap_day_on_1_march",
+        "input": "2008-02-29",
+        "today": "2026-03-01",
+        "expect": null,
+        "ref": "§2.1 … and is 18 on 1 March"
+      },
+      {
         "name": "one_hundred",
         "input": "1926-09-28",
         "expect": null,

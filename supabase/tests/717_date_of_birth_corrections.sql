@@ -14,21 +14,29 @@
 --   E. office_correct_dob — effect: staff.dob, the staff.dob_corrected
 --      audit row (dates under `dob`, reason, actorName), and the gov.uk
 --      check of a pending share code: re-queued, superseding a finished
---      needs_review check in rtw_checks_latest_v; left alone while
---      running; 'off' with the check switched off; 'none' without one.
+--      needs_review check in rtw_checks_latest_v; left alone while still
+--      queued or running; 'off' with the check switched off; 'none'
+--      without one.
 --   F. Under 18 and the opt-out: a correction moving the eighteenth
 --      birthday past the opt-out's signature is flagged, not refused.
---   G. submit_share_code_with_dob: a changed date written and audited as
---      the worker with the share code filed; a refused date files
---      nothing; an unchanged one is not audited; the 24 h cap.
+--   G. submit_share_code_with_dob: the date is a CLAIM on the pending
+--      document (claimed_dob), never on the profile; gov.uk is asked with
+--      it (rtw_check_claim); reject leaves staff.dob; verify copies it
+--      (source share_code_verified); an office correction clears a pending
+--      claim; the office's view; nobody writes claimed_dob directly; the
+--      24 h cap; anon, a client and an office session are refused.
 --   H. Request a change → date of birth: request_dob_change's refusals,
 --      RC1's payload, the worker's read; a scheduler and a viewer cannot
---      decide it; a manager approves → dob written, RC2, audit, no RC4.
---   I. §1.7: removal turns a requested date into 1900-01-01 and strips
---      the dates from the audit rows about the worker.
+--      decide it, nor a worker; a manager approves → dob written, RC2,
+--      audit, no RC4; a correction to the requested date by another route
+--      closes it as withdrawn with no RC3.
+--   I. §1.7: removal turns a requested date into 1900-01-01, clears the
+--      decided request's snapshot and reason, strips RC1's dates, the
+--      dates and the office's reason from the audit rows, and every
+--      claimed_dob.
 -- =====================================================================
 begin;
-select plan(85);
+select plan(118);
 \ir _shared/fixtures.psql
 \ir _shared/change_request_vectors.psql
 
@@ -78,7 +86,8 @@ update settings set value = value || '{"enabled": true}'::jsonb where key = 'rtw
 
 insert into storage.objects (bucket_id, name, metadata) values
   ('documents', :'staffb' || '/change-requests/dob-1.pdf', '{"mimetype":"application/pdf","size":2048}'),
-  ('documents', :'staffa' || '/change-requests/dob-a.pdf', '{"mimetype":"application/pdf","size":2048}');
+  ('documents', :'staffa' || '/change-requests/dob-a.pdf', '{"mimetype":"application/pdf","size":2048}'),
+  ('documents', :'staffa' || '/change-requests/dob-a2.pdf', '{"mimetype":"application/pdf","size":2048}');
 
 -- =====================================================================
 -- A · Shape
@@ -252,6 +261,20 @@ select results_eq(
   'E: audited staff.dob_corrected — from/to under dob, the reason, the manager by name');
 select ok((select not (r ? 'optOutSignedUnder18') from res_e1), 'E: no opt-out, no flag');
 
+-- E1b · The new check is still QUEUED: left alone — it reads the date when
+--       it is claimed, so it will ask with the newest one.
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+create temp table res_e1b as
+  select office_correct_dob(:'staffb', date '1994-02-19', 'Passport: 19 February, checked twice') as r;
+reset role;
+select results_eq(
+  $$ select r ->> 'rtwCheck', (r ->> 'checkId')::uuid from res_e1b $$,
+  $$ select 'queued'::text, (r ->> 'checkId')::uuid from res_e1 $$,
+  'E: a queued check is left alone and reported (the same check)');
+select is((select count(*)::int from rtw_checks where compliance_doc_id = :'doc_b'), 2,
+  'E: no second open check');
+
 -- E2 · The check is running (claimed with the old date): left alone.
 update rtw_checks set status = 'running' where id = (select (r ->> 'checkId')::uuid from res_e1);
 select set_config('request.jwt.claims', json_build_object('sub', :'manager', 'role', 'authenticated')::text, true);
@@ -302,7 +325,8 @@ select is((select wtr_optout from staff where id = :'w_opt'), true,
   'F: the signature is not revoked here — cancelling is the worker''s, with notice');
 
 -- =====================================================================
--- G · The Documents hub: New share code with the date of birth
+-- G · The Documents hub: New share code with the date of birth — a CLAIM
+--     on the document; the profile takes it only when the office verifies
 -- =====================================================================
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
@@ -316,44 +340,115 @@ reset role;
 select is((select count(*)::int from compliance_docs where staff_id = :'staffa' and doc_type = 'share_code_report'), 0,
   'G: and a refused date files nothing');
 
+-- G1 · The claim: filed, the date on the document, the profile untouched.
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 create temp table res_g as select submit_share_code_with_dob('wab 123 cde', date '1995-06-15') as r;
 reset role;
+select (r ->> 'documentId') as g_doc1 from res_g \gset
 select results_eq(
   $$ select (r ->> 'ok')::boolean, r ->> 'status', (r ->> 'dobChanged')::boolean from res_g $$,
   $$ values (true, 'pending'::text, true) $$,
-  'G: the share code is filed, pending, with the date changed');
-select is((select dob from staff where id = :'staffa'), date '1995-06-15', 'G: staff.dob is written');
+  'G: the share code is filed, pending, with a different date');
+select is((select dob from staff where id = :'staffa'), date '1994-12-31',
+  'G: staff.dob is NOT written by the worker');
 select results_eq(
-  format($$ select share_code, review_status::text from compliance_docs
-             where id = (select (r ->> 'documentId')::uuid from res_g) $$),
-  $$ values ('WAB123CDE'::text, 'pending'::text) $$,
-  'G: submit_document_upload() filed it exactly as before');
+  format($$ select share_code, review_status::text, claimed_dob from compliance_docs where id = %L $$, :'g_doc1'),
+  $$ values ('WAB123CDE'::text, 'pending'::text, date '1995-06-15') $$,
+  'G: submit_document_upload() filed it as before; the date is claimed on the document');
 select results_eq(
   format($$ select actor, data -> 'dob', data ->> 'source', data ->> 'documentId'
-              from audit_log where action = 'staff.dob_changed_with_share_code' and entity_id = %L $$, :'staffa'),
-  format($$ select %L::uuid, '{"from": "1994-12-31", "to": "1995-06-15"}'::jsonb, 'staff_app'::text,
-                   r ->> 'documentId' from res_g $$, :'staffa_uid'),
-  'G: audited as the worker, with the document it came with');
+              from audit_log where action = 'staff.dob_claimed_with_share_code' and entity_id = %L $$, :'staffa'),
+  format($$ values (%L::uuid, '{"from": "1994-12-31", "to": "1995-06-15"}'::jsonb, 'staff_app'::text, %L::text) $$,
+         :'staffa_uid', :'g_doc1'),
+  'G: the claim is audited as the worker, with its document');
 select is(
-  (select count(*)::int from audit_log where action = 'document.uploaded'
-      and entity_id = (select (r ->> 'documentId')::uuid from res_g)),
+  (select count(*)::int from audit_log where action = 'document.uploaded' and entity_id = :'g_doc1'),
   1, 'G: and the upload has its own audit row, as every hub upload does');
 
--- The cap: with one date change a day, the next is refused before anything else.
-update settings set value = value || '{"reenter_per_day": 1}'::jsonb where key = 'rtw_check';
+-- G2 · What the office sees, and who may write the claim.
+select set_config('request.jwt.claims', json_build_object('sub', :'scheduler', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select results_eq(
+  format($$ select claimed_dob, profile_dob, opt_out_signed_under_18 from share_code_dob_claims_v where document_id = %L $$, :'g_doc1'),
+  $$ values (date '1995-06-15', date '1994-12-31', false) $$,
+  'G: share_code_dob_claims_v: entered with this code vs the profile — Verify will change it');
+select throws_ok(
+  format($$ update compliance_docs set claimed_dob = date '1990-01-01' where id = %L $$, :'g_doc1'),
+  '42501', 'claimed_dob_rpc_only', 'G: no office login (a scheduler here) can write a claimed date directly');
+reset role;
+
+-- G3 · gov.uk is asked with the claimed date.
+select is(
+  (select date_of_birth from rtw_check_claim(20, 600) where document_id = :'g_doc1'::uuid),
+  date '1995-06-15', 'G: rtw_check_claim() sends the date entered with the code');
+
+-- G4 · Not found → the office rejects: the profile never moves.
+update rtw_checks set status = 'needs_review', outcome = 'not_found', finished_at = now()
+ where compliance_doc_id = :'g_doc1' and status = 'running';
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select lives_ok(format($$ select compliance_reject_document(%L, 'gov.uk did not find this code with that date') $$, :'g_doc1'),
+  'G: the office rejects the not-found code');
+reset role;
+select is((select dob from staff where id = :'staffa'), date '1994-12-31',
+  'G: a rejected claim leaves staff.dob as it was');
+select is((select count(*)::int from audit_log where action = 'staff.dob_corrected' and entity_id = :'staffa'
+             and data ->> 'source' = 'share_code_verified'), 0,
+  'G: and audits no correction');
+
+-- G5 · A second claim, found, verified: the profile takes the date.
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select is(submit_share_code_with_dob('WAB123CDF', date '1995-06-16') ->> 'reason', 'too_many_attempts',
-  'G: at most reenter_per_day date changes in 24 hours');
-select is(submit_share_code_with_dob('WAB123CDF', date '1995-06-15') ->> 'reason', 'already_pending',
-  'G: the same date is no change: the hub''s own rules answer (one pending share code)');
+select submit_share_code_with_dob('WAB123CDF', date '1995-06-15') ->> 'documentId' as g_doc2 \gset
+reset role;
+update rtw_checks set status = 'running' where compliance_doc_id = :'g_doc2' and status = 'queued';
+update rtw_checks set status = 'needs_review', outcome = 'right_to_work', finished_at = now()
+ where compliance_doc_id = :'g_doc2' and status = 'running';
+select set_config('request.jwt.claims', json_build_object('sub', :'manager', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select lives_ok(format($$ select compliance_verify_document(%L, null, null, %L::date + 400) $$, :'g_doc2', :'today'),
+  'G: the office verifies it');
+reset role;
+select is((select dob from staff where id = :'staffa'), date '1995-06-15',
+  'G: verifying copies the claimed date to staff.dob');
+select results_eq(
+  format($$ select actor, data -> 'dob', data ->> 'documentId', data ->> 'actorName'
+              from audit_log where action = 'staff.dob_corrected' and entity_id = %L
+               and data ->> 'source' = 'share_code_verified' $$, :'staffa'),
+  format($$ values (%L::uuid, '{"from": "1994-12-31", "to": "1995-06-15"}'::jsonb, %L::text, 'Mona Manager'::text) $$,
+         :'manager', :'g_doc2'),
+  'G: audited staff.dob_corrected, source share_code_verified, the verifying manager as actor');
+
+-- G6 · An office correction overrides a pending claim: gov.uk is asked
+--      with the corrected profile, not the claim.
+select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select submit_share_code_with_dob('WAB123CDG', date '1995-06-20') ->> 'documentId' as g_doc3 \gset
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+select is((office_correct_dob(:'staffa', date '1995-06-14', 'Birth certificate seen in the office') ->> 'rtwCheck'),
+  'queued', 'G: the owner corrects the profile while the claim is pending');
+reset role;
+select is((select claimed_dob from compliance_docs where id = :'g_doc3'), null::date,
+  'G: the pending claim is cleared, so the check uses the corrected date');
+select is(
+  (select (data ->> 'claimCleared')::boolean from audit_log where action = 'staff.dob_corrected'
+      and entity_id = :'staffa' and data ->> 'reason' = 'Birth certificate seen in the office'),
+  true, 'G: and the audit row says so');
+
+-- G7 · The cap counts claims; the date on file is no claim.
+update settings set value = value || '{"reenter_per_day": 3}'::jsonb where key = 'rtw_check';
+select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is(submit_share_code_with_dob('WAB123CDH', date '1995-06-16') ->> 'reason', 'too_many_attempts',
+  'G: at most reenter_per_day claims in 24 hours');
+select is(submit_share_code_with_dob('WAB123CDH', date '1995-06-14') ->> 'reason', 'already_pending',
+  'G: the date on file is no claim: the hub''s own rules answer (one pending share code)');
 reset role;
 update settings set value = value - 'reenter_per_day' where key = 'rtw_check';
 select is(
-  (select count(*)::int from audit_log where action = 'staff.dob_changed_with_share_code' and entity_id = :'staffa'),
-  1, 'G: neither was audited');
+  (select count(*)::int from audit_log where action = 'staff.dob_claimed_with_share_code' and entity_id = :'staffa'),
+  3, 'G: neither of those was a claim');
 -- A manual hold is not eligible, whatever the date says.
 update staff set status = 'blocked', block_kind = 'manual', block_reason = 'Held by the office' where id = :'staffb';
 select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
@@ -362,6 +457,27 @@ select is(submit_share_code_with_dob('WAB123CDE', :'minor'::date) ->> 'reason', 
   'G: a manual hold is told it is not eligible, not about the date');
 reset role;
 update staff set status = 'compliant', block_kind = null, block_reason = null where id = :'staffb';
+
+-- G8 · Nobody else can call the worker's two doors.
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok($$ select submit_share_code_with_dob('WAB123CDE', date '1990-01-01') $$,
+  '42501', 'not_a_worker', 'G: an office session has no worker row to file for');
+select throws_ok($$ select request_dob_change(date '1990-01-01', 'x/change-requests/p.pdf') $$,
+  'P0001', 'unknown_staff', 'G: nor to ask for');
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+select throws_ok($$ select submit_share_code_with_dob('WAB123CDE', date '1990-01-01') $$,
+  '42501', 'not_a_worker', 'G: nor a client session');
+select throws_ok($$ select request_dob_change(date '1990-01-01', 'x/change-requests/p.pdf') $$,
+  'P0001', 'unknown_staff', 'G: nor a client, for a change request');
+reset role;
+select set_config('request.jwt.claims', '{"role":"anon"}', true);
+set local role anon;
+select throws_ok($$ select submit_share_code_with_dob('WAB123CDE', date '1990-01-01') $$,
+  '42501', null, 'G: anon cannot execute submit_share_code_with_dob');
+select throws_ok($$ select request_dob_change(date '1990-01-01', 'x/change-requests/p.pdf') $$,
+  '42501', null, 'G: nor request_dob_change');
+reset role;
 
 -- =====================================================================
 -- H · Request a change → date of birth (Staff Bravo)
@@ -482,28 +598,102 @@ select is((select payload from notification_outbox where key = 'RC3:request:' ||
   'H: RC3 "We couldn''t update your date of birth: …"');
 select is((select dob from staff where id = :'staffb'), date '1990-07-07', 'H: and nothing changed');
 
+-- A worker cannot decide anything.
+select set_config('request.jwt.claims', json_build_object('sub', :'staffb_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+create temp table res_h4 as
+  select request_dob_change(date '1990-07-09', :'staffb' || '/change-requests/dob-1.pdf') as r;
+grant select on res_h4 to authenticated;
+select throws_ok(
+  $$ select office_decide_profile_change((select (r ->> 'id')::uuid from res_h4), true, null) $$,
+  '42501', 'not_authorised', 'H: a worker gets not_authorised from office_decide_profile_change');
+-- The office corrects to exactly the requested date by another route: the
+-- request is closed as withdrawn, and the worker is not told "couldn't".
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+select is(
+  office_correct_dob(:'staffb', date '1990-07-09', 'Matches the passport the worker sent') ->> 'closedRequestAs',
+  'withdrawn', 'H: a correction to the requested date closes the pending request');
+reset role;
+select results_eq(
+  $$ select status, decided_by from profile_change_requests where id = (select (r ->> 'id')::uuid from res_h4) $$,
+  format($$ values ('withdrawn'::text, %L::uuid) $$, :'admin_uid'),
+  'H: withdrawn, by the manager who corrected it');
+select is(
+  (select count(*)::int from notification_outbox where key = 'RC3:request:' || (select r ->> 'id' from res_h4)),
+  0, 'H: and no RC3 — the date is the one they asked for');
+
 -- =====================================================================
 -- I · §1.7 removal
 -- =====================================================================
+-- Staff Alpha: one dob request overtaken by an office correction (rejected,
+-- previous_value, RC3), one still pending, a pending share code, a verified
+-- one that carried a claim, and dob audit rows with an office reason.
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 create temp table res_i as
-  select request_dob_change(date '1995-06-14', :'staffa' || '/change-requests/dob-a.pdf') as r;
+  select request_dob_change(date '1995-06-13', :'staffa' || '/change-requests/dob-a.pdf', 'Passport page 2') as r;
 reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is(
+  office_correct_dob(:'staffa', date '1995-06-12', 'Born 12.06.1995 per birth certificate') ->> 'closedRequestAs',
+  'rejected', 'I: a correction to another date rejects the pending request');
+reset role;
+select results_eq(
+  $$ select status, previous_value, decision_reason from profile_change_requests
+      where id = (select (r ->> 'id')::uuid from res_i) $$,
+  $$ values ('rejected'::text, '{"dob": "1995-06-14"}'::jsonb,
+             'The office has since set your date of birth to 12.06.1995.'::text) $$,
+  'I: rejected with the snapshot and the reason the worker reads');
+select is(
+  (select payload ->> 'reason' from notification_outbox where key = 'RC3:request:' || (select r ->> 'id' from res_i)),
+  'The office has since set your date of birth to 12.06.1995.', 'I: RC3 tells the worker');
+select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+create temp table res_i2 as
+  select request_dob_change(date '1995-06-11', :'staffa' || '/change-requests/dob-a2.pdf', 'Second try') as r;
+reset role;
+select ok(
+  exists (select 1 from compliance_docs where staff_id = :'staffa' and claimed_dob is not null),
+  'I: before removal, a claimed date is on a share code');
+
 select set_config('request.jwt.claims', '', true);
 select lives_ok(
   format($$ select remove_worker(%L, now(), %L) $$, :'staffa', :'admin_uid'),
   'I: remove_worker() runs with the dob requests in place');
 select results_eq(
-  $$ select status, proposed_dob from profile_change_requests where id = (select (r ->> 'id')::uuid from res_i) $$,
+  $$ select status, proposed_dob from profile_change_requests where id = (select (r ->> 'id')::uuid from res_i2) $$,
   $$ values ('withdrawn'::text, date '1900-01-01') $$,
   'I: the pending request is withdrawn and its date anonymised');
+select results_eq(
+  $$ select proposed_dob, previous_value, decision_reason, worker_note from profile_change_requests
+      where id = (select (r ->> 'id')::uuid from res_i) $$,
+  $$ values (date '1900-01-01', null::jsonb, 'Removed under GDPR (§1.7)'::text, null::text) $$,
+  'I: the decided one loses its date, its snapshot, its reason and its note');
+select is_empty(
+  $$ select key from notification_outbox
+      where key in ('RC1:request:' || (select r ->> 'id' from res_i), 'RC1:request:' || (select r ->> 'id' from res_i2))
+        and (payload ? 'current' or payload ? 'proposed' or payload ? 'note') $$,
+  'I: RC1 for a date of birth keeps neither date nor the note');
 select is_empty(
   format($$ select id from audit_log where (entity_id = %L or data ->> 'staffId' = %L) and data ? 'dob' $$,
          :'staffa', :'staffa'),
   'I: no audit row about the worker keeps the dates');
+select is_empty(
+  format($$ select id from audit_log where entity_id = %L
+              and action in ('staff.dob_corrected', 'staff.dob_claimed_with_share_code')
+              and (data ? 'note' or (data ? 'reason' and data ->> 'reason' <> 'Removed under GDPR (§1.7)')) $$,
+         :'staffa'),
+  'I: nor the office''s free-text reason (it could name the date)');
 select ok(
-  exists (select 1 from audit_log where action = 'staff.dob_changed_with_share_code' and entity_id = :'staffa'),
+  exists (select 1 from audit_log where action = 'staff.dob_corrected' and entity_id = :'staffa'
+            and data ->> 'reason' = 'Removed under GDPR (§1.7)'),
+  'I: the reason is replaced, not the row');
+select is_empty(
+  format($$ select id from compliance_docs where staff_id = %L and claimed_dob is not null $$, :'staffa'),
+  'I: no share code keeps a claimed date — held right-to-work evidence included');
+select ok(
+  exists (select 1 from audit_log where action = 'staff.dob_claimed_with_share_code' and entity_id = :'staffa'),
   'I: the rows themselves are kept — history');
 
 select * from finish();

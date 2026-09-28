@@ -87,9 +87,11 @@ insert into change_request_dob_vectors values
   ('eighteen_tomorrow', '2026-09-28', '1995-01-01', '2008-09-29', 'under_18'),
   ('born_today', '2026-09-28', '1995-01-01', '2026-09-28', 'under_18'),
   ('a_leap_day', '2026-09-28', '1995-01-01', '2008-02-29', null),
+  ('a_leap_day_the_day_before', '2026-02-28', '1995-01-01', '2008-02-29', 'under_18'),
+  ('a_leap_day_on_1_march', '2026-03-01', '1995-01-01', '2008-02-29', null),
   ('one_hundred', '2026-09-28', '1995-01-01', '1926-09-28', null),
   ('one_hundred_and_one', '2026-09-28', '1995-01-01', '1925-09-28', 'dob_invalid');
 
-\set change_request_dob_count 11
+\set change_request_dob_count 13
 \set change_request_status_count 4
 \set change_request_edge_count 3

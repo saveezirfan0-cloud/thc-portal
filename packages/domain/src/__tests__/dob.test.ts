@@ -29,7 +29,8 @@ const migration = readFileSync(
 
 describe('dobChangeProblem — the shared vectors', () => {
   it.each(vectors.dobs.cases.map((c) => [c.name, c] as const))('%s', (_name, c) => {
-    expect(dobChangeProblem(c.input, vectors.dobs.current, vectors.dobs.today)).toBe(c.expect);
+    const today = 'today' in c && c.today ? c.today : vectors.dobs.today;
+    expect(dobChangeProblem(c.input, vectors.dobs.current, today)).toBe(c.expect);
   });
 
   it('every case carries its reference', () => {

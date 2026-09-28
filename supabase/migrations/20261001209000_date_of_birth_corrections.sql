@@ -23,15 +23,21 @@
 --   the effect  staff_dob_apply() — internal: writes staff.dob; one
 --               audit_log row with the dates under the `dob` key
 --               ({from, to}), which remove_worker()'s §1.7 scrub already
---               strips (v_pii_keys has 'dob', 20261001205000); and, when
---               asked, a fresh gov.uk check of a PENDING share code
---               (rtw_check_enqueue) while rtw_check_enabled(). A check still
---               QUEUED is left alone — the runner reads staff.dob when it
---               claims (rtw_check_claim), so it runs with the new date; one
---               already RUNNING carries the old date and is reported as
---               'running' so the office can press "Run check again" once it
---               lands. A finished needs_review check is superseded in
---               rtw_checks_latest_v, which takes the newest per document.
+--               strips (v_pii_keys has 'dob', 20261001205000) — and the
+--               office's free-text reason, which staff_removed_purge_
+--               additions() now overwrites on removal; closes any other
+--               PENDING dob change request (withdrawn when it asked for
+--               this date, rejected with a reason + RC3 when it did not);
+--               and, for an office correction, clears a date a worker
+--               entered with a pending share code (claimed_dob, route 2)
+--               and asks gov.uk again (rtw_check_enqueue) while
+--               rtw_check_enabled(). A check still QUEUED is left alone —
+--               the runner reads the date when it claims (rtw_check_claim),
+--               so it runs with the new one; one already RUNNING carries
+--               the old date and is reported as 'running' so the office can
+--               press "Run check again" once it lands. A finished
+--               needs_review check is superseded in rtw_checks_latest_v,
+--               which takes the newest per document.
 --
 -- The three routes:
 --
@@ -49,14 +55,22 @@
 --   2 · submit_share_code_with_dob(p_share_code, p_dob, p_file_path) — the
 --       Documents hub's "New share code" form, which now carries the date
 --       of birth pre-filled from the profile. submit_document_upload() does
---       the filing exactly as before (not restated); a CHANGED date is
---       written in the same transaction, after the filing succeeded, and
---       audited as the worker (staff.dob_changed_with_share_code). Safe to
---       self-serve because gov.uk checks the pair and an admin decides
---       every result (ADR-0041). The date is checked first, so a refused
---       date files nothing; at most settings.rtw_check.reenter_per_day (5)
---       date changes in 24 h, the onboarding re-entry's cap, so the form is
---       no way to try dates against a code.
+--       the filing exactly as before (not restated). A CHANGED date does
+--       NOT touch staff.dob: it is stored on the pending share-code row
+--       (compliance_docs.claimed_dob — written only by definer code, a
+--       guard refuses it from any API session), audited as the worker
+--       (staff.dob_claimed_with_share_code), and rtw_check_claim() — restated
+--       — asks gov.uk with coalesce(claimed_dob, staff.dob). The profile
+--       takes the date only when an admin VERIFIES that document (a
+--       trigger on review_status → verified, whichever verify path set
+--       it: staff.dob_corrected, source share_code_verified). A not-found,
+--       a rejection or a supersede never changes staff.dob, so the form is
+--       not a way to overwrite an office correction. The office sees
+--       "Date of birth entered with this code … (profile …)" beside the
+--       check (share_code_dob_claims_v). The date is checked first, so a
+--       refused date files nothing; at most settings.rtw_check.
+--       reenter_per_day (5) claims in 24 h, the onboarding re-entry's cap,
+--       so the form is no way to try dates against a code.
 --
 --   3 · Request a change → Date of birth. profile_change_requests.kind
 --       gains 'dob' with proposed_dob (evidence required, as for a name);
@@ -87,6 +101,7 @@
 --   staff_removed_purge_additions       20260930205200 + proposed_dob → 1900-01-01
 --   office_decide_profile_change        20260930206000 + the dob branch
 --   staff_me                            20260928110700 + 'dob'
+--   rtw_check_claim                     20260928100000 + coalesce(claimed_dob, dob)
 --   my_profile_change_requests          20260930202200 + proposed_dob (appended)
 --   office_profile_change_requests      20260930203000 + current_dob, proposed_dob
 --                                       (appended; the return type changes,
@@ -200,6 +215,50 @@ comment on column profile_change_requests.previous_value is
   'The value on the profile at the moment of the decision, e.g. {"firstName","lastName"}, {"photoPath"} or {"dob"}. Issued PDFs and payroll exports are never corrected retroactively (§1.7).';
 
 -- ---------------------------------------------------------------------
+-- 3b · compliance_docs.claimed_dob — the date of birth a worker entered
+--      with a new share code (route 2). gov.uk is asked with it; the
+--      profile takes it only when the office verifies that document.
+-- ---------------------------------------------------------------------
+alter table compliance_docs
+  add column if not exists claimed_dob date;
+
+alter table compliance_docs drop constraint if exists compliance_docs_claimed_dob_share_code;
+alter table compliance_docs
+  add constraint compliance_docs_claimed_dob_share_code
+  check (claimed_dob is null or doc_type = 'share_code_report');
+
+comment on column compliance_docs.claimed_dob is
+  'ADR-0069: the date of birth the worker entered with this share code when it differs from staff.dob (submit_share_code_with_dob). rtw_check_claim() asks gov.uk with coalesce(claimed_dob, staff.dob); copied to staff.dob only when this document is verified (compliance_docs_claimed_dob_verified). Cleared by an office correction while pending, and on §1.7 removal. Written only by definer code: compliance_docs_claimed_dob_guard refuses it from anon and authenticated.';
+
+-- Not security definer on purpose: current_user is the caller's role for a
+-- PostgREST write (anon / authenticated) and the owner inside a definer
+-- function, which is how the one RPC and the office correction write it.
+-- The office's admin_all policy would otherwise let any Back Office login —
+-- a scheduler included — set a date that Verify then copies to the profile.
+create or replace function public.compliance_docs_claimed_dob_guard()
+returns trigger
+language plpgsql
+set search_path = public, extensions
+as $$
+begin
+  if current_user in ('anon', 'authenticated')
+     and ((tg_op = 'INSERT' and new.claimed_dob is not null)
+          or (tg_op = 'UPDATE' and new.claimed_dob is distinct from old.claimed_dob)) then
+    raise exception 'claimed_dob_rpc_only' using errcode = '42501',
+      hint = 'ADR-0069: the date entered with a share code is written by submit_share_code_with_dob() only.';
+  end if;
+  return new;
+end $$;
+
+drop trigger if exists compliance_docs_claimed_dob_guard on compliance_docs;
+create trigger compliance_docs_claimed_dob_guard
+  before insert or update of claimed_dob on compliance_docs
+  for each row execute function compliance_docs_claimed_dob_guard();
+
+comment on function public.compliance_docs_claimed_dob_guard() is
+  'ADR-0069: refuses compliance_docs.claimed_dob from any API session (anon, authenticated); definer code (submit_share_code_with_dob, staff_dob_apply, the §1.7 purge) writes it. A trigger function: not an RPC.';
+
+-- ---------------------------------------------------------------------
 -- 4 · profile_change_requests_state_guard — 20260930200100 + proposed_dob
 -- ---------------------------------------------------------------------
 create or replace function public.profile_change_requests_state_guard()
@@ -255,7 +314,8 @@ comment on function public.profile_change_requests_state_guard() is
 revoke execute on function public.profile_change_requests_state_guard() from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------
--- 5 · staff_removed_purge_additions — 20260930205200 + proposed_dob
+-- 5 · staff_removed_purge_additions — 20260930205200 + proposed_dob,
+--     the dob audit rows' reason, compliance_docs.claimed_dob
 -- ---------------------------------------------------------------------
 create or replace function public.staff_removed_purge_additions()
 returns trigger
@@ -282,6 +342,27 @@ begin
          decision_reason     = case when decision_reason is not null
                                     then 'Removed under GDPR (§1.7)' end
    where staff_id = new.id;
+
+  -- 20261001209000 (ADR-0069): the date-of-birth audit rows keep what
+  -- happened, not what anyone wrote about it. remove_worker() strips the
+  -- dates (`dob`, v_pii_keys) after this trigger; the office's free-text
+  -- reason and any note are not personal-data keys it knows, so they are
+  -- overwritten here, as decision_reason is above.
+  update audit_log l
+     set data = (l.data - 'note')
+                || case when l.data ? 'reason'
+                        then jsonb_build_object('reason', 'Removed under GDPR (§1.7)')
+                        else '{}'::jsonb end
+   where l.entity = 'staff'
+     and l.entity_id = new.id
+     and l.action in ('staff.dob_corrected', 'staff.dob_claimed_with_share_code')
+     and (l.data ? 'reason' or l.data ? 'note');
+
+  -- 20261001209000 (ADR-0069): a date entered with a share code is the
+  -- worker's date of birth too. Held right-to-work rows (ADR-0065) keep
+  -- the evidence, not this.
+  update compliance_docs set claimed_dob = null
+   where staff_id = new.id and claimed_dob is not null;
 
   update staff_referral_codes
      set revoked_at = coalesce(revoked_at, new.removed_at)
@@ -336,16 +417,18 @@ begin
 end $$;
 
 comment on function public.staff_removed_purge_additions() is
-  '§1.7 GDPR removal for the docs/19 additions: deletes availability and the emergency contact, withdraws and anonymises change requests (a requested date of birth becomes 1900-01-01 since 20261001209000), revokes the referral code, lapses open offers and clears the office''s free-text decline note, and anonymises the RC1/RC3/RC4/OF5 outbox payloads (names → "Deleted account #id", free text removed, unsent rows failed gdpr_removed) that remove_worker()''s own scrub (20260930120100, which runs after this trigger and wins where both match) does not reach. Writes nothing to audit_log; the additions'' audit rows carry no personal data. Fires once, after removed_at is first set. A trigger function: not an RPC.';
+  '§1.7 GDPR removal for the docs/19 additions: deletes availability and the emergency contact, withdraws and anonymises change requests (a requested date of birth becomes 1900-01-01 since 20261001209000; the date-of-birth audit rows lose their reason and note, and compliance_docs.claimed_dob is cleared), revokes the referral code, lapses open offers and clears the office''s free-text decline note, and anonymises the RC1/RC3/RC4/OF5 outbox payloads (names → "Deleted account #id", free text removed, unsent rows failed gdpr_removed) that remove_worker()''s own scrub (20260930120100, which runs after this trigger and wins where both match) does not reach. Writes no new audit_log row; the additions'' audit rows carry no personal data. Fires once, after removed_at is first set. A trigger function: not an RPC.';
 
 -- Trigger functions are never RPCs (20260927161000, pgTAP 190).
 revoke execute on function public.staff_removed_purge_additions() from public, anon, authenticated;
 
 -- ---------------------------------------------------------------------
--- 6 · The effect: staff_dob_apply() — internal, granted to nobody
+-- 6 · The effect: staff_dob_apply() — internal: no API role may execute
+--     it (the service role keeps the default grant, as for every function)
 --
 -- The caller has checked who may do this and that the date is allowed; this
--- writes it, audits it and, when asked, re-runs a pending gov.uk check.
+-- writes it, audits it, closes any other pending dob request and, when
+-- asked (the office's routes), re-runs a pending gov.uk check with it.
 -- The audit row carries the two dates under the `dob` key only: the log
 -- outlives a §1.7 removal and remove_worker() strips `dob` from every row
 -- about the worker (v_pii_keys), so nowhere else in `data` holds them.
@@ -363,12 +446,16 @@ security definer
 set search_path = public, extensions
 as $$
 declare
-  s        staff;
-  v_doc    uuid;
-  v_open   rtw_checks;
-  v_check  uuid;
-  v_rtw    text;
-  v_optout boolean;
+  s          staff;
+  r          profile_change_requests;
+  v_doc      uuid;
+  v_open     rtw_checks;
+  v_check    uuid;
+  v_rtw      text;
+  v_optout   boolean;
+  v_cleared  int := 0;
+  v_closed   uuid;
+  v_closed_as text;
 begin
   select * into s from staff where id = p_staff for update;
   if s.id is null then
@@ -386,7 +473,51 @@ begin
               and (p_dob + interval '18 years')::date
                   > (s.wtr_optout_signed_at at time zone 'Europe/London')::date;
 
+  -- A dob change request still pending is overtaken: withdrawn when it
+  -- asked for exactly this date (nothing to tell the worker — the date is
+  -- theirs), otherwise rejected with the reason they are shown (RC3). The
+  -- request this call is approving is not touched (p_data.requestId).
+  for r in
+    select * from profile_change_requests q
+     where q.staff_id = s.id and q.kind = 'dob' and q.status = 'pending'
+       and q.id::text is distinct from (p_data ->> 'requestId')
+     for update
+  loop
+    if r.proposed_dob = p_dob then
+      update profile_change_requests
+         set status = 'withdrawn', decided_by = p_actor,
+             previous_value = jsonb_build_object('dob', s.dob)
+       where id = r.id;
+      v_closed_as := 'withdrawn';
+    else
+      update profile_change_requests
+         set status = 'rejected', decided_by = p_actor,
+             previous_value = jsonb_build_object('dob', s.dob),
+             decision_reason = 'The office has since set your date of birth to '
+                               || to_char(p_dob, 'DD.MM.YYYY') || '.'
+       where id = r.id;
+      insert into notification_outbox (key, channel, template, recipient_staff_id, payload)
+      values ('RC3:request:' || r.id, 'push', 'RC3', r.staff_id,
+              jsonb_build_object('field', 'date of birth',
+                                 'reason', 'The office has since set your date of birth to '
+                                           || to_char(p_dob, 'DD.MM.YYYY') || '.'))
+      on conflict (key) do nothing;
+      v_closed_as := 'rejected';
+    end if;
+    v_closed := r.id;
+  end loop;
+
   if p_requeue then
+    -- The office's date wins over one a worker entered with a pending
+    -- share code (route 2): gov.uk is asked with the corrected profile.
+    update compliance_docs d
+       set claimed_dob = null
+     where d.staff_id = s.id
+       and d.doc_type = 'share_code_report'
+       and d.review_status = 'pending'
+       and d.claimed_dob is not null;
+    get diagnostics v_cleared = row_count;
+
     select d.id into v_doc
       from compliance_docs d
      where d.staff_id = s.id
@@ -408,7 +539,7 @@ begin
         v_rtw := 'running';
         v_check := v_open.id;
       else
-        -- A queued check is returned as it is (it reads staff.dob when it is
+        -- A queued check is returned as it is (it reads the date when it is
         -- claimed); otherwise a new row, which supersedes a finished one.
         v_check := rtw_check_enqueue(v_doc, p_actor);
         v_rtw := case when v_check is null then 'none' else 'queued' end;
@@ -427,6 +558,9 @@ begin
                  'rtwCheck',            v_rtw,
                  'checkId',             v_check,
                  'documentId',          coalesce(p_data ->> 'documentId', v_doc::text),
+                 'claimCleared',        case when v_cleared > 0 then true end,
+                 'closedRequestId',     v_closed,
+                 'closedRequestAs',     v_closed_as,
                  'optOutSignedUnder18', case when v_optout then true end,
                  'actorName',           (select full_name from profiles where id = p_actor))));
 
@@ -436,11 +570,12 @@ begin
     'previousDob',         s.dob,
     'rtwCheck',            v_rtw,
     'checkId',             v_check,
+    'closedRequestAs',     v_closed_as,
     'optOutSignedUnder18', case when v_optout then true end));
 end $$;
 
 comment on function public.staff_dob_apply(uuid, date, uuid, text, jsonb, boolean) is
-  'ADR-0069, internal: write staff.dob, audit it (p_action; the dates under `dob` only, which the §1.7 scrub strips) and, with p_requeue, queue a fresh gov.uk check of a pending share code (rtwCheck: queued | running | off | none). Flags optOutSignedUnder18 when a signed 48-hour opt-out predates the corrected eighteenth birthday. The caller authorises and validates. Granted to nobody.';
+  'ADR-0069, internal: write staff.dob and audit it (p_action; the dates under `dob` only, which the §1.7 scrub strips). Closes any OTHER pending dob change request (withdrawn when it asked for this date; rejected with a reason + RC3 otherwise). With p_requeue (the office''s routes): clears a pending share code''s claimed_dob and queues a fresh gov.uk check (rtwCheck: queued | running | off | none). Flags optOutSignedUnder18 when a signed 48-hour opt-out predates the corrected eighteenth birthday. The caller authorises and validates. No API role may execute it; the service role keeps the default grant.';
 
 -- ---------------------------------------------------------------------
 -- 7 · Route 1 — office_correct_dob(): "Correct" on /staff/:id and
@@ -506,6 +641,8 @@ comment on function public.office_correct_dob(uuid, date, text) is
 -- ---------------------------------------------------------------------
 -- 8 · Route 2 — submit_share_code_with_dob(): the Documents hub's "New
 --     share code" form, with the date of birth gov.uk will be asked with.
+--     The date is a CLAIM on the pending document; the profile takes it
+--     only when the office verifies that document (8c).
 -- ---------------------------------------------------------------------
 create or replace function public.submit_share_code_with_dob(
   p_share_code text,
@@ -524,6 +661,7 @@ declare
   v_cap     int;
   v_recent  int;
   v_result  jsonb;
+  v_doc     uuid;
 begin
   if v_me is null then
     raise exception 'not_a_worker' using errcode = '42501';
@@ -538,21 +676,21 @@ begin
     return jsonb_build_object('ok', false, 'reason', 'not_eligible');
   end if;
 
-  -- The form always sends the date; only a different one is a change.
+  -- The form always sends the date; only a different one is a claim.
   v_changed := p_dob is not null and p_dob is distinct from s.dob;
   if v_changed then
     v_problem := dob_change_problem(p_dob, s.dob, (now() at time zone 'Europe/London')::date);
     if v_problem is not null then
       return jsonb_build_object('ok', false, 'reason', v_problem);
     end if;
-    -- Each change is a gov.uk query with a code and a date: the onboarding
+    -- Each claim is a gov.uk query with a code and a date: the onboarding
     -- re-entry's cap (settings.rtw_check.reenter_per_day, 5), so the form is
     -- no way to try dates of birth against a code.
     v_cap := least(greatest(case when (rtw_check_config() ->> 'reenter_per_day') ~ '^\d{1,3}$'
                                  then (rtw_check_config() ->> 'reenter_per_day')::int end, 1), 50);
     select count(*)::int into v_recent
       from audit_log a
-     where a.action = 'staff.dob_changed_with_share_code'
+     where a.action = 'staff.dob_claimed_with_share_code'
        and a.entity = 'staff'
        and a.entity_id = s.id
        and a.at > now() - interval '24 hours';
@@ -568,20 +706,208 @@ begin
     return v_result;
   end if;
 
-  -- The same transaction: the runner claims the check after commit and
-  -- reads staff.dob then, so it asks gov.uk with the corrected date.
+  -- The claim goes on the document, never on the profile: the runner claims
+  -- the check after commit and asks gov.uk with coalesce(claimed_dob, dob);
+  -- staff.dob moves only when the office verifies this document.
   if v_changed then
-    perform staff_dob_apply(s.id, p_dob, auth.uid(), 'staff.dob_changed_with_share_code',
-                            jsonb_build_object('source', 'staff_app',
-                                               'documentId', v_result ->> 'documentId'),
-                            false);
+    v_doc := (v_result ->> 'documentId')::uuid;
+    update compliance_docs set claimed_dob = p_dob where id = v_doc;
+    insert into audit_log (at, actor, action, entity, entity_id, data)
+    values (now(), auth.uid(), 'staff.dob_claimed_with_share_code', 'staff', s.id,
+            jsonb_build_object(
+              'staffId',    s.id,
+              'employeeId', s.employee_id,
+              'source',     'staff_app',
+              'documentId', v_doc,
+              'dob',        jsonb_build_object('from', s.dob, 'to', p_dob)));
   end if;
 
   return v_result || jsonb_build_object('dobChanged', v_changed);
 end $$;
 
 comment on function public.submit_share_code_with_dob(text, date, text) is
-  'ADR-0069: the Documents hub''s New share code with the date of birth gov.uk matches it against. A changed date is checked first (dob_change_problem; at most settings.rtw_check.reenter_per_day changes in 24 h, too_many_attempts), then submit_document_upload(''share_code_report'', …) files the code exactly as before, then — only if that succeeded — staff.dob is written and audited as the worker (staff.dob_changed_with_share_code). The caller''s own row only (staff_writer). Returns submit_document_upload()''s answer plus dobChanged.';
+  'ADR-0069: the Documents hub''s New share code with the date of birth gov.uk matches it against. A changed date is checked first (dob_change_problem; at most settings.rtw_check.reenter_per_day claims in 24 h, too_many_attempts), then submit_document_upload(''share_code_report'', …) files the code exactly as before, then — only if that succeeded — the date is stored on that document (compliance_docs.claimed_dob) and audited as the worker (staff.dob_claimed_with_share_code). staff.dob is NOT written: it takes the date only when the office verifies the document. The caller''s own row only (staff_writer). Returns submit_document_upload()''s answer plus dobChanged.';
+
+-- ---------------------------------------------------------------------
+-- 8b · rtw_check_claim — 20260928100000 + the claimed date of birth
+-- ---------------------------------------------------------------------
+create or replace function public.rtw_check_claim(
+  p_limit         int default 3,
+  p_lease_seconds int default 600
+) returns table (
+  check_id           uuid,
+  staff_id           uuid,
+  document_id        uuid,
+  attempt            int,
+  max_attempts       int,
+  share_code         text,
+  date_of_birth      date,
+  first_name         text,
+  last_name          text,
+  rtw_branch         text,
+  below_degree_level boolean
+)
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+#variable_conflict use_column
+declare
+  r        rtw_checks;
+  d        compliance_docs;
+  s        staff;
+  v_limit  int := least(greatest(coalesce(p_limit, 3), 1), 20);
+  v_lease  int := least(greatest(coalesce(p_lease_seconds, 600), 60), 3600);
+  v_taken  int := 0;
+begin
+  if not rtw_check_enabled() then
+    return;
+  end if;
+
+  for r in
+    select c.* from rtw_checks c
+     where (c.status = 'queued' and c.next_attempt_at <= now())
+        or (c.status = 'running' and c.lease_until < now())
+     order by c.next_attempt_at, c.created_at, c.id
+     limit v_limit * 3
+     for update skip locked
+  loop
+    exit when v_taken >= v_limit;
+
+    select * into d from compliance_docs where id = r.compliance_doc_id;
+    select * into s from staff where id = r.staff_id;
+    if d.id is null or d.review_status <> 'pending' or d.share_code is null
+       or s.status in ('rejected', 'removed') or s.removed_at is not null then
+      update rtw_checks
+         set status = 'failed', error = 'document_not_pending',
+             lease_until = null, finished_at = now()
+       where id = r.id;
+      continue;
+    end if;
+
+    -- A runner that died mid-check still spent an attempt. Once they are
+    -- all spent the office decides, as for any other failure.
+    if r.status = 'running' and r.attempts >= r.max_attempts then
+      update rtw_checks
+         set status = 'needs_review',
+             review_reason = format('The automatic check could not be completed after %s attempts (runner_stopped). Run it again, or check the share code on gov.uk by hand.', r.attempts),
+             lease_until = null,
+             finished_at = now()
+       where id = r.id;
+      update compliance_docs set needs_manual_review = true where id = d.id;
+      continue;
+    end if;
+
+    update rtw_checks
+       set status = 'running',
+           attempts = r.attempts + 1,
+           started_at = now(),
+           lease_until = now() + make_interval(secs => v_lease)
+     where id = r.id;
+    v_taken := v_taken + 1;
+
+    check_id := r.id;
+    staff_id := r.staff_id;
+    document_id := r.compliance_doc_id;
+    attempt := r.attempts + 1;
+    max_attempts := r.max_attempts;
+    share_code := d.share_code;
+    -- 20261001209000 (ADR-0069): the date the worker entered with this
+    -- code, when it differs from the profile (submit_share_code_with_dob).
+    date_of_birth := coalesce(d.claimed_dob, s.dob);
+    first_name := s.first_name;
+    last_name := s.last_name;
+    rtw_branch := s.rtw_branch::text;
+    below_degree_level := coalesce(s.below_degree_level, false);
+    return next;
+  end loop;
+end $$;
+
+comment on function public.rtw_check_claim(int, int) is
+  'Service role only: lease up to p_limit due checks (queued and due, or running with a lapsed lease), skip locked; a check whose document has left review is failed instead. Returns the share code and DOB for this run only (ADR-0025) — the date the worker entered with the code (compliance_docs.claimed_dob) when there is one, else the profile''s (ADR-0069, 20261001209000). Nothing when the check is switched off.';
+
+revoke execute on function public.rtw_check_claim(int, int) from public, anon, authenticated;
+grant  execute on function public.rtw_check_claim(int, int) to service_role;
+
+-- ---------------------------------------------------------------------
+-- 8c · Verified → the profile takes the claimed date
+--
+-- A trigger, not a restated verify function: every path that verifies a
+-- share code — compliance_verify_document(_as), the automatic path with
+-- admin_confirms off, onboarding's verify — flips review_status, so this
+-- catches all of them and none is rewritten. The actor is the reviewer.
+-- A rejected, superseded or never-checked document changes nothing.
+-- ---------------------------------------------------------------------
+create or replace function public.compliance_docs_claimed_dob_verified()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_current date;
+begin
+  select dob into v_current from staff where id = new.staff_id;
+  -- Checked again: the office may have corrected it since (unchanged), and
+  -- a claim that no longer passes the rule is not written. Nothing here
+  -- may stop the verification itself.
+  if dob_change_problem(new.claimed_dob, v_current,
+                        (now() at time zone 'Europe/London')::date) is null then
+    perform staff_dob_apply(new.staff_id, new.claimed_dob, new.reviewed_by,
+                            'staff.dob_corrected',
+                            jsonb_build_object('source', 'share_code_verified',
+                                               'documentId', new.id),
+                            false);
+  end if;
+  return null;
+end $$;
+
+drop trigger if exists compliance_docs_claimed_dob_verified on compliance_docs;
+create trigger compliance_docs_claimed_dob_verified
+  after update of review_status on compliance_docs
+  for each row
+  when (new.doc_type = 'share_code_report'
+        and new.review_status = 'verified'
+        and old.review_status is distinct from 'verified'
+        and new.claimed_dob is not null)
+  execute function compliance_docs_claimed_dob_verified();
+
+comment on function public.compliance_docs_claimed_dob_verified() is
+  'ADR-0069: when a share code carrying claimed_dob is verified (any verify path), staff.dob takes that date through staff_dob_apply() — audited staff.dob_corrected, source share_code_verified, the reviewer as actor, optOutSignedUnder18 flagged — unless dob_change_problem() refuses it now (e.g. unchanged). A trigger function: not an RPC.';
+
+revoke execute on function public.compliance_docs_claimed_dob_verified() from public, anon, authenticated;
+revoke execute on function public.compliance_docs_claimed_dob_guard()    from public, anon, authenticated;
+
+-- ---------------------------------------------------------------------
+-- 8d · What the office sees beside the check: the date entered with a
+--      pending share code, against the profile's — so it knows Verify
+--      will also change the date of birth.
+-- ---------------------------------------------------------------------
+create or replace view share_code_dob_claims_v with (security_invoker = true) as
+select
+  d.id                                                   as document_id,
+  d.staff_id,
+  d.claimed_dob,
+  s.dob                                                  as profile_dob,
+  -- RULE-20: verifying would put a signed opt-out before the eighteenth
+  -- birthday (staff_dob_apply flags it on the audit row when it happens).
+  coalesce(s.wtr_optout, false)
+    and s.wtr_optout_signed_at is not null
+    and (d.claimed_dob + interval '18 years')::date
+        > (s.wtr_optout_signed_at at time zone 'Europe/London')::date
+                                                         as opt_out_signed_under_18
+from compliance_docs d
+join staff s on s.id = d.staff_id
+where d.doc_type = 'share_code_report'
+  and d.review_status = 'pending'
+  and d.claimed_dob is not null
+  and s.removed_at is null;
+
+comment on view share_code_dob_claims_v is
+  'ADR-0069: every pending share code whose worker entered a date of birth different from the profile''s, with both dates — Verify copies claimed_dob to staff.dob. security_invoker: the office reads it through admin_all; a worker sees only their own row.';
+
+revoke all on share_code_dob_claims_v from public, anon;
+grant select on share_code_dob_claims_v to authenticated, service_role;
 
 -- ---------------------------------------------------------------------
 -- 9 · Route 3 — request_dob_change(): Request a change → Date of birth.
@@ -671,7 +997,7 @@ begin
             'employeeId',  coalesce(s.employee_id::text, '(not yet issued)'),
             'field',       'date of birth',
             'requestedAt', to_char(v_created at time zone 'Europe/London', 'DD Mon YYYY HH24:MI'),
-            'current',     to_char(s.dob, 'DD Mon YYYY'),
+            'current',     coalesce(to_char(s.dob, 'DD Mon YYYY'), '—'),
             'proposed',    to_char(p_dob, 'DD Mon YYYY'),
             'note',        coalesce(v_note, '—')))
   on conflict (key) do nothing;
