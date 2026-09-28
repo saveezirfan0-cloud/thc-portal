@@ -131,7 +131,8 @@ const MESSAGES: Record<string, string> = {
   not_permitted: 'Deciding a date of birth is for owners and managers. Ask one of them.',
   read_only:
     'Your login is read-only (Viewer), so nothing was changed. Ask an owner if this needs doing.',
-  unchanged: 'The date of birth on file already matches — reject this request with a note instead.',
+  unchanged:
+    'This date of birth is already on the profile, so the request has nothing left to change — refresh to see it closed.',
   under_18: DOB_CORRECTION_MESSAGES.under_18,
   dob_invalid: DOB_CORRECTION_MESSAGES.dob_invalid,
 };

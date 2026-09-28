@@ -29,6 +29,7 @@ export function ChangeRequestBanner({
   canDecideDob?: boolean;
 }) {
   const [open, setOpen] = useState<{ id: string; stage: DecideStage } | null>(null);
+  const [outcome, setOutcome] = useState<{ note: string; warning: string | null } | null>(null);
   const current = requests.find((row) => row.id === open?.id) ?? null;
 
   if (problem) {
@@ -39,9 +40,17 @@ export function ChangeRequestBanner({
       </Alert>
     );
   }
-  if (requests.length === 0) return null;
+  // ADR-0069: an approved date of birth leaves the banner; its outcome stays.
+  const said = outcome ? (
+    <>
+      <Alert tone="green">{outcome.note}</Alert>
+      {outcome.warning ? <Alert tone="amber">{outcome.warning}</Alert> : null}
+    </>
+  ) : null;
+  if (requests.length === 0) return said;
   return (
     <>
+      {said}
       {requests.map((row) => (
         <div className="cr-banner" key={row.id}>
           <Pill tone="amber">Pending</Pill>
@@ -82,6 +91,7 @@ export function ChangeRequestBanner({
         onStage={(stage) => setOpen((was) => (was ? { ...was, stage } : was))}
         onClose={() => setOpen(null)}
         canDecideDob={canDecideDob}
+        onDone={setOutcome}
       />
     </>
   );

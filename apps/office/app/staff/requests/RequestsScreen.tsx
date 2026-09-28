@@ -52,6 +52,7 @@ export function RequestsScreen({
 }) {
   const [tab, setTab] = useState<Tab>('pending');
   const [open, setOpen] = useState<{ id: string; stage: DecideStage } | null>(null);
+  const [outcome, setOutcome] = useState<{ note: string; warning: string | null } | null>(null);
   const queue = oldestFirst(pending);
   const current = queue.find((row) => row.id === open?.id) ?? null;
 
@@ -67,6 +68,9 @@ export function RequestsScreen({
     >
       <div className="stack">
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
+        {/* ADR-0069: what an approved date of birth did to gov.uk and the opt-out. */}
+        {outcome ? <Alert tone="green">{outcome.note}</Alert> : null}
+        {outcome?.warning ? <Alert tone="amber">{outcome.warning}</Alert> : null}
 
         <Tabs
           value={tab}
@@ -115,6 +119,7 @@ export function RequestsScreen({
         onStage={(stage) => setOpen((was) => (was ? { ...was, stage } : was))}
         onClose={() => setOpen(null)}
         canDecideDob={canDecideDob}
+        onDone={setOutcome}
       />
     </OfficeShell>
   );
