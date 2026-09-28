@@ -134,11 +134,13 @@ export function MonitorScreen({
         }
       >
         {shownViolations.length === 0 ? (
-          <p className="muted sm">
-            {showResolved
-              ? 'No violations logged.'
-              : 'Nothing unresolved. Tick “Show resolved” to see closed entries.'}
-          </p>
+          <div className="panel-b">
+            <p className="muted sm">
+              {showResolved
+                ? 'No violations logged.'
+                : 'Nothing unresolved. Tick “Show resolved” to see closed entries.'}
+            </p>
+          </div>
         ) : (
           <table className="tbl card-rows">
             <thead>

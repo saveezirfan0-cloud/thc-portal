@@ -1953,6 +1953,52 @@ textarea.input {
   background: var(--muted);
 }
 
+/* The venue map block (ADR-0005, §9.11): the token grid, a pin, its
+   geofence and a label. Mirrors
+   wireframes/assets/thc.css .map. Shared: the Back Office Venues map and
+   the Staff App's radar and shift maps position everything absolutely on
+   top of it, so without these rules the pins collapse into a line of text.
+   The worker's purple home dot (`.me`) stays in the Staff App: purple is
+   reserved for Auto-Assign here. */
+.map {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--r-card);
+  /* The see-through vertical lines go on top: under the opaque horizontal
+     layer they never showed. */
+  background:
+    repeating-linear-gradient(90deg, transparent 0 22px, var(--map-b) 22px 23px),
+    repeating-linear-gradient(0deg, var(--map-a) 0 22px, var(--map-b) 22px 23px);
+}
+.map .pin {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--cyan-ink);
+  transform: translate(-50%, -50%);
+  /* The halo is a ring, not a shadow (nothing here casts one): an outline
+     follows the pill radius. */
+  outline: 3px solid var(--cyan-dim);
+  border-radius: var(--r-pill);
+}
+.map .circle {
+  position: absolute;
+  border: 1.5px solid var(--cyan-ink);
+  background: var(--cyan-dim);
+  transform: translate(-50%, -50%);
+  border-radius: 50%; /* a geofence is a circle in every style */
+}
+.map .lbl {
+  position: absolute;
+  font-family: var(--font-label);
+  font-size: var(--fs-10);
+  color: var(--muted);
+  background: var(--glass-strong);
+  padding: 2px var(--sp-6);
+  border-radius: var(--r-pill);
+}
+
 /* ---------------------------------------------------------------------
    10 · MOBILE (Staff App PWA)
    Frosted top bar, frosted bottom nav, frosted sheets, two background

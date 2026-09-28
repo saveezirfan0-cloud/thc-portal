@@ -7,7 +7,7 @@
 -- bearer secret (rtw_job_secret). The base is a VAULT secret, not a
 -- settings row: an admin session writes settings, and must not be able to
 -- redirect the bearer (security review, 26.09). Registered DISABLED until
--- THC's keys exist (190's enabled list is unchanged).
+-- THC's keys exist, like willo-invite (190's enabled list is unchanged).
 -- Every other row still posts through edge_base_url() with
 -- service_role_key (20260927160300).
 -- =====================================================================

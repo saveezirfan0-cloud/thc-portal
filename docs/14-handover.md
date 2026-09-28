@@ -107,8 +107,8 @@ real environment to prove it in.
    Until then every row waits as "not configured" without spending retries.
 2. **Willo keys** — the receiver and the create-candidate sweep are built
    (ADR-0021) on an *assumed* signing scheme and API shape, all configurable.
-   Check ADR-0021's list against Willo's first sandbox delivery, then enable the
-   `willo-invite` schedule and add it to `190`'s list in the same commit.
+   Check ADR-0021's list against Willo's first sandbox delivery. The
+   `willo-invite` schedule is enabled (`20261001206000`, with `190`).
 3. **THC content, flagged as placeholders in the code:** E2b and CL1–CL6
    wording and the `/privacy` legal text. Received 26.09 and live: the induction
    slides, sample letters for the Claude extractor (ADR-0033), THC's 10 quiz
@@ -456,8 +456,8 @@ root. Tick it there. This section keeps the background for each item.
 - **Willo, once THC's keys exist** (ADR-0021):
   `supabase secrets set WILLO_WEBHOOK_SECRET=… WILLO_API_KEY=… WILLO_INTERVIEW_KEY=… STAFF_APP_URL=https://thc-portal-staff-two.vercel.app`,
   `supabase functions deploy willo-webhook --no-verify-jwt`, point Willo's
-  webhook at `{SUPABASE_URL}/functions/v1/willo-webhook`, then enable
-  `willo-invite` (with `190`) and re-run `install_job_schedules()`.
+  webhook at `{SUPABASE_URL}/functions/v1/willo-webhook`, then re-run
+  `install_job_schedules()` (`willo-invite` is enabled by `20261001206000`).
 - **Confirm with THC:** E2b's wording (ADR-0017); the CL1–CL6 wording and which
   are mandatory; the `/privacy` legal text. (ADR-0019's retention-over-removal
   now extends to all verified right-to-work evidence — decided 28.09,

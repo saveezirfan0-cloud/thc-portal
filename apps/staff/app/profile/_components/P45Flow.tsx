@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { Alert, Button, Modal, Textarea } from '@thc/ui';
 import { requestP45 } from '../actions';
-import { closeToLeaverScreen } from './leaverNavigation';
 
 /**
  * Request my P45 — §10.6, `wireframes/staff/profile.html`.
@@ -35,6 +35,7 @@ export function P45Flow({
   /** Confirmed bookings that have not started. Released on confirm. */
   futureShifts: number;
 }) {
+  const router = useRouter();
   const [reason, setReason] = useState('');
   const [asking, setAsking] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,7 +53,8 @@ export function P45Flow({
       }
       setAsking(false);
       // The whole app is now the leaver screen (§10.6 step 7).
-      closeToLeaverScreen();
+      router.replace('/profile');
+      router.refresh();
     });
   }
 

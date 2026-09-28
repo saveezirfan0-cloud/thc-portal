@@ -107,10 +107,10 @@ secrets in Supabase → Edge Functions → Secrets (not Vercel) — never in a c
       `willo_review_url_template`.
 - [ ] One test candidate end to end; check the first delivery against ADR-0066's
       "still unverified" list.
-- [x] 28.09: `willo-invite` schedule enabled (migration `20261001206000`, test `190`).
-      It skips safely until the Willo secrets above are set. Once the migration
-      has deployed, run `select install_job_schedules();` in the SQL editor to
-      create its cron job.
+- [x] 28.09: the `willo-invite` schedule is enabled (`20261001206000`, pgTAP `190`
+      and `482`). It retries every applicant whose instant nudge failed.
+- [ ] After that migration deploys, re-run `select install_job_schedules();` once
+      in the SQL editor so pg_cron picks it up.
 
 ## 4b · Document reading with Claude (ADR-0033)
 
