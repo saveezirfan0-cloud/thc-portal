@@ -386,10 +386,13 @@ From the 23.09 build:
   is in the header of `20260923200000`.
 - **The share-code date is confirmed by the office** while the automated
   gov.uk check is switched off; §2.3 says nobody types it (ADR-0018). The
-  check itself is built (ADR-0025, 25.09): provider first, our own gov.uk
-  browser check as fallback, fully automatic. It waits for THC's provider
-  keys (OWNER-TODO §8), and once on, the office types a date only for a
-  check in needs_review.
+  check itself is built (ADR-0025, 25.09; ADR-0041, 26.09: gov.uk only, an
+  admin confirms every result). It waits for THC's adviser's sign-off and a
+  live test (OWNER-TODO §8), and once on, the office types a date only for a
+  check in needs_review. **For a demo** it can run against the sandbox
+  provider (ADR-0063, 28.09): `RTW_PROVIDER_URL=sandbox:` plus
+  `supabase/demo/rtw-check-sandbox-on.sql`, with the demo share codes and
+  the run sheet in the ADR.
 - **Unverified on real infrastructure:** the `finance-reports` Edge Function has
   not been run under Deno (ADR-0006's `../../../packages` import question); Storage
   image transforms may be off (photos then fall back to the original); GoTrue's

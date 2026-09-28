@@ -81,12 +81,12 @@ Every screen the scope names, its route in the app, the wireframe that is its ac
 > check-out, the breaks block and the chargeable-so-far counter — including
 > the "No check-out" static screen (RULE-02), which it already renders in
 > §10.4's own words. `scheduling` owns the two remaining §10.4 static
-> screens, for a cancelled event (N12) and a withdrawn booking (N10b), and
-> **they are not built yet**: they need `events.cancelled_at` and
-> `bookings.cancel_cause` on that screen's `ShiftDetail`. The rule and the
-> approved copy for all three live in `packages/domain/src/staff.ts`
-> (`staticScreenCase`, `STATIC_SCREEN_COPY`), tested, so wiring them is a
-> two-column select and one branch rather than a second copy of the copy.
+> screens, for a cancelled event (N12) and a withdrawn booking (N10b). Both
+> are built: `staff_shift_detail()` returns `event_cancelled_at` and
+> `cancel_cause`, and `shiftPhase` renders them. The N10b and N12 pushes
+> open `/shifts/{bookingId}`, because the `/shifts` list drops a cancelled
+> booking. The rule and the approved copy for all three live in
+> `packages/domain/src/staff.ts` (`staticScreenCase`, `STATIC_SCREEN_COPY`).
 >
 > The §3.2 strict-buffer turn-away is `checkin`'s too: a booking that
 > `attempt_check_in()` turned away shows "Thanks for coming" (wireframe (m),
