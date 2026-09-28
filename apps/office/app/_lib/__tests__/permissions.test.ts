@@ -12,17 +12,18 @@ import {
 import { actionLabel, explainAccountError } from '../accounts';
 
 /**
- * ADR-0056, ADR-0060. The matrix below is `office_can()` in
- * 20261001201100_viewer_role_read_only.sql, and 741_office_roles /
- * 750_viewer_role assert the same rows in the database. If one changes,
- * both change.
+ * ADR-0056, ADR-0060, ADR-0069. The matrix below is `office_can()` in
+ * 20261001208000_date_of_birth_corrections.sql (restated from
+ * 20261001201100 with `identity`), and 741_office_roles / 750_viewer_role /
+ * 717_date_of_birth_corrections assert the same rows in the database. If
+ * one changes, both change.
  */
 describe('office roles', () => {
   const matrix = {
-    owner: { users: true, settings: true, finance: true, write: true },
-    manager: { users: false, settings: false, finance: true, write: true },
-    scheduler: { users: false, settings: false, finance: false, write: true },
-    viewer: { users: false, settings: false, finance: true, write: false },
+    owner: { users: true, settings: true, finance: true, write: true, identity: true },
+    manager: { users: false, settings: false, finance: true, write: true, identity: true },
+    scheduler: { users: false, settings: false, finance: false, write: true, identity: false },
+    viewer: { users: false, settings: false, finance: true, write: false, identity: false },
   } as const;
 
   for (const role of OFFICE_ROLES) {
@@ -31,6 +32,7 @@ describe('office roles', () => {
       expect(officeCan(role, 'settings')).toBe(matrix[role].settings);
       expect(officeCan(role, 'finance')).toBe(matrix[role].finance);
       expect(officeCan(role, 'write')).toBe(matrix[role].write);
+      expect(officeCan(role, 'identity')).toBe(matrix[role].identity);
     });
   }
 
