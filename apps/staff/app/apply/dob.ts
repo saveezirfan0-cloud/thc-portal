@@ -1,5 +1,5 @@
 /**
- * Typing a date of birth as digits (ADR-0064).
+ * Typing a date of birth as digits (ADR-0068).
  *
  * The field shows `DD/MM/YYYY` (UK order, §1.8) and inserts the slashes
  * itself, so "05061998" reads back as "05/06/1998". A slash typed after a

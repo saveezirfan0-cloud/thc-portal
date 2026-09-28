@@ -1,5 +1,5 @@
 /**
- * Search over `DIAL_CODES` for the country-code picker (ADR-0064).
+ * Search over `DIAL_CODES` for the country-code picker (ADR-0068).
  *
  * An applicant finds their code by typing any of: the country's name or the
  * start of it ("fra", "united k"), a word in it ("kingdom"), its initials

@@ -119,7 +119,7 @@ export function ApplyForm({ referralCode = null }: { referralCode?: string | nul
           Mobile
         </span>
         <InputRow>
-          {/* Searchable: name, initials, ISO code or digits (ADR-0064). */}
+          {/* Searchable: name, initials, ISO code or digits (ADR-0068). */}
           <DialCodePicker
             name="dialCode"
             value={values.dialCode}
@@ -149,7 +149,7 @@ export function ApplyForm({ referralCode = null }: { referralCode?: string | nul
       </div>
 
       {/* Typed as digits, or picked from the browser's own calendar — the
-          OS wheel on a phone (ADR-0064). No `max`: capping it at today minus
+          OS wheel on a phone (ADR-0068). No `max`: capping it at today minus
           eighteen years hides the under-18 case instead of refusing it, and
           both §1.7 and the wireframe refuse it out loud. */}
       <DobInput

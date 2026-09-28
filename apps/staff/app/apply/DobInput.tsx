@@ -17,7 +17,7 @@ export interface DobInputProps {
 }
 
 /**
- * Date of birth, typed or picked (§2.1, ADR-0064).
+ * Date of birth, typed or picked (§2.1, ADR-0068).
  *
  * A text box that takes digits (`inputMode="numeric"`, so phones open the
  * number pad) and draws the `DD/MM/YYYY` slashes itself, with a calendar

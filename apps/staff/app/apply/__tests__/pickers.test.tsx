@@ -7,7 +7,7 @@ import { DialCodePicker } from '../DialCodePicker';
 import { DobInput } from '../DobInput';
 
 /**
- * ADR-0064 on screen: the dialling-code picker opens, filters as you type,
+ * ADR-0068 on screen: the dialling-code picker opens, filters as you type,
  * picks with the keyboard or a tap, and submits the code; the date of birth
  * takes digits and hands the form `yyyy-mm-dd`.
  */
