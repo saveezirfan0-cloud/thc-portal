@@ -11,7 +11,12 @@
  */
 
 export type OfficeRole = 'owner' | 'manager' | 'scheduler' | 'viewer';
-export type OfficePermission = 'users' | 'settings' | 'finance' | 'write';
+/**
+ * `identity` (ADR-0070): correcting a worker's date of birth — the "Correct"
+ * action on /staff/:id and /onboarding/:id, and deciding a date-of-birth
+ * change request. Owners and managers.
+ */
+export type OfficePermission = 'users' | 'settings' | 'finance' | 'write' | 'identity';
 
 export const OFFICE_ROLES: readonly OfficeRole[] = ['owner', 'manager', 'scheduler', 'viewer'];
 
@@ -38,8 +43,8 @@ export const OFFICE_ROLE_SUMMARY: Readonly<Record<OfficeRole, string>> = {
 
 /** `office_can()`'s matrix, exactly. */
 const GRANTS: Readonly<Record<OfficeRole, readonly OfficePermission[]>> = {
-  owner: ['users', 'settings', 'finance', 'write'],
-  manager: ['finance', 'write'],
+  owner: ['users', 'settings', 'finance', 'write', 'identity'],
+  manager: ['finance', 'write', 'identity'],
   scheduler: ['write'],
   viewer: ['finance'],
 };
@@ -107,6 +112,7 @@ export const PERMISSION_NEEDS: Readonly<Record<OfficePermission, string>> = {
   finance:
     'Pay and charge rates, margins, payroll and reports are for owners, managers and viewers.',
   write: 'Your login is read-only.',
+  identity: 'Correcting a date of birth is for owners and managers.',
 };
 
 /**

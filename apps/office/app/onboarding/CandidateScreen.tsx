@@ -78,6 +78,9 @@ import {
   RtwReportUpload,
 } from '../compliance/EvidenceUploads';
 import { RtwCheckPanel } from '../_components/RtwCheckPanel';
+import { DobCorrection } from '../_components/DobCorrection';
+import { DobClaimNote } from '../_components/DobClaimNote';
+import type { DobClaim } from '../_lib/dobCorrection';
 import { checksByDocument, rtwCheckView, rtwLockedLabel, rtwLockedValue } from '../_lib/rtwCheck';
 import type { RtwCheckRow } from '../_lib/rtwCheck';
 import type {
@@ -124,7 +127,16 @@ type Reject =
  * A rejected or signed profile is read-only. Rejection is final on the
  * record (§2.3), and a signed contract makes the person Staff (§2.7).
  */
-export function CandidateScreen({ data, now }: { data: CandidateData; now: string }) {
+export function CandidateScreen({
+  data,
+  now,
+  canCorrectDob = false,
+}: {
+  data: CandidateData;
+  now: string;
+  /** ADR-0070: `officeCan(role, 'identity')` — owners and managers see "Correct". */
+  canCorrectDob?: boolean;
+}) {
   const router = useRouter();
   const at = useMemo(() => new Date(now), [now]);
   const row = data.candidate as CandidateRow;
@@ -244,7 +256,7 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
               {readOnly ? null : <Pill>{age.days} d in stage</Pill>}
               {phase >= 2 ? row.role_names.map((role) => <Chip key={role}>{role}</Chip>) : null}
             </div>
-            <Facts row={row} data={data} phase={phase} />
+            <Facts row={row} data={data} phase={phase} canCorrectDob={canCorrectDob} />
           </div>
           <div className="actions">
             {canResendActivation(row.status, row.activated) ? (
@@ -391,8 +403,29 @@ export function CandidateScreen({ data, now }: { data: CandidateData; now: strin
 // ---------------------------------------------------------------------
 // Header facts, per phase
 // ---------------------------------------------------------------------
-function Facts({ row, data, phase }: { row: CandidateRow; data: CandidateData; phase: number }) {
+function Facts({
+  row,
+  data,
+  phase,
+  canCorrectDob,
+}: {
+  row: CandidateRow;
+  data: CandidateData;
+  phase: number;
+  canCorrectDob: boolean;
+}) {
   const facts: ReactNode[] = [];
+  // ADR-0070: the date gov.uk matches the share code against, correctable
+  // by an owner or a manager from here as from /staff/:id.
+  const correct = row.dob ? (
+    <DobCorrection
+      staffId={row.id}
+      name={row.display_name}
+      dob={row.dob}
+      display={formatUkDate(row.dob)}
+      allowed={canCorrectDob && row.status !== 'removed'}
+    />
+  ) : null;
   if (phase <= 1) {
     facts.push(
       <span key="applied">
@@ -403,14 +436,14 @@ function Facts({ row, data, phase }: { row: CandidateRow; data: CandidateData; p
     if (row.age !== null)
       facts.push(
         <span key="age">
-          Age <b>{row.age}</b>
+          Age <b>{row.age}</b> {correct}
         </span>,
       );
   } else {
     if (row.dob)
       facts.push(
         <span key="dob">
-          DOB <b>{formatUkDate(row.dob)}</b>
+          DOB <b>{formatUkDate(row.dob)}</b> {correct}
         </span>,
       );
     // The wireframe's Additional info header leads with the quiz result.
@@ -919,11 +952,14 @@ function ShareCodeCard({
   handlers,
   check,
   checkEnabled,
+  claim = null,
 }: {
   doc: CandidateDocument;
   handlers: DocHandlers;
   check: RtwCheckRow | null;
   checkEnabled: boolean;
+  /** ADR-0070: a date of birth entered with this code, when it differs. */
+  claim?: DobClaim | null;
 }) {
   const view = rtwCheckView(check, { docStatus: doc.review_status, enabled: checkEnabled });
   const pill = view.status ?? REVIEW_PILL[doc.review_status];
@@ -1035,6 +1071,7 @@ function ShareCodeCard({
           docStatus={handlers.readOnly ? 'read_only' : doc.review_status}
           enabled={checkEnabled}
         />
+        {doc.review_status === 'pending' ? <DobClaimNote claim={claim} /> : null}
         <div className="row wrap">
           {doc.gov_report_path && !check?.report_path ? (
             <Button size="sm" onClick={() => handlers.onOpen(doc.id, 'report')}>
@@ -1320,6 +1357,7 @@ function DocumentsPhase({
               handlers={doc}
               check={checks.get(d.id) ?? null}
               checkEnabled={data.rtwCheckEnabled ?? false}
+              claim={(data.dobClaims ?? []).find((c) => c.documentId === d.id) ?? null}
             />
           ))}
           {!doc.readOnly && canUploadCompletionLetter(row, data.documents) ? (

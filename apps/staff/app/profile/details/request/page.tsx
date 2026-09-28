@@ -11,14 +11,16 @@ import { canRequest, statusLine } from '../../change-requests';
 import { ChangeStatus } from '../ChangeStatus';
 import { NameRequestForm } from './NameRequestForm';
 import { PhotoRequestForm } from './PhotoRequestForm';
+import { DobRequestForm } from './DobRequestForm';
 import '../../profile.css';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Request a change · THC Staff' };
 
 /**
- * /profile/details/request?kind=name|photo — Request a change (ADR-0045,
- * docs/19 §3, `wireframes/staff/request-change.html`).
+ * /profile/details/request?kind=name|photo|dob — Request a change (ADR-0045,
+ * docs/19 §3, `wireframes/staff/request-change.html`; `dob` since ADR-0070,
+ * a date-of-birth form shaped like the name form — no wireframe of its own).
  *
  * The in-app route for what §10.1 locks. The name and the photo stay
  * locked; this asks the office, which decides on /staff/requests.
@@ -39,7 +41,12 @@ export default async function Page({
 }) {
   const raw = (await searchParams).kind;
   const kind = typeof raw === 'string' && isChangeKind(raw) ? raw : null;
-  const title = kind === 'photo' ? 'New profile photo' : 'Change your name';
+  const title =
+    kind === 'photo'
+      ? 'New profile photo'
+      : kind === 'dob'
+        ? 'Change your date of birth'
+        : 'Change your name';
   const back = { href: '/profile/details', label: 'Profile details' };
 
   if (!supabaseConfigured()) {
@@ -73,6 +80,8 @@ export default async function Page({
       ) : canRequest(requests, kind) ? (
         kind === 'name' ? (
           <NameRequestForm firstName={profile.firstName} lastName={profile.lastName} />
+        ) : kind === 'dob' ? (
+          <DobRequestForm dob={profile.dob ?? null} />
         ) : (
           <PhotoRequestForm name={name} currentUrl={photoUrl} />
         )

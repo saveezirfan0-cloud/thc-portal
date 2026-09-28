@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation';
 import { Alert } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
+import { currentOfficeRole } from '../../_components/officeUser';
+import { officeCan } from '../../_lib/permissions';
 import { loadProfile } from './data';
 import { ProfileScreen } from './ProfileScreen';
 
@@ -20,7 +22,7 @@ export const metadata = { title: 'Staff profile · THC Back Office' };
  */
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const data = await loadProfile(id);
+  const [data, role] = await Promise.all([loadProfile(id), currentOfficeRole()]);
 
   if (data.problem) {
     return (
@@ -31,5 +33,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   }
   if (!data.profile) notFound();
 
-  return <ProfileScreen data={data} />;
+  // ADR-0070: "Correct" on the date of birth is for owners and managers;
+  // office_correct_dob() refuses everyone else whatever this says.
+  return <ProfileScreen data={data} canCorrectDob={officeCan(role, 'identity')} />;
 }

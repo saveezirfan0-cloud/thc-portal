@@ -364,6 +364,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     roles: roles.data ?? [],
     rtwChecks: rtw.checks,
     rtwCheckEnabled: rtw.enabled,
+    dobClaims: rtw.dobClaims,
     referral: referral.referral,
     referralProblem: referral.problem,
     facts: facts.error || !facts.data ? null : toFacts(facts.data),

@@ -11,47 +11,9 @@
  * becomes that shape even when the day does not exist (31/02 → `…-02-31`),
  * so `validate()` still says "Enter a real date"; a half-typed one is
  * passed through as typed, which `validate()` refuses the same way.
+ *
+ * The three functions live in packages/domain (`dob.ts`) since ADR-0070, so
+ * the Back Office's "Correct date of birth" dialog types a date exactly as
+ * /apply does; this file keeps the Staff App's imports where they were.
  */
-
-/** What the text box shows, re-formatted from whatever was typed or pasted. */
-export function formatDobTyping(raw: string): string {
-  const iso = /^\s*(\d{4})-(\d{2})-(\d{2})\s*$/.exec(raw);
-  if (iso) return `${iso[3]}/${iso[2]}/${iso[1]}`;
-
-  const parts: string[] = [];
-  let current = '';
-  let trailingSlash = false;
-  for (const ch of raw) {
-    if (parts.length === 3) break;
-    if (/\d/.test(ch)) {
-      trailingSlash = false;
-      current += ch;
-      const full = parts.length < 2 ? current.length === 2 : current.length === 4;
-      if (full) {
-        parts.push(current);
-        current = '';
-      }
-    } else if (/[/.\-\s]/.test(ch)) {
-      if (current.length === 1 && parts.length < 2) {
-        parts.push(`0${current}`);
-        current = '';
-      }
-      // Only a slash typed straight after a complete day or month is kept,
-      // so it can be seen; the next digit would have added it anyway.
-      trailingSlash = current === '' && parts.length > 0 && parts.length < 3;
-    }
-  }
-  const shown = [...parts, current].filter(Boolean).join('/');
-  return trailingSlash ? `${shown}/` : shown;
-}
-
-/** The form's value for what the box shows: `yyyy-mm-dd` once complete. */
-export function dobValueFrom(shown: string): string {
-  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(shown);
-  return m ? `${m[3]}-${m[2]}-${m[1]}` : shown;
-}
-
-/** What the box shows for a stored value (`yyyy-mm-dd`, or a half-typed one). */
-export function dobShownFrom(value: string): string {
-  return formatDobTyping(value);
-}
+export { dobShownFrom, dobValueFrom, formatDobTyping } from '@thc/domain';

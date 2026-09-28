@@ -137,3 +137,63 @@ describe('/staff/requests — Decided', () => {
     expect(html).toContain('18.09.2026 16:02');
   });
 });
+
+describe('/staff/requests — a date of birth (ADR-0070)', () => {
+  const dob = row({
+    kind: 'dob',
+    proposed_first_name: null,
+    proposed_last_name: null,
+    current_dob: '1995-01-01',
+    proposed_dob: '1994-12-31',
+    evidence_path: 's1/change-requests/passport.pdf',
+    worker_note: null,
+  });
+
+  it('shows now → requested with the evidence, and both buttons to an owner or manager', () => {
+    const html = renderToStaticMarkup(
+      <PendingCard row={dob} onDecide={() => undefined} canDecideDob />,
+    );
+    expect(html).toContain('Date of birth');
+    expect(html).toContain('01.01.1995');
+    expect(html).toContain('31.12.1994');
+    expect(html).toContain('passport.pdf ↗');
+    expect(html).toContain('gov.uk matches the share code against it');
+    expect(html).toContain('>Approve<');
+  });
+
+  it('offers no decision to a scheduler, and says who decides', () => {
+    const html = renderToStaticMarkup(<PendingCard row={dob} onDecide={() => undefined} />);
+    expect(html).not.toContain('>Approve<');
+    expect(html).not.toContain('>Reject<');
+    expect(html).toContain('Owners and managers decide a date of birth');
+  });
+
+  it('the decide dialog asks for its own evidence tick, and only of those who may decide', async () => {
+    const { DecideDialog } = await import('../DecideDialog');
+    const view = { ...dob, current_photo_url: null, proposed_photo_url: null };
+    const approve = renderToStaticMarkup(
+      <DecideDialog
+        request={view}
+        stage="approve"
+        onStage={() => undefined}
+        onClose={() => undefined}
+        canDecideDob
+      />,
+    );
+    expect(approve).toContain('Approve date of birth change — Amara Kalu');
+    expect(approve).toContain('I’ve checked the evidence shows this date of birth');
+    expect(approve).toContain('gov.uk is asked again with the new date');
+
+    const scheduler = renderToStaticMarkup(
+      <DecideDialog
+        request={view}
+        stage="review"
+        onStage={() => undefined}
+        onClose={() => undefined}
+      />,
+    );
+    expect(scheduler).toContain('Deciding a date of birth is for owners and managers');
+    expect(scheduler).not.toContain('>Approve<');
+    expect(scheduler).toContain('>Close<');
+  });
+});

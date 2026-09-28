@@ -3,9 +3,10 @@ import type { ChangeKind } from '@thc/domain';
 
 /**
  * Request a change — what the worker reads about their own requests
- * (ADR-0045, docs/19 §3, `wireframes/staff/request-change.html`).
+ * (ADR-0045, docs/19 §3, `wireframes/staff/request-change.html`; the date
+ * of birth since ADR-0070).
  *
- * §10.1's name and photo locks never move; a request is the in-app route
+ * §10.1's name, photo and date-of-birth locks never move; a request is the in-app route
  * to the office, which decides on /staff/requests. This file turns the rows
  * `my_profile_change_requests()` returns into the status line on Profile
  * details, and the RPC's refusal codes into sentences.
@@ -21,6 +22,8 @@ export interface ChangeRequest {
   proposedFirstName: string | null;
   proposedLastName: string | null;
   proposedPhotoPath: string | null;
+  /** `yyyy-mm-dd` for a date-of-birth request (ADR-0070). */
+  proposedDob?: string | null;
   workerNote: string | null;
   /** The office's reason on a rejection — shown to the worker as written. */
   decisionReason: string | null;
@@ -36,6 +39,7 @@ export function toChangeRequest(row: Record<string, unknown>): ChangeRequest {
     proposedFirstName: (row['proposed_first_name'] as string | null) ?? null,
     proposedLastName: (row['proposed_last_name'] as string | null) ?? null,
     proposedPhotoPath: (row['proposed_photo_path'] as string | null) ?? null,
+    proposedDob: row['proposed_dob'] ? String(row['proposed_dob']).slice(0, 10) : null,
     workerNote: (row['worker_note'] as string | null) ?? null,
     decisionReason: (row['decision_reason'] as string | null) ?? null,
     createdAt: row['created_at'] as string,
@@ -43,7 +47,13 @@ export function toChangeRequest(row: Record<string, unknown>): ChangeRequest {
   };
 }
 
-const NOUN: Record<ChangeKind, string> = { name: 'Name', photo: 'Photo' };
+const NOUN: Record<ChangeKind, string> = { name: 'Name', photo: 'Photo', dob: 'Date of birth' };
+
+/** "05/06/1998" — a date of birth as the worker typed it (ADR-0068). */
+export function dobLine(iso: string | null | undefined): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
+  return m ? `${m[3]}/${m[2]}/${m[1]}` : '—';
+}
 
 export type StatusLine =
   | { state: 'pending'; id: string; text: string; detail: string }
@@ -68,7 +78,9 @@ export function statusLine(requests: readonly ChangeRequest[], kind: ChangeKind)
     const what =
       kind === 'name'
         ? `${latest.proposedFirstName ?? ''} ${latest.proposedLastName ?? ''}`.trim()
-        : 'a new photo';
+        : kind === 'dob'
+          ? dobLine(latest.proposedDob)
+          : 'a new photo';
     return {
       state: 'pending',
       id: latest.id,
@@ -128,6 +140,10 @@ export const CHANGE_REASONS: Record<string, string> = {
   not_pending: 'The office has already dealt with this request.',
   not_found: 'We couldn’t find that request.',
   bad_kind: 'That isn’t something you can ask to change here.',
+  // request_dob_change() (ADR-0070).
+  dob_required: 'Enter your date of birth.',
+  dob_invalid: 'Enter a real date of birth, as day, month and year.',
+  under_18: 'That date of birth would make you under 18. Check it and try again.',
   not_editable:
     'Your profile is closed to edits. If something needs correcting, contact the office at admin@thehospitalitycompany.co.uk.',
   account_closed: 'We couldn’t find your record. Please contact the office.',

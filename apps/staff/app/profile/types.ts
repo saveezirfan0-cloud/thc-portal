@@ -23,6 +23,12 @@ export interface StaffProfile {
   blockKind: 'auto_document' | 'manual' | 'conviction_review' | null;
   leftAt: string | null;
   rtwBranch: string | null;
+  /**
+   * `yyyy-mm-dd` (staff_me() since 20261001210000). Shown locked on Profile
+   * details with Request a change (ADR-0070); absent from an older build's
+   * RPC, when the row is simply not drawn.
+   */
+  dob?: string | null;
   /** "●●●●●●●2B", or null while no NI number is on file. */
   niMasked: string | null;
   hasNiNumber: boolean;

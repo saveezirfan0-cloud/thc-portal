@@ -24,6 +24,8 @@ import {
 } from '../../compliance/queue';
 import type { ActionResult, QueueRow } from '../../compliance/types';
 import { RtwCheckPanel } from '../../_components/RtwCheckPanel';
+import { DobClaimNote } from '../../_components/DobClaimNote';
+import type { DobClaim } from '../../_lib/dobCorrection';
 import { checksByDocument } from '../../_lib/rtwCheck';
 import type { RtwCheckRow } from '../../_lib/rtwCheck';
 import type { DeclarationRow, DocumentRow, ProfileRow, ReviewStatus } from './types';
@@ -130,6 +132,7 @@ export function Documents({
   rtwCheckEnabled = false,
   reviewQueue = [],
   reviewQueueProblem = null,
+  dobClaims = [],
 }: {
   profile: ProfileRow;
   documents: DocumentRow[];
@@ -139,6 +142,8 @@ export function Documents({
   /** This worker's rows of the Needs review queue (§4.1). */
   reviewQueue?: QueueRow[];
   reviewQueueProblem?: string | null;
+  /** ADR-0070: dates of birth entered with pending share codes. */
+  dobClaims?: DobClaim[];
 }) {
   const router = useRouter();
   const [pending, start] = useTransition();
@@ -303,6 +308,9 @@ export function Documents({
                 docStatus={row.review_status}
                 enabled={rtwCheckEnabled}
               />
+            ) : null}
+            {row.doc_type === 'share_code_report' && row.review_status === 'pending' ? (
+              <DobClaimNote claim={dobClaims.find((claim) => claim.documentId === row.id)} />
             ) : null}
           </div>
         ))}

@@ -5,6 +5,7 @@
  * (admin_all on staff / compliance_docs / criminal_declarations, admin_read on
  * audit_log) is what keeps this screen the office's.
  */
+import type { DobClaim } from '../_lib/dobCorrection';
 
 export type StaffStatus =
   | 'interview_requested'
@@ -101,6 +102,12 @@ export interface QueueRow {
   rtw_check_suggested_reason?: string | null;
   /** The gov.uk photo's storage key. Reaches the admin's page as a key only (the bucket denies every signed-in role); rtwCheckPhotos() signs it. */
   rtw_check_photo_path?: string | null;
+  /**
+   * ADR-0070: NOT a column of the queue view — merged in from
+   * share_code_dob_claims_v by document id: the date of birth the worker
+   * entered with this share code, when it differs from the profile.
+   */
+  dob_claim?: DobClaim | null;
   // 20260930130400 (optional: absent before it).
   /** The full NI number, on NI evidence and `ni_check` rows only (D43). */
   ni_number?: string | null;

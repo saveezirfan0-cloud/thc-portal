@@ -83,3 +83,12 @@ Stated plainly, because a claim of protection that is not there is worse than no
 ## Update — the viewer role (ADR-0060)
 
 A fourth role, `viewer`, reads what a manager reads (finance included) and writes nothing. `office_can()` gains the viewer and a fourth permission, `write` (owner, manager, scheduler). The database enforces read-only with an `office_read_only` statement trigger on every public table, which covers definer RPCs as well, and an audit-actor trigger for the service-key paths. `001_rls_guard` now pins seventeen restrictive policies (E3's fence is the seventeenth). See ADR-0060 for the mechanism, the allow-list and the residual gaps.
+
+## Update — `identity` (ADR-0070)
+
+A fifth permission, `identity`: correcting a worker's date of birth
+(`office_correct_dob`) and deciding a date-of-birth change request. Owner and manager
+hold it; scheduler and viewer do not. `office_can()` is restated in
+`20261001210000_date_of_birth_corrections.sql`, `permissions.ts` and its test carry the
+fifth column, and pgTAP 717 asserts the row per role. See
+[ADR-0070](0070-date-of-birth-corrections.md).

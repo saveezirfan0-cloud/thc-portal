@@ -4,6 +4,7 @@ import { Note, Panel, Pill } from '@thc/ui';
 import { RTW_LABEL, capReason, formatDateRange, formatUkDate } from '../staff';
 import { formatUkStamp, reviewLabel } from './profile';
 import { EmergencyContactCard } from './EmergencyContactCard';
+import { DobCorrection } from '../../_components/DobCorrection';
 import { ReferralsCard } from './ReferralsCard';
 import type {
   DeclarationRow,
@@ -47,6 +48,7 @@ export function Overview({
   emergencyContactProblem = null,
   referrals = null,
   referralsProblem = null,
+  canCorrectDob = false,
 }: {
   profile: ProfileRow;
   references: ReferenceRow[];
@@ -59,6 +61,8 @@ export function Overview({
   /** ADR-0047. */
   referrals?: Referrals | null;
   referralsProblem?: string | null;
+  /** ADR-0070: `officeCan(role, 'identity')` — owners and managers see "Correct". */
+  canCorrectDob?: boolean;
 }) {
   return (
     <div className="grid c2">
@@ -69,7 +73,17 @@ export function Overview({
           <span className="k">Mobile</span>
           <span>{value(profile.phone)}</span>
           <span className="k">Date of birth</span>
-          <span>{profile.dob ? formatUkDate(profile.dob) : value(null)}</span>
+          <span>
+            {profile.dob ? formatUkDate(profile.dob) : value(null)}{' '}
+            {/* ADR-0070: gov.uk matches the share code against this date. */}
+            <DobCorrection
+              staffId={profile.id}
+              name={profile.display_name}
+              dob={profile.dob}
+              display={profile.dob ? formatUkDate(profile.dob) : '—'}
+              allowed={canCorrectDob && !profile.removed}
+            />
+          </span>
           <span className="k">Home address</span>
           <span>
             {value(profile.home_address)}

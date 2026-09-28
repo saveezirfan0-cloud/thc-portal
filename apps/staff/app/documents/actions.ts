@@ -17,6 +17,7 @@ import {
   evidenceFileProblem,
   evidenceObjectPath,
   isDocType,
+  isRealIsoDate,
   usesGenericUpload,
 } from '@thc/domain';
 import type { CompletionEvidenceForm, EvidenceFolder, StaffStatus } from '@thc/domain';
@@ -234,6 +235,55 @@ export async function finishDocumentUpload(
   return {
     ok: true,
     note: 'Sent to the office for review. Nothing changes on your account until they verify it.',
+  };
+}
+
+/**
+ * New share code (§2.5, ADR-0070) — `submit_share_code_with_dob()`: the code
+ * and the date of birth gov.uk will be asked with, in one call. A changed
+ * date is checked first (a refused one files nothing), then the code is
+ * filed exactly as `submit_document_upload()` files it, then the date is
+ * kept on that document — audited as the worker. The profile takes it only
+ * when the office verifies the code. The date the form shows is the one on
+ * file; sending it unchanged claims nothing.
+ */
+export async function finishShareCode(
+  path: string | null,
+  shareCode: string,
+  dob: string,
+): Promise<ActionResult> {
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  // A cleared or half-typed date is a mistake to say, never "no change":
+  // the database reads a null date as "keep the one on file".
+  const typed = dob.trim();
+  if (typed === '' || !isRealIsoDate(typed)) {
+    await discard(path);
+    return {
+      ok: false,
+      message: DOCUMENT_UPLOAD_REASONS[typed === '' ? 'dob_required' : 'dob_invalid']!,
+    };
+  }
+  const { answer, error } = await rpc('submit_share_code_with_dob', {
+    p_share_code: shareCode,
+    p_dob: typed,
+    p_file_path: path,
+  });
+  if (error || !answer?.ok) {
+    await discard(path);
+    return {
+      ok: false,
+      message: reasonText(DOCUMENT_UPLOAD_REASONS, answer?.reason ?? error?.message),
+    };
+  }
+  await extractRecorded(answer, 'share_code_report', path);
+  refresh();
+  revalidatePath('/profile/details');
+  return {
+    ok: true,
+    note:
+      answer['dobChanged'] === true
+        ? 'Sent. gov.uk is asked with the date of birth you entered; it’s saved to your profile once the office verifies the code.'
+        : 'Sent. The office will confirm the result.',
   };
 }
 

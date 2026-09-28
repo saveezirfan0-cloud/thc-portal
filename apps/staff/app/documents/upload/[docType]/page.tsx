@@ -61,7 +61,12 @@ export default async function Page({ params }: { params: Promise<{ docType: stri
                 <span className="xs">{row.meta}</span>
               </Alert>
             ) : null}
-            <UploadForm docType={docType} label={label} automaticCheck={automaticCheck} />
+            <UploadForm
+              docType={docType}
+              label={label}
+              automaticCheck={automaticCheck}
+              dob={data.dob}
+            />
           </>
         );
       }}

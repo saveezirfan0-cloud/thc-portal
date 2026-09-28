@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
@@ -48,11 +48,23 @@ function sqlEdges(fn: string): string[] {
     .sort();
 }
 
-function sqlCheckValues(constraint: string): string[] {
-  const m = new RegExp(`constraint ${constraint} check \\(\\w+ in \\(([^)]*)\\)\\)`).exec(sql);
+function sqlCheckValues(constraint: string, source: string = sql): string[] {
+  const m = new RegExp(`constraint ${constraint} check \\(\\w+ in \\(([^)]*)\\)\\)`).exec(source);
   expect(m, constraint).not.toBeNull();
   return [...m![1]!.matchAll(/'([a-z_]+)'/g)].map((x) => x[1]!).sort();
 }
+
+/**
+ * The kind CHECK as it stands now: 20261001210000 (ADR-0070) dropped and
+ * re-added it with 'dob', so the newest migration that adds it wins.
+ */
+const migrationsDir = resolve(here, '../../../../supabase/migrations');
+const latestKindCheck = readdirSync(migrationsDir)
+  .filter((name) => name.endsWith('.sql'))
+  .sort()
+  .map((name) => readFileSync(resolve(migrationsDir, name), 'utf8'))
+  .filter((text) => /constraint profile_change_requests_kind check/.test(text))
+  .at(-1)!;
 
 describe('change request machine — shared vectors (TS ↔ SQL profile_change_transitions)', () => {
   it('has the statuses of the vectors and of the table CHECK', () => {
@@ -132,9 +144,12 @@ describe("paths are the worker's own", () => {
     expect(isOwnEvidencePath(me, `${me}/passport.pdf`)).toBe(false);
   });
 
-  it('has the two kinds the table allows', () => {
-    expect([...CHANGE_KINDS].sort()).toEqual(sqlCheckValues('profile_change_requests_kind'));
+  it('has the kinds the table allows — name, photo and (ADR-0070) dob', () => {
+    expect([...CHANGE_KINDS].sort()).toEqual(
+      sqlCheckValues('profile_change_requests_kind', latestKindCheck),
+    );
     expect(isChangeKind('name')).toBe(true);
+    expect(isChangeKind('dob')).toBe(true);
     expect(isChangeKind('email')).toBe(false);
   });
 });

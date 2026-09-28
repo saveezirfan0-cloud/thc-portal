@@ -124,6 +124,12 @@ export const DOCUMENT_UPLOAD_REASONS: Record<string, string> = {
   unsupported_file_type: 'Upload a PDF, JPG or PNG.',
   file_empty: 'That file is empty.',
   file_too_large: 'That file is over 10 MB.',
+  // submit_share_code_with_dob() (ADR-0070): the date of birth sent with a share code.
+  dob_required: 'Enter your date of birth.',
+  dob_invalid: 'Enter a real date of birth, as day, month and year.',
+  under_18: 'That date of birth would make you under 18. Check it and try again.',
+  too_many_attempts:
+    'You’ve changed your date of birth several times today. Please try again tomorrow, or contact the office at admin@thehospitalitycompany.co.uk.',
 };
 
 /** What each refusal from `sign_wtr_optout()` / `cancel_wtr_optout()` means. */

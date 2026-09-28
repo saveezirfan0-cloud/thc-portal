@@ -139,6 +139,30 @@ export async function requestNameChange(
   });
 }
 
+/**
+ * A date of birth (ADR-0070) — its own RPC, `request_dob_change()`, with
+ * request_profile_change()'s gates and the date rule (`dob_change_problem`);
+ * the evidence goes through the same signed upload as a name's.
+ */
+export async function requestDobChange(
+  dob: string,
+  evidencePath: string | null,
+  note: string,
+): Promise<ActionResult> {
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+  const { error } = await (
+    await db()
+  ).rpc('request_dob_change', {
+    p_dob: dob,
+    p_evidence_path: evidencePath,
+    p_note: note.trim() || null,
+  });
+  if (error) return { ok: false, message: changeReason(error.message) };
+  revalidatePath('/profile');
+  revalidatePath('/profile/details');
+  return { ok: true, note: 'Sent to the office. We’ll let you know when they’ve looked at it.' };
+}
+
 export async function requestPhotoChange(photoPath: string, note: string): Promise<ActionResult> {
   return request({
     p_kind: 'photo',

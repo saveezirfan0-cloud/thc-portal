@@ -5,7 +5,12 @@ import {
   decidedBy,
   decisionLabel,
   decisionMessage,
+  dobBefore,
+  dobRequested,
   evidenceName,
+  evidenceTick,
+  kindLabel,
+  mayDecide,
   nameBefore,
   oldestFirst,
   requestedAt,
@@ -106,5 +111,51 @@ describe('change requests — the decision', () => {
     expect(decisionMessage('already_decided')).toMatch(/already been decided/);
     expect(decisionMessage('reason_required')).toMatch(/worker is shown it/);
     expect(decisionMessage('something unexpected')).toBe('something unexpected');
+  });
+});
+
+describe('a date-of-birth request (ADR-0070)', () => {
+  const dob = (over: Partial<ChangeRequestRow> = {}) =>
+    row({
+      kind: 'dob',
+      proposed_first_name: null,
+      proposed_last_name: null,
+      current_dob: '1995-01-01',
+      proposed_dob: '1994-12-31',
+      ...over,
+    });
+
+  it('reads now → requested in the office’s date shape', () => {
+    expect(kindLabel('dob')).toBe('Date of birth');
+    expect(dobBefore(dob())).toBe('01.01.1995');
+    expect(dobRequested(dob())).toBe('31.12.1994');
+    expect(changeSummary(dob())).toBe('01.01.1995 → 31.12.1994');
+  });
+
+  it('once decided, measures against the snapshot, not the profile it changed', () => {
+    const decided = dob({
+      status: 'approved',
+      current_dob: '1994-12-31',
+      previous_value: { dob: '1995-01-01' },
+    });
+    expect(changeSummary(decided)).toBe('01.01.1995 → 31.12.1994');
+  });
+
+  it('needs the evidence tick, in its own words', () => {
+    expect(canApprove('dob', false)).toBe(false);
+    expect(canApprove('dob', true)).toBe(true);
+    expect(evidenceTick('dob')).toBe('I’ve checked the evidence shows this date of birth');
+    expect(decisionMessage('evidence_unchecked_dob')).toMatch(/shows this date of birth/);
+    expect(decisionMessage('evidence_unchecked')).toMatch(/right-to-work document/);
+  });
+
+  it('is decided by owners and managers only; a name or photo by any office login', () => {
+    expect(mayDecide('dob', false)).toBe(false);
+    expect(mayDecide('dob', true)).toBe(true);
+    expect(mayDecide('name', false)).toBe(true);
+    expect(mayDecide('photo', false)).toBe(true);
+    expect(decisionMessage('not_permitted')).toMatch(/owners and managers/);
+    expect(decisionMessage('unchanged')).toMatch(/already on the profile/);
+    expect(decisionMessage('unchanged')).not.toMatch(/reject/i);
   });
 });

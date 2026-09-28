@@ -78,6 +78,7 @@ export function toProfile(row: Record<string, unknown>): StaffProfile {
     rtwBranch: (row['rtwBranch'] as string) ?? null,
     niMasked: (row['niMasked'] as string) ?? null,
     hasNiNumber: Boolean(row['hasNiNumber']),
+    dob: row['dob'] ? String(row['dob']).slice(0, 10) : null,
     rating: row['rating'] === null ? null : Number(row['rating']),
     reliability: row['reliability'] === null ? null : Number(row['reliability']),
     quizAttempts: Number(row['quizAttempts'] ?? 0),

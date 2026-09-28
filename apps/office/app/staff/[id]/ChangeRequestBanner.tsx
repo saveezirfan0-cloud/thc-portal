@@ -5,15 +5,15 @@ import { useState } from 'react';
 import { Alert, Button, Pill } from '@thc/ui';
 import { DecideDialog } from '../requests/DecideDialog';
 import type { DecideStage } from '../requests/DecideDialog';
-import { nameBefore, nameRequested, ukStamp } from '../requests/model';
+import { dobBefore, dobRequested, nameBefore, nameRequested, ukStamp } from '../requests/model';
 import type { ChangeRequestView } from '../requests/types';
 
 /**
  * The pending change-request banner on /staff/:id (ADR-0045),
  * `wireframes/backoffice/change-requests.html` → "Overview cards".
  *
- * One line per pending request — at most one name and one photo, the
- * database allows no more — with Review opening the same decide dialog the
+ * One line per pending request — at most one name, one photo and one date
+ * of birth, the database allows no more — with Review opening the same decide dialog the
  * /staff/requests queue uses, so the two places cannot decide differently.
  * When the requests could not be read it says so (audit D18): no banner
  * would tell the office nothing is pending.
@@ -21,11 +21,15 @@ import type { ChangeRequestView } from '../requests/types';
 export function ChangeRequestBanner({
   requests,
   problem = null,
+  canDecideDob = false,
 }: {
   requests: ChangeRequestView[];
   problem?: string | null;
+  /** ADR-0070: owners and managers decide a date of birth. */
+  canDecideDob?: boolean;
 }) {
   const [open, setOpen] = useState<{ id: string; stage: DecideStage } | null>(null);
+  const [outcome, setOutcome] = useState<{ note: string; warning: string | null } | null>(null);
   const current = requests.find((row) => row.id === open?.id) ?? null;
 
   if (problem) {
@@ -36,9 +40,17 @@ export function ChangeRequestBanner({
       </Alert>
     );
   }
-  if (requests.length === 0) return null;
+  // ADR-0070: an approved date of birth leaves the banner; its outcome stays.
+  const said = outcome ? (
+    <>
+      <Alert tone="green">{outcome.note}</Alert>
+      {outcome.warning ? <Alert tone="amber">{outcome.warning}</Alert> : null}
+    </>
+  ) : null;
+  if (requests.length === 0) return said;
   return (
     <>
+      {said}
       {requests.map((row) => (
         <div className="cr-banner" key={row.id}>
           <Pill tone="amber">Pending</Pill>
@@ -48,6 +60,13 @@ export function ChangeRequestBanner({
                 Name change requested —{' '}
                 <b>
                   {nameBefore(row) ?? '—'} → {nameRequested(row) ?? '—'}
+                </b>
+              </>
+            ) : row.kind === 'dob' ? (
+              <>
+                Date of birth change requested —{' '}
+                <b>
+                  {dobBefore(row) ?? '—'} → {dobRequested(row) ?? '—'}
                 </b>
               </>
             ) : (
@@ -71,6 +90,8 @@ export function ChangeRequestBanner({
         stage={open?.stage ?? 'review'}
         onStage={(stage) => setOpen((was) => (was ? { ...was, stage } : was))}
         onClose={() => setOpen(null)}
+        canDecideDob={canDecideDob}
+        onDone={setOutcome}
       />
     </>
   );

@@ -2622,6 +2622,7 @@ export type Database = {
           id: string;
           kind: string;
           previous_value: Json | null;
+          proposed_dob: string | null;
           proposed_first_name: string | null;
           proposed_last_name: string | null;
           proposed_photo_path: string | null;
@@ -2639,6 +2640,7 @@ export type Database = {
           id?: string;
           kind: string;
           previous_value?: Json | null;
+          proposed_dob?: string | null;
           proposed_first_name?: string | null;
           proposed_last_name?: string | null;
           proposed_photo_path?: string | null;
@@ -2656,6 +2658,7 @@ export type Database = {
           id?: string;
           kind?: string;
           previous_value?: Json | null;
+          proposed_dob?: string | null;
           proposed_first_name?: string | null;
           proposed_last_name?: string | null;
           proposed_photo_path?: string | null;

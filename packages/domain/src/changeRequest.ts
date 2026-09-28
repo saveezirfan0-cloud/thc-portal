@@ -1,5 +1,6 @@
 /**
- * Request a change — name and photo. ADR-0045, docs/19 §3 (an addition to
+ * Request a change — name, photo and (since ADR-0070) date of birth.
+ * ADR-0045, docs/19 §3 (an addition to
  * Scope v1.6: §10.1 "corrections go through the office" gains an in-app
  * route; §9.6; §8 RC1–RC4; §1.5 ProfileChangeRequest).
  *
@@ -15,7 +16,13 @@
  * (§1.7) — RC4 tells payroll instead.
  */
 
-export const CHANGE_KINDS = ['name', 'photo'] as const;
+/**
+ * `dob` (ADR-0070, 28.09.2026): the date of birth gov.uk matches a share
+ * code against. Evidence required, as for a name; approving it has the
+ * office correction's effect (`office_correct_dob`), a fresh gov.uk check
+ * of a pending share code included.
+ */
+export const CHANGE_KINDS = ['name', 'photo', 'dob'] as const;
 
 export type ChangeKind = (typeof CHANGE_KINDS)[number];
 
@@ -107,7 +114,7 @@ export function isOwnPhotoPath(staffId: string, path: string): boolean {
   return ownPath(`${staffId}/`, path);
 }
 
-/** Name-change evidence: `documents/<staff_id>/change-requests/…`. */
+/** Name and date-of-birth evidence: `documents/<staff_id>/change-requests/…`. */
 export function isOwnEvidencePath(staffId: string, path: string): boolean {
   return ownPath(`${staffId}/change-requests/`, path);
 }

@@ -7,6 +7,8 @@
 -- ADR-0045: profile_change_transitions(), the state guard and the
 -- profile_change_requests CHECKs against the cases state.ts and
 -- changeRequest.ts are held to. `refusal` null = the name is accepted.
+-- change_request_dob_vectors (ADR-0070): dob_change_problem() against
+-- dobChangeProblem() in dob.ts; also included by 717.
 -- Included with \ir from supabase/tests/701_staff_additions_state.sql; the .psql
 -- extension keeps pg_prove from running it as a test of its own.
 -- =====================================================================
@@ -67,5 +69,29 @@ insert into change_request_decision_vectors values
   ('reject_with_300_characters', false, 'RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR', null),
   ('reject_with_301_characters', false, 'RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR', 'reason_too_long');
 
+create temporary table change_request_dob_vectors (
+  name text primary key,
+  today date not null,
+  current_dob date not null,
+  input date,
+  refusal text
+) on commit drop;
+
+insert into change_request_dob_vectors values
+  ('an_earlier_date', '2026-09-28', '1995-01-01', '1994-12-31', null),
+  ('a_day_later', '2026-09-28', '1995-01-01', '1995-01-02', null),
+  ('the_date_on_file', '2026-09-28', '1995-01-01', '1995-01-01', 'unchanged'),
+  ('no_date', '2026-09-28', '1995-01-01', null, 'dob_required'),
+  ('tomorrow', '2026-09-28', '1995-01-01', '2026-09-29', 'dob_invalid'),
+  ('eighteen_today', '2026-09-28', '1995-01-01', '2008-09-28', null),
+  ('eighteen_tomorrow', '2026-09-28', '1995-01-01', '2008-09-29', 'under_18'),
+  ('born_today', '2026-09-28', '1995-01-01', '2026-09-28', 'under_18'),
+  ('a_leap_day', '2026-09-28', '1995-01-01', '2008-02-29', null),
+  ('a_leap_day_the_day_before', '2026-02-28', '1995-01-01', '2008-02-29', 'under_18'),
+  ('a_leap_day_on_1_march', '2026-03-01', '1995-01-01', '2008-02-29', null),
+  ('one_hundred', '2026-09-28', '1995-01-01', '1926-09-28', null),
+  ('one_hundred_and_one', '2026-09-28', '1995-01-01', '1925-09-28', 'dob_invalid');
+
+\set change_request_dob_count 13
 \set change_request_status_count 4
 \set change_request_edge_count 3

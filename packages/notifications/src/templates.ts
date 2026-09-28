@@ -625,7 +625,9 @@ export const TEMPLATES = {
   // NOT registered: it would tell one person another's employment status.
   // ────────────────────────────────────────────────────────────────────────
 
-  // Request a change — name and photo (ADR-0045). Keys `RCn:request:<id>`.
+  // Request a change — name, photo and date of birth (ADR-0045, ADR-0070).
+  // Keys `RCn:request:<id>`. {field} is the worker-facing word: name,
+  // photo or "date of birth"; no copy of its own for the date (ADR-0070).
   RC1: {
     code: 'RC1',
     channel: 'email',
@@ -634,7 +636,7 @@ export const TEMPLATES = {
     title: 'Profile change requested — {name}, Employee ID {employeeId}',
     body: '{name} has asked the office to change their {field}.\n\nRequested: {requestedAt} (UK time)\nNow: {current}\nRequested: {proposed}\nNote: {note}\n\nReview it in Staff → Change requests.',
     trigger:
-      'A worker asks the office to change their locked name or photo (request_profile_change, §10.1). Not in §8: an addition to scope v1.6, ADR-0045 (proposed — awaiting THC)',
+      'A worker asks the office to change their locked name or photo (request_profile_change) or date of birth (request_dob_change, ADR-0070), §10.1. Not in §8: an addition to scope v1.6, ADR-0045 (proposed — awaiting THC)',
     timing: 'on request',
   },
   RC2: {
@@ -643,7 +645,7 @@ export const TEMPLATES = {
     title: 'Profile updated',
     body: 'Your {field} has been updated.',
     trigger:
-      'The office approves a name or photo change request (office_decide_profile_change). Not in §8: an addition to scope v1.6, ADR-0045 (proposed — awaiting THC)',
+      'The office approves a name, photo or date-of-birth change request (office_decide_profile_change). Not in §8: an addition to scope v1.6, ADR-0045 / ADR-0070 (proposed — awaiting THC)',
     timing: 'on approve',
     deepLink: '/profile/details',
   },
@@ -653,7 +655,7 @@ export const TEMPLATES = {
     title: 'Change not made',
     body: "We couldn't update your {field}: {reason}",
     trigger:
-      'The office rejects a name or photo change request, with the reason the worker is shown (office_decide_profile_change). Not in §8: an addition to scope v1.6, ADR-0045 (proposed — awaiting THC)',
+      'The office rejects a name, photo or date-of-birth change request, with the reason the worker is shown (office_decide_profile_change). Not in §8: an addition to scope v1.6, ADR-0045 / ADR-0070 (proposed — awaiting THC)',
     timing: 'on reject',
     deepLink: '/profile/details',
   },

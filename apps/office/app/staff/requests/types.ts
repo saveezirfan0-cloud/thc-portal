@@ -6,7 +6,8 @@
  * A removed worker's row comes back already anonymised by the function:
  * "Deleted account #id", no current name, photo or evidence path (§1.7).
  */
-export type ChangeKind = 'name' | 'photo';
+/** `dob` since ADR-0070 (20261001210000). */
+export type ChangeKind = 'name' | 'photo' | 'dob';
 export type ChangeStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn';
 
 export interface ChangeRequestRow {
@@ -28,12 +29,20 @@ export interface ChangeRequestRow {
   proposed_photo_path: string | null;
   evidence_path: string | null;
   worker_note: string | null;
-  /** The profile at the moment of the decision: {firstName, lastName} or {photoPath}. */
-  previous_value: { firstName?: string; lastName?: string; photoPath?: string | null } | null;
+  /** The profile at the moment of the decision: {firstName, lastName}, {photoPath} or {dob}. */
+  previous_value: {
+    firstName?: string;
+    lastName?: string;
+    photoPath?: string | null;
+    dob?: string | null;
+  } | null;
   created_at: string;
   decided_at: string | null;
   decided_by_name: string | null;
   decision_reason: string | null;
+  /** ADR-0070, appended by 20261001210000: null for a removed worker. */
+  current_dob?: string | null;
+  proposed_dob?: string | null;
 }
 
 /** A row with its two photos signed for the page (`_lib/photos.ts`). */
@@ -42,4 +51,11 @@ export interface ChangeRequestView extends ChangeRequestRow {
   proposed_photo_url: string | null;
 }
 
-export type DecisionResult = { ok: true } | { ok: false; message: string };
+/**
+ * `note` / `warning` only for an approved date of birth (ADR-0070): what
+ * happened to the pending share code's gov.uk check, and the under-18
+ * opt-out warning — the office correction's own words (`dobCorrectionOutcome`).
+ */
+export type DecisionResult =
+  | { ok: true; note?: string; warning?: string | null }
+  | { ok: false; message: string };

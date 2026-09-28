@@ -8,6 +8,7 @@
  * nulls as "—" rather than hiding the blocks, because §1.7 keeps the
  * record openable.
  */
+import type { DobClaim } from '../../_lib/dobCorrection';
 import type { RtwCheckRow } from '../../_lib/rtwCheck';
 import type { QueueRow } from '../../compliance/types';
 import type { CapBand, StaffRow } from '../types';
@@ -246,6 +247,8 @@ export interface ProfileData {
   rtwChecks?: RtwCheckRow[];
   /** settings.rtw_check.enabled. */
   rtwCheckEnabled?: boolean;
+  /** ADR-0070: dates of birth entered with pending share codes (share_code_dob_claims_v). */
+  dobClaims?: DobClaim[];
   /**
    * This worker's rows of `compliance_review_queue_v` — the /compliance
    * Needs review queue, filtered to them (§4.1). The Documents tab offers

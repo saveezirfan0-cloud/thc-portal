@@ -80,7 +80,17 @@ type Dialog = 'block' | 'reset' | 'remove' | null;
  * manager before they decide what to do with the record — and §1.7 keeps
  * a removed profile openable with its non-personal history intact.
  */
-export function ProfileScreen({ data }: { data: ProfileData }) {
+export function ProfileScreen({
+  data,
+  canCorrectDob = false,
+}: {
+  data: ProfileData;
+  /**
+   * ADR-0070: `officeCan(role, 'identity')` — owners and managers may
+   * correct the date of birth and decide a date-of-birth change request.
+   */
+  canCorrectDob?: boolean;
+}) {
   const profile = data.profile as ProfileRow;
   const [tab, setTab] = useState<Tab>('overview');
   const [dialog, setDialog] = useState<Dialog>(null);
@@ -358,10 +368,11 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
           />
         </TileGrid>
 
-        {/* ADR-0045: a pending name/photo change, decided here or in the queue. */}
+        {/* ADR-0045: a pending name/photo/date-of-birth change, decided here or in the queue. */}
         <ChangeRequestBanner
           requests={data.changeRequests ?? []}
           problem={data.changeRequestsProblem ?? null}
+          canDecideDob={canCorrectDob}
         />
 
         <Tabs
@@ -407,6 +418,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             emergencyContactProblem={data.emergencyContactProblem ?? null}
             referrals={data.referrals ?? null}
             referralsProblem={data.referralsProblem ?? null}
+            canCorrectDob={canCorrectDob}
           />
         ) : null}
         {tab === 'availability' ? (
@@ -423,6 +435,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
             declarations={data.declarations}
             rtwChecks={data.rtwChecks}
             rtwCheckEnabled={data.rtwCheckEnabled}
+            dobClaims={data.dobClaims ?? []}
             reviewQueue={data.reviewQueue}
             reviewQueueProblem={data.reviewQueueProblem}
           />
