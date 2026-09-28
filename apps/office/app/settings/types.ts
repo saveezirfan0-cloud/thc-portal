@@ -35,6 +35,13 @@ export interface WilloStageMap {
 export interface Senders {
   timesheets: string;
   admin: string;
+  /**
+   * Where replies go, when not to the sending address (optional). For a
+   * sender on a sending-only subdomain, e.g. admin@updates… replying to
+   * admin@… (packages/notifications/src/senders.ts).
+   */
+  timesheets_reply_to?: string;
+  admin_reply_to?: string;
 }
 
 export interface VenueTypeRadius {

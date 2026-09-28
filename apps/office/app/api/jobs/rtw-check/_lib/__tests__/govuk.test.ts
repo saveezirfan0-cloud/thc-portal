@@ -55,6 +55,22 @@ describe('parseGovukResult', () => {
     ).toBe('verify');
   });
 
+  it('live wording (28.09.2026): the lead-in and "sportsperson or coach" pass; the employer advice is not a condition', () => {
+    const r = parseGovukResult(page('govuk-pass-visa-live-wording.txt'), AT);
+    expect(r).toMatchObject({ outcome: 'right_to_work', rightToWorkUntil: '2028-07-15' });
+    expect(r.conditions).toEqual([
+      'On their current visa, they can work in any job except those listed in the conditions below.',
+      'They cannot work as a professional sportsperson or coach.',
+    ]);
+    expect(
+      decideRtwCheck(
+        r,
+        { firstName: 'Noor', lastName: 'Haddad', rtwBranch: 'work_visa', belowDegreeLevel: false },
+        { attempt: 1, maxAttempts: 5, today: '2026-09-28' },
+      ).action,
+    ).toBe('verify');
+  });
+
   it('reads settled status as no time limit because the page says so', () => {
     expect(parseGovukResult(page('govuk-pass-settled.txt'), AT)).toMatchObject({
       outcome: 'right_to_work',

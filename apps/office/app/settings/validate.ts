@@ -159,6 +159,19 @@ export function validateSenders(senders: Senders): string | null {
       return `${label}: no-reply addresses are not used — replies go to a monitored mailbox.`;
     }
   }
+  // Optional: blank means replies go to the sending address.
+  const replies: [string, string | undefined][] = [
+    ['Timesheets reply-to', senders.timesheets_reply_to],
+    ['Admin reply-to', senders.admin_reply_to],
+  ];
+  for (const [label, address] of replies) {
+    const value = address?.trim() ?? '';
+    if (value === '') continue;
+    if (!EMAIL.test(value)) return `${label} is not a valid email address.`;
+    if (/^no-?reply@/i.test(value)) {
+      return `${label}: replies must reach a monitored mailbox, not a no-reply address.`;
+    }
+  }
   return null;
 }
 
