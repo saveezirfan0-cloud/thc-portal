@@ -208,3 +208,36 @@ describe('reading the answer', () => {
     expect(text).not.toContain('2002-02-12');
   });
 });
+
+describe('the photo (ADR-0041)', () => {
+  const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]).toString(
+    'base64',
+  );
+  const pass = (extra: Record<string, unknown>) => ({
+    ...(fixture('provider-pass.json') as Record<string, unknown>),
+    ...extra,
+  });
+  const check = async (body: unknown) =>
+    createProviderChecker(
+      env(ENV),
+      vi.fn(async () => reply(200, body)) as unknown as typeof fetch,
+      () => new Date(AT),
+    )!.check(INPUT);
+
+  it('carries a PNG the provider inlines', async () => {
+    const out = await check(pass({ photo_png_base64: PNG }));
+    expect(out.photo).toEqual(Uint8Array.from(Buffer.from(PNG, 'base64')));
+    expect((await check(pass({ photo: { base64: PNG } }))).photo).not.toBeNull();
+  });
+
+  it('drops anything that is not a PNG', async () => {
+    const out = await check(pass({ photo_png_base64: Buffer.from('%PDF-1.4').toString('base64') }));
+    expect(out.photo).toBeNull();
+  });
+
+  it('never carries one for "not found"', async () => {
+    const out = await check({ status: 'not_found', photo_png_base64: PNG });
+    expect(out.result.outcome).toBe('not_found');
+    expect(out.photo ?? null).toBeNull();
+  });
+});
