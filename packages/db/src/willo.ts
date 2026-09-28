@@ -542,6 +542,13 @@ export function willoInviteRequest(
     },
     body: JSON.stringify({
       interview: config.interviewKey,
+      // Willo's Invite Participant requires `name`, the full name: the first
+      // live call (28.09) was refused 400 {"name":["This field is required."]}.
+      // first_name / last_name stay: unknown fields are ignored (ADR-0066).
+      name: [candidate.firstName, candidate.lastName]
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .join(' '),
       first_name: candidate.firstName,
       last_name: candidate.lastName,
       email: candidate.email,
