@@ -87,8 +87,10 @@ secrets in Supabase → Edge Functions → Secrets (not Vercel) — never in a c
 - [ ] Secrets: `WILLO_API_KEY` (Willo → Integrations → Developer tools), `WILLO_INTERVIEW_KEY`
       (above), `STAFF_APP_URL=https://thc-portal-staff-two.vercel.app`, and
       `WILLO_WEBHOOK_SECRET` = the output of `openssl rand -hex 32`.
-- [ ] Fix §3's Vault `service_role_key` first: every call from the database to a function
-      was answered 401 on 26–28.09, including the Willo invite nudge.
+- [x] 28.09: the 401s on every job were not a wrong Vault key (it is a valid service key
+      for this project) but a byte-for-byte check against the functions' own copy, which
+      differs. Fixed in code (ADR-0067): Supabase Auth now confirms the key. After the
+      merge, `job_runs` should show `booking-tick` succeeding every minute.
 - [ ] 28.09: our `stage_change` webhook exists (key `f0331db76cb24b91b84c25e1fdde8ca7`,
       our interview only) but was created with the placeholder `YOUR_WEBHOOK_SECRET` in
       its address. Correct it with the real secret — same URL, `-X PATCH` to

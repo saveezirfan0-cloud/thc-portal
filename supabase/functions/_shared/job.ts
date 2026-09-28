@@ -15,9 +15,7 @@
  */
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
-import { timingSafeEqual } from '../../../packages/db/src/willo.ts';
-
-const encoder = new TextEncoder();
+import { isServiceCaller, projectRef } from '../../../packages/db/src/service-caller.ts';
 
 export interface JobResult {
   ok: boolean;
@@ -32,26 +30,38 @@ function serviceClient(): SupabaseClient {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+/** Service keys Auth has confirmed in this isolate, and until when (ms). */
+const confirmed = new Map<string, number>();
+const CONFIRMED_FOR_MS = 10 * 60_000;
+
 /**
- * The bearer the caller presented equals the expected key. Constant time
- * over equal-length inputs (timingSafeEqual visits every byte whatever the
- * first difference), so the response time never says how long a prefix a
- * guess shared. V8's `===` short-circuits on the first differing byte,
- * which is what the earlier "compare lengths first" version still leaked.
- * Exported for the test.
+ * Supabase Auth's admin API answers 200 only to a genuine service-role key
+ * for this project, so it is the arbiter when the caller's key is not the
+ * byte-for-byte copy this function holds (packages/db/src/service-caller.ts).
+ * A positive answer is remembered for ten minutes, so a job firing every
+ * minute costs one Auth call per isolate, not one per run.
  */
-export function bearerMatches(header: string | null, expected: string | undefined): boolean {
-  if (!expected) return false;
-  const token = header?.startsWith('Bearer ') ? header.slice(7) : '';
-  return timingSafeEqual(encoder.encode(token), encoder.encode(expected));
+async function confirmWithAuth(token: string): Promise<boolean> {
+  const until = confirmed.get(token);
+  if (until !== undefined && until > Date.now()) return true;
+  const url = Deno.env.get('SUPABASE_URL');
+  if (!url) return false;
+  const response = await fetch(`${url}/auth/v1/admin/users?page=1&per_page=1`, {
+    headers: { apikey: token, Authorization: `Bearer ${token}` },
+  });
+  await response.body?.cancel();
+  if (!response.ok) return false;
+  confirmed.set(token, Date.now() + CONFIRMED_FOR_MS);
+  return true;
 }
 
-/** The caller must hold the service key. pg_net sends it as a bearer token. */
-function authorised(request: Request): boolean {
-  return bearerMatches(
-    request.headers.get('Authorization'),
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
-  );
+/** The caller must hold a service key. pg_net sends it as a bearer token. */
+function authorised(request: Request): Promise<boolean> {
+  return isServiceCaller(request.headers.get('Authorization'), {
+    expected: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+    ref: projectRef(Deno.env.get('SUPABASE_URL')),
+    confirm: confirmWithAuth,
+  });
 }
 
 /**
@@ -67,7 +77,7 @@ export async function runJob(
   request: Request,
   work: (db: SupabaseClient) => Promise<Record<string, unknown>>,
 ): Promise<Response> {
-  if (!authorised(request)) {
+  if (!(await authorised(request))) {
     return new Response(JSON.stringify({ error: 'service role required' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
