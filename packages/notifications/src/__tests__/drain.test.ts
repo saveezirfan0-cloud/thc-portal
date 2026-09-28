@@ -374,6 +374,23 @@ describe('email', () => {
     expect(sent[0]!.headers['Idempotency-Key']).toBe('E2:staff:1');
   });
 
+  it('sends from a sending-only subdomain with replies to the monitored inbox', async () => {
+    const { p, sent } = ports({});
+    await drainRow(
+      email(),
+      CONFIGURED,
+      {
+        admin: 'admin@updates.thc.example',
+        timesheets: 'timesheets@updates.thc.example',
+        admin_reply_to: 'Admin@THC.example ',
+      },
+      p,
+    );
+    const body = JSON.parse(sent[0]!.body as string);
+    expect(body.from).toBe('The Hospitality Company <admin@updates.thc.example>');
+    expect(body.reply_to).toBe('admin@thc.example');
+  });
+
   it('falls back to the seeded address, and says so, when the setting is unusable', async () => {
     const { p, sent, logs } = ports({});
     await drainRow(email(), CONFIGURED, { admin: 'noreply@thc.example' }, p);
@@ -498,6 +515,29 @@ describe('resolveSender', () => {
     expect(r.address).toBe('admin@thehospitalitycompany.co.uk');
     expect(r.source).toBe('default');
     expect(r.warning).toMatch(why);
+  });
+
+  it('replies to the sending address unless a usable reply-to is set', () => {
+    expect(resolveSender('admin', { admin: 'a@updates.thc.example' }).replyTo).toBe(
+      'a@updates.thc.example',
+    );
+    expect(
+      resolveSender('admin', { admin: 'a@updates.thc.example', admin_reply_to: 'a@thc.example' })
+        .replyTo,
+    ).toBe('a@thc.example');
+    // A broken or no-reply reply-to never wins: replies must reach a mailbox (§9.12).
+    for (const bad of ['', 'nope', 'no-reply@thc.example', 7]) {
+      expect(
+        resolveSender('admin', { admin: 'a@updates.thc.example', admin_reply_to: bad }).replyTo,
+      ).toBe('a@updates.thc.example');
+    }
+    // One role's reply-to is not the other's.
+    expect(
+      resolveSender('timesheets', {
+        timesheets: 't@updates.thc.example',
+        admin_reply_to: 'a@thc.example',
+      }).replyTo,
+    ).toBe('t@updates.thc.example');
   });
 });
 

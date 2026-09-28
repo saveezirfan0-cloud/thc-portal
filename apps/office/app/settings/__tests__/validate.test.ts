@@ -158,6 +158,29 @@ describe('sender addresses (§9.12)', () => {
       'no-reply',
     );
   });
+
+  it('takes an optional reply-to per sender, for a sending-only subdomain', () => {
+    const updates = {
+      timesheets: 'timesheets@updates.thehospitalitycompany.co.uk',
+      admin: 'admin@updates.thehospitalitycompany.co.uk',
+    };
+    expect(
+      validateSenders({ ...updates, admin_reply_to: '', timesheets_reply_to: '  ' }),
+    ).toBeNull();
+    expect(
+      validateSenders({
+        ...updates,
+        admin_reply_to: 'admin@thehospitalitycompany.co.uk',
+        timesheets_reply_to: 'timesheets@thehospitalitycompany.co.uk',
+      }),
+    ).toBeNull();
+    expect(validateSenders({ ...updates, admin_reply_to: 'admin@' })).toContain(
+      'Admin reply-to is not a valid email',
+    );
+    expect(
+      validateSenders({ ...updates, timesheets_reply_to: 'no-reply@thehospitalitycompany.co.uk' }),
+    ).toContain('no-reply');
+  });
 });
 
 describe('venue-type radii (§9.11)', () => {

@@ -90,9 +90,16 @@ export async function saveWilloReviewUrlTemplate(value: string): Promise<ActionR
 export async function saveSenders(senders: Senders): Promise<ActionResult> {
   const invalid = validateSenders(senders);
   if (invalid) return { ok: false, message: invalid };
+  // All four keys are written together, so saving the senders can never
+  // drop a reply-to; a blank one is left out (replies then go to the sender).
+  const reply = (value: string | undefined) => value?.trim().toLowerCase() || undefined;
+  const timesheetsReplyTo = reply(senders.timesheets_reply_to);
+  const adminReplyTo = reply(senders.admin_reply_to);
   return put('senders', {
     timesheets: senders.timesheets.trim().toLowerCase(),
     admin: senders.admin.trim().toLowerCase(),
+    ...(timesheetsReplyTo ? { timesheets_reply_to: timesheetsReplyTo } : {}),
+    ...(adminReplyTo ? { admin_reply_to: adminReplyTo } : {}),
   });
 }
 

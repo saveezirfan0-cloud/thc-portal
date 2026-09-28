@@ -16,6 +16,13 @@
  * refuses one; a row written some other way (SQL, a restore) is refused
  * again here, because an email from a no-reply address is a reply that
  * nobody reads.
+ *
+ * Sending and replying can be different mailboxes: `admin_reply_to` and
+ * `timesheets_reply_to` (optional) send replies to a monitored inbox when
+ * the sending address sits on a subdomain verified only for sending, e.g.
+ * `admin@updates.thehospitalitycompany.co.uk` replying to
+ * `admin@thehospitalitycompany.co.uk` (28.09). Unset or unusable, replies
+ * go to the sending address, as before.
  */
 
 import type { Sender } from './templates.ts';
@@ -39,6 +46,8 @@ export interface ResolvedSender {
   address: string;
   /** `The Hospitality Company <admin@…>` — what goes in `from`. */
   from: string;
+  /** Where replies go, and the address the email's text tells people to write to. */
+  replyTo: string;
   /** Where the address came from, so a run can log a fallback. */
   source: 'settings' | 'default';
   /** Why the setting was not used, when it was not. */
@@ -56,6 +65,7 @@ export function resolveSender(sender: ThcSender, setting: unknown): ResolvedSend
     return {
       address,
       from: `${SENDER_NAME} <${address}>`,
+      replyTo: address,
       source: 'default',
       ...(warning ? { warning } : {}),
     };
@@ -78,5 +88,12 @@ export function resolveSender(sender: ThcSender, setting: unknown): ResolvedSend
   if (NO_REPLY.test(address)) {
     return fallback(`settings.senders.${sender} is a no-reply address, which §9.12 rules out`);
   }
-  return { address, from: `${SENDER_NAME} <${address}>`, source: 'settings' };
+  const reply = (setting as Record<string, unknown>)[`${sender}_reply_to`];
+  const replyTo =
+    typeof reply === 'string' &&
+    EMAIL.test(reply.trim().toLowerCase()) &&
+    !NO_REPLY.test(reply.trim())
+      ? reply.trim().toLowerCase()
+      : address;
+  return { address, from: `${SENDER_NAME} <${address}>`, replyTo, source: 'settings' };
 }
