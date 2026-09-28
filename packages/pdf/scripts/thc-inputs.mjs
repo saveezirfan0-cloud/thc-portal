@@ -850,7 +850,7 @@ const ITEMS = [
     format: 'Yes / No, with a line on why',
     who: 'Data protection lead / HR',
     neededBy: 'Before go-live',
-    status: 'Decided 28.09 — yes',
+    status: 'Decided 28.09 by the product owner — yes; THC to confirm',
     sections: std({
       need: [
         'A yes or no: when a worker asks to be removed under GDPR, should the platform keep their **other** right-to-work evidence — passport copy, visa, the gov.uk share-code report and the photo gov.uk shows, National Insurance evidence — for the length of their employment plus two years, the way it already keeps the University Completion Letter?',
@@ -863,9 +863,9 @@ const ITEMS = [
         '“Yes — hold all right-to-work evidence the same way” or “No — completion letter only, as today”, with a line on why, so the privacy notice (item 13) can say the same thing.',
       ],
       send: ['Email.'],
-      untilHeading: 'Decided 28.09.2026: yes',
+      untilHeading: 'Decided 28.09.2026 by the product owner: yes — THC to confirm',
       until: [
-        'Right-to-work evidence an employed worker was verified on — passport, national ID, visa and status documents, the share-code report with its gov.uk PDF and photo, a birth certificate with the National Insurance document paired with it, and university term dates letters — is now held for the employment plus two years, like the completion letter, and then deleted automatically with an audit entry (ADR-0063). National Insurance evidence on its own is payroll evidence and is still deleted at removal. The privacy notice (item 13) should say the same.',
+        'Right-to-work evidence an employed worker was verified on — passport, national ID, visa and status documents, the share-code report with its gov.uk PDF and photo, a birth certificate with the National Insurance document paired with it, and university term dates letters — is now held for the employment plus two years, like the completion letter, and then deleted automatically with an audit entry (ADR-0063). National Insurance evidence on its own is payroll evidence and is still deleted at removal. The privacy notice (item 13) should say the same. If THC’s data protection lead decides otherwise, the list of documents held is one change.',
       ],
     }),
   },
@@ -1400,7 +1400,7 @@ const DOC = {
   date: '28 September 2026',
   version: '1.3',
   preparedFor: 'Prepared for THC by the build team',
-  footer: 'The Hospitality Company · Inputs required · v1.2',
+  footer: 'The Hospitality Company · Inputs required · v1.3',
   coverNote:
     'This document lists everything the build still needs from The Hospitality Company: content, decisions, keys, DNS records and data. Each item says what is needed, why, in what format, how to send it, and what the platform shows until it arrives. The tracker on page 3 is the working list; the sections after it are the detail. Nothing here is a build task, and nothing here needs THC to have seen the code.',
 

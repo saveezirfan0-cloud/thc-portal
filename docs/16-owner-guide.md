@@ -1053,7 +1053,7 @@ payroll recipients from `settings.payroll_recipients`, not from the environment.
 | *(no variable)* | `apps/staff/lib/postcodes.ts` (ADR-0014) | the home-address postcode is looked up at `api.postcodes.io` — open data, no key; unreachable means the address saves without a location |
 | `NEXT_PUBLIC_MAPBOX_TOKEN`, `MAPBOX_TOKEN` | §6.2 | optional |
 | `VERCEL_URL` | `apps/staff/app/forgot/actions.ts` | Vercel's own; only a fallback |
-| `RTW_JOB_SECRET`, `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` (+ `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX`, `RTW_PROVIDER_TIMEOUT_MS`, `RTW_GOVUK_ENABLED`, `RTW_GOVUK_START_URL`, `RTW_GOVUK_TIMEOUT_MS`, `RTW_CHECK_BATCH`) | `apps/office/app/api/jobs/rtw-check/` (ADR-0025) | **Back Office only.** The automated gov.uk right-to-work check, shipped switched off; §6.5 |
+| `RTW_JOB_SECRET`, `RTW_GOVUK_ENABLED` (+ optional `RTW_GOVUK_START_URL`, `RTW_GOVUK_TIMEOUT_MS`, `RTW_CHECK_BATCH`; `RTW_PROVIDER_*` not needed, ADR-0041) | `apps/office/app/api/jobs/rtw-check/` (ADR-0025, ADR-0041) | **Back Office only.** The automated gov.uk right-to-work check, shipped switched off; §6.5 |
 
 ### 6.5 The automated gov.uk right-to-work check (ADR-0025, ADR-0041)
 

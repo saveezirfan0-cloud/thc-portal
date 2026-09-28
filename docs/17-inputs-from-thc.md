@@ -48,7 +48,7 @@ Appendix B’s “needed by” dates were set against the build; the build is do
 | 11 | Wording: E2b rejection email | E2 thanks the candidate for completing an interview, which is untrue for a rejection at a later stage (§2.7, §8) | “Approved”, or the replacement text | Office manager / recruitment lead | Before UAT | ☐ |
 | 12 | Wording: CL1–CL6, and which are mandatory | THC’s University Completion Letter requirement §5 adds six sends the §8 register does not name | “Approved” or replacement text, plus the list of mandatory ones | Office manager / compliance manager | Before UAT | ☐ |
 | 13 | Privacy notice legal text | The application form asks for GDPR consent and links to it (§1.7, §2.1) | Word or PDF, final legal text | Data protection lead / solicitor | Before go-live; ideally before UAT | ☐ (26.09: the data protection policy is not the notice) |
-| 14 | Retention of right-to-work evidence after a GDPR removal | The completion letter is already held for employment + 2 years; whether the rest should be is a §1.7 decision | Yes / No, with a line on why | Data protection lead / HR | Before go-live | Decided 28.09 — yes |
+| 14 | Retention of right-to-work evidence after a GDPR removal | The completion letter is already held for employment + 2 years; whether the rest should be is a §1.7 decision | Yes / No, with a line on why | Data protection lead / HR | Before go-live | Decided 28.09 by the product owner — yes; THC to confirm |
 | 15 | Q1 · Replacement arriving late to a full shift | Two rules meet: the No-show exemption for late-confirmed replacements (§5.1) and turn-away pay measured from the scheduled start (RULE-15) | One-line answer | Operations manager, with payroll | Before UAT | ☐ |
 | 16 | Q2 · A break with no end | §5.2b allows several breaks a shift and deducts the total, but does not say what a break with no end is worth | One of three options | Payroll | Before UAT | ☐ |
 | 17 | Q3 · Clearing a No-show after the shift | Resolving a No-show records the worker as arrived at the moment the manager presses it, with no time limit (§3.3, §9.5) | One-line answer | Operations manager | Before UAT | ☐ |
@@ -629,9 +629,9 @@ An employer is expected to be able to produce right-to-work evidence for two yea
 
 Email.
 
-**Decided 28.09.2026: yes**
+**Decided 28.09.2026 by the product owner: yes — THC to confirm**
 
-Right-to-work evidence an employed worker was verified on — passport, national ID, visa and status documents, the share-code report with its gov.uk PDF and photo, a birth certificate with the National Insurance document paired with it, and university term dates letters — is now held for the employment plus two years, like the completion letter, and then deleted automatically with an audit entry (ADR-0063). National Insurance evidence on its own is payroll evidence and is still deleted at removal. The privacy notice (item 13) should say the same.
+Right-to-work evidence an employed worker was verified on — passport, national ID, visa and status documents, the share-code report with its gov.uk PDF and photo, a birth certificate with the National Insurance document paired with it, and university term dates letters — is now held for the employment plus two years, like the completion letter, and then deleted automatically with an audit entry (ADR-0063). National Insurance evidence on its own is payroll evidence and is still deleted at removal. The privacy notice (item 13) should say the same. If THC’s data protection lead decides otherwise, the list of documents held is one change.
 
 #### 15 · Question: a replacement who arrives late to a full shift
 

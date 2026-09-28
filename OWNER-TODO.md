@@ -162,8 +162,9 @@ as today.
 
 ## 6 · Decisions
 
-- [x] ~~**Keep gov.uk reports and photos after a GDPR removal?**~~ **Decided 28.09:
-      yes.** Right-to-work evidence an employed worker was verified on is held for the
+- [x] ~~**Keep gov.uk reports and photos after a GDPR removal?**~~ **Decided 28.09 by the
+      product owner: yes.** THC's data protection lead may still say otherwise (docs/17
+      item 14); the held set is one list in `remove_worker()`. Right-to-work evidence an employed worker was verified on is held for the
       employment plus two years, like the completion letter (ADR-0063). The
       privacy notice (docs/17 item 13) should say the same.
 
@@ -217,7 +218,10 @@ with the worker's selfie and presses Verify or Reject.
       check" is refused, so the test runs with the check **on** and the 10-minute
       **schedule still off**. That is safe: an admin decides every result, and only share
       codes filed or re-run from now on are checked.
-      1. Switch on:
+      1. Pre-flight: `select value from settings where key = 'rtw_check';` must show
+         `"primary": "govuk"` and `"admin_confirms": true` (it did on 28.09). If
+         `admin_confirms` were false, a "not found" would reject the worker and send N8
+         with no one looking. Then switch on:
          `update settings set value = value || '{"enabled": true}' where key = 'rtw_check';`
       2. **A real pass.** A consenting worker enters their share code in the Staff App
          (onboarding step 4, or Documents → Share code). Filing it queues a check and

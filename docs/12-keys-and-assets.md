@@ -273,8 +273,8 @@ Supabase secrets:
 | `RTW_CHECK_BATCH` | Checks per run, 1–10 (default 3) | 3 |
 | `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL` | Already set on the Back Office | The route answers 503 |
 
-With neither the provider nor `RTW_GOVUK_ENABLED`, the route claims nothing, so no
-attempt is spent while THC is still choosing.
+Without `RTW_GOVUK_ENABLED` (and with no provider, ADR-0041), the route claims nothing, so
+no attempt is spent before the check is set up.
 
 **In the database** (SQL editor):
 
@@ -290,7 +290,10 @@ select vault.create_secret('<RTW_JOB_SECRET>', 'rtw_job_secret');
 -- To change either later: select vault.update_secret(id, '<new value>')
 --   from vault.secrets where name = 'office_base_url';
 
--- Last, once the keys work (one manual check done — OWNER-TODO §8):
+-- Then, to start the live test (OWNER-TODO §8): first confirm the row reads
+-- primary = govuk and admin_confirms = true, so every result waits for an admin,
+select value from settings where key = 'rtw_check';
+-- then switch the check on. The 10-minute schedule stays off until the test passes.
 update settings set value = value || '{"enabled": true}' where key = 'rtw_check';
 ```
 

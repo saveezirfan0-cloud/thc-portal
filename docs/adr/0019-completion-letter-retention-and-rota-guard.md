@@ -1,11 +1,11 @@
 # ADR-0019 · Completion letter: retention over removal, and what the rota guard may relax
 
-**Status:** Accepted, 23.09.2026, pending THC's confirmation of point 1. Implemented in
+**Status:** Accepted, 23.09.2026; point 1 settled 28.09.2026 by ADR-0063. Implemented in
 `supabase/migrations/20260923100100_completion_letter.sql` and
 `supabase/migrations/20260923100200_rota_guard.sql`; tested in
 `supabase/tests/361_completion_letter.sql` and `362_rota_guard.sql`. · **§1 amended by
-[ADR-0063](0063-right-to-work-evidence-held-after-removal.md) (28.09.2026):** THC confirmed
-the hold, and widened it to the right-to-work evidence that was relied on (passport, national
+[ADR-0063](0063-right-to-work-evidence-held-after-removal.md) (28.09.2026):** the product owner
+confirmed the hold, and widened it to the right-to-work evidence that was relied on (passport, national
 ID, birth certificate with its NI document, visa and status documents, share-code report with
 its gov.uk checks, term dates letter). The completion letter's own rule is unchanged.
 
