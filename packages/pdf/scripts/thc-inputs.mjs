@@ -36,7 +36,9 @@
  * Staff App questions Q9–Q21 (docs/15, ADR-0043–0047); the migration
  * sign-off is not needed and the build team is arranging the Willo keys.
  * Version 1.3 (28.09) records the gov.uk check sign-off (item 24) and the
- * retention decision (item 14).
+ * retention decision (item 14). Version 1.4 (28.09) records THC's
+ * confirmation of the quiz answer key, Q8's rewording and Q9–Q10 as worded
+ * (item 9); only the induction deck's coverage of Q4, Q5 and Q8–Q10 stays open.
  */
 
 import { createElement as h, Fragment } from 'react';
@@ -577,7 +579,7 @@ const ITEMS = [
     format: 'Word or Excel: question, four options, the correct one',
     who: 'H&S trainer — the author of “Health and Safety Presentation Questions”',
     neededBy: 'UAT − 2 weeks',
-    status: 'Received 26.09 — answer key, Q8 and deck coverage to confirm',
+    status: 'Answers confirmed 28.09 — deck coverage of Q4, Q5, Q8–Q10 open',
     sections: std({
       need: [
         'THC’s own **“Health and Safety Presentation Questions”**: ten questions, each with four answer options and exactly one correct answer, in the order they should appear. The number can differ from ten — the rules do not depend on it — but ten is what the design shows (“Question 4 of 10”).',
@@ -603,18 +605,18 @@ const ITEMS = [
         },
       ],
       send: ['Email or shared drive, together with the induction deck (item 10) so the two match.'],
-      untilHeading: 'Received 26.09.2026 — what THC must still confirm',
+      untilHeading: 'Confirmed 28.09.2026 — what is still open',
       until: [
-        'THC’s **“Health and Safety Presentation Questions”** is live as the step 6 quiz: THC’s ten questions in THC’s order and wording (one typo corrected: “Personnel Protective Equipment” → “Personal”), 80% to pass, three attempts. Q7’s COSHH symbol is shown above its options as a clean drawing of the same pictogram. The ten placeholder questions are switched off, not deleted. THC must still confirm:',
+        'THC’s **“Health and Safety Presentation Questions”** is live as the step 6 quiz: THC’s ten questions in THC’s order and wording (one typo corrected: “Personnel Protective Equipment” → “Personal”), 80% to pass, three attempts. Q7’s COSHH symbol is shown above its options as a clean drawing of the same pictogram. The ten placeholder questions are switched off, not deleted.',
         {
           ul: [
-            '**The answer key.** THC’s sheet marks no answers, so the build team inferred them. Where the induction deck covers a question, the key agrees with it (Q1 slide 4, Q2 slide 5, Q3 slide 8, Q6 slide 14, Q7 slide 9). Please confirm or correct each one:',
+            '**The answer key — confirmed by THC on 28.09.2026.** THC’s sheet marked no answers, so the build team inferred them; THC confirmed every one. The quiz marks exactly these:',
           ],
         },
         {
           table: {
             widths: [0.06, 0.62, 0.32],
-            head: ['#', 'Question', 'Answer we mark correct'],
+            head: ['#', 'Question', 'Correct answer (confirmed)'],
             rows: [
               [
                 '1',
@@ -647,21 +649,21 @@ const ITEMS = [
               [
                 '9',
                 'What are the recommended weight limits for women when carrying a load at Elbow height?',
-                'C — 16 Kgs (the closest option — see below)',
+                'C — 16 Kgs',
               ],
               [
                 '10',
                 'What are the recommended weight limits for men when carrying a load at Elbow height?',
-                'A — 25 Kgs (the closest option — see below)',
+                'A — 25 Kgs',
               ],
             ],
           },
         },
         {
           ul: [
-            '**Q8’s rewording.** THC’s Q8 is free text (“Name three (3) foods, which can cause an allergic reaction?”, with three blank lines), which a multiple-choice quiz cannot mark. It now reads “Which of these foods can cause an allergic reaction?” A. Peanuts · B. Milk · C. Shellfish · D. All the above. It is the one question still marked as a placeholder: approve it, or send a multiple-choice replacement.',
-            '**Questions the induction deck does not cover.** THC’s sheet says “All questions below have been covered in the presentation you have just seen”, but the deck has nothing on allergies (**Q4, Q5, Q8**) and gives no weight limits (**Q9, Q10** — its manual-handling slides say “know your limits” and mention 25 kg cartons, but not the limits at elbow height for women and men). Either add slides that cover them, or change those questions.',
-            '**Q9 and Q10 have no correct option as worded.** 16 kg (women) and 25 kg (men) are the Health and Safety Executive’s guideline figures for a load held close to the body between **knuckle** and elbow height. At elbow height and above, up to the shoulder, HSE gives **13 kg** for women and **20 kg** for men, and neither figure is among THC’s options. The quiz marks 16 kg and 25 kg correct because they are the closest of the options offered, not because they answer the question as written. Please either reword Q9 and Q10 to “at knuckle height” (the options can then stay) or change the options to 13 kg and 20 kg.',
+            '**Q8’s rewording — approved 28.09.2026.** THC’s free-text Q8 (“Name three (3) foods, which can cause an allergic reaction?”) is now “Which of these foods can cause an allergic reaction?” A. Peanuts · B. Milk · C. Shellfish · D. All the above. No question is marked as a placeholder any more.',
+            '**Still open: questions the induction deck does not cover.** THC’s sheet says “All questions below have been covered in the presentation you have just seen”, but the deck has nothing on allergies (**Q4, Q5, Q8**) and gives no weight limits (**Q9, Q10** — its manual-handling slides say “know your limits” and mention 25 kg cartons, but not the limits at elbow height for women and men). Either add slides that cover them, or change those questions.',
+            '**Q9 and Q10 — kept as worded, 28.09.2026.** THC confirmed 16 kg (women) and 25 kg (men). For the record: those are the Health and Safety Executive’s figures for a load held between **knuckle** and elbow height; at elbow height HSE gives 13 kg and 20 kg. Rewording the questions to “at knuckle height” would keep the same answers, whenever THC wishes.',
           ],
         },
       ],
@@ -1394,13 +1396,20 @@ const PARTS = [
   },
 ].map((p) => ({ ...p, items: p.ids.map((id) => ITEMS.find((i) => i.id === id)) }));
 
+/** "Three things with lead time": the heading counts its own rows. */
+function leadTimeHeading(rows) {
+  const words = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven'];
+  const n = rows.length;
+  return `${words[n] ?? n} ${n === 1 ? 'thing' : 'things'} with lead time`;
+}
+
 const DOC = {
   title: 'Inputs required from The Hospitality Company',
   subtitle: 'Staffing platform — build hand-over checklist',
   date: '28 September 2026',
-  version: '1.3',
+  version: '1.4',
   preparedFor: 'Prepared for THC by the build team',
-  footer: 'The Hospitality Company · Inputs required · v1.3',
+  footer: 'The Hospitality Company · Inputs required · v1.4',
   coverNote:
     'This document lists everything the build still needs from The Hospitality Company: content, decisions, keys, DNS records and data. Each item says what is needed, why, in what format, how to send it, and what the platform shows until it arrives. The tracker on page 3 is the working list; the sections after it are the detail. Nothing here is a build task, and nothing here needs THC to have seen the code.',
 
@@ -1425,13 +1434,6 @@ const DOC = {
         whyLong:
           'A go-live gate: no real candidate signs until THC (and its solicitor) approves the duty-to-disclose clause and the approved text is published as a clean version.',
         appendix: 'Before the contract step is built',
-        target: 'Two weeks before UAT',
-      },
-      {
-        item: `${byId('C1')} · The quiz answer key`,
-        whyLong:
-          'A go-live gate: a wrong key passes or fails real candidates wrongly, and the third failure rejects them.',
-        appendix: '—',
         target: 'Two weeks before UAT',
       },
       {
@@ -1557,7 +1559,7 @@ function toMarkdown(doc) {
   L.push('### What cannot go live without THC');
   L.push('');
   for (const p of doc.summary.cannotGoLive) L.push(p, '');
-  L.push('### Five things with lead time');
+  L.push(`### ${leadTimeHeading(doc.summary.leadTime)}`);
   L.push('');
   L.push(
     mdTable(
@@ -1993,7 +1995,7 @@ function Summary(doc) {
     sm.built.map((p, i) => h(Fragment, { key: i }, P(p))),
     h(Text, { style: s.h2 }, 'What cannot go live without THC'),
     sm.cannotGoLive.map((p, i) => h(Fragment, { key: i }, P(p))),
-    h(Text, { style: s.h2 }, 'Five things with lead time'),
+    h(Text, { style: s.h2 }, leadTimeHeading(sm.leadTime)),
     Table({
       widths: [0.28, 0.38, 0.17, 0.17],
       head: ['Item', 'Why it takes time', 'Appendix B said', 'Suggested target'],

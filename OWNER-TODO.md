@@ -107,9 +107,10 @@ secrets in Supabase → Edge Functions → Secrets (not Vercel) — never in a c
       `willo_review_url_template`.
 - [ ] One test candidate end to end; check the first delivery against ADR-0066's
       "still unverified" list.
-- [ ] Ask a session to enable the `willo-invite` schedule. That is a migration
-      plus test `190`, not a dashboard change. Then re-run
-      `select install_job_schedules();`
+- [x] 28.09: `willo-invite` schedule enabled (migration `20261001206000`, test `190`).
+      It skips safely until the Willo secrets above are set. Once the migration
+      has deployed, run `select install_job_schedules();` in the SQL editor to
+      create its cron job.
 
 ## 4b · Document reading with Claude (ADR-0033)
 
@@ -129,20 +130,16 @@ as today.
 
 - [x] 26.09: Health & Safety **quiz** received ("Health and Safety Presentation
       Questions") and live as the step 6 quiz (migration `20260930140000`). THC
-      still has to confirm the items below. **The first two are go-live gates: no
-      real candidate sits the quiz until they are done.**
-  - [ ] **GATE — THC confirms the quiz answer key.** THC's sheet marks no answers,
-        so the build team inferred them (C, B, B, A, D, A, C, D, C, A; the ones the
-        induction deck covers agree with it). A wrong key passes or fails real
-        candidates wrongly, and the third failure rejects them;
-  - [ ] **GATE — THC approves Q8**, reworded from free text ("Name three (3) foods, which can cause
-        an allergic reaction?") to multiple choice ("Which of these foods can cause
-        an allergic reaction?" Peanuts · Milk · Shellfish · All the above); it is
-        the one question still flagged placeholder;
-  - [ ] **Q9–Q10 have no correct option as worded**: 16 kg / 25 kg (the answers
-        marked correct, the closest offered) are HSE's figures between knuckle and
-        elbow height; at elbow height HSE gives 13 kg / 20 kg. Reword to "knuckle
-        height" or change the options (`docs/17` item 9);
+      confirmed the answers on 28.09, so both go-live gates below are closed.
+  - [x] 28.09: **GATE — THC confirmed the quiz answer key** as inferred (C, B, B, A,
+        D, A, C, D, C, A). pgTAP 391 now pins it (migration `20261001206000`);
+  - [x] 28.09: **GATE — THC approved Q8**'s multiple-choice rewording ("Which of these
+        foods can cause an allergic reaction?" Peanuts · Milk · Shellfish · All the
+        above); its placeholder flag is cleared, so no active question is a placeholder;
+  - [x] 28.09: **Q9–Q10 stay as worded**: THC confirmed 16 kg / 25 kg as the answers.
+        (For the record: HSE gives those figures between knuckle and elbow height,
+        and 13 kg / 20 kg at elbow height. THC can still reword to "knuckle
+        height" later without changing the key.)
   - [ ] **Q4, Q5, Q8** (allergies) and **Q9–Q10** (weight limits) are not covered
         by the induction deck — add slides, or change the questions.
 - [x] 26.09: **Induction** slides received ("General Health & Safety Awareness", 21 slides) and

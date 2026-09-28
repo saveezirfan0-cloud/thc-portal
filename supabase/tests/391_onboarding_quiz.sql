@@ -16,7 +16,7 @@
 -- THC's real questions turn out to be.
 -- =====================================================================
 begin;
-select plan(47);
+select plan(48);
 
 \set pass_uid  'c3930000-0000-4000-8000-000000000001'
 \set fail_uid  'c3930000-0000-4000-8000-000000000002'
@@ -53,13 +53,16 @@ create temporary table sheet as
 grant select on sheet to authenticated;
 
 select ok((select total from sheet) >= 5, 'the quiz is configured');
--- THC's own ten (20260930140000). The answer key is inferred (THC's sheet
--- marks none) and Q8 is reworded from free text — both await THC (docs/17).
+-- THC's own ten (20260930140000). THC confirmed the answer key and Q8's
+-- multiple-choice rewording on 28.09 (20261001206000, docs/17 item 9).
 select is((select total from sheet), 10, 'THC''s ten questions are the active quiz (§2.9, Appendix B)');
-select results_eq(
+select is_empty(
   $$ select position from quiz_questions where active and is_placeholder $$,
-  $$ values (8) $$,
-  'exactly one of them is still flagged placeholder: Q8, reworded from THC''s free-text question');
+  'none of them is a placeholder: THC approved Q8''s rewording with the key');
+select results_eq(
+  $$ select position, correct_index from quiz_questions where active order by position $$,
+  $$ values (1, 2), (2, 1), (3, 1), (4, 0), (5, 3), (6, 0), (7, 2), (8, 3), (9, 2), (10, 0) $$,
+  'the answer key is THC''s confirmed one: C, B, B, A, D, A, C, D, C, A');
 select is((select count(*)::int from quiz_questions where not active and is_placeholder), 10,
   'the ten placeholder questions are kept, inactive — attempts marked against them stay readable');
 select is((select image_path from quiz_questions where active and position = 7), '/quiz/coshh-toxic.svg',

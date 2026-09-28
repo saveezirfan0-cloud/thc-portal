@@ -191,8 +191,8 @@ select is((select attempt from willo_invite_due(50, now() + interval '2 days 1 m
   'claims from an earlier onboarding period do not count against a new one');
 reset role;
 
-select is((select enabled::text || ' ' || edge_path from job_schedules where job = 'willo-invite'), 'false willo-webhook/invite',
-  'the safety-net schedule is registered, disabled until THC''s Willo keys are set');
+select is((select enabled::text || ' ' || edge_path from job_schedules where job = 'willo-invite'), 'true willo-webhook/invite',
+  'the safety-net schedule is registered and enabled: without THC''s Willo keys the function skips (20261001206000)');
 
 -- A Supabase Functions base: 20260927160300 refuses any other destination
 -- for the service-role bearer.
