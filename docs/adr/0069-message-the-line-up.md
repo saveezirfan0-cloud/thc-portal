@@ -16,7 +16,7 @@ Every push in §8 has fixed copy. The office had no way to pass on last-minute i
 - **Also invited:** a checkbox, off by default.
 - **Message:** 1–300 characters. iOS shows about 178 on the lock screen and the rest on a long press.
 
-**Who receives it** is decided by `send_event_message()` (20261001208000) from the bookings, never from a list the page sends:
+**Who receives it** is decided by `send_event_message()` (20261001209000) from the bookings, never from a list the page sends:
 
 - confirmed and worked (checked in) bookings, plus invited ones when the box is ticked;
 - never applied, closed, cancelled or turned away bookings;

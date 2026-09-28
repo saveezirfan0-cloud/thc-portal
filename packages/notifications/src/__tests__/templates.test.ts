@@ -998,7 +998,7 @@ describe('N10d / N11b — the extensions for a withdrawn invitation and a detail
 /**
  * Office messages (ADR-0069). The manager writes the body; the register
  * still fixes the title, the deep link and the tag, and the payload carries
- * exactly the keys `send_event_message` writes (pgTAP 757).
+ * exactly the keys `send_event_message` writes (pgTAP 758).
  */
 describe('office message — OM1 (ADR-0069)', () => {
   const values = {

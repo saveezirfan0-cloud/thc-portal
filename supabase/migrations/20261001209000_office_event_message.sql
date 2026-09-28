@@ -142,7 +142,7 @@ begin
 end $$;
 
 comment on function public.send_event_message(uuid, uuid, boolean, text) is
-  'ADR-0069: the office messages an event''s line-up. Queues one OM1 push per worker — confirmed and worked, plus invited when asked; one role section or the whole event — with the manager''s text (1–300 characters) in the payload. Returns sent, and withoutPush: the names of recipients with no push subscription, for the manager to phone. Refusals: message_required / message_too_long / event_cancelled / event_over / section_not_on_event / nobody_to_message. Admin only, not a viewer (20261001208000).';
+  'ADR-0069: the office messages an event''s line-up. Queues one OM1 push per worker — confirmed and worked, plus invited when asked; one role section or the whole event — with the manager''s text (1–300 characters) in the payload. Returns sent, and withoutPush: the names of recipients with no push subscription, for the manager to phone. Refusals: message_required / message_too_long / event_cancelled / event_over / section_not_on_event / nobody_to_message. Admin only, not a viewer (20261001209000).';
 
 -- Supabase's default privileges grant EXECUTE to anon and authenticated by
 -- name, so revoking from PUBLIC alone leaves anon open (docs/14 O7).

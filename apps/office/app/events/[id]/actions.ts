@@ -184,7 +184,7 @@ export async function cancelEvent(eventId: string, reason: string): Promise<Acti
  * everyone on the event, or on one role — last-minute information that
  * has no §8 code (a moved entrance, parking, what to bring).
  *
- * One RPC, `send_event_message()` (20261001208000). It picks the recipients
+ * One RPC, `send_event_message()` (20261001209000). It picks the recipients
  * from the bookings itself — the page sends a section id at most, never a
  * list of workers — and answers with the names of anyone who has
  * notifications off, which is returned as the success line so the manager

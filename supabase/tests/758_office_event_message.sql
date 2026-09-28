@@ -1,6 +1,6 @@
 -- =====================================================================
--- 757 · Message the line-up (ADR-0069)
---   20261001208000_office_event_message.sql
+-- 758 · Message the line-up (ADR-0069)
+--   20261001209000_office_event_message.sql
 --
 --   1. Admin only — not anon, not a worker, not the client, not a
 --      read-only viewer (ADR-0060).
@@ -18,33 +18,33 @@ begin;
 select plan(27);
 \ir _shared/fixtures.psql
 
-\set ev  '75700000-0000-4000-8000-000000000001'
-\set evx '75700000-0000-4000-8000-000000000002'
-\set evp '75700000-0000-4000-8000-000000000003'
-\set sp  '75710000-0000-4000-8000-000000000004'
-\set bp  '75720000-0000-4000-8000-000000000008'
-\set viewer '75740000-0000-4000-8000-000000000001'
-\set s1  '75710000-0000-4000-8000-000000000001'
-\set s2  '75710000-0000-4000-8000-000000000002'
-\set sx  '75710000-0000-4000-8000-000000000003'
-\set b1a '75720000-0000-4000-8000-000000000001'
-\set b1b '75720000-0000-4000-8000-000000000002'
-\set b2  '75720000-0000-4000-8000-000000000003'
-\set b3  '75720000-0000-4000-8000-000000000004'
-\set b4  '75720000-0000-4000-8000-000000000005'
-\set b5  '75720000-0000-4000-8000-000000000006'
-\set w1  '75730000-0000-4000-8000-000000000001'
-\set w2  '75730000-0000-4000-8000-000000000002'
-\set w3  '75730000-0000-4000-8000-000000000003'
-\set w4  '75730000-0000-4000-8000-000000000004'
-\set w5  '75730000-0000-4000-8000-000000000005'
+\set ev  '75800000-0000-4000-8000-000000000001'
+\set evx '75800000-0000-4000-8000-000000000002'
+\set evp '75800000-0000-4000-8000-000000000003'
+\set sp  '75810000-0000-4000-8000-000000000004'
+\set bp  '75820000-0000-4000-8000-000000000008'
+\set viewer '75840000-0000-4000-8000-000000000001'
+\set s1  '75810000-0000-4000-8000-000000000001'
+\set s2  '75810000-0000-4000-8000-000000000002'
+\set sx  '75810000-0000-4000-8000-000000000003'
+\set b1a '75820000-0000-4000-8000-000000000001'
+\set b1b '75820000-0000-4000-8000-000000000002'
+\set b2  '75820000-0000-4000-8000-000000000003'
+\set b3  '75820000-0000-4000-8000-000000000004'
+\set b4  '75820000-0000-4000-8000-000000000005'
+\set b5  '75820000-0000-4000-8000-000000000006'
+\set w1  '75830000-0000-4000-8000-000000000001'
+\set w2  '75830000-0000-4000-8000-000000000002'
+\set w3  '75830000-0000-4000-8000-000000000003'
+\set w4  '75830000-0000-4000-8000-000000000004'
+\set w5  '75830000-0000-4000-8000-000000000005'
 
 insert into staff (id, first_name, last_name, email, phone, dob, status) values
-  (:'w1', 'Two',  'Sections', 'w1@om757.test', '+447700957001', date '1995-01-01', 'compliant'),
-  (:'w2', 'Chec', 'Kedin',    'w2@om757.test', '+447700957002', date '1995-01-01', 'compliant'),
-  (:'w3', 'In',   'Vited',    'w3@om757.test', '+447700957003', date '1995-01-01', 'compliant'),
-  (:'w4', 'Ap',   'Plied',    'w4@om757.test', '+447700957004', date '1995-01-01', 'compliant'),
-  (:'w5', 'Clo',  'Sed',      'w5@om757.test', '+447700957005', date '1995-01-01', 'compliant');
+  (:'w1', 'Two',  'Sections', 'w1@om758.test', '+447700957001', date '1995-01-01', 'compliant'),
+  (:'w2', 'Chec', 'Kedin',    'w2@om758.test', '+447700957002', date '1995-01-01', 'compliant'),
+  (:'w3', 'In',   'Vited',    'w3@om758.test', '+447700957003', date '1995-01-01', 'compliant'),
+  (:'w4', 'Ap',   'Plied',    'w4@om758.test', '+447700957004', date '1995-01-01', 'compliant'),
+  (:'w5', 'Clo',  'Sed',      'w5@om758.test', '+447700957005', date '1995-01-01', 'compliant');
 
 insert into events (id, client_id, venue_id, venue_name, venue_address, venue_location, geofence_radius_m,
                     title, event_date, pays_breaks, pays_buffer, auto_assign, cancelled_at, cancel_reason) values
@@ -75,12 +75,12 @@ insert into bookings (id, shift_id, staff_id, status, source, confirmed_at, appl
   (:'bp',  :'sp', :'w5', 'worked',    'auto', now() - interval '8 days', null, null, null);
 
 -- A read-only Back Office login (ADR-0060).
-insert into auth.users (id, email) values (:'viewer', 'viewer.757@rls.test');
+insert into auth.users (id, email) values (:'viewer', 'viewer.758@rls.test');
 insert into profiles (id, role, office_role, full_name) values (:'viewer', 'admin', 'viewer', 'Vera Viewer');
 
 -- Only w1 has notifications on.
 insert into push_subscriptions (staff_id, endpoint, p256dh, auth) values
-  (:'w1', 'https://push.example.test/om757-w1', 'p256dh', 'auth');
+  (:'w1', 'https://push.example.test/om758-w1', 'p256dh', 'auth');
 
 -- ---------------------------------------------------------------------
 -- 1 · Who may call it
@@ -123,7 +123,7 @@ select is(send_event_message(:'evx', null, true, 'hi'),
 select is(send_event_message(:'evp', null, false, 'hi'),
   jsonb_build_object('ok', false, 'reason', 'event_over'),
   'an event whose every role has ended is refused, though someone worked it');
-select throws_ok($$ select send_event_message('75700000-0000-4000-8000-00000000dead', null, false, 'hi') $$,
+select throws_ok($$ select send_event_message('75800000-0000-4000-8000-00000000dead', null, false, 'hi') $$,
   'P0002', 'event_not_found', 'an unknown event raises');
 select is((select count(*)::int from notification_outbox where template = 'OM1'), 0,
   'and none of that queued anything');
