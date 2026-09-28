@@ -4,6 +4,7 @@ import { checkJobSecret } from './_lib/auth';
 import { createGovukChecker } from './_lib/govuk';
 import { chromiumLauncher } from './_lib/govuk.launch';
 import { createProviderChecker } from './_lib/provider';
+import { createSandboxProviderFetch, rtwSandboxEnabled, sandboxEnv } from './_lib/sandbox';
 import { runRtwCheckSweep } from './_lib/sweep';
 import type { ClaimedCheck, RecordInput } from './_lib/sweep';
 import type { RightToWorkChecker } from './_lib/checker';
@@ -86,8 +87,37 @@ export async function POST(request: Request) {
       company_name?: string;
     };
 
+    // RTW_PROVIDER_URL=sandbox: puts the sandbox provider behind the real
+    // provider adapter (ADR-0063): demo share codes only, SANDBOX on every
+    // report. It looks the holder up the way gov.uk does — code + DOB.
+    const sandbox = rtwSandboxEnabled(env)
+      ? createSandboxProviderFetch({
+          lookupHolder: async (shareCode, dateOfBirth) => {
+            const docs = await admin
+              .from('compliance_docs')
+              .select('staff_id')
+              .eq('share_code', shareCode)
+              .eq('review_status', 'pending');
+            const ids = (docs.data ?? []).map((d) => d.staff_id);
+            if (docs.error || ids.length === 0) return null;
+            const people = await admin
+              .from('staff')
+              .select('first_name, last_name')
+              .in('id', ids)
+              .eq('dob', dateOfBirth)
+              .limit(1);
+            const person = people.data?.[0];
+            if (people.error || !person) return null;
+            return [person.first_name, person.last_name].filter(Boolean).join(' ') || null;
+          },
+        })
+      : null;
+    if (sandbox) console.warn('rtw-check: SANDBOX provider in use — demo share codes only');
+
     const adapters: Record<string, RightToWorkChecker | null> = {
-      provider: createProviderChecker(env),
+      provider: sandbox
+        ? createProviderChecker(sandboxEnv(env), sandbox)
+        : createProviderChecker(env),
       govuk: createGovukChecker(env, chromiumLauncher(env)),
     };
     const primary = adapters[settings.primary ?? 'provider'] ?? null;
