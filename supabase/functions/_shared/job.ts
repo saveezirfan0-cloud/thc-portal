@@ -5,9 +5,9 @@
  * docs/01-architecture.md §4). Three things are true of all of them and
  * none of them is interesting enough to write six times:
  *
- *   1. Only the service role may call it. These endpoints raise
- *      violations and enqueue pushes; an open one is a way to forge a
- *      No-show against any worker.
+ *   1. Only pg_cron (the job secret) or the service role may call it.
+ *      These endpoints raise violations and enqueue pushes; an open one
+ *      is a way to forge a No-show against any worker.
  *   2. Every run writes a job_runs row, started and finished, with its
  *      counts or its error. Without it a failed 12:05 cutoff is silent.
  *   3. The work itself is a database function, so the rules stay in SQL
@@ -15,9 +15,7 @@
  */
 
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
-import { timingSafeEqual } from '../../../packages/db/src/willo.ts';
-
-const encoder = new TextEncoder();
+import { jobCallerAuthorised } from '../../../packages/db/src/job-auth.ts';
 
 export interface JobResult {
   ok: boolean;
@@ -33,24 +31,20 @@ function serviceClient(): SupabaseClient {
 }
 
 /**
- * The bearer the caller presented equals the expected key. Constant time
- * over equal-length inputs (timingSafeEqual visits every byte whatever the
- * first difference), so the response time never says how long a prefix a
- * guess shared. V8's `===` short-circuits on the first differing byte,
- * which is what the earlier "compare lengths first" version still leaked.
- * Exported for the test.
+ * The caller must hold the job secret (x-job-secret, JOB_SECRET) or the
+ * injected service key as a bearer — packages/db/src/job-auth.ts says why
+ * both, and holds the tests.
  */
-export function bearerMatches(header: string | null, expected: string | undefined): boolean {
-  if (!expected) return false;
-  const token = header?.startsWith('Bearer ') ? header.slice(7) : '';
-  return timingSafeEqual(encoder.encode(token), encoder.encode(expected));
-}
-
-/** The caller must hold the service key. pg_net sends it as a bearer token. */
 function authorised(request: Request): boolean {
-  return bearerMatches(
-    request.headers.get('Authorization'),
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+  return jobCallerAuthorised(
+    {
+      authorization: request.headers.get('Authorization'),
+      jobSecret: request.headers.get('x-job-secret'),
+    },
+    {
+      serviceRoleKey: Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'),
+      jobSecret: Deno.env.get('JOB_SECRET'),
+    },
   );
 }
 

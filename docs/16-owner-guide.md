@@ -741,6 +741,28 @@ select vault.update_secret(
 together with the three Vercel projects; the functions receive the new one
 automatically.
 
+**Step 2b — the job secret (`20261001205000`).** On the live project the
+key Supabase injects as `SUPABASE_SERVICE_ROLE_KEY` turned out **not** to be the
+legacy JWT above, so the byte-for-byte check in Step 2 never matched and every job
+answered 401 `service role required` (28.09). The jobs now also send a secret of
+our own in an `x-job-secret` header, and `job.ts` accepts that
+(`packages/db/src/job-auth.ts`). It lives in two places, **the same value in
+both**:
+
+- Edge Function secret `JOB_SECRET`:
+  https://supabase.com/dashboard/project/dgxtqvalfiisfpbwodew/functions/secrets
+- Vault secret `job_secret` (what pg_cron and the two nudges read):
+
+```sql
+-- generate the value once, e.g. openssl rand -base64 48
+select vault.create_secret('<JOB_SECRET>', 'job_secret',
+  'Shared secret pg_cron sends to the job Edge Functions (x-job-secret)');
+```
+
+Keep Step 2's `service_role_key` too: the job functions verify the JWT at the
+gateway, so the bearer must still be a valid key. To rotate the job secret, change
+both, Edge secret first.
+
 **Step 3 — install the schedules.** Only after §4.6:
 
 ```sql

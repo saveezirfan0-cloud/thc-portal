@@ -65,11 +65,15 @@ Nothing is lost; it all sends once the keys exist.
       so they stay in step with the code.
 - [x] 25.09: `settings.edge_base_url` set to
       `https://dgxtqvalfiisfpbwodew.supabase.co/functions/v1` (the guard accepts it).
-- [ ] SQL editor: add the **service role key** to the Vault, which a session
+- [x] 28.09: SQL editor: add the **service role key** to the Vault, which a session
       cannot do (the key never leaves the dashboard):
       `select vault.create_secret('<service_role key from Settings → API>', 'service_role_key');`
-      It must be the same key the functions see as `SUPABASE_SERVICE_ROLE_KEY`.
-- [ ] **Only after that**, in the SQL editor: `select install_job_schedules();`
+      The legacy `service_role` JWT: the gateway verifies it before the function runs.
+- [x] 28.09: the **job secret**: `JOB_SECRET` (Edge Function secret) and
+      `job_secret` (Vault), the same value. The jobs send it as `x-job-secret`
+      because the injected service key never matched (every job 401'd;
+      `20261001205000`, docs/16 §4.7 Step 2b).
+- [x] 28.09: **Only after that**, in the SQL editor: `select install_job_schedules();`
       Then check `job_runs` for `booking-tick` (every minute) and `notify-drain`.
       This switches on the hourly Auto-Assign, the 12:05 release, reminders and
       the compliance sweep on the live data — do it when the data is real or

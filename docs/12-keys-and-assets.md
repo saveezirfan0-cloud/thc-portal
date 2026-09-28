@@ -185,6 +185,13 @@ supabase secrets set \
 
 (`SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` are injected by Supabase itself.)
 
+Every job function, `notify-drain` included, also needs **`JOB_SECRET`**
+(any long random string) as an Edge Function secret, and the same value in the
+Vault as `job_secret`. pg_cron sends it as `x-job-secret`. Without it the jobs
+fall back to comparing the bearer with the injected service key, which on the
+live project does not match: every call is a 401 (docs/16 §4.7 Step 2b,
+`20261001205000`).
+
 | Secret | What it is | If it is missing |
 |---|---|---|
 | `RESEND_API_KEY` | Resend API key with sending access to THC's domain | Every email row is **held**: the row's `error` says "not configured", no attempt is spent, and it is looked at again every 5 minutes. Push still sends. |
