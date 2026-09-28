@@ -151,6 +151,19 @@ export const GOVUK_RESULT = {
     /\b(?:cannot|can't|can only|must not|may only)\b.*\bwork/i,
     /\bno (?:work )?restrictions?\b/i,
   ],
+  /**
+   * gov.uk's advice to the EMPLOYER, printed with the conditions on the live
+   * result (28.09.2026): "You cannot accept a job applicant's biometric
+   * residence card, biometric residence permit, or Frontier Worker permit as
+   * proof of their right to work. Ask them for a share code instead." It says
+   * "cannot … work", so without this it read as a condition on the worker and
+   * sent every pass to the office.
+   */
+  notCondition: [
+    /^\s*you (?:cannot|can't|must not|should not|do not need to) (?:accept|ask|check)\b/i,
+    /\bask them for a share code\b/i,
+    /\bbiometric residence (?:card|permit)\b/i,
+  ],
 } as const;
 
 /** Section headings that end a conditions list. */

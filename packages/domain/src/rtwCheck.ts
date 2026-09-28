@@ -236,8 +236,9 @@ export const BENIGN_CONDITION_PATTERNS: readonly RegExp[] = [
     String.raw`^${SUBJECT}can\s+work\s+full[\s-]?time\s+during\s+(?:official\s+)?(?:university\s+|college\s+)?(?:vacations?|holidays?)\.?$`,
     'i',
   ),
+  // Live wording (28.09.2026): "They cannot work as a professional sportsperson or coach."
   new RegExp(
-    String.raw`^${SUBJECT}cannot\s+work\s+as\s+a\s+professional\s+sports\s?person\.?$`,
+    String.raw`^${SUBJECT}cannot\s+work\s+as\s+a\s+professional\s+sports\s?person(?:\s+or\s+(?:sports\s+)?coach)?\.?$`,
     'i',
   ),
   new RegExp(String.raw`^${SUBJECT}cannot\s+be\s+self[\s-]?employed\.?$`, 'i'),
@@ -250,6 +251,17 @@ export const BENIGN_CONDITION_PATTERNS: readonly RegExp[] = [
     'i',
   ),
 ];
+
+/**
+ * gov.uk's lead-in to a visa's conditions, seen on the live service
+ * (28.09.2026): "On their current visa, they can work in any job except those
+ * listed in the conditions below." It restricts nothing by itself — the lines
+ * it points at are each checked on their own — so it is recognised whole,
+ * and only in exactly this form ("except as a doctor" still goes to the
+ * office).
+ */
+export const CONDITIONS_LEAD_IN =
+  /^on\s+their\s+current\s+(?:visa|permission|immigration\s+permission),?\s+(?:they|this\s+person)\s+can\s+work\s+in\s+any\s+job\s+except\s+(?:those|the\s+ones?|jobs?)\s+listed\s+in\s+the\s+conditions\s+below\.?$/i;
 
 /**
  * Words that change what a line allows. A line carrying one — or any digit —
@@ -275,6 +287,7 @@ function normaliseLine(line: string): string {
 /** A line needing no human: a whole benign line, or a whole term-time line. */
 export function conditionRecognised(line: string): boolean {
   const l = normaliseLine(line);
+  if (CONDITIONS_LEAD_IN.test(l)) return true;
   if (TERM_TIME_LINE_PATTERNS.some((p) => p.test(l))) return true;
   if (!BENIGN_CONDITION_PATTERNS.some((p) => p.test(l))) return false;
   // Belt and braces: a benign pattern never admits a line with a number or
