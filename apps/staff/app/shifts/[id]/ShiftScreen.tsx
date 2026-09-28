@@ -34,6 +34,8 @@ import { pressCheckOut } from './press';
 import { ShiftMap } from './ShiftMap';
 import { StaticShiftScreen } from './StaticShiftScreen';
 import { TurnedAwayScreen } from './TurnedAwayScreen';
+import { useWakeLock } from './wakeLock';
+import type { WakeState } from './wakeLock';
 import { OfferPanel } from './OfferPanel';
 import { LoadProblem } from '../../_components/LoadProblem';
 import type { BookingOffer } from '../offers';
@@ -143,20 +145,31 @@ export function ShiftScreen({
   // worker has the screen open during the shift. Off-site check-out reads
   // this trail, so even this much is the difference between recording their
   // real finish and falling to RULE-02 (ADR-0001, docs/06).
+  const tracking = !dead && Boolean(shift.checkInAt) && !shift.checkOutAt;
+  // docs/06 Option A: keep the screen on while checked in, so the pings
+  // keep coming, and say so in a bar that stays up for the whole shift.
+  const wake = useWakeLock(tracking);
   useEffect(() => {
-    if (dead || !shift.checkInAt || shift.checkOutAt) return;
+    if (!tracking) return;
     let cancelled = false;
     const send = async () => {
       const f = await locate(TRACKING_FIX);
       if (f && !cancelled) await recordPing(shift.bookingId, f.lat, f.lng);
     };
+    // Back from another app or a locked screen: a fix now, not up to two
+    // minutes later — the gap is exactly what the trail is missing.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void send();
+    };
     void send();
     const timer = setInterval(send, 120_000);
+    document.addEventListener('visibilitychange', onVisible);
     return () => {
       cancelled = true;
       clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
     };
-  }, [dead, locate, shift.bookingId, shift.checkInAt, shift.checkOutAt]);
+  }, [tracking, locate, shift.bookingId]);
 
   const venue = { lat: shift.venueLat, lng: shift.venueLng };
   const metres = fix ? distanceM(fix, venue) : null;
@@ -482,6 +495,7 @@ export function ShiftScreen({
 
       {phase === 'on_shift' || phase === 'on_break' ? (
         <>
+          <KeepOpenBar wake={wake} />
           <Timer>
             {formatDuration(
               Math.max(
@@ -721,4 +735,25 @@ function ukDay(at: Date): string {
     day: 'numeric',
     month: 'short',
   });
+}
+
+/**
+ * docs/06 Option A's persistent bar. The app only knows where the worker is
+ * while this page is open, and an off-site check-out is paid to the last
+ * time it saw them on site (§5.1) — so the bar says what is at stake, not
+ * just "keep the app open".
+ */
+export function KeepOpenBar({ wake }: { wake: WakeState }) {
+  return (
+    <div className="note cyan keep-open" role="status">
+      <strong>Keep this screen open during your shift</strong>
+      <span className="xs">
+        {wake === 'on'
+          ? 'Your screen will stay on while this page is open.'
+          : 'Your phone may lock the screen — if it does, open the app again.'}{' '}
+        We can only see you’re on site while the app is open, and that’s what your check-out time is
+        based on if you leave the venue first.
+      </span>
+    </div>
+  );
 }
