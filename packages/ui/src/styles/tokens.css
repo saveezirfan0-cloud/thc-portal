@@ -223,6 +223,10 @@
   /* The Back Office phone tab bar's height, without the home-indicator
      inset: the content well and the More sheet both clear it. */
   --pnav-h: 62px;
+  /* The Staff App's column on a screen wider than a phone: the app is a
+     phone app (§1.2), so a desktop browser gets it as a centred column
+     rather than stretched edge to edge. */
+  --app-col: 480px;
 
   /* =================================================================
      Radius — v1 is 0 everywhere. The logo is the only exception (§1.6).
