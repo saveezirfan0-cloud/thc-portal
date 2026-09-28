@@ -77,7 +77,7 @@ Nothing is lost; it all sends once the keys exist.
 - [ ] Smoke test: send yourself a push from the Staff App's notifications screen,
       and trigger one email (for example, Send on an event's timesheet).
 
-## 4 · Willo (ADR-0021, ADR-0063)
+## 4 · Willo (ADR-0021, ADR-0066)
 
 28.09: THC's account was read through the API. Willo does not sign webhooks and has no
 Add button for them, so the secret is ours and goes in the address, and the webhook is
@@ -89,6 +89,10 @@ secrets in Supabase → Edge Functions → Secrets (not Vercel) — never in a c
       `WILLO_WEBHOOK_SECRET` = the output of `openssl rand -hex 32`.
 - [ ] Fix §3's Vault `service_role_key` first: every call from the database to a function
       was answered 401 on 26–28.09, including the Willo invite nudge.
+- [ ] 28.09: our `stage_change` webhook exists (key `f0331db76cb24b91b84c25e1fdde8ca7`,
+      our interview only) but was created with the placeholder `YOUR_WEBHOOK_SECRET` in
+      its address. Correct it with the real secret — same URL, `-X PATCH` to
+      `…/webhooks/f0331db76cb24b91b84c25e1fdde8ca7/`, body `{"url":"…?token=<secret>"}`.
 - [ ] Create our two webhooks (leave Sam's two — Accelerate and 4-com.pro — alone). In
       Terminal, with the key and secret filled in, once for `stage_change` and once for
       `new_response`:
@@ -99,7 +103,7 @@ secrets in Supabase → Edge Functions → Secrets (not Vercel) — never in a c
       ```
 - [ ] Set `settings.willo_stage_map` on `/settings` to THC's real stage names, and
       `willo_review_url_template`.
-- [ ] One test candidate end to end; check the first delivery against ADR-0063's
+- [ ] One test candidate end to end; check the first delivery against ADR-0066's
       "still unverified" list.
 - [ ] Ask a session to enable the `willo-invite` schedule. That is a migration
       plus test `190`, not a dashboard change. Then re-run

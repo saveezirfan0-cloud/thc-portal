@@ -1,4 +1,4 @@
-# ADR-0063 · Willo's real API: the token in the webhook address, `/participants/`, the bare key
+# ADR-0066 · Willo's real API: the token in the webhook address, `/participants/`, the bare key
 
 Status: accepted · 28.09.2026 · **Amends** ADR-0021 §1 (what was assumed about Willo) and ADR-0024 (the lookup path)
 

@@ -6,7 +6,7 @@
  *                                JWT and signs nothing, so this function is
  *                                deployed with `--no-verify-jwt` and checks
  *                                the token in the address it was registered
- *                                with (WILLO_WEBHOOK_SECRET, ADR-0063) — or a
+ *                                with (WILLO_WEBHOOK_SECRET, ADR-0066) — or a
  *                                signature, if one is sent — before reading a
  *                                byte of the body as JSON.
  *   POST /willo-webhook/invite   "Create the candidate in Willo" (Willo

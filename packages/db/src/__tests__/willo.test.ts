@@ -108,7 +108,7 @@ describe('the signature', () => {
     ).resolves.toEqual({ ok: false, reason: 'signature_malformed' });
   });
 
-  describe('the token in the webhook address (Willo does not sign; ADR-0063)', () => {
+  describe('the token in the webhook address (Willo does not sign; ADR-0066)', () => {
     it('the right token is accepted with no signature header', async () => {
       await expect(verifyWilloSignature(BODY, headers({}), BASE, NOW, SECRET)).resolves.toEqual({
         ok: true,

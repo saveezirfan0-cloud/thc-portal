@@ -17,7 +17,7 @@
  *
  *   - authenticity: Willo does NOT sign deliveries (its webhook object is
  *     url, event, interviews, status — no secret; checked against THC's
- *     account 28.09, ADR-0063). The secret therefore travels in the
+ *     account 28.09, ADR-0066). The secret therefore travels in the
  *     address we register: `…/willo-webhook?token=<WILLO_WEBHOOK_SECRET>`,
  *     compared in constant time. The signed path below stays for a Willo
  *     that starts signing:
@@ -37,7 +37,7 @@
  *   - create candidate: POST {WILLO_API_BASE}{WILLO_INVITE_PATH} (Willo's
  *     `/participants/`, the interview key in the body) with the API key in
  *     WILLO_API_AUTH_HEADER, bare unless WILLO_API_AUTH_PREFIX names a
- *     scheme (ADR-0063).
+ *     scheme (ADR-0066).
  *
  * The first real delivery from THC's account settles all of it; ADR-0021
  * lists what to check.
@@ -208,7 +208,7 @@ export async function verifyWilloSignature(
 ): Promise<SignatureVerdict> {
   if (!config.secret) return { ok: false, reason: 'secret_missing' };
 
-  // Willo does not sign (ADR-0063): the secret is in the address we gave
+  // Willo does not sign (ADR-0066): the secret is in the address we gave
   // it. A signature header, when present, still wins — a delivery is
   // never accepted on the weaker check when the stronger one was offered.
   if (urlToken !== null && !headers.get(config.signatureHeader)) {
@@ -484,12 +484,12 @@ export interface WilloApiConfig {
 }
 
 export const DEFAULT_API_BASE = 'https://api.willotalent.com/api/integrations/v2';
-/** Willo's "Invite Participant" (ADR-0063); the interview goes in the body. */
+/** Willo's "Invite Participant" (ADR-0066); the interview goes in the body. */
 export const DEFAULT_INVITE_PATH = '/participants/';
 
 /**
  * Willo takes the bare key (`Authorization: <API Key>`, its API reference;
- * ADR-0063). A scheme can be named (`Bearer`, `Token`) and gets its space;
+ * ADR-0066). A scheme can be named (`Bearer`, `Token`) and gets its space;
  * `none` is the same as unset.
  */
 function authPrefix(value: string | null): string {
