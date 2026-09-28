@@ -147,36 +147,8 @@
   border-color: var(--coral-ink);
 }
 
-/* The venue map block (ADR-0005): the token grid, a pin, its geofence, the
-   worker's home pin and one label. Mirrors wireframes/assets/thc.css .map. */
-.map {
-  position: relative;
-  overflow: hidden;
-  border: 1px solid var(--line);
-  border-radius: var(--r-card);
-  background:
-    repeating-linear-gradient(0deg, var(--map-a) 0 22px, var(--map-b) 22px 23px),
-    repeating-linear-gradient(90deg, transparent 0 22px, var(--map-b) 22px 23px);
-}
-.radar-map {
-  height: 120px;
-}
-.map .pin {
-  position: absolute;
-  width: 12px;
-  height: 12px;
-  background: var(--cyan-ink);
-  transform: translate(-50%, -50%);
-  box-shadow: 0 0 0 3px var(--cyan-dim);
-  border-radius: var(--r-pill);
-}
-.map .circle {
-  position: absolute;
-  border: 1.5px solid var(--cyan-ink);
-  background: var(--cyan-dim);
-  transform: translate(-50%, -50%);
-  border-radius: 50%; /* a geofence is a circle in every style */
-}
+/* The shared .map block (grid, pin, geofence, label) lives in packages/ui;
+   the radar's height and the worker's home dot stay here. */
 .map .me {
   position: absolute;
   width: 10px;
@@ -186,14 +158,8 @@
   box-shadow: 0 0 0 4px var(--purple-dim);
   border-radius: var(--r-pill);
 }
-.map .lbl {
-  position: absolute;
-  font-family: var(--font-label);
-  font-size: var(--fs-10);
-  color: var(--muted);
-  background: var(--glass-strong);
-  padding: 2px var(--sp-6);
-  border-radius: var(--r-pill);
+.radar-map {
+  height: 120px;
 }
 
 /* ---- My shifts (wireframes/staff/shifts.html, §10.4) ------------------ */
