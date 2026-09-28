@@ -247,7 +247,7 @@ export interface ProfileData {
   rtwChecks?: RtwCheckRow[];
   /** settings.rtw_check.enabled. */
   rtwCheckEnabled?: boolean;
-  /** ADR-0069: dates of birth entered with pending share codes (share_code_dob_claims_v). */
+  /** ADR-0070: dates of birth entered with pending share codes (share_code_dob_claims_v). */
   dobClaims?: DobClaim[];
   /**
    * This worker's rows of `compliance_review_queue_v` — the /compliance

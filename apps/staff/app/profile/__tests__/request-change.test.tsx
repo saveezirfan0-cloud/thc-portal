@@ -298,7 +298,7 @@ describe('the requests', () => {
   });
 });
 
-describe('the date of birth (ADR-0069)', () => {
+describe('the date of birth (ADR-0070)', () => {
   const worker: StaffProfile = {
     staffId: 'staff-1',
     firstName: 'Amara',

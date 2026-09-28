@@ -13,7 +13,7 @@ import type { DecisionResult } from './types';
 
 /**
  * The office's decision on a name/photo/date-of-birth change request —
- * ADR-0045, ADR-0069.
+ * ADR-0045, ADR-0070.
  *
  * `office_decide_profile_change` is a definer with the admin check in its
  * own body and `auth.uid()` as the decider, so it is called through the
@@ -111,7 +111,7 @@ export async function decideChangeRequest(
     revalidatePath(`/onboarding/${request.facts.staff_id}`);
     revalidatePath('/compliance');
     // Approved: say what happened to gov.uk, and the opt-out, as the
-    // office's own Correct does (ADR-0069).
+    // office's own Correct does (ADR-0070).
     if (approve) {
       return { ok: true, ...dobCorrectionOutcome((data ?? null) as DobCorrectionAnswer | null) };
     }

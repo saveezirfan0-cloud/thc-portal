@@ -73,7 +73,7 @@ describe('decideChangeRequest (ADR-0045)', () => {
     expect(createAdminClient).not.toHaveBeenCalled();
   });
 
-  it('refuses to approve a date of birth without its evidence tick (ADR-0069)', async () => {
+  it('refuses to approve a date of birth without its evidence tick (ADR-0070)', async () => {
     state.kind = 'dob';
     const result = await decideChangeRequest('r1', true, '', false);
     expect(!result.ok && result.message).toMatch(/shows this date of birth/);

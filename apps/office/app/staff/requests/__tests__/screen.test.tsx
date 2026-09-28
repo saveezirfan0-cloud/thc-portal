@@ -138,7 +138,7 @@ describe('/staff/requests — Decided', () => {
   });
 });
 
-describe('/staff/requests — a date of birth (ADR-0069)', () => {
+describe('/staff/requests — a date of birth (ADR-0070)', () => {
   const dob = row({
     kind: 'dob',
     proposed_first_name: null,

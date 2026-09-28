@@ -286,7 +286,7 @@ export interface CandidateData {
   rtwChecks?: RtwCheckRow[];
   /** settings.rtw_check.enabled. */
   rtwCheckEnabled?: boolean;
-  /** ADR-0069: dates of birth entered with pending share codes (share_code_dob_claims_v). */
+  /** ADR-0070: dates of birth entered with pending share codes (share_code_dob_claims_v). */
   dobClaims?: DobClaim[];
   /** The latest referral that brought this person in (ADR-0047). */
   referral?: CandidateReferral | null;

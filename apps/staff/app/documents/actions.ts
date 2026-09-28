@@ -239,7 +239,7 @@ export async function finishDocumentUpload(
 }
 
 /**
- * New share code (§2.5, ADR-0069) — `submit_share_code_with_dob()`: the code
+ * New share code (§2.5, ADR-0070) — `submit_share_code_with_dob()`: the code
  * and the date of birth gov.uk will be asked with, in one call. A changed
  * date is checked first (a refused one files nothing), then the code is
  * filed exactly as `submit_document_upload()` files it, then the date is

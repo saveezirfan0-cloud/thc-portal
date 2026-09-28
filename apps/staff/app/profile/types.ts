@@ -24,8 +24,8 @@ export interface StaffProfile {
   leftAt: string | null;
   rtwBranch: string | null;
   /**
-   * `yyyy-mm-dd` (staff_me() since 20261001209000). Shown locked on Profile
-   * details with Request a change (ADR-0069); absent from an older build's
+   * `yyyy-mm-dd` (staff_me() since 20261001210000). Shown locked on Profile
+   * details with Request a change (ADR-0070); absent from an older build's
    * RPC, when the row is simply not drawn.
    */
   dob?: string | null;

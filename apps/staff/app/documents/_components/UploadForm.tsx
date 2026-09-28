@@ -16,7 +16,7 @@ import { EVIDENCE_ACCEPT, uploadEvidence } from './upload';
  * birth — automatically when the check is on (ADR-0025), by the office
  * otherwise — so that row asks for the code AND the date of birth, the
  * date pre-filled from the profile the way the onboarding re-entry sheet
- * pre-fills it (ADR-0069): gov.uk matches the pair, so a wrong date on
+ * pre-fills it (ADR-0070): gov.uk matches the pair, so a wrong date on
  * file is corrected here, with the code, rather than being a dead end.
  * `submit_share_code_with_dob()` files the code and keeps a changed date
  * WITH it: gov.uk is asked with that date, and the profile takes it only

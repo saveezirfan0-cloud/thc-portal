@@ -79,7 +79,7 @@ describe('Documents tab (§9.6)', () => {
     expect(html).toContain('no file to download');
   });
 
-  it('says when a pending share code carries a different date of birth (ADR-0069)', () => {
+  it('says when a pending share code carries a different date of birth (ADR-0070)', () => {
     const html = renderToStaticMarkup(
       <Documents
         profile={PROFILE}

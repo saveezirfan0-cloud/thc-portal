@@ -36,7 +36,7 @@ import type { ChangeRequest } from '../change-requests';
  *                 rather than a disabled input hiding a live field.
  *                 "Request a change" (ADR-0045) asks the office; the
  *                 status line under it says where that request is.
- *   Date of birth LOCKED (ADR-0069). gov.uk matches it with the share code;
+ *   Date of birth LOCKED (ADR-0070). gov.uk matches it with the share code;
  *                 "Request a change" asks the office, with evidence. A
  *                 worker renewing a share code corrects it on the
  *                 Documents hub's New share code form instead.

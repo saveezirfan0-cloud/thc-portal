@@ -21,7 +21,7 @@ describe('activity rows', () => {
     ).toEqual(['Reason: Late twice', 'Fields: full_name, phone']);
   });
 
-  it('a date-of-birth correction reads Date of birth: from → to (ADR-0069)', () => {
+  it('a date-of-birth correction reads Date of birth: from → to (ADR-0070)', () => {
     expect(
       describeRow({
         data: {

@@ -25,7 +25,7 @@ export function ChangeRequestBanner({
 }: {
   requests: ChangeRequestView[];
   problem?: string | null;
-  /** ADR-0069: owners and managers decide a date of birth. */
+  /** ADR-0070: owners and managers decide a date of birth. */
   canDecideDob?: boolean;
 }) {
   const [open, setOpen] = useState<{ id: string; stage: DecideStage } | null>(null);
@@ -40,7 +40,7 @@ export function ChangeRequestBanner({
       </Alert>
     );
   }
-  // ADR-0069: an approved date of birth leaves the banner; its outcome stays.
+  // ADR-0070: an approved date of birth leaves the banner; its outcome stays.
   const said = outcome ? (
     <>
       <Alert tone="green">{outcome.note}</Alert>

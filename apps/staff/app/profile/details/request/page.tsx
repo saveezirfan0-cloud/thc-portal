@@ -19,7 +19,7 @@ export const metadata = { title: 'Request a change · THC Staff' };
 
 /**
  * /profile/details/request?kind=name|photo|dob — Request a change (ADR-0045,
- * docs/19 §3, `wireframes/staff/request-change.html`; `dob` since ADR-0069,
+ * docs/19 §3, `wireframes/staff/request-change.html`; `dob` since ADR-0070,
  * a date-of-birth form shaped like the name form — no wireframe of its own).
  *
  * The in-app route for what §10.1 locks. The name and the photo stay

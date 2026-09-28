@@ -55,7 +55,7 @@ function sqlCheckValues(constraint: string, source: string = sql): string[] {
 }
 
 /**
- * The kind CHECK as it stands now: 20261001209000 (ADR-0069) dropped and
+ * The kind CHECK as it stands now: 20261001210000 (ADR-0070) dropped and
  * re-added it with 'dob', so the newest migration that adds it wins.
  */
 const migrationsDir = resolve(here, '../../../../supabase/migrations');
@@ -144,7 +144,7 @@ describe("paths are the worker's own", () => {
     expect(isOwnEvidencePath(me, `${me}/passport.pdf`)).toBe(false);
   });
 
-  it('has the kinds the table allows — name, photo and (ADR-0069) dob', () => {
+  it('has the kinds the table allows — name, photo and (ADR-0070) dob', () => {
     expect([...CHANGE_KINDS].sort()).toEqual(
       sqlCheckValues('profile_change_requests_kind', latestKindCheck),
     );

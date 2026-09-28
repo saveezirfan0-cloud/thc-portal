@@ -1,13 +1,13 @@
 /**
  * Date of birth — how it is typed (ADR-0068) and when a change to it is
- * accepted (ADR-0069).
+ * accepted (ADR-0070).
  *
  * The date of birth is what gov.uk matches a share code against (ADR-0025,
  * ADR-0041), what decides whether a 48-hour opt-out can be signed
  * (`canSignOptOut`, RULE-20) and what the HMRC New Starter report carries
  * (§9.9). Since 28.09.2026 it can be corrected after onboarding by three
  * routes, each held to the same rule, `dobChangeProblem()`, and to
- * `dob_change_problem()` in SQL (20261001209000) — both driven by the
+ * `dob_change_problem()` in SQL (20261001210000) — both driven by the
  * `dobs` group of changeRequest.vectors.json:
  *
  *   - the office's "Correct" on /staff/:id and /onboarding/:id
@@ -72,7 +72,7 @@ export function dobChangeProblem(
 }
 
 // ---------------------------------------------------------------------
-// The office's correction (ADR-0069)
+// The office's correction (ADR-0070)
 // ---------------------------------------------------------------------
 
 /** "Why" is the audit trail's only account of the change: say something. */

@@ -12,7 +12,7 @@
  * so `validate()` still says "Enter a real date"; a half-typed one is
  * passed through as typed, which `validate()` refuses the same way.
  *
- * The three functions live in packages/domain (`dob.ts`) since ADR-0069, so
+ * The three functions live in packages/domain (`dob.ts`) since ADR-0070, so
  * the Back Office's "Correct date of birth" dialog types a date exactly as
  * /apply does; this file keeps the Staff App's imports where they were.
  */

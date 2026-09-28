@@ -3,7 +3,7 @@ import { dobClaimLine } from '../_lib/dobCorrection';
 import type { DobClaim } from '../_lib/dobCorrection';
 
 /**
- * ADR-0069: beside a pending share code whose worker entered a different
+ * ADR-0070: beside a pending share code whose worker entered a different
  * date of birth with it — "Date of birth entered with this code:
  * 15.06.1995 (profile: 31.12.1994)" — because gov.uk is asked with that
  * date and Verify copies it to the profile. Shown on /compliance,

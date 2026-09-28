@@ -114,7 +114,7 @@ describe('change requests — the decision', () => {
   });
 });
 
-describe('a date-of-birth request (ADR-0069)', () => {
+describe('a date-of-birth request (ADR-0070)', () => {
   const dob = (over: Partial<ChangeRequestRow> = {}) =>
     row({
       kind: 'dob',

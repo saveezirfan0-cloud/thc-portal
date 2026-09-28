@@ -8,7 +8,7 @@ import { dobCorrectionMessage, dobCorrectionOutcome } from './dobCorrection';
 import type { DobCorrectionAnswer, DobCorrectionResult } from './dobCorrection';
 
 /**
- * The office's date-of-birth correction (ADR-0069).
+ * The office's date-of-birth correction (ADR-0070).
  *
  * `office_correct_dob()` is a definer with every check in its own body —
  * admin, not a viewer (read_only), office_can('identity') so owners and

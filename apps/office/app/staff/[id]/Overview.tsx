@@ -61,7 +61,7 @@ export function Overview({
   /** ADR-0047. */
   referrals?: Referrals | null;
   referralsProblem?: string | null;
-  /** ADR-0069: `officeCan(role, 'identity')` — owners and managers see "Correct". */
+  /** ADR-0070: `officeCan(role, 'identity')` — owners and managers see "Correct". */
   canCorrectDob?: boolean;
 }) {
   return (
@@ -75,7 +75,7 @@ export function Overview({
           <span className="k">Date of birth</span>
           <span>
             {profile.dob ? formatUkDate(profile.dob) : value(null)}{' '}
-            {/* ADR-0069: gov.uk matches the share code against this date. */}
+            {/* ADR-0070: gov.uk matches the share code against this date. */}
             <DobCorrection
               staffId={profile.id}
               name={profile.display_name}

@@ -79,7 +79,7 @@ export async function loadCompliance(): Promise<CompliancePageData> {
         )
         .map((row) => row.item_id),
     ),
-    // ADR-0069: the date of birth entered with a pending share code.
+    // ADR-0070: the date of birth entered with a pending share code.
     loadDobClaimsForDocuments(
       supabase,
       rows

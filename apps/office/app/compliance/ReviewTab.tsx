@@ -256,7 +256,7 @@ function QueueLine({
             enabled={rtwCheckEnabled}
           />
         ) : null}
-        {/* ADR-0069: Verify will also change the date of birth. */}
+        {/* ADR-0070: Verify will also change the date of birth. */}
         {row.kind === 'document' ? <DobClaimNote claim={row.dob_claim} /> : null}
       </td>
       <td data-label="Uploaded" className="mono sm">

@@ -63,7 +63,7 @@ const KEY_LABEL: Readonly<Record<string, string>> = {
   optOutSignedUnder18: 'Opt-out signed under 18',
 };
 
-/** A `{from, to}` pair nested under a key — "Date of birth: 1995-01-01 → 1994-12-31" (ADR-0069). */
+/** A `{from, to}` pair nested under a key — "Date of birth: 1995-01-01 → 1994-12-31" (ADR-0070). */
 function isChange(value: unknown): value is { from?: unknown; to?: unknown } {
   return (
     typeof value === 'object' &&

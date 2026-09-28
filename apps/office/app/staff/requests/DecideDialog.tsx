@@ -33,7 +33,7 @@ export type DecideStage = 'review' | 'approve' | 'reject';
  * server action asks again. Rejecting needs a reason, labelled "shown to
  * the worker": it is what the app prints after "Not changed:" (RC3).
  *
- * A DATE OF BIRTH (ADR-0069) is shown now → requested with its evidence;
+ * A DATE OF BIRTH (ADR-0070) is shown now → requested with its evidence;
  * approving it needs "I've checked the evidence shows this date of birth",
  * and only an owner or a manager may decide it (`canDecideDob`, from
  * `officeCan(role, 'identity')`; the database refuses anyone else). Any
@@ -51,7 +51,7 @@ export function DecideDialog({
   stage: DecideStage;
   onStage: (stage: DecideStage) => void;
   onClose: () => void;
-  /** ADR-0069: owners and managers decide a date-of-birth request. */
+  /** ADR-0070: owners and managers decide a date-of-birth request. */
   canDecideDob?: boolean;
   /**
    * An approved date of birth's outcome — the gov.uk re-check and the

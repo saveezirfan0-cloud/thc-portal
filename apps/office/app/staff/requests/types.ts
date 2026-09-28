@@ -6,7 +6,7 @@
  * A removed worker's row comes back already anonymised by the function:
  * "Deleted account #id", no current name, photo or evidence path (§1.7).
  */
-/** `dob` since ADR-0069 (20261001209000). */
+/** `dob` since ADR-0070 (20261001210000). */
 export type ChangeKind = 'name' | 'photo' | 'dob';
 export type ChangeStatus = 'pending' | 'approved' | 'rejected' | 'withdrawn';
 
@@ -40,7 +40,7 @@ export interface ChangeRequestRow {
   decided_at: string | null;
   decided_by_name: string | null;
   decision_reason: string | null;
-  /** ADR-0069, appended by 20261001209000: null for a removed worker. */
+  /** ADR-0070, appended by 20261001210000: null for a removed worker. */
   current_dob?: string | null;
   proposed_dob?: string | null;
 }
@@ -52,7 +52,7 @@ export interface ChangeRequestView extends ChangeRequestRow {
 }
 
 /**
- * `note` / `warning` only for an approved date of birth (ADR-0069): what
+ * `note` / `warning` only for an approved date of birth (ADR-0070): what
  * happened to the pending share code's gov.uk check, and the under-18
  * opt-out warning — the office correction's own words (`dobCorrectionOutcome`).
  */

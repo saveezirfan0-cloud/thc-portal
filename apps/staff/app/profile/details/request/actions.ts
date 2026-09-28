@@ -140,7 +140,7 @@ export async function requestNameChange(
 }
 
 /**
- * A date of birth (ADR-0069) — its own RPC, `request_dob_change()`, with
+ * A date of birth (ADR-0070) — its own RPC, `request_dob_change()`, with
  * request_profile_change()'s gates and the date rule (`dob_change_problem`);
  * the evidence goes through the same signed upload as a name's.
  */

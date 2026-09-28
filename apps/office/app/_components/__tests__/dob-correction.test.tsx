@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * "Correct" on a date of birth (ADR-0069) — /staff/:id Overview and
+ * "Correct" on a date of birth (ADR-0070) — /staff/:id Overview and
  * /onboarding/:id.
  *
  *   · only an owner or a manager is offered it (`allowed`, from
@@ -200,7 +200,7 @@ describe('<DobCorrection>', () => {
   });
 });
 
-describe('a date entered with a share code (ADR-0069, route 2)', () => {
+describe('a date entered with a share code (ADR-0070, route 2)', () => {
   const claim = parseDobClaim({
     document_id: 'd1',
     staff_id: 's1',

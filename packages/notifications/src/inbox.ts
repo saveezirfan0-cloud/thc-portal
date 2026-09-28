@@ -39,7 +39,7 @@ export const OFFICE_INBOX = [
   { code: 'CL6', label: '48-hour opt-out cancelled' },
   { code: 'BG08', label: 'Weekly payroll email' },
   // The Staff App additions (main #76): the office is told of a name, photo
-  // or date-of-birth change request (RC1, ADR-0045, ADR-0069), payroll of an approved name change
+  // or date-of-birth change request (RC1, ADR-0045, ADR-0070), payroll of an approved name change
   // (RC4, as E7), and the office of a cover request inside 72 hours (OF5, ADR-0046).
   { code: 'RC1', label: 'Profile change requested' },
   { code: 'RC4', label: 'Name change approved (payroll)' },

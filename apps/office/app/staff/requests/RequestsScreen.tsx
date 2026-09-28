@@ -47,7 +47,7 @@ export function RequestsScreen({
   pending: ChangeRequestView[];
   decided: ChangeRequestView[];
   problem: string | null;
-  /** ADR-0069: `officeCan(role, 'identity')` — owners and managers decide a date of birth. */
+  /** ADR-0070: `officeCan(role, 'identity')` — owners and managers decide a date of birth. */
   canDecideDob?: boolean;
 }) {
   const [tab, setTab] = useState<Tab>('pending');
@@ -68,7 +68,7 @@ export function RequestsScreen({
     >
       <div className="stack">
         {problem ? <Alert tone="coral">{problem}</Alert> : null}
-        {/* ADR-0069: what an approved date of birth did to gov.uk and the opt-out. */}
+        {/* ADR-0070: what an approved date of birth did to gov.uk and the opt-out. */}
         {outcome ? <Alert tone="green">{outcome.note}</Alert> : null}
         {outcome?.warning ? <Alert tone="amber">{outcome.warning}</Alert> : null}
 

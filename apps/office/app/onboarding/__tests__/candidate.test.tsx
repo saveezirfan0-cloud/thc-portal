@@ -224,7 +224,7 @@ describe('the candidate profile, Documents phase', () => {
   });
 });
 
-describe('the candidate profile · date of birth (ADR-0069)', () => {
+describe('the candidate profile · date of birth (ADR-0070)', () => {
   it('shows the DOB with Correct to an owner or a manager', () => {
     const html = renderToStaticMarkup(
       <CandidateScreen data={data()} now="2026-09-23T10:00:00Z" canCorrectDob />,

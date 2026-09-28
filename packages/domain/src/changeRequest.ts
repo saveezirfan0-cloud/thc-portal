@@ -1,5 +1,5 @@
 /**
- * Request a change — name, photo and (since ADR-0069) date of birth.
+ * Request a change — name, photo and (since ADR-0070) date of birth.
  * ADR-0045, docs/19 §3 (an addition to
  * Scope v1.6: §10.1 "corrections go through the office" gains an in-app
  * route; §9.6; §8 RC1–RC4; §1.5 ProfileChangeRequest).
@@ -17,7 +17,7 @@
  */
 
 /**
- * `dob` (ADR-0069, 28.09.2026): the date of birth gov.uk matches a share
+ * `dob` (ADR-0070, 28.09.2026): the date of birth gov.uk matches a share
  * code against. Evidence required, as for a name; approving it has the
  * office correction's effect (`office_correct_dob`), a fresh gov.uk check
  * of a pending share code included.

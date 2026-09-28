@@ -134,7 +134,7 @@ export function CandidateScreen({
 }: {
   data: CandidateData;
   now: string;
-  /** ADR-0069: `officeCan(role, 'identity')` — owners and managers see "Correct". */
+  /** ADR-0070: `officeCan(role, 'identity')` — owners and managers see "Correct". */
   canCorrectDob?: boolean;
 }) {
   const router = useRouter();
@@ -415,7 +415,7 @@ function Facts({
   canCorrectDob: boolean;
 }) {
   const facts: ReactNode[] = [];
-  // ADR-0069: the date gov.uk matches the share code against, correctable
+  // ADR-0070: the date gov.uk matches the share code against, correctable
   // by an owner or a manager from here as from /staff/:id.
   const correct = row.dob ? (
     <DobCorrection
@@ -958,7 +958,7 @@ function ShareCodeCard({
   handlers: DocHandlers;
   check: RtwCheckRow | null;
   checkEnabled: boolean;
-  /** ADR-0069: a date of birth entered with this code, when it differs. */
+  /** ADR-0070: a date of birth entered with this code, when it differs. */
   claim?: DobClaim | null;
 }) {
   const view = rtwCheckView(check, { docStatus: doc.review_status, enabled: checkEnabled });

@@ -33,7 +33,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   }
   if (!data.profile) notFound();
 
-  // ADR-0069: "Correct" on the date of birth is for owners and managers;
+  // ADR-0070: "Correct" on the date of birth is for owners and managers;
   // office_correct_dob() refuses everyone else whatever this says.
   return <ProfileScreen data={data} canCorrectDob={officeCan(role, 'identity')} />;
 }

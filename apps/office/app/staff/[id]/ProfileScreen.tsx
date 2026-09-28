@@ -86,7 +86,7 @@ export function ProfileScreen({
 }: {
   data: ProfileData;
   /**
-   * ADR-0069: `officeCan(role, 'identity')` — owners and managers may
+   * ADR-0070: `officeCan(role, 'identity')` — owners and managers may
    * correct the date of birth and decide a date-of-birth change request.
    */
   canCorrectDob?: boolean;

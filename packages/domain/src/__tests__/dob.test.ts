@@ -17,13 +17,13 @@ import {
 } from '../dob';
 
 /**
- * ADR-0069. dobChangeProblem() and dob_change_problem() in
- * 20261001209000 are held to the `dobs` group of changeRequest.vectors.json
+ * ADR-0070. dobChangeProblem() and dob_change_problem() in
+ * 20261001210000 are held to the `dobs` group of changeRequest.vectors.json
  * — here, and in pgTAP 717 through change_request_vectors.psql.
  */
 const here = dirname(fileURLToPath(import.meta.url));
 const migration = readFileSync(
-  resolve(here, '../../../../supabase/migrations/20261001209000_date_of_birth_corrections.sql'),
+  resolve(here, '../../../../supabase/migrations/20261001210000_date_of_birth_corrections.sql'),
   'utf8',
 );
 
@@ -34,7 +34,7 @@ describe('dobChangeProblem — the shared vectors', () => {
   });
 
   it('every case carries its reference', () => {
-    for (const c of vectors.dobs.cases) expect(c.ref).toMatch(/ADR-0069|§2\.1/);
+    for (const c of vectors.dobs.cases) expect(c.ref).toMatch(/ADR-0070|§2\.1/);
   });
 
   it('refuses in the SQL function what it refuses here, by the same codes', () => {

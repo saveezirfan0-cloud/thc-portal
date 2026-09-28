@@ -3,14 +3,14 @@ import { explainOfficeError } from './permissions';
 
 /**
  * "Correct" on the date of birth — /staff/:id Overview and /onboarding/:id
- * (ADR-0069). Pure: the words for the database's refusals and for what
+ * (ADR-0070). Pure: the words for the database's refusals and for what
  * happened, so the dialog and its tests read the same sentences.
  *
  * The rule itself is `validateDobCorrection()` in packages/domain, which
  * `office_correct_dob()` repeats; this file only speaks.
  */
 
-/** What `office_correct_dob()` returns (20261001209000). */
+/** What `office_correct_dob()` returns (20261001210000). */
 export interface DobCorrectionAnswer {
   ok?: boolean;
   dob?: string;
@@ -66,7 +66,7 @@ export function dobCorrectionOutcome(answer: DobCorrectionAnswer | null): {
 }
 
 // ---------------------------------------------------------------------
-// A date entered with a share code (ADR-0069, route 2)
+// A date entered with a share code (ADR-0070, route 2)
 // ---------------------------------------------------------------------
 
 /** One row of `share_code_dob_claims_v`. */

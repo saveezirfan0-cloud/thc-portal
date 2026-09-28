@@ -142,7 +142,7 @@ export function Documents({
   /** This worker's rows of the Needs review queue (§4.1). */
   reviewQueue?: QueueRow[];
   reviewQueueProblem?: string | null;
-  /** ADR-0069: dates of birth entered with pending share codes. */
+  /** ADR-0070: dates of birth entered with pending share codes. */
   dobClaims?: DobClaim[];
 }) {
   const router = useRouter();

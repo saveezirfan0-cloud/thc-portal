@@ -12,7 +12,7 @@
 
 export type OfficeRole = 'owner' | 'manager' | 'scheduler' | 'viewer';
 /**
- * `identity` (ADR-0069): correcting a worker's date of birth — the "Correct"
+ * `identity` (ADR-0070): correcting a worker's date of birth — the "Correct"
  * action on /staff/:id and /onboarding/:id, and deciding a date-of-birth
  * change request. Owners and managers.
  */

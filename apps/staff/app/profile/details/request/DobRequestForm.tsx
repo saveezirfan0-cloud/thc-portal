@@ -19,7 +19,7 @@ import { requestDobChange, startEvidenceUpload } from './actions';
 const EVIDENCE_ACCEPT = '.pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png';
 
 /**
- * `?kind=dob` — a corrected date of birth, the evidence, a note (ADR-0069).
+ * `?kind=dob` — a corrected date of birth, the evidence, a note (ADR-0070).
  *
  * gov.uk matches the share code against the date of birth, so the office
  * checks the evidence (a passport or birth certificate) before anything

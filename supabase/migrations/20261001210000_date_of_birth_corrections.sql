@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261001209000 · date of birth corrections (ADR-0069)
+-- Migration 20261001210000 · date of birth corrections (ADR-0070)
 --   §10.1 (the locked fields) · ADR-0045 (Request a change) amended ·
 --   ADR-0041 / ADR-0025 (the gov.uk check) · ADR-0056 / ADR-0060 (office
 --   roles) · RULE-20 (the under-18 opt-out) · §2.1 (the age gate)
@@ -95,7 +95,7 @@
 -- office's dialog turns into "ask them to sign it again".
 --
 -- Restated from their latest definitions, every line carried, with only
--- the lines marked 20261001209000 added:
+-- the lines marked 20261001210000 added:
 --   office_can                          20261001201100 + 'identity'
 --   profile_change_requests_state_guard 20260930200100 + proposed_dob immutable
 --   staff_removed_purge_additions       20260930205200 + proposed_dob → 1900-01-01
@@ -134,7 +134,7 @@ as $$
 $$;
 
 comment on function public.office_can(text) is
-  'ADR-0056, ADR-0060, ADR-0069: may the signed-in Back Office login use ''users'' | ''settings'' | ''finance'' | ''write'' | ''identity''? owner: all five; manager: finance, write, identity; scheduler: write; viewer: finance (reads money, changes nothing). ''identity'' is correcting a worker''s date of birth (office_correct_dob, and deciding a dob change request). False for any other session and any other permission name. ''write'' is for the Back Office to ask; the database enforces it with the office_read_only triggers (20261001201100).';
+  'ADR-0056, ADR-0060, ADR-0070: may the signed-in Back Office login use ''users'' | ''settings'' | ''finance'' | ''write'' | ''identity''? owner: all five; manager: finance, write, identity; scheduler: write; viewer: finance (reads money, changes nothing). ''identity'' is correcting a worker''s date of birth (office_correct_dob, and deciding a dob change request). False for any other session and any other permission name. ''write'' is for the Back Office to ask; the database enforces it with the office_read_only triggers (20261001201100).';
 
 revoke all on function public.office_can(text) from public, anon;
 grant execute on function public.office_can(text) to authenticated, service_role;
@@ -181,7 +181,7 @@ begin
 end $$;
 
 comment on function public.dob_change_problem(date, date, date) is
-  'ADR-0069: why a date of birth cannot replace the one on file, or null. dob_required | dob_invalid (future, or over 100 completed years) | under_18 (§2.1, UK time) | unchanged. /apply''s rule, held with dobChangeProblem() in packages/domain to changeRequest.vectors.json (pgTAP 717). p_today defaults to today in Europe/London.';
+  'ADR-0070: why a date of birth cannot replace the one on file, or null. dob_required | dob_invalid (future, or over 100 completed years) | under_18 (§2.1, UK time) | unchanged. /apply''s rule, held with dobChangeProblem() in packages/domain to changeRequest.vectors.json (pgTAP 717). p_today defaults to today in Europe/London.';
 
 -- ---------------------------------------------------------------------
 -- 3 · profile_change_requests gains 'dob'
@@ -190,7 +190,7 @@ alter table profile_change_requests
   add column if not exists proposed_dob date;
 
 comment on column profile_change_requests.proposed_dob is
-  'ADR-0069: the date of birth a kind ''dob'' request asks for; null on every other kind. 1900-01-01 once the worker is removed (§1.7), as staff.dob.';
+  'ADR-0070: the date of birth a kind ''dob'' request asks for; null on every other kind. 1900-01-01 once the worker is removed (§1.7), as staff.dob.';
 
 alter table profile_change_requests drop constraint if exists profile_change_requests_kind;
 alter table profile_change_requests
@@ -210,7 +210,7 @@ alter table profile_change_requests
   add constraint profile_change_requests_dob_only check (proposed_dob is null or kind = 'dob');
 
 comment on table profile_change_requests is
-  'ADR-0045, ADR-0069: a worker''s request to change the name, photo or date of birth §10.1 locks. One pending per worker per kind; proposed values immutable (GDPR anonymisation excepted); a rejection carries decision_reason, which the worker is shown. Admin-read; written through definer RPCs (docs/19 §3). The machine is profile_change_transitions().';
+  'ADR-0045, ADR-0070: a worker''s request to change the name, photo or date of birth §10.1 locks. One pending per worker per kind; proposed values immutable (GDPR anonymisation excepted); a rejection carries decision_reason, which the worker is shown. Admin-read; written through definer RPCs (docs/19 §3). The machine is profile_change_transitions().';
 comment on column profile_change_requests.previous_value is
   'The value on the profile at the moment of the decision, e.g. {"firstName","lastName"}, {"photoPath"} or {"dob"}. Issued PDFs and payroll exports are never corrected retroactively (§1.7).';
 
@@ -228,7 +228,7 @@ alter table compliance_docs
   check (claimed_dob is null or doc_type = 'share_code_report');
 
 comment on column compliance_docs.claimed_dob is
-  'ADR-0069: the date of birth the worker entered with this share code when it differs from staff.dob (submit_share_code_with_dob). rtw_check_claim() asks gov.uk with coalesce(claimed_dob, staff.dob); copied to staff.dob only when this document is verified (compliance_docs_claimed_dob_verified). Cleared by an office correction while pending, and on §1.7 removal. Written only by definer code: compliance_docs_claimed_dob_guard refuses it from anon and authenticated.';
+  'ADR-0070: the date of birth the worker entered with this share code when it differs from staff.dob (submit_share_code_with_dob). rtw_check_claim() asks gov.uk with coalesce(claimed_dob, staff.dob); copied to staff.dob only when this document is verified (compliance_docs_claimed_dob_verified). Cleared by an office correction while pending, and on §1.7 removal. Written only by definer code: compliance_docs_claimed_dob_guard refuses it from anon and authenticated.';
 
 -- Not security definer on purpose: current_user is the caller's role for a
 -- PostgREST write (anon / authenticated) and the owner inside a definer
@@ -245,7 +245,7 @@ begin
      and ((tg_op = 'INSERT' and new.claimed_dob is not null)
           or (tg_op = 'UPDATE' and new.claimed_dob is distinct from old.claimed_dob)) then
     raise exception 'claimed_dob_rpc_only' using errcode = '42501',
-      hint = 'ADR-0069: the date entered with a share code is written by submit_share_code_with_dob() only.';
+      hint = 'ADR-0070: the date entered with a share code is written by submit_share_code_with_dob() only.';
   end if;
   return new;
 end $$;
@@ -256,7 +256,7 @@ create trigger compliance_docs_claimed_dob_guard
   for each row execute function compliance_docs_claimed_dob_guard();
 
 comment on function public.compliance_docs_claimed_dob_guard() is
-  'ADR-0069: refuses compliance_docs.claimed_dob from any API session (anon, authenticated); definer code (submit_share_code_with_dob, staff_dob_apply, the §1.7 purge) writes it. A trigger function: not an RPC.';
+  'ADR-0070: refuses compliance_docs.claimed_dob from any API session (anon, authenticated); definer code (submit_share_code_with_dob, staff_dob_apply, the §1.7 purge) writes it. A trigger function: not an RPC.';
 
 -- ---------------------------------------------------------------------
 -- 4 · profile_change_requests_state_guard — 20260930200100 + proposed_dob
@@ -295,7 +295,7 @@ begin
 
   -- The office approves exactly what was asked. The one exception is §1.7:
   -- a removed worker's proposed name is anonymised.
-  -- 20261001209000 (ADR-0069): proposed_dob is a proposed value like the rest.
+  -- 20261001210000 (ADR-0070): proposed_dob is a proposed value like the rest.
   if (new.proposed_first_name, new.proposed_last_name, new.proposed_photo_path, new.evidence_path,
       new.proposed_dob)
        is distinct from
@@ -309,7 +309,7 @@ begin
 end $$;
 
 comment on function public.profile_change_requests_state_guard() is
-  'Refuses any profile_change_requests status change that is not an edge of profile_change_transitions(), a request inserted already decided, and any change to the proposed values — names, photo, evidence, and since 20261001209000 the date of birth — except the §1.7 anonymisation of a removed worker. Stamps decided_at on leaving pending. The DB half of assertChangeRequestTransition() in packages/domain.';
+  'Refuses any profile_change_requests status change that is not an edge of profile_change_transitions(), a request inserted already decided, and any change to the proposed values — names, photo, evidence, and since 20261001210000 the date of birth — except the §1.7 anonymisation of a removed worker. Stamps decided_at on leaving pending. The DB half of assertChangeRequestTransition() in packages/domain.';
 
 revoke execute on function public.profile_change_requests_state_guard() from public, anon, authenticated;
 
@@ -333,7 +333,7 @@ begin
      set status              = case when status = 'pending' then 'withdrawn' else status end,
          proposed_first_name = case when proposed_first_name is not null then 'Deleted' end,
          proposed_last_name  = case when proposed_last_name  is not null then 'account' end,
-         -- 20261001209000 (ADR-0069): a requested date of birth is personal
+         -- 20261001210000 (ADR-0070): a requested date of birth is personal
          -- data. The 1900-01-01 sentinel, as staff.dob and applications.dob
          -- get on removal: the dob shape CHECK needs a value on a dob row.
          proposed_dob        = case when proposed_dob is not null then date '1900-01-01' end,
@@ -343,7 +343,7 @@ begin
                                     then 'Removed under GDPR (§1.7)' end
    where staff_id = new.id;
 
-  -- 20261001209000 (ADR-0069): the date-of-birth audit rows keep what
+  -- 20261001210000 (ADR-0070): the date-of-birth audit rows keep what
   -- happened, not what anyone wrote about it. remove_worker() strips the
   -- dates (`dob`, v_pii_keys) after this trigger; the office's free-text
   -- reason and any note are not personal-data keys it knows, so they are
@@ -358,7 +358,7 @@ begin
      and l.action in ('staff.dob_corrected', 'staff.dob_claimed_with_share_code')
      and (l.data ? 'reason' or l.data ? 'note');
 
-  -- 20261001209000 (ADR-0069): a date entered with a share code is the
+  -- 20261001210000 (ADR-0070): a date entered with a share code is the
   -- worker's date of birth too. Held right-to-work rows (ADR-0065) keep
   -- the evidence, not this.
   update compliance_docs set claimed_dob = null
@@ -417,7 +417,7 @@ begin
 end $$;
 
 comment on function public.staff_removed_purge_additions() is
-  '§1.7 GDPR removal for the docs/19 additions: deletes availability and the emergency contact, withdraws and anonymises change requests (a requested date of birth becomes 1900-01-01 since 20261001209000; the date-of-birth audit rows lose their reason and note, and compliance_docs.claimed_dob is cleared), revokes the referral code, lapses open offers and clears the office''s free-text decline note, and anonymises the RC1/RC3/RC4/OF5 outbox payloads (names → "Deleted account #id", free text removed, unsent rows failed gdpr_removed) that remove_worker()''s own scrub (20260930120100, which runs after this trigger and wins where both match) does not reach. Writes no new audit_log row; the additions'' audit rows carry no personal data. Fires once, after removed_at is first set. A trigger function: not an RPC.';
+  '§1.7 GDPR removal for the docs/19 additions: deletes availability and the emergency contact, withdraws and anonymises change requests (a requested date of birth becomes 1900-01-01 since 20261001210000; the date-of-birth audit rows lose their reason and note, and compliance_docs.claimed_dob is cleared), revokes the referral code, lapses open offers and clears the office''s free-text decline note, and anonymises the RC1/RC3/RC4/OF5 outbox payloads (names → "Deleted account #id", free text removed, unsent rows failed gdpr_removed) that remove_worker()''s own scrub (20260930120100, which runs after this trigger and wins where both match) does not reach. Writes no new audit_log row; the additions'' audit rows carry no personal data. Fires once, after removed_at is first set. A trigger function: not an RPC.';
 
 -- Trigger functions are never RPCs (20260927161000, pgTAP 190).
 revoke execute on function public.staff_removed_purge_additions() from public, anon, authenticated;
@@ -575,7 +575,7 @@ begin
 end $$;
 
 comment on function public.staff_dob_apply(uuid, date, uuid, text, jsonb, boolean) is
-  'ADR-0069, internal: write staff.dob and audit it (p_action; the dates under `dob` only, which the §1.7 scrub strips). Closes any OTHER pending dob change request (withdrawn when it asked for this date; rejected with a reason + RC3 otherwise). With p_requeue (the office''s routes): clears a pending share code''s claimed_dob and queues a fresh gov.uk check (rtwCheck: queued | running | off | none). Flags optOutSignedUnder18 when a signed 48-hour opt-out predates the corrected eighteenth birthday. The caller authorises and validates. No API role may execute it; the service role keeps the default grant.';
+  'ADR-0070, internal: write staff.dob and audit it (p_action; the dates under `dob` only, which the §1.7 scrub strips). Closes any OTHER pending dob change request (withdrawn when it asked for this date; rejected with a reason + RC3 otherwise). With p_requeue (the office''s routes): clears a pending share code''s claimed_dob and queues a fresh gov.uk check (rtwCheck: queued | running | off | none). Flags optOutSignedUnder18 when a signed 48-hour opt-out predates the corrected eighteenth birthday. The caller authorises and validates. No API role may execute it; the service role keeps the default grant.';
 
 -- ---------------------------------------------------------------------
 -- 7 · Route 1 — office_correct_dob(): "Correct" on /staff/:id and
@@ -636,7 +636,7 @@ begin
 end $$;
 
 comment on function public.office_correct_dob(uuid, date, text) is
-  'ADR-0069: an owner or manager corrects a worker''s or candidate''s date of birth (office_can(''identity''); a viewer is read_only, a scheduler not_permitted). Refuses a removed profile (staff_removed), dob_change_problem() (dob_required | dob_invalid | under_18 | unchanged) and a reason under 10 or over 300 characters. Writes staff.dob, audits staff.dob_corrected with the reason and actorName, and queues a fresh gov.uk check of a pending share code while the check is on (rtwCheck in the result). Flags optOutSignedUnder18.';
+  'ADR-0070: an owner or manager corrects a worker''s or candidate''s date of birth (office_can(''identity''); a viewer is read_only, a scheduler not_permitted). Refuses a removed profile (staff_removed), dob_change_problem() (dob_required | dob_invalid | under_18 | unchanged) and a reason under 10 or over 300 characters. Writes staff.dob, audits staff.dob_corrected with the reason and actorName, and queues a fresh gov.uk check of a pending share code while the check is on (rtwCheck in the result). Flags optOutSignedUnder18.';
 
 -- ---------------------------------------------------------------------
 -- 8 · Route 2 — submit_share_code_with_dob(): the Documents hub's "New
@@ -726,7 +726,7 @@ begin
 end $$;
 
 comment on function public.submit_share_code_with_dob(text, date, text) is
-  'ADR-0069: the Documents hub''s New share code with the date of birth gov.uk matches it against. A changed date is checked first (dob_change_problem; at most settings.rtw_check.reenter_per_day claims in 24 h, too_many_attempts), then submit_document_upload(''share_code_report'', …) files the code exactly as before, then — only if that succeeded — the date is stored on that document (compliance_docs.claimed_dob) and audited as the worker (staff.dob_claimed_with_share_code). staff.dob is NOT written: it takes the date only when the office verifies the document. The caller''s own row only (staff_writer). Returns submit_document_upload()''s answer plus dobChanged.';
+  'ADR-0070: the Documents hub''s New share code with the date of birth gov.uk matches it against. A changed date is checked first (dob_change_problem; at most settings.rtw_check.reenter_per_day claims in 24 h, too_many_attempts), then submit_document_upload(''share_code_report'', …) files the code exactly as before, then — only if that succeeded — the date is stored on that document (compliance_docs.claimed_dob) and audited as the worker (staff.dob_claimed_with_share_code). staff.dob is NOT written: it takes the date only when the office verifies the document. The caller''s own row only (staff_writer). Returns submit_document_upload()''s answer plus dobChanged.';
 
 -- ---------------------------------------------------------------------
 -- 8b · rtw_check_claim — 20260928100000 + the claimed date of birth
@@ -812,7 +812,7 @@ begin
     attempt := r.attempts + 1;
     max_attempts := r.max_attempts;
     share_code := d.share_code;
-    -- 20261001209000 (ADR-0069): the date the worker entered with this
+    -- 20261001210000 (ADR-0070): the date the worker entered with this
     -- code, when it differs from the profile (submit_share_code_with_dob).
     date_of_birth := coalesce(d.claimed_dob, s.dob);
     first_name := s.first_name;
@@ -824,7 +824,7 @@ begin
 end $$;
 
 comment on function public.rtw_check_claim(int, int) is
-  'Service role only: lease up to p_limit due checks (queued and due, or running with a lapsed lease), skip locked; a check whose document has left review is failed instead. Returns the share code and DOB for this run only (ADR-0025) — the date the worker entered with the code (compliance_docs.claimed_dob) when there is one, else the profile''s (ADR-0069, 20261001209000). Nothing when the check is switched off.';
+  'Service role only: lease up to p_limit due checks (queued and due, or running with a lapsed lease), skip locked; a check whose document has left review is failed instead. Returns the share code and DOB for this run only (ADR-0025) — the date the worker entered with the code (compliance_docs.claimed_dob) when there is one, else the profile''s (ADR-0070, 20261001210000). Nothing when the check is switched off.';
 
 revoke execute on function public.rtw_check_claim(int, int) from public, anon, authenticated;
 grant  execute on function public.rtw_check_claim(int, int) to service_role;
@@ -873,7 +873,7 @@ create trigger compliance_docs_claimed_dob_verified
   execute function compliance_docs_claimed_dob_verified();
 
 comment on function public.compliance_docs_claimed_dob_verified() is
-  'ADR-0069: when a share code carrying claimed_dob is verified (any verify path), staff.dob takes that date through staff_dob_apply() — audited staff.dob_corrected, source share_code_verified, the reviewer as actor, optOutSignedUnder18 flagged — unless dob_change_problem() refuses it now (e.g. unchanged). A trigger function: not an RPC.';
+  'ADR-0070: when a share code carrying claimed_dob is verified (any verify path), staff.dob takes that date through staff_dob_apply() — audited staff.dob_corrected, source share_code_verified, the reviewer as actor, optOutSignedUnder18 flagged — unless dob_change_problem() refuses it now (e.g. unchanged). A trigger function: not an RPC.';
 
 revoke execute on function public.compliance_docs_claimed_dob_verified() from public, anon, authenticated;
 revoke execute on function public.compliance_docs_claimed_dob_guard()    from public, anon, authenticated;
@@ -904,7 +904,7 @@ where d.doc_type = 'share_code_report'
   and s.removed_at is null;
 
 comment on view share_code_dob_claims_v is
-  'ADR-0069: every pending share code whose worker entered a date of birth different from the profile''s, with both dates — Verify copies claimed_dob to staff.dob. security_invoker: the office reads it through admin_all; a worker sees only their own row.';
+  'ADR-0070: every pending share code whose worker entered a date of birth different from the profile''s, with both dates — Verify copies claimed_dob to staff.dob. security_invoker: the office reads it through admin_all; a worker sees only their own row.';
 
 revoke all on share_code_dob_claims_v from public, anon;
 grant select on share_code_dob_claims_v to authenticated, service_role;
@@ -971,7 +971,7 @@ begin
   end if;
   if v_evid is null then
     raise exception 'evidence_required' using errcode = 'P0001',
-      hint = 'ADR-0069: a date of birth change needs evidence, as a name does.';
+      hint = 'ADR-0070: a date of birth change needs evidence, as a name does.';
   end if;
   select e.problem into v_problem
     from evidence_upload_problem(v_id, 'change-requests', v_evid) e;
@@ -1006,7 +1006,7 @@ begin
 end $$;
 
 comment on function public.request_dob_change(date, text, text) is
-  'ADR-0069: the calling worker asks the office to change their date of birth — a kind ''dob'' profile_change_requests row with proposed_dob and evidence in documents/<id>/change-requests/ (required). request_profile_change()''s gates: compliant, or blocked on documents or a conviction review (not a manual hold); one pending, at most three in 24 h; note ≤ 500. The date must pass dob_change_problem(). Queues RC1 to admin@ with {field} = date of birth. Never writes staff.';
+  'ADR-0070: the calling worker asks the office to change their date of birth — a kind ''dob'' profile_change_requests row with proposed_dob and evidence in documents/<id>/change-requests/ (required). request_profile_change()''s gates: compliant, or blocked on documents or a conviction review (not a manual hold); one pending, at most three in 24 h; note ≤ 500. The date must pass dob_change_problem(). Queues RC1 to admin@ with {field} = date of birth. Never writes staff.';
 
 -- ---------------------------------------------------------------------
 -- 10 · office_decide_profile_change — 20260930206000 + the dob branch
@@ -1027,7 +1027,7 @@ declare
   v_field   text;
   v_prev    jsonb;
   v_now     timestamptz := now();
-  -- 20261001209000 (ADR-0069): the date-of-birth branch.
+  -- 20261001210000 (ADR-0070): the date-of-birth branch.
   v_problem text;
   v_extra   jsonb := '{}'::jsonb;
 begin
@@ -1042,7 +1042,7 @@ begin
   if r.id is null then
     raise exception 'request_not_found' using errcode = 'P0002';
   end if;
-  -- 20261001209000 (ADR-0069): a date of birth is corrected by an owner or
+  -- 20261001210000 (ADR-0070): a date of birth is corrected by an owner or
   -- a manager only — the office_correct_dob() gate — and a request for one
   -- is decided by the same people, either way. A viewer is read-only
   -- (ADR-0060) and is told so first.
@@ -1119,7 +1119,7 @@ begin
   elsif r.kind = 'dob' then
     v_prev := jsonb_build_object('dob', s.dob);
 
-    -- 20261001209000 (ADR-0069): the office correction's effect, through
+    -- 20261001210000 (ADR-0070): the office correction's effect, through
     -- the same helper — staff.dob, the staff.dob_corrected audit row, and
     -- a fresh gov.uk check of a pending share code. The rule is checked
     -- again against the profile NOW: the office may have corrected it
@@ -1166,7 +1166,7 @@ begin
 end $$;
 
 comment on function public.office_decide_profile_change(uuid, boolean, text) is
-  'ADR-0045, ADR-0069: the office approves or rejects a pending name/photo/date-of-birth change request (/staff/requests). Admin only; a dob request owners and managers only (office_can(''identity''); a viewer read_only). Approve name → staff.first_name/last_name + RC2 + RC4 (admin@ + payroll); approve photo → staff.photo_path despite the §10.1 lock, old object kept; approve dob → dob_change_problem() re-checked, then office_correct_dob()''s effect (staff.dob, staff.dob_corrected audit, a fresh gov.uk check of a pending share code — rtwCheck in the result) + RC2; reject → reason required (reason_required 22023, ≤ 300) + RC3. RC2/RC3 carry {field} (name | photo | date of birth). previous_value snapshots the profile at the decision; already_decided refuses a second decision; audit_log profile_change.approve|reject. A name change starts no right-to-work re-check (Q13); issued PDFs and payroll exports untouched (§1.7).';
+  'ADR-0045, ADR-0070: the office approves or rejects a pending name/photo/date-of-birth change request (/staff/requests). Admin only; a dob request owners and managers only (office_can(''identity''); a viewer read_only). Approve name → staff.first_name/last_name + RC2 + RC4 (admin@ + payroll); approve photo → staff.photo_path despite the §10.1 lock, old object kept; approve dob → dob_change_problem() re-checked, then office_correct_dob()''s effect (staff.dob, staff.dob_corrected audit, a fresh gov.uk check of a pending share code — rtwCheck in the result) + RC2; reject → reason required (reason_required 22023, ≤ 300) + RC3. RC2/RC3 carry {field} (name | photo | date of birth). previous_value snapshots the profile at the decision; already_decided refuses a second decision; audit_log profile_change.approve|reject. A name change starts no right-to-work re-check (Q13); issued PDFs and payroll exports untouched (§1.7).';
 
 -- ---------------------------------------------------------------------
 -- 11 · staff_me — 20260928110700 + 'dob'
@@ -1245,7 +1245,7 @@ begin
                              || right(s.ni_number, 2)
                       end,
     'hasNiNumber',    s.ni_number is not null,
-    -- 20261001209000 (ADR-0069): Profile details shows it locked, with
+    -- 20261001210000 (ADR-0070): Profile details shows it locked, with
     -- Request a change; the worker's own date, nobody else's.
     'dob',            s.dob,
     'rating',         s.rating,
@@ -1260,7 +1260,7 @@ begin
 end $$;
 
 comment on function public.staff_me() is
-  'The worker''s own profile for the §10.1 profile sheet, plus the app-lock inputs. Never returns block_reason or rejection_reason; rejectionCause (willo / manager / quiz_failed) decides which terminal screen shows. reliability is staff_show_rate() since 20260928110700, null with no history. dob since 20261001209000: Profile details shows it locked (ADR-0069).';
+  'The worker''s own profile for the §10.1 profile sheet, plus the app-lock inputs. Never returns block_reason or rejection_reason; rejectionCause (willo / manager / quiz_failed) decides which terminal screen shows. reliability is staff_show_rate() since 20260928110700, null with no history. dob since 20261001210000: Profile details shows it locked (ADR-0070).';
 
 -- ---------------------------------------------------------------------
 -- 12 · The two reads gain the date — appended columns, so drop + create.
@@ -1278,7 +1278,7 @@ returns table (
   decision_reason     text,
   created_at          timestamptz,
   decided_at          timestamptz,
-  -- 20261001209000 (ADR-0069), appended.
+  -- 20261001210000 (ADR-0070), appended.
   proposed_dob        date
 )
 language plpgsql
@@ -1308,7 +1308,7 @@ begin
 end $$;
 
 comment on function public.my_profile_change_requests() is
-  'ADR-0045: the calling worker''s own change requests, newest first, with the office''s reason on a rejection (shown to the worker). proposed_dob for a date-of-birth request (ADR-0069). Never returns decided_by, previous_value or evidence_path.';
+  'ADR-0045: the calling worker''s own change requests, newest first, with the office''s reason on a rejection (shown to the worker). proposed_dob for a date-of-birth request (ADR-0070). Never returns decided_by, previous_value or evidence_path.';
 
 drop function if exists public.office_profile_change_requests(uuid, boolean, int);
 create or replace function public.office_profile_change_requests(
@@ -1339,7 +1339,7 @@ create or replace function public.office_profile_change_requests(
   decided_at          timestamptz,
   decided_by_name     text,
   decision_reason     text,
-  -- 20261001209000 (ADR-0069), appended; null for a removed worker.
+  -- 20261001210000 (ADR-0070), appended; null for a removed worker.
   current_dob         date,
   proposed_dob        date
 )
@@ -1385,7 +1385,7 @@ begin
 end $$;
 
 comment on function public.office_profile_change_requests(uuid, boolean, int) is
-  'ADR-0045: the /staff/requests queue — pending oldest first, or decided newest first — optionally for one worker (the /staff/:id banner). Admin only. Names the decider (profiles.full_name, which an admin cannot read directly). A removed worker reads "Deleted account #id" with no photo, evidence path or date of birth. current_dob / proposed_dob appended by 20261001209000 (ADR-0069).';
+  'ADR-0045: the /staff/requests queue — pending oldest first, or decided newest first — optionally for one worker (the /staff/:id banner). Admin only. Names the decider (profiles.full_name, which an admin cannot read directly). A removed worker reads "Deleted account #id" with no photo, evidence path or date of birth. current_dob / proposed_dob appended by 20261001210000 (ADR-0070).';
 
 -- ---------------------------------------------------------------------
 -- 13 · Privileges

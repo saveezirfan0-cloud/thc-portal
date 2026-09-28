@@ -25,7 +25,7 @@ export interface RtwChecksRead {
   /** settings.rtw_check.enabled — decides "Run check again" and the manual date. */
   enabled: boolean;
   /**
-   * ADR-0069: pending share codes whose worker entered a different date of
+   * ADR-0070: pending share codes whose worker entered a different date of
    * birth — Verify copies it to the profile, so the screen says so.
    */
   dobClaims: DobClaim[];
@@ -99,7 +99,7 @@ export async function loadRtwChecksForDocuments(
 }
 
 /**
- * ADR-0069: the date of birth entered with each of these pending share
+ * ADR-0070: the date of birth entered with each of these pending share
  * codes, keyed by document id — for /compliance. Best-effort: a failed read
  * shows no line, and Verify still does what it does.
  */

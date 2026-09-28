@@ -297,7 +297,7 @@ export function renderChangeRequest(v) {
     'ADR-0045: profile_change_transitions(), the state guard and the',
     'profile_change_requests CHECKs against the cases state.ts and',
     'changeRequest.ts are held to. `refusal` null = the name is accepted.',
-    'change_request_dob_vectors (ADR-0069): dob_change_problem() against',
+    'change_request_dob_vectors (ADR-0070): dob_change_problem() against',
     'dobChangeProblem() in dob.ts; also included by 717.',
   ]);
   out.push(...statusTables('change_request', v));
@@ -330,8 +330,8 @@ export function renderChangeRequest(v) {
       v.decisions.map((c) => [lit(c.name), lit(c.approve), lit(c.reason), lit(c.expect)]),
     ),
   );
-  // ADR-0069: the date-of-birth rule, dob_change_problem() in
-  // 20261001209000 — held to it by supabase/tests/717_date_of_birth_corrections.sql.
+  // ADR-0070: the date-of-birth rule, dob_change_problem() in
+  // 20261001210000 — held to it by supabase/tests/717_date_of_birth_corrections.sql.
   out.push(
     ...table(
       'change_request_dob_vectors',

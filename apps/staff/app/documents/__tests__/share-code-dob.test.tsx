@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * New share code with the date of birth (ADR-0069).
+ * New share code with the date of birth (ADR-0070).
  *
  *   · the form asks for the date of birth, pre-filled from the profile the
  *     way the onboarding re-entry sheet does, with gov.uk's hint;

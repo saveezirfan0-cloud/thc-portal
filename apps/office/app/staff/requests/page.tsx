@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 
 /**
  * /staff/requests — the office's queue for the name, photo and date of
- * birth §10.1 locks (ADR-0045, ADR-0069), `wireframes/backoffice/change-requests.html`.
+ * birth §10.1 locks (ADR-0045, ADR-0070), `wireframes/backoffice/change-requests.html`.
  *
  * Read on the server through `office_profile_change_requests()`, which
  * refuses anyone but the office and names the manager on a decided row.

@@ -39,7 +39,7 @@ export function nameRequested(row: ChangeRequestRow): string | null {
 }
 
 /**
- * The date of birth a dob request was measured against (ADR-0069), as the
+ * The date of birth a dob request was measured against (ADR-0070), as the
  * office writes dates ("05.06.1998"): the snapshot once decided, the
  * profile while pending — the rule `nameBefore()` follows.
  */
@@ -125,7 +125,7 @@ const MESSAGES: Record<string, string> = {
   not_authorised: 'Only the office can do this.',
   evidence_unchecked:
     'Tick “I’ve checked the evidence matches the right-to-work document” before approving a name.',
-  // ADR-0069: a date-of-birth request.
+  // ADR-0070: a date-of-birth request.
   evidence_unchecked_dob:
     'Tick “I’ve checked the evidence shows this date of birth” before approving a date of birth.',
   not_permitted: 'Deciding a date of birth is for owners and managers. Ask one of them.',
@@ -146,7 +146,7 @@ export function decisionMessage(message: string): string {
 }
 
 /**
- * Approve is enabled for a name — and a date of birth (ADR-0069) — only
+ * Approve is enabled for a name — and a date of birth (ADR-0070) — only
  * once the evidence tick is on; a photo has no evidence to tick (ADR-0045
  * §3). The server action asks again.
  */
@@ -163,7 +163,7 @@ export function evidenceTick(kind: ChangeKind): string {
 
 /**
  * Whether this office role may decide this request: a date of birth is for
- * owners and managers (`office_can('identity')`, ADR-0069); a name or a
+ * owners and managers (`office_can('identity')`, ADR-0070); a name or a
  * photo for any office login, as before.
  */
 export function mayDecide(kind: ChangeKind, canDecideDob: boolean): boolean {

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ProfileRow } from '../types';
 
 /**
- * ADR-0069 — the Date of birth row in the Overview's "Contacts & identity"
+ * ADR-0070 — the Date of birth row in the Overview's "Contacts & identity"
  * card gains "Correct" for an owner or a manager, and for nobody on a
  * removed profile. The dialog and the action are held in
  * _components/__tests__/dob-correction.test.tsx.
@@ -30,7 +30,7 @@ const render = (profile: ProfileRow, canCorrectDob: boolean) =>
     <Overview profile={profile} references={[]} declarations={[]} canCorrectDob={canCorrectDob} />,
   );
 
-describe('Overview · Date of birth (ADR-0069)', () => {
+describe('Overview · Date of birth (ADR-0070)', () => {
   it('shows the date with Correct to an owner or a manager', () => {
     const html = render(PROFILE, true);
     expect(html).toContain('01.01.1995');

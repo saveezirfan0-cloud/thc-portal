@@ -4,7 +4,7 @@ import type { ChangeKind } from '@thc/domain';
 /**
  * Request a change — what the worker reads about their own requests
  * (ADR-0045, docs/19 §3, `wireframes/staff/request-change.html`; the date
- * of birth since ADR-0069).
+ * of birth since ADR-0070).
  *
  * §10.1's name, photo and date-of-birth locks never move; a request is the in-app route
  * to the office, which decides on /staff/requests. This file turns the rows
@@ -22,7 +22,7 @@ export interface ChangeRequest {
   proposedFirstName: string | null;
   proposedLastName: string | null;
   proposedPhotoPath: string | null;
-  /** `yyyy-mm-dd` for a date-of-birth request (ADR-0069). */
+  /** `yyyy-mm-dd` for a date-of-birth request (ADR-0070). */
   proposedDob?: string | null;
   workerNote: string | null;
   /** The office's reason on a rejection — shown to the worker as written. */
@@ -140,7 +140,7 @@ export const CHANGE_REASONS: Record<string, string> = {
   not_pending: 'The office has already dealt with this request.',
   not_found: 'We couldn’t find that request.',
   bad_kind: 'That isn’t something you can ask to change here.',
-  // request_dob_change() (ADR-0069).
+  // request_dob_change() (ADR-0070).
   dob_required: 'Enter your date of birth.',
   dob_invalid: 'Enter a real date of birth, as day, month and year.',
   under_18: 'That date of birth would make you under 18. Check it and try again.',

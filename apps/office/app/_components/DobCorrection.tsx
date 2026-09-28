@@ -16,7 +16,7 @@ import { correctDob } from '../_lib/dobCorrectionActions';
 
 /**
  * "Correct" on a date of birth — the /staff/:id Overview card "Contacts &
- * identity" and the /onboarding/:id header (ADR-0069). Owners and managers
+ * identity" and the /onboarding/:id header (ADR-0070). Owners and managers
  * only: the caller passes `allowed` from `officeCan(role, 'identity')`, and
  * `office_correct_dob()` refuses everyone else whatever the screen shows.
  *
