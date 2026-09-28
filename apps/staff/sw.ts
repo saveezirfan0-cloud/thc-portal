@@ -24,6 +24,7 @@
 import { defaultCache } from '@serwist/next/worker';
 import type { PrecacheEntry, SerwistGlobalConfig } from 'serwist';
 import { NetworkOnly, Serwist } from 'serwist';
+import { type BadgeNavigator, bumpAppBadge } from './lib/app-badge';
 
 declare global {
   interface WorkerGlobalScope extends SerwistGlobalConfig {
@@ -151,22 +152,45 @@ self.addEventListener('push', (event) => {
     }
   }
 
+  const notificationTag = tag ?? url;
+
   event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon: '/icon-192.png',
-      // Android paints the badge as a silhouette in the status bar, so it is
-      // the mark alone, white on transparent (scripts/gen-push-badge.mjs) —
-      // the launcher icon there is a cyan square with its corners lost.
-      badge: '/icons/badge-96.png',
-      // Deep link (§10.4): a tapped N5 opens that invitation, not the app's
-      // front door. `tag` collapses a repeat of the same one.
-      data: { url },
-      tag: tag ?? url,
-      ...(action ? { actions: [{ action: 'open', title: action }] } : {}),
-    } as NotificationOptions),
+    (async () => {
+      // The red count on the home-screen icon (lib/app-badge.ts). A push
+      // that replaces one still on screen (same tag) is the same item, so it
+      // does not add to it — asked BEFORE drawing, when only the old one is
+      // there to find.
+      const replacing = await stillShowing(notificationTag);
+
+      await Promise.all([
+        self.registration.showNotification(title, {
+          body,
+          icon: '/icon-192.png',
+          // Android paints the badge as a silhouette in the status bar, so it is
+          // the mark alone, white on transparent (scripts/gen-push-badge.mjs) —
+          // the launcher icon there is a cyan square with its corners lost.
+          // (Not to be confused with the red count on the icon, above.)
+          badge: '/icons/badge-96.png',
+          // Deep link (§10.4): a tapped N5 opens that invitation, not the app's
+          // front door. `tag` collapses a repeat of the same one.
+          data: { url },
+          tag: notificationTag,
+          ...(action ? { actions: [{ action: 'open', title: action }] } : {}),
+        } as NotificationOptions),
+        replacing ? undefined : bumpAppBadge(self.navigator as BadgeNavigator, self.caches),
+      ]);
+    })(),
   );
 });
+
+/** Whether a notification with this tag is still in the notification centre. */
+async function stillShowing(tag: string): Promise<boolean> {
+  try {
+    return (await self.registration.getNotifications({ tag })).length > 0;
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Tapping one opens the deep link — reusing an open window if there is one,
