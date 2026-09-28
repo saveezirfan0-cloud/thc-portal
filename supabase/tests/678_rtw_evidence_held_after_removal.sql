@@ -13,19 +13,25 @@
 -- superseded before any decision) and anyone never employed is wiped as
 -- before.
 --
--- Three workers:
+-- Five workers:
 --   Priya  employed, left 30.06.2026, work visa — the full set
 --   Ben    employed, never left, UK birth-certificate route
 --   Cara   a candidate, never employed — nothing to retain against
+--   Dan    employed, birth-certificate route, but the certificate was
+--          never relied on — so neither is its NI document
+--   Finn   employed, left more than two years before the removal — the
+--          window has already closed
 -- =====================================================================
 begin;
-select plan(35);
+select plan(41);
 \set now '2026-09-28 12:00:00+01'
 \ir _shared/fixtures.psql
 
 \set pri  'd6780000-0000-4000-8000-000000000001'
 \set ben  'd6780000-0000-4000-8000-000000000002'
 \set cara 'd6780000-0000-4000-8000-000000000003'
+\set dan  'd6780000-0000-4000-8000-000000000004'
+\set finn 'd6780000-0000-4000-8000-000000000005'
 
 -- Priya's documents
 \set p_pass      'e6780000-0000-4000-8000-000000000001'
@@ -39,18 +45,27 @@ select plan(35);
 \set p_sup       'e6780000-0000-4000-8000-000000000013'
 \set p_ni        'e6780000-0000-4000-8000-000000000014'
 \set p_share_new 'e6780000-0000-4000-8000-000000000015'
+\set p_rej_sup   'e6780000-0000-4000-8000-000000000016'
 -- Ben's
 \set b_birth     'e6780000-0000-4000-8000-000000000021'
 \set b_ni        'e6780000-0000-4000-8000-000000000022'
 -- Cara's
 \set c_pass      'e6780000-0000-4000-8000-000000000031'
 \set c_share     'e6780000-0000-4000-8000-000000000032'
+-- Dan's
+\set d_birth_p   'e6780000-0000-4000-8000-000000000041'
+\set d_birth_r   'e6780000-0000-4000-8000-000000000042'
+\set d_ni        'e6780000-0000-4000-8000-000000000043'
+-- Finn's
+\set f_pass      'e6780000-0000-4000-8000-000000000051'
 
 -- Checks
 \set chk_done    'f6780000-0000-4000-8000-000000000001'
 \set chk_open    'f6780000-0000-4000-8000-000000000002'
 \set chk_new     'f6780000-0000-4000-8000-000000000003'
 \set chk_cara    'f6780000-0000-4000-8000-000000000004'
+\set chk_run     'f6780000-0000-4000-8000-000000000005'
+\set chk_failed  'f6780000-0000-4000-8000-000000000006'
 
 insert into staff (id, employee_id, contract_signed_at, left_at, first_name, last_name, email, phone,
                    dob, status, rtw_branch, share_code) values
@@ -59,7 +74,11 @@ insert into staff (id, employee_id, contract_signed_at, left_at, first_name, las
   (:'ben', 96782, timestamptz '2025-03-01 10:00+00', null,
    'Ben', 'Hart', 'ben@678.test', '+447700967802', date '1990-05-05', 'compliant', 'uk_irish', null),
   (:'cara', null, null, null,
-   'Cara', 'Diaz', 'cara@678.test', '+447700967803', date '2000-08-08', 'documents', 'work_visa', 'W67800003');
+   'Cara', 'Diaz', 'cara@678.test', '+447700967803', date '2000-08-08', 'documents', 'work_visa', 'W67800003'),
+  (:'dan', 96784, timestamptz '2025-04-01 10:00+00', null,
+   'Dan', 'Okoro', 'dan@678.test', '+447700967804', date '1992-07-07', 'compliant', 'uk_irish', null),
+  (:'finn', 96785, timestamptz '2023-01-10 10:00+00', timestamptz '2024-06-30 18:00+01',
+   'Finn', 'Byrne', 'finn@678.test', '+447700967805', date '1991-03-03', 'inactive', 'uk_irish', null);
 
 insert into compliance_docs (id, staff_id, doc_type, review_status, reviewed_at, rejection_reason,
                              file_path, gov_report_path, share_code, ai_extracted, expiry_date,
@@ -96,6 +115,9 @@ insert into compliance_docs (id, staff_id, doc_type, review_status, reviewed_at,
    :'pri' || '/ni/p60.pdf', null, null, null, null, null, timestamptz '2025-01-04 10:00+00'),
   (:'p_share_new', :'pri', 'share_code_report', 'pending', null, null,
    null, :'pri' || '/share-code-report/gov-new.pdf', null, null, null, null, timestamptz '2026-06-02 10:00+00'),
+  -- Rejected, THEN superseded by a reset: stamped, but with its reason.
+  (:'p_rej_sup', :'pri', 'passport', 'superseded', timestamptz '2024-11-02 10:00+00', 'Photo page cut off',
+   :'pri' || '/passport/cut.pdf', null, null, null, null, null, timestamptz '2024-11-01 10:00+00'),
   -- Ben: List A's birth certificate + NI document pair. Both HELD.
   (:'b_birth', :'ben', 'birth_certificate', 'verified', timestamptz '2025-02-20 10:00+00', null,
    :'ben' || '/birth-certificate/b.pdf', null, null, null, null, null, timestamptz '2025-02-19 10:00+00'),
@@ -106,7 +128,17 @@ insert into compliance_docs (id, staff_id, doc_type, review_status, reviewed_at,
    :'cara' || '/passport/p.pdf', null, null, null, date '2032-01-01', null, timestamptz '2026-09-19 10:00+00'),
   (:'c_share', :'cara', 'share_code_report', 'verified', timestamptz '2026-09-21 10:00+00', null,
    null, :'cara' || '/share-code-report/gov.pdf', 'W67800003', null, null, date '2028-01-01',
-   timestamptz '2026-09-20 10:00+00');
+   timestamptz '2026-09-20 10:00+00'),
+  -- Dan: a birth certificate pending, another rejected — never relied on.
+  (:'d_birth_p', :'dan', 'birth_certificate', 'pending', null, null,
+   :'dan' || '/birth-certificate/new.pdf', null, null, null, null, null, timestamptz '2026-09-01 10:00+00'),
+  (:'d_birth_r', :'dan', 'birth_certificate', 'rejected', timestamptz '2025-03-20 10:00+00', 'Not a full certificate',
+   :'dan' || '/birth-certificate/short.pdf', null, null, null, null, null, timestamptz '2025-03-19 10:00+00'),
+  (:'d_ni', :'dan', 'ni_evidence', 'verified', timestamptz '2025-03-20 10:00+00', null,
+   :'dan' || '/ni/p60.pdf', null, null, null, null, null, timestamptz '2025-03-19 10:00+00'),
+  -- Finn: verified, but his employment ended more than two years ago.
+  (:'f_pass', :'finn', 'passport', 'verified', timestamptz '2023-01-05 10:00+00', null,
+   :'finn' || '/passport/p.pdf', null, null, null, date '2030-01-01', null, timestamptz '2023-01-04 10:00+00');
 
 -- The automated checks. Every check starts queued (rtw_checks_insert_guard)
 -- and moves only along rtw_check_transitions().
@@ -132,14 +164,30 @@ update rtw_checks
  where id in (:'chk_done', :'chk_new', :'chk_cara');
 -- A "Run check again" still waiting on the held share code.
 insert into rtw_checks (id, staff_id, compliance_doc_id) values (:'chk_open', :'pri', :'p_share');
+-- On the other held share code: one check mid-run (the runner has filed
+-- its report and photo) and an earlier one that failed after its report.
+insert into rtw_checks (id, staff_id, compliance_doc_id) values (:'chk_failed', :'pri', :'p_share_old');
+update rtw_checks set status = 'running' where id = :'chk_failed';
+update rtw_checks
+   set status = 'failed', source = 'govuk', outcome = 'error',
+       report_path = :'pri' || '/share-code-report/rtw-check-failed.pdf',
+       error = 'gave up after 5 attempts for Priya Shah', review_reason = 'Priya Shah could not be checked',
+       finished_at = timestamptz '2024-06-01 09:00+00'
+ where id = :'chk_failed';
+insert into rtw_checks (id, staff_id, compliance_doc_id) values (:'chk_run', :'pri', :'p_share_old');
+update rtw_checks
+   set status = 'running',
+       report_path = :'pri' || '/share-code-report/rtw-check-run.pdf',
+       photo_path  = :'pri' || '/share-code-report/rtw-check-run-photo.png'
+ where id = :'chk_run';
 
 create temporary table t_pri as select remove_worker(:'pri', :'now'::timestamptz) as r;
 
 -- =====================================================================
 -- 1 · Priya: what is held, until when
 -- =====================================================================
-select is((select (r ->> 'documentsHeld') || '/' || (r ->> 'documentsDeleted') from t_pri), '6/5',
-  'an employed worker''s relied-on right-to-work evidence and completion letter are held (6), the rest deleted (5)');
+select is((select (r ->> 'documentsHeld') || '/' || (r ->> 'documentsDeleted') from t_pri), '6/6',
+  'an employed worker''s relied-on right-to-work evidence and completion letter are held (6), the rest deleted (6)');
 select bag_eq(
   format($$ select id from compliance_docs where staff_id = %L $$, :'pri'),
   format($$ values (%L::uuid), (%L), (%L), (%L), (%L), (%L) $$,
@@ -156,6 +204,8 @@ select is((select count(*)::int from compliance_docs where id in (:'p_pend', :'p
   'a pending, a rejected and a never-decided superseded upload are deleted: nothing was ever relied on them');
 select is((select count(*)::int from compliance_docs where id = :'p_ni'), 0,
   'NI evidence without a birth certificate is payroll evidence, not a right-to-work check: deleted');
+select is((select count(*)::int from compliance_docs where id = :'p_rej_sup'), 0,
+  'a row rejected and THEN superseded by a reset is deleted: reviewed, but its rejection reason says it was never relied on');
 
 -- The held rows keep the evidence and lose what is not.
 select results_eq(
@@ -176,8 +226,8 @@ select is((select ai_extracted ->> 'completionDate' from compliance_docs where i
 -- =====================================================================
 select bag_eq(
   format($$ select id from rtw_checks where staff_id = %L $$, :'pri'),
-  format($$ values (%L::uuid) $$, :'chk_done'),
-  'the finished check on the held share code stays; the one still queued on it and the one on the deleted upload go');
+  format($$ values (%L::uuid), (%L) $$, :'chk_done', :'chk_failed'),
+  'the finished checks on held share codes stay — a failed one too, it is a record of a check run; the queued and running ones on them, and the one on the deleted upload, go');
 select results_eq(
   format($$ select status, outcome, recommendation, result ->> 'fullName', report_path, photo_path, reviewed_at
               from rtw_checks where id = %L $$, :'chk_done'),
@@ -186,34 +236,42 @@ select results_eq(
          :'pri' || '/share-code-report/rtw-check-done.pdf', :'pri' || '/share-code-report/rtw-check-done-photo.png'),
   'it keeps the evidence of the check: outcome, the name gov.uk returned, the report, the photo compared, when it was decided');
 select is((select count(*)::int from rtw_checks
-            where id = :'chk_done'
+            where staff_id = :'pri'
               and (review_reason is not null or worker_reason is not null
                    or suggested_reason is not null or error is not null)), 0,
-  'and loses its free text — the office''s reason, the N8 wording and the runner''s error can name the worker');
+  'and they lose their free text — the office''s reason, the N8 wording and the runner''s error can name the worker');
+select results_eq(
+  format($$ select status, outcome, report_path from rtw_checks where id = %L $$, :'chk_failed'),
+  format($$ values ('failed'::text, 'error'::text, %L::text) $$, :'pri' || '/share-code-report/rtw-check-failed.pdf'),
+  'the failed check keeps its status, outcome and the report it filed');
 
 -- =====================================================================
 -- 3 · Priya: Storage
 -- =====================================================================
 select bag_eq(
   format($$ select retained_storage_paths(%L) $$, :'pri'),
-  format($$ values (%L::text), (%L), (%L), (%L), (%L), (%L), (%L), (%L), (%L) $$,
+  format($$ values (%L::text), (%L), (%L), (%L), (%L), (%L), (%L), (%L), (%L), (%L) $$,
          :'pri' || '/passport/p.pdf', :'pri' || '/visa/v.pdf', :'pri' || '/share-code/s.pdf',
          :'pri' || '/share-code-report/gov.pdf', :'pri' || '/share-code-report/gov-2024.pdf',
          :'pri' || '/term-letter/t.pdf', :'pri' || '/completion-letter/c.pdf',
          :'pri' || '/share-code-report/rtw-check-done.pdf',
-         :'pri' || '/share-code-report/rtw-check-done-photo.png'),
-  'the prefix sweep keeps every held file: documents, gov.uk reports, the check''s report and photo');
+         :'pri' || '/share-code-report/rtw-check-done-photo.png',
+         :'pri' || '/share-code-report/rtw-check-failed.pdf'),
+  'the prefix sweep keeps every held file: documents, gov.uk reports, the kept checks'' reports and photo');
 select is((select count(*)::int from storage_deletions
             where not prefix and path in (select retained_storage_paths(:'pri'))), 0,
   'and none of them is queued for deletion');
 select bag_eq(
   format($$ select path from storage_deletions where staff_id = %L and not prefix $$, :'pri'),
-  format($$ values (%L::text), (%L), (%L), (%L), (%L), (%L), (%L) $$,
+  format($$ values (%L::text), (%L), (%L), (%L), (%L), (%L), (%L), (%L), (%L), (%L) $$,
          :'pri' || '/passport/new.pdf', :'pri' || '/visa/blurred.pdf', :'pri' || '/status/s.pdf',
          :'pri' || '/ni/p60.pdf', :'pri' || '/share-code-report/gov-new.pdf',
+         :'pri' || '/passport/cut.pdf',
          :'pri' || '/share-code-report/rtw-check-new.pdf',
-         :'pri' || '/share-code-report/rtw-check-new-photo.png'),
-  'what was not held is queued by name — the deleted check''s report and photo through its delete trigger');
+         :'pri' || '/share-code-report/rtw-check-new-photo.png',
+         :'pri' || '/share-code-report/rtw-check-run.pdf',
+         :'pri' || '/share-code-report/rtw-check-run-photo.png'),
+  'what was not held is queued by name — the deleted checks'' reports and photos (the running one''s included) through their delete trigger');
 select is((select count(*)::int from storage_deletions where staff_id = :'pri' and prefix), 2,
   'and the two folders are queued as prefixes, as before');
 
@@ -245,6 +303,25 @@ select is_empty(format($$ select retained_storage_paths(%L) $$, :'cara'),
   'and the prefix sweep keeps nothing of hers');
 
 -- =====================================================================
+-- 5b · Dan: an NI document whose birth certificate was never relied on
+-- =====================================================================
+select is((remove_worker(:'dan', :'now'::timestamptz) ->> 'documentsHeld')::int, 0,
+  'a pending and a rejected birth certificate are not held, so neither is the NI document beside them');
+select is((select count(*)::int from compliance_docs where staff_id = :'dan'), 0,
+  'all three are deleted');
+
+-- =====================================================================
+-- 5c · Finn: the window closed before the removal
+-- =====================================================================
+create temporary table t_finn as select remove_worker(:'finn', :'now'::timestamptz) as r;
+select is((select (r ->> 'documentsHeld') || '/' || coalesce(r ->> 'retainUntil', '-') from t_finn), '0/-',
+  'employed, but he left more than two years ago: employment + 2 years has already run, nothing is held');
+select is((select count(*)::int from compliance_docs where staff_id = :'finn')
+          + (select count(*)::int from storage_deletions
+              where staff_id = :'finn' and path = :'finn' || '/passport/p.pdf'), 1,
+  'his verified passport is deleted and its file queued');
+
+-- =====================================================================
 -- 6 · The purge, when the window closes
 -- =====================================================================
 select is((rtw_daily(timestamptz '2028-06-29 12:00+01') ->> 'retentionPurged')::int, 0,
@@ -261,10 +338,11 @@ select is((select count(*)::int from (
                    (:'pri' || '/share-code-report/gov.pdf'), (:'pri' || '/share-code-report/gov-2024.pdf'),
                    (:'pri' || '/term-letter/t.pdf'), (:'pri' || '/completion-letter/c.pdf'),
                    (:'pri' || '/share-code-report/rtw-check-done.pdf'),
-                   (:'pri' || '/share-code-report/rtw-check-done-photo.png')) held(p)
+                   (:'pri' || '/share-code-report/rtw-check-done-photo.png'),
+                   (:'pri' || '/share-code-report/rtw-check-failed.pdf')) held(p)
            where not exists (select 1 from storage_deletions s
                               where s.bucket = 'documents' and s.path = held.p and not s.prefix)), 0,
-  'every held file is now queued for gdpr-purge: documents, gov.uk reports, and the check''s report and photo (its delete trigger)');
+  'every held file is now queued for gdpr-purge: documents, gov.uk reports, and the kept checks'' reports and photo (their delete trigger)');
 select is_empty(format($$ select retained_storage_paths(%L) $$, :'pri'),
   'and the prefix sweep keeps nothing of hers any more');
 select is((select count(*)::int from audit_log where action = 'rtw.purged' and data ->> 'staffId' = :'pri'), 5,

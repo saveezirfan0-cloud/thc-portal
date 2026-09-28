@@ -607,9 +607,10 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
               <li>Roles and rating on the anonymised row</li>
               {/* ADR-0019, ADR-0063: the legal hold, only if they were employed */}
               <li>
-                If they were employed: verified right-to-work evidence (passport or ID, visa or
-                status document, share-code report and gov.uk check, term letter) and the completion
-                letter — held until two years after employment ended, then deleted automatically
+                If they were employed: verified right-to-work evidence (passport, ID card, or birth
+                certificate with its NI document; visa or status document; share-code report and
+                gov.uk check; term letter) and the completion letter — held until two years after
+                employment ended, then deleted automatically
               </li>
               <li>
                 Timesheets already sent keep the real name; a regenerated copy prints the new label

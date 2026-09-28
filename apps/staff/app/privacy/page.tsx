@@ -138,10 +138,10 @@ export default function Page() {
                 <b>Right-to-work evidence</b> is kept for the length of your employment plus two
                 years after it ends: the passport, ID card or birth certificate we checked (with the
                 NI document that goes with a birth certificate), your visa or status document, the
-                gov.uk share-code check and its report, your university term dates letter and
-                completion letter. If you worked for us, it is held for that period even if you ask
-                to be removed, because the law requires us to be able to show it; it is then deleted
-                automatically.
+                gov.uk share-code check, its report and the photo it showed, your university term
+                dates letter and completion letter. If you worked for us, it is held for that period
+                even if you ask to be removed, because the law requires us to be able to show it; it
+                is then deleted automatically.
               </li>
             </ul>
           </section>
