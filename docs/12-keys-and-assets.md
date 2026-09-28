@@ -148,7 +148,7 @@ Do not chase these now. Each is listed against the phase that first needs it.
 | `RESEND_API_KEY` | https://resend.com/api-keys — a **Sending access** key for the verified domain | P2, every email (`notify-drain`) — see below |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` | Generated, not obtained. Run `npx web-push generate-vapid-keys`; the subject is `mailto:admin@thehospitalitycompany.co.uk` | P2, every push (`notify-drain`) — see below |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | https://account.mapbox.com/access-tokens/ | Phase 2, the venues map |
-| `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` (+ optional `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX`, `RTW_PROVIDER_TIMEOUT_MS`) | **Not needed** (ADR-0041: no provider; gov.uk is the only route). Only if THC ever sets `settings.rtw_check.primary = 'provider'` | — |
+| `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` (+ optional `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX`, `RTW_PROVIDER_TIMEOUT_MS`) | **Not needed** (ADR-0041: no provider; gov.uk is the only route). Only if THC ever sets `settings.rtw_check.primary = 'provider'` — or, **for a demo database only**, `RTW_PROVIDER_URL=sandbox:` (no key needed) puts the sandbox provider behind it: fixed demo share codes, SANDBOX on every report (ADR-0063, `supabase/demo/rtw-check-sandbox-on.sql`) | Demonstrating the check (ADR-0063) |
 | `RTW_JOB_SECRET` | Generated, not obtained: `openssl rand -base64 48`. **Vercel, Back Office only**, and the same value in the Supabase vault as `rtw_job_secret` | Same |
 | `RTW_GOVUK_ENABLED` (+ optional `RTW_GOVUK_START_URL`, `RTW_GOVUK_TIMEOUT_MS`, `RTW_CHECK_BATCH`, and `RTW_CHROMIUM_EXECUTABLE_PATH` for local development only) | Not obtained. `true` turns on the gov.uk check, which is the **only** route (ADR-0041). **Vercel, Back Office only** | Switching on the gov.uk check (ADR-0025, ADR-0041) |
 
@@ -267,7 +267,7 @@ Supabase secrets:
 | Variable | What it is | If it is missing |
 |---|---|---|
 | `RTW_JOB_SECRET` | At least 32 characters, random. pg_cron sends it as `Authorization: Bearer …` | The route refuses every call (503). Nothing is checked |
-| `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` | Not needed (ADR-0041). Only for `primary = 'provider'`: the provider's check endpoint and key. The request and response shape are assumed in `apps/office/app/api/jobs/rtw-check/_lib/provider.config.ts` — confirm against the provider's docs | The provider is skipped; the gov.uk fallback runs alone if enabled |
+| `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` | Not needed (ADR-0041). Only for `primary = 'provider'`: the provider's check endpoint and key. The request and response shape are assumed in `apps/office/app/api/jobs/rtw-check/_lib/provider.config.ts` — confirm against the provider's docs. `sandbox:` = the demo sandbox (ADR-0063); never where real workers are | The provider is skipped; the gov.uk fallback runs alone if enabled |
 | `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX` | Default `Authorization` / `Bearer `. An empty prefix is allowed | Defaults |
 | `RTW_GOVUK_ENABLED` | `true` to run our own gov.uk browser check — the only route (ADR-0041) | Nothing is checked; the route claims nothing |
 | `RTW_CHECK_BATCH` | Checks per run, 1–10 (default 3) | 3 |

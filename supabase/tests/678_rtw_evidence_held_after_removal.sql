@@ -1,6 +1,6 @@
 -- =====================================================================
 -- 678 · §1.7 removal holds right-to-work evidence for employment + 2
---       years (ADR-0063, amending ADR-0019)
+--       years (ADR-0065, amending ADR-0019)
 --   remove_worker(), retained_storage_paths(), rtw_daily()
 --   from 20261001205000_rtw_evidence_held_after_removal.sql
 --

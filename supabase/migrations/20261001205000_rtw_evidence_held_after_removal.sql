@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20261001205000 · §1.7 removal holds right-to-work evidence
---                            for employment + 2 years (ADR-0063,
+--                            for employment + 2 years (ADR-0065,
 --                            amending ADR-0019)
 --
 -- The product owner's decision of 28.09.2026, on the gov.uk employer
@@ -105,7 +105,7 @@
 -- =====================================================================
 
 comment on column compliance_docs.retain_until is
-  'Set only by a §1.7 removal of someone who was employed, inside the legal retention window of employment + 2 years: the completion letter (ADR-0019) and right-to-work evidence that was relied on (ADR-0063). The row, its file, its gov.uk report and its checks'' reports and photos are held until this date and purged by rtw_daily().';
+  'Set only by a §1.7 removal of someone who was employed, inside the legal retention window of employment + 2 years: the completion letter (ADR-0019) and right-to-work evidence that was relied on (ADR-0065). The row, its file, its gov.uk report and its checks'' reports and photos are held until this date and purged by rtw_daily().';
 
 create or replace function public.remove_worker(
   p_staff uuid,
@@ -288,7 +288,7 @@ begin
                  + interval '2 years')::date;
   end if;
 
-  -- The legal hold (ADR-0019, ADR-0063): the completion letter, whatever
+  -- The legal hold (ADR-0019, ADR-0065): the completion letter, whatever
   -- its status, as before; and the right-to-work evidence that was relied
   -- on — verified, or verified and later superseded by a reset. An NI
   -- document only as the second half of a birth certificate's List A
@@ -395,7 +395,7 @@ begin
   -- (here, and by the cascade), and so does one still queued or running
   -- on a held document: it never produced a result. Their delete trigger
   -- owes each report and photo to the purge queue. A FINISHED check on a
-  -- held document is the record of the check (ADR-0063): it stays with
+  -- held document is the record of the check (ADR-0065): it stays with
   -- its result, report and photo, and loses its free text.
   delete from rtw_checks c
    where c.staff_id = p_staff
@@ -493,7 +493,7 @@ begin
 end $$;
 
 comment on function public.remove_worker(uuid, timestamptz, uuid) is
-  '§1.7 GDPR removal. Irreversible anonymisation of the staff row, the auth login (banned; email, phone and metadata replaced, tokens and sessions deleted), the profile name, applications (names, contacts, DOB, resolution note), onboarding answers, declaration content, qualification notes, outbox rows (unsent deleted, sent scrubbed) and audit rows about or by the worker; location fixes deleted (check-in/out times kept); documents, bank details, referees, checklist, rtw checks and push subscriptions deleted; files and the two Storage folders queued for gdpr-purge; future bookings released. EXCEPT, for someone who was employed, the legal hold of employment + 2 years (retain_until, purged by rtw_daily()): the completion letter (ADR-0019) and the right-to-work evidence that was relied on — verified (or verified then superseded) passport, national ID, birth certificate with its NI document, visa and status documents, share-code report with its finished gov.uk checks (result, report, photo; free text scrubbed) and term dates letter (ADR-0063). p_actor is the manager who pressed it (the service key carries no sub).';
+  '§1.7 GDPR removal. Irreversible anonymisation of the staff row, the auth login (banned; email, phone and metadata replaced, tokens and sessions deleted), the profile name, applications (names, contacts, DOB, resolution note), onboarding answers, declaration content, qualification notes, outbox rows (unsent deleted, sent scrubbed) and audit rows about or by the worker; location fixes deleted (check-in/out times kept); documents, bank details, referees, checklist, rtw checks and push subscriptions deleted; files and the two Storage folders queued for gdpr-purge; future bookings released. EXCEPT, for someone who was employed, the legal hold of employment + 2 years (retain_until, purged by rtw_daily()): the completion letter (ADR-0019) and the right-to-work evidence that was relied on — verified (or verified then superseded) passport, national ID, birth certificate with its NI document, visa and status documents, share-code report with its finished gov.uk checks (result, report, photo; free text scrubbed) and term dates letter (ADR-0065). p_actor is the manager who pressed it (the service key carries no sub).';
 
 revoke execute on function public.remove_worker(uuid, timestamptz, uuid) from public, anon, authenticated;
 grant  execute on function public.remove_worker(uuid, timestamptz, uuid) to service_role;
@@ -504,7 +504,7 @@ grant  execute on function public.remove_worker(uuid, timestamptz, uuid) to serv
 -- reports and photos. Only the comment follows the wider hold.
 -- ---------------------------------------------------------------------
 comment on function public.retained_storage_paths(uuid) is
-  '§1.7 + ADR-0019 + ADR-0063: the Storage paths of a removed worker that a prefix purge must keep — the file and gov.uk report of every document carrying retain_until (the completion letter, relied-on right-to-work evidence), and the reports and photos of the automated checks on them (ADR-0025, ADR-0041). Service role only.';
+  '§1.7 + ADR-0019 + ADR-0065: the Storage paths of a removed worker that a prefix purge must keep — the file and gov.uk report of every document carrying retain_until (the completion letter, relied-on right-to-work evidence), and the reports and photos of the automated checks on them (ADR-0025, ADR-0041). Service role only.';
 
 -- ---------------------------------------------------------------------
 -- The purge: rtw_daily() restated from 20260923100100 with every line
@@ -559,7 +559,7 @@ begin
     returning 1
   ) select count(*)::int into v_alerts from q;
 
-  -- The retention purge (ADR-0019, ADR-0063). The file and the gov.uk
+  -- The retention purge (ADR-0019, ADR-0065). The file and the gov.uk
   -- report are queued BEFORE the row that names them is deleted. The
   -- delete cascades to the document's rtw_checks, whose
   -- rtw_checks_forget_report() trigger queues each check's report and
@@ -601,7 +601,7 @@ begin
 end $$;
 
 comment on function public.rtw_daily(timestamptz) is
-  'Completion letter requirement §2.3 and §4: admin email CL4 at 60/30/14 days before any live worker''s right to work expires (bands, once each per expiry date), and the purge of evidence held by a §1.7 removal — completion letters (ADR-0019) and right-to-work evidence (ADR-0063) — whose employment + 2 years retention hold has run out: the row, its file and gov.uk report, and (by cascade) its checks with their reports and photos, all queued for gdpr-purge.';
+  'Completion letter requirement §2.3 and §4: admin email CL4 at 60/30/14 days before any live worker''s right to work expires (bands, once each per expiry date), and the purge of evidence held by a §1.7 removal — completion letters (ADR-0019) and right-to-work evidence (ADR-0065) — whose employment + 2 years retention hold has run out: the row, its file and gov.uk report, and (by cascade) its checks with their reports and photos, all queued for gdpr-purge.';
 
 revoke execute on function public.rtw_daily(timestamptz) from public, anon, authenticated;
 grant  execute on function public.rtw_daily(timestamptz) to service_role;

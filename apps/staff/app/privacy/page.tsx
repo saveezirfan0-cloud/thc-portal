@@ -133,7 +133,7 @@ export default function Page() {
                 <b>When you stop working with us</b>, your profile, documents and work history are
                 kept as the employment records THC is required to hold.
               </li>
-              {/* ADR-0019 §1, ADR-0063; completion-letter requirement §4 */}
+              {/* ADR-0019 §1, ADR-0065; completion-letter requirement §4 */}
               <li>
                 <b>Right-to-work evidence</b> is kept for the length of your employment plus two
                 years after it ends: the passport, ID card or birth certificate we checked (with the

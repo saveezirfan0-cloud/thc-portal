@@ -631,7 +631,7 @@ Email.
 
 **Decided 28.09.2026 by the product owner: yes — THC to confirm**
 
-Right-to-work evidence an employed worker was verified on — passport, national ID, visa and status documents, the share-code report with its gov.uk PDF and photo, a birth certificate with the National Insurance document paired with it, and university term dates letters — is now held for the employment plus two years, like the completion letter, and then deleted automatically with an audit entry (ADR-0063). National Insurance evidence on its own is payroll evidence and is still deleted at removal. The privacy notice (item 13) should say the same. If THC’s data protection lead decides otherwise, the list of documents held is one change.
+Right-to-work evidence an employed worker was verified on — passport, national ID, visa and status documents, the share-code report with its gov.uk PDF and photo, a birth certificate with the National Insurance document paired with it, and university term dates letters — is now held for the employment plus two years, like the completion letter, and then deleted automatically with an audit entry (ADR-0065). National Insurance evidence on its own is payroll evidence and is still deleted at removal. The privacy notice (item 13) should say the same. If THC’s data protection lead decides otherwise, the list of documents held is one change.
 
 #### 15 · Question: a replacement who arrives late to a full shift
 

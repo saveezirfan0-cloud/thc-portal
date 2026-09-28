@@ -22,7 +22,7 @@
  *     listed recursively and removed, EXCEPT the paths
  *     `retained_storage_paths()` still names (a completion letter held
  *     under ADR-0019's retention; right-to-work evidence, its gov.uk
- *     reports and photos, under ADR-0063's). This is what erases an
+ *     reports and photos, under ADR-0065's). This is what erases an
  *     object that reached the bucket without a row: an upload whose
  *     finish…() never ran, a selfie whose staff_set_photo() raised. A
  *     prefix with nothing under it completes cleanly.

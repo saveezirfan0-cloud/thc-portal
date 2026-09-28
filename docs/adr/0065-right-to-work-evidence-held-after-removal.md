@@ -1,4 +1,4 @@
-# ADR-0063 · A GDPR removal holds right-to-work evidence for employment + 2 years
+# ADR-0065 · A GDPR removal holds right-to-work evidence for employment + 2 years
 
 **Status:** Accepted, 28.09.2026 (product owner; THC's right-to-work adviser has signed off the gov.uk check) · **Amends:** [ADR-0019](0019-completion-letter-retention-and-rota-guard.md) §1 (only the completion letter was held) and scope §1.7's removal rule ("contacts / documents / photo wiped") · **Settles:** ADR-0019 §1's "Confirm with THC" and ADR-0041's "To confirm with THC" · **Code:** migration `20261001205000_rtw_evidence_held_after_removal.sql` (`remove_worker()`, `rtw_daily()`); pgTAP `678` (and `230`, `250`, `676` updated); the Remove dialog in `apps/office/app/staff/[id]/ProfileScreen.tsx`; `apps/staff/app/privacy/page.tsx`
 

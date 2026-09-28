@@ -135,7 +135,7 @@ screens (the wireframes' "Valid"), and nothing is verified until the admin click
 - **To confirm with THC:** whether gov.uk reports and photos should be held after a GDPR
   removal (the Home Office asks for the employment plus two years; ADR-0019 holds only the
   completion letter). See OWNER-TODO §6. **Settled 28.09.2026 by
-  [ADR-0063](0063-right-to-work-evidence-held-after-removal.md):** they are held with their
+  [ADR-0065](0065-right-to-work-evidence-held-after-removal.md):** they are held with their
   verified share-code document for employment + 2 years, then purged.
 - **A small drift from the §2.3 wording**, "nobody types the date": on a `verify`
   recommendation the date is confirmed, not typed. It is typed only for `review` items,

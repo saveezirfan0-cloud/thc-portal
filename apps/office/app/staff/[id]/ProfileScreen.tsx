@@ -605,7 +605,7 @@ export function ProfileScreen({ data }: { data: ProfileData }) {
                 entry if asked
               </li>
               <li>Roles and rating on the anonymised row</li>
-              {/* ADR-0019, ADR-0063: the legal hold, only if they were employed */}
+              {/* ADR-0019, ADR-0065: the legal hold, only if they were employed */}
               <li>
                 If they were employed: verified right-to-work evidence (passport, ID card, or birth
                 certificate with its NI document; visa or status document; share-code report and

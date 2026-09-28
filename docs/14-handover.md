@@ -392,7 +392,10 @@ From the 23.09 build:
   against the gov.uk photo, so on a "verify" recommendation the date is shown,
   not typed. THC's adviser signed it off on 28.09 (docs/17 item 24). What is
   left is the Vault secrets, Vercel Pro, one live test and the switch
-  (OWNER-TODO §8).
+  (OWNER-TODO §8). **For a demo** it can run against the sandbox provider
+  (ADR-0063, 28.09): `RTW_PROVIDER_URL=sandbox:` plus
+  `supabase/demo/rtw-check-sandbox-on.sql`, with the demo share codes and the
+  run sheet in the ADR.
 - **Unverified on real infrastructure:** the `finance-reports` Edge Function has
   not been run under Deno (ADR-0006's `../../../packages` import question); Storage
   image transforms may be off (photos then fall back to the original); GoTrue's
@@ -458,7 +461,7 @@ root. Tick it there. This section keeps the background for each item.
 - **Confirm with THC:** E2b's wording (ADR-0017); the CL1–CL6 wording and which
   are mandatory; the `/privacy` legal text. (ADR-0019's retention-over-removal
   now extends to all verified right-to-work evidence — decided 28.09,
-  ADR-0063.)
+  ADR-0065.)
 - **Chase THC for the Appendix B inputs**: the contract text, sample completion
   letters, the Willo keys, DNS for the two senders, and the export from the old
   system. Several phases stop dead without them.
