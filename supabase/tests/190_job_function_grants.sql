@@ -342,8 +342,8 @@ select bag_eq(
   $$ values ('booking-tick'::text), ('auto-staffing-hourly'),
             ('auto-staffing-cutoff'), ('auto-staffing-escalation'),
             ('compliance-daily'), ('notify-drain'), ('finance-reports'),
-            ('gdpr-purge') $$,
-  'exactly the eight schedules whose Edge Function exists are enabled: notify-drain ships with P2 and re-enables finance-reports (20260924100000), which 20260923193100 paused until its email could go out; gdpr-purge (20260927160400) drains the §1.7 Storage queue, which nothing had scheduled'
+            ('gdpr-purge'), ('willo-invite') $$,
+  'exactly the nine schedules whose Edge Function exists are enabled: notify-drain ships with P2 and re-enables finance-reports (20260924100000), which 20260923193100 paused until its email could go out; gdpr-purge (20260927160400) drains the §1.7 Storage queue, which nothing had scheduled; willo-invite (20261001206000) once THC''s Willo keys were set'
 );
 
 -- ---------------------------------------------------------------------
