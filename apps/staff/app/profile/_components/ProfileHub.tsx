@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Avatar, Pill, SignOut } from '@thc/ui';
 import type { Tone } from '@thc/ui';
-import { appLock, canReachProfileDetails, p45Availability } from '../lock';
+import { appLock, canReachPayments, canReachProfileDetails, p45Availability } from '../lock';
 import { HELP_EMAIL } from '../types';
 import type { StaffProfile } from '../types';
 import { expiryLine } from '../document-expiry';
@@ -75,6 +75,10 @@ export function ProfileHub({
   // A candidate still in the wizard has neither: `/profile/details` sends
   // them back here and `/documents` is the wizard's step 4, not this list.
   const working = canReachProfileDetails(lock);
+  // The wizard's own header links its avatar here, and this screen has no
+  // bottom nav for a candidate — so the way back into the wizard is on the
+  // screen, or the candidate is stranded on a hub of rows that bounce.
+  const inWizard = lock === 'onboarding';
   const documents = documentsStatus(profile);
   const anyUnread =
     working && Boolean(unread.nextPay || unread.documents || unread.emergencyContact);
@@ -104,6 +108,10 @@ export function ProfileHub({
           <Link className="btn outline block" href="/profile/details">
             Edit profile
           </Link>
+        ) : inWizard ? (
+          <Link className="btn primary block" href="/onboarding">
+            Continue onboarding
+          </Link>
         ) : null}
       </section>
 
@@ -123,16 +131,22 @@ export function ProfileHub({
             status={documents}
           />
         ) : null}
-        <HubRow
-          href="/profile/details"
-          title="Profile details"
-          sub="Mobile, email, home address"
-          {...(working && unread.emergencyContact
-            ? { note: loadProblemCopy('your emergency contact'), noteTone: 'coral' as const }
-            : working && emergencyContactSet === false
-              ? { note: 'Emergency contact not set' }
-              : {})}
-        />
+        {/* Rows only for screens this worker can open: /profile/details,
+            /profile/security and /profile/payments each send a locked
+            worker straight back here, and a row that bounces reads as a
+            broken link. A candidate edits these in the wizard. */}
+        {working ? (
+          <HubRow
+            href="/profile/details"
+            title="Profile details"
+            sub="Mobile, email, home address"
+            {...(unread.emergencyContact
+              ? { note: loadProblemCopy('your emergency contact'), noteTone: 'coral' as const }
+              : emergencyContactSet === false
+                ? { note: 'Emergency contact not set' }
+                : {})}
+          />
+        ) : null}
         {/* ADR-0043: only for a worker auto-assign can invite at all. */}
         {lock === 'none' ? (
           <HubRow href="/profile/availability" title="Availability" sub="Days you can’t work" />
@@ -141,21 +155,25 @@ export function ProfileHub({
         {lock === 'none' && profile.status === 'compliant' ? (
           <HubRow href="/profile/refer" title="Refer a friend" sub="Share your link to apply" />
         ) : null}
-        <HubRow
-          href="/profile/payments"
-          title="Payment information"
-          sub={
-            working && unread.nextPay
-              ? loadProblemCopy('your next pay')
-              : (nextPayLine(nextPay) ?? 'Earnings history, bank details')
-          }
-          subTone={working && unread.nextPay ? 'coral' : null}
-        />
-        <HubRow
-          href="/profile/security"
-          title="Security settings"
-          sub="Password, signed-in devices"
-        />
+        {canReachPayments(lock) ? (
+          <HubRow
+            href="/profile/payments"
+            title="Payment information"
+            sub={
+              working && unread.nextPay
+                ? loadProblemCopy('your next pay')
+                : (nextPayLine(nextPay) ?? 'Earnings history, bank details')
+            }
+            subTone={working && unread.nextPay ? 'coral' : null}
+          />
+        ) : null}
+        {working ? (
+          <HubRow
+            href="/profile/security"
+            title="Security settings"
+            sub="Password, signed-in devices"
+          />
+        ) : null}
         <HubRow
           href="/notifications"
           title="Notifications"

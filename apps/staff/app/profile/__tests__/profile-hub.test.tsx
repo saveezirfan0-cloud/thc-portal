@@ -119,6 +119,19 @@ describe('the Profile tab (ADR-0042)', () => {
     expect(hrefs(html)).not.toContain('/documents');
     expect(html).not.toContain('Edit profile');
   });
+
+  it('gives a candidate the way back into the wizard, and no row that bounces them here', () => {
+    // /profile/details, /profile/security and /profile/payments each
+    // redirect a candidate straight back to /profile, and the screen has no
+    // bottom nav for them: without this link the hub is a dead end.
+    const links = hrefs(render(worker({ status: 'documents', employeeId: null })));
+    expect(links[0]).toBe('/onboarding');
+    expect(links).not.toContain('/profile/details');
+    expect(links).not.toContain('/profile/security');
+    expect(links).not.toContain('/profile/payments');
+    expect(links).toContain('/notifications');
+    expect(hrefs(render(worker()))).not.toContain('/onboarding');
+  });
 });
 
 describe('documentsStatus — the badge on the Documents row', () => {
