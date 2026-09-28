@@ -865,7 +865,7 @@ const ITEMS = [
       send: ['Email.'],
       untilHeading: 'Decided 28.09.2026: yes',
       until: [
-        'Right-to-work evidence an employed worker was verified on (RTW_RETENTION_TYPES) is now held for the employment plus two years, like the completion letter, and then deleted automatically with an audit entry (RTW_RETENTION_ADR). National Insurance evidence is not right-to-work evidence and is still deleted at removal. The privacy notice (item 13) should say the same.',
+        'Right-to-work evidence an employed worker was verified on — passport, national ID, visa and status documents, the share-code report with its gov.uk PDF and photo, a birth certificate with the National Insurance document paired with it, and university term dates letters — is now held for the employment plus two years, like the completion letter, and then deleted automatically with an audit entry (ADR-0063). National Insurance evidence on its own is payroll evidence and is still deleted at removal. The privacy notice (item 13) should say the same.',
       ],
     }),
   },

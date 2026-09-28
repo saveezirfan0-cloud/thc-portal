@@ -458,7 +458,7 @@ root. Tick it there. This section keeps the background for each item.
 - **Confirm with THC:** E2b's wording (ADR-0017); the CL1–CL6 wording and which
   are mandatory; the `/privacy` legal text. (ADR-0019's retention-over-removal
   now extends to all verified right-to-work evidence — decided 28.09,
-  RTW_RETENTION_ADR.)
+  ADR-0063.)
 - **Chase THC for the Appendix B inputs**: the contract text, sample completion
   letters, the Willo keys, DNS for the two senders, and the export from the old
   system. Several phases stop dead without them.

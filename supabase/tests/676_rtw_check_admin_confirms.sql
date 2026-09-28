@@ -259,11 +259,22 @@ reset role;
 -- =====================================================================
 -- H · GDPR removal
 -- =====================================================================
+-- Priya was employed and her share code was verified (C), so since
+-- ADR-0063 the document and its finished check are held for employment +
+-- 2 years instead of deleted; 678 covers the hold and its purge in full.
 select remove_worker(:'w1');
-select is((select count(*)::int from rtw_checks where staff_id = :'w1'), 0, 'H: the worker''s checks are gone');
-select is((select count(*)::int from storage_deletions
-            where bucket = 'documents' and path = :'w1' || '/share-code-report/rtw-check-c1-a2-photo.png'), 1,
-  'H: and the gov.uk photo is owed to the purge');
+select is((select count(*)::int from rtw_checks c
+            where c.staff_id = :'w1'
+              and not exists (select 1 from compliance_docs d
+                               where d.id = c.compliance_doc_id and d.retain_until is not null)), 0,
+  'H: the worker''s checks are gone, but for the finished ones on evidence held for employment + 2 years (ADR-0063)');
+select results_eq(
+  format($$ select (select count(*)::int from storage_deletions where bucket = 'documents' and path = %L),
+                   %L in (select retained_storage_paths(%L)) $$,
+         :'w1' || '/share-code-report/rtw-check-c1-a2-photo.png',
+         :'w1' || '/share-code-report/rtw-check-c1-a2-photo.png', :'w1'),
+  $$ values (0, true) $$,
+  'H: and the gov.uk photo the admin compared is held with them — not owed to the purge, and kept out of the prefix sweep');
 
 select * from finish();
 rollback;

@@ -2,7 +2,10 @@
 
 Status: accepted · 30.09.2026 · 20260930120000, 20260930120100, 20260930120200 ·
 audit 25.09 D9, D9b, D12, D13, D29, D51, D52 · replaces the unmerged ADR-0035 / ADR-0036
-of the 25.09 fix round, trimmed to what reached main
+of the 25.09 fix round, trimmed to what reached main · §1 amended by
+[ADR-0063](0063-right-to-work-evidence-held-after-removal.md) (28.09.2026): an employed
+worker's relied-on right-to-work evidence, and the finished `rtw_checks` on it, are held for
+employment + 2 years like the completion letter, not deleted
 
 Where this touches something main already settled, main's decision stands:
 "Keep me signed in" is ADR-0032, a worker's read of their declarations is

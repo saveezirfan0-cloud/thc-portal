@@ -38,8 +38,9 @@ Deno.serve((request) =>
 
     // The completion letter requirement's daily half (20260923100100): the
     // 60/30/14-day right-to-work alerts to the office (§2.3) and the purge
-    // of completion letters whose employment + 2 years hold has run out
-    // (§4, ADR-0019). Same gate, same run: both are dated by the UK day.
+    // of evidence a §1.7 removal held — completion letters (§4, ADR-0019)
+    // and right-to-work evidence (ADR-0063) — whose employment + 2 years
+    // hold has run out. Same gate, same run: both are dated by the UK day.
     const { data: rtw, error: rtwError } = await db.rpc('rtw_daily');
     if (rtwError) throw new Error(`rtw_daily: ${rtwError.message}`);
 

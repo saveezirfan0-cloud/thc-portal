@@ -164,7 +164,7 @@ as today.
 
 - [x] ~~**Keep gov.uk reports and photos after a GDPR removal?**~~ **Decided 28.09:
       yes.** Right-to-work evidence an employed worker was verified on is held for the
-      employment plus two years, like the completion letter (RTW_RETENTION_ADR). The
+      employment plus two years, like the completion letter (ADR-0063). The
       privacy notice (docs/17 item 13) should say the same.
 
 - [ ] **Office pin editor?** When a worker's postcode lookup fails, their

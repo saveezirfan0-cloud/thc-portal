@@ -133,12 +133,15 @@ export default function Page() {
                 <b>When you stop working with us</b>, your profile, documents and work history are
                 kept as the employment records THC is required to hold.
               </li>
-              {/* ADR-0019 §1; completion-letter requirement §4 */}
+              {/* ADR-0019 §1, ADR-0063; completion-letter requirement §4 */}
               <li>
                 <b>Right-to-work evidence</b> is kept for the length of your employment plus two
-                years after it ends. Your university completion letter is held for that period even
-                if you ask to be removed, because the law requires us to be able to show it; it is
-                then deleted automatically.
+                years after it ends: the passport, ID card or birth certificate we checked (with the
+                NI document that goes with a birth certificate), your visa or status document, the
+                gov.uk share-code check and its report, your university term dates letter and
+                completion letter. If you worked for us, it is held for that period even if you ask
+                to be removed, because the law requires us to be able to show it; it is then deleted
+                automatically.
               </li>
             </ul>
           </section>
@@ -154,7 +157,8 @@ export default function Page() {
             <ul>
               <li>
                 Your name is replaced with <b>&ldquo;Deleted account #id&rdquo;</b>, and your
-                contact details, documents, bank details and photo are wiped.
+                contact details, documents, bank details and photo are wiped &mdash; except the
+                right-to-work evidence the law requires us to hold, as above.
               </li>
               <li>Your login is disabled and any future shifts are released.</li>
               <li>

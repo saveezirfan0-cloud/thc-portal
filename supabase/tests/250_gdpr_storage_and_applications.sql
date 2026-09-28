@@ -34,10 +34,13 @@ insert into staff (id, employee_id, first_name, last_name, email, phone, dob, st
   (:'stay', 95102, 'Stays','Here','stays@example.com','+447700900502', date '1996-01-01',
    'compliant','uk_irish','photos/95102/selfie.jpg','willo_cand_zzz999');
 
+-- Grace's two documents are still awaiting review. Relied-on (verified)
+-- right-to-work evidence of someone employed is HELD, not queued, since
+-- ADR-0063 (678); this file is about the queue, so nothing here is held.
 insert into compliance_docs (id, staff_id, doc_type, review_status, file_path, gov_report_path, uploaded_at) values
-  ('e5000000-0000-4000-8000-000000000001', :'gone','passport','verified',
+  ('e5000000-0000-4000-8000-000000000001', :'gone','passport','pending',
    'documents/95101/passport.pdf', null, :'now'::timestamptz),
-  ('e5000000-0000-4000-8000-000000000002', :'gone','share_code_report','verified',
+  ('e5000000-0000-4000-8000-000000000002', :'gone','share_code_report','pending',
    'documents/95101/share-code.pdf', 'documents/95101/gov-report.pdf', :'now'::timestamptz),
   ('e5000000-0000-4000-8000-000000000003', :'stay','passport','verified',
    'documents/95102/passport.pdf', null, :'now'::timestamptz);
@@ -79,7 +82,7 @@ select bag_eq(
 select is((select r->>'prefixesQueued' from t_rm), '2', 'and the removal reports the two prefixes');
 select is_empty(
   format($$ select * from retained_storage_paths(%L) $$, :'gone'),
-  'nothing under this worker is held back from the prefix sweep: no evidence carries retain_until (ADR-0019)');
+  'nothing under this worker is held back from the prefix sweep: no evidence was relied on, so none carries retain_until (ADR-0019, ADR-0063)');
 select is((select count(*)::int from storage_deletions where path like '%95102%'), 0,
   'and nobody else''s objects are queued');
 select is((select count(*)::int from compliance_docs where staff_id = :'gone'), 0,
