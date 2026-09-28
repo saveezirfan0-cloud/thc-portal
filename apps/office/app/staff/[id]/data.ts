@@ -234,6 +234,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     documents: documents.data ?? [],
     rtwChecks: rtw.checks,
     rtwCheckEnabled: rtw.enabled,
+    dobClaims: rtw.dobClaims,
     // A failed read must not take the whole profile down; the tab says why
     // there are no review buttons instead.
     reviewQueue: reviewQueue.error ? [] : (reviewQueue.data ?? []),

@@ -64,3 +64,59 @@ export function dobCorrectionOutcome(answer: DobCorrectionAnswer | null): {
     : null;
   return { note, warning };
 }
+
+// ---------------------------------------------------------------------
+// A date entered with a share code (ADR-0069, route 2)
+// ---------------------------------------------------------------------
+
+/** One row of `share_code_dob_claims_v`. */
+export interface DobClaim {
+  documentId: string;
+  staffId: string;
+  /** `yyyy-mm-dd` the worker entered with the code. */
+  claimedDob: string;
+  /** `yyyy-mm-dd` on the profile now, or null. */
+  profileDob: string | null;
+  /** Verifying would put a signed 48-hour opt-out before their eighteenth birthday. */
+  optOutSignedUnder18: boolean;
+}
+
+export function parseDobClaim(row: Record<string, unknown>): DobClaim | null {
+  const documentId = row['document_id'];
+  const claimed = row['claimed_dob'];
+  if (typeof documentId !== 'string' || typeof claimed !== 'string') return null;
+  return {
+    documentId,
+    staffId: String(row['staff_id'] ?? ''),
+    claimedDob: claimed.slice(0, 10),
+    profileDob: typeof row['profile_dob'] === 'string' ? row['profile_dob'].slice(0, 10) : null,
+    optOutSignedUnder18: row['opt_out_signed_under_18'] === true,
+  };
+}
+
+/** "05.06.1998" — the office's date shape (§9.6). */
+export function ukDots(iso: string | null): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? '');
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : '—';
+}
+
+/**
+ * The line beside the check, or null when the dates agree: "Date of birth
+ * entered with this code: 15.06.1995 (profile: 31.12.1994)", then what
+ * Verify will do, and the opt-out warning when it applies.
+ */
+export function dobClaimLine(claim: DobClaim | null | undefined): {
+  text: string;
+  detail: string;
+  warning: string | null;
+} | null {
+  if (!claim || claim.claimedDob === claim.profileDob) return null;
+  return {
+    text: `Date of birth entered with this code: ${ukDots(claim.claimedDob)} (profile: ${ukDots(claim.profileDob)})`,
+    detail:
+      'gov.uk is asked with the date entered with the code. Verify also changes the profile’s date of birth to it; Reject leaves the profile as it is.',
+    warning: claim.optOutSignedUnder18
+      ? 'By that date they were under 18 when they signed the 48-hour opt-out, which an under-18 cannot do — if you verify, ask them to sign it again.'
+      : null,
+  };
+}

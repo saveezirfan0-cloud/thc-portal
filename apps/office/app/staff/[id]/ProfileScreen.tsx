@@ -435,6 +435,7 @@ export function ProfileScreen({
             declarations={data.declarations}
             rtwChecks={data.rtwChecks}
             rtwCheckEnabled={data.rtwCheckEnabled}
+            dobClaims={data.dobClaims ?? []}
             reviewQueue={data.reviewQueue}
             reviewQueueProblem={data.reviewQueueProblem}
           />

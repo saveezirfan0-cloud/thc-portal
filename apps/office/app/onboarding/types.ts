@@ -7,6 +7,7 @@
  * nothing uses it (ADR-0013). The view-model narrows before it asks the
  * machine anything.
  */
+import type { DobClaim } from '../_lib/dobCorrection';
 import type { StaffStatus } from '../staff/types';
 import type { RtwCheckRow } from '../_lib/rtwCheck';
 
@@ -285,6 +286,8 @@ export interface CandidateData {
   rtwChecks?: RtwCheckRow[];
   /** settings.rtw_check.enabled. */
   rtwCheckEnabled?: boolean;
+  /** ADR-0069: dates of birth entered with pending share codes (share_code_dob_claims_v). */
+  dobClaims?: DobClaim[];
   /** The latest referral that brought this person in (ADR-0047). */
   referral?: CandidateReferral | null;
   /** Set when that read failed: said on the screen, not "not referred" (D18). */

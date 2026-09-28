@@ -19,6 +19,7 @@ import {
   whoLine,
 } from './queue';
 import { RtwCheckPanel } from '../_components/RtwCheckPanel';
+import { DobClaimNote } from '../_components/DobClaimNote';
 import { useReviewDialogs } from './ReviewDialogs';
 import type { WhoFilter } from './queue';
 import type { ActionResult, QueueRow } from './types';
@@ -255,6 +256,8 @@ function QueueLine({
             enabled={rtwCheckEnabled}
           />
         ) : null}
+        {/* ADR-0069: Verify will also change the date of birth. */}
+        {row.kind === 'document' ? <DobClaimNote claim={row.dob_claim} /> : null}
       </td>
       <td data-label="Uploaded" className="mono sm">
         {ukStamp(row.submitted_at)}

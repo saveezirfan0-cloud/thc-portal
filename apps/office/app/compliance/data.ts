@@ -1,6 +1,10 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
-import { loadRtwCheckEnabled, loadRtwChecksForDocuments } from '../_lib/rtwCheckData';
+import {
+  loadDobClaimsForDocuments,
+  loadRtwCheckEnabled,
+  loadRtwChecksForDocuments,
+} from '../_lib/rtwCheckData';
 import { withLatestCheck } from './queue';
 import type { AuditRow, CompliancePageData, QueueRow, RadarRow, WarningRow } from './types';
 
@@ -65,18 +69,30 @@ export async function loadCompliance(): Promise<CompliancePageData> {
   // rtw_checks_latest_v, not on the queue view — one read for every share
   // code on the queue, merged by document id.
   const rows = queue.data ?? [];
-  const checks = await loadRtwChecksForDocuments(
-    supabase,
-    rows
-      .filter(
-        (row) =>
-          row.kind === 'document' && row.item_type === 'share_code_report' && row.rtw_check_id,
-      )
-      .map((row) => row.item_id),
-  );
+  const [checks, claims] = await Promise.all([
+    loadRtwChecksForDocuments(
+      supabase,
+      rows
+        .filter(
+          (row) =>
+            row.kind === 'document' && row.item_type === 'share_code_report' && row.rtw_check_id,
+        )
+        .map((row) => row.item_id),
+    ),
+    // ADR-0069: the date of birth entered with a pending share code.
+    loadDobClaimsForDocuments(
+      supabase,
+      rows
+        .filter((row) => row.kind === 'document' && row.item_type === 'share_code_report')
+        .map((row) => row.item_id),
+    ),
+  ]);
 
   return {
-    queue: rows.map((row) => withLatestCheck(row, checks.get(row.item_id))),
+    queue: rows.map((row) => ({
+      ...withLatestCheck(row, checks.get(row.item_id)),
+      dob_claim: claims.get(row.item_id) ?? null,
+    })),
     radar: radar.data ?? [],
     warnings: warnings.data ?? [],
     // Mirrors rota_guard_mode(): anything but an explicit 'warn' is block.
