@@ -11,6 +11,7 @@ import {
   inviteRefusal,
   offerOfficeRefusal,
   withdrawRefusal,
+  type MessageAudience,
 } from './board-model';
 
 export type ActionResult = { error: string } | { ok: true; warning?: string };
@@ -182,17 +183,18 @@ export async function cancelEvent(eventId: string, reason: string): Promise<Acti
 /**
  * Message the line-up (ADR-0069): a push with the manager's own words to
  * everyone on the event, or on one role — last-minute information that
- * has no §8 code (a moved entrance, parking, what to bring).
+ * has no §8 code (a moved entrance, parking, what to bring). The audience
+ * is the confirmed line-up, the invitees who have not answered, or both.
  *
- * One RPC, `send_event_message()` (20261001209000). It picks the recipients
- * from the bookings itself — the page sends a section id at most, never a
- * list of workers — and answers with the names of anyone who has
+ * One RPC, `send_event_message()` (20261001211000). It picks the recipients
+ * from the bookings itself — the page sends a section id and an audience at
+ * most, never a list of workers — and answers with the names of anyone who has
  * notifications off, which is returned as the success line so the manager
  * knows whom to phone.
  */
 export async function messageLineUp(
   eventId: string,
-  input: { sectionId: string | null; includeInvited: boolean; message: string },
+  input: { sectionId: string | null; audience: MessageAudience; message: string },
 ): Promise<{ error: string } | { ok: true; summary: string; everyoneReached: boolean }> {
   if (!input.message.trim()) return { error: messageRefusal('message_required') };
   if (!supabaseConfigured()) return { error: NO_SUPABASE };
@@ -203,7 +205,7 @@ export async function messageLineUp(
   const { data, error } = await supabase.rpc('send_event_message', {
     p_event: eventId,
     p_section: input.sectionId,
-    p_include_invited: input.includeInvited,
+    p_audience: input.audience,
     p_message: input.message,
   });
   if (error) {
@@ -219,7 +221,7 @@ export async function messageLineUp(
     withoutPush?: string[];
   };
   if (result.ok !== true)
-    return { error: messageRefusal(String(result.reason ?? ''), input.includeInvited) };
+    return { error: messageRefusal(String(result.reason ?? ''), input.audience) };
   revalidatePath(`/events/${eventId}`);
   const withoutPush = result.withoutPush ?? [];
   return {
