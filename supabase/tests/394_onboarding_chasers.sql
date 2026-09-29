@@ -12,7 +12,7 @@
 --   F. The daytime window and the off switch.
 -- =====================================================================
 begin;
-select plan(51);
+select plan(67);
 \ir _shared/fixtures.psql
 
 \set c_int   '39400000-0000-4000-8000-000000000001'
@@ -88,7 +88,8 @@ select ok(has_function_privilege('service_role', 'onboarding_chasers(timestamptz
       and has_function_privilege('service_role', 'onboarding_chaser_activation(uuid,uuid,text,text,timestamptz)', 'execute'),
   'the service role can (the Edge Function)');
 select ok(not has_function_privilege('authenticated', 'onboarding_chaser_activation(uuid,uuid,text,text,timestamptz)', 'execute')
-      and not has_function_privilege('authenticated', 'onboarding_chaser_candidates(timestamptz)', 'execute'),
+      and not has_function_privilege('authenticated', 'onboarding_chaser_candidates(timestamptz)', 'execute')
+      and not has_function_privilege('authenticated', 'onboarding_chaser_config()', 'execute'),
   'nor queue an activation reminder, nor read the internal list');
 
 set local role authenticated;
@@ -210,7 +211,7 @@ update compliance_docs set review_status = 'rejected', reviewed_at = '2026-09-07
  where staff_id = :'c_rev';
 select is((select array[step_no::text, step] from onboarding_chaser_candidates('2026-09-09 12:00+01') where staff_id = :'c_rev'),
   array['4', 're-uploading a rejected document'], 'a rejected document: chased to re-upload it');
-select is((select due_rung from onboarding_chaser_candidates('2026-09-09 09:59+01') where staff_id = :'c_rev'),
+select is((select due_rung from onboarding_chaser_candidates('2026-09-09 09:29+01') where staff_id = :'c_rev'),
   null::int, 'counted from the rejection, not from the upload');
 
 -- =====================================================================
@@ -248,8 +249,19 @@ select is((select array[payload ? 'link', (payload ->> 'linkRedacted')::boolean]
              from notification_outbox where template = 'OC2'),
   array[false, true], 'once sent, the link is gone from the row');
 
--- The office's own resend still refreshes an unsent E3 (20260924110000 unchanged).
+-- The office's own resend still refreshes an unsent E3, on the same origin only.
+select is(activation_link_refresh(:'c_e3q', :'u_e3q', 'https://evil.example/activate/' || repeat('e', 40)), 0,
+  'a link on another site never replaces the one in an unsent E3');
 select is(activation_link_refresh(:'c_e3q', :'u_e3q', :'link2'), 1, 'an unsent E3 still follows a resend');
+
+-- An office edit to staff.email on a linked login must never route a
+-- freshly minted link to the new address (link_staff_account's rule).
+update auth.users set email = 'ada.real@chase.test' where id = :'u_act';
+select is((select count(*)::int from onboarding_chaser_candidates('2026-09-30 12:00+01') where staff_id = :'c_act'), 0,
+  'staff email no longer the login''s: the job does not name them, so nothing is minted');
+select throws_ok(format($$ select onboarding_chaser_activation(%L, %L, %L, %L, '2026-09-30 12:00+01') $$,
+                        :'c_act', :'u_act', :'link1', :'install'),
+  'P0001', 'account_email_mismatch', 'and a link minted anyway is refused, not sent to the new address');
 
 -- =====================================================================
 -- F · daytime only, and the off switch
@@ -267,6 +279,102 @@ select is((select (r ->> 'oc3')::int >= 1 from (select onboarding_chasers('2026-
 update settings set value = value || '{"enabled": false}' where key = 'onboarding_chasers';
 select is((select r ->> 'skipped' from (select onboarding_chasers('2026-12-30 12:00+00') as r) x),
   'disabled in settings.onboarding_chasers', 'the setting switches it off');
+
+update settings set value = value || '{"enabled": true}' where key = 'onboarding_chasers';
+
+-- =====================================================================
+-- G · the edges: whose move it is, the right E3, the race, delivery,
+--     and a setting typed wrong
+-- =====================================================================
+\set c_let   '39400000-0000-4000-8000-000000000011'
+\set c_ret   '39400000-0000-4000-8000-000000000012'
+\set c_con   '39400000-0000-4000-8000-000000000013'
+\set c_ind   '39400000-0000-4000-8000-000000000014'
+\set c_race  '39400000-0000-4000-8000-000000000015'
+\set u_let   '39400000-0000-4000-8000-0000000000b1'
+\set u_ret   '39400000-0000-4000-8000-0000000000b2'
+\set u_con   '39400000-0000-4000-8000-0000000000b3'
+\set u_ind   '39400000-0000-4000-8000-0000000000b4'
+\set u_race  '39400000-0000-4000-8000-0000000000b5'
+\set t1      '2026-10-01 11:00+01'
+
+insert into auth.users (id, email, raw_app_meta_data, encrypted_password, email_confirmed_at) values
+  (:'u_let',  'lea@chase.test',  '{"role":"staff"}', '$2a$10$hash', :'t1'),
+  (:'u_ret',  'ron@chase.test',  '{"role":"staff"}', '',             null),
+  (:'u_con',  'cat@chase.test',  '{"role":"staff"}', '$2a$10$hash', :'t1'),
+  (:'u_ind',  'ian@chase.test',  '{"role":"staff"}', '$2a$10$hash', :'t1'),
+  (:'u_race', 'ray@chase.test',  '{"role":"staff"}', '',             null);
+insert into staff (id, user_id, first_name, last_name, email, phone, dob, status) values
+  (:'c_let',  :'u_let',  'Lea',  'Letter', 'lea@chase.test', '+447700939411', date '2001-02-01', 'documents'),
+  (:'c_ret',  :'u_ret',  'Ron',  'Return', 'ron@chase.test', '+447700939412', date '2001-02-02', 'documents'),
+  (:'c_con',  :'u_con',  'Cat',  'Con',    'cat@chase.test', '+447700939413', date '2001-02-03', 'contract'),
+  (:'c_ind',  :'u_ind',  'Ian',  'Ind',    'ian@chase.test', '+447700939414', date '2001-02-04', 'quiz'),
+  (:'c_race', :'u_race', 'Ray',  'Race',   'ray@chase.test', '+447700939415', date '2001-02-05', 'documents');
+update staff set stage_entered_at = :'t1', onboarding_started_at = :'t1'::timestamptz - interval '10 days'
+ where id in (:'c_let', :'c_con', :'c_ind', :'c_race');
+-- Ron is a returning applicant: this period began after his old E3.
+update staff set stage_entered_at = :'t1', onboarding_started_at = now() + interval '1 minute'
+ where id = :'c_ret';
+insert into onboarding_progress (staff_id, rtw_at, address_at, selfie_at, documents_at, induction_at, hmrc_at, references_at, updated_at) values
+  (:'c_let', :'t1', :'t1', :'t1', :'t1', null, null,  null,  :'t1'),
+  (:'c_con', :'t1', :'t1', :'t1', :'t1', :'t1', :'t1', null, :'t1'),
+  (:'c_ind', :'t1', :'t1', :'t1', :'t1', null, null,  null,  :'t1');
+-- Lea's passport is under review; her optional completion letter was rejected.
+insert into compliance_docs (staff_id, doc_type, file_path, review_status, uploaded_at, reviewed_at) values
+  (:'c_let', 'passport', 'l/passport/1.pdf', 'pending', :'t1', null),
+  (:'c_let', 'university_completion_letter', 'l/ucl/1.pdf', 'rejected', :'t1', :'t1');
+insert into notification_outbox (key, channel, template, recipient_emails, payload, sent_at) values
+  ('E3:staff:' || :'c_ret' || ':old', 'email', 'E3', array['ron@chase.test'], '{"name":"Ron"}', '2026-06-01 10:00+01'),
+  ('E3:staff:' || :'c_race' || ':1', 'email', 'E3', array['ray@chase.test'], '{"name":"Ray"}', :'t1');
+
+create temporary table t_g as select * from onboarding_chaser_candidates('2026-10-05 12:00+01');
+select is((select count(*)::int from t_g where staff_id = :'c_let'), 0,
+  'a rejected OPTIONAL completion letter is not the candidate''s move while the passport is under review');
+select is((select count(*)::int from t_g where staff_id = :'c_ret'), 0,
+  'an E3 from a previous period does not count: this period''s has not gone out');
+select is((select array[step_no::text, step] from t_g where staff_id = :'c_con'),
+  array['8', 'your two references'], 'contract stage: the first of HMRC, references, bank, contract still open');
+select is((select array[step_no::text, step] from t_g where staff_id = :'c_ind'),
+  array['5', 'the Health & Safety induction'], 'quiz stage without the induction: the induction first');
+
+-- An E3 re-send is progress: a fresh OC2 ladder, counted from it.
+insert into notification_outbox (key, channel, template, recipient_emails, payload, sent_at) values
+  ('E3:resend:' || :'c_race' || ':1', 'email', 'E3', array['ray@chase.test'], '{"name":"Ray"}', '2026-10-04 10:00+01');
+select is((select array[progress_at::text, coalesce(due_rung::text, 'none')] from onboarding_chaser_candidates('2026-10-05 12:00+01')
+            where staff_id = :'c_race'),
+  array['2026-10-04 09:00:00+00', 'none'], 'the office''s resend restarts the activation ladder');
+
+-- The race: the job asked at p_now, then an E3 went out, then the mint.
+select is((select onboarding_chaser_activation(:'c_race', :'u_race', :'link1', :'install', '2026-10-04 09:30+01') ->> 'raced'),
+  'true', 'a link minted after an E3 went out is sent, because the mint killed that one');
+select is((select payload ->> 'link' from notification_outbox where key like 'OC2:staff:' || :'c_race' || ':raced:%'),
+  :'link1', 'with the newest link');
+update auth.users set encrypted_password = '$2a$10$hash' where id = :'u_race';
+select is((select onboarding_chaser_activation(:'c_race', :'u_race', :'link2', :'install', '2026-10-04 09:30+01') ->> 'queued'),
+  'false', 'but once they have activated, a late mint sends nothing');
+
+-- Delivery: a rung that could not be delivered is visible to the office.
+update notification_outbox set failed_at = now(), error = 'no push subscription'
+ where id = (select id from notification_outbox
+              where key like 'OC3:staff:' || :'c_app' || ':%'
+                and payload ->> 'step' = 'your profile selfie'
+              order by (payload ->> 'rung')::int desc limit 1);
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select is((select last_failed from onboarding_chaser_state('2026-09-06 13:00+01') where staff_id = :'c_app'),
+  true, 'the office sees that the latest reminder never reached them');
+reset role;
+
+-- A setting typed wrong keeps the defaults for that part.
+update settings set value = '{"from": "9am", "until": "18:00", "days": [3], "enabled": "yes"}' where key = 'onboarding_chasers';
+select is(onboarding_chaser_config(), '{"enabled": true, "days": [2, 5, 10], "from": "10:00", "until": "18:00"}'::jsonb,
+  'a bad time, a short ladder and a non-boolean switch all keep their defaults');
+select lives_ok($$ select onboarding_chasers('2026-12-23 12:00+00') $$, 'and the job still runs');
+update settings set value = '{"days": [1, 3, 7], "from": "09:00", "until": "17:00"}' where key = 'onboarding_chasers';
+select is(onboarding_chaser_config(), '{"enabled": true, "days": [1, 3, 7], "from": "09:00", "until": "17:00"}'::jsonb,
+  'a sane setting is taken');
+update settings set value = '{"days": [5, 5, 10]}' where key = 'onboarding_chasers';
+select is(onboarding_chaser_config() -> 'days', '[2, 5, 10]'::jsonb, 'days that do not increase are refused');
 
 select * from finish();
 rollback;

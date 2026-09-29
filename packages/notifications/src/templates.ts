@@ -950,10 +950,6 @@ export function template(code: TemplateCode): Template {
 }
 
 /**
- * The body to send. A code with `variants` (only N9) has no single body: the
- * caller names the half, and the combined §8 copy is never sent as-is.
- */
-/**
  * The heading (push) or subject (email) to send: a variant's own title when
  * it has one, the code's otherwise.
  */
@@ -962,6 +958,10 @@ export function title(code: TemplateCode, variant?: string): string {
   return (variant !== undefined && entry.variants?.[variant]?.title) || entry.title;
 }
 
+/**
+ * The body to send. A code with `variants` (N9, N14, CL2, the OC chasers) has no single body: the
+ * caller names the half, and the combined §8 copy is never sent as-is.
+ */
 export function body(code: TemplateCode, variant?: string): string {
   const entry: Template = TEMPLATES[code];
   if (!entry.variants) {

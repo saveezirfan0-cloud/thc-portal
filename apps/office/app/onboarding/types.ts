@@ -144,6 +144,8 @@ export interface ChaserState {
   next_due_at: string | null;
   /** All three sent and still no progress: the office phones them. */
   stalled: boolean;
+  /** The latest reminder could not be delivered (notifications off, a bounce). */
+  last_failed: boolean;
 }
 
 /**

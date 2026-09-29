@@ -20,7 +20,7 @@ The onboarding board showed candidates sitting in a column for days ("7 d" in co
 | Track | Code | The candidate is… | Channel |
 |---|---|---|---|
 | interview | **OC1** | in Interview requested, Willo's invite sent (`willo_invited_at`), interview not completed | email |
-| activation | **OC2** | accepted (Documents), an E3 **sent**, no password on the login | email with a **new** activation link |
+| activation | **OC2** | accepted (Documents), this period's E3 **sent** (none still queued), no password on the login, and the login's address is the candidate's (`link_staff_account`'s rule) | email with a **new** activation link |
 | app | **OC3** | signed up, and the wizard's next step is theirs (steps 1–4, a rejected document to re-upload, induction, quiz, HMRC, references, bank, contract) | push → `/onboarding` |
 
 Never chased, because the move is the office's or nobody's:
@@ -28,6 +28,7 @@ Never chased, because the move is the office's or nobody's:
 - Interview completed, which is waiting on the Willo decision.
 - Documents submitted and under review.
 - A Yes declaration awaiting Verify.
+- A rejected *optional* completion letter while the required documents are under review (it never holds Submit or the quiz gate up).
 - A candidate not yet created in Willo, who has no interview to do.
 - An E3 still queued, which the candidate has not received.
 - Rejected, inactive or removed candidates.
@@ -49,7 +50,9 @@ Never chased, because the move is the office's or nobody's:
 
 **When sends go out.** Only **10:00–18:00 UK**. The job runs hourly and the SQL applies the window, so it holds across the clock changes.
 
-**Settings.** `settings.onboarding_chasers` holds `enabled`, `days`, `from` and `until`. Missing keys fall back to the defaults.
+**Settings.** `settings.onboarding_chasers` holds `enabled`, `days`, `from` and `until`. A part that is missing or not sane (three increasing whole days; `HH:MM` with `from` before `until`; a boolean switch) keeps its default. A typo therefore can neither break the hourly job nor leave a ladder that never reaches Stalled.
+
+**Grace.** A rung is due half an hour early, so a rung queued at 17:07:02 does not miss 17:07:01 three days later and slip to the next morning.
 
 **After the third rung** the card reads **"Stalled — no progress after 3 reminders (last dd Mon). Phone them."** in coral. Nothing is rejected automatically. Rejection stays the manager's decision.
 
@@ -61,6 +64,12 @@ E3's link works once and lives 24 hours (`otp_expiry`), so repeating it would se
 2. The **onboarding-chasers** Edge Function mints a link for each one with `issueActivationLink` (packages/db/src/provision.ts). This is the same code the office's Accept and Resend use. The function passes the link to `onboarding_chaser_activation()`, which re-checks the rung is still due, points any unsent E3/OC2 at the new token (`activation_link_refresh`, now OC2-aware) and queues the email. The order of these calls is `runChaserSweep` in packages/db/src/chasers.ts. A failure for one candidate is counted in `job_runs` and does not stop the others.
 
 Minting replaces the candidate's previous token. That is intended here, because the new email carries the new one. It happens only for a row the database has just named as due.
+
+**Races.** An office Resend, or a queued E3 the drain sends, can go out between the job asking and the mint. The re-check then finds nothing due, but the mint has killed that email's link. In that case, if the candidate still has no password, the new link is sent anyway (`OC2:staff:<id>:raced:<epoch>`), exactly as `onboarding_resend_activation()` handles its own race.
+
+**The address the link goes to** (security review). `onboarding_chaser_activation()` calls `link_staff_account()`, the same checks Accept, Resend and Willo make: not removed, a worker's login, and the login's address equal to `staff.email` (`account_email_mismatch`). The job does not name a mismatched candidate in the first place. Without this, an office edit to `staff.email` would route a freshly minted login link to the new address.
+
+**Repointing an unsent row** (`activation_link_refresh`) now only accepts a link on the same origin the row already carries. The office's Resend checks only that the link contains `/activate/<token>`, so before this a Back Office login could aim an unsent E3 or OC2 at another site. An anchored origin check for every caller is a follow-up.
 
 An OC2 row carries a live link, so it gets exactly E3's protections (ADR-0060):
 - the restrictive `office_activation_links` policy now fences `template in ('E3','OC2')` to owners;
@@ -87,15 +96,21 @@ The verbatim text is in `packages/notifications/src/templates.ts`. `{step}` is t
 
 A failed read shows an alert, never "not reminded".
 
+When the latest reminder could not be delivered (notifications off, a bounce), the line turns amber and says so, for example "App reminder 1 of 3 not delivered 27 Sep — notifications are off on their phone. Phone them." A Stalled line notes it too. `onboarding_chaser_state()` returns `last_failed` for this.
+
 ## Consequences
 
 - **Deploy.** The onboarding-chasers Edge Function deploys with the others (ci.yml). It needs the `STAFF_APP_URL` secret, which is already set for willo-webhook. The `job_schedules` row is enabled, so **`select public.install_job_schedules();` must be re-run** after this migration (docs/16 §4.7). Until it runs, nothing is chased.
 - **Without `STAFF_APP_URL`,** no link is minted and every OC2 counts as `oc2_failed` in `job_runs`. OC1 and OC3 still go.
-- **Push reach.** A signed-up candidate with notifications off gets no OC3. The drain fails the row ("no push subscription") as it does for any push, and the card still moves to Stalled after the third.
+- **Push reach.** A signed-up candidate with notifications off gets no OC3. The drain fails the row ("no push subscription") as it does for any push. The card says so in amber straight away, so the office can phone them rather than wait for Stalled.
 - **The first run after deploy** reminds every candidate who has been idle 2+ days, once, and spaces the rest of their ladder.
 - pgTAP 394; vitest in packages/notifications (templates, outbox), packages/db (chasers) and apps/office (chasers.test.tsx); 190's enabled-schedule list now includes onboarding-chasers.
 
 ## Not done
+
+- **Retries after hours.** A row the drain retries on its backoff (at most about an hour) can arrive shortly after 18:00.
+- **An anchored Staff App origin check** on `onboarding_resend_activation`, `onboarding_accept_with_account` and `onboarding_chaser_activation`: a settings row holding the origin, and `^<origin>/activate/<token>$`. Onboarding, separately.
+- **Office writes to `staff.email` on a linked login** are neither audited nor guarded. The chasers no longer act on a mismatch, but the edit itself deserves an audit row. Onboarding, separately.
 
 - **No Willo link in OC1.** Willo sends the invite and nothing stores its URL, so OC1 points at that email. If Willo's API can re-send an invitation, OC1 could do that instead.
 - **No per-candidate "stop reminding" switch.** Rejecting the candidate stops the reminders, and so does the global setting.

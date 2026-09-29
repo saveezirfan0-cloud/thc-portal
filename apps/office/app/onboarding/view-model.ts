@@ -357,19 +357,35 @@ const CHASER_CHANNEL: Record<ChaserState['track'], string> = {
   app: 'pushed',
 };
 
+const CHASER_UNDELIVERED: Record<ChaserState['track'], string> = {
+  interview: 'the email bounced',
+  activation: 'the email bounced',
+  app: 'notifications are off on their phone',
+};
+
 /**
  * The onboarding chaser line (ADR-0071), under the stage lines. Nothing
- * until the first reminder has gone; then which one and when; coral
- * "Stalled" once all three have gone with no progress since, because the
- * next step is a phone call.
+ * until the first reminder has gone; then which one and when; amber when
+ * the latest could not be delivered, because they have not been reminded
+ * at all; coral "Stalled" once all three have gone with no progress since.
+ * Either way the next step is a phone call.
  */
 export function chaserLine(state: ChaserState | undefined): Line | null {
   if (!state || state.rungs_sent < 1 || !state.last_sent_at) return null;
   const last = shortDate(state.last_sent_at);
   if (state.stalled) {
+    const undelivered = state.last_failed
+      ? `, the last undelivered — ${CHASER_UNDELIVERED[state.track]}`
+      : '';
     return {
-      text: `Stalled — no progress after ${CHASER_RUNGS} reminders (last ${last}). Phone them.`,
+      text: `Stalled — no progress after ${CHASER_RUNGS} reminders (last ${last}${undelivered}). Phone them.`,
       tone: 'coral',
+    };
+  }
+  if (state.last_failed) {
+    return {
+      text: `${CHASER_SENT[state.track]} ${state.rungs_sent} of ${CHASER_RUNGS} not delivered ${last} — ${CHASER_UNDELIVERED[state.track]}. Phone them.`,
+      tone: 'amber',
     };
   }
   const next = state.next_due_at ? ` · next ${shortDate(state.next_due_at)}` : '';

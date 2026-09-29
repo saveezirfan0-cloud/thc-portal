@@ -49,19 +49,45 @@ insert into settings (key, value) values
    '{"enabled": true, "days": [2, 5, 10], "from": "10:00", "until": "18:00"}'::jsonb)
 on conflict (key) do nothing;
 
--- The setting over its defaults, so a missing or partial row still reads
--- as a complete, sane configuration.
+-- The setting over its defaults, part by part: a part that is missing or
+-- not sane (three increasing whole days; HH:MM from before until) keeps
+-- its default, so a typo in the SQL editor can neither break the hourly
+-- job nor leave a ladder that never reaches Stalled.
 create or replace function public.onboarding_chaser_config()
 returns jsonb
-language sql
+language plpgsql
 stable
 set search_path = public, extensions
 as $$
-  select '{"enabled": true, "days": [2, 5, 10], "from": "10:00", "until": "18:00"}'::jsonb
-      || coalesce((select value from settings
-                    where key = 'onboarding_chasers' and jsonb_typeof(value) = 'object'),
-                  '{}'::jsonb);
-$$;
+declare
+  d jsonb := '{"enabled": true, "days": [2, 5, 10], "from": "10:00", "until": "18:00"}';
+  v jsonb;
+  n int[];
+begin
+  select value into v from settings where key = 'onboarding_chasers';
+  if v is null or jsonb_typeof(v) <> 'object' then
+    return d;
+  end if;
+  if jsonb_typeof(v -> 'enabled') = 'boolean' then
+    d := d || jsonb_build_object('enabled', v -> 'enabled');
+  end if;
+  if jsonb_typeof(v -> 'days') = 'array' and jsonb_array_length(v -> 'days') = 3
+     and not exists (select 1 from jsonb_array_elements(v -> 'days') e
+                      where jsonb_typeof(e) <> 'number' or (e #>> '{}') !~ '^[1-9][0-9]{0,2}$') then
+    select array_agg((e #>> '{}')::int order by o) into n
+      from jsonb_array_elements(v -> 'days') with ordinality as x(e, o);
+    if n[1] < n[2] and n[2] < n[3] then
+      d := d || jsonb_build_object('days', v -> 'days');
+    end if;
+  end if;
+  if (v ->> 'from') ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'
+     and (v ->> 'until') ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$' then
+    if (v ->> 'from')::time < (v ->> 'until')::time then
+      d := d || jsonb_build_object('from', v ->> 'from', 'until', v ->> 'until');
+    end if;
+  end if;
+  return d;
+end $$;
 
 comment on function public.onboarding_chaser_config() is
   'ADR-0071: settings.onboarding_chasers over its defaults — enabled, days (the three rungs, days after the last progress), from/until (the UK hours sends may go out).';
@@ -84,7 +110,8 @@ returns table (
   rungs_sent   integer,      -- 0..3 on this ladder
   last_sent_at timestamptz,  -- when the latest rung went into the outbox
   due_rung     integer,      -- the rung to queue now, or null
-  next_due_at  timestamptz   -- when the next rung falls due, or null after the third
+  next_due_at  timestamptz,  -- when the next rung falls due, or null after the third
+  last_failed  boolean       -- the latest rung could not be delivered (no push subscription, a bounce)
 )
 language sql
 stable
@@ -101,13 +128,21 @@ as $$
   base as (
     select s.id, s.status, s.stage_entered_at, s.onboarding_started_at,
            s.willo_invited_at, s.willo_completed_at, s.contract_signed_at,
-           s.user_id,
+           s.user_id, s.email,
            coalesce(u.encrypted_password, '') <> ''                     as activated,
+           -- link_staff_account()'s own test: the login is this candidate's
+           -- address and a worker's. An office edit to staff.email on a linked
+           -- login must never route a freshly minted link somewhere else.
+           lower(btrim(coalesce(u.email, ''))) = lower(btrim(s.email))
+             and u.raw_app_meta_data ->> 'role' = 'staff'                 as login_is_theirs,
            u.email_confirmed_at,
            p.rtw_at, p.address_at, p.selfie_at, p.documents_at, p.induction_at,
            p.hmrc_at, p.references_at, p.bank_at, p.updated_at            as progress_updated_at,
+           -- A rejected completion letter is optional (it never holds Submit
+           -- or the quiz gate up), so it is not the candidate's move.
            (select count(*) from current_compliance_docs(s.id) d
-             where d.status = 'rejected')::int                            as docs_rejected
+             where d.status = 'rejected'
+               and d.doc_type <> 'university_completion_letter')::int     as docs_rejected
       from staff s
       left join auth.users u          on u.id = s.user_id
       left join onboarding_progress p on p.staff_id = s.id
@@ -126,20 +161,26 @@ as $$
        and b.willo_invited_at is not null
        and b.willo_completed_at is null
     union all
-    -- OC2: accepted, the activation email has gone out, no password yet.
+    -- OC2: accepted, this period's activation email has gone out, no
+    -- password yet. An E3 of this period still queued means they have not
+    -- had it: nothing to remind them of (and a mint would kill its link).
     select b.id, 'activation', 'OC2', null, null,
            greatest(b.stage_entered_at, e3.last_e3)
       from base b
       cross join lateral (
-        select max(o.sent_at) as last_e3
+        select max(o.sent_at)                                     as last_e3,
+               coalesce(bool_or(o.sent_at is null and o.failed_at is null), false) as e3_queued
           from notification_outbox o
          where o.template = 'E3'
            and o.key like 'E3:%:' || b.id::text || ':%'
+           and o.queued_at >= b.onboarding_started_at
       ) e3
      where b.status = 'documents'
        and b.user_id is not null
        and not b.activated
+       and b.login_is_theirs
        and e3.last_e3 is not null
+       and not e3.e3_queued
     union all
     -- OC3: signed up, and a wizard step is theirs to do.
     select b.id, 'app', 'OC3', w.step_no, w.step,
@@ -197,15 +238,19 @@ as $$
     select t.*,
            floor(extract(epoch from t.progress_at))::bigint as epoch,
            coalesce(r.rungs_sent, 0) as rungs_sent,
-           r.last_sent_at
+           r.last_sent_at,
+           coalesce(r.last_failed, false) as last_failed
       from tracked t
       left join lateral (
-        select max((o.payload ->> 'rung')::int)          as rungs_sent,
-               max((o.payload ->> 'at')::timestamptz)    as last_sent_at
+        select (o.payload ->> 'rung')::int          as rungs_sent,
+               (o.payload ->> 'at')::timestamptz    as last_sent_at,
+               o.failed_at is not null              as last_failed
           from notification_outbox o
          where o.template = t.template
            and o.key like t.template || ':staff:' || t.id::text || ':'
                           || floor(extract(epoch from t.progress_at))::bigint::text || ':%'
+         order by (o.payload ->> 'rung')::int desc
+         limit 1
       ) r on true
   ),
   timed as (
@@ -219,11 +264,15 @@ as $$
            end as next_due_at
       from laddered l cross join cfg
   )
+  -- Half an hour's grace: the job runs hourly at a fixed minute, and a rung
+  -- queued at 17:07:02 must not miss 17:07:01 three days later and slip to
+  -- the next morning.
   select t.id, t.track, t.template, t.step_no, t.step, t.progress_at, t.epoch,
          t.rungs_sent, t.last_sent_at,
-         case when t.next_due_at is not null and p_now >= t.next_due_at
+         case when t.next_due_at is not null and p_now + interval '30 minutes' >= t.next_due_at
               then t.rungs_sent + 1 end,
-         t.next_due_at
+         t.next_due_at,
+         t.last_failed
     from timed t;
 $$;
 
@@ -231,8 +280,8 @@ comment on function public.onboarding_chaser_candidates(timestamptz) is
   'ADR-0071: every candidate whose next onboarding move is their own — the track (interview → OC1 email, activation → OC2 email, app → OC3 push), the step, their last progress, the rungs sent on this ladder and the rung due now. Internal: read through onboarding_chasers() and onboarding_chaser_state().';
 
 revoke all on function public.onboarding_chaser_candidates(timestamptz) from public, anon, authenticated;
-revoke all on function public.onboarding_chaser_config() from public, anon;
-grant execute on function public.onboarding_chaser_config() to authenticated, service_role;
+revoke all on function public.onboarding_chaser_config() from public, anon, authenticated;
+grant execute on function public.onboarding_chaser_config() to service_role;
 
 -- The three variants of each code, one per rung.
 create or replace function public.onboarding_chaser_variant(p_rung integer)
@@ -358,6 +407,11 @@ begin
   if s.id is null or s.user_id is distinct from p_user then
     raise exception 'account_mismatch' using errcode = 'P0001';
   end if;
+  -- The checks every other mint-and-send path makes (Accept, Resend,
+  -- Willo): not removed, a worker's login, and the login's address is
+  -- the one this email goes to (account_email_mismatch). Already linked,
+  -- so it changes nothing.
+  perform link_staff_account(p_staff, p_user);
 
   -- The new token has replaced the old one either way: an E3 or OC2 still
   -- waiting in the outbox must carry the new link, not a dead one.
@@ -366,7 +420,30 @@ begin
   select * into d from onboarding_chaser_candidates(p_now) c
    where c.staff_id = p_staff and c.template = 'OC2' and c.due_rung is not null;
   if not found then
-    -- Activated, rejected or reminded since the job asked. Nothing to send.
+    -- Not due any more. If that is because an E3 or OC2 went out after the
+    -- job asked (the office resent, the drain sent a queued one) and the
+    -- candidate still has no password, the token just minted has killed
+    -- that email's link: send this one, as onboarding_resend_activation()
+    -- does in the same race. Otherwise (activated, rejected) nothing.
+    if exists (select 1 from notification_outbox o
+                where o.template in ('E3', 'OC2')
+                  and o.key like o.template || ':%:' || p_staff::text || ':%'
+                  and o.sent_at >= p_now)
+       and exists (select 1 from auth.users u
+                    where u.id = p_user and coalesce(u.encrypted_password, '') = '')
+       and s.status = 'documents' then
+      v_key := 'OC2:staff:' || p_staff || ':raced:' || floor(extract(epoch from p_now))::bigint;
+      insert into notification_outbox (key, channel, template, recipient_staff_id, recipient_emails, payload)
+      values (v_key, 'email', 'OC2', p_staff, array[s.email],
+              jsonb_build_object('name', s.first_name,
+                                 'link', btrim(p_activation_link),
+                                 'installLink', btrim(p_install_link),
+                                 'variant', 'first', 'at', p_now))
+      on conflict (key) do nothing;
+      get diagnostics v_n = row_count;
+      return jsonb_build_object('staffId', p_staff::text, 'queued', v_n > 0, 'raced', true,
+                                'outboxKey', v_key);
+    end if;
     return jsonb_build_object('staffId', p_staff::text, 'queued', false);
   end if;
 
@@ -405,7 +482,8 @@ returns table (
   rungs_sent   integer,
   last_sent_at timestamptz,
   next_due_at  timestamptz,
-  stalled      boolean
+  stalled      boolean,
+  last_failed  boolean
 )
 language plpgsql
 stable
@@ -418,12 +496,12 @@ begin
   end if;
   return query
     select c.staff_id, c.track, c.step, c.progress_at, c.rungs_sent, c.last_sent_at,
-           c.next_due_at, c.rungs_sent >= 3
+           c.next_due_at, c.rungs_sent >= 3, c.last_failed
       from onboarding_chaser_candidates(p_now) c;
 end $$;
 
 comment on function public.onboarding_chaser_state(timestamptz) is
-  'ADR-0071, the onboarding board: per candidate waiting on themselves, the reminders sent on the current ladder, when the next is due, and stalled (all three sent, still no progress — phone them). Back Office only.';
+  'ADR-0071, the onboarding board: per candidate waiting on themselves, the reminders sent on the current ladder, when the next is due, stalled (all three sent, still no progress — phone them) and last_failed (the latest could not be delivered — notifications off, a bounce). Back Office only.';
 
 revoke all on function public.onboarding_chaser_state(timestamptz) from public, anon;
 grant execute on function public.onboarding_chaser_state(timestamptz) to authenticated;
@@ -437,7 +515,11 @@ alter policy office_activation_links on notification_outbox
 comment on policy office_activation_links on notification_outbox is
   'ADR-0060, ADR-0071: an E3 or OC2 row carries a worker''s one-time activation link; only a session with office_can(''users'') (an owner) may read it. 20261001201200, OC2 added 20261001211000.';
 
--- 20260924110000's body, OC2 added.
+-- 20260924110000's body, OC2 added, and one guard: a row is repointed only
+-- at a link on the SAME origin it already carries. The office's Resend
+-- checks only that the link contains /activate/<token>, so without this a
+-- Back Office login could aim an unsent E3 or OC2 — a THC email — at any
+-- site. A properly anchored origin check for every caller is a follow-up.
 create or replace function public.activation_link_refresh(p_staff uuid, p_user uuid, p_link text)
 returns integer
 language plpgsql
@@ -453,6 +535,8 @@ begin
      and s.user_id = p_user
      and o.template in ('E3', 'OC2')
      and o.key like o.template || ':%:' || p_staff::text || ':%'
+     and split_part(coalesce(o.payload ->> 'link', ''), '/activate/', 1)
+         = split_part(btrim(p_link), '/activate/', 1)
      and o.sent_at is null
      and o.failed_at is null;
   get diagnostics n = row_count;

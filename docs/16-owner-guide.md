@@ -859,7 +859,7 @@ supabase secrets set \
 |---|---|---|
 | `WILLO_WEBHOOK_SECRET` | `willo-webhook` (inbound) | **every** delivery is refused with 503; unsigned deliveries are never accepted |
 | `WILLO_API_KEY`, `WILLO_INTERVIEW_KEY` | `willo-webhook/invite` (the sweep) | logs `no candidate created in Willo, no E1 sent`, leases nothing; every waiting candidate is picked up on the first run with keys |
-| `STAFF_APP_URL` | `willo-webhook` (an Accept) | 500, so Willo retries and the delivery lands once it is set. Must match §3.5 if the domain changes. |
+| `STAFF_APP_URL` | `willo-webhook` (an Accept); `onboarding-chasers` (the OC2 activation reminder, ADR-0071) | willo-webhook: 500, so Willo retries and the delivery lands once it is set. onboarding-chasers: no link is minted and `oc2_failed` counts it in `job_runs`; OC1 and OC3 still go. Must match §3.5 if the domain changes. |
 
 Optional overrides, only if Willo's documentation differs from the defaults in
 `packages/db/src/willo.ts`:

@@ -35,6 +35,7 @@ function state(over: Partial<ChaserState> = {}): ChaserState {
     last_sent_at: '2026-09-22T11:00:00Z',
     next_due_at: '2026-09-25T11:00:00Z',
     stalled: false,
+    last_failed: false,
     ...over,
   };
 }
@@ -55,6 +56,25 @@ describe('chaserLine()', () => {
     );
     expect(chaserLine(state({ track: 'activation' }))?.text).toBe(
       'Set-up reminder 1 of 3 emailed with a new link 22 Sep · next 25 Sep',
+    );
+  });
+
+  it('turns amber when the latest could not be delivered: they have not been reminded at all', () => {
+    expect(chaserLine(state({ last_failed: true }))).toEqual({
+      text: 'App reminder 1 of 3 not delivered 22 Sep — notifications are off on their phone. Phone them.',
+      tone: 'amber',
+    });
+    expect(chaserLine(state({ track: 'interview', last_failed: true }))?.text).toContain(
+      'the email bounced',
+    );
+  });
+
+  it("says a stalled card's last reminder was undelivered, too", () => {
+    expect(
+      chaserLine(state({ rungs_sent: 3, stalled: true, next_due_at: null, last_failed: true }))
+        ?.text,
+    ).toBe(
+      'Stalled — no progress after 3 reminders (last 22 Sep, the last undelivered — notifications are off on their phone). Phone them.',
     );
   });
 
