@@ -424,10 +424,10 @@ function SendersBlock({
   return (
     <Block title="Sender addresses" sub="All outgoing mail comes from one of these two.">
       <Input
-        label="Allocation sheets & timesheets"
+        label="Allocation Timesheets"
         type="email"
         value={draft.timesheets}
-        hint="The allocation sheet and the timesheet, and nothing else."
+        hint="The Allocation Timesheet and the Completed Allocation Timesheet, and nothing else."
         onChange={(event) => setDraft({ ...draft, timesheets: event.target.value })}
       />
       <Input

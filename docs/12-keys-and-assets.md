@@ -268,7 +268,7 @@ Supabase secrets:
 
 | Variable | What it is | If it is missing |
 |---|---|---|
-| `RTW_JOB_SECRET` | At least 32 characters, random. pg_cron sends it as `Authorization: Bearer …` | The route refuses every call (503). Nothing is checked |
+| `RTW_JOB_SECRET` | At least 32 characters, random. pg_cron sends it as `Authorization: Bearer …`. Shared with `/api/jobs/event-documents` (ADR-0074) — it is the office job secret | The route refuses every call (503). Nothing is checked, and no timesheet goes out automatically |
 | `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` | Not needed (ADR-0041). Only for `primary = 'provider'`: the provider's check endpoint and key. The request and response shape are assumed in `apps/office/app/api/jobs/rtw-check/_lib/provider.config.ts` — confirm against the provider's docs. `sandbox:` = the demo sandbox (ADR-0063); never where real workers are | The provider is skipped; the gov.uk fallback runs alone if enabled |
 | `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX` | Default `Authorization` / `Bearer `. An empty prefix is allowed | Defaults |
 | `RTW_GOVUK_ENABLED` | `true` to run our own gov.uk browser check — the only route (ADR-0041) | Nothing is checked; the route claims nothing |
@@ -314,6 +314,23 @@ rest install; the nudge likewise does nothing.
 'rtw-check' order by started_at desc limit 5;` — `counts` has `claimed`, `passed`,
 `rejected`, `needs_review`, `queued` (a retry) and `failed` (the document left review
 first), or `skipped: not_configured`. One check's story is on `rtw_checks`.
+
+### The automatic Allocation Timesheet and Completed Allocation Timesheet (ADR-0074)
+
+`POST /api/jobs/event-documents` on the Back Office draws and emails the two §11.3
+documents on its own: D1 the day before the event at 14:00 UK, D2 the morning after at
+10:00 UK (held while a No check-out is unresolved, up to 14 days). It needs **nothing
+new**: the same `RTW_JOB_SECRET` / vault `rtw_job_secret` and vault `office_base_url` as
+rtw-check, and `SUPABASE_SERVICE_ROLE_KEY` on the office project (Send already needs it).
+The `event-documents` schedule (every 15 minutes) is registered **enabled** and reaches
+pg_cron at the next `select install_job_schedules();`; without the two vault secrets it
+is skipped with a notice. Times and switches: `settings.document_autosend`.
+
+**Checking it works:** `select started_at, ok, counts, error from job_runs where job =
+'event-documents' order by started_at desc limit 5;` — `counts.sent`, and
+`counts.verdicts` with the reason for every event that did not go (`not_yet`,
+`held_no_checkout`, `manual_sent`, `no_contact_emails`, `gave_up` after eight failed attempts, …). One event's automatic sends
+are rows in `event_document_autosends`.
 
 ---
 

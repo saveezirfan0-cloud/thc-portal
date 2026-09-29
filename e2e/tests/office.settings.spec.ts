@@ -54,7 +54,7 @@ test('each block renders with its current value (§6, §3.4, §2.4, §9.12)', as
 
   // §9.12: exactly two sender addresses.
   const senders = block(page, 'Sender addresses');
-  await expect(senders.getByLabel('Allocation sheets & timesheets')).toHaveValue(
+  await expect(senders.getByLabel('Allocation Timesheets')).toHaveValue(
     'timesheets@thehospitalitycompany.co.uk',
   );
   await expect(senders.getByLabel('Everything else')).toHaveValue(
@@ -90,9 +90,7 @@ test('a no-reply sender is refused: replies go to a monitored mailbox (§9.12)',
   await openAsAdmin(page, '/settings');
   const senders = block(page, 'Sender addresses');
 
-  await senders
-    .getByLabel('Allocation sheets & timesheets')
-    .fill('no-reply@thehospitalitycompany.co.uk');
+  await senders.getByLabel('Allocation Timesheets').fill('no-reply@thehospitalitycompany.co.uk');
   // saveSenders runs validateSenders before any write (actions.ts); the
   // dirty block's Save is in the SaveBar.
   await page.getByRole('button', { name: 'Save senders' }).click();

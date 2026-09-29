@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ClientDocument } from '../documents';
 
 /**
- * GET /client/events/:id/document (§11.2 "↓ Download Allocation Sheet",
+ * GET /client/events/:id/document (§11.2 "↓ Download Allocation Timesheet",
  * §11.3). The handler owns three decisions — which kind was asked for, what
  * to answer when the view returned no copy, and what to answer when the
  * store cannot sign — and the tenancy decision it does NOT own: another

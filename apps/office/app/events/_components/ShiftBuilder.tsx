@@ -491,7 +491,7 @@ export function ShiftBuilder({
                 }
               />
               <div className="field">
-                <span className="label">Allocation sheet recipients</span>
+                <span className="label">Allocation Timesheet recipients</span>
                 <div className="row wrap">
                   {(client?.contactEmails ?? []).map((email) => (
                     <Chip key={email}>{email}</Chip>
@@ -501,7 +501,7 @@ export function ShiftBuilder({
                   ) : null}
                 </div>
                 <span className="hint">
-                  From the client card — where &ldquo;Send allocation sheet&rdquo; goes.
+                  From the client card — where &ldquo;Send Allocation Timesheet&rdquo; goes.
                 </span>
               </div>
             </div>

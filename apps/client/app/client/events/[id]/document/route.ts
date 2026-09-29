@@ -3,7 +3,7 @@ import { loadDocuments, signDocument } from '../../../documents';
 
 /**
  * GET /client/events/:id/document?kind=allocation|signout — §11.2's
- * "Download Allocation Sheet" / "Download Signed Timesheet".
+ * "Download Allocation Timesheet" / "Download Completed Timesheet".
  *
  * The newest stored copy of that kind for this event, if the caller's own
  * session can see it through client_event_documents_v (ADR-0004); a

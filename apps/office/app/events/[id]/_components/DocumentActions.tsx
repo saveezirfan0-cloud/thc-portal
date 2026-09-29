@@ -5,16 +5,26 @@ import { Alert, Button, Modal } from '@thc/ui';
 
 type Kind = 'allocation' | 'signout';
 
+/** ADR-0074 (THC, 29.09.2026): the product's names for the two states. */
 const LABEL: Record<Kind, { send: string; download: string; noun: string }> = {
-  allocation: { send: 'Send allocation sheet', download: 'Download', noun: 'allocation sheet' },
-  signout: { send: 'Send timesheet', download: 'Download timesheet', noun: 'sign-out timesheet' },
+  allocation: {
+    send: 'Send Allocation Timesheet',
+    download: 'Download Allocation Timesheet',
+    noun: 'Allocation Timesheet',
+  },
+  signout: {
+    send: 'Send Completed Timesheet',
+    download: 'Download Completed Timesheet',
+    noun: 'Completed Allocation Timesheet',
+  },
 };
 
 /**
- * §11.4 on the event page: "Send allocation sheet" (an action) + "Download"
- * (a PDF, for WhatsApp). The sign-out timesheet joins them once the event
- * has started — it is filled from check-in/out, so before that it would be
- * the allocation sheet again.
+ * §11.4 on the event page: "Send Allocation Timesheet" (an action) +
+ * "Download Allocation Timesheet" (a PDF, for WhatsApp). The Completed
+ * Allocation Timesheet joins them once the event has started — it is filled
+ * from check-in/out, so before that it would be the allocation state again.
+ * Both also go automatically (ADR-0074); the page says when, under these.
  *
  * The document is drawn by /api/documents (packages/pdf), sent from
  * timesheets@ to the contact emails on the client card. No time restriction
