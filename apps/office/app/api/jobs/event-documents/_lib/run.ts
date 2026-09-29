@@ -32,6 +32,7 @@ export interface DueRow {
   manual_allocation_at: string | null;
   signout_queued_at: string | null;
   auto_queued_at: string | null;
+  attempts?: number | null;
 }
 
 export function factsOf(row: DueRow): AutosendFacts {
@@ -47,6 +48,7 @@ export function factsOf(row: DueRow): AutosendFacts {
     manualAllocationAt: row.manual_allocation_at,
     signoutQueuedAt: row.signout_queued_at,
     autoQueuedAt: row.auto_queued_at,
+    attempts: Number(row.attempts) || 0,
   };
 }
 
@@ -58,7 +60,8 @@ export interface AutosendDeps {
   rows: readonly DueRow[];
   claim(eventId: string, kind: DocumentKind): Promise<boolean>;
   generate(eventId: string, kind: DocumentKind): Promise<GenerateOutcome>;
-  queue(documentId: string): Promise<{ queued: boolean }>;
+  /** `skipped`: the SQL re-checked under its lock and stood down (e.g. manual_sent). */
+  queue(documentId: string): Promise<{ queued: boolean; skipped?: string | null }>;
   release(eventId: string, kind: DocumentKind, error: string): Promise<void>;
   /** Stop drawing new PDFs after this; the rest wait for the next run. */
   deadline?: number;
@@ -75,6 +78,8 @@ export interface AutosendCounts {
   disagreements: number;
   notClaimed: number;
   duplicate: number;
+  /** Stood down at the last moment: a manager sent it while the PDF was drawn. */
+  stoodDown: number;
   failed: number;
   deferred: number;
 }
@@ -93,6 +98,7 @@ export async function runAutosend(deps: AutosendDeps): Promise<AutosendCounts> {
     disagreements: 0,
     notClaimed: 0,
     duplicate: 0,
+    stoodDown: 0,
     failed: 0,
     deferred: 0,
   };
@@ -128,10 +134,13 @@ export async function runAutosend(deps: AutosendDeps): Promise<AutosendCounts> {
     try {
       const drawn = await deps.generate(row.event_id, row.kind);
       if (!drawn.ok) throw new Error(drawn.message);
-      const { queued } = await deps.queue(drawn.documentId);
+      const { queued, skipped } = await deps.queue(drawn.documentId);
       if (queued) {
         counts.sent[row.kind] += 1;
         deps.log(`event-documents: ${row.kind} ${row.event_id} queued`);
+      } else if (skipped) {
+        counts.stoodDown += 1;
+        deps.log(`event-documents: ${row.kind} ${row.event_id} stood down at queue: ${skipped}`);
       } else {
         counts.duplicate += 1;
         deps.log(`event-documents: ${row.kind} ${row.event_id} already had an automatic email`);

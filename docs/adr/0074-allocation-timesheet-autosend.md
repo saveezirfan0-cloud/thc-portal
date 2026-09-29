@@ -22,6 +22,8 @@ On 29.09.2026 THC asked for four changes:
 | `allocation` | **Allocation Timesheet** | Send Allocation Timesheet · Download Allocation Timesheet | ↓ Download Allocation Timesheet |
 | `signout` | **Completed Allocation Timesheet** | Send Completed Timesheet · Download Completed Timesheet | ↓ Download Completed Timesheet · "Completed Timesheet ready" |
 
+This replaces the scope's literal wording for the documents: §11.1's row button "Allocation sheet / Signed timesheet" and §11.2's "↓ Download Allocation Sheet" / "↓ Download Signed Timesheet" now read **Allocation Timesheet** / **Completed Timesheet**, by THC's decision. The Client Portal's tabs (Upcoming · Past · All, §11.1) keep the scope's words; only the document names change.
+
 The words "sign-out timesheet" no longer appear anywhere a client can see them. `signout` stays as the name in the code, the database and the storage paths. The PDF's own header still reads **STAFF ALLOCATION**, because that is THC's paper form. `DOCUMENT_NAME` in `packages/pdf/src/sheet.ts` holds both names. The D1/D2 payload carries the name as `documentName`.
 
 ### 2 · Automatic sending
@@ -52,6 +54,12 @@ A skip is recorded as a reason in the run's counts (`job_runs.counts.verdicts`) 
 - a claim with a 10-minute lease, so two overlapping runs cannot both draw the PDF;
 - the outbox key `D1:auto:<event>` / `D2:auto:<event>`.
 
+**A manager's Send during a run.** The claim, the automatic queue and the manual `queue_event_document_email()` all take the same transaction-scoped advisory lock for the event and kind. Just before writing its outbox row, the automatic queue takes the verdict again under that lock. If a manager sent the document while the PDF was being drawn (`manual_sent`), or anything else changed, the job stands down: it releases the claim with the reason, writes no outbox row, and answers `queued = false`. The run counts it as `stoodDown`. The client never gets both.
+
+**A retry ceiling.** Each claim counts as an attempt. After **eight** spent claims (a live one is not counted as spent) the verdict is `gave_up`, the claim is refused, and the office sends the document by hand. A Storage or database fault therefore never retries for ever.
+
+**Hardening.** The run passes its own clock (`p_now`) to the claim so that every candidate in one run is judged at the same instant. The claim clamps it to within five minutes of the database clock, so no caller can claim for another time. Recording a copy needs a **live** lease (`lease_until > now()`), so a run whose lease lapsed cannot record over the run that took over. When `RTW_JOB_SECRET` or the service key is missing, both job routes answer a generic `503 {"error":"not_configured"}` and write the detail to the server log only.
+
 **No backfill.** The settings row carries `completed.not_before`, the moment the migration ran. Switching the job on therefore never emails a fortnight of old events that the office had chosen not to send.
 
 **Settings:** `settings.document_autosend` (seeded by `20261002100000`, read on every run):
@@ -71,7 +79,7 @@ There is no /settings control for it yet. It can be changed with an `update sett
 2. `event_document_autosend_claim` claims one (event, kind);
 3. the existing `generateDocument()` draws the PDF from `event_document_data`, with the service-role client and the store required;
 4. `record_event_document_autosend` records the copy (`generated_by` null, `event_documents.automatic` true);
-5. `queue_event_document_autosend` queues the email;
+5. `queue_event_document_autosend` re-checks the verdict under the lock and queues the email;
 6. `event_document_autosend_release` gives the claim back on any failure.
 
 All of these functions are callable by the **service role only**. They are revoked from public, anon and authenticated. The manual path keeps `assert_reports_caller()` and is otherwise unchanged. `queue_event_document_email()` now builds its payload through `event_document_email_payload()`, which keeps every existing key and adds:

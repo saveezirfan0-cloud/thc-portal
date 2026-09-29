@@ -62,7 +62,9 @@ interface StatusRead {
 export async function POST(request: Request) {
   const gate = checkJobSecret(request.headers.get('authorization'), env('RTW_JOB_SECRET'));
   if (gate === 'not_configured') {
-    return json(503, { error: 'RTW_JOB_SECRET is not set (at least 32 characters)' });
+    // Detail in the server log only: the caller is not yet authenticated.
+    console.error('rtw-check: RTW_JOB_SECRET is not set (at least 32 characters)');
+    return json(503, { error: 'not_configured' });
   }
   if (gate === 'unauthorised') return json(401, { error: 'unauthorised' });
 
@@ -70,7 +72,8 @@ export async function POST(request: Request) {
   try {
     admin = createAdminClient();
   } catch {
-    return json(503, { error: 'SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_URL not set' });
+    console.error('rtw-check: SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_URL not set');
+    return json(503, { error: 'not_configured' });
   }
   const db = admin as unknown as RpcClient;
 

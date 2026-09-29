@@ -11,7 +11,7 @@
 -- and the job_schedules row.
 -- =====================================================================
 begin;
-select plan(84);
+select plan(101);
 \ir _shared/fixtures.psql
 
 -- Sat 11 Jul 2026 (BST): 07:00 → 22:30 UK, six confirmed, two contacts,
@@ -32,7 +32,8 @@ returns text language sql as $$
     coalesce((p_changes->>'undetermined')::int, 0),
     (p_changes->>'manual_at')::timestamptz,
     (p_changes->>'signout_at')::timestamptz,
-    (p_changes->>'auto_at')::timestamptz)
+    (p_changes->>'auto_at')::timestamptz,
+    coalesce((p_changes->>'attempts')::int, 0))
 $$;
 
 -- =====================================================================
@@ -57,6 +58,10 @@ select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"confirmed":0}'), 'no
 select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"contacts":0}'), 'no_contact_emails', 'D1: no contact emails');
 select is(pg_temp.d('allocation', '2026-07-10 13:15+00', '{"auto_at":"2026-07-10T13:00:05Z"}'), 'already_sent', 'D1: at most once');
 select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{}', '{"allocation":{"enabled":false}}'), 'disabled', 'D1: switched off in settings');
+select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"attempts":7}'), 'due', 'D1: seven spent claims, still due');
+select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{"attempts":8}'), 'gave_up', 'D1: eight spent claims — gave_up');
+select is(pg_temp.d('signout', '2026-07-12 09:00+00', '{"attempts":8}'), 'gave_up', 'D2: eight spent claims — gave_up');
+select is(pg_temp.d('signout', '2026-07-12 09:00+00', '{"attempts":8,"undetermined":1}'), 'held_no_checkout', 'D2: a hold is reported before gave_up');
 select is(pg_temp.d('allocation', '2026-07-10 15:30+00', '{}', '{"allocation":{"time":"16:30"}}'), 'due', 'D1: the time comes from settings');
 select is(pg_temp.d('allocation', '2026-07-10 13:00+00', '{}', '{"allocation":{"time":"2pm","enabled":"false"}}'), 'due',
   'D1: a malformed time or a non-boolean switch takes the default, as parseAutosendConfig() does — never an error');
@@ -120,7 +125,8 @@ select is_empty(
         and p.proname in ('event_documents_due', 'event_document_autosend_claim',
                           'record_event_document_autosend', 'queue_event_document_autosend',
                           'event_document_autosend_release', 'event_document_email_payload',
-                          'event_document_tally', 'document_autosend_verdict', 'document_autosend_config')
+                          'event_document_tally', 'document_autosend_verdict', 'document_autosend_config',
+                          'document_hours_label', 'event_document_schedule')
         and (has_function_privilege('anon', p.oid, 'execute')
           or has_function_privilege('authenticated', p.oid, 'execute')
           or not has_function_privilege('service_role', p.oid, 'execute')) $$,
@@ -136,51 +142,115 @@ select throws_ok(format($$ select record_event_document_autosend(%L, 'allocation
 reset role;
 
 -- =====================================================================
--- 4 · The event: two role sections, three people, Client A
+-- 4 · The events, dated from the real clock
+--
+-- The claim and the queue judge "now" by the database clock (a caller's
+-- p_now is clamped to within five minutes of it), so these events are
+-- placed around today in London rather than on fixed dates:
+--   ev      tomorrow — two role sections, three confirmed (D1)
+--   ev_off  tomorrow — cancelled
+--   ev_race tomorrow — a manager presses Send while the job holds a claim
+--   ev_past two days ago — worked, one No check-out (D2)
+--   ev_gu   two days ago — worked; every attempt to send it fails
+-- D1 is set to 00:00 so "the day before" has already begun whatever the
+-- time of day this file runs.
 -- =====================================================================
+select (now() at time zone 'Europe/London')::date as today \gset
+create function pg_temp.uk(p_day date, p_time text) returns timestamptz
+language sql immutable as $$ select (p_day + p_time::time) at time zone 'Europe/London' $$;
+
 \set ev      '75900000-0000-4000-8000-000000000001'
 \set ev_off  '75900000-0000-4000-8000-000000000002'
+\set ev_race '75900000-0000-4000-8000-000000000003'
+\set ev_past '75900000-0000-4000-8000-000000000004'
+\set ev_gu   '75900000-0000-4000-8000-000000000005'
 \set sec_c   '75910000-0000-4000-8000-000000000001'
 \set sec_w   '75910000-0000-4000-8000-000000000002'
 \set sec_off '75910000-0000-4000-8000-000000000003'
+\set sec_r   '75910000-0000-4000-8000-000000000004'
+\set sec_pc  '75910000-0000-4000-8000-000000000005'
+\set sec_pw  '75910000-0000-4000-8000-000000000006'
+\set sec_gu  '75910000-0000-4000-8000-000000000007'
 \set r_c     '75920000-0000-4000-8000-000000000001'
 \set r_w     '75920000-0000-4000-8000-000000000002'
 \set p_1     '75930000-0000-4000-8000-000000000001'
 \set p_2     '75930000-0000-4000-8000-000000000002'
 \set p_3     '75930000-0000-4000-8000-000000000003'
+\set p_4     '75930000-0000-4000-8000-000000000004'
+\set p_5     '75930000-0000-4000-8000-000000000005'
+\set p_6     '75930000-0000-4000-8000-000000000006'
+\set p_7     '75930000-0000-4000-8000-000000000007'
+\set p_8     '75930000-0000-4000-8000-000000000008'
 \set b_1     '75940000-0000-4000-8000-000000000001'
 \set b_2     '75940000-0000-4000-8000-000000000002'
 \set b_3     '75940000-0000-4000-8000-000000000003'
 \set b_off   '75940000-0000-4000-8000-000000000004'
+\set b_r     '75940000-0000-4000-8000-000000000005'
+\set b_4     '75940000-0000-4000-8000-000000000006'
+\set b_5     '75940000-0000-4000-8000-000000000007'
+\set b_6     '75940000-0000-4000-8000-000000000008'
+\set b_gu    '75940000-0000-4000-8000-000000000009'
 
 insert into roles (id, name, description, pay_rate) values
   (:'r_c', 'Auto Chef', 'fixture', 19.00),
   (:'r_w', 'Auto Waiting Staff', 'fixture', 14.00);
 insert into staff (id, employee_id, first_name, last_name, email, phone, dob, status) values
-  (:'p_1', 97001, 'Luca', 'Moretti', 'a-1@rls.test', '+447700975901', date '1995-01-01', 'compliant'),
-  (:'p_2', 97002, 'Aisha', 'Bello', 'a-2@rls.test', '+447700975902', date '1995-01-01', 'compliant'),
-  (:'p_3', 97003, 'Tom', 'Reid', 'a-3@rls.test', '+447700975903', date '1995-01-01', 'compliant');
+  (:'p_1', 97001, 'Luca',  'Moretti', 'a-1@rls.test', '+447700975901', date '1995-01-01', 'compliant'),
+  (:'p_2', 97002, 'Aisha', 'Bello',   'a-2@rls.test', '+447700975902', date '1995-01-01', 'compliant'),
+  (:'p_3', 97003, 'Tom',   'Reid',    'a-3@rls.test', '+447700975903', date '1995-01-01', 'compliant'),
+  (:'p_4', 97004, 'Daniel','Okafor',  'a-4@rls.test', '+447700975904', date '1995-01-01', 'compliant'),
+  (:'p_5', 97005, 'Priya', 'Sharma',  'a-5@rls.test', '+447700975905', date '1995-01-01', 'compliant'),
+  (:'p_6', 97006, 'Ben',   'Ashworth','a-6@rls.test', '+447700975906', date '1995-01-01', 'compliant'),
+  (:'p_7', 97007, 'Isla',  'Thornton','a-7@rls.test', '+447700975907', date '1995-01-01', 'compliant'),
+  (:'p_8', 97008, 'Hugo',  'Ferreira','a-8@rls.test', '+447700975908', date '1995-01-01', 'compliant');
+
 insert into events (id, client_id, venue_name, venue_address, venue_location, geofence_radius_m,
-                    title, event_date, pays_breaks, pays_buffer, po_number) values
-  (:'ev', :'clienta', 'Auto Venue', '1 Auto St', st_setsrid(st_makepoint(-0.1, 51.5), 4326)::geography, 150,
-   'Gala Dinner', date '2026-07-11', true, true, '4471-A'),
-  (:'ev_off', :'clienta', 'Auto Venue', '1 Auto St', st_setsrid(st_makepoint(-0.1, 51.5), 4326)::geography, 150,
-   'Called Off', date '2026-07-11', true, true, null);
+                    title, event_date, pays_breaks, pays_buffer, po_number)
+select x.id::uuid, :'clienta'::uuid, 'Auto Venue', '1 Auto St',
+       st_setsrid(st_makepoint(-0.1, 51.5), 4326)::geography, 150, x.title, x.day, true, true, x.po
+  from (values (:'ev',      'Gala Dinner',  :'today'::date + 1, '4471-A'),
+               (:'ev_off',  'Called Off',   :'today'::date + 1, null),
+               (:'ev_race', 'Race Lunch',   :'today'::date + 1, null),
+               (:'ev_past', 'Past Gala',    :'today'::date - 2, '4471-B'),
+               (:'ev_gu',   'Given Up',     :'today'::date - 2, null)) as x(id, title, day, po);
+
 insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
-                                charge_rate, pay_rate, allocation_per_hour) values
-  (:'sec_w',   :'ev',     :'r_w', '2026-07-11 16:00+00', '2026-07-11 22:30+00', 2, 0, 22.97, 14.00, 2),
-  (:'sec_c',   :'ev',     :'r_c', '2026-07-11 06:00+00', '2026-07-11 14:00+00', 1, 0, 28.00, 19.00, 1),
-  (:'sec_off', :'ev_off', :'r_w', '2026-07-11 16:00+00', '2026-07-11 22:30+00', 1, 0, 22.97, 14.00, 1);
--- Inserted as they end the day (worked), as 411 does: the sheet counts
--- confirmed and worked alike, and there is no check-in yet for D1.
+                                charge_rate, pay_rate, allocation_per_hour)
+select x.id::uuid, x.ev::uuid, x.role::uuid, pg_temp.uk(x.day, x.s), pg_temp.uk(x.day, x.e), x.n, 0, 22.97, 14.00, x.n
+  from (values (:'sec_w',   :'ev',      :'r_w', :'today'::date + 1, '17:00', '23:30', 2),
+               (:'sec_c',   :'ev',      :'r_c', :'today'::date + 1, '07:00', '15:00', 1),
+               (:'sec_off', :'ev_off',  :'r_w', :'today'::date + 1, '17:00', '23:30', 1),
+               (:'sec_r',   :'ev_race', :'r_w', :'today'::date + 1, '08:00', '12:00', 1),
+               (:'sec_pw',  :'ev_past', :'r_w', :'today'::date - 2, '17:00', '23:30', 2),
+               (:'sec_pc',  :'ev_past', :'r_c', :'today'::date - 2, '07:00', '15:00', 1),
+               (:'sec_gu',  :'ev_gu',   :'r_w', :'today'::date - 2, '09:00', '13:00', 1))
+       as x(id, ev, role, day, s, e, n);
+
 insert into bookings (id, shift_id, staff_id, status, source, confirmed_at) values
-  (:'b_1',   :'sec_c',   :'p_1', 'worked',    'manual', '2026-07-01 10:00+00'),
-  (:'b_2',   :'sec_w',   :'p_2', 'worked',    'manual', '2026-07-01 10:00+00'),
-  (:'b_3',   :'sec_w',   :'p_3', 'worked',    'manual', '2026-07-01 10:00+00'),
-  (:'b_off', :'sec_off', :'p_1', 'confirmed', 'manual', '2026-07-01 10:00+00');
-update events set cancelled_at = '2026-07-05 10:00+00', cancel_reason = 'client cancelled' where id = :'ev_off';
--- The completed send may reach back to July for this file.
-update settings set value = jsonb_set(value, '{completed,not_before}', 'null') where key = 'document_autosend';
+  (:'b_1',   :'sec_c',   :'p_1', 'confirmed', 'manual', now() - interval '7 days'),
+  (:'b_2',   :'sec_w',   :'p_2', 'confirmed', 'manual', now() - interval '7 days'),
+  (:'b_3',   :'sec_w',   :'p_3', 'confirmed', 'manual', now() - interval '7 days'),
+  (:'b_off', :'sec_off', :'p_8', 'confirmed', 'manual', now() - interval '7 days'),
+  (:'b_r',   :'sec_r',   :'p_8', 'confirmed', 'manual', now() - interval '7 days'),
+  -- As they end the day, as 411 inserts them.
+  (:'b_4',   :'sec_pc',  :'p_4', 'worked',    'manual', now() - interval '9 days'),
+  (:'b_5',   :'sec_pw',  :'p_5', 'worked',    'manual', now() - interval '9 days'),
+  (:'b_6',   :'sec_pw',  :'p_6', 'worked',    'manual', now() - interval '9 days'),
+  (:'b_gu',  :'sec_gu',  :'p_7', 'worked',    'manual', now() - interval '9 days');
+update events set cancelled_at = now() - interval '1 day', cancel_reason = 'client cancelled' where id = :'ev_off';
+
+insert into check_logs (booking_id, attempted_at, outcome, check_in_at, check_out_at) values
+  (:'b_4',  pg_temp.uk(:'today'::date - 2, '07:00'), 'checked_in', pg_temp.uk(:'today'::date - 2, '07:00'), pg_temp.uk(:'today'::date - 2, '15:05')),
+  (:'b_5',  pg_temp.uk(:'today'::date - 2, '17:00'), 'checked_in', pg_temp.uk(:'today'::date - 2, '17:00'), pg_temp.uk(:'today'::date - 2, '23:42')),
+  (:'b_6',  pg_temp.uk(:'today'::date - 2, '17:00'), 'checked_in', pg_temp.uk(:'today'::date - 2, '17:00'), null),
+  (:'b_gu', pg_temp.uk(:'today'::date - 2, '09:00'), 'checked_in', pg_temp.uk(:'today'::date - 2, '09:00'), pg_temp.uk(:'today'::date - 2, '13:00'));
+insert into violations (staff_id, booking_id, type) values (:'p_6', :'b_6', 'no_checkout');
+
+-- D1 at 00:00 (see above); D2 at its default 10:00 — yesterday morning for
+-- ev_past; and this file may reach back before the migration ran.
+update settings
+   set value = jsonb_set(jsonb_set(value, '{allocation,time}', '"00:00"'), '{completed,not_before}', 'null')
+ where key = 'document_autosend';
 
 select set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);
 set local role service_role;
@@ -188,22 +258,28 @@ set local role service_role;
 -- =====================================================================
 -- 5 · D1 end to end
 -- =====================================================================
-select is((select verdict from event_documents_due('2026-07-10 12:59+00', :'ev') where kind = 'allocation'), 'not_yet',
-  'the day before at 13:59 UK: not yet');
+select is((select verdict from event_documents_due(pg_temp.uk(:'today'::date, '00:00') - interval '1 second', :'ev')
+            where kind = 'allocation'), 'not_yet',
+  'a second before the day before begins: not yet');
 select results_eq(
-  format($$ select verdict, confirmed, contacts from event_documents_due('2026-07-10 13:00+00', %L) where kind = 'allocation' $$, :'ev'),
+  format($$ select verdict, confirmed, contacts from event_documents_due(now(), %L) where kind = 'allocation' $$, :'ev'),
   $$ values ('due'::text, 3, 1) $$,
-  'at 14:00 UK: due — three confirmed, one contact email');
-select ok(exists (select 1 from event_documents_due('2026-07-10 13:00+00') where event_id = :'ev' and kind = 'allocation'),
-  'without an event id, the day-before event is among the candidates');
-select is((select verdict from event_documents_due('2026-07-10 13:00+00', :'ev_off') where kind = 'allocation'), 'cancelled',
+  'on the day before: due — three confirmed, one contact email');
+select ok(exists (select 1 from event_documents_due(now()) where event_id = :'ev' and kind = 'allocation'),
+  'without an event id, tomorrow''s event is among the candidates');
+select is((select verdict from event_documents_due(now(), :'ev_off') where kind = 'allocation'), 'cancelled',
   'a cancelled event is skipped with its reason (§3.3)');
-select ok(not event_document_autosend_claim(:'ev_off', 'allocation', '2026-07-10 13:00+00'),
-  'and cannot be claimed');
+select ok(not event_document_autosend_claim(:'ev_off', 'allocation'), 'and cannot be claimed');
 
-select ok(event_document_autosend_claim(:'ev', 'allocation', '2026-07-10 13:00+00'), 'the run claims the D1');
-select ok(not event_document_autosend_claim(:'ev', 'allocation', '2026-07-10 13:01+00'),
+select ok(event_document_autosend_claim(:'ev', 'allocation', now() + interval '1 year'),
+  'the run claims the D1 (a p_now a year out is clamped to the database clock)…');
+select ok((select lease_until <= now() + interval '15 minutes' from event_document_autosends
+            where event_id = :'ev' and kind = 'allocation'),
+  '…so the lease is ten minutes from now, not from next year');
+select ok(not event_document_autosend_claim(:'ev', 'allocation'),
   'a second, overlapping run cannot: the lease is live');
+select is((select attempts from event_documents_due(now(), :'ev') where kind = 'allocation'), 0,
+  'a live claim is not a spent one');
 
 create temp table auto1 as
   select record_event_document_autosend(:'ev', 'allocation', :'ev' || '/allocation/auto.pdf',
@@ -213,7 +289,9 @@ select results_eq(
   $$ values (true, null::uuid) $$,
   'the copy is marked automatic, with nobody as its author');
 create temp table q1 as select queue_event_document_autosend((select id from auto1)) as q;
-select is((select q->>'key' from q1), 'D1:auto:' || :'ev', 'queued under the event''s automatic D1 key');
+select results_eq($$ select q->>'key', q->>'queued' from q1 $$,
+  format($$ values ('D1:auto:%s'::text, 'true'::text) $$, :'ev'),
+  'queued under the event''s automatic D1 key');
 select results_eq(
   format($$ select template, recipient_emails from notification_outbox where key = 'D1:auto:%s' $$, :'ev'),
   $$ values ('D1'::text, array['clienta@rls.test']) $$,
@@ -232,65 +310,115 @@ select results_eq(
              where event_id = %L and kind = 'allocation' $$, :'ev'),
   $$ values (true, true, true) $$,
   'the claim is done: queued, lease released');
-select is((select verdict from event_documents_due('2026-07-10 13:15+00', :'ev') where kind = 'allocation'), 'already_sent',
+select is((select verdict from event_documents_due(now(), :'ev') where kind = 'allocation'), 'already_sent',
   'the next run sees it already sent');
-select ok(not event_document_autosend_claim(:'ev', 'allocation', '2026-07-10 13:15+00'), 'and cannot claim it again');
+select ok(not event_document_autosend_claim(:'ev', 'allocation'), 'and cannot claim it again');
 select is((queue_event_document_autosend((select id from auto1)))->>'queued', 'false',
   'queuing the same automatic copy again sends nothing');
 
 -- =====================================================================
--- 6 · D2: held for a No check-out, then sent with Total Hours
+-- 6 · The race: a manager presses Send while the job holds the claim
 -- =====================================================================
-insert into check_logs (booking_id, attempted_at, outcome, check_in_at, check_out_at) values
-  (:'b_1', '2026-07-11 06:00+00', 'checked_in', '2026-07-11 06:00+00', '2026-07-11 14:05+00'),
-  (:'b_2', '2026-07-11 16:00+00', 'checked_in', '2026-07-11 16:00+00', '2026-07-11 22:42+00'),
-  (:'b_3', '2026-07-11 16:00+00', 'checked_in', '2026-07-11 16:00+00', null);
-insert into violations (staff_id, booking_id, type) values (:'p_3', :'b_3', 'no_checkout');
-
+select ok(event_document_autosend_claim(:'ev_race', 'allocation'), 'the job claims the race event''s D1');
+create temp table auto_r as
+  select record_event_document_autosend(:'ev_race', 'allocation', :'ev_race' || '/allocation/auto.pdf',
+                                        'RLS Fixture Client A – Race Lunch.pdf', 1, 1) as id;
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+create temp table man_r as
+  select record_event_document(:'ev_race', 'allocation', :'ev_race' || '/allocation/manual.pdf', 'M.pdf', 1, 1) as id;
+select lives_ok(format('select queue_event_document_email(%L)', (select id from man_r)),
+  'meanwhile a manager sends the Allocation Timesheet by hand (same advisory lock)');
+reset role;
+select set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);
+set local role service_role;
+create temp table q_r as select queue_event_document_autosend((select id from auto_r)) as q;
+select results_eq($$ select q->>'queued', q->>'skipped' from q_r $$,
+  $$ values ('false'::text, 'manual_sent'::text) $$,
+  'the job re-checks under the lock and stands down: queued = false, manual_sent');
+select is((select count(*)::int from notification_outbox
+            where key = 'D1:auto:' || :'ev_race'
+               or key in (select outbox_key from event_documents where event_id = :'ev_race' and outbox_key is not null)),
+  1, 'one D1 email for the event, the manager''s — never two');
 select results_eq(
-  format($$ select verdict, undetermined from event_documents_due('2026-07-12 09:00+00', %L) where kind = 'signout' $$, :'ev'),
+  format($$ select queued_at is null, lease_until is null, last_error from event_document_autosends
+             where event_id = %L and kind = 'allocation' $$, :'ev_race'),
+  $$ values (true, true, 'skipped: manual_sent'::text) $$,
+  'the claim is released with the reason, and nothing is marked sent');
+select is((select verdict from event_documents_due(now(), :'ev_race') where kind = 'allocation'), 'manual_sent',
+  'later runs see the manager''s copy and leave it');
+
+-- =====================================================================
+-- 7 · D2: held for a No check-out, then sent with Total Hours
+-- =====================================================================
+select results_eq(
+  format($$ select verdict, undetermined from event_documents_due(now(), %L) where kind = 'signout' $$, :'ev_past'),
   $$ values ('held_no_checkout'::text, 1) $$,
-  'the morning after at 10:00 UK: held — Tom''s No check-out is unresolved (RULE-02)');
-select ok(not event_document_autosend_claim(:'ev', 'signout', '2026-07-12 09:00+00'), 'a held D2 cannot be claimed');
+  'the morning after has passed, but it is held — a No check-out is unresolved (RULE-02)');
+select ok(not event_document_autosend_claim(:'ev_past', 'signout'), 'a held D2 cannot be claimed');
 
-update check_logs set manager_finish_at = '2026-07-11 22:30+00' where booking_id = :'b_3';
-update violations set resolved = true, resolved_at = now(), resolution_note = 'fixture' where booking_id = :'b_3';
+update check_logs set manager_finish_at = pg_temp.uk(:'today'::date - 2, '23:30') where booking_id = :'b_6';
+update violations set resolved = true, resolved_at = now(), resolution_note = 'fixture' where booking_id = :'b_6';
 
-select is((select verdict from event_documents_due('2026-07-13 15:15+00', :'ev') where kind = 'signout'), 'due',
-  'resolved two days later: due on the next run');
-select ok(event_document_autosend_claim(:'ev', 'signout', '2026-07-13 15:15+00'), 'claimed');
-select lives_ok(format($$ select event_document_autosend_release(%L, 'signout', 'Storage refused the PDF') $$, :'ev'),
+select is((select verdict from event_documents_due(now(), :'ev_past') where kind = 'signout'), 'due',
+  'resolved: due on the next run');
+select ok(event_document_autosend_claim(:'ev_past', 'signout'), 'claimed');
+select lives_ok(format($$ select event_document_autosend_release(%L, 'signout', 'Storage refused the PDF') $$, :'ev_past'),
   'a run that fails gives the claim back…');
 select results_eq(
-  format($$ select lease_until is null, last_error, attempts from event_document_autosends where event_id = %L and kind = 'signout' $$, :'ev'),
+  format($$ select lease_until is null, last_error, attempts from event_document_autosends where event_id = %L and kind = 'signout' $$, :'ev_past'),
   $$ values (true, 'Storage refused the PDF'::text, 1) $$,
-  '…with its reason');
-select ok(event_document_autosend_claim(:'ev', 'signout', '2026-07-13 15:30+00'), 'and the next run claims it again');
+  '…with its reason, one claim spent');
+select throws_ok(format($$ select record_event_document_autosend(%L, 'signout', %L, 'x.pdf', 1, 1) $$,
+                        :'ev_past', :'ev_past' || '/signout/late.pdf'), 'P0001', 'autosend_not_claimed',
+  'a run that lost its lease cannot record a copy');
+select ok(event_document_autosend_claim(:'ev_past', 'signout'), 'the next run claims it again');
 create temp table auto2 as
-  select record_event_document_autosend(:'ev', 'signout', :'ev' || '/signout/auto.pdf',
-                                        'RLS Fixture Client A – Gala Dinner.pdf', 3, 1) as id;
-select lives_ok(format('select queue_event_document_autosend(%L)', (select id from auto2)), 'the D2 is queued');
--- Luca 06:00–14:00 = 480; Aisha 16:00–22:30 = 390; Tom 16:00–22:30 (manager) = 390 → 1,260 min.
-select is((select payload->>'totalHours' from notification_outbox where key = 'D2:auto:' || :'ev'), '21h',
+  select record_event_document_autosend(:'ev_past', 'signout', :'ev_past' || '/signout/auto.pdf',
+                                        'RLS Fixture Client A – Past Gala.pdf', 3, 1) as id;
+select is((queue_event_document_autosend((select id from auto2)))->>'queued', 'true', 'the D2 is queued');
+-- 07:00–15:00 = 480; 17:00–23:30 = 390; 17:00–23:30 (manager) = 390 → 1,260 min.
+select is((select payload->>'totalHours' from notification_outbox where key = 'D2:auto:' || :'ev_past'), '21h',
   'payload.totalHours: the whole event, as the PDF''s Total Hours prints it');
-select is((select payload->>'documentName' from notification_outbox where key = 'D2:auto:' || :'ev'),
+select is((select payload->>'documentName' from notification_outbox where key = 'D2:auto:' || :'ev_past'),
   'Completed Allocation Timesheet', 'payload.documentName');
 
 select throws_ok(format($$ select record_event_document_autosend(%L, 'allocation', %L, 'x.pdf', 1, 1) $$,
                         :'ev_off', :'ev_off' || '/allocation/x.pdf'), 'P0001', 'event_cancelled',
   'no automatic copy is ever recorded for a cancelled event');
 select throws_ok(format($$ select record_event_document_autosend(%L, 'signout', %L, 'x.pdf', 1, 1) $$,
-                        :'ev', :'ev' || '/signout/again.pdf'), 'P0001', 'autosend_not_claimed',
+                        :'ev_past', :'ev_past' || '/signout/again.pdf'), 'P0001', 'autosend_not_claimed',
   'nor one without a live claim');
+
+-- =====================================================================
+-- 8 · The ceiling: eight claims, then gave_up
+-- =====================================================================
+select set_config('t759.ev_gu', :'ev_gu', true);
+create temp table cycles (n int, claimed boolean);
+do $$
+begin
+  for i in 1..8 loop
+    insert into cycles values (i, event_document_autosend_claim(current_setting('t759.ev_gu')::uuid, 'signout'));
+    perform event_document_autosend_release(current_setting('t759.ev_gu')::uuid, 'signout', 'boom ' || i);
+  end loop;
+end $$;
+select is((select count(*)::int from cycles where claimed), 8, 'eight claim / fail / release cycles each got their claim');
+select ok(not event_document_autosend_claim(:'ev_gu', 'signout'), 'the ninth claim is refused');
+select results_eq(
+  format($$ select verdict, attempts from event_documents_due(now(), %L) where kind = 'signout' $$, :'ev_gu'),
+  $$ values ('gave_up'::text, 8) $$,
+  'and the verdict says gave_up: the office sends it by hand');
+select is((select count(*)::int from notification_outbox where key = 'D2:auto:' || :'ev_gu'), 0, 'nothing was sent');
 reset role;
 
 -- =====================================================================
--- 7 · The manual Send: unchanged, with the new payload keys
+-- 9 · The manual Send: unchanged, with the new payload keys
 -- =====================================================================
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 create temp table man as
-  select record_event_document(:'ev', 'signout', :'ev' || '/signout/manual.pdf', 'M.pdf', 3, 1) as id;
+  select record_event_document(:'ev_past', 'signout', :'ev_past' || '/signout/manual.pdf', 'M.pdf', 3, 1) as id;
 create temp table mq as select queue_event_document_email((select id from man)) as q;
 reset role;
 select is((select q->>'key' from mq), 'D2:document:' || (select id::text from man), 'the manual key is unchanged');
@@ -304,16 +432,17 @@ select throws_ok(format('select queue_event_document_autosend(%L)', (select id f
 
 select set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);
 set local role service_role;
-select is((select verdict from event_documents_due('2026-07-13 16:00+00', :'ev') where kind = 'signout'), 'already_sent',
+select is((select verdict from event_documents_due(now(), :'ev_past') where kind = 'signout'), 'already_sent',
   'the automatic D2 is final');
 reset role;
 
 -- =====================================================================
--- 8 · event_document_autosends: admin reads, client and staff nothing
+-- 10 · event_document_autosends: admin reads, client and staff nothing
 -- =====================================================================
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select is((select count(*)::int from event_document_autosends where event_id = :'ev'), 2, 'the admin reads both automatic sends');
+select is((select count(*)::int from event_document_autosends where event_id in (:'ev', :'ev_past')), 2,
+  'the admin reads the automatic sends');
 select throws_ok(format($$ update event_document_autosends set queued_at = null where event_id = %L $$, :'ev'),
   '42501', null, 'but cannot rewrite one');
 reset role;
@@ -335,7 +464,7 @@ select throws_ok($$ select count(*) from event_document_autosends $$, '42501', n
 reset role;
 
 -- =====================================================================
--- 9 · The schedule row
+-- 11 · The schedule row
 -- =====================================================================
 select results_eq(
   $$ select enabled, cron_expression, edge_path, base_url_source, secret_name

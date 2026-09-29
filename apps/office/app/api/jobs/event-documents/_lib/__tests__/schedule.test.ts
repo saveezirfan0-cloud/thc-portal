@@ -100,6 +100,11 @@ describe('D1 · Allocation Timesheet, the day before at 14:00 UK', () => {
     );
   });
 
+  it('gives up after eight spent claims — a fault never retries for ever', () => {
+    expect(d1({ attempts: 7 }, '2026-07-10T13:00:00Z')).toBe('due');
+    expect(d1({ attempts: 8 }, '2026-07-10T13:00:00Z')).toBe('gave_up');
+  });
+
   it('can be switched off in settings', () => {
     const off = parseAutosendConfig({ allocation: { enabled: false } });
     expect(
@@ -152,6 +157,11 @@ describe('D2 · Completed Allocation Timesheet, the morning after at 10:00 UK', 
     expect(d2({ cancelled: true }, '2026-07-12T09:00:00Z')).toBe('cancelled');
     expect(d2({ confirmed: 0 }, '2026-07-12T09:00:00Z')).toBe('no_confirmed_staff');
     expect(d2({ contacts: 0 }, '2026-07-12T09:00:00Z')).toBe('no_contact_emails');
+  });
+
+  it('gives up after eight spent claims, but a hold is reported first', () => {
+    expect(d2({ attempts: 8 }, '2026-07-12T09:00:00Z')).toBe('gave_up');
+    expect(d2({ attempts: 8, undetermined: 1 }, '2026-07-12T09:00:00Z')).toBe('held_no_checkout');
   });
 
   it('goes once', () => {

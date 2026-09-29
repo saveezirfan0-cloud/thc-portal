@@ -51,7 +51,10 @@ export async function POST(request: Request) {
   const started = Date.now();
   const gate = checkJobSecret(request.headers.get('authorization'), process.env.RTW_JOB_SECRET);
   if (gate === 'not_configured') {
-    return json(503, { error: 'RTW_JOB_SECRET is not set (at least 32 characters)' });
+    // The detail stays in the server log: an unauthenticated caller learns
+    // only that the job is not available, not which setting is missing.
+    console.error('event-documents: RTW_JOB_SECRET is not set (at least 32 characters)');
+    return json(503, { error: 'not_configured' });
   }
   if (gate === 'unauthorised') return json(401, { error: 'unauthorised' });
 
@@ -59,7 +62,8 @@ export async function POST(request: Request) {
   try {
     admin = createAdminClient();
   } catch {
-    return json(503, { error: 'SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_URL not set' });
+    console.error('event-documents: SUPABASE_SERVICE_ROLE_KEY / NEXT_PUBLIC_SUPABASE_URL not set');
+    return json(503, { error: 'not_configured' });
   }
   const db = admin as unknown as RpcClient;
 
@@ -102,7 +106,8 @@ export async function POST(request: Request) {
           p_document: documentId,
         });
         if (error) throw new Error(error.message);
-        return { queued: (data as { queued?: boolean } | null)?.queued === true };
+        const answer = data as { queued?: boolean; skipped?: string | null } | null;
+        return { queued: answer?.queued === true, skipped: answer?.skipped ?? null };
       },
       release: async (eventId, kind, message) => {
         await db.rpc('event_document_autosend_release', {

@@ -329,7 +329,7 @@ is skipped with a notice. Times and switches: `settings.document_autosend`.
 **Checking it works:** `select started_at, ok, counts, error from job_runs where job =
 'event-documents' order by started_at desc limit 5;` — `counts.sent`, and
 `counts.verdicts` with the reason for every event that did not go (`not_yet`,
-`held_no_checkout`, `manual_sent`, `no_contact_emails`, …). One event's automatic sends
+`held_no_checkout`, `manual_sent`, `no_contact_emails`, `gave_up` after eight failed attempts, …). One event's automatic sends
 are rows in `event_document_autosends`.
 
 ---

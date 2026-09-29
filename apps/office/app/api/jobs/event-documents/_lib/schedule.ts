@@ -40,7 +40,16 @@ export type AutosendVerdict =
   | 'no_confirmed_staff'
   | 'no_contact_emails'
   | 'manual_sent'
-  | 'held_no_checkout';
+  | 'held_no_checkout'
+  | 'gave_up';
+
+/**
+ * Claims the job may spend on one event and kind (a claim = one attempt to
+ * draw, store and queue). After this many the verdict is `gave_up` and the
+ * office sends it by hand — a Storage or database fault never retries for
+ * ever. The SQL claim holds the same ceiling.
+ */
+export const MAX_CLAIMS = 8;
 
 export interface AutosendConfig {
   allocation: { enabled: boolean; time: string };
@@ -109,6 +118,8 @@ export interface AutosendFacts {
   signoutQueuedAt: string | null;
   /** When this kind's automatic send was queued, if it has been. */
   autoQueuedAt: string | null;
+  /** Claims already spent on it (a live one not counted). */
+  attempts?: number;
 }
 
 /** "2026-09-19" ± days, as a calendar date (no zone involved). */
@@ -159,6 +170,7 @@ export function autosendVerdict(
     if (facts.confirmed === 0) return 'no_confirmed_staff';
     if (facts.contacts === 0) return 'no_contact_emails';
     if (manual !== null && manual >= dayBefore) return 'manual_sent';
+    if ((facts.attempts ?? 0) >= MAX_CLAIMS) return 'gave_up';
     return 'due';
   }
 
@@ -175,6 +187,7 @@ export function autosendVerdict(
   if (facts.contacts === 0) return 'no_contact_emails';
   if (queued !== null && lastEnd !== null && queued >= lastEnd) return 'manual_sent';
   if (facts.undetermined > 0) return 'held_no_checkout';
+  if ((facts.attempts ?? 0) >= MAX_CLAIMS) return 'gave_up';
   return 'due';
 }
 
@@ -185,6 +198,7 @@ export const NOTEWORTHY: ReadonlySet<AutosendVerdict> = new Set([
   'no_contact_emails',
   'manual_sent',
   'held_no_checkout',
+  'gave_up',
 ]);
 
 const UK_STAMP = new Intl.DateTimeFormat('en-GB', {

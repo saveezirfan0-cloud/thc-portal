@@ -132,6 +132,24 @@ describe('one run of the event-documents job', () => {
     expect(counts.sent.allocation).toBe(0);
   });
 
+  it('stands down when the SQL re-check at queue time says a manager already sent it', async () => {
+    const { deps, logs } = harness([row()], {
+      queue: async () => ({ queued: false, skipped: 'manual_sent' }),
+    });
+    const counts = await runAutosend(deps);
+    expect(counts.stoodDown).toBe(1);
+    expect(counts.sent.allocation).toBe(0);
+    expect(counts.duplicate).toBe(0);
+    expect(logs.at(-1)).toBe('event-documents: allocation ev-1 stood down at queue: manual_sent');
+  });
+
+  it('passes the spent claims through, so a row that gave up is never claimed', async () => {
+    const { deps, calls } = harness([row({ verdict: 'gave_up', attempts: 8 })]);
+    const counts = await runAutosend(deps);
+    expect(calls).toEqual([]);
+    expect(counts.verdicts.allocation).toEqual({ gave_up: 1 });
+  });
+
   it('defers what is left once the time budget is spent', async () => {
     let t = 0;
     const { deps, calls } = harness([row({ event_id: 'a' }), row({ event_id: 'b' })], {

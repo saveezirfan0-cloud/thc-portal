@@ -227,8 +227,9 @@ end $$;
 -- ---------------------------------------------------------------------
 -- 5 · queue_event_document_email — the manual Send, restated
 --
--- 20260923130100's body (its only one) with the payload built by
--- event_document_email_payload(). Caller check, key, recipients and the
+-- 20260923130100's body (its only one) with two changes: the payload is
+-- built by event_document_email_payload(), and it takes the job's advisory
+-- lock for the event and kind first. Caller check, key, recipients and the
 -- document-row update are unchanged.
 -- ---------------------------------------------------------------------
 create or replace function public.queue_event_document_email(p_document uuid)
@@ -243,6 +244,10 @@ begin
   perform assert_reports_caller();
   select * into d from event_documents where id = p_document;
   if d.id is null then raise exception 'document_not_found' using errcode = 'P0002'; end if;
+  -- The job's lock for this event and kind (ADR-0074): a manual Send and
+  -- an automatic one queue one after the other, and the job, re-checking
+  -- after it, sees this copy and stands down (manual_sent).
+  perform pg_advisory_xact_lock(hashtext('document-autosend:' || d.event_id::text || ':' || d.kind));
   select * into ev from events where id = d.event_id;
   if ev.cancelled_at is not null then raise exception 'event_cancelled' using errcode = 'P0001'; end if;
   select * into v_client from clients where id = ev.client_id;
@@ -283,7 +288,9 @@ create or replace function public.document_autosend_verdict(
   p_undetermined         int,
   p_manual_allocation_at timestamptz,
   p_signout_queued_at    timestamptz,
-  p_auto_queued_at       timestamptz
+  p_auto_queued_at       timestamptz,
+  -- Claims already spent on this event and kind (a live one not counted).
+  p_attempts             int default 0
 ) returns text
 language plpgsql immutable set search_path = public, extensions as $$
 declare
@@ -325,6 +332,7 @@ begin
       when coalesce(p_contacts, 0) = 0      then 'no_contact_emails'
       when p_manual_allocation_at >= ((p_event_date - 1)::timestamp at time zone 'Europe/London')
                                             then 'manual_sent'
+      when coalesce(p_attempts, 0) >= 8     then 'gave_up'
       else 'due'
     end;
   end if;
@@ -345,12 +353,13 @@ begin
     when coalesce(p_contacts, 0) = 0        then 'no_contact_emails'
     when p_signout_queued_at >= p_last_end  then 'manual_sent'
     when coalesce(p_undetermined, 0) > 0    then 'held_no_checkout'
+    when coalesce(p_attempts, 0) >= 8       then 'gave_up'
     else 'due'
   end;
 end $$;
 
-comment on function public.document_autosend_verdict(text, timestamptz, jsonb, date, timestamptz, timestamptz, boolean, int, int, int, timestamptz, timestamptz, timestamptz) is
-  'ADR-0074: due | disabled | already_sent | cancelled | not_yet | too_late | before_activation | hold_expired | no_confirmed_staff | no_contact_emails | manual_sent | held_no_checkout for one automatic D1/D2. Pure; mirrored by autosendVerdict() in apps/office/app/api/jobs/event-documents/_lib/schedule.ts.';
+comment on function public.document_autosend_verdict(text, timestamptz, jsonb, date, timestamptz, timestamptz, boolean, int, int, int, timestamptz, timestamptz, timestamptz, int) is
+  'ADR-0074: due | disabled | already_sent | cancelled | not_yet | too_late | before_activation | hold_expired | no_confirmed_staff | no_contact_emails | manual_sent | held_no_checkout | gave_up (eight claims spent) for one automatic D1/D2. Pure; mirrored by autosendVerdict() in apps/office/app/api/jobs/event-documents/_lib/schedule.ts.';
 
 create or replace function public.document_autosend_config()
 returns jsonb
@@ -384,7 +393,8 @@ create or replace function public.event_documents_due(
   undetermined         int,
   manual_allocation_at timestamptz,
   signout_queued_at    timestamptz,
-  auto_queued_at       timestamptz
+  auto_queued_at       timestamptz,
+  attempts             int
 )
 language plpgsql stable security definer set search_path = public, extensions as $$
 #variable_conflict use_column
@@ -412,7 +422,12 @@ begin
            (select max(d.queued_at) from event_documents d
              where d.event_id = ev.id and d.kind = 'signout') as signout_queued_at,
            (select a.queued_at from event_document_autosends a
-             where a.event_id = ev.id and a.kind = k.kind) as auto_queued_at
+             where a.event_id = ev.id and a.kind = k.kind) as auto_queued_at,
+           -- Claims spent: a claim whose lease is still live is the run
+           -- working on it now, and not yet spent.
+           coalesce((select a.attempts - case when a.lease_until > p_now then 1 else 0 end
+                       from event_document_autosends a
+                      where a.event_id = ev.id and a.kind = k.kind), 0) as attempts
       from ev
       cross join (values ('allocation'::text), ('signout')) as k(kind)
       cross join lateral event_document_tally(ev.id) t
@@ -420,9 +435,11 @@ begin
   select f.id, f.kind,
          document_autosend_verdict(f.kind, p_now, v_cfg, f.event_date, f.first_start, f.last_end,
                                    f.cancelled, f.confirmed, f.contacts, f.undetermined,
-                                   f.manual_allocation_at, f.signout_queued_at, f.auto_queued_at),
+                                   f.manual_allocation_at, f.signout_queued_at, f.auto_queued_at,
+                                   f.attempts),
          f.event_date, f.first_start, f.last_end, f.cancelled, f.confirmed, f.contacts,
-         f.undetermined, f.manual_allocation_at, f.signout_queued_at, f.auto_queued_at
+         f.undetermined, f.manual_allocation_at, f.signout_queued_at, f.auto_queued_at,
+         f.attempts
     from facts f
    order by f.event_date, f.id, f.kind;
 end $$;
@@ -435,8 +452,14 @@ comment on function public.event_documents_due(timestamptz, uuid) is
 -- ---------------------------------------------------------------------
 
 -- Claim one (event, kind) for this run: re-checks the verdict under a
--- lock, then takes the row if nobody holds a live lease and it has not
--- been queued. False = someone else has it, or it is no longer due.
+-- lock, then takes the row if nobody holds a live lease, it has not been
+-- queued, and fewer than eight claims have been spent on it (after that
+-- the verdict is gave_up and the office sends by hand). False = someone
+-- else has it, or it is no longer due.
+--
+-- p_now is the run's clock, so every candidate in one run is judged at
+-- the same instant; it is clamped to within five minutes of the database
+-- clock, so no caller can claim for a time that is not now.
 create or replace function public.event_document_autosend_claim(
   p_event         uuid,
   p_kind          text,
@@ -445,6 +468,8 @@ create or replace function public.event_document_autosend_claim(
 ) returns boolean
 language plpgsql security definer set search_path = public, extensions as $$
 declare
+  v_now     timestamptz := least(greatest(coalesce(p_now, now()), now() - interval '5 minutes'),
+                                 now() + interval '5 minutes');
   v_verdict text;
   v_lease   interval := make_interval(secs => least(greatest(coalesce(p_lease_seconds, 600), 60), 3600));
   v_taken   boolean;
@@ -454,17 +479,18 @@ begin
   end if;
   perform pg_advisory_xact_lock(hashtext('document-autosend:' || p_event::text || ':' || p_kind));
 
-  select d.verdict into v_verdict from event_documents_due(p_now, p_event) d where d.kind = p_kind;
+  select d.verdict into v_verdict from event_documents_due(v_now, p_event) d where d.kind = p_kind;
   if v_verdict is distinct from 'due' then
     return false;
   end if;
 
   insert into event_document_autosends as a (event_id, kind, claimed_at, lease_until, attempts)
-  values (p_event, p_kind, now(), p_now + v_lease, 1)
+  values (p_event, p_kind, now(), v_now + v_lease, 1)
   on conflict (event_id, kind) do update
-     set claimed_at = now(), lease_until = p_now + v_lease, attempts = a.attempts + 1
+     set claimed_at = now(), lease_until = v_now + v_lease, attempts = a.attempts + 1
    where a.queued_at is null
-     and (a.lease_until is null or a.lease_until <= p_now)
+     and (a.lease_until is null or a.lease_until <= v_now)
+     and a.attempts < 8
   returning true into v_taken;
 
   return coalesce(v_taken, false);
@@ -495,8 +521,10 @@ begin
   if p_storage_path is null or p_storage_path not like p_event::text || '/%' then
     raise exception 'storage_path_outside_event' using errcode = '22023';
   end if;
+  -- A LIVE claim: a run whose lease lapsed has lost it to the next run.
   if not exists (select 1 from event_document_autosends a
-                  where a.event_id = p_event and a.kind = p_kind and a.queued_at is null) then
+                  where a.event_id = p_event and a.kind = p_kind and a.queued_at is null
+                    and a.lease_until > now()) then
     raise exception 'autosend_not_claimed' using errcode = 'P0001';
   end if;
 
@@ -513,6 +541,12 @@ end $$;
 -- Queue the automatic email: key 'D1:auto:<event>' / 'D2:auto:<event>',
 -- so a second automatic send for the same event and kind is impossible
 -- even past the claim. The same recipients and payload as a manual Send.
+--
+-- Under the same advisory lock as the claim and the manual Send, the
+-- verdict is taken again: a manager who pressed Send while the PDF was
+-- being drawn (manual_sent), or anything else that changed, stands the
+-- job down — the claim is released with the reason, no outbox row is
+-- written, and the answer is queued = false.
 create or replace function public.queue_event_document_autosend(p_document uuid)
 returns jsonb
 language plpgsql security definer set search_path = public, extensions as $$
@@ -523,10 +557,21 @@ declare
   v_template text;
   v_key text;
   v_inserted int;
+  v_verdict text;
 begin
   select * into d from event_documents where id = p_document;
   if d.id is null then raise exception 'document_not_found' using errcode = 'P0002'; end if;
   if not d.automatic then raise exception 'not_an_automatic_copy' using errcode = '22023'; end if;
+  perform pg_advisory_xact_lock(hashtext('document-autosend:' || d.event_id::text || ':' || d.kind));
+
+  select x.verdict into v_verdict from event_documents_due(now(), d.event_id) x where x.kind = d.kind;
+  if v_verdict is distinct from 'due' then
+    update event_document_autosends
+       set lease_until = null, last_error = 'skipped: ' || coalesce(v_verdict, 'no verdict')
+     where event_id = d.event_id and kind = d.kind and queued_at is null;
+    return jsonb_build_object('key', null, 'queued', false, 'skipped', v_verdict);
+  end if;
+
   select * into ev from events where id = d.event_id;
   if ev.cancelled_at is not null then raise exception 'event_cancelled' using errcode = 'P0001'; end if;
   select * into v_client from clients where id = ev.client_id;
@@ -579,7 +624,7 @@ revoke execute on function
   public.event_document_tally(uuid),
   public.event_document_schedule(uuid),
   public.event_document_email_payload(uuid),
-  public.document_autosend_verdict(text, timestamptz, jsonb, date, timestamptz, timestamptz, boolean, int, int, int, timestamptz, timestamptz, timestamptz),
+  public.document_autosend_verdict(text, timestamptz, jsonb, date, timestamptz, timestamptz, boolean, int, int, int, timestamptz, timestamptz, timestamptz, int),
   public.document_autosend_config(),
   public.event_documents_due(timestamptz, uuid),
   public.event_document_autosend_claim(uuid, text, timestamptz, int),
@@ -593,7 +638,7 @@ grant execute on function
   public.event_document_tally(uuid),
   public.event_document_schedule(uuid),
   public.event_document_email_payload(uuid),
-  public.document_autosend_verdict(text, timestamptz, jsonb, date, timestamptz, timestamptz, boolean, int, int, int, timestamptz, timestamptz, timestamptz),
+  public.document_autosend_verdict(text, timestamptz, jsonb, date, timestamptz, timestamptz, boolean, int, int, int, timestamptz, timestamptz, timestamptz, int),
   public.document_autosend_config(),
   public.event_documents_due(timestamptz, uuid),
   public.event_document_autosend_claim(uuid, text, timestamptz, int),
