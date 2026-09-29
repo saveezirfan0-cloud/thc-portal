@@ -23,8 +23,15 @@
 --      service role always see the personal rate; an API session sees it
 --      only with finance, and otherwise gets back exactly the section
 --      rate it passed in — which, in every invoker view, is already NULL
---      for a scheduler (ADR-0061). No caller can learn a personal rate
---      they could not select.
+--      for a scheduler (ADR-0061).
+--
+--   1b. office_rate_payloads — the one place definer code writes a
+--      worker's rate where the office can read it: the "£x.xx" in N5 / OF1
+--      push payloads on notification_outbox, whose admin_read every office
+--      login holds, a scheduler included. A restrictive read fence, like
+--      office_users_invite_links: a row whose payload carries `rate` is
+--      read only with finance. It closes the section-rate leak ADR-0061
+--      missed as well as the personal one.
 --
 --   3. set_staff_pay_rate(staff, rate) — the one write path. Null clears.
 --      Validated like assert_role_input (not negative, to the penny),
@@ -61,7 +68,8 @@
 -- ---------------------------------------------------------------------
 create table public.staff_pay_rates (
   staff_id uuid primary key references public.staff (id) on delete cascade,
-  pay_rate numeric(8,2) not null check (pay_rate >= 0),
+  -- 'NaN' passes `>= 0` and fits numeric(8,2); it is not a rate.
+  pay_rate numeric(8,2) not null check (pay_rate >= 0 and pay_rate <> 'NaN'::numeric),
   set_by   uuid references public.profiles (id) on delete set null,
   set_at   timestamptz not null default now()
 );
@@ -92,6 +100,25 @@ create policy admin_finance_read on public.staff_pay_rates
 create trigger office_read_only
   before insert or update or delete or truncate on public.staff_pay_rates
   for each statement execute function public.office_read_only_guard();
+
+-- ---------------------------------------------------------------------
+-- 1b · The outbox fence (security review, 29.09.2026)
+--
+-- N5 and OF1 pushes carry the recipient's rate ('rate' => '£x.xx', now
+-- the personal one — section 6). notification_outbox's admin_read lets
+-- every office login read every row; a scheduler must not see money
+-- (ADR-0061). Restrictive, so it narrows admin_read and never widens it.
+-- /inbox reads office-addressed email templates, which carry no `rate`,
+-- so no screen changes; definer code (the drain, the jobs) is unaffected.
+-- ---------------------------------------------------------------------
+create policy office_rate_payloads on public.notification_outbox
+  as restrictive
+  for select
+  to authenticated
+  using (not (payload ? 'rate') or (select office_can('finance')));
+
+comment on policy office_rate_payloads on public.notification_outbox is
+  'ADR-0072 / ADR-0061: a row whose payload carries a worker''s pay rate (N5, OF1 pushes) is read only by a session with office_can(''finance''). 20261001215000.';
 
 -- ---------------------------------------------------------------------
 -- 2 · The precedence rule, once
@@ -129,6 +156,9 @@ begin
 
   -- assert_role_input's words: the rate is money and the column is to the
   -- penny, so a third decimal is refused, never rounded.
+  if p_pay_rate = 'NaN'::numeric then
+    raise exception 'A pay rate must be a number' using errcode = 'check_violation';
+  end if;
   if p_pay_rate is not null and p_pay_rate < 0 then
     raise exception 'A pay rate cannot be negative' using errcode = 'check_violation';
   end if;

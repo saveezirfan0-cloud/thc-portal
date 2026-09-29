@@ -20,7 +20,7 @@
 --      no money anywhere (ADR-0061).
 -- =====================================================================
 begin;
-select plan(67);
+select plan(72);
 \ir _shared/fixtures.psql
 
 \set manager   '75900000-0000-4000-8000-000000000001'
@@ -102,6 +102,8 @@ select ok(not exists (select 1 from information_schema.columns
   'no rate column on staff, which every office role reads (ADR-0061)');
 select throws_ok(format($$ insert into staff_pay_rates (staff_id, pay_rate) values (%L, -1) $$, :'staffb'),
   '23514', null, 'the table refuses a negative rate even from the owner');
+select throws_ok(format($$ insert into staff_pay_rates (staff_id, pay_rate) values (%L, 'NaN') $$, :'staffb'),
+  '23514', null, 'and NaN, which passes >= 0 and fits numeric(8,2)');
 
 -- Before any personal rate: everything is the section's.
 select is(effective_pay_rate(:'staffa', 14.00), 14.00::numeric, 'no personal rate: the section rate');
@@ -117,6 +119,8 @@ select throws_ok(format($$ select set_staff_pay_rate(%L, -0.01) $$, :'staffa'),
   '23514', 'A pay rate cannot be negative', 'a negative rate is refused');
 select throws_ok(format($$ select set_staff_pay_rate(%L, 12.715) $$, :'staffa'),
   '23514', 'A pay rate is set to the penny', 'a third decimal is refused, not rounded');
+select throws_ok(format($$ select set_staff_pay_rate(%L, 'NaN') $$, :'staffa'),
+  '23514', 'A pay rate must be a number', 'NaN is refused (the API, not only the form)');
 select throws_ok(format($$ select set_staff_pay_rate(%L, 12.71) $$, :'nobody'),
   'P0002', null, 'an unknown worker is refused');
 select lives_ok(format($$ select set_staff_pay_rate(%L, 12.00) $$, :'staffa'), 'manager sets a personal rate');
@@ -223,6 +227,19 @@ select lives_ok(format($$ select queue_booking_push('N759', %L) $$, :'booking_a'
 select is((select payload ->> 'rate' from notification_outbox where key = 'N759:booking:' || :'booking_a'), '£12.71',
   'with the personal rate in its payload');
 select is(booking_push_payload(:'booking_b') ->> 'rate', '£13.50', 'a worker without one: the section rate');
+
+-- ---- office_rate_payloads: the payload's rate is money (ADR-0061) --------
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'scheduler', 'role', 'authenticated')::text, true);
+select is((select count(*)::int from notification_outbox where payload ? 'rate'), 0,
+  'scheduler: no outbox row carrying a rate is readable (the N5 push held the personal rate)');
+select set_config('request.jwt.claims', json_build_object('sub', :'manager', 'role', 'authenticated')::text, true);
+select is((select payload ->> 'rate' from notification_outbox where key = 'N759:booking:' || :'booking_a'), '£12.71',
+  'manager (finance) still reads the N5 row and its rate');
+select set_config('request.jwt.claims', json_build_object('sub', :'viewer', 'role', 'authenticated')::text, true);
+select is((select count(*)::int from notification_outbox where key = 'N759:booking:' || :'booking_a'), 1,
+  'viewer (finance, read-only) reads it too');
+reset role;
 
 -- =====================================================================
 -- 5 · Clearing it, and a removed worker

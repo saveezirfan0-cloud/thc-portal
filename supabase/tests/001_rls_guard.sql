@@ -336,8 +336,9 @@ select is_empty(
 select bag_eq(
   $$ select p.polname::text || ':' || p.polcmd::text
        from pg_policy p where p.polrelid = 'notification_outbox'::regclass $$,
-  $$ values ('admin_read:r'::text), ('office_users_invite_links:r'), ('office_activation_links:r') $$,
-  'notification_outbox carries admin_read (select only, matching audit_log and report_sends) and two restrictive read fences — office_users_invite_links (E11, 20261001200600) and office_activation_links (E3, 20261001201200) keep one-time links to owners — still nothing that writes'
+  $$ values ('admin_read:r'::text), ('office_users_invite_links:r'), ('office_activation_links:r'),
+            ('office_rate_payloads:r') $$,
+  'notification_outbox carries admin_read (select only, matching audit_log and report_sends) and three restrictive read fences — office_users_invite_links (E11, 20261001200600) and office_activation_links (E3, 20261001201200) keep one-time links to owners, office_rate_payloads (ADR-0072, 20261001215000) keeps a push''s pay rate to finance — still nothing that writes'
 );
 
 -- ---------------------------------------------------------------------
@@ -392,8 +393,9 @@ select bag_eq(
             ('bank_details.office_finance_read:r'), ('payroll_export_lines.office_finance_read:r'),
             ('report_sends.office_finance_read:r'),
             ('notification_outbox.office_users_invite_links:r'),
-            ('notification_outbox.office_activation_links:r') $$,
-  'ADR-0056: exactly seventeen restrictive policies (the sixteenth, 20261001200600, keeps E11 set-up links to owners; the seventeenth, 20261001201200 / ADR-0060, E3 activation links) — settings writes on settings / venue_types, finance writes on roles / client_rate_cards, finance reads on bank_details / payroll_export_lines / report_sends'
+            ('notification_outbox.office_activation_links:r'),
+            ('notification_outbox.office_rate_payloads:r') $$,
+  'ADR-0056: exactly eighteen restrictive policies (the sixteenth, 20261001200600, keeps E11 set-up links to owners; the seventeenth, 20261001201200 / ADR-0060, E3 activation links; the eighteenth, 20261001215000 / ADR-0072, push payloads carrying a pay rate to finance) — settings writes on settings / venue_types, finance writes on roles / client_rate_cards, finance reads on bank_details / payroll_export_lines / report_sends'
 );
 
 -- 10b. And each of them asks office_can(), for a signed-in session only.

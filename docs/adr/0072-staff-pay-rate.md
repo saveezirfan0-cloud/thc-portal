@@ -82,10 +82,13 @@ There is no `admin_all` for a restrictive policy to narrow, so ADR-0056's pinned
 - **Access.** `assert_finance_caller()`: a Back Office login with finance, or the service role. A scheduler gets `not_permitted`; a worker or client gets `admins_only`. A viewer passes that gate and is refused `read_only` by the table's trigger.
 - **Validation.** The rules and words of `assert_role_input`: "A pay rate cannot be negative" and "A pay rate is set to the penny". A third decimal is refused, never rounded.
 - **Null clears** the rate (the row is deleted).
+- **NaN is refused** (`A pay rate must be a number`), in the function and in the table's check: `'NaN'` passes `>= 0` and fits `numeric(8,2)`. The form's `parseRate` already refused it; the API did not (security review, 29.09.2026).
 - **A removed worker is refused** (`staff_removed`, §1.7). Their history keeps the rate it was priced at.
 - **The row records `set_by = auth.uid()` and `set_at`.**
 
 **Not written to `audit_log`.** Rate changes on `roles` and `client_rate_cards` are not audited either (`update_role`, the rate-card functions). `audit_log` is readable by every office login through `/activity` and the record history, a scheduler included. An amount written there would undo ADR-0061.
+
+**Push payloads are fenced (`office_rate_payloads`).** N5 and OF1 pushes put the recipient's rate in `notification_outbox.payload` (`'rate' => '£x.xx'`), and that is now the personal rate. `notification_outbox`'s `admin_read` lets every office login read every row, a scheduler included, which was already a section-rate leak ADR-0061 missed. A restrictive SELECT policy, the same shape as `office_users_invite_links`, narrows it: a row whose payload has a `rate` key is read only with `office_can('finance')`. `/inbox` lists office-addressed email templates, none of which carry `rate`, so no screen changes. Definer code (the drain, the jobs) is unaffected.
 
 ### 5 · The gate holds without a second check
 
@@ -132,8 +135,9 @@ The wireframe (`backoffice/staff-profile.html`) predates this card. **This ADR i
 ## Consequences
 
 - **Tests.**
-  - pgTAP `759` (67 assertions): shape, set / clear / validation, precedence in `payable_shifts_v`, the payroll report, the worker RPCs and the N5 payload, section figures unchanged, and owner / manager / viewer / scheduler / worker / client / anon.
-  - `001_rls_guard` assertions 1 and 3 gain `staff_pay_rates`.
+  - pgTAP `759` (72 assertions): shape, set / clear / validation (NaN included), the outbox fence (a scheduler reads no row carrying a rate; manager and viewer do), precedence in `payable_shifts_v`, the payroll report, the worker RPCs and the N5 payload, section figures unchanged, and owner / manager / viewer / scheduler / worker / client / anon.
+  - `001_rls_guard` assertions 1 and 3 gain `staff_pay_rates`; assertions 8 and 9 gain `office_rate_payloads` (eighteen restrictive policies). `310` restates the outbox's policy set.
+  - `SECURITY DEFINER` callable by `authenticated` goes up by one (`set_staff_pay_rate`, finance-gated); `docs/14-handover.md` §4.
   - Vitest `staff/[id]/__tests__/payRate.test.tsx`.
 - **`packages/db/src/types.generated.ts`:** `staff_pay_rates`, `effective_pay_rate` and `set_staff_pay_rate` are hand-added. Regenerate after deploy.
 - **GDPR removal (§1.7)** keeps the row, like the rest of the pay history. Deleting the `staff` row (never done) cascades.
