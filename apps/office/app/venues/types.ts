@@ -52,4 +52,8 @@ export interface VenueDraft {
   geofence_radius_m: number;
 }
 
-export type ActionResult = { ok: true } | { ok: false; message: string };
+/**
+ * `id` is the new row's id on a create (the RPC returns it), so a caller
+ * that created a record inline — the Shift Builder — can select it.
+ */
+export type ActionResult = { ok: true; id?: string } | { ok: false; message: string };

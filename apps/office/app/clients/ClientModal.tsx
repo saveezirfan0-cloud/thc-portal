@@ -11,7 +11,8 @@ export interface ClientModalProps {
   /** Null creates; a client opens its fields for editing (§9.7). */
   client: Client | null;
   onClose: () => void;
-  onSaved: () => void;
+  /** `id` is the new client's id when this created one. */
+  onSaved: (id?: string) => void;
 }
 
 /**
@@ -98,7 +99,7 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
       const result = client
         ? await updateClientRecord(client.id, draft)
         : await createClientRecord(draft);
-      if (result.ok) onSaved();
+      if (result.ok) onSaved(result.id);
       else setError(result.message);
     });
   };

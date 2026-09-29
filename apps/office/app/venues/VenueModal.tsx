@@ -21,7 +21,8 @@ export interface VenueModalProps {
   venue: Venue | null;
   venueTypes: VenueType[];
   onClose: () => void;
-  onSaved: () => void;
+  /** `id` is the new venue's id when this created one. */
+  onSaved: (id?: string) => void;
 }
 
 interface Pin {
@@ -148,7 +149,7 @@ export function VenueModal({ venue, venueTypes, onClose, onSaved }: VenueModalPr
         geofence_radius_m: radius,
       };
       const result = venue ? await updateVenue(venue.id, draft) : await createVenue(draft);
-      if (result.ok) onSaved();
+      if (result.ok) onSaved(result.id);
       else setError(result.message);
     });
   };

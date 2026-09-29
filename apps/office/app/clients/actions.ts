@@ -23,12 +23,15 @@ const NOT_CONFIGURED =
 type RpcArguments = Record<string, string | number | boolean | string[] | null>;
 
 interface RpcClient {
-  rpc(fn: string, args: RpcArguments): PromiseLike<{ error: { message: string } | null }>;
+  rpc(
+    fn: string,
+    args: RpcArguments,
+  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
 }
 
 async function callRpc(fn: string, args: RpcArguments): Promise<ActionResult> {
   const supabase = createClient(await cookies()) as unknown as RpcClient;
-  const { error } = await supabase.rpc(fn, args);
+  const { data, error } = await supabase.rpc(fn, args);
   if (error) return { ok: false, message: error.message };
 
   revalidatePath('/clients');
@@ -36,7 +39,7 @@ async function callRpc(fn: string, args: RpcArguments): Promise<ActionResult> {
   // card's own route has to be revalidated or it keeps showing the name
   // and policies the manager has just changed.
   revalidatePath('/clients/[id]', 'page');
-  return { ok: true };
+  return typeof data === 'string' ? { ok: true, id: data } : { ok: true };
 }
 
 function args(draft: ClientDraft): RpcArguments {

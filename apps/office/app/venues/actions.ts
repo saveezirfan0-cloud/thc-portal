@@ -45,16 +45,19 @@ async function callerIsAdmin(): Promise<boolean> {
 type RpcArguments = Record<string, string | number>;
 
 interface RpcClient {
-  rpc(fn: string, args: RpcArguments): PromiseLike<{ error: { message: string } | null }>;
+  rpc(
+    fn: string,
+    args: RpcArguments,
+  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
 }
 
 async function callRpc(fn: string, args: RpcArguments): Promise<ActionResult> {
   const supabase = createClient(await cookies()) as unknown as RpcClient;
-  const { error } = await supabase.rpc(fn, args);
+  const { data, error } = await supabase.rpc(fn, args);
   if (error) return { ok: false, message: error.message };
 
   revalidatePath('/venues');
-  return { ok: true };
+  return typeof data === 'string' ? { ok: true, id: data } : { ok: true };
 }
 
 export async function createVenue(draft: VenueDraft): Promise<ActionResult> {

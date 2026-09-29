@@ -1,9 +1,14 @@
 'use client';
 
-import { useId, useMemo, useState, useTransition } from 'react';
+import { useEffect, useId, useMemo, useState, useTransition } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Alert, Button, Chip, Input, Note, Panel, SaveBar, Select, Textarea } from '@thc/ui';
 import { UK_ZONE, forecastEvent, formatTimeIn, ukInputLabel } from '@thc/domain';
+import { ClientModal } from '../../clients/ClientModal';
+import '../../clients/clients.css';
+import '../../venues/venues.css';
 import { RoleSection } from './RoleSection';
 import { Switch } from './Switch';
 import { ClientPolicies, SummaryPanel } from './SummaryPanel';
@@ -24,6 +29,12 @@ import {
 } from '../draft';
 import type { ClientOption, ReferenceData, SavedEvent } from '../data';
 import type { EventInput } from '../actions';
+
+// The venue modal carries the map, which no other part of the builder needs,
+// so it loads only when someone asks to add a venue.
+const VenueModal = dynamic(() => import('../../venues/VenueModal').then((m) => m.VenueModal), {
+  ssr: false,
+});
 
 export interface ShiftBuilderProps {
   mode: 'new' | 'edit';
@@ -96,6 +107,14 @@ export function ShiftBuilder({
   const [error, setError] = useState<string | null>(null);
   const fieldId = useId();
   const [pending, startTransition] = useTransition();
+  const router = useRouter();
+  /** Which "add" modal is open (§3.2: a new client or venue needn't leave the builder). */
+  const [adding, setAdding] = useState<'client' | 'venue' | null>(null);
+  /**
+   * A client or venue just created in a modal. The reference lists come from
+   * the server, so it is selected once the refreshed lists carry it.
+   */
+  const [created, setCreated] = useState<{ kind: 'client' | 'venue'; id: string } | null>(null);
 
   const client: ClientOption | undefined = reference.clients.find((c) => c.id === draft.clientId);
   const venue = reference.venues.find((v) => v.id === draft.venueId);
@@ -173,6 +192,27 @@ export function ShiftBuilder({
       }),
     }));
   }
+
+  function onCreated(kind: 'client' | 'venue', id: string | undefined) {
+    setAdding(null);
+    if (id) setCreated({ kind, id });
+    router.refresh();
+  }
+
+  useEffect(() => {
+    if (!created) return;
+    if (created.kind === 'client') {
+      if (!reference.clients.some((c) => c.id === created.id)) return;
+      pickClient(created.id);
+    } else {
+      if (!reference.venues.some((v) => v.id === created.id)) return;
+      setDraft((current) => ({ ...current, venueId: created.id }));
+    }
+    setCreated(null);
+    // pickClient only reads `reference` and `setDraft`; the trigger is the
+    // refreshed lists arriving.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [created, reference.clients, reference.venues]);
 
   function pickRole(key: string, roleId: string) {
     const role = reference.roles.find((r) => r.id === roleId);
@@ -274,7 +314,16 @@ export function ShiftBuilder({
                 value={draft.clientId}
                 disabled={readOnly}
                 onChange={(e) => pickClient(e.target.value)}
-                hint="Loads this client's rate card, dress codes, on-site contact and policies."
+                hint={
+                  <>
+                    {"Loads this client's rate card, dress codes, on-site contact and policies. "}
+                    {readOnly ? null : (
+                      <Button tone="ghost" size="sm" onClick={() => setAdding('client')}>
+                        + New client
+                      </Button>
+                    )}
+                  </>
+                }
               >
                 <option value="">Choose…</option>
                 {reference.clients.map((option) => (
@@ -293,13 +342,20 @@ export function ShiftBuilder({
                 disabled={readOnly}
                 onChange={(e) => setDraft((c) => ({ ...c, venueId: e.target.value }))}
                 hint={
-                  mode === 'edit' ? (
-                    <span className="amber">
-                      Changing the venue address triggers re-confirmation for everyone booked.
-                    </span>
-                  ) : (
-                    'From the Venues directory. Address and geofence come with it, read-only here.'
-                  )
+                  <>
+                    {mode === 'edit' ? (
+                      <span className="amber">
+                        Changing the venue address triggers re-confirmation for everyone booked.
+                      </span>
+                    ) : (
+                      'From the Venues directory. Address and geofence come with it, read-only here.'
+                    )}{' '}
+                    {readOnly || reference.venueTypes.length === 0 ? null : (
+                      <Button tone="ghost" size="sm" onClick={() => setAdding('venue')}>
+                        + New venue
+                      </Button>
+                    )}
+                  </>
                 }
               >
                 <option value="">Choose…</option>
@@ -634,6 +690,22 @@ export function ShiftBuilder({
           </Button>
         </SaveBar>
       )}
+
+      {adding === 'client' ? (
+        <ClientModal
+          client={null}
+          onClose={() => setAdding(null)}
+          onSaved={(id) => onCreated('client', id)}
+        />
+      ) : null}
+      {adding === 'venue' ? (
+        <VenueModal
+          venue={null}
+          venueTypes={reference.venueTypes}
+          onClose={() => setAdding(null)}
+          onSaved={(id) => onCreated('venue', id)}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { cookies } from 'next/headers';
 import { UK_ZONE, formatTimeIn } from '@thc/domain';
 import { eventsDb, supabaseConfigured } from './db';
+import type { VenueType } from '../venues/types';
 
 /**
  * Everything the Shift Builder reads — Scope §3.2.
@@ -52,6 +53,8 @@ export interface VenueOption {
 export interface ReferenceData {
   clients: ClientOption[];
   venues: VenueOption[];
+  /** §9.11's standard-radius table, for adding a venue from the builder. */
+  venueTypes: VenueType[];
   roles: RoleOption[];
   /** Set when this environment has no Supabase project wired up yet. */
   unavailable?: string;
@@ -96,7 +99,7 @@ interface RoleRateRow {
 
 export async function loadReferenceData(): Promise<ReferenceData> {
   if (!supabaseConfigured()) {
-    return { clients: [], venues: [], roles: [], unavailable: NO_SUPABASE };
+    return { clients: [], venues: [], venueTypes: [], roles: [], unavailable: NO_SUPABASE };
   }
 
   const supabase = eventsDb(await cookies());
@@ -112,7 +115,10 @@ export async function loadReferenceData(): Promise<ReferenceData> {
       .select('id, name, address, venue_type, geofence_radius_m')
       .is('deleted_at', null)
       .order('name'),
-    supabase.from('venue_types').select('key, label'),
+    supabase
+      .from('venue_types')
+      .select('key, label, default_radius_m, sort_order')
+      .order('sort_order'),
     supabase.from('roles').select('id, name').order('name'),
     // ADR-0061: empty for an office role without finance.
     supabase.from('rate_card_rates_v').select('client_id, role_id, charge_rate'),
@@ -128,14 +134,13 @@ export async function loadReferenceData(): Promise<ReferenceData> {
     return {
       clients: [],
       venues: [],
+      venueTypes: [],
       roles: [],
       unavailable: `Clients, venues and roles could not be loaded: ${failed.message}`,
     };
   }
 
-  const typeLabels = new Map(
-    ((venueTypes.data ?? []) as { key: string; label: string }[]).map((t) => [t.key, t.label]),
-  );
+  const typeLabels = new Map(((venueTypes.data ?? []) as VenueType[]).map((t) => [t.key, t.label]));
 
   const chargeOf = new Map(
     ((charges.data ?? []) as RateCardChargeRow[]).map((c) => [
@@ -175,6 +180,7 @@ export async function loadReferenceData(): Promise<ReferenceData> {
       venueTypeLabel: typeLabels.get(v.venue_type) ?? v.venue_type,
       geofenceRadiusM: v.geofence_radius_m,
     })),
+    venueTypes: (venueTypes.data ?? []) as VenueType[],
     roles: ((roles.data ?? []) as RoleRow[]).map((r) => ({
       id: r.id,
       name: r.name,
