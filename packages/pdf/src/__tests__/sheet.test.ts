@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { layoutSheet, orderPeople, safeFileName, sheetText } from '../sheet';
+import {
+  DOCUMENT_NAME,
+  SHEET_COLUMNS,
+  SHEET_TITLE,
+  layoutSheet,
+  orderPeople,
+  safeFileName,
+  sheetText,
+} from '../sheet';
 import type { SheetLayout, SheetRow } from '../sheet';
 import { GALA, galaPeople, removedWaiter, signOutPeople } from './fixtures';
 
@@ -196,5 +204,28 @@ describe('ordering and naming', () => {
     const layout = layoutSheet({ kind: 'allocation', event: GALA, people: [] });
     expect(layout.pages).toHaveLength(1);
     expect(layout.pages[0]!.footer).toBe(true);
+  });
+});
+
+describe('THC form changes of 29.09.2026 (ADR-0072)', () => {
+  it('ends with the Alcohol Policy Understood and Agreed column, after Hours Worked', () => {
+    expect(SHEET_COLUMNS.at(-1)).toBe('Alcohol Policy Understood and Agreed');
+    expect(SHEET_COLUMNS.at(-2)).toBe('Hours Worked');
+    expect(SHEET_COLUMNS[0]).toBe('Photo');
+  });
+
+  it('leaves the Alcohol Policy cell blank in both states — it is initialled by hand', () => {
+    for (const kind of ['allocation', 'signout'] as const) {
+      const layout = layoutSheet({ kind, event: GALA, people: signOutPeople() });
+      expect(rows(layout).every((r) => r.alcoholPolicy === '')).toBe(true);
+    }
+  });
+
+  it('keeps STAFF ALLOCATION as the printed header, while the product names the two states', () => {
+    expect(SHEET_TITLE).toBe('STAFF ALLOCATION');
+    expect(DOCUMENT_NAME).toEqual({
+      allocation: 'Allocation Timesheet',
+      signout: 'Completed Allocation Timesheet',
+    });
   });
 });
