@@ -1,4 +1,4 @@
-# ADR-0072 · Email the candidate when their documents are approved
+# ADR-0074 · Email the candidate when their documents are approved
 
 **Status:** Accepted (owner request, 29.09.2026). An addition to scope v1.6 §8.
 
@@ -22,7 +22,7 @@ The owner reported "didn't get notification when docs approved", then asked for 
 >
 > The Hospitality Company
 
-- **When:** queued by `onboarding_advance_if_ready()` (20261001214000) in the same transaction that moves the candidate from Documents to Quiz. It is sent once per onboarding period, whichever verification (document or declaration) was the last.
+- **When:** queued by `onboarding_advance_if_ready()` (20261001216000) in the same transaction that moves the candidate from Documents to Quiz. It is sent once per onboarding period, whichever verification (document or declaration) was the last.
 - **Key:** `E12:staff:<id>:<unlock epoch>`, so a candidate reset to candidate (§2.12) and verified again in a later period is told again.
 - **Payload:** `{ name }`, the trimmed first name. GDPR removal matches the row by recipient and by address (20260930120100).
 - **No email address on the row:** nothing is queued. The quiz still unlocks.

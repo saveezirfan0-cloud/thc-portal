@@ -42,6 +42,7 @@ export const EMAIL_PRESENTATION = {
   E9: { eyebrow: 'Conviction declared' },
   E10: { eyebrow: 'Self-cancellation' },
   E11: { eyebrow: 'Your login', buttons: { link: 'Set your password' } },
+  E12: { eyebrow: 'Your onboarding' },
   OC1: { eyebrow: 'Your video interview' },
   OC2: {
     eyebrow: 'Set up your account',
