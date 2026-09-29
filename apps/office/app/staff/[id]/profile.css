@@ -247,3 +247,38 @@
     min-height: var(--tap-min);
   }
 }
+
+/* ADR-0072 · the personal pay rate dialog: the £ / per-hour addons stay
+   tight to the input, and §9.8's three columns sit under it, as the role
+   dialog draws them (roles/roles.css). Tokens only. */
+.pay-rate-row {
+  max-width: 220px;
+}
+.pay-calc {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-10);
+}
+.pay-calc .c {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  padding: var(--sp-10) var(--sp-12);
+  border-radius: var(--r-tile);
+}
+.pay-calc .c .label {
+  display: block;
+  margin-bottom: var(--sp-4);
+}
+.pay-calc .c .v {
+  font-family: var(--font-num);
+  font-size: var(--fs-16);
+  font-weight: 600;
+}
+.pay-calc .c .v.cyan {
+  color: var(--cyan-ink);
+}
+@media (max-width: 720px) {
+  .pay-calc {
+    grid-template-columns: 1fr;
+  }
+}

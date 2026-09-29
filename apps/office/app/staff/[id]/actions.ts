@@ -8,6 +8,8 @@ import { createAdminClient } from '@thc/db/admin';
 import { validateEmergencyContact } from '@thc/domain';
 import type { EmergencyContactInput } from '@thc/domain';
 import { supabaseConfigured } from '../data';
+import { parseRate } from '../../roles/money';
+import { payRateMessage } from './payRate';
 import type { ActionResult } from './types';
 
 /**
@@ -256,5 +258,41 @@ export async function saveEmergencyContact(
 export async function clearEmergencyContact(staffId: string): Promise<ActionResult> {
   return emergencyMessage(
     await callRpc('office_clear_emergency_contact', { p_staff: staffId }, staffId),
+  );
+}
+
+// ---------------------------------------------------------------------
+// Personal pay rate (ADR-0072) — finance only
+//
+// set_staff_pay_rate() is a definer with assert_finance_caller() in its own
+// body, so it goes through the SESSION: a scheduler is refused by the
+// database whatever this file does, and the row names the manager as
+// set_by from auth.uid(). Null clears the rate.
+// ---------------------------------------------------------------------
+function payRateResult(result: ActionResult): ActionResult {
+  return result.ok ? result : { ok: false, message: payRateMessage(result.message) };
+}
+
+/**
+ * The rate as typed ("13.50", "£13.50"), parsed exactly as /roles parses a
+ * role's rate — to the penny, a third decimal refused, never rounded. The
+ * database checks again (not negative, to the penny).
+ */
+export async function savePayRate(staffId: string, typed: string): Promise<ActionResult> {
+  const pence = parseRate(typed);
+  if (pence === null) return { ok: false, message: 'Enter a rate to the penny, e.g. 13.50.' };
+  return payRateResult(
+    await callRpc(
+      'set_staff_pay_rate',
+      { p_staff: staffId, p_pay_rate: Number((pence / 100).toFixed(2)) },
+      staffId,
+    ),
+  );
+}
+
+/** Back to the role or event rate on every shift priced from now on. */
+export async function clearPayRate(staffId: string): Promise<ActionResult> {
+  return payRateResult(
+    await callRpc('set_staff_pay_rate', { p_staff: staffId, p_pay_rate: null }, staffId),
   );
 }

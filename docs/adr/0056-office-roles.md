@@ -92,3 +92,13 @@ hold it; scheduler and viewer do not. `office_can()` is restated in
 `20261001210000_date_of_birth_corrections.sql`, `permissions.ts` and its test carry the
 fifth column, and pgTAP 717 asserts the row per role. See
 [ADR-0070](0070-date-of-birth-corrections.md).
+
+## Update — a personal pay rate per worker (ADR-0072)
+
+`staff_pay_rates` (20261001215000) is a money-only table: one permissive
+`admin_finance_read` policy asking `office_can('finance')`, no write policy or
+write grant, and one write path, `set_staff_pay_rate()`, gated by
+`assert_finance_caller()`. A scheduler reads no row, gets no card on
+`/staff/:id`, and `effective_pay_rate()` hands them back only the section rate
+they passed in. No restrictive policy was added, so `001_rls_guard`'s pinned
+seventeen are unchanged. See [ADR-0072](0072-staff-pay-rate.md).

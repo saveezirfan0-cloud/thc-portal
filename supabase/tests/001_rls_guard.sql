@@ -42,6 +42,8 @@
 -- 20261001203000 (ADR-0061) added shift_rates_v, role_rates_v and
 -- rate_card_rates_v to assertion 11: the only read path left to the rate
 -- columns, gated in their own body by office_rates_visible() (753).
+-- 20261001215000 (ADR-0072) added staff_pay_rates to assertions 1 and 3:
+-- one permissive admin_finance_read policy, no write policy (759).
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
@@ -74,8 +76,9 @@ select bag_eq(
             ('staff_unavailability'),('staff_emergency_contacts'),('profile_change_requests'),
             ('shift_offers'),('shift_offer_notices'),('staff_referral_codes'),
             ('application_referrals'),
-            ('office_saved_views') $$,
-  'RLS is enabled on all 48 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), and office_saved_views (ADR-0059, 20261001202000)'
+            ('office_saved_views'),
+            ('staff_pay_rates') $$,
+  'RLS is enabled on all 49 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), office_saved_views (ADR-0059, 20261001202000) and staff_pay_rates (ADR-0072, 20261001215000)'
 );
 
 -- ---------------------------------------------------------------------
@@ -129,7 +132,9 @@ select is_empty(
 --    notification_outbox, job_runs and job_schedules, which are admin_read:
 --    all six are written only by definer functions and the service role
 --    (§1.7, §9.9, §5.2b, §8, §7). rtw_checks and the seven docs/19
---    additions are admin_read for the same reason.
+--    additions are admin_read for the same reason. staff_pay_rates
+--    (ADR-0072) is admin_finance_read: money, so finance only, and written
+--    only by set_staff_pay_rate().
 -- ---------------------------------------------------------------------
 select bag_eq(
   $$ select distinct c.relname::text from pg_policy p join pg_class c on c.oid = p.polrelid
@@ -150,7 +155,8 @@ select bag_eq(
             ('staff_unavailability'),('staff_emergency_contacts'),('profile_change_requests'),
             ('shift_offers'),('shift_offer_notices'),('staff_referral_codes'),
             ('application_referrals'),
-            ('office_saved_views') $$,
+            ('office_saved_views'),
+            ('staff_pay_rates') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );
 
@@ -330,8 +336,9 @@ select is_empty(
 select bag_eq(
   $$ select p.polname::text || ':' || p.polcmd::text
        from pg_policy p where p.polrelid = 'notification_outbox'::regclass $$,
-  $$ values ('admin_read:r'::text), ('office_users_invite_links:r'), ('office_activation_links:r') $$,
-  'notification_outbox carries admin_read (select only, matching audit_log and report_sends) and two restrictive read fences — office_users_invite_links (E11, 20261001200600) and office_activation_links (E3, 20261001201200) keep one-time links to owners — still nothing that writes'
+  $$ values ('admin_read:r'::text), ('office_users_invite_links:r'), ('office_activation_links:r'),
+            ('office_rate_payloads:r') $$,
+  'notification_outbox carries admin_read (select only, matching audit_log and report_sends) and three restrictive read fences — office_users_invite_links (E11, 20261001200600) and office_activation_links (E3, 20261001201200) keep one-time links to owners, office_rate_payloads (ADR-0072, 20261001215000) keeps a push''s pay rate to finance — still nothing that writes'
 );
 
 -- ---------------------------------------------------------------------
@@ -386,8 +393,9 @@ select bag_eq(
             ('bank_details.office_finance_read:r'), ('payroll_export_lines.office_finance_read:r'),
             ('report_sends.office_finance_read:r'),
             ('notification_outbox.office_users_invite_links:r'),
-            ('notification_outbox.office_activation_links:r') $$,
-  'ADR-0056: exactly seventeen restrictive policies (the sixteenth, 20261001200600, keeps E11 set-up links to owners; the seventeenth, 20261001201200 / ADR-0060, E3 activation links) — settings writes on settings / venue_types, finance writes on roles / client_rate_cards, finance reads on bank_details / payroll_export_lines / report_sends'
+            ('notification_outbox.office_activation_links:r'),
+            ('notification_outbox.office_rate_payloads:r') $$,
+  'ADR-0056: exactly eighteen restrictive policies (the sixteenth, 20261001200600, keeps E11 set-up links to owners; the seventeenth, 20261001201200 / ADR-0060, E3 activation links; the eighteenth, 20261001215000 / ADR-0072, push payloads carrying a pay rate to finance) — settings writes on settings / venue_types, finance writes on roles / client_rate_cards, finance reads on bank_details / payroll_export_lines / report_sends'
 );
 
 -- 10b. And each of them asks office_can(), for a signed-in session only.
