@@ -198,7 +198,7 @@ export function RtwReportUpload({ docId, staffId }: { docId: string; staffId: st
           aria-label="gov.uk report file"
           onChange={(event) => pick(event.target.files?.[0])}
         />
-        <Button size="sm" tone="ghost" disabled={busy} onClick={() => input.current?.click()}>
+        <Button size="sm" tone="ghost" loading={busy} onClick={() => input.current?.click()}>
           {busy ? 'Attaching…' : 'Attach gov.uk report'}
         </Button>
       </span>

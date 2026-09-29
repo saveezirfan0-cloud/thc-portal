@@ -77,7 +77,7 @@ export function ActionButton({
         {...(size ? { size } : {})}
         {...(tone ? { tone } : {})}
         {...(solid ? { solid } : {})}
-        disabled={pending}
+        loading={pending}
         onClick={() => (confirm ? setAsking(true) : run())}
       >
         {pending ? 'Working…' : label}
@@ -94,7 +94,7 @@ export function ActionButton({
               <Button
                 {...(tone ? { tone } : { tone: 'primary' as ButtonTone })}
                 solid
-                disabled={pending}
+                loading={pending}
                 onClick={run}
               >
                 {pending ? 'Working…' : confirm.confirmLabel}

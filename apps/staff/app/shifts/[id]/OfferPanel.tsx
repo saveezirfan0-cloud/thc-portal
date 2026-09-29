@@ -143,7 +143,7 @@ function CoverRequest({ bookingId, autoAssign }: { bookingId: string; autoAssign
             rows={3}
             onChange={(event) => setNote(event.target.value)}
           />
-          <Button block tone="primary" solid disabled={pending} onClick={send}>
+          <Button block tone="primary" solid loading={pending} onClick={send}>
             {pending ? 'Working…' : COVER_BUTTON}
           </Button>
           <Button block tone="ghost" disabled={pending} onClick={() => setOpen(false)}>

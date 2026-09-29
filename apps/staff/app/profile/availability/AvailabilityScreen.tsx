@@ -304,7 +304,7 @@ function AddSheet({
         hint={repeatHint(form)}
       />
       {error ? <Alert tone="coral">{error}</Alert> : null}
-      <Button tone="primary" size="lg" block disabled={pending} onClick={save}>
+      <Button tone="primary" size="lg" block loading={pending} onClick={save}>
         {pending ? 'Saving…' : saveLabel(form)}
       </Button>
       <Button tone="ghost" block disabled={pending} onClick={onClose}>

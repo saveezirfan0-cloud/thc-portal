@@ -306,7 +306,7 @@ function InviteButton({
       <Button
         size="sm"
         tone="outline"
-        disabled={pending}
+        loading={pending}
         onClick={invite}
         aria-label={`Invite ${name}`}
       >

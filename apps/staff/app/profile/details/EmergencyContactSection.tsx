@@ -167,7 +167,7 @@ export function EmergencyContactSection({
 
       {readOnly ? null : (
         <div className="row ec-actions">
-          <Button tone="primary" disabled={pending} onClick={save}>
+          <Button tone="primary" loading={pending} onClick={save}>
             {pending ? 'Saving…' : 'Save'}
           </Button>
           {contact ? (

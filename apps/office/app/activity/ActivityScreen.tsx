@@ -4,7 +4,16 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
-import { Alert, Avatar, EmptyState, Panel, Pill, SearchInput, Select } from '@thc/ui';
+import {
+  Alert,
+  Avatar,
+  EmptyState,
+  Panel,
+  Pill,
+  SearchInput,
+  Select,
+  startNavProgress,
+} from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
 import { actionLabel, entityHref, entityLabel } from '../_lib/accounts';
 import type { ActivityFilters, ActivityPageData } from './data';
@@ -45,6 +54,7 @@ export function ActivityScreen({
     };
     for (const [key, value] of Object.entries(merged)) if (value) next.set(key, value);
     const search = next.toString();
+    startNavProgress();
     router.push(search ? `${pathname}?${search}` : pathname);
   };
 

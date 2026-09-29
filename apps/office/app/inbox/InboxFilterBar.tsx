@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Select } from '@thc/ui';
+import { Select, startNavProgress } from '@thc/ui';
 import { type InboxQuery, PERIODS, STATUSES, inboxHref } from './filters';
 
 /**
@@ -16,7 +16,10 @@ export function InboxFilterBar({
   types: readonly { code: string; label: string }[];
 }) {
   const router = useRouter();
-  const go = (patch: Parameters<typeof inboxHref>[1]) => router.push(inboxHref(query, patch));
+  const go = (patch: Parameters<typeof inboxHref>[1]) => {
+    startNavProgress();
+    router.push(inboxHref(query, patch));
+  };
 
   return (
     <div className="toolbar inbox-filters">

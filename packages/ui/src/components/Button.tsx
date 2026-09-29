@@ -31,6 +31,12 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   icon?: boolean;
   /** Filled variant of the danger tone (`.btn.danger.solid`). */
   solid?: boolean;
+  /**
+   * An action is in flight: shows a spinner, disables the button so it
+   * cannot be pressed twice, and tells assistive technology it is busy.
+   * Keep the label (or swap it for "Saving…") — the spinner sits before it.
+   */
+  loading?: boolean;
   children?: ReactNode;
 }
 
@@ -40,8 +46,11 @@ export function Button({
   block,
   icon,
   solid,
+  loading,
+  disabled,
   className,
   type = 'button',
+  children,
   ...rest
 }: ButtonProps) {
   return (
@@ -54,9 +63,15 @@ export function Button({
         size !== 'md' && size,
         block && 'block',
         icon && 'icon',
+        loading && 'loading',
         className,
       )}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       {...rest}
-    />
+    >
+      {loading ? <span className="spin" aria-hidden="true" /> : null}
+      {children}
+    </button>
   );
 }

@@ -42,7 +42,7 @@ export function InviteForm({ token, type }: { token: string; type: string }) {
         onChange={(event) => setConfirm(event.target.value)}
         error={confirm.length > 0 && !checks.matches ? 'Passwords don’t match.' : undefined}
       />
-      <Button type="submit" tone="primary" size="lg" block disabled={pending || !ready}>
+      <Button type="submit" tone="primary" size="lg" block loading={pending} disabled={!ready}>
         {pending ? 'Setting up…' : 'Set password and sign in'}
       </Button>
     </form>

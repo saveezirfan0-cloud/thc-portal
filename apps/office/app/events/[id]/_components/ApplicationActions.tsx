@@ -54,7 +54,7 @@ export function ApplicationActions({
         </span>
       ) : null}
       {note ? <span className="muted sm">{note}</span> : null}
-      <Button size="sm" tone="outline" disabled={pending} onClick={() => setAsking(true)}>
+      <Button size="sm" tone="outline" loading={pending} onClick={() => setAsking(true)}>
         {pending ? 'Accepting…' : 'Accept application'}
       </Button>
 

@@ -61,7 +61,7 @@ export function RetryButton({
   }, []);
 
   return (
-    <Button block tone="primary" disabled={pending} onClick={retry}>
+    <Button block tone="primary" loading={pending} onClick={retry}>
       {pending ? 'Trying again…' : label}
     </Button>
   );

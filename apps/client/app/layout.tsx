@@ -1,6 +1,8 @@
+import { Suspense } from 'react';
 import type { Metadata, Viewport } from 'next';
 import { AppearanceScript } from '@thc/ui';
 import '@thc/ui/styles.css';
+import { NavProgress } from './_components/NavProgress';
 
 export const metadata: Metadata = {
   title: 'THC Client Portal',
@@ -45,7 +47,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <AppearanceScript />
       </head>
-      <body>{children}</body>
+      <body>
+        {/* useSearchParams() needs a Suspense boundary on static pages. */}
+        <Suspense fallback={null}>
+          <NavProgress />
+        </Suspense>
+        {children}
+      </body>
     </html>
   );
 }

@@ -3586,3 +3586,81 @@ a.signed-in-as:focus-visible .strong {
     background: var(--line);
   }
 }
+
+/* ---------------------------------------------------------------------
+   LOADING FEEDBACK — the answer to a click, so nobody clicks twice.
+   `.nav-progress` (NavProgress): the bar across the top while the next
+   page is on its way. `a[data-pending]`: the link that was clicked.
+   `.btn.loading` (Button `loading`): a spinner before the label.
+   All of it stops moving for anyone who asks the OS for reduced motion.
+   --------------------------------------------------------------------- */
+@keyframes thc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes thc-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}
+.spin {
+  display: inline-block;
+  flex: 0 0 auto;
+  width: 1em;
+  height: 1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: thc-spin 0.7s linear infinite;
+}
+.btn.loading {
+  cursor: progress;
+}
+/* A loading button is disabled, so the muted disabled surface applies;
+   `cursor: progress` outranks its `not-allowed`. */
+.btn.loading:disabled {
+  cursor: progress;
+}
+a[data-pending='true'] {
+  animation: thc-pulse 0.9s ease-in-out infinite;
+  cursor: progress;
+}
+.nav-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 1000;
+  pointer-events: none;
+  background: var(--cyan-solid);
+  transform: scaleX(0);
+  transform-origin: left;
+  opacity: 0;
+}
+.nav-progress[data-busy='true'] {
+  opacity: 1;
+  animation: thc-nav-progress 6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
+}
+@keyframes thc-nav-progress {
+  from {
+    transform: scaleX(0.08);
+  }
+  to {
+    transform: scaleX(0.92);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spin {
+    animation-duration: 2s;
+  }
+  a[data-pending='true'] {
+    animation: none;
+    opacity: 0.6;
+  }
+  .nav-progress[data-busy='true'] {
+    animation: none;
+    transform: scaleX(0.6);
+  }
+}

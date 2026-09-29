@@ -92,7 +92,7 @@ export function DocumentActions({ eventId, started }: { eventId: string; started
           confirming ? (
             <>
               <Button onClick={() => setConfirming(null)}>Not now</Button>
-              <Button tone="primary" disabled={pending} onClick={() => send(confirming)}>
+              <Button tone="primary" loading={pending} onClick={() => send(confirming)}>
                 {pending ? 'Sending…' : 'Send'}
               </Button>
             </>

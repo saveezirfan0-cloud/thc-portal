@@ -141,7 +141,7 @@ export function PayRateCard({
             <Button tone="ghost" onClick={close} disabled={pending}>
               Cancel
             </Button>
-            <Button tone="primary" disabled={pending || pence === null} onClick={save}>
+            <Button tone="primary" loading={pending} disabled={pence === null} onClick={save}>
               {pending ? 'Saving…' : 'Save rate'}
             </Button>
           </>

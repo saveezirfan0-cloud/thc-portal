@@ -197,7 +197,8 @@ export function NotificationsScreen({
         tone="primary"
         size="lg"
         block
-        disabled={busy || !copy?.actionable || state === 'needs-install'}
+        loading={busy}
+        disabled={!copy?.actionable || state === 'needs-install'}
         onClick={() => void turnOn()}
       >
         {busy ? 'Asking your phone…' : 'Turn on notifications'}

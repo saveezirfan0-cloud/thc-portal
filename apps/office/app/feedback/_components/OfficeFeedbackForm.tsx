@@ -135,7 +135,7 @@ export function OfficeFeedbackForm({
           {comment}
           <div className="row wrap">
             <div className="fb-event">{eventSelect}</div>
-            <Button tone="primary" className="ml-auto" onClick={submit} disabled={pending}>
+            <Button tone="primary" className="ml-auto" onClick={submit} loading={pending}>
               {pending ? 'Saving…' : 'Add feedback'}
             </Button>
           </div>
@@ -196,7 +196,7 @@ export function OfficeFeedbackForm({
             No limit on how many entries a person can have. Also available from the worker&rsquo;s
             profile.
           </span>
-          <Button tone="primary" className="ml-auto" onClick={submit} disabled={pending}>
+          <Button tone="primary" className="ml-auto" onClick={submit} loading={pending}>
             {pending ? 'Saving…' : 'Add feedback'}
           </Button>
         </div>

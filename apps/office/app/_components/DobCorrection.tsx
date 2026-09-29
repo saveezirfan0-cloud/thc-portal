@@ -113,7 +113,7 @@ export function DobCorrection({
             <Button tone="ghost" onClick={close}>
               Cancel
             </Button>
-            <Button tone="primary" disabled={pending} onClick={save}>
+            <Button tone="primary" loading={pending} onClick={save}>
               {pending ? 'Saving…' : 'Save'}
             </Button>
           </>

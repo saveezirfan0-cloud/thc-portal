@@ -126,7 +126,7 @@ export function P45Flow({
             <Button tone="primary" onClick={() => setAsking(false)} disabled={pending}>
               Go back
             </Button>
-            <Button tone="danger" onClick={confirm} disabled={pending}>
+            <Button tone="danger" onClick={confirm} loading={pending}>
               {pending ? 'Requesting…' : 'Request my P45'}
             </Button>
           </>

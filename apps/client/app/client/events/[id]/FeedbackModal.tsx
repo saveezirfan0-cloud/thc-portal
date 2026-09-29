@@ -74,7 +74,7 @@ export function FeedbackModal({
           <Button tone="ghost" onClick={close} disabled={pending}>
             Cancel
           </Button>
-          <Button tone="primary" onClick={submit} disabled={pending}>
+          <Button tone="primary" onClick={submit} loading={pending}>
             {pending ? 'Submitting…' : 'Submit feedback'}
           </Button>
         </>

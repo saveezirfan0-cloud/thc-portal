@@ -146,12 +146,7 @@ export function PhotoField({
             event.target.value = '';
           }}
         />
-        <Button
-          tone="outline"
-          size="sm"
-          disabled={pending}
-          onClick={() => fileRef.current?.click()}
-        >
+        <Button tone="outline" size="sm" loading={pending} onClick={() => fileRef.current?.click()}>
           {pending ? 'Uploading…' : 'Take or choose a photo'}
         </Button>
       </div>

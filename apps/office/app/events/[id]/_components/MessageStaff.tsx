@@ -114,7 +114,12 @@ export function MessageStaff({
           ) : (
             <>
               <Button onClick={close}>Cancel</Button>
-              <Button tone="primary" disabled={pending || length === 0 || tooLong} onClick={submit}>
+              <Button
+                tone="primary"
+                loading={pending}
+                disabled={length === 0 || tooLong}
+                onClick={submit}
+              >
                 {pending ? 'Sending…' : 'Send push'}
               </Button>
             </>

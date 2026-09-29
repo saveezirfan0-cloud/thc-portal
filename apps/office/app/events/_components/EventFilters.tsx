@@ -6,6 +6,7 @@ import { EVENT_STATUS_LABEL } from '@thc/domain';
 import { hrefFor, type ToolbarQuery } from './EventToolbar';
 import type { ClientOption } from '../data';
 import { EVENT_STATUSES } from '../_lib/filters';
+import { startNavProgress } from '@thc/ui';
 
 /**
  * Search and the two filters (§3.1).
@@ -24,6 +25,7 @@ export function EventFilters({ query, clients }: { query: ToolbarQuery; clients:
       className="row"
       onSubmit={(event) => {
         event.preventDefault();
+        startNavProgress();
         router.push(hrefFor({ ...query, q: q.trim() }));
       }}
     >
@@ -43,7 +45,10 @@ export function EventFilters({ query, clients }: { query: ToolbarQuery; clients:
         style={{ height: 32, width: 170 }}
         aria-label="Filter by client"
         value={query.clientId}
-        onChange={(event) => router.push(hrefFor({ ...query, clientId: event.target.value }))}
+        onChange={(event) => {
+          startNavProgress();
+          router.push(hrefFor({ ...query, clientId: event.target.value }));
+        }}
       >
         <option value="">All clients</option>
         {clients.map((client) => (
@@ -58,7 +63,10 @@ export function EventFilters({ query, clients }: { query: ToolbarQuery; clients:
         style={{ height: 32, width: 140 }}
         aria-label="Filter by status"
         value={query.status}
-        onChange={(event) => router.push(hrefFor({ ...query, status: event.target.value }))}
+        onChange={(event) => {
+          startNavProgress();
+          router.push(hrefFor({ ...query, status: event.target.value }));
+        }}
       >
         <option value="">Any status</option>
         {EVENT_STATUSES.map((status) => (

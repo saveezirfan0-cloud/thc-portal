@@ -538,7 +538,8 @@ export function ShiftScreen({
             block
             size="lg"
             tone={inside ? 'green' : 'default'}
-            disabled={busy || !started}
+            loading={busy}
+            disabled={!started}
             onClick={() => void onCheckOut()}
           >
             {busy ? 'Checking out…' : 'Check out'}

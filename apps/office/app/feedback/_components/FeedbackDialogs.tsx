@@ -87,7 +87,7 @@ export function EditFeedbackModal({
           <Button tone="ghost" onClick={onClose} disabled={pending}>
             Cancel
           </Button>
-          <Button tone="primary" onClick={save} disabled={pending}>
+          <Button tone="primary" onClick={save} loading={pending}>
             {pending ? 'Saving…' : 'Save changes'}
           </Button>
         </>
@@ -179,7 +179,7 @@ export function DeleteFeedbackModal({
           <Button tone="ghost" onClick={onClose} disabled={pending}>
             Cancel
           </Button>
-          <Button tone="danger" onClick={remove} disabled={pending}>
+          <Button tone="danger" onClick={remove} loading={pending}>
             {pending ? 'Deleting…' : 'Delete'}
           </Button>
         </>

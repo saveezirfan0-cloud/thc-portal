@@ -59,7 +59,7 @@ export function LoginForm({ next }: { next?: string }) {
           </button>
         </div>
       </div>
-      <Button type="submit" tone="primary" size="lg" block disabled={pending}>
+      <Button type="submit" tone="primary" size="lg" block loading={pending}>
         {pending ? 'Signing in…' : 'Sign in'}
       </Button>
       {/* A1 (§10.2). Under the button, where the wireframe puts it — a

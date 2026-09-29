@@ -1,6 +1,8 @@
 export { Button } from './components/Button';
 export type { ButtonProps, ButtonSize, ButtonTone } from './components/Button';
 
+export { NavProgress, startNavProgress } from './components/NavProgress';
+
 export { Chip, Pill } from './components/Pill';
 export type { ChipProps, PillProps, Tone } from './components/Pill';
 

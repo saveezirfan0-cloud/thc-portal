@@ -3,7 +3,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Avatar, Button, Checkbox, Panel, Pill, SegToggle, Select } from '@thc/ui';
+import {
+  Avatar,
+  Button,
+  Checkbox,
+  Panel,
+  Pill,
+  SegToggle,
+  Select,
+  startNavProgress,
+} from '@thc/ui';
 import { UK_ZONE, formatDateTimeIn } from '@thc/domain';
 import { createClient } from '@thc/db/browser';
 import { type LogQuery, logQueryHref, logTime } from './log';
@@ -127,7 +136,10 @@ export function MonitorScreen({
         actions={
           <Checkbox
             checked={showResolved}
-            onChange={(checked) => router.push(logQueryHref({ showResolved: checked, page: 1 }))}
+            onChange={(checked) => {
+              startNavProgress();
+              router.push(logQueryHref({ showResolved: checked, page: 1 }));
+            }}
           >
             Show resolved
           </Checkbox>

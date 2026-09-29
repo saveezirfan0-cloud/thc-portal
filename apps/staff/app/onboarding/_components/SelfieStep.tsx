@@ -186,7 +186,7 @@ export function SelfieStep({
         >
           Retake
         </Button>
-        <Button tone="primary" block className="grow" onClick={use} disabled={pending}>
+        <Button tone="primary" block className="grow" onClick={use} loading={pending}>
           {pending ? 'Saving…' : 'Use this photo'}
         </Button>
       </div>

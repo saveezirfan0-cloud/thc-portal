@@ -55,7 +55,7 @@ export function ResetForm() {
         <Check ok={checks.matches}>Both fields match</Check>
       </div>
 
-      <Button type="submit" tone="primary" size="lg" block disabled={pending || !ready}>
+      <Button type="submit" tone="primary" size="lg" block loading={pending} disabled={!ready}>
         {pending ? 'Saving…' : 'Save password & sign in'}
       </Button>
       <div className="xs muted">Setting a new password signs you out of every other device.</div>

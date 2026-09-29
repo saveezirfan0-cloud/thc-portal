@@ -156,7 +156,7 @@ export function RecordHistory({
           )}
           {older !== null ? (
             <div className="activity-pager">
-              <Button size="sm" className="ml-auto" disabled={pending} onClick={() => load(older)}>
+              <Button size="sm" className="ml-auto" loading={pending} onClick={() => load(older)}>
                 {pending ? 'Loading…' : 'Older →'}
               </Button>
             </div>

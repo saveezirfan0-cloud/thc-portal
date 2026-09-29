@@ -114,7 +114,7 @@ function OffState() {
           onChange={(event) => setDeviceName(event.target.value)}
         />
         <Feedback result={result} />
-        <Button type="submit" tone="primary" disabled={pending || !deviceName.trim()}>
+        <Button type="submit" tone="primary" loading={pending} disabled={!deviceName.trim()}>
           {pending ? 'Preparing…' : 'Set up two-step sign-in'}
         </Button>
       </form>
@@ -164,7 +164,7 @@ function OffState() {
       />
       <Feedback result={result} />
       <div className="twostep-actions">
-        <Button type="submit" tone="primary" disabled={pending || !code.trim()}>
+        <Button type="submit" tone="primary" loading={pending} disabled={!code.trim()}>
           {pending ? 'Checking…' : 'Turn on two-step sign-in'}
         </Button>
         <Button tone="ghost" disabled={pending} onClick={() => cancel(setup.factorId)}>
@@ -232,7 +232,7 @@ function OnState({ twoStep }: { twoStep: MyTwoStep }) {
           />
           <Feedback result={result} />
           <div className="twostep-actions">
-            <Button type="submit" tone="danger" disabled={pending || !code.trim()}>
+            <Button type="submit" tone="danger" loading={pending} disabled={!code.trim()}>
               {pending ? 'Removing…' : 'Remove two-step sign-in'}
             </Button>
             <Button

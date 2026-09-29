@@ -30,7 +30,7 @@ export function VerifyForm({ next, intro }: { next?: string | undefined; intro: 
         className="twostep-code"
         error={error ? ' ' : undefined}
       />
-      <Button type="submit" tone="primary" size="lg" block disabled={pending}>
+      <Button type="submit" tone="primary" size="lg" block loading={pending}>
         {pending ? 'Checking…' : 'Continue'}
       </Button>
     </form>

@@ -142,7 +142,7 @@ function DetailsBlock({ account }: { account: MyAccount }) {
           onChange={(event) => setPhone(event.target.value)}
         />
         <Feedback result={result} />
-        <Button type="submit" tone="primary" disabled={pending || !dirty}>
+        <Button type="submit" tone="primary" loading={pending} disabled={!dirty}>
           {pending ? 'Saving…' : 'Save details'}
         </Button>
       </form>
@@ -182,7 +182,7 @@ function EmailBlock({ account }: { account: MyAccount }) {
           onChange={(event) => setEmail(event.target.value)}
         />
         <Feedback result={result} />
-        <Button type="submit" disabled={pending || !email.trim()}>
+        <Button type="submit" loading={pending} disabled={!email.trim()}>
           {pending ? 'Sending…' : 'Change email'}
         </Button>
       </form>
@@ -237,7 +237,7 @@ function PasswordBlock() {
           onChange={(event) => setConfirm(event.target.value)}
         />
         <Feedback result={result} />
-        <Button type="submit" disabled={pending || !current || !next || !confirm}>
+        <Button type="submit" loading={pending} disabled={!current || !next || !confirm}>
           {pending ? 'Changing…' : 'Change password'}
         </Button>
       </form>
@@ -255,7 +255,7 @@ function DeviceBlock() {
           except this one.
         </p>
         <Feedback result={result} />
-        <Button tone="outline" disabled={pending} onClick={() => run(signOutOtherDevices)}>
+        <Button tone="outline" loading={pending} onClick={() => run(signOutOtherDevices)}>
           {pending ? 'Signing out…' : 'Sign out other devices'}
         </Button>
         <hr />

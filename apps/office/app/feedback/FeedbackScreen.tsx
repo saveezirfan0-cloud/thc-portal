@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition, type ReactNode } from 'react';
-import { Alert, Button, EmptyState, Pill, SegToggle, Tabs } from '@thc/ui';
+import { Alert, Button, EmptyState, Pill, SegToggle, startNavProgress, Tabs } from '@thc/ui';
 import { markRead } from './actions';
 import { DeleteFeedbackModal, EditFeedbackModal } from './_components/FeedbackDialogs';
 import { OfficeFeedbackForm } from './_components/OfficeFeedbackForm';
@@ -37,7 +37,10 @@ export function FeedbackScreen({ data, query }: { data: FeedbackPageData; query:
   const [editing, setEditing] = useState<FeedbackEntry | null>(null);
   const [deleting, setDeleting] = useState<FeedbackEntry | null>(null);
 
-  const go = (patch: Partial<FeedbackQuery>) => router.push(hrefFor(query, patch));
+  const go = (patch: Partial<FeedbackQuery>) => {
+    startNavProgress();
+    router.push(hrefFor(query, patch));
+  };
   const info = pageInfo(query.page, data.total);
 
   return (
@@ -249,7 +252,7 @@ function ClientRow({ entry, onDelete }: { entry: FeedbackEntry; onDelete: () => 
       <div className="acts">
         <Pill tone={status.tone}>{status.label}</Pill>
         {entry.unread ? (
-          <Button size="sm" tone="primary" onClick={read} disabled={pending}>
+          <Button size="sm" tone="primary" onClick={read} loading={pending}>
             {pending ? 'Marking…' : 'Mark as read'}
           </Button>
         ) : (
@@ -318,6 +321,7 @@ function SearchBox({ query }: { query: FeedbackQuery }) {
       role="search"
       onSubmit={(event) => {
         event.preventDefault();
+        startNavProgress();
         router.push(hrefFor(query, { q: q.trim() }));
       }}
     >
@@ -330,7 +334,10 @@ function SearchBox({ query }: { query: FeedbackQuery }) {
         onChange={(event) => {
           setQ(event.target.value);
           // Clearing the box clears the search, without needing Enter.
-          if (event.target.value === '' && query.q) router.push(hrefFor(query, { q: '' }));
+          if (event.target.value === '' && query.q) {
+            startNavProgress();
+            router.push(hrefFor(query, { q: '' }));
+          }
         }}
       />
     </form>

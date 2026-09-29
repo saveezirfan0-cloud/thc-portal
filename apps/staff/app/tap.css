@@ -45,36 +45,3 @@ html {
     opacity: 0.7;
   }
 }
-
-/* NavProgress: the bar that answers a tapped link at once. */
-.nav-progress {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  z-index: 1000;
-  pointer-events: none;
-  background: var(--cyan-solid);
-  transform: scaleX(0);
-  transform-origin: left;
-  opacity: 0;
-}
-.nav-progress[data-busy='true'] {
-  opacity: 1;
-  animation: nav-progress 6s cubic-bezier(0.1, 0.8, 0.3, 1) forwards;
-}
-@keyframes nav-progress {
-  from {
-    transform: scaleX(0.08);
-  }
-  to {
-    transform: scaleX(0.92);
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .nav-progress[data-busy='true'] {
-    animation: none;
-    transform: scaleX(0.6);
-  }
-}

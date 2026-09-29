@@ -191,7 +191,7 @@ export function ApplyForm({ referralCode = null }: { referralCode?: string | nul
       {/* Sticky at phone width (apply.css): "full-width and sticky-bottom
           in product" — the fields scroll under it. */}
       <div className="apply-submit">
-        <Button type="submit" tone="primary" size="lg" block disabled={pending || blocked}>
+        <Button type="submit" tone="primary" size="lg" block loading={pending} disabled={blocked}>
           {pending ? 'Sending…' : 'Submit application'}
         </Button>
       </div>

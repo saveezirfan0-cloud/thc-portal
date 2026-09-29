@@ -24,7 +24,7 @@ export function ForgotForm() {
         required
         error={error ? ' ' : undefined}
       />
-      <Button type="submit" tone="primary" size="lg" block disabled={pending}>
+      <Button type="submit" tone="primary" size="lg" block loading={pending}>
         {pending ? 'Sending…' : 'Send reset link'}
       </Button>
       <Link href="/login" className="sm" style={{ textAlign: 'center' }}>

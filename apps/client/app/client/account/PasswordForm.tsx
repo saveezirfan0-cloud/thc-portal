@@ -73,7 +73,7 @@ function PasswordFields({ pending }: { pending: boolean }) {
         error={confirm.length > 0 && !checks.matches ? 'Passwords don’t match.' : undefined}
       />
       <div className="acct-submit">
-        <Button type="submit" tone="primary" disabled={pending || !ready}>
+        <Button type="submit" tone="primary" loading={pending} disabled={!ready}>
           {pending ? 'Saving…' : 'Change password'}
         </Button>
         <span className="xs muted">Saving signs you out of every other device.</span>

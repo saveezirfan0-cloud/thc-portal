@@ -123,7 +123,7 @@ export function DeclareForm({
             <Button onClick={() => setAsking(false)} disabled={pending}>
               Go back
             </Button>
-            <Button tone="danger" onClick={confirm} disabled={pending}>
+            <Button tone="danger" onClick={confirm} loading={pending}>
               {pending ? 'Submitting…' : 'Yes, submit'}
             </Button>
           </>

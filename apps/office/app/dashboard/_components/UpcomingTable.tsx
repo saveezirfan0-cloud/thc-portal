@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { MouseEvent } from 'react';
 import { EVENT_STATUS_LABEL, type EventStatus, eventStatus } from '@thc/domain';
-import { EmptyState, Pill } from '@thc/ui';
+import { EmptyState, Pill, startNavProgress } from '@thc/ui';
 import {
   type UpcomingEvent,
   allocationLabel,
@@ -60,6 +60,7 @@ export function UpcomingTable({
     // A click on the title's own link, or on anything else interactive in
     // the row, is already handled — one navigation, not two.
     if ((event.target as HTMLElement).closest('a, button')) return;
+    startNavProgress();
     router.push(`/events/${eventId}`);
   };
 

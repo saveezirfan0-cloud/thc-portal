@@ -330,7 +330,7 @@ function UserRow({
                 use, a link would let whoever holds it sign in as its owner,
                 who resets their own password from the sign-in screen. */}
             {!account.disabled && !account.last_sign_in_at ? (
-              <Button size="sm" disabled={pending} onClick={reissue}>
+              <Button size="sm" loading={pending} onClick={reissue}>
                 {pending ? 'Creating…' : 'New invite link'}
               </Button>
             ) : null}
@@ -412,7 +412,7 @@ function InviteModal({
           <Button tone="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button tone="primary" disabled={pending} onClick={submit}>
+          <Button tone="primary" loading={pending} onClick={submit}>
             {pending ? 'Creating…' : 'Create login'}
           </Button>
         </>
@@ -601,7 +601,8 @@ function SwitchModal({ account, onClose }: { account: AccountRow; onClose: () =>
           <Button
             tone={turningOff ? 'danger' : 'green'}
             solid={turningOff}
-            disabled={pending || (turningOff && !reason.trim())}
+            loading={pending}
+            disabled={turningOff && !reason.trim()}
             onClick={submit}
           >
             {pending ? 'Saving…' : turningOff ? 'Switch off' : 'Switch on'}
@@ -667,7 +668,8 @@ function RoleModal({ account, onClose }: { account: AccountRow; onClose: () => v
           </Button>
           <Button
             tone="primary"
-            disabled={pending || officeRole === account.office_role}
+            loading={pending}
+            disabled={officeRole === account.office_role}
             onClick={submit}
           >
             {pending ? 'Saving…' : 'Change role'}
@@ -747,7 +749,7 @@ function ResetTwoStepModal({ account, onClose }: { account: AccountRow; onClose:
           <Button tone="ghost" onClick={onClose}>
             Cancel
           </Button>
-          <Button tone="danger" solid disabled={pending || !reason.trim()} onClick={submit}>
+          <Button tone="danger" solid loading={pending} disabled={!reason.trim()} onClick={submit}>
             {pending ? 'Resetting…' : 'Reset two-step'}
           </Button>
         </>

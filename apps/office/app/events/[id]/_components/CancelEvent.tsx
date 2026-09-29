@@ -44,7 +44,8 @@ export function CancelEvent({ eventId, affected }: { eventId: string; affected: 
             <Button
               tone="danger"
               solid
-              disabled={pending || reason.trim().length === 0}
+              loading={pending}
+              disabled={reason.trim().length === 0}
               onClick={submit}
             >
               {pending ? 'Cancelling…' : 'Cancel event'}

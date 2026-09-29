@@ -118,7 +118,7 @@ export function PhotoRequestForm({
       />
       {error ? <Alert tone="coral">{error}</Alert> : null}
       {blob ? (
-        <Button tone="primary" size="lg" block disabled={pending} onClick={send}>
+        <Button tone="primary" size="lg" block loading={pending} onClick={send}>
           {pending ? 'Sending…' : 'Send to the office'}
         </Button>
       ) : null}

@@ -74,7 +74,7 @@ export function BankForm({ bank }: { bank: BankDetails | null }) {
       {error ? <Alert tone="coral">{error}</Alert> : null}
       {note ? <Alert tone="green">{note}</Alert> : null}
 
-      <Button tone="primary" size="lg" block disabled={pending} onClick={save}>
+      <Button tone="primary" size="lg" block loading={pending} onClick={save}>
         {pending ? 'Saving…' : 'Save changes'}
       </Button>
 

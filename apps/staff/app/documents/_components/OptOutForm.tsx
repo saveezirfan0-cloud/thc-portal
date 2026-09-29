@@ -121,7 +121,7 @@ export function OptOutForm({
               <Button tone="primary" onClick={() => setAsking(false)} disabled={pending}>
                 Go back
               </Button>
-              <Button tone="danger" onClick={cancel} disabled={pending}>
+              <Button tone="danger" onClick={cancel} loading={pending}>
                 {pending ? 'Sending…' : 'Yes, give notice'}
               </Button>
             </>

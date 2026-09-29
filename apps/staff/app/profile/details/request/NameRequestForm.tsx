@@ -141,7 +141,7 @@ export function NameRequestForm({ firstName, lastName }: { firstName: string; la
       />
 
       {error ? <Alert tone="coral">{error}</Alert> : null}
-      <Button tone="primary" size="lg" block disabled={pending} onClick={send}>
+      <Button tone="primary" size="lg" block loading={pending} onClick={send}>
         {pending ? 'Sending…' : 'Send to the office'}
       </Button>
     </div>

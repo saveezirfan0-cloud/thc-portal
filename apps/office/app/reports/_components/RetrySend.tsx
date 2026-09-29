@@ -14,7 +14,7 @@ export function RetrySend({ sendId }: { sendId: number }) {
       <Button
         size="sm"
         tone="danger"
-        disabled={pending}
+        loading={pending}
         onClick={() =>
           startTransition(async () => {
             const result = await retryFinanceSend(sendId);

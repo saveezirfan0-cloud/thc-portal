@@ -224,7 +224,7 @@ function WeightsBlock({ weights }: { weights: ScoringWeights }) {
       </Note>
       <Feedback note={note} error={error} />
       <SaveAction id="weights" title="Scoring weights" dirty={!sameValue(draft, weights)}>
-        <Button tone="primary" disabled={pending} onClick={() => run(() => saveWeights(draft))}>
+        <Button tone="primary" loading={pending} onClick={() => run(() => saveWeights(draft))}>
           {pending ? 'Saving…' : 'Save weights'}
         </Button>
       </SaveAction>
@@ -274,7 +274,7 @@ function AutoAssignBlock({
       >
         <Button
           tone="primary"
-          disabled={pending}
+          loading={pending}
           onClick={() => run(() => saveAutoAssignNumbers(gap, miles))}
         >
           {pending ? 'Saving…' : 'Save limits'}
@@ -317,7 +317,8 @@ function RotaGuardBlock({ mode }: { mode: RotaGuardMode }) {
       <SaveAction id="rota" title="Rota guard" dirty={draft !== mode}>
         <Button
           tone="primary"
-          disabled={pending || draft === mode}
+          loading={pending}
+          disabled={draft === mode}
           onClick={() => run(() => saveRotaGuardMode(draft))}
         >
           {pending ? 'Saving…' : 'Save rota guard'}
@@ -380,7 +381,7 @@ function WilloBlock({
       ))}
       <Feedback note={note} error={error} />
       <SaveAction id="willo-map" title="Willo stage map" dirty={!sameValue(draft, map)}>
-        <Button tone="primary" disabled={pending} onClick={() => run(() => saveWilloMap(draft))}>
+        <Button tone="primary" loading={pending} onClick={() => run(() => saveWilloMap(draft))}>
           {pending ? 'Saving…' : 'Save stage map'}
         </Button>
       </SaveAction>
@@ -460,7 +461,7 @@ function SendersBlock({
       </Note>
       <Feedback note={note} error={error} />
       <SaveAction id="senders" title="Sender addresses" dirty={!sameValue(draft, senders)}>
-        <Button tone="primary" disabled={pending} onClick={() => run(() => saveSenders(draft))}>
+        <Button tone="primary" loading={pending} onClick={() => run(() => saveSenders(draft))}>
           {pending ? 'Saving…' : 'Save senders'}
         </Button>
       </SaveAction>
@@ -511,7 +512,8 @@ function RadiusRow({ type }: { type: SettingsData['venueTypes'][number] }) {
       <Button
         size="sm"
         tone={dirty ? 'primary' : 'ghost'}
-        disabled={pending || !dirty}
+        loading={pending}
+        disabled={!dirty}
         onClick={() => run(() => saveVenueRadius(type.key, type.label, metres))}
       >
         {pending ? 'Saving…' : 'Save'}

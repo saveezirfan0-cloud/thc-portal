@@ -17,6 +17,7 @@ import {
   SearchInput,
   SegToggle,
   Select,
+  startNavProgress,
   Textarea,
 } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
@@ -149,7 +150,10 @@ export function OnboardingBoard({
     reason,
   });
 
-  const open = (row: CandidateRow) => router.push(`/onboarding/${row.id}`);
+  const open = (row: CandidateRow) => {
+    startNavProgress();
+    router.push(`/onboarding/${row.id}`);
+  };
 
   const confirm = () => {
     if (!pending) return;

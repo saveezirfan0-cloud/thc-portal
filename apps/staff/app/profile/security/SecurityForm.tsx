@@ -78,7 +78,8 @@ export function SecurityForm({ email }: { email: string }) {
         tone="primary"
         size="lg"
         block
-        disabled={pending || current.length === 0 || next.length === 0}
+        loading={pending}
+        disabled={current.length === 0 || next.length === 0}
         onClick={submit}
       >
         {pending ? 'Updating…' : 'Update password'}

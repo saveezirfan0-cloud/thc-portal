@@ -61,7 +61,7 @@ export function LoginForm({ next }: { next?: string }) {
       >
         {REMEMBER_LABEL}
       </Checkbox>
-      <Button type="submit" tone="primary" size="lg" block disabled={pending}>
+      <Button type="submit" tone="primary" size="lg" block loading={pending}>
         {pending ? 'Signing in…' : 'Sign in'}
       </Button>
     </form>

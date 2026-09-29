@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata, Viewport } from 'next';
 import { AppearanceScript } from '@thc/ui';
 import { SignedInAsProvider } from './_components/SignedInAs';
@@ -5,6 +6,7 @@ import { officeUser } from './_components/officeUser';
 import { NavCountsProvider } from './_components/OfficeSidebar';
 import { officeNavCounts } from './_components/navCounts';
 import '@thc/ui/styles.css';
+import { NavProgress } from './_components/NavProgress';
 
 export const metadata: Metadata = {
   title: 'THC Back Office',
@@ -29,6 +31,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <AppearanceScript />
       </head>
       <body>
+        {/* useSearchParams() needs a Suspense boundary on static pages. */}
+        <Suspense fallback={null}>
+          <NavProgress />
+        </Suspense>
         <SignedInAsProvider user={user}>
           <NavCountsProvider counts={counts}>{children}</NavCountsProvider>
         </SignedInAsProvider>
