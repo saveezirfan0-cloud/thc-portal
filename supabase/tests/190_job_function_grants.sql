@@ -67,7 +67,14 @@ select is_empty(
           -- a Back Office route on the service key rather than an Edge
           -- Function. Without these every share code waits for ever.
           -- rtw_check_attach_photo files the gov.uk photo (ADR-0041).
-          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config', 'rtw_check_attach_photo'
+          'rtw_check_claim', 'rtw_check_record', 'rtw_check_config', 'rtw_check_attach_photo',
+          -- The automatic Allocation Timesheet / Completed Allocation
+          -- Timesheet (20261001213000, ADR-0072), a Back Office route on the
+          -- service key. Without these no document goes out on its own.
+          'event_documents_due', 'event_document_autosend_claim',
+          'record_event_document_autosend', 'queue_event_document_autosend',
+          'event_document_autosend_release', 'document_autosend_config',
+          'event_document_data'
         )
         and not has_function_privilege('service_role', p.oid, 'execute') $$,
   'the service role can execute every function the §7 jobs call'
@@ -107,7 +114,11 @@ select is_empty(
           -- rtw_check_record verifies a worker's right to work. The two
           -- *_as bodies take the reviewer as an argument.
           'rtw_check_claim', 'rtw_check_record', 'rtw_check_config', 'rtw_check_attach_photo',
-          'compliance_verify_document_as', 'compliance_reject_document_as'
+          'compliance_verify_document_as', 'compliance_reject_document_as',
+          -- ADR-0072: the event-documents job's claim / record / queue.
+          'event_documents_due', 'event_document_autosend_claim',
+          'record_event_document_autosend', 'queue_event_document_autosend',
+          'event_document_autosend_release'
         )
         and has_function_privilege('anon', p.oid, 'execute') $$,
   'anon can execute none of the job, engine, compliance or lifecycle write paths, nor the auto-assign pool or its radius'
@@ -142,7 +153,14 @@ select is_empty(
           -- rtw_check_manual_allowed is NOT here on purpose: the office's
           -- security_invoker queue view calls it as `authenticated`, so it
           -- checks its caller instead and answers a worker NULL (600 §I).
-          'rtw_check_enqueue', 'rtw_check_nudge', 'office_base_url'
+          'rtw_check_enqueue', 'rtw_check_nudge', 'office_base_url',
+          -- ADR-0072: an automatic send has no generated_by and bypasses
+          -- the manual path's caller check, so a session never reaches it —
+          -- the office's own Send is queue_event_document_email.
+          'event_documents_due', 'event_document_autosend_claim',
+          'record_event_document_autosend', 'queue_event_document_autosend',
+          'event_document_autosend_release', 'event_document_email_payload',
+          'event_document_tally'
         )
         and has_function_privilege('authenticated', p.oid, 'execute') $$,
   'nor can a signed-in worker block, retire, reset or remove anybody'
@@ -342,8 +360,8 @@ select bag_eq(
   $$ values ('booking-tick'::text), ('auto-staffing-hourly'),
             ('auto-staffing-cutoff'), ('auto-staffing-escalation'),
             ('compliance-daily'), ('notify-drain'), ('finance-reports'),
-            ('gdpr-purge'), ('willo-invite') $$,
-  'exactly the nine schedules whose Edge Function exists are enabled: notify-drain ships with P2 and re-enables finance-reports (20260924100000), which 20260923193100 paused until its email could go out; gdpr-purge (20260927160400) drains the §1.7 Storage queue, which nothing had scheduled; willo-invite (20261001206000) once THC''s Willo keys were set'
+            ('gdpr-purge'), ('willo-invite'), ('event-documents') $$,
+  'exactly the ten schedules whose function exists are enabled: notify-drain ships with P2 and re-enables finance-reports (20260924100000), which 20260923193100 paused until its email could go out; gdpr-purge (20260927160400) drains the §1.7 Storage queue, which nothing had scheduled; willo-invite (20261001206000) once THC''s Willo keys were set; event-documents (20261001213000, ADR-0072) with its Back Office route'
 );
 
 -- ---------------------------------------------------------------------

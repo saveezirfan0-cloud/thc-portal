@@ -8,7 +8,9 @@ import {
 } from '../../_lib/generate';
 
 /**
- * POST /api/documents/:eventId/send { kind } — "Send allocation sheet" (§11.4).
+ * POST /api/documents/:eventId/send { kind } — "Send Allocation Timesheet" /
+ * "Send Completed Timesheet" (§11.4; names per ADR-0072). The same email
+ * also goes automatically — /api/jobs/event-documents.
  *
  * Draws a fresh copy, stores it (required: the drain attaches from the
  * `timesheets` bucket), and queues one email from timesheets@ to every

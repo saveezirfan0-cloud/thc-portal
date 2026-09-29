@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@thc/db/admin';
-import { checkJobSecret } from './_lib/auth';
+import { checkJobSecret } from '../_lib/auth';
 import { createGovukChecker } from './_lib/govuk';
 import { chromiumLauncher } from './_lib/govuk.launch';
 import { createProviderChecker } from './_lib/provider';

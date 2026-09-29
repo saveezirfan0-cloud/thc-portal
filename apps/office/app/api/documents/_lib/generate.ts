@@ -5,7 +5,13 @@ import { countPdfPages, layoutSheet, photoFormat, renderSheetPdf } from '@thc/pd
 import type { SheetEvent, SheetKind, SheetLayout, SheetPerson, SheetPhoto } from '@thc/pdf';
 
 /**
- * Draw, and keep, one allocation sheet or sign-out timesheet — §11.3, §11.4.
+ * Draw, and keep, one Allocation Timesheet or Completed Allocation Timesheet
+ * (the "sign-out" state in code) — §11.3, §11.4, names per ADR-0072.
+ *
+ * Two callers: the event page's Download / Send, as the signed-in manager,
+ * and the event-documents job (ADR-0072), which passes the service-role
+ * client and `automatic: true` — the copy is then recorded through
+ * `record_event_document_autosend()` (generated_by null, automatic).
  *
  * 1. `event_document_data()` as the signed-in manager: the header, the
  *    confirmed/worked line-up with role windows, settled finish times and
@@ -36,13 +42,24 @@ export type GenerateResult =
     }
   | { ok: false; status: number; message: string };
 
-interface DocumentRpc {
+export interface DocumentRpc {
   rpc(
     fn: 'event_document_data',
     args: { p_event: string },
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
   rpc(
     fn: 'record_event_document',
+    args: {
+      p_event: string;
+      p_kind: SheetKind;
+      p_storage_path: string;
+      p_file_name: string;
+      p_rows: number;
+      p_pages: number;
+    },
+  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: 'record_event_document_autosend',
     args: {
       p_event: string;
       p_kind: SheetKind;
@@ -90,7 +107,7 @@ export function refusal(message: string): { status: number; message: string } {
   if (message.includes('event_cancelled'))
     return {
       status: 409,
-      message: 'This event is cancelled, so no allocation sheet or timesheet is generated.',
+      message: 'This event is cancelled, so no Allocation Timesheet is generated.',
     };
   if (message.includes('event_not_found'))
     return { status: 404, message: 'That event does not exist.' };
@@ -134,6 +151,13 @@ function stamp(now: Date): string {
   return now.toISOString().replace(/[:.]/g, '-');
 }
 
+export interface GenerateOptions {
+  /** The client to read, fetch photos and record through. Default: the manager's session. */
+  db?: DocumentRpc;
+  /** The event-documents job's copy (ADR-0072): recorded as automatic, generated_by null. */
+  automatic?: boolean;
+}
+
 export async function generateDocument(
   eventId: string,
   kind: SheetKind,
@@ -144,8 +168,9 @@ export async function generateDocument(
    * list it), but never withhold the PDF from the manager because of it.
    */
   store: 'required' | 'best-effort',
+  options: GenerateOptions = {},
 ): Promise<GenerateResult> {
-  const db = await documentsDb();
+  const db = options.db ?? (await documentsDb());
   const { data, error } = await db.rpc('event_document_data', { p_event: eventId });
   if (error) return { ok: false, ...refusal(error.message) };
   const doc = data as DocumentData;
@@ -180,14 +205,17 @@ export async function generateDocument(
     return fail(502, `Storage is unreachable: ${(cause as Error).message}`);
   }
 
-  const recorded = await db.rpc('record_event_document', {
+  const record = {
     p_event: eventId,
     p_kind: kind,
     p_storage_path: storagePath,
     p_file_name: layout.fileName,
     p_rows: layout.rowCount,
     p_pages: pages,
-  });
+  };
+  const recorded = options.automatic
+    ? await db.rpc('record_event_document_autosend', record)
+    : await db.rpc('record_event_document', record);
   if (recorded.error) {
     const { status, message } = refusal(recorded.error.message);
     return fail(status, message);

@@ -1,8 +1,11 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 
 /**
- * The job route's gate (ADR-0025): `Authorization: Bearer <RTW_JOB_SECRET>`,
- * the same value pg_cron sends from the vault secret `rtw_job_secret`.
+ * The office job routes' gate (ADR-0025, ADR-0072):
+ * `Authorization: Bearer <RTW_JOB_SECRET>`, the same value pg_cron sends
+ * from the vault secret `rtw_job_secret`. Shared by every Back Office job
+ * route — /api/jobs/rtw-check and /api/jobs/event-documents — so one
+ * secret, set once, covers both (ADR-0072).
  *
  * Constant-time: both sides are hashed to 32 bytes first, so neither the
  * comparison nor an early length check says how much of a guess was right.
