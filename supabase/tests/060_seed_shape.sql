@@ -21,8 +21,8 @@ select bag_eq(
             ('Lifting and Shifting'),('Housekeeping Staff'),('Cleaning Staff') $$,
   'Phase 0 seeds 6 roles; the 2026–2027 rate card adds 10'
 );
-select is((select pay_rate from roles where name = 'Runner'), 14.00::numeric,
-  'Runner base pay is £14.00 (Waiting Staff''s, per the 2026–2027 rate card migration)');
+select is((select pay_rate from roles where name = 'Runner'), 12.71::numeric,
+  'Runner base pay is £12.71, the 2026 National Living Wage (2026–2027 rate card migration)');
 select is((select count(*)::int from staff),   40, 'Phase 0 seeds exactly 40 workers');
 
 select bag_eq(
