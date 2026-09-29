@@ -194,7 +194,13 @@ export async function cancelEvent(eventId: string, reason: string): Promise<Acti
  */
 export async function messageLineUp(
   eventId: string,
-  input: { sectionId: string | null; audience: MessageAudience; message: string },
+  input: {
+    sectionId: string | null;
+    audience: MessageAudience;
+    message: string;
+    /** One person (ADR-0069, amended): their booking on this event. */
+    bookingId?: string | null;
+  },
 ): Promise<{ error: string } | { ok: true; summary: string; everyoneReached: boolean }> {
   if (!input.message.trim()) return { error: messageRefusal('message_required') };
   if (!supabaseConfigured()) return { error: NO_SUPABASE };
@@ -207,6 +213,7 @@ export async function messageLineUp(
     p_section: input.sectionId,
     p_audience: input.audience,
     p_message: input.message,
+    p_booking: input.bookingId ?? null,
   });
   if (error) {
     if (/event_not_found/.test(error.message)) return { error: 'That event no longer exists.' };

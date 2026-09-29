@@ -3,6 +3,7 @@ import { AppBody, AppFrame, Progress } from '@thc/ui';
 import { TOTAL_STEPS, stepByNumber, stepPercent } from '@thc/domain';
 import { AppChrome } from '../../_components/AppChrome';
 import type { ChromeWorker } from '../../_components/AppChrome';
+import { PushStatus } from '../../_components/PushStatus';
 
 /**
  * The wizard's chrome — §10.3, wireframes/staff/onboarding-1.html.
@@ -13,6 +14,14 @@ import type { ChromeWorker } from '../../_components/AppChrome';
  * heading. The footer with Continue is the step's, because only the step
  * knows whether it is complete — "Continue is disabled until the step is
  * complete" (§10.3).
+ *
+ * The push banner (PushStatus) sits at the top of every step, as it does
+ * in the working app's shell. A candidate is sent pushes too — N8 when a
+ * document is rejected, the OC3 onboarding reminders (ADR-0071) — and
+ * before this the wizard never asked them to turn notifications on, so
+ * those pushes mostly reached nobody. Signed-in steps only: not the
+ * centred full-screen states (a closed account, a failed quiz, "we
+ * couldn't find your onboarding"), where there is nothing left to notify.
  */
 export function WizardFrame({
   worker,
@@ -28,7 +37,10 @@ export function WizardFrame({
   return (
     <AppFrame className="wizard">
       <AppChrome title={title} worker={worker} />
-      <AppBody {...(center ? { className: 'center' } : {})}>{children}</AppBody>
+      <AppBody {...(center ? { className: 'center' } : {})}>
+        {worker && !center ? <PushStatus /> : null}
+        {children}
+      </AppBody>
     </AppFrame>
   );
 }

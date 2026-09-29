@@ -2,8 +2,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   canMessageLineUp,
   messageLength,
+  messagePeople,
   messageRefusal,
   messageSentSummary,
+  parseMessageTarget,
   pushDate,
 } from '../board-model';
 
@@ -68,6 +70,7 @@ describe('messageLineUp', () => {
       p_section: 'sec-2',
       p_audience: 'invited',
       p_message: 'Staff entrance is on King St',
+      p_booking: null,
     });
     expect(result).toEqual({ ok: true, summary: 'Sent to 12 people.', everyoneReached: true });
     expect(state.revalidated).toEqual(['/events/evt-1']);
@@ -201,5 +204,69 @@ describe('the words around it', () => {
     expect(canMessageLineUp('ongoing')).toBe(true);
     expect(canMessageLineUp('completed')).toBe(false);
     expect(canMessageLineUp('cancelled')).toBe(false);
+  });
+});
+
+describe('one person (ADR-0069, amended 29.09)', () => {
+  it('sends the booking as p_booking and nothing about a section', async () => {
+    state.rpc.mockResolvedValueOnce({ data: { ok: true, sent: 1, withoutPush: [] }, error: null });
+    const result = await messageLineUp('evt-1', {
+      sectionId: null,
+      bookingId: 'bk-7',
+      audience: 'booked',
+      message: 'Please bring your black apron',
+    });
+    expect(state.rpc).toHaveBeenCalledWith('send_event_message', {
+      p_event: 'evt-1',
+      p_section: null,
+      p_audience: 'booked',
+      p_message: 'Please bring your black apron',
+      p_booking: 'bk-7',
+    });
+    expect(result).toEqual({ ok: true, summary: 'Sent to 1 person.', everyoneReached: true });
+  });
+
+  it('sends p_booking null for the whole event or a role, as before', async () => {
+    state.rpc.mockResolvedValueOnce({ data: { ok: true, sent: 2, withoutPush: [] }, error: null });
+    await messageLineUp('evt-1', { sectionId: 'sec-1', audience: 'booked', message: 'x' });
+    expect(state.rpc.mock.calls[0]![1]).toMatchObject({ p_section: 'sec-1', p_booking: null });
+  });
+
+  it('says so when the person is no longer booked', async () => {
+    state.rpc.mockResolvedValueOnce({
+      data: { ok: false, reason: 'person_not_booked' },
+      error: null,
+    });
+    const result = await messageLineUp('evt-1', {
+      sectionId: null,
+      bookingId: 'bk-7',
+      audience: 'booked',
+      message: 'x',
+    });
+    expect((result as { error: string }).error).toMatch(/no longer booked/);
+  });
+
+  it('reads the To value: everyone, a role, or a person', () => {
+    expect(parseMessageTarget('')).toEqual({ kind: 'event' });
+    expect(parseMessageTarget('section:sec-1')).toEqual({ kind: 'section', sectionId: 'sec-1' });
+    expect(parseMessageTarget('person:bk-7')).toEqual({ kind: 'person', bookingId: 'bk-7' });
+  });
+
+  it("lists a role's confirmed staff, then its invitees, by the name the board shows", () => {
+    expect(
+      messagePeople({
+        confirmed: [{ bookingId: 'b1', name: 'Grace L.' }],
+        invited: [{ bookingId: 'b2', name: 'Sam R.' }],
+      }),
+    ).toEqual([
+      { bookingId: 'b1', name: 'Grace L.', invited: false },
+      { bookingId: 'b2', name: 'Sam R.', invited: true },
+    ]);
+  });
+
+  it('has words for the two new refusals', () => {
+    for (const reason of ['booking_not_on_event', 'person_not_booked']) {
+      expect(messageRefusal(reason), reason).not.toMatch(/not sent \(/);
+    }
   });
 });

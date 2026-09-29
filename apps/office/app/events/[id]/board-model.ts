@@ -729,7 +729,43 @@ const MESSAGE_REFUSAL_COPY: Readonly<Record<string, string>> = {
   event_over: 'This event is over — every role has ended, so there is nobody left to tell.',
   section_not_on_event: 'That role is no longer on this event. Reload the page and try again.',
   nobody_to_message: 'Nobody is booked on that yet — there is nobody to message.',
+  booking_not_on_event:
+    'That person is no longer on this event (or not on that role). Reload the page and try again.',
+  person_not_booked:
+    'That person is no longer booked — they were withdrawn or declined. Reload the page to see the line-up.',
 };
+
+/**
+ * The "To" choice, as one select value: the whole event (''), one role
+ * (`section:<id>`) or one booked person (`person:<bookingId>`). The page
+ * sends the ids; the database decides whether they are still valid.
+ */
+export type MessageTarget =
+  | { kind: 'event' }
+  | { kind: 'section'; sectionId: string }
+  | { kind: 'person'; bookingId: string };
+
+/**
+ * Who can be messaged on their own from a role: its confirmed and
+ * checked-in workers (the board's Confirmed list), then its invitees,
+ * each by the name the board shows. Applicants and withdrawn bookings are
+ * not listed — send_event_message() would refuse them anyway.
+ */
+export function messagePeople(section: {
+  confirmed: readonly { bookingId: string; name: string }[];
+  invited: readonly { bookingId: string; name: string }[];
+}): { bookingId: string; name: string; invited: boolean }[] {
+  return [
+    ...section.confirmed.map((b) => ({ bookingId: b.bookingId, name: b.name, invited: false })),
+    ...section.invited.map((b) => ({ bookingId: b.bookingId, name: b.name, invited: true })),
+  ];
+}
+
+export function parseMessageTarget(value: string): MessageTarget {
+  if (value.startsWith('section:')) return { kind: 'section', sectionId: value.slice(8) };
+  if (value.startsWith('person:')) return { kind: 'person', bookingId: value.slice(7) };
+  return { kind: 'event' };
+}
 
 /**
  * The audience only changes one refusal, "nobody to message": it says

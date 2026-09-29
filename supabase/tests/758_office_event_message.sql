@@ -86,7 +86,7 @@ insert into push_subscriptions (staff_id, endpoint, p256dh, auth) values
 -- ---------------------------------------------------------------------
 -- 1 · Who may call it
 -- ---------------------------------------------------------------------
-select ok(not has_function_privilege('anon', 'public.send_event_message(uuid, uuid, text, text)', 'execute'),
+select ok(not has_function_privilege('anon', 'public.send_event_message(uuid, uuid, text, text, uuid)', 'execute'),
   'anon cannot execute send_event_message');
 select hasnt_function('public', 'send_event_message', array['uuid', 'uuid', 'boolean', 'text'],
   'the old "also invited" switch is gone (20261001211000)');
