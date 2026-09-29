@@ -343,7 +343,7 @@ select bag_eq(
             ('auto-staffing-cutoff'), ('auto-staffing-escalation'),
             ('compliance-daily'), ('notify-drain'), ('finance-reports'),
             ('gdpr-purge'), ('willo-invite'), ('onboarding-chasers') $$,
-  'exactly the ten schedules whose Edge Function exists are enabled: notify-drain ships with P2 and re-enables finance-reports (20260924100000), which 20260923193100 paused until its email could go out; gdpr-purge (20260927160400) drains the §1.7 Storage queue, which nothing had scheduled; willo-invite (20261001206000) once THC''s Willo keys were set; onboarding-chasers (20261001211000, ADR-0071) with its function'
+  'exactly the ten schedules whose Edge Function exists are enabled: notify-drain ships with P2 and re-enables finance-reports (20260924100000), which 20260923193100 paused until its email could go out; gdpr-purge (20260927160400) drains the §1.7 Storage queue, which nothing had scheduled; willo-invite (20261001206000) once THC''s Willo keys were set; onboarding-chasers (20261001212000, ADR-0071) with its function'
 );
 
 -- ---------------------------------------------------------------------

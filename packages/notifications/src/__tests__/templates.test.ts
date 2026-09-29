@@ -1099,9 +1099,10 @@ describe('onboarding chasers (ADR-0071)', () => {
   it('never calls a reminder the last one: they carry on daily until the candidate moves', () => {
     for (const code of CHASER_CODES) {
       for (const rung of RUNGS) {
-        expect(`${title(code, rung)} ${body(code, rung)}`.toLowerCase(), `${code}/${rung}`).not.toMatch(
-          /last reminder|final reminder/,
-        );
+        expect(
+          `${title(code, rung)} ${body(code, rung)}`.toLowerCase(),
+          `${code}/${rung}`,
+        ).not.toMatch(/last reminder|final reminder/);
       }
     }
   });

@@ -973,7 +973,7 @@ E1 from Willo.
 
 ### 5.7 Onboarding chasers (ADR-0071)
 
-`20261001211000` adds the `onboarding-chasers` schedule, enabled. It sends
+`20261001212000` adds the `onboarding-chasers` schedule, enabled. It sends
 reminders to candidates who have stopped part-way through onboarding: emails
 before they sign up (OC1 for the interview, OC2 with a new activation link),
 and a push in the app after (OC3). The reminders go out daily and do not stop,

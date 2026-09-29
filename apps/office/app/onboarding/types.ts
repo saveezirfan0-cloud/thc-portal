@@ -130,7 +130,7 @@ export interface BoardData {
   problem: string | null;
 }
 
-/** One row of `onboarding_chaser_state()` (20261001211000, ADR-0071). */
+/** One row of `onboarding_chaser_state()` (20261001212000, ADR-0071). */
 export interface ChaserState {
   staff_id: string;
   /** interview → OC1 email, activation → OC2 email, app → OC3 push. */

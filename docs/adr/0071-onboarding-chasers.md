@@ -15,7 +15,7 @@ The onboarding board showed candidates sitting in a column for days ("7 d" in co
 
 ### Who is chased: only when the next move is theirs
 
-`onboarding_chaser_candidates()` (20261001211000) returns one row per candidate whose next move is their own:
+`onboarding_chaser_candidates()` (20261001212000) returns one row per candidate whose next move is their own:
 
 | Track | Code | The candidate is… | Channel |
 |---|---|---|---|

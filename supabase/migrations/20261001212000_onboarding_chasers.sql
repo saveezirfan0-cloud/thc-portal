@@ -512,7 +512,7 @@ alter policy office_activation_links on notification_outbox
   using (template not in ('E3', 'OC2') or (select office_can('users')));
 
 comment on policy office_activation_links on notification_outbox is
-  'ADR-0060, ADR-0071: an E3 or OC2 row carries a worker''s one-time activation link; only a session with office_can(''users'') (an owner) may read it. 20261001201200, OC2 added 20261001211000.';
+  'ADR-0060, ADR-0071: an E3 or OC2 row carries a worker''s one-time activation link; only a session with office_can(''users'') (an owner) may read it. 20261001201200, OC2 added 20261001212000.';
 
 -- 20260924110000's body, OC2 added, and one guard: a row is repointed only
 -- at a link on the SAME origin it already carries. The office's Resend

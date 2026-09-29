@@ -172,7 +172,7 @@ wording is ours, drafted at the owner's request. The codes sit in
 ADR-0071 and says "Not in §8". None is `mandatory`.
 
 Only a candidate whose **next move is their own** is chased
-(`onboarding_chaser_candidates()`, 20261001211000). Interview completed (the
+(`onboarding_chaser_candidates()`, 20261001212000). Interview completed (the
 Willo decision), documents under review and a Yes declaration awaiting Verify
 are the office's move and are never chased. The channel follows the owner's
 rule: **email until the account exists, push in the app after.**

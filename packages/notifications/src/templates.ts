@@ -767,7 +767,7 @@ export const TEMPLATES = {
   // signed up. One code per track; the variant is the reminder's place in
   // the run: `first`, `second`, then `repeat` every day after. The row's
   // payload names it. Keys `OCn:staff:<id>:<progress epoch>:<n>`, so any
-  // progress starts the count again (20261001211000).
+  // progress starts the count again (20261001212000).
   OC1: {
     code: 'OC1',
     channel: 'email',
@@ -787,7 +787,8 @@ export const TEMPLATES = {
     },
     trigger:
       'A candidate in Interview requested whose Willo invitation (E1) went out and who has not completed the interview (onboarding_chasers). Not in §8: an addition to scope v1.6, ADR-0071',
-    timing: 'daily from a day after the invitation or their last progress, until they do it; 10:00–18:00 UK',
+    timing:
+      'daily from a day after the invitation or their last progress, until they do it; 10:00–18:00 UK',
   },
   OC2: {
     code: 'OC2',
@@ -796,7 +797,7 @@ export const TEMPLATES = {
     title: 'Set up your account with The Hospitality Company',
     // `{link}` is minted for this email (onboarding-chasers Edge Function)
     // and replaces the one in E3, which works once and lives a day. The row
-    // is fenced and redacted like E3 (ADR-0060, 20261001211000).
+    // is fenced and redacted like E3 (ADR-0060, 20261001212000).
     variants: {
       first: {
         body: "Hi {name},\n\nGood news: your application was accepted, but your account isn't set up yet. Set your password to start onboarding:\n{link}\n\nThen download the app and add it to your home screen:\n{installLink}\n\nThis link is new and replaces the one we sent before. It works once and expires after 24 hours.",
@@ -811,7 +812,8 @@ export const TEMPLATES = {
     },
     trigger:
       'A candidate accepted after the interview whose activation email (E3) went out and who has not set a password (onboarding_chasers → onboarding_chaser_activation). Not in §8: an addition to scope v1.6, ADR-0071',
-    timing: 'daily from a day after the last E3 or their last progress, until they set a password; 10:00–18:00 UK',
+    timing:
+      'daily from a day after the last E3 or their last progress, until they set a password; 10:00–18:00 UK',
   },
   OC3: {
     code: 'OC3',

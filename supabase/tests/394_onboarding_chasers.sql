@@ -1,13 +1,13 @@
 -- =====================================================================
--- 394 · Onboarding chasers (ADR-0071, 20261001211000)
+-- 394 · Onboarding chasers (ADR-0071, 20261001212000)
 --
 --   A. Who can reach it.
 --   B. Who is chased: only a candidate whose next move is their own —
 --      the Willo interview (OC1 email), the activation (OC2 email), a
 --      wizard step (OC3 push); never the office's move.
---   C. The ladder: 2 / 5 / 10 days after the last progress, spaced even
---      for someone idle for weeks, once each, then stalled.
---   D. Progress starts a fresh ladder.
+--   C. Daily from a day after the last progress, never stopping; one per
+--      day even for someone idle for weeks; Stalled after three.
+--   D. Progress starts the count again.
 --   E. OC2: the minted link, refreshed, fenced and redacted like E3.
 --   F. The daytime window and the off switch.
 -- =====================================================================

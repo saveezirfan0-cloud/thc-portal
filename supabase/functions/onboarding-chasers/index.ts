@@ -2,9 +2,9 @@
  * onboarding-chasers — reminders to candidates who have stopped part-way
  * through onboarding (ADR-0071; an addition to scope v1.6 §8).
  *
- * Hourly. The rules are SQL (20261001211000) and held by pgTAP 394:
- * `onboarding_chasers()` decides who is waiting on themselves, which rung of
- * the 2 / 5 / 10-day ladder is due, and keeps every send inside the UK
+ * Hourly. The rules are SQL (20261001212000) and held by pgTAP 394:
+ * `onboarding_chasers()` decides who is waiting on themselves, whether a
+ * reminder is due (daily, never stopping), and keeps every send inside the UK
  * daytime window; it queues the OC1 interview emails and the OC3 wizard
  * pushes. The OC2 activation reminder carries a freshly minted link, which
  * only GoTrue's admin API can make, so that part is here — in the order

@@ -148,7 +148,7 @@ function messageOf(error: unknown): string {
 
 // ---------------------------------------------------------------------
 // Onboarding chasers (ADR-0071) — a separate read of
-// `onboarding_chaser_state()`, a Back Office-only definer (20261001211000),
+// `onboarding_chaser_state()`, a Back Office-only definer (20261001212000),
 // for the same reason as the referrals: the pipeline view is not restated.
 // A failed read is said out loud, never shown as "nobody was reminded".
 // ---------------------------------------------------------------------

@@ -1,8 +1,8 @@
 /**
- * Onboarding chasers — the order of the calls (ADR-0071, 20261001211000).
+ * Onboarding chasers — the order of the calls (ADR-0071, 20261001212000).
  *
  * The rules are SQL and held by pgTAP 394: who is waiting on themselves,
- * which rung of the 2 / 5 / 10-day ladder is due, the daytime window.
+ * whether a reminder is due (daily, never stopping), the daytime window.
  * `onboarding_chasers()` queues the OC1 interview emails and the OC3 wizard
  * pushes itself, and NAMES the OC2 activation reminders due, because an OC2
  * must carry a freshly minted activation link and SQL cannot mint one.
