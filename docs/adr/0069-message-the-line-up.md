@@ -39,8 +39,14 @@ It goes through `notification_outbox` like every other send, with a unique key p
 
 The first version could only add invitees on top of the confirmed line-up, so there was no way to chase the people who had not answered an invitation without also messaging everyone already booked. The owner asked for more flexibility. The checkbox is now a **Who** select next to **To**, and `send_event_message(p_event, p_section, p_audience text, p_message)` replaces the boolean signature. The old one is dropped, not overloaded. When nobody matches, the refusal says who was missing: with *Confirmed* chosen it points to *Invited only*, and with *Invited only* chosen it says nobody has an open invitation. `audit_log` records `audience` in place of `includeInvited`.
 
+## Amendment (29.09.2026): one person
+
+The owner: "We also need to be able to message individual staff, for example one of the Waiting Staff who is booked on — not all of them." The **To** list now has a group per role, **One person · {role}**, listing that role's confirmed and checked-in workers and then its invitees, marked "(invited)". Picking one messages only them; **Who** is hidden, because it does not apply to a named person.
+
+`send_event_message()` gains `p_booking uuid default null` (20261002102000). The four-argument version is dropped, so there is no overloading. The booking must be on this event (and in the named section, if there is one) and still live: confirmed, checked in or invited. Otherwise it is refused as `booking_not_on_event` or `person_not_booked`. `audit_log` records audience `person` and the booking. pgTAP 762.
+
 ## Not done
 
 - **No in-app inbox.** A worker who dismisses the notification cannot read it again in the app. If that is needed, it is a Staff App screen of its own.
-- **No message to a single worker** from their profile, and no message to staff who are not on an event.
+- **No message from a worker's profile**, and no message to staff who are not on an event. One person is messaged from the event they are booked on.
 - **No SMS fallback.** SMS is Willo's job (§1.3).
