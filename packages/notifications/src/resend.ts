@@ -17,13 +17,24 @@ export interface ResendAttachment {
   filename: string;
   /** base64 (standard alphabet), as Resend expects. */
   content: string;
+  /**
+   * Set for an inline image: Resend sends the part inline with this
+   * Content-ID, and the HTML shows it with `<img src="cid:…">` (the THC
+   * logo, ADR-0071). Sent as `content_id`.
+   */
+  contentId?: string;
+  /** Sent as `content_type`; Resend derives it from the file name otherwise. */
+  contentType?: string;
 }
 
 export interface ResendEmail {
   from: string;
   to: readonly string[];
   subject: string;
+  /** The plain-text alternative. Always sent, beside `html`. */
   text: string;
+  /** The THC Light HTML body (ADR-0071). */
+  html?: string;
   /** Replies go to the sender's monitored mailbox (§9.12). */
   replyTo?: string;
   attachments?: readonly ResendAttachment[];
@@ -52,9 +63,15 @@ export function buildResendRequest(
     subject: email.subject,
     text: email.text,
   };
+  if (email.html) body.html = email.html;
   if (email.replyTo) body.reply_to = email.replyTo;
   if (email.attachments && email.attachments.length > 0) {
-    body.attachments = email.attachments.map((a) => ({ filename: a.filename, content: a.content }));
+    body.attachments = email.attachments.map((a) => ({
+      filename: a.filename,
+      content: a.content,
+      ...(a.contentType ? { content_type: a.contentType } : {}),
+      ...(a.contentId ? { content_id: a.contentId } : {}),
+    }));
   }
   return {
     url: RESEND_ENDPOINT,

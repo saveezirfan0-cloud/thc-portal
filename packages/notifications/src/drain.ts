@@ -24,13 +24,14 @@
  *                 the key lands, every queued row still has all its tries.
  */
 
-import type { DocumentBucket } from './documents.ts';
+import type { DocumentBucket, EmailWithAttachments } from './documents.ts';
 import { documentMessageFor, isDocumentEmail } from './documents.ts';
-import type { OutboxRow, PushMessage } from './outbox.ts';
+import { inlineLogoAttachment } from './email-html.ts';
+import type { EmailMessage, OutboxRow, PushMessage } from './outbox.ts';
 import { UnsendableRow, messageFor, outboxBackoffMs } from './outbox.ts';
 import type { ResendAttachment } from './resend.ts';
 import { buildResendRequest, classifyResendStatus, toBase64 } from './resend.ts';
-import { DEFAULT_SENDER_ADDRESSES, resolveSender } from './senders.ts';
+import { resolveSender } from './senders.ts';
 import type { PushSubscriptionKeys, VapidKeys } from './webpush.ts';
 import { buildPushRequest, classifyPushStatus } from './webpush.ts';
 
@@ -244,20 +245,24 @@ async function sendPush(
 // email
 // ---------------------------------------------------------------------------
 
+// `signedBy` lives in senders.ts (documents.ts applies it at render time);
+// re-exported here, where it used to be.
+export { signedBy } from './senders.ts';
+
 /**
- * The document emails (BG08/D1/D2) sign off with their sender's address. The
- * copy names the default (`documents.ts` keeps THC's wording readable); when
- * `/settings` has moved that sender, the signature follows it — to the
- * reply-to address when one is set, since that is the inbox a reader who
- * writes back should use.
+ * Render an email row: a document email (BG08/D1/D2) or a register email.
+ * `replyTo` is the monitored address the HTML footer — and a document
+ * email's signature and reply button — names.
  */
-export function signedBy(
-  body: string,
-  sender: keyof typeof DEFAULT_SENDER_ADDRESSES,
-  address: string,
-): string {
-  const fallback = DEFAULT_SENDER_ADDRESSES[sender];
-  return address === fallback ? body : body.split(fallback).join(address);
+function renderEmail(row: OutboxRow, replyTo?: string): EmailMessage | EmailWithAttachments {
+  const options = replyTo ? { replyTo } : {};
+  const message = isDocumentEmail(row.template)
+    ? documentMessageFor(row, options)
+    : messageFor(row, options);
+  if (message.kind !== 'email') {
+    throw new UnsendableRow(`${row.template} rendered as a push on the email channel`);
+  }
+  return message;
 }
 
 async function sendEmail(
@@ -267,19 +272,19 @@ async function sendEmail(
   ports: DrainPorts,
 ): Promise<Settlement> {
   // Rendered first, so a row that can never be sent fails as such even when
-  // Resend is not configured — the caller only reaches here with a key.
-  const document = isDocumentEmail(row.template) ? documentMessageFor(row) : null;
-  const message = document ?? messageFor(row);
-  if (message.kind !== 'email') {
-    throw new UnsendableRow(`${row.template} rendered as a push on the email channel`);
-  }
-
-  const sender = resolveSender(message.sender, sendersSetting);
+  // Resend is not configured — the caller only reaches here with a key. The
+  // first render also says which sender the row is from; the second names
+  // that sender's resolved reply-to address in the copy.
+  const sender = resolveSender(renderEmail(row).sender, sendersSetting);
   if (sender.warning) ports.log(`notify-drain: ${sender.warning}; sending from ${sender.address}`);
+  const message = renderEmail(row, sender.replyTo);
+  const document = 'attachments' in message ? message : null;
 
-  let attachments: ResendAttachment[] | undefined;
+  // The files first, then the header's logo, which travels with every email
+  // as an inline CID image (ADR-0071).
+  const logo = inlineLogoAttachment();
+  const attachments: ResendAttachment[] = [];
   if (document) {
-    attachments = [];
     for (const a of document.attachments) {
       let bytes: Uint8Array | null;
       try {
@@ -295,15 +300,17 @@ async function sendEmail(
       attachments.push({ filename: a.filename, content: toBase64(bytes) });
     }
   }
+  if (message.html.includes(`cid:${logo.contentId}`)) attachments.push(logo);
 
   const request = buildResendRequest(
     {
       from: sender.from,
       to: message.to,
       subject: message.subject,
-      text: signedBy(message.body, message.sender, sender.replyTo),
+      text: message.body,
+      html: message.html,
       replyTo: sender.replyTo,
-      ...(attachments ? { attachments } : {}),
+      ...(attachments.length > 0 ? { attachments } : {}),
     },
     apiKey,
     row.key,

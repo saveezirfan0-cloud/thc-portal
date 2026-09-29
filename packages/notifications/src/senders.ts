@@ -97,3 +97,15 @@ export function resolveSender(sender: ThcSender, setting: unknown): ResolvedSend
       : address;
   return { address, from: `${SENDER_NAME} <${address}>`, replyTo, source: 'settings' };
 }
+
+/**
+ * The document emails (BG08/D1/D2) sign off with their sender's address. The
+ * copy names the default (`documents.ts` keeps THC's wording readable); when
+ * `/settings` has moved that sender, the signature follows it — to the
+ * reply-to address when one is set, since that is the inbox a reader who
+ * writes back should use.
+ */
+export function signedBy(body: string, sender: ThcSender, address: string): string {
+  const fallback = DEFAULT_SENDER_ADDRESSES[sender];
+  return address === fallback ? body : body.split(fallback).join(address);
+}

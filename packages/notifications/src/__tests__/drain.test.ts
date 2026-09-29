@@ -13,7 +13,9 @@ import type { OutboxRow } from '../outbox';
 import { outboxBackoffMs } from '../outbox';
 import { RESEND_ENDPOINT, buildResendRequest, classifyResendStatus, toBase64 } from '../resend';
 import { DEFAULT_SENDER_ADDRESSES, resolveSender } from '../senders';
+import { TEMPLATES } from '../templates';
 import { b64urlEncode } from '../webpush';
+import { THC_MARK_EMAIL_PNG_BASE64 } from '../assets/thc-mark-email';
 import { decrypt } from './decrypt-push';
 
 // ---------------------------------------------------------------------------
@@ -428,8 +430,52 @@ describe('email', () => {
     expect(s.verdict).toBe('sent');
     const body = JSON.parse(sent[0]!.body as string);
     expect(body.from).toBe('The Hospitality Company <timesheets@thc.example>');
-    expect(body.attachments).toEqual([{ filename: 'Allocation.pdf', content: toBase64(pdf) }]);
+    expect(body.attachments).toEqual([
+      { filename: 'Allocation.pdf', content: toBase64(pdf) },
+      {
+        filename: 'thc-mark.png',
+        content: THC_MARK_EMAIL_PNG_BASE64,
+        content_type: 'image/png',
+        content_id: 'thc-mark',
+      },
+    ]);
     expect(p.download).toHaveBeenCalledWith('timesheets', 'allocation/abc.pdf');
+  });
+
+  it('sends every email as HTML and text, with the logo inline (ADR-0071)', async () => {
+    const { p, sent } = ports({});
+    await drainRow(email(), CONFIGURED, null, p);
+    const body = JSON.parse(sent[0]!.body as string);
+    expect(body.text).toBe(TEMPLATES.E2.body);
+    expect(body.html).toMatch(/^<!DOCTYPE html>/);
+    expect(body.html).toContain('<img src="cid:thc-mark"');
+    expect(body.html).toContain(TEMPLATES.E2.body);
+    expect(body.attachments).toEqual([
+      {
+        filename: 'thc-mark.png',
+        content: THC_MARK_EMAIL_PNG_BASE64,
+        content_type: 'image/png',
+        content_id: 'thc-mark',
+      },
+    ]);
+  });
+
+  it('names the resolved reply-to in the footer and in a document email’s signature and reply button', async () => {
+    const pdf = new TextEncoder().encode('%PDF-1.7 fake');
+    const { p, sent } = ports({ files: { 'timesheets/allocation/abc.pdf': pdf } });
+    await drainRow(
+      d1(),
+      CONFIGURED,
+      { timesheets: 'ts@updates.thc.example', timesheets_reply_to: 'rota@thc.example' },
+      p,
+    );
+    const body = JSON.parse(sent[0]!.body as string);
+    expect(body.reply_to).toBe('rota@thc.example');
+    expect(body.text).toContain('rota@thc.example · www.thehospitalitycompany.co.uk');
+    expect(body.text).not.toContain('timesheets@thehospitalitycompany.co.uk');
+    expect(body.html).toContain('href="mailto:rota@thc.example?subject=');
+    expect(body.html).toContain('>rota@thc.example</a> · ');
+    expect(body.html).not.toContain('timesheets@thehospitalitycompany.co.uk');
   });
 
   it('fails a document email whose file is gone, rather than retrying it six times', async () => {
@@ -554,6 +600,35 @@ describe('Resend', () => {
       to: ['x@y.z'],
       subject: 's',
       text: 't',
+    });
+  });
+
+  it('sends html beside text, and an inline image with content_id / content_type', () => {
+    const r = buildResendRequest(
+      {
+        from: 'A <a@b.c>',
+        to: ['x@y.z'],
+        subject: 's',
+        text: 't',
+        html: '<p>t</p>',
+        attachments: [
+          { filename: 'f.pdf', content: 'UERG' },
+          { filename: 'm.png', content: 'iVBO', contentId: 'thc-mark', contentType: 'image/png' },
+        ],
+      },
+      'key',
+      'D1:document:1',
+    );
+    expect(JSON.parse(r.body)).toEqual({
+      from: 'A <a@b.c>',
+      to: ['x@y.z'],
+      subject: 's',
+      text: 't',
+      html: '<p>t</p>',
+      attachments: [
+        { filename: 'f.pdf', content: 'UERG' },
+        { filename: 'm.png', content: 'iVBO', content_id: 'thc-mark', content_type: 'image/png' },
+      ],
     });
   });
 

@@ -10,6 +10,8 @@
  * can be tested with nothing.
  */
 
+import { templateEmailHtml } from './email-layouts.ts';
+import { DEFAULT_SENDER_ADDRESSES } from './senders.ts';
 import type { Channel, Sender, Template, TemplateCode } from './templates.ts';
 import { TEMPLATES, body, render } from './templates.ts';
 
@@ -42,7 +44,23 @@ export interface EmailMessage {
   sender: Exclude<Sender, 'willo'>;
   to: readonly string[];
   subject: string;
+  /** The plain-text body — the register's copy, as it always was. */
   body: string;
+  /**
+   * The same words in the THC Light HTML layout (ADR-0071). Its header
+   * image is `cid:thc-mark`, so it is sent with `inlineLogoAttachment()`.
+   */
+  html: string;
+}
+
+/**
+ * Render-time choices that depend on the settings row, not the outbox row.
+ * `replyTo` is the monitored address the email names (its footer, and a
+ * document email's signature): the sender's reply-to from `resolveSender`.
+ * Absent, the seeded address for the template's sender is used.
+ */
+export interface RenderOptions {
+  replyTo?: string;
 }
 
 export type OutboxMessage = PushMessage | EmailMessage;
@@ -91,7 +109,7 @@ export function pushLink(entry: Template, values: Record<string, string>): strin
  * Everything this rejects is a fault in the row rather than in the network,
  * so a caller should fail it outright rather than retry it six times.
  */
-export function messageFor(row: OutboxRow): OutboxMessage {
+export function messageFor(row: OutboxRow, options: RenderOptions = {}): OutboxMessage {
   const entry = templateFor(row.template);
 
   if (entry.channel !== row.channel) {
@@ -148,11 +166,20 @@ export function messageFor(row: OutboxRow): OutboxMessage {
   if (entry.body === undefined) {
     throw new UnsendableRow(`${row.template} has no body to send`);
   }
+  const subject = render(entry.title, values);
+  const text = render(entry.body, values);
   return {
     kind: 'email',
     sender: entry.sender,
     to,
-    subject: render(entry.title, values),
-    body: render(entry.body, values),
+    subject,
+    body: text,
+    html: templateEmailHtml(
+      row.template,
+      subject,
+      text,
+      values,
+      options.replyTo ?? DEFAULT_SENDER_ADDRESSES[entry.sender],
+    ),
   };
 }

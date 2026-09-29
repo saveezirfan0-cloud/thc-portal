@@ -6,3 +6,5 @@ export * from './webpush.ts';
 export * from './resend.ts';
 export * from './drain.ts';
 export * from './inbox.ts';
+export * from './email-html.ts';
+export * from './email-layouts.ts';
