@@ -1,5 +1,9 @@
 -- =====================================================================
--- Migration 20261001212000 · roles from the 2026–2027 rate card (§9.8)
+-- Migration 20261001213000 · roles from the 2026–2027 rate card (§9.8)
+--
+-- Merged as 20261001212000 (#104) in the same hour as #105's
+-- onboarding_chasers, which took the same version; neither had reached
+-- the live project (the deploy stopped before db push), so this one moved.
 --
 -- The product owner asked on 29.09.2026 for every role on "The Hospitality
 -- Company Rate Card 2026-2027" to be in the Roles catalogue. Waiting Staff,
