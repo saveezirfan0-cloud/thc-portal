@@ -24,6 +24,7 @@ import type { StaffProfile } from '../types';
  */
 const router = vi.hoisted(() => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }));
 const requestP45 = vi.hoisted(() => vi.fn());
+const reloadToLeaverScreen = vi.hoisted(() => vi.fn());
 
 vi.mock('next/navigation', () => ({ useRouter: () => router }));
 vi.mock('next/link', () => ({
@@ -34,6 +35,7 @@ vi.mock('next/link', () => ({
   ),
 }));
 vi.mock('../actions', () => ({ requestP45: (reason: string) => requestP45(reason) }));
+vi.mock('../_components/leaverReload', () => ({ reloadToLeaverScreen }));
 
 const { ProfileHub } = await import('../_components/ProfileHub');
 
@@ -206,9 +208,9 @@ describe('the two-step sheet (§10.6)', () => {
     await tap('Request my P45');
     expect(requestP45).toHaveBeenCalledTimes(1);
     expect(requestP45).toHaveBeenCalledWith('Moving away');
-    // Step 7: the whole app is now the leaver screen.
-    expect(router.replace).toHaveBeenCalledWith('/profile');
-    expect(router.refresh).toHaveBeenCalled();
+    // Step 7: the whole app is now the leaver screen — a full load of
+    // /profile, not a client refresh (leaverReload.ts).
+    expect(reloadToLeaverScreen).toHaveBeenCalledTimes(1);
   });
 
   it('a refusal from the server is shown on the sheet and the flow stays open', async () => {
@@ -225,6 +227,6 @@ describe('the two-step sheet (§10.6)', () => {
     expect(container.querySelector('.alert')!.textContent).toContain(
       'checked in to a shift right now',
     );
-    expect(router.replace).not.toHaveBeenCalled();
+    expect(reloadToLeaverScreen).not.toHaveBeenCalled();
   });
 });
