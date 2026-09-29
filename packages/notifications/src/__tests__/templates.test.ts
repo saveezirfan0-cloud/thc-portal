@@ -1144,3 +1144,35 @@ describe('onboarding chasers (ADR-0071)', () => {
     expect(body('OC1', 'repeat')).toContain("Reply to this email and we'll help.");
   });
 });
+
+/**
+ * E12 — the approval N8 never had (ADR-0072). Queued by
+ * onboarding_advance_if_ready() to the candidate's own address with
+ * `{ name }` (pgTAP 759). An email, at the owner's request.
+ */
+describe('E12 — documents approved, quiz ready (ADR-0072)', () => {
+  it('is an extension, not §8, and says why', () => {
+    expect(EXTENSION_CODES as readonly string[]).toContain('E12');
+    expect(SCOPE_CODES as readonly string[]).not.toContain('E12');
+    expect(template('E12').trigger).toMatch(/Not in §8/);
+    expect(template('E12').trigger).toContain('ADR-0072');
+  });
+
+  it('is an email from admin@, to the address on the row', () => {
+    expect(template('E12').channel).toBe('email');
+    expect(template('E12').sender).toBe('admin');
+    expect(template('E12').recipients).toBeUndefined();
+  });
+
+  it('asks only for the name the SQL writes, and renders whole', () => {
+    const entry: Template = TEMPLATES.E12;
+    const asked = [entry.title, entry.body ?? ''].flatMap((t) =>
+      [...t.matchAll(/\{(\w+)\}/g)].map((m) => m[1]),
+    );
+    expect([...new Set(asked)]).toEqual(['name']);
+    const text = render(body('E12'), { name: 'Aisha' });
+    expect(text).toMatch(/^Hello Aisha,/);
+    expect(text).toMatch(/Health & Safety quiz/);
+    expect(text).not.toMatch(/\{\w+\}/);
+  });
+});
