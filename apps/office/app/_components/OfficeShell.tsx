@@ -135,15 +135,13 @@ export function OfficeShell({
         title={title}
         crumbs={crumbs}
         timezone={timezone}
-        actions={
-          <>
-            {actions}
-            {/* Below 760px the switch moves into the phone menu's More
-                sheet with the sign-out, so the top bar keeps one row. */}
-            <span className="hide-phone">
-              <ModeSwitch small />
-            </span>
-          </>
+        actions={actions}
+        tools={
+          /* Below 760px the switch moves into the phone menu's More
+             sheet with the sign-out, so the top bar keeps one row. */
+          <span className="hide-phone">
+            <ModeSwitch small />
+          </span>
         }
       />
       <Content>

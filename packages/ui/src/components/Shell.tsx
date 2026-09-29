@@ -90,11 +90,14 @@ export interface TopbarProps {
   /** Right-hand time-zone note, e.g. "All times UK (Europe/London)". */
   timezone?: ReactNode;
   actions?: ReactNode;
+  /** Chrome controls (the appearance switch). Sits beside the zone note on the
+   *  first line so it stays put when a screen's own actions wrap to a second. */
+  tools?: ReactNode;
   /** Before the title — the phone menu button. */
   lead?: ReactNode;
 }
 
-export function Topbar({ title, crumbs, timezone, actions, lead }: TopbarProps) {
+export function Topbar({ title, crumbs, timezone, actions, tools, lead }: TopbarProps) {
   return (
     <header className="topbar">
       {lead}
@@ -102,6 +105,7 @@ export function Topbar({ title, crumbs, timezone, actions, lead }: TopbarProps) 
       {crumbs ? <div className="crumbs">{crumbs}</div> : null}
       <div className="spacer" />
       {timezone ? <span className="tz">{timezone}</span> : null}
+      {tools}
       {actions}
     </header>
   );
