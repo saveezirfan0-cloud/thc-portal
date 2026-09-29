@@ -708,7 +708,21 @@ export function withdrawRefusal(reason: string): string {
 /** iOS shows about 178 characters on the lock screen; the rest on a long press. */
 export const MESSAGE_MAX = 300;
 
+/**
+ * Who a message goes to, whichever role is picked — send_event_message's
+ * `p_audience` (20261001211000). The database maps each to booking
+ * statuses; the page never sends a list of workers.
+ */
+export type MessageAudience = 'booked' | 'invited' | 'booked_and_invited';
+
+export const MESSAGE_AUDIENCES: ReadonlyArray<{ value: MessageAudience; label: string }> = [
+  { value: 'booked', label: 'Confirmed and checked-in staff' },
+  { value: 'invited', label: 'Invited only — people who have not accepted yet' },
+  { value: 'booked_and_invited', label: 'Confirmed, checked-in and invited' },
+];
+
 const MESSAGE_REFUSAL_COPY: Readonly<Record<string, string>> = {
+  audience_unknown: 'Choose who the message is for.',
   message_required: 'Write the message first.',
   message_too_long: `Keep the message to ${MESSAGE_MAX} characters — a phone cuts off anything longer.`,
   event_cancelled: 'This event is cancelled. Everyone on it has already been told (N12).',
@@ -718,14 +732,18 @@ const MESSAGE_REFUSAL_COPY: Readonly<Record<string, string>> = {
 };
 
 /**
- * `includeInvited` only changes one refusal: with the box unticked, "nobody
- * to message" can still be answered by ticking it; with it ticked, it can't.
+ * The audience only changes one refusal, "nobody to message": it says
+ * which people were missing and, where another choice could still reach
+ * someone, names it.
  */
-export function messageRefusal(reason: string, includeInvited = false): string {
+export function messageRefusal(reason: string, audience: MessageAudience = 'booked'): string {
   const copy = MESSAGE_REFUSAL_COPY[reason];
   if (!copy) return `The message was not sent (${reason || 'unknown'}).`;
-  if (reason === 'nobody_to_message' && !includeInvited)
-    return `${copy} Tick "Also invited" to reach the people who have not answered.`;
+  if (reason !== 'nobody_to_message') return copy;
+  if (audience === 'booked')
+    return `${copy} Choose "Invited only" under Who to reach the people who have not answered.`;
+  if (audience === 'invited')
+    return 'Nobody has an open invitation for that — there is nobody to message.';
   return copy;
 }
 
