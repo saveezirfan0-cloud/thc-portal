@@ -86,10 +86,10 @@ test('Request my P45: two confirmations, then the leaver screen — and the offi
 
   // LockScreen.tsx, the leaver case (§10.6 step 7). The confirm is a server
   // action (request_my_p45's cascade, then a layout-wide revalidate) followed
-  // by router.replace + refresh: up to three dynamic renders of /profile,
-  // which on a loaded CI runner outlast the default 5 s — the one step this
-  // spec kept failing on (runs 306, 313, 319, and at 20 s in 357), retry
-  // included. So it polls, for up to 45 s,
+  // by a full load of /profile (leaverReload.ts). It used to be
+  // router.replace + refresh, a client transition that stalled on loaded CI
+  // runners with the RPC already done (runs 306, 313, 319, 357, 362, 365).
+  // It still polls, for up to 45 s,
   // as office.checkin does for Get back, and a refusal the sheet prints
   // (P45Flow.tsx's Alert, role="status") fails with its own words rather than
   // a bare "heading not found".
