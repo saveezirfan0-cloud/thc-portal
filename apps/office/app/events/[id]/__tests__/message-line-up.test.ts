@@ -70,7 +70,6 @@ describe('messageLineUp', () => {
       p_section: 'sec-2',
       p_audience: 'invited',
       p_message: 'Staff entrance is on King St',
-      p_booking: null,
     });
     expect(result).toEqual({ ok: true, summary: 'Sent to 12 people.', everyoneReached: true });
     expect(state.revalidated).toEqual(['/events/evt-1']);
@@ -226,10 +225,28 @@ describe('one person (ADR-0069, amended 29.09)', () => {
     expect(result).toEqual({ ok: true, summary: 'Sent to 1 person.', everyoneReached: true });
   });
 
-  it('sends p_booking null for the whole event or a role, as before', async () => {
+  it('leaves p_booking out for the whole event or a role, so a database without the one-person migration still answers', async () => {
     state.rpc.mockResolvedValueOnce({ data: { ok: true, sent: 2, withoutPush: [] }, error: null });
     await messageLineUp('evt-1', { sectionId: 'sec-1', audience: 'booked', message: 'x' });
-    expect(state.rpc.mock.calls[0]![1]).toMatchObject({ p_section: 'sec-1', p_booking: null });
+    expect(state.rpc.mock.calls[0]![1]).toMatchObject({ p_section: 'sec-1' });
+    expect(state.rpc.mock.calls[0]![1]).not.toHaveProperty('p_booking');
+  });
+
+  it('says plainly when the database has not got one-person messaging yet', async () => {
+    state.rpc.mockResolvedValueOnce({
+      data: null,
+      error: {
+        message: 'Could not find the function public.send_event_message(...)',
+        code: 'PGRST202',
+      } as never,
+    });
+    const result = await messageLineUp('evt-1', {
+      sectionId: null,
+      bookingId: 'bk-7',
+      audience: 'booked',
+      message: 'x',
+    });
+    expect((result as { error: string }).error).toMatch(/not switched on yet/);
   });
 
   it('says so when the person is no longer booked', async () => {
