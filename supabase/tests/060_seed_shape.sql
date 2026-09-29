@@ -11,7 +11,9 @@ select plan(12);
 
 select is((select count(*)::int from clients), 5,  'Phase 0 seeds exactly 5 clients');
 select is((select count(*)::int from venues),  8,  'Phase 0 seeds exactly 8 venues');
-select is((select count(*)::int from roles),   6,  'Phase 0 seeds exactly 6 roles');
+-- The six seeded roles carry the seed's fixed ids; the ten from the
+-- 2026–2027 rate card come from migration 20261001211000.
+select is((select count(*)::int from roles where id::text like '30000000-%'), 6, 'Phase 0 seeds exactly 6 roles');
 select is((select count(*)::int from staff),   40, 'Phase 0 seeds exactly 40 workers');
 
 select bag_eq(
