@@ -1,4 +1,4 @@
-# ADR-0071 · Branded HTML email: every email in THC Light, with the text kept
+# ADR-0073 · Branded HTML email: every email in THC Light, with the text kept
 
 **Status:** Accepted (THC, 29.09.2026) · **Amends:** §11.3/§11.4's names for the two event documents in client emails (see *Deviation*), [ADR-0015](0015-reports-money-and-document-emails.md) (D1/D2 copy), [ADR-0039](0039-gdpr-scrub-worker-write-paths-and-cross-browser-reset.md) (the recovery template's look; its link is unchanged) · **Code:** `packages/notifications/src/email-html.ts`, `email-layouts.ts`, `email-logo.ts`, `documents.ts`, `outbox.ts`, `resend.ts`, `drain.ts`, `src/assets/thc-mark-email.{png,ts}`, `scripts/gen-email-logo.mjs`; tests `email-html.test.ts`, `drain.test.ts`, `documents.test.ts`; `supabase/templates/recovery.html`
 

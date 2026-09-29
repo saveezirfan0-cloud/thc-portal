@@ -20,13 +20,13 @@
   Authentication → Email Templates → Reset Password takes this body
   (owner step, reported with the change).
 
-  THC Light layout (ADR-0071), the same as every email the drain sends
+  THC Light layout (ADR-0073), the same as every email the drain sends
   (packages/notifications/src/email-html.ts), written out by hand because
   GoTrue renders this file, not the drain. No image: GoTrue sends no inline
   attachment, so there is no cid: logo to point at, and Gmail blocks data:
   URIs; the header is a text wordmark instead. After ANY change to this
   file the hosted dashboard copy is stale — re-paste the whole file into
-  Authentication → Email Templates → Reset Password (ADR-0071 owner step).
+  Authentication → Email Templates → Reset Password (ADR-0073 owner step).
 -->
 <!doctype html>
 <html lang="en-GB">

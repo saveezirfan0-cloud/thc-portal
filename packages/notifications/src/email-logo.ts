@@ -1,5 +1,5 @@
 /**
- * The header logo as an inline CID attachment (ADR-0071).
+ * The header logo as an inline CID attachment (ADR-0073).
  *
  * Kept apart from the renderer and out of the package index: only the drain
  * sends email, so only the drain imports the base64 bytes. An app that

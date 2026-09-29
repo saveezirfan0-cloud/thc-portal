@@ -20,7 +20,7 @@ export interface ResendAttachment {
   /**
    * Set for an inline image: Resend sends the part inline with this
    * Content-ID, and the HTML shows it with `<img src="cid:…">` (the THC
-   * logo, ADR-0071). Sent as `content_id`.
+   * logo, ADR-0073). Sent as `content_id`.
    */
   contentId?: string;
   /** Sent as `content_type`; Resend derives it from the file name otherwise. */
@@ -33,7 +33,7 @@ export interface ResendEmail {
   subject: string;
   /** The plain-text alternative. Always sent, beside `html`. */
   text: string;
-  /** The THC Light HTML body (ADR-0071). */
+  /** The THC Light HTML body (ADR-0073). */
   html?: string;
   /** Replies go to the sender's monitored mailbox (§9.12). */
   replyTo?: string;

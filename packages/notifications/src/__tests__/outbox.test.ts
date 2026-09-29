@@ -320,3 +320,68 @@ describe('the RC and OF additions are sendable rows', () => {
     });
   });
 });
+
+describe('onboarding chasers (ADR-0071)', () => {
+  it('sends the OC3 rung the row names, with its own heading, into the wizard', () => {
+    const msg = messageFor(
+      push({
+        key: 'OC3:staff:s-1:1790000000:3',
+        template: 'OC3',
+        payload: { step: 'your two references', variant: 'repeat', rung: '3' },
+      }),
+    );
+    expect(msg).toEqual({
+      kind: 'push',
+      staffId: 'staff-1',
+      title: 'Your onboarding is waiting',
+      body: "Still to do: your two references. We can't offer you shifts until onboarding is finished. Need help? Contact the office.",
+      url: '/onboarding',
+      tag: 'OC3',
+    });
+  });
+
+  it('sends the OC2 email to the candidate with the freshly minted link', () => {
+    const msg = messageFor(
+      email({
+        key: 'OC2:staff:s-1:1790000000:1',
+        template: 'OC2',
+        recipient_emails: ['amy@example.com'],
+        payload: {
+          name: 'Amy',
+          link: 'https://staff.test/activate/abc',
+          installLink: 'https://staff.test/install',
+          variant: 'first',
+        },
+      }),
+    );
+    expect(msg.kind).toBe('email');
+    if (msg.kind !== 'email') return;
+    expect(msg.to).toEqual(['amy@example.com']);
+    expect(msg.sender).toBe('admin');
+    expect(msg.subject).toBe('Set up your account with The Hospitality Company');
+    expect(msg.body).toContain('Hi Amy,');
+    expect(msg.body).toContain('https://staff.test/activate/abc');
+    expect(msg.body).toContain('https://staff.test/install');
+    expect(msg.body).not.toMatch(/\{\w+\}/);
+  });
+
+  it('uses the repeating subject from the third OC1 on', () => {
+    const msg = messageFor(
+      email({
+        template: 'OC1',
+        key: 'OC1:staff:s-1:1:3',
+        recipient_emails: ['ivy@example.com'],
+        payload: { name: 'Ivy', variant: 'repeat' },
+      }),
+    );
+    expect(msg.kind === 'email' && msg.subject).toBe('Reminder: your video interview is still waiting');
+  });
+
+  it('refuses a chaser email with no rung rather than guessing one', () => {
+    expect(() =>
+      messageFor(
+        email({ template: 'OC1', key: 'OC1:x', recipient_emails: ['a@b.c'], payload: {} }),
+      ),
+    ).toThrow(/needs a variant/);
+  });
+});

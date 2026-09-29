@@ -1,5 +1,5 @@
 /**
- * How each register email is laid out in HTML (ADR-0071) — presentation
+ * How each register email is laid out in HTML (ADR-0073) — presentation
  * only. The words stay in `templates.ts`, held to §8 by `templates.test.ts`;
  * this file adds the two things HTML has that the plain text does not:
  *
@@ -42,6 +42,11 @@ export const EMAIL_PRESENTATION = {
   E9: { eyebrow: 'Conviction declared' },
   E10: { eyebrow: 'Self-cancellation' },
   E11: { eyebrow: 'Your login', buttons: { link: 'Set your password' } },
+  OC1: { eyebrow: 'Your video interview' },
+  OC2: {
+    eyebrow: 'Set up your account',
+    buttons: { link: 'Set your password', installLink: 'Get the THC Staff App' },
+  },
   CL3: { eyebrow: 'Completion letter' },
   CL4: { eyebrow: 'Right to work' },
   CL5: { eyebrow: '48-hour opt-out' },

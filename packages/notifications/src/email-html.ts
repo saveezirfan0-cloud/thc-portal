@@ -1,5 +1,5 @@
 /**
- * The HTML every THC email is sent in — THC Light (ADR-0071).
+ * The HTML every THC email is sent in — THC Light (ADR-0073).
  *
  * Every email the drain sends carries two bodies: the plain text it always
  * had (the register's copy, unchanged) and this designed HTML version of the

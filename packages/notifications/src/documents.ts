@@ -16,9 +16,9 @@
  *         Both from timesheets@ (§9.12) to the contact emails on the client
  *         card (§9.7), which the outbox row carries. THC renamed both in
  *         client emails on 29.09.2026 — §11.3/§11.4 say "allocation sheet"
- *         and "sign-out timesheet" (ADR-0071).
+ *         and "sign-out timesheet" (ADR-0073).
  *
- * Every one is sent as text AND as THC Light HTML (ADR-0071). The text is
+ * Every one is sent as text AND as THC Light HTML (ADR-0073). The text is
  * `body`; the HTML is built from the same values by `documentHtml()` below,
  * with its sentences in `html` beside the text so the two are read together
  * (email-html.test.ts checks that every sentence of the HTML's own copy is
@@ -56,7 +56,7 @@ export interface DocumentEmailTemplate {
   title: string;
   /** The plain-text body. */
   body: string;
-  /** The HTML version's own pieces (ADR-0071); every sentence is also in `body`. */
+  /** The HTML version's own pieces (ADR-0073); every sentence is also in `body`. */
   html: DocumentEmailHtml;
   trigger: string;
   timing: string;
@@ -249,7 +249,7 @@ function documentFacts(code: DocumentEmailCode, v: Record<string, string>): Emai
   ];
 }
 
-/** The THC Light HTML of a document email (ADR-0071). */
+/** The THC Light HTML of a document email (ADR-0073). */
 function documentHtml(
   code: DocumentEmailCode,
   values: Record<string, string>,

@@ -442,7 +442,7 @@ describe('email', () => {
     expect(p.download).toHaveBeenCalledWith('timesheets', 'allocation/abc.pdf');
   });
 
-  it('sends every email as HTML and text, with the logo inline (ADR-0071)', async () => {
+  it('sends every email as HTML and text, with the logo inline (ADR-0073)', async () => {
     const { p, sent } = ports({});
     await drainRow(email(), CONFIGURED, null, p);
     const body = JSON.parse(sent[0]!.body as string);

@@ -26,6 +26,7 @@ import {
   boardColumns,
   boardCounts,
   cardLines,
+  chaserLine,
   rejectedLines,
   rejectedPill,
   returningActions,
@@ -34,7 +35,7 @@ import {
   stageEnteredAt,
 } from './view-model';
 import type { BoardColumn, BoardFilter, Line, ReasonFilter } from './view-model';
-import type { BoardData, CandidateRow, ReturningRow } from './types';
+import type { BoardData, CandidateRow, ChaserState, ReturningRow } from './types';
 import './onboarding.css';
 
 function Meta({ line }: { line: Line }) {
@@ -196,6 +197,13 @@ export function OnboardingBoard({
             {data.referredProblem}
           </Alert>
         ) : null}
+        {data.chasersProblem ? (
+          // As above: no reminder line because the read failed is not "never reminded".
+          <Alert tone="coral">
+            The onboarding reminders could not be read, so no card shows its reminder or Stalled
+            line: {data.chasersProblem}
+          </Alert>
+        ) : null}
 
         <div className="toolbar">
           <SegToggle<BoardFilter>
@@ -259,6 +267,7 @@ export function OnboardingBoard({
               filter={filter}
               now={at}
               referred={referred}
+              chasers={data.chasers ?? {}}
               onOpen={open}
               onResolve={(row, action) => {
                 setProblem(null);
@@ -337,6 +346,7 @@ function Column({
   filter,
   now,
   referred,
+  chasers,
   onOpen,
   onResolve,
 }: {
@@ -344,6 +354,7 @@ function Column({
   filter: BoardFilter;
   now: Date;
   referred: Referred;
+  chasers: Record<string, ChaserState>;
   onOpen: (row: CandidateRow) => void;
   onResolve: (row: ReturningRow, action: 'reset' | 'reject') => void;
 }) {
@@ -386,6 +397,7 @@ function Column({
             column={column.key}
             now={now}
             referred={referred.candidates.has(row.id)}
+            chaser={chasers[row.id]}
             onOpen={onOpen}
           />
         ),
@@ -440,16 +452,20 @@ function CandidateCard({
   column,
   now,
   referred,
+  chaser,
   onOpen,
 }: {
   row: CandidateRow;
   column: BoardColumn['key'];
   now: Date;
   referred: boolean;
+  /** The onboarding chasers' state for this candidate (ADR-0071), if any. */
+  chaser?: ChaserState;
   onOpen: (row: CandidateRow) => void;
 }) {
   const age = stageAge(stageEnteredAt(row, column), now);
-  const lines = cardLines(row, column, now);
+  const reminder = chaserLine(chaser);
+  const lines = [...cardLines(row, column, now), ...(reminder ? [reminder] : [])];
   const interview = column === 'interview_requested' || column === 'interview_completed';
   return (
     <KanbanCard onOpen={() => onOpen(row)}>

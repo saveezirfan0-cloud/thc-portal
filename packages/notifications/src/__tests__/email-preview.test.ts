@@ -1,6 +1,6 @@
 /**
  * Writes every email, rendered with sample values, to a directory for
- * screenshots (ADR-0071). Skipped unless THC_EMAIL_PREVIEW_DIR is set:
+ * screenshots (ADR-0073). Skipped unless THC_EMAIL_PREVIEW_DIR is set:
  *
  *   THC_EMAIL_PREVIEW_DIR=/abs/path pnpm --filter @thc/notifications preview:emails
  *
@@ -171,17 +171,24 @@ describe.skipIf(!DIR)('email previews (THC_EMAIL_PREVIEW_DIR)', () => {
     for (const code of Object.keys(TEMPLATES) as TemplateCode[]) {
       const entry = TEMPLATES[code];
       if (entry.channel !== 'email' || entry.sender === 'willo') continue;
-      const m = messageFor({
-        id: 0,
-        key: `${code}:preview`,
-        channel: 'email',
-        template: code,
-        recipient_staff_id: null,
-        recipient_emails: ['someone@example.com'],
-        payload: VALUES,
-        attempts: 0,
-      });
-      if (m.kind === 'email') write(code, m.subject, m.html, m.body);
+      // A code with variants (the OC chasers) is one email per variant.
+      const variants: (string | undefined)[] =
+        'variants' in entry && entry.variants ? Object.keys(entry.variants) : [undefined];
+      for (const variant of variants) {
+        const m = messageFor({
+          id: 0,
+          key: `${code}:preview`,
+          channel: 'email',
+          template: code,
+          recipient_staff_id: null,
+          recipient_emails: ['someone@example.com'],
+          payload: variant !== undefined ? { ...VALUES, variant } : VALUES,
+          attempts: 0,
+        });
+        if (m.kind === 'email') {
+          write(variant !== undefined ? `${code}-${variant}` : code, m.subject, m.html, m.body);
+        }
+      }
     }
 
     writeFileSync(
@@ -194,6 +201,6 @@ describe.skipIf(!DIR)('email previews (THC_EMAIL_PREVIEW_DIR)', () => {
         .join('')}</ul></body>`,
     );
     console.warn(`wrote ${written.length} email previews to ${dir}`);
-    expect(written.length).toBe(21);
+    expect(written.length).toBe(27);
   });
 });

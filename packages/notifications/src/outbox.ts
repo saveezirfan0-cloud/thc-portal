@@ -13,7 +13,7 @@
 import { templateEmailHtml } from './email-layouts.ts';
 import { DEFAULT_SENDER_ADDRESSES } from './senders.ts';
 import type { Channel, Sender, Template, TemplateCode } from './templates.ts';
-import { TEMPLATES, body, render } from './templates.ts';
+import { TEMPLATES, body, render, title } from './templates.ts';
 
 /** A claimed row, as `claim_outbox_batch` returns it. */
 export interface OutboxRow {
@@ -47,7 +47,7 @@ export interface EmailMessage {
   /** The plain-text body — the register's copy, as it always was. */
   body: string;
   /**
-   * The same words in the THC Light HTML layout (ADR-0071). Its header
+   * The same words in the THC Light HTML layout (ADR-0073). Its header
    * image is `cid:thc-mark`, so it is sent with `inlineLogoAttachment()`.
    */
   html: string;
@@ -120,29 +120,32 @@ export function messageFor(row: OutboxRow, options: RenderOptions = {}): OutboxM
 
   const values = row.payload ?? {};
 
+  // A code with variants (N9, N14, CL2, the OC chasers) has no single
+  // body: the row names the half — or the rung — in `variant`.
+  const variant = entry.variants ? values.variant : undefined;
+  if (entry.variants && !variant) {
+    throw new UnsendableRow(
+      `${row.template} needs a variant in its payload: ${Object.keys(entry.variants).join(' | ')}`,
+    );
+  }
+  let copy: string;
+  try {
+    copy = body(row.template as TemplateCode, variant);
+  } catch (cause) {
+    throw new UnsendableRow(`${row.template}: ${(cause as Error).message}`);
+  }
+  const heading = title(row.template as TemplateCode, variant);
+
   if (entry.channel === 'push') {
     if (!row.recipient_staff_id) {
       throw new UnsendableRow(`${row.template} is a push with no recipient_staff_id`);
-    }
-    // N9 is the one code with two halves; the row has to say which.
-    const variant = entry.variants ? values.variant : undefined;
-    if (entry.variants && !variant) {
-      throw new UnsendableRow(
-        `${row.template} needs a variant in its payload: ${Object.keys(entry.variants).join(' | ')}`,
-      );
-    }
-    let copy: string;
-    try {
-      copy = body(row.template as TemplateCode, variant);
-    } catch (cause) {
-      throw new UnsendableRow(`${row.template}: ${(cause as Error).message}`);
     }
     const url = pushLink(entry, values);
     const tag = entry.tag ? render(entry.tag, values) : undefined;
     return {
       kind: 'push',
       staffId: row.recipient_staff_id,
-      title: render(entry.title, values),
+      title: render(heading, values),
       body: render(copy, values),
       ...(url ? { url } : {}),
       ...(entry.action ? { action: entry.action } : {}),
@@ -163,11 +166,8 @@ export function messageFor(row: OutboxRow, options: RenderOptions = {}): OutboxM
   if (!to || to.length === 0) {
     throw new UnsendableRow(`${row.template} is an email with no recipient`);
   }
-  if (entry.body === undefined) {
-    throw new UnsendableRow(`${row.template} has no body to send`);
-  }
-  const subject = render(entry.title, values);
-  const text = render(entry.body, values);
+  const subject = render(heading, values);
+  const text = render(copy, values);
   return {
     kind: 'email',
     sender: entry.sender,
@@ -178,7 +178,7 @@ export function messageFor(row: OutboxRow, options: RenderOptions = {}): OutboxM
     html: templateEmailHtml(
       row.template,
       subject,
-      entry.body,
+      copy,
       values,
       text,
       options.replyTo ?? DEFAULT_SENDER_ADDRESSES[entry.sender],

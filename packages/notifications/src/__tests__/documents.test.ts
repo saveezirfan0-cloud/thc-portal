@@ -115,7 +115,7 @@ describe('§11.4 allocation sheet email', () => {
     expect(message.to).toHaveLength(3);
   });
 
-  it('names it the Allocation Timesheet in the subject, with the PO number (ADR-0071)', () => {
+  it('names it the Allocation Timesheet in the subject, with the PO number (ADR-0073)', () => {
     expect(documentMessageFor(d1()).subject).toBe(
       'Allocation Timesheet — Gala Dinner, Friday 19 September 2026 (PO 4471-A)',
     );

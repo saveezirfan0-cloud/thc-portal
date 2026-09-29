@@ -1,6 +1,6 @@
 /**
  * The email logo — packages/notifications/src/assets/thc-mark-email.png and
- * its base64 twin, thc-mark-email.ts (ADR-0071).
+ * its base64 twin, thc-mark-email.ts (ADR-0073).
  *
  * Every THC email carries the round mark in its header. Gmail blocks
  * `data:` URI images and a remote image is blocked until the reader clicks

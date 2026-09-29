@@ -1,5 +1,5 @@
 /**
- * THC Light HTML for every email (ADR-0071): the layout, escaping, the
+ * THC Light HTML for every email (ADR-0073): the layout, escaping, the
  * inline logo, and — for the file emails — D1/D2's renamed copy.
  */
 import { readFileSync } from 'node:fs';
@@ -119,8 +119,25 @@ function emailRow(code: string, payload: Record<string, string> = SAMPLE): Outbo
   };
 }
 
-function email(code: string, payload?: Record<string, string>): EmailMessage {
-  const m = messageFor(emailRow(code, payload));
+/**
+ * One case per email a row can produce: a code with `variants` (the OC
+ * chasers) is a separate email per variant, and the row names it.
+ */
+const SENDABLE_CASES = SENDABLE.flatMap((code) => {
+  const variants = (TEMPLATES[code] as Template).variants;
+  return variants
+    ? Object.keys(variants).map((variant) => ({ code, variant, label: `${code}.${variant}` }))
+    : [{ code, variant: undefined as string | undefined, label: code as string }];
+});
+
+function templateBody(code: TemplateCode, variant: string | undefined): string {
+  const entry = TEMPLATES[code] as Template;
+  return (variant !== undefined ? entry.variants?.[variant]?.body : entry.body) ?? '';
+}
+
+function email(code: string, payload?: Record<string, string>, variant?: string): EmailMessage {
+  const base = payload ?? SAMPLE;
+  const m = messageFor(emailRow(code, variant !== undefined ? { ...base, variant } : base));
   if (m.kind !== 'email') throw new Error(`${code} is not an email`);
   return m;
 }
@@ -420,26 +437,28 @@ describe('linkify, fillTemplate and templateToBlocks', () => {
 // every register email
 // ---------------------------------------------------------------------------
 
-describe('every register email has HTML (ADR-0071)', () => {
-  it('there are 19 email templates, and every one we send has a presentation', () => {
-    expect(EMAIL_CODES).toHaveLength(19);
+describe('every register email has HTML (ADR-0073)', () => {
+  it('every email template we send has a presentation', () => {
     expect(Object.keys(EMAIL_PRESENTATION).sort()).toEqual([...SENDABLE].sort());
   });
 
-  it.each(SENDABLE)('%s renders as THC Light HTML with its own words', (code) => {
-    const m = email(code);
-    expectEmailSafe(m.html);
-    expect(m.html).toContain(
-      `>${escapeHtml(EMAIL_PRESENTATION[code as keyof typeof EMAIL_PRESENTATION].eyebrow)}</p>`,
-    );
-    expect(m.html).toContain(`<title>${escapeHtml(m.subject)}</title>`);
-    expect(m.html).toContain(`class="thc-title"`);
-    // Footer: the sender's monitored address (the default here).
-    expect(m.html).toContain('>admin@thehospitalitycompany.co.uk</a> · ');
-    // Wording is contract: the text body is the register's, unchanged, and
-    // the HTML shows every word of it.
-    expectSameWords(m.body, m.html);
-  });
+  it.each(SENDABLE_CASES)(
+    '$label renders as THC Light HTML with its own words',
+    ({ code, variant }) => {
+      const m = email(code, undefined, variant);
+      expectEmailSafe(m.html);
+      expect(m.html).toContain(
+        `>${escapeHtml(EMAIL_PRESENTATION[code as keyof typeof EMAIL_PRESENTATION].eyebrow)}</p>`,
+      );
+      expect(m.html).toContain(`<title>${escapeHtml(m.subject)}</title>`);
+      expect(m.html).toContain(`class="thc-title"`);
+      // Footer: the sender's monitored address (the default here).
+      expect(m.html).toContain('>admin@thehospitalitycompany.co.uk</a> · ');
+      // Wording is contract: the text body is the register's, unchanged, and
+      // the HTML shows every word of it.
+      expectSameWords(m.body, m.html);
+    },
+  );
 
   it('escapes a value from the row', () => {
     const m = email('E5', { ...SAMPLE, name: '<script>alert(1)</script>' });
@@ -501,15 +520,15 @@ describe('a value typed by a person can never change the layout', () => {
   });
 
   /** Every placeholder of every email, except the ones that are links by design. */
-  const cases = SENDABLE.flatMap((code) => {
+  const cases = SENDABLE_CASES.flatMap(({ code, variant, label }) => {
     const buttons = Object.keys(
       (EMAIL_PRESENTATION[code as keyof typeof EMAIL_PRESENTATION] as { buttons?: object })
         .buttons ?? {},
     );
-    const names = [...((TEMPLATES[code] as Template).body ?? '').matchAll(/\{(\w+)\}/g)].map(
-      (m) => m[1]!,
-    );
-    return [...new Set(names)].filter((n) => !buttons.includes(n)).map((n) => [code, n] as const);
+    const names = [...templateBody(code, variant).matchAll(/\{(\w+)\}/g)].map((m) => m[1]!);
+    return [...new Set(names)]
+      .filter((n) => !buttons.includes(n))
+      .map((n) => [label, n, code, variant] as const);
   });
 
   it('covers the free-text fields people type', () => {
@@ -521,9 +540,9 @@ describe('a value typed by a person can never change the layout', () => {
 
   it.each(cases)(
     '%s: a URL, blank lines and "Label: value" lines in {%s} add no link, paragraph or row',
-    (code, name) => {
-      const benign = email(code).html;
-      const hostile = email(code, { ...SAMPLE, [name]: HOSTILE }).html;
+    (_label, name, code, variant) => {
+      const benign = email(code, undefined, variant).html;
+      const hostile = email(code, { ...SAMPLE, [name]: HOSTILE }, variant).html;
       expect(shape(hostile)).toEqual(shape(benign));
       expect(hostile).not.toContain('href="https://evil.example');
       // The words are still there, as text.

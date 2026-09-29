@@ -281,7 +281,7 @@ async function sendEmail(
   const document = 'attachments' in message ? message : null;
 
   // The files first, then the header's logo, which travels with every email
-  // as an inline CID image (ADR-0071).
+  // as an inline CID image (ADR-0073).
   const logo = inlineLogoAttachment();
   const attachments: ResendAttachment[] = [];
   if (document) {
