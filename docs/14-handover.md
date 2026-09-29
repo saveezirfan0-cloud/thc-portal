@@ -80,7 +80,12 @@ last, below a divider. The Staff App's Documents tab is live.
   CSV one row per shift with holiday broken out, held No check-outs never
   exported, `payroll_export_lines` recording exactly what went, the BG-08 Monday
   09:00 job (`finance-reports`), and the allocation sheet / sign-out timesheet
-  PDFs with Send and Download on the event page (ADR-0015).
+  PDFs with Send and Download on the event page (ADR-0015). Since ADR-0072
+  (THC, 29.09.2026) they are the **Allocation Timesheet** and the **Completed
+  Allocation Timesheet**, and they also go **automatically**: the
+  `event-documents` job (a Back Office route, every 15 min, rtw-check's
+  bearer secret) sends D1 the day before at 14:00 UK and D2 the morning after
+  at 10:00 UK, holding D2 while a No check-out is unresolved.
 - **B13 Feedback** — Client and Office tabs; the worker's rating is now derived
   from feedback (it was never computed before) and Mark as read moves it
   (ADR-0016).

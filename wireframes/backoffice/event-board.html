@@ -125,9 +125,9 @@
             </div>
           </div>
           <div class="acts">
-            <div class="row"><a class="btn sm" href="shift-builder.html#sb=edit">Edit</a><button class="btn sm">Duplicate</button><button class="btn sm primary">Send allocation sheet</button><button class="btn sm">Download</button><button class="btn sm danger">Cancel event</button></div>
+            <div class="row"><a class="btn sm" href="shift-builder.html#sb=edit">Edit</a><button class="btn sm">Duplicate</button><button class="btn sm primary">Send Allocation Timesheet</button><button class="btn sm">Download Allocation Timesheet</button><button class="btn sm danger">Cancel event</button></div>
             <label class="switch purple on"><span class="track"></span>Auto-assign · event level</label>
-            <span class="muted xs">Allocation sheet → events@leonardo-stpauls.example, m.vidal@… from timesheets@thehospitalitycompany.co.uk (§11.4)</span>
+            <span class="muted xs">Allocation Timesheet → events@leonardo-stpauls.example, m.vidal@… from timesheets@thehospitalitycompany.co.uk (§11.4) · Sent automatically the day before at 14:00 (UK time) (ADR-0072)</span>
             <span class="muted xs">Board recalculated fresh on every open — not a cached snapshot (§3.4)</span>
           </div>
         </div>
@@ -240,9 +240,9 @@
             </div>
           </div>
           <div class="acts">
-            <div class="row"><button class="btn sm" disabled title="editing locked at event start">Edit</button><button class="btn sm">Duplicate</button><button class="btn sm primary">Send allocation sheet</button><button class="btn sm">Download</button><button class="btn sm danger">Cancel event</button></div>
+            <div class="row"><button class="btn sm" disabled title="editing locked at event start">Edit</button><button class="btn sm">Duplicate</button><button class="btn sm primary">Send Allocation Timesheet</button><button class="btn sm">Download Allocation Timesheet</button><button class="btn sm danger">Cancel event</button></div>
             <label class="switch purple on"><span class="track"></span>Auto-assign · event level</label>
-            <span class="muted xs">Editing locked — the event has started (§3.2). Allocation sheet can still be sent / downloaded mid-event (§11.3). Cancelling now = on-the-day edge case: scheduled hours billed and paid in full (§3.3).</span>
+            <span class="muted xs">Editing locked — the event has started (§3.2). Allocation Timesheet sent automatically 18/09 14:00; it can still be sent / downloaded mid-event (§11.3). Cancelling now = on-the-day edge case: scheduled hours billed and paid in full (§3.3).</span>
           </div>
         </div>
 
@@ -304,8 +304,8 @@
             </div>
           </div>
           <div class="acts">
-            <div class="row"><button class="btn sm" disabled>Edit</button><button class="btn sm">Duplicate</button><button class="btn sm primary">Send sign-out timesheet</button><button class="btn sm">Download sign-out timesheet</button><button class="btn sm danger" disabled>Cancel event</button></div>
-            <span class="muted xs">One PDF per event, all roles, THC timesheet format 1:1 (§11.3). Marcus B.'s Finish Time and Hours Worked stay blank until his "No check-out" is resolved; regenerate afterwards.</span>
+            <div class="row"><button class="btn sm" disabled>Edit</button><button class="btn sm">Duplicate</button><button class="btn sm primary">Send Completed Timesheet</button><button class="btn sm">Download Completed Timesheet</button><button class="btn sm danger" disabled>Cancel event</button></div>
+            <span class="muted xs">One PDF per event, all roles, THC timesheet format 1:1 (§11.3). Marcus B.'s Finish Time and Hours Worked stay blank until his "No check-out" is resolved; the automatic Completed Allocation Timesheet waits for it (sent automatically the morning after at 10:00 UK once every check-out is resolved, ADR-0072).</span>
             <span class="muted xs">Regenerated after a GDPR removal → "Deleted account #1042", no photo; copies sent before it keep the real name (§1.7).</span>
           </div>
         </div>
@@ -347,7 +347,7 @@
       <section data-state-of="board" data-state="cancel" class="hide">
         <div class="modal-inline" style="min-height:640px">
           <div class="stack dim" style="gap:16px">
-            <div class="evhead"><div><div class="row wrap"><h1>Gala Dinner</h1><span class="pill cyan lg">Upcoming</span><span class="pochip"><span class="k">PO number</span><span class="v">4471-A</span></span></div><div class="meta"><span>Client <b>Leonardo Hotel St Pauls</b></span><span>Date <b>Fri 19 Sep 2026</b></span></div></div><div class="acts"><div class="row"><button class="btn sm">Edit</button><button class="btn sm">Duplicate</button><button class="btn sm primary">Send allocation sheet</button><button class="btn sm">Download</button><button class="btn sm danger">Cancel event</button></div></div></div>
+            <div class="evhead"><div><div class="row wrap"><h1>Gala Dinner</h1><span class="pill cyan lg">Upcoming</span><span class="pochip"><span class="k">PO number</span><span class="v">4471-A</span></span></div><div class="meta"><span>Client <b>Leonardo Hotel St Pauls</b></span><span>Date <b>Fri 19 Sep 2026</b></span></div></div><div class="acts"><div class="row"><button class="btn sm">Edit</button><button class="btn sm">Duplicate</button><button class="btn sm primary">Send Allocation Timesheet</button><button class="btn sm">Download Allocation Timesheet</button><button class="btn sm danger">Cancel event</button></div></div></div>
             <div class="rsec"><div class="rsh"><h3>Chef</h3><span class="cnt">2 confirmed · 0 invited · 0 open of 2</span></div></div>
             <div class="rsec"><div class="rsh"><h3>Kitchen Porter</h3><span class="cnt">2 confirmed · 3 invited · 1 open of 3</span></div></div>
             <div class="rsec"><div class="rsh"><h3>Waiting Staff</h3><span class="cnt">9 confirmed · 4 invited · 3 open of 12</span></div></div>
@@ -363,7 +363,7 @@
                   <div><span class="n">2</span><span><b>13 confirmed</b>, <b>7 invited</b> and <b>2 open Radar applicants</b> get push N12 "This event has been cancelled" — no manual round needed.</span></div>
                   <div><span class="n">3</span><span>All their bookings move to cancelled; open invitations are withdrawn; auto-assign stops for this event immediately.</span></div>
                   <div><span class="n">4</span><span>Excluded from financial reports — no margin, revenue or payroll, since no work happened (cancelled before the day).</span></div>
-                  <div><span class="n">5</span><span>No Allocation Sheet or Timesheet is generated or sent.</span></div>
+                  <div><span class="n">5</span><span>No Allocation Timesheet is generated or sent, manually or automatically.</span></div>
                 </div>
                 <div class="alert">Edge case: if the client cancels <b>on the day</b> or after staff have checked in, the <b>scheduled</b> hours are billed to the client in full and every affected worker is paid their full scheduled hours — this overrides point 4.</div>
               </div>
@@ -399,7 +399,7 @@
       </section>
     </div>
 
-    <div class="wf-note note"><b>Behaviour notes.</b> One block per role, collapsible on its heading, ordered by start time so the board reads like the running order of the day; header "N confirmed · M invited · K open of H" counts ONLY confirmed, followed by the role's own window (dual-zone for a non-UK viewer, §1.8), dress code from the client's rate card and pay/charge (§3.3). Header carries title, client, venue, date, derived event window, PO NUMBER chip, status pill, Break/Buffer policy checkmarks and actions Edit · Duplicate · Send allocation sheet · Download · Cancel event (§3.2, §11.4). Sections: Confirmed → Invited · awaiting response → Potential pool (ranked, search, sort/filter by application status, "Qualified — client · role" chip, "Applied" marker with relative time, Invite per row) → Unavailable with reasons blocked-compliance / booked-elsewhere / hours limit reached / rejected (self-cancelled, RULE-04) / do not return; wrong-role never appears (§3.3, §6, §9.6). Invited and Potential pool exist only while a role has open or invited slots; hidden entirely when a role is fully confirmed and stable, and they reappear on an Ongoing event when a shortfall re-opens (§3.3). No-shows stay inside Confirmed with a "No show" badge and "Get back" (reclassifies to Late from the moment pressed); auto No-show at start + 30 min; manual button live from shift start to 2 weeks after; payroll-export warning verbatim from §3.3. Manager has Withdraw only — the worker confirms in the app (§3.3, §3.5). Auto-assign is a purple switch, default ON, per event and per role; hourly rounds at :17 in score order, qualified wave first (RULE-17), hours limit and compliance are hard gates, 2-hour gap rule for different venues; same-day escalation every 10 minutes within 3 miles (§3.4). Score = 30/25/25/10/10 with per-factor hover breakdown and legend (§6). Cancel event needs a reason and lists its consequences (§3.3). Completed events offer Send / Download sign-out timesheet, one PDF per event (§11.3). Removed workers stay as "Deleted account #id" so the headcount isn't skewed (§1.7).</div>
+    <div class="wf-note note"><b>Behaviour notes.</b> One block per role, collapsible on its heading, ordered by start time so the board reads like the running order of the day; header "N confirmed · M invited · K open of H" counts ONLY confirmed, followed by the role's own window (dual-zone for a non-UK viewer, §1.8), dress code from the client's rate card and pay/charge (§3.3). Header carries title, client, venue, date, derived event window, PO NUMBER chip, status pill, Break/Buffer policy checkmarks and actions Edit · Duplicate · Send Allocation Timesheet · Download Allocation Timesheet · Cancel event (§3.2, §11.4; names ADR-0072), with a line under them saying when the document goes automatically (the day before at 14:00 UK) or when it went. Sections: Confirmed → Invited · awaiting response → Potential pool (ranked, search, sort/filter by application status, "Qualified — client · role" chip, "Applied" marker with relative time, Invite per row) → Unavailable with reasons blocked-compliance / booked-elsewhere / hours limit reached / rejected (self-cancelled, RULE-04) / do not return; wrong-role never appears (§3.3, §6, §9.6). Invited and Potential pool exist only while a role has open or invited slots; hidden entirely when a role is fully confirmed and stable, and they reappear on an Ongoing event when a shortfall re-opens (§3.3). No-shows stay inside Confirmed with a "No show" badge and "Get back" (reclassifies to Late from the moment pressed); auto No-show at start + 30 min; manual button live from shift start to 2 weeks after; payroll-export warning verbatim from §3.3. Manager has Withdraw only — the worker confirms in the app (§3.3, §3.5). Auto-assign is a purple switch, default ON, per event and per role; hourly rounds at :17 in score order, qualified wave first (RULE-17), hours limit and compliance are hard gates, 2-hour gap rule for different venues; same-day escalation every 10 minutes within 3 miles (§3.4). Score = 30/25/25/10/10 with per-factor hover breakdown and legend (§6). Cancel event needs a reason and lists its consequences (§3.3). Completed events offer Send / Download Completed Timesheet, one PDF per event (§11.3), which also goes automatically the morning after at 10:00 UK, held while a No check-out is unresolved (ADR-0072). Removed workers stay as "Deleted account #id" so the headcount isn't skewed (§1.7).</div>
   </div>
 </div>
 </body>

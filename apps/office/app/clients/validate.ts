@@ -27,7 +27,7 @@ export function validateClient(draft: ClientDraft): string | null {
     return 'Enter the staff contact point — the on-site contact staff see at the venue.';
   }
   if (draft.contact_emails.length === 0) {
-    return 'Add at least one contact email: the allocation sheet and the timesheet go to these.';
+    return 'Add at least one contact email: the Allocation Timesheet and the Completed Allocation Timesheet go to these.';
   }
   if (draft.contact_emails.length > MAX_CONTACT_EMAILS) {
     return `Up to ${MAX_CONTACT_EMAILS} contact emails.`;

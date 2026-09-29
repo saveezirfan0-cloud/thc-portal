@@ -24,6 +24,7 @@ import { RoleBoard } from './_components/RoleBoard';
 import { CancelEvent } from './_components/CancelEvent';
 import { DocumentActions } from './_components/DocumentActions';
 import { MessageStaff } from './_components/MessageStaff';
+import { loadAutosendHints } from './document-autosend';
 import '../shift-builder.css';
 import '../event-board.css';
 
@@ -79,6 +80,15 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     })),
   );
   const open = formatOpen(fill);
+  // ADR-0072: when the two documents go out on their own (or went).
+  const autosend =
+    status === 'cancelled'
+      ? { allocation: null, signout: null }
+      : await loadAutosendHints(event.id, {
+          started: status === 'ongoing' || status === 'completed',
+          ended: status === 'completed',
+        });
+  const autosendLine = [autosend.allocation, autosend.signout].filter(Boolean).join(' · ');
   const locked = isEditLocked(windows);
   // Everyone Cancel event reaches (CANCEL_NOTIFIES): confirmed, invited and
   // pending Radar applicants. A checked-in (`worked`) booking is not
@@ -137,6 +147,11 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       }
     >
       <div className="stack">
+        {autosendLine ? (
+          <div className="row">
+            <span className="ml-auto xs muted">{autosendLine}</span>
+          </div>
+        ) : null}
         {status === 'cancelled' ? (
           <Alert tone="coral">
             <b>This event is cancelled.</b> {event.cancelReason ? `"${event.cancelReason}" — ` : ''}
@@ -146,7 +161,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             {event.cancelledAt && cancelledOnTheDay(event.cancelledAt, event.date)
               ? 'It was cancelled on the day, so the scheduled hours are billed to the client and paid to every affected worker in full.'
               : 'It was cancelled before the day, so it is excluded from the financial reports.'}{' '}
-            No allocation sheet or timesheet is generated for it.
+            No Allocation Timesheet is generated or sent for it.
           </Alert>
         ) : null}
 

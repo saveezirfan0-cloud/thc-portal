@@ -204,7 +204,7 @@ describe('the document is the primary action (ADR-0049)', () => {
   it('fills a live download and pairs it with a bordered Details', () => {
     const galaCard = card(render([gala]), 'Gala Dinner');
     expect(galaCard).toContain(
-      '<a class="btn sm primary" href="/client/events/ev-gala/document?kind=allocation">↓ Allocation sheet</a>',
+      '<a class="btn sm primary" href="/client/events/ev-gala/document?kind=allocation">↓ Allocation Timesheet</a>',
     );
     expect(galaCard).toContain('<a href="/client/events/ev-gala" class="btn sm">Details →</a>');
   });
@@ -212,7 +212,7 @@ describe('the document is the primary action (ADR-0049)', () => {
   it('keeps a copy not yet issued as the plain, disabled button', () => {
     const launchCard = card(render([launch]), 'Product Launch');
     expect(launchCard).toMatch(
-      /<button[^>]*class="btn sm"[^>]*disabled=""[^>]*>↓ Allocation sheet/,
+      /<button[^>]*class="btn sm"[^>]*disabled=""[^>]*>↓ Allocation Timesheet/,
     );
     expect(launchCard).not.toContain('primary');
   });
@@ -221,7 +221,7 @@ describe('the document is the primary action (ADR-0049)', () => {
 describe("the signed timesheet's status (§11.3, ADR-0049)", () => {
   it('says plainly whether it has been issued', () => {
     expect(renderToStaticMarkup(<TimesheetStatus status="ready" />)).toContain(
-      'Signed timesheet ready',
+      'Completed Timesheet ready',
     );
     expect(renderToStaticMarkup(<TimesheetStatus status="pending" />)).toContain(
       'Timesheet not issued yet',
@@ -230,7 +230,7 @@ describe("the signed timesheet's status (§11.3, ADR-0049)", () => {
 
   it('is not drawn on an event that has not finished', () => {
     const markup = render([gala, launch]);
-    expect(markup).not.toContain('Signed timesheet ready');
+    expect(markup).not.toContain('Completed Timesheet ready');
     expect(markup).not.toContain('Timesheet not issued yet');
   });
 });

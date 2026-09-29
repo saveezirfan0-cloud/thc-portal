@@ -124,8 +124,8 @@ export function documentOffer(
 /**
  * The event page's header downloads (§11.2, wireframes/client/event.html).
  *
- * Before and during the event: "↓ Download Allocation Sheet", live or
- * disabled. Completed: "↓ Download Signed Timesheet" takes the primary slot
+ * Before and during the event: "↓ Download Allocation Timesheet", live or
+ * disabled. Completed: "↓ Download Completed Timesheet" takes the primary slot
  * (live once a final copy exists, disabled until then) and the allocation
  * sheet stays beside it as history — but only when one was issued; there
  * is no sense in a disabled button for a document that will never come.

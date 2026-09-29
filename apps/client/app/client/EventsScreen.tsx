@@ -79,7 +79,10 @@ const STATUS_LABEL: Record<PortalEvent['status'], string> = {
   cancelled: 'Cancelled',
 };
 
-const DOC_LABEL = { allocation: '↓ Allocation sheet', signout: '↓ Signed timesheet' } as const;
+const DOC_LABEL = {
+  allocation: '↓ Allocation Timesheet',
+  signout: '↓ Completed Timesheet',
+} as const;
 
 const TAB_EMPTY: Record<Tab, string> = {
   upcoming: 'You have no upcoming or ongoing events.',
@@ -530,7 +533,7 @@ function FeedbackNudge({ eventId, toGo, total }: { eventId: string; toGo: number
  */
 export function TimesheetStatus({ status }: { status: 'ready' | 'pending' }) {
   return status === 'ready' ? (
-    <span className="ev-sheet ready">✓ Signed timesheet ready</span>
+    <span className="ev-sheet ready">✓ Completed Timesheet ready</span>
   ) : (
     <span className="ev-sheet">Timesheet not issued yet</span>
   );

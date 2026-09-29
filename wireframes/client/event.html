@@ -64,7 +64,7 @@
       <button data-state="before">Before start · feedback locked</button>
       <button data-state="started">Started · feedback open</button>
       <button data-state="popup">Feedback popup</button>
-      <button data-state="completed">Completed · signed timesheet</button>
+      <button data-state="completed">Completed · Completed Timesheet</button>
     </div>
     <span class="annot">read-only · ONLY confirmed staff, grouped by role · no money anywhere (§11.2, §11.1)</span>
   </div>
@@ -78,7 +78,7 @@
           <div><h1>Gala Dinner</h1><div class="muted sm">Leonardo Royal Hotel · 10 Godliman St, London EC4V 5AJ</div></div>
           <span class="pill cyan lg">Upcoming</span>
           <span class="pill lg" title="PO Number from the event (§3.2)">PO Number · 4471-A</span>
-          <div class="ml-auto row"><a class="btn primary" href="timesheet.html#ts=allocation">↓ Download Allocation Sheet</a></div>
+          <div class="ml-auto row"><a class="btn primary" href="timesheet.html#ts=allocation">↓ Download Allocation Timesheet</a></div>
         </div>
         <div class="meta">
           <div><div class="k">Date</div><div class="v">Friday 19 September 2026</div></div>
@@ -137,7 +137,7 @@
           <div><h1>Gala Dinner</h1><div class="muted sm">Leonardo Royal Hotel · 10 Godliman St, London EC4V 5AJ</div></div>
           <span class="pill green lg"><span class="dot"></span>Ongoing</span>
           <span class="pill lg">PO Number · 4471-A</span>
-          <div class="ml-auto row"><a class="btn primary" href="timesheet.html#ts=allocation">↓ Download Allocation Sheet</a></div>
+          <div class="ml-auto row"><a class="btn primary" href="timesheet.html#ts=allocation">↓ Download Allocation Timesheet</a></div>
         </div>
         <div class="meta">
           <div><div class="k">Date</div><div class="v">Friday 19 September 2026</div></div>
@@ -196,7 +196,7 @@
           <div><h1>Gala Dinner</h1><div class="muted sm">Leonardo Royal Hotel · 10 Godliman St, London EC4V 5AJ</div></div>
           <span class="pill green lg"><span class="dot"></span>Ongoing</span>
           <span class="pill lg">PO Number · 4471-A</span>
-          <div class="ml-auto row"><a class="btn primary" href="timesheet.html#ts=allocation">↓ Download Allocation Sheet</a></div>
+          <div class="ml-auto row"><a class="btn primary" href="timesheet.html#ts=allocation">↓ Download Allocation Timesheet</a></div>
         </div>
         <div class="meta">
           <div><div class="k">Date</div><div class="v">Friday 19 September 2026</div></div>
@@ -235,7 +235,7 @@
     </div>
   </section>
 
-  <!-- ============ State: completed (Sat 20 Sep) — signed timesheet + a GDPR-removed row ============ -->
+  <!-- ============ State: completed (Sat 20 Sep) — Completed Allocation Timesheet + a GDPR-removed row ============ -->
   <section data-state-of="ev" data-state="completed" class="hide">
     <div class="stack" style="gap:20px">
       <div class="ehead">
@@ -244,13 +244,13 @@
           <div><h1>Gala Dinner</h1><div class="muted sm">Leonardo Royal Hotel · 10 Godliman St, London EC4V 5AJ</div></div>
           <span class="pill lg">Completed</span>
           <span class="pill lg">PO Number · 4471-A</span>
-          <div class="ml-auto row"><a class="btn" href="timesheet.html#ts=allocation">↓ Allocation Sheet</a><a class="btn primary" href="timesheet.html#ts=signout">↓ Download Signed Timesheet</a></div>
+          <div class="ml-auto row"><a class="btn" href="timesheet.html#ts=allocation">↓ Allocation Timesheet</a><a class="btn primary" href="timesheet.html#ts=signout">↓ Download Completed Timesheet</a></div>
         </div>
         <div class="meta">
           <div><div class="k">Date</div><div class="v">Friday 19 September 2026</div></div>
           <div><div class="k">Event window</div><div class="v"><span class="mono">07:00 – 23:30</span> UK time<span class="sub mono">08:00 – 00:30 your time</span></div></div>
           <div><div class="k">Staff on the day</div><div class="v"><b>17</b> of 17 · 3 roles</div></div>
-          <div><div class="k">Timesheet</div><div class="v">Sign-out timesheet generated 20 Sep, 00:12<span class="sub">emailed to your 3 contacts (§11.4)</span></div></div>
+          <div><div class="k">Timesheet</div><div class="v">Completed Allocation Timesheet generated 20 Sep, 10:00<span class="sub">emailed to your 3 contacts (§11.4)</span></div></div>
         </div>
       </div>
 
@@ -287,7 +287,7 @@
         </div>
       </div>
       <div class="row wrap sm">
-        <span class="annot">Completed → header button becomes "↓ Download Signed Timesheet" (sign-out timesheet, §11.3 state 2); the allocation sheet stays downloadable as history</span>
+        <span class="annot">Completed → header button becomes "↓ Download Completed Timesheet" (Completed Allocation Timesheet, §11.3 state 2; ADR-0072); the Allocation Timesheet stays downloadable as history</span>
         <span class="annot">removed worker: row stays so the headcount isn't skewed (§1.7); sorted last inside the role because there is no surname to sort by; feedback disabled for a removed account — assumption, spec is silent</span>
       </div>
     </div>
@@ -295,7 +295,7 @@
 
   <div class="wf-note note"><b>Behaviour notes.</b>
   <b>What is shown (§11.2):</b> ONLY the confirmed staff, grouped by role, each with photo · name · role. The role section header carries the role's own window (RULE-18) and the confirmed count. Never shown: Invited · Potential pool · Unavailable · the Auto Invite / Auto-assign toggle · buffer slots · pay or charge rates · check-in status · violations. Read-only: no editing, no cancelling, no messaging from here. ·
-  <b>Header:</b> event name · venue + address · date · event window in dual zone (§1.8: "UK time" line always, "your time" line only for a non-UK viewer — Berlin here) · PO Number chip (from the event, §3.2) · status pill (Upcoming / Ongoing / Completed / Cancelled) · "↓ Download Allocation Sheet" (§11.2); after completion "↓ Download Signed Timesheet" (§11.3). ·
+  <b>Header:</b> event name · venue + address · date · event window in dual zone (§1.8: "UK time" line always, "your time" line only for a non-UK viewer — Berlin here) · PO Number chip (from the event, §3.2) · status pill (Upcoming / Ongoing / Completed / Cancelled) · "↓ Download Allocation Timesheet" (§11.2); after completion "↓ Download Completed Timesheet" (§11.3; names ADR-0072). ·
   <b>Feedback (§11.2, §11.5, §9.10):</b> "Leave feedback" next to each confirmed worker opens a popup — stars 1–5 + comment — and once submitted the button becomes "✓ Feedback sent". Feedback only unlocks after the event has started (buttons disabled before, with the reason on hover and in the banner); it stays open after completion (no closing rule in the spec). One entry per worker per event from the portal. The entry lands in the office Feedback inbox, Client tab, tied to worker + event; it cannot be replied to, edited or deleted by the client, and it feeds the worker's rating only once the office presses "Mark as read" (§9.10, §6). ·
   <b>GDPR (§1.7):</b> a worker removed after the event stays on the line-up as "Deleted account #id", no photo; their feedback history is retained for reporting. The already-issued PDFs keep the real name; a regenerated copy uses the anonymised label (see timesheet page). ·
   <b>Cancelled event:</b> same page, greyed header, no document button, line-up hidden (bookings were released). ·

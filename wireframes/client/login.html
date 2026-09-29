@@ -101,7 +101,7 @@
     </div>
     <div class="card" style="flex:1 1 320px;max-width:460px">
       <b>Who has a client login</b>
-      <div class="sm muted mt-8">The contact people on the client card (§9.7) — the 2–3 addresses the allocation sheet and the timesheet are sent to. The office creates the access; there is no self-registration and no "Create account" link on this page. One client user sees one client's events (Leonardo Hotel St Pauls), never another venue's.</div>
+      <div class="sm muted mt-8">The contact people on the client card (§9.7) — the 2–3 addresses the Allocation Timesheet and the Completed Allocation Timesheet are sent to. The office creates the access; there is no self-registration and no "Create account" link on this page. One client user sees one client's events (Leonardo Hotel St Pauls), never another venue's.</div>
     </div>
   </div>
 </section>
@@ -183,7 +183,7 @@
 
 <div class="wf-note note"><b>Behaviour notes.</b>
 <b>Login (§1.4):</b> back office and client both sign in with email + password on the web; a worker never does — they are activated through a personal link (public/activate.html) and live in the app. After sign-in the role decides the destination: Client → /client, Admin → /dashboard. A client URL typed by an admin (or the reverse) is refused, not redirected — the two apps never leak into each other. ·
-<b>Client users (§9.7, §11.4):</b> the 2–3 contact people on the client card — the same addresses the allocation sheet and timesheet are emailed to. Access is created by the office; no self-registration. Everything behind the login is read-only and shows no money (§11.1). ·
+<b>Client users (§9.7, §11.4):</b> the 2–3 contact people on the client card — the same addresses the Allocation Timesheet and the Completed Allocation Timesheet are emailed to. Access is created by the office; no self-registration. Everything behind the login is read-only and shows no money (§11.1). ·
 <b>Auth screens (§10.2):</b> A0 Login · A1 Forgot password · A2 Reset link sent · A3 Set new password (shared landing, on public/activate.html). Reset emails come from admin@thehospitalitycompany.co.uk (§9.12); no no-reply address. ·
 <b>Responsive (§1.2):</b> the Client Portal must work on tablet and phone — the card is the same component at 390px, full-width inputs, the "Forgot password?" link stays on the label row. ·
 <b>Assumptions to confirm:</b> generic error wording; throttling after repeated failures; "Keep me signed in" duration.</div>

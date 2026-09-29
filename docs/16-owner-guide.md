@@ -744,7 +744,7 @@ automatically.
 **Step 3 — install the schedules.** Only after §4.6:
 
 ```sql
-select public.install_job_schedules();   -- returns 7 today; 8 once willo-invite is enabled
+select public.install_job_schedules();   -- returns 9; 10 once the office vault secrets exist (event-documents, ADR-0072)
 ```
 
 It is idempotent: it unschedules every registered job and re-schedules the

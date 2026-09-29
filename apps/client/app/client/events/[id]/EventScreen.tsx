@@ -113,10 +113,10 @@ export function EventScreen({
             {downloads.map(({ kind, available }) => {
               const label =
                 kind === 'signout'
-                  ? '↓ Download Signed Timesheet'
+                  ? '↓ Download Completed Timesheet'
                   : completed
-                    ? '↓ Allocation Sheet'
-                    : '↓ Download Allocation Sheet';
+                    ? '↓ Allocation Timesheet'
+                    : '↓ Download Allocation Timesheet';
               const primary = kind === 'signout' || !completed;
               return available ? (
                 <a
@@ -167,7 +167,7 @@ export function EventScreen({
                 {/* An audit stamp: UK-only, never dual (§1.8). The final copy
                     goes to the contact emails on the client card (§11.4);
                     the view carries no recipient count, so none is claimed. */}
-                Sign-out timesheet generated{' '}
+                Completed Allocation Timesheet generated{' '}
                 {formatDateTimeIn(new Date(timesheet.issuedAt), UK_ZONE)}
                 <span className="sub">by email to the contacts on your client card</span>
               </div>
