@@ -7,13 +7,22 @@
 -- is what `supabase db reset` / `supabase start` give you.
 -- =====================================================================
 begin;
-select plan(12);
+select plan(13);
 
 select is((select count(*)::int from clients), 5,  'Phase 0 seeds exactly 5 clients');
 select is((select count(*)::int from venues),  8,  'Phase 0 seeds exactly 8 venues');
--- The six seeded roles carry the seed's fixed ids; the ten from the
--- 2026–2027 rate card come from migration 20261001211000.
-select is((select count(*)::int from roles where id::text like '30000000-%'), 6, 'Phase 0 seeds exactly 6 roles');
+-- Six roles come from the seed; the other ten are the 2026–2027 rate card's,
+-- added by migration 20261001212000. Named, so a stray row fails either way.
+select bag_eq(
+  $$ select name::text from roles $$,
+  $$ values ('Waiting Staff'::text),('Bar Staff'),('Chef'),('Kitchen Porter'),('Host'),('Barista'),
+            ('Cloakroom Staff'),('Team Leader'),('Delegate Registration Assistant'),('Runner'),
+            ('On-site Delivery Support'),('Receptionist'),('Kitchen Assistant'),
+            ('Lifting and Shifting'),('Housekeeping Staff'),('Cleaning Staff') $$,
+  'Phase 0 seeds 6 roles; the 2026–2027 rate card adds 10'
+);
+select is((select pay_rate from roles where name = 'Runner'), 14.00::numeric,
+  'Runner base pay is £14.00 (Waiting Staff''s, per the 2026–2027 rate card migration)');
 select is((select count(*)::int from staff),   40, 'Phase 0 seeds exactly 40 workers');
 
 select bag_eq(

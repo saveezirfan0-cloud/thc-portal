@@ -1,5 +1,5 @@
 -- =====================================================================
--- Migration 20261001211000 · roles from the 2026–2027 rate card (§9.8)
+-- Migration 20261001212000 · roles from the 2026–2027 rate card (§9.8)
 --
 -- The product owner asked on 29.09.2026 for every role on "The Hospitality
 -- Company Rate Card 2026-2027" to be in the Roles catalogue. Waiting Staff,
