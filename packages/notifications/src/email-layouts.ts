@@ -5,17 +5,20 @@
  *
  *   eyebrow  the short uppercase label above the title, naming what the
  *            email is about;
- *   buttons  which link placeholders are drawn as the gradient button, and
+ *   buttons  which link placeholders are drawn as the gradient button (by
+ *            placeholder NAME — the only values that ever become links), and
  *            the button's label. The sentence that carries the link is kept
  *            as written and the URL is printed under the button too, so the
  *            HTML still says everything the text does.
  *
- * The title is the subject line, the body is the register's body split into
- * paragraphs (see `textToBlocks`). E1 is not here: Willo sends it, never us.
+ * The title is the subject line; the body's layout is read from the
+ * register's template, placeholders in place, and the values are filled in
+ * escaped afterwards (see `templateToBlocks`). E1 is not here: Willo sends
+ * it, never us.
  */
 
 import type { EmailBlock } from './email-html.ts';
-import { preheaderFrom, renderEmailHtml, textToBlocks } from './email-html.ts';
+import { preheaderFrom, renderEmailHtml, templateToBlocks } from './email-html.ts';
 import type { TemplateCode } from './templates.ts';
 
 export interface EmailPresentation {
@@ -58,29 +61,29 @@ export function presentationFor(code: string): EmailPresentation {
 }
 
 /**
- * The HTML for a register email, from the subject and body it is sent with.
- * `values` are the row's payload, so a button can be matched to the URL its
- * placeholder rendered to.
+ * The HTML for a register email. The layout is read from the register's
+ * `template` (placeholders in place) and the row's `values` are filled in
+ * escaped, so a value can never add a link, a paragraph or a facts row
+ * (`templateToBlocks`). `text` is the rendered plain text, used only for the
+ * hidden inbox preview line.
  */
 export function templateEmailHtml(
   code: string,
   subject: string,
-  body: string,
+  template: string,
   values: Readonly<Record<string, string>>,
+  text: string,
   senderAddress: string,
 ): string {
   const presentation = presentationFor(code);
-  const buttons = new Map<string, string>();
-  for (const [placeholder, label] of Object.entries(presentation.buttons ?? {})) {
-    const url = values[placeholder]?.trim();
-    if (url) buttons.set(url, label);
-  }
-  const blocks: EmailBlock[] = textToBlocks(body, { buttons });
+  const blocks: EmailBlock[] = templateToBlocks(template, values, {
+    buttons: presentation.buttons ?? {},
+  });
   return renderEmailHtml({
     eyebrow: presentation.eyebrow,
     title: subject,
     blocks,
     senderAddress,
-    preheader: preheaderFrom(body),
+    preheader: preheaderFrom(text),
   });
 }

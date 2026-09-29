@@ -26,7 +26,7 @@
 
 import type { DocumentBucket, EmailWithAttachments } from './documents.ts';
 import { documentMessageFor, isDocumentEmail } from './documents.ts';
-import { inlineLogoAttachment } from './email-html.ts';
+import { inlineLogoAttachment } from './email-logo.ts';
 import type { EmailMessage, OutboxRow, PushMessage } from './outbox.ts';
 import { UnsendableRow, messageFor, outboxBackoffMs } from './outbox.ts';
 import type { ResendAttachment } from './resend.ts';

@@ -1,6 +1,6 @@
 # ADR-0071 · Branded HTML email: every email in THC Light, with the text kept
 
-**Status:** Accepted (THC, 29.09.2026) · **Amends:** §11.3/§11.4's names for the two event documents in client emails (see *Deviation*), [ADR-0015](0015-reports-money-and-document-emails.md) (D1/D2 copy), [ADR-0039](0039-gdpr-scrub-worker-write-paths-and-cross-browser-reset.md) (the recovery template's look; its link is unchanged) · **Code:** `packages/notifications/src/email-html.ts`, `email-layouts.ts`, `documents.ts`, `outbox.ts`, `resend.ts`, `drain.ts`, `src/assets/thc-mark-email.{png,ts}`, `scripts/gen-email-logo.mjs`; tests `email-html.test.ts`, `drain.test.ts`, `documents.test.ts`; `supabase/templates/recovery.html`
+**Status:** Accepted (THC, 29.09.2026) · **Amends:** §11.3/§11.4's names for the two event documents in client emails (see *Deviation*), [ADR-0015](0015-reports-money-and-document-emails.md) (D1/D2 copy), [ADR-0039](0039-gdpr-scrub-worker-write-paths-and-cross-browser-reset.md) (the recovery template's look; its link is unchanged) · **Code:** `packages/notifications/src/email-html.ts`, `email-layouts.ts`, `email-logo.ts`, `documents.ts`, `outbox.ts`, `resend.ts`, `drain.ts`, `src/assets/thc-mark-email.{png,ts}`, `scripts/gen-email-logo.mjs`; tests `email-html.test.ts`, `drain.test.ts`, `documents.test.ts`; `supabase/templates/recovery.html`
 
 ## Context
 
@@ -10,16 +10,23 @@ THC also asked for two copy changes. The D1 email went out *before* the event, b
 
 ## Decision
 
-**1. Every email is HTML and text.** `EmailMessage` gains `html`. `messageFor()` and `documentMessageFor()` render both. `buildResendRequest()` sends `text` and `html` together, and the drain passes both through. The plain text is the register's copy, unchanged. `templates.test.ts` still holds it to §8, because the wording is contract. The HTML shows the same words and adds only layout:
+**1. Every email is HTML and text.** `EmailMessage` gains `html`. `messageFor()` and `documentMessageFor()` render both. `buildResendRequest()` sends `text` and `html` together, and the drain passes both through. The plain text is the register's copy, unchanged. `templates.test.ts` still holds it to §8, because the wording is contract.
 
-- **Title.** The subject. For D1/D2 it is the event name.
+For a **register email** the HTML shows the same words and adds only layout. The only new words are the eyebrow, the button labels and the printed URL:
+
+- **Title.** The subject.
 - **Eyebrow.** A short label per template (`EMAIL_PRESENTATION`).
-- **Paragraphs.** The body is split on blank lines, and single line breaks are kept.
-- **Facts box.** A paragraph made only of "Label: value" lines becomes a facts box.
-- **Buttons.** A named set-password or install link becomes a pill button, with the URL printed under it.
-- **Links.** Any other http(s) URL is turned into a link. No other scheme is linked.
+- **Paragraphs.** The template is split on its blank lines, and single line breaks are kept.
+- **Facts box.** A template paragraph made only of "Label: {value}" lines becomes a facts box. Every row is kept, and an empty value is drawn as "—", because the text keeps "Note: " too.
+- **Buttons.** A placeholder named as a link in `EMAIL_PRESENTATION` (E3's `link` and `installLink`, E11's `link`) becomes a pill button when its value is an http(s) URL. The URL is printed under the button.
 
-Every value is HTML-escaped, because the values come from database rows.
+**The layout comes from the template, never from a value.** `templateToBlocks()` reads the paragraphs, the facts rows and the button lines from the register template with its placeholders still in place. It fills in the values afterwards, HTML-escaped, with their line breaks drawn as `<br>`. A value is never split and never linked. So a worker who types a URL, blank lines or "Label: value" lines into a note cannot add a link, a paragraph or a facts row to an office email. A table test holds this for every placeholder of every register email. An http(s) URL written into the template's own words would be linked, but no template has one today. Buttons are chosen by placeholder name, not by what a value looks like.
+
+The **file emails** (D1, D2, BG08) add more than layout, by design:
+
+- D1 and D2 add a facts box built from the payload, the file cards, a `mailto:` reply button and HTML-only sentences. Those sentences sit in `DOCUMENT_EMAILS[…].html`, and each one is also in the text.
+- BG08 is its text template laid out, plus a facts box and the CSV cards.
+- Their facts rows are optional: an empty value drops its row.
 
 **2. THC Light only.** The page ground, card, gradient bar, text, muted, eyebrow and facts colours are the `warm` + `light` tokens (`packages/ui/src/styles/tokens.css`), written out as literal values. There is no dark variant. `<meta name="color-scheme" content="light only">`, `supported-color-schemes` and `:root{color-scheme:light only}` ask mail apps not to invert the email.
 
@@ -31,7 +38,9 @@ The HTML is email-safe:
 - a solid `#0a6d79` behind every gradient, because Outlook for Windows draws no gradients;
 - a table-based ("bulletproof") pill button.
 
-**3. The logo is an inline CID image.** Gmail blocks `data:` URIs, and remote images stay hidden until the reader allows them. So the header's round mark (a 96×96 PNG of `brand/thc-mark.svg`, 2.6 KB) is sent with every email as a Resend attachment with `content_id: "thc-mark"` and `content_type: "image/png"`. The header shows it with `<img src="cid:thc-mark">`.
+**3. The logo is an inline CID image.** Gmail blocks `data:` URIs, and remote images stay hidden until the reader allows them. So the header's round mark (a 96×96 PNG of `brand/thc-mark.svg`, 2.6 KB) is sent with every email as a Resend attachment with `content_id: "thc-mark"` and `content_type: "image/png"`. The header shows it with `<img src="cid:thc-mark">`. The renderer accepts only a `cid:` or an http(s) source for the logo; any other source draws no image.
+
+The bytes live in `email-logo.ts`, which only the drain imports. The package index (`@thc/notifications`) no longer re-exports the drain or the renderer, so an app that imports the register never bundles the logo or the renderer. They are reached by subpath instead: `@thc/notifications/drain` and `@thc/notifications/email-html`. The package is also marked `"sideEffects": false`.
 
 The Deno drain reads no files, so the bytes are checked in twice:
 

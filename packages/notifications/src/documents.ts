@@ -21,7 +21,8 @@
  * Every one is sent as text AND as THC Light HTML (ADR-0071). The text is
  * `body`; the HTML is built from the same values by `documentHtml()` below,
  * with its sentences in `html` beside the text so the two are read together
- * (documents.test.ts holds each HTML sentence to the text).
+ * (email-html.test.ts checks that every sentence of the HTML's own copy is
+ * also in the text).
  *
  * Every one goes through `notification_outbox` with a unique key like
  * everything else (BG08:<week>, D1:document:<id>). The row carries its
@@ -36,7 +37,7 @@
  */
 
 import type { EmailBlock, EmailFact } from './email-html.ts';
-import { preheaderFrom, renderEmailHtml, textToBlocks } from './email-html.ts';
+import { preheaderFrom, renderEmailHtml, templateToBlocks } from './email-html.ts';
 import type { EmailMessage, OutboxRow, RenderOptions } from './outbox.ts';
 import { UnsendableRow } from './outbox.ts';
 import { DEFAULT_SENDER_ADDRESSES, signedBy } from './senders.ts';
@@ -98,7 +99,7 @@ export const DOCUMENT_EMAILS = {
     sender: 'timesheets',
     bucket: 'timesheets',
     title: 'Allocation Timesheet — {event}, {date}{poSuffix}',
-    body: "Hello,\n\nPlease find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}\n\nOn the day, please ask your manager on site to:\n1. fill in each person's finish time, any comments (breaks, early finishes) and hours worked,\n2. print and sign their name at the bottom,\n3. email the signed sheet back to us — just reply to this email.\n\nAny questions, just reply to this email.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
+    body: "Hello,\n\nPlease find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}\n\nOn the day, please ask your manager on site to:\n1. fill in each person's finish time, any comments (breaks, early finishes) and hours worked,\n2. print and sign their name at the bottom,\n3. email the signed sheet back to us — just reply to this email.\n\nAny questions, you can reach us the same way.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
     html: {
       eyebrow: 'Allocation Timesheet',
       intro:
@@ -109,7 +110,7 @@ export const DOCUMENT_EMAILS = {
         'print and sign their name at the bottom,',
         'email the signed sheet back to us — just reply to this email.',
       ],
-      closing: 'Any questions, just reply to this email.',
+      closing: 'Any questions, you can reach us the same way.',
       attachmentNote: 'Allocation Timesheet · attached',
       replyButton: 'Reply with the signed sheet',
     },
@@ -265,9 +266,11 @@ function documentHtml(
   };
 
   if (!copy.intro) {
-    // BG08: the text body, laid out, with the numbers boxed after its first
-    // sentence and the files above the signature.
-    const blocks = textToBlocks(text);
+    // BG08: its text template laid out (placeholders in place, values filled
+    // in escaped), with the numbers boxed after its first sentence and the
+    // files above the signature.
+    const template = signedBy(DOCUMENT_EMAILS[code].body, DOCUMENT_EMAILS[code].sender, replyTo);
+    const blocks = templateToBlocks(template, values);
     blocks.splice(Math.min(2, blocks.length), 0, facts);
     blocks.splice(Math.max(blocks.length - 1, 0), 0, files);
     return renderEmailHtml({
@@ -280,10 +283,10 @@ function documentHtml(
     });
   }
 
-  const intro = render(copy.intro, values);
   const blocks: EmailBlock[] = [
     { kind: 'paragraph', text: 'Hello,' },
-    { kind: 'paragraph', text: intro },
+    // Filled, not rendered-then-parsed: an event name is text, never a link.
+    { kind: 'filled', template: copy.intro, values },
     facts,
   ];
   if (copy.steps && copy.steps.length > 0) {
@@ -305,7 +308,7 @@ function documentHtml(
     documentTitle: subject,
     blocks,
     senderAddress: replyTo,
-    preheader: preheaderFrom(intro),
+    preheader: preheaderFrom(render(copy.intro, values)),
   });
 }
 

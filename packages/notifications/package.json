@@ -3,8 +3,11 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./drain": "./src/drain.ts",
+    "./email-html": "./src/email-html.ts"
   },
   "scripts": {
     "lint": "eslint .",

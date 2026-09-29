@@ -22,15 +22,17 @@
  *
  * The logo is an inline CID attachment (`cid:thc-mark`): Gmail blocks
  * `data:` URIs and a remote image stays hidden until the reader allows it.
- * `inlineLogoAttachment()` is what the drain attaches for it.
+ * `inlineLogoAttachment()` in `email-logo.ts` is what the drain attaches for
+ * it; the bytes live there, not here, so nothing that renders pulls them in.
  *
  * Every interpolated value is HTML-escaped — the values come from database
- * rows, and a worker's name or a manager's note is typed by a person. Only
- * http(s) URLs become links; a `mailto:` is allowed on a button the code
- * itself builds, nothing else.
+ * rows, and a worker's name or a manager's note is typed by a person. A
+ * value is never split into paragraphs or rows and never linked: the layout
+ * comes from the template (`templateToBlocks`). Only http(s) URLs in the
+ * template's own words, and the placeholders `email-layouts.ts` names as
+ * buttons, become links; a `mailto:` is allowed on a button the code itself
+ * builds, nothing else.
  */
-
-import { THC_MARK_EMAIL_PNG_BASE64 } from './assets/thc-mark-email.ts';
 
 // ---------------------------------------------------------------------------
 // palette — THC Light, from tokens.css (warm + light)
@@ -60,26 +62,8 @@ export const THC_COMPANY_NUMBER = 'Registered Company in England and Wales 12411
 // the inline logo
 // ---------------------------------------------------------------------------
 
-/** The Content-ID the header's `<img src="cid:…">` points at. */
+/** The Content-ID the header's `<img src="cid:…">` points at (`email-logo.ts`). */
 export const LOGO_CONTENT_ID = 'thc-mark';
-
-export interface InlineImage {
-  filename: string;
-  /** base64, standard alphabet. */
-  content: string;
-  contentId: string;
-  contentType: string;
-}
-
-/** The header mark, as the inline attachment every HTML email carries. */
-export function inlineLogoAttachment(): InlineImage {
-  return {
-    filename: 'thc-mark.png',
-    content: THC_MARK_EMAIL_PNG_BASE64,
-    contentId: LOGO_CONTENT_ID,
-    contentType: 'image/png',
-  };
-}
 
 // ---------------------------------------------------------------------------
 // escaping and links
@@ -129,9 +113,34 @@ export function linkify(text: string): string {
   return out + escapeHtml(text.slice(last));
 }
 
-/** Escape a block of text, keeping its single line breaks. */
+/**
+ * Escape a block of text, keeping its single line breaks. No links: this is
+ * how every VALUE is drawn — a URL typed into a note stays text.
+ */
 function lines(text: string): string {
-  return text.split('\n').map(linkify).join('<br>');
+  return escapeHtml(text).replace(/\r?\n/g, '<br>');
+}
+
+const PLACEHOLDER = /\{(\w+)\}/g;
+
+/**
+ * Fill a register template for HTML. The template's own words are escaped
+ * and an http(s) URL written INTO the template is linked; each value is
+ * escaped and its line breaks kept — never linked, never split. A
+ * placeholder with no value stays as written, as `render()` leaves it.
+ */
+export function fillTemplate(template: string, values: Readonly<Record<string, string>>): string {
+  const literal = (s: string) => s.split('\n').map(linkify).join('<br>');
+  let out = '';
+  let last = 0;
+  for (const m of template.matchAll(PLACEHOLDER)) {
+    const start = m.index ?? 0;
+    out += literal(template.slice(last, start));
+    const value = values[m[1]!];
+    out += value === undefined ? literal(m[0]) : lines(value);
+    last = start + m[0].length;
+  }
+  return out + literal(template.slice(last));
 }
 
 // ---------------------------------------------------------------------------
@@ -150,10 +159,19 @@ export interface EmailAttachmentCard {
 }
 
 export type EmailBlock =
-  /** Running text. Single line breaks are kept; http(s) URLs become links. */
+  /** Plain text, escaped. Single line breaks are kept; nothing is linked. */
   | { kind: 'paragraph'; text: string }
-  /** Label/value rows in the surface box. An empty value drops its row. */
-  | { kind: 'facts'; rows: readonly EmailFact[] }
+  /**
+   * A register template paragraph, filled by `fillTemplate()`: only a URL in
+   * the template's own words is linked, never one inside a value.
+   */
+  | { kind: 'filled'; template: string; values: Readonly<Record<string, string>> }
+  /**
+   * Label/value rows in the surface box. An empty value drops its row
+   * (the file emails' optional facts), unless `keepEmpty` — a register
+   * email's rows are its copy, so an empty one stays, drawn as "—".
+   */
+  | { kind: 'facts'; rows: readonly EmailFact[]; keepEmpty?: boolean }
   /** A numbered list, with an optional lead-in line above it. */
   | { kind: 'steps'; lead?: string; items: readonly string[] }
   /** The files the email carries. */
@@ -188,13 +206,15 @@ function paragraph(text: string): string {
   return `<p style="${P_STYLE}">${lines(text)}</p>`;
 }
 
-function facts(rows: readonly EmailFact[]): string {
-  const kept = rows.filter((r) => r.value.trim() !== '');
+function facts(rows: readonly EmailFact[], keepEmpty: boolean): string {
+  const kept = keepEmpty ? rows : rows.filter((r) => r.value.trim() !== '');
   if (kept.length === 0) return '';
   const body = kept
     .map((r, i) => {
       const border = i === 0 ? '' : `border-top:1px solid ${C.line};`;
-      return `<tr><td valign="top" width="38%" style="${border}padding:10px 12px 10px 16px;font-family:${FONT};font-size:13px;line-height:1.45;color:${C.muted};">${escapeHtml(r.label)}</td><td valign="top" style="${border}padding:10px 16px 10px 0;font-family:${FONT};font-size:14px;line-height:1.45;font-weight:600;color:${C.text};">${lines(r.value)}</td></tr>`;
+      const value =
+        r.value.trim() === '' ? `<span style="color:${C.muted};">—</span>` : lines(r.value);
+      return `<tr><td valign="top" width="38%" style="${border}padding:10px 12px 10px 16px;font-family:${FONT};font-size:13px;line-height:1.45;color:${C.muted};">${escapeHtml(r.label)}</td><td valign="top" style="${border}padding:10px 16px 10px 0;font-family:${FONT};font-size:14px;line-height:1.45;font-weight:600;color:${C.text};">${value}</td></tr>`;
     })
     .join('');
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" bgcolor="${C.surface}" style="width:100%;margin:0 0 18px 0;background-color:${C.surface};border-radius:12px;border-collapse:separate;">${body}</table>`;
@@ -238,8 +258,10 @@ function block(b: EmailBlock): string {
   switch (b.kind) {
     case 'paragraph':
       return paragraph(b.text);
+    case 'filled':
+      return `<p style="${P_STYLE}">${fillTemplate(b.template, b.values)}</p>`;
     case 'facts':
-      return facts(b.rows);
+      return facts(b.rows, b.keepEmpty ?? false);
     case 'steps':
       return steps(b.lead, b.items);
     case 'attachments':
@@ -255,9 +277,11 @@ function block(b: EmailBlock): string {
 
 export function renderEmailHtml(layout: EmailLayout): string {
   const logoSrc = layout.logoSrc === undefined ? `cid:${LOGO_CONTENT_ID}` : layout.logoSrc;
-  const logo = logoSrc
-    ? `<td valign="middle" width="36" style="width:36px;padding:0 12px 0 0;"><img src="${escapeHtml(logoSrc)}" width="36" height="36" alt="THC" style="display:block;width:36px;height:36px;border:0;outline:none;text-decoration:none;"></td>`
-    : '';
+  // A Content-ID or an http(s) URL; anything else (data:, javascript:) draws no image.
+  const logo =
+    logoSrc && (/^cid:[A-Za-z0-9._@-]+$/.test(logoSrc) || isHttpUrl(logoSrc))
+      ? `<td valign="middle" width="36" style="width:36px;padding:0 12px 0 0;"><img src="${escapeHtml(logoSrc)}" width="36" height="36" alt="THC" style="display:block;width:36px;height:36px;border:0;outline:none;text-decoration:none;"></td>`
+      : '';
   const sender = layout.senderAddress.trim();
   const senderHtml = /^[^\s@<>"]+@[^\s@<>"]+$/.test(sender)
     ? `<a href="mailto:${escapeHtml(sender)}" style="color:${C.muted};text-decoration:none;">${escapeHtml(sender)}</a>`
@@ -316,33 +340,48 @@ ${layout.blocks.map(block).join('\n')}
 // the register's copy, laid out
 // ---------------------------------------------------------------------------
 
-/** A line made only of "Label: value" — the office emails' detail rows. */
+/**
+ * A template line made only of "Label: {value}" — the office emails' detail
+ * rows. The label is the template's own words (no placeholder in it).
+ */
 const FACT_LINE = /^([A-Z][A-Za-z0-9 &()'’/-]{0,48}):\s(.*)$/;
-/** A line that ends in a link: "Set your password to start onboarding: https://…". */
-const TRAILING_LINK = /^(.*\S)\s+(https?:\/\/[^\s<>"']+)$/;
+/** A template line that ends in a placeholder: "Set your password to sign in: {link}". */
+const TRAILING_PLACEHOLDER = /^(.*?)\s*\{(\w+)\}\s*$/;
 
-export interface TextToBlocksOptions {
+export interface TemplateToBlocksOptions {
   /**
-   * The button label for a link that ends a line or stands alone, keyed by
-   * the URL. A link with no label here is linkified in place instead.
+   * Placeholder name → button label, for the placeholders that ARE links by
+   * design (E3's `link` and `installLink`, E11's `link`). Chosen by name,
+   * never by what a value looks like; the value must still be an http(s)
+   * URL, or the line is drawn as text.
    */
-  buttons?: ReadonlyMap<string, string>;
+  buttons?: Readonly<Record<string, string>>;
 }
 
 /**
- * Lay out plain register copy without changing a word of it:
+ * Lay out a register template without changing a word of it. The structure
+ * is read from the TEMPLATE, with its placeholders still in place, and the
+ * values are filled in afterwards — so nothing a person typed into a value
+ * (a URL, a blank line, a "Label: value" line) can add a link, a paragraph
+ * or a facts row:
  *
- * - paragraphs split on blank lines, single line breaks kept;
- * - a paragraph of two or more "Label: value" lines becomes the facts box —
- *   the same labels and values, drawn as rows;
- * - a line that ends in (or is only) a link the caller named becomes the
- *   text, then the gradient button, with the URL printed under it;
- * - any other http(s) URL is linkified where it stands.
+ * - paragraphs split on the template's blank lines, single breaks kept;
+ * - a template paragraph of two or more "Label: {value}" lines becomes the
+ *   facts box, every row kept even when its value is empty (the text keeps
+ *   "Note: " too);
+ * - a template line ending in a button placeholder whose value is an
+ *   http(s) URL becomes the line's words, then the gradient button, with the
+ *   URL printed under it.
  */
-export function textToBlocks(text: string, options: TextToBlocksOptions = {}): EmailBlock[] {
-  const buttons = options.buttons ?? new Map<string, string>();
+export function templateToBlocks(
+  template: string,
+  values: Readonly<Record<string, string>>,
+  options: TemplateToBlocksOptions = {},
+): EmailBlock[] {
+  const buttons = options.buttons ?? {};
+  const fill = (t: string) => t.replace(PLACEHOLDER, (m, key: string) => values[key] ?? m);
   const blocks: EmailBlock[] = [];
-  const paragraphs = text
+  const paragraphs = template
     .replace(/\r\n/g, '\n')
     .split(/\n[ \t]*\n+/)
     .map((p) => p.replace(/^\n+|\n+$/g, ''))
@@ -351,35 +390,31 @@ export function textToBlocks(text: string, options: TextToBlocksOptions = {}): E
   for (const para of paragraphs) {
     const rows = para.split('\n');
     const matched = rows.map((row) => FACT_LINE.exec(row));
-    if (rows.length >= 2 && matched.every((m) => m !== null && !isHttpUrl(m[2]!.trim()))) {
+    if (rows.length >= 2 && matched.every((m) => m !== null)) {
       blocks.push({
         kind: 'facts',
-        rows: matched.map((m) => ({ label: m![1]!, value: m![2]! })),
+        keepEmpty: true,
+        rows: matched.map((m) => ({ label: m![1]!, value: fill(m![2]!) })),
       });
       continue;
     }
     let pending: string[] = [];
     const flush = () => {
-      if (pending.length > 0) blocks.push({ kind: 'paragraph', text: pending.join('\n') });
+      if (pending.length > 0) blocks.push({ kind: 'filled', template: pending.join('\n'), values });
       pending = [];
     };
     for (const row of rows) {
-      const whole = row.trim();
-      if (isHttpUrl(whole) && buttons.has(whole)) {
+      const trailing = TRAILING_PLACEHOLDER.exec(row);
+      const name = trailing?.[2];
+      const label =
+        name !== undefined && Object.prototype.hasOwnProperty.call(buttons, name)
+          ? buttons[name]
+          : undefined;
+      const url = name !== undefined ? (values[name] ?? '').trim() : '';
+      if (trailing && label && isHttpUrl(url)) {
+        if (trailing[1]) pending.push(trailing[1]);
         flush();
-        blocks.push({ kind: 'button', label: buttons.get(whole)!, href: whole, showUrl: true });
-        continue;
-      }
-      const trailing = TRAILING_LINK.exec(row);
-      if (trailing && buttons.has(trailing[2]!)) {
-        pending.push(trailing[1]!);
-        flush();
-        blocks.push({
-          kind: 'button',
-          label: buttons.get(trailing[2]!)!,
-          href: trailing[2]!,
-          showUrl: true,
-        });
+        blocks.push({ kind: 'button', label, href: url, showUrl: true });
         continue;
       }
       pending.push(row);

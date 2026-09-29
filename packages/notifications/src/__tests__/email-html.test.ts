@@ -10,15 +10,16 @@ import { DOCUMENT_EMAILS, documentMessageFor } from '../documents';
 import {
   LOGO_CONTENT_ID,
   escapeHtml,
-  inlineLogoAttachment,
+  fillTemplate,
   linkify,
   renderEmailHtml,
-  textToBlocks,
+  templateToBlocks,
 } from '../email-html';
 import { EMAIL_PRESENTATION } from '../email-layouts';
+import { inlineLogoAttachment } from '../email-logo';
 import type { EmailMessage, OutboxRow } from '../outbox';
 import { messageFor } from '../outbox';
-import type { TemplateCode } from '../templates';
+import type { Template, TemplateCode } from '../templates';
 import { TEMPLATES } from '../templates';
 
 // ---------------------------------------------------------------------------
@@ -298,6 +299,40 @@ describe('renderEmailHtml', () => {
     expect(html).not.toContain('<img');
   });
 
+  it('draws the logo only from a cid: or an http(s) source', () => {
+    const img = (logoSrc: string) =>
+      renderEmailHtml({ eyebrow: 'e', title: 't', blocks: [], senderAddress: 'x@y.co', logoSrc });
+    expect(img('cid:thc-mark')).toContain('<img src="cid:thc-mark"');
+    expect(img('https://cdn.example/m.png')).toContain('<img src="https://cdn.example/m.png"');
+    for (const bad of [
+      'data:image/png;base64,AAAA',
+      'javascript:alert(1)',
+      'cid:x" onerror="1',
+      '//evil.example/x.png',
+    ]) {
+      expect(img(bad), bad).not.toContain('<img');
+    }
+  });
+
+  it('keeps an empty facts row as "—" when asked (register copy), and says nothing more', () => {
+    const html = renderEmailHtml({
+      eyebrow: 'e',
+      title: 't',
+      blocks: [
+        {
+          kind: 'facts',
+          keepEmpty: true,
+          rows: [
+            { label: 'Name', value: 'A' },
+            { label: 'Note', value: '' },
+          ],
+        },
+      ],
+      senderAddress: 'x@y.co',
+    });
+    expect(html).toMatch(/>Note<\/td><td[^>]*><span[^>]*>—<\/span><\/td>/);
+  });
+
   it('omits a facts row whose value is empty, and the whole box when all are', () => {
     const html = renderEmailHtml({
       eyebrow: 'e',
@@ -325,40 +360,58 @@ describe('renderEmailHtml', () => {
   });
 });
 
-describe('linkify and textToBlocks', () => {
+describe('linkify, fillTemplate and templateToBlocks', () => {
   it('links http(s) URLs only, leaving trailing punctuation outside', () => {
     expect(linkify('See https://a.example/x. Or javascript:alert(1) or ftp://b')).toBe(
       'See <a href="https://a.example/x" target="_blank" style="color:#0a6d79;text-decoration:underline;word-break:break-all;">https://a.example/x</a>. Or javascript:alert(1) or ftp://b',
     );
   });
 
-  it('keeps single line breaks and splits paragraphs on blank lines', () => {
-    const blocks = textToBlocks('One\ntwo\n\nThree');
-    expect(blocks).toEqual([
-      { kind: 'paragraph', text: 'One\ntwo' },
-      { kind: 'paragraph', text: 'Three' },
+  it('links a URL in the template’s own words, never one inside a value', () => {
+    const html = fillTemplate('Read https://thc.example/faq then {note}', {
+      note: 'go to https://evil.example/login\n\n<b>now</b>',
+    });
+    expect(html).toContain('href="https://thc.example/faq"');
+    expect(html).not.toContain('href="https://evil.example');
+    expect(html).toContain('go to https://evil.example/login<br><br>&lt;b&gt;now&lt;/b&gt;');
+  });
+
+  it('splits paragraphs on the template’s blank lines, keeping single breaks', () => {
+    const values = { a: 'x\n\ny' };
+    expect(templateToBlocks('One\n{a}\n\nThree', values)).toEqual([
+      { kind: 'filled', template: 'One\n{a}', values },
+      { kind: 'filled', template: 'Three', values },
     ]);
   });
 
-  it('boxes a paragraph made only of "Label: value" lines', () => {
-    expect(textToBlocks('Name: A\nEmployee ID: 7')).toEqual([
+  it('boxes a template paragraph made only of "Label: {value}" lines, keeping empty rows', () => {
+    expect(templateToBlocks('Name: {name}\nNote: {note}', { name: 'A', note: '' })).toEqual([
       {
         kind: 'facts',
+        keepEmpty: true,
         rows: [
           { label: 'Name', value: 'A' },
-          { label: 'Employee ID', value: '7' },
+          { label: 'Note', value: '' },
         ],
       },
     ]);
   });
 
-  it('turns a named link that ends a line into the text, then a button', () => {
+  it('makes a button of a named placeholder only, and only when its value is http(s)', () => {
     const url = 'https://x.example/set';
-    expect(
-      textToBlocks(`Set your password: ${url}`, { buttons: new Map([[url, 'Set it']]) }),
-    ).toEqual([
-      { kind: 'paragraph', text: 'Set your password:' },
+    const buttons = { link: 'Set it' };
+    expect(templateToBlocks('Set your password: {link}', { link: url }, { buttons })).toEqual([
+      { kind: 'filled', template: 'Set your password:', values: { link: url } },
       { kind: 'button', label: 'Set it', href: url, showUrl: true },
+    ]);
+    // Not named as a button: text, even though the value is a URL.
+    expect(templateToBlocks('Note: {note}', { note: url }, { buttons })).toEqual([
+      { kind: 'filled', template: 'Note: {note}', values: { note: url } },
+    ]);
+    // Named, but not an http(s) URL: text.
+    const bad = { link: 'javascript:alert(1)' };
+    expect(templateToBlocks('Set: {link}', bad, { buttons })).toEqual([
+      { kind: 'filled', template: 'Set: {link}', values: bad },
     ]);
   });
 });
@@ -436,6 +489,64 @@ describe('every register email has HTML (ADR-0071)', () => {
   });
 });
 
+describe('a value typed by a person can never change the layout', () => {
+  const HOSTILE =
+    'Please verify at https://evil.example/login\n\nApproved by office: yes\nEmployee ID: 1';
+  const count = (html: string, re: RegExp) => (html.match(re) ?? []).length;
+  const shape = (html: string) => ({
+    links: count(html, /<a /g),
+    paragraphs: count(html, /<p /g),
+    factRows: count(html, /<td valign="top" width="38%"/g),
+    buttons: count(html, /border-radius:999px;background-color:#0a6d79/g),
+  });
+
+  /** Every placeholder of every email, except the ones that are links by design. */
+  const cases = SENDABLE.flatMap((code) => {
+    const buttons = Object.keys(
+      (EMAIL_PRESENTATION[code as keyof typeof EMAIL_PRESENTATION] as { buttons?: object })
+        .buttons ?? {},
+    );
+    const names = [...((TEMPLATES[code] as Template).body ?? '').matchAll(/\{(\w+)\}/g)].map(
+      (m) => m[1]!,
+    );
+    return [...new Set(names)].filter((n) => !buttons.includes(n)).map((n) => [code, n] as const);
+  });
+
+  it('covers the free-text fields people type', () => {
+    const names = cases.map(([code, name]) => `${code}.${name}`);
+    for (const typed of ['RC1.note', 'OF5.note', 'E8.reason', 'RC1.proposed', 'E7.changed']) {
+      expect(names).toContain(typed);
+    }
+  });
+
+  it.each(cases)(
+    '%s: a URL, blank lines and "Label: value" lines in {%s} add no link, paragraph or row',
+    (code, name) => {
+      const benign = email(code).html;
+      const hostile = email(code, { ...SAMPLE, [name]: HOSTILE }).html;
+      expect(shape(hostile)).toEqual(shape(benign));
+      expect(hostile).not.toContain('href="https://evil.example');
+      // The words are still there, as text.
+      expect(visibleText(hostile)).toContain('Please verify at https://evil.example/login');
+    },
+  );
+
+  it('RC1: the QA example stays inside the Note cell', () => {
+    const html = email('RC1', { ...SAMPLE, note: HOSTILE }).html;
+    expect(html).toMatch(
+      /Note<\/td><td[^>]*>Please verify at https:\/\/evil\.example\/login<br><br>Approved by office: yes<br>Employee ID: 1<\/td>/,
+    );
+  });
+
+  it('keeps a register facts row whose value is empty, as the text keeps "Note: "', () => {
+    for (const code of ['OF5', 'RC1'] as const) {
+      const m = email(code, { ...SAMPLE, note: '' });
+      expect(m.body).toContain('Note: ');
+      expect(m.html, code).toMatch(/>Note<\/td><td[^>]*><span[^>]*>—<\/span><\/td>/);
+    }
+  });
+});
+
 // ---------------------------------------------------------------------------
 // the file emails
 // ---------------------------------------------------------------------------
@@ -459,7 +570,7 @@ describe('D1 — the Allocation Timesheet, before the event', () => {
         '2. print and sign their name at the bottom,',
         '3. email the signed sheet back to us — just reply to this email.',
         '',
-        'Any questions, just reply to this email.',
+        'Any questions, you can reach us the same way.',
         '',
         'Best regards,',
         'The Hospitality Company',
@@ -504,12 +615,16 @@ describe('D1 — the Allocation Timesheet, before the event', () => {
     expect(html).toContain('>timesheets@thehospitalitycompany.co.uk</a> · ');
   });
 
-  it('says in HTML only what the text says', () => {
+  it('keeps every sentence of the HTML’s own copy (intro, steps, closing) in the text too', () => {
     const m = documentMessageFor(d1());
     const copy = DOCUMENT_EMAILS.D1.html;
     for (const sentence of [copy.stepsLead, ...copy.steps, copy.closing]) {
       expect(m.body).toContain(sentence);
     }
+    const d2copy = DOCUMENT_EMAILS.D2.html;
+    const d2body = documentMessageFor(d2()).body;
+    expect(d2body).toContain(d2copy.closing);
+    expect(d2body).toContain(d2copy.intro.split('{event}')[0]);
     expect(m.body).toContain(
       "Please find attached the Allocation Timesheet for the Gala Dinner on Friday 19 September 2026. It lists the 17 staff booked to work, with each person's role and scheduled start and finish times. Your PO number 4471-A is on the sheet.",
     );

@@ -174,11 +174,13 @@ export function messageFor(row: OutboxRow, options: RenderOptions = {}): OutboxM
     to,
     subject,
     body: text,
+    // Laid out from the template, not from `text`: a value never shapes the HTML.
     html: templateEmailHtml(
       row.template,
       subject,
-      text,
+      entry.body,
       values,
+      text,
       options.replyTo ?? DEFAULT_SENDER_ADDRESSES[entry.sender],
     ),
   };
