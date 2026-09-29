@@ -12,6 +12,7 @@ import type {
   AvailabilityRow,
   ClientOption,
   EmergencyContact,
+  PersonalPayRate,
   Referrals,
   DeclarationRow,
   DocumentRow,
@@ -126,6 +127,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     referrals,
     availability,
     changeRequests,
+    payRate,
   ] = await Promise.all([
     supabase.from('staff_profile_v').select(PROFILE_COLUMNS).eq('id', id).maybeSingle<ProfileRow>(),
     supabase
@@ -210,6 +212,13 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     (supabase as unknown as AdditionsRpc).rpc('office_staff_referrals', { p_staff: id }),
     (supabase as unknown as AdditionsRpc).rpc('office_staff_unavailability', { p_staff: id }),
     readChangeRequests(supabase, { staffId: id }),
+    // ADR-0072: the personal pay rate. staff_pay_rates answers a login with
+    // finance only, so a scheduler reads no row (and the card is not drawn).
+    supabase
+      .from('staff_pay_rates')
+      .select('pay_rate, set_at')
+      .eq('staff_id', id)
+      .maybeSingle<PersonalPayRate>(),
   ]);
 
   const error =
@@ -259,6 +268,8 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     availabilityProblem: availability.error ? availability.error.message : null,
     changeRequests: changeRequests.rows,
     changeRequestsProblem: changeRequests.problem,
+    payRate: payRate.error ? null : (payRate.data ?? null),
+    payRateProblem: payRate.error ? payRate.error.message : null,
     problem: null,
   };
 }

@@ -6,9 +6,11 @@ import { formatUkStamp, reviewLabel } from './profile';
 import { EmergencyContactCard } from './EmergencyContactCard';
 import { DobCorrection } from '../../_components/DobCorrection';
 import { ReferralsCard } from './ReferralsCard';
+import { PayRateCard } from './PayRateCard';
 import type {
   DeclarationRow,
   EmergencyContact,
+  PersonalPayRate,
   ProfileRow,
   ReferenceRow,
   Referrals,
@@ -49,6 +51,10 @@ export function Overview({
   referrals = null,
   referralsProblem = null,
   canCorrectDob = false,
+  payRate = null,
+  payRateProblem = null,
+  showPayRate = false,
+  canEditPayRate = false,
 }: {
   profile: ProfileRow;
   references: ReferenceRow[];
@@ -63,6 +69,13 @@ export function Overview({
   referralsProblem?: string | null;
   /** ADR-0070: `officeCan(role, 'identity')` — owners and managers see "Correct". */
   canCorrectDob?: boolean;
+  /** ADR-0072: the personal pay rate, null for none. */
+  payRate?: PersonalPayRate | null;
+  payRateProblem?: string | null;
+  /** `officeCan(role, 'finance')` — the card is money, never drawn for a scheduler. */
+  showPayRate?: boolean;
+  /** Finance and write: owners and managers edit; a viewer only reads. */
+  canEditPayRate?: boolean;
 }) {
   return (
     <div className="grid c2">
@@ -257,6 +270,16 @@ export function Overview({
           </span>
         </div>
       </Panel>
+
+      {/* ADR-0072: the third level of pay rate — finance roles only. */}
+      {showPayRate ? (
+        <PayRateCard
+          staffId={profile.id}
+          payRate={payRate}
+          problem={payRateProblem}
+          editable={canEditPayRate && !profile.removed}
+        />
+      ) : null}
 
       <Panel
         className="span-2"

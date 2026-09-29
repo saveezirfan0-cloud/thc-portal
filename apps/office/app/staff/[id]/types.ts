@@ -199,6 +199,17 @@ export interface EmergencyContact {
   updatedByName: string | null;
 }
 
+/**
+ * A worker's personal base pay rate — one row of `staff_pay_rates`
+ * (ADR-0072). Read by a Back Office login with finance only; nobody else
+ * gets a row back.
+ */
+export interface PersonalPayRate {
+  /** £/h, `numeric(8,2)`. */
+  pay_rate: number | string;
+  set_at: string;
+}
+
 /** One side of a referral in `office_staff_referrals()` (ADR-0047). */
 export interface ReferralPerson {
   staffId: string;
@@ -304,6 +315,13 @@ export interface ProfileData {
   changeRequests?: ChangeRequestView[];
   /** Set when those could not be read: the banner says so, not "none pending" (D18). */
   changeRequestsProblem?: string | null;
+  /**
+   * ADR-0072: the worker's personal base pay rate, or null for none (the
+   * role or event rate applies). Only a Back Office login with finance
+   * gets a row; for anyone else this is null, and the card is not drawn.
+   */
+  payRate?: PersonalPayRate | null;
+  payRateProblem?: string | null;
   problem: string | null;
 }
 
