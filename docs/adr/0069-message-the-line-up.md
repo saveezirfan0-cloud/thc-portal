@@ -1,6 +1,6 @@
 # ADR-0069 · Message the line-up: a push with the office's own words
 
-**Status:** Accepted (owner request, 28.09.2026). An addition to scope v1.6; §8's register is otherwise unchanged.
+**Status:** Accepted (owner request, 28.09.2026). An addition to scope v1.6; §8's register is otherwise unchanged. Amended 29.09.2026: the "Also invited" checkbox became a **Who** choice, so invitees can be messaged on their own (see *Amendment* below).
 
 ## Context
 
@@ -13,12 +13,12 @@ Every push in §8 has fixed copy. The office had no way to pass on last-minute i
 **The form:**
 
 - **To:** everyone on the event, or one role (the role name and its UK times).
-- **Also invited:** a checkbox, off by default.
+- **Who:** *Confirmed and checked-in staff* (the default), *Invited only — people who have not accepted yet*, or *Confirmed, checked-in and invited*. Any choice works with any **To**.
 - **Message:** 1–300 characters. iOS shows about 178 on the lock screen and the rest on a long press.
 
-**Who receives it** is decided by `send_event_message()` (20261001209000) from the bookings, never from a list the page sends:
+**Who receives it** is decided by `send_event_message()` (20261001209000, audience from 20261001211000) from the bookings, never from a list the page sends:
 
-- confirmed and worked (checked in) bookings, plus invited ones when the box is ticked;
+- by audience: `booked` = confirmed and worked (checked in); `invited` = invited only; `booked_and_invited` = both. Anything else is refused as `audience_unknown`;
 - never applied, closed, cancelled or turned away bookings;
 - one push per worker, even when they hold two roles on the event. It links to the role they start first, or to the role that was messaged.
 
@@ -34,6 +34,10 @@ It goes through `notification_outbox` like every other send, with a unique key p
 **Notifications off:** the answer names every recipient with no push subscription. The manager sees "These people have notifications off and will not get it — phone them: …". Their rows are still queued, and the drain fails them as "no push subscription", as it does for any push.
 
 **Access:** admin only (`current_app_role()`), and refused for a viewer login (ADR-0060, `assert_not_read_only()`). Every send writes `event.message_sent` to `audit_log`, with the text, so it appears in the event's history. GDPR removal already scrubs the worker's outbox rows by recipient (20260930120100). It matches ids, emails and NI numbers, not names, so a message that *names* a worker who is later removed keeps that name in `audit_log` and in the other recipients' sent rows. Managers should refer to people by role, not by name, in these messages.
+
+## Amendment (29.09.2026): choose who
+
+The first version could only add invitees on top of the confirmed line-up, so there was no way to chase the people who had not answered an invitation without also messaging everyone already booked. The owner asked for more flexibility. The checkbox is now a **Who** select next to **To**, and `send_event_message(p_event, p_section, p_audience text, p_message)` replaces the boolean signature. The old one is dropped, not overloaded. When nobody matches, the refusal says who was missing: with *Confirmed* chosen it points to *Invited only*, and with *Invited only* chosen it says nobody has an open invitation. `audit_log` records `audience` in place of `includeInvited`.
 
 ## Not done
 
