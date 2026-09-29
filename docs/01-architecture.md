@@ -21,7 +21,7 @@ Shared packages:
 | `packages/domain` | Pure TypeScript rules with unit tests: scoring (§6), pay window RULE-01/02/14/15, weekly cap RULE-20, booked-elsewhere gap, HMRC statement derivation, share-code validation, state machines (§2.12, §3.6), time-zone display helpers (§1.8). No I/O. |
 | `packages/db` | Generated Supabase types, typed query helpers, RLS-aware clients (server/browser), Storage helpers. |
 | `packages/notifications` | Template registry N1–N15 and E2–E9 (§8), copy as constants, outbox writer. |
-| `packages/pdf` | Allocation Timesheet / Completed Allocation Timesheet renderer (§11.3, names ADR-0072) with pagination (12 rows/page), full A4 pages. |
+| `packages/pdf` | Allocation Timesheet / Completed Allocation Timesheet renderer (§11.3, names ADR-0074) with pagination (12 rows/page), full A4 pages. |
 | `supabase/` | Migrations, seed, Edge Functions, cron definitions, pgTAP tests. |
 
 ## 2. Backend on Supabase
@@ -41,7 +41,7 @@ Shared packages:
 | SMS (§1.3 "via Willo") | Willo sends its own interview SMS/email. No other SMS in v1. |
 | Files | Supabase Storage, private buckets: `documents`, `photos`, `reports`, `timesheets`. Signed URLs, short TTL. |
 | Realtime | Supabase Realtime on `check_logs`, `bookings`, `violations`, `location_pings` → the Check-in monitor updates live (§9.5). |
-| PDFs (§11.3) | `packages/pdf` with `@react-pdf/renderer` in a Next.js route handler (`apps/office/app/api/documents/[eventId]/route.ts`); output stored to `timesheets` bucket and emailed via Resend — by the manager's Send, and automatically by `POST /api/jobs/event-documents` (ADR-0072). |
+| PDFs (§11.3) | `packages/pdf` with `@react-pdf/renderer` in a Next.js route handler (`apps/office/app/api/documents/[eventId]/route.ts`); output stored to `timesheets` bucket and emailed via Resend — by the manager's Send, and automatically by `POST /api/jobs/event-documents` (ADR-0074). |
 | CSV exports (§9.9) | Route handlers in `apps/office`; BG-08 Monday 09:00 job builds the same CSVs and emails finance. |
 | Maps / geocoding | Mapbox GL + Mapbox Geocoding (reverse geocode pin → address; forward geocode home address). Google Maps works equally; pick one at kick-off. |
 
@@ -86,7 +86,7 @@ the registry until its Edge Function exists.
 | `compliance_daily` | every 5 min, UK 05:00 gate in the function | `compliance-daily` | auto-block on expiry (BG-05), release bookings, N1–N4 tiers, N14 cap-band changes |
 | BG-01/02/02b/03/09/10 per-booking timers | every minute | `booking-tick` | selects due bookings and writes outbox rows keyed `N9:booking:<id>` etc.; raises No-show at start+30 (exempt if confirmed after start), No check-out at end+4h, 6-hour break alert |
 | BG-08 finance reports | every 5 min, UK Monday 09:00 gate in the function | `finance-reports` | payroll CSV always; New Starter CSV only if any; holds shifts with unresolved No check-out |
-| §11.3/§11.4 automatic documents (ADR-0072) | every 15 min; UK 14:00 day-before (D1) and 10:00 morning-after (D2) decided in the route, times in `settings.document_autosend` | none — Back Office route `POST /api/jobs/event-documents` (`@react-pdf/renderer` needs Node), bearer `rtw_job_secret` as rtw-check | D1 Allocation Timesheet until the first shift starts; D2 Completed Allocation Timesheet held while a No check-out is unresolved, up to 14 days; skips cancelled / no confirmed staff / no contact emails / already sent by a manager; one automatic send per event and kind |
+| §11.3/§11.4 automatic documents (ADR-0074) | every 15 min; UK 14:00 day-before (D1) and 10:00 morning-after (D2) decided in the route, times in `settings.document_autosend` | none — Back Office route `POST /api/jobs/event-documents` (`@react-pdf/renderer` needs Node), bearer `rtw_job_secret` as rtw-check | D1 Allocation Timesheet until the first shift starts; D2 Completed Allocation Timesheet held while a No check-out is unresolved, up to 14 days; skips cancelled / no confirmed staff / no contact emails / already sent by a manager; one automatic send per event and kind |
 | Outbox drain | every minute | `notify-drain` | Web Push + email; retries with backoff; marks `sent_at`/`failed_at` |
 | Willo | webhook | `willo-webhook` | New Response → interview_completed; Stage Change → documents / rejected (+E2) |
 | RULE-16 stale invites | none | live filter `event_window.ends_at < now()` in queries | no job, per spec |

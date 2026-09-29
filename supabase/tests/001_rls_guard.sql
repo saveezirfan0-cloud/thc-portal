@@ -76,7 +76,7 @@ select bag_eq(
             ('application_referrals'),
             ('office_saved_views'),
             ('event_document_autosends') $$,
-  'RLS is enabled on all 49 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), and office_saved_views (ADR-0059, 20261001202000), and event_document_autosends (ADR-0072, 20261001213000)'
+  'RLS is enabled on all 49 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), and office_saved_views (ADR-0059, 20261001202000), and event_document_autosends (ADR-0074, 20261002100000)'
 );
 
 -- ---------------------------------------------------------------------

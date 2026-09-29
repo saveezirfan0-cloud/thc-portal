@@ -207,7 +207,7 @@ describe('ordering and naming', () => {
   });
 });
 
-describe('THC form changes of 29.09.2026 (ADR-0072)', () => {
+describe('THC form changes of 29.09.2026 (ADR-0074)', () => {
   it('ends with the Alcohol Policy Understood and Agreed column, after Hours Worked', () => {
     expect(SHEET_COLUMNS.at(-1)).toBe('Alcohol Policy Understood and Agreed');
     expect(SHEET_COLUMNS.at(-2)).toBe('Hours Worked');

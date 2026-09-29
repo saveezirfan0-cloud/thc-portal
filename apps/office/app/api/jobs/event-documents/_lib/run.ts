@@ -2,7 +2,7 @@ import { NOTEWORTHY, autosendVerdict } from './schedule';
 import type { AutosendConfig, AutosendFacts, AutosendVerdict, DocumentKind } from './schedule';
 
 /**
- * One run of the event-documents job (ADR-0072), with its I/O injected so
+ * One run of the event-documents job (ADR-0074), with its I/O injected so
  * the order of operations is testable without a database or a PDF.
  *
  * For every candidate `event_documents_due()` returns:

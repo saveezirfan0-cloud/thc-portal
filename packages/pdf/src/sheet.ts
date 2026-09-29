@@ -16,7 +16,7 @@
  *   · Columns: Photo · Staff Name ("Name (Employee ID)" + "(Role)") ·
  *     Start Time (scheduled start + forecast finish in brackets) · Finish
  *     Time · Signature · Comments · Hours Worked · Alcohol Policy
- *     Understood and Agreed (ADR-0072: THC's paper form has it; always
+ *     Understood and Agreed (ADR-0074: THC's paper form has it; always
  *     blank — the worker initials it by hand on site).
  *   · At most 12 staff rows a page (`paginate`, `ROWS_PER_PAGE`); a row is
  *     never split; header and column headings repeat; "Page X of Y" on every
@@ -30,7 +30,7 @@
  *     log; a worker with an unresolved No check-out gets blank Finish and
  *     Hours rather than a guess (RULE-02). Signature and Alcohol Policy are
  *     blank in both.
- *   · Names (ADR-0072, THC 29.09.2026): in the product the allocation state
+ *   · Names (ADR-0074, THC 29.09.2026): in the product the allocation state
  *     is the "Allocation Timesheet" and the sign-out state the "Completed
  *     Allocation Timesheet" (`DOCUMENT_NAME`). The printed header stays
  *     STAFF ALLOCATION — that is THC's paper form.
@@ -72,7 +72,7 @@ export const SHEET_COLUMNS = [
 ] as const;
 
 /**
- * What the product calls each state (ADR-0072). Every button, email subject
+ * What the product calls each state (ADR-0074). Every button, email subject
  * and Client Portal label says one of these; "sign-out timesheet" is the
  * code's word for the second state and never reaches a client.
  */
@@ -131,7 +131,7 @@ export interface SheetRow {
   signature: string;
   comments: string;
   hoursWorked: string;
-  /** Always blank: initialled by hand on site (ADR-0072). */
+  /** Always blank: initialled by hand on site (ADR-0074). */
   alcoholPolicy: string;
 }
 

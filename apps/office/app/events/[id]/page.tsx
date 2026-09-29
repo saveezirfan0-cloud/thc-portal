@@ -80,7 +80,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     })),
   );
   const open = formatOpen(fill);
-  // ADR-0072: when the two documents go out on their own (or went).
+  // ADR-0074: when the two documents go out on their own (or went).
   const autosend =
     status === 'cancelled'
       ? { allocation: null, signout: null }

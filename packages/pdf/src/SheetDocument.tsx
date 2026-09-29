@@ -17,7 +17,7 @@
  * The <Page> must NOT carry `wrap={false}`. An unwrappable page is laid out
  * with its height taken from the content, so the MediaBox shrank to fit —
  * a five-row sheet came out 595 × 388 pt, which prints as a strip (fixed by
- * ADR-0072). Each row is `wrap={false}` instead, so a row is never split.
+ * ADR-0074). Each row is `wrap={false}` instead, so a row is never split.
  *
  * Colours are literal here, unlike every screen: this is a printed form that
  * matches THC's paper one, not a themed surface, and it has to read the same
@@ -63,7 +63,7 @@ const SECTION_FILL = '#eeeeee';
 
 /* Column widths inside 28pt margins on A4: 539pt. The wireframe's seven
    columns (52/196/74/70/118/130/74), narrowed to make room for THC's
-   eighth, Alcohol Policy Understood and Agreed (ADR-0072). Start Time's
+   eighth, Alcohol Policy Understood and Agreed (ADR-0074). Start Time's
    "07:00 (15:00)" still fits one line at the 8pt body size. */
 const WIDTHS = [36, 130, 56, 44, 72, 82, 44, 75] as const;
 const ROW_H = 32;

@@ -1,4 +1,4 @@
-# ADR-0072 · The Allocation Timesheet and the Completed Allocation Timesheet: new names, automatic sending, THC's alcohol-policy column
+# ADR-0074 · The Allocation Timesheet and the Completed Allocation Timesheet: new names, automatic sending, THC's alcohol-policy column
 
 **Status:** Accepted (THC, 29.09.2026). Agreed deviations from scope v1.6 §11.3 and §11.4. The manual Send and Download buttons stay exactly as §11.4 describes them.
 
@@ -54,7 +54,7 @@ A skip is recorded as a reason in the run's counts (`job_runs.counts.verdicts`) 
 
 **No backfill.** The settings row carries `completed.not_before`, the moment the migration ran. Switching the job on therefore never emails a fortnight of old events that the office had chosen not to send.
 
-**Settings:** `settings.document_autosend` (seeded by `20261001213000`, read on every run):
+**Settings:** `settings.document_autosend` (seeded by `20261002100000`, read on every run):
 
 ```json
 {"allocation":{"enabled":true,"time":"14:00"},

@@ -41,7 +41,7 @@ const OWNED_BY_RPC = [
   'shift_offer_notices',
   'staff_referral_codes',
   'application_referrals',
-  // ADR-0072: the automatic D1/D2 sends — the event-documents job's claim,
+  // ADR-0074: the automatic D1/D2 sends — the event-documents job's claim,
   // record and queue functions (service role) are its only writers.
   'event_document_autosends',
 ];

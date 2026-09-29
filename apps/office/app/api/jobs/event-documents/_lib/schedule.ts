@@ -2,11 +2,11 @@ import { ukInstant } from '@thc/domain';
 
 /**
  * When the Allocation Timesheet (D1) and the Completed Allocation Timesheet
- * (D2) go out on their own — ADR-0072, agreed with THC on 29.09.2026.
+ * (D2) go out on their own — ADR-0074, agreed with THC on 29.09.2026.
  *
  * Pure: the facts come from `event_documents_due()` and the settings row
  * `document_autosend`; the answer is one verdict. The SQL twin is
- * `document_autosend_verdict()` (20261001213000), check for check and in the
+ * `document_autosend_verdict()` (20261002100000), check for check and in the
  * same order, and the route sends only where BOTH say `due`. Change one,
  * change the other: pgTAP 759 and schedule.test.ts hold the same cases.
  *

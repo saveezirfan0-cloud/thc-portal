@@ -22,6 +22,7 @@ import { capReason, employeeId } from '../staff/staff';
 import type {
   CandidateReferral,
   CandidateRow,
+  ChaserState,
   ReferralRow,
   ReferredOnBoard,
   RejectionCause,
@@ -339,6 +340,57 @@ export function willoLine(row: CandidateRow, now: Date): Line {
   const progress =
     done > 0 ? `in progress (${done} of ${row.willo_answers_total ?? '?'} answers)` : 'not started';
   return { text: `Willo invite sent${sent} · ${progress}` };
+}
+
+const CHASER_SENT: Record<ChaserState['track'], string> = {
+  interview: 'Interview reminder',
+  activation: 'Set-up reminder',
+  app: 'App reminder',
+};
+
+const CHASER_CHANNEL: Record<ChaserState['track'], string> = {
+  interview: 'emailed',
+  activation: 'emailed with a new link',
+  app: 'pushed',
+};
+
+const CHASER_UNDELIVERED: Record<ChaserState['track'], string> = {
+  interview: 'the email bounced',
+  activation: 'the email bounced',
+  app: 'notifications are off on their phone',
+};
+
+/**
+ * The onboarding chaser line (ADR-0071), under the stage lines. Nothing
+ * until the first reminder has gone; then which one and when; amber when
+ * the latest could not be delivered, because they have not been reminded
+ * at all; coral "Stalled" once `stalled_after` (3) have gone with no
+ * progress since. The reminders carry on daily either way; the next step
+ * for the office is a phone call.
+ */
+export function chaserLine(state: ChaserState | undefined): Line | null {
+  if (!state || state.rungs_sent < 1 || !state.last_sent_at) return null;
+  const last = shortDate(state.last_sent_at);
+  if (state.stalled) {
+    const undelivered = state.last_failed
+      ? `, the last undelivered — ${CHASER_UNDELIVERED[state.track]}`
+      : '';
+    return {
+      text: `Stalled — no progress after ${state.rungs_sent} reminders (last ${last}${undelivered}), still reminding daily. Phone them.`,
+      tone: 'coral',
+    };
+  }
+  if (state.last_failed) {
+    return {
+      text: `${CHASER_SENT[state.track]} ${state.rungs_sent} not delivered ${last} — ${CHASER_UNDELIVERED[state.track]}. Phone them.`,
+      tone: 'amber',
+    };
+  }
+  const next = state.next_due_at ? ` · next ${shortDate(state.next_due_at)}` : '';
+  return {
+    text: `${CHASER_SENT[state.track]} ${state.rungs_sent} ${CHASER_CHANNEL[state.track]} ${last}${next}`,
+    tone: 'muted',
+  };
 }
 
 /** Every line a card carries under the name, by column (board, Active). */

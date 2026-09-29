@@ -9,7 +9,7 @@ import { parseAutosendConfig } from './_lib/schedule';
 
 /**
  * POST /api/jobs/event-documents — the automatic Allocation Timesheet (D1)
- * and Completed Allocation Timesheet (D2), ADR-0072 (THC, 29.09.2026).
+ * and Completed Allocation Timesheet (D2), ADR-0074 (THC, 29.09.2026).
  *
  * A job, not a screen: pg_cron calls it every 15 minutes (job_schedules
  * `event-documents`, the vault's office_base_url + this path). It is a Node
@@ -18,7 +18,7 @@ import { parseAutosendConfig } from './_lib/schedule';
  * rtw-check (ADR-0025).
  *
  * Gate: `Authorization: Bearer <RTW_JOB_SECRET>` in constant time — the
- * office job secret rtw-check already uses (shared on purpose, ADR-0072).
+ * office job secret rtw-check already uses (shared on purpose, ADR-0074).
  * No Supabase session is involved (middleware lets this path through, POST
  * only). Every database call is the service role through functions only it
  * may call: event_documents_due, event_document_autosend_claim,

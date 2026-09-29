@@ -80,7 +80,7 @@ last, below a divider. The Staff App's Documents tab is live.
   CSV one row per shift with holiday broken out, held No check-outs never
   exported, `payroll_export_lines` recording exactly what went, the BG-08 Monday
   09:00 job (`finance-reports`), and the allocation sheet / sign-out timesheet
-  PDFs with Send and Download on the event page (ADR-0015). Since ADR-0072
+  PDFs with Send and Download on the event page (ADR-0015). Since ADR-0074
   (THC, 29.09.2026) they are the **Allocation Timesheet** and the **Completed
   Allocation Timesheet**, and they also go **automatically**: the
   `event-documents` job (a Back Office route, every 15 min, rtw-check's

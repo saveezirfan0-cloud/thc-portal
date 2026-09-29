@@ -3,11 +3,11 @@ import { describe, expect, it } from 'vitest';
 import { DocumentActions } from '../[id]/_components/DocumentActions';
 
 /**
- * ADR-0072 (THC, 29.09.2026): the two §11.3 documents are the Allocation
+ * ADR-0074 (THC, 29.09.2026): the two §11.3 documents are the Allocation
  * Timesheet and the Completed Allocation Timesheet, and the event page says
  * so on its buttons. "Sign-out timesheet" is the code's word only.
  */
-describe('the event page document buttons (§11.4, ADR-0072)', () => {
+describe('the event page document buttons (§11.4, ADR-0074)', () => {
   it('before the event: Send / Download Allocation Timesheet only', () => {
     const markup = renderToStaticMarkup(<DocumentActions eventId="ev-1" started={false} />);
     expect(markup).toContain('>Send Allocation Timesheet</button>');

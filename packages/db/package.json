@@ -10,7 +10,8 @@
     "./admin": "./src/admin.ts",
     "./activation": "./src/activation.ts",
     "./provision": "./src/provision.ts",
-    "./willo": "./src/willo.ts"
+    "./willo": "./src/willo.ts",
+    "./chasers": "./src/chasers.ts"
   },
   "scripts": {
     "lint": "eslint .",

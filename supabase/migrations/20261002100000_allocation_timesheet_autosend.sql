@@ -1,7 +1,7 @@
 -- =====================================================================
--- Migration 20261001213000 · The Allocation Timesheet and the Completed
+-- Migration 20261002100000 · The Allocation Timesheet and the Completed
 --                            Allocation Timesheet go out on their own
---                            (§11.3, §11.4; ADR-0072, THC 29.09.2026)
+--                            (§11.3, §11.4; ADR-0074, THC 29.09.2026)
 --
 -- What changes
 -- ------------
@@ -42,7 +42,7 @@
 -- the same reason as rtw-check (ADR-0025). So the job is
 -- apps/office/app/api/jobs/event-documents, posted to by pg_cron every 15
 -- minutes at the vault's office_base_url with the SAME bearer secret as
--- rtw-check (vault rtw_job_secret, env RTW_JOB_SECRET; ADR-0072 records
+-- rtw-check (vault rtw_job_secret, env RTW_JOB_SECRET; ADR-0074 records
 -- the sharing). It is registered ENABLED: both vault secrets already
 -- exist wherever rtw-check runs, and without them install_job_schedules()
 -- skips the row with a notice (20260928100100) rather than failing.
@@ -88,7 +88,7 @@ on conflict (key) do nothing;
 alter table event_documents add column if not exists automatic boolean not null default false;
 
 comment on column event_documents.automatic is
-  'ADR-0072: true for a copy drawn and queued by the event-documents job (generated_by is then null); false for a manager''s Download or Send.';
+  'ADR-0074: true for a copy drawn and queued by the event-documents job (generated_by is then null); false for a manager''s Download or Send.';
 
 -- ---------------------------------------------------------------------
 -- 3 · event_document_autosends — at most one automatic send per event
@@ -128,7 +128,7 @@ grant select on event_document_autosends to authenticated;
 grant all on event_document_autosends to service_role;
 
 comment on table event_document_autosends is
-  'ADR-0072: the automatic D1 (Allocation Timesheet) and D2 (Completed Allocation Timesheet) sends — one row per event and kind, claimed by the event-documents job, done once queued_at is set. Admin-read; written only by event_document_autosend_claim / record_event_document_autosend / queue_event_document_autosend / event_document_autosend_release (service role).';
+  'ADR-0074: the automatic D1 (Allocation Timesheet) and D2 (Completed Allocation Timesheet) sends — one row per event and kind, claimed by the event-documents job, done once queued_at is set. Admin-read; written only by event_document_autosend_claim / record_event_document_autosend / queue_event_document_autosend / event_document_autosend_release (service role).';
 
 -- ---------------------------------------------------------------------
 -- 4 · Small helpers
@@ -265,7 +265,7 @@ begin
 end $$;
 
 comment on function public.queue_event_document_email(uuid) is
-  '§11.4: queues one generated Allocation Timesheet (D1) or Completed Allocation Timesheet (D2) for email from timesheets@ to every contact email on the client card, with the PDF as a storage-path attachment. Keyed on the document, so it is idempotent per copy. Payload: event_document_email_payload() (ADR-0072 adds schedule, totalHours, documentName).';
+  '§11.4: queues one generated Allocation Timesheet (D1) or Completed Allocation Timesheet (D2) for email from timesheets@ to every contact email on the client card, with the PDF as a storage-path attachment. Keyed on the document, so it is idempotent per copy. Payload: event_document_email_payload() (ADR-0074 adds schedule, totalHours, documentName).';
 
 -- ---------------------------------------------------------------------
 -- 6 · The rule: is an automatic send due? (mirrors schedule.ts)
@@ -350,7 +350,7 @@ begin
 end $$;
 
 comment on function public.document_autosend_verdict(text, timestamptz, jsonb, date, timestamptz, timestamptz, boolean, int, int, int, timestamptz, timestamptz, timestamptz) is
-  'ADR-0072: due | disabled | already_sent | cancelled | not_yet | too_late | before_activation | hold_expired | no_confirmed_staff | no_contact_emails | manual_sent | held_no_checkout for one automatic D1/D2. Pure; mirrored by autosendVerdict() in apps/office/app/api/jobs/event-documents/_lib/schedule.ts.';
+  'ADR-0074: due | disabled | already_sent | cancelled | not_yet | too_late | before_activation | hold_expired | no_confirmed_staff | no_contact_emails | manual_sent | held_no_checkout for one automatic D1/D2. Pure; mirrored by autosendVerdict() in apps/office/app/api/jobs/event-documents/_lib/schedule.ts.';
 
 create or replace function public.document_autosend_config()
 returns jsonb
@@ -428,7 +428,7 @@ begin
 end $$;
 
 comment on function public.event_documents_due(timestamptz, uuid) is
-  'ADR-0072: the event-documents job''s candidates — events dated hold_days + 2 days ago to tomorrow (UK), or one event — with the facts document_autosend_verdict() reads and its verdict per kind. Service role only.';
+  'ADR-0074: the event-documents job''s candidates — events dated hold_days + 2 days ago to tomorrow (UK), or one event — with the facts document_autosend_verdict() reads and its verdict per kind. Service role only.';
 
 -- ---------------------------------------------------------------------
 -- 8 · Claim, record, queue, release — the route's four writes
@@ -617,6 +617,6 @@ grant  execute on function public.queue_event_document_email(uuid) to authentica
 -- ---------------------------------------------------------------------
 insert into job_schedules (job, cron_expression, edge_path, enabled, note, base_url_source, secret_name) values
   ('event-documents', '*/15 * * * *', 'api/jobs/event-documents', true,
-   '§11.3/§11.4 automatic Allocation Timesheet (D1, the day before at 14:00 UK) and Completed Allocation Timesheet (D2, the morning after at 10:00 UK, held while a No check-out is unresolved, up to 14 days) — ADR-0072. A Back Office Node route (apps/office/app/api/jobs/event-documents): the PDF needs @react-pdf/renderer. Times in settings.document_autosend. Shares rtw-check''s bearer (vault rtw_job_secret, env RTW_JOB_SECRET).',
+   '§11.3/§11.4 automatic Allocation Timesheet (D1, the day before at 14:00 UK) and Completed Allocation Timesheet (D2, the morning after at 10:00 UK, held while a No check-out is unresolved, up to 14 days) — ADR-0074. A Back Office Node route (apps/office/app/api/jobs/event-documents): the PDF needs @react-pdf/renderer. Times in settings.document_autosend. Shares rtw-check''s bearer (vault rtw_job_secret, env RTW_JOB_SECRET).',
    'office_base_url', 'rtw_job_secret')
 on conflict (job) do nothing;

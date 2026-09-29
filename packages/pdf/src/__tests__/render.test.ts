@@ -18,7 +18,7 @@ const PNG = Buffer.from(
 
 /**
  * Every page is a full A4 portrait sheet, and there are exactly `pages` of
- * them. Before ADR-0072 the <Page> carried wrap={false}, which sizes the
+ * them. Before ADR-0074 the <Page> carried wrap={false}, which sizes the
  * page to its content: a 5-row sheet was 595 × 388 pt.
  */
 function expectA4Pages(pdf: Buffer, pages: number) {

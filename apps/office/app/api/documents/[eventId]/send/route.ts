@@ -9,7 +9,7 @@ import {
 
 /**
  * POST /api/documents/:eventId/send { kind } — "Send Allocation Timesheet" /
- * "Send Completed Timesheet" (§11.4; names per ADR-0072). The same email
+ * "Send Completed Timesheet" (§11.4; names per ADR-0074). The same email
  * also goes automatically — /api/jobs/event-documents.
  *
  * Draws a fresh copy, stores it (required: the drain attaches from the

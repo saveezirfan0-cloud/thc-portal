@@ -6,10 +6,10 @@ import type { SheetEvent, SheetKind, SheetLayout, SheetPerson, SheetPhoto } from
 
 /**
  * Draw, and keep, one Allocation Timesheet or Completed Allocation Timesheet
- * (the "sign-out" state in code) — §11.3, §11.4, names per ADR-0072.
+ * (the "sign-out" state in code) — §11.3, §11.4, names per ADR-0074.
  *
  * Two callers: the event page's Download / Send, as the signed-in manager,
- * and the event-documents job (ADR-0072), which passes the service-role
+ * and the event-documents job (ADR-0074), which passes the service-role
  * client and `automatic: true` — the copy is then recorded through
  * `record_event_document_autosend()` (generated_by null, automatic).
  *
@@ -154,7 +154,7 @@ function stamp(now: Date): string {
 export interface GenerateOptions {
   /** The client to read, fetch photos and record through. Default: the manager's session. */
   db?: DocumentRpc;
-  /** The event-documents job's copy (ADR-0072): recorded as automatic, generated_by null. */
+  /** The event-documents job's copy (ADR-0074): recorded as automatic, generated_by null. */
   automatic?: boolean;
 }
 

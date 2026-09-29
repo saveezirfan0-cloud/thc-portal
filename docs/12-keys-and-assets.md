@@ -138,7 +138,7 @@ Do not chase these now. Each is listed against the phase that first needs it.
 | Key | Where | First needed |
 |---|---|---|
 | `WILLO_API_KEY`, `WILLO_INTERVIEW_KEY`, `WILLO_WEBHOOK_SECRET` | The first two from THC's Willo account (Appendix B, B1; Developer tools → API key; `GET /interviews/` lists the keys). The third is **ours**, `openssl rand -hex 32`: Willo does not sign, so it goes in the webhook address (ADR-0066). Supabase secrets for the `willo-webhook` Edge Function, never Vercel. Without the first two no candidate is created in Willo (logged); without the secret every webhook is refused | Phase 1, interviews |
-| `STAFF_APP_URL` | The Staff App's public origin, e.g. `https://app.thehospitalitycompany.co.uk`. Supabase secret: the Willo Accept builds E3's `/activate/{token}` link from it (the Back Office reads `NEXT_PUBLIC_STAFF_URL` for the same thing) | With the Willo keys |
+| `STAFF_APP_URL` | The Staff App's public origin, e.g. `https://app.thehospitalitycompany.co.uk`. Supabase secret: the Willo Accept builds E3's `/activate/{token}` link from it, and `onboarding-chasers` builds OC2's (ADR-0071) (the Back Office reads `NEXT_PUBLIC_STAFF_URL` for the same thing) | With the Willo keys |
 | Optional Willo overrides: `WILLO_SIGNATURE_HEADER`, `WILLO_TIMESTAMP_HEADER`, `WILLO_TIMESTAMP_TOLERANCE_SECONDS`, `WILLO_API_BASE`, `WILLO_INVITE_PATH`, `WILLO_API_AUTH_HEADER`, `WILLO_API_AUTH_PREFIX` (a scheme word such as `Bearer`; unset = the bare key Willo expects) | Not needed: the defaults match Willo's API since ADR-0066 | — |
 | `WILLO_LOOKUP_PATH` | Optional (ADR-0024). The create-candidate sweep asks Willo by `external_id` before creating again; default `/participants/?interview={interviewKey}&external_id={externalId}` (ADR-0066), `off` disables the lookup | With the Willo keys |
 | `APPLY_THROTTLE_SALT` | Any long random string, per environment (ADR-0024). **Vercel, Staff App only, server-side.** `/apply` stores only an HMAC of the caller's address under it; rotating it resets the per-caller counters. **Set on `thc-portal-staff` 25.09.** In development a constant is used and a warning logged; in production (NODE_ENV or VERCEL_ENV `production`, which includes previews) a missing salt logs an error and the per-caller limit is skipped rather than hashed under a salt that is in the repository | `/apply` per-caller limit |
@@ -268,7 +268,7 @@ Supabase secrets:
 
 | Variable | What it is | If it is missing |
 |---|---|---|
-| `RTW_JOB_SECRET` | At least 32 characters, random. pg_cron sends it as `Authorization: Bearer …`. Shared with `/api/jobs/event-documents` (ADR-0072) — it is the office job secret | The route refuses every call (503). Nothing is checked, and no timesheet goes out automatically |
+| `RTW_JOB_SECRET` | At least 32 characters, random. pg_cron sends it as `Authorization: Bearer …`. Shared with `/api/jobs/event-documents` (ADR-0074) — it is the office job secret | The route refuses every call (503). Nothing is checked, and no timesheet goes out automatically |
 | `RTW_PROVIDER_URL`, `RTW_PROVIDER_API_KEY` | Not needed (ADR-0041). Only for `primary = 'provider'`: the provider's check endpoint and key. The request and response shape are assumed in `apps/office/app/api/jobs/rtw-check/_lib/provider.config.ts` — confirm against the provider's docs. `sandbox:` = the demo sandbox (ADR-0063); never where real workers are | The provider is skipped; the gov.uk fallback runs alone if enabled |
 | `RTW_PROVIDER_AUTH_HEADER`, `RTW_PROVIDER_AUTH_PREFIX` | Default `Authorization` / `Bearer `. An empty prefix is allowed | Defaults |
 | `RTW_GOVUK_ENABLED` | `true` to run our own gov.uk browser check — the only route (ADR-0041) | Nothing is checked; the route claims nothing |
@@ -315,7 +315,7 @@ rest install; the nudge likewise does nothing.
 `rejected`, `needs_review`, `queued` (a retry) and `failed` (the document left review
 first), or `skipped: not_configured`. One check's story is on `rtw_checks`.
 
-### The automatic Allocation Timesheet and Completed Allocation Timesheet (ADR-0072)
+### The automatic Allocation Timesheet and Completed Allocation Timesheet (ADR-0074)
 
 `POST /api/jobs/event-documents` on the Back Office draws and emails the two §11.3
 documents on its own: D1 the day before the event at 14:00 UK, D2 the morning after at

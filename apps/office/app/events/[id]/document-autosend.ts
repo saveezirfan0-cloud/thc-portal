@@ -4,7 +4,7 @@ import type { AutosendConfig } from '../../api/jobs/event-documents/_lib/schedul
 import { eventsDb, supabaseConfigured } from '../db';
 
 /**
- * The line under the event page's document buttons (ADR-0072): when the
+ * The line under the event page's document buttons (ADR-0074): when the
  * Allocation Timesheet and the Completed Allocation Timesheet go out on
  * their own, or when they went. Read from `event_document_autosends`
  * (admin read) and the `document_autosend` settings row.
