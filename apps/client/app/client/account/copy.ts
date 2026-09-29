@@ -27,7 +27,7 @@ export const ACCOUNT_COPY = {
     'This environment has no Supabase project, so your account details cannot be loaded. See docs/04-setup-github-vercel-supabase.md.',
   loadFailed: 'We could not load your account details just now. Refresh the page to try again.',
   recipientsHelp:
-    'The allocation sheet and the signed timesheet for each of your events are emailed to these addresses.',
+    'The Allocation Timesheet and the Completed Allocation Timesheet for each of your events are emailed to these addresses.',
   managedByThc:
     'Your name, sign-in email, company and the addresses above are managed by The Hospitality Company, so they cannot be edited here. If anything is wrong or out of date, email the office and we will update it for you.',
 } as const;

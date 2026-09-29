@@ -8,10 +8,16 @@
  *
  * Nothing is decided here. Page breaks, headings, "(continued)", the footer
  * on the last page only, every cell's text: all of it is `layoutSheet()`,
- * held by the golden files. Each <Page> is drawn with `wrap={false}` and
- * sized so twelve rows plus the worst-case section headings and the footer
- * fit, so react-pdf never adds a page of its own and "Page X of Y" stays the
- * layout's count.
+ * held by the golden files. Every page is a full A4 sheet (595.28 × 841.89
+ * pt), and the rows, headings and footer are sized so twelve rows plus the
+ * worst-case section headings and the footer fit on one, so react-pdf never
+ * adds a page of its own and "Page X of Y" stays the layout's count
+ * (render.test.ts holds both: the MediaBox of every page, and the count).
+ *
+ * The <Page> must NOT carry `wrap={false}`. An unwrappable page is laid out
+ * with its height taken from the content, so the MediaBox shrank to fit —
+ * a five-row sheet came out 595 × 388 pt, which prints as a strip (fixed by
+ * ADR-0074). Each row is `wrap={false}` instead, so a row is never split.
  *
  * Colours are literal here, unlike every screen: this is a printed form that
  * matches THC's paper one, not a themed surface, and it has to read the same
@@ -21,6 +27,7 @@
 import type { ReactNode } from 'react';
 import {
   Document,
+  Font,
   Image,
   Page,
   Path,
@@ -43,14 +50,22 @@ export interface SheetPhoto {
 /** Keyed by `SheetRow.photoPath`. A missing key is an empty Photo cell. */
 export type SheetPhotos = ReadonlyMap<string, SheetPhoto>;
 
+/* Words are never hyphenated: "Alcohol Policy Un-derstood" and a split
+   surname read as mistakes on a signed form. A long word that cannot fit
+   simply wraps whole. (react-pdf's hyphenation setting is process-wide;
+   this package is its only user in the office app.) */
+Font.registerHyphenationCallback((word) => [word]);
+
 const INK = '#111111';
 const MUTED = '#5b5b5b';
 const RULE = '#9a9a9a';
 const SECTION_FILL = '#eeeeee';
 
-/* Column widths from the wireframe's colgroup (52/196/74/70/118/130/74),
-   scaled to A4 inside 28pt margins: 539pt. */
-const WIDTHS = [39, 148, 56, 53, 89, 98, 56] as const;
+/* Column widths inside 28pt margins on A4: 539pt. The wireframe's seven
+   columns (52/196/74/70/118/130/74), narrowed to make room for THC's
+   eighth, Alcohol Policy Understood and Agreed (ADR-0074). Start Time's
+   "07:00 (15:00)" still fits one line at the 8pt body size. */
+const WIDTHS = [36, 130, 56, 44, 72, 82, 44, 75] as const;
 const ROW_H = 32;
 const PHOTO = 26;
 
@@ -60,7 +75,7 @@ const s = StyleSheet.create({
     paddingBottom: 24,
     paddingHorizontal: 28,
     fontFamily: 'Helvetica',
-    fontSize: 8.5,
+    fontSize: 8,
     color: INK,
   },
   head: {
@@ -92,7 +107,7 @@ const s = StyleSheet.create({
   tr: { flexDirection: 'row' },
   th: {
     fontFamily: 'Helvetica-Bold',
-    fontSize: 7.5,
+    fontSize: 7,
     textAlign: 'center',
     paddingVertical: 4,
     paddingHorizontal: 2,
@@ -121,9 +136,14 @@ const s = StyleSheet.create({
     borderColor: INK,
   },
   photo: { width: PHOTO, height: PHOTO, objectFit: 'cover', alignSelf: 'center' },
-  name: { fontFamily: 'Helvetica-Bold', fontSize: 8.5 },
-  id: { fontSize: 7.5, color: MUTED },
-  role: { fontSize: 7.5, marginTop: 1 },
+  // A row is a fixed 32pt: name + Employee ID in at most two lines and the
+  // role in one, so an unusually long name ends in "…" rather than running
+  // over the row below. Real names fit (the golden fixtures all do).
+  nameLine: { maxLines: 2, textOverflow: 'ellipsis' },
+  name: { fontFamily: 'Helvetica-Bold', fontSize: 8 },
+  id: { fontSize: 7, color: MUTED },
+  role: { fontSize: 7, marginTop: 1, maxLines: 1, textOverflow: 'ellipsis' },
+  cellText: { maxLines: 3, textOverflow: 'ellipsis' },
   foot: { marginTop: 10 },
   sign: { flexDirection: 'row', borderTopWidth: 1, borderLeftWidth: 1, borderColor: INK },
   signCell: {
@@ -188,7 +208,7 @@ function Cell({
   return (
     <View style={[s.td, { width: WIDTHS[index] }, index === WIDTHS.length - 1 ? s.tdLast : {}]}>
       {typeof children === 'string' ? (
-        <Text style={center ? s.center : {}}>{children}</Text>
+        <Text style={center ? [s.cellText, s.center] : s.cellText}>{children}</Text>
       ) : (
         children
       )}
@@ -204,7 +224,7 @@ function Row({ row, photos }: { row: SheetRow; photos: SheetPhotos }) {
         {photo ? <Image style={s.photo} src={{ data: photo.data, format: photo.format }} /> : null}
       </Cell>
       <Cell index={1}>
-        <Text>
+        <Text style={s.nameLine}>
           <Text style={s.name}>{row.name}</Text>
           {row.idLabel ? <Text style={s.id}> {row.idLabel}</Text> : null}
         </Text>
@@ -221,6 +241,7 @@ function Row({ row, photos }: { row: SheetRow; photos: SheetPhotos }) {
       <Cell index={6} center>
         {row.hoursWorked}
       </Cell>
+      <Cell index={7}>{row.alcoholPolicy}</Cell>
     </View>
   );
 }
@@ -258,7 +279,7 @@ export function SheetDocument({ layout, photos }: { layout: SheetLayout; photos?
       producer={COMPANY.name}
     >
       {layout.pages.map((page) => (
-        <Page key={page.number} size="A4" style={s.page} wrap={false}>
+        <Page key={page.number} size="A4" orientation="portrait" style={s.page}>
           <Header layout={layout} page={page} />
           <View style={s.table}>
             <View style={s.tr}>
@@ -311,6 +332,25 @@ export function photoFormat(bytes: Uint8Array): SheetPhoto['format'] | null {
   if (bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff)
     return 'jpg';
   return null;
+}
+
+/** A4 portrait in PDF points: 210 × 297 mm. */
+export const A4_POINTS = { width: 595.28, height: 841.89 } as const;
+
+/**
+ * The MediaBox of every page in rendered PDF bytes, in page order: what a
+ * printer is told the sheet measures. react-pdf writes one uncompressed
+ * `/MediaBox [x0 y0 x1 y1]` per page object.
+ */
+export function pdfPageSizes(pdf: Uint8Array): { width: number; height: number }[] {
+  const text = Buffer.from(pdf).toString('latin1');
+  const boxes = text.matchAll(
+    /\/MediaBox\s*\[\s*(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s+(-?[\d.]+)\s*\]/g,
+  );
+  return [...boxes].map((m) => ({
+    width: Number(m[3]) - Number(m[1]),
+    height: Number(m[4]) - Number(m[2]),
+  }));
 }
 
 /** Counts the pages in rendered PDF bytes, for tests and the document log. */

@@ -81,8 +81,10 @@ describe('CalendarButton', () => {
       />,
     );
     const actions = markup.slice(markup.indexOf('class="actions row"'));
-    expect(actions.indexOf('Download Allocation Sheet')).toBeGreaterThan(-1);
-    expect(actions.indexOf(BUTTON)).toBeGreaterThan(actions.indexOf('Download Allocation Sheet'));
+    expect(actions.indexOf('Download Allocation Timesheet')).toBeGreaterThan(-1);
+    expect(actions.indexOf(BUTTON)).toBeGreaterThan(
+      actions.indexOf('Download Allocation Timesheet'),
+    );
   });
 
   it('is offered for upcoming, ongoing and completed events', () => {

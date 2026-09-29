@@ -214,8 +214,8 @@ export function ClientModal({ client, onClose, onSaved }: ClientModalProps) {
           />
         </div>
         <span className="hint" id="client-email-hint">
-          The allocation sheet and the timesheet go to every address here, from
-          timesheets@thehospitalitycompany.co.uk.
+          The Allocation Timesheet and the Completed Allocation Timesheet go to every address here,
+          from timesheets@thehospitalitycompany.co.uk.
         </span>
       </div>
 

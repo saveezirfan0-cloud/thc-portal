@@ -11,7 +11,7 @@ import { databaseUnreachable, lit, sql } from './_support/db';
  * and the drain's decisions; what none of them prove is that a manager
  * pressing a button in a real screen produces exactly one row under it.
  *
- * The action is "Send allocation sheet" on an event board (§11.4): the
+ * The action is "Send Allocation Timesheet" on an event board (§11.4): the
  * office draws the PDF, stores it in the `timesheets` bucket and calls
  * `queue_event_document_email()` (20260923130100), which writes one D1 row
  * keyed on the document — `D1:document:<event_documents.id>` — to the
@@ -29,7 +29,7 @@ import { databaseUnreachable, lit, sql } from './_support/db';
 const GALA_DINNER = '60000000-0000-4000-8000-000000000001';
 const CLIENT_CARD_EMAILS = 'events@leonardo-stpauls.example,ops@leonardo-stpauls.example';
 
-test('Send allocation sheet queues exactly one D1 row under the register key (§8, §11.4)', async ({
+test('Send Allocation Timesheet queues exactly one D1 row under the register key (§8, §11.4)', async ({
   page,
 }) => {
   test.skip(databaseUnreachable() !== null, databaseUnreachable() ?? undefined);
@@ -43,8 +43,8 @@ test('Send allocation sheet queues exactly one D1 row under the register key (§
   await openAsAdmin(page, `/events/${GALA_DINNER}`);
   await expect(page.getByRole('heading', { name: 'Gala Dinner' })).toBeVisible();
 
-  await page.getByRole('button', { name: 'Send allocation sheet' }).click();
-  const dialog = page.getByRole('dialog', { name: 'Send allocation sheet' });
+  await page.getByRole('button', { name: 'Send Allocation Timesheet' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Send Allocation Timesheet' });
   await expect(dialog).toBeVisible();
   // From timesheets@, to the client card's contacts (§9.7, §9.12).
   await expect(dialog).toContainText('timesheets@thehospitalitycompany.co.uk');

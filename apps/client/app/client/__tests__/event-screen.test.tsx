@@ -112,13 +112,13 @@ const SIGNOUT = { kind: 'signout' as const, issuedAt: '2026-09-19T23:12:00Z' }; 
 describe('before the event (event.html:81-89)', () => {
   it('offers the allocation sheet in the header: a link once issued, disabled until then', () => {
     expect(screen(gala(), BEFORE)).toContain(
-      '<button type="button" class="btn primary" disabled="" title="THC has not issued this document yet">↓ Download Allocation Sheet</button>',
+      '<button type="button" class="btn primary" disabled="" title="THC has not issued this document yet">↓ Download Allocation Timesheet</button>',
     );
     expect(screen(gala(), BEFORE, [ALLOCATION])).toContain(
-      `<a class="btn primary" href="/client/events/${EVENT_ID}/document?kind=allocation">↓ Download Allocation Sheet</a>`,
+      `<a class="btn primary" href="/client/events/${EVENT_ID}/document?kind=allocation">↓ Download Allocation Timesheet</a>`,
     );
     // Only the one button before the event — no timesheet yet.
-    expect(screen(gala(), BEFORE, [ALLOCATION])).not.toContain('Signed Timesheet');
+    expect(screen(gala(), BEFORE, [ALLOCATION])).not.toContain('Completed Timesheet');
   });
 
   it('says when feedback opens, in UK time, and keeps the buttons disabled', () => {
@@ -140,20 +140,20 @@ describe('completed (event.html:247-273)', () => {
   it('draws both downloads: the allocation sheet as history, the signed timesheet as primary', () => {
     const markup = screen(completed, AFTER, [ALLOCATION, SIGNOUT]);
     expect(markup).toContain(
-      `<a class="btn" href="/client/events/${EVENT_ID}/document?kind=allocation">↓ Allocation Sheet</a>`,
+      `<a class="btn" href="/client/events/${EVENT_ID}/document?kind=allocation">↓ Allocation Timesheet</a>`,
     );
     expect(markup).toContain(
-      `<a class="btn primary" href="/client/events/${EVENT_ID}/document?kind=signout">↓ Download Signed Timesheet</a>`,
+      `<a class="btn primary" href="/client/events/${EVENT_ID}/document?kind=signout">↓ Download Completed Timesheet</a>`,
     );
   });
 
   it('keeps the timesheet disabled until a final copy exists, without losing the allocation sheet', () => {
     const markup = screen(completed, AFTER, [ALLOCATION]);
-    expect(markup).toContain('↓ Allocation Sheet</a>');
+    expect(markup).toContain('↓ Allocation Timesheet</a>');
     expect(markup).toContain(
-      '<button type="button" class="btn primary" disabled="" title="THC has not issued this document yet">↓ Download Signed Timesheet</button>',
+      '<button type="button" class="btn primary" disabled="" title="THC has not issued this document yet">↓ Download Completed Timesheet</button>',
     );
-    expect(markup).not.toContain('Sign-out timesheet generated');
+    expect(markup).not.toContain('Completed Allocation Timesheet generated');
   });
 
   it('relabels the count "Staff on the day" and the role pill "worked"', () => {
@@ -169,7 +169,7 @@ describe('completed (event.html:247-273)', () => {
     const stamp = formatDateTimeIn(new Date(SIGNOUT.issuedAt), UK_ZONE);
     expect(stamp).toMatch(/^20 Sept?, 00:12$/);
     expect(markup).toContain(
-      `<div class="k">Timesheet</div><div class="v">Sign-out timesheet generated ${stamp}`,
+      `<div class="k">Timesheet</div><div class="v">Completed Allocation Timesheet generated ${stamp}`,
     );
     expect(markup).toContain('by email to the contacts on your client card');
   });
@@ -186,7 +186,7 @@ describe('cancelled', () => {
   it('has no download, no line-up and a neutral note', () => {
     const markup = screen(gala({ status: 'cancelled' }), AFTER, [ALLOCATION]);
     expect(markup).not.toContain('/document?kind=');
-    expect(markup).not.toContain('Allocation Sheet');
+    expect(markup).not.toContain('Allocation Timesheet');
     expect(markup).not.toContain('Leave feedback');
     expect(markup).toContain('This event was cancelled');
   });

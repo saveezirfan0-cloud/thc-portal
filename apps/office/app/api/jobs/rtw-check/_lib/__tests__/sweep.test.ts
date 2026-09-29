@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { RTW_NOT_FOUND_REASON, rtwCheckError } from '@thc/domain';
 import type { RtwCheckResult, RtwCheckSource } from '@thc/domain';
-import { checkJobSecret } from '../auth';
+import { checkJobSecret } from '../../../_lib/auth';
 import { parseUkDate, ukToday } from '../checker';
 import type { CheckOutput, RightToWorkChecker } from '../checker';
 import { photoPath, reportPath, runOrchestrated, runRtwCheckSweep } from '../sweep';

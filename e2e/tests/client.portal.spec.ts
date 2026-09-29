@@ -126,7 +126,7 @@ test('the event list offers the tabs the scope names, and each holds its own doc
   await openAsClient(page, '/client');
   for (const label of ['Upcoming', 'Past', 'All']) {
     // Anchored at the start: the segment's accessible name carries its count
-    // ("All 2"), so not exact — but "↓ Allocation sheet" must not match "All".
+    // ("All 2"), so not exact — but "↓ Allocation Timesheet" must not match "All".
     await expect(
       page.getByRole('button', {
         name: new RegExp('^' + label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')),
@@ -136,7 +136,7 @@ test('the event list offers the tabs the scope names, and each holds its own doc
   await expect(page.getByPlaceholder('Search events')).toBeVisible();
 
   // Upcoming (which includes ongoing) is the default: the Gala Dinner, with the
-  // allocation sheet (downloadable before AND during, §11.3).
+  // Allocation Timesheet (downloadable before AND during, §11.3; names ADR-0074).
   const rows = page.locator('table.tbl tbody tr');
   await expect(rows.filter({ hasText: 'Gala Dinner' })).toHaveCount(1);
   await expect(rows.filter({ hasText: 'Lunch Service' })).toHaveCount(0);
@@ -144,10 +144,11 @@ test('the event list offers the tabs the scope names, and each holds its own doc
     page,
     rows.filter({ hasText: 'Gala Dinner' }),
     'allocation',
-    '↓ Allocation sheet',
+    '↓ Allocation Timesheet',
   );
 
-  // Past: the Lunch Service, whose document is now the signed timesheet.
+  // Past: the Lunch Service, whose document is now the Completed Allocation
+  // Timesheet (§11.1's "Signed timesheet", renamed by THC — ADR-0074).
   await page.getByRole('button', { name: /Past/i }).click();
   await expect(rows.filter({ hasText: 'Lunch Service' })).toHaveCount(1);
   await expect(rows.filter({ hasText: 'Gala Dinner' })).toHaveCount(0);
@@ -155,7 +156,7 @@ test('the event list offers the tabs the scope names, and each holds its own doc
     page,
     rows.filter({ hasText: 'Lunch Service' }),
     'signout',
-    '↓ Signed timesheet',
+    '↓ Completed Timesheet',
   );
 
   // All: both — and nothing of another customer's (Product Launch, Awards
@@ -242,13 +243,13 @@ test('the event page shows confirmed staff only, by role, with the role window (
   await expect(page.getByRole('heading', { name: 'Gala Dinner' })).toBeVisible();
   await expect(page.getByText('PO Number · 4471-A')).toBeVisible();
 
-  // "↓ Download Allocation Sheet" in the header: a live link once the office
+  // "↓ Download Allocation Timesheet" in the header: a live link once the office
   // has issued one (the outbox journey may just have), a disabled button
   // until then — but present either way, before and during the event.
   await expect(
     page
-      .getByRole('button', { name: '↓ Download Allocation Sheet' })
-      .or(page.getByRole('link', { name: '↓ Download Allocation Sheet' })),
+      .getByRole('button', { name: '↓ Download Allocation Timesheet' })
+      .or(page.getByRole('link', { name: '↓ Download Allocation Timesheet' })),
   ).toBeVisible();
 
   // Grouped by role, each panel titled with the role's own window
@@ -314,11 +315,11 @@ test.describe('feedback on a started event (§11.2, §11.5)', () => {
   }) => {
     await openAsClient(page, `/client/events/${LUNCH_SERVICE}`);
     await expect(page.getByRole('heading', { name: 'Lunch Service' })).toBeVisible();
-    // After the event the header offers the signed timesheet instead.
+    // After the event the header offers the Completed Timesheet instead (ADR-0074).
     await expect(
       page
-        .getByRole('button', { name: '↓ Download Signed Timesheet' })
-        .or(page.getByRole('link', { name: '↓ Download Signed Timesheet' })),
+        .getByRole('button', { name: '↓ Download Completed Timesheet' })
+        .or(page.getByRole('link', { name: '↓ Download Completed Timesheet' })),
     ).toBeVisible();
     await expect(page.getByRole('status')).toContainText('The event has started');
 
