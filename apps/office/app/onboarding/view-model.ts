@@ -342,9 +342,6 @@ export function willoLine(row: CandidateRow, now: Date): Line {
   return { text: `Willo invite sent${sent} · ${progress}` };
 }
 
-/** The ladder's length (ADR-0071): 2, 5 and 10 days without progress. */
-export const CHASER_RUNGS = 3;
-
 const CHASER_SENT: Record<ChaserState['track'], string> = {
   interview: 'Interview reminder',
   activation: 'Set-up reminder',
@@ -367,8 +364,9 @@ const CHASER_UNDELIVERED: Record<ChaserState['track'], string> = {
  * The onboarding chaser line (ADR-0071), under the stage lines. Nothing
  * until the first reminder has gone; then which one and when; amber when
  * the latest could not be delivered, because they have not been reminded
- * at all; coral "Stalled" once all three have gone with no progress since.
- * Either way the next step is a phone call.
+ * at all; coral "Stalled" once `stalled_after` (3) have gone with no
+ * progress since. The reminders carry on daily either way; the next step
+ * for the office is a phone call.
  */
 export function chaserLine(state: ChaserState | undefined): Line | null {
   if (!state || state.rungs_sent < 1 || !state.last_sent_at) return null;
@@ -378,19 +376,19 @@ export function chaserLine(state: ChaserState | undefined): Line | null {
       ? `, the last undelivered — ${CHASER_UNDELIVERED[state.track]}`
       : '';
     return {
-      text: `Stalled — no progress after ${CHASER_RUNGS} reminders (last ${last}${undelivered}). Phone them.`,
+      text: `Stalled — no progress after ${state.rungs_sent} reminders (last ${last}${undelivered}), still reminding daily. Phone them.`,
       tone: 'coral',
     };
   }
   if (state.last_failed) {
     return {
-      text: `${CHASER_SENT[state.track]} ${state.rungs_sent} of ${CHASER_RUNGS} not delivered ${last} — ${CHASER_UNDELIVERED[state.track]}. Phone them.`,
+      text: `${CHASER_SENT[state.track]} ${state.rungs_sent} not delivered ${last} — ${CHASER_UNDELIVERED[state.track]}. Phone them.`,
       tone: 'amber',
     };
   }
   const next = state.next_due_at ? ` · next ${shortDate(state.next_due_at)}` : '';
   return {
-    text: `${CHASER_SENT[state.track]} ${state.rungs_sent} of ${CHASER_RUNGS} ${CHASER_CHANNEL[state.track]} ${last}${next}`,
+    text: `${CHASER_SENT[state.track]} ${state.rungs_sent} ${CHASER_CHANNEL[state.track]} ${last}${next}`,
     tone: 'muted',
   };
 }

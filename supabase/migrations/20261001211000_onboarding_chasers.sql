@@ -16,16 +16,18 @@
 -- Willo decision), documents under review and a Yes declaration awaiting
 -- Verify are the office's move and are never chased.
 --
--- The ladder: 2, 5 and 10 days after the candidate's last progress, the
--- three rungs at least as far apart as that (3 and 5 days) even when a
--- candidate is already weeks idle on day one. Any progress — a step saved,
--- a document uploaded or reviewed, a quiz attempt, a stage change, an E3
--- sent or re-sent — starts a fresh ladder: the outbox key carries the
--- progress instant (`<code>:staff:<id>:<epoch>:<rung>`). After the third
--- rung the card reads "Stalled" and the office phones them. Nothing is
--- rejected automatically. Daytime only: 10:00–18:00 UK.
+-- The cadence (owner, 29.09.2026): DAILY, and it never stops. The first
+-- reminder goes a day after the candidate's last progress, then one a day
+-- for as long as the move stays theirs. Any progress — a step saved, a
+-- document uploaded or reviewed, a quiz attempt, a stage change, an E3
+-- sent or re-sent — starts a fresh count: the outbox key carries the
+-- progress instant (`<code>:staff:<id>:<epoch>:<n>`). After the third with
+-- no progress the card reads "Stalled" so the office phones them; the
+-- reminders carry on. Nothing is rejected automatically. Daytime only:
+-- 10:00–18:00 UK.
 --
--- Days, hours and an off switch are the `onboarding_chasers` setting.
+-- The interval, the Stalled point, the hours and an off switch are the
+-- `onboarding_chasers` setting.
 --
 -- The emails and the push are sent by the drain like every other row.
 -- OC2's link is minted by the onboarding-chasers Edge Function (GoTrue's
@@ -46,13 +48,13 @@
 -- ---------------------------------------------------------------------
 insert into settings (key, value) values
   ('onboarding_chasers',
-   '{"enabled": true, "days": [2, 5, 10], "from": "10:00", "until": "18:00"}'::jsonb)
+   '{"enabled": true, "every_days": 1, "stalled_after": 3, "from": "10:00", "until": "18:00"}'::jsonb)
 on conflict (key) do nothing;
 
 -- The setting over its defaults, part by part: a part that is missing or
--- not sane (three increasing whole days; HH:MM from before until) keeps
--- its default, so a typo in the SQL editor can neither break the hourly
--- job nor leave a ladder that never reaches Stalled.
+-- not sane (whole days 1–30 between reminders; Stalled after 1–60; HH:MM
+-- with from before until; a boolean switch) keeps its default, so a typo
+-- in the SQL editor can never break the hourly job.
 create or replace function public.onboarding_chaser_config()
 returns jsonb
 language plpgsql
@@ -60,9 +62,8 @@ stable
 set search_path = public, extensions
 as $$
 declare
-  d jsonb := '{"enabled": true, "days": [2, 5, 10], "from": "10:00", "until": "18:00"}';
+  d jsonb := '{"enabled": true, "every_days": 1, "stalled_after": 3, "from": "10:00", "until": "18:00"}';
   v jsonb;
-  n int[];
 begin
   select value into v from settings where key = 'onboarding_chasers';
   if v is null or jsonb_typeof(v) <> 'object' then
@@ -71,13 +72,14 @@ begin
   if jsonb_typeof(v -> 'enabled') = 'boolean' then
     d := d || jsonb_build_object('enabled', v -> 'enabled');
   end if;
-  if jsonb_typeof(v -> 'days') = 'array' and jsonb_array_length(v -> 'days') = 3
-     and not exists (select 1 from jsonb_array_elements(v -> 'days') e
-                      where jsonb_typeof(e) <> 'number' or (e #>> '{}') !~ '^[1-9][0-9]{0,2}$') then
-    select array_agg((e #>> '{}')::int order by o) into n
-      from jsonb_array_elements(v -> 'days') with ordinality as x(e, o);
-    if n[1] < n[2] and n[2] < n[3] then
-      d := d || jsonb_build_object('days', v -> 'days');
+  if jsonb_typeof(v -> 'every_days') = 'number' and (v ->> 'every_days') ~ '^[0-9]{1,2}$' then
+    if (v ->> 'every_days')::int between 1 and 30 then
+      d := d || jsonb_build_object('every_days', (v ->> 'every_days')::int);
+    end if;
+  end if;
+  if jsonb_typeof(v -> 'stalled_after') = 'number' and (v ->> 'stalled_after') ~ '^[0-9]{1,2}$' then
+    if (v ->> 'stalled_after')::int between 1 and 60 then
+      d := d || jsonb_build_object('stalled_after', (v ->> 'stalled_after')::int);
     end if;
   end if;
   if (v ->> 'from') ~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'
@@ -90,7 +92,7 @@ begin
 end $$;
 
 comment on function public.onboarding_chaser_config() is
-  'ADR-0071: settings.onboarding_chasers over its defaults — enabled, days (the three rungs, days after the last progress), from/until (the UK hours sends may go out).';
+  'ADR-0071: settings.onboarding_chasers over its defaults — enabled, every_days (days between reminders, 1 = daily), stalled_after (reminders without progress before the card reads Stalled), from/until (the UK hours sends may go out).';
 
 -- ---------------------------------------------------------------------
 -- 1 · Who is waiting on themselves, since when, and which rung is due
@@ -107,10 +109,10 @@ returns table (
   step         text,         -- the words the push uses for it
   progress_at  timestamptz,  -- the candidate's last progress
   epoch        bigint,       -- progress_at as the key's ladder id
-  rungs_sent   integer,      -- 0..3 on this ladder
+  rungs_sent   integer,      -- reminders sent since the last progress
   last_sent_at timestamptz,  -- when the latest rung went into the outbox
   due_rung     integer,      -- the rung to queue now, or null
-  next_due_at  timestamptz,  -- when the next rung falls due, or null after the third
+  next_due_at  timestamptz,  -- when the next reminder falls due
   last_failed  boolean       -- the latest rung could not be delivered (no push subscription, a bounce)
 )
 language sql
@@ -119,10 +121,7 @@ security definer
 set search_path = public, extensions
 as $$
   with cfg as (
-    select c,
-           (c -> 'days' ->> 0)::int as d1,
-           (c -> 'days' ->> 1)::int as d2,
-           (c -> 'days' ->> 2)::int as d3
+    select make_interval(days => (c ->> 'every_days')::int) as every
       from onboarding_chaser_config() c
   ),
   base as (
@@ -255,21 +254,18 @@ as $$
   ),
   timed as (
     select l.*,
-           case l.rungs_sent
-             when 0 then l.progress_at + make_interval(days => cfg.d1)
-             when 1 then greatest(l.progress_at + make_interval(days => cfg.d2),
-                                  l.last_sent_at + make_interval(days => cfg.d2 - cfg.d1))
-             when 2 then greatest(l.progress_at + make_interval(days => cfg.d3),
-                                  l.last_sent_at + make_interval(days => cfg.d3 - cfg.d2))
-           end as next_due_at
+           -- One interval after the last progress, then one after each
+           -- reminder: daily by default, for as long as the move is theirs.
+           case when l.rungs_sent = 0 then l.progress_at + cfg.every
+                else l.last_sent_at + cfg.every end as next_due_at
       from laddered l cross join cfg
   )
-  -- Half an hour's grace: the job runs hourly at a fixed minute, and a rung
-  -- queued at 17:07:02 must not miss 17:07:01 three days later and slip to
-  -- the next morning.
+  -- Half an hour's grace: the job runs hourly at a fixed minute, and a
+  -- reminder queued at 17:07:02 must not miss 17:07:01 the next day and
+  -- slip to the morning after.
   select t.id, t.track, t.template, t.step_no, t.step, t.progress_at, t.epoch,
          t.rungs_sent, t.last_sent_at,
-         case when t.next_due_at is not null and p_now + interval '30 minutes' >= t.next_due_at
+         case when p_now + interval '30 minutes' >= t.next_due_at
               then t.rungs_sent + 1 end,
          t.next_due_at,
          t.last_failed
@@ -277,20 +273,21 @@ as $$
 $$;
 
 comment on function public.onboarding_chaser_candidates(timestamptz) is
-  'ADR-0071: every candidate whose next onboarding move is their own — the track (interview → OC1 email, activation → OC2 email, app → OC3 push), the step, their last progress, the rungs sent on this ladder and the rung due now. Internal: read through onboarding_chasers() and onboarding_chaser_state().';
+  'ADR-0071: every candidate whose next onboarding move is their own — the track (interview → OC1 email, activation → OC2 email, app → OC3 push), the step, their last progress, the reminders sent since it and the one due now (daily by default, never stopping). Internal: read through onboarding_chasers() and onboarding_chaser_state().';
 
 revoke all on function public.onboarding_chaser_candidates(timestamptz) from public, anon, authenticated;
 revoke all on function public.onboarding_chaser_config() from public, anon, authenticated;
 grant execute on function public.onboarding_chaser_config() to service_role;
 
--- The three variants of each code, one per rung.
+-- The wording for the nth reminder since the last progress: the first,
+-- the second, then one repeating wording for every day after that.
 create or replace function public.onboarding_chaser_variant(p_rung integer)
 returns text
 language sql
 immutable
 set search_path = public, extensions
 as $$
-  select case p_rung when 1 then 'first' when 2 then 'second' else 'final' end;
+  select case p_rung when 1 then 'first' when 2 then 'second' else 'repeat' end;
 $$;
 
 revoke all on function public.onboarding_chaser_variant(integer) from public, anon, authenticated;
@@ -496,12 +493,14 @@ begin
   end if;
   return query
     select c.staff_id, c.track, c.step, c.progress_at, c.rungs_sent, c.last_sent_at,
-           c.next_due_at, c.rungs_sent >= 3, c.last_failed
+           c.next_due_at,
+           c.rungs_sent >= (onboarding_chaser_config() ->> 'stalled_after')::int,
+           c.last_failed
       from onboarding_chaser_candidates(p_now) c;
 end $$;
 
 comment on function public.onboarding_chaser_state(timestamptz) is
-  'ADR-0071, the onboarding board: per candidate waiting on themselves, the reminders sent on the current ladder, when the next is due, stalled (all three sent, still no progress — phone them) and last_failed (the latest could not be delivered — notifications off, a bounce). Back Office only.';
+  'ADR-0071, the onboarding board: per candidate waiting on themselves, the reminders sent since their last progress, when the next is due, stalled (settings.onboarding_chasers.stalled_after sent, still no progress — phone them; the reminders carry on) and last_failed (the latest could not be delivered — notifications off, a bounce). Back Office only.';
 
 revoke all on function public.onboarding_chaser_state(timestamptz) from public, anon;
 grant execute on function public.onboarding_chaser_state(timestamptz) to authenticated;
@@ -569,5 +568,5 @@ revoke all on function public.redact_finished_invite_link() from public, anon, a
 -- ---------------------------------------------------------------------
 insert into job_schedules (job, cron_expression, edge_path, enabled, note) values
   ('onboarding-chasers', '7 * * * *', 'onboarding-chasers', true,
-   'ADR-0071 onboarding chasers: OC1/OC2 emails before sign-up, OC3 pushes after, at 2/5/10 days without progress. Hourly; onboarding_chasers() sends only between settings.onboarding_chasers from/until (UK).')
+   'ADR-0071 onboarding chasers: OC1/OC2 emails before sign-up, OC3 pushes after, daily while there is no progress, never stopping. Hourly; onboarding_chasers() sends only between settings.onboarding_chasers from/until (UK).')
 on conflict (job) do nothing;

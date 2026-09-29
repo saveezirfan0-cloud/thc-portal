@@ -976,7 +976,7 @@ E1 from Willo.
 `20261001211000` adds the `onboarding-chasers` schedule, enabled. It sends
 reminders to candidates who have stopped part-way through onboarding: emails
 before they sign up (OC1 for the interview, OC2 with a new activation link),
-and a push in the app after (OC3). The reminders go out at 2, 5 and 10 days,
+and a push in the app after (OC3). The reminders go out daily and do not stop,
 between 10:00 and 18:00 UK. The function deploys with the others. It uses
 `STAFF_APP_URL`, the secret willo-webhook already has. Once the migration is
 applied and the function deployed:
@@ -993,7 +993,8 @@ Outside 10:00–18:00 UK the counts read `skipped`. Inside those hours they show
 not be minted: check `STAFF_APP_URL`.
 
 **Change or pause it** on the `onboarding_chasers` setting, for example
-`{"enabled": false}`, or different `days`, `from` or `until`.
+`{"enabled": false}`, or a different `every_days` (days between reminders),
+`stalled_after`, `from` or `until`.
 
 ---
 

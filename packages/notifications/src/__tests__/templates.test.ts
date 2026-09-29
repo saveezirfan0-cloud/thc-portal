@@ -1055,7 +1055,7 @@ describe('office message — OM1 (ADR-0069)', () => {
 });
 
 describe('onboarding chasers (ADR-0071)', () => {
-  const RUNGS = ['first', 'second', 'final'];
+  const RUNGS = ['first', 'second', 'repeat'];
 
   it('says why each exists, on the entry itself', () => {
     for (const code of CHASER_CODES) {
@@ -1065,7 +1065,7 @@ describe('onboarding chasers (ADR-0071)', () => {
     }
   });
 
-  it('has one variant per rung of the ladder, and nothing else', () => {
+  it('has a first, a second and a repeating wording, and nothing else', () => {
     for (const code of CHASER_CODES) {
       expect(Object.keys(TEMPLATES[code].variants), code).toEqual(RUNGS);
     }
@@ -1096,10 +1096,20 @@ describe('onboarding chasers (ADR-0071)', () => {
     expect(template('OC3').tag).not.toBe(template('N8').deepLinkOptions?.[1]);
   });
 
-  it('marks the last rung as the last reminder in the heading', () => {
-    expect(title('OC1', 'final')).toBe('Last reminder: your video interview');
-    expect(title('OC2', 'final')).toBe('Last reminder: set up your account');
-    expect(title('OC3', 'final')).toBe('Last reminder');
+  it('never calls a reminder the last one: they carry on daily until the candidate moves', () => {
+    for (const code of CHASER_CODES) {
+      for (const rung of RUNGS) {
+        expect(`${title(code, rung)} ${body(code, rung)}`.toLowerCase(), `${code}/${rung}`).not.toMatch(
+          /last reminder|final reminder/,
+        );
+      }
+    }
+  });
+
+  it('gives the repeating wording its own heading', () => {
+    expect(title('OC1', 'repeat')).toBe('Reminder: your video interview is still waiting');
+    expect(title('OC2', 'repeat')).toBe('Reminder: set up your account');
+    expect(title('OC3', 'repeat')).toBe('Your onboarding is waiting');
     expect(title('OC1', 'first')).toBe(template('OC1').title);
     expect(title('OC2')).toBe(template('OC2').title);
   });
@@ -1126,10 +1136,10 @@ describe('onboarding chasers (ADR-0071)', () => {
     expect(render(body('OC3', 'second'), { step: 'the Health & Safety quiz' })).toBe(
       'Still to do: the Health & Safety quiz. Finish onboarding to start picking up shifts.',
     );
-    expect(render(body('OC3', 'final'), { step: 'signing your contract' })).toBe(
+    expect(render(body('OC3', 'repeat'), { step: 'signing your contract' })).toBe(
       "Still to do: signing your contract. We can't offer you shifts until onboarding is finished. Need help? Contact the office.",
     );
     expect(body('OC1', 'first')).toContain('Search your inbox for "Willo"');
-    expect(body('OC1', 'final')).toContain("Reply to this email and we'll help.");
+    expect(body('OC1', 'repeat')).toContain("Reply to this email and we'll help.");
   });
 });

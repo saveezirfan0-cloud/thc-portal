@@ -48,20 +48,20 @@ describe('chaserLine()', () => {
 
   it('names the reminder, how it went, when, and when the next is due', () => {
     expect(chaserLine(state())).toEqual({
-      text: 'App reminder 1 of 3 pushed 22 Sep · next 25 Sep',
+      text: 'App reminder 1 pushed 22 Sep · next 25 Sep',
       tone: 'muted',
     });
     expect(chaserLine(state({ track: 'interview', rungs_sent: 2 }))?.text).toBe(
-      'Interview reminder 2 of 3 emailed 22 Sep · next 25 Sep',
+      'Interview reminder 2 emailed 22 Sep · next 25 Sep',
     );
     expect(chaserLine(state({ track: 'activation' }))?.text).toBe(
-      'Set-up reminder 1 of 3 emailed with a new link 22 Sep · next 25 Sep',
+      'Set-up reminder 1 emailed with a new link 22 Sep · next 25 Sep',
     );
   });
 
   it('turns amber when the latest could not be delivered: they have not been reminded at all', () => {
     expect(chaserLine(state({ last_failed: true }))).toEqual({
-      text: 'App reminder 1 of 3 not delivered 22 Sep — notifications are off on their phone. Phone them.',
+      text: 'App reminder 1 not delivered 22 Sep — notifications are off on their phone. Phone them.',
       tone: 'amber',
     });
     expect(chaserLine(state({ track: 'interview', last_failed: true }))?.text).toContain(
@@ -74,13 +74,13 @@ describe('chaserLine()', () => {
       chaserLine(state({ rungs_sent: 3, stalled: true, next_due_at: null, last_failed: true }))
         ?.text,
     ).toBe(
-      'Stalled — no progress after 3 reminders (last 22 Sep, the last undelivered — notifications are off on their phone). Phone them.',
+      'Stalled — no progress after 3 reminders (last 22 Sep, the last undelivered — notifications are off on their phone), still reminding daily. Phone them.',
     );
   });
 
-  it('turns coral and says to phone once all three have gone', () => {
+  it('turns coral once three have gone with no progress, and says they carry on', () => {
     expect(chaserLine(state({ rungs_sent: 3, stalled: true, next_due_at: null }))).toEqual({
-      text: 'Stalled — no progress after 3 reminders (last 22 Sep). Phone them.',
+      text: 'Stalled — no progress after 3 reminders (last 22 Sep), still reminding daily. Phone them.',
       tone: 'coral',
     });
   });

@@ -327,13 +327,13 @@ describe('onboarding chasers (ADR-0071)', () => {
       push({
         key: 'OC3:staff:s-1:1790000000:3',
         template: 'OC3',
-        payload: { step: 'your two references', variant: 'final', rung: '3' },
+        payload: { step: 'your two references', variant: 'repeat', rung: '3' },
       }),
     );
     expect(msg).toEqual({
       kind: 'push',
       staffId: 'staff-1',
-      title: 'Last reminder',
+      title: 'Your onboarding is waiting',
       body: "Still to do: your two references. We can't offer you shifts until onboarding is finished. Need help? Contact the office.",
       url: '/onboarding',
       tag: 'OC3',
@@ -365,16 +365,16 @@ describe('onboarding chasers (ADR-0071)', () => {
     expect(msg.body).not.toMatch(/\{\w+\}/);
   });
 
-  it('uses the last-reminder subject on the final OC1', () => {
+  it('uses the repeating subject from the third OC1 on', () => {
     const msg = messageFor(
       email({
         template: 'OC1',
         key: 'OC1:staff:s-1:1:3',
         recipient_emails: ['ivy@example.com'],
-        payload: { name: 'Ivy', variant: 'final' },
+        payload: { name: 'Ivy', variant: 'repeat' },
       }),
     );
-    expect(msg.kind === 'email' && msg.subject).toBe('Last reminder: your video interview');
+    expect(msg.kind === 'email' && msg.subject).toBe('Reminder: your video interview is still waiting');
   });
 
   it('refuses a chaser email with no rung rather than guessing one', () => {

@@ -138,11 +138,11 @@ export interface ChaserState {
   /** The wizard step waiting on them, in the push's words (app track only). */
   step: string | null;
   progress_at: string;
-  /** Reminders sent on the current ladder, 0–3. Progress starts a new one. */
+  /** Reminders sent since the last progress. Daily, never stopping; progress starts the count again. */
   rungs_sent: number;
   last_sent_at: string | null;
   next_due_at: string | null;
-  /** All three sent and still no progress: the office phones them. */
+  /** `stalled_after` (3) sent and still no progress: the office phones them. */
   stalled: boolean;
   /** The latest reminder could not be delivered (notifications off, a bounce). */
   last_failed: boolean;

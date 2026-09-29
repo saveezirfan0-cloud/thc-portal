@@ -12,7 +12,7 @@
 --   F. The daytime window and the off switch.
 -- =====================================================================
 begin;
-select plan(67);
+select plan(68);
 \ir _shared/fixtures.psql
 
 \set c_int   '39400000-0000-4000-8000-000000000001'
@@ -129,70 +129,77 @@ select is((select array[step_no::text, step] from t_c where staff_id = :'c_quiz'
   array['6', 'the Health & Safety quiz'], 'quiz stage, induction done: the quiz');
 
 -- =====================================================================
--- C · the ladder
+-- C · daily, and it never stops
 -- =====================================================================
-create temporary table r1 as select onboarding_chasers('2026-09-02 12:00+01') as r;
+create temporary table r0 as select onboarding_chasers('2026-09-01 12:00+01') as r;
 select is((select count(*)::int from notification_outbox where key like 'OC%:staff:' || :'c_int' || ':%'), 0,
-  'a day after the invite: nothing yet');
-select is((select count(*)::int from notification_outbox where key like 'OC1:staff:' || :'c_old' || ':%:1'), 1,
-  'a candidate idle for a month gets the first rung on the first run');
+  'an hour after the invite: nothing yet');
+select is((select count(*)::int from notification_outbox where key like 'OC1:staff:' || :'c_old' || ':%'), 1,
+  'a candidate idle for a month gets one reminder on the first run, not a month of them');
 
-create temporary table r2 as select onboarding_chasers('2026-09-03 12:00+01') as r;
+create temporary table r1 as select onboarding_chasers('2026-09-02 12:00+01') as r;
 select is((select array[template, channel::text, recipient_emails[1], payload ->> 'variant', payload ->> 'name']
              from notification_outbox where key like 'OC1:staff:' || :'c_int' || ':%:1'),
   array['OC1', 'email', 'ivy@chase.test', 'first', 'Ivy'],
-  'two days after the invite: the first interview email, to the candidate');
+  'a day after the invite: the first interview email, to the candidate');
 select is((select array[template, channel::text, payload ->> 'variant', payload ->> 'step']
              from notification_outbox where key like 'OC3:staff:' || :'c_app' || ':%:1'),
   array['OC3', 'push', 'first', 'your home address'],
   'and the first push for the open wizard step');
 select is((select recipient_staff_id from notification_outbox where key like 'OC3:staff:' || :'c_app' || ':%:1'),
   :'c_app'::uuid, 'addressed to the candidate''s devices');
-select is((select count(*)::int from notification_outbox where key like 'OC1:staff:' || :'c_old' || ':%'), 1,
-  'the long-idle candidate does not get rung 2 a day after rung 1');
+select is((select count(*)::int from notification_outbox where key like 'OC1:staff:' || :'c_old' || ':%'), 2,
+  'and one more the next day');
 select is((select count(*)::int from notification_outbox where template = 'OC2'), 0,
   'the job queues no OC2 itself: the link must be minted first');
-select is((select jsonb_path_query_array(r -> 'activation', '$[*].staffId') from r2),
+select is((select jsonb_path_query_array(r -> 'activation', '$[*].staffId') from r1),
   jsonb_build_array(:'c_act'), 'it names the one activation reminder due');
 
-create temporary table r2b as select onboarding_chasers('2026-09-03 12:00+01') as r;
-select is((select array[(r ->> 'oc1')::int, (r ->> 'oc3')::int] from r2b), array[0, 0],
+create temporary table r1b as select onboarding_chasers('2026-09-02 12:00+01') as r;
+select is((select array[(r ->> 'oc1')::int, (r ->> 'oc3')::int] from r1b), array[0, 0],
   'run again: nothing is sent twice');
 
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
 select is((select array[rungs_sent::text, stalled::text, step, next_due_at::text]
-             from onboarding_chaser_state('2026-09-03 13:00+01') where staff_id = :'c_app'),
-  array['1', 'false', 'your home address', '2026-09-06 11:00:00+00'],
-  'the office sees the reminder sent and when the next is due (day 5, three days after the first)');
+             from onboarding_chaser_state('2026-09-02 13:00+01') where staff_id = :'c_app'),
+  array['1', 'false', 'your home address', '2026-09-03 11:00:00+00'],
+  'the office sees the reminder sent and when the next is due (a day later)');
 reset role;
 
-create temporary table r3 as select onboarding_chasers('2026-09-05 12:00+01') as r;
-select is((select count(*)::int from notification_outbox where key like 'OC1:staff:' || :'c_old' || ':%:2'), 1,
-  'rung 2 for the long-idle candidate three days after rung 1');
+create temporary table r2a as select onboarding_chasers('2026-09-03 11:20+01') as r;
 select is((select count(*)::int from notification_outbox where key like 'OC1:staff:' || :'c_int' || ':%:2'), 0,
-  'not before day 5 for Ivy');
-
-create temporary table r4 as select onboarding_chasers('2026-09-06 12:00+01') as r;
+  'not before a day has passed');
+create temporary table r2 as select onboarding_chasers('2026-09-03 11:40+01') as r;
 select is((select payload ->> 'variant' from notification_outbox where key like 'OC1:staff:' || :'c_int' || ':%:2'),
-  'second', 'day 5: the second email');
+  'second', 'the next day (with half an hour''s grace for the hourly job): the second email');
+select is((select count(*)::int from notification_outbox where key like 'OC1:staff:' || :'c_old' || ':%'), 3,
+  'the long-idle candidate too: one a day');
 
-create temporary table r5 as select onboarding_chasers('2026-09-10 12:00+01') as r;
-select is((select count(*)::int from notification_outbox where key like 'OC1:staff:' || :'c_int' || ':%:3'), 0,
-  'not the third before day 10');
-create temporary table r6 as select onboarding_chasers('2026-09-11 12:00+01') as r;
+create temporary table r3 as select onboarding_chasers('2026-09-04 12:00+01') as r;
 select is((select payload ->> 'variant' from notification_outbox where key like 'OC1:staff:' || :'c_int' || ':%:3'),
-  'final', 'day 10: the last reminder');
-create temporary table r7 as select onboarding_chasers('2026-09-30 12:00+01') as r;
-select is((select count(*)::int from notification_outbox where key like 'OC1:staff:' || :'c_int' || ':%'), 3,
-  'three and no more');
+  'repeat', 'day three: the repeating wording');
+create temporary table r4 as select onboarding_chasers('2026-09-05 12:00+01') as r;
+select is((select payload ->> 'variant' from notification_outbox where key like 'OC1:staff:' || :'c_int' || ':%:4'),
+  'repeat', 'day four: it does not stop');
+create temporary table r5 as select onboarding_chasers('2026-09-30 12:00+01') as r;
+select is((select count(*)::int from notification_outbox where key like 'OC1:staff:' || :'c_int' || ':%'), 5,
+  'a missed stretch of days is not caught up: one reminder per run that finds one due');
 
 set local role authenticated;
 set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
-select is((select array[rungs_sent::text, stalled::text, coalesce(next_due_at::text, 'none')]
+select is((select array[rungs_sent::text, stalled::text, next_due_at::text]
              from onboarding_chaser_state('2026-09-30 12:00+01') where staff_id = :'c_int'),
-  array['3', 'true', 'none'], 'the office sees the card as stalled');
+  array['5', 'true', '2026-10-01 11:00:00+00'],
+  'the office sees the card as stalled, and the next reminder still due tomorrow');
 reset role;
+update settings set value = value || '{"stalled_after": 10}' where key = 'onboarding_chasers';
+set local role authenticated;
+set local "request.jwt.claims" = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+select is((select stalled from onboarding_chaser_state('2026-09-30 12:00+01') where staff_id = :'c_int'),
+  false, 'Stalled follows the setting: five reminders is not stalled when stalled_after is 10');
+reset role;
+update settings set value = value || '{"stalled_after": 3}' where key = 'onboarding_chasers';
 
 -- =====================================================================
 -- D · progress starts a fresh ladder
@@ -211,7 +218,7 @@ update compliance_docs set review_status = 'rejected', reviewed_at = '2026-09-07
  where staff_id = :'c_rev';
 select is((select array[step_no::text, step] from onboarding_chaser_candidates('2026-09-09 12:00+01') where staff_id = :'c_rev'),
   array['4', 're-uploading a rejected document'], 'a rejected document: chased to re-upload it');
-select is((select due_rung from onboarding_chaser_candidates('2026-09-09 09:29+01') where staff_id = :'c_rev'),
+select is((select due_rung from onboarding_chaser_candidates('2026-09-08 09:29+01') where staff_id = :'c_rev'),
   null::int, 'counted from the rejection, not from the upload');
 
 -- =====================================================================
@@ -271,8 +278,10 @@ select is((select r ->> 'skipped' from (select onboarding_chasers('2026-09-23 09
   'outside 10:00–18:00 UK', 'nothing before 10:00 UK');
 select is((select r ->> 'skipped' from (select onboarding_chasers('2026-09-23 18:00+01') as r) x),
   'outside 10:00–18:00 UK', 'nor from 18:00 UK');
-select is((select count(*)::int from notification_outbox where key like 'OC3:staff:' || :'c_quiz' || ':%'
-             and payload ->> 'at' >= '2026-09-20'), 0, 'so nobody was reminded out of hours');
+select is((select count(*)::int from notification_outbox
+            where key like 'OC3:staff:' || :'c_quiz' || ':'
+                           || floor(extract(epoch from timestamptz '2026-09-20 10:00+01'))::bigint || ':%'), 0,
+  'so nobody was reminded out of hours');
 select is((select (r ->> 'oc3')::int >= 1 from (select onboarding_chasers('2026-12-23 10:00+00') as r) x),
   true, '10:00 UK in winter (GMT) is inside the window');
 
@@ -340,7 +349,7 @@ select is((select array[step_no::text, step] from t_g where staff_id = :'c_ind')
 -- An E3 re-send is progress: a fresh OC2 ladder, counted from it.
 insert into notification_outbox (key, channel, template, recipient_emails, payload, sent_at) values
   ('E3:resend:' || :'c_race' || ':1', 'email', 'E3', array['ray@chase.test'], '{"name":"Ray"}', '2026-10-04 10:00+01');
-select is((select array[progress_at::text, coalesce(due_rung::text, 'none')] from onboarding_chaser_candidates('2026-10-05 12:00+01')
+select is((select array[progress_at::text, coalesce(due_rung::text, 'none')] from onboarding_chaser_candidates('2026-10-05 09:00+01')
             where staff_id = :'c_race'),
   array['2026-10-04 09:00:00+00', 'none'], 'the office''s resend restarts the activation ladder');
 
@@ -366,15 +375,19 @@ select is((select last_failed from onboarding_chaser_state('2026-09-06 13:00+01'
 reset role;
 
 -- A setting typed wrong keeps the defaults for that part.
-update settings set value = '{"from": "9am", "until": "18:00", "days": [3], "enabled": "yes"}' where key = 'onboarding_chasers';
-select is(onboarding_chaser_config(), '{"enabled": true, "days": [2, 5, 10], "from": "10:00", "until": "18:00"}'::jsonb,
-  'a bad time, a short ladder and a non-boolean switch all keep their defaults');
+update settings set value = '{"from": "9am", "until": "18:00", "every_days": 0, "stalled_after": "3", "enabled": "yes"}'
+ where key = 'onboarding_chasers';
+select is(onboarding_chaser_config(),
+  '{"enabled": true, "every_days": 1, "stalled_after": 3, "from": "10:00", "until": "18:00"}'::jsonb,
+  'a bad time, a zero interval, a quoted number and a non-boolean switch all keep their defaults');
 select lives_ok($$ select onboarding_chasers('2026-12-23 12:00+00') $$, 'and the job still runs');
-update settings set value = '{"days": [1, 3, 7], "from": "09:00", "until": "17:00"}' where key = 'onboarding_chasers';
-select is(onboarding_chaser_config(), '{"enabled": true, "days": [1, 3, 7], "from": "09:00", "until": "17:00"}'::jsonb,
+update settings set value = '{"every_days": 2, "stalled_after": 5, "from": "09:00", "until": "17:00"}'
+ where key = 'onboarding_chasers';
+select is(onboarding_chaser_config(),
+  '{"enabled": true, "every_days": 2, "stalled_after": 5, "from": "09:00", "until": "17:00"}'::jsonb,
   'a sane setting is taken');
-update settings set value = '{"days": [5, 5, 10]}' where key = 'onboarding_chasers';
-select is(onboarding_chaser_config() -> 'days', '[2, 5, 10]'::jsonb, 'days that do not increase are refused');
+update settings set value = '{"every_days": 45}' where key = 'onboarding_chasers';
+select is(onboarding_chaser_config() -> 'every_days', '1'::jsonb, 'an interval over 30 days is refused');
 
 select * from finish();
 rollback;

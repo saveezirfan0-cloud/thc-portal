@@ -177,20 +177,22 @@ Willo decision), documents under review and a Yes declaration awaiting Verify
 are the office's move and are never chased. The channel follows the owner's
 rule: **email until the account exists, push in the app after.**
 
-| Code | Channel · to | When the candidate is… | Title / subject | Body (rung 1) |
+| Code | Channel · to | When the candidate is… | Title / subject | Body (day 1) |
 | --- | --- | --- | --- | --- |
 | OC1 | email · candidate (from admin@) | in Interview requested, the Willo invite sent, interview not done | `Your video interview with The Hospitality Company` | Thanks for applying… the invitation came from Willo — search your inbox for "Willo"… |
 | OC2 | email · candidate (from admin@) | accepted, E3 sent, no password set | `Set up your account with The Hospitality Company` | Your application was accepted… set your password: `{link}` … download the app: `{installLink}` |
 | OC3 | push · candidate → `/onboarding` | signed up, a wizard step open | `Pick up where you left off` | `Next up: {step}. Tap to carry on with your onboarding.` |
 
-- **The ladder.** 2, 5 and 10 days after the candidate's last progress, the
-  rungs at least 3 and 5 days apart, 10:00–18:00 UK only. Each code has one
-  variant per rung — `first`, `second`, `final` — and a variant may carry its
-  own title (the last rung's reads "Last reminder…"). After the third, the
-  office board marks the card **Stalled**. Days, hours and an off switch are
+- **The cadence.** Daily, and it never stops (owner, 29.09.2026): the first
+  a day after the candidate's last progress, then one a day while the move is
+  theirs, 10:00–18:00 UK only. Each code has three variants — `first`,
+  `second`, then `repeat` for every day after — and a variant may carry its
+  own title. No wording says "last reminder". After three with no progress
+  the office board marks the card **Stalled**; the reminders carry on. The
+  interval, the Stalled point, the hours and an off switch are
   `settings.onboarding_chasers`.
-- **Keys.** `OCn:staff:<id>:<progress epoch>:<rung>`. The epoch is the instant
-  of the last progress, so any progress starts a fresh ladder and a re-run
+- **Keys.** `OCn:staff:<id>:<progress epoch>:<n>`. The epoch is the instant
+  of the last progress, so any progress starts the count again and a re-run
   of the job never sends twice.
 - **OC2's link is new each time.** E3's link works once and lives a day, so
   repeating it would send a dead link. The onboarding-chasers Edge Function
