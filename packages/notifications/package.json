@@ -3,13 +3,18 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "sideEffects": false,
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./drain": "./src/drain.ts",
+    "./email-html": "./src/email-html.ts"
   },
   "scripts": {
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "gen:logo": "node scripts/gen-email-logo.mjs",
+    "preview:emails": "vitest run src/__tests__/email-preview.test.ts"
   },
   "devDependencies": {
     "typescript": "^5.9.3",

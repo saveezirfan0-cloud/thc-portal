@@ -4227,6 +4227,42 @@ export type Database = {
           },
         ];
       };
+      staff_pay_rates: {
+        Row: {
+          pay_rate: number;
+          set_at: string;
+          set_by: string | null;
+          staff_id: string;
+        };
+        Insert: {
+          pay_rate: number;
+          set_at?: string;
+          set_by?: string | null;
+          staff_id: string;
+        };
+        Update: {
+          pay_rate?: number;
+          set_at?: string;
+          set_by?: string | null;
+          staff_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'staff_pay_rates_set_by_fkey';
+            columns: ['set_by'];
+            isOneToOne: false;
+            referencedRelation: 'profiles';
+            referencedColumns: ['id'];
+          },
+          {
+            foreignKeyName: 'staff_pay_rates_staff_id_fkey';
+            columns: ['staff_id'];
+            isOneToOne: true;
+            referencedRelation: 'staff';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
       staff_references: {
         Row: {
           email: string;
@@ -8240,6 +8276,10 @@ export type Database = {
         | { Args: { schema_name: string; table_name: string }; Returns: string }
         | { Args: { table_name: string }; Returns: string };
       edge_base_url: { Args: never; Returns: string };
+      effective_pay_rate: {
+        Args: { p_section_rate: number; p_staff: string };
+        Returns: number;
+      };
       enablelongtransactions: { Args: never; Returns: string };
       equals: { Args: { geom1: unknown; geom2: unknown }; Returns: boolean };
       escalation_radius_miles: { Args: never; Returns: number };
@@ -9351,6 +9391,10 @@ export type Database = {
       set_do_not_return: {
         Args: { p_id: string; p_on: boolean; p_reason?: string };
         Returns: Json;
+      };
+      set_staff_pay_rate: {
+        Args: { p_pay_rate: number | null; p_staff: string };
+        Returns: undefined;
       };
       shift_base_pay: {
         Args: { p_payable_min: number; p_rate: number };

@@ -177,7 +177,9 @@ Verified:
 
 **1.3c Templates.** https://supabase.com/dashboard/project/dgxtqvalfiisfpbwodew/auth/templates
 
-- **Reset password** — keep `{{ .ConfirmationURL }}`; the default is fine.
+- **Reset password** — paste the whole of `supabase/templates/recovery.html`
+  (the token_hash link, ADR-0039, in the THC Light layout, ADR-0073). Re-paste
+  it whenever that file changes.
 - **Change email address** — the app asks the worker for a **six-digit code**
   (`verifyOtp({ type: 'email_change', token })`), so the template must contain
   `{{ .Token }}`. The stock template contains only a link; add a line

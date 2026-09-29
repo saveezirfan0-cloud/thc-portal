@@ -41,6 +41,8 @@ const OWNED_BY_RPC = [
   'shift_offer_notices',
   'staff_referral_codes',
   'application_referrals',
+  // ADR-0072: set_staff_pay_rate() is the only door; authenticated holds no write grant.
+  'staff_pay_rates',
 ];
 
 const sources = globSync(['apps/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}'], {
