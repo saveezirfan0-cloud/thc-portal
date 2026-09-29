@@ -208,14 +208,29 @@ export async function messageLineUp(
   const refused = await adminRefusal(supabase);
   if (refused) return { error: refused };
 
+  // p_booking only when one person was picked. A call that names it always
+  // needs the five-argument function (20261002102000); without it, the call
+  // matches either version, so messaging everyone or a role keeps working on
+  // a database the one-person migration has not reached yet (29.09: the app
+  // deployed while the database deploy was failing, and every send broke).
   const { data, error } = await supabase.rpc('send_event_message', {
     p_event: eventId,
     p_section: input.sectionId,
     p_audience: input.audience,
     p_message: input.message,
-    p_booking: input.bookingId ?? null,
+    ...(input.bookingId ? { p_booking: input.bookingId } : {}),
   });
   if (error) {
+    // PostgREST's "no function with these arguments" (PGRST202): the
+    // database is behind the app.
+    if (
+      input.bookingId &&
+      (error.code === 'PGRST202' || /Could not find the function/.test(error.message))
+    )
+      return {
+        error:
+          'Messaging one person is not switched on yet — the database update is still pending. Send it to their role for now.',
+      };
     if (/event_not_found/.test(error.message)) return { error: 'That event no longer exists.' };
     if (/read_only/.test(error.message))
       return { error: 'A view-only login cannot send messages.' };
