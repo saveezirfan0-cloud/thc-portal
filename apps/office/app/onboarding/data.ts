@@ -13,6 +13,7 @@ import type {
   CandidateMoney,
   CandidateReferral,
   CandidateRow,
+  ChaserState,
   ContractVersion,
   Declaration,
   HmrcChecklist,
@@ -145,6 +146,34 @@ function messageOf(error: unknown): string {
   return error instanceof Error && error.message ? error.message : 'the read failed';
 }
 
+// ---------------------------------------------------------------------
+// Onboarding chasers (ADR-0071) — a separate read of
+// `onboarding_chaser_state()`, a Back Office-only definer (20261001212000),
+// for the same reason as the referrals: the pipeline view is not restated.
+// A failed read is said out loud, never shown as "nobody was reminded".
+// ---------------------------------------------------------------------
+export interface ChaserReader {
+  rpc(fn: 'onboarding_chaser_state'): PromiseLike<{
+    data: ChaserState[] | null;
+    error: { message: string } | null;
+  }>;
+}
+
+export async function loadBoardChasers(
+  reader: ChaserReader,
+): Promise<{ chasers: Record<string, ChaserState>; problem: string | null }> {
+  try {
+    const answer = await reader.rpc('onboarding_chaser_state');
+    if (answer.error) return { chasers: {}, problem: answer.error.message };
+    return {
+      chasers: Object.fromEntries((answer.data ?? []).map((row) => [row.staff_id, row])),
+      problem: null,
+    };
+  } catch (error) {
+    return { chasers: {}, problem: messageOf(error) };
+  }
+}
+
 export async function loadBoard(): Promise<BoardData> {
   if (!supabaseConfigured()) {
     return { candidates: [], returning: [], roles: [], problem: NOT_CONFIGURED };
@@ -167,9 +196,12 @@ export async function loadBoard(): Promise<BoardData> {
 
   const error = candidates.error ?? returning.error ?? roles.error;
   if (error) return { candidates: [], returning: [], roles: [], problem: error.message };
-  const referrals = await loadBoardReferrals(supabase as unknown as ReferralReader, [
-    ...(candidates.data ?? []).map((row) => row.id),
-    ...(returning.data ?? []).map((row) => row.staff_id),
+  const [referrals, chasers] = await Promise.all([
+    loadBoardReferrals(supabase as unknown as ReferralReader, [
+      ...(candidates.data ?? []).map((row) => row.id),
+      ...(returning.data ?? []).map((row) => row.staff_id),
+    ]),
+    loadBoardChasers(supabase as unknown as ChaserReader),
   ]);
   return {
     // §2.7: the onboarding selfie follows them through the whole system —
@@ -179,6 +211,8 @@ export async function loadBoard(): Promise<BoardData> {
     roles: roles.data ?? [],
     referred: referrals.referred,
     referredProblem: referrals.problem,
+    chasers: chasers.chasers,
+    chasersProblem: chasers.problem,
     problem: null,
   };
 }

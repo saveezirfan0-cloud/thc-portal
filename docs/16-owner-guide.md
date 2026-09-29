@@ -859,7 +859,7 @@ supabase secrets set \
 |---|---|---|
 | `WILLO_WEBHOOK_SECRET` | `willo-webhook` (inbound) | **every** delivery is refused with 503; unsigned deliveries are never accepted |
 | `WILLO_API_KEY`, `WILLO_INTERVIEW_KEY` | `willo-webhook/invite` (the sweep) | logs `no candidate created in Willo, no E1 sent`, leases nothing; every waiting candidate is picked up on the first run with keys |
-| `STAFF_APP_URL` | `willo-webhook` (an Accept) | 500, so Willo retries and the delivery lands once it is set. Must match §3.5 if the domain changes. |
+| `STAFF_APP_URL` | `willo-webhook` (an Accept); `onboarding-chasers` (the OC2 activation reminder, ADR-0071) | willo-webhook: 500, so Willo retries and the delivery lands once it is set. onboarding-chasers: no link is minted and `oc2_failed` counts it in `job_runs`; OC1 and OC3 still go. Must match §3.5 if the domain changes. |
 
 Optional overrides, only if Willo's documentation differs from the defaults in
 `packages/db/src/willo.ts`:
@@ -970,6 +970,31 @@ select jobname, schedule from cron.job where jobname = 'willo-invite';
 'willo-invite' order by started_at desc limit 5;` shows runs every minute; a
 new `/apply` submission shows up in Willo within a minute and the applicant gets
 E1 from Willo.
+
+### 5.7 Onboarding chasers (ADR-0071)
+
+`20261001212000` adds the `onboarding-chasers` schedule, enabled. It sends
+reminders to candidates who have stopped part-way through onboarding: emails
+before they sign up (OC1 for the interview, OC2 with a new activation link),
+and a push in the app after (OC3). The reminders go out daily and do not stop,
+between 10:00 and 18:00 UK. The function deploys with the others. It uses
+`STAFF_APP_URL`, the secret willo-webhook already has. Once the migration is
+applied and the function deployed:
+
+```sql
+select public.install_job_schedules();   -- onboarding-chasers now included
+select jobname, schedule from cron.job where jobname = 'onboarding-chasers';
+```
+
+**Verify.** `select job, ok, counts from public.job_runs where job =
+'onboarding-chasers' order by started_at desc limit 5;` shows a run each hour.
+Outside 10:00–18:00 UK the counts read `skipped`. Inside those hours they show
+`oc1`, `oc3` and `oc2_queued`. Any `oc2_failed` above zero means a link could
+not be minted: check `STAFF_APP_URL`.
+
+**Change or pause it** on the `onboarding_chasers` setting, for example
+`{"enabled": false}`, or a different `every_days` (days between reminders),
+`stalled_after`, `from` or `until`.
 
 ---
 
