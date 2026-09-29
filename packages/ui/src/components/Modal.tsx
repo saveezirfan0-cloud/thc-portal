@@ -15,16 +15,22 @@ export interface ModalProps {
 
 export function Modal({ open, title, onClose, footer, children, wide }: ModalProps) {
   const ref = useRef<HTMLDivElement>(null);
+  // Callers pass a fresh onClose on every render; keep it out of the effect
+  // deps so typing in a field doesn't re-run the focus below and steal focus.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     if (!open) return;
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      if (event.key === 'Escape') onCloseRef.current();
     };
     document.addEventListener('keydown', onKey);
-    ref.current?.focus();
+    // Focus the dialog on open only, and never take focus back from a field
+    // that already has it (e.g. an autoFocus input).
+    if (!ref.current?.contains(document.activeElement)) ref.current?.focus();
     return () => document.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
