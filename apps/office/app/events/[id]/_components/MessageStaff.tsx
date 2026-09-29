@@ -1,9 +1,14 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { Alert, Button, Checkbox, Modal, Select, Textarea } from '@thc/ui';
+import { Alert, Button, Modal, Select, Textarea } from '@thc/ui';
 import { messageLineUp } from '../actions';
-import { MESSAGE_MAX, messageLength } from '../board-model';
+import {
+  MESSAGE_AUDIENCES,
+  MESSAGE_MAX,
+  messageLength,
+  type MessageAudience,
+} from '../board-model';
 
 export interface MessageSection {
   id: string;
@@ -14,9 +19,10 @@ export interface MessageSection {
  * Message staff — ADR-0069.
  *
  * A push with the manager's own words to the people on this event: the
- * whole line-up or one role, confirmed (and checked in) by default,
- * invitees on request. The words arrive as the notification's body under
- * "{event} · {date}", and tapping it opens the worker's shift.
+ * whole event or one role, and — for either — the confirmed (and checked
+ * in) staff, the invitees who have not accepted yet, or both. The words
+ * arrive as the notification's body under "{event} · {date}", and tapping
+ * it opens the worker's shift.
  *
  * After a send the modal stays open on the result, because the one thing
  * the manager must act on is in it: the names of anyone with notifications
@@ -35,7 +41,7 @@ export function MessageStaff({
   const [open, setOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [sectionId, setSectionId] = useState('');
-  const [includeInvited, setIncludeInvited] = useState(false);
+  const [audience, setAudience] = useState<MessageAudience>('booked');
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<{ summary: string; everyoneReached: boolean } | null>(null);
   const [pending, startTransition] = useTransition();
@@ -46,7 +52,7 @@ export function MessageStaff({
   function reset() {
     setMessage('');
     setSectionId('');
-    setIncludeInvited(false);
+    setAudience('booked');
     setError(null);
     setSent(null);
   }
@@ -61,7 +67,7 @@ export function MessageStaff({
     startTransition(async () => {
       const result = await messageLineUp(eventId, {
         sectionId: sectionId || null,
-        includeInvited,
+        audience,
         message,
       });
       if ('error' in result) setError(result.error);
@@ -111,9 +117,17 @@ export function MessageStaff({
                 </option>
               ))}
             </Select>
-            <Checkbox checked={includeInvited} onChange={setIncludeInvited}>
-              Also invited — people who have not accepted yet
-            </Checkbox>
+            <Select
+              label="Who"
+              value={audience}
+              onChange={(event) => setAudience(event.target.value as MessageAudience)}
+            >
+              {MESSAGE_AUDIENCES.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
             <Textarea
               label="Message"
               rows={4}
@@ -128,8 +142,8 @@ export function MessageStaff({
               }
             />
             <span className="muted xs">
-              Confirmed and checked-in staff receive it straight away. Anyone with notifications off
-              is listed after you send, so you can phone them.
+              Everyone chosen receives it straight away. Anyone with notifications off is listed
+              after you send, so you can phone them.
             </span>
           </div>
         )}

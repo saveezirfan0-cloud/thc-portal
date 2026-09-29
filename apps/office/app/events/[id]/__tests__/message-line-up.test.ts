@@ -9,7 +9,7 @@ import {
 
 /**
  * Message staff (ADR-0069). The action names the event, one section at
- * most and whether invitees are included — never a list of workers; the
+ * most and the audience (booked, invited, or both) — never a list of workers; the
  * database picks the recipients. The manager is told how many got it and,
  * by name, who has notifications off.
  */
@@ -53,20 +53,20 @@ beforeEach(() => {
 });
 
 describe('messageLineUp', () => {
-  it('sends through send_event_message with the section and the invitee switch, nothing else', async () => {
+  it('sends through send_event_message with the section and the audience, nothing else', async () => {
     state.rpc.mockResolvedValueOnce({
       data: { ok: true, sent: 12, withoutPush: [], messageId: 'm-1' },
       error: null,
     });
     const result = await messageLineUp('evt-1', {
       sectionId: 'sec-2',
-      includeInvited: true,
+      audience: 'invited',
       message: 'Staff entrance is on King St',
     });
     expect(state.rpc).toHaveBeenCalledWith('send_event_message', {
       p_event: 'evt-1',
       p_section: 'sec-2',
-      p_include_invited: true,
+      p_audience: 'invited',
       p_message: 'Staff entrance is on King St',
     });
     expect(result).toEqual({ ok: true, summary: 'Sent to 12 people.', everyoneReached: true });
@@ -80,7 +80,7 @@ describe('messageLineUp', () => {
     });
     const result = await messageLineUp('evt-1', {
       sectionId: null,
-      includeInvited: false,
+      audience: 'booked',
       message: 'x',
     });
     expect(result).toEqual({
@@ -93,7 +93,7 @@ describe('messageLineUp', () => {
 
   it('refuses a blank message before calling anything', async () => {
     expect(
-      await messageLineUp('evt-1', { sectionId: null, includeInvited: false, message: '   ' }),
+      await messageLineUp('evt-1', { sectionId: null, audience: 'booked', message: '   ' }),
     ).toEqual({ error: 'Write the message first.' });
     expect(state.rpc).not.toHaveBeenCalled();
   });
@@ -105,32 +105,51 @@ describe('messageLineUp', () => {
     });
     const result = await messageLineUp('evt-1', {
       sectionId: null,
-      includeInvited: false,
+      audience: 'booked',
       message: 'x',
     });
     expect(result).toEqual({ error: messageRefusal('nobody_to_message') });
-    expect((result as { error: string }).error).toMatch(/Tick "Also invited"/);
+    expect((result as { error: string }).error).toMatch(/Choose "Invited only"/);
     expect(state.revalidated).toEqual([]);
   });
 
-  it('does not suggest ticking "Also invited" when it was already ticked', async () => {
+  it('does not suggest the invitees when they were already asked for', async () => {
     state.rpc.mockResolvedValueOnce({
       data: { ok: false, reason: 'nobody_to_message' },
       error: null,
     });
     const result = await messageLineUp('evt-1', {
       sectionId: null,
-      includeInvited: true,
+      audience: 'booked_and_invited',
       message: 'x',
     });
     expect(result).toEqual({ error: 'Nobody is booked on that yet — there is nobody to message.' });
+  });
+
+  it('messages the invitees on their own, and says so when there are none', async () => {
+    state.rpc.mockResolvedValueOnce({
+      data: { ok: false, reason: 'nobody_to_message' },
+      error: null,
+    });
+    const result = await messageLineUp('evt-1', {
+      sectionId: 'sec-2',
+      audience: 'invited',
+      message: 'You still have an invite for tonight — please reply',
+    });
+    expect(state.rpc).toHaveBeenCalledWith(
+      'send_event_message',
+      expect.objectContaining({ p_section: 'sec-2', p_audience: 'invited' }),
+    );
+    expect(result).toEqual({
+      error: 'Nobody has an open invitation for that — there is nobody to message.',
+    });
   });
 
   it('refuses a signed-in account that is not the office', async () => {
     state.role = 'staff';
     const result = await messageLineUp('evt-1', {
       sectionId: null,
-      includeInvited: false,
+      audience: 'booked',
       message: 'x',
     });
     expect(result).toEqual({ error: 'Only the office can do this.' });
@@ -140,7 +159,7 @@ describe('messageLineUp', () => {
   it('tells a view-only login it cannot send', async () => {
     state.rpc.mockResolvedValueOnce({ data: null, error: { message: 'read_only' } });
     expect(
-      await messageLineUp('evt-1', { sectionId: null, includeInvited: false, message: 'x' }),
+      await messageLineUp('evt-1', { sectionId: null, audience: 'booked', message: 'x' }),
     ).toEqual({ error: 'A view-only login cannot send messages.' });
   });
 });
@@ -148,6 +167,7 @@ describe('messageLineUp', () => {
 describe('the words around it', () => {
   it('has copy for every refusal the database gives', () => {
     for (const reason of [
+      'audience_unknown',
       'message_required',
       'message_too_long',
       'event_cancelled',

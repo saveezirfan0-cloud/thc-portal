@@ -4,18 +4,19 @@
 --
 --   1. Admin only — not anon, not a worker, not the client, not a
 --      read-only viewer (ADR-0060).
---   2. Refusals: blank, over 300 characters, unknown section, cancelled
+--   2. Refusals: unknown audience, blank, over 300 characters, unknown section, cancelled
 --      event, an event that is over, nobody to message. None of them
 --      queues anything.
---   3. Recipients come from the bookings: confirmed and worked; invited
---      only when asked; never applied, closed or cancelled. One push per
+--   3. Recipients come from the bookings, by audience: booked (confirmed
+--      and worked), invited only, or both; never applied, closed or
+--      cancelled. One push per
 --      worker even across two sections, deep-linked to their first one.
 --   4. The payload is the values map OM1 asks for, and the text is kept
 --      as typed (trimmed). Two sends are two messages.
 --   5. The answer names the recipients with no push subscription.
 -- =====================================================================
 begin;
-select plan(27);
+select plan(33);
 \ir _shared/fixtures.psql
 
 \set ev  '75800000-0000-4000-8000-000000000001'
@@ -85,24 +86,26 @@ insert into push_subscriptions (staff_id, endpoint, p256dh, auth) values
 -- ---------------------------------------------------------------------
 -- 1 · Who may call it
 -- ---------------------------------------------------------------------
-select ok(not has_function_privilege('anon', 'public.send_event_message(uuid, uuid, boolean, text)', 'execute'),
+select ok(not has_function_privilege('anon', 'public.send_event_message(uuid, uuid, text, text)', 'execute'),
   'anon cannot execute send_event_message');
+select hasnt_function('public', 'send_event_message', array['uuid', 'uuid', 'boolean', 'text'],
+  'the old "also invited" switch is gone (20261001211000)');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select throws_ok(format($$ select send_event_message(%L, null, false, 'hi') $$, :'ev'), '42501', 'not_authorised',
+select throws_ok(format($$ select send_event_message(%L, null, 'booked', 'hi') $$, :'ev'), '42501', 'not_authorised',
   'a worker cannot message a line-up');
 reset role;
 
 select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select throws_ok(format($$ select send_event_message(%L, null, false, 'hi') $$, :'ev'), '42501', 'not_authorised',
+select throws_ok(format($$ select send_event_message(%L, null, 'booked', 'hi') $$, :'ev'), '42501', 'not_authorised',
   'nor can the client whose event it is');
 reset role;
 
 select set_config('request.jwt.claims', json_build_object('sub', :'viewer', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select throws_ok(format($$ select send_event_message(%L, null, false, 'hi') $$, :'ev'), '42501', 'read_only',
+select throws_ok(format($$ select send_event_message(%L, null, 'booked', 'hi') $$, :'ev'), '42501', 'read_only',
   'nor can a view-only Back Office login (ADR-0060)');
 reset role;
 
@@ -112,18 +115,20 @@ reset role;
 select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
 set local role authenticated;
 
-select is(send_event_message(:'ev', null, false, '   '),
+select is(send_event_message(:'ev', null, 'everybody', 'hi'),
+  jsonb_build_object('ok', false, 'reason', 'audience_unknown'), 'an unknown audience is refused');
+select is(send_event_message(:'ev', null, 'booked', '   '),
   jsonb_build_object('ok', false, 'reason', 'message_required'), 'a blank message is refused');
-select is(send_event_message(:'ev', null, false, repeat('x', 301)),
+select is(send_event_message(:'ev', null, 'booked', repeat('x', 301)),
   jsonb_build_object('ok', false, 'reason', 'message_too_long'), 'over 300 characters is refused');
-select is(send_event_message(:'ev', :'sx', false, 'hi'),
+select is(send_event_message(:'ev', :'sx', 'booked', 'hi'),
   jsonb_build_object('ok', false, 'reason', 'section_not_on_event'), 'a section from another event is refused');
-select is(send_event_message(:'evx', null, true, 'hi'),
+select is(send_event_message(:'evx', null, 'booked_and_invited', 'hi'),
   jsonb_build_object('ok', false, 'reason', 'event_cancelled'), 'a cancelled event is refused');
-select is(send_event_message(:'evp', null, false, 'hi'),
+select is(send_event_message(:'evp', null, 'booked', 'hi'),
   jsonb_build_object('ok', false, 'reason', 'event_over'),
   'an event whose every role has ended is refused, though someone worked it');
-select throws_ok($$ select send_event_message('75800000-0000-4000-8000-00000000dead', null, false, 'hi') $$,
+select throws_ok($$ select send_event_message('75800000-0000-4000-8000-00000000dead', null, 'booked', 'hi') $$,
   'P0002', 'event_not_found', 'an unknown event raises');
 select is((select count(*)::int from notification_outbox where template = 'OM1'), 0,
   'and none of that queued anything');
@@ -133,7 +138,7 @@ select is((select count(*)::int from audit_log where action = 'event.message_sen
 -- ---------------------------------------------------------------------
 -- 3 · Recipients — the whole event, confirmed and worked
 -- ---------------------------------------------------------------------
-select is(send_event_message(:'ev', null, false, '  Staff entrance is on King St tonight {x}  ') - 'messageId',
+select is(send_event_message(:'ev', null, 'booked', '  Staff entrance is on King St tonight {x}  ') - 'messageId',
   jsonb_build_object('ok', true, 'sent', 2, 'withoutPush', jsonb_build_array('Chec Kedin')),
   'sent to the two workers on the shift; the one without notifications is named');
 select is((select array_agg(recipient_staff_id order by recipient_staff_id)
@@ -167,7 +172,7 @@ select is((select count(*)::int from audit_log where action = 'event.message_sen
 -- ---------------------------------------------------------------------
 -- 3b · Invitees on request, one section
 -- ---------------------------------------------------------------------
-select is(send_event_message(:'ev', :'s2', true, 'Bring black shoes') - 'messageId',
+select is(send_event_message(:'ev', :'s2', 'booked_and_invited', 'Bring black shoes') - 'messageId',
   jsonb_build_object('ok', true, 'sent', 2, 'withoutPush', jsonb_build_array('In Vited')),
   'one section with invitees: its confirmed worker and its invitee');
 select is((select array_agg(recipient_staff_id order by recipient_staff_id)
@@ -183,16 +188,34 @@ select is((select count(*)::int from notification_outbox where template = 'OM1')
   'four pushes queued across the two sends');
 
 -- ---------------------------------------------------------------------
+-- 3c · Invitees on their own, the whole event
+-- ---------------------------------------------------------------------
+select is(send_event_message(:'ev', null, 'invited', 'You still have an invite for tonight') - 'messageId',
+  jsonb_build_object('ok', true, 'sent', 1, 'withoutPush', jsonb_build_array('In Vited')),
+  'invited only: the one open invitation');
+select is((select array_agg(recipient_staff_id)
+             from notification_outbox where template = 'OM1'
+              and payload ->> 'message' = 'You still have an invite for tonight'),
+  array[:'w3'::uuid],
+  'not the confirmed, the checked-in, the applicant or the closed invitation');
+select is((select data ->> 'audience' from audit_log
+            where action = 'event.message_sent' and data ->> 'message' = 'You still have an invite for tonight'),
+  'invited', 'the history records who it was for');
+
+-- ---------------------------------------------------------------------
 -- 2b · Nobody left to message
 -- ---------------------------------------------------------------------
 reset role;
 update bookings set status = 'cancelled', cancelled_at = now(), cancel_cause = 'office_withdraw'
  where id in (:'b1a', :'b1b', :'b3');
 set local role authenticated;
-select is(send_event_message(:'ev', :'s2', false, 'Anyone?'),
+select is(send_event_message(:'ev', :'s2', 'booked', 'Anyone?'),
   jsonb_build_object('ok', false, 'reason', 'nobody_to_message'),
   'a section with nobody confirmed has nobody to message');
-select is((select count(*)::int from notification_outbox where template = 'OM1'), 4, 'and queued nothing');
+select is(send_event_message(:'ev', null, 'invited', 'Anyone?'),
+  jsonb_build_object('ok', false, 'reason', 'nobody_to_message'),
+  'with the invitation withdrawn there is no invitee left to message');
+select is((select count(*)::int from notification_outbox where template = 'OM1'), 5, 'and queued nothing');
 
 select * from finish();
 rollback;
