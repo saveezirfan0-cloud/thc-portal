@@ -532,6 +532,21 @@ export const TEMPLATES = {
     timing:
       'immediately, when the link is issued — a new link is a new email, and an older one still unsent is withdrawn, because its token no longer works',
   },
+  // The other outcome of N8's review. §2.3 unlocks the quiz by itself the
+  // moment the last item is verified, but §8 never tells the candidate: they
+  // sat on a finished Documents screen not knowing the quiz was open (owner,
+  // 29.09.2026). An email, as the owner asked, so it reaches a candidate who
+  // has not turned notifications on. ADR-0075.
+  E12: {
+    code: 'E12',
+    channel: 'email',
+    sender: 'admin',
+    title: 'Your documents are approved',
+    body: 'Hello {name},\n\nGood news: all your documents have been checked and verified.\n\nThe next step is the Health & Safety quiz. Open the THC Staff app to take it. You need 80% to pass, and you have three attempts.\n\nThe Hospitality Company',
+    trigger:
+      'The last outstanding document or declaration is verified and the quiz unlocks (onboarding_advance_if_ready, §2.3). Not in §8: §8 pushes the rejection (N8) but not the approval, so the owner asked for this email (29.09.2026, ADR-0075)',
+    timing: 'the moment the quiz unlocks, once per onboarding period',
+  },
 
   // ────────────────────────────────────────────────────────────────────────
   // UNIVERSITY COMPLETION LETTER REQUIREMENT §5 — not scope v1.6 §8, a later
@@ -902,7 +917,8 @@ export const REQUIREMENT_CODES = [
  * N10d and N11b for the same reason as E2b — §8's copy (N10b, N11) would
  * tell an invitee they had a shift, or tell a worker the time moved when it
  * was the dress code (ADR-0037); E11 because THC approved emailing the
- * office and client set-up link (ADR-0058). Kept apart from SCOPE_CODES so the test can
+ * office and client set-up link (ADR-0058); E12 because §8 pushes a rejected document
+ * but never says the approval unlocked the quiz (ADR-0075). Kept apart from SCOPE_CODES so the test can
  * still hold that list to the scope exactly.
  */
 export const EXTENSION_CODES = [
@@ -911,6 +927,7 @@ export const EXTENSION_CODES = [
   'N10d',
   'N11b',
   'E11',
+  'E12',
 ] as const satisfies readonly TemplateCode[];
 
 /**
