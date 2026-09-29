@@ -1146,16 +1146,16 @@ describe('onboarding chasers (ADR-0071)', () => {
 });
 
 /**
- * E12 — the approval N8 never had (ADR-0074). Queued by
+ * E12 — the approval N8 never had (ADR-0075). Queued by
  * onboarding_advance_if_ready() to the candidate's own address with
- * `{ name }` (pgTAP 760). An email, at the owner's request.
+ * `{ name }` (pgTAP 761). An email, at the owner's request.
  */
-describe('E12 — documents approved, quiz ready (ADR-0074)', () => {
+describe('E12 — documents approved, quiz ready (ADR-0075)', () => {
   it('is an extension, not §8, and says why', () => {
     expect(EXTENSION_CODES as readonly string[]).toContain('E12');
     expect(SCOPE_CODES as readonly string[]).not.toContain('E12');
     expect(template('E12').trigger).toMatch(/Not in §8/);
-    expect(template('E12').trigger).toContain('ADR-0074');
+    expect(template('E12').trigger).toContain('ADR-0075');
   });
 
   it('is an email from admin@, to the address on the row', () => {

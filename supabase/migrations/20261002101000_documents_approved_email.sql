@@ -1,5 +1,5 @@
 -- =====================================================================
--- Documents approved: email the candidate that the quiz is open — ADR-0074
+-- Documents approved: email the candidate that the quiz is open — ADR-0075
 --
 -- §2.3 unlocks the quiz by itself the moment the last outstanding document
 -- or declaration is verified (onboarding_advance_if_ready, 20260923110000),
@@ -40,7 +40,7 @@ begin
   insert into audit_log (actor, action, entity, entity_id, data)
   values (auth.uid(), 'quiz_unlocked', 'staff', p_staff, '{}'::jsonb);
 
-  -- ADR-0074: the approval §8 never sent. Through the outbox like every send.
+  -- ADR-0075: the approval §8 never sent. Through the outbox like every send.
   if nullif(btrim(s.email), '') is not null then
     insert into notification_outbox (key, channel, template, recipient_staff_id, recipient_emails, payload)
     values ('E12:staff:' || p_staff || ':' || floor(extract(epoch from clock_timestamp()))::bigint,
@@ -53,4 +53,4 @@ begin
 end $$;
 
 comment on function public.onboarding_advance_if_ready(uuid) is
-  '§2.3: "as soon as ALL documents — including the Criminal Record declaration — are verified, the candidate advances to the Quiz stage by themselves". Safe to call at any time: it does nothing unless the candidate is in documents with nothing outstanding. On the move it emails the candidate E12, "Your documents are approved" (ADR-0074, 20261001216000).';
+  '§2.3: "as soon as ALL documents — including the Criminal Record declaration — are verified, the candidate advances to the Quiz stage by themselves". Safe to call at any time: it does nothing unless the candidate is in documents with nothing outstanding. On the move it emails the candidate E12, "Your documents are approved" (ADR-0075, 20261002101000).';
