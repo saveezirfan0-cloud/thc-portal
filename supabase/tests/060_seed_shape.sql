@@ -12,7 +12,7 @@ select plan(13);
 select is((select count(*)::int from clients), 5,  'Phase 0 seeds exactly 5 clients');
 select is((select count(*)::int from venues),  8,  'Phase 0 seeds exactly 8 venues');
 -- Six roles come from the seed; the other ten are the 2026–2027 rate card's,
--- added by migration 20261001212000. Named, so a stray row fails either way.
+-- added by migration 20261001213000. Named, so a stray row fails either way.
 select bag_eq(
   $$ select name::text from roles $$,
   $$ values ('Waiting Staff'::text),('Bar Staff'),('Chef'),('Kitchen Porter'),('Host'),('Barista'),
