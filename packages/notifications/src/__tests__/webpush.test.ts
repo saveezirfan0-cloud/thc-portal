@@ -28,12 +28,20 @@ function browser() {
   };
 }
 
+function padTo32(key: Uint8Array): Uint8Array {
+  const out = new Uint8Array(32);
+  out.set(key, 32 - key.length);
+  return out;
+}
+
 function vapidPair() {
   const ecdh = createECDH('prime256v1');
   ecdh.generateKeys();
   return {
     publicKey: b64urlEncode(ecdh.getPublicKey()),
-    privateKey: b64urlEncode(ecdh.getPrivateKey()),
+    // getPrivateKey() drops leading zero bytes, so about 1 key in 256 comes
+    // back 31 bytes long; a P-256 scalar is always 32 on the wire.
+    privateKey: b64urlEncode(padTo32(ecdh.getPrivateKey())),
     subject: 'mailto:admin@thehospitalitycompany.co.uk',
   };
 }
