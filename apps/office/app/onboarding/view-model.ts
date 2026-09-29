@@ -22,6 +22,7 @@ import { capReason, employeeId } from '../staff/staff';
 import type {
   CandidateReferral,
   CandidateRow,
+  ChaserState,
   ReferralRow,
   ReferredOnBoard,
   RejectionCause,
@@ -339,6 +340,43 @@ export function willoLine(row: CandidateRow, now: Date): Line {
   const progress =
     done > 0 ? `in progress (${done} of ${row.willo_answers_total ?? '?'} answers)` : 'not started';
   return { text: `Willo invite sent${sent} · ${progress}` };
+}
+
+/** The ladder's length (ADR-0071): 2, 5 and 10 days without progress. */
+export const CHASER_RUNGS = 3;
+
+const CHASER_SENT: Record<ChaserState['track'], string> = {
+  interview: 'Interview reminder',
+  activation: 'Set-up reminder',
+  app: 'App reminder',
+};
+
+const CHASER_CHANNEL: Record<ChaserState['track'], string> = {
+  interview: 'emailed',
+  activation: 'emailed with a new link',
+  app: 'pushed',
+};
+
+/**
+ * The onboarding chaser line (ADR-0071), under the stage lines. Nothing
+ * until the first reminder has gone; then which one and when; coral
+ * "Stalled" once all three have gone with no progress since, because the
+ * next step is a phone call.
+ */
+export function chaserLine(state: ChaserState | undefined): Line | null {
+  if (!state || state.rungs_sent < 1 || !state.last_sent_at) return null;
+  const last = shortDate(state.last_sent_at);
+  if (state.stalled) {
+    return {
+      text: `Stalled — no progress after ${CHASER_RUNGS} reminders (last ${last}). Phone them.`,
+      tone: 'coral',
+    };
+  }
+  const next = state.next_due_at ? ` · next ${shortDate(state.next_due_at)}` : '';
+  return {
+    text: `${CHASER_SENT[state.track]} ${state.rungs_sent} of ${CHASER_RUNGS} ${CHASER_CHANNEL[state.track]} ${last}${next}`,
+    tone: 'muted',
+  };
 }
 
 /** Every line a card carries under the name, by column (board, Active). */

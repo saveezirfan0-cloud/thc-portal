@@ -971,6 +971,30 @@ select jobname, schedule from cron.job where jobname = 'willo-invite';
 new `/apply` submission shows up in Willo within a minute and the applicant gets
 E1 from Willo.
 
+### 5.7 Onboarding chasers (ADR-0071)
+
+`20261001211000` adds the `onboarding-chasers` schedule, enabled. It sends
+reminders to candidates who have stopped part-way through onboarding: emails
+before they sign up (OC1 for the interview, OC2 with a new activation link),
+and a push in the app after (OC3). The reminders go out at 2, 5 and 10 days,
+between 10:00 and 18:00 UK. The function deploys with the others. It uses
+`STAFF_APP_URL`, the secret willo-webhook already has. Once the migration is
+applied and the function deployed:
+
+```sql
+select public.install_job_schedules();   -- onboarding-chasers now included
+select jobname, schedule from cron.job where jobname = 'onboarding-chasers';
+```
+
+**Verify.** `select job, ok, counts from public.job_runs where job =
+'onboarding-chasers' order by started_at desc limit 5;` shows a run each hour.
+Outside 10:00–18:00 UK the counts read `skipped`. Inside those hours they show
+`oc1`, `oc3` and `oc2_queued`. Any `oc2_failed` above zero means a link could
+not be minted: check `STAFF_APP_URL`.
+
+**Change or pause it** on the `onboarding_chasers` setting, for example
+`{"enabled": false}`, or different `days`, `from` or `until`.
+
 ---
 
 ## 6 · Other keys

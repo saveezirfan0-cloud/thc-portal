@@ -119,7 +119,31 @@ export interface BoardData {
   referred?: ReferredOnBoard;
   /** Set when that read failed: the board says so, not "nobody referred" (D18). */
   referredProblem?: string | null;
+  /**
+   * The onboarding chasers (ADR-0071), by staff id: a separate read of
+   * `onboarding_chaser_state()`, for the candidates whose next move is their
+   * own. Absent draws no reminder line.
+   */
+  chasers?: Record<string, ChaserState>;
+  /** Set when that read failed: the board says so, not "nobody was reminded". */
+  chasersProblem?: string | null;
   problem: string | null;
+}
+
+/** One row of `onboarding_chaser_state()` (20261001211000, ADR-0071). */
+export interface ChaserState {
+  staff_id: string;
+  /** interview → OC1 email, activation → OC2 email, app → OC3 push. */
+  track: 'interview' | 'activation' | 'app';
+  /** The wizard step waiting on them, in the push's words (app track only). */
+  step: string | null;
+  progress_at: string;
+  /** Reminders sent on the current ladder, 0–3. Progress starts a new one. */
+  rungs_sent: number;
+  last_sent_at: string | null;
+  next_due_at: string | null;
+  /** All three sent and still no progress: the office phones them. */
+  stalled: boolean;
 }
 
 /**

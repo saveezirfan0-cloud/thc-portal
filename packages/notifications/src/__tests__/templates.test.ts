@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   ADDITION_CODES,
+  CHASER_CODES,
   MESSAGE_CODES,
   EXTENSION_CODES,
   REQUIREMENT_CODES,
@@ -10,6 +11,7 @@ import {
   outboxKey,
   render,
   template,
+  title,
 } from '../templates';
 import type { Template, TemplateCode } from '../templates';
 
@@ -60,6 +62,10 @@ const ADDITION_EMAIL_CODES = ['RC1', 'RC4', 'OF5'];
 /** Office messages (ADR-0069): the manager writes the body. */
 const MESSAGE_PUSH_CODES = ['OM1'];
 
+/** Onboarding chasers (ADR-0071): email before sign-up, push after. */
+const CHASER_EMAIL_CODES = ['OC1', 'OC2'];
+const CHASER_PUSH_CODES = ['OC3'];
+
 const entries = Object.entries(TEMPLATES) as [TemplateCode, Template][];
 
 describe('notification register (§8)', () => {
@@ -80,6 +86,8 @@ describe('notification register (§8)', () => {
         ...ADDITION_PUSH_CODES,
         ...ADDITION_EMAIL_CODES,
         ...MESSAGE_PUSH_CODES,
+        ...CHASER_EMAIL_CODES,
+        ...CHASER_PUSH_CODES,
       ].sort(),
     );
   });
@@ -101,6 +109,10 @@ describe('notification register (§8)', () => {
       expect(TEMPLATES[code as TemplateCode].channel, code).toBe('push');
     for (const code of ADDITION_EMAIL_CODES)
       expect(TEMPLATES[code as TemplateCode].channel, code).toBe('email');
+    for (const code of CHASER_EMAIL_CODES)
+      expect(TEMPLATES[code as TemplateCode].channel, code).toBe('email');
+    for (const code of CHASER_PUSH_CODES)
+      expect(TEMPLATES[code as TemplateCode].channel, code).toBe('push');
   });
 
   it('exports SCOPE_CODES, REQUIREMENT_CODES, EXTENSION_CODES and ADDITION_CODES as exactly the register, between them', () => {
@@ -121,12 +133,14 @@ describe('notification register (§8)', () => {
       'OF6',
     ]);
     expect([...MESSAGE_CODES]).toEqual(MESSAGE_PUSH_CODES);
+    expect([...CHASER_CODES]).toEqual([...CHASER_EMAIL_CODES, ...CHASER_PUSH_CODES]);
     const union = [
       ...SCOPE_CODES,
       ...REQUIREMENT_CODES,
       ...EXTENSION_CODES,
       ...ADDITION_CODES,
       ...MESSAGE_CODES,
+      ...CHASER_CODES,
     ];
     // Disjoint: no code is counted in two lists.
     expect(new Set(union).size).toBe(union.length);
@@ -324,6 +338,7 @@ describe('§8 copy is verbatim', () => {
       ...EXTENSION_CODES,
       ...ADDITION_CODES,
       ...MESSAGE_CODES,
+      ...CHASER_CODES,
     ]);
     const unpinned = Object.keys(TEMPLATES).filter(
       (code) => !pinned.has(code) && !notScope.has(code),
@@ -416,9 +431,9 @@ describe('a variant-only code has nothing to send by accident', () => {
     expect(body('N14', 'uncapped')).toBe('You no longer have a weekly hours limit — {band}.');
   });
 
-  it('are the only codes without a body, with CL2 for the same reason', () => {
+  it('are the only codes without a body, with CL2 for the same reason and the OC chasers, one body per rung', () => {
     const bodyless = entries.filter(([, v]) => v.body === undefined).map(([k]) => k);
-    expect(bodyless).toEqual(['N9', 'N14', 'CL2']);
+    expect(bodyless).toEqual(['N9', 'N14', 'CL2', 'OC1', 'OC2', 'OC3']);
   });
 
   // The bug these halves exist for. `render` leaves an unmatched
@@ -1036,5 +1051,85 @@ describe('office message — OM1 (ADR-0069)', () => {
   it('gives every message its own notification, so a second does not replace the first', () => {
     expect(render(template('OM1').tag!, values)).toBe('OM1:m-1');
     expect(render(template('OM1').deepLink!, values)).toBe('/shifts/b-1');
+  });
+});
+
+describe('onboarding chasers (ADR-0071)', () => {
+  const RUNGS = ['first', 'second', 'final'];
+
+  it('says why each exists, on the entry itself', () => {
+    for (const code of CHASER_CODES) {
+      expect(TEMPLATES[code].trigger, code).toMatch(/Not in §8/);
+      expect(TEMPLATES[code].trigger, code).toContain('ADR-0071');
+      expect(template(code).mandatory, code).toBeUndefined();
+    }
+  });
+
+  it('has one variant per rung of the ladder, and nothing else', () => {
+    for (const code of CHASER_CODES) {
+      expect(Object.keys(TEMPLATES[code].variants), code).toEqual(RUNGS);
+    }
+  });
+
+  it('emails before sign-up from admin@, to the candidate the row names', () => {
+    for (const code of ['OC1', 'OC2'] as const) {
+      expect(template(code).sender, code).toBe('admin');
+      expect(template(code).recipients, code).toBeUndefined();
+    }
+  });
+
+  it('carries a fresh activation link and the install page in every OC2', () => {
+    for (const rung of RUNGS) {
+      expect(body('OC2', rung), rung).toContain('{link}');
+      expect(body('OC2', rung), rung).toContain('{installLink}');
+      expect(body('OC2', rung), rung).toContain('expires after 24 hours');
+    }
+  });
+
+  it('names the step waiting in every OC3, and lands in the wizard', () => {
+    for (const rung of RUNGS) expect(body('OC3', rung), rung).toContain('{step}');
+    expect(template('OC3').deepLink).toBe('/onboarding');
+  });
+
+  it('never replaces a document-rejected push on the phone', () => {
+    expect(template('OC3').tag).toBe('OC3');
+    expect(template('OC3').tag).not.toBe(template('N8').deepLinkOptions?.[1]);
+  });
+
+  it('marks the last rung as the last reminder in the heading', () => {
+    expect(title('OC1', 'final')).toBe('Last reminder: your video interview');
+    expect(title('OC2', 'final')).toBe('Last reminder: set up your account');
+    expect(title('OC3', 'final')).toBe('Last reminder');
+    expect(title('OC1', 'first')).toBe(template('OC1').title);
+    expect(title('OC2')).toBe(template('OC2').title);
+  });
+
+  it('keeps every chaser push heading short enough for a lock screen', () => {
+    for (const rung of RUNGS) expect(title('OC3', rung).length, rung).toBeLessThanOrEqual(35);
+  });
+
+  it('uses no office vocabulary in what the candidate reads', () => {
+    for (const code of CHASER_CODES) {
+      for (const rung of RUNGS) {
+        const text = `${title(code, rung)} ${body(code, rung)}`.toLowerCase();
+        for (const word of ['stalled', 'chaser', 'kanban', 'pipeline', 'rung', 'pool', 'adr-']) {
+          expect(text, `${code}/${rung}`).not.toContain(word);
+        }
+      }
+    }
+  });
+
+  it('pins the copy', () => {
+    expect(render(body('OC3', 'first'), { step: 'your home address' })).toBe(
+      'Next up: your home address. Tap to carry on with your onboarding.',
+    );
+    expect(render(body('OC3', 'second'), { step: 'the Health & Safety quiz' })).toBe(
+      'Still to do: the Health & Safety quiz. Finish onboarding to start picking up shifts.',
+    );
+    expect(render(body('OC3', 'final'), { step: 'signing your contract' })).toBe(
+      "Still to do: signing your contract. We can't offer you shifts until onboarding is finished. Need help? Contact the office.",
+    );
+    expect(body('OC1', 'first')).toContain('Search your inbox for "Willo"');
+    expect(body('OC1', 'final')).toContain("Reply to this email and we'll help.");
   });
 });

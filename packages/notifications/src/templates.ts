@@ -14,7 +14,8 @@
  * Beyond §8 the register carries four more families, each in its own list:
  * the completion letter requirement's CL codes (REQUIREMENT_CODES), two
  * extensions §8 should have named (EXTENSION_CODES), and the Staff App
- * additions RC and OF (ADDITION_CODES, ADR-0045/0045, docs/19).
+ * additions RC and OF (ADDITION_CODES, ADR-0045/0045, docs/19), and the
+ * onboarding chasers OC (CHASER_CODES, ADR-0071).
  *
  * Nothing here sends. The drain (`drain.ts`, run by the `notify-drain` Edge
  * Function) reads this copy; the sender ADDRESS for `sender: 'admin' |
@@ -93,7 +94,7 @@ export interface Template {
    * One code, two halves. §8 gives N9 as a pair — the sender picks the half,
    * and the outbox key must carry the variant so the two do not collide.
    */
-  variants?: Readonly<Record<string, { body: string }>>;
+  variants?: Readonly<Record<string, { body: string; title?: string }>>;
 }
 
 const PAYROLL = [
@@ -759,6 +760,87 @@ export const TEMPLATES = {
     // and a second message about the same shift would replace the first.
     tag: 'OM1:{messageId}',
   },
+
+  // Onboarding chasers (ADR-0071): a candidate whose next onboarding move is
+  // their own, reminded 2, 5 and 10 days after their last progress — by
+  // email before they have the app, by push once they have signed up. One
+  // code per track, one variant per rung (`first`, `second`, `final`); the
+  // row's payload names it. Keys `OCn:staff:<id>:<progress epoch>:<rung>`,
+  // so any progress starts a fresh ladder (20261001211000).
+  OC1: {
+    code: 'OC1',
+    channel: 'email',
+    sender: 'admin',
+    title: 'Your video interview with The Hospitality Company',
+    variants: {
+      first: {
+        body: 'Hi {name},\n\nThanks for applying to The Hospitality Company. Your video interview is ready and waiting for you.\n\nThe invitation came by email from Willo, the service we use for interviews. Search your inbox for "Willo", and check your spam or promotions folder too. You can record your answers on your phone, whenever suits you.\n\nOnce you\'ve finished, we\'ll be in touch about the next steps.',
+      },
+      second: {
+        body: "Hi {name},\n\nJust a reminder that your video interview with The Hospitality Company is still waiting for you. Look for the invitation from Willo in your inbox, or in your spam folder. You can record your answers on your phone, whenever suits you.\n\nWe can't move your application forward until it's done.",
+      },
+      final: {
+        title: 'Last reminder: your video interview',
+        body: "Hi {name},\n\nThis is our last reminder about your video interview with The Hospitality Company. If you'd still like to work with us, find the invitation from Willo in your inbox or spam folder and record your answers.\n\nCan't find it? Reply to this email and we'll help.",
+      },
+    },
+    trigger:
+      'A candidate in Interview requested whose Willo invitation (E1) went out and who has not completed the interview (onboarding_chasers). Not in §8: an addition to scope v1.6, ADR-0071',
+    timing: '2, 5 and 10 days after the invitation or their last progress, 10:00–18:00 UK',
+  },
+  OC2: {
+    code: 'OC2',
+    channel: 'email',
+    sender: 'admin',
+    title: 'Set up your account with The Hospitality Company',
+    // `{link}` is minted for this email (onboarding-chasers Edge Function)
+    // and replaces the one in E3, which works once and lives a day. The row
+    // is fenced and redacted like E3 (ADR-0060, 20261001211000).
+    variants: {
+      first: {
+        body: "Hi {name},\n\nGood news: your application was accepted, but your account isn't set up yet. Set your password to start onboarding:\n{link}\n\nThen download the app and add it to your home screen:\n{installLink}\n\nThis link is new and replaces the one we sent before. It works once and expires after 24 hours.",
+      },
+      second: {
+        body: 'Hi {name},\n\nJust a reminder to set up your account so you can start onboarding with The Hospitality Company. Set your password here:\n{link}\n\nThen download the app and add it to your home screen:\n{installLink}\n\nThis link replaces any earlier one. It works once and expires after 24 hours.',
+      },
+      final: {
+        title: 'Last reminder: set up your account',
+        body: "Hi {name},\n\nThis is our last reminder to set up your account. We can't offer you shifts until you've finished onboarding in the app. Set your password here:\n{link}\n\nThen download the app and add it to your home screen:\n{installLink}\n\nThis link replaces any earlier one. It works once and expires after 24 hours. Need a hand? Reply to this email.",
+      },
+    },
+    trigger:
+      'A candidate accepted after the interview whose activation email (E3) went out and who has not set a password (onboarding_chasers → onboarding_chaser_activation). Not in §8: an addition to scope v1.6, ADR-0071',
+    timing: '2, 5 and 10 days after the last E3 or their last progress, 10:00–18:00 UK',
+  },
+  OC3: {
+    code: 'OC3',
+    channel: 'push',
+    title: 'Finish your onboarding',
+    // `{step}` is the wizard step waiting on them, in words
+    // ("your home address", "the Health & Safety quiz").
+    variants: {
+      first: {
+        title: 'Pick up where you left off',
+        body: 'Next up: {step}. Tap to carry on with your onboarding.',
+      },
+      second: {
+        title: "You're nearly there",
+        body: 'Still to do: {step}. Finish onboarding to start picking up shifts.',
+      },
+      final: {
+        title: 'Last reminder',
+        body: "Still to do: {step}. We can't offer you shifts until onboarding is finished. Need help? Contact the office.",
+      },
+    },
+    trigger:
+      'A signed-up candidate with a wizard step waiting on them — not documents under review, not a declaration awaiting Verify (onboarding_chasers). Not in §8: an addition to scope v1.6, ADR-0071',
+    timing: '2, 5 and 10 days after their last progress, 10:00–18:00 UK',
+    // The wizard routes itself to the open step.
+    deepLink: '/onboarding',
+    // Its own tag: without one the tag is the deep link, and a reminder
+    // would replace a candidate's N8 re-upload notification.
+    tag: 'OC3',
+  },
 } as const satisfies Record<string, Template>;
 
 export type TemplateCode = keyof typeof TEMPLATES;
@@ -855,6 +937,14 @@ export const ADDITION_CODES = [
  */
 export const MESSAGE_CODES = ['OM1'] as const satisfies readonly TemplateCode[];
 
+/**
+ * Onboarding chasers (ADR-0071): reminders to a candidate whose next
+ * onboarding move is their own. Emails before sign-up (OC1 the interview,
+ * OC2 the activation, with a fresh link), a push after (OC3). Each has one
+ * variant per rung of the 2 / 5 / 10-day ladder.
+ */
+export const CHASER_CODES = ['OC1', 'OC2', 'OC3'] as const satisfies readonly TemplateCode[];
+
 export function template(code: TemplateCode): Template {
   return TEMPLATES[code];
 }
@@ -863,6 +953,15 @@ export function template(code: TemplateCode): Template {
  * The body to send. A code with `variants` (only N9) has no single body: the
  * caller names the half, and the combined §8 copy is never sent as-is.
  */
+/**
+ * The heading (push) or subject (email) to send: a variant's own title when
+ * it has one, the code's otherwise.
+ */
+export function title(code: TemplateCode, variant?: string): string {
+  const entry: Template = TEMPLATES[code];
+  return (variant !== undefined && entry.variants?.[variant]?.title) || entry.title;
+}
+
 export function body(code: TemplateCode, variant?: string): string {
   const entry: Template = TEMPLATES[code];
   if (!entry.variants) {
