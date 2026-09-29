@@ -19,20 +19,262 @@
   The hosted project reads its templates from the dashboard, not this file:
   Authentication → Email Templates → Reset Password takes this body
   (owner step, reported with the change).
+
+  THC Light layout (ADR-0073), the same as every email the drain sends
+  (packages/notifications/src/email-html.ts), written out by hand because
+  GoTrue renders this file, not the drain. No image: GoTrue sends no inline
+  attachment, so there is no cid: logo to point at, and Gmail blocks data:
+  URIs; the header is a text wordmark instead. After ANY change to this
+  file the hosted dashboard copy is stale — re-paste the whole file into
+  Authentication → Email Templates → Reset Password (ADR-0073 owner step).
 -->
-<h2>Reset your password</h2>
-
-<p>We received a request to reset the password for your The Hospitality Company account.</p>
-
-<p>
-  <a href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery&next=/reset"
-    >Set a new password</a
-  >
-</p>
-
-<p>
-  The link works once. If you did not ask for this, you can ignore this email — your password has
-  not changed.
-</p>
-
-<p>The Hospitality Company · admin@thehospitalitycompany.co.uk</p>
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <meta name="color-scheme" content="light only" />
+    <meta name="supported-color-schemes" content="light" />
+    <title>Reset your password</title>
+    <style>
+      :root {
+        color-scheme: light only;
+        supported-color-schemes: light;
+      }
+      body {
+        margin: 0;
+        padding: 0;
+        width: 100% !important;
+        -webkit-text-size-adjust: 100%;
+        -ms-text-size-adjust: 100%;
+      }
+      table,
+      td {
+        border-collapse: collapse;
+        mso-table-lspace: 0pt;
+        mso-table-rspace: 0pt;
+      }
+      @media only screen and (max-width: 620px) {
+        .thc-outer {
+          padding: 12px 8px !important;
+        }
+        .thc-pad {
+          padding-left: 20px !important;
+          padding-right: 20px !important;
+        }
+      }
+    </style>
+  </head>
+  <body style="margin: 0; padding: 0; background-color: #faf7f4">
+    <table
+      role="presentation"
+      width="100%"
+      cellpadding="0"
+      cellspacing="0"
+      border="0"
+      bgcolor="#faf7f4"
+      style="width: 100%; background-color: #faf7f4"
+    >
+      <tr>
+        <td align="center" class="thc-outer" style="padding: 28px 12px">
+          <table
+            role="presentation"
+            width="100%"
+            cellpadding="0"
+            cellspacing="0"
+            border="0"
+            bgcolor="#ffffff"
+            style="
+              width: 100%;
+              max-width: 600px;
+              background-color: #ffffff;
+              border: 1px solid #ebe4da;
+              border-radius: 18px;
+              border-collapse: separate;
+              box-shadow:
+                0 1px 2px rgba(36, 29, 22, 0.05),
+                0 10px 26px -14px rgba(36, 29, 22, 0.16);
+            "
+          >
+            <tr>
+              <td
+                height="5"
+                bgcolor="#0a6d79"
+                style="
+                  height: 5px;
+                  line-height: 5px;
+                  font-size: 0;
+                  background-color: #0a6d79;
+                  background-image: linear-gradient(135deg, #0a6d79 0%, #7758cd 100%);
+                  border-radius: 17px 17px 0 0;
+                "
+              >
+                &nbsp;
+              </td>
+            </tr>
+            <tr>
+              <td class="thc-pad" style="padding: 22px 32px 0 32px">
+                <table
+                  role="presentation"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  style="border-collapse: separate"
+                >
+                  <tr>
+                    <td
+                      align="center"
+                      valign="middle"
+                      width="36"
+                      height="36"
+                      bgcolor="#f5f1eb"
+                      style="
+                        width: 36px;
+                        height: 36px;
+                        border-radius: 999px;
+                        background-color: #f5f1eb;
+                        border: 1px solid #ebe4da;
+                        font-family: 'Plus Jakarta Sans', Arial, Helvetica, sans-serif;
+                        font-size: 11px;
+                        font-weight: 800;
+                        letter-spacing: 0.04em;
+                        color: #241d16;
+                      "
+                    >
+                      THC
+                    </td>
+                    <td
+                      valign="middle"
+                      style="
+                        padding-left: 12px;
+                        font-family: 'Plus Jakarta Sans', Arial, Helvetica, sans-serif;
+                      "
+                    >
+                      <div
+                        style="font-size: 15px; line-height: 1.25; font-weight: 800; color: #241d16"
+                      >
+                        The Hospitality Company
+                      </div>
+                      <div style="font-size: 12px; line-height: 1.4; color: #7a6b5c">
+                        Event staffing · London
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td
+                class="thc-pad"
+                style="
+                  padding: 26px 32px 12px 32px;
+                  font-family: 'Plus Jakarta Sans', Arial, Helvetica, sans-serif;
+                "
+              >
+                <p
+                  style="
+                    margin: 0 0 6px 0;
+                    font-size: 10.5px;
+                    line-height: 1.4;
+                    font-weight: 700;
+                    letter-spacing: 0.08em;
+                    text-transform: uppercase;
+                    color: #0e7688;
+                  "
+                >
+                  Password reset
+                </p>
+                <h1
+                  style="
+                    margin: 0 0 18px 0;
+                    font-size: 22px;
+                    line-height: 1.3;
+                    font-weight: 800;
+                    color: #241d16;
+                  "
+                >
+                  Reset your password
+                </h1>
+                <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #241d16">
+                  We received a request to reset the password for your The Hospitality Company
+                  account.
+                </p>
+                <table
+                  role="presentation"
+                  cellpadding="0"
+                  cellspacing="0"
+                  border="0"
+                  style="border-collapse: separate; margin: 4px 0 20px 0"
+                >
+                  <tr>
+                    <td
+                      align="center"
+                      valign="middle"
+                      bgcolor="#0a6d79"
+                      style="
+                        border-radius: 999px;
+                        background-color: #0a6d79;
+                        background-image: linear-gradient(135deg, #0a6d79 0%, #7758cd 100%);
+                      "
+                    >
+                      <a
+                        href="{{ .RedirectTo }}?token_hash={{ .TokenHash }}&type=recovery&next=/reset"
+                        target="_blank"
+                        style="
+                          display: inline-block;
+                          padding: 13px 28px;
+                          font-family: 'Plus Jakarta Sans', Arial, Helvetica, sans-serif;
+                          font-size: 15px;
+                          font-weight: 700;
+                          line-height: 1.2;
+                          color: #ffffff;
+                          text-decoration: none;
+                          border-radius: 999px;
+                        "
+                        >Set a new password</a
+                      >
+                    </td>
+                  </tr>
+                </table>
+                <p style="margin: 0 0 16px 0; font-size: 15px; line-height: 1.6; color: #241d16">
+                  The link works once. If you did not ask for this, you can ignore this email — your
+                  password has not changed.
+                </p>
+              </td>
+            </tr>
+            <tr>
+              <td
+                class="thc-pad"
+                bgcolor="#fdfbf8"
+                style="
+                  padding: 16px 32px 18px 32px;
+                  background-color: #fdfbf8;
+                  border-top: 1px solid #ebe4da;
+                  border-radius: 0 0 17px 17px;
+                  font-family: 'Plus Jakarta Sans', Arial, Helvetica, sans-serif;
+                  font-size: 11px;
+                  line-height: 1.6;
+                  color: #7a6b5c;
+                "
+              >
+                <a
+                  href="mailto:admin@thehospitalitycompany.co.uk"
+                  style="color: #7a6b5c; text-decoration: none"
+                  >admin@thehospitalitycompany.co.uk</a
+                >
+                ·
+                <a
+                  href="https://www.thehospitalitycompany.co.uk"
+                  target="_blank"
+                  style="color: #7a6b5c; text-decoration: none"
+                  >www.thehospitalitycompany.co.uk</a
+                ><br />Registered Company in England and Wales 12411407
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>

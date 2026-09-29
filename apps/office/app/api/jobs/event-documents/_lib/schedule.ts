@@ -8,7 +8,7 @@ import { ukInstant } from '@thc/domain';
  * `document_autosend`; the answer is one verdict. The SQL twin is
  * `document_autosend_verdict()` (20261002100000), check for check and in the
  * same order, and the route sends only where BOTH say `due`. Change one,
- * change the other: pgTAP 759 and schedule.test.ts hold the same cases.
+ * change the other: pgTAP 760 and schedule.test.ts hold the same cases.
  *
  *   D1 · the day before the event at `allocation.time` (14:00) UK — after
  *        the 12:00 "I'm ready" deadline and the 12:05 release — and any run

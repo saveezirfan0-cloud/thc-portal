@@ -33,7 +33,7 @@
 -- The times and switches are the settings row `document_autosend`, read on
 -- every run. The rule is mirrored, verdict for verdict, by the pure
 -- TypeScript in apps/office/app/api/jobs/event-documents/_lib/schedule.ts;
--- the route acts only when both say `due` (pgTAP 759 and the Vitest file
+-- the route acts only when both say `due` (pgTAP 760 and the Vitest file
 -- hold the same cases).
 --
 -- Why a Back Office route and not an Edge Function

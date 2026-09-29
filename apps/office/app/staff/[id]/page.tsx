@@ -35,5 +35,16 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
 
   // ADR-0070: "Correct" on the date of birth is for owners and managers;
   // office_correct_dob() refuses everyone else whatever this says.
-  return <ProfileScreen data={data} canCorrectDob={officeCan(role, 'identity')} />;
+  // ADR-0072: the Pay rate card is money — finance roles only (a scheduler
+  // reads no staff_pay_rates row anyway); a viewer reads it, and only a
+  // role that may also write gets Set / Edit / Clear.
+  const finance = officeCan(role, 'finance');
+  return (
+    <ProfileScreen
+      data={data}
+      canCorrectDob={officeCan(role, 'identity')}
+      showPayRate={finance}
+      canEditPayRate={finance && officeCan(role, 'write')}
+    />
+  );
 }

@@ -115,9 +115,9 @@ describe('§11.4 allocation sheet email', () => {
     expect(message.to).toHaveLength(3);
   });
 
-  it('uses the wireframe subject, with the PO number', () => {
+  it('names it the Allocation Timesheet in the subject, with the PO number (ADR-0073)', () => {
     expect(documentMessageFor(d1()).subject).toBe(
-      'Staff allocation — Gala Dinner, Friday 19 September 2026 (PO 4471-A)',
+      'Allocation Timesheet — Gala Dinner, Friday 19 September 2026 (PO 4471-A)',
     );
     expect(documentMessageFor(d1()).body).toContain('Your PO number 4471-A is on the sheet.');
   });
@@ -125,7 +125,7 @@ describe('§11.4 allocation sheet email', () => {
   it('drops the PO sentence when the event has none', () => {
     const payload = { ...d1().payload, poNumber: '', poSuffix: '' };
     const message = documentMessageFor(d1({ payload }));
-    expect(message.subject).toBe('Staff allocation — Gala Dinner, Friday 19 September 2026');
+    expect(message.subject).toBe('Allocation Timesheet — Gala Dinner, Friday 19 September 2026');
     expect(message.body).not.toContain('PO number');
   });
 

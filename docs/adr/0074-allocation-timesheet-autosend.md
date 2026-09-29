@@ -71,7 +71,7 @@ A skip is recorded as a reason in the run's counts (`job_runs.counts.verdicts`) 
 
 There is no /settings control for it yet. It can be changed with an `update settings …` in the SQL editor.
 
-**One rule, two implementations.** The rule is pure TypeScript, `autosendVerdict()` in `apps/office/app/api/jobs/event-documents/_lib/schedule.ts`. Its SQL twin is `document_autosend_verdict()`, which checks the same things in the same order. `event_documents_due()` returns every candidate with its facts and the SQL verdict. The route runs the TypeScript verdict over the same facts and sends only where **both** say `due`. A disagreement is counted and logged, and nothing is sent. `schedule.test.ts` and pgTAP 759 hold the same cases, including 13:59 and 14:00, BST and GMT, and both 2026 clock-change weekends.
+**One rule, two implementations.** The rule is pure TypeScript, `autosendVerdict()` in `apps/office/app/api/jobs/event-documents/_lib/schedule.ts`. Its SQL twin is `document_autosend_verdict()`, which checks the same things in the same order. `event_documents_due()` returns every candidate with its facts and the SQL verdict. The route runs the TypeScript verdict over the same facts and sends only where **both** say `due`. A disagreement is counted and logged, and nothing is sent. `schedule.test.ts` and pgTAP 760 hold the same cases, including 13:59 and 14:00, BST and GMT, and both 2026 clock-change weekends.
 
 **Mechanism.** The PDF is drawn by `@react-pdf/renderer`, which the Deno Edge Functions cannot run. So this is a Node route in the Back Office, the same pattern as rtw-check (ADR-0025). Each run:
 

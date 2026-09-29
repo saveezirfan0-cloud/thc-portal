@@ -11,7 +11,7 @@ import type { AutosendFacts } from '../schedule';
 
 /**
  * ADR-0074's rule, case by case. The same cases run against the SQL twin,
- * document_autosend_verdict(), in supabase/tests/759_document_autosend.sql —
+ * document_autosend_verdict(), in supabase/tests/760_document_autosend.sql —
  * keep the two lists in step.
  */
 const CONFIG = parseAutosendConfig({

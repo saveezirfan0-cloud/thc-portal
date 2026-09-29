@@ -83,6 +83,8 @@ type Dialog = 'block' | 'reset' | 'remove' | null;
 export function ProfileScreen({
   data,
   canCorrectDob = false,
+  showPayRate = false,
+  canEditPayRate = false,
 }: {
   data: ProfileData;
   /**
@@ -90,6 +92,10 @@ export function ProfileScreen({
    * correct the date of birth and decide a date-of-birth change request.
    */
   canCorrectDob?: boolean;
+  /** ADR-0072: `officeCan(role, 'finance')` — the Pay rate card is drawn. */
+  showPayRate?: boolean;
+  /** ADR-0072: finance and write — Set / Edit / Clear on the Pay rate card. */
+  canEditPayRate?: boolean;
 }) {
   const profile = data.profile as ProfileRow;
   const [tab, setTab] = useState<Tab>('overview');
@@ -419,6 +425,10 @@ export function ProfileScreen({
             referrals={data.referrals ?? null}
             referralsProblem={data.referralsProblem ?? null}
             canCorrectDob={canCorrectDob}
+            payRate={data.payRate ?? null}
+            payRateProblem={data.payRateProblem ?? null}
+            showPayRate={showPayRate}
+            canEditPayRate={canEditPayRate}
           />
         ) : null}
         {tab === 'availability' ? (
