@@ -563,7 +563,7 @@ Each line is a piece of work that is otherwise ready. Nothing here is a defect o
 design question — it is a credential a bot cannot obtain, so the work stops at the point
 where it would need one. Ticked when the key exists and the work can resume.
 
-- [ ] **VAPID key pair** (`npx web-push generate-vapid-keys`) and **Resend API key** —
+- [ ] **VAPID key pair** (done 2026-09-30) and **Resend API key** (still open) —
       blocks P2, the `notify-drain` Edge Function. The §8 register and the outbox
       claim/retry are merged and tested; what cannot be done without these is proving a
       push reaches an installed PWA and an email actually sends. Two verified senders are
