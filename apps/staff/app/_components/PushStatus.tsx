@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import {
   currentSubscription,
+  enablePush,
   pushState,
   readEnvironment,
   registerServiceWorker,
@@ -69,21 +70,40 @@ export function PushStatus() {
       await registerServiceWorker();
 
       if (base.state === 'granted') {
-        const subscription = await currentSubscription();
-        // A permission that says "granted" with no subscription behind it
-        // is the state iOS leaves behind when it revokes one. Shown as
-        // "turn these back on" rather than as working — and as a fault,
-        // because it was working.
+        let subscription = await currentSubscription();
+        // Permission is granted but nothing is subscribed: iOS revoked the
+        // subscription, or the worker switched notifications on in the
+        // phone's Settings rather than through the app. Permission is
+        // already given, so subscribing needs no prompt and no gesture —
+        // heal it here rather than leave a banner telling them to turn on
+        // something they have turned on.
+        if (!subscription) {
+          const result = await enablePush();
+          if (result.ok) subscription = result.subscription;
+        }
+        // Still nothing: shown as "turn these back on" rather than as
+        // working — and as a fault, because it was working.
         if (!subscription) {
           if (!cancelled) setInput({ ...base, lapsed: true });
           return;
         }
         writeStored(WAS_ON_KEY, '1');
-        await savePushSubscription(subscription);
+        const saved = await savePushSubscription(subscription);
+        // The record did not take it, so this device is not reachable.
+        if (!saved.ok && !cancelled) setInput({ ...base, lapsed: true });
       }
     };
 
     void sync();
+
+    // Notifications are often switched on in the phone's Settings, and the
+    // app only comes back to the foreground afterwards: look again then, or
+    // the banner outlives the thing it was asking for.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') void sync();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    window.addEventListener('focus', onVisible);
 
     // The SW re-subscribes on rotation and posts the new endpoint here,
     // because it has no Supabase session of its own (§10.5).
@@ -103,6 +123,8 @@ export function PushStatus() {
     navigator.serviceWorker?.addEventListener('message', onMessage);
     return () => {
       cancelled = true;
+      document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener('focus', onVisible);
       navigator.serviceWorker?.removeEventListener('message', onMessage);
     };
   }, []);
