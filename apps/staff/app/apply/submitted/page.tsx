@@ -56,7 +56,11 @@ export default async function Page() {
           </div>
 
           <p className="xs muted">
-            Can&apos;t find it? Check your spam folder, or write to{' '}
+            Can&apos;t find it? It can take a few minutes, and it sometimes lands in your{' '}
+            <b style={{ color: 'var(--text)' }}>junk or spam folder</b>. If it&apos;s there, mark it
+            &ldquo;Not junk&rdquo; and add{' '}
+            <span className="mono">notification@willotalent.com</span> to your contacts. Still
+            nothing? Write to{' '}
             <a href="mailto:admin@thehospitalitycompany.co.uk">admin@thehospitalitycompany.co.uk</a>
             .
           </p>
