@@ -1377,8 +1377,9 @@ function DocumentsPhase({
           ) : null}
           {row.share_code && shareCode.length === 0 ? (
             <Note>
-              Share code <span className="mono">{row.share_code}</span> entered by the candidate —
-              the gov.uk report appears here once the automatic check has run.
+              Share code <span className="mono">{row.share_code}</span> saved by the candidate, not
+              yet submitted for checking — the gov.uk check starts when they submit their documents,
+              and its report appears here. Progress is under Compliance → gov.uk checks.
             </Note>
           ) : null}
 

@@ -6,6 +6,7 @@
  * audit_log) is what keeps this screen the office's.
  */
 import type { DobClaim } from '../_lib/dobCorrection';
+import type { CheckMonitorData } from './checks';
 
 export type StaffStatus =
   | 'interview_requested'
@@ -202,6 +203,8 @@ export interface CompliancePageData {
   rotaGuardMode: 'block' | 'warn';
   /** settings.rtw_check.enabled — the automated gov.uk check (ADR-0025). */
   rtwCheckEnabled: boolean;
+  /** The gov.uk check monitor, tab 3. */
+  checkMonitor: CheckMonitorData;
   problem: string | null;
 }
 

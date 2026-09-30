@@ -5,6 +5,8 @@ import {
   loadRtwCheckEnabled,
   loadRtwChecksForDocuments,
 } from '../_lib/rtwCheckData';
+import { EMPTY_MONITOR } from './checks';
+import { loadCheckMonitor } from './checksData';
 import { withLatestCheck } from './queue';
 import type { AuditRow, CompliancePageData, QueueRow, RadarRow, WarningRow } from './types';
 
@@ -29,12 +31,13 @@ export async function loadCompliance(): Promise<CompliancePageData> {
     warnings: [],
     rotaGuardMode: 'block',
     rtwCheckEnabled: false,
+    checkMonitor: EMPTY_MONITOR,
     problem: null,
   };
   if (!supabaseConfigured()) return { ...empty, problem: NOT_CONFIGURED };
 
   const supabase = createClient(await cookies());
-  const [queue, radar, warnings, mode, rtwCheckEnabled] = await Promise.all([
+  const [queue, radar, warnings, mode, rtwCheckEnabled, checkMonitor] = await Promise.all([
     // `*` is every column of the view, in QueueRow's shape — including
     // review_reason (20260927160000) and manual_review_reason
     // (20260928110900), which the row renders beside the AI badge.
@@ -60,6 +63,7 @@ export async function loadCompliance(): Promise<CompliancePageData> {
       .eq('key', 'rota_guard_mode')
       .maybeSingle<{ value: unknown }>(),
     loadRtwCheckEnabled(supabase),
+    loadCheckMonitor(supabase, new Date().toISOString()),
   ]);
 
   const problem = queue.error?.message ?? radar.error?.message ?? warnings.error?.message ?? null;
@@ -98,6 +102,7 @@ export async function loadCompliance(): Promise<CompliancePageData> {
     // Mirrors rota_guard_mode(): anything but an explicit 'warn' is block.
     rotaGuardMode: mode.data?.value === 'warn' ? 'warn' : 'block',
     rtwCheckEnabled,
+    checkMonitor,
     problem: null,
   };
 }
