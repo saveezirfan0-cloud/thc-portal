@@ -192,7 +192,7 @@ const DOC_INSTRUCTIONS: Record<DocType, string> = {
   ni_evidence:
     'This should be evidence of a UK National Insurance number (an HMRC or DWP letter, payslip, P60, National Insurance card, or a screenshot of a personal tax account). It has no expiry: return expiryDate null. Only report whether it is such evidence and legible.',
   university_term_dates_letter:
-    "This should be a letter or official statement from a UK university giving the student's term dates. holidays: every official vacation (holiday) period for the academic year as inclusive from/to dates, in date order. Where the document lists terms rather than vacations, a vacation is the days strictly between the end of one printed term and the start of the next printed term. Never extend a vacation before the first or after the last date printed on the document, and never include reading weeks or exam periods unless the document calls them vacation. Course start, course end, stage or placement dates are not terms: a letter that gives only those, or points to a website for its term dates, has no vacation period on it. Return holidays null if no vacation period can be read.",
+    "This should be a letter or official statement from a UK university giving the student's term dates. holidays: every official vacation (holiday) period for the academic year as inclusive from/to dates, in date order. Where the document lists terms rather than vacations, a vacation is the days strictly between the end of one printed term and the start of the next printed term. Never extend a vacation before the first or after the last date printed on the document, and never include reading weeks or exam periods unless the document calls them vacation. Course start, course end, stage or placement dates are not terms: a letter that gives only those, or points to a website for its term dates, has no vacation period on it. Return holidays null if no vacation period can be read. Separately, from the same letter: courseStart is the date the student's course starts, and courseEnd is the date the course is expected to end, each only if printed as such (never the end of a term or academic year, and never a date worked out from the course length); null for either that is not printed. hoursStatement: if the letter itself says anything about the student's permitted working hours, a weekly hours limit, or whether they may work (for example \"may work up to 20 hours per week during term time\"), copy that one statement as a single short sentence in plain words, at most 250 characters, saying exactly what the letter says and nothing more; otherwise null. Never calculate, infer or recommend an hours limit.",
   university_completion_letter:
     'This should be an official university completion letter, a final transcript showing the award or completion date, or an official university email confirming course completion. completionDate: the date the course was completed, as stated; if only an award or conferral date is stated, use that and set completionDateKind to "award"; otherwise set completionDateKind to "completion". Never use the date the letter was written, issued or sent: a letter that congratulates the student on an award without stating when the course was completed or the award made has no completion date, so return completionDate null. awardingInstitution: the name of the university or institution that awards the degree.',
 };
@@ -212,6 +212,9 @@ export const ANSWER_SCHEMA = {
     'legible',
     'expiryDate',
     'holidays',
+    'courseStart',
+    'courseEnd',
+    'hoursStatement',
     'completionDate',
     'completionDateKind',
     'awardingInstitution',
@@ -239,6 +242,9 @@ export const ANSWER_SCHEMA = {
         { type: 'null' },
       ],
     },
+    courseStart: NULLABLE_DATE,
+    courseEnd: NULLABLE_DATE,
+    hoursStatement: { anyOf: [{ type: 'string' }, { type: 'null' }] },
     completionDate: NULLABLE_DATE,
     completionDateKind: {
       anyOf: [{ type: 'string', enum: ['completion', 'award'] }, { type: 'null' }],
@@ -323,6 +329,7 @@ export function normaliseAnswer(
   let holidays: { from: string; to: string }[] | null = null;
   let completionDate: string | null = null;
   let awardingInstitution: string | null = null;
+  let termLetter: TermLetterFacts | null = null;
 
   if (expects === 'expiry') {
     expiryDate = isoDateOrNull(answer['expiryDate']);
@@ -342,6 +349,22 @@ export function normaliseAnswer(
     kept.sort((a, b) => (a.from < b.from ? -1 : a.from > b.from ? 1 : 0));
     holidays = kept.length ? kept : null;
     if (!holidays) issues.push('no_holidays');
+
+    // What else the letter says, for the reviewer to read beside the
+    // holidays. Informational only: nothing here reaches the weekly cap
+    // (RULE-20 is calculated from the verified holiday dates and, after
+    // graduation, a verified completion letter), and a letter that does not
+    // print these is not a doubtful read.
+    const courseStart = isoDateOrNull(answer['courseStart']);
+    let courseEnd = isoDateOrNull(answer['courseEnd']);
+    if (present(answer['courseStart']) && !courseStart) issues.push('bad_course_start');
+    if (present(answer['courseEnd']) && !courseEnd) issues.push('bad_course_end');
+    if (courseStart && courseEnd && courseEnd < courseStart) {
+      courseEnd = null;
+      issues.push('course_end_before_start');
+    }
+    const hoursStatement = cleanStatement(answer['hoursStatement']);
+    termLetter = { courseStart, courseEnd, hoursStatement };
   }
 
   if (expects === 'completion') {
@@ -371,8 +394,24 @@ export function normaliseAnswer(
       docType,
       answer,
       issues,
+      ...(termLetter ? { termLetter } : {}),
     },
   };
+}
+
+/** What a term letter says besides its holidays (informational; `raw.termLetter`). */
+export interface TermLetterFacts {
+  courseStart: string | null;
+  courseEnd: string | null;
+  /** One short sentence copied from the letter about working hours, or null. */
+  hoursStatement: string | null;
+}
+
+/** One line of the letter's own words, bounded: it is shown to a reviewer. */
+function cleanStatement(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const text = value.replace(/\s+/g, ' ').trim().slice(0, 250);
+  return text || null;
 }
 
 /** A read that did not happen: nothing pre-filled, flagged for manual review. */

@@ -81,7 +81,13 @@ import { RtwCheckPanel } from '../_components/RtwCheckPanel';
 import { DobCorrection } from '../_components/DobCorrection';
 import { DobClaimNote } from '../_components/DobClaimNote';
 import type { DobClaim } from '../_lib/dobCorrection';
-import { checksByDocument, rtwCheckView, rtwLockedLabel, rtwLockedValue } from '../_lib/rtwCheck';
+import {
+  checksByDocument,
+  rtwCheckView,
+  rtwLockedLabel,
+  rtwLockedValue,
+  ukDateOnly,
+} from '../_lib/rtwCheck';
 import type { RtwCheckRow } from '../_lib/rtwCheck';
 import type {
   ActionResult,
@@ -1126,6 +1132,70 @@ function ShareCodeCard({
 }
 
 /**
+ * What else the AI read off the term letter (§2.3): when the course starts,
+ * when it is expected to end, and anything the letter itself says about
+ * working hours. For the reviewer to check against the letter, nothing more:
+ * the weekly limit below is calculated from the confirmed holiday dates
+ * (RULE-20), an expected end date lifts nothing, and only a verified
+ * completion letter does. The hours line is the letter's own words, never a
+ * number the system adopts.
+ */
+function CourseFacts({
+  doc,
+  badge,
+}: {
+  doc: CandidateDocument;
+  badge: ReturnType<typeof aiBadge>;
+}) {
+  const facts = doc.ai_term_letter ?? null;
+  // No answer stored: the read has not run (or the extractor is off).
+  if (!facts) {
+    return (
+      <div className="kv">
+        <span className="k">Course dates · hours</span>
+        <span className="muted sm">
+          Not read from the letter yet — the AI read runs shortly after upload. Check the letter
+          yourself if it does not appear.
+        </span>
+      </div>
+    );
+  }
+  const notPrinted = <span className="muted">not printed on the letter</span>;
+  return (
+    <div className="kv">
+      <span className="k">Course starts</span>
+      <span>
+        {facts.courseStart ? <b className="mono">{ukDateOnly(facts.courseStart)}</b> : notPrinted}{' '}
+        {facts.courseStart && badge ? (
+          <span className={`ai ${badge.tone}`}>{badge.label}</span>
+        ) : null}
+      </span>
+      <span className="k">Expected end</span>
+      <span>
+        {facts.courseEnd ? <b className="mono">{ukDateOnly(facts.courseEnd)}</b> : notPrinted}{' '}
+        {facts.courseEnd && badge ? (
+          <span className={`ai ${badge.tone}`}>{badge.label}</span>
+        ) : null}
+        <br />
+        <span className="muted sm">
+          For reference. It does not change the weekly limit — only a verified completion letter
+          lifts the term-time cap.
+        </span>
+      </span>
+      <span className="k">The letter says about hours</span>
+      <span>
+        {facts.hoursStatement ? <>“{facts.hoursStatement}”</> : notPrinted}
+        <br />
+        <span className="muted sm">
+          The letter’s own words. The weekly limit below is calculated from the dates, not from
+          this.
+        </span>
+      </span>
+    </div>
+  );
+}
+
+/**
  * Term dates read off the letter (§2.3): every AI period shown, "+ Add
  * period" for one the AI missed, remove for a wrong one. The manager
  * confirms the DATES, not the hours — the cap below is calculated from
@@ -1158,6 +1228,8 @@ function TermDates({
           Verify the dates against the letter — the manager confirms the dates, not the hours
         </span>
       </div>
+      <CourseFacts doc={doc} badge={badge} />
+      <hr />
       {periods.length === 0 ? (
         <div className="muted sm">No holiday periods — add any the letter shows.</div>
       ) : (

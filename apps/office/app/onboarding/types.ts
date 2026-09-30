@@ -207,6 +207,21 @@ export interface CandidateDocument {
   // 20260930130500 (optional: absent before it).
   /** NI evidence verified before the NI number was entered (D43). */
   ni_recheck?: boolean | null;
+  // 20261002103000 (optional: absent before it).
+  /** A term letter's course dates and hours statement as the AI read them, for the reviewer. */
+  ai_term_letter?: TermLetterFacts | null;
+}
+
+/**
+ * What a term letter says besides its holidays. Informational: the weekly
+ * cap is calculated from the verified holiday dates, never from these
+ * (RULE-20) — an expected end date lifts nothing, and the hours statement is
+ * the letter's own words, not a limit.
+ */
+export interface TermLetterFacts {
+  courseStart: string | null;
+  courseEnd: string | null;
+  hoursStatement: string | null;
 }
 
 /**
