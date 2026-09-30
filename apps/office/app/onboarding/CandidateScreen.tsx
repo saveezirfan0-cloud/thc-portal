@@ -156,7 +156,14 @@ export function CandidateScreen({
   const run = (work: () => Promise<ActionResult>, after?: () => void) => {
     setProblem(null);
     start(async () => {
-      const result = await work();
+      // A server action that throws (rather than returning { ok: false })
+      // must not leave the click looking like it did nothing.
+      let result: ActionResult;
+      try {
+        result = await work();
+      } catch {
+        result = { ok: false, message: 'Something went wrong on the server. Try again.' };
+      }
       if (result.ok) {
         after?.();
         router.refresh();
@@ -302,6 +309,7 @@ export function CandidateScreen({
             data={data}
             canAccept={actions.includes('accept')}
             busy={busy}
+            problem={problem}
             onAccept={(roles, note) => run(() => acceptCandidate(row.id, roles, note))}
             onReject={() => setReject({ kind: 'candidate' })}
           />
@@ -669,6 +677,7 @@ function InterviewCompleted({
   data,
   canAccept,
   busy,
+  problem,
   onAccept,
   onReject,
 }: {
@@ -676,6 +685,8 @@ function InterviewCompleted({
   data: CandidateData;
   canAccept: boolean;
   busy: boolean;
+  /** The last refusal — shown here as well as at the top, which is off-screen once scrolled to Accept. */
+  problem: string | null;
   onAccept: (roles: string[], note: string) => void;
   onReject: () => void;
 }) {
@@ -738,12 +749,13 @@ function InterviewCompleted({
               disabled={!canAccept || busy || picked.length === 0}
               onClick={() => onAccept(picked, note)}
             >
-              Accept — move to Documents
+              {busy ? 'Accepting…' : 'Accept — move to Documents'}
             </Button>
             <Button tone="danger" disabled={busy} onClick={onReject}>
               Reject (E2)
             </Button>
           </div>
+          {problem ? <Alert tone="coral">{problem}</Alert> : null}
           <Input
             label="Internal note (optional)"
             placeholder="e.g. strong English, has silver-service experience"
