@@ -25,6 +25,7 @@ interface Result {
 interface Query extends PromiseLike<Result> {
   select(columns: string): Query;
   eq(column: string, value: string): Query;
+  not(column: string, operator: string, value: unknown): Query;
   in(column: string, values: readonly string[]): Query;
   order(column: string, options: { ascending: boolean }): Query;
   limit(count: number): Query;
@@ -53,6 +54,8 @@ export async function loadCheckMonitor(client: unknown, now: string): Promise<Ch
         .select('id, staff_id, uploaded_at')
         .eq('doc_type', 'share_code_report')
         .eq('review_status', 'pending')
+        // rtw_check_enqueue() starts nothing for a document without a code.
+        .not('share_code', 'is', null)
         .order('uploaded_at', { ascending: false })
         .limit(LIMIT),
       supabase
@@ -77,7 +80,9 @@ export async function loadCheckMonitor(client: unknown, now: string): Promise<Ch
       pendingDocs.map((doc) => text(doc['id'])),
     );
     const waitingDocs = pendingDocs.filter((doc) => !late.has(text(doc['id'])));
-    const allChecks = [...checks, ...late.values()];
+    const allChecks = [
+      ...new Map([...checks, ...late.values()].map((row) => [row.check_id, row])).values(),
+    ];
 
     const staffIds = [
       ...new Set([
@@ -86,16 +91,26 @@ export async function loadCheckMonitor(client: unknown, now: string): Promise<Ch
       ]),
     ].filter(Boolean);
     const names = new Map<string, string>();
+    // Nothing is queued for a rejected or removed person either, so they are
+    // not "waiting" (rtw_check_enqueue).
+    const closed = new Set<string>();
     if (staffIds.length > 0) {
       const staff = await supabase
         .from('staff')
-        .select('id, first_name, last_name')
+        .select('id, first_name, last_name, status, removed_at')
         .in('id', staffIds);
       for (const person of rowsOf(staff)) {
         names.set(
           text(person['id']),
           `${text(person['first_name'])} ${text(person['last_name'])}`.trim(),
         );
+        if (
+          person['status'] === 'rejected' ||
+          person['status'] === 'removed' ||
+          person['removed_at']
+        ) {
+          closed.add(text(person['id']));
+        }
       }
     }
     const nameOf = (id: string) => names.get(id) || 'Unknown';
@@ -103,12 +118,14 @@ export async function loadCheckMonitor(client: unknown, now: string): Promise<Ch
     const monitor: MonitorCheck[] = allChecks
       .sort((a, b) => b.created_at.localeCompare(a.created_at))
       .map((check) => ({ check, name: nameOf(check.staff_id) }));
-    const waiting: WaitingDoc[] = waitingDocs.map((doc) => ({
-      docId: text(doc['id']),
-      staffId: text(doc['staff_id']),
-      name: nameOf(text(doc['staff_id'])),
-      filedAt: text(doc['uploaded_at']),
-    }));
+    const waiting: WaitingDoc[] = waitingDocs
+      .filter((doc) => !closed.has(text(doc['staff_id'])))
+      .map((doc) => ({
+        docId: text(doc['id']),
+        staffId: text(doc['staff_id']),
+        name: nameOf(text(doc['staff_id'])),
+        filedAt: text(doc['uploaded_at']),
+      }));
 
     const run = rowsOf(runRead)[0];
     const lastRun: RunnerRun | null = run

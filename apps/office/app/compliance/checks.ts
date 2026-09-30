@@ -90,7 +90,7 @@ export interface CheckLine {
   /** What is happening, in words: the retry, the wait, the reason. */
   detail: string | null;
   tries: string;
-  /** "Started 13:02 UK time" — when it was filed. */
+  /** "30.09.2026 13:02 UK time" — when it was filed. */
   filed: string;
   /** Time since it was filed, or what it took in all. */
   elapsed: string;
