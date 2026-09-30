@@ -34,10 +34,29 @@ finished videos play in the natural order.
   `NODE_USE_ENV_PROXY=1`. The recorder points the browser at `HTTPS_PROXY` and trusts
   that proxy's CA by its public-key hash; verification stays on for everything else.
 
+## Voice-over
+
+Each caption is also spoken (Kokoro, British English female voice, offline once the model
+is on disk). The picture waits for the voice, so the video is paced by the narration.
+
+1. `pip install kokoro-onnx soundfile`, then download `kokoro-v1.0.onnx` and
+   `voices-v1.0.bin` from
+   <https://github.com/thewh1teagle/kokoro-onnx/releases/tag/model-files-v1.0>.
+2. Start the speech server and leave it running:
+   `KOKORO_MODEL=… KOKORO_VOICES=… TTS_CACHE=… python3 tts_server.py`
+3. Warm the cache once so recordings never wait on speech:
+   `DEMO_TTS_URL=http://127.0.0.1:8765 node prefetch.mjs`
+4. Record with `DEMO_TTS_URL` set. Without it you get captions only.
+
+`node calibrate.mjs` measures the gap between sound and picture on a machine (on the one
+these were made on it was 0.05 s; set `DEMO_AUDIO_OFFSET` if yours differs).
+
 ## Environment variables
 
 | Variable | Meaning |
 |---|---|
+| `DEMO_TTS_URL` | the speech server; unset means no voice |
+| `DEMO_AUDIO_OFFSET` | seconds to shift the voice against the picture (default 0) |
 | `DEMO_OUT` | where the MP4s go (default `./out`) |
 | `DEMO_FFMPEG` | path to an ffmpeg with libx264 |
 | `DEMO_PASSWORD` / `DEMO_PW_FILE` | password of the demo office / staff / client logins |
@@ -59,6 +78,8 @@ Run one script from this folder with `pnpm exec node <script>.mjs`.
 - Email addresses that are not `example` domains are **masked** in every recording
   (`lib.mjs`). Names are not: the Users & access and Activity log screens show the real
   team members' names.
+- Phone videos are recorded at the phone's real size (412×916) and enlarged 2×, because
+  Playwright never scales a recording up (a bigger canvas is padded with grey).
 - Maps show the design system's plain map ground, because no Mapbox token is set.
 - Documents and the profile photo are generated, plainly labelled **SAMPLE** images
   (`ensureAssets` in `lib.mjs`). No real document or face is used.
@@ -81,6 +102,7 @@ Do not replay Willo's webhook after a reset: a reset clears the Willo link, and 
 - `wizard-peek.mjs` — planning aid: signs the candidate in, runs wizard steps up to a given number
   (`node wizard-peek.mjs 4`) and prints the screen it stops on. Its own recording is thrown away;
   use it to move a candidate on quietly between takes.
+- `tts_server.py`, `prefetch.mjs`, `calibrate.mjs` — the voice-over (see above).
 - `assemble.mjs` — joins segments into the finished videos.
 - `cleanup-storage.mjs`, `cleanup-demo.sql` — remove what the recordings added.
 

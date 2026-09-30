@@ -90,11 +90,15 @@ await say(
 
 await say(s, 'Or accept here. First choose the role or roles the candidate is qualified for');
 await soft('role', async () => {
-  const role = page
-    .getByRole('button', { name: /Waiting Staff/ })
-    .or(page.getByLabel(/Waiting Staff/))
-    .or(page.getByText('Waiting Staff', { exact: true }));
-  await press(s, role, { after: 900 });
+  const role = page.locator('label.check').filter({ hasText: 'Waiting Staff' }).first();
+  // Tick it only if it is not already ticked (a returning candidate keeps theirs).
+  const ticked = await role.evaluate((el) => el.classList.contains('sel'));
+  if (ticked) {
+    await point(s, role, 200);
+    await sleep(900);
+  } else {
+    await press(s, role, { after: 900 });
+  }
 });
 await say(
   s,

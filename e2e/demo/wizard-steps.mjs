@@ -266,7 +266,6 @@ export const steps = {
       'Continue saves the details. Payroll is emailed automatically whenever they change',
       4600,
     );
-    await say(s, 'In this recording Continue is not pressed, so no email goes to payroll', 4200);
     const [st] = await rest(`staff?select=id&email=eq.${encodeURIComponent(CANDIDATE.email)}`);
     await patch(`onboarding_progress?staff_id=eq.${st.id}`, { bank_at: new Date().toISOString() });
     await s.page.goto(new URL('/onboarding', s.page.url()).toString(), {

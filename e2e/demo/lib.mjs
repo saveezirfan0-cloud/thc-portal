@@ -21,6 +21,11 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 export const OUT = process.env.DEMO_OUT || path.join(here, 'out');
 const RAW = path.join(OUT, '.raw');
 const FFMPEG = process.env.DEMO_FFMPEG || 'ffmpeg';
+const VIEWPORT = { desktop: { width: 1440, height: 900 }, mobile: { width: 412, height: 916 } };
+// Where the local speech server is (tts_server.py). Unset: captions only, no voice.
+const TTS_URL = process.env.DEMO_TTS_URL;
+// Seconds to shift the voice later (+) or earlier (-) against the picture.
+const AUDIO_OFFSET = Number(process.env.DEMO_AUDIO_OFFSET || 0);
 const CHROME =
   process.env.PLAYWRIGHT_CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
 
@@ -156,8 +161,10 @@ function overlay({ mobile }) {
 }
 
 /**
- * Opens a recording browser. `kind` is 'desktop' (1440x900 → 1280x800 video)
- * or 'mobile' (a Pixel 7 → a 540x1200 video).
+ * Opens a recording browser. `kind` is 'desktop' (1440x900) or 'mobile' (a
+ * Pixel 7 at 412x916). Playwright never scales a recording UP, so the video is
+ * recorded at exactly the viewport size (a bigger canvas is padded with grey)
+ * and the phone video is enlarged afterwards, in finish().
  */
 export async function start(name, { kind = 'desktop', geolocation, permissions } = {}) {
   fs.mkdirSync(RAW, { recursive: true });
@@ -186,41 +193,47 @@ export async function start(name, { kind = 'desktop', geolocation, permissions }
   }
   const browser = await chromium.launch({ executablePath: CHROME, args, proxy });
   const ctx = await browser.newContext({
-    ...(mobile ? devices['Pixel 7'] : { viewport: { width: 1440, height: 900 } }),
+    ...(mobile
+      ? { ...devices['Pixel 7'], viewport: VIEWPORT.mobile }
+      : { viewport: VIEWPORT.desktop }),
     locale: 'en-GB',
     timezoneId: 'Europe/London',
     geolocation,
     permissions,
     recordVideo: {
       dir: path.join(RAW, name),
-      size: mobile ? { width: 540, height: 1200 } : { width: 1280, height: 800 },
+      size: mobile ? VIEWPORT.mobile : VIEWPORT.desktop,
     },
   });
   await ctx.addInitScript(overlay, { mobile });
   const page = await ctx.newPage();
   page.setDefaultTimeout(12000);
-  return { browser, ctx, page, name, mobile };
+  // The recording starts with the page; narration cues are timed from here.
+  return { browser, ctx, page, name, mobile, t0: Date.now(), cues: [], narrate: Boolean(TTS_URL) };
 }
 
-/** Closes the browser and converts the recording to MP4. Returns the file. */
+/** Closes the browser, converts the recording to MP4 and adds the voice-over. */
 export async function finish(s) {
   const video = s.page.video();
   await s.ctx.close();
   const src = await video.path();
   await s.browser.close();
   const dst = path.join(OUT, `${s.name}.mp4`);
+  const silent = s.cues.length ? path.join(RAW, `${s.name}.video.mp4`) : dst;
   execFileSync(FFMPEG, [
     '-y',
     '-loglevel',
     'error',
     '-i',
     src,
+    // The phone is recorded at its real size and enlarged 2x here.
+    ...(s.mobile ? ['-vf', 'scale=iw*2:ih*2:flags=lanczos'] : []),
     '-c:v',
     'libx264',
     '-preset',
     'slow',
     '-crf',
-    '27',
+    '24',
     '-pix_fmt',
     'yuv420p',
     '-r',
@@ -228,21 +241,115 @@ export async function finish(s) {
     '-movflags',
     '+faststart',
     '-an',
-    dst,
+    silent,
   ]);
+  if (s.cues.length) addNarration(s, silent, dst);
   const mb = (fs.statSync(dst).size / 1048576).toFixed(1);
-  console.log(`wrote ${dst} (${mb} MB)`);
+  console.log(`wrote ${dst} (${mb} MB${s.cues.length ? `, ${s.cues.length} narrated lines` : ''})`);
   return dst;
 }
 
+/** Length of a video in seconds (ffmpeg prints it on stderr when given no output). */
+function videoSeconds(file) {
+  let text = '';
+  try {
+    execFileSync(FFMPEG, ['-i', file], { stdio: ['ignore', 'pipe', 'pipe'] });
+  } catch (e) {
+    text = String(e.stderr);
+  }
+  const m = /Duration: (\d+):(\d+):([\d.]+)/.exec(text);
+  if (!m) throw new Error(`cannot read the length of ${file}`);
+  return Number(m[1]) * 3600 + Number(m[2]) * 60 + Number(m[3]);
+}
+
+/** Places every narrated line at the moment its caption appeared and muxes the result. */
+function addNarration(s, videoFile, dst) {
+  const track = path.join(RAW, `${s.name}.voice.wav`);
+  const inputs = s.cues.flatMap((c) => ['-i', c.file]);
+  const delayed = s.cues.map(
+    (c, i) =>
+      `[${i}:a]adelay=${Math.max(0, Math.round((c.at + AUDIO_OFFSET) * 1000))}:all=1[v${i}]`,
+  );
+  const mix = `${s.cues.map((_, i) => `[v${i}]`).join('')}amix=inputs=${s.cues.length}:normalize=0:dropout_transition=0,loudnorm=I=-16:TP=-1.5:LRA=11[out]`;
+  execFileSync(FFMPEG, [
+    '-y',
+    '-loglevel',
+    'error',
+    ...inputs,
+    '-filter_complex',
+    [...delayed, mix].join(';'),
+    '-map',
+    '[out]',
+    '-ar',
+    '44100',
+    '-ac',
+    '1',
+    track,
+  ]);
+  execFileSync(FFMPEG, [
+    '-y',
+    '-loglevel',
+    'error',
+    '-i',
+    videoFile,
+    '-i',
+    track,
+    '-map',
+    '0:v',
+    '-map',
+    '1:a',
+    '-c:v',
+    'copy',
+    '-c:a',
+    'aac',
+    '-b:a',
+    '112k',
+    '-af',
+    'apad',
+    '-t',
+    String(videoSeconds(videoFile)),
+    '-movflags',
+    '+faststart',
+    dst,
+  ]);
+}
+
+async function speak(text) {
+  const res = await fetch(`${TTS_URL}/say`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error(`tts: ${res.status}`);
+  return res.json();
+}
+
+/**
+ * Show a caption and, when a speech server is configured, say it. The caption
+ * stays up for as long as the line takes to speak, so the picture is paced by the
+ * voice; `hold` is the reading time the silent version used, kept at half as a
+ * floor. The line is fetched (cached) BEFORE the caption appears, so there is no
+ * silence while it is made.
+ */
 export const say = async (s, text, hold = 0) => {
+  const speech = text && s.narrate ? await speak(text) : null;
   await s.page.evaluate((t) => window.__demo?.say(t), text).catch(() => {});
-  if (hold) await sleep(hold);
+  let wait = hold;
+  if (speech) {
+    s.cues.push({ at: (Date.now() - s.t0) / 1000, file: speech.file });
+    wait = Math.max(Math.round(speech.seconds * 1000) + 450, Math.round(hold / 2));
+  }
+  if (wait) await sleep(wait);
 };
 export const hush = (s) => say(s, '');
 
+/** What a title card says aloud: "1 · Applying" is read as "Part 1: Applying". */
+export const cardSpeech = (title, sub = '') =>
+  `${title}. ${String(sub).replace(/^(\d+)\s*·\s*/, 'Part $1: ')}`.trim();
+
 /** A full-screen title card; the video starts and ends on one. */
 export async function card(s, title, sub = '', hold = 3200) {
+  const speech = s.narrate ? await speak(cardSpeech(title, sub)) : null;
   await s.page.goto('about:blank');
   await s.page
     .setContent(`<!doctype html><meta charset=utf-8><body style="margin:0;height:100vh;display:grid;place-items:center;
@@ -250,7 +357,12 @@ export async function card(s, title, sub = '', hold = 3200) {
     <div style="padding:0 8vw"><div style="letter-spacing:.3em;font-size:${s.mobile ? 11 : 14}px;opacity:.7;text-transform:uppercase">The Hospitality Company</div>
     <h1 style="font-size:${s.mobile ? 34 : 64}px;margin:.4em 0 .2em;line-height:1.1">${title}</h1>
     <p style="font-size:${s.mobile ? 16 : 26}px;opacity:.85;margin:0;line-height:1.4">${sub}</p></div>`);
-  await sleep(hold);
+  let wait = hold;
+  if (speech) {
+    s.cues.push({ at: (Date.now() - s.t0) / 1000, file: speech.file });
+    wait = Math.max(hold, Math.round(speech.seconds * 1000) + 700);
+  }
+  await sleep(wait);
 }
 
 /** Go to a path on an app and let it settle. */
