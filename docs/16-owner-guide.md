@@ -403,7 +403,7 @@ Mapbox token yet, so the maps draw without tiles. Everything is Production-only.
 | `SUPABASE_SERVICE_ROLE_KEY` | set, P+Pv | set, P+Pv | set, P+Pv | **server only** | Server actions that must bypass RLS on purpose (Accept creates a login, Storage writes, admin-only tables). Never under a `NEXT_PUBLIC_` name. |
 | `APP_TZ` | set, P+Pv | set, P+Pv | set, P+Pv | server | Always `Europe/London` (§1.8); `next.config.ts` defaults it, the variable pins it. |
 | `NEXT_PUBLIC_STAFF_URL` | set, P+Pv | **add** | set, P+Pv | browser | Office: the origin E3's `/activate/:token` link is built on (`apps/office/app/onboarding/actions.ts` refuses Accept in production without it) and the `/privacy` link. Client: the `/privacy` link. **Staff: the origin password-reset links come back to** (`apps/staff/app/forgot/actions.ts`); without it the app falls back to `VERCEL_URL`, the deployment's unique per-build hostname. That used to mean a Vercel login wall; SSO protection was turned off on 25.09, so now it means something worse in one respect — the link resolves, but it points at one specific build, so it rots as soon as the next deploy lands. Set it. Value today: `https://thc-portal-staff-two.vercel.app`. |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | — | **add in §4.5** | — | browser | The key the browser subscribes with (`apps/staff/lib/push.ts`). Absent, the app reports "Notifications are not available yet" and never asks permission. Must equal the Supabase `VAPID_PUBLIC_KEY`. |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | — | **set** (§4.5) | — | browser | The key the browser subscribes with (`apps/staff/lib/push.ts`). Absent, the app reports "Notifications are not available yet" and never asks permission. Must equal the Supabase `VAPID_PUBLIC_KEY`. |
 | `APPLY_CALLER_SALT` (or `APPLY_THROTTLE_SALT`) | — | **set** — present as `APPLY_THROTTLE_SALT`, P+Pv (23.09); either name is read | — | **server only** | HMAC salt for `/apply`'s per-caller limit (ADR-0024, §2.1, docs/14 §4 "unthrottled per caller"), read by `apps/staff/lib/callerKey.ts`. Only a hash of the caller's address is stored; rotating it resets the counters. See the note below. |
 | `NEXT_PUBLIC_MAPBOX_TOKEN` | optional | optional | — | browser | Raster tiles under the venue map (`apps/office/app/venues/VenueMap.tsx`) and the home-address pin (`apps/staff/app/onboarding/_components/PinMap.tsx`). Without it the maps draw their own surface with no tiles (ADR-0005). §6.2. |
 | `MAPBOX_TOKEN` | optional | — | — | server only | Reverse geocoding for the venue pin (`apps/office/app/venues/actions.ts`); falls back to the public token. §6.2. |
@@ -1261,9 +1261,9 @@ and what a session could confirm on 23.09.2026. Tick the last column in
 | §2 | Branch protection on `main` (PR + `build-test` + no force-push) | §2.1 | API reads `protected: true`; contents unverified | [ ] |
 | §2 | The three `deploy-database` secrets | §2.2 | **set** — run #210 deployed | [x] |
 | §3 | Resend domain verified (DKIM/SPF/DMARC) | §4.1 | — | [ ] |
-| §3 | VAPID pair generated once | §4.3 | — | [ ] |
+| §3 | VAPID pair generated once | §4.3 | **done** (owner, 2026-09-30) | [x] |
 | §3 | `supabase secrets set RESEND_API_KEY VAPID_*` | §4.4 | — | [ ] |
-| §3 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` on thc-portal-staff | §4.5 | **absent** | [ ] |
+| §3 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` on thc-portal-staff | §4.5 | **set** (owner, 2026-09-30) | [x] |
 | §3 | Deploy `notify-drain` and `finance-reports` (**and the other four**) | §4.6 | **no function deployed** | [ ] |
 | §3 | `settings.edge_base_url`, Vault `service_role_key`, `install_job_schedules()` | §4.7 | **all three absent**; `cron.job` empty | [ ] |
 | §3 | Smoke test: one push, one email | §4.9 | — | [ ] |

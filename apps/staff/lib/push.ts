@@ -15,8 +15,9 @@
  *   needs-install iOS, opened in Safari rather than from the home screen.
  *                 iOS 16.4+ only delivers Web Push to an INSTALLED PWA,
  *                 so the install screen comes first (§10.5, docs/06)
- *   unconfigured  the build carries no VAPID public key. True today: the
- *                 key pair does not exist yet (docs/14 O3). Everything
+ *   unconfigured  the build carries no VAPID public key. The key pair exists
+ *                 now (docs/14 O3), so this is a build that was made
+ *                 without it, not the normal case. Everything
  *                 else here works; the app says so out loud instead of
  *                 reporting a subscription it never made
  *   default       supported, not yet asked. Asking is a user gesture
@@ -136,7 +137,7 @@ export function pushCopy(state: PushState): PushCopy {
   }
 }
 
-/** The VAPID public key, inlined at build time. Absent today (docs/14 O3). */
+/** The VAPID public key, inlined at build time. Set on the staff project since docs/14 O3. */
 export function vapidPublicKey(): string | null {
   const key = process.env['NEXT_PUBLIC_VAPID_PUBLIC_KEY'];
   return key && key.length > 0 ? key : null;
