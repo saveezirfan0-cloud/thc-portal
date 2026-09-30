@@ -371,3 +371,35 @@
     min-height: var(--tap-min);
   }
 }
+
+/* The candidate phase strip: steps up to the current one are buttons, so a
+   finished phase stays open to look at (§2.3). Inherits the .st look. */
+.stepper .st .st-btn {
+  all: unset;
+  box-sizing: border-box;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  margin: calc(-1 * var(--sp-12)) calc(-1 * var(--sp-14));
+  padding: var(--sp-12) var(--sp-14);
+  cursor: pointer;
+}
+.stepper .st .st-btn:hover .t {
+  text-decoration: underline;
+}
+.stepper .st .st-btn:focus-visible {
+  outline: 2px solid var(--cyan-ink);
+  outline-offset: -2px;
+}
+.stepper .st.viewing {
+  background: var(--panel-2);
+  box-shadow: inset 0 -2px 0 var(--line);
+}
+.linkish {
+  all: unset;
+  cursor: pointer;
+  color: var(--cyan-ink);
+  text-decoration: underline;
+}

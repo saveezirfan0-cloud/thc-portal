@@ -270,3 +270,25 @@ describe('the candidate profile, Contract phase (§2.11)', () => {
     expect(html).not.toContain('Clause 28');
   });
 });
+
+describe('the candidate profile · phase strip (§2.3)', () => {
+  const strip = (html: string) => html.match(/<ol class="stepper">.*?<\/ol>/s)?.[0] ?? '';
+
+  it('lets every step up to the current one be opened, and no step beyond it', () => {
+    const html = strip(render(data({ candidate: { ...ROW, status: 'additional_info' } })));
+    const buttons = html.match(/<button type="button" class="st-btn">/g) ?? [];
+    expect(buttons).toHaveLength(5);
+    expect(html).toMatch(/<li class="st"[^>]*><span class="k">6<\/span>/);
+  });
+
+  it('opens on the current phase, not the first', () => {
+    const html = render(data({ candidate: { ...ROW, status: 'additional_info' } }));
+    expect(html).toContain('Everything from wizard steps 7');
+    expect(html).not.toContain('Viewing <b>');
+  });
+
+  it('a candidate on the first step has only that step to open', () => {
+    const html = strip(render(data({ candidate: { ...ROW, status: 'interview_requested' } })));
+    expect(html.match(/class="st-btn"/g) ?? []).toHaveLength(1);
+  });
+});
