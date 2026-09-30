@@ -84,6 +84,13 @@
   border-radius: var(--r-tile);
 }
 
+/* The junk-folder tip sits directly under the lead, before the details box:
+   the email going to junk is the commonest reason an applicant stalls. */
+.apply-page .done .junk-tip {
+  width: 100%;
+  text-align: left;
+}
+
 .apply-page .done .box {
   width: 100%;
   border: 1px solid var(--line);
