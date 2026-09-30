@@ -1,0 +1,538 @@
+/* eslint-disable no-console -- command-line tool: printing is its output */
+// Shared helpers for the scripted demo / training walkthroughs.
+//
+// These are not tests. Each script in this folder drives one of the three
+// apps through a real journey with Playwright's video recorder on, adds
+// on-screen captions and a visible cursor, and writes an MP4.
+//
+//   DEMO_OUT       where the finished MP4s go (default ./out next to this file)
+//   DEMO_PASSWORD  the password of the demo logins (never committed)
+//   DEMO_FFMPEG    an ffmpeg with libx264 (Playwright's own build only writes VP8)
+//
+// See README.md in this folder.
+import { chromium, devices } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
+import { X509Certificate, createHash } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const here = path.dirname(fileURLToPath(import.meta.url));
+export const OUT = process.env.DEMO_OUT || path.join(here, 'out');
+const RAW = path.join(OUT, '.raw');
+const FFMPEG = process.env.DEMO_FFMPEG || 'ffmpeg';
+const CHROME =
+  process.env.PLAYWRIGHT_CHROMIUM_PATH || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+
+export const BASE = {
+  office: process.env.DEMO_OFFICE_URL || 'http://localhost:3000',
+  staff: process.env.DEMO_STAFF_URL || 'http://localhost:3001',
+  client: process.env.DEMO_CLIENT_URL || 'http://localhost:3002',
+};
+
+export function password() {
+  const p =
+    process.env.DEMO_PASSWORD ||
+    (process.env.DEMO_PW_FILE && fs.readFileSync(process.env.DEMO_PW_FILE, 'utf8').trim());
+  if (!p) throw new Error("Set DEMO_PASSWORD (or DEMO_PW_FILE) to the demo logins' password.");
+  return p;
+}
+
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Runs in every document before the app's own scripts. The caption and the
+// cursor position live in sessionStorage so they survive a navigation.
+function overlay({ mobile }) {
+  const css = `
+  #__dm_cap{position:fixed;left:50%;bottom:${mobile ? 92 : 34}px;transform:translateX(-50%);width:max-content;max-width:${mobile ? 90 : 70}vw;
+    background:rgba(15,23,42,.92);color:#fff;font:600 ${mobile ? 15 : 21}px/1.4 "Plus Jakarta Sans",system-ui,sans-serif;
+    padding:${mobile ? '10px 16px' : '13px 26px'};border-radius:${mobile ? 16 : 18}px;text-align:center;
+    box-shadow:0 10px 30px rgba(0,0,0,.35);z-index:2147483647;pointer-events:none;opacity:0;transition:opacity .25s}
+  #__dm_cap.on{opacity:1}
+  #__dm_cur{position:fixed;left:0;top:0;width:${mobile ? 30 : 26}px;height:${mobile ? 30 : 26}px;margin:-${mobile ? 15 : 13}px 0 0 -${mobile ? 15 : 13}px;
+    border-radius:50%;background:rgba(124,58,237,.45);border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.4);
+    z-index:2147483646;pointer-events:none;opacity:0;transition:transform .5s cubic-bezier(.22,.8,.25,1),opacity .2s}
+  .__dm_rip{position:fixed;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;border:3px solid #7c3aed;
+    z-index:2147483645;pointer-events:none;animation:__dm_rip .55s ease-out forwards}
+  @keyframes __dm_rip{to{transform:scale(4.2);opacity:0}}`;
+  const ss = (k, v) => {
+    try {
+      sessionStorage.setItem(k, v);
+    } catch {
+      /* storage blocked */
+    }
+  };
+  const rd = (k) => {
+    try {
+      return sessionStorage.getItem(k);
+    } catch {
+      return null;
+    }
+  };
+  const install = () => {
+    if (document.getElementById('__dm_cap')) return;
+    const st = document.createElement('style');
+    st.textContent = css;
+    document.documentElement.appendChild(st);
+    const cap = document.createElement('div');
+    cap.id = '__dm_cap';
+    const cur = document.createElement('div');
+    cur.id = '__dm_cur';
+    document.documentElement.append(cap, cur);
+    const text = rd('__dm_text');
+    if (text) {
+      cap.textContent = text;
+      cap.classList.add('on');
+    }
+    const pos = rd('__dm_pos');
+    if (pos) {
+      const [x, y] = pos.split(',');
+      cur.style.transition = 'none';
+      cur.style.transform = `translate(${x}px,${y}px)`;
+      cur.style.opacity = '1';
+      requestAnimationFrame(() => (cur.style.transition = ''));
+    }
+  };
+  // Real people's email addresses are masked in every recording. Only the
+  // example domains the demo data uses are left readable.
+  const MAIL = /[A-Za-z0-9._%+-]+@((?:[A-Za-z0-9-]+\.)+[A-Za-z]{2,})/g;
+  const mask = (root) => {
+    const w = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    for (let n = w.nextNode(); n; n = w.nextNode()) {
+      const v = n.nodeValue;
+      if (!v || v.indexOf('@') < 0) continue;
+      const out = v.replace(MAIL, (m, d) =>
+        /(^|\.)example(\.com)?$/i.test(d) ? m : '••••••@••••••',
+      );
+      if (out !== v) n.nodeValue = out;
+    }
+  };
+  let queued = false;
+  const schedule = () => {
+    if (queued) return;
+    queued = true;
+    requestAnimationFrame(() => {
+      queued = false;
+      install();
+      if (document.body) mask(document.body);
+    });
+  };
+  document.addEventListener('DOMContentLoaded', () => {
+    schedule();
+    new MutationObserver(schedule).observe(document.documentElement, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+  });
+  window.__demo = {
+    say(t) {
+      ss('__dm_text', t || '');
+      const c = document.getElementById('__dm_cap');
+      if (!c) return;
+      if (t) {
+        c.textContent = t;
+        c.classList.add('on');
+      } else c.classList.remove('on');
+    },
+    cursor(x, y) {
+      ss('__dm_pos', `${x},${y}`);
+      const c = document.getElementById('__dm_cur');
+      if (!c) return;
+      c.style.opacity = '1';
+      c.style.transform = `translate(${x}px,${y}px)`;
+    },
+    ripple(x, y) {
+      const r = document.createElement('div');
+      r.className = '__dm_rip';
+      r.style.left = x + 'px';
+      r.style.top = y + 'px';
+      document.documentElement.appendChild(r);
+      setTimeout(() => r.remove(), 700);
+    },
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', install);
+  else install();
+}
+
+/**
+ * Opens a recording browser. `kind` is 'desktop' (1440x900 → 1280x800 video)
+ * or 'mobile' (a Pixel 7 → a 540x1200 video).
+ */
+export async function start(name, { kind = 'desktop', geolocation, permissions } = {}) {
+  fs.mkdirSync(RAW, { recursive: true });
+  const mobile = kind === 'mobile';
+  // Browser-side calls to Supabase Storage (uploads go straight from the page)
+  // need the sandbox's egress proxy; the apps themselves are on localhost.
+  const proxy = process.env.HTTPS_PROXY
+    ? { server: process.env.HTTPS_PROXY, bypass: 'localhost,127.0.0.1' }
+    : undefined;
+  const args = ['--no-sandbox'];
+  // Through that proxy TLS is re-terminated under the sandbox's own CA. Trust
+  // exactly that CA by its public-key hash (verification stays on for every
+  // other certificate).
+  const caFile =
+    process.env.DEMO_PROXY_CA ||
+    (process.env.NODE_EXTRA_CA_CERTS &&
+      path.join(path.dirname(process.env.NODE_EXTRA_CA_CERTS), 'agent-proxy-ca.crt'));
+  if (proxy && caFile && fs.existsSync(caFile)) {
+    const spki = new X509Certificate(fs.readFileSync(caFile)).publicKey.export({
+      type: 'spki',
+      format: 'der',
+    });
+    args.push(
+      `--ignore-certificate-errors-spki-list=${createHash('sha256').update(spki).digest('base64')}`,
+    );
+  }
+  const browser = await chromium.launch({ executablePath: CHROME, args, proxy });
+  const ctx = await browser.newContext({
+    ...(mobile ? devices['Pixel 7'] : { viewport: { width: 1440, height: 900 } }),
+    locale: 'en-GB',
+    timezoneId: 'Europe/London',
+    geolocation,
+    permissions,
+    recordVideo: {
+      dir: path.join(RAW, name),
+      size: mobile ? { width: 540, height: 1200 } : { width: 1280, height: 800 },
+    },
+  });
+  await ctx.addInitScript(overlay, { mobile });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(12000);
+  return { browser, ctx, page, name, mobile };
+}
+
+/** Closes the browser and converts the recording to MP4. Returns the file. */
+export async function finish(s) {
+  const video = s.page.video();
+  await s.ctx.close();
+  const src = await video.path();
+  await s.browser.close();
+  const dst = path.join(OUT, `${s.name}.mp4`);
+  execFileSync(FFMPEG, [
+    '-y',
+    '-loglevel',
+    'error',
+    '-i',
+    src,
+    '-c:v',
+    'libx264',
+    '-preset',
+    'slow',
+    '-crf',
+    '27',
+    '-pix_fmt',
+    'yuv420p',
+    '-r',
+    '25',
+    '-movflags',
+    '+faststart',
+    '-an',
+    dst,
+  ]);
+  const mb = (fs.statSync(dst).size / 1048576).toFixed(1);
+  console.log(`wrote ${dst} (${mb} MB)`);
+  return dst;
+}
+
+export const say = async (s, text, hold = 0) => {
+  await s.page.evaluate((t) => window.__demo?.say(t), text).catch(() => {});
+  if (hold) await sleep(hold);
+};
+export const hush = (s) => say(s, '');
+
+/** A full-screen title card; the video starts and ends on one. */
+export async function card(s, title, sub = '', hold = 3200) {
+  await s.page.goto('about:blank');
+  await s.page
+    .setContent(`<!doctype html><meta charset=utf-8><body style="margin:0;height:100vh;display:grid;place-items:center;
+    background:linear-gradient(135deg,#0f172a,#312e81 60%,#7c3aed);color:#fff;font-family:'Plus Jakarta Sans',system-ui,sans-serif;text-align:center">
+    <div style="padding:0 8vw"><div style="letter-spacing:.3em;font-size:${s.mobile ? 11 : 14}px;opacity:.7;text-transform:uppercase">The Hospitality Company</div>
+    <h1 style="font-size:${s.mobile ? 34 : 64}px;margin:.4em 0 .2em;line-height:1.1">${title}</h1>
+    <p style="font-size:${s.mobile ? 16 : 26}px;opacity:.85;margin:0;line-height:1.4">${sub}</p></div>`);
+  await sleep(hold);
+}
+
+/** Go to a path on an app and let it settle. */
+export async function go(s, app, p, { wait = 1200 } = {}) {
+  await s.page.goto(BASE[app] + p, { waitUntil: 'domcontentloaded' });
+  await s.page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+  await sleep(wait);
+}
+
+async function center(loc) {
+  await loc.scrollIntoViewIfNeeded();
+  const b = await loc.boundingBox();
+  if (!b) throw new Error('target has no box');
+  return { x: Math.round(b.x + b.width / 2), y: Math.round(b.y + Math.min(b.height / 2, 24)) };
+}
+
+/** Move the visible cursor to a target. */
+export async function point(s, target, settle = 350) {
+  const { x, y } = await center(target.first());
+  await s.page.evaluate(([a, b]) => window.__demo?.cursor(a, b), [x, y]);
+  await sleep(550 + settle);
+  return { x, y };
+}
+
+/** Move to, ripple on, and click (or tap) a target. */
+export async function press(s, target, { after = 900 } = {}) {
+  const loc = target.first();
+  const { x, y } = await point(s, loc);
+  await s.page.evaluate(([a, b]) => window.__demo?.ripple(a, b), [x, y]);
+  if (s.mobile) await loc.tap();
+  else await loc.click();
+  await sleep(after);
+}
+
+/** Type into a field at a readable pace. */
+export async function type(s, target, text, { delay = 55, secret = false } = {}) {
+  const loc = target.first();
+  await point(s, loc, 150);
+  await loc.click();
+  // Some fields arrive pre-filled (the bank form offers the worker's name), so
+  // start from empty rather than typing on top of what is there.
+  await loc.fill('');
+  if (secret) await loc.fill(text);
+  else await loc.pressSequentially(text, { delay });
+  await sleep(350);
+}
+
+/** Smooth-scroll the page by some pixels. */
+export async function scroll(s, px, { steps = 12, pause = 900 } = {}) {
+  for (let i = 0; i < steps; i++) {
+    await s.page.mouse.wheel(0, px / steps);
+    await sleep(45);
+  }
+  await sleep(pause);
+}
+
+/** Signs in on /login as one of the demo accounts. */
+export async function login(s, app, email) {
+  await go(s, app, '/login');
+  await type(s, s.page.getByLabel('Email'), email);
+  await type(s, s.page.getByLabel('Password'), password(), { secret: true });
+  await press(s, s.page.getByRole('button', { name: /^sign in$/i }), { after: 600 });
+  await s.page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 30000 });
+  await s.page.waitForLoadState('networkidle', { timeout: 15000 }).catch(() => {});
+  await sleep(1000);
+}
+
+/** Run an optional step; a missing element logs a warning instead of ending the recording. */
+export async function soft(label, fn, { retries = 1 } = {}) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await fn();
+      return;
+    } catch (e) {
+      if (attempt < retries) {
+        await sleep(1500);
+        continue;
+      }
+      console.warn(`[skipped] ${label}: ${String(e.message).split('\n')[0]}`);
+      return;
+    }
+  }
+}
+
+/** A tab or sub-navigation control, whatever element the screen made it. */
+export const tab = (s, name) =>
+  s.page
+    .getByRole('tab', { name })
+    .or(s.page.getByRole('link', { name }))
+    .or(s.page.getByRole('button', { name }))
+    .first();
+
+/** Left-hand menu item in the Back Office. */
+// Some items carry a count badge ("Compliance 3"), so the name is matched up to it.
+export const menu = (s, name) =>
+  s.page
+    .getByRole('link', {
+      name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&')}(\\s+\\d+)?$`),
+    })
+    .first();
+
+/** The next Friday after today, as yyyy-mm-dd: the day the seeded upcoming events fall on. */
+export function nextFriday(now = new Date()) {
+  const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  d.setUTCDate(d.getUTCDate() + ((5 - d.getUTCDay() + 6) % 7) + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+// ── Talking to the demo database ─────────────────────────────────────────
+// Used only where the real trigger is an outside system that is not part of
+// the recording (for example Willo's webhook). The service key is read from
+// the office app's git-ignored .env.local, so it never appears in a script.
+function serviceEnv() {
+  const file = path.resolve(here, '../../apps/office/.env.local');
+  const env = {};
+  for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
+    const m = /^([A-Z0-9_]+)=(.*)$/.exec(line.trim());
+    if (m) env[m[1]] = m[2];
+  }
+  return { url: env.NEXT_PUBLIC_SUPABASE_URL, key: env.SUPABASE_SERVICE_ROLE_KEY };
+}
+
+async function api(method, route, body) {
+  const { url, key } = serviceEnv();
+  const res = await fetch(`${url}/rest/v1/${route}`, {
+    method,
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      Prefer: 'return=representation',
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`${method} ${route}: ${res.status} ${text.slice(0, 300)}`);
+  return text ? JSON.parse(text) : null;
+}
+export const rpc = (name, args) => api('POST', `rpc/${name}`, args);
+export const rest = (route) => api('GET', route);
+
+/** The fictional candidate the onboarding series follows, on an alias of the owner's email. */
+export const CANDIDATE = {
+  first: 'Jordan',
+  last: 'Ellis',
+  email: process.env.DEMO_CANDIDATE_EMAIL || 'saveezirfan+jordan@gmail.com',
+  mobile: '7700 900321',
+  dob: '14032000',
+};
+
+/**
+ * A fresh one-time activation link for a candidate's login, minted the way the
+ * office's Accept / Resend does (GoTrue admin generateLink). The emailed link
+ * is single-use and its copy in the outbox is redacted once sent, so a
+ * recording cannot read it back; minting replaces the earlier token.
+ */
+export async function mintActivationLink(email, origin = BASE.staff) {
+  const { url, key } = serviceEnv();
+  const gen = async (type) => {
+    const res = await fetch(`${url}/auth/v1/admin/generate_link`, {
+      method: 'POST',
+      headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, email }),
+    });
+    const body = await res.json().catch(() => ({}));
+    return { ok: res.ok, token: body?.hashed_token ?? body?.properties?.hashed_token, body };
+  };
+  // `invite` for a login that was never confirmed; `magiclink` (what a returning
+  // applicant gets) once it has been. The activation page takes either.
+  let r = await gen('invite');
+  if (r.ok && r.token) return `${origin}/activate/${r.token}`;
+  r = await gen('magiclink');
+  if (r.ok && r.token) return `${origin}/activate/${r.token}?type=magiclink`;
+  throw new Error(`generate_link: ${JSON.stringify(r.body).slice(0, 200)}`);
+}
+
+export const patch = (route, body) => api('PATCH', route, body);
+export const del = (route) => api('DELETE', route);
+
+export function candidatePassword() {
+  const f = process.env.DEMO_CANDIDATE_PW_FILE;
+  if (process.env.DEMO_CANDIDATE_PASSWORD) return process.env.DEMO_CANDIDATE_PASSWORD;
+  if (f && fs.existsSync(f)) return fs.readFileSync(f, 'utf8').trim();
+  throw new Error('Set DEMO_CANDIDATE_PASSWORD (or DEMO_CANDIDATE_PW_FILE).');
+}
+
+// ── Sample files for uploads and the selfie ──────────────────────────────
+// Generated here so nothing binary is committed and no real document or face
+// is ever used. Every document is plainly marked as a sample.
+const sampleDoc = (
+  title,
+  rows,
+) => `<!doctype html><meta charset=utf-8><body style="margin:0;width:1000px;height:680px;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,#eef2f7,#dfe7f1);font-family:'DejaVu Sans',sans-serif;color:#1f2937">
+  <div style="position:absolute;inset:26px;border:3px solid #94a3b8;border-radius:22px;padding:36px 44px">
+    <div style="font-size:22px;letter-spacing:.3em;color:#64748b">SAMPLE DOCUMENT · DEMO ONLY</div>
+    <div style="font-size:54px;font-weight:700;margin:14px 0 26px">${title}</div>
+    ${rows.map(([k, v]) => `<div style="display:flex;font-size:30px;margin:10px 0"><div style="width:300px;color:#64748b">${k}</div><div style="font-weight:600">${v}</div></div>`).join('')}
+  </div>
+  <div style="position:absolute;left:-60px;top:290px;width:1120px;text-align:center;transform:rotate(-14deg);font-size:120px;font-weight:800;color:rgba(220,38,38,.16);letter-spacing:.1em">SAMPLE</div>`;
+
+const avatar = `<!doctype html><meta charset=utf-8><body style="margin:0;width:640px;height:480px;background:linear-gradient(160deg,#cbd5e1,#e2e8f0);position:relative;overflow:hidden">
+  <div style="position:absolute;left:230px;top:70px;width:180px;height:210px;border-radius:50%;background:#64748b"></div>
+  <div style="position:absolute;left:110px;top:300px;width:420px;height:340px;border-radius:50% 50% 0 0;background:#64748b"></div>
+  <div style="position:absolute;bottom:14px;width:100%;text-align:center;font:600 18px 'DejaVu Sans';color:#475569;letter-spacing:.2em">SAMPLE PHOTO</div>`;
+
+export async function ensureAssets() {
+  const dir = path.join(OUT, '.assets');
+  const out = {
+    dir,
+    selfie: path.join(dir, 'selfie.png'),
+    passport: path.join(dir, 'sample-passport.png'),
+    nationalId: path.join(dir, 'sample-id.png'),
+    niProof: path.join(dir, 'sample-ni-letter.png'),
+  };
+  if (Object.values(out).every((p) => p === dir || fs.existsSync(p))) return out;
+  fs.mkdirSync(dir, { recursive: true });
+  const browser = await chromium.launch({ executablePath: CHROME, args: ['--no-sandbox'] });
+  const page = await browser.newPage({ viewport: { width: 1000, height: 680 } });
+  const shot = async (html, file, w, h) => {
+    await page.setViewportSize({ width: w, height: h });
+    await page.setContent(html);
+    await page.screenshot({ path: file });
+  };
+  await shot(
+    sampleDoc('Passport', [
+      ['Surname', 'ELLIS'],
+      ['Given names', 'JORDAN'],
+      ['Date of birth', '14 MAR 2000'],
+      ['Document no.', '000000000'],
+      ['Expiry', '12 JAN 2031'],
+    ]),
+    out.passport,
+    1000,
+    680,
+  );
+  await shot(
+    sampleDoc('National ID', [
+      ['Surname', 'ELLIS'],
+      ['Given names', 'JORDAN'],
+      ['Date of birth', '14 MAR 2000'],
+      ['Document no.', '000000000'],
+      ['Expiry', '12 JAN 2031'],
+    ]),
+    out.nationalId,
+    1000,
+    680,
+  );
+  await shot(
+    sampleDoc('Letter showing NI number', [
+      ['Name', 'JORDAN ELLIS'],
+      ['NI number', 'QQ 12 34 56 C'],
+      ['Issued', '02 FEB 2026'],
+    ]),
+    out.niProof,
+    1000,
+    680,
+  );
+  await shot(avatar, out.selfie, 640, 480);
+  await browser.close();
+  return out;
+}
+
+/** Press something that opens the phone's file / camera picker, and answer it with a file. */
+export async function chooseFile(s, target, file, { after = 1800 } = {}) {
+  const [chooser] = await Promise.all([
+    s.page.waitForEvent('filechooser'),
+    press(s, target, { after: 300 }),
+  ]);
+  await chooser.setFiles(file);
+  await sleep(after);
+}
+
+/** Supabase Storage with the service key (used only to tidy up after a recording). */
+export async function storageApi(method, route, body) {
+  const { url, key } = serviceEnv();
+  const res = await fetch(`${url}/storage/v1/${route}`, {
+    method,
+    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+  const text = await res.text();
+  if (!res.ok) throw new Error(`${method} storage/${route}: ${res.status} ${text.slice(0, 200)}`);
+  return text ? JSON.parse(text) : null;
+}
