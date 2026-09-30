@@ -42,6 +42,12 @@ export default async function Page() {
             ten minutes and you can record it on your phone.
           </p>
 
+          <div className="alert junk-tip" role="note">
+            <b>Check your junk or spam folder.</b> The email can take a few minutes to arrive, and
+            it sometimes lands in junk. If it&apos;s there, mark it &ldquo;Not junk&rdquo; and add{' '}
+            <span className="mono">notification@willotalent.com</span> to your contacts.
+          </div>
+
           <div className="box">
             {sentTo ? (
               <div className="row">
@@ -56,7 +62,7 @@ export default async function Page() {
           </div>
 
           <p className="xs muted">
-            Can&apos;t find it? Check your spam folder, or write to{' '}
+            Still nothing? Write to{' '}
             <a href="mailto:admin@thehospitalitycompany.co.uk">admin@thehospitalitycompany.co.uk</a>
             .
           </p>
