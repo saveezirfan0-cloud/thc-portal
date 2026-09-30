@@ -324,6 +324,9 @@ async function speak(text) {
   return res.json();
 }
 
+/** Generate (and cache) a line ahead of time, so nothing waits on speech while a recording runs. */
+export const warmSpeech = (text) => (TTS_URL ? speak(text) : null);
+
 /**
  * Show a caption and, when a speech server is configured, say it. The caption
  * stays up for as long as the line takes to speak, so the picture is paced by the
@@ -347,16 +350,35 @@ export const hush = (s) => say(s, '');
 export const cardSpeech = (title, sub = '') =>
   `${title}. ${String(sub).replace(/^(\d+)\s*·\s*/, 'Part $1: ')}`.trim();
 
-/** A full-screen title card; the video starts and ends on one. */
-export async function card(s, title, sub = '', hold = 3200) {
-  const speech = s.narrate ? await speak(cardSpeech(title, sub)) : null;
+/**
+ * A full-screen title card; segments start and end on one.
+ *   eyebrow   the small line above the title (default: the company name)
+ *   speech    what is said aloud, when it should not be derived from the text
+ *   progress  [n, total]: a row of dots with the n-th lit, for "Part n of total"
+ * `sub` may hold <br> for several lines.
+ */
+export async function card(
+  s,
+  title,
+  sub = '',
+  hold = 3200,
+  { eyebrow = 'The Hospitality Company', speech: spoken, progress } = {},
+) {
+  const speech = s.narrate ? await speak(spoken ?? cardSpeech(title, sub)) : null;
+  const dots = progress
+    ? `<div style="margin:1.1em 0 .2em;display:flex;gap:${s.mobile ? 8 : 12}px;justify-content:center">${Array.from(
+        { length: progress[1] },
+        (_, k) =>
+          `<i style="width:${s.mobile ? 10 : 14}px;height:${s.mobile ? 10 : 14}px;border-radius:50%;background:#fff;opacity:${k + 1 === progress[0] ? 1 : k + 1 < progress[0] ? 0.55 : 0.22}"></i>`,
+      ).join('')}</div>`
+    : '';
   await s.page.goto('about:blank');
   await s.page
     .setContent(`<!doctype html><meta charset=utf-8><body style="margin:0;height:100vh;display:grid;place-items:center;
     background:linear-gradient(135deg,#0f172a,#312e81 60%,#7c3aed);color:#fff;font-family:'Plus Jakarta Sans',system-ui,sans-serif;text-align:center">
-    <div style="padding:0 8vw"><div style="letter-spacing:.3em;font-size:${s.mobile ? 11 : 14}px;opacity:.7;text-transform:uppercase">The Hospitality Company</div>
+    <div style="padding:0 8vw"><div style="letter-spacing:.3em;font-size:${s.mobile ? 11 : 14}px;opacity:.7;text-transform:uppercase">${eyebrow}</div>${dots}
     <h1 style="font-size:${s.mobile ? 34 : 64}px;margin:.4em 0 .2em;line-height:1.1">${title}</h1>
-    <p style="font-size:${s.mobile ? 16 : 26}px;opacity:.85;margin:0;line-height:1.4">${sub}</p></div>`);
+    <p style="font-size:${s.mobile ? 16 : 26}px;opacity:.85;margin:0;line-height:1.5">${sub}</p></div>`);
   let wait = hold;
   if (speech) {
     s.cues.push({ at: (Date.now() - s.t0) / 1000, file: speech.file });

@@ -16,6 +16,13 @@ the videos stay current.
 
 `assemble.mjs` joins the segments into the six files above.
 
+`compose.mjs` builds two longer videos from the same segments: **Staff training**
+(onboarding, then the Staff App) and **Office portal training**. It cuts each segment's
+own title and closing card off, records narrated "Part N of M" dividers that name the steps
+each part covers, adds a contents card and a closing card, and writes MP4 chapters so a player
+lists the parts. It needs the speech server (below). `node compose.mjs staff` or `office`;
+set `FORCE=1` to re-render the cards.
+
 The onboarding segments are recorded **out of order** on purpose. The candidate's
 steps 1–4, the office's document check, and steps 5–11 depend on each other, so the
 candidate is prepared between recordings (see "Onboarding state" below). The
@@ -103,7 +110,7 @@ Do not replay Willo's webhook after a reset: a reset clears the Willo link, and 
   (`node wizard-peek.mjs 4`) and prints the screen it stops on. Its own recording is thrown away;
   use it to move a candidate on quietly between takes.
 - `tts_server.py`, `prefetch.mjs`, `calibrate.mjs` — the voice-over (see above).
-- `assemble.mjs` — joins segments into the finished videos.
+- `assemble.mjs`, `compose.mjs` — join segments into the six videos, and into the two combined ones.
 - `cleanup-storage.mjs`, `cleanup-demo.sql` — remove what the recordings added.
 
 ## Clean up afterwards
