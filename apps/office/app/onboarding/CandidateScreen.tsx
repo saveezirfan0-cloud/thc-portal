@@ -17,7 +17,6 @@ import {
   Note,
   Panel,
   Pill,
-  Stepper,
   Textarea,
 } from '@thc/ui';
 import { contractClause28Pending } from '@thc/domain';
@@ -158,6 +157,13 @@ export function CandidateScreen({
   const column =
     row.status === 'compliant' ? 'contract' : (columnFor(row) ?? 'interview_requested');
   const age = stageAge(stageEnteredAt(row, column), at);
+  // A phase that is done stays open to look at: the stepper can be pointed at
+  // any step up to the current one. `picked` is remembered against the phase it
+  // was chosen in, so when the candidate moves on the profile follows them.
+  const [picked, setPicked] = useState<{ phase: number; index: number } | null>(null);
+  const viewing = picked && picked.phase === phase && picked.index <= phase ? picked.index : phase;
+  const shown = COLUMNS[viewing]?.key ?? column;
+  const past = viewing < phase;
 
   const run = (work: () => Promise<ActionResult>, after?: () => void) => {
     setProblem(null);
@@ -201,7 +207,8 @@ export function CandidateScreen({
   };
 
   const doc: DocHandlers = {
-    readOnly,
+    // Looking back at a finished phase never offers its actions again.
+    readOnly: readOnly || past,
     busy,
     staffId: row.id,
     branch: row.rtw_branch,
@@ -303,24 +310,36 @@ export function CandidateScreen({
           </div>
         </div>
 
-        <Stepper
-          steps={COLUMNS.map((c, i) => ({ key: String(i + 1), label: c.label }))}
-          current={phase}
+        <PhaseStepper
+          phase={phase}
+          viewing={viewing}
+          onView={(index) => setPicked({ phase, index })}
         />
 
-        {column === 'interview_requested' ? <InterviewRequested row={row} data={data} /> : null}
-        {column === 'interview_completed' ? (
+        {past ? (
+          <Alert tone="cyan">
+            Viewing <b>{COLUMNS[viewing]?.label}</b>, a step already completed. Read-only —{' '}
+            <button type="button" className="linkish" onClick={() => setPicked(null)}>
+              back to {COLUMNS[phase]?.label}
+            </button>
+            .
+          </Alert>
+        ) : null}
+
+        {shown === 'interview_requested' ? <InterviewRequested row={row} data={data} /> : null}
+        {shown === 'interview_completed' ? (
           <InterviewCompleted
             row={row}
             data={data}
-            canAccept={actions.includes('accept')}
+            past={past}
+            canAccept={actions.includes('accept') && !past}
             busy={busy}
             problem={problem}
             onAccept={(roles, note) => run(() => acceptCandidate(row.id, roles, note))}
             onReject={() => setReject({ kind: 'candidate' })}
           />
         ) : null}
-        {column === 'documents' ? (
+        {shown === 'documents' ? (
           <DocumentsPhase
             row={row}
             data={data}
@@ -333,9 +352,9 @@ export function CandidateScreen({
             }}
           />
         ) : null}
-        {column === 'quiz' ? <QuizPhase row={row} data={data} /> : null}
-        {column === 'additional_info' ? <AdditionalInfo row={row} data={data} /> : null}
-        {column === 'contract' ? <ContractPhase row={row} contract={data.contract} /> : null}
+        {shown === 'quiz' ? <QuizPhase row={row} data={data} past={past} /> : null}
+        {shown === 'additional_info' ? <AdditionalInfo row={row} data={data} /> : null}
+        {shown === 'contract' ? <ContractPhase row={row} contract={data.contract} /> : null}
       </div>
 
       <Modal
@@ -572,6 +591,49 @@ function Facts({
 // ---------------------------------------------------------------------
 // 1 · Interview requested
 // ---------------------------------------------------------------------
+/**
+ * The phase strip (§2.3). Same markup and classes as the design system's
+ * Stepper, but every step up to the current one is a button: a phase that is
+ * done is still worth reading, and the strip is how you get back to it.
+ */
+function PhaseStepper({
+  phase,
+  viewing,
+  onView,
+}: {
+  phase: number;
+  viewing: number;
+  onView: (index: number) => void;
+}) {
+  return (
+    <ol className="stepper">
+      {COLUMNS.map((c, index) => {
+        const inner = (
+          <>
+            <span className="k">{index + 1}</span>
+            <span className="t">{c.label}</span>
+          </>
+        );
+        return (
+          <li
+            key={c.key}
+            className={`st${index < phase ? ' done' : ''}${index === phase ? ' now' : ''}${index === viewing && viewing !== phase ? ' viewing' : ''}`}
+            aria-current={index === viewing ? 'step' : undefined}
+          >
+            {index <= phase ? (
+              <button type="button" className="st-btn" onClick={() => onView(index)}>
+                {inner}
+              </button>
+            ) : (
+              inner
+            )}
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 function WilloButton({ url, primary }: { url: string | null; primary?: boolean }) {
   if (!url) {
     return (
@@ -681,6 +743,7 @@ function InterviewRequested({ row, data }: { row: CandidateRow; data: CandidateD
 function InterviewCompleted({
   row,
   data,
+  past,
   canAccept,
   busy,
   problem,
@@ -689,6 +752,8 @@ function InterviewCompleted({
 }: {
   row: CandidateRow;
   data: CandidateData;
+  /** Looking back from a later phase: the decision has been made. */
+  past: boolean;
   canAccept: boolean;
   busy: boolean;
   /** The last refusal — shown here as well as at the top, which is off-screen once scrolled to Accept. */
@@ -729,7 +794,15 @@ function InterviewCompleted({
                 : '—'}
             </span>
             <span className="k">Decision</span>
-            <span className="amber">Awaiting — made inside Willo, where the video is watched</span>
+            {past ? (
+              <span className="green">
+                Accepted — made inside Willo, where the video is watched
+              </span>
+            ) : (
+              <span className="amber">
+                Awaiting — made inside Willo, where the video is watched
+              </span>
+            )}
           </div>
           <div>
             <WilloButton url={row.willo_review_url} primary />
@@ -741,35 +814,49 @@ function InterviewCompleted({
           </Note>
         </div>
       </Panel>
-      <Panel title="Accept → qualified role type(s)">
-        <div className="stack">
-          <p className="sm muted">
-            On acceptance the manager selects the role(s) the candidate is qualified for — this is
-            what makes them eligible for shifts of that role later. Multi-select; editable later on
-            the staff profile.
-          </p>
-          <RolePick roles={data.roles} picked={picked} onToggle={toggle} />
-          <div className="row wrap">
-            <Button
-              tone="primary"
-              disabled={!canAccept || busy || picked.length === 0}
-              onClick={() => onAccept(picked, note)}
-            >
-              {busy ? 'Accepting…' : 'Accept — move to Documents'}
-            </Button>
-            <Button tone="danger" disabled={busy} onClick={onReject}>
-              Reject (E2)
-            </Button>
+      {past ? (
+        <Panel title="Qualified role type(s)">
+          {row.role_names.length > 0 ? (
+            <div className="row wrap">
+              {row.role_names.map((role) => (
+                <Chip key={role}>{role}</Chip>
+              ))}
+            </div>
+          ) : (
+            <span className="muted sm">None picked.</span>
+          )}
+        </Panel>
+      ) : (
+        <Panel title="Accept → qualified role type(s)">
+          <div className="stack">
+            <p className="sm muted">
+              On acceptance the manager selects the role(s) the candidate is qualified for — this is
+              what makes them eligible for shifts of that role later. Multi-select; editable later
+              on the staff profile.
+            </p>
+            <RolePick roles={data.roles} picked={picked} onToggle={toggle} />
+            <div className="row wrap">
+              <Button
+                tone="primary"
+                disabled={!canAccept || busy || picked.length === 0}
+                onClick={() => onAccept(picked, note)}
+              >
+                {busy ? 'Accepting…' : 'Accept — move to Documents'}
+              </Button>
+              <Button tone="danger" disabled={busy} onClick={onReject}>
+                Reject (E2)
+              </Button>
+            </div>
+            {problem ? <Alert tone="coral">{problem}</Alert> : null}
+            <Input
+              label="Internal note (optional)"
+              placeholder="e.g. strong English, has silver-service experience"
+              value={note}
+              onChange={(event) => setNote(event.target.value)}
+            />
           </div>
-          {problem ? <Alert tone="coral">{problem}</Alert> : null}
-          <Input
-            label="Internal note (optional)"
-            placeholder="e.g. strong English, has silver-service experience"
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-          />
-        </div>
-      </Panel>
+        </Panel>
+      )}
     </div>
   );
 }
@@ -1581,7 +1668,7 @@ function DocumentsPhase({
 // ---------------------------------------------------------------------
 // 4 · Quiz (read-only: taken in the app)
 // ---------------------------------------------------------------------
-function QuizPhase({ row, data }: { row: CandidateRow; data: CandidateData }) {
+function QuizPhase({ row, data, past }: { row: CandidateRow; data: CandidateData; past: boolean }) {
   const gate = quizGate(row);
   const best = row.quiz_best_score;
   const bestAttempt = data.attempts.find((a) => a.score === best);
@@ -1598,10 +1685,12 @@ function QuizPhase({ row, data }: { row: CandidateRow; data: CandidateData }) {
           actions={
             <>
               <Pill tone="green">Unlocked</Pill>
-              <span className="muted sm">
-                unlocked {formatUkStamp(row.stage_entered_at)} — the moment the last item was
-                verified
-              </span>
+              {past ? null : (
+                <span className="muted sm">
+                  unlocked {formatUkStamp(row.stage_entered_at)} — the moment the last item was
+                  verified
+                </span>
+              )}
             </>
           }
         >
