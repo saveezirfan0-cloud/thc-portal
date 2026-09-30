@@ -19,6 +19,7 @@ vi.mock('../data', () => ({
     warnings: [],
     rotaGuardMode: 'block',
     rtwCheckEnabled: false,
+    checkMonitor: { checks: [], waiting: [], lastRun: null, now: '', problem: null },
     problem: null,
   }),
 }));

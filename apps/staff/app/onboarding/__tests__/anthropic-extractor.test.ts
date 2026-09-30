@@ -40,6 +40,9 @@ function answer(fields: Record<string, unknown>) {
     legible: true,
     expiryDate: null,
     holidays: null,
+    courseStart: null,
+    courseEnd: null,
+    hoursStatement: null,
     completionDate: null,
     completionDateKind: null,
     awardingInstitution: null,
@@ -173,6 +176,10 @@ describe('the request', () => {
       ).text;
     expect(text(0)).toMatch(/vacation/i);
     expect(text(0)).toMatch(/inclusive/i);
+    expect(text(0)).toMatch(/courseStart/);
+    expect(text(0)).toMatch(/courseEnd/);
+    expect(text(0)).toMatch(/hoursStatement/);
+    expect(text(0)).toMatch(/never calculate, infer or recommend an hours limit/i);
     expect(text(1)).toMatch(/completionDate/);
     expect(text(1)).toMatch(/awardingInstitution/);
   });
@@ -255,6 +262,104 @@ describe('each document type maps 1:1 onto ExtractionResult', () => {
       { from: '2027-03-27', to: '2027-04-18' },
     ]);
     expect(result.confidence).toBe(0.95);
+  });
+
+  it('term letter → the course start, expected end and hours statement, beside the holidays', async () => {
+    const { client } = fakeClient(
+      message(
+        answer({
+          holidays: [{ from: '2026-12-19', to: '2027-01-10' }],
+          courseStart: '2024-09-23',
+          courseEnd: '2027-06-25',
+          hoursStatement: '  May work up to 20 hours per week\n during term time.  ',
+        }),
+      ),
+    );
+    const result = await createAnthropicExtractor({ client }).extract(
+      input('university_term_dates_letter'),
+    );
+    expect(result.raw['termLetter']).toEqual({
+      courseStart: '2024-09-23',
+      courseEnd: '2027-06-25',
+      hoursStatement: 'May work up to 20 hours per week during term time.',
+    });
+    // Informational: nothing but the holidays is written to a column.
+    expect(result.completionDate).toBeNull();
+    expect(result.expiryDate).toBeNull();
+    expect(result.confidence).toBe(0.95);
+  });
+
+  it('term letter that prints no course dates or hours is not a doubtful read', async () => {
+    const { client } = fakeClient(
+      message(answer({ holidays: [{ from: '2026-12-19', to: '2027-01-10' }] })),
+    );
+    const result = await createAnthropicExtractor({ client }).extract(
+      input('university_term_dates_letter'),
+    );
+    expect(result.raw['termLetter']).toEqual({
+      courseStart: null,
+      courseEnd: null,
+      hoursStatement: null,
+    });
+    expect(result.raw['issues']).toEqual([]);
+    expect(result.confidence).toBe(0.95);
+  });
+
+  it('drops an impossible course date, or an end before the start, and caps the confidence', async () => {
+    const bad = await createAnthropicExtractor({
+      client: fakeClient(
+        message(
+          answer({
+            holidays: [{ from: '2026-12-19', to: '2027-01-10' }],
+            courseStart: '2024-02-31',
+            courseEnd: '2027-06-25',
+          }),
+        ),
+      ).client,
+    }).extract(input('university_term_dates_letter'));
+    expect(bad.raw['termLetter']).toMatchObject({ courseStart: null, courseEnd: '2027-06-25' });
+    expect(bad.raw['issues']).toContain('bad_course_start');
+    expect(bad.confidence).toBeLessThanOrEqual(DOUBTFUL_CONFIDENCE);
+
+    const backwards = await createAnthropicExtractor({
+      client: fakeClient(
+        message(
+          answer({
+            holidays: [{ from: '2026-12-19', to: '2027-01-10' }],
+            courseStart: '2027-06-25',
+            courseEnd: '2024-09-23',
+          }),
+        ),
+      ).client,
+    }).extract(input('university_term_dates_letter'));
+    expect(backwards.raw['termLetter']).toMatchObject({
+      courseStart: '2027-06-25',
+      courseEnd: null,
+    });
+    expect(backwards.raw['issues']).toContain('course_end_before_start');
+    expect(backwards.confidence).toBeLessThanOrEqual(DOUBTFUL_CONFIDENCE);
+  });
+
+  it('keeps an hours statement to one short line and only on a term letter', async () => {
+    const long = `Students may work ${'very '.repeat(80)}many hours.`;
+    const term = await createAnthropicExtractor({
+      client: fakeClient(
+        message(
+          answer({ holidays: [{ from: '2026-12-19', to: '2027-01-10' }], hoursStatement: long }),
+        ),
+      ).client,
+    }).extract(input('university_term_dates_letter'));
+    const statement = (term.raw['termLetter'] as { hoursStatement: string }).hoursStatement;
+    expect(statement.length).toBeLessThanOrEqual(250);
+
+    const passport = await createAnthropicExtractor({
+      client: fakeClient(
+        message(
+          answer({ expiryDate: '2031-03-12', courseStart: '2024-09-23', hoursStatement: 'x' }),
+        ),
+      ).client,
+    }).extract(input('passport'));
+    expect(passport.raw).not.toHaveProperty('termLetter');
   });
 
   it('completion letter → completion date and awarding institution', async () => {

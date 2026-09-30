@@ -19,7 +19,8 @@ export const dynamic = 'force-dynamic';
  */
 export default async function Page({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   // `?tab=radar` is how the dashboard's "view radar →" (§9.1) lands on the
-  // Radar rather than the queue. Anything else opens the default tab.
+  // Radar rather than the queue; `?tab=checks` opens the gov.uk check monitor.
+  // Anything else opens the default tab.
   const { tab } = await searchParams;
   const data = await loadCompliance();
   const blocked = new Set(
@@ -47,7 +48,10 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ t
         </>
       }
     >
-      <ComplianceScreen data={data} initialTab={tab === 'radar' ? 'radar' : 'review'} />
+      <ComplianceScreen
+        data={data}
+        initialTab={tab === 'radar' || tab === 'checks' ? tab : 'review'}
+      />
     </OfficeShell>
   );
 }
