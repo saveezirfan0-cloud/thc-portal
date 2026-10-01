@@ -152,7 +152,7 @@ export const SILENT_FIELDS = [
   'onsite_contact',
   'allocation_per_hour',
   'auto_assign',
-  // ADR-0078: steers who is invited next; nobody booked is re-asked.
+  // ADR-0079: steers who is invited next; nobody booked is re-asked.
   'required_gender',
   'title',
 ] as const;

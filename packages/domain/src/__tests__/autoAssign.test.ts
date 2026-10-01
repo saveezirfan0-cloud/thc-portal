@@ -55,7 +55,7 @@ describe('selectInvitees — who one round invites (§3.4, §6)', () => {
     expect(selectInvitees([row()], { allocation: -1 })).toEqual([]);
   });
 
-  // ADR-0078: the client asked for male staff. The pool says so per row;
+  // ADR-0079: the client asked for male staff. The pool says so per row;
   // the round must not spend its allocation on anyone else.
   it('on a male-only section invites only the men, even past a better-scoring woman', () => {
     const rows = [

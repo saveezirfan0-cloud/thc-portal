@@ -140,7 +140,7 @@ export function RoleBoard({
           {windowEnded ? <Pill>window ended</Pill> : null}
           {/* Absolute buffer, never the total (§3.2). */}
           <Pill>{formatAllocationPair(section.headcount, section.buffer)}</Pill>
-          {/* ADR-0078: auto-assign, Radar and Accept book only this gender. */}
+          {/* ADR-0079: auto-assign, Radar and Accept book only this gender. */}
           {section.requiredGender ? (
             <Pill tone="cyan">{REQUIRED_GENDER_LABEL[section.requiredGender]}</Pill>
           ) : null}

@@ -1,6 +1,6 @@
 -- =====================================================================
 -- Migration 20261002107000 · A staff gender on a role section
---   (ADR-0078; THC requests 01.10.2026)
+--   (ADR-0079; THC requests 01.10.2026)
 --
 -- Some clients ask for male staff on a role, some for female staff. The
 -- Shift Builder gets a "Staff gender" choice per role section — Any,
@@ -53,7 +53,7 @@ alter table shift_requirements
     constraint shift_requirements_required_gender_m_or_f check (required_gender in ('M', 'F'));
 
 comment on column shift_requirements.required_gender is
-  'ADR-0078: the client asked for staff of one gender on this role — M (male staff only) or F (female staff only); null is anyone. auto_assign_candidates() gates everyone whose staff.gender differs (male_only / female_only) or is not on file (gender_not_recorded), so no automatic round, Radar listing, offer or Accept books them. Not under the §3.2 edit lock.';
+  'ADR-0079: the client asked for staff of one gender on this role — M (male staff only) or F (female staff only); null is anyone. auto_assign_candidates() gates everyone whose staff.gender differs (male_only / female_only) or is not on file (gender_not_recorded), so no automatic round, Radar listing, offer or Accept books them. Not under the §3.2 edit lock.';
 
 -- 20261001203000 replaced SELECT on this table with SELECT on every
 -- column but the two rates; a column added since needs its own grant
@@ -62,7 +62,7 @@ grant select (required_gender) on public.shift_requirements to anon, authenticat
 
 -- ---------------------------------------------------------------------
 -- 2 · auto_assign_candidates — 20260930110000's body but for the three
---     gates marked (ADR-0078). Same signature and columns, so every
+--     gates marked (ADR-0079). Same signature and columns, so every
 --     caller and grant stands.
 -- ---------------------------------------------------------------------
 create or replace function public.auto_assign_candidates(
@@ -101,7 +101,7 @@ as $$
     case
       when not exists (select 1 from staff_roles sro
                         where sro.staff_id = s.id and sro.role_id = sec.role_id) then 'wrong_role'
-      -- ADR-0078: the client asked for staff of one gender on this role.
+      -- ADR-0079: the client asked for staff of one gender on this role.
       -- Straight after wrong_role because, like it, it is what the SECTION
       -- asks for rather than anything about the worker's week.
       when sec.required_gender is not null and s.gender is null              then 'gender_not_recorded'
@@ -174,7 +174,7 @@ as $$
 $$;
 
 comment on function public.auto_assign_candidates(uuid, boolean) is
-  'The §3.3/§3.4 pool for one role section, computed fresh: gate, wave, the five §6 factor inputs — reliability is staff_show_rate() (20260928110100), never the stored column — and this section''s own booking (status and, since 20260930110000, cause). Workers only: candidates, rejected applicants, leavers and removed workers have no row (20260930110000). Gates: wrong_role, male_only / female_only / gender_not_recorded (a section with a required_gender, ADR-0078), do_not_return, blocked, self_cancelled, booked_elsewhere (confirmed or worked, 2 h different-venue gap — 20260930110000), rtw_expired (20260924130100), hours_limit (RULE-20), and — only with p_escalation — outside_radius (§3.4 same-day escalation, 20260927140100). Scoring itself is packages/domain/scoring.ts.';
+  'The §3.3/§3.4 pool for one role section, computed fresh: gate, wave, the five §6 factor inputs — reliability is staff_show_rate() (20260928110100), never the stored column — and this section''s own booking (status and, since 20260930110000, cause). Workers only: candidates, rejected applicants, leavers and removed workers have no row (20260930110000). Gates: wrong_role, male_only / female_only / gender_not_recorded (a section with a required_gender, ADR-0079), do_not_return, blocked, self_cancelled, booked_elsewhere (confirmed or worked, 2 h different-venue gap — 20260930110000), rtw_expired (20260924130100), hours_limit (RULE-20), and — only with p_escalation — outside_radius (§3.4 same-day escalation, 20260927140100). Scoring itself is packages/domain/scoring.ts.';
 
 revoke execute on function public.auto_assign_candidates(uuid, boolean) from public, anon;
 grant  execute on function public.auto_assign_candidates(uuid, boolean) to authenticated, service_role;
@@ -225,7 +225,7 @@ begin
 end $$;
 
 comment on function public.set_staff_gender(uuid, text) is
-  'ADR-0078: the office records (or, with null, clears) a worker''s gender — M or F, the HMRC New Starter values — on /staff/:id. Read by auto_assign_candidates() for a role section with a required_gender. Office logins that are not read-only; refused on a removed worker; audited without the value.';
+  'ADR-0079: the office records (or, with null, clears) a worker''s gender — M or F, the HMRC New Starter values — on /staff/:id. Read by auto_assign_candidates() for a role section with a required_gender. Office logins that are not read-only; refused on a removed worker; audited without the value.';
 
 revoke all on function public.set_staff_gender(uuid, text) from public, anon;
 grant execute on function public.set_staff_gender(uuid, text) to authenticated, service_role;

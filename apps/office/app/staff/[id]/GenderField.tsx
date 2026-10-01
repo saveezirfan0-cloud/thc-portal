@@ -7,7 +7,7 @@ import { saveGender } from './actions';
 const LABEL: Readonly<Record<'M' | 'F', string>> = { M: 'Male', F: 'Female' };
 
 /**
- * Gender on the Overview card "Contacts & identity" (ADR-0078).
+ * Gender on the Overview card "Contacts & identity" (ADR-0079).
  *
  * The worker gives it on onboarding step 7 (the HMRC New Starter
  * checklist, M or F). A male- or female-only role section books only that

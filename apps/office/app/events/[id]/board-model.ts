@@ -335,10 +335,10 @@ interface ReasonCopy {
 /**
  * The live hard gates, as §3.3 names them. `wrong_role`, `male_only` and
  * `female_only` are absent on purpose: they never produce a row on the
- * board (§6, ADR-0078).
+ * board (§6, ADR-0079).
  */
 export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
-  // ADR-0078: a gender-only role section and a worker with no gender on file.
+  // ADR-0079: a gender-only role section and a worker with no gender on file.
   gender_not_recorded: {
     label: 'Gender not recorded',
     detail:
@@ -547,7 +547,7 @@ export interface EndedBooking {
  *   * the live hard gates from `auto_assign_candidates` — blocked,
  *     booked elsewhere, hours limit, right to work, self-cancelled, do not
  *     return, gender not recorded on a gender-only section. `wrong_role`
- *     and `male_only` / `female_only` never produce a row (§6, ADR-0078).
+ *     and `male_only` / `female_only` never produce a row (§6, ADR-0079).
  *   * this section's cancelled and closed bookings that CANNOT be reopened
  *     — a self-cancel, an event cancellation, a GDPR removal, or a row
  *     with history — labelled by `cancel_cause`, when the worker carries

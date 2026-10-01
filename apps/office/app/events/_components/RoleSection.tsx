@@ -349,7 +349,7 @@ export function RoleSection({
           </div>
         </div>
 
-        {/* ADR-0078: a client's request for staff of one gender on this role.
+        {/* ADR-0079: a client's request for staff of one gender on this role.
             A hard gate in auto_assign_candidates, so every path that books
             someone holds to it — rounds, Radar, offers, Accept and a manual
             invite. */}

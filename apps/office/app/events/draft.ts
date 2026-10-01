@@ -25,7 +25,7 @@ import {
 import type { SavedEvent } from './data';
 
 /**
- * ADR-0078: the gender a client asked for on a role — HMRC's M or F, the
+ * ADR-0079: the gender a client asked for on a role — HMRC's M or F, the
  * values `staff.gender` holds — or null for anyone.
  */
 export type RequiredGender = 'M' | 'F' | null;
@@ -59,7 +59,7 @@ export interface RoleDraft {
   dressCodeOther: string;
   autoAssign: boolean;
   /**
-   * ADR-0078: the client asked for staff of one gender on this role.
+   * ADR-0079: the client asked for staff of one gender on this role.
    * Auto-assign, Radar and Accept then book only that gender
    * (`auto_assign_candidates`). Null = anyone.
    */
@@ -237,7 +237,7 @@ export function canRemoveRole(role: RoleDraft, bookedBySectionId: Record<string,
  * roles, NOT the staff)." So a duplicate:
  *   * keeps the client, venue, title, PO, contact, notes and every role
  *     section's times, headcount, buffer, rates, dress code, allocation and
- *     staff gender — that is the client's ask, not the day's (ADR-0078);
+ *     staff gender — that is the client's ask, not the day's (ADR-0079);
  *   * drops every section id, so saving creates new sections and nothing
  *     booked on the original — confirmed, invited or applied — comes along;
  *   * leaves the DATE empty: a day is the one thing a duplicate must change,

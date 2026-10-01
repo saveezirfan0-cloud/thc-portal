@@ -144,7 +144,7 @@ export function score(input: ScoreInput, weights: ScoreWeights = DEFAULT_WEIGHTS
  * not in the pool.
  *
  * `male_only`, `female_only` and `gender_not_recorded` apply only on a role
- * section the client asked to staff with one gender (ADR-0078). The first
+ * section the client asked to staff with one gender (ADR-0079). The first
  * two (the other gender) are hidden like `wrong_role` — they are what the
  * section asks for, and listing everyone of the other gender would bury it
  * the same way. `gender_not_recorded` (none on file) does show, because

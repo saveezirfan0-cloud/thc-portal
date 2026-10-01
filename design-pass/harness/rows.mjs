@@ -599,7 +599,7 @@ const unavailable = [
     tone: 'amber',
     appliedAt: null,
   },
-  // ADR-0078: sec1 is Male staff only, and this worker has no gender on file.
+  // ADR-0079: sec1 is Male staff only, and this worker has no gender on file.
   {
     staffId: 's9',
     name: 'Daniel K.',

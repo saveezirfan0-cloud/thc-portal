@@ -80,7 +80,7 @@ export interface BoardSection {
   payRate: number | null;
   dressCode: string;
   autoAssign: boolean;
-  /** ADR-0078: the gender the client asked for on this role, or null for anyone. */
+  /** ADR-0079: the gender the client asked for on this role, or null for anyone. */
   requiredGender: 'M' | 'F' | null;
   allocationPerHour: number;
   confirmed: BoardBooking[];

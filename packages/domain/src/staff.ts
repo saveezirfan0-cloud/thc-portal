@@ -325,7 +325,7 @@ export type AcceptRefusal =
   /** RULE-04: self-cancelled off this event. */
   | 'self_cancelled'
   /**
-   * ADR-0078: the role was marked "Male staff only" or "Female staff only"
+   * ADR-0079: the role was marked "Male staff only" or "Female staff only"
    * after the invitation went out. The invitation is left live (never
    * withdrawn); Accept refuses.
    */
@@ -458,7 +458,7 @@ export const APPLY_REFUSAL_COPY: Record<ApplyRefusal, { title: string; body: str
     title: 'This shift isn’t one of your roles',
     body: 'Radar only shows the roles you’re signed off for.',
   },
-  // ADR-0078. Radar does not list the shift to them; this is the race.
+  // ADR-0079. Radar does not list the shift to them; this is the race.
   male_only: ACCEPT_REFUSAL_COPY.male_only,
   female_only: ACCEPT_REFUSAL_COPY.female_only,
   gender_not_recorded: ACCEPT_REFUSAL_COPY.gender_not_recorded,

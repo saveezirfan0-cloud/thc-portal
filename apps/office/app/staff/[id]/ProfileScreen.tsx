@@ -93,7 +93,7 @@ export function ProfileScreen({
    * correct the date of birth and decide a date-of-birth change request.
    */
   canCorrectDob?: boolean;
-  /** ADR-0078: any office login that may write records a gender. */
+  /** ADR-0079: any office login that may write records a gender. */
   canEditGender?: boolean;
   /** ADR-0072: `officeCan(role, 'finance')` — the Pay rate card is drawn. */
   showPayRate?: boolean;

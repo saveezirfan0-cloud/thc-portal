@@ -34,7 +34,7 @@ export interface RoleSectionInput {
   payRate: number | null;
   dressCode: string;
   autoAssign: boolean;
-  /** ADR-0078: book only this gender on the section; null for anyone. */
+  /** ADR-0079: book only this gender on the section; null for anyone. */
   requiredGender: 'M' | 'F' | null;
   allocationPerHour: number;
 }

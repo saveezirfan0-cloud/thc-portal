@@ -77,7 +77,7 @@ describe('a new role is pre-filled with the event window, then edited on its own
     expect(newRoleDraft(event({ autoAssign: false }), 'role-chef').autoAssign).toBe(false);
   });
 
-  it('starts open to any gender (ADR-0078)', () => {
+  it('starts open to any gender (ADR-0079)', () => {
     expect(newRoleDraft(event(), 'role-chef').requiredGender).toBeNull();
   });
 });
@@ -266,7 +266,7 @@ describe('what an edit does to the people already booked (§3.5)', () => {
     expect(plan.roles[0]!.reconfirming).toEqual([]);
   });
 
-  // ADR-0078: it steers who is invited next. Nobody already booked is asked
+  // ADR-0079: it steers who is invited next. Nobody already booked is asked
   // again, and nobody is removed.
   it('applies a staff gender silently, either way', () => {
     for (const requiredGender of ['M', 'F'] as const) {
@@ -353,7 +353,7 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
     expect([draft.overallStart, draft.overallEnd]).toEqual(['07:00', '01:30']);
   });
 
-  // ADR-0078: a staff gender is the client's ask for that role, not a
+  // ADR-0079: a staff gender is the client's ask for that role, not a
   // decision about the day's people, so it survives both.
   it('edit and duplicate both keep the staff gender as stored', () => {
     for (const as of ['edit', 'duplicate'] as const) {

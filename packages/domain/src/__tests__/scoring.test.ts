@@ -108,7 +108,7 @@ describe('weighted score (§6)', () => {
 });
 
 describe('hard gates (§6, §3.3)', () => {
-  it('has the six the scope names, plus the three of a gender-only section (ADR-0078)', () => {
+  it('has the six the scope names, plus the three of a gender-only section (ADR-0079)', () => {
     expect([...HARD_GATES]).toEqual([
       'wrong_role',
       'male_only',
@@ -155,7 +155,7 @@ describe('hard gates (§6, §3.3)', () => {
     }
   });
 
-  // ADR-0078: on a gender-only section the other gender is hidden like a
+  // ADR-0079: on a gender-only section the other gender is hidden like a
   // wrong role — listing them would bury the section — but a worker with
   // no gender on file shows, because the office can record it.
   it('a gender-only section hides the other gender and shows the gender-not-recorded', () => {

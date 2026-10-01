@@ -1,6 +1,6 @@
-# ADR-0078 · A staff gender on a role section — Male staff only / Female staff only
+# ADR-0079 · A staff gender on a role section — Male staff only / Female staff only
 
-**Status:** Accepted, 01.10.2026 (product owner) · **Builds on:** [ADR-0043](0043-worker-availability-hard-gate.md) (a gate overlaid on the pool), [ADR-0060](0060-viewer-role-two-step-reset-activation-links.md) (the viewer writes nothing), [ADR-0076](0076-payroll-codes-as-employee-id.md) (staff brought across from payroll) · **§3.2, §3.3, §3.4, §6, §9.6, §9.9 Tab 3, §10.4** · **Code:** migration `20261002107000_role_section_staff_gender.sql`; pgTAP `766`; `packages/domain/src/scoring.ts` (`HARD_GATES`, `showsUnderUnavailable`), `staff.ts`, `board.ts`, `state.ts`, `shift.ts`; `apps/office/app/events/_components/RoleSection.tsx` (the Staff gender select), `events/draft.ts` (`RequiredGender`, `REQUIRED_GENDER_LABEL`), `events/[id]/board-model.ts`, `staff/[id]/GenderField.tsx`
+**Status:** Accepted, 01.10.2026 (product owner) · **Builds on:** [ADR-0043](0043-worker-availability-hard-gate.md) (a gate overlaid on the pool), [ADR-0060](0060-viewer-role-two-step-reset-activation-links.md) (the viewer writes nothing), [ADR-0076](0076-payroll-codes-as-employee-id.md) (staff brought across from payroll) · **§3.2, §3.3, §3.4, §6, §9.6, §9.9 Tab 3, §10.4** · **Code:** migration `20261002107000_role_section_staff_gender.sql`; pgTAP `767`; `packages/domain/src/scoring.ts` (`HARD_GATES`, `showsUnderUnavailable`), `staff.ts`, `board.ts`, `state.ts`, `shift.ts`; `apps/office/app/events/_components/RoleSection.tsx` (the Staff gender select), `events/draft.ts` (`RequiredGender`, `REQUIRED_GENDER_LABEL`), `events/[id]/board-model.ts`, `staff/[id]/GenderField.tsx`
 
 ## Context
 
@@ -71,5 +71,7 @@ The worker's own answer on step 7 still writes the same column.
 
 - An office login can see a worker's recorded gender on their profile. The refusal copy tells a worker why a gender-only shift is closed to them.
 - **Legal:** in the UK a sex-specific requirement is lawful only where it is an occupational requirement under the Equality Act 2010 (Sch. 9 para 1). Examples are privacy and decency, such as searching or toilet attendants. THC decides when a client's request qualifies. The select enforces the request; it does not judge it.
-- The wireframe `wireframes/backoffice/shift-builder.html` does not draw the select. This ADR records the deviation, per CLAUDE.md.
+- The wireframe `wireframes/backoffice/shift-builder.html` draws the Staff gender select on Role 3.
+- **Gender is not asked on `/apply`.** Step 7 makes it compulsory, and nobody can be booked before onboarding is complete, so every new worker has it on file before they could be invited. Asking every applicant, rejected ones included, would collect more personal data than this needs (§1.7, data minimisation).
+- **On the live project on 01.10.2026, 20 of the 22 compliant workers had no gender on file,** because they were onboarded before step 7 asked for it. Until the office records it, a gender-only section draws on the other two. The event board lists exactly these people as *Gender not recorded* on any gender-only section.
 - `design-pass/harness` fixtures now carry a Male-only and a Female-only section and a worker with no gender on file. They also carry the board fields that had fallen behind: `handovers`, `offer` and `attendance`.
