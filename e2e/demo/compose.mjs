@@ -127,6 +127,33 @@ const GROUPS = {
       },
     ],
   },
+  client: {
+    file: 'THC-Client-Portal-Training',
+    kind: 'desktop',
+    label: 'Client Portal',
+    title: 'Client Portal training',
+    outro: ['That is the end of the Client Portal training', 'Events, line-ups, feedback and timesheets'],
+    parts: [
+      {
+        title: 'Signing in and your events',
+        lines: 'Your events list, tabs and filters,<br>fill, arrivals and the timesheet download',
+        spoken: '',
+        segs: [{ name: 'client-1-events', skipLogin: true }],
+      },
+      {
+        title: 'One event, and your feedback',
+        lines: 'The event page, who is staffing it,<br>and rating a member of staff',
+        spoken: '',
+        segs: [{ name: 'client-2-event-feedback', skipLogin: true }],
+      },
+      {
+        title: 'Timesheets and your account',
+        lines: 'The Allocation and Completed Timesheets,<br>your details and changing your password',
+        spoken: '',
+        segs: [{ name: 'client-3-timesheet-account', skipLogin: true }],
+      },
+    ],
+  },
   office: {
     file: 'THC-Office-Portal-Training',
     kind: 'desktop',
