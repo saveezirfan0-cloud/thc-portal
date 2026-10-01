@@ -46,6 +46,8 @@ const OWNED_BY_RPC = [
   'event_document_autosends',
   // ADR-0072: set_staff_pay_rate() is the only door; authenticated holds no write grant.
   'staff_pay_rates',
+  // ADR-0076: load_payroll_codes() and the Employee ID issue path are the only writers.
+  'payroll_codes',
 ];
 
 const sources = globSync(['apps/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}'], {

@@ -44,6 +44,9 @@
 -- columns, gated in their own body by office_rates_visible() (753).
 -- 20261001215000 (ADR-0072) added staff_pay_rates to assertions 1 and 3:
 -- one permissive admin_finance_read policy, no write policy (759).
+-- 20261002104000 (ADR-0076) added payroll_codes to assertions 1 and 3:
+-- admin_read, written only by load_payroll_codes() and the Employee ID
+-- issue path (764).
 -- Scope refs: §1.5 data model, §1.4 roles, §11.1 client sees no money.
 -- =====================================================================
 begin;
@@ -78,8 +81,9 @@ select bag_eq(
             ('application_referrals'),
             ('office_saved_views'),
             ('staff_pay_rates'),
-            ('event_document_autosends') $$,
-  'RLS is enabled on all 50 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), office_saved_views (ADR-0059, 20261001202000), staff_pay_rates (ADR-0072, 20261001215000) and event_document_autosends (ADR-0074, 20261002100000)'
+            ('event_document_autosends'),
+            ('payroll_codes') $$,
+  'RLS is enabled on all 51 tables: the 17 from 0001_init.sql, the 11 closed by 0004_rls_gaps, job_runs + job_schedules from the jobs layer, applications from the public form, cap_band_notices from the compliance job, staff_transitions from the §2.12 machine, storage_deletions from §1.7''s Storage half, payroll_export_lines + event_documents from §9.9/§11.3, the three the §10.3 wizard added (onboarding_progress, quiz_questions, contract_versions), rtw_checks from the automated right-to-work check (ADR-0025), and the seven staff additions of docs/19 (ADR-0043 … ADR-0047), office_saved_views (ADR-0059, 20261001202000), staff_pay_rates (ADR-0072, 20261001215000) event_document_autosends (ADR-0074, 20261002100000) and payroll_codes (ADR-0076, 20261002104000)'
 );
 
 -- ---------------------------------------------------------------------
@@ -158,7 +162,8 @@ select bag_eq(
             ('application_referrals'),
             ('office_saved_views'),
             ('staff_pay_rates'),
-            ('event_document_autosends') $$,
+            ('event_document_autosends'),
+            ('payroll_codes') $$,
   'admin holds a policy on every RLS table except profiles (the one remaining known gap)'
 );
 
