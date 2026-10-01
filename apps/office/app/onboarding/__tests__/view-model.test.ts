@@ -615,7 +615,7 @@ describe('the weekly limit as §2.3 words it', () => {
   });
 });
 
-describe('the right-to-work panel header (§2.5, ADR-0077)', () => {
+describe('the right-to-work panel header (§2.5, ADR-0078)', () => {
   it('asks no branch for a visa, a status document or a typed expiry', () => {
     for (const line of Object.values(RTW_REQUIRED)) {
       expect(line).not.toMatch(/visa document|status document|with its expiry/i);

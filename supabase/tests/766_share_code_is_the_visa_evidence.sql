@@ -1,6 +1,6 @@
 -- =====================================================================
--- 765 · The share-code check is the visa evidence (20261002105000,
---       ADR-0077 — THC, 01.10.2026, a change from scope §2.5)
+-- 766 · The share-code check is the visa evidence (20261002106000,
+--       ADR-0078 — THC, 01.10.2026, a change from scope §2.5)
 --
 --   1. step 1: no typed visa / status expiry in any branch; the work
 --      visa's visa type is still required;
@@ -75,10 +75,10 @@ set local "request.jwt.claims" = '{"sub":"76520000-0000-4000-8000-000000000001",
 
 select throws_ok(
   $$ select onboarding_save_right_to_work('work_visa', date '1997-06-08', 'W123AB4CD', null, null, null, false) $$,
-  'P0001', 'visa_type_required', 'the work visa still needs its visa type (§2.5 pt 3, kept by ADR-0077)');
+  'P0001', 'visa_type_required', 'the work visa still needs its visa type (§2.5 pt 3, kept by ADR-0078)');
 select lives_ok(
   $$ select onboarding_save_right_to_work('work_visa', date '1997-06-08', 'W123AB4CD', 'Skilled Worker', null, null, false) $$,
-  'with the visa type and no expiry, step 1 is done (ADR-0077)');
+  'with the visa type and no expiry, step 1 is done (ADR-0078)');
 select lives_ok(
   $$ select onboarding_save_right_to_work('work_visa', date '1997-06-08', 'W123AB4CD', 'Graduate', date '2028-03-31', null, false) $$,
   'an expiry sent by an older app is accepted and ignored');
@@ -92,7 +92,7 @@ select is((select share_code from staff where id = :'wv'), 'W123AB4CD',
 set local "request.jwt.claims" = '{"sub":"76520000-0000-4000-8000-000000000002","role":"authenticated"}';
 select lives_ok(
   $$ select onboarding_save_right_to_work('dependant_other', date '1995-02-14', 'W987ZY6XW', null, null, null, false) $$,
-  'dependant / other: no expiry asked for (ADR-0077)');
+  'dependant / other: no expiry asked for (ADR-0078)');
 
 set local "request.jwt.claims" = '{"sub":"76520000-0000-4000-8000-000000000003","role":"authenticated"}';
 select lives_ok(

@@ -1,7 +1,7 @@
 -- =====================================================================
--- Migration 20261002105000 · the share-code check is the visa evidence:
+-- Migration 20261002106000 · the share-code check is the visa evidence:
 --                            no visa / status upload and no typed expiry
---                            at onboarding (ADR-0077)
+--                            at onboarding (ADR-0078)
 --
 -- THC's decision, 01.10.2026, a deliberate change from scope §2.5:
 --
@@ -117,7 +117,7 @@ as $$
 $$;
 
 comment on function public.onboarding_required_docs(rtw_branch, text) is
-  '§2.5 pts 1–5 as narrowed by THC on 01.10.2026 (ADR-0077): the step 4 documents a branch asks for, one row per requirement, any ONE of accepts satisfies it. UK/Irish passport OR birth certificate + NI evidence (List A); EU passport or national ID; work visa and dependant/other passport; student passport + University Term Dates Letter. No visa_document or status_document: the gov.uk share-code check is the right-to-work evidence (20261002105000).';
+  '§2.5 pts 1–5 as narrowed by THC on 01.10.2026 (ADR-0078): the step 4 documents a branch asks for, one row per requirement, any ONE of accepts satisfies it. UK/Irish passport OR birth certificate + NI evidence (List A); EU passport or national ID; work visa and dependant/other passport; student passport + University Term Dates Letter. No visa_document or status_document: the gov.uk share-code check is the right-to-work evidence (20261002106000).';
 
 -- ---------------------------------------------------------------------
 -- 2 · Step 1: the visa type stays, the typed expiry goes.
@@ -192,7 +192,7 @@ begin
     v_choice := null;
   end if;
 
-  -- §2.5 pt 3's dropdown, kept by the owner (ADR-0077).
+  -- §2.5 pt 3's dropdown, kept by the owner (ADR-0078).
   if v_branch = 'work_visa' then
     v_visa_type := nullif(btrim(coalesce(p_visa_type, '')), '');
     if v_visa_type is null
@@ -201,7 +201,7 @@ begin
     end if;
   end if;
 
-  -- No typed expiry in any branch (ADR-0077): the gov.uk share-code check
+  -- No typed expiry in any branch (ADR-0078): the gov.uk share-code check
   -- returns the right-to-work-until date. p_visa_expiry is not read.
 
   update staff
@@ -248,13 +248,13 @@ begin
 end $$;
 
 comment on function public.onboarding_save_right_to_work(text, date, text, text, date, text, boolean) is
-  '§2.5 step 1 of the wizard: branch, DOB (18+), share code, visa type (work visa), UK document choice. No typed expiry in any branch — p_visa_expiry is ignored and visa_expiry stored null, because the gov.uk share-code check supplies the right-to-work-until date (ADR-0077, 20261002105000). The 48-hour opt-out tick signs through wtr_optout_do_sign() and an untick gives notice through wtr_optout_do_cancel() — never a bare write to the flag (20260923200000).';
+  '§2.5 step 1 of the wizard: branch, DOB (18+), share code, visa type (work visa), UK document choice. No typed expiry in any branch — p_visa_expiry is ignored and visa_expiry stored null, because the gov.uk share-code check supplies the right-to-work-until date (ADR-0078, 20261002106000). The 48-hour opt-out tick signs through wtr_optout_do_sign() and an untick gives notice through wtr_optout_do_cancel() — never a bare write to the flag (20260923200000).';
 
 comment on column public.onboarding_progress.visa_expiry is
-  'The visa / status expiry a worker typed on step 1 before ADR-0077 (01.10.2026). No longer written (null from 20261002105000): the gov.uk share-code check supplies the right-to-work-until date. Kept for rows already on file; it was never right_to_work_until.';
+  'The visa / status expiry a worker typed on step 1 before ADR-0078 (01.10.2026). No longer written (null from 20261002106000): the gov.uk share-code check supplies the right-to-work-until date. Kept for rows already on file; it was never right_to_work_until.';
 
 comment on column public.onboarding_progress.visa_type is
-  'Branch 3''s visa type dropdown (§2.5 pt 3) — Skilled Worker, Youth Mobility Scheme, Graduate or Other work visa. Still required on step 1 for the work visa branch (ADR-0077 kept it).';
+  'Branch 3''s visa type dropdown (§2.5 pt 3) — Skilled Worker, Youth Mobility Scheme, Graduate or Other work visa. Still required on step 1 for the work visa branch (ADR-0078 kept it).';
 
 -- ---------------------------------------------------------------------
 -- 3 · What is missing, per branch.
@@ -299,7 +299,7 @@ begin
     case s_rtw_branch
       when 'uk_irish' then
         -- passport OR birth certificate + a document showing the NI number
-        -- (List A; kept by ADR-0077)
+        -- (List A; kept by ADR-0078)
         if not ('passport' = any(have)) then
           if 'birth_certificate' = any(have) then
             if not ('ni_evidence' = any(have)) then
@@ -319,7 +319,7 @@ begin
           missing := missing || 'university_term_dates_letter'::text;
         end if;
       when 'work_visa', 'dependant_other' then
-        -- The share code below is the visa evidence (ADR-0077).
+        -- The share code below is the visa evidence (ADR-0078).
         if not ('passport' = any(have)) then missing := missing || 'passport'::text; end if;
     end case;
 
@@ -341,7 +341,7 @@ begin
 end $$;
 
 comment on function public.onboarding_documents_missing(uuid) is
-  '§2.5 points 1–5 as narrowed by ADR-0077: which of the branch''s required items have not been supplied at all (tokens: dob, rtw_branch, passport, ni_evidence — UK birth-certificate route only —, university_term_dates_letter, share_code, criminal_declaration). No visa_document or status_document token for any branch: the gov.uk share-code check is the evidence. Empty = everything is in; whether it is verified is compliance_blockers() (20261002105000).';
+  '§2.5 points 1–5 as narrowed by ADR-0078: which of the branch''s required items have not been supplied at all (tokens: dob, rtw_branch, passport, ni_evidence — UK birth-certificate route only —, university_term_dates_letter, share_code, criminal_declaration). No visa_document or status_document token for any branch: the gov.uk share-code check is the evidence. Empty = everything is in; whether it is verified is compliance_blockers() (20261002106000).';
 
 -- ---------------------------------------------------------------------
 -- 4 · One-off: candidates already in the wizard (see the header).
@@ -383,7 +383,7 @@ begin
 end $$;
 
 comment on function public.onboarding_supersede_legacy_rtw_docs() is
-  'ADR-0077 one-off, run once by 20261002105000: supersedes (never deletes) pending or rejected visa_document / status_document rows, and ni_evidence off the UK birth-certificate route, for candidates up to and including Documents, then runs the §2.3 gate for each one touched. Returns the number of rows superseded. Idempotent; kept as a function so 765 can exercise it.';
+  'ADR-0078 one-off, run once by 20261002106000: supersedes (never deletes) pending or rejected visa_document / status_document rows, and ni_evidence off the UK birth-certificate route, for candidates up to and including Documents, then runs the §2.3 gate for each one touched. Returns the number of rows superseded. Idempotent; kept as a function so 766 can exercise it.';
 
 revoke execute on function public.onboarding_supersede_legacy_rtw_docs() from public, anon, authenticated;
 

@@ -97,7 +97,7 @@ export const BRANCH_HEADING: Readonly<Record<RtwBranch, string>> = {
 /**
  * Branch 1 only: "passport (photo) OR birth certificate + a document
  * showing the NI number" — the Home Office's List A pair, kept by
- * ADR-0077 (ADR-0065).
+ * ADR-0078 (ADR-0065).
  */
 export type UkDocChoice = 'passport' | 'birth_certificate';
 
@@ -132,7 +132,7 @@ const PASSPORT: DocRequirement = {
 
 /**
  * The documents a branch asks for — §2.5 pts 1–5 as THC narrowed them on
- * 01.10.2026 (ADR-0077); "no further documents are collected at
+ * 01.10.2026 (ADR-0078); "no further documents are collected at
  * onboarding" (§2.5 pt 8).
  *
  * Not in this list, deliberately:
@@ -142,16 +142,16 @@ const PASSPORT: DocRequirement = {
  *     the rota guard read;
  *   · a visa (work visa), a visa / status document (dependant / other) or
  *     a student visa — the share-code check is the evidence of status and
- *     expiry, so no visa copy is uploaded in any branch (ADR-0077; §2.5
+ *     expiry, so no visa copy is uploaded in any branch (ADR-0078; §2.5
  *     pt 4 had already said so of the student visa on 04.09.2026);
  *   · NI evidence anywhere but beside a UK birth certificate — there it is
- *     the second half of List A's pair and stays (ADR-0077, ADR-0065);
+ *     the second half of List A's pair and stays (ADR-0078, ADR-0065);
  *   · the completion letter — uploaded once the student graduates, from
  *     the Documents tab (§4.5), not at onboarding;
  *   · a P45 — never accepted anywhere (§2.8).
  *
  * The visa_document and status_document types stay in the schema: rows
- * uploaded before ADR-0077 are kept.
+ * uploaded before ADR-0078 are kept.
  */
 export function requiredDocuments(
   branch: RtwBranch,
@@ -213,7 +213,7 @@ export function needsShareCode(branch: RtwBranch): boolean {
 /**
  * Work visa: visa type (dropdown, §2.5 pt 3). No typed expiry in any
  * branch: the gov.uk share-code check returns the right-to-work-until
- * date (ADR-0077).
+ * date (ADR-0078).
  */
 export function needsVisaType(branch: RtwBranch): boolean {
   return branch === 'work_visa';

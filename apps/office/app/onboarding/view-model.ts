@@ -829,7 +829,7 @@ export const RTW_BRANCH_NO: Record<string, number> = {
 };
 
 /**
- * §2.5 pts 1–5 as THC narrowed them on 01.10.2026 (ADR-0077): the document
+ * §2.5 pts 1–5 as THC narrowed them on 01.10.2026 (ADR-0078): the document
  * set each branch collects, as the panel header reads it. No visa or status
  * document is asked for — the share-code check carries the
  * right-to-work-until date. NI evidence stays on the UK birth-certificate

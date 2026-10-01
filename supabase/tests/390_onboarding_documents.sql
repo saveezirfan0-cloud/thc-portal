@@ -114,29 +114,29 @@ select throws_ok(
 select throws_ok(
   $$ select onboarding_save_right_to_work('work_visa', date '1999-09-30', 'W123AB4CD', null, date '2028-03-31', null, false) $$,
   'P0001', 'visa_type_required', 'work visa needs a visa type (§2.5 pt 3)');
--- ADR-0077: no typed expiry in any branch — the gov.uk share-code check
+-- ADR-0078: no typed expiry in any branch — the gov.uk share-code check
 -- returns the right-to-work-until date. The visa type stays.
 select lives_ok(
   $$ select onboarding_save_right_to_work('work_visa', date '1999-09-30', 'W123AB4CD', 'Skilled Worker', date '2020-01-01', null, false) $$,
-  'work visa: passport + share code + visa type is enough; a typed expiry is not read, so even a past one is not refused (ADR-0077)');
+  'work visa: passport + share code + visa type is enough; a typed expiry is not read, so even a past one is not refused (ADR-0078)');
 select is(
   (select row(visa_type, visa_expiry)::text from onboarding_progress where staff_id = :'amara'),
   row('Skilled Worker'::text, null::date)::text,
   'the visa type is kept and no expiry is stored');
 select lives_ok(
   $$ select onboarding_save_right_to_work('dependant_other', date '1999-09-30', 'W123AB4CD', null, null, null, false) $$,
-  'dependant / other: passport + share code, no expiry asked for (ADR-0077)');
+  'dependant / other: passport + share code, no expiry asked for (ADR-0078)');
 select is_empty(
   $$ select b, c, r.req_key
        from unnest(enum_range(null::rtw_branch)) b,
             unnest(array['passport', 'birth_certificate']) c,
             onboarding_required_docs(b, c) r
       where r.accepts && array['visa_document', 'status_document']::doc_type[] $$,
-  'no branch asks for a visa document or a status document at step 4 (ADR-0077)');
+  'no branch asks for a visa document or a status document at step 4 (ADR-0078)');
 select results_eq(
   $$ select req_key from onboarding_required_docs('uk_irish', 'birth_certificate') $$,
   $$ values ('birth_certificate'), ('ni_evidence') $$,
-  'the UK birth-certificate route keeps its NI evidence (List A, ADR-0065 — kept by ADR-0077)');
+  'the UK birth-certificate route keeps its NI evidence (List A, ADR-0065 — kept by ADR-0078)');
 select results_eq(
   $$ select req_key from onboarding_required_docs('work_visa', null)
      union all select req_key from onboarding_required_docs('dependant_other', null) $$,
@@ -198,7 +198,7 @@ select lives_ok($$ select onboarding_confirm_selfie() $$, 'then step 3 is done')
 select throws_ok(
   format($$ select onboarding_attach_document('visa_document', %L, 'visa.pdf', 1000, 'application/pdf') $$,
          :'amara' || '/visa_document/a.pdf'),
-  'P0001', 'doc_not_for_branch', 'a student uploads no visa — the share code covers it (§2.5 pt 4, ADR-0077)');
+  'P0001', 'doc_not_for_branch', 'a student uploads no visa — the share code covers it (§2.5 pt 4, ADR-0078)');
 select throws_ok(
   $$ select onboarding_attach_document('passport', 'someone-else/passport/a.jpg', 'p.jpg', 1000, 'image/jpeg') $$,
   'P0001', 'wrong_path', 'only into the caller''s own folder');

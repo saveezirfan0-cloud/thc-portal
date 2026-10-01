@@ -32,12 +32,12 @@ import { WizardFoot, WizardTop } from './Wizard';
 /**
  * 1/11 Right to work — §2.5, wireframes/staff/onboarding-1.html (six states).
  *
- * The branch decides the documents (§2.5 pts 1–5 as narrowed by ADR-0077),
+ * The branch decides the documents (§2.5 pts 1–5 as narrowed by ADR-0078),
  * DOB is asked in every branch, the share code is TYPED and validated before
  * anything goes near gov.uk, and the 48-hour opt-out is offered to everyone
  * with the wireframe's per-branch caveat (it never overrides a visa limit,
  * §4.4). No visa or status expiry is typed in any branch: the gov.uk
- * share-code check returns the right-to-work-until date (ADR-0077).
+ * share-code check returns the right-to-work-until date (ADR-0078).
  */
 const OPT_OUT_NOTE: Record<RtwBranch, string> = {
   uk_irish: 'Optional — no visa limit applies to you.',
