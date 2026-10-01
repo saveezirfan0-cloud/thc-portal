@@ -146,7 +146,7 @@ describe('hard gates (§6, §3.3)', () => {
     expect(showsUnderUnavailable('do_not_return')).toBe(true);
   });
 
-  it('wrong role produces no row at all; the other five show under Unavailable', () => {
+  it('wrong role and the other gender produce no row; every other gate shows under Unavailable', () => {
     expect(showsUnderUnavailable('wrong_role')).toBe(false);
     for (const gate of HARD_GATES.filter(
       (g) => g !== 'wrong_role' && g !== 'male_only' && g !== 'female_only',

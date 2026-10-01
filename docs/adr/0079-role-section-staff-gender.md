@@ -15,7 +15,7 @@ The scope has no such requirement. Two things already exist that it can build on
   - `invite_worker` (manual invites too)
   - `accept_invite`, `apply_to_shift` and `accept_application`
   - Radar (`staff_open_shifts`)
-  - the shift-offer pushes and takes
+  - the shift-offer pushes and takes. `take_offered_shift` is restated so it refuses by the gate's name rather than as `not_bookable`.
 
 ## Decision
 
@@ -71,7 +71,15 @@ The worker's own answer on step 7 still writes the same column.
 
 - An office login can see a worker's recorded gender on their profile. The refusal copy tells a worker why a gender-only shift is closed to them.
 - **Legal:** in the UK a sex-specific requirement is lawful only where it is an occupational requirement under the Equality Act 2010 (Sch. 9 para 1). Examples are privacy and decency, such as searching or toilet attendants. THC decides when a client's request qualifies. The select enforces the request; it does not judge it.
-- The wireframe `wireframes/backoffice/shift-builder.html` draws the Staff gender select on Role 3.
+- The wireframe `wireframes/backoffice/shift-builder.html` draws the Staff gender select on Role 3. Two other additions are not drawn, so this ADR is their deviation record, as ADR-0072 is for the Pay rate card:
+  - `backoffice/event-board.html`: the gender pill on a role header, and Unavailable → *Gender not recorded*.
+  - `backoffice/staff-profile.html`: the Contacts & identity → Gender row.
+
+  `docs/08-screen-inventory.md` lists all three.
+- **Transparency (§1.7).** Onboarding step 7's notice used to say gender *"goes on your payroll record for HMRC and is used for nothing else"*. It now names the second use: *"We also use it for the few roles where a client has asked for male or female staff only…"*. The column comment on `staff.gender` names both uses.
+  - **What the value is:** the sex HMRC holds for the worker, not a self-described gender. The notice already says so.
+  - **Workers who answered under the old wording:** this covers the two of the 22 compliant workers who have it on file. The office should tell them, or confirm it with them, before relying on it. For everyone the office records afterwards, the use is stated when it is recorded.
+  - **Lawful basis:** this use rests on THC's legitimate interest in meeting a client's occupational requirement (see Legal below).
 - **Gender is not asked on `/apply`.** Step 7 makes it compulsory, and nobody can be booked before onboarding is complete, so every new worker has it on file before they could be invited. Asking every applicant, rejected ones included, would collect more personal data than this needs (§1.7, data minimisation).
 - **On the live project on 01.10.2026, 20 of the 22 compliant workers had no gender on file,** because they were onboarded before step 7 asked for it. Until the office records it, a gender-only section draws on the other two. The event board lists exactly these people as *Gender not recorded* on any gender-only section.
 - `design-pass/harness` fixtures now carry a Male-only and a Female-only section and a worker with no gender on file. They also carry the board fields that had fallen behind: `handovers`, `offer` and `attendance`.

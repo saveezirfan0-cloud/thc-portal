@@ -20,7 +20,7 @@
 --      audit row does not carry the value.
 -- =====================================================================
 begin;
-select plan(39);
+select plan(44);
 \ir _shared/fixtures.psql
 
 \set ro      '76750000-0000-4000-8000-000000000001'
@@ -37,9 +37,15 @@ select plan(39);
 \set blkman  '76600000-0000-4000-8000-000000000006'
 \set gone    '76600000-0000-4000-8000-000000000007'
 \set viewer  '76700000-0000-4000-8000-000000000001'
+\set sched   '76700000-0000-4000-8000-000000000002'
+\set man_uid '76700000-0000-4000-8000-000000000003'
+\set offer   '76700000-0000-4000-8000-000000000004'
 
-insert into auth.users (id, email) values (:'viewer', 'viewer.766@rls.test');
+insert into auth.users (id, email) values (:'viewer', 'viewer.767@rls.test');
 insert into profiles (id, role, office_role, full_name) values (:'viewer', 'admin', 'viewer', 'Vic Viewer');
+insert into auth.users (id, email) values (:'sched', 'sched.767@rls.test'), (:'man_uid', 'man.767@rls.test');
+insert into profiles (id, role, office_role, full_name) values (:'sched', 'admin', 'scheduler', 'Sam Scheduler');
+insert into profiles (id, role, full_name) values (:'man_uid', 'staff', 'Mark Man');
 
 insert into roles (id, name, pay_rate) values
   (:'ro',  'Male-only Security',  14.00),
@@ -177,6 +183,27 @@ select is((select status::text from bookings where shift_id = :'mo' and staff_id
 select is(accept_invite((select id from bookings where shift_id = :'mo' and staff_id = :'man'))->>'ok',
   'true', 'the man accepts');
 
+-- The office taking a Radar application forward, after the gender was set.
+select is(apply_to_shift(:'plain', :'woman')->>'ok', 'true', 'a woman applies to the section for anyone');
+update shift_requirements set required_gender = 'M' where id = :'plain';
+select is(accept_application((select id from bookings where shift_id = :'plain' and staff_id = :'woman'))->>'reason',
+  'male_only', 'made Male-only afterwards: the office''s Accept application is refused by name');
+update shift_requirements set required_gender = null where id = :'plain';
+
+-- A shift offered up on a Female-only section: a man's take is refused by
+-- the gate's name, never as "your account can't take shifts" (not_bookable).
+update bookings set status = 'confirmed', confirmed_at = now()
+ where shift_id = :'fo' and staff_id = :'woman';
+insert into shift_offers (id, booking_id, mode, expires_at)
+select :'offer', id, 'pool', now() + interval '3 days' from bookings where shift_id = :'fo' and staff_id = :'woman';
+update staff set user_id = :'man_uid' where id = :'man';
+select set_config('request.jwt.claims', json_build_object('sub', :'man_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select is(take_offered_shift(:'offer'), jsonb_build_object('ok', false, 'reason', 'female_only'),
+  'a man taking an offer on a Female-only section is refused female_only');
+reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+
 -- ---------------------------------------------------------------------
 -- 5. set_staff_gender
 -- ---------------------------------------------------------------------
@@ -190,6 +217,13 @@ select throws_ok(format($$ select set_staff_gender(%L, 'X') $$, :'unknown'),
 select set_config('request.jwt.claims', json_build_object('sub', :'viewer', 'role', 'authenticated')::text, true);
 select throws_ok(format($$ select set_staff_gender(%L, 'F') $$, :'unknown'),
   '42501', 'read_only', 'a viewer is refused by the write guard');
+
+select set_config('request.jwt.claims', json_build_object('sub', :'sched', 'role', 'authenticated')::text, true);
+select is(set_staff_gender(:'woman2', 'F')->>'gender', 'F', 'a scheduler may record it — it is not money');
+
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+select throws_ok(format($$ select set_staff_gender(%L, 'M') $$, :'unknown'),
+  '42501', 'not_authorised', 'a client login cannot call it');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 'role', 'authenticated')::text, true);
 select throws_ok(format($$ select set_staff_gender(%L, 'M') $$, :'staffa'),

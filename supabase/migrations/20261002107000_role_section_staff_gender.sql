@@ -39,7 +39,13 @@
 --       manager's to withdraw on the event board (§3.6).
 --   3 · set_staff_gender() — the office records M or F on /staff/:id for
 --       a worker it is missing for, or corrects it. The worker's own
---       answer on step 7 still writes the same column.
+--       answer on step 7 still writes the same column, and step 7's
+--       notice now names this second use (packages/domain hmrc.ts).
+--   4 · take_offered_shift() — 20260930205000's body with ONE change: its
+--       refusal maps the three new gates by name instead of folding them
+--       into not_bookable ("Your account can't take shifts"), which would
+--       alarm a worker the section simply is not for.
+--   5 · staff.gender's comment, which said "HMRC report only".
 --
 -- §6's five weights are contractual and untouched: this is a gate, not a
 -- factor. Forward-only.
@@ -229,3 +235,212 @@ comment on function public.set_staff_gender(uuid, text) is
 
 revoke all on function public.set_staff_gender(uuid, text) from public, anon;
 grant execute on function public.set_staff_gender(uuid, text) to authenticated, service_role;
+
+-- ---------------------------------------------------------------------
+-- 4 · take_offered_shift — 20260930205000's body but for the three gates
+--     passed through by name (ADR-0079). Same signature; grants stand.
+-- ---------------------------------------------------------------------
+create or replace function public.take_offered_shift(p_offer uuid)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public, extensions
+as $$
+declare
+  v_me        uuid := staff_caller();
+  v_status    staff_status;
+  o           shift_offers;
+  sr          shift_requirements;
+  ev          events;
+  orig        bookings;
+  mine        bookings;
+  v_gate      text;
+  v_qualified boolean;
+  v_direct    boolean;
+  v_gap       int := booked_elsewhere_gap_minutes();
+  v_taker     uuid;
+  v_withdrawn int := 0;
+begin
+  if v_me is null then
+    raise exception 'unknown_staff' using errcode = 'P0001';
+  end if;
+  select s.status into v_status from staff s where s.id = v_me;
+  if v_status = 'removed' then
+    raise exception 'account_closed' using errcode = 'P0001';
+  end if;
+  if v_status in ('inactive', 'rejected') then
+    raise exception 'not_editable' using errcode = 'P0001';
+  end if;
+
+  -- Unlocked: only to learn the section and the booking. Both are
+  -- immutable on an offer (shift_offers_state_guard), so the ids read here
+  -- are the ids under the locks below.
+  select * into o from shift_offers where id = p_offer;
+  if o.id is null then
+    -- Unknown and not-open read the same: an id says nothing about anybody.
+    return jsonb_build_object('ok', false, 'reason', 'offer_not_open');
+  end if;
+
+  -- The same lock invite_worker, accept_invite and accept_application take,
+  -- so every path to this slot queues on one row. Then the offerer's
+  -- booking BEFORE the offer: every other exit from confirmed holds the
+  -- booking and then lapses the offer (bookings_offer_lapse), so taking
+  -- them the other way round could deadlock. The offer is re-read under
+  -- its own lock, as it is now.
+  select * into sr from shift_requirements where id = o.shift_id for update;
+  select * into orig from bookings where id = o.booking_id for update;
+  select * into o from shift_offers where id = p_offer for update;
+  select * into ev from events where id = sr.event_id;
+  v_direct := coalesce((select s.value = 'true'::jsonb from settings s
+                         where s.key = 'shift_offers_direct_enabled'), false);
+
+  -- takeOffer()'s order (shiftOffer.vectors.json).
+  if ev.cancelled_at is not null then
+    return jsonb_build_object('ok', false, 'reason', 'event_cancelled');
+  end if;
+  if o.status <> 'open'
+     or o.mode = 'office'
+     or (o.mode = 'direct' and not (v_direct and o.target_staff_id = v_me)) then
+    return jsonb_build_object('ok', false, 'reason', 'offer_not_open');
+  end if;
+  if now() >= o.expires_at then
+    return jsonb_build_object('ok', false, 'reason', 'offer_expired');
+  end if;
+  if orig.status <> 'confirmed' then
+    return jsonb_build_object('ok', false, 'reason', 'original_not_confirmed');
+  end if;
+  if o.offered_by_staff_id = v_me then
+    return jsonb_build_object('ok', false, 'reason', 'own_offer');
+  end if;
+  if now() >= sr.starts_at then
+    return jsonb_build_object('ok', false, 'reason', 'section_started');
+  end if;
+
+  -- Every hard gate the pool applies, by name. The calendar is not one of
+  -- them for a take (ADR-0043): the worker has changed their mind.
+  select c.gate, c.qualified into v_gate, v_qualified
+    from auto_assign_candidates(sr.id) c
+   where c.staff_id = v_me;
+  if not found then
+    return jsonb_build_object('ok', false, 'reason', 'not_bookable');
+  end if;
+  if v_gate is not null then
+    return jsonb_build_object('ok', false, 'reason',
+      case v_gate
+        when 'booked_elsewhere' then 'overlap'
+        when 'wrong_role' then v_gate
+        -- ADR-0079: a gender-only section, by name (20261002107000).
+        when 'male_only' then v_gate
+        when 'female_only' then v_gate
+        when 'gender_not_recorded' then v_gate
+        when 'do_not_return' then v_gate
+        when 'blocked' then v_gate
+        when 'self_cancelled' then v_gate
+        when 'rtw_expired' then v_gate
+        when 'hours_limit' then v_gate
+        else 'not_bookable'
+      end);
+  end if;
+
+  -- accept_invite()'s own re-reads, kept literally from its latest body
+  -- (main's 20260930110000, D2): the overlap with the 2 h different-venue
+  -- gap against confirmed OR worked bookings — a shift the worker has
+  -- already checked in to is at least as confirmed — then RULE-20 with the
+  -- right-to-work stop told apart.
+  if exists (
+    select 1 from bookings x
+      join shift_requirements sr2 on sr2.id = x.shift_id
+      join events ev2 on ev2.id = sr2.event_id
+     where x.staff_id = v_me and x.status in ('confirmed', 'worked') and x.shift_id <> sr.id
+       and booked_elsewhere_conflict(sr.starts_at, sr.ends_at, ev.venue_id,
+                                     sr2.starts_at, sr2.ends_at, ev2.venue_id, v_gap) <> 'clear'
+  ) then
+    return jsonb_build_object('ok', false, 'reason', 'overlap');
+  end if;
+  if weekly_cap_would_breach(v_me, sr.id) then
+    if not (can_roster_staff(v_me, (sr.starts_at at time zone 'Europe/London')::date)
+            and can_roster_staff(v_me, ((sr.ends_at - interval '1 second')
+                                        at time zone 'Europe/London')::date)) then
+      return jsonb_build_object('ok', false, 'reason', 'rtw_expired');
+    end if;
+    return jsonb_build_object('ok', false, 'reason', 'hours_limit');
+  end if;
+
+  select * into mine from bookings where shift_id = sr.id and staff_id = v_me for update;
+  if mine.id is not null and mine.status in ('confirmed', 'worked', 'turned_away', 'cancelled') then
+    return jsonb_build_object('ok', false, 'reason', 'already_had_booking');
+  end if;
+
+  -- RULE-17: qualified at this client and role first, fully — which, with
+  -- auto-assign off, offer_wave1_exhausted() counts as done at once.
+  if not v_qualified and o.mode = 'pool' and not offer_wave1_exhausted(o.id) then
+    return jsonb_build_object('ok', false, 'reason', 'not_yet');
+  end if;
+
+  -- The hand-over. The taker is confirmed first, then the offer is taken,
+  -- then the original is released — so bookings_offer_lapse finds no open
+  -- offer to lapse, and at no point is the slot empty.
+  if mine.id is null then
+    insert into bookings (shift_id, staff_id, status, source, confirmed_at)
+    values (sr.id, v_me, 'confirmed', 'offer', now())
+    returning id into v_taker;
+  else
+    if mine.status = 'closed' then
+      -- §3.6: a dead offer comes back through `applied` (closed → applied).
+      update bookings
+         set status = 'applied', applied_at = coalesce(applied_at, now()),
+             cancelled_at = null, cancel_cause = null
+       where id = mine.id;
+    end if;
+    update bookings
+       set status = 'confirmed', source = 'offer', confirmed_at = now(),
+           cancelled_at = null, cancel_cause = null
+     where id = mine.id;
+    v_taker := mine.id;
+  end if;
+
+  update shift_offers
+     set status = 'taken', taken_by_booking_id = v_taker, taken_by_staff_id = v_me,
+         closed_reason = 'taken'
+   where id = o.id;
+
+  -- RULE-04 / Q15: a completed hand-over bars the offerer from the event.
+  update bookings
+     set status = 'cancelled', cancelled_at = now(),
+         cancel_cause = 'handed_over', self_cancelled = true
+   where id = orig.id;
+
+  -- §3.4, as on Accept: the taker's other intersecting invitations go.
+  with overlapping as (
+    update bookings x set status = 'cancelled', cancelled_at = now(),
+                          cancel_cause = 'overlap_auto_withdraw'
+      from shift_requirements sr3
+     where sr3.id = x.shift_id
+       and x.staff_id = v_me and x.status = 'invited' and x.id <> v_taker
+       and sr.starts_at < sr3.ends_at and sr3.starts_at < sr.ends_at
+    returning x.id
+  ) select count(*)::int into v_withdrawn from overlapping;
+
+  perform queue_offer_notice('OF2', o.id);
+  perform queue_offer_notice('OF4', o.id);
+
+  insert into audit_log (at, actor, action, entity, entity_id, data)
+  values (now(), auth.uid(), 'shift_offer.taken', 'shift_offer', o.id,
+          jsonb_build_object('shiftId', sr.id,
+                             'fromStaffId', o.offered_by_staff_id, 'fromBookingId', orig.id,
+                             'toStaffId', v_me, 'toBookingId', v_taker));
+
+  return jsonb_build_object('ok', true, 'bookingId', v_taker, 'withdrawn', v_withdrawn);
+end $$;
+
+comment on function public.take_offered_shift(uuid) is
+  'ADR-0046: one transaction; locks section → offerer''s booking → offer (the order every other exit from confirmed takes). Caller by staff_caller(): unknown_staff / account_closed / not_editable raise P0001. Refuses, in takeOffer()''s order: event_cancelled › offer_not_open › offer_expired › original_not_confirmed › own_offer › section_started › the pool gate by name (booked_elsewhere → overlap; male_only / female_only / gender_not_recorded by name since 20261002107000, ADR-0079; no row → not_bookable) and accept_invite''s overlap / cap re-reads › already_had_booking › not_yet (RULE-17; none with auto-assign off). Then the taker is confirmed (source offer), the offer taken, the original cancelled / handed_over / self_cancelled, the taker''s overlapping invitations withdrawn, OF2 + OF4 queued. Confirmed count net zero. Never refused for the calendar (ADR-0043).';
+
+revoke execute on function public.take_offered_shift(uuid) from public, anon;
+grant  execute on function public.take_offered_shift(uuid) to authenticated;
+
+-- ---------------------------------------------------------------------
+-- 5 · staff.gender is no longer for the HMRC report only
+-- ---------------------------------------------------------------------
+comment on column staff.gender is
+  'M or F, the values HMRC''s payroll record takes, given on onboarding step 7 or recorded by the office (set_staff_gender). Two uses, both named in the step-7 notice: the HMRC New Starter report (§9.9 Tab 3), and a role section with a required_gender (ADR-0079, auto_assign_candidates). Nulled on GDPR removal (staff_wipe_report_fields).';

@@ -20,17 +20,26 @@ export function GenderField({
   staffId,
   gender,
   editable,
+  removed = false,
 }: {
   staffId: string;
   /** Null: not on file. Undefined: could not be read. */
   gender: 'M' | 'F' | null | undefined;
   editable: boolean;
+  /** §1.7: a removed worker's gender was wiped with the rest; nothing is "missing". */
+  removed?: boolean;
 }) {
   const [shown, setShown] = useState(gender);
+  // Follow the stored value when the page re-reads it (a router refresh).
+  const [stored, setStored] = useState(gender);
+  if (gender !== stored) {
+    setStored(gender);
+    setShown(gender);
+  }
   const [failure, setFailure] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
-  if (shown === undefined) return <span className="muted">—</span>;
+  if (shown === undefined || removed) return <span className="muted">—</span>;
 
   const change = (next: string) => {
     const value = next === 'M' || next === 'F' ? next : null;

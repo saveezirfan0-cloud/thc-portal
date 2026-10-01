@@ -58,6 +58,10 @@ export const TAKE_OFFER_REFUSALS = [
   'section_started',
   'not_bookable',
   'wrong_role',
+  // ADR-0079: a gender-only section, by name.
+  'male_only',
+  'female_only',
+  'gender_not_recorded',
   'do_not_return',
   'blocked',
   'self_cancelled',
@@ -77,6 +81,9 @@ export type TakeOfferRefusal = (typeof TAKE_OFFER_REFUSALS)[number];
  */
 const GATE_REFUSAL: Readonly<Record<string, TakeOfferRefusal>> = {
   wrong_role: 'wrong_role',
+  male_only: 'male_only',
+  female_only: 'female_only',
+  gender_not_recorded: 'gender_not_recorded',
   do_not_return: 'do_not_return',
   blocked: 'blocked',
   self_cancelled: 'self_cancelled',

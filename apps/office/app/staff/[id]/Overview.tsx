@@ -109,6 +109,7 @@ export function Overview({
             staffId={profile.id}
             gender={gender}
             editable={canEditGender && !profile.removed}
+            removed={profile.removed}
           />
           <span className="k">Home address</span>
           <span>
