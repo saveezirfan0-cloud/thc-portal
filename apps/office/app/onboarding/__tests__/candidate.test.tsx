@@ -130,6 +130,22 @@ describe('the candidate profile, Documents phase', () => {
     expect(html).toContain('comes back to Needs review');
   });
 
+  // ADR-0080: the languages from step 2, once given — and nothing before.
+  it('shows the languages they speak once step 2 is answered', () => {
+    const html = render(
+      data({
+        facts: {
+          niNumber: null,
+          belowDegreeLevel: false,
+          visaHourLimit: null,
+          languages: ['English', 'Spanish'],
+        },
+      }),
+    );
+    expect(html).toContain('Speaks <b>English &amp; Spanish</b>');
+    expect(render(data())).not.toContain('Speaks');
+  });
+
   it('D32: offers the course level for a student', () => {
     expect(render(data())).toContain('Course is below degree level');
   });

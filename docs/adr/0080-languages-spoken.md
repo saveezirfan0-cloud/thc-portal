@@ -24,7 +24,9 @@ Every worker THC books speaks English: the induction, the quiz and the contract 
 
 Not asked on `/apply`: that would change `submit_application_as_caller`, the rate-limited public write, and nobody can be booked before onboarding is complete anyway.
 
-The candidate profile (`/onboarding/:id`) reads "Speaks English, Spanish" in its header facts once step 2 is answered.
+The candidate profile (`/onboarding/:id`) reads "Speaks English & Spanish" in its header facts once step 2 is answered.
+
+`staff_save_languages` accepts a call at any stage, so a later Profile screen can reuse it; each save writes an `audit_log` row (`staff.languages_saved`, without the value), so a worker's change over what the office recorded shows in the activity log.
 
 ### 4 · The event says in the Shift Builder
 
@@ -34,7 +36,7 @@ Like the gender on a section (ADR-0079):
 
 - **Duplicate keeps it** — it is the client's ask for the event, not a decision about one day's people.
 - **It re-confirms nobody** (`required_languages` in `SILENT_FIELDS`).
-- **It is not under the §3.2 edit lock** — `event_edit_lock_guard` names the columns it freezes and this is not one; it steers who is invited next, not the event as booked.
+- **It is not under the §3.2 edit lock** in the database — `event_edit_lock_guard` names the columns it freezes and this is not one; it steers who is invited next, not the event as booked. The Shift Builder itself is read-only once the event has started, as it is for the gender select (ADR-0079), so in practice the office sets it before the start.
 
 ### 5 · Two hard gates, straight after the gender gates
 
@@ -64,4 +66,5 @@ The Overview card _Contacts & identity_ gets a **Languages** row: the chip picke
 - **Equality.** Language is a job requirement the client states for an event, not a protected characteristic. THC still decides when a client's request is a genuine requirement of the work; the picker enforces the request, it does not judge it.
 - **Wireframes.** `backoffice/shift-builder.html` (panel 4) and `staff/onboarding-1.html` (step 2) now draw the pickers. Not drawn, so this ADR is their deviation record, as ADR-0079 is for the gender additions: the event-board pill and Unavailable reason (`backoffice/event-board.html`), the staff-profile Languages row (`backoffice/staff-profile.html`) and the candidate-profile line (`backoffice/candidate.html`). `docs/08-screen-inventory.md` lists all of them.
 - The Staff App does not yet let a worker change their languages after step 2 — `staff_save_languages` accepts a call at any stage, so a later Profile details screen can add it without a migration.
+- The Shift Builder's "Already booked staff are not removed" alert tells the manager to withdraw anyone who does not speak the language, but the event board's line-up does not yet mark who that is (the same gap as ADR-0079's gender). A "Doesn't speak Spanish" marker on line-up rows is a follow-up for the design pass.
 - `design-pass/harness` fixtures carry an event that needs Spanish and a _Languages not recorded_ worker.

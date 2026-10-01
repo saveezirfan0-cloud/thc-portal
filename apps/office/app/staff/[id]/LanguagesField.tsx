@@ -54,7 +54,12 @@ export function LanguagesField({
   return (
     <span>
       {editable ? (
-        <LanguagePicker value={shown ?? []} disabled={pending} onChange={change} />
+        <LanguagePicker
+          value={shown ?? []}
+          unrecorded={shown === null}
+          disabled={pending}
+          onChange={change}
+        />
       ) : shown ? (
         formatLanguages(shown)
       ) : (

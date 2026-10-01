@@ -127,10 +127,12 @@ export function ShiftBuilder({
       (issues.roles.get(role.key) ?? []).length === 0,
   ).length;
   const headcount = draft.roles.reduce((sum, role) => sum + role.headcount, 0);
-  // ADR-0080: the languages besides English, and whether this edit changed them.
+  // ADR-0080: the languages besides English, and whether this edit added
+  // one — only an addition can shut out someone already booked.
   const languagesAdded = extraLanguages(draft.requiredLanguages);
+  const savedLanguages = extraLanguages(initial.requiredLanguages);
   const languagesChanged =
-    mode === 'edit' && languagesAdded.join() !== extraLanguages(initial.requiredLanguages).join();
+    mode === 'edit' && languagesAdded.some((language) => !savedLanguages.includes(language));
   const bookedTotal = Object.values(booked).reduce((sum, n) => sum + n, 0);
   const buffer = draft.roles.reduce((sum, role) => sum + role.buffer, 0);
 

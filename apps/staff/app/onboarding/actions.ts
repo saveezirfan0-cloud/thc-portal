@@ -132,7 +132,8 @@ export async function saveAddress(input: {
  * `staff_save_languages()` writes their own row, English always in it.
  */
 export async function saveLanguages(languages: string[]): Promise<Result> {
-  return call('staff_save_languages', { p_languages: languages });
+  // The address save that follows revalidates once for the step.
+  return call('staff_save_languages', { p_languages: languages }, { revalidate: false });
 }
 
 /**

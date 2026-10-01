@@ -402,7 +402,7 @@ export const ACCEPT_REFUSAL_COPY: Record<AcceptRefusal, { title: string; body: s
   },
   language_not_spoken: {
     title: 'This shift isn’t available to you',
-    body: 'This event needs staff who speak a language that isn’t on your profile. If you speak it, please contact the office.',
+    body: 'This event needs staff who speak a language you didn’t tell us you speak. If you do, please contact the office.',
   },
   languages_not_recorded: {
     title: 'This shift isn’t available to you yet',

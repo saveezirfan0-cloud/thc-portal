@@ -16,13 +16,15 @@
 --      manual invitation, Radar, Accept on an invitation written before
 --      the language was added (left live), and a shift-offer take;
 --   5. staff_save_languages: the worker's own list, English always in,
---      unknown languages refused, a removed account refused;
---   6. set_staff_languages: the office records it and the gate lifts; a
---      viewer, client and worker are refused; audited without the value;
+--      unknown languages refused, a removed or rejected account refused;
+--      audited without the value;
+--   6. set_staff_languages: the office records it and the gate lifts, and
+--      null clears it back to never asked; a viewer, client and worker
+--      are refused; audited without the value;
 --   7. GDPR removal wipes it.
 -- =====================================================================
 begin;
-select plan(42);
+select plan(49);
 \ir _shared/fixtures.psql
 
 \set ro      '76850000-0000-4000-8000-000000000001'
@@ -41,10 +43,16 @@ select plan(42);
 \set viewer  '76870000-0000-4000-8000-000000000001'
 \set eng_uid '76870000-0000-4000-8000-000000000003'
 \set offer   '76870000-0000-4000-8000-000000000004'
+\set rmv     '76860000-0000-4000-8000-000000000008'
+\set rej     '76860000-0000-4000-8000-000000000009'
+\set rmv_uid '76870000-0000-4000-8000-000000000005'
+\set rej_uid '76870000-0000-4000-8000-000000000006'
 
 insert into auth.users (id, email) values (:'viewer', 'viewer.768@rls.test'), (:'eng_uid', 'eng.768@rls.test');
 insert into profiles (id, role, office_role, full_name) values (:'viewer', 'admin', 'viewer', 'Vic Viewer');
 insert into profiles (id, role, full_name) values (:'eng_uid', 'staff', 'Emma English');
+insert into auth.users (id, email) values (:'rmv_uid', 'rmv.768@rls.test'), (:'rej_uid', 'rej.768@rls.test');
+insert into profiles (id, role, full_name) values (:'rmv_uid', 'staff', 'Rex Removed'), (:'rej_uid', 'staff', 'Rita Rejected');
 
 insert into roles (id, name, pay_rate) values
   (:'ro',  'Language Hosts',     14.00),
@@ -168,6 +176,13 @@ select is((select status::text from bookings where shift_id = :'sec' and staff_i
 select is(accept_invite((select id from bookings where shift_id = :'sec' and staff_id = :'spk'))->>'ok',
   'true', 'the Spanish speaker accepts');
 
+-- The office taking a Radar application forward after a language was added.
+select is(apply_to_shift(:'plain', :'eng')->>'ok', 'true', 'they apply to an English-only event');
+update events set required_languages = array['English', 'Spanish'] where id = :'evt0';
+select is(accept_application((select id from bookings where shift_id = :'plain' and staff_id = :'eng'))->>'reason',
+  'language_not_spoken', 'Spanish added afterwards: the office''s Accept application is refused by name');
+update events set required_languages = array['English'] where id = :'evt0';
+
 -- A shift offered up: a take by someone who does not speak it is refused
 -- by name, never as not_bookable.
 insert into shift_offers (id, booking_id, mode, expires_at)
@@ -191,6 +206,23 @@ select is((select languages from staff where id = :'eng'), array['English', 'Ara
   'and it is written to their own row');
 select is((select gate from auto_assign_candidates(:'sec') where staff_id = :'eng'), null,
   'so the Spanish gate lifts for them');
+select is(
+  (select data from audit_log where action = 'staff.languages_saved' and entity_id = :'eng'),
+  jsonb_build_object('staffId', :'eng'),
+  'the worker''s own save is audited, without the value');
+
+-- A removed or rejected account cannot write.
+insert into staff (id, user_id, first_name, last_name, email, phone, dob, status, rtw_branch) values
+  (:'rmv', :'rmv_uid', 'Rex',  'Removed',  'r1@lang.test', '+447700976808', date '1995-01-01', 'removed',  'uk_irish'),
+  (:'rej', :'rej_uid', 'Rita', 'Rejected', 'r2@lang.test', '+447700976809', date '1995-01-01', 'rejected', 'uk_irish');
+set local role authenticated;
+select set_config('request.jwt.claims', json_build_object('sub', :'rmv_uid', 'role', 'authenticated')::text, true);
+select throws_ok($$ select staff_save_languages(array['Spanish']) $$,
+  'P0001', 'account_closed', 'a removed account is refused');
+select set_config('request.jwt.claims', json_build_object('sub', :'rej_uid', 'role', 'authenticated')::text, true);
+select throws_ok($$ select staff_save_languages(array['Spanish']) $$,
+  'P0001', 'not_editable', 'a rejected applicant is refused');
+reset role;
 
 -- ---------------------------------------------------------------------
 -- 6. set_staff_languages — the office
@@ -201,6 +233,10 @@ select is(set_staff_languages(:'never', array['Spanish'])->'languages', '["Engli
   'the office records it, English included');
 select is((select gate from auto_assign_candidates(:'sec') where staff_id = :'never'), null,
   'once recorded, the gate lifts');
+select is(set_staff_languages(:'never', null)->'languages', 'null'::jsonb,
+  'null clears it back to never asked');
+select is((select gate from auto_assign_candidates(:'sec') where staff_id = :'never'), 'languages_not_recorded',
+  'and the gate reads languages_not_recorded again');
 
 select set_config('request.jwt.claims', json_build_object('sub', :'viewer', 'role', 'authenticated')::text, true);
 select throws_ok(format($$ select set_staff_languages(%L, array['Polish']) $$, :'never'),
@@ -216,8 +252,8 @@ select throws_ok(format($$ select set_staff_languages(%L, array['Polish']) $$, :
 reset role;
 
 select is(
-  (select data from audit_log where action = 'staff.languages_set' and entity_id = :'never'),
-  jsonb_build_object('staffId', :'never'),
+  (select array_agg(distinct data) from audit_log where action = 'staff.languages_set' and entity_id = :'never'),
+  array[jsonb_build_object('staffId', :'never')],
   'audited, without the value');
 
 -- ---------------------------------------------------------------------

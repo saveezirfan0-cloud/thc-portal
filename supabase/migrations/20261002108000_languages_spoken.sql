@@ -161,6 +161,8 @@ comment on column events.required_languages is
 -- so a later Profile screen can reuse it. Duplicates and order are
 -- normalised away; English is added if missing (it is the base, and the
 -- step draws it ticked and fixed); anything not on the list is refused.
+-- Audited like the office's write, without the value, so a change over
+-- what the office recorded shows in the activity log.
 -- ---------------------------------------------------------------------
 create or replace function public.normalise_languages(p_languages text[])
 returns text[]
@@ -210,11 +212,16 @@ begin
 
   v_list := normalise_languages(p_languages);
   update staff set languages = v_list where id = v_me;
+
+  insert into audit_log (at, actor, action, entity, entity_id, data)
+  values (now(), auth.uid(), 'staff.languages_saved', 'staff', v_me,
+          jsonb_build_object('staffId', v_me::text));
+
   return jsonb_build_object('languages', to_jsonb(v_list));
 end $$;
 
 comment on function public.staff_save_languages(text[]) is
-  'ADR-0080: the signed-in worker records the languages they speak (onboarding step 2). English always included; unknown_language for anything off known_languages(); account_closed / not_editable for a removed, left or rejected account.';
+  'ADR-0080: the signed-in worker records the languages they speak (onboarding step 2). English always included; unknown_language for anything off known_languages(); account_closed / not_editable for a removed, left or rejected account. Audited (staff.languages_saved) without the value.';
 
 revoke all on function public.staff_save_languages(text[]) from public, anon;
 grant execute on function public.staff_save_languages(text[]) to authenticated;

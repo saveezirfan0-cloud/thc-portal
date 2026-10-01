@@ -304,6 +304,8 @@ export async function clearPayRate(staffId: string): Promise<ActionResult> {
 // ---------------------------------------------------------------------
 const GENDER_MESSAGES: Readonly<Record<string, string>> = {
   gender_m_or_f: 'Choose Male or Female.',
+  unknown_staff: 'This worker could not be found. Refresh the page.',
+  not_authorised: 'Only the office can do this.',
   staff_removed: 'This worker was removed under GDPR; nothing about them is recorded now.',
   read_only: 'Your login is read-only, so this cannot be changed.',
 };
@@ -322,6 +324,8 @@ export async function saveGender(staffId: string, gender: 'M' | 'F' | null): Pro
 // ---------------------------------------------------------------------
 const LANGUAGES_MESSAGES: Readonly<Record<string, string>> = {
   unknown_language: 'Choose languages from the list.',
+  unknown_staff: 'This worker could not be found. Refresh the page.',
+  not_authorised: 'Only the office can do this.',
   staff_removed: 'This worker was removed under GDPR; nothing about them is recorded now.',
   read_only: 'Your login is read-only, so this cannot be changed.',
 };

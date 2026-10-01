@@ -20,23 +20,32 @@ export function LanguagePicker({
   label,
   hint,
   disabled = false,
+  unrecorded = false,
 }: {
   value: readonly string[];
   onChange: (next: string[]) => void;
   label?: string;
   hint?: string;
   disabled?: boolean;
+  /**
+   * Nothing on file yet (a worker never asked): no chips, so English does
+   * not read as recorded. Adding a language records English with it.
+   */
+  unrecorded?: boolean;
 }) {
   const id = useId();
-  const chosen = normaliseLanguages(value);
+  const chosen = unrecorded ? [] : normaliseLanguages(value);
   const remaining = LANGUAGES.filter((language) => !chosen.includes(language));
 
   return (
     <div className="field">
-      {label ? (
+      {/* With no select to point at (read-only), the label is plain text. */}
+      {label && !disabled ? (
         <label className="label" htmlFor={`${id}-add`}>
           {label}
         </label>
+      ) : label ? (
+        <span className="label">{label}</span>
       ) : null}
       <div className="row wrap" style={{ alignItems: 'center' }}>
         {chosen.map((language) =>
