@@ -335,7 +335,16 @@ export interface CandidateData {
   referralProblem?: string | null;
   /** The NI number and the right-to-work conditions (20260930130100/130400). */
   facts?: CandidateFacts | null;
+  /** Set when the interview was marked complete by hand, not by Willo (ADR-0077). */
+  interviewOverride?: InterviewOverride | null;
   problem: string | null;
+}
+
+/** The audit row `onboarding_mark_interview_complete()` leaves (ADR-0077). */
+export interface InterviewOverride {
+  at: string;
+  byName: string | null;
+  reason: string;
 }
 
 export type ActionResult = { ok: true; message?: string } | { ok: false; message: string };

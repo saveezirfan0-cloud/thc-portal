@@ -70,7 +70,7 @@ export const RTW_BRANCHES: readonly { key: RtwBranch; title: string; description
   {
     key: 'work_visa',
     title: 'Work visa',
-    description: 'Passport + share code + visa type, expiry and a copy of the visa.',
+    description: 'Passport + share code + your visa type.',
   },
   {
     key: 'international_student',
@@ -81,7 +81,7 @@ export const RTW_BRANCHES: readonly { key: RtwBranch; title: string; description
   {
     key: 'dependant_other',
     title: 'Dependant or other visa',
-    description: 'Passport + share code + visa / status document and its expiry.',
+    description: 'Passport + your gov.uk share code.',
   },
 ];
 
@@ -94,12 +94,17 @@ export const BRANCH_HEADING: Readonly<Record<RtwBranch, string>> = {
   dependant_other: 'Dependant / other visa',
 };
 
-/** Branch 1 only: "passport (photo) OR birth certificate + a document showing the NI number". */
+/**
+ * Branch 1 only: "passport (photo) OR birth certificate + a document
+ * showing the NI number" — the Home Office's List A pair, kept by
+ * ADR-0077 (ADR-0065).
+ */
 export type UkDocChoice = 'passport' | 'birth_certificate';
 
 /**
- * §2.5 pt 7 — any of these satisfies the NI evidence requirement; the
- * manager checks the number on it matches the one on the profile.
+ * §2.5 pt 7 — any of these satisfies the NI evidence requirement on the
+ * birth-certificate route; the manager checks the number on it matches
+ * the one on the profile.
  */
 export const NI_EVIDENCE_ACCEPTED = [
   'an NI card or letter',
@@ -126,17 +131,27 @@ const PASSPORT: DocRequirement = {
 };
 
 /**
- * The documents a branch asks for — "exactly as listed in points 1–5
- * above; no further documents are collected at onboarding" (§2.5 pt 8).
+ * The documents a branch asks for — §2.5 pts 1–5 as THC narrowed them on
+ * 01.10.2026 (ADR-0077); "no further documents are collected at
+ * onboarding" (§2.5 pt 8).
  *
  * Not in this list, deliberately:
  *   · the share code — typed, never uploaded; the gov.uk check produces
- *     its report (`share_code_report`) on submit (§2.5, §2.6);
- *   · a student visa — "No separate student visa upload" (§2.5 pt 4,
- *     confirmed 04.09.2026);
+ *     its report (`share_code_report`) on submit (§2.5, §2.6), and that
+ *     report's right-to-work-until date is the expiry every reminder and
+ *     the rota guard read;
+ *   · a visa (work visa), a visa / status document (dependant / other) or
+ *     a student visa — the share-code check is the evidence of status and
+ *     expiry, so no visa copy is uploaded in any branch (ADR-0077; §2.5
+ *     pt 4 had already said so of the student visa on 04.09.2026);
+ *   · NI evidence anywhere but beside a UK birth certificate — there it is
+ *     the second half of List A's pair and stays (ADR-0077, ADR-0065);
  *   · the completion letter — uploaded once the student graduates, from
  *     the Documents tab (§4.5), not at onboarding;
  *   · a P45 — never accepted anywhere (§2.8).
+ *
+ * The visa_document and status_document types stay in the schema: rows
+ * uploaded before ADR-0077 are kept.
  */
 export function requiredDocuments(
   branch: RtwBranch,
@@ -170,15 +185,8 @@ export function requiredDocuments(
         },
       ];
     case 'work_visa':
-      return [
-        PASSPORT,
-        {
-          key: 'visa_document',
-          label: 'Visa — photo or PDF (BRP / eVisa)',
-          accepts: ['visa_document'],
-          hint: 'The office cross-checks it against the details you gave and the gov.uk result',
-        },
-      ];
+    case 'dependant_other':
+      return [PASSPORT];
     case 'international_student':
       return [
         PASSPORT,
@@ -187,16 +195,6 @@ export function requiredDocuments(
           label: 'University Term Dates Letter',
           accepts: ['university_term_dates_letter'],
           hint: 'This year’s letter from your university',
-        },
-      ];
-    case 'dependant_other':
-      return [
-        PASSPORT,
-        {
-          key: 'status_document',
-          label: 'Visa or status document',
-          accepts: ['status_document'],
-          hint: 'Your visa or the document confirming your status',
         },
       ];
   }
@@ -212,14 +210,13 @@ export function needsShareCode(branch: RtwBranch): boolean {
   return branch !== 'uk_irish';
 }
 
-/** Work visa: visa type (dropdown) + expiry (§2.5 pt 3). */
+/**
+ * Work visa: visa type (dropdown, §2.5 pt 3). No typed expiry in any
+ * branch: the gov.uk share-code check returns the right-to-work-until
+ * date (ADR-0077).
+ */
 export function needsVisaType(branch: RtwBranch): boolean {
   return branch === 'work_visa';
-}
-
-/** Work visa and dependant / other visa carry a typed expiry (§2.5 pts 3, 5). */
-export function needsVisaExpiry(branch: RtwBranch): boolean {
-  return branch === 'work_visa' || branch === 'dependant_other';
 }
 
 /** The wireframe's dropdown. "Other work visa" keeps it from being a closed list. */
@@ -236,8 +233,6 @@ export interface RtwForm {
   dob: string;
   shareCode: string;
   visaType: string;
-  /** ISO date, YYYY-MM-DD. */
-  visaExpiry: string;
   ukChoice: UkDocChoice | null;
   wtrOptOut: boolean;
 }
@@ -292,11 +287,6 @@ export function rtwErrors(
     if (err) errors.shareCode = err;
   }
   if (needsVisaType(form.branch) && !form.visaType) errors.visaType = 'Choose your visa type.';
-  if (needsVisaExpiry(form.branch)) {
-    if (!form.visaExpiry) errors.visaExpiry = 'The expiry date is required.';
-    else if (!isIsoDate(form.visaExpiry)) errors.visaExpiry = 'Enter a real date.';
-    else if (form.visaExpiry <= today) errors.visaExpiry = 'This date has already passed.';
-  }
   if (form.branch === 'uk_irish' && !form.ukChoice) {
     errors.ukChoice = 'Choose which documents you will provide.';
   }
@@ -312,7 +302,6 @@ export function rtwFooterHint(form: RtwForm, today: string = ukToday()): string 
     errors.dob && 'date of birth',
     errors.shareCode && 'share code',
     errors.visaType && 'visa type',
-    errors.visaExpiry && 'expiry',
     errors.ukChoice && 'document choice',
   ].filter((m): m is string => Boolean(m));
   if (missing.length === 0) return null;

@@ -20,7 +20,6 @@ import {
   VISA_TYPES,
   isValidShareCode,
   needsShareCode,
-  needsVisaExpiry,
   needsVisaType,
   requiredDocuments,
   rtwErrors,
@@ -33,10 +32,12 @@ import { WizardFoot, WizardTop } from './Wizard';
 /**
  * 1/11 Right to work — §2.5, wireframes/staff/onboarding-1.html (six states).
  *
- * The branch decides the documents (§2.5 pts 1–5, exactly), DOB is asked in
- * every branch, the share code is TYPED and validated before anything goes
- * near gov.uk, and the 48-hour opt-out is offered to everyone with the
- * wireframe's per-branch caveat (it never overrides a visa limit, §4.4).
+ * The branch decides the documents (§2.5 pts 1–5 as narrowed by ADR-0077),
+ * DOB is asked in every branch, the share code is TYPED and validated before
+ * anything goes near gov.uk, and the 48-hour opt-out is offered to everyone
+ * with the wireframe's per-branch caveat (it never overrides a visa limit,
+ * §4.4). No visa or status expiry is typed in any branch: the gov.uk
+ * share-code check returns the right-to-work-until date (ADR-0077).
  */
 const OPT_OUT_NOTE: Record<RtwBranch, string> = {
   uk_irish: 'Optional — no visa limit applies to you.',
@@ -72,7 +73,6 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
         dob: form.dob,
         shareCode: form.shareCode,
         visaType: form.visaType,
-        visaExpiry: form.visaExpiry,
         ukChoice: branch === 'uk_irish' ? form.ukChoice : null,
         wtrOptOut: form.wtrOptOut,
       });
@@ -203,24 +203,6 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
             </option>
           ))}
         </Select>
-      ) : null}
-
-      {needsVisaExpiry(branch) ? (
-        <Input
-          label={
-            <>
-              {branch === 'work_visa' ? 'Visa expiry' : 'Visa / status expiry'}{' '}
-              <span className="coral">*</span>
-            </>
-          }
-          type="date"
-          mono
-          min={today}
-          value={form.visaExpiry}
-          onChange={(e) => set('visaExpiry', e.target.value)}
-          error={form.visaExpiry ? errors.visaExpiry : undefined}
-          hint="Cross-checked by the office against the document you upload and the gov.uk result."
-        />
       ) : null}
 
       {branch === 'uk_irish' ? (

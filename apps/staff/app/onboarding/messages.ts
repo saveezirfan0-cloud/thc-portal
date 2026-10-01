@@ -17,8 +17,6 @@ const REASONS: Record<string, string> = {
   bad_share_code:
     "Share code must be 9 letters and numbers starting with W — e.g. W123AB4CD. Spaces are fine, we'll remove them.",
   visa_type_required: 'Choose your visa type.',
-  expiry_required: 'The expiry date is required.',
-  expiry_past: 'That expiry date has already passed.',
   address_required: 'Enter the first line of your address and your town.',
   bad_postcode: 'Enter a UK postcode, e.g. E2 0RY.',
   pin_outside_uk: 'Drop the pin on your home in the UK.',
