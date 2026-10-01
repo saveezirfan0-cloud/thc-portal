@@ -36,7 +36,6 @@ const raw = {
   progress: {
     ukDocChoice: null,
     visaType: null,
-    visaExpiry: null,
     rtwAt: '2026-09-18T10:12:00Z',
     addressAt: '2026-09-18T10:16:00Z',
     selfieAt: '2026-09-18T10:17:00Z',

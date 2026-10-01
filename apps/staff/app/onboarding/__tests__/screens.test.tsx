@@ -40,7 +40,6 @@ const blank: RtwForm = {
   dob: '',
   shareCode: '',
   visaType: '',
-  visaExpiry: '',
   ukChoice: null,
   wtrOptOut: false,
 };
@@ -73,7 +72,7 @@ describe('1/11 Right to work', () => {
     expect(html).toContain('Choose one to continue');
   });
 
-  it('UK / Irish — no share code field, passport or birth certificate + NI evidence', () => {
+  it('UK / Irish — no share code field, passport or birth certificate (no NI evidence, ADR-0077)', () => {
     const html = renderToStaticMarkup(
       <RtwStep
         initial={{ ...blank, branch: 'uk_irish', dob: '2001-02-14', ukChoice: 'passport' }}
@@ -81,8 +80,21 @@ describe('1/11 Right to work', () => {
       />,
     );
     expect(html).not.toContain('Share code');
-    expect(html).toContain('Birth cert. + NI evidence');
-    expect(html).toContain('P60');
+    expect(html).toContain('Birth certificate');
+    expect(html).not.toContain('NI evidence');
+    expect(html).not.toContain('P60');
+    expect(footer(html).disabled).toBe(false);
+  });
+
+  it('UK / Irish birth-certificate route — the birth certificate alone at step 4', () => {
+    const html = renderToStaticMarkup(
+      <RtwStep
+        initial={{ ...blank, branch: 'uk_irish', dob: '2001-02-14', ukChoice: 'birth_certificate' }}
+        today={TODAY}
+      />,
+    );
+    expect(html).toContain('Birth certificate');
+    expect(html).not.toContain('NI evidence');
     expect(footer(html).disabled).toBe(false);
   });
 
@@ -98,7 +110,7 @@ describe('1/11 Right to work', () => {
     expect(html).toContain('Fix the share code to continue');
   });
 
-  it('work visa — visa type and expiry, passport + visa upload at step 4', () => {
+  it('work visa — visa type, no expiry, passport only at step 4 (ADR-0077)', () => {
     const html = renderToStaticMarkup(
       <RtwStep
         initial={{
@@ -107,13 +119,15 @@ describe('1/11 Right to work', () => {
           dob: '1997-06-08',
           shareCode: 'W123AB4CD',
           visaType: 'Skilled Worker',
-          visaExpiry: '2028-03-31',
         }}
         today={TODAY}
       />,
     );
     expect(html).toContain('Visa type');
-    expect(html).toContain('Visa — photo or PDF (BRP / eVisa)');
+    expect(html).toContain('Skilled Worker');
+    expect(html).not.toContain('Visa expiry');
+    expect(html).not.toContain('Visa — photo or PDF');
+    expect(html).toContain('Passport — photo page');
     // A valid share code gets the wireframe's green ✓ addon on the field and its hint.
     expect(html).toMatch(/<span class="addon"><span class="green">✓<\/span><\/span>/);
     expect(html).toContain(
@@ -139,12 +153,25 @@ describe('1/11 Right to work', () => {
     expect(html).not.toContain('Visa — photo');
   });
 
-  it('dependant — DOB, share code and expiry required', () => {
+  it('dependant — DOB and share code required, no expiry (ADR-0077)', () => {
     const html = renderToStaticMarkup(
       <RtwStep initial={{ ...blank, branch: 'dependant_other' }} today={TODAY} />,
     );
-    expect(html).toContain('Date of birth, share code and expiry are required');
+    expect(html).toContain('Date of birth and share code are required');
+    expect(html).not.toContain('expiry');
     expect(footer(html).disabled).toBe(true);
+  });
+
+  it('dependant — passport + share code is complete, no status document', () => {
+    const html = renderToStaticMarkup(
+      <RtwStep
+        initial={{ ...blank, branch: 'dependant_other', dob: '1995-02-14', shareCode: 'W123AB4CD' }}
+        today={TODAY}
+      />,
+    );
+    expect(html).not.toContain('Visa or status document');
+    expect(html).toContain('Passport — photo page');
+    expect(footer(html).disabled).toBe(false);
   });
 });
 

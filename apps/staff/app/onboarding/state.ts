@@ -66,7 +66,6 @@ export interface OnboardingState {
   progress: {
     ukDocChoice: UkDocChoice | null;
     visaType: string | null;
-    visaExpiry: string | null;
     rtwAt: string | null;
     addressAt: string | null;
     selfieAt: string | null;
@@ -126,7 +125,6 @@ export function mapOnboardingState(raw: unknown): OnboardingState | null {
     progress: {
       ukDocChoice: str(p['ukDocChoice']) as UkDocChoice | null,
       visaType: str(p['visaType']),
-      visaExpiry: str(p['visaExpiry']),
       rtwAt: str(p['rtwAt']),
       addressAt: str(p['addressAt']),
       selfieAt: str(p['selfieAt']),

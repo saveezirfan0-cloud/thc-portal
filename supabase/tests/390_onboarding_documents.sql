@@ -27,7 +27,7 @@
 -- employee_id is left null: candidates have none until they sign (§2.7).
 -- =====================================================================
 begin;
-select plan(94);
+select plan(98);
 
 \set cl        'c3900000-0000-4000-8000-000000000001'
 \set amara     'c3910000-0000-4000-8000-000000000001'
@@ -110,16 +110,38 @@ select throws_ok(
   'P0001', 'under_18', 'under 18 is refused on the server (§2.1)');
 select throws_ok(
   $$ select onboarding_save_right_to_work('uk_irish', date '1999-09-30', null, null, null, null, false) $$,
-  'P0001', 'doc_choice_required', 'UK / Irish must say passport or birth certificate + NI evidence');
+  'P0001', 'doc_choice_required', 'UK / Irish must say passport or birth certificate');
 select throws_ok(
   $$ select onboarding_save_right_to_work('work_visa', date '1999-09-30', 'W123AB4CD', null, date '2028-03-31', null, false) $$,
   'P0001', 'visa_type_required', 'work visa needs a visa type (§2.5 pt 3)');
-select throws_ok(
+-- ADR-0077: no typed expiry in any branch — the gov.uk share-code check
+-- returns the right-to-work-until date. The visa type stays.
+select lives_ok(
   $$ select onboarding_save_right_to_work('work_visa', date '1999-09-30', 'W123AB4CD', 'Skilled Worker', date '2020-01-01', null, false) $$,
-  'P0001', 'expiry_past', 'and an expiry that has not passed');
-select throws_ok(
+  'work visa: passport + share code + visa type is enough; a typed expiry is not read, so even a past one is not refused (ADR-0077)');
+select is(
+  (select row(visa_type, visa_expiry)::text from onboarding_progress where staff_id = :'amara'),
+  row('Skilled Worker'::text, null::date)::text,
+  'the visa type is kept and no expiry is stored');
+select lives_ok(
   $$ select onboarding_save_right_to_work('dependant_other', date '1999-09-30', 'W123AB4CD', null, null, null, false) $$,
-  'P0001', 'expiry_required', 'dependant / other needs its expiry (§2.5 pt 5)');
+  'dependant / other: passport + share code, no expiry asked for (ADR-0077)');
+select is_empty(
+  $$ select b, c, r.req_key
+       from unnest(enum_range(null::rtw_branch)) b,
+            unnest(array['passport', 'birth_certificate']) c,
+            onboarding_required_docs(b, c) r
+      where r.accepts && array['visa_document', 'status_document', 'ni_evidence']::doc_type[] $$,
+  'no branch asks for a visa document, a status document or NI evidence at step 4 (ADR-0077)');
+select results_eq(
+  $$ select req_key from onboarding_required_docs('uk_irish', 'birth_certificate') $$,
+  $$ values ('birth_certificate') $$,
+  'the UK birth-certificate route is the birth certificate alone');
+select results_eq(
+  $$ select req_key from onboarding_required_docs('work_visa', null)
+     union all select req_key from onboarding_required_docs('dependant_other', null) $$,
+  $$ values ('passport'), ('passport') $$,
+  'work visa and dependant / other upload the passport only');
 select throws_ok(
   $$ select onboarding_save_right_to_work('martian', date '1999-09-30', 'W123AB4CD', null, null, null, false) $$,
   'P0001', 'bad_branch', 'there are five branches and no sixth');
@@ -176,7 +198,7 @@ select lives_ok($$ select onboarding_confirm_selfie() $$, 'then step 3 is done')
 select throws_ok(
   format($$ select onboarding_attach_document('visa_document', %L, 'visa.pdf', 1000, 'application/pdf') $$,
          :'amara' || '/visa_document/a.pdf'),
-  'P0001', 'doc_not_for_branch', 'a student uploads no visa — the share code covers it (§2.5 pt 4)');
+  'P0001', 'doc_not_for_branch', 'a student uploads no visa — the share code covers it (§2.5 pt 4, ADR-0077)');
 select throws_ok(
   $$ select onboarding_attach_document('passport', 'someone-else/passport/a.jpg', 'p.jpg', 1000, 'image/jpeg') $$,
   'P0001', 'wrong_path', 'only into the caller''s own folder');

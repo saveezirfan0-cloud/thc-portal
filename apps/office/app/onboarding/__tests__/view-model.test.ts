@@ -3,6 +3,7 @@ import { STAFF_STATUSES, canTransitionStaff } from '@thc/domain';
 import {
   ACTION_TARGET,
   COLUMNS,
+  RTW_REQUIRED,
   additionalInfoComplete,
   aiBadge,
   blockerLabel,
@@ -611,5 +612,20 @@ describe('the weekly limit as §2.3 words it', () => {
   it('leaves the sentences that carry no hours alone', () => {
     expect(candidateCap('uncapped', null)).toMatch(/^No weekly ceiling/);
     expect(candidateCap(null, null)).toMatch(/cannot be booked/);
+  });
+});
+
+describe('the right-to-work panel header (§2.5, ADR-0077)', () => {
+  it('asks no branch for a visa, a status document, NI evidence or a typed expiry', () => {
+    for (const line of Object.values(RTW_REQUIRED)) {
+      expect(line).not.toMatch(/visa document|status document|NI evidence|with its expiry/i);
+    }
+    expect(RTW_REQUIRED['uk_irish']).toBe('passport, or birth certificate · no share code');
+    expect(RTW_REQUIRED['work_visa']).toBe(
+      'passport + share code + visa type · expiry from the gov.uk check',
+    );
+    expect(RTW_REQUIRED['dependant_other']).toBe(
+      'passport + share code · expiry from the gov.uk check',
+    );
   });
 });

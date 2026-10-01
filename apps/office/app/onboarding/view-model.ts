@@ -828,14 +828,20 @@ export const RTW_BRANCH_NO: Record<string, number> = {
   dependant_other: 5,
 };
 
-/** §2.5 pts 1–5: the document set each branch collects, as the panel header reads it. */
+/**
+ * §2.5 pts 1–5 as THC narrowed them on 01.10.2026 (ADR-0077): the document
+ * set each branch collects, as the panel header reads it. No visa, status
+ * document or NI evidence is asked for — the share-code check carries the
+ * right-to-work-until date. Rows uploaded before then are still listed and
+ * reviewed.
+ */
 export const RTW_REQUIRED: Record<string, string> = {
-  uk_irish: 'passport, or birth certificate + NI evidence · no share code',
+  uk_irish: 'passport, or birth certificate · no share code',
   eu_settled: 'passport / ID + share code · pre-settled carries an expiry',
-  work_visa: 'passport + share code + visa document with its expiry',
+  work_visa: 'passport + share code + visa type · expiry from the gov.uk check',
   international_student:
     'passport + share code + University Term Dates Letter (+ Completion Letter after graduation)',
-  dependant_other: 'passport + share code + visa / status document with its expiry',
+  dependant_other: 'passport + share code · expiry from the gov.uk check',
 };
 
 // ---------------------------------------------------------------------

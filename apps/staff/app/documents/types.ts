@@ -73,7 +73,7 @@ export interface DocumentsData {
   courseCompletionDate: string | null;
   /** False once a verified completion letter has stopped the term-letter ladder (§4.5). */
   termLetterApplies: boolean;
-  /** `onboarding_documents_missing()` tokens: passport, visa_document, share_code, … */
+  /** `onboarding_documents_missing()` tokens: passport, university_term_dates_letter, share_code, … */
   missing: string[];
   documents: DocumentRecord[];
   declarations: DeclarationRecord[];

@@ -48,11 +48,11 @@
         <div class="app-header collapsed"><span class="logo round">🥂</span><div class="title">Onboarding</div><span class="avatar photo">AK</span></div>
         <div class="app-body" style="padding-bottom:110px">
           <div class="wizard-top"><div class="n">1/11 · Right to work</div><div class="progress"><div class="fill" style="width:9%"></div></div><h2>Which describes you?</h2><div class="sm muted">This decides which documents we ask for. We check your right to work with gov.uk (§2.6).</div></div>
-          <div class="optcard"><span class="rb"></span><div><div class="t">UK or Irish citizen</div><div class="m">Passport — or birth certificate + a document showing your NI number. No share code.</div></div></div>
+          <div class="optcard"><span class="rb"></span><div><div class="t">UK or Irish citizen</div><div class="m">Passport — or your birth certificate. No share code.</div></div></div>
           <div class="optcard"><span class="rb"></span><div><div class="t">EU / EEA — settled or pre-settled status</div><div class="m">Passport or national ID + your gov.uk share code.</div></div></div>
-          <div class="optcard"><span class="rb"></span><div><div class="t">Work visa</div><div class="m">Passport + share code + visa type, expiry and a copy of the visa.</div></div></div>
+          <div class="optcard"><span class="rb"></span><div><div class="t">Work visa</div><div class="m">Passport + share code + your visa type.</div></div></div>
           <div class="optcard"><span class="rb"></span><div><div class="t">International student</div><div class="m">Passport + share code + your University Term Dates Letter. 20 h/week in term time.</div></div></div>
-          <div class="optcard"><span class="rb"></span><div><div class="t">Dependant or other visa</div><div class="m">Passport + share code + visa / status document and its expiry.</div></div></div>
+          <div class="optcard"><span class="rb"></span><div><div class="t">Dependant or other visa</div><div class="m">Passport + your gov.uk share code.</div></div></div>
         </div>
         <div class="wiz-foot"><button class="btn primary block lg disabled">Continue</button><div class="xs muted">Choose one to continue</div></div>
       </div>
@@ -68,15 +68,15 @@
           <div class="wizard-top"><div class="n">1/11 · Right to work</div><div class="progress"><div class="fill" style="width:9%"></div></div><div class="row"><h2>UK / Irish citizen</h2><a class="ml-auto sm" href="#">Change</a></div></div>
           <div class="field"><span class="label">Date of birth <span class="coral">*</span></span><div class="input-row"><input class="input mono" value="14 / 02 / 2001"><span class="addon">📅</span></div><span class="hint">Required in every branch (§2.5).</span></div>
           <div class="field"><span class="label">Which documents will you provide?</span>
-            <div class="seg" style="display:flex"><button class="on" style="flex:1">Passport</button><button style="flex:1">Birth cert. + NI evidence</button></div>
+            <div class="seg" style="display:flex"><button class="on" style="flex:1">Passport</button><button style="flex:1">Birth certificate</button></div>
           </div>
           <div class="label">Required documents · uploaded at step 4</div>
           <div class="mlist" style="border:1px solid var(--line);background:var(--panel-glass)">
             <div class="docrow" style="border:0;border-bottom:1px solid var(--line)"><span class="ico">PDF</span><div><div class="t">Passport — photo page</div><div class="m">Photo or scan · PDF, JPG, PNG or HEIC, up to 10 MB</div></div><span class="pill right">Step 4</span></div>
-            <div class="docrow" style="border:0;opacity:.5"><span class="ico">—</span><div><div class="t">Birth certificate + NI evidence</div><div class="m">Only if you don't have a passport. NI evidence: NI card/letter, HMRC/DWP letter, P60 or a payslip showing the number (§2.5 pt 7).</div></div></div>
+            <div class="docrow" style="border:0;opacity:.5"><span class="ico">—</span><div><div class="t">Birth certificate</div><div class="m">Only if you don't have a passport.</div></div></div>
           </div>
           <label class="check"><span class="box on"></span><span>I opt out of the 48-hour weekly working limit (Working Time Regulations). I can withdraw this on notice. <span class="xs muted">Optional — no visa limit applies to you (§4.4).</span></span></label>
-          <span class="annot">no share code in this branch (§2.5 pt 1)</span>
+          <span class="annot">no share code in this branch (§2.5 pt 1) · no NI evidence beside the birth certificate (ADR-0077)</span>
         </div>
         <div class="wiz-foot"><button class="btn primary block lg">Continue</button></div>
       </div>
@@ -114,13 +114,12 @@
           <div class="field"><span class="label">Date of birth <span class="coral">*</span></span><div class="input-row"><input class="input mono" value="08 / 06 / 1997"><span class="addon">📅</span></div></div>
           <div class="field"><span class="label">Share code <span class="coral">*</span></span><div class="input-row"><input class="input mono" value="W123AB4CD"><span class="addon green">✓</span></div><span class="hint">9 characters starting with W, e.g. W123AB4CD.</span></div>
           <div class="field"><span class="label">Visa type <span class="coral">*</span></span><select class="input"><option>Skilled Worker</option><option>Youth Mobility Scheme</option><option>Graduate</option><option>Other work visa</option></select></div>
-          <div class="field"><span class="label">Visa expiry <span class="coral">*</span></span><div class="input-row"><input class="input mono" value="31 / 03 / 2028"><span class="addon">📅</span></div><span class="hint">Cross-checked by the office against the visa you upload and the gov.uk result.</span></div>
           <div class="label">Required documents · uploaded at step 4</div>
           <div class="mlist" style="border:1px solid var(--line);background:var(--panel-glass)">
-            <div class="docrow" style="border:0;border-bottom:1px solid var(--line)"><span class="ico">PDF</span><div><div class="t">Passport — photo page</div></div><span class="pill right">Step 4</span></div>
-            <div class="docrow" style="border:0"><span class="ico">PDF</span><div><div class="t">Visa — photo or PDF (BRP / eVisa)</div><div class="m">PDF, JPG, PNG or HEIC, up to 10 MB</div></div><span class="pill right">Step 4</span></div>
+            <div class="docrow" style="border:0"><span class="ico">PDF</span><div><div class="t">Passport — photo page</div><div class="m">PDF, JPG, PNG or HEIC, up to 10 MB</div></div><span class="pill right">Step 4</span></div>
           </div>
           <label class="check"><span class="box"></span><span>I opt out of the 48-hour weekly limit. <span class="xs muted">Only within what your visa allows — visa conditions take precedence (§4.4).</span></span></label>
+          <span class="annot">no visa upload and no typed expiry — the gov.uk share-code check returns the right-to-work-until date (ADR-0077)</span>
         </div>
         <div class="wiz-foot"><button class="btn primary block lg">Continue</button></div>
       </div>
@@ -159,15 +158,13 @@
           <div class="wizard-top"><div class="n">1/11 · Right to work</div><div class="progress"><div class="fill" style="width:9%"></div></div><div class="row"><h2>Dependant / other visa</h2><a class="ml-auto sm" href="#">Change</a></div></div>
           <div class="field"><span class="label">Date of birth <span class="coral">*</span></span><div class="input-row"><input class="input mono" placeholder="DD / MM / YYYY"><span class="addon">📅</span></div></div>
           <div class="field"><span class="label">Share code <span class="coral">*</span></span><input class="input mono" placeholder="W123AB4CD"><span class="hint">9 characters starting with W, e.g. W123AB4CD.</span></div>
-          <div class="field"><span class="label">Visa / status expiry <span class="coral">*</span></span><div class="input-row"><input class="input mono" placeholder="DD / MM / YYYY"><span class="addon">📅</span></div></div>
           <div class="label">Required documents · uploaded at step 4</div>
           <div class="mlist" style="border:1px solid var(--line);background:var(--panel-glass)">
-            <div class="docrow" style="border:0;border-bottom:1px solid var(--line)"><span class="ico">PDF</span><div><div class="t">Passport — photo page</div></div><span class="pill right">Step 4</span></div>
-            <div class="docrow" style="border:0"><span class="ico">PDF</span><div><div class="t">Visa or status document</div><div class="m">PDF, JPG, PNG or HEIC, up to 10 MB</div></div><span class="pill right">Step 4</span></div>
+            <div class="docrow" style="border:0"><span class="ico">PDF</span><div><div class="t">Passport — photo page</div><div class="m">PDF, JPG, PNG or HEIC, up to 10 MB</div></div><span class="pill right">Step 4</span></div>
           </div>
           <label class="check"><span class="box"></span><span>I opt out of the 48-hour weekly limit. <span class="xs muted">The conditions of your visa decide whether this applies (§4.4).</span></span></label>
         </div>
-        <div class="wiz-foot"><button class="btn primary block lg disabled">Continue</button><div class="xs muted">Date of birth, share code and expiry are required</div></div>
+        <div class="wiz-foot"><button class="btn primary block lg disabled">Continue</button><div class="xs muted">Date of birth and share code are required</div></div>
       </div>
     </div>
 
@@ -317,6 +314,6 @@
   </div>
 </div>
 
-<div class="wf-note note"><b>Behaviour notes.</b> Wizard = 11 steps with progress bar and N/11 counter; Continue is disabled until the step is complete (§10.3). <b>1/11</b> Right to work: the five branches and their document sets are exactly §2.5 pts 1–5 — nothing else is collected. DOB is mandatory in every branch; the share code is typed (never uploaded), validated as 9 alphanumerics starting with "W", case-insensitive, spaces stripped, then checked against gov.uk with the DOB (§2.5, §2.6) — the returned right-to-work-until date becomes the expiry used for reminders. The 48 h opt-out tick is offered to everyone but never overrides a visa limit (§4.4 table); in term time a student's 20 h/week stands regardless (RULE-20). <b>2/11</b> the pin gives the home ↔ venue distance used by scoring (§6) and Radar. <b>3/11</b> the selfie is the square avatar everywhere, printed on the timesheet, and locked after onboarding (§10.1). <b>4/11</b> documents upload → pending → verified / rejected-with-reason → Re-upload (§4.4); the AI pre-fills expiry and term dates but a manager confirms (§2.6). The criminal-conviction declaration sits on this step so there is one combined blocker: "No" is auto-verified on submit; "Yes" enters the manager's Needs-review queue with Verify/Reject like a document (§2.10, §4.1). File limits: PDF, JPG, PNG or HEIC, ≤10 MB. The quiz at 6/11 only unlocks once every document is verified (§2.9) — see the Documents hub on <a href="onboarding-3.html">onboarding-3</a>.</div>
+<div class="wf-note note"><b>Behaviour notes.</b> Wizard = 11 steps with progress bar and N/11 counter; Continue is disabled until the step is complete (§10.3). <b>1/11</b> Right to work: the five branches and their document sets are §2.5 pts 1–5 as THC narrowed them on 01.10.2026 (ADR-0077) — no visa or status document upload, no typed visa / status expiry and no NI evidence in any branch; the work visa keeps its visa type dropdown; nothing else is collected. DOB is mandatory in every branch; the share code is typed (never uploaded), validated as 9 alphanumerics starting with "W", case-insensitive, spaces stripped, then checked against gov.uk with the DOB (§2.5, §2.6) — the returned right-to-work-until date becomes the expiry used for reminders. The 48 h opt-out tick is offered to everyone but never overrides a visa limit (§4.4 table); in term time a student's 20 h/week stands regardless (RULE-20). <b>2/11</b> the pin gives the home ↔ venue distance used by scoring (§6) and Radar. <b>3/11</b> the selfie is the square avatar everywhere, printed on the timesheet, and locked after onboarding (§10.1). <b>4/11</b> documents upload → pending → verified / rejected-with-reason → Re-upload (§4.4); the AI pre-fills expiry and term dates but a manager confirms (§2.6). The criminal-conviction declaration sits on this step so there is one combined blocker: "No" is auto-verified on submit; "Yes" enters the manager's Needs-review queue with Verify/Reject like a document (§2.10, §4.1). File limits: PDF, JPG, PNG or HEIC, ≤10 MB. The quiz at 6/11 only unlocks once every document is verified (§2.9) — see the Documents hub on <a href="onboarding-3.html">onboarding-3</a>.</div>
 </body>
 </html>
