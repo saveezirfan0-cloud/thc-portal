@@ -110,7 +110,7 @@ describe('1/11 Right to work', () => {
     expect(html).toContain('Fix the share code to continue');
   });
 
-  it('work visa — visa type, no expiry, passport only at step 4 (ADR-0077)', () => {
+  it('work visa — visa type, no expiry, passport only at step 4 (ADR-0078)', () => {
     const html = renderToStaticMarkup(
       <RtwStep
         initial={{
@@ -153,7 +153,7 @@ describe('1/11 Right to work', () => {
     expect(html).not.toContain('Visa — photo');
   });
 
-  it('dependant — DOB and share code required, no expiry (ADR-0077)', () => {
+  it('dependant — DOB and share code required, no expiry (ADR-0078)', () => {
     const html = renderToStaticMarkup(
       <RtwStep initial={{ ...blank, branch: 'dependant_other' }} today={TODAY} />,
     );

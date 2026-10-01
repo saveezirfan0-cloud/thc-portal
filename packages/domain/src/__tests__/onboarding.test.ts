@@ -58,7 +58,7 @@ describe('the eleven steps (§10.3)', () => {
   });
 });
 
-describe('document sets per branch (§2.5 pts 1–5, 8, as narrowed by ADR-0077)', () => {
+describe('document sets per branch (§2.5 pts 1–5, 8, as narrowed by ADR-0078)', () => {
   const types = (branch: RtwBranch, choice: 'passport' | 'birth_certificate' | null = null) =>
     requiredDocuments(branch, choice).map((r) => r.accepts.join('|'));
 
@@ -73,7 +73,7 @@ describe('document sets per branch (§2.5 pts 1–5, 8, as narrowed by ADR-0077)
     expect(needsShareCode('eu_settled')).toBe(true);
   });
 
-  it('work visa: passport + share code + visa type — no visa upload (ADR-0077)', () => {
+  it('work visa: passport + share code + visa type — no visa upload (ADR-0078)', () => {
     expect(types('work_visa')).toEqual(['passport']);
     expect(needsShareCode('work_visa')).toBe(true);
     expect(needsVisaType('work_visa')).toBe(true);
@@ -84,13 +84,13 @@ describe('document sets per branch (§2.5 pts 1–5, 8, as narrowed by ADR-0077)
     expect(acceptedDocTypes('international_student', null)).not.toContain('visa_document');
   });
 
-  it('dependant / other: passport + share code — no status document (ADR-0077)', () => {
+  it('dependant / other: passport + share code — no status document (ADR-0078)', () => {
     expect(types('dependant_other')).toEqual(['passport']);
     expect(needsShareCode('dependant_other')).toBe(true);
     expect(needsVisaType('dependant_other')).toBe(false);
   });
 
-  it('no branch collects a visa or a status document (ADR-0077)', () => {
+  it('no branch collects a visa or a status document (ADR-0078)', () => {
     for (const branch of [
       'uk_irish',
       'eu_settled',
@@ -182,13 +182,13 @@ describe('step 1 validation', () => {
     expect(rtwErrors({ ...base, branch: 'uk_irish', shareCode: '' }, today).ukChoice).toBeDefined();
   });
 
-  it('the dependant footer names every missing field — no expiry any more (ADR-0077)', () => {
+  it('the dependant footer names every missing field — no expiry any more (ADR-0078)', () => {
     expect(
       rtwFooterHint({ ...base, branch: 'dependant_other', dob: '', shareCode: '' }, today),
     ).toBe('Date of birth and share code are required');
   });
 
-  it('no branch asks for a typed visa or status expiry (ADR-0077)', () => {
+  it('no branch asks for a typed visa or status expiry (ADR-0078)', () => {
     expect(rtwErrors({ ...base, branch: 'dependant_other' }, today)).toEqual({});
     expect(rtwErrors({ ...base, branch: 'work_visa', visaType: 'Graduate' }, today)).toEqual({});
     expect(Object.keys(rtwErrors({ ...base, branch: 'work_visa', dob: '' }, today))).not.toContain(

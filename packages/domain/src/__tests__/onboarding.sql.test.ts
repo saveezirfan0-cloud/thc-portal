@@ -28,11 +28,11 @@ const documents = readFileSync(
 /**
  * The latest definitions of onboarding_required_docs(),
  * onboarding_save_right_to_work() and onboarding_documents_missing()
- * (ADR-0077: no visa / status document upload, no typed expiry; NI evidence
+ * (ADR-0078: no visa / status document upload, no typed expiry; NI evidence
  * stays on the UK birth-certificate route).
  */
 const shareCodeEvidence = readFileSync(
-  join(MIGRATIONS, '20261002105000_share_code_is_the_visa_evidence.sql'),
+  join(MIGRATIONS, '20261002106000_share_code_is_the_visa_evidence.sql'),
   'utf8',
 );
 
@@ -58,7 +58,7 @@ describe('visa types (§2.5 pt 3) — SQL and TypeScript agree', () => {
   it('onboarding_save_right_to_work() accepts exactly the dropdown', () => {
     const list = VISA_TYPES.map((v) => `'${v}'`).join(', ');
     expect(documents).toContain(`not in (${list})`);
-    // ADR-0077 kept the dropdown in the latest definition.
+    // ADR-0078 kept the dropdown in the latest definition.
     expect(shareCodeEvidence).toContain(`not in (${list})`);
   });
 
@@ -73,7 +73,7 @@ describe('visa types (§2.5 pt 3) — SQL and TypeScript agree', () => {
   });
 });
 
-describe('documents missing (ADR-0077) — no visa or status document token', () => {
+describe('documents missing (ADR-0078) — no visa or status document token', () => {
   it('the latest onboarding_documents_missing() names neither; NI evidence stays for List A', () => {
     const start = shareCodeEvidence.indexOf(
       'create or replace function public.onboarding_documents_missing',
@@ -84,7 +84,7 @@ describe('documents missing (ADR-0077) — no visa or status document token', ()
   });
 });
 
-describe('document sets (§2.5 pts 1–5, ADR-0077) — SQL and TypeScript agree', () => {
+describe('document sets (§2.5 pts 1–5, ADR-0078) — SQL and TypeScript agree', () => {
   // Parse the VALUES list of the latest onboarding_required_docs(): (key, accepts, applies-predicate).
   const start = shareCodeEvidence.indexOf(
     'create or replace function public.onboarding_required_docs',
