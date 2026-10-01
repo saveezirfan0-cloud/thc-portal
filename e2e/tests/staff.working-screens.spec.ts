@@ -157,9 +157,24 @@ test.describe('Shifts (§10.4, §3.5)', () => {
     await expect(card.first()).toContainText('12:00');
     await expect(card.first()).toContainText('(UK time)');
     await expect(card.first()).toContainText('you’ll be removed from this shift');
-    await expect(
-      card.first().getByRole('button', { name: 'I’m ready for tomorrow' }),
-    ).toBeVisible();
+    // A needs-ready card is tomorrow's shift, so its deadline is 12:00 UK
+    // today. Past it the button stays but says so, disabled (ADR-0034 §3) —
+    // which is what CI sees on any afternoon run.
+    const ukNow = new Intl.DateTimeFormat('en-GB', {
+      timeZone: 'Europe/London',
+      hour: '2-digit',
+      minute: '2-digit',
+      hourCycle: 'h23',
+    }).format(new Date());
+    if (ukNow < '12:00') {
+      await expect(
+        card.first().getByRole('button', { name: 'I’m ready for tomorrow' }),
+      ).toBeEnabled();
+    } else {
+      await expect(
+        card.first().getByRole('button', { name: 'The 12:00 deadline has passed' }),
+      ).toBeDisabled();
+    }
   });
 
   test('Cancel is offered only with the 72-hour rule stated beside it (RULE-04, §10.4)', async ({
