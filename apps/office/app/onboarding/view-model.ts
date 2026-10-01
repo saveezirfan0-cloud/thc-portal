@@ -828,14 +828,18 @@ export const RTW_BRANCH_NO: Record<string, number> = {
   dependant_other: 5,
 };
 
-/** §2.5 pts 1–5: the document set each branch collects, as the panel header reads it. */
+/**
+ * §2.5 pts 1–5, as changed by ADR-0077: the document set each branch
+ * collects, as the panel header reads it. The share code covers the visa
+ * and its expiry, so no branch types or uploads visa details.
+ */
 export const RTW_REQUIRED: Record<string, string> = {
-  uk_irish: 'passport, or birth certificate + NI evidence · no share code',
+  uk_irish: 'passport · no share code',
   eu_settled: 'passport / ID + share code · pre-settled carries an expiry',
-  work_visa: 'passport + share code + visa document with its expiry',
+  work_visa: 'passport + share code · the share code covers the visa and its expiry',
   international_student:
     'passport + share code + University Term Dates Letter (+ Completion Letter after graduation)',
-  dependant_other: 'passport + share code + visa / status document with its expiry',
+  dependant_other: 'passport + share code · the share code covers the status and its expiry',
 };
 
 // ---------------------------------------------------------------------

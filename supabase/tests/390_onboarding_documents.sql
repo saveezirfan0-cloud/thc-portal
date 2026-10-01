@@ -108,18 +108,19 @@ select throws_ok(
   format($$ select onboarding_save_right_to_work('eu_settled', %L::date, 'W123AB4CD', null, null, null, false) $$,
          (onboarding_uk_today() - interval '17 years')::date),
   'P0001', 'under_18', 'under 18 is refused on the server (§2.1)');
-select throws_ok(
+-- ADR-0077: UK / Irish is passport only, and the share code covers the
+-- visa — no document choice, visa type or expiry is asked for any more.
+select lives_ok(
   $$ select onboarding_save_right_to_work('uk_irish', date '1999-09-30', null, null, null, null, false) $$,
-  'P0001', 'doc_choice_required', 'UK / Irish must say passport or birth certificate + NI evidence');
-select throws_ok(
-  $$ select onboarding_save_right_to_work('work_visa', date '1999-09-30', 'W123AB4CD', null, date '2028-03-31', null, false) $$,
-  'P0001', 'visa_type_required', 'work visa needs a visa type (§2.5 pt 3)');
-select throws_ok(
-  $$ select onboarding_save_right_to_work('work_visa', date '1999-09-30', 'W123AB4CD', 'Skilled Worker', date '2020-01-01', null, false) $$,
-  'P0001', 'expiry_past', 'and an expiry that has not passed');
-select throws_ok(
+  'UK / Irish has no document choice to make — passport only (ADR-0077)');
+select is((select uk_doc_choice from onboarding_progress where staff_id = :'amara'), 'passport',
+  'and the choice on file is passport');
+select lives_ok(
   $$ select onboarding_save_right_to_work('dependant_other', date '1999-09-30', 'W123AB4CD', null, null, null, false) $$,
-  'P0001', 'expiry_required', 'dependant / other needs its expiry (§2.5 pt 5)');
+  'dependant / other needs no visa or status expiry — the share code covers it (ADR-0077)');
+select lives_ok(
+  $$ select onboarding_save_right_to_work('work_visa', date '1999-09-30', 'W123AB4CD', 'Skilled Worker', date '2020-01-01', null, false) $$,
+  'a visa type and expiry sent by an old client are ignored, not refused');
 select throws_ok(
   $$ select onboarding_save_right_to_work('martian', date '1999-09-30', 'W123AB4CD', null, null, null, false) $$,
   'P0001', 'bad_branch', 'there are five branches and no sixth');

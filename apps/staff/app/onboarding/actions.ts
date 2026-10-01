@@ -75,18 +75,18 @@ export async function saveRightToWork(input: {
   branch: string;
   dob: string;
   shareCode: string;
-  visaType: string;
-  visaExpiry: string;
-  ukChoice: string | null;
   wtrOptOut: boolean;
 }): Promise<Result> {
   return call('onboarding_save_right_to_work', {
     p_branch: input.branch,
     p_dob: input.dob || null,
     p_share_code: input.shareCode || null,
-    p_visa_type: input.visaType || null,
-    p_visa_expiry: input.visaExpiry || null,
-    p_uk_doc_choice: input.ukChoice,
+    // No visa details and no document choice any more (ADR-0077): the share
+    // code covers the visa, and UK / Irish is passport only. The RPC keeps
+    // its signature, so these go as null.
+    p_visa_type: null,
+    p_visa_expiry: null,
+    p_uk_doc_choice: null,
     p_wtr_optout: input.wtrOptOut,
   });
 }

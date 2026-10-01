@@ -59,8 +59,7 @@ export const RTW_BRANCHES: readonly { key: RtwBranch; title: string; description
   {
     key: 'uk_irish',
     title: 'UK or Irish citizen',
-    description:
-      'Passport — or birth certificate + a document showing your NI number. No share code.',
+    description: 'Passport. No share code.',
   },
   {
     key: 'eu_settled',
@@ -70,7 +69,7 @@ export const RTW_BRANCHES: readonly { key: RtwBranch; title: string; description
   {
     key: 'work_visa',
     title: 'Work visa',
-    description: 'Passport + share code + visa type, expiry and a copy of the visa.',
+    description: 'Passport + your gov.uk share code — it covers your visa and its expiry.',
   },
   {
     key: 'international_student',
@@ -81,7 +80,7 @@ export const RTW_BRANCHES: readonly { key: RtwBranch; title: string; description
   {
     key: 'dependant_other',
     title: 'Dependant or other visa',
-    description: 'Passport + share code + visa / status document and its expiry.',
+    description: 'Passport + your gov.uk share code — it covers your status and its expiry.',
   },
 ];
 
@@ -93,20 +92,6 @@ export const BRANCH_HEADING: Readonly<Record<RtwBranch, string>> = {
   international_student: 'International student',
   dependant_other: 'Dependant / other visa',
 };
-
-/** Branch 1 only: "passport (photo) OR birth certificate + a document showing the NI number". */
-export type UkDocChoice = 'passport' | 'birth_certificate';
-
-/**
- * §2.5 pt 7 — any of these satisfies the NI evidence requirement; the
- * manager checks the number on it matches the one on the profile.
- */
-export const NI_EVIDENCE_ACCEPTED = [
-  'an NI card or letter',
-  'an HMRC or DWP letter showing the number',
-  'a P60',
-  'a payslip from a previous employer showing the number',
-] as const;
 
 export interface DocRequirement {
   /** Stable key for the row on screen. */
@@ -127,39 +112,29 @@ const PASSPORT: DocRequirement = {
 
 /**
  * The documents a branch asks for — "exactly as listed in points 1–5
- * above; no further documents are collected at onboarding" (§2.5 pt 8).
+ * above; no further documents are collected at onboarding" (§2.5 pt 8),
+ * as changed by ADR-0077: every branch with a share code relies on the
+ * gov.uk check for the visa or status and its expiry, so nothing about the
+ * visa is typed or uploaded, and the UK / Irish branch is passport only
+ * (the birth-certificate route needed NI evidence, which is no longer
+ * collected, and a birth certificate alone is not right-to-work evidence).
  *
  * Not in this list, deliberately:
  *   · the share code — typed, never uploaded; the gov.uk check produces
  *     its report (`share_code_report`) on submit (§2.5, §2.6);
- *   · a student visa — "No separate student visa upload" (§2.5 pt 4,
- *     confirmed 04.09.2026);
+ *   · a visa or status document — the share code covers it (ADR-0077;
+ *     §2.5 pt 4 already said so for students, confirmed 04.09.2026);
+ *   · NI evidence — not collected (ADR-0077);
  *   · the completion letter — uploaded once the student graduates, from
  *     the Documents tab (§4.5), not at onboarding;
  *   · a P45 — never accepted anywhere (§2.8).
  */
-export function requiredDocuments(
-  branch: RtwBranch,
-  ukChoice: UkDocChoice | null = 'passport',
-): DocRequirement[] {
+export function requiredDocuments(branch: RtwBranch): DocRequirement[] {
   switch (branch) {
     case 'uk_irish':
-      return ukChoice === 'birth_certificate'
-        ? [
-            {
-              key: 'birth_certificate',
-              label: 'Birth certificate',
-              accepts: ['birth_certificate'],
-              hint: 'Full birth certificate, photo or scan',
-            },
-            {
-              key: 'ni_evidence',
-              label: 'NI evidence',
-              accepts: ['ni_evidence'],
-              hint: `A document showing your NI number: ${NI_EVIDENCE_ACCEPTED.join(', ')}`,
-            },
-          ]
-        : [PASSPORT];
+    case 'work_visa':
+    case 'dependant_other':
+      return [PASSPORT];
     case 'eu_settled':
       return [
         {
@@ -167,16 +142,6 @@ export function requiredDocuments(
           label: 'Passport or national ID card',
           accepts: ['passport', 'national_id'],
           hint: 'The photo page of your passport, or both sides of your ID card',
-        },
-      ];
-    case 'work_visa':
-      return [
-        PASSPORT,
-        {
-          key: 'visa_document',
-          label: 'Visa — photo or PDF (BRP / eVisa)',
-          accepts: ['visa_document'],
-          hint: 'The office cross-checks it against the details you gave and the gov.uk result',
         },
       ];
     case 'international_student':
@@ -189,22 +154,12 @@ export function requiredDocuments(
           hint: 'This year’s letter from your university',
         },
       ];
-    case 'dependant_other':
-      return [
-        PASSPORT,
-        {
-          key: 'status_document',
-          label: 'Visa or status document',
-          accepts: ['status_document'],
-          hint: 'Your visa or the document confirming your status',
-        },
-      ];
   }
 }
 
 /** Every document type a branch may upload at onboarding. */
-export function acceptedDocTypes(branch: RtwBranch, ukChoice: UkDocChoice | null): DocType[] {
-  return [...new Set(requiredDocuments(branch, ukChoice).flatMap((r) => r.accepts))];
+export function acceptedDocTypes(branch: RtwBranch): DocType[] {
+  return [...new Set(requiredDocuments(branch).flatMap((r) => r.accepts))];
 }
 
 /** Branch 1 has no share code (§2.5 pt 1); every other branch does. */
@@ -212,33 +167,11 @@ export function needsShareCode(branch: RtwBranch): boolean {
   return branch !== 'uk_irish';
 }
 
-/** Work visa: visa type (dropdown) + expiry (§2.5 pt 3). */
-export function needsVisaType(branch: RtwBranch): boolean {
-  return branch === 'work_visa';
-}
-
-/** Work visa and dependant / other visa carry a typed expiry (§2.5 pts 3, 5). */
-export function needsVisaExpiry(branch: RtwBranch): boolean {
-  return branch === 'work_visa' || branch === 'dependant_other';
-}
-
-/** The wireframe's dropdown. "Other work visa" keeps it from being a closed list. */
-export const VISA_TYPES = [
-  'Skilled Worker',
-  'Youth Mobility Scheme',
-  'Graduate',
-  'Other work visa',
-] as const;
-
 export interface RtwForm {
   branch: RtwBranch | null;
   /** ISO date, YYYY-MM-DD. */
   dob: string;
   shareCode: string;
-  visaType: string;
-  /** ISO date, YYYY-MM-DD. */
-  visaExpiry: string;
-  ukChoice: UkDocChoice | null;
   wtrOptOut: boolean;
 }
 
@@ -291,15 +224,6 @@ export function rtwErrors(
     const err = shareCodeError(form.shareCode);
     if (err) errors.shareCode = err;
   }
-  if (needsVisaType(form.branch) && !form.visaType) errors.visaType = 'Choose your visa type.';
-  if (needsVisaExpiry(form.branch)) {
-    if (!form.visaExpiry) errors.visaExpiry = 'The expiry date is required.';
-    else if (!isIsoDate(form.visaExpiry)) errors.visaExpiry = 'Enter a real date.';
-    else if (form.visaExpiry <= today) errors.visaExpiry = 'This date has already passed.';
-  }
-  if (form.branch === 'uk_irish' && !form.ukChoice) {
-    errors.ukChoice = 'Choose which documents you will provide.';
-  }
   return errors;
 }
 
@@ -308,13 +232,9 @@ export function rtwFooterHint(form: RtwForm, today: string = ukToday()): string 
   const errors = rtwErrors(form, today);
   if (errors.branch) return errors.branch;
   if (errors.shareCode && form.shareCode.trim() !== '') return 'Fix the share code to continue';
-  const missing = [
-    errors.dob && 'date of birth',
-    errors.shareCode && 'share code',
-    errors.visaType && 'visa type',
-    errors.visaExpiry && 'expiry',
-    errors.ukChoice && 'document choice',
-  ].filter((m): m is string => Boolean(m));
+  const missing = [errors.dob && 'date of birth', errors.shareCode && 'share code'].filter(
+    (m): m is string => Boolean(m),
+  );
   if (missing.length === 0) return null;
   const list =
     missing.length === 1

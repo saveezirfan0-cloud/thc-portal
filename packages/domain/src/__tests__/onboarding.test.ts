@@ -15,8 +15,6 @@ import {
   formatFileSize,
   looksLikeRelative,
   needsShareCode,
-  needsVisaExpiry,
-  needsVisaType,
   refereeErrors,
   referencesReady,
   requiredDocuments,
@@ -58,13 +56,13 @@ describe('the eleven steps (§10.3)', () => {
   });
 });
 
-describe('document sets per branch (§2.5 pts 1–5, 8)', () => {
-  const types = (branch: RtwBranch, choice: 'passport' | 'birth_certificate' | null = null) =>
-    requiredDocuments(branch, choice).map((r) => r.accepts.join('|'));
+describe('document sets per branch (§2.5 pts 1–5, 8; ADR-0077)', () => {
+  const types = (branch: RtwBranch) => requiredDocuments(branch).map((r) => r.accepts.join('|'));
 
-  it('UK / Irish: passport OR birth certificate + NI evidence, no share code', () => {
-    expect(types('uk_irish', 'passport')).toEqual(['passport']);
-    expect(types('uk_irish', 'birth_certificate')).toEqual(['birth_certificate', 'ni_evidence']);
+  it('UK / Irish: passport only, no share code, no NI evidence', () => {
+    expect(types('uk_irish')).toEqual(['passport']);
+    expect(acceptedDocTypes('uk_irish')).not.toContain('birth_certificate');
+    expect(acceptedDocTypes('uk_irish')).not.toContain('ni_evidence');
     expect(needsShareCode('uk_irish')).toBe(false);
   });
 
@@ -73,25 +71,22 @@ describe('document sets per branch (§2.5 pts 1–5, 8)', () => {
     expect(needsShareCode('eu_settled')).toBe(true);
   });
 
-  it('work visa: passport + visa upload + share code + visa type + expiry', () => {
-    expect(types('work_visa')).toEqual(['passport', 'visa_document']);
-    expect(needsVisaType('work_visa')).toBe(true);
-    expect(needsVisaExpiry('work_visa')).toBe(true);
+  it('work visa: passport + share code — the share code covers the visa', () => {
+    expect(types('work_visa')).toEqual(['passport']);
+    expect(needsShareCode('work_visa')).toBe(true);
   });
 
   it('international student: passport + term dates letter, and NO visa upload', () => {
     expect(types('international_student')).toEqual(['passport', 'university_term_dates_letter']);
-    expect(acceptedDocTypes('international_student', null)).not.toContain('visa_document');
-    expect(needsVisaExpiry('international_student')).toBe(false);
+    expect(acceptedDocTypes('international_student')).not.toContain('visa_document');
   });
 
-  it('dependant / other: passport + status document + expiry', () => {
-    expect(types('dependant_other')).toEqual(['passport', 'status_document']);
-    expect(needsVisaExpiry('dependant_other')).toBe(true);
-    expect(needsVisaType('dependant_other')).toBe(false);
+  it('dependant / other: passport + share code — the share code covers the status', () => {
+    expect(types('dependant_other')).toEqual(['passport']);
+    expect(needsShareCode('dependant_other')).toBe(true);
   });
 
-  it('no branch collects the completion letter, a share-code file or a P45 at onboarding', () => {
+  it('no branch collects a visa or status document, NI evidence, the completion letter or a share-code file', () => {
     for (const branch of [
       'uk_irish',
       'eu_settled',
@@ -99,7 +94,11 @@ describe('document sets per branch (§2.5 pts 1–5, 8)', () => {
       'international_student',
       'dependant_other',
     ] as const) {
-      const accepted = acceptedDocTypes(branch, 'birth_certificate');
+      const accepted = acceptedDocTypes(branch);
+      expect(accepted).not.toContain('visa_document');
+      expect(accepted).not.toContain('status_document');
+      expect(accepted).not.toContain('ni_evidence');
+      expect(accepted).not.toContain('birth_certificate');
       expect(accepted).not.toContain('university_completion_letter');
       expect(accepted).not.toContain('share_code_report');
     }
@@ -112,9 +111,6 @@ describe('step 1 validation', () => {
     branch: 'eu_settled',
     dob: '1999-09-30',
     shareCode: 'W12 3AB 4CD',
-    visaType: '',
-    visaExpiry: '',
-    ukChoice: null,
     wtrOptOut: false,
   };
 
@@ -147,26 +143,17 @@ describe('step 1 validation', () => {
     );
   });
 
-  it('UK / Irish needs no share code, but a document choice', () => {
-    expect(
-      rtwErrors({ ...base, branch: 'uk_irish', shareCode: '', ukChoice: 'passport' }, today),
-    ).toEqual({});
-    expect(rtwErrors({ ...base, branch: 'uk_irish', shareCode: '' }, today).ukChoice).toBeDefined();
+  it('UK / Irish needs no share code and no document choice', () => {
+    expect(rtwErrors({ ...base, branch: 'uk_irish', shareCode: '' }, today)).toEqual({});
   });
 
-  it('the dependant footer names every missing field, as the wireframe does', () => {
+  it('the visa branches need only DOB and the share code — no visa type or expiry (ADR-0077)', () => {
+    for (const branch of ['work_visa', 'dependant_other'] as const) {
+      expect(rtwErrors({ ...base, branch }, today)).toEqual({});
+    }
     expect(
       rtwFooterHint({ ...base, branch: 'dependant_other', dob: '', shareCode: '' }, today),
-    ).toBe('Date of birth, share code and expiry are required');
-  });
-
-  it('an expiry must be in the future', () => {
-    expect(
-      rtwErrors(
-        { ...base, branch: 'work_visa', visaType: 'Graduate', visaExpiry: '2026-09-23' },
-        today,
-      ).visaExpiry,
-    ).toBe('This date has already passed.');
+    ).toBe('Date of birth and share code are required');
   });
 
   it('nothing chosen yet', () => {

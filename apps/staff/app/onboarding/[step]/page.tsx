@@ -72,9 +72,6 @@ async function render(n: number, s: OnboardingState, photoUrl: string | null) {
             branch: s.rtwBranch,
             dob: s.dob ?? '',
             shareCode: s.shareCode ?? '',
-            visaType: s.progress.visaType ?? '',
-            visaExpiry: s.progress.visaExpiry ?? '',
-            ukChoice: s.progress.ukDocChoice ?? (s.rtwBranch === 'uk_irish' ? 'passport' : null),
             wtrOptOut: s.wtrOptOut,
           }}
         />

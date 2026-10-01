@@ -8,10 +8,9 @@ import {
   POSTCODE_SQL_PATTERN,
   RELATIVE_SQL_PATTERN,
   UK_PIN_BOUNDS,
-  VISA_TYPES,
   requiredDocuments,
 } from '../onboarding.ts';
-import type { RtwBranch, UkDocChoice } from '../onboarding.ts';
+import type { RtwBranch } from '../onboarding.ts';
 
 /**
  * The wizard's rules exist twice: here, where the screens read them, and in
@@ -44,17 +43,35 @@ describe('home address (§10.3 2/11) — SQL and TypeScript agree', () => {
   });
 });
 
-describe('visa types (§2.5 pt 3) — SQL and TypeScript agree', () => {
-  it('onboarding_save_right_to_work() accepts exactly the dropdown', () => {
-    const list = VISA_TYPES.map((v) => `'${v}'`).join(', ');
-    expect(documents).toContain(`not in (${list})`);
+// The latest onboarding_required_docs() and onboarding_save_right_to_work()
+// — the share code covers the visa, UK / Irish is passport only (ADR-0077).
+const shareCodeCoversVisa = readFileSync(
+  join(MIGRATIONS, '20261002105000_share_code_covers_the_visa.sql'),
+  'utf8',
+);
+
+describe('no visa details at step 1 (ADR-0077) — SQL and TypeScript agree', () => {
+  it('onboarding_save_right_to_work() asks for no visa type, expiry or document choice', () => {
+    const start = shareCodeCoversVisa.indexOf(
+      'create or replace function public.onboarding_save_right_to_work',
+    );
+    const body = shareCodeCoversVisa.slice(start, shareCodeCoversVisa.indexOf('$$;', start));
+    for (const code of [
+      'visa_type_required',
+      'expiry_required',
+      'expiry_past',
+      'doc_choice_required',
+    ]) {
+      expect(body).not.toContain(code);
+    }
   });
 });
 
-describe('document sets (§2.5 pts 1–5) — SQL and TypeScript agree', () => {
+describe('document sets (§2.5 pts 1–5; ADR-0077) — SQL and TypeScript agree', () => {
   // Parse the VALUES list of onboarding_required_docs(): (key, accepts, applies-predicate).
-  const start = documents.indexOf('create or replace function public.onboarding_required_docs');
-  const block = documents.slice(start, documents.indexOf('$$;', start));
+  const sqlFile = shareCodeCoversVisa;
+  const start = sqlFile.indexOf('create or replace function public.onboarding_required_docs');
+  const block = sqlFile.slice(start, sqlFile.indexOf('$$;', start));
   const values = block.slice(
     block.indexOf('from (values') + 'from (values'.length,
     block.indexOf(') r(req_key'),
@@ -77,37 +94,34 @@ describe('document sets (§2.5 pts 1–5) — SQL and TypeScript agree', () => {
       };
     });
 
-  /** Evaluate the SQL predicate for one branch + choice — the only shapes it uses. */
-  function applies(predicate: string, branch: RtwBranch, choice: UkDocChoice): boolean {
+  /** Evaluate the SQL predicate for one branch — the only shapes it uses. */
+  function applies(predicate: string, branch: RtwBranch): boolean {
     return predicate.split(' and ').every((clause) => {
       const eq = /^p_branch = '(\w+)'$/.exec(clause);
       if (eq) return branch === eq[1];
       const inList = /^p_branch in \(([^)]+)\)$/.exec(clause);
       if (inList) return inList[1]!.split(',').some((s) => s.trim() === `'${branch}'`);
-      if (clause === "coalesce(p_uk_choice, 'passport') = 'passport'") return choice === 'passport';
-      if (clause === "p_uk_choice = 'birth_certificate'") return choice === 'birth_certificate';
       throw new Error(`unrecognised predicate: ${clause}`);
     });
   }
 
   it('parses every row', () => {
-    expect(rows.length).toBe(8);
+    expect(rows.length).toBe(4);
   });
 
-  const cases: [RtwBranch, UkDocChoice][] = [
-    ['uk_irish', 'passport'],
-    ['uk_irish', 'birth_certificate'],
-    ['eu_settled', 'passport'],
-    ['work_visa', 'passport'],
-    ['international_student', 'passport'],
-    ['dependant_other', 'passport'],
+  const cases: RtwBranch[] = [
+    'uk_irish',
+    'eu_settled',
+    'work_visa',
+    'international_student',
+    'dependant_other',
   ];
 
-  it.each(cases)('%s (%s)', (branch, choice) => {
+  it.each(cases)('%s', (branch) => {
     const sql = rows
-      .filter((r) => applies(r.predicate, branch, choice))
+      .filter((r) => applies(r.predicate, branch))
       .map((r) => `${r.key}:${r.accepts.join('|')}`);
-    const ts = requiredDocuments(branch, choice).map((r) => `${r.key}:${r.accepts.join('|')}`);
+    const ts = requiredDocuments(branch).map((r) => `${r.key}:${r.accepts.join('|')}`);
     expect(sql).toEqual(ts);
   });
 });

@@ -2,40 +2,27 @@
 
 import { useId, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  Addon,
-  Alert,
-  Button,
-  Checkbox,
-  Input,
-  InputRow,
-  OptionRow,
-  SegToggle,
-  Select,
-} from '@thc/ui';
+import { Addon, Alert, Button, Checkbox, Input, InputRow, OptionRow } from '@thc/ui';
 import {
   BRANCH_HEADING,
-  NI_EVIDENCE_ACCEPTED,
   RTW_BRANCHES,
-  VISA_TYPES,
   isValidShareCode,
   needsShareCode,
-  needsVisaExpiry,
-  needsVisaType,
   requiredDocuments,
   rtwErrors,
   rtwFooterHint,
 } from '@thc/domain';
-import type { RtwBranch, RtwForm, UkDocChoice } from '@thc/domain';
+import type { RtwBranch, RtwForm } from '@thc/domain';
 import { saveRightToWork } from '../actions';
 import { WizardFoot, WizardTop } from './Wizard';
 
 /**
  * 1/11 Right to work — §2.5, wireframes/staff/onboarding-1.html (six states).
  *
- * The branch decides the documents (§2.5 pts 1–5, exactly), DOB is asked in
- * every branch, the share code is TYPED and validated before anything goes
- * near gov.uk, and the 48-hour opt-out is offered to everyone with the
+ * The branch decides the documents (§2.5 pts 1–5, as changed by ADR-0077:
+ * UK / Irish is passport only, and nothing about a visa is typed or uploaded
+ * because the share code covers it), DOB is asked in every branch, the share
+ * code is TYPED and validated before anything goes near gov.uk, and the 48-hour opt-out is offered to everyone with the
  * wireframe's per-branch caveat (it never overrides a visa limit, §4.4).
  */
 const OPT_OUT_NOTE: Record<RtwBranch, string> = {
@@ -71,9 +58,6 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
         branch: branch ?? '',
         dob: form.dob,
         shareCode: form.shareCode,
-        visaType: form.visaType,
-        visaExpiry: form.visaExpiry,
-        ukChoice: branch === 'uk_irish' ? form.ukChoice : null,
         wtrOptOut: form.wtrOptOut,
       });
       if (!result.ok) setError(result.message);
@@ -96,13 +80,7 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
               title={b.title}
               description={b.description}
               selected={false}
-              onSelect={() =>
-                setForm((f) => ({
-                  ...f,
-                  branch: b.key,
-                  ukChoice: b.key === 'uk_irish' ? (f.ukChoice ?? 'passport') : null,
-                }))
-              }
+              onSelect={() => set('branch', b.key)}
             />
           ))}
         </div>
@@ -115,7 +93,7 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
     );
   }
 
-  const docs = requiredDocuments(branch, form.ukChoice ?? 'passport');
+  const docs = requiredDocuments(branch);
   const shareOk = isValidShareCode(form.shareCode);
   const showShareError = form.shareCode.trim() !== '' && !shareOk;
 
@@ -186,58 +164,6 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
         </div>
       ) : null}
 
-      {needsVisaType(branch) ? (
-        <Select
-          label={
-            <>
-              Visa type <span className="coral">*</span>
-            </>
-          }
-          value={form.visaType}
-          onChange={(e) => set('visaType', e.target.value)}
-        >
-          <option value="">Choose…</option>
-          {VISA_TYPES.map((v) => (
-            <option key={v} value={v}>
-              {v}
-            </option>
-          ))}
-        </Select>
-      ) : null}
-
-      {needsVisaExpiry(branch) ? (
-        <Input
-          label={
-            <>
-              {branch === 'work_visa' ? 'Visa expiry' : 'Visa / status expiry'}{' '}
-              <span className="coral">*</span>
-            </>
-          }
-          type="date"
-          mono
-          min={today}
-          value={form.visaExpiry}
-          onChange={(e) => set('visaExpiry', e.target.value)}
-          error={form.visaExpiry ? errors.visaExpiry : undefined}
-          hint="Cross-checked by the office against the document you upload and the gov.uk result."
-        />
-      ) : null}
-
-      {branch === 'uk_irish' ? (
-        <div className="field">
-          <span className="label">Which documents will you provide?</span>
-          <SegToggle<UkDocChoice>
-            block
-            options={[
-              { value: 'passport', label: 'Passport' },
-              { value: 'birth_certificate', label: 'Birth cert. + NI evidence' },
-            ]}
-            value={form.ukChoice ?? 'passport'}
-            onChange={(v) => set('ukChoice', v)}
-          />
-        </div>
-      ) : null}
-
       <div className="label">Required documents · uploaded at step 4</div>
       <div className="wiz-list">
         {docs.map((d) => (
@@ -250,17 +176,6 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
             <span className="pill right">Step 4</span>
           </div>
         ))}
-        {branch === 'uk_irish' && form.ukChoice !== 'birth_certificate' ? (
-          <div className="docrow off">
-            <span className="ico">—</span>
-            <div>
-              <div className="t">Birth certificate + NI evidence</div>
-              <div className="m">
-                Only if you don’t have a passport. NI evidence: {NI_EVIDENCE_ACCEPTED.join(', ')}.
-              </div>
-            </div>
-          </div>
-        ) : null}
       </div>
 
       {branch === 'international_student' ? (
@@ -279,6 +194,14 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
         <div className="note xs">
           Pre-settled status: your “right to work until” date comes back from the gov.uk check and
           becomes the expiry we remind you about.
+        </div>
+      ) : null}
+
+      {branch === 'work_visa' || branch === 'dependant_other' ? (
+        <div className="note xs">
+          Your visa details and its expiry come back from the gov.uk share code check — there is
+          nothing to type or upload for them. The “right to work until” date becomes the expiry we
+          remind you about.
         </div>
       ) : null}
 

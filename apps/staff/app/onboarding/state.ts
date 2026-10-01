@@ -6,7 +6,6 @@ import type {
   OnboardingStatus,
   RtwBranch,
   StudentLoanPlan,
-  UkDocChoice,
   WizardFacts,
 } from '@thc/domain';
 
@@ -64,9 +63,6 @@ export interface OnboardingState {
   /** "18.09.2026 14:42 UK time" — formatted by the database, UK only (§1.8). */
   contractStamp: string | null;
   progress: {
-    ukDocChoice: UkDocChoice | null;
-    visaType: string | null;
-    visaExpiry: string | null;
     rtwAt: string | null;
     addressAt: string | null;
     selfieAt: string | null;
@@ -124,9 +120,6 @@ export function mapOnboardingState(raw: unknown): OnboardingState | null {
     contractVersion: str(r['contractVersion']),
     contractStamp: str(r['contractStamp']),
     progress: {
-      ukDocChoice: str(p['ukDocChoice']) as UkDocChoice | null,
-      visaType: str(p['visaType']),
-      visaExpiry: str(p['visaExpiry']),
       rtwAt: str(p['rtwAt']),
       addressAt: str(p['addressAt']),
       selfieAt: str(p['selfieAt']),
@@ -228,7 +221,7 @@ export interface RequirementRow {
 /** One row per document the branch asks for, with whatever answers it now. */
 export function requirementRows(s: OnboardingState): RequirementRow[] {
   if (!s.rtwBranch) return [];
-  return requiredDocuments(s.rtwBranch, s.progress.ukDocChoice).map((requirement) => {
+  return requiredDocuments(s.rtwBranch).map((requirement) => {
     const candidates = s.documents
       .filter((d) => requirement.accepts.includes(d.docType))
       .sort((a, b) => b.uploadedAt.localeCompare(a.uploadedAt));
