@@ -85,7 +85,7 @@ export async function saveRightToWork(input: {
     p_share_code: input.shareCode || null,
     p_visa_type: input.visaType || null,
     // Still in the RPC's signature and ignored there: no branch types an
-    // expiry any more — the gov.uk share-code check returns it (ADR-0077).
+    // expiry any more — the gov.uk share-code check returns it (ADR-0078).
     p_visa_expiry: null,
     p_uk_doc_choice: input.ukChoice,
     p_wtr_optout: input.wtrOptOut,

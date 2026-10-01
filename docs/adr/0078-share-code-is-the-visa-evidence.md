@@ -1,6 +1,6 @@
-# ADR-0077 · The share-code check is the visa evidence: no visa or status upload and no typed expiry at onboarding
+# ADR-0078 · The share-code check is the visa evidence: no visa or status upload and no typed expiry at onboarding
 
-**Status:** Accepted (owner decision, THC, 01.10.2026). A deliberate change from scope v1.6 §2.5 points 3 and 5. · **Amends:** [ADR-0014](0014-onboarding-wizard-seams-and-deviations.md) (the step 4 document sets), [ADR-0018](0018-right-to-work-date-on-verify.md) (on the work visa and dependant branches, the right-to-work date now comes from the share code report alone for new workers), [ADR-0065](0065-right-to-work-evidence-held-after-removal.md) (new workers on branches 3 and 5 have no visa or status document to hold) · **Code:** migration `20261002105000_share_code_is_the_visa_evidence.sql`; pgTAP `765` (and `390` updated)
+**Status:** Accepted (owner decision, THC, 01.10.2026). A deliberate change from scope v1.6 §2.5 points 3 and 5. · **Amends:** [ADR-0014](0014-onboarding-wizard-seams-and-deviations.md) (the step 4 document sets), [ADR-0018](0018-right-to-work-date-on-verify.md) (on the work visa and dependant branches, the right-to-work date now comes from the share code report alone for new workers), [ADR-0065](0065-right-to-work-evidence-held-after-removal.md) (new workers on branches 3 and 5 have no visa or status document to hold) · **Code:** migration `20261002106000_share_code_is_the_visa_evidence.sql`; pgTAP `766` (and `390` updated)
 
 ## Context
 
@@ -46,7 +46,7 @@ Where it lives:
 
 - `packages/domain/src/onboarding.ts`: `requiredDocuments()`, `RTW_BRANCHES`, `rtwErrors()` and `rtwFooterHint()`. `needsVisaExpiry()` and `RtwForm.visaExpiry` are removed.
 - `apps/staff/app/onboarding/_components/RtwStep.tsx`: the expiry field is removed.
-- Migration `20261002105000_share_code_is_the_visa_evidence.sql` redefines three functions:
+- Migration `20261002106000_share_code_is_the_visa_evidence.sql` redefines three functions:
   - `onboarding_required_docs()`. `onboarding_accepted_docs()`, `onboarding_attach_document()`, `onboarding_submit_documents()` and step 1's dropped-uploads sweep all read it, so they follow without being redefined. A wizard upload of `visa_document` or `status_document` is now refused with `doc_not_for_branch`.
   - `onboarding_save_right_to_work()`. It no longer raises `expiry_required` / `expiry_past`. `p_visa_expiry` stays in the signature so the RPC, its grant and the generated types keep their shape. The function ignores it and writes `onboarding_progress.visa_expiry` as null.
   - `onboarding_documents_missing()`. The Back Office board, the candidate profile, the quiz gate and the Staff App Documents hub all read it. It no longer returns `visa_document` or `status_document`, and still returns `ni_evidence` on the birth-certificate route.
