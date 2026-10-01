@@ -257,8 +257,7 @@ async function cleanBackground(kind) {
   s.narrate = false;
   await card(s, '', '', 0, { eyebrow: '' });
   await s.page.screenshot({ path: png });
-  await s.ctx.close();
-  await s.browser.close();
+  await finish(s); // also stops the screen grab and virtual display in HD mode
   return png;
 }
 
