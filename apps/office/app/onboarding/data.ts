@@ -17,6 +17,7 @@ import type {
   ContractVersion,
   Declaration,
   HmrcChecklist,
+  InterviewOverride,
   QuizAttempt,
   Reference,
   ReferralRow,
@@ -256,6 +257,35 @@ interface FactsRead {
   };
 }
 
+/** audit_log through a narrow shape, for the one row ADR-0077 reads. */
+interface OverrideRead {
+  from(table: 'audit_log'): {
+    select(columns: string): {
+      eq(
+        column: 'entity_id',
+        value: string,
+      ): {
+        eq(
+          column: 'action',
+          value: string,
+        ): {
+          order(
+            column: 'at',
+            options: { ascending: boolean },
+          ): {
+            limit(count: number): {
+              maybeSingle(): PromiseLike<{
+                data: { at: string; data: { reason?: unknown; byName?: unknown } | null } | null;
+                error: { message: string } | null;
+              }>;
+            };
+          };
+        };
+      };
+    };
+  };
+}
+
 const MONEY_COLUMNS =
   'weekly_cap_hours, weekly_cap_band, weekly_cap_until, term_dates, ni_number_masked, ' +
   'bank_account_holder, bank_sort_code_masked, bank_account_masked, bank_updated_at, ' +
@@ -278,6 +308,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     rtw,
     referral,
     facts,
+    override,
   ] = await Promise.all([
     supabase.from('onboarding_candidates_v').select('*').eq('id', id).maybeSingle<CandidateRow>(),
     supabase
@@ -336,6 +367,16 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
       .from('staff')
       .select('ni_number, below_degree_level, visa_weekly_hour_limit')
       .eq('id', id)
+      .maybeSingle(),
+    // ADR-0077: who marked the interview complete without Willo, and why.
+    // Best-effort, like the two above: a failed read only loses the line.
+    (supabase as unknown as OverrideRead)
+      .from('audit_log')
+      .select('at, data')
+      .eq('entity_id', id)
+      .eq('action', 'interview_marked_complete')
+      .order('at', { ascending: false })
+      .limit(1)
       .maybeSingle(),
   ]);
 
@@ -402,6 +443,7 @@ export async function loadCandidate(id: string): Promise<CandidateData> {
     referral: referral.referral,
     referralProblem: referral.problem,
     facts: facts.error || !facts.data ? null : toFacts(facts.data),
+    interviewOverride: override.error || !override.data ? null : toOverride(override.data),
     problem: null,
   };
 }
@@ -415,5 +457,16 @@ function toFacts(row: {
     niNumber: row.ni_number,
     belowDegreeLevel: row.below_degree_level === true,
     visaHourLimit: row.visa_weekly_hour_limit,
+  };
+}
+
+function toOverride(row: {
+  at: string;
+  data: { reason?: unknown; byName?: unknown } | null;
+}): InterviewOverride {
+  return {
+    at: row.at,
+    byName: typeof row.data?.byName === 'string' ? row.data.byName : null,
+    reason: typeof row.data?.reason === 'string' ? row.data.reason : '',
   };
 }

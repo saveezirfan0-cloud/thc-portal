@@ -73,6 +73,8 @@ const MESSAGES: Record<string, string> = {
   already_activated:
     'This person has already activated their account. If they have forgotten their password, they can reset it from the Staff App sign-in page.',
   unknown_staff: 'This person no longer exists — refresh the page.',
+  // Mark interview complete without Willo (ADR-0077)
+  not_permitted: 'Only an owner or a manager can do this.',
 };
 
 function explain(message: string): string {
@@ -87,6 +89,8 @@ function explain(message: string): string {
   }
   if (code === 'not_under_review') return 'This item is no longer under review — refresh the page.';
   if (code === 'not_awaiting_decision') return 'The interview is not marked complete yet.';
+  if (code === 'not_awaiting_interview')
+    return 'This candidate is no longer waiting on the interview — refresh the page.';
   if (code === 'not_a_candidate')
     return 'This person has signed their contract — use Block on the staff profile.';
   if (code === 'illegal_staff_transition')
@@ -223,6 +227,25 @@ export async function resendActivationLink(staffId: string): Promise<ActionResul
 export async function rejectCandidate(staffId: string, reason: string): Promise<ActionResult> {
   if (reason.trim() === '') return { ok: false, message: MESSAGES.reason_required! };
   return call('onboarding_reject', { p_staff: staffId, p_reason: reason.trim() }, paths(staffId));
+}
+
+/**
+ * Mark interview complete without Willo (ADR-0077): interview_requested →
+ * interview_completed by hand, for a test candidate, one interviewed in
+ * person, or a webhook that never arrived. Owners and managers only — the
+ * database refuses anyone else — and the reason is kept in audit_log.
+ * Accept or Reject then decides, as after a real interview.
+ */
+export async function markInterviewComplete(
+  staffId: string,
+  reason: string,
+): Promise<ActionResult> {
+  if (reason.trim() === '') return { ok: false, message: MESSAGES.reason_required! };
+  return call(
+    'onboarding_mark_interview_complete',
+    { p_staff: staffId, p_reason: reason.trim() },
+    paths(staffId),
+  );
 }
 
 /** §2.4 / §9.6: a role picked after Willo accepted the candidate by itself. */

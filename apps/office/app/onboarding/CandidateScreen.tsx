@@ -33,6 +33,7 @@ import {
   acceptCandidate,
   addQualifiedRole,
   documentLink,
+  markInterviewComplete,
   rejectCandidate,
   rejectDeclaration,
   rejectDocument,
@@ -136,11 +137,14 @@ export function CandidateScreen({
   data,
   now,
   canCorrectDob = false,
+  canMarkInterview = false,
 }: {
   data: CandidateData;
   now: string;
   /** ADR-0070: `officeCan(role, 'identity')` — owners and managers see "Correct". */
   canCorrectDob?: boolean;
+  /** ADR-0077: `canMarkInterviewComplete(role)` — owners and managers may skip Willo. */
+  canMarkInterview?: boolean;
 }) {
   const router = useRouter();
   const at = useMemo(() => new Date(now), [now]);
@@ -150,6 +154,8 @@ export function CandidateScreen({
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, start] = useTransition();
   const [resent, setResent] = useState(false);
+  const [marking, setMarking] = useState(false);
+  const [markReason, setMarkReason] = useState('');
 
   const actions = candidateActions(row.status);
   const readOnly = row.status === 'rejected' || row.status === 'compliant';
@@ -326,7 +332,20 @@ export function CandidateScreen({
           </Alert>
         ) : null}
 
-        {shown === 'interview_requested' ? <InterviewRequested row={row} data={data} /> : null}
+        {shown === 'interview_requested' ? (
+          <InterviewRequested
+            row={row}
+            data={data}
+            onMarkComplete={
+              canMarkInterview && !past && row.status === 'interview_requested'
+                ? () => {
+                    setMarkReason('');
+                    setMarking(true);
+                  }
+                : null
+            }
+          />
+        ) : null}
         {shown === 'interview_completed' ? (
           <InterviewCompleted
             row={row}
@@ -356,6 +375,51 @@ export function CandidateScreen({
         {shown === 'additional_info' ? <AdditionalInfo row={row} data={data} /> : null}
         {shown === 'contract' ? <ContractPhase row={row} contract={data.contract} /> : null}
       </div>
+
+      <Modal
+        open={marking}
+        title="Mark interview complete"
+        onClose={() => setMarking(false)}
+        footer={
+          <>
+            <Button tone="ghost" onClick={() => setMarking(false)}>
+              Cancel
+            </Button>
+            <Button
+              tone="primary"
+              disabled={busy || markReason.trim() === ''}
+              onClick={() =>
+                run(
+                  () => markInterviewComplete(row.id, markReason),
+                  () => setMarking(false),
+                )
+              }
+            >
+              {busy ? 'Saving…' : 'Mark complete'}
+            </Button>
+          </>
+        }
+      >
+        <div className="stack">
+          <div className="sm muted">
+            {row.display_name} moves to <b>Interview completed</b> without waiting for Willo.
+            Nothing is sent to the candidate.
+          </div>
+          <Textarea
+            label="Reason *"
+            placeholder="e.g. test candidate · interviewed in person · Willo webhook never arrived"
+            value={markReason}
+            onChange={(event) => setMarkReason(event.target.value)}
+            hint="Kept for the office with your name, and shown on the profile."
+          />
+          <Note>
+            Then pick the role(s) and <b>Accept — move to Documents</b> (E3 goes out), or Reject,
+            exactly as after a Willo interview. A later Willo response for this candidate changes
+            nothing. Owners and managers only.
+          </Note>
+          {problem ? <Alert tone="coral">{problem}</Alert> : null}
+        </div>
+      </Modal>
 
       <Modal
         open={reject !== null}
@@ -659,7 +723,16 @@ function WilloButton({ url, primary }: { url: string | null; primary?: boolean }
   );
 }
 
-function InterviewRequested({ row, data }: { row: CandidateRow; data: CandidateData }) {
+function InterviewRequested({
+  row,
+  data,
+  onMarkComplete,
+}: {
+  row: CandidateRow;
+  data: CandidateData;
+  /** ADR-0077: set for an owner or a manager on a live Interview requested profile. */
+  onMarkComplete: (() => void) | null;
+}) {
   const answers =
     (row.willo_answers_done ?? 0) > 0
       ? `in progress (${row.willo_answers_done} of ${row.willo_answers_total ?? '?'} answers)`
@@ -724,8 +797,17 @@ function InterviewRequested({ row, data }: { row: CandidateRow; data: CandidateD
             <span className="k">Tracking</span>
             <span>Status arrives from the Willo webhook by itself — nothing to update by hand</span>
           </div>
-          <div>
+          <div className="row wrap">
             <WilloButton url={row.willo_review_url} />
+            {onMarkComplete ? (
+              <Button
+                tone="ghost"
+                title="Owners and managers: move to Interview completed without Willo, with a reason"
+                onClick={onMarkComplete}
+              >
+                Mark interview complete
+              </Button>
+            ) : null}
           </div>
           <Note>
             No documents are held on this phase — the Documents panel appears only once the
@@ -783,10 +865,18 @@ function InterviewCompleted({
         <div className="stack">
           <div className="kv">
             <span className="k">Completed</span>
-            <span>
-              {row.willo_completed_at ? formatUkStamp(row.willo_completed_at) : '—'} — card moved
-              here on its own (Willo &quot;New Response&quot; webhook)
-            </span>
+            {data.interviewOverride ? (
+              <span>
+                {formatUkStamp(data.interviewOverride.at)} — marked complete by{' '}
+                {data.interviewOverride.byName ?? 'the office'} without Willo
+                {data.interviewOverride.reason ? `: “${data.interviewOverride.reason}”` : ''}
+              </span>
+            ) : (
+              <span>
+                {row.willo_completed_at ? formatUkStamp(row.willo_completed_at) : '—'} — card moved
+                here on its own (Willo &quot;New Response&quot; webhook)
+              </span>
+            )}
             <span className="k">Answers</span>
             <span>
               {row.willo_answers_total
@@ -794,7 +884,13 @@ function InterviewCompleted({
                 : '—'}
             </span>
             <span className="k">Decision</span>
-            {past ? (
+            {data.interviewOverride ? (
+              past ? (
+                <span className="green">Accepted by the office</span>
+              ) : (
+                <span className="amber">Awaiting — Accept or Reject here</span>
+              )
+            ) : past ? (
               <span className="green">
                 Accepted — made inside Willo, where the video is watched
               </span>

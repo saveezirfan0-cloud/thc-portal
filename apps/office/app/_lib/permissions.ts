@@ -141,3 +141,14 @@ export function explainOfficeError(message: string): string | null {
   const code = message.split(':')[0]?.trim() ?? '';
   return MESSAGES[code] ?? null;
 }
+
+/**
+ * May this role mark a candidate's interview complete without Willo
+ * (ADR-0077)? Owners and managers — the same pair
+ * `onboarding_mark_interview_complete()` lets through. Unlike `officeCan`,
+ * an unknown role is answered `false`: this is an override, so the button
+ * only appears for someone the screen knows may use it.
+ */
+export function canMarkInterviewComplete(role: OfficeRole | null | undefined): boolean {
+  return role === 'owner' || role === 'manager';
+}

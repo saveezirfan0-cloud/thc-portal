@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_OFFICE_ROLE,
   OFFICE_ROLES,
+  canMarkInterviewComplete,
   canOpen,
   explainOfficeError,
   isOfficeRole,
@@ -129,5 +130,19 @@ describe('the database refusals, in words', () => {
 
   it('returns null for anything else, so the caller keeps its own message', () => {
     expect(explainOfficeError('name_required')).toBeNull();
+  });
+});
+
+describe('mark interview complete without Willo (ADR-0077)', () => {
+  it('is for owners and managers — the pair 765_interview_override lets through', () => {
+    expect(OFFICE_ROLES.filter((role) => canMarkInterviewComplete(role))).toEqual([
+      'owner',
+      'manager',
+    ]);
+  });
+
+  it('is hidden when the role is unknown', () => {
+    expect(canMarkInterviewComplete(null)).toBe(false);
+    expect(canMarkInterviewComplete(undefined)).toBe(false);
   });
 });
