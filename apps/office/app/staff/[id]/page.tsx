@@ -43,6 +43,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     <ProfileScreen
       data={data}
       canCorrectDob={officeCan(role, 'identity')}
+      canEditGender={officeCan(role, 'write')}
       showPayRate={finance}
       canEditPayRate={finance && officeCan(role, 'write')}
     />

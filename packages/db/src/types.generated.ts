@@ -3803,6 +3803,7 @@ export type Database = {
           headcount: number;
           id: string;
           pay_rate: number;
+          required_gender: string | null;
           role_id: string;
           starts_at: string;
         };
@@ -3817,6 +3818,7 @@ export type Database = {
           headcount: number;
           id?: string;
           pay_rate: number;
+          required_gender?: string | null;
           role_id: string;
           starts_at: string;
         };
@@ -3831,6 +3833,7 @@ export type Database = {
           headcount?: number;
           id?: string;
           pay_rate?: number;
+          required_gender?: string | null;
           role_id?: string;
           starts_at?: string;
         };
@@ -9390,6 +9393,10 @@ export type Database = {
       self_cancel_booking: { Args: { p_booking: string }; Returns: Json };
       set_do_not_return: {
         Args: { p_id: string; p_on: boolean; p_reason?: string };
+        Returns: Json;
+      };
+      set_staff_gender: {
+        Args: { p_gender: string | null; p_staff: string };
         Returns: Json;
       };
       set_staff_pay_rate: {

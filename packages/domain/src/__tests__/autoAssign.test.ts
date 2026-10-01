@@ -55,6 +55,26 @@ describe('selectInvitees — who one round invites (§3.4, §6)', () => {
     expect(selectInvitees([row()], { allocation: -1 })).toEqual([]);
   });
 
+  // ADR-0079: the client asked for male staff. The pool says so per row;
+  // the round must not spend its allocation on anyone else.
+  it('on a male-only section invites only the men, even past a better-scoring woman', () => {
+    const rows = [
+      row({ staff_id: 'woman', gate: 'male_only', qualified: true }),
+      row({ staff_id: 'not-recorded', gate: 'gender_not_recorded', qualified: true }),
+      row({ staff_id: 'man', distance_km: 9, rating: 3 }),
+    ];
+    expect(selectInvitees(rows, { allocation: 3 })).toEqual(['man']);
+    expect(selectOfferRecipients(rows, { allocation: 3, notified: [] })).toEqual(['man']);
+  });
+
+  it('on a female-only section invites only the women', () => {
+    const rows = [
+      row({ staff_id: 'man', gate: 'female_only', qualified: true }),
+      row({ staff_id: 'woman', distance_km: 9, rating: 3 }),
+    ];
+    expect(selectInvitees(rows, { allocation: 3 })).toEqual(['woman']);
+  });
+
   it('drops gated candidates, who are never scored at all', () => {
     const rows = [
       row({ staff_id: 'blocked', gate: 'blocked' }),

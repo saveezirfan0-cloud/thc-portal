@@ -136,12 +136,19 @@ export function score(input: ScoreInput, weights: ScoreWeights = DEFAULT_WEIGHTS
 /**
  * Hard gates (§6, §3.3, §9.6). A gated worker is never scored.
  *
- * `wrong_role` behaves differently on screen from the other five: it produces
+ * `wrong_role` behaves differently on screen from the others: it produces
  * no row on the event board at all, not even under Unavailable, because
- * listing every unqualified worker would bury the section. The other five do
+ * listing every unqualified worker would bury the section. The rest do
  * appear under Unavailable with the reason shown, since those people would
  * otherwise be genuine candidates and the manager needs to see why they are
  * not in the pool.
+ *
+ * `male_only`, `female_only` and `gender_not_recorded` apply only on a role
+ * section the client asked to staff with one gender (ADR-0079). The first
+ * two (the other gender) are hidden like `wrong_role` — they are what the
+ * section asks for, and listing everyone of the other gender would bury it
+ * the same way. `gender_not_recorded` (none on file) does show, because
+ * the office can fix it on the staff profile.
  *
  * `do_not_return` is the client-level bar from §9.6: "they are not invited in
  * either wave, the shift never appears on their Radar, they cannot be invited
@@ -151,6 +158,9 @@ export function score(input: ScoreInput, weights: ScoreWeights = DEFAULT_WEIGHTS
  */
 export const HARD_GATES = [
   'wrong_role',
+  'male_only',
+  'female_only',
+  'gender_not_recorded',
   'blocked',
   'booked_elsewhere',
   'hours_limit',
@@ -162,7 +172,7 @@ export type HardGate = (typeof HARD_GATES)[number];
 
 /** True when the gate should still show the worker under Unavailable (§3.3). */
 export function showsUnderUnavailable(gate: HardGate): boolean {
-  return gate !== 'wrong_role';
+  return gate !== 'wrong_role' && gate !== 'male_only' && gate !== 'female_only';
 }
 
 /**

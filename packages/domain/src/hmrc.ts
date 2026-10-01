@@ -140,7 +140,7 @@ export const HMRC_GENDER_OPTIONS: readonly { value: HmrcGender; label: string }[
 export const HMRC_GENDER_QUESTION = 'Gender, as HMRC records it';
 
 export const HMRC_GENDER_NOTE =
-  'HMRC’s payroll records only accept male or female, so these are the only two options we can send. Choose the one HMRC holds for you — usually the one on your birth certificate or Gender Recognition Certificate. It goes on your payroll record for HMRC and is used for nothing else.';
+  'HMRC’s payroll records only accept male or female, so these are the only two options we can send. Choose the one HMRC holds for you — usually the one on your birth certificate or Gender Recognition Certificate. It goes on your payroll record for HMRC. We also use it for the few roles where a client has asked for male or female staff only, so you are offered the shifts you can work. It is used for nothing else.';
 
 export interface HmrcForm extends HmrcAnswers {
   studentLoan: StudentLoanPlan | null;

@@ -1,6 +1,12 @@
 import { cookies } from 'next/headers';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { type CandidateRow, type ScoreWeights, parseWeights } from '@thc/domain';
+import {
+  type CandidateRow,
+  type HardGate,
+  type ScoreWeights,
+  parseWeights,
+  showsUnderUnavailable,
+} from '@thc/domain';
 import { eventsDb, supabaseConfigured } from '../db';
 import {
   type BoardOffer,
@@ -80,6 +86,8 @@ export interface BoardSection {
   payRate: number | null;
   dressCode: string;
   autoAssign: boolean;
+  /** ADR-0079: the gender the client asked for on this role, or null for anyone. */
+  requiredGender: 'M' | 'F' | null;
   allocationPerHour: number;
   confirmed: BoardBooking[];
   invited: BoardBooking[];
@@ -217,7 +225,7 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
     supabase
       .from('shift_requirements')
       .select(
-        'id, role_id, starts_at, ends_at, headcount, buffer, dress_code, auto_assign, allocation_per_hour',
+        'id, role_id, starts_at, ends_at, headcount, buffer, dress_code, auto_assign, required_gender, allocation_per_hour',
       )
       .eq('event_id', eventId)
       .order('starts_at'),
@@ -280,14 +288,15 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
           .in('shift_id', sectionIds)
       : Promise.resolve({ data: [], error: null }),
     // One row per worker in the directory comes back, most of them
-    // wrong_role — which never produces a row on the board (§6). Filtered
-    // in the database, so the response stays far inside PostgREST's row
-    // cap and only the role's own workers cross the wire.
+    // wrong_role — which never produces a row on the board (§6), nor does
+    // the other gender on a gender-only section (ADR-0079). Filtered in the
+    // database, so the response stays far inside PostgREST's row cap and
+    // only the workers the board can show cross the wire.
     Promise.all(
       sectionIds.map((id) =>
         supabase
           .rpc('auto_assign_candidates', { p_shift: id, p_escalation: escalating.has(id) })
-          .or('gate.is.null,gate.neq.wrong_role'),
+          .or('gate.is.null,gate.not.in.(wrong_role,male_only,female_only)'),
       ),
     ),
     // ADR-0043: who marked each ROLE SECTION's window unavailable (RULE-18).
@@ -373,11 +382,13 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
   );
 
   // Everyone the board will name: booked on a section, or a candidate the
-  // pool or Unavailable will show. wrong_role never produces a row (§6),
-  // so those workers are not even looked up.
+  // pool or Unavailable will show. wrong_role and the other gender never
+  // produce a row (§6, ADR-0079), so those workers are not even looked up.
   const named = new Set<string>(bookings.map((b) => b['staff_id'] as string));
   for (const { rows } of candidates.values()) {
-    for (const row of rows ?? []) if (row.gate !== 'wrong_role') named.add(row.staff_id);
+    for (const row of rows ?? []) {
+      if (!row.gate || showsUnderUnavailable(row.gate as HardGate)) named.add(row.staff_id);
+    }
   }
   const staffIds = [...named];
 
@@ -604,6 +615,7 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
           payRate: rates.has(id) ? Number(rates.get(id)!.pay_rate) : null,
           dressCode: (section['dress_code'] as string) ?? '',
           autoAssign: Boolean(section['auto_assign']),
+          requiredGender: (section['required_gender'] as 'M' | 'F' | null) ?? null,
           allocationPerHour: section['allocation_per_hour'] as number,
           // A no-show stays in Confirmed, badged — never moved out (§3.3).
           confirmed: mine

@@ -562,6 +562,14 @@ const booking = (i, status, extra = {}) => ({
   qualified: i % 2 === 0,
   noShow: false,
   reconfirmRequired: i === 3,
+  offer: null,
+  attendance: {
+    checkInAt: null,
+    checkOutAt: null,
+    lateMinutes: null,
+    leftEarly: false,
+    noCheckout: false,
+  },
   ...extra,
 });
 const pool = [4, 5, 6].map((i, k) => ({
@@ -588,6 +596,18 @@ const unavailable = [
     reason: 'hours_limit',
     label: 'Weekly hours limit',
     detail: 'would exceed the 20 h term-time cap (RULE-20)',
+    tone: 'amber',
+    appliedAt: null,
+  },
+  // ADR-0079: sec1 is Male staff only, and this worker has no gender on file.
+  {
+    staffId: 's9',
+    name: 'Daniel K.',
+    roles: ['Waiting staff (silver service)'],
+    reason: 'gender_not_recorded',
+    label: 'Gender not recorded',
+    detail:
+      'the client asked for staff of one gender on this role and theirs is not on file — record it on their staff profile',
     tone: 'amber',
     appliedAt: null,
   },
@@ -623,6 +643,7 @@ export const boardEvent = {
       payRate: 12.21,
       dressCode: 'Black trousers, white shirt, black tie; black polished shoes',
       autoAssign: true,
+      requiredGender: 'M',
       allocationPerHour: 2,
       confirmed: [booking(0, 'confirmed'), booking(1, 'confirmed'), booking(3, 'confirmed')],
       invited: [booking(5, 'invited'), booking(6, 'invited', { appliedAt: iso('2026-09-22') })],
@@ -630,6 +651,7 @@ export const boardEvent = {
       pool,
       poolProblem: null,
       unavailable,
+      handovers: [],
     },
     {
       id: 'sec2',
@@ -643,6 +665,7 @@ export const boardEvent = {
       payRate: 12.5,
       dressCode: 'All black',
       autoAssign: false,
+      requiredGender: 'F',
       allocationPerHour: 1,
       confirmed: [booking(4, 'confirmed'), booking(2, 'confirmed')],
       invited: [],
@@ -650,6 +673,7 @@ export const boardEvent = {
       pool: [],
       poolProblem: null,
       unavailable: [],
+      handovers: [],
     },
   ],
 };
@@ -715,6 +739,7 @@ export const savedEvent = {
       payRate: 12.21,
       dressCode: 'Black trousers, white shirt, black tie',
       autoAssign: true,
+      requiredGender: 'M',
       allocationPerHour: 2,
       confirmed: 3,
       booked: 5,
@@ -730,6 +755,7 @@ export const savedEvent = {
       payRate: 12.5,
       dressCode: 'All black',
       autoAssign: false,
+      requiredGender: 'F',
       allocationPerHour: 1,
       confirmed: 2,
       booked: 2,

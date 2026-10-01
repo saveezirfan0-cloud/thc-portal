@@ -68,6 +68,7 @@ function toInput(draft: EventDraft, id: string | null, ratesVisible: boolean): E
       payRate: ratesVisible ? role.payRate : null,
       dressCode: effectiveDressCode(role),
       autoAssign: role.autoAssign,
+      requiredGender: role.requiredGender,
       allocationPerHour: role.allocationPerHour,
     })),
   };

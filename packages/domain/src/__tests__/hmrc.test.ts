@@ -114,6 +114,8 @@ describe('the checklist form', () => {
   it('offers HMRC’s two values and says why', () => {
     expect(HMRC_GENDER_OPTIONS.map((o) => o.value)).toEqual(['M', 'F']);
     expect(HMRC_GENDER_NOTE).toMatch(/HMRC/);
+    // ADR-0079: the second use is named, so the notice stays true.
+    expect(HMRC_GENDER_NOTE).toMatch(/male or female staff only/);
   });
 });
 
