@@ -239,6 +239,37 @@ describe('the candidate profile · date of birth (ADR-0070)', () => {
   });
 });
 
+describe('the candidate profile · mark interview complete (ADR-0077)', () => {
+  const requested = data({ candidate: { ...ROW, status: 'interview_requested' } });
+
+  it('offers it to an owner or a manager while the interview is awaited', () => {
+    const html = renderToStaticMarkup(
+      <CandidateScreen data={requested} now="2026-09-23T10:00:00Z" canMarkInterview />,
+    );
+    expect(html).toContain('>Mark interview complete<');
+  });
+
+  it('and to nobody else', () => {
+    expect(render(requested)).not.toContain('>Mark interview complete<');
+  });
+
+  it('says who skipped Willo, and why, on Interview completed', () => {
+    const html = render(
+      data({
+        candidate: { ...ROW, status: 'interview_completed' },
+        interviewOverride: {
+          at: '2026-09-23T09:00:00Z',
+          byName: 'Gisela M.',
+          reason: 'Test candidate',
+        },
+      }),
+    );
+    expect(html).toContain('marked complete by Gisela M. without Willo');
+    expect(html).toContain('Test candidate');
+    expect(html).not.toContain('card moved here on its own');
+  });
+});
+
 describe('the candidate profile, Contract phase (§2.11)', () => {
   const signed = (version: string) =>
     render(

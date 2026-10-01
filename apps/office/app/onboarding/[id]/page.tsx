@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import { Alert } from '@thc/ui';
 import { OfficeShell } from '../../_components/OfficeShell';
 import { currentOfficeRole } from '../../_components/officeUser';
-import { officeCan } from '../../_lib/permissions';
+import { canMarkInterviewComplete, officeCan } from '../../_lib/permissions';
 import { loadCandidate } from '../data';
 import { CandidateScreen } from '../CandidateScreen';
 
@@ -34,6 +34,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
       data={data}
       now={new Date().toISOString()}
       canCorrectDob={officeCan(role, 'identity')}
+      canMarkInterview={canMarkInterviewComplete(role)}
     />
   );
 }
