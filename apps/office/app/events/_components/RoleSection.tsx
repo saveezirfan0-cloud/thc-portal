@@ -345,16 +345,16 @@ export function RoleSection({
         <Checkbox checked={role.maleOnly} onChange={(maleOnly) => onChange({ maleOnly })}>
           <b>Male staff only</b>{' '}
           <span className="muted">
-            — the client asked for men on this role. Auto-assign invites only male staff, and
-            only they see it on Radar. Staff with no gender on file are left out until it is
-            recorded on their profile.
+            — the client asked for men on this role. Auto-assign invites only male staff, and only
+            they see it on Radar. Staff with no gender on file are left out until it is recorded on
+            their profile.
           </span>
         </Checkbox>
 
         {changed.has('male_only') && role.maleOnly && booked > 0 ? (
           <Alert tone="cyan">
-            <b>Already booked staff are not removed.</b> Open invitations stay open but can only
-            be accepted by male staff; withdraw anyone else on the event board.
+            <b>Already booked staff are not removed.</b> Open invitations stay open but can only be
+            accepted by male staff; withdraw anyone else on the event board.
           </Alert>
         ) : null}
 
