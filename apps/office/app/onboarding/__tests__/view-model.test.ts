@@ -616,11 +616,14 @@ describe('the weekly limit as §2.3 words it', () => {
 });
 
 describe('the right-to-work panel header (§2.5, ADR-0077)', () => {
-  it('asks no branch for a visa, a status document, NI evidence or a typed expiry', () => {
+  it('asks no branch for a visa, a status document or a typed expiry', () => {
     for (const line of Object.values(RTW_REQUIRED)) {
-      expect(line).not.toMatch(/visa document|status document|NI evidence|with its expiry/i);
+      expect(line).not.toMatch(/visa document|status document|with its expiry/i);
     }
-    expect(RTW_REQUIRED['uk_irish']).toBe('passport, or birth certificate · no share code');
+    // List A: the birth certificate goes with an official NI document.
+    expect(RTW_REQUIRED['uk_irish']).toBe(
+      'passport, or birth certificate + NI evidence · no share code',
+    );
     expect(RTW_REQUIRED['work_visa']).toBe(
       'passport + share code + visa type · expiry from the gov.uk check',
     );

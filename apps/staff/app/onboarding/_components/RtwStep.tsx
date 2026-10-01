@@ -15,6 +15,7 @@ import {
 } from '@thc/ui';
 import {
   BRANCH_HEADING,
+  NI_EVIDENCE_ACCEPTED,
   RTW_BRANCHES,
   VISA_TYPES,
   isValidShareCode,
@@ -211,7 +212,7 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
             block
             options={[
               { value: 'passport', label: 'Passport' },
-              { value: 'birth_certificate', label: 'Birth certificate' },
+              { value: 'birth_certificate', label: 'Birth cert. + NI evidence' },
             ]}
             value={form.ukChoice ?? 'passport'}
             onChange={(v) => set('ukChoice', v)}
@@ -235,8 +236,10 @@ export function RtwStep({ initial, today }: { initial: RtwForm; today: string })
           <div className="docrow off">
             <span className="ico">—</span>
             <div>
-              <div className="t">Birth certificate</div>
-              <div className="m">Only if you don’t have a passport.</div>
+              <div className="t">Birth certificate + NI evidence</div>
+              <div className="m">
+                Only if you don’t have a passport. NI evidence: {NI_EVIDENCE_ACCEPTED.join(', ')}.
+              </div>
             </div>
           </div>
         ) : null}

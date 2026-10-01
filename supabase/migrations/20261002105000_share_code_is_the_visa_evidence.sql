@@ -1,7 +1,7 @@
 -- =====================================================================
 -- Migration 20261002105000 · the share-code check is the visa evidence:
---                            no visa / status upload, no typed expiry,
---                            no NI evidence at onboarding (ADR-0077)
+--                            no visa / status upload and no typed expiry
+--                            at onboarding (ADR-0077)
 --
 -- THC's decision, 01.10.2026, a deliberate change from scope §2.5:
 --
@@ -9,8 +9,14 @@
 --    visa etc, and we will need NI number but not the other stuff at step
 --    4 documents."
 --
--- (The owner later confirmed the NI number at step 7 stays optional, as
--- §2.8 has it, and the visa type dropdown on step 1 stays as it is.)
+-- The owner then settled three points:
+--   · the visa type dropdown on step 1 stays as it is;
+--   · the NI number at step 7 stays optional, as §2.8 has it;
+--   · the NI document STAYS on the UK / Irish birth-certificate route: the
+--     Home Office's List A takes a UK birth certificate only together with
+--     an official document showing the NI number (ADR-0065), so the pair is
+--     the right-to-work evidence there and the share code cannot replace
+--     it (that branch has none).
 --
 -- The gov.uk share-code check (rtw_check, ADR-0025, 20260928100000)
 -- already returns the right-to-work-until date, and that date — on the
@@ -20,8 +26,8 @@
 -- onboards from now on:
 --
 --   1 · onboarding_required_docs() — the step 4 set per branch:
---         uk_irish         passport, OR birth certificate (alone: no NI
---                          evidence beside it any more)
+--         uk_irish         passport, OR birth certificate + NI evidence
+--                                                             (unchanged)
 --         eu_settled       passport or national ID            (unchanged)
 --         work_visa        passport                 (no visa_document)
 --         int. student     passport + University Term Dates Letter
@@ -30,8 +36,9 @@
 --       onboarding_accepted_docs(), onboarding_attach_document(),
 --       onboarding_submit_documents() and step 1's "uploads the new branch
 --       does not ask for leave the queue" all read this function, so they
---       follow without being redefined: a visa_document, status_document
---       or ni_evidence upload in the wizard is now `doc_not_for_branch`.
+--       follow without being redefined: a visa_document or status_document
+--       upload in the wizard is now `doc_not_for_branch`, and so is
+--       ni_evidence anywhere but the UK birth-certificate route (as before).
 --
 --   2 · onboarding_save_right_to_work() — no expiry in any branch. The
 --       visa type stays required for the work visa branch with the same
@@ -42,16 +49,33 @@
 --
 --   3 · onboarding_documents_missing() — the "documents missing" tokens
 --       the Back Office board, the candidate profile, the quiz gate and
---       the Staff App Documents hub all read. A work visa, dependant /
---       other or UK birth-certificate worker is no longer missing a
---       visa_document, status_document or ni_evidence. Same body as
---       20261001208000 otherwise: named columns, STABLE, INVOKER.
+--       the Staff App Documents hub all read. A work visa or dependant /
+--       other worker is no longer missing a visa_document or
+--       status_document. Same body as 20261001208000 otherwise (the UK
+--       birth-certificate route still owes its ni_evidence): named
+--       columns, STABLE, INVOKER.
+--
+--   4 · One-off: candidates already in the wizard. A visa_document or
+--       status_document — and an ni_evidence anywhere but the UK
+--       birth-certificate route — that is still pending or was rejected,
+--       for a worker still in onboarding (interview_requested,
+--       interview_completed or documents), is marked `superseded`. Without
+--       it, a rejected one would block the quiz for ever: the wizard no
+--       longer offers its re-upload. Superseded rows are kept, read-only,
+--       like any other (§2.12); nothing is deleted, and verified rows and
+--       every worker past the documents stage are not touched. The §2.3
+--       gate (onboarding_advance_if_ready) is then run for each candidate
+--       touched — the row trigger only reacts to a Verify — so one whose
+--       last blocker this was moves to Quiz and is sent E12 (ADR-0075),
+--       exactly as a Verify would have done.
 --
 -- Kept, deliberately (no data is deleted):
 --   · the doc_type values visa_document, status_document and ni_evidence,
 --     and the onboarding_progress.visa_type / visa_expiry columns;
---   · every row already uploaded: a pending one is still verified or
---     rejected in Compliance and on the candidate profile, a verified one
+--   · every row already uploaded: a pending one of a worker past the
+--     documents stage is still verified or rejected in Compliance (an
+--     in-wizard candidate's pending visa / status row is superseded by
+--     step 4 below, and stays on the profile read-only), a verified one
 --     still counts towards right_to_work_until (rtw_evidence_until) and
 --     still gets its expiry reminders, and a worker who holds one can
 --     still renew it from the Documents hub (submit_document_upload
@@ -80,6 +104,8 @@ as $$
        p_branch = 'uk_irish' and coalesce(p_uk_choice, 'passport') = 'passport'),
     ('birth_certificate', array['birth_certificate']::doc_type[],
        p_branch = 'uk_irish' and p_uk_choice = 'birth_certificate'),
+    ('ni_evidence',       array['ni_evidence']::doc_type[],
+       p_branch = 'uk_irish' and p_uk_choice = 'birth_certificate'),
     ('identity',          array['passport', 'national_id']::doc_type[],
        p_branch = 'eu_settled'),
     ('passport',          array['passport']::doc_type[],
@@ -91,7 +117,7 @@ as $$
 $$;
 
 comment on function public.onboarding_required_docs(rtw_branch, text) is
-  '§2.5 pts 1–5 as narrowed by THC on 01.10.2026 (ADR-0077): the step 4 documents a branch asks for, one row per requirement, any ONE of accepts satisfies it. UK/Irish passport OR birth certificate; EU passport or national ID; work visa and dependant/other passport; student passport + University Term Dates Letter. No visa_document, status_document or ni_evidence: the gov.uk share-code check is the right-to-work evidence (20261002105000).';
+  '§2.5 pts 1–5 as narrowed by THC on 01.10.2026 (ADR-0077): the step 4 documents a branch asks for, one row per requirement, any ONE of accepts satisfies it. UK/Irish passport OR birth certificate + NI evidence (List A); EU passport or national ID; work visa and dependant/other passport; student passport + University Term Dates Letter. No visa_document or status_document: the gov.uk share-code check is the right-to-work evidence (20261002105000).';
 
 -- ---------------------------------------------------------------------
 -- 2 · Step 1: the visa type stays, the typed expiry goes.
@@ -233,9 +259,9 @@ comment on column public.onboarding_progress.visa_type is
 -- ---------------------------------------------------------------------
 -- 3 · What is missing, per branch.
 --
--- As 20261001208000, except the branch sets: no ni_evidence beside a UK
--- birth certificate, no visa_document (work visa), no status_document
--- (dependant / other).
+-- As 20261001208000, except the branch sets: no visa_document (work
+-- visa), no status_document (dependant / other). The UK birth-certificate
+-- route still owes its ni_evidence.
 -- ---------------------------------------------------------------------
 create or replace function public.onboarding_documents_missing(p_staff uuid)
 returns text[]
@@ -272,9 +298,16 @@ begin
   else
     case s_rtw_branch
       when 'uk_irish' then
-        -- passport OR birth certificate (ADR-0077: no NI evidence beside it)
-        if not ('passport' = any(have) or 'birth_certificate' = any(have)) then
-          missing := missing || 'passport'::text;
+        -- passport OR birth certificate + a document showing the NI number
+        -- (List A; kept by ADR-0077)
+        if not ('passport' = any(have)) then
+          if 'birth_certificate' = any(have) then
+            if not ('ni_evidence' = any(have)) then
+              missing := missing || 'ni_evidence'::text;
+            end if;
+          else
+            missing := missing || 'passport'::text;
+          end if;
         end if;
       when 'eu_settled' then
         if not ('passport' = any(have) or 'national_id' = any(have)) then
@@ -308,4 +341,37 @@ begin
 end $$;
 
 comment on function public.onboarding_documents_missing(uuid) is
-  '§2.5 points 1–5 as narrowed by ADR-0077: which of the branch''s required items have not been supplied at all (tokens: dob, rtw_branch, passport, university_term_dates_letter, share_code, criminal_declaration). No visa_document, status_document or ni_evidence token for any branch: the gov.uk share-code check is the evidence. Empty = everything is in; whether it is verified is compliance_blockers() (20261002105000).';
+  '§2.5 points 1–5 as narrowed by ADR-0077: which of the branch''s required items have not been supplied at all (tokens: dob, rtw_branch, passport, ni_evidence — UK birth-certificate route only —, university_term_dates_letter, share_code, criminal_declaration). No visa_document or status_document token for any branch: the gov.uk share-code check is the evidence. Empty = everything is in; whether it is verified is compliance_blockers() (20261002105000).';
+
+-- ---------------------------------------------------------------------
+-- 4 · One-off: candidates already in the wizard (see the header).
+--
+-- Pending or rejected only; superseded, never deleted; only workers still
+-- in onboarding up to and including the documents stage. Then the §2.3
+-- gate for each candidate touched: onboarding_docs_advance fires on a
+-- Verify only, so a superseded last blocker would otherwise leave the
+-- candidate in Documents with nothing outstanding. The gate does nothing
+-- unless they are in `documents` with no blocker left.
+-- ---------------------------------------------------------------------
+do $$
+declare
+  v_staff uuid[];
+begin
+  with d as (
+    update compliance_docs d
+       set review_status = 'superseded'
+      from staff s
+      left join onboarding_progress p on p.staff_id = s.id
+     where d.staff_id = s.id
+       and s.status in ('interview_requested', 'interview_completed', 'documents')
+       and d.review_status in ('pending', 'rejected')
+       and (d.doc_type in ('visa_document', 'status_document')
+            or (d.doc_type = 'ni_evidence'
+                and not (s.rtw_branch is not distinct from 'uk_irish'
+                         and p.uk_doc_choice is not distinct from 'birth_certificate')))
+    returning d.staff_id
+  )
+  select coalesce(array_agg(distinct d.staff_id), '{}') into v_staff from d;
+
+  perform onboarding_advance_if_ready(x) from unnest(v_staff) x;
+end $$;

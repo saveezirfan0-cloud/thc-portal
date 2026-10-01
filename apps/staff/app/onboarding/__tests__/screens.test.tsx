@@ -72,7 +72,7 @@ describe('1/11 Right to work', () => {
     expect(html).toContain('Choose one to continue');
   });
 
-  it('UK / Irish — no share code field, passport or birth certificate (no NI evidence, ADR-0077)', () => {
+  it('UK / Irish — no share code field, passport or birth certificate + NI evidence', () => {
     const html = renderToStaticMarkup(
       <RtwStep
         initial={{ ...blank, branch: 'uk_irish', dob: '2001-02-14', ukChoice: 'passport' }}
@@ -80,21 +80,21 @@ describe('1/11 Right to work', () => {
       />,
     );
     expect(html).not.toContain('Share code');
-    expect(html).toContain('Birth certificate');
-    expect(html).not.toContain('NI evidence');
-    expect(html).not.toContain('P60');
+    expect(html).toContain('Birth cert. + NI evidence');
+    expect(html).toContain('P60');
     expect(footer(html).disabled).toBe(false);
   });
 
-  it('UK / Irish birth-certificate route — the birth certificate alone at step 4', () => {
+  it('UK / Irish birth-certificate route — birth certificate + NI evidence at step 4 (List A)', () => {
     const html = renderToStaticMarkup(
       <RtwStep
         initial={{ ...blank, branch: 'uk_irish', dob: '2001-02-14', ukChoice: 'birth_certificate' }}
         today={TODAY}
       />,
     );
-    expect(html).toContain('Birth certificate');
-    expect(html).not.toContain('NI evidence');
+    // The required-document rows, not the toggle's label.
+    const rows = [...html.matchAll(/<div class="t">([^<]*)<\/div>/g)].map((m) => m[1]);
+    expect(rows).toEqual(['Birth certificate', 'NI evidence']);
     expect(footer(html).disabled).toBe(false);
   });
 

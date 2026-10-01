@@ -830,13 +830,13 @@ export const RTW_BRANCH_NO: Record<string, number> = {
 
 /**
  * §2.5 pts 1–5 as THC narrowed them on 01.10.2026 (ADR-0077): the document
- * set each branch collects, as the panel header reads it. No visa, status
- * document or NI evidence is asked for — the share-code check carries the
- * right-to-work-until date. Rows uploaded before then are still listed and
- * reviewed.
+ * set each branch collects, as the panel header reads it. No visa or status
+ * document is asked for — the share-code check carries the
+ * right-to-work-until date. NI evidence stays on the UK birth-certificate
+ * route (List A). Rows uploaded before then are still listed.
  */
 export const RTW_REQUIRED: Record<string, string> = {
-  uk_irish: 'passport, or birth certificate · no share code',
+  uk_irish: 'passport, or birth certificate + NI evidence · no share code',
   eu_settled: 'passport / ID + share code · pre-settled carries an expiry',
   work_visa: 'passport + share code + visa type · expiry from the gov.uk check',
   international_student:

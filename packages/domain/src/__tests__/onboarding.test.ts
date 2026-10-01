@@ -62,9 +62,9 @@ describe('document sets per branch (§2.5 pts 1–5, 8, as narrowed by ADR-0077)
   const types = (branch: RtwBranch, choice: 'passport' | 'birth_certificate' | null = null) =>
     requiredDocuments(branch, choice).map((r) => r.accepts.join('|'));
 
-  it('UK / Irish: passport OR birth certificate alone — no NI evidence, no share code', () => {
+  it('UK / Irish: passport OR birth certificate + NI evidence (List A, kept), no share code', () => {
     expect(types('uk_irish', 'passport')).toEqual(['passport']);
-    expect(types('uk_irish', 'birth_certificate')).toEqual(['birth_certificate']);
+    expect(types('uk_irish', 'birth_certificate')).toEqual(['birth_certificate', 'ni_evidence']);
     expect(needsShareCode('uk_irish')).toBe(false);
   });
 
@@ -90,7 +90,7 @@ describe('document sets per branch (§2.5 pts 1–5, 8, as narrowed by ADR-0077)
     expect(needsVisaType('dependant_other')).toBe(false);
   });
 
-  it('no branch collects a visa, a status document or NI evidence (ADR-0077)', () => {
+  it('no branch collects a visa or a status document (ADR-0077)', () => {
     for (const branch of [
       'uk_irish',
       'eu_settled',
@@ -102,7 +102,10 @@ describe('document sets per branch (§2.5 pts 1–5, 8, as narrowed by ADR-0077)
         const accepted = acceptedDocTypes(branch, choice);
         expect(accepted).not.toContain('visa_document');
         expect(accepted).not.toContain('status_document');
-        expect(accepted).not.toContain('ni_evidence');
+        // NI evidence only as the UK birth certificate's List A partner.
+        expect(accepted.includes('ni_evidence')).toBe(
+          branch === 'uk_irish' && choice === 'birth_certificate',
+        );
       }
     }
   });
@@ -111,8 +114,10 @@ describe('document sets per branch (§2.5 pts 1–5, 8, as narrowed by ADR-0077)
     const description = (key: RtwBranch) => RTW_BRANCHES.find((b) => b.key === key)?.description;
     expect(description('work_visa')).toBe('Passport + share code + your visa type.');
     expect(description('dependant_other')).toBe('Passport + your gov.uk share code.');
-    expect(description('uk_irish')).toBe('Passport — or your birth certificate. No share code.');
-    for (const b of RTW_BRANCHES) expect(b.description).not.toMatch(/expiry|NI number|copy of/i);
+    expect(description('uk_irish')).toBe(
+      'Passport — or birth certificate + a document showing your NI number. No share code.',
+    );
+    for (const b of RTW_BRANCHES) expect(b.description).not.toMatch(/expiry|copy of/i);
   });
 
   it('no branch collects the completion letter, a share-code file or a P45 at onboarding', () => {

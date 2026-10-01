@@ -110,7 +110,7 @@ select throws_ok(
   'P0001', 'under_18', 'under 18 is refused on the server (§2.1)');
 select throws_ok(
   $$ select onboarding_save_right_to_work('uk_irish', date '1999-09-30', null, null, null, null, false) $$,
-  'P0001', 'doc_choice_required', 'UK / Irish must say passport or birth certificate');
+  'P0001', 'doc_choice_required', 'UK / Irish must say passport or birth certificate + NI evidence');
 select throws_ok(
   $$ select onboarding_save_right_to_work('work_visa', date '1999-09-30', 'W123AB4CD', null, date '2028-03-31', null, false) $$,
   'P0001', 'visa_type_required', 'work visa needs a visa type (§2.5 pt 3)');
@@ -131,12 +131,12 @@ select is_empty(
        from unnest(enum_range(null::rtw_branch)) b,
             unnest(array['passport', 'birth_certificate']) c,
             onboarding_required_docs(b, c) r
-      where r.accepts && array['visa_document', 'status_document', 'ni_evidence']::doc_type[] $$,
-  'no branch asks for a visa document, a status document or NI evidence at step 4 (ADR-0077)');
+      where r.accepts && array['visa_document', 'status_document']::doc_type[] $$,
+  'no branch asks for a visa document or a status document at step 4 (ADR-0077)');
 select results_eq(
   $$ select req_key from onboarding_required_docs('uk_irish', 'birth_certificate') $$,
-  $$ values ('birth_certificate') $$,
-  'the UK birth-certificate route is the birth certificate alone');
+  $$ values ('birth_certificate'), ('ni_evidence') $$,
+  'the UK birth-certificate route keeps its NI evidence (List A, ADR-0065 — kept by ADR-0077)');
 select results_eq(
   $$ select req_key from onboarding_required_docs('work_visa', null)
      union all select req_key from onboarding_required_docs('dependant_other', null) $$,

@@ -28,7 +28,8 @@ const documents = readFileSync(
 /**
  * The latest definitions of onboarding_required_docs(),
  * onboarding_save_right_to_work() and onboarding_documents_missing()
- * (ADR-0077: no visa / status / NI evidence upload, no typed expiry).
+ * (ADR-0077: no visa / status document upload, no typed expiry; NI evidence
+ * stays on the UK birth-certificate route).
  */
 const shareCodeEvidence = readFileSync(
   join(MIGRATIONS, '20261002105000_share_code_is_the_visa_evidence.sql'),
@@ -72,13 +73,14 @@ describe('visa types (§2.5 pt 3) — SQL and TypeScript agree', () => {
   });
 });
 
-describe('documents missing (ADR-0077) — no visa, status document or NI evidence token', () => {
-  it('the latest onboarding_documents_missing() names none of them', () => {
+describe('documents missing (ADR-0077) — no visa or status document token', () => {
+  it('the latest onboarding_documents_missing() names neither; NI evidence stays for List A', () => {
     const start = shareCodeEvidence.indexOf(
       'create or replace function public.onboarding_documents_missing',
     );
     const body = shareCodeEvidence.slice(start, shareCodeEvidence.indexOf('$$;', start));
-    expect(body).not.toMatch(/'(visa_document|status_document|ni_evidence)'/);
+    expect(body).not.toMatch(/'(visa_document|status_document)'/);
+    expect(body).toContain("missing := missing || 'ni_evidence'::text;");
   });
 });
 
@@ -124,7 +126,7 @@ describe('document sets (§2.5 pts 1–5, ADR-0077) — SQL and TypeScript agree
   }
 
   it('parses every row', () => {
-    expect(rows.length).toBe(5);
+    expect(rows.length).toBe(6);
   });
 
   const cases: [RtwBranch, UkDocChoice][] = [

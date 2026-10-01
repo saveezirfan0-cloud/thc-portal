@@ -59,7 +59,8 @@ export const RTW_BRANCHES: readonly { key: RtwBranch; title: string; description
   {
     key: 'uk_irish',
     title: 'UK or Irish citizen',
-    description: 'Passport — or your birth certificate. No share code.',
+    description:
+      'Passport — or birth certificate + a document showing your NI number. No share code.',
   },
   {
     key: 'eu_settled',
@@ -94,11 +95,23 @@ export const BRANCH_HEADING: Readonly<Record<RtwBranch, string>> = {
 };
 
 /**
- * Branch 1 only: passport (photo) OR birth certificate. §2.5 pt 1 also
- * asked for a document showing the NI number beside the birth
- * certificate; THC dropped it on 01.10.2026 (ADR-0077).
+ * Branch 1 only: "passport (photo) OR birth certificate + a document
+ * showing the NI number" — the Home Office's List A pair, kept by
+ * ADR-0077 (ADR-0065).
  */
 export type UkDocChoice = 'passport' | 'birth_certificate';
+
+/**
+ * §2.5 pt 7 — any of these satisfies the NI evidence requirement on the
+ * birth-certificate route; the manager checks the number on it matches
+ * the one on the profile.
+ */
+export const NI_EVIDENCE_ACCEPTED = [
+  'an NI card or letter',
+  'an HMRC or DWP letter showing the number',
+  'a P60',
+  'a payslip from a previous employer showing the number',
+] as const;
 
 export interface DocRequirement {
   /** Stable key for the row on screen. */
@@ -131,14 +144,14 @@ const PASSPORT: DocRequirement = {
  *     a student visa — the share-code check is the evidence of status and
  *     expiry, so no visa copy is uploaded in any branch (ADR-0077; §2.5
  *     pt 4 had already said so of the student visa on 04.09.2026);
- *   · NI evidence beside a UK birth certificate — the NI number is typed
- *     at step 7, no document is collected for it (ADR-0077);
+ *   · NI evidence anywhere but beside a UK birth certificate — there it is
+ *     the second half of List A's pair and stays (ADR-0077, ADR-0065);
  *   · the completion letter — uploaded once the student graduates, from
  *     the Documents tab (§4.5), not at onboarding;
  *   · a P45 — never accepted anywhere (§2.8).
  *
- * The visa_document, status_document and ni_evidence types stay in the
- * schema: rows uploaded before ADR-0077 are kept and reviewed as before.
+ * The visa_document and status_document types stay in the schema: rows
+ * uploaded before ADR-0077 are kept.
  */
 export function requiredDocuments(
   branch: RtwBranch,
@@ -153,6 +166,12 @@ export function requiredDocuments(
               label: 'Birth certificate',
               accepts: ['birth_certificate'],
               hint: 'Full birth certificate, photo or scan',
+            },
+            {
+              key: 'ni_evidence',
+              label: 'NI evidence',
+              accepts: ['ni_evidence'],
+              hint: `A document showing your NI number: ${NI_EVIDENCE_ACCEPTED.join(', ')}`,
             },
           ]
         : [PASSPORT];
