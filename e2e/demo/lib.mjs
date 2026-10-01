@@ -11,7 +11,7 @@
 //
 // See README.md in this folder.
 import { chromium, devices } from '@playwright/test';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { X509Certificate, createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,7 +21,21 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 export const OUT = process.env.DEMO_OUT || path.join(here, 'out');
 const RAW = path.join(OUT, '.raw');
 const FFMPEG = process.env.DEMO_FFMPEG || 'ffmpeg';
+// DEMO_HD=1: record the real screen instead of Playwright's video. Playwright
+// only ever records at the page's CSS size, so a bigger canvas is padded with
+// grey. In HD mode the browser runs headful on a virtual display (Xvfb) with a
+// device-pixel ratio above 1 and ffmpeg grabs the screen, so text is genuinely
+// sharp: desktop 1920x1200, phone 824x1832. The page is laid out narrower than
+// before (DEMO_HD_CSS_WIDTH, default 1152 CSS px), which also makes the text
+// larger in the frame.
+export const HD = process.env.DEMO_HD === '1';
+const HD_CSS_W = Number(process.env.DEMO_HD_CSS_WIDTH || 1152);
 const VIEWPORT = { desktop: { width: 1440, height: 900 }, mobile: { width: 412, height: 916 } };
+const DPR = { desktop: 1, mobile: 2.625 };
+/** Pixel size of the finished recordings. */
+export const FRAME = HD
+  ? { desktop: { width: 1920, height: 1200 }, mobile: { width: 824, height: 1832 } }
+  : { desktop: { width: 1440, height: 900 }, mobile: { width: 824, height: 1832 } };
 // Where the local speech server is (tts_server.py). Unset: captions only, no voice.
 const TTS_URL = process.env.DEMO_TTS_URL;
 // Seconds to shift the voice later (+) or earlier (-) against the picture.
@@ -191,6 +205,7 @@ export async function start(name, { kind = 'desktop', geolocation, permissions }
       `--ignore-certificate-errors-spki-list=${createHash('sha256').update(spki).digest('base64')}`,
     );
   }
+  if (HD) return startHd(name, { mobile, geolocation, permissions, args, proxy });
   const browser = await chromium.launch({ executablePath: CHROME, args, proxy });
   const ctx = await browser.newContext({
     ...(mobile
@@ -212,12 +227,138 @@ export async function start(name, { kind = 'desktop', geolocation, permissions }
   return { browser, ctx, page, name, mobile, t0: Date.now(), cues: [], narrate: Boolean(TTS_URL) };
 }
 
+/** HD mode: Xvfb + headful Chromium + ffmpeg x11grab (see HD above). */
+async function startHd(name, { mobile, geolocation, permissions, args, proxy }) {
+  const frame = FRAME[mobile ? 'mobile' : 'desktop'];
+  const dpr = mobile ? 2 : frame.width / HD_CSS_W;
+  const cssW = Math.round(frame.width / dpr);
+  const cssH = Math.round(frame.height / dpr);
+  const display = `:${90 + Math.floor(Math.random() * 8)}`;
+  // Tall enough for the browser's own toolbar above the page; the grab skips it.
+  const xvfb = spawn(
+    'Xvfb',
+    [display, '-screen', '0', `${frame.width + 40}x${frame.height + 700}x24`, '-nolisten', 'tcp'],
+    { stdio: 'ignore' },
+  );
+  await sleep(1200);
+  const browser = await chromium.launch({
+    executablePath: CHROME,
+    headless: false,
+    args: [
+      ...args,
+      '--window-position=0,0',
+      `--force-device-scale-factor=${dpr}`,
+      '--hide-scrollbars',
+      '--disable-infobars',
+      '--no-first-run',
+      '--disable-features=Translate',
+    ],
+    proxy,
+    env: { ...process.env, DISPLAY: display },
+  });
+  const ctx = await browser.newContext({
+    viewport: null,
+    ...(mobile
+      ? { userAgent: devices['Pixel 7'].userAgent, hasTouch: true, isMobile: false }
+      : {}),
+    locale: 'en-GB',
+    timezoneId: 'Europe/London',
+    geolocation,
+    permissions,
+  });
+  await ctx.addInitScript(overlay, { mobile });
+  const page = await ctx.newPage();
+  page.setDefaultTimeout(12000);
+  // Size the window so the page area is exactly cssW x cssH, and find where it
+  // sits on the screen (below the browser's toolbar) so the grab can crop to it.
+  const cdp = await ctx.newCDPSession(page);
+  const { windowId } = await cdp.send('Browser.getWindowForTarget');
+  const setBounds = (width, height) =>
+    cdp.send('Browser.setWindowBounds', {
+      windowId,
+      bounds: { left: 0, top: 0, width, height, windowState: 'normal' },
+    });
+  const measure = () =>
+    page.evaluate(() => ({ ow: outerWidth, oh: outerHeight, iw: innerWidth, ih: innerHeight }));
+  await setBounds(cssW, cssH + 300);
+  await sleep(500);
+  let m = await measure();
+  await setBounds(cssW + (m.ow - m.iw), cssH + (m.oh - m.ih));
+  await sleep(500);
+  m = await measure();
+  const real = m;
+  if (mobile) {
+    // A window cannot be made as narrow as a phone, so the phone is emulated
+    // inside it: a 412x916 page at 2x, drawn from the top-left of the page area.
+    await cdp.send('Emulation.setDeviceMetricsOverride', {
+      width: cssW,
+      height: cssH,
+      deviceScaleFactor: dpr,
+      mobile: true,
+      screenWidth: cssW,
+      screenHeight: cssH,
+    });
+    await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
+    await sleep(300);
+    m = { ...m, iw: cssW, ih: cssH };
+  } else if (m.iw !== cssW || m.ih !== cssH) {
+    console.warn(`[hd] page area is ${m.iw}x${m.ih}, wanted ${cssW}x${cssH}`);
+  }
+  const offX = Math.round(((real.ow - real.iw) / 2) * dpr);
+  const offY = Math.round((real.oh - real.ih) * dpr);
+  const raw = path.join(RAW, `${name}.x11.mkv`);
+  fs.rmSync(raw, { force: true });
+  const grab = spawn(
+    FFMPEG,
+    [
+      '-y', '-loglevel', 'error', '-progress', 'pipe:1', '-nostats', '-stats_period', '0.05',
+      '-f', 'x11grab', '-draw_mouse', '0', '-framerate', '25',
+      '-video_size', `${frame.width}x${frame.height}`, '-i', `${display}.0+${offX},${offY}`,
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '17', '-pix_fmt', 'yuv420p', raw,
+    ],
+    { stdio: ['pipe', 'pipe', 'inherit'] },
+  );
+  // The clock for the narration starts when the first frame has been captured
+  // (ffmpeg reports it on its progress stream), so voice and picture line up.
+  let t0 = null;
+  grab.stdout.on('data', (d) => {
+    if (t0 === null && /frame=\s*[1-9]/.test(String(d))) t0 = Date.now();
+  });
+  for (let i = 0; i < 300 && t0 === null; i++) await sleep(50);
+  if (t0 === null) {
+    console.warn('[hd] no frame reported by the screen grab; timing may be off');
+    t0 = Date.now();
+  }
+  return {
+    browser, ctx, page, name, mobile, hd: true, xvfb, grab, raw,
+    t0, cues: [], narrate: Boolean(TTS_URL),
+  };
+}
+
+async function stopHd(s) {
+  await sleep(300);
+  await s.ctx.close().catch(() => {});
+  await s.browser.close().catch(() => {});
+  await new Promise((resolve) => {
+    s.grab.once('exit', resolve);
+    s.grab.stdin.write('q');
+    setTimeout(() => s.grab.kill('SIGINT'), 6000);
+  });
+  s.xvfb.kill();
+  return s.raw;
+}
+
 /** Closes the browser, converts the recording to MP4 and adds the voice-over. */
 export async function finish(s) {
-  const video = s.page.video();
-  await s.ctx.close();
-  const src = await video.path();
-  await s.browser.close();
+  let src;
+  if (s.hd) {
+    src = await stopHd(s);
+  } else {
+    const video = s.page.video();
+    await s.ctx.close();
+    src = await video.path();
+    await s.browser.close();
+  }
   const dst = path.join(OUT, `${s.name}.mp4`);
   const silent = s.cues.length ? path.join(RAW, `${s.name}.video.mp4`) : dst;
   execFileSync(FFMPEG, [
@@ -227,7 +368,7 @@ export async function finish(s) {
     '-i',
     src,
     // The phone is recorded at its real size and enlarged 2x here.
-    ...(s.mobile ? ['-vf', 'scale=iw*2:ih*2:flags=lanczos'] : []),
+    ...(s.mobile && !s.hd ? ['-vf', 'scale=iw*2:ih*2:flags=lanczos'] : []),
     '-c:v',
     'libx264',
     '-preset',

@@ -74,6 +74,8 @@ these were made on it was 0.05 s; set `DEMO_AUDIO_OFFSET` if yours differs).
 |---|---|
 | `DEMO_TTS_URL` | the speech server; unset means no voice |
 | `DEMO_AUDIO_OFFSET` | seconds to shift the voice against the picture (default 0) |
+| `DEMO_HD` | `1` records the real screen at 1920×1200 (phone: 824×1832) instead of Playwright's video, see "Sharp, large text" |
+| `DEMO_HD_CSS_WIDTH` | in HD mode, the width the desktop page is laid out at, in CSS px (default 1152; lower = larger text) |
 | `DEMO_OUT` | where the MP4s go (default `./out`) |
 | `DEMO_FFMPEG` | path to an ffmpeg with libx264 |
 | `DEMO_PASSWORD` / `DEMO_PW_FILE` | password of the demo office / staff / client logins |
@@ -83,6 +85,22 @@ these were made on it was 0.05 s; set `DEMO_AUDIO_OFFSET` if yours differs).
 | `DEMO_OFFICE_URL`, `DEMO_STAFF_URL`, `DEMO_CLIENT_URL` | app origins (default `localhost:3000/1/2`) |
 
 Run one script from this folder with `pnpm exec node <script>.mjs`.
+
+## Sharp, large text (HD mode)
+
+Playwright records at the page's CSS size and pads anything larger with grey, so its video is
+soft when a tablet shows it full screen. `DEMO_HD=1` instead runs a headful Chromium on a
+virtual display (`Xvfb`, which must be installed) at a device-pixel ratio of about 1.67 (phone: 2),
+and ffmpeg grabs the screen (`x11grab`). The page is laid out narrower (1152 CSS px by default), so
+the text is about 25% larger relative to the frame as well as sharper. The phone is emulated inside
+the window because a window cannot be made as narrow as a phone.
+
+- The voice clock starts at the first captured frame; `DEMO_AUDIO_OFFSET=1.05` (the capture's
+  start latency, measured) lines voice and picture up. Re-measure with a caption and `silencedetect`
+  if you change the machine.
+- Use a separate `DEMO_OUT` for HD (`compose.mjs` caches cards there, and sizes come from `FRAME`).
+- HD files are large: `compose.mjs` output is ~35 MB for 16 minutes; re-encode with `-crf 27` to
+  stay under a 30 MiB upload limit.
 
 ## Things to know before recording against a live project
 

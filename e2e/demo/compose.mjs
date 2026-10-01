@@ -14,7 +14,7 @@
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
-import { OUT, card, cardSpeech, finish, sleep, start, warmSpeech } from './lib.mjs';
+import { FRAME, OUT, card, cardSpeech, finish, sleep, start, warmSpeech } from './lib.mjs';
 
 const FFMPEG = process.env.DEMO_FFMPEG || 'ffmpeg';
 const DIR = {
@@ -231,7 +231,7 @@ async function onDesktop(file, name) {
     '-i',
     file,
     '-vf',
-    'scale=-2:880,pad=1440:900:(ow-iw)/2:10:color=0x0f172a,setsar=1',
+    `scale=-2:${FRAME.desktop.height - 20},pad=${FRAME.desktop.width}:${FRAME.desktop.height}:(ow-iw)/2:10:color=0x0f172a,setsar=1`,
     '-c:v',
     'libx264',
     '-preset',
@@ -319,8 +319,7 @@ async function trim(seg, kind, skipLogin = false) {
   console.log(
     `trim ${seg}: ${length.toFixed(1)}s -> ${from.toFixed(1)}..${to.toFixed(1)} (first light ${light[0].toFixed(1)}, gap ${firstGap ? firstGap.map((x) => x.toFixed(1)).join('-') : 'none'}${cover ? ', covering the old title' : ''})`,
   );
-  const w = kind === 'mobile' ? 824 : 1440;
-  const h = kind === 'mobile' ? 1832 : 900;
+  const { width: w, height: h } = FRAME[kind === 'mobile' ? 'mobile' : 'desktop'];
   const y0 = Math.round(h * 0.22);
   const filter = cover
     ? [
