@@ -64,9 +64,9 @@ export function Overview({
   declarations: DeclarationRow[];
   /** The address moved and the pin could not follow (20260926110000). */
   locationStale?: boolean;
-  /** ADR-0077: `staff.gender`; undefined when it could not be read. */
+  /** ADR-0078: `staff.gender`; undefined when it could not be read. */
   gender?: 'M' | 'F' | null;
-  /** Any office login that may write (ADR-0077). */
+  /** Any office login that may write (ADR-0078). */
   canEditGender?: boolean;
   /** ADR-0044 — null reads "Not provided". */
   emergencyContact?: EmergencyContact | null;

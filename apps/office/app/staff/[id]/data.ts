@@ -187,7 +187,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     // activated is offered it. A failed read hides the button, nothing more.
     (supabase as unknown as ActivatedRpc).rpc('staff_account_activated', { p_staff: id }),
     // The address changed but the pin could not follow (20260926110000),
-    // and the gender a "Male staff only" section reads (ADR-0077). Read
+    // and the gender a male- or female-only section reads (ADR-0078). Read
     // off `staff` through admin_all; a failed read shows nothing.
     supabase
       .from('staff')

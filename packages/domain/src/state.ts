@@ -262,6 +262,7 @@ export const APPLICATION_ACCEPT_REFUSALS = [
   'not_bookable',
   'wrong_role',
   'male_only',
+  'female_only',
   'gender_not_recorded',
   'do_not_return',
   'blocked',

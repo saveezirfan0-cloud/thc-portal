@@ -7,13 +7,13 @@ import { saveGender } from './actions';
 const LABEL: Readonly<Record<'M' | 'F', string>> = { M: 'Male', F: 'Female' };
 
 /**
- * Gender on the Overview card "Contacts & identity" (ADR-0077).
+ * Gender on the Overview card "Contacts & identity" (ADR-0078).
  *
  * The worker gives it on onboarding step 7 (the HMRC New Starter
- * checklist, M or F). A "Male staff only" role section books men only, so
- * a worker with none on file — brought across from payroll, or onboarded
- * before step 7 asked — is left out of those sections until the office
- * records it here. Any office login that may write; `set_staff_gender()`
+ * checklist, M or F). A male- or female-only role section books only that
+ * gender, so a worker with none on file — brought across from payroll, or
+ * onboarded before step 7 asked — is left out of those sections until the
+ * office records it here. Any office login that may write; `set_staff_gender()`
  * refuses a viewer and a removed worker whatever this shows.
  */
 export function GenderField({
@@ -44,10 +44,9 @@ export function GenderField({
 
   return (
     <span>
-      {shown ? LABEL[shown] : <Pill tone="amber">not recorded</Pill>}
+      {/* The select already says what is on file; the text is for a reader who cannot change it. */}
       {editable ? (
         <>
-          {' '}
           <select
             className="input"
             style={{ height: 32, width: 150 }}
@@ -61,13 +60,17 @@ export function GenderField({
             <option value="F">Female</option>
           </select>
         </>
-      ) : null}
+      ) : shown ? (
+        LABEL[shown]
+      ) : (
+        <Pill tone="amber">not recorded</Pill>
+      )}
       {shown === null ? (
         <>
           <br />
           <span className="muted sm">
-            Needed for roles a client has asked to staff with men only — they are left out of those
-            until it is recorded.
+            Needed for roles a client has asked to staff with one gender — they are left out of
+            those until it is recorded.
           </span>
         </>
       ) : null}

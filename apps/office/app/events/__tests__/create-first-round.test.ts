@@ -88,7 +88,7 @@ const INPUT = {
       payRate: 14,
       dressCode: '',
       autoAssign: true,
-      maleOnly: false,
+      requiredGender: null,
       allocationPerHour: 13,
     },
   ],

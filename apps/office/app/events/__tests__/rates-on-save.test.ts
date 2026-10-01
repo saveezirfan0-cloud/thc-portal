@@ -90,7 +90,7 @@ function section(id: string | null, rates: { chargeRate: number | null; payRate:
     ...rates,
     dressCode: '',
     autoAssign: true,
-    maleOnly: false,
+    requiredGender: null,
     allocationPerHour: 13,
   };
 }

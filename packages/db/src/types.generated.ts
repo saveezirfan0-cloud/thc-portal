@@ -3802,7 +3802,7 @@ export type Database = {
           event_id: string;
           headcount: number;
           id: string;
-          male_only: boolean;
+          required_gender: string | null;
           pay_rate: number;
           role_id: string;
           starts_at: string;
@@ -3817,7 +3817,7 @@ export type Database = {
           event_id: string;
           headcount: number;
           id?: string;
-          male_only?: boolean;
+          required_gender?: string | null;
           pay_rate: number;
           role_id: string;
           starts_at: string;
@@ -3832,7 +3832,7 @@ export type Database = {
           event_id?: string;
           headcount?: number;
           id?: string;
-          male_only?: boolean;
+          required_gender?: string | null;
           pay_rate?: number;
           role_id?: string;
           starts_at?: string;

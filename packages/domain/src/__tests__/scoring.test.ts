@@ -108,10 +108,11 @@ describe('weighted score (§6)', () => {
 });
 
 describe('hard gates (§6, §3.3)', () => {
-  it('has the six the scope names, plus the two of a male-only section (ADR-0077)', () => {
+  it('has the six the scope names, plus the three of a gender-only section (ADR-0078)', () => {
     expect([...HARD_GATES]).toEqual([
       'wrong_role',
       'male_only',
+      'female_only',
       'gender_not_recorded',
       'blocked',
       'booked_elsewhere',
@@ -147,16 +148,19 @@ describe('hard gates (§6, §3.3)', () => {
 
   it('wrong role produces no row at all; the other five show under Unavailable', () => {
     expect(showsUnderUnavailable('wrong_role')).toBe(false);
-    for (const gate of HARD_GATES.filter((g) => g !== 'wrong_role' && g !== 'male_only')) {
+    for (const gate of HARD_GATES.filter(
+      (g) => g !== 'wrong_role' && g !== 'male_only' && g !== 'female_only',
+    )) {
       expect(showsUnderUnavailable(gate)).toBe(true);
     }
   });
 
-  // ADR-0077: on a male-only section a woman is hidden like a wrong role —
-  // listing every one would bury the section — but a worker with no gender
-  // on file shows, because the office can record it on the staff profile.
-  it('a male-only section hides women and shows the gender-not-recorded', () => {
+  // ADR-0078: on a gender-only section the other gender is hidden like a
+  // wrong role — listing them would bury the section — but a worker with
+  // no gender on file shows, because the office can record it.
+  it('a gender-only section hides the other gender and shows the gender-not-recorded', () => {
     expect(showsUnderUnavailable('male_only')).toBe(false);
+    expect(showsUnderUnavailable('female_only')).toBe(false);
     expect(showsUnderUnavailable('gender_not_recorded')).toBe(true);
   });
 

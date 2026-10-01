@@ -298,9 +298,9 @@ export async function clearPayRate(staffId: string): Promise<ActionResult> {
 }
 
 // ---------------------------------------------------------------------
-// Gender (ADR-0077) — set_staff_gender. M or F, HMRC's values; the
+// Gender (ADR-0078) — set_staff_gender. M or F, HMRC's values; the
 // worker gives it on onboarding step 7, and the office records it for
-// anyone it is missing for, so a "Male staff only" section can book them.
+// anyone it is missing for, so a male- or female-only section can book them.
 // ---------------------------------------------------------------------
 const GENDER_MESSAGES: Readonly<Record<string, string>> = {
   gender_m_or_f: 'Choose Male or Female.',

@@ -325,10 +325,12 @@ export type AcceptRefusal =
   /** RULE-04: self-cancelled off this event. */
   | 'self_cancelled'
   /**
-   * ADR-0077: the role was marked "Male staff only" after the invitation
-   * went out. The invitation is left live (never withdrawn); Accept refuses.
+   * ADR-0078: the role was marked "Male staff only" or "Female staff only"
+   * after the invitation went out. The invitation is left live (never
+   * withdrawn); Accept refuses.
    */
   | 'male_only'
+  | 'female_only'
   | 'gender_not_recorded';
 
 /**
@@ -384,9 +386,13 @@ export const ACCEPT_REFUSAL_COPY: Record<AcceptRefusal, { title: string; body: s
     title: 'This shift isn’t available to you',
     body: 'The client has asked for male staff on this role. Please contact the office if you think this is wrong.',
   },
+  female_only: {
+    title: 'This shift isn’t available to you',
+    body: 'The client has asked for female staff on this role. Please contact the office if you think this is wrong.',
+  },
   gender_not_recorded: {
     title: 'This shift isn’t available to you yet',
-    body: 'The client has asked for male staff on this role and we don’t have your gender on file. Please contact the office.',
+    body: 'The client has asked for staff of one gender on this role and we don’t have your gender on file. Please contact the office.',
   },
 };
 
@@ -404,6 +410,7 @@ export type ApplyRefusal =
   | 'booked_elsewhere'
   | 'wrong_role'
   | 'male_only'
+  | 'female_only'
   | 'gender_not_recorded';
 
 export const APPLY_REFUSAL_COPY: Record<ApplyRefusal, { title: string; body: string }> = {
@@ -451,8 +458,9 @@ export const APPLY_REFUSAL_COPY: Record<ApplyRefusal, { title: string; body: str
     title: 'This shift isn’t one of your roles',
     body: 'Radar only shows the roles you’re signed off for.',
   },
-  // ADR-0077. Radar does not list the shift to them; this is the race.
+  // ADR-0078. Radar does not list the shift to them; this is the race.
   male_only: ACCEPT_REFUSAL_COPY.male_only,
+  female_only: ACCEPT_REFUSAL_COPY.female_only,
   gender_not_recorded: ACCEPT_REFUSAL_COPY.gender_not_recorded,
 };
 

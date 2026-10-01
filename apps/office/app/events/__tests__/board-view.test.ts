@@ -132,11 +132,15 @@ describe('the escalation pool once a section has started (§3.4)', () => {
     expect(ada!.detail).not.toMatch(/§/);
   });
 
-  // ADR-0077: on a male-only section a woman is no row at all (like a wrong
-  // role); a worker with no gender on file is listed, so it gets recorded.
-  it('a male-only section hides women and lists the gender-not-recorded', () => {
+  // ADR-0078: on a gender-only section the other gender is no row at all
+  // (like a wrong role); no gender on file is listed, so it gets recorded.
+  it('a gender-only section hides the other gender and lists the gender-not-recorded', () => {
     const list = buildUnavailable(
-      [row('ada', { gate: 'male_only' }), row('ben', { gate: 'gender_not_recorded' })],
+      [
+        row('ada', { gate: 'male_only' }),
+        row('ben', { gate: 'gender_not_recorded' }),
+        row('cai', { gate: 'female_only' }),
+      ],
       [],
       people,
       new Set(),

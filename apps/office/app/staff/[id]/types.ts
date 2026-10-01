@@ -302,7 +302,7 @@ export interface ProfileData {
   locationStale?: boolean | null;
   /**
    * `staff.gender` — M or F, HMRC's values, given on onboarding step 7.
-   * ADR-0077: a "Male staff only" role section books M only. Null = not
+   * ADR-0078: a male- or female-only role section books only M or F. Null = not
    * on file; undefined = not read.
    */
   gender?: 'M' | 'F' | null;
