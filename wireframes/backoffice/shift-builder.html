@@ -27,6 +27,12 @@
   .sumrow:last-child { border-bottom: 0; }
   .sumrow .v { font-family: var(--font-mono); }
   @media (max-width: 1024px) { .builder { grid-template-columns: 1fr; } .rolesec .grid6 { grid-template-columns: repeat(2, 1fr); } .f4 { grid-template-columns: repeat(2,1fr);} }
+.rate-split{margin:4px 0 0;display:grid;font-size:12px;line-height:1.5}
+.rate-split>div{display:flex;flex-wrap:wrap;column-gap:8px}
+.rate-split>div+div{margin-top:2px}
+.rate-split dt{color:var(--muted)}
+.rate-split dd{margin:0;font-family:var(--font-num);font-weight:600;white-space:nowrap}
+.rate-split>div:first-child dd{color:var(--cyan-ink)}
 </style>
 </head>
 <body>
@@ -120,7 +126,7 @@
                     <div class="field"><span class="label">Headcount</span><input class="input mono" value="2"></div>
                     <div class="field"><span class="label">Buffer</span><input class="input mono" value="0"><span class="hint">absolute, not %</span></div>
                     <div class="field"><span class="label">Charge rate</span><div class="input-row"><span class="addon l">£</span><input class="input readonly mono" readonly value="30.69"></div><span class="hint">Leonardo rate card · <a href="#" onclick="return false">override</a></span></div>
-                    <div class="field"><span class="label">Pay rate (base)</span><div class="input-row"><span class="addon l">£</span><input class="input mono" value="19.00"></div><span class="hint">final £21.29 (+12.07%)</span></div>
+                    <div class="field"><span class="label">Pay rate (base)</span><div class="input-row"><span class="addon l">£</span><input class="input mono" value="19.00"></div><dl class="rate-split"><div><dt>Staff App shows</dt><dd>£19.00/h</dd></div><div class="muted"><dt>Holiday +12.07%</dt><dd>+£2.29</dd></div><div><dt>Final rate</dt><dd>£21.29/h</dd></div></dl></div>
                   </div>
                   <div class="f3">
                     <div class="field"><span class="label">Dress code</span><select class="input"><option>Chef whites</option><option>Kitchen blacks</option><option>Other…</option></select><span class="hint">Client's list for Chef (rate card, §9.7) + "Other" free text for this event only.</span></div>
@@ -141,7 +147,7 @@
                     <div class="field"><span class="label">Headcount</span><input class="input mono" value="3"></div>
                     <div class="field"><span class="label">Buffer</span><input class="input mono" value="1"><span class="hint">shown as 3 (+1)</span></div>
                     <div class="field"><span class="label">Charge rate</span><div class="input-row"><span class="addon l">£</span><input class="input readonly mono" readonly value="21.23"></div><span class="hint">Leonardo rate card</span></div>
-                    <div class="field"><span class="label">Pay rate (base)</span><div class="input-row"><span class="addon l">£</span><input class="input mono" value="13.50"></div><span class="hint">final £15.13</span></div>
+                    <div class="field"><span class="label">Pay rate (base)</span><div class="input-row"><span class="addon l">£</span><input class="input mono" value="13.50"></div><dl class="rate-split"><div><dt>Staff App shows</dt><dd>£13.50/h</dd></div><div class="muted"><dt>Holiday +12.07%</dt><dd>+£1.63</dd></div><div><dt>Final rate</dt><dd>£15.13/h</dd></div></dl></div>
                   </div>
                   <div class="f3">
                     <div class="field"><span class="label">Dress code</span><select class="input"><option>Kitchen blacks</option><option>Other…</option></select></div>
@@ -162,7 +168,7 @@
                     <div class="field"><span class="label">Headcount</span><input class="input mono" value="12"></div>
                     <div class="field"><span class="label">Buffer</span><input class="input mono" value="2"><span class="hint">shown as 12 (+2)</span></div>
                     <div class="field"><span class="label">Charge rate</span><div class="input-row"><span class="addon l">£</span><input class="input readonly mono" readonly value="22.97"></div><span class="hint">Leonardo rate card</span></div>
-                    <div class="field"><span class="label">Pay rate (base)</span><div class="input-row"><span class="addon l">£</span><input class="input mono" value="14.00"></div><span class="hint">final £15.69</span></div>
+                    <div class="field"><span class="label">Pay rate (base)</span><div class="input-row"><span class="addon l">£</span><input class="input mono" value="14.00"></div><dl class="rate-split"><div><dt>Staff App shows</dt><dd>£14.00/h</dd></div><div class="muted"><dt>Holiday +12.07%</dt><dd>+£1.69</dd></div><div><dt>Final rate</dt><dd>£15.69/h</dd></div></dl></div>
                   </div>
                   <div class="f3">
                     <div class="field"><span class="label">Dress code</span><select class="input"><option>Other…</option><option>Black &amp; whites</option><option>All black</option></select></div>

@@ -205,3 +205,34 @@
   cursor: default;
   text-decoration: none;
 }
+
+/* Pay rate (base): what the worker sees, holiday broken out, final rate
+   (§9.8, §1.5). */
+.rate-split {
+  margin: var(--sp-4) 0 0;
+  display: grid;
+  font-size: var(--fs-12);
+  line-height: 1.5;
+}
+/* Label then figure on one line where the column allows; where it is
+   narrow the figure drops under its label instead of the label breaking. */
+.rate-split > div {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: var(--sp-8);
+}
+.rate-split > div + div {
+  margin-top: 2px;
+}
+.rate-split dt {
+  color: var(--muted);
+}
+.rate-split dd {
+  margin: 0;
+  font-family: var(--font-num);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.rate-split > div:first-child dd {
+  color: var(--cyan-ink);
+}

@@ -7,7 +7,6 @@ import {
   ROLE_SECTION_MESSAGE,
   type RoleSectionIssue,
   defaultAllocationPerHour,
-  finalHourlyPence,
   formatAllocationPair,
   formatConfirmationTarget,
   formatHours,
@@ -17,6 +16,8 @@ import {
   ukInputLabel,
 } from '@thc/domain';
 import { Switch } from './Switch';
+import { finalPence, formatAddition, formatPounds, holidayPence } from '../../roles/money';
+import { HOLIDAY_LABEL } from '../../staff/[id]/payRate';
 import { DRESS_CODE_OTHER, type RoleDraft, isResolvable, resolveRole } from '../draft';
 import type { ClientOption, RoleOption } from '../data';
 
@@ -76,7 +77,7 @@ export function RoleSection({
     Math.round(role.chargeRate * 100),
     Math.round(role.payRate * 100),
   );
-  const finalRatePence = finalHourlyPence(Math.round(role.payRate * 100));
+  const payPence = Math.round(role.payRate * 100);
 
   // §3.2: the charge rate comes from the client's rate card. On a new event
   // it is read-only until the manager deliberately overrides it, so a typo
@@ -264,8 +265,22 @@ export function RoleSection({
                     onChange={(e) => onChange({ payRate: Number(e.target.value) })}
                   />
                 </div>
-                {/* Holiday is always broken out at 12.07%, never blended (§9.8). */}
-                <span className="hint">final £{money(finalRatePence / 100)} (+12.07%)</span>
+                {/* What the worker sees, then holiday broken out and the final
+                    rate — §9.8's three figures, each labelled, never blended. */}
+                <dl className="rate-split" aria-live="polite">
+                  <div>
+                    <dt>Staff App shows</dt>
+                    <dd>{payPence > 0 ? `${formatPounds(payPence)}/h` : '—'}</dd>
+                  </div>
+                  <div className="muted">
+                    <dt>{HOLIDAY_LABEL}</dt>
+                    <dd>{payPence > 0 ? formatAddition(holidayPence(payPence)) : '—'}</dd>
+                  </div>
+                  <div>
+                    <dt>Final rate</dt>
+                    <dd>{payPence > 0 ? `${formatPounds(finalPence(payPence))}/h` : '—'}</dd>
+                  </div>
+                </dl>
               </div>
             </>
           ) : null}
