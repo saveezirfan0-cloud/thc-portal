@@ -76,6 +76,7 @@ const INPUT = {
   onsiteContact: '',
   notes: '',
   autoAssign: true,
+  requiredLanguages: ['English'],
   roles: [
     {
       id: null,

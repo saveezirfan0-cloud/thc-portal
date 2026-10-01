@@ -40,7 +40,7 @@ const NOT_CONFIGURED =
   'This environment has no Supabase project, so this cannot be saved. See docs/04-setup-github-vercel-supabase.md.';
 
 /** See the note in the roles actions: the generated types are a placeholder. */
-type RpcArguments = Record<string, string | number | boolean | null>;
+type RpcArguments = Record<string, string | number | boolean | string[] | null>;
 
 interface RpcClient {
   rpc(fn: string, args: RpcArguments): PromiseLike<{ error: { message: string } | null }>;
@@ -313,4 +313,26 @@ export async function saveGender(staffId: string, gender: 'M' | 'F' | null): Pro
   return result.ok
     ? result
     : { ok: false, message: GENDER_MESSAGES[result.message] ?? result.message };
+}
+
+// ---------------------------------------------------------------------
+// Languages (ADR-0080) — set_staff_languages. The worker gives them on
+// onboarding step 2; the office records them for anyone never asked, so an
+// event that needs another language can book them. English is always in.
+// ---------------------------------------------------------------------
+const LANGUAGES_MESSAGES: Readonly<Record<string, string>> = {
+  unknown_language: 'Choose languages from the list.',
+  staff_removed: 'This worker was removed under GDPR; nothing about them is recorded now.',
+  read_only: 'Your login is read-only, so this cannot be changed.',
+};
+
+export async function saveLanguages(staffId: string, languages: string[]): Promise<ActionResult> {
+  const result = await callRpc(
+    'set_staff_languages',
+    { p_staff: staffId, p_languages: languages },
+    staffId,
+  );
+  return result.ok
+    ? result
+    : { ok: false, message: LANGUAGES_MESSAGES[result.message] ?? result.message };
 }

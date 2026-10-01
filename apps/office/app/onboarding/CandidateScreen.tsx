@@ -19,7 +19,7 @@ import {
   Pill,
   Textarea,
 } from '@thc/ui';
-import { contractClause28Pending } from '@thc/domain';
+import { contractClause28Pending, formatLanguages } from '@thc/domain';
 import { OfficeShell } from '../_components/OfficeShell';
 import {
   RTW_LABEL,
@@ -611,6 +611,14 @@ function Facts({
     facts.push(
       <span key="addr">
         Address <b>{data.profile.home_address}</b>
+      </span>,
+    );
+  }
+  // ADR-0080: the languages they gave on step 2, once they have.
+  if (data.facts?.languages) {
+    facts.push(
+      <span key="languages">
+        Speaks <b>{formatLanguages(data.facts.languages)}</b>
       </span>,
     );
   }

@@ -3,7 +3,15 @@
 import { useId, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { Alert, Button, Chip, Input, Note, Panel, SaveBar, Select, Textarea } from '@thc/ui';
-import { UK_ZONE, forecastEvent, formatTimeIn, ukInputLabel } from '@thc/domain';
+import {
+  UK_ZONE,
+  extraLanguages,
+  forecastEvent,
+  formatLanguages,
+  formatTimeIn,
+  ukInputLabel,
+} from '@thc/domain';
+import { LanguagePicker } from '../../_components/LanguagePicker';
 import { RoleSection } from './RoleSection';
 import { Switch } from './Switch';
 import { ClientPolicies, SummaryPanel } from './SummaryPanel';
@@ -57,6 +65,7 @@ function toInput(draft: EventDraft, id: string | null, ratesVisible: boolean): E
     onsiteContact: draft.onsiteContact,
     notes: draft.notes,
     autoAssign: draft.autoAssign,
+    requiredLanguages: draft.requiredLanguages,
     roles: draft.roles.map((role) => ({
       id: role.id,
       roleId: role.roleId,
@@ -118,6 +127,11 @@ export function ShiftBuilder({
       (issues.roles.get(role.key) ?? []).length === 0,
   ).length;
   const headcount = draft.roles.reduce((sum, role) => sum + role.headcount, 0);
+  // ADR-0080: the languages besides English, and whether this edit changed them.
+  const languagesAdded = extraLanguages(draft.requiredLanguages);
+  const languagesChanged =
+    mode === 'edit' && languagesAdded.join() !== extraLanguages(initial.requiredLanguages).join();
+  const bookedTotal = Object.values(booked).reduce((sum, n) => sum + n, 0);
   const buffer = draft.roles.reduce((sum, role) => sum + role.buffer, 0);
 
   const forecast = useMemo(
@@ -481,6 +495,28 @@ export function ShiftBuilder({
 
         <Panel title="4 · On-site contact & instructions">
           <div className="stack">
+            {/* ADR-0080: English by default; any other language the client
+                needs is a hard gate in auto_assign_candidates, so every path
+                that books someone holds to it — rounds, Radar, offers,
+                Accept and a manual invite. */}
+            <LanguagePicker
+              label="Languages staff must speak"
+              value={draft.requiredLanguages}
+              disabled={readOnly}
+              onChange={(requiredLanguages) => setDraft((c) => ({ ...c, requiredLanguages }))}
+              hint={
+                languagesAdded.length > 0
+                  ? `Only staff who speak ${formatLanguages(languagesAdded)} are invited or see it on Radar. Staff with no languages on file are left out.`
+                  : 'English by default. Add a language only when the client asks for it.'
+              }
+            />
+            {languagesChanged && languagesAdded.length > 0 && bookedTotal > 0 ? (
+              <Alert tone="cyan">
+                <b>Already booked staff are not removed.</b> Open invitations stay open but can only
+                be accepted by staff who speak {formatLanguages(languagesAdded)}; withdraw anyone
+                else on the event board.
+              </Alert>
+            ) : null}
             <div className="f2">
               <Input
                 label="On-site contact"
@@ -546,7 +582,8 @@ export function ShiftBuilder({
               </div>
               <div>
                 <span className="muted">○</span> Headcount · buffer ·{' '}
-                {ratesVisible ? 'charge rate · ' : ''}PO Number · notes → applied silently.
+                {ratesVisible ? 'charge rate · ' : ''}PO Number · notes · languages → applied
+                silently.
               </div>
             </div>
           </Panel>

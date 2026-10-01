@@ -333,9 +333,9 @@ interface ReasonCopy {
 }
 
 /**
- * The live hard gates, as §3.3 names them. `wrong_role`, `male_only` and
- * `female_only` are absent on purpose: they never produce a row on the
- * board (§6, ADR-0079).
+ * The live hard gates, as §3.3 names them. `wrong_role`, `male_only`,
+ * `female_only` and `language_not_spoken` are absent on purpose: they never
+ * produce a row on the board (§6, ADR-0079, ADR-0080).
  */
 export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
   // ADR-0079: a gender-only role section and a worker with no gender on file.
@@ -343,6 +343,14 @@ export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
     label: 'Gender not recorded',
     detail:
       'the client asked for staff of one gender on this role and theirs is not on file — record it on their staff profile',
+    tone: 'amber',
+  },
+  // ADR-0080: an event that needs a language besides English, and a worker
+  // who was never asked which languages they speak.
+  languages_not_recorded: {
+    label: 'Languages not recorded',
+    detail:
+      'this event needs a language besides English and theirs are not on file — record them on their staff profile',
     tone: 'amber',
   },
   blocked: {
@@ -475,6 +483,7 @@ const UNKNOWN_CAUSE: ReasonCopy = {
 /** Structural reasons first, the way §3.3 lists them; then the booking causes. */
 const REASON_ORDER = [
   'gender_not_recorded',
+  'languages_not_recorded',
   'blocked',
   'booked_elsewhere',
   'hours_limit',
@@ -689,6 +698,8 @@ const INVITE_REFUSAL_COPY: Readonly<Record<string, string>> = {
   male_only: ACCEPT_APPLICATION_REFUSAL_COPY.male_only,
   female_only: ACCEPT_APPLICATION_REFUSAL_COPY.female_only,
   gender_not_recorded: ACCEPT_APPLICATION_REFUSAL_COPY.gender_not_recorded,
+  language_not_spoken: ACCEPT_APPLICATION_REFUSAL_COPY.language_not_spoken,
+  languages_not_recorded: ACCEPT_APPLICATION_REFUSAL_COPY.languages_not_recorded,
   do_not_return: ACCEPT_APPLICATION_REFUSAL_COPY.do_not_return,
   blocked: ACCEPT_APPLICATION_REFUSAL_COPY.blocked,
   self_cancelled: ACCEPT_APPLICATION_REFUSAL_COPY.self_cancelled,
