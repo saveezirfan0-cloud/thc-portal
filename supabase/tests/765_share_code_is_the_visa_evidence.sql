@@ -21,7 +21,7 @@
 -- Every row is created inside the transaction and rolled back.
 -- =====================================================================
 begin;
-select plan(36);
+select plan(37);
 
 \set wv      '76510000-0000-4000-8000-000000000001'
 \set dp      '76510000-0000-4000-8000-000000000002'
@@ -206,9 +206,9 @@ select ok('document_unverified:visa_document' = any (onboarding_quiz_blockers(:'
 select is((select status::text from staff where id = :'legacy'), 'documents',
   'and she is stuck in Documents');
 
--- Re-apply the migration inside this transaction: the same function
--- bodies, then its one-off UPDATE, now against these rows. Rolled back.
-\ir ../migrations/20261002105000_share_code_is_the_visa_evidence.sql
+-- Run the migration's one-off again, now against these rows. Rolled back.
+select is(onboarding_supersede_legacy_rtw_docs(), 2,
+  'the one-off supersedes Lena''s rejected visa and Ugo''s stray NI evidence');
 
 select is((select review_status::text from compliance_docs where id = :'lg_visa'), 'superseded',
   'after: her rejected visa is superseded');

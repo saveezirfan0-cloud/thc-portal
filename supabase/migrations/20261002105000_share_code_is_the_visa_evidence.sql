@@ -353,9 +353,14 @@ comment on function public.onboarding_documents_missing(uuid) is
 -- candidate in Documents with nothing outstanding. The gate does nothing
 -- unless they are in `documents` with no blocker left.
 -- ---------------------------------------------------------------------
-do $$
+create or replace function public.onboarding_supersede_legacy_rtw_docs()
+returns int
+language plpgsql
+set search_path = public, extensions
+as $$
 declare
   v_staff uuid[];
+  v_count int;
 begin
   with d as (
     update compliance_docs d
@@ -371,7 +376,15 @@ begin
                          and p.uk_doc_choice is not distinct from 'birth_certificate')))
     returning d.staff_id
   )
-  select coalesce(array_agg(distinct d.staff_id), '{}') into v_staff from d;
+  select coalesce(array_agg(distinct d.staff_id), '{}'), count(*)::int into v_staff, v_count from d;
 
   perform onboarding_advance_if_ready(x) from unnest(v_staff) x;
+  return v_count;
 end $$;
+
+comment on function public.onboarding_supersede_legacy_rtw_docs() is
+  'ADR-0077 one-off, run once by 20261002105000: supersedes (never deletes) pending or rejected visa_document / status_document rows, and ni_evidence off the UK birth-certificate route, for candidates up to and including Documents, then runs the §2.3 gate for each one touched. Returns the number of rows superseded. Idempotent; kept as a function so 765 can exercise it.';
+
+revoke execute on function public.onboarding_supersede_legacy_rtw_docs() from public, anon, authenticated;
+
+select public.onboarding_supersede_legacy_rtw_docs();
