@@ -109,6 +109,16 @@ export function editRole(role: RoleDraft, patch: Partial<RoleDraft>): RoleDraft 
   return next;
 }
 
+/**
+ * What typing in the allocation box means. An emptied box hands the figure
+ * back to the default, so it follows headcount + buffer again instead of
+ * sticking at 0; anything typed is the manager's own number (§3.4).
+ */
+export function allocationPatch(text: string): Partial<RoleDraft> {
+  if (text.trim() === '') return { allocationTouched: false };
+  return { allocationPerHour: Number(text) };
+}
+
 /** True once the date and both times are complete enough to resolve. */
 export function isResolvable(date: string, role: RoleDraft): boolean {
   return (

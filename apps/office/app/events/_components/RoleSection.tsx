@@ -17,7 +17,13 @@ import {
   ukInputLabel,
 } from '@thc/domain';
 import { Switch } from './Switch';
-import { DRESS_CODE_OTHER, type RoleDraft, isResolvable, resolveRole } from '../draft';
+import {
+  DRESS_CODE_OTHER,
+  type RoleDraft,
+  allocationPatch,
+  isResolvable,
+  resolveRole,
+} from '../draft';
 import type { ClientOption, RoleOption } from '../data';
 
 const money = (pounds: number) => pounds.toFixed(2);
@@ -83,6 +89,9 @@ export function RoleSection({
   // cannot quietly undercut the card.
   const [chargeOverride, setChargeOverride] = useState(false);
   const fieldId = useId();
+  /** The allocation box's own text while it has focus; null shows the figure. */
+  const [allocationText, setAllocationText] = useState<string | null>(null);
+  const allocationDefault = defaultAllocationPerHour(role.headcount, role.buffer);
   const cardRate = client?.rateCard[role.roleId]?.chargeRate;
   const chargeFromCard = mode === 'new' && !chargeOverride && cardRate !== undefined;
 
@@ -311,15 +320,23 @@ export function RoleSection({
             type="number"
             min={1}
             mono
-            value={role.allocationPerHour}
-            onChange={(e) => onChange({ allocationPerHour: Number(e.target.value) })}
+            // While the box is being edited it may sit empty; it shows the
+            // figure in use again as soon as focus leaves it.
+            value={allocationText ?? String(role.allocationPerHour)}
+            placeholder={String(allocationDefault)}
+            onFocus={() => setAllocationText(String(role.allocationPerHour))}
+            onBlur={() => setAllocationText(null)}
+            onChange={(e) => {
+              setAllocationText(e.target.value);
+              onChange(allocationPatch(e.target.value));
+            }}
             {...(issues.includes('allocation_below_one')
               ? { error: ROLE_SECTION_MESSAGE.allocation_below_one }
               : {
-                  hint: `Invites per hourly round · default headcount + buffer = ${defaultAllocationPerHour(
-                    role.headcount,
-                    role.buffer,
-                  )} · editable`,
+                  hint:
+                    role.allocationPerHour === allocationDefault
+                      ? `Invites per hourly round · default headcount + buffer = ${allocationDefault} · editable`
+                      : `Invites per hourly round · default headcount + buffer = ${allocationDefault} · clear the box to use it`,
                 })}
           />
 

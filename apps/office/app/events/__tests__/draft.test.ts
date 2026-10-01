@@ -4,6 +4,7 @@ import {
   DRESS_CODE_OTHER,
   type EventDraft,
   type RoleDraft,
+  allocationPatch,
   canRemoveRole,
   canSave,
   draftIssues,
@@ -93,6 +94,20 @@ describe('allocation follows headcount + buffer until the manager takes over (§
 
     const later = editRole(typed, { headcount: 30 });
     expect(later.allocationPerHour).toBe(6);
+  });
+
+  it('an emptied box goes back to the default and follows again, never 0', () => {
+    const typed = editRole(role(), { allocationPerHour: 6 });
+    const cleared = editRole(typed, allocationPatch(''));
+    expect(cleared.allocationTouched).toBe(false);
+    expect(cleared.allocationPerHour).toBe(14);
+
+    expect(editRole(cleared, { headcount: 20 }).allocationPerHour).toBe(22);
+  });
+
+  it("a typed figure is the manager's own, 0 included so the error shows", () => {
+    expect(editRole(role(), allocationPatch('23')).allocationPerHour).toBe(23);
+    expect(editRole(role(), allocationPatch('0')).allocationPerHour).toBe(0);
   });
 
   it('is what the header pair says it is — never the collapsed total', () => {
