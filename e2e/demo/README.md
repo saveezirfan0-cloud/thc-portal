@@ -16,6 +16,16 @@ the videos stay current.
 
 `assemble.mjs` joins the segments into the six files above.
 
+**How scheduling works** (`node compose.mjs scheduling`) is a third combined video, eight parts:
+building an event, how staff get booked on, changing the time, changing the number of staff,
+timesheets, confirming shifts, auto-assign, and when a role shrinks. Its segments are the
+`sched-*.mjs` scripts. They change real rows in a live project, so record them in this order
+and run `sched-reset.sql` afterwards: 1, 5, 7 (needs the event 1 saves), 2, 6a, 6b, 6c (before
+12:00 UK on the day before the Gala Dinner: the noon cut-off releases anyone not yet "ready"),
+3, 3b, 4, 8. Part 1 saves the event "Summer Reception"; to keep a Potential pool to show, hold
+its auto-assign switch off after saving. Part 2 needs an Applied worker on it (insert one
+`applied`/`self` booking for a Waiting Staff worker).
+
 `compose.mjs` builds two longer videos from the same segments: **Staff training**
 (onboarding, then the Staff App) and **Office portal training**. It cuts each segment's
 own title and closing card off, records narrated "Part N of M" dividers that name the steps

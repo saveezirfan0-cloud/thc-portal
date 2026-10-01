@@ -61,6 +61,72 @@ const GROUPS = {
       },
     ],
   },
+  scheduling: {
+    file: 'THC-How-Scheduling-Works',
+    kind: 'desktop',
+    label: 'Scheduling',
+    title: 'How scheduling works',
+    outro: ['That is the whole scheduling cycle', 'Build, book, change, confirm, send'],
+    parts: [
+      {
+        title: 'Building an event',
+        lines: 'The Shift Builder: client and venue, date,<br>roles, headcount and buffer, then save',
+        spoken: '',
+        segs: [{ name: 'sched-1-build-event', skipLogin: true }],
+      },
+      {
+        title: 'How staff get booked on',
+        lines:
+          'Auto-assign, inviting by hand from the pool,<br>workers applying on Radar, and shift hand-overs',
+        spoken: '',
+        segs: [{ name: 'sched-2-booking-options', skipLogin: true }],
+      },
+      {
+        title: 'Changing the time',
+        lines: 'Awaiting re-confirmation on the board<br>and Confirm new time on the worker’s phone',
+        spoken: '',
+        segs: [
+          { name: 'sched-3-time-change', skipLogin: true },
+          { name: 'sched-3b-worker-time-change', skipLogin: true, phone: true },
+        ],
+      },
+      {
+        title: 'Changing the number of staff',
+        lines: 'Needing more people, or fewer,<br>even the night before',
+        spoken: '',
+        segs: [{ name: 'sched-4-headcount', skipLogin: true }],
+      },
+      {
+        title: 'How timesheets are sent',
+        lines: 'The Allocation Timesheet: automatic sends,<br>Send and Download on the event page',
+        spoken: '',
+        segs: [{ name: 'sched-5-timesheets', skipLogin: true }],
+      },
+      {
+        title: 'Confirming shifts',
+        lines:
+          'Accepting, I’m ready by twelve noon,<br>and confirming on the day. How the office knows',
+        spoken: '',
+        segs: [
+          { name: 'sched-6a-confirmation', skipLogin: true },
+          { name: 'sched-6b-worker-ready', skipLogin: true, phone: true },
+          { name: 'sched-6c-office-sees-ready', skipLogin: true },
+        ],
+      },
+      {
+        title: 'How auto-assign works',
+        lines: 'Hard gates, two waves, the five-part score,<br>hourly rounds and same-day escalation',
+        spoken: '',
+        segs: [{ name: 'sched-7-auto-assign', skipLogin: true }],
+      },
+      {
+        title: 'When a role shrinks',
+        lines: 'What happens to staff who are already confirmed<br>when fewer people are needed',
+        spoken: '',
+        segs: [{ name: 'sched-8-overbooked', skipLogin: true }],
+      },
+    ],
+  },
   office: {
     file: 'THC-Office-Portal-Training',
     kind: 'desktop',
@@ -156,6 +222,31 @@ async function renderCard(kind, name, title, sub, hold, opts) {
   ]);
   fs.rmSync(raw);
   return cached;
+}
+
+/** A phone recording shown at full height, centred on a dark desktop-sized frame. */
+async function onDesktop(file, name) {
+  const dst = path.join(DIR.trimmed, `${name}.desk.mp4`);
+  must([
+    '-i',
+    file,
+    '-vf',
+    'scale=-2:880,pad=1440:900:(ow-iw)/2:10:color=0x0f172a,setsar=1',
+    '-c:v',
+    'libx264',
+    '-preset',
+    'fast',
+    '-crf',
+    '24',
+    '-pix_fmt',
+    'yuv420p',
+    '-r',
+    '25',
+    '-c:a',
+    'copy',
+    dst,
+  ]);
+  return dst;
 }
 
 /** The card background with no text, as a PNG the size of the recording. */
@@ -310,8 +401,9 @@ async function build(key) {
     );
     clips.push({ file: divider, chapter: `Part ${i + 1} of ${n}: ${part.title}` });
     for (const seg of part.segs) {
-      const { name, skipLogin } = typeof seg === 'string' ? { name: seg } : seg;
-      clips.push({ file: await trim(name, g.kind, skipLogin) });
+      const { name, skipLogin, phone } = typeof seg === 'string' ? { name: seg } : seg;
+      const trimmed = await trim(name, phone ? 'mobile' : g.kind, skipLogin);
+      clips.push({ file: phone && g.kind === 'desktop' ? await onDesktop(trimmed, name) : trimmed });
     }
   }
 
