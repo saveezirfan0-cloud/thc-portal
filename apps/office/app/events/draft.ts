@@ -46,6 +46,11 @@ export interface RoleDraft {
   /** Free text, this event only — never saved back to the client's list. */
   dressCodeOther: string;
   autoAssign: boolean;
+  /**
+   * ADR-0077: the client asked for male staff on this role. Auto-assign,
+   * Radar and Accept then book men only (`auto_assign_candidates`).
+   */
+  maleOnly: boolean;
   allocationPerHour: number;
   /**
    * Once the manager types their own allocation the default stops following
@@ -91,6 +96,7 @@ export function newRoleDraft(draft: EventDraft, roleId: string, payRate = 0): Ro
     dressCode: '',
     dressCodeOther: '',
     autoAssign: draft.autoAssign,
+    maleOnly: false,
     allocationPerHour: defaultAllocationPerHour(1, 0),
     allocationTouched: false,
   };
@@ -217,7 +223,8 @@ export function canRemoveRole(role: RoleDraft, bookedBySectionId: Record<string,
  * "Multi-day = separate events created via Duplicate (the clone copies the
  * roles, NOT the staff)." So a duplicate:
  *   * keeps the client, venue, title, PO, contact, notes and every role
- *     section's times, headcount, buffer, rates, dress code and allocation;
+ *     section's times, headcount, buffer, rates, dress code, allocation and
+ *     "Male staff only" — that is the client's ask, not the day's (ADR-0077);
  *   * drops every section id, so saving creates new sections and nothing
  *     booked on the original — confirmed, invited or applied — comes along;
  *   * leaves the DATE empty: a day is the one thing a duplicate must change,
@@ -250,6 +257,7 @@ export function draftFromSaved(
       dressCode: section.dressCode && !onList ? DRESS_CODE_OTHER : section.dressCode,
       dressCodeOther: section.dressCode && !onList ? section.dressCode : '',
       autoAssign: duplicate ? true : section.autoAssign,
+      maleOnly: section.maleOnly,
       allocationPerHour: section.allocationPerHour,
       // Whatever is stored is the manager's choice; the default never
       // overwrites it on reopening (§3.4).
@@ -315,6 +323,7 @@ export function roleChanges(before: RoleDraft, after: RoleDraft, dateChanged: bo
   if (before.payRate !== after.payRate) changed.push('pay_rate');
   if (before.allocationPerHour !== after.allocationPerHour) changed.push('allocation_per_hour');
   if (before.autoAssign !== after.autoAssign) changed.push('auto_assign');
+  if (before.maleOnly !== after.maleOnly) changed.push('male_only');
 
   return { key: after.key, changed, reconfirming: reconfirmingChanges(changed) };
 }

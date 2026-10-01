@@ -139,6 +139,8 @@ export function RoleBoard({
           {windowEnded ? <Pill>window ended</Pill> : null}
           {/* Absolute buffer, never the total (§3.2). */}
           <Pill>{formatAllocationPair(section.headcount, section.buffer)}</Pill>
+          {/* ADR-0077: auto-assign, Radar and Accept book men only. */}
+          {section.maleOnly ? <Pill tone="cyan">Male staff only</Pill> : null}
           {escalating ? (
             <Pill tone="purple">Escalation · every 10 min · radius pool</Pill>
           ) : (

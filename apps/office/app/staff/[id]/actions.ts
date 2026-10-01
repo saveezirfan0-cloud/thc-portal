@@ -296,3 +296,21 @@ export async function clearPayRate(staffId: string): Promise<ActionResult> {
     await callRpc('set_staff_pay_rate', { p_staff: staffId, p_pay_rate: null }, staffId),
   );
 }
+
+// ---------------------------------------------------------------------
+// Gender (ADR-0077) — set_staff_gender. M or F, HMRC's values; the
+// worker gives it on onboarding step 7, and the office records it for
+// anyone it is missing for, so a "Male staff only" section can book them.
+// ---------------------------------------------------------------------
+const GENDER_MESSAGES: Readonly<Record<string, string>> = {
+  gender_m_or_f: 'Choose Male or Female.',
+  staff_removed: 'This worker was removed under GDPR; nothing about them is recorded now.',
+  read_only: 'Your login is read-only, so this cannot be changed.',
+};
+
+export async function saveGender(staffId: string, gender: 'M' | 'F' | null): Promise<ActionResult> {
+  const result = await callRpc('set_staff_gender', { p_staff: staffId, p_gender: gender }, staffId);
+  return result.ok
+    ? result
+    : { ok: false, message: GENDER_MESSAGES[result.message] ?? result.message };
+}

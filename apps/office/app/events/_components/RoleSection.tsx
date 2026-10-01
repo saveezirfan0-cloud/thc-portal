@@ -1,7 +1,7 @@
 'use client';
 
 import { useId, useState } from 'react';
-import { Alert, Button, Input, Pill, Select } from '@thc/ui';
+import { Alert, Button, Checkbox, Input, Pill, Select } from '@thc/ui';
 import {
   type EditableField,
   ROLE_SECTION_MESSAGE,
@@ -100,6 +100,7 @@ export function RoleSection({
             {role.start} – {role.end}
           </span>
           <Pill>{formatAllocationPair(role.headcount, role.buffer)}</Pill>
+          {role.maleOnly ? <Pill tone="cyan">Male staff only</Pill> : null}
           <div className="right">
             <Pill tone="green">Ongoing</Pill>
           </div>
@@ -119,6 +120,7 @@ export function RoleSection({
         </span>
         {/* Absolute buffer: "12 (+2)", never the total (§3.2). */}
         <Pill>{formatAllocationPair(role.headcount, role.buffer)}</Pill>
+        {role.maleOnly ? <Pill tone="cyan">Male staff only</Pill> : null}
         {ratesVisible && role.chargeRate > 0 ? (
           <span className={`mono sm ${margin >= 0 ? 'green' : 'coral'}`}>
             margin {signedPence(margin)}
@@ -336,6 +338,25 @@ export function RoleSection({
             <span className="hint">Buffer is part of the target, not the working headcount.</span>
           </div>
         </div>
+
+        {/* ADR-0077: a client's request for men on this role. A hard gate in
+            auto_assign_candidates, so every path that books someone holds
+            to it — rounds, Radar, offers, Accept and a manual invite. */}
+        <Checkbox checked={role.maleOnly} onChange={(maleOnly) => onChange({ maleOnly })}>
+          <b>Male staff only</b>{' '}
+          <span className="muted">
+            — the client asked for men on this role. Auto-assign invites only male staff, and
+            only they see it on Radar. Staff with no gender on file are left out until it is
+            recorded on their profile.
+          </span>
+        </Checkbox>
+
+        {changed.has('male_only') && role.maleOnly && booked > 0 ? (
+          <Alert tone="cyan">
+            <b>Already booked staff are not removed.</b> Open invitations stay open but can only
+            be accepted by male staff; withdraw anyone else on the event board.
+          </Alert>
+        ) : null}
 
         {lengthIssue === 'below_minimum_hours' ? (
           <Alert tone="coral">

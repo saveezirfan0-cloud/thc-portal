@@ -80,6 +80,8 @@ export interface BoardSection {
   payRate: number | null;
   dressCode: string;
   autoAssign: boolean;
+  /** ADR-0077: the client asked for male staff on this role. */
+  maleOnly: boolean;
   allocationPerHour: number;
   confirmed: BoardBooking[];
   invited: BoardBooking[];
@@ -217,7 +219,7 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
     supabase
       .from('shift_requirements')
       .select(
-        'id, role_id, starts_at, ends_at, headcount, buffer, dress_code, auto_assign, allocation_per_hour',
+        'id, role_id, starts_at, ends_at, headcount, buffer, dress_code, auto_assign, male_only, allocation_per_hour',
       )
       .eq('event_id', eventId)
       .order('starts_at'),
@@ -604,6 +606,7 @@ export async function loadBoard(eventId: string, now: Date = new Date()): Promis
           payRate: rates.has(id) ? Number(rates.get(id)!.pay_rate) : null,
           dressCode: (section['dress_code'] as string) ?? '',
           autoAssign: Boolean(section['auto_assign']),
+          maleOnly: Boolean(section['male_only']),
           allocationPerHour: section['allocation_per_hour'] as number,
           // A no-show stays in Confirmed, badged — never moved out (§3.3).
           confirmed: mine

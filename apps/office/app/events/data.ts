@@ -195,6 +195,8 @@ export interface SavedRoleSection {
   payRate: number;
   dressCode: string;
   autoAssign: boolean;
+  /** ADR-0077: the client asked for male staff on this role. */
+  maleOnly: boolean;
   allocationPerHour: number;
   /** Confirmed bookings on THIS role section — who re-confirms if it moves. */
   confirmed: number;
@@ -243,6 +245,7 @@ interface SectionRow {
   buffer: number;
   dress_code: string | null;
   auto_assign: boolean;
+  male_only: boolean;
   allocation_per_hour: number;
 }
 
@@ -286,7 +289,7 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
       supabase
         .from('shift_requirements')
         .select(
-          'id, role_id, starts_at, ends_at, headcount, buffer, dress_code, auto_assign, allocation_per_hour',
+          'id, role_id, starts_at, ends_at, headcount, buffer, dress_code, auto_assign, male_only, allocation_per_hour',
         )
         .eq('event_id', id)
         .order('starts_at'),
@@ -337,6 +340,7 @@ export async function loadEvent(id: string): Promise<SavedEvent | null> {
       payRate: Number(rates.get(s.id)?.pay_rate ?? 0),
       dressCode: s.dress_code ?? '',
       autoAssign: s.auto_assign,
+      maleOnly: s.male_only,
       allocationPerHour: s.allocation_per_hour,
       confirmed: confirmed.get(s.id) ?? 0,
       booked: booked.get(s.id) ?? 0,

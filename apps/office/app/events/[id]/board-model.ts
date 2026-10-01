@@ -13,6 +13,7 @@ import {
   ACCEPT_APPLICATION_REFUSAL_COPY,
   CALENDAR_GATE,
   type CandidateRow,
+  type HardGate,
   type ScoreBreakdown,
   type ScoreInput,
   type ScoreWeights,
@@ -26,6 +27,7 @@ import {
   marginPerHourPence,
   rankCandidateRows,
   roundMayInvite,
+  showsUnderUnavailable,
 } from '@thc/domain';
 
 // ---------------------------------------------------------------------
@@ -331,10 +333,18 @@ interface ReasonCopy {
 }
 
 /**
- * The live hard gates, as §3.3 names them. `wrong_role` is absent on
- * purpose: it never produces a row on the board (§6).
+ * The live hard gates, as §3.3 names them. `wrong_role` and `male_only`
+ * are absent on purpose: they never produce a row on the board (§6,
+ * ADR-0077).
  */
 export const GATE_COPY: Readonly<Record<string, ReasonCopy>> = {
+  // ADR-0077: a male-only role section and a worker with no gender on file.
+  gender_not_recorded: {
+    label: 'Gender not recorded',
+    detail:
+      'this role is for male staff only and their gender is not on file — record it on their staff profile',
+    tone: 'amber',
+  },
   blocked: {
     label: 'Blocked — compliance',
     detail: 'not compliant, so not invitable',
@@ -464,6 +474,7 @@ const UNKNOWN_CAUSE: ReasonCopy = {
 
 /** Structural reasons first, the way §3.3 lists them; then the booking causes. */
 const REASON_ORDER = [
+  'gender_not_recorded',
   'blocked',
   'booked_elsewhere',
   'hours_limit',
@@ -535,7 +546,8 @@ export interface EndedBooking {
  * Two sources, one row per worker:
  *   * the live hard gates from `auto_assign_candidates` — blocked,
  *     booked elsewhere, hours limit, right to work, self-cancelled, do not
- *     return. `wrong_role` never produces a row (§6).
+ *     return, gender not recorded on a male-only section. `wrong_role`
+ *     and `male_only` never produce a row (§6, ADR-0077).
  *   * this section's cancelled and closed bookings that CANNOT be reopened
  *     — a self-cancel, an event cancellation, a GDPR removal, or a row
  *     with history — labelled by `cancel_cause`, when the worker carries
@@ -559,7 +571,7 @@ export function buildUnavailable(
   const endedByStaff = new Map(ended.map((b) => [b.staffId, b]));
 
   for (const row of rows ?? []) {
-    if (!row.gate || row.gate === 'wrong_role') continue;
+    if (!row.gate || !showsUnderUnavailable(row.gate as HardGate)) continue;
     if (listedElsewhere.has(row.staff_id)) continue;
     // A completed hand-over sets the same event-wide bar as a self-cancel
     // (ADR-0046); where this section's booking says so, say what happened.
@@ -674,6 +686,8 @@ const INVITE_REFUSAL_COPY: Readonly<Record<string, string>> = {
   outside_radius: 'This worker lives outside the same-day escalation radius of the venue.',
   not_bookable: ACCEPT_APPLICATION_REFUSAL_COPY.not_bookable,
   wrong_role: ACCEPT_APPLICATION_REFUSAL_COPY.wrong_role,
+  male_only: ACCEPT_APPLICATION_REFUSAL_COPY.male_only,
+  gender_not_recorded: ACCEPT_APPLICATION_REFUSAL_COPY.gender_not_recorded,
   do_not_return: ACCEPT_APPLICATION_REFUSAL_COPY.do_not_return,
   blocked: ACCEPT_APPLICATION_REFUSAL_COPY.blocked,
   self_cancelled: ACCEPT_APPLICATION_REFUSAL_COPY.self_cancelled,

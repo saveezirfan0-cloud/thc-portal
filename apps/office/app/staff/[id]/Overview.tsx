@@ -7,6 +7,7 @@ import { EmergencyContactCard } from './EmergencyContactCard';
 import { DobCorrection } from '../../_components/DobCorrection';
 import { ReferralsCard } from './ReferralsCard';
 import { PayRateCard } from './PayRateCard';
+import { GenderField } from './GenderField';
 import type {
   DeclarationRow,
   EmergencyContact,
@@ -46,6 +47,8 @@ export function Overview({
   references,
   declarations,
   locationStale = false,
+  gender,
+  canEditGender = false,
   emergencyContact = null,
   emergencyContactProblem = null,
   referrals = null,
@@ -61,6 +64,10 @@ export function Overview({
   declarations: DeclarationRow[];
   /** The address moved and the pin could not follow (20260926110000). */
   locationStale?: boolean;
+  /** ADR-0077: `staff.gender`; undefined when it could not be read. */
+  gender?: 'M' | 'F' | null;
+  /** Any office login that may write (ADR-0077). */
+  canEditGender?: boolean;
   /** ADR-0044 — null reads "Not provided". */
   emergencyContact?: EmergencyContact | null;
   emergencyContactProblem?: string | null;
@@ -97,6 +104,12 @@ export function Overview({
               allowed={canCorrectDob && !profile.removed}
             />
           </span>
+          <span className="k">Gender</span>
+          <GenderField
+            staffId={profile.id}
+            gender={gender}
+            editable={canEditGender && !profile.removed}
+          />
           <span className="k">Home address</span>
           <span>
             {value(profile.home_address)}
