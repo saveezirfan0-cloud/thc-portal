@@ -25,6 +25,16 @@ const documents = readFileSync(
   join(MIGRATIONS, '20260923120000_onboarding_wizard_documents.sql'),
   'utf8',
 );
+/**
+ * The latest definitions of onboarding_required_docs(),
+ * onboarding_save_right_to_work() and onboarding_documents_missing()
+ * (ADR-0077: no visa / status document upload, no typed expiry; NI evidence
+ * stays on the UK birth-certificate route).
+ */
+const shareCodeEvidence = readFileSync(
+  join(MIGRATIONS, '20261002105000_share_code_is_the_visa_evidence.sql'),
+  'utf8',
+);
 
 describe('share code (§2.5) — SQL and TypeScript agree', () => {
   it('is_valid_share_code() uses the same pattern', () => {
@@ -48,13 +58,38 @@ describe('visa types (§2.5 pt 3) — SQL and TypeScript agree', () => {
   it('onboarding_save_right_to_work() accepts exactly the dropdown', () => {
     const list = VISA_TYPES.map((v) => `'${v}'`).join(', ');
     expect(documents).toContain(`not in (${list})`);
+    // ADR-0077 kept the dropdown in the latest definition.
+    expect(shareCodeEvidence).toContain(`not in (${list})`);
+  });
+
+  it('the latest onboarding_save_right_to_work() no longer refuses a missing or past expiry', () => {
+    const start = shareCodeEvidence.indexOf(
+      'create or replace function public.onboarding_save_right_to_work',
+    );
+    const body = shareCodeEvidence.slice(start, shareCodeEvidence.indexOf('$$;', start));
+    expect(body).not.toContain('expiry_required');
+    expect(body).not.toContain('expiry_past');
+    expect(body).toContain('visa_type_required');
   });
 });
 
-describe('document sets (§2.5 pts 1–5) — SQL and TypeScript agree', () => {
-  // Parse the VALUES list of onboarding_required_docs(): (key, accepts, applies-predicate).
-  const start = documents.indexOf('create or replace function public.onboarding_required_docs');
-  const block = documents.slice(start, documents.indexOf('$$;', start));
+describe('documents missing (ADR-0077) — no visa or status document token', () => {
+  it('the latest onboarding_documents_missing() names neither; NI evidence stays for List A', () => {
+    const start = shareCodeEvidence.indexOf(
+      'create or replace function public.onboarding_documents_missing',
+    );
+    const body = shareCodeEvidence.slice(start, shareCodeEvidence.indexOf('$$;', start));
+    expect(body).not.toMatch(/'(visa_document|status_document)'/);
+    expect(body).toContain("missing := missing || 'ni_evidence'::text;");
+  });
+});
+
+describe('document sets (§2.5 pts 1–5, ADR-0077) — SQL and TypeScript agree', () => {
+  // Parse the VALUES list of the latest onboarding_required_docs(): (key, accepts, applies-predicate).
+  const start = shareCodeEvidence.indexOf(
+    'create or replace function public.onboarding_required_docs',
+  );
+  const block = shareCodeEvidence.slice(start, shareCodeEvidence.indexOf('$$;', start));
   const values = block.slice(
     block.indexOf('from (values') + 'from (values'.length,
     block.indexOf(') r(req_key'),
@@ -91,7 +126,7 @@ describe('document sets (§2.5 pts 1–5) — SQL and TypeScript agree', () => {
   }
 
   it('parses every row', () => {
-    expect(rows.length).toBe(8);
+    expect(rows.length).toBe(6);
   });
 
   const cases: [RtwBranch, UkDocChoice][] = [

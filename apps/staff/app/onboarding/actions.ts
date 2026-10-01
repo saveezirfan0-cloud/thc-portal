@@ -76,7 +76,6 @@ export async function saveRightToWork(input: {
   dob: string;
   shareCode: string;
   visaType: string;
-  visaExpiry: string;
   ukChoice: string | null;
   wtrOptOut: boolean;
 }): Promise<Result> {
@@ -85,7 +84,9 @@ export async function saveRightToWork(input: {
     p_dob: input.dob || null,
     p_share_code: input.shareCode || null,
     p_visa_type: input.visaType || null,
-    p_visa_expiry: input.visaExpiry || null,
+    // Still in the RPC's signature and ignored there: no branch types an
+    // expiry any more — the gov.uk share-code check returns it (ADR-0077).
+    p_visa_expiry: null,
     p_uk_doc_choice: input.ukChoice,
     p_wtr_optout: input.wtrOptOut,
   });
