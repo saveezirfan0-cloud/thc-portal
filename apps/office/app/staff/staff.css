@@ -121,3 +121,21 @@
   align-items: center;
   gap: var(--sp-8);
 }
+
+/* ADR-0082: the Send push tick, beside the avatar in the lead cell, so the
+   phone's card layout keeps it on the name's line. */
+.tbl input.pick,
+.tbl th.pick input {
+  width: 16px;
+  height: 16px;
+  margin: 0 var(--sp-8) 0 0;
+  vertical-align: middle;
+  accent-color: var(--cyan-ink);
+  cursor: pointer;
+}
+.tbl td.cell-lead:has(> input.pick) {
+  white-space: nowrap;
+}
+.tbl tr.picked td {
+  background: var(--row-hover);
+}

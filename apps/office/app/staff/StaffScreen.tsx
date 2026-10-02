@@ -2,8 +2,21 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { Alert, Avatar, Chip, EmptyState, Note, Panel, Pill, SegToggle, Select } from '@thc/ui';
+import {
+  Alert,
+  Avatar,
+  Button,
+  Chip,
+  EmptyState,
+  Note,
+  Panel,
+  Pill,
+  SaveBar,
+  SegToggle,
+  Select,
+} from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
+import { SendPush } from './SendPush';
 import { StudentVisaView } from './StudentVisaView';
 import {
   CAP_FILTER_LABEL,
@@ -38,7 +51,15 @@ export interface StaffScreenProps {
    * Null when the count could not be read: "(?)", never a claimed 0 (D18).
    */
   pendingRequests?: number | null;
+  /**
+   * ADR-0082: tick workers and Send push to them — any office login that
+   * may write. send_staff_message() refuses a viewer whatever this says.
+   */
+  canMessage?: boolean;
 }
+
+/** A worker ticked for Send push: the id it sends, the name the dialog shows. */
+type Picked = ReadonlyMap<string, string>;
 
 /** The pager's two sizes, as the wireframe offers them ("15 / page", "50 / page"). */
 export const PAGE_SIZES = [15, 50] as const;
@@ -65,6 +86,7 @@ export function StaffScreen({
   initialView = 'directory',
   initialFilter = 'all',
   pendingRequests = 0,
+  canMessage = false,
 }: StaffScreenProps) {
   const [view, setView] = useState<'directory' | 'student'>(initialView);
   const [filter, setFilter] = useState<Filter>(initialFilter);
@@ -74,6 +96,9 @@ export function StaffScreen({
   const [sort, setSort] = useState<Sort>('name');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
+  // ADR-0082: kept across pages, tabs and searches, so a list can be built
+  // up from several of them; cleared after a send.
+  const [picked, setPicked] = useState<Picked>(new Map());
 
   // §9.6 lists workers. Candidates and rejected applicants come through the
   // same view but belong to /onboarding, so they are neither counted nor
@@ -108,6 +133,44 @@ export function StaffScreen({
   const pages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const current = Math.min(page, pages - 1);
   const shown = filtered.slice(current * pageSize, current * pageSize + pageSize);
+
+  // A removed worker cannot be messaged (§1.7), so never offers a tick.
+  const pickable = canMessage ? shown.filter((row) => !row.removed) : [];
+  const allShownPicked = pickable.length > 0 && pickable.every((row) => picked.has(row.id));
+
+  const pick = (row: StaffRow, on: boolean) =>
+    setPicked((current) => {
+      const next = new Map(current);
+      if (on) next.set(row.id, row.display_name);
+      else next.delete(row.id);
+      return next;
+    });
+  const pickShown = (on: boolean) =>
+    setPicked((current) => {
+      const next = new Map(current);
+      for (const row of pickable) {
+        if (on) next.set(row.id, row.display_name);
+        else next.delete(row.id);
+      }
+      return next;
+    });
+  const pickerFor = (row: StaffRow): RowPicker | undefined =>
+    canMessage && !row.removed
+      ? { checked: picked.has(row.id), onChange: (on) => pick(row, on) }
+      : undefined;
+  const headPicker = canMessage ? (
+    <th className="pick">
+      <input
+        type="checkbox"
+        aria-label="Select everyone on this page"
+        checked={allShownPicked}
+        disabled={pickable.length === 0}
+        onChange={(event) => pickShown(event.target.checked)}
+      />
+    </th>
+  ) : (
+    <th />
+  );
 
   const reset =
     <T,>(set: (value: T) => void) =>
@@ -261,7 +324,7 @@ export function StaffScreen({
                 <table className="tbl card-rows">
                   <thead>
                     <tr>
-                      <th />
+                      {headPicker}
                       <th>Name</th>
                       <th>Employee ID</th>
                       <th>Left</th>
@@ -274,7 +337,7 @@ export function StaffScreen({
                   </thead>
                   <tbody>
                     {shown.map((row) => (
-                      <InactiveTableRow key={row.id} row={row} />
+                      <InactiveTableRow key={row.id} row={row} picker={pickerFor(row)} />
                     ))}
                   </tbody>
                 </table>
@@ -282,7 +345,7 @@ export function StaffScreen({
                 <table className="tbl card-rows">
                   <thead>
                     <tr>
-                      <th />
+                      {headPicker}
                       <th>Name</th>
                       <th>Employee ID</th>
                       <th>Role(s)</th>
@@ -294,7 +357,7 @@ export function StaffScreen({
                   </thead>
                   <tbody>
                     {shown.map((row) => (
-                      <StaffTableRow key={row.id} row={row} />
+                      <StaffTableRow key={row.id} row={row} picker={pickerFor(row)} />
                     ))}
                   </tbody>
                 </table>
@@ -345,6 +408,23 @@ export function StaffScreen({
             ) : null}
           </Panel>
 
+          {picked.size > 0 ? (
+            <SaveBar
+              label="Selected workers"
+              status={`${picked.size} selected`}
+              hint="Send them a push in your own words — booked or not. Ticks stay while you change page, tab or search."
+            >
+              <Button size="sm" onClick={() => setPicked(new Map())}>
+                Clear
+              </Button>
+              <SendPush
+                tone="primary"
+                recipients={[...picked].map(([id, name]) => ({ id, name }))}
+                onSent={() => setPicked(new Map())}
+              />
+            </SaveBar>
+          ) : null}
+
           <div className="row wrap sm muted" style={{ gap: 16 }}>
             <span>
               Rating colour: <span className="rating coral">★ 0–2.9</span> ·{' '}
@@ -368,13 +448,33 @@ export function StaffScreen({
   );
 }
 
-function StaffTableRow({ row }: { row: StaffRow }) {
+/** The row's Send push tick (ADR-0082); absent where it cannot be messaged. */
+interface RowPicker {
+  checked: boolean;
+  onChange: (on: boolean) => void;
+}
+
+function PickBox({ picker, name }: { picker: RowPicker | undefined; name: string }) {
+  if (!picker) return null;
+  return (
+    <input
+      type="checkbox"
+      className="pick"
+      aria-label={`Select ${name}`}
+      checked={picker.checked}
+      onChange={(event) => picker.onChange(event.target.checked)}
+    />
+  );
+}
+
+function StaffTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }) {
   const tone = ratingTone(row.rating);
   const atLimit = limitReached(row);
 
   return (
-    <tr>
+    <tr className={picker?.checked ? 'picked' : undefined}>
       <td className="cell-lead">
+        <PickBox picker={picker} name={row.display_name} />
         <Avatar
           name={row.removed ? '#' : row.display_name}
           src={row.removed ? undefined : (row.photo_url ?? undefined)}
@@ -448,10 +548,11 @@ function StaffTableRow({ row }: { row: StaffRow }) {
  * the P45 request (§9.6, §10.6). "Issued" has no column yet — the office
  * marks nothing when the P45 goes out, so the pill stays at Requested.
  */
-function InactiveTableRow({ row }: { row: StaffRow }) {
+function InactiveTableRow({ row, picker }: { row: StaffRow; picker?: RowPicker }) {
   return (
-    <tr>
+    <tr className={picker?.checked ? 'picked' : undefined}>
       <td className="cell-lead">
+        <PickBox picker={picker} name={row.display_name} />
         <Avatar name={row.display_name} src={row.photo_url ?? undefined} size="sm" />
       </td>
       <td className="name cell-title">

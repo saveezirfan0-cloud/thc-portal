@@ -131,6 +131,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
             <DocumentActions
               eventId={event.id}
               started={status === 'ongoing' || status === 'completed'}
+              nameBadges={event.nameBadges}
             />
           )}
           {/* ADR-0069: last-minute information to the line-up, by push. */}

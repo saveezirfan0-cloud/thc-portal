@@ -220,7 +220,7 @@ describe('shift outcomes (§9.6)', () => {
         cancel_cause: 'handed_over',
         self_cancelled: true,
       }),
-    ).toBe('Handed over (offered up)');
+    ).toBe('Handed over (cover taken)');
     expect(
       shiftOutcome({
         ...SHIFT,

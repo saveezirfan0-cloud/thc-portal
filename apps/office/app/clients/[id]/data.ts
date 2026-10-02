@@ -31,6 +31,7 @@ const NOT_CONFIGURED =
 
 const EMPTY: Omit<ClientCardData, 'problem'> = {
   client: null,
+  nameBadges: false,
   rateCard: [],
   qualified: [],
   events: [],
@@ -85,8 +86,14 @@ export async function loadClientCard(
 
   const supabase = createClient(await cookies());
 
-  const [client, rateCard, qualified, events, roles, payRates, staff] = await Promise.all([
+  const [client, badges, rateCard, qualified, events, roles, payRates, staff] = await Promise.all([
     supabase.from('clients_directory_v').select(CLIENT_COLUMNS).eq('id', id).maybeSingle<Client>(),
+    // ADR-0081: one switch, read from the table rather than restating the view.
+    supabase
+      .from('clients')
+      .select('name_badges')
+      .eq('id', id)
+      .maybeSingle<{ name_badges: boolean | null }>(),
     ratesVisible
       ? supabase
           .from('clients_rate_card_v')
@@ -126,6 +133,7 @@ export async function loadClientCard(
 
   const error =
     client.error ??
+    badges.error ??
     rateCard.error ??
     qualified.error ??
     events.error ??
@@ -148,6 +156,7 @@ export async function loadClientCard(
 
   return {
     client: client.data ?? null,
+    nameBadges: badges.data?.name_badges === true,
     rateCard: rateCard.data ?? [],
     // The selfie is a private-bucket key; signed here, initials if not.
     qualified: await withPhotoUrls(qualified.data ?? []),

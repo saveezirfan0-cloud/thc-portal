@@ -4,7 +4,7 @@
 --
 --   A · request_cover(): inside 72 h (or with auto-assign off) an `office`
 --       offer — not visible, not pushed, not takeable; OF5 to admin@ at
---       once; the worker stays confirmed. Refusals use_offer,
+--       once; the worker stays confirmed. Refusals use_cancel,
 --       note_too_long, already_offered, not_confirmed, section_started.
 --   B · office_open_offer_to_pool(): office → pool until the section's
 --       start; then Radar shows it and it can be taken
@@ -19,7 +19,7 @@
 -- The callers (20260930205000): a leaver or a removed account cannot ask.
 -- =====================================================================
 begin;
-select plan(56);
+select plan(55);
 \ir _shared/fixtures.psql
 
 \set ev    '67200000-0000-4000-8000-000000000001'
@@ -120,9 +120,8 @@ insert into bookings (id, shift_id, staff_id, status, source, confirmed_at) valu
 -- =====================================================================
 select set_config('request.jwt.claims', json_build_object('sub', :'uk1', 'role', 'authenticated')::text, true);
 set local role authenticated;
-select is(offer_shift(:'b_in') ->> 'reason', 'too_late', 'A: two days out, Kit cannot offer it to the pool');
-select is(request_cover(:'b_out'), jsonb_build_object('ok', false, 'reason', 'use_offer'),
-  'A: twenty days out with auto-assign on, he offers it himself instead');
+select is(request_cover(:'b_out'), jsonb_build_object('ok', false, 'reason', 'use_cancel'),
+  'A: twenty days out with auto-assign on, Cancel shift is his tool (RULE-04) — a worker never offers it to other workers');
 select is(request_cover(:'b_in', repeat('x', 301)), jsonb_build_object('ok', false, 'reason', 'note_too_long'),
   'A: a note is at most 300 characters');
 select is(request_cover(:'b_in', '  Exam moved to Friday evening — sorry.  ') ->> 'ok', 'true',

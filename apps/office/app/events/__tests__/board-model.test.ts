@@ -495,8 +495,8 @@ describe('Marked unavailable — the calendar on the board (ADR-0043)', () => {
   });
 });
 
-describe('Offered up and cover requests on the board (ADR-0046)', () => {
-  it('a pool offer is a chip on the Confirmed row with its UK close time', () => {
+describe('Cover requests on the board (ADR-0046, amended)', () => {
+  it('a cover request the office opened to the pool is a chip on the Confirmed row with its UK close time', () => {
     expect(
       offerChip({
         offerId: 'o1',
@@ -504,7 +504,7 @@ describe('Offered up and cover requests on the board (ADR-0046)', () => {
         expiresAt: '2026-09-20T15:00:00.000Z',
         note: null,
       }),
-    ).toEqual({ label: 'Offered up · until Sun 20 Sep, 16:00 UK', tone: 'cyan' });
+    ).toEqual({ label: 'Open to pool · until Sun 20 Sep, 16:00 UK', tone: 'cyan' });
   });
 
   it('a cover request carries the worker’s note', () => {

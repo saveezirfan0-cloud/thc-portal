@@ -141,7 +141,7 @@ export function PushStatus() {
   return <PushBannerView banner={banner} onDismiss={banner.dismissible ? dismiss : null} />;
 }
 
-/** The compact banner. Exported for the markup tests. */
+/** The compact banner: one line, an action pill, and — for advice — an ×. Exported for the markup tests. */
 export function PushBannerView({
   banner,
   onDismiss,
@@ -151,15 +151,12 @@ export function PushBannerView({
 }) {
   return (
     <div className={`alert ${banner.tone} push-banner`} role="status">
-      <p className="push-banner-text">
-        <b>{banner.headline}</b> {banner.detail}
-        {banner.link ? (
-          <>
-            {' '}
-            <Link href={banner.link.href}>{banner.link.label}</Link>
-          </>
-        ) : null}
-      </p>
+      <p className="push-banner-text">{banner.text}</p>
+      {banner.link ? (
+        <Link className="push-banner-cta" href={banner.link.href}>
+          {banner.link.label}
+        </Link>
+      ) : null}
       {onDismiss ? (
         <button
           type="button"
@@ -169,8 +166,8 @@ export function PushBannerView({
         >
           <svg
             viewBox="0 0 24 24"
-            width="16"
-            height="16"
+            width="14"
+            height="14"
             fill="none"
             stroke="currentColor"
             strokeWidth="1.8"
