@@ -200,4 +200,34 @@ describe('generateDocument and name badges (ADR-0081)', () => {
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.pdf.subarray(0, 5).toString('latin1')).toBe('%PDF-');
   });
+
+  it('a Download whose badges Storage refuses still records the sheet it hands out', async () => {
+    refuseUpload = '/badges/';
+    const db = fakeDb(true);
+    const result = await generateDocument(EVENT_ID, 'allocation', 'best-effort', {
+      db: db as unknown as Db,
+    });
+    expect(result.ok && result.documentId).toBe('doc-1');
+    expect(db.calls.map((c) => c.fn)).toEqual(['event_document_data', 'record_event_document']);
+    if (result.ok) expect(result.badges?.storagePath).toBe(null);
+  });
+
+  it('a badge that cannot be drawn fails a Send, never a Download', async () => {
+    const pdf = await import('@thc/pdf');
+    const spy = vi.spyOn(pdf, 'renderBadgesPdf').mockRejectedValue(new Error('font missing'));
+    try {
+      const sent = await generateDocument(EVENT_ID, 'allocation', 'required', {
+        db: fakeDb(true) as unknown as Db,
+      });
+      expect(sent).toMatchObject({ ok: false, status: 500 });
+      uploads.length = 0;
+      const downloaded = await generateDocument(EVENT_ID, 'allocation', 'best-effort', {
+        db: fakeDb(true) as unknown as Db,
+      });
+      expect(downloaded.ok && downloaded.badges).toBe(null);
+      expect(uploads).toHaveLength(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
 });

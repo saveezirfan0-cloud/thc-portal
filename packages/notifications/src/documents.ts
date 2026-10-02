@@ -76,6 +76,8 @@ export interface DocumentEmailHtml {
   closing?: string;
   /** Under each file name on its card. */
   attachmentNote: string;
+  /** Under the name badges' file name (ADR-0081, D1 only); `{nameBadges}` is the count. */
+  badgesNote?: string;
   /** A `mailto:` button to the sender's reply-to, subject "Re: <subject>". */
   replyButton?: string;
 }
@@ -112,6 +114,7 @@ export const DOCUMENT_EMAILS = {
       ],
       closing: 'Any questions, you can reach us the same way.',
       attachmentNote: 'Allocation Timesheet · attached',
+      badgesNote: 'Name badges · {nameBadges} to print',
       replyButton: 'Reply with the signed sheet',
     },
     trigger: '"Send allocation sheet" on the Back Office event page (§11.4)',
@@ -149,11 +152,11 @@ export interface Attachment {
   path: string;
   filename: string;
   /**
-   * Under the file name on its card in the HTML, when this file is not the
-   * email's main document — the D1 name badges (ADR-0081). Without one the
-   * card says the template's `attachmentNote`.
+   * What the file is when it is not the email's main document: 'badges',
+   * the D1 name badges (ADR-0081). Its card says the template's
+   * `badgesNote` instead of `attachmentNote`.
    */
-  note?: string;
+  role?: 'badges';
 }
 
 export interface EmailWithAttachments extends EmailMessage {
@@ -189,8 +192,12 @@ function parseAttachments(raw: unknown, code: DocumentEmailCode): Attachment[] {
     if (typeof a.filename !== 'string' || a.filename.trim() === '') {
       throw new UnsendableRow(`${code}: attachment ${index} has no file name`);
     }
-    const note = typeof a.note === 'string' ? a.note.trim().slice(0, 80) : '';
-    return { bucket, path: a.path, filename: a.filename, ...(note ? { note } : {}) };
+    return {
+      bucket,
+      path: a.path,
+      filename: a.filename,
+      ...(a.role === 'badges' ? { role: 'badges' as const } : {}),
+    };
   });
 }
 
@@ -283,7 +290,13 @@ function documentHtml(
   const facts: EmailBlock = { kind: 'facts', rows: documentFacts(code, values) };
   const files: EmailBlock = {
     kind: 'attachments',
-    items: attachments.map((a) => ({ filename: a.filename, note: a.note ?? copy.attachmentNote })),
+    items: attachments.map((a) => ({
+      filename: a.filename,
+      note:
+        a.role === 'badges' && copy.badgesNote
+          ? render(copy.badgesNote, values)
+          : copy.attachmentNote,
+    })),
   };
 
   if (!copy.intro) {

@@ -237,8 +237,9 @@ end $$;
 -- 4 · event_document_email_payload — the badges travel with the sheet
 --
 -- 20261002100000's body (its only one) with the attachments list built
--- here instead of inline, the badges added as its second entry with their
--- own note, and `nameBadges` added: the number of badges, or '' for none.
+-- here instead of inline, the badges added as its second entry marked
+-- role 'badges', and `nameBadges` added: the number of badges, or '' for
+-- none.
 -- Every other key and value is unchanged.
 -- ---------------------------------------------------------------------
 create or replace function public.event_document_email_payload(p_document uuid)
@@ -262,7 +263,9 @@ begin
     v_files := v_files || jsonb_build_array(jsonb_build_object(
                  'bucket', 'timesheets', 'path', d.badges_storage_path,
                  'filename', d.badges_file_name,
-                 'note', 'Name badges · ' || d.badges_count::text || ' to print'));
+                 -- Which file it is, not what to call it: the card's words
+                 -- are packages/notifications' (the §8 register's home).
+                 'role', 'badges'));
   end if;
 
   v_payload := jsonb_build_object(

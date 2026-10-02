@@ -188,7 +188,7 @@ describe('D1 with name badges (ADR-0081)', () => {
             bucket: 'timesheets',
             path: 'ev-1/badges/x.pdf',
             filename: "Leonardo Hotel St Paul's M and E – Gala Dinner – Name Badges.pdf",
-            note: `Name badges · ${count} to print`,
+            role: 'badges',
           },
         ]),
       },
@@ -200,7 +200,8 @@ describe('D1 with name badges (ADR-0081)', () => {
       'ev-1/allocation/x.pdf',
       'ev-1/badges/x.pdf',
     ]);
-    expect(message.attachments[1]!.note).toBe('Name badges · 17 to print');
+    expect(message.attachments[1]!.role).toBe('badges');
+    expect(message.attachments[0]!.role).toBeUndefined();
   });
 
   it('says so in the text and the HTML, with the count', () => {
@@ -231,7 +232,7 @@ describe('D1 with name badges (ADR-0081)', () => {
       expect(message.body).not.toContain('badge');
       expect(message.html).not.toContain('badge');
       expect(message.attachments).toHaveLength(1);
-      expect(message.attachments[0]!.note).toBeUndefined();
+      expect(message.attachments[0]!.role).toBeUndefined();
     }
   });
 });

@@ -33,7 +33,11 @@ Rules held in the database (pgTAP 769):
 - A copy carries one set (`badges_already_attached`), under its own event's folder, with at least one badge.
 - Callers: the office (`assert_reports_caller`) or the service role (the job). Not anon, a worker or a client.
 
-If the badges cannot be stored or attached, a **Send** (manual or automatic) stops. It does not email the sheet without the badges the client asked for. The job releases its claim and retries on the next run (ADR-0074). A **Download** still hands the manager the sheet.
+If the badges cannot be drawn, stored or attached, a **Send** (manual or automatic) stops. It does not email the sheet without the badges the client asked for. The job releases its claim and retries on the next run (ADR-0074). A **Download** never loses the sheet over the badges: it hands the manager the sheet, and records it, without them.
+
+**What a failure leaves behind.** Recording the copy and attaching the badges are two calls. If the attach fails, an unsent copy of the sheet stays in `event_documents` and its files stay in the bucket. That is the same as a Download, which records every copy it hands out, and the Client Portal already lists the latest copy whether it was emailed or not (§11.3, 20260923130100). So nothing new is shown that the portal would not show after a Download.
+
+**A failure that does not clear.** If the badges keep failing (a Storage fault, say), the automatic D1 retries up to eight times and then gives up (`gave_up`, ADR-0074). The manual Send fails the same way, so the client gets no Allocation Timesheet until the fault is fixed. That is deliberate: THC asked for the two together. If the office needs the sheet out regardless, switching Name badges off on the client card and pressing Send sends the sheet alone.
 
 ### 3 · What a badge is
 
@@ -49,7 +53,7 @@ The file is "Client – Event – Name Badges.pdf".
 
 - D1's text and HTML gain one sentence after the PO line, only when badges are attached: *"Their THC name badges are attached too, as a second PDF: print them, cut along the dashed lines and slide each one into a badge holder."* It is singular for one badge.
 - The facts box gains a **Name badges** row with the count. With no badges the row drops, as every empty fact does.
-- The badges' file card reads "Name badges · N to print". An attachment can now carry its own `note`, and the sheet's card keeps "Allocation Timesheet · attached".
+- The badges' file card reads "Name badges · N to print". The outbox row marks that attachment `role: 'badges'`, and the words come from D1's `badgesNote` in `packages/notifications`, never from SQL. The sheet's card keeps "Allocation Timesheet · attached".
 - An outbox row from before this change still renders: no `nameBadges` means no sentence and no row.
 - The event page shows **Download Name Badges** beside the Allocation Timesheet buttons for a badge client (`/api/documents/:eventId/badges`, drawn fresh, not stored). The Send confirmation says the badges go in the same email, and the result says how many.
 

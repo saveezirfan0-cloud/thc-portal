@@ -224,7 +224,20 @@ export async function generateDocument(
   const photos = await loadPhotos(db, photoPaths);
   const pdf = await renderSheetPdf(layout, photos);
   const pages = countPdfPages(pdf);
-  const drawn = await drawBadges(doc, kind);
+  // ADR-0081: a Send needs the badges the client asked for; a Download
+  // never loses the sheet over them.
+  let drawn: Awaited<ReturnType<typeof drawBadges>>;
+  try {
+    drawn = await drawBadges(doc, kind);
+  } catch (cause) {
+    if (store === 'required')
+      return {
+        ok: false,
+        status: 500,
+        message: `The name badges could not be drawn: ${(cause as Error).message}`,
+      };
+    drawn = null;
+  }
   const unstoredBadges = drawn ? { ...drawn, storagePath: null } : null;
 
   const unstored = {
@@ -249,7 +262,7 @@ export async function generateDocument(
   const now = stamp(new Date());
   const storagePath = `${eventId}/${kind}/${now}.pdf`;
   // ADR-0081: beside the sheet, never over an earlier copy's badges.
-  const badgesPath = drawn ? `${eventId}/badges/${now}.pdf` : null;
+  let badgesPath = drawn ? `${eventId}/badges/${now}.pdf` : null;
   try {
     const admin = createAdminClient();
     const upload = await admin.storage
@@ -260,8 +273,12 @@ export async function generateDocument(
       const badges = await admin.storage
         .from('timesheets')
         .upload(badgesPath, drawn.pdf, { contentType: 'application/pdf', upsert: false });
-      if (badges.error)
-        return fail(502, `Storage refused the name badges PDF: ${badges.error.message}`);
+      if (badges.error) {
+        if (store === 'required')
+          return fail(502, `Storage refused the name badges PDF: ${badges.error.message}`);
+        // A Download: keep the record of the sheet that was handed out.
+        badgesPath = null;
+      }
     }
   } catch (cause) {
     return fail(502, `Storage is unreachable: ${(cause as Error).message}`);

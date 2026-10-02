@@ -10,7 +10,7 @@
 -- and nothing of it reaching the client role.
 -- =====================================================================
 begin;
-select plan(37);
+select plan(42);
 \ir _shared/fixtures.psql
 
 \set viewer  '76900000-0000-4000-8000-000000000001'
@@ -145,7 +145,7 @@ select is((select (payload->>'attachments')::jsonb from notification_outbox wher
   jsonb_build_array(
     jsonb_build_object('bucket', 'timesheets', 'path', :'ev' || '/allocation/a.pdf', 'filename', 'Client A – Gala Dinner.pdf'),
     jsonb_build_object('bucket', 'timesheets', 'path', :'ev' || '/badges/a.pdf',
-                       'filename', 'Client A – Gala Dinner – Name Badges.pdf', 'note', 'Name badges · 1 to print')),
+                       'filename', 'Client A – Gala Dinner – Name Badges.pdf', 'role', 'badges')),
   'D1 carries the Allocation Timesheet and the name badges, in that order');
 select is((select payload->>'nameBadges' from notification_outbox where key = (select q->>'key' from q)), '1',
   'the payload says how many badges are attached');
@@ -211,6 +211,59 @@ select is((select count(*)::int from pg_policies
             where schemaname = 'public' and tablename in ('clients', 'event_documents')
               and (qual ilike '%client%' and qual not ilike '%admin%')),
   0, 'the client role still holds no policy on clients or event_documents');
+
+-- =====================================================================
+-- 38 · A viewer cannot attach badges either (ADR-0060)
+-- =====================================================================
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+select record_event_document(:'ev', 'allocation', :'ev' || '/allocation/v.pdf', 'V.pdf', 1, 1) as d_view \gset
+select set_config('request.jwt.claims', json_build_object('sub', :'viewer', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_like(format($$ select attach_event_document_badges(%L, %L, 'B.pdf', 1) $$,
+                          :'d_view', :'ev' || '/badges/v.pdf'),
+  '%read_only%', 'a viewer cannot attach badges (the read-only guard on event_documents)');
+reset role;
+
+-- =====================================================================
+-- 39-42 · The automatic D1 (ADR-0074) carries them too
+--
+-- Tomorrow's event for client A; D1 at 00:00 so "the day before" has
+-- begun whatever the time of day this runs (as 760 does).
+-- =====================================================================
+\set ev_auto  '76910000-0000-4000-8000-000000000003'
+\set sec_auto '76920000-0000-4000-8000-000000000002'
+\set bk_auto  '76950000-0000-4000-8000-000000000002'
+select set_config('request.jwt.claims', '', true);  -- fixtures below, as no session
+select (now() at time zone 'Europe/London')::date + 1 as tomorrow \gset
+insert into events (id, client_id, venue_name, venue_address, venue_location, geofence_radius_m,
+                    title, event_date, pays_breaks, pays_buffer, po_number) values
+  (:'ev_auto', :'clienta', 'Badge Venue', '1 Badge St', st_setsrid(st_makepoint(-0.1, 51.5), 4326)::geography, 150,
+   'Auto Badges Dinner', :'tomorrow'::date, true, true, null);
+insert into shift_requirements (id, event_id, role_id, starts_at, ends_at, headcount, buffer,
+                                charge_rate, pay_rate, allocation_per_hour) values
+  (:'sec_auto', :'ev_auto', :'r_wait', (:'tomorrow'::date + time '17:00') at time zone 'Europe/London',
+   (:'tomorrow'::date + time '23:00') at time zone 'Europe/London', 1, 0, 22.97, 14.00, 1);
+insert into bookings (id, shift_id, staff_id, status, source, confirmed_at) values
+  (:'bk_auto', :'sec_auto', :'p_luca', 'confirmed', 'manual', now() - interval '1 day');
+update settings set value = jsonb_set(value, '{allocation,time}', '"00:00"') where key = 'document_autosend';
+
+select set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);
+set local role service_role;
+select ok(event_document_autosend_claim(:'ev_auto', 'allocation'), 'the job claims tomorrow''s D1');
+select record_event_document_autosend(:'ev_auto', 'allocation', :'ev_auto' || '/allocation/auto.pdf',
+                                      'Client A – Auto Badges Dinner.pdf', 1, 1) as d_auto \gset
+select lives_ok(format($$ select attach_event_document_badges(%L, %L, 'Client A – Auto Badges Dinner – Name Badges.pdf', 1) $$,
+                       :'d_auto', :'ev_auto' || '/badges/auto.pdf'),
+  'and attaches the badges to its automatic copy');
+select is((queue_event_document_autosend(:'d_auto'))->>'queued', 'true', 'the automatic D1 is queued');
+reset role;
+select is((select (payload->>'attachments')::jsonb from notification_outbox where key = 'D1:auto:' || :'ev_auto'),
+  jsonb_build_array(
+    jsonb_build_object('bucket', 'timesheets', 'path', :'ev_auto' || '/allocation/auto.pdf',
+                       'filename', 'Client A – Auto Badges Dinner.pdf'),
+    jsonb_build_object('bucket', 'timesheets', 'path', :'ev_auto' || '/badges/auto.pdf',
+                       'filename', 'Client A – Auto Badges Dinner – Name Badges.pdf', 'role', 'badges')),
+  'the automatic D1 carries the sheet and the badges, like the manual one');
 
 select * from finish();
 rollback;

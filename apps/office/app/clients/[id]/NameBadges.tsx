@@ -54,7 +54,7 @@ export function NameBadges({
   };
 
   return (
-    <span className="stack" style={{ gap: 6 }}>
+    <span className="stack tight">
       <Switch checked={checked} onChange={change} disabled={saving} label={description} />
       {error ? <Alert tone="coral">{error}</Alert> : null}
     </span>
