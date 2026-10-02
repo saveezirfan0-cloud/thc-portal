@@ -15,7 +15,10 @@ import { ukInstant } from '@thc/domain';
  *        after that until the first shift starts (an event created or
  *        filled late still gets one). Skipped if a manager queued a D1
  *        since 00:00 UK the day before.
- *   D2 · the morning after at `completed.time` (10:00) UK, never before the
+ *   D2 · SWITCHED OFF since ADR-0081 (02.10.2026): the Completed Timesheet
+ *        goes with the invoice, from Reports › Financial. The rule stays,
+ *        for the day THC turns it back on in `document_autosend`:
+ *        the morning after at `completed.time` (10:00) UK, never before the
  *        last shift's end + 4 h (every check-out window closed). Held while
  *        any row is still undetermined — an unresolved No check-out prints
  *        blank Finish and Hours (RULE-02) — and given up `hold_days` (14)
@@ -215,15 +218,30 @@ export function ukShortStamp(iso: string): string {
   return UK_STAMP.format(new Date(iso)).replace(',', '');
 }
 
+/** ADR-0081: where the Completed Timesheet goes from while D2 is off. */
+export const COMPLETED_WITH_INVOICE =
+  'Completed Timesheet goes to the client with the invoice (Reports › Financial)';
+
 /**
  * The line under the event page's document buttons: when the automatic
  * send happens, or when it happened. Null when there is nothing to say
  * (switched off, or the moment has passed without one).
+ *
+ * The Completed Timesheet (ADR-0081): `sentAt` is the automatic send;
+ * `queuedAt` / `deliveredAt` the latest copy anyone queued, and when its
+ * email went. While D2 is switched off it goes with the invoice, from
+ * Reports › Financial, and the line says so.
  */
 export function autosendHint(
   kind: DocumentKind,
   config: AutosendConfig,
-  state: { sentAt: string | null; started: boolean; ended: boolean },
+  state: {
+    sentAt: string | null;
+    started: boolean;
+    ended: boolean;
+    queuedAt?: string | null;
+    deliveredAt?: string | null;
+  },
 ): string | null {
   if (kind === 'allocation') {
     if (state.sentAt)
@@ -232,6 +250,10 @@ export function autosendHint(
     return `Sent automatically the day before at ${config.allocation.time} (UK time)`;
   }
   if (state.sentAt) return `Completed Timesheet sent automatically ${ukShortStamp(state.sentAt)}`;
-  if (!config.completed.enabled) return null;
+  if (state.deliveredAt)
+    return `Completed Timesheet sent to the client ${ukShortStamp(state.deliveredAt)}`;
+  if (state.queuedAt)
+    return `Completed Timesheet queued for the client ${ukShortStamp(state.queuedAt)}`;
+  if (!config.completed.enabled) return COMPLETED_WITH_INVOICE;
   return `Sent automatically the morning after at ${config.completed.time} (UK time), once every check-out is resolved`;
 }

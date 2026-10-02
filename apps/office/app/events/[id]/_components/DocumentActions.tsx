@@ -5,15 +5,18 @@ import { Alert, Button, Modal } from '@thc/ui';
 
 type Kind = 'allocation' | 'signout';
 
-/** ADR-0074 (THC, 29.09.2026): the product's names for the two states. */
-const LABEL: Record<Kind, { send: string; download: string; noun: string }> = {
+/**
+ * ADR-0074 (THC, 29.09.2026): the product's names for the two states. No
+ * `send` = not sent from here: the Completed Timesheet goes with the
+ * invoice, from Reports › Financial (ADR-0081).
+ */
+const LABEL: Record<Kind, { send?: string; download: string; noun: string }> = {
   allocation: {
     send: 'Send Allocation Timesheet',
     download: 'Download Allocation Timesheet',
     noun: 'Allocation Timesheet',
   },
   signout: {
-    send: 'Send Completed Timesheet',
     download: 'Download Completed Timesheet',
     noun: 'Completed Allocation Timesheet',
   },
@@ -21,10 +24,15 @@ const LABEL: Record<Kind, { send: string; download: string; noun: string }> = {
 
 /**
  * §11.4 on the event page: "Send Allocation Timesheet" (an action) +
- * "Download Allocation Timesheet" (a PDF, for WhatsApp). The Completed
- * Allocation Timesheet joins them once the event has started — it is filled
+ * "Download Allocation Timesheet" (a PDF, for WhatsApp). "Download
+ * Completed Timesheet" joins them once the event has started — it is filled
  * from check-in/out, so before that it would be the allocation state again.
- * Both also go automatically (ADR-0074); the page says when, under these.
+ * The Allocation Timesheet also goes automatically (ADR-0074); the page
+ * says when, under these.
+ *
+ * The Completed Timesheet has no Send here (ADR-0081): it goes to the
+ * client with the invoice, from Reports › Financial, and the line under
+ * the buttons says so. Downloading it publishes nothing.
  *
  * The document is drawn by /api/documents (packages/pdf), sent from
  * timesheets@ to the contact emails on the client card. No time restriction
@@ -68,13 +76,11 @@ export function DocumentActions({ eventId, started }: { eventId: string; started
     <>
       {kinds.map((kind) => (
         <span key={kind} className="row" style={{ gap: 8 }}>
-          <Button
-            size="sm"
-            tone={kind === 'allocation' ? 'primary' : 'default'}
-            onClick={() => setConfirming(kind)}
-          >
-            {LABEL[kind].send}
-          </Button>
+          {LABEL[kind].send ? (
+            <Button size="sm" tone="primary" onClick={() => setConfirming(kind)}>
+              {LABEL[kind].send}
+            </Button>
+          ) : null}
           <a className="btn sm" href={`/api/documents/${eventId}?kind=${kind}`}>
             {LABEL[kind].download}
           </a>

@@ -267,11 +267,28 @@ describe('the hint under the event page buttons', () => {
     ).toBe('Completed Timesheet sent automatically 21/09 10:00');
   });
 
-  it('says nothing once the moment has passed without one, or when switched off', () => {
+  it('says nothing once the moment has passed without one', () => {
     expect(autosendHint('allocation', CONFIG, { sentAt: null, started: true, ended: false })).toBe(
       null,
     );
+  });
+
+  it('points the Completed Timesheet at invoicing while D2 is off (ADR-0081)', () => {
     const off = parseAutosendConfig({ completed: { enabled: false } });
-    expect(autosendHint('signout', off, { sentAt: null, started: true, ended: true })).toBe(null);
+    const ended = { sentAt: null, started: true, ended: true };
+    expect(autosendHint('signout', off, ended)).toBe(
+      'Completed Timesheet goes to the client with the invoice (Reports › Financial)',
+    );
+    const queued = { ...ended, queuedAt: '2026-10-06T08:12:00Z' };
+    expect(autosendHint('signout', off, queued)).toBe(
+      'Completed Timesheet queued for the client 06/10 09:12',
+    );
+    expect(autosendHint('signout', off, { ...queued, deliveredAt: '2026-10-06T08:13:00Z' })).toBe(
+      'Completed Timesheet sent to the client 06/10 09:13',
+    );
+    // A copy the job sent before the switch went off still says so.
+    expect(autosendHint('signout', off, { ...ended, sentAt: '2026-09-21T09:00:03Z' })).toBe(
+      'Completed Timesheet sent automatically 21/09 10:00',
+    );
   });
 });

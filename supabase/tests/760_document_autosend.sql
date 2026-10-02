@@ -111,10 +111,13 @@ select is(pg_temp.d('allocation', '2026-10-25 14:00+00',
 -- =====================================================================
 select is((select value->'allocation' from settings where key = 'document_autosend'),
   '{"enabled": true, "time": "14:00"}'::jsonb, 'D1 on, at 14:00');
-select ok((select value->'completed' @> '{"enabled": true, "time": "10:00", "hold_days": 14}'
+-- ADR-0081 (20261002109000) switched D2 off: the Completed Timesheet goes
+-- with the invoice. The rest of the row is as 20261002100000 seeded it, so
+-- switching it back on is one edit; section 7 below does exactly that.
+select ok((select value->'completed' @> '{"enabled": false, "time": "10:00", "hold_days": 14}'
              and (value->'completed'->>'not_before')::timestamptz <= now()
              from settings where key = 'document_autosend'),
-  'D2 on, at 10:00, held up to 14 days, and not reaching back before the migration ran');
+  'D2 off since ADR-0081, still at 10:00, held up to 14 days, and not reaching back before the migration ran');
 
 -- =====================================================================
 -- 3 · Who can call the job's functions: the service role, and nobody else
@@ -247,9 +250,13 @@ insert into check_logs (booking_id, attempted_at, outcome, check_in_at, check_ou
 insert into violations (staff_id, booking_id, type) values (:'p_6', :'b_6', 'no_checkout');
 
 -- D1 at 00:00 (see above); D2 at its default 10:00 — yesterday morning for
--- ev_past; and this file may reach back before the migration ran.
+-- ev_past; and this file may reach back before the migration ran. D2 is
+-- switched back on here (ADR-0081 turned it off) so the machinery stays
+-- proven for the day THC turns it on again.
 update settings
-   set value = jsonb_set(jsonb_set(value, '{allocation,time}', '"00:00"'), '{completed,not_before}', 'null')
+   set value = jsonb_set(jsonb_set(jsonb_set(value, '{allocation,time}', '"00:00"'),
+                                   '{completed,not_before}', 'null'),
+                         '{completed,enabled}', 'true')
  where key = 'document_autosend';
 
 select set_config('request.jwt.claims', json_build_object('role', 'service_role')::text, true);

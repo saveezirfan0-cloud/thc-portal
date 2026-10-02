@@ -2,6 +2,8 @@
 
 **Status:** Accepted (THC, 29.09.2026). Agreed deviations from scope v1.6 §11.3 and §11.4. The manual Send and Download buttons stay exactly as §11.4 describes them.
 
+> **Superseded in part by [ADR-0081](0081-completed-timesheet-with-invoicing.md) (02.10.2026).** The automatic D2 (Completed Allocation Timesheet) is switched off. The sheet goes to the client with the invoice, from Reports › Financial, and no longer from the event page. The Client Portal serves it only once it was sent. D1 is unchanged.
+
 ## Context
 
 §11.3 defines one PDF per event, in two states. The *allocation sheet* is the blank form sent before the event. The *sign-out timesheet* is the same form filled from check-in and check-out after the event. §11.4 has a manager send each state from the event page. Until now nothing sent them automatically: if nobody pressed Send, the client got nothing.

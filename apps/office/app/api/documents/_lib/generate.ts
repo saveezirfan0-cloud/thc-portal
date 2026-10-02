@@ -104,6 +104,21 @@ export function isUuid(value: string): boolean {
 export function refusal(message: string): { status: number; message: string } {
   if (message.includes('admins_only'))
     return { status: 403, message: 'Only the office can produce timesheet documents.' };
+  // ADR-0081: the Completed Timesheet goes with the invoice, a finance job.
+  if (message.includes('not_permitted'))
+    return {
+      status: 403,
+      message:
+        'The Completed Timesheet goes to the client with the invoice, from Reports › Financial. This account cannot send it.',
+    };
+  if (message.includes('timesheet_has_blank_hours'))
+    return {
+      status: 409,
+      message:
+        'Resolve the No check-out first: the Completed Timesheet would go with a blank Finish Time and Hours Worked.',
+    };
+  if (message.includes('read_only'))
+    return { status: 403, message: 'A read-only login cannot send documents.' };
   if (message.includes('event_cancelled'))
     return {
       status: 409,

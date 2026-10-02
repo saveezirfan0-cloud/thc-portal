@@ -297,3 +297,92 @@ export function dottedDate(iso: string | null): string {
 export function employeeId(id: number | null): string {
   return id === null ? '—' : `THC-${String(id).padStart(5, '0')}`;
 }
+
+// ---------------------------------------------------------------------------
+// Completed Timesheets for invoicing (ADR-0081)
+// ---------------------------------------------------------------------------
+
+/** One row of `invoicing_timesheets()`. */
+export interface InvoicingTimesheet {
+  event_id: string;
+  event_title: string;
+  event_date: string;
+  client_name: string;
+  po_number: string | null;
+  last_end: string;
+  confirmed: number;
+  /** Rows printing blank Finish and Hours — an unresolved No check-out. */
+  undetermined: number;
+  /** The sheet's Total Hours, settled rows only. */
+  worked_min: number;
+  contacts: number;
+  queued_at: string | null;
+  sent_at: string | null;
+  send_failed_at: string | null;
+  automatic: boolean;
+}
+
+export type TimesheetTone = 'green' | 'amber' | 'coral' | 'cyan' | 'neutral';
+
+export interface TimesheetState {
+  tone: TimesheetTone;
+  text: string;
+  /** May "Send to client" be pressed? (A viewer never sees it.) */
+  canSend: boolean;
+  /** "Send to client", or "Send again" once one went. */
+  sendLabel: string;
+  /** Why Send is unavailable, for its title. */
+  blocked: string | null;
+}
+
+/**
+ * Where one event's Completed Timesheet stands, for the invoicing list.
+ *
+ * Blocked while any row would print blank Finish and Hours — a sheet that
+ * goes out with an invoice must carry every hour (RULE-02: the manager
+ * resolves the No check-out first) — and while the client card has nobody
+ * to send to. Otherwise it reads the latest send: failed, sent, waiting
+ * for the mail sender, or not sent yet.
+ */
+export function timesheetState(row: InvoicingTimesheet): TimesheetState {
+  const again = row.queued_at ? 'Send again' : 'Send to client';
+  if (row.undetermined > 0) {
+    const n = row.undetermined;
+    return {
+      tone: 'amber',
+      text: `${n} No check-out to resolve`,
+      canSend: false,
+      sendLabel: again,
+      blocked: `Resolve the No check-out${n === 1 ? '' : 's'} first: ${n === 1 ? 'that row prints' : 'those rows print'} a blank Finish Time and Hours Worked.`,
+    };
+  }
+  if (row.contacts === 0) {
+    return {
+      tone: 'amber',
+      text: 'No contact email on the client card',
+      canSend: false,
+      sendLabel: again,
+      blocked: 'Add a contact email to the client card first.',
+    };
+  }
+  const base = { canSend: true, sendLabel: again, blocked: null };
+  if (!row.queued_at) return { ...base, tone: 'neutral', text: 'Not sent yet' };
+  if (row.send_failed_at && !row.sent_at)
+    return { ...base, tone: 'coral', text: `Send failed ${formatUkStamp(row.send_failed_at)}` };
+  const how = row.automatic ? ' automatically' : '';
+  if (row.sent_at)
+    return { ...base, tone: 'green', text: `Sent${how} ${formatUkStamp(row.sent_at)}` };
+  return {
+    ...base,
+    tone: 'cyan',
+    text: `Queued ${formatUkStamp(row.queued_at)} · waiting for the mail sender`,
+  };
+}
+
+/**
+ * "3 to send" — the panel's count: finished events whose sheet has not
+ * gone, a failed send included.
+ */
+export function timesheetsToSend(rows: readonly InvoicingTimesheet[]): number {
+  return rows.filter((r) => !r.queued_at || (r.send_failed_at !== null && !r.sent_at)).length;
+}

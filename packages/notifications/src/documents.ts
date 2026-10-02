@@ -11,8 +11,9 @@
  *   D1    the Allocation Timesheet, "Send allocation sheet" from the event
  *         page (§11.4), sent BEFORE the event — so it never speaks of
  *         check-in, check-out or hours worked from them.
- *   D2    the Completed Allocation Timesheet, the same way, after the event,
- *         filled in from check-in and check-out.
+ *   D2    the Completed Allocation Timesheet, filled in from check-in and
+ *         check-out. It goes with the invoice, from Reports › Financial
+ *         (ADR-0081), not straight after the event.
  *         Both from timesheets@ (§9.12) to the contact emails on the client
  *         card (§9.7), which the outbox row carries. THC renamed both in
  *         client emails on 29.09.2026 — §11.3/§11.4 say "allocation sheet"
@@ -133,8 +134,9 @@ export const DOCUMENT_EMAILS = {
       attachmentNote: 'Completed Allocation Timesheet · attached',
       replyButton: 'Reply to this email',
     },
-    trigger: '"Send timesheet" on the Back Office event page, after the event (§11.3, §11.4)',
-    timing: 'on the press',
+    trigger:
+      '"Send to client" on Reports › Financial, with the invoice (§11.3, §11.4; ADR-0081 — no longer from the event page or the morning after)',
+    timing: 'on the press, once the invoice is ready',
   },
 } as const satisfies Record<string, DocumentEmailTemplate>;
 

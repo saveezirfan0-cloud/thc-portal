@@ -1,3 +1,5 @@
+import { currentOfficeRole } from '../../../../_components/officeUser';
+import { isReadOnly, officeCan } from '../../../../_lib/permissions';
 import {
   documentsDb,
   generateDocument,
@@ -8,9 +10,12 @@ import {
 } from '../../_lib/generate';
 
 /**
- * POST /api/documents/:eventId/send { kind } — "Send Allocation Timesheet" /
- * "Send Completed Timesheet" (§11.4; names per ADR-0074). The same email
- * also goes automatically — /api/jobs/event-documents.
+ * POST /api/documents/:eventId/send { kind } — "Send Allocation Timesheet"
+ * from the event page (§11.4; names per ADR-0074), and "Send to client" for
+ * the Completed Timesheet from Reports › Financial, where it goes with the
+ * invoice (ADR-0081: `queue_event_document_email()` refuses a Completed
+ * Timesheet from a login without finance). The Allocation Timesheet also
+ * goes automatically — /api/jobs/event-documents.
  *
  * Draws a fresh copy, stores it (required: the drain attaches from the
  * `timesheets` bucket), and queues one email from timesheets@ to every
@@ -34,6 +39,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     return Response.json({ error: 'Unknown event or document kind.' }, { status: 400 });
   if (!supabaseConfigured())
     return Response.json({ error: 'This environment has no Supabase project.' }, { status: 503 });
+  // ADR-0081: asked before a PDF is drawn and stored for a send the
+  // database would refuse. An unknown role goes on; the database decides.
+  if (kind === 'signout') {
+    const role = await currentOfficeRole();
+    if (role && (!officeCan(role, 'finance') || isReadOnly(role))) {
+      const { status, message } = refusal(isReadOnly(role) ? 'read_only' : 'not_permitted');
+      return Response.json({ error: message }, { status });
+    }
+  }
 
   const result = await generateDocument(eventId, kind, 'required');
   if (!result.ok) return Response.json({ error: result.message }, { status: result.status });

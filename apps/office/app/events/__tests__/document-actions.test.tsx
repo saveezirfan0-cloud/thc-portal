@@ -17,9 +17,11 @@ describe('the event page document buttons (§11.4, ADR-0074)', () => {
     expect(markup).not.toContain('Completed Timesheet');
   });
 
-  it('once started: the Completed Timesheet joins it', () => {
+  it('once started: Download Completed Timesheet joins it, with no Send (ADR-0081)', () => {
     const markup = renderToStaticMarkup(<DocumentActions eventId="ev-1" started />);
-    expect(markup).toContain('>Send Completed Timesheet</button>');
+    // It goes to the client with the invoice, from Reports › Financial.
+    expect(markup).not.toContain('Send Completed Timesheet');
+    expect(markup).toContain('>Send Allocation Timesheet</button>');
     expect(markup).toContain(
       '<a class="btn sm" href="/api/documents/ev-1?kind=signout">Download Completed Timesheet</a>',
     );

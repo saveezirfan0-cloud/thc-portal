@@ -85,7 +85,9 @@ last, below a divider. The Staff App's Documents tab is live.
   Allocation Timesheet**, and they also go **automatically**: the
   `event-documents` job (a Back Office route, every 15 min, rtw-check's
   bearer secret) sends D1 the day before at 14:00 UK and D2 the morning after
-  at 10:00 UK, holding D2 while a No check-out is unresolved.
+  at 10:00 UK, holding D2 while a No check-out is unresolved. **D2 is switched
+  off since ADR-0081**: the Completed Timesheet goes to the client with the
+  invoice, from Reports › Financial.
 - **B13 Feedback** — Client and Office tabs; the worker's rating is now derived
   from feedback (it was never computed before) and Mark as read moves it
   (ADR-0016).

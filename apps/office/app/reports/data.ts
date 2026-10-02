@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
 import type { FinancialCsvRow, NewStarterCsvRow, PayrollCsvRow } from '@thc/pdf';
-import type { ReportSend, ReportView } from './view-model';
+import type { InvoicingTimesheet, ReportSend, ReportView } from './view-model';
 
 /**
  * Reads for /reports — Scope §9.9.
@@ -32,6 +32,10 @@ export interface ReportsRpc {
   rpc(
     fn: 'finance_report',
     args: { p_from: string; p_to: string; p_by: string },
+  ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
+  rpc(
+    fn: 'invoicing_timesheets',
+    args: { p_from: string; p_to: string },
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
   rpc(
     fn: 'new_starter_report',
@@ -125,6 +129,10 @@ function explain(message: string): string {
 export interface ReportsData {
   problem: string | null;
   finance: FinanceRow[];
+  /** ADR-0081: the Completed Timesheets that go with the invoices. */
+  timesheets: InvoicingTimesheet[];
+  /** Why the list could not be read; the figures above it still show. */
+  timesheetsProblem: string | null;
   lines: PayrollLine[];
   people: PayrollPerson[];
   starters: NewStarter[];
@@ -135,6 +143,8 @@ export async function loadReports(view: ReportView): Promise<ReportsData> {
   const empty: ReportsData = {
     problem: null,
     finance: [],
+    timesheets: [],
+    timesheetsProblem: null,
     lines: [],
     people: [],
     starters: [],
@@ -152,14 +162,17 @@ export async function loadReports(view: ReportView): Promise<ReportsData> {
     .limit(8);
 
   if (view.tab === 'financial') {
-    const [finance, sends] = await Promise.all([
+    const [finance, sends, timesheets] = await Promise.all([
       db.rpc('finance_report', { p_from: view.from, p_to: view.to, p_by: view.by }),
       sendsQuery,
+      db.rpc('invoicing_timesheets', { p_from: view.from, p_to: view.to }),
     ]);
     if (finance.error) return { ...empty, problem: explain(finance.error.message) };
     return {
       ...empty,
       finance: (finance.data ?? []) as FinanceRow[],
+      timesheets: (timesheets.data ?? []) as InvoicingTimesheet[],
+      timesheetsProblem: timesheets.error ? explain(timesheets.error.message) : null,
       sends: (sends.data ?? []) as ReportSend[],
     };
   }

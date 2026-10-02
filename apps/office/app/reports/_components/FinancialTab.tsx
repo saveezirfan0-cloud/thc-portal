@@ -14,7 +14,8 @@ import {
   showForecastLabel,
   thisWeek,
 } from '../view-model';
-import type { FinanceBy, ReportView } from '../view-model';
+import type { FinanceBy, InvoicingTimesheet, ReportView } from '../view-model';
+import { InvoicingTimesheets } from './InvoicingTimesheets';
 import { RangeForm } from './RangeForm';
 
 const GROUP_HEAD: Record<FinanceBy, string> = { day: 'Day', client: 'Client', role: 'Role' };
@@ -27,15 +28,24 @@ const GROUP_HEAD: Record<FinanceBy, string> = { day: 'Day', client: 'Client', ro
  * is a revenue FORECAST and not the PO-based invoices; Gross margin after
  * holiday — and the breakdown by day, client or role. Every figure is
  * `finance_report()`'s.
+ *
+ * Under it, the Completed Timesheets that go to clients with the invoices
+ * (ADR-0081).
  */
 export function FinancialTab({
   view,
   rows,
   today,
+  timesheets = [],
+  timesheetsProblem = null,
+  readOnly = false,
 }: {
   view: ReportView;
   rows: FinanceRow[];
   today: string;
+  timesheets?: InvoicingTimesheet[];
+  timesheetsProblem?: string | null;
+  readOnly?: boolean;
 }) {
   const total = rows.find((r) => r.is_total) ?? null;
   const groups = rows.filter((r) => !r.is_total);
@@ -119,8 +129,9 @@ export function FinancialTab({
       <Alert tone="cyan">
         <b>Invoicing here is a revenue forecast for the period, not the PO-based invoices.</b> THC
         has its own invoicing process; PO Numbers carry into the timesheet documents, not into this
-        figure. Payable hours = the intersection of check-in/out with the scheduled window; a
-        section still to finish is forecast at headcount × its hours. Cancelled events contribute
+        figure, and each event&apos;s Completed Timesheet goes to the client with its invoice, from
+        the list below. Payable hours = the intersection of check-in/out with the scheduled window;
+        a section still to finish is forecast at headcount × its hours. Cancelled events contribute
         nothing.
       </Alert>
 
@@ -197,6 +208,13 @@ export function FinancialTab({
           </table>
         </div>
       </Panel>
+
+      <InvoicingTimesheets
+        view={view}
+        rows={timesheets}
+        problem={timesheetsProblem}
+        readOnly={readOnly}
+      />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { Alert } from '@thc/ui';
 import { NotAvailable } from '../_components/NotAvailable';
 import { OfficeShell } from '../_components/OfficeShell';
 import { currentOfficeRole } from '../_components/officeUser';
-import { officeCan } from '../_lib/permissions';
+import { isReadOnly, officeCan } from '../_lib/permissions';
 import { FinancialTab } from './_components/FinancialTab';
 import { NewStarterTab } from './_components/NewStarterTab';
 import { PayrollTab } from './_components/PayrollTab';
@@ -82,7 +82,14 @@ export default async function Page({
         {data.problem ? <Alert tone="coral">{data.problem}</Alert> : null}
 
         {view.tab === 'financial' ? (
-          <FinancialTab view={view} rows={data.finance} today={today} />
+          <FinancialTab
+            view={view}
+            rows={data.finance}
+            today={today}
+            timesheets={data.timesheets}
+            timesheetsProblem={data.timesheetsProblem}
+            readOnly={isReadOnly(role)}
+          />
         ) : null}
         {view.tab === 'payroll' ? (
           <PayrollTab
