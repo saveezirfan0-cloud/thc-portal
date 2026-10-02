@@ -36,7 +36,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ v
       problem={problem}
       initialView={view === 'student' ? 'student' : 'directory'}
       pendingRequests={pendingRequests}
-      // ADR-0081: tick workers and Send push — any login that may write.
+      // ADR-0082: tick workers and Send push — any login that may write.
       canMessage={officeCan(role, 'write')}
     />
   );

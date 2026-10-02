@@ -52,7 +52,7 @@ export interface StaffScreenProps {
    */
   pendingRequests?: number | null;
   /**
-   * ADR-0081: tick workers and Send push to them — any office login that
+   * ADR-0082: tick workers and Send push to them — any office login that
    * may write. send_staff_message() refuses a viewer whatever this says.
    */
   canMessage?: boolean;
@@ -96,7 +96,7 @@ export function StaffScreen({
   const [sort, setSort] = useState<Sort>('name');
   const [query, setQuery] = useState('');
   const [page, setPage] = useState(0);
-  // ADR-0081: kept across pages, tabs and searches, so a list can be built
+  // ADR-0082: kept across pages, tabs and searches, so a list can be built
   // up from several of them; cleared after a send.
   const [picked, setPicked] = useState<Picked>(new Map());
 
@@ -448,7 +448,7 @@ export function StaffScreen({
   );
 }
 
-/** The row's Send push tick (ADR-0081); absent where it cannot be messaged. */
+/** The row's Send push tick (ADR-0082); absent where it cannot be messaged. */
 interface RowPicker {
   checked: boolean;
   onChange: (on: boolean) => void;

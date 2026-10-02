@@ -21,7 +21,7 @@ interface RpcClient {
 }
 
 /**
- * Send push (ADR-0081): the manager's own words to hand-picked workers — one
+ * Send push (ADR-0082): the manager's own words to hand-picked workers — one
  * from their profile, or the ones ticked in the directory — booked or not,
  * as one OM2 push each.
  *

@@ -1,5 +1,5 @@
 -- =====================================================================
--- Message hand-picked workers — ADR-0081
+-- Message hand-picked workers — ADR-0082
 --
 -- The owner: "We should be able to push notify individual staff as well",
 -- then "add that as well — several hand picked".
@@ -116,7 +116,7 @@ begin
 end $$;
 
 comment on function public.send_staff_message(uuid[], text) is
-  'ADR-0081: the office messages hand-picked workers — one from their profile, or several ticked in the Staff directory. Queues one OM2 push per worker with the manager''s text (1–300 characters) in the payload, whatever they are booked on. Returns sent, and withoutPush: the names of recipients with no push subscription, for the manager to phone. Refusals: message_required / message_too_long / nobody_to_message / too_many_recipients (over 200) / staff_removed; staff_not_found raised. Admin only, not a viewer. Writes staff.message_sent to audit_log on each worker.';
+  'ADR-0082: the office messages hand-picked workers — one from their profile, or several ticked in the Staff directory. Queues one OM2 push per worker with the manager''s text (1–300 characters) in the payload, whatever they are booked on. Returns sent, and withoutPush: the names of recipients with no push subscription, for the manager to phone. Refusals: message_required / message_too_long / nobody_to_message / too_many_recipients (over 200) / staff_removed; staff_not_found raised. Admin only, not a viewer. Writes staff.message_sent to audit_log on each worker.';
 
 -- Supabase's default privileges grant EXECUTE to anon and authenticated by
 -- name, so revoking from PUBLIC alone leaves anon open (docs/14 O7).
@@ -152,7 +152,7 @@ create trigger staff_removed_scrub_messages
   execute function staff_removed_scrub_messages();
 
 comment on function public.staff_removed_scrub_messages() is
-  '§1.7 GDPR removal for ADR-0081: drops the office''s typed text from the worker''s staff.message_sent audit rows (the other recipients'' rows keep it), keeping that a message was sent and by whom. The OM2 outbox rows are scrubbed by remove_worker() (20261001205000) by recipient. Fires once, after removed_at is first set. A trigger function: not an RPC.';
+  '§1.7 GDPR removal for ADR-0082: drops the office''s typed text from the worker''s staff.message_sent audit rows (the other recipients'' rows keep it), keeping that a message was sent and by whom. The OM2 outbox rows are scrubbed by remove_worker() (20261001205000) by recipient. Fires once, after removed_at is first set. A trigger function: not an RPC.';
 
 -- Trigger functions are never RPCs (20260927161000, pgTAP 190).
 revoke execute on function public.staff_removed_scrub_messages() from public, anon, authenticated;

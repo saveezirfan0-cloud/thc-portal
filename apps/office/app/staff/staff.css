@@ -122,7 +122,7 @@
   gap: var(--sp-8);
 }
 
-/* ADR-0081: the Send push tick, beside the avatar in the lead cell, so the
+/* ADR-0082: the Send push tick, beside the avatar in the lead cell, so the
    phone's card layout keeps it on the name's line. */
 .tbl input.pick,
 .tbl th.pick input {

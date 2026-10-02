@@ -1,6 +1,6 @@
 -- =====================================================================
--- 769 · Message hand-picked workers (ADR-0081)
---   20261002109000_message_staff.sql
+-- 770 · Message hand-picked workers (ADR-0082)
+--   20261002111000_message_staff.sql
 --
 --   1. Who may call it: admin only — not anon, a worker, a client or a
 --      read-only viewer.
@@ -16,28 +16,28 @@ begin;
 select plan(26);
 \ir _shared/fixtures.psql
 
-\set w1     '76930000-0000-4000-8000-000000000001'
-\set w2     '76930000-0000-4000-8000-000000000002'
-\set w3     '76930000-0000-4000-8000-000000000003'
-\set w4     '76930000-0000-4000-8000-000000000004'
-\set w5     '76930000-0000-4000-8000-000000000005'
-\set w6     '76930000-0000-4000-8000-000000000006'
-\set viewer '76940000-0000-4000-8000-000000000001'
+\set w1     '77030000-0000-4000-8000-000000000001'
+\set w2     '77030000-0000-4000-8000-000000000002'
+\set w3     '77030000-0000-4000-8000-000000000003'
+\set w4     '77030000-0000-4000-8000-000000000004'
+\set w5     '77030000-0000-4000-8000-000000000005'
+\set w6     '77030000-0000-4000-8000-000000000006'
+\set viewer '77040000-0000-4000-8000-000000000001'
 
 insert into staff (id, first_name, last_name, email, phone, dob, status) values
-  (:'w1', 'Push',  'On',    'w1@om769.test', '+447700969001', date '1995-01-01', 'compliant'),
-  (:'w2', 'Push',  'Off',   'w2@om769.test', '+447700969002', date '1995-01-01', 'compliant'),
-  (:'w3', 'Gone',  'Soon',  'w3@om769.test', '+447700969003', date '1995-01-01', 'compliant'),
-  (:'w4', 'Also',  'Off',   'w4@om769.test', '+447700969004', date '1995-01-01', 'inactive'),
-  (:'w5', 'Is',    'Blocked', 'w5@om769.test', '+447700969005', date '1995-01-01', 'blocked'),
-  (:'w6', 'Still', 'Joining', 'w6@om769.test', '+447700969006', date '1995-01-01', 'documents');
+  (:'w1', 'Push',  'On',    'w1@om770.test', '+447700970001', date '1995-01-01', 'compliant'),
+  (:'w2', 'Push',  'Off',   'w2@om770.test', '+447700970002', date '1995-01-01', 'compliant'),
+  (:'w3', 'Gone',  'Soon',  'w3@om770.test', '+447700970003', date '1995-01-01', 'compliant'),
+  (:'w4', 'Also',  'Off',   'w4@om770.test', '+447700970004', date '1995-01-01', 'inactive'),
+  (:'w5', 'Is',    'Blocked', 'w5@om770.test', '+447700970005', date '1995-01-01', 'blocked'),
+  (:'w6', 'Still', 'Joining', 'w6@om770.test', '+447700970006', date '1995-01-01', 'documents');
 
 -- Only w1 has notifications on. Nobody here is booked on anything.
 insert into push_subscriptions (staff_id, endpoint, p256dh, auth) values
-  (:'w1', 'https://push.example.test/om769-w1', 'p256dh', 'auth');
+  (:'w1', 'https://push.example.test/om770-w1', 'p256dh', 'auth');
 
 -- A read-only Back Office login (ADR-0060).
-insert into auth.users (id, email) values (:'viewer', 'viewer.769@rls.test');
+insert into auth.users (id, email) values (:'viewer', 'viewer.770@rls.test');
 insert into profiles (id, role, office_role, full_name) values (:'viewer', 'admin', 'viewer', 'Vera Viewer');
 
 -- ---------------------------------------------------------------------
@@ -91,10 +91,10 @@ reset role;
 select results_eq(
   $$ select recipient_staff_id::text, channel::text, payload ->> 'message'
        from notification_outbox where template = 'OM2' order by payload ->> 'message', recipient_staff_id $$,
-  $$ values ('76930000-0000-4000-8000-000000000001', 'push', 'Please call the office about Saturday {not a placeholder}'),
-            ('76930000-0000-4000-8000-000000000001', 'push', 'Uniforms are ready to collect'),
-            ('76930000-0000-4000-8000-000000000002', 'push', 'Uniforms are ready to collect'),
-            ('76930000-0000-4000-8000-000000000004', 'push', 'Uniforms are ready to collect') $$,
+  $$ values ('77030000-0000-4000-8000-000000000001', 'push', 'Please call the office about Saturday {not a placeholder}'),
+            ('77030000-0000-4000-8000-000000000001', 'push', 'Uniforms are ready to collect'),
+            ('77030000-0000-4000-8000-000000000002', 'push', 'Uniforms are ready to collect'),
+            ('77030000-0000-4000-8000-000000000004', 'push', 'Uniforms are ready to collect') $$,
   'one OM2 push per worker, the words trimmed and braces kept');
 select is(
   (select array_agg(distinct k order by k) from notification_outbox, jsonb_object_keys(payload) k where template = 'OM2'),
@@ -123,7 +123,7 @@ select is(send_staff_message(null, 'hi'),
   jsonb_build_object('ok', false, 'reason', 'nobody_to_message'), 'and no list at all');
 select is(send_staff_message(array(select gen_random_uuid() from generate_series(1, 201)), 'hi'),
   jsonb_build_object('ok', false, 'reason', 'too_many_recipients'), 'over 200 is a broadcast, not a hand-picked list');
-select throws_ok(format($$ select send_staff_message(array[%L, %L]::uuid[], 'hi') $$, :'w1', '76930000-0000-4000-8000-0000000000ff'),
+select throws_ok(format($$ select send_staff_message(array[%L, %L]::uuid[], 'hi') $$, :'w1', '77030000-0000-4000-8000-0000000000ff'),
   'P0002', 'staff_not_found', 'one unknown worker on the list fails the whole send');
 reset role;
 select is((select count(*)::int from notification_outbox where template = 'OM2'), 4,
@@ -159,10 +159,10 @@ reset role;
 select results_eq(
   $$ select entity_id::text, actor::text, data ? 'message', (data ->> 'recipients')::int
        from audit_log where action = 'staff.message_sent' and data ->> 'recipients' = '2'
-        and entity_id in ('76930000-0000-4000-8000-000000000001', '76930000-0000-4000-8000-000000000003')
+        and entity_id in ('77030000-0000-4000-8000-000000000001', '77030000-0000-4000-8000-000000000003')
       order by entity_id $$,
-  $$ values ('76930000-0000-4000-8000-000000000001', '11111111-1111-1111-1111-111111111111', true, 2),
-            ('76930000-0000-4000-8000-000000000003', '11111111-1111-1111-1111-111111111111', false, 2) $$,
+  $$ values ('77030000-0000-4000-8000-000000000001', '11111111-1111-1111-1111-111111111111', true, 2),
+            ('77030000-0000-4000-8000-000000000003', '11111111-1111-1111-1111-111111111111', false, 2) $$,
   'one history row per worker; the removed worker''s loses the words, the other recipient''s keeps them');
 
 select * from finish();

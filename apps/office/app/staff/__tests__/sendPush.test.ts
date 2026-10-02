@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { canMessageWorker, recipientLine, staffMessageRefusal } from '../message';
 
 /**
- * Send push to hand-picked workers (ADR-0081). The action names the workers
+ * Send push to hand-picked workers (ADR-0082). The action names the workers
  * and the words — nothing else; the database decides who may send, and
  * answers with the names to phone when someone has notifications off.
  */
