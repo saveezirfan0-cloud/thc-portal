@@ -186,13 +186,14 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     // Resend activation link (20260924110000): only someone who never
     // activated is offered it. A failed read hides the button, nothing more.
     (supabase as unknown as ActivatedRpc).rpc('staff_account_activated', { p_staff: id }),
-    // The address changed but the pin could not follow (20260926110000).
-    // Read off `staff` through admin_all; a failed read shows nothing.
+    // The address changed but the pin could not follow (20260926110000),
+    // and the gender a male- or female-only section reads (ADR-0079). Read
+    // off `staff` through admin_all; a failed read shows nothing.
     supabase
       .from('staff')
-      .select('home_location_stale')
+      .select('home_location_stale, gender')
       .eq('id', id)
-      .maybeSingle<{ home_location_stale: boolean }>(),
+      .maybeSingle<{ home_location_stale: boolean; gender: 'M' | 'F' | null }>(),
     // The Shifts tab opens the /checkin detail window and Resolve (§9.6),
     // so it reads the entries through the monitor's own query.
     loadStaffViolationLog(supabase, id),
@@ -260,6 +261,7 @@ export async function loadProfile(id: string): Promise<ProfileData> {
     managerName: manager,
     activated: activated.error ? null : (activated.data ?? null),
     locationStale: location.error ? null : (location.data?.home_location_stale ?? null),
+    ...(location.error ? {} : { gender: location.data?.gender ?? null }),
     emergencyContact: emergency.error ? null : (emergency.data ?? null),
     emergencyContactProblem: emergency.error ? emergency.error.message : null,
     referrals: referrals.error ? null : (referrals.data ?? null),

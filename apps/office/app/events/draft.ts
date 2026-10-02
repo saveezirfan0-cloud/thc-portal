@@ -24,6 +24,18 @@ import {
 } from '@thc/domain';
 import type { SavedEvent } from './data';
 
+/**
+ * ADR-0079: the gender a client asked for on a role — HMRC's M or F, the
+ * values `staff.gender` holds — or null for anyone.
+ */
+export type RequiredGender = 'M' | 'F' | null;
+
+/** How a section with a required gender is labelled, here and on the event board. */
+export const REQUIRED_GENDER_LABEL: Readonly<Record<'M' | 'F', string>> = {
+  M: 'Male staff only',
+  F: 'Female staff only',
+};
+
 /** The sentinel the dress-code select uses for the per-event free text (§9.7). */
 export const DRESS_CODE_OTHER = '__other__';
 
@@ -46,6 +58,12 @@ export interface RoleDraft {
   /** Free text, this event only — never saved back to the client's list. */
   dressCodeOther: string;
   autoAssign: boolean;
+  /**
+   * ADR-0079: the client asked for staff of one gender on this role.
+   * Auto-assign, Radar and Accept then book only that gender
+   * (`auto_assign_candidates`). Null = anyone.
+   */
+  requiredGender: RequiredGender;
   allocationPerHour: number;
   /**
    * Once the manager types their own allocation the default stops following
@@ -91,6 +109,7 @@ export function newRoleDraft(draft: EventDraft, roleId: string, payRate = 0): Ro
     dressCode: '',
     dressCodeOther: '',
     autoAssign: draft.autoAssign,
+    requiredGender: null,
     allocationPerHour: defaultAllocationPerHour(1, 0),
     allocationTouched: false,
   };
@@ -217,7 +236,8 @@ export function canRemoveRole(role: RoleDraft, bookedBySectionId: Record<string,
  * "Multi-day = separate events created via Duplicate (the clone copies the
  * roles, NOT the staff)." So a duplicate:
  *   * keeps the client, venue, title, PO, contact, notes and every role
- *     section's times, headcount, buffer, rates, dress code and allocation;
+ *     section's times, headcount, buffer, rates, dress code, allocation and
+ *     staff gender — that is the client's ask, not the day's (ADR-0079);
  *   * drops every section id, so saving creates new sections and nothing
  *     booked on the original — confirmed, invited or applied — comes along;
  *   * leaves the DATE empty: a day is the one thing a duplicate must change,
@@ -250,6 +270,7 @@ export function draftFromSaved(
       dressCode: section.dressCode && !onList ? DRESS_CODE_OTHER : section.dressCode,
       dressCodeOther: section.dressCode && !onList ? section.dressCode : '',
       autoAssign: duplicate ? true : section.autoAssign,
+      requiredGender: section.requiredGender,
       allocationPerHour: section.allocationPerHour,
       // Whatever is stored is the manager's choice; the default never
       // overwrites it on reopening (§3.4).
@@ -315,6 +336,7 @@ export function roleChanges(before: RoleDraft, after: RoleDraft, dateChanged: bo
   if (before.payRate !== after.payRate) changed.push('pay_rate');
   if (before.allocationPerHour !== after.allocationPerHour) changed.push('allocation_per_hour');
   if (before.autoAssign !== after.autoAssign) changed.push('auto_assign');
+  if (before.requiredGender !== after.requiredGender) changed.push('required_gender');
 
   return { key: after.key, changed, reconfirming: reconfirmingChanges(changed) };
 }

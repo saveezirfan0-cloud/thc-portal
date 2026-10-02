@@ -131,6 +131,24 @@ describe('the escalation pool once a section has started (§3.4)', () => {
     expect(ada!.label).toBe(GATE_COPY['outside_radius']!.label);
     expect(ada!.detail).not.toMatch(/§/);
   });
+
+  // ADR-0079: on a gender-only section the other gender is no row at all
+  // (like a wrong role); no gender on file is listed, so it gets recorded.
+  it('a gender-only section hides the other gender and lists the gender-not-recorded', () => {
+    const list = buildUnavailable(
+      [
+        row('ada', { gate: 'male_only' }),
+        row('ben', { gate: 'gender_not_recorded' }),
+        row('cai', { gate: 'female_only' }),
+      ],
+      [],
+      people,
+      new Set(),
+    );
+    expect(list.map((entry) => entry.staffId)).toEqual(['ben']);
+    expect(list[0]!.label).toBe('Gender not recorded');
+    expect(list[0]!.inviteAnyway).toBe(false);
+  });
 });
 
 describe('attendance on a Confirmed row (wireframe, §5, §9.5)', () => {

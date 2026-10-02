@@ -108,9 +108,12 @@ describe('weighted score (§6)', () => {
 });
 
 describe('hard gates (§6, §3.3)', () => {
-  it('has exactly the six the scope names', () => {
+  it('has the six the scope names, plus the three of a gender-only section (ADR-0079)', () => {
     expect([...HARD_GATES]).toEqual([
       'wrong_role',
+      'male_only',
+      'female_only',
+      'gender_not_recorded',
       'blocked',
       'booked_elsewhere',
       'hours_limit',
@@ -143,11 +146,45 @@ describe('hard gates (§6, §3.3)', () => {
     expect(showsUnderUnavailable('do_not_return')).toBe(true);
   });
 
-  it('wrong role produces no row at all; the other five show under Unavailable', () => {
+  it('wrong role and the other gender produce no row; every other gate shows under Unavailable', () => {
     expect(showsUnderUnavailable('wrong_role')).toBe(false);
-    for (const gate of HARD_GATES.filter((g) => g !== 'wrong_role')) {
+    for (const gate of HARD_GATES.filter(
+      (g) => g !== 'wrong_role' && g !== 'male_only' && g !== 'female_only',
+    )) {
       expect(showsUnderUnavailable(gate)).toBe(true);
     }
+  });
+
+  // ADR-0079: on a gender-only section the other gender is hidden like a
+  // wrong role — listing them would bury the section — but a worker with
+  // no gender on file shows, because the office can record it.
+  it('a gender-only section hides the other gender and shows the gender-not-recorded', () => {
+    expect(showsUnderUnavailable('male_only')).toBe(false);
+    expect(showsUnderUnavailable('female_only')).toBe(false);
+    expect(showsUnderUnavailable('gender_not_recorded')).toBe(true);
+  });
+
+  it('a male-only gate drops the worker from the pool however well they score', () => {
+    const pool: Candidate<string>[] = [
+      {
+        subject: 'woman',
+        input: { reliability: 100, rating: 5, distanceKm: 0, futureShifts: 0, venueTimes: 10 },
+        qualifiedAtClientAndRole: true,
+        gate: 'male_only',
+      },
+      {
+        subject: 'not-recorded',
+        input: { reliability: 100, rating: 5, distanceKm: 0, futureShifts: 0, venueTimes: 10 },
+        qualifiedAtClientAndRole: true,
+        gate: 'gender_not_recorded',
+      },
+      {
+        subject: 'man',
+        input: { reliability: 80, rating: 4, distanceKm: 8, futureShifts: 3, venueTimes: 0 },
+        qualifiedAtClientAndRole: false,
+      },
+    ];
+    expect(rankPool(pool).map((r) => r.subject)).toEqual(['man']);
   });
 });
 

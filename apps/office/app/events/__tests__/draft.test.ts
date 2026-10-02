@@ -34,6 +34,7 @@ function role(over: Partial<RoleDraft> = {}): RoleDraft {
     dressCode: 'Black & whites',
     dressCodeOther: '',
     autoAssign: true,
+    requiredGender: null,
     allocationPerHour: 14,
     allocationTouched: false,
     ...over,
@@ -74,6 +75,10 @@ describe('a new role is pre-filled with the event window, then edited on its own
 
   it('starts auto-assign from the event-level switch (§3.4)', () => {
     expect(newRoleDraft(event({ autoAssign: false }), 'role-chef').autoAssign).toBe(false);
+  });
+
+  it('starts open to any gender (ADR-0079)', () => {
+    expect(newRoleDraft(event(), 'role-chef').requiredGender).toBeNull();
   });
 });
 
@@ -261,6 +266,16 @@ describe('what an edit does to the people already booked (§3.5)', () => {
     expect(plan.roles[0]!.reconfirming).toEqual([]);
   });
 
+  // ADR-0079: it steers who is invited next. Nobody already booked is asked
+  // again, and nobody is removed.
+  it('applies a staff gender silently, either way', () => {
+    for (const requiredGender of ['M', 'F'] as const) {
+      const plan = reconfirmPlan(before, after({ requiredGender }));
+      expect(plan.roles[0]!.changed).toEqual(['required_gender']);
+      expect(plan.roles[0]!.reconfirming).toEqual([]);
+    }
+  });
+
   it('re-confirms every role when the date moves', () => {
     const plan = reconfirmPlan(before, after({}, { date: '2026-09-19' }));
     expect(plan.roles.map((r) => r.key).sort()).toEqual(['chef', 'waiting']);
@@ -302,6 +317,7 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
         payRate: 19,
         dressCode: 'Chef whites',
         autoAssign: false,
+        requiredGender: 'F',
         allocationPerHour: 3,
         confirmed: 2,
         booked: 2,
@@ -317,6 +333,7 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
         payRate: 14,
         dressCode: 'Burgundy bow tie (supplied)',
         autoAssign: true,
+        requiredGender: 'M',
         allocationPerHour: 14,
         confirmed: 9,
         booked: 13,
@@ -334,6 +351,17 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
     expect(draft.roles.map((r) => r.autoAssign)).toEqual([false, true]);
     // The derived window pre-fills a new role: earliest start → latest end.
     expect([draft.overallStart, draft.overallEnd]).toEqual(['07:00', '01:30']);
+  });
+
+  // ADR-0079: a staff gender is the client's ask for that role, not a
+  // decision about the day's people, so it survives both.
+  it('edit and duplicate both keep the staff gender as stored', () => {
+    for (const as of ['edit', 'duplicate'] as const) {
+      expect(draftFromSaved(saved, dressCodes, as).roles.map((r) => r.requiredGender)).toEqual([
+        'F',
+        'M',
+      ]);
+    }
   });
 
   it('duplicate copies the roles but no section id — so no staff come with it', () => {

@@ -214,6 +214,36 @@
         }
       },
       {
+        "name": "gate_male_only",
+        "input": {
+          "gate": "male_only"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "male_only"
+        }
+      },
+      {
+        "name": "gate_female_only",
+        "input": {
+          "gate": "female_only"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "female_only"
+        }
+      },
+      {
+        "name": "gate_gender_not_recorded",
+        "input": {
+          "gate": "gender_not_recorded"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "gender_not_recorded"
+        }
+      },
+      {
         "name": "gate_do_not_return",
         "input": {
           "gate": "do_not_return"

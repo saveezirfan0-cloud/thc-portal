@@ -34,6 +34,8 @@ export interface RoleSectionInput {
   payRate: number | null;
   dressCode: string;
   autoAssign: boolean;
+  /** ADR-0079: book only this gender on the section; null for anyone. */
+  requiredGender: 'M' | 'F' | null;
   allocationPerHour: number;
 }
 
@@ -87,6 +89,7 @@ function sectionRow(eventId: string, date: string, role: RoleSectionInput) {
     ...(role.payRate === null ? {} : { pay_rate: role.payRate }),
     dress_code: role.dressCode || null,
     auto_assign: role.autoAssign,
+    required_gender: role.requiredGender,
     allocation_per_hour: role.allocationPerHour,
   };
 }

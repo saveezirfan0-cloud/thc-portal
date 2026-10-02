@@ -17,7 +17,13 @@ import {
   ukInputLabel,
 } from '@thc/domain';
 import { Switch } from './Switch';
-import { DRESS_CODE_OTHER, type RoleDraft, isResolvable, resolveRole } from '../draft';
+import {
+  DRESS_CODE_OTHER,
+  REQUIRED_GENDER_LABEL,
+  type RoleDraft,
+  isResolvable,
+  resolveRole,
+} from '../draft';
 import type { ClientOption, RoleOption } from '../data';
 
 const money = (pounds: number) => pounds.toFixed(2);
@@ -100,6 +106,9 @@ export function RoleSection({
             {role.start} – {role.end}
           </span>
           <Pill>{formatAllocationPair(role.headcount, role.buffer)}</Pill>
+          {role.requiredGender ? (
+            <Pill tone="cyan">{REQUIRED_GENDER_LABEL[role.requiredGender]}</Pill>
+          ) : null}
           <div className="right">
             <Pill tone="green">Ongoing</Pill>
           </div>
@@ -119,6 +128,9 @@ export function RoleSection({
         </span>
         {/* Absolute buffer: "12 (+2)", never the total (§3.2). */}
         <Pill>{formatAllocationPair(role.headcount, role.buffer)}</Pill>
+        {role.requiredGender ? (
+          <Pill tone="cyan">{REQUIRED_GENDER_LABEL[role.requiredGender]}</Pill>
+        ) : null}
         {ratesVisible && role.chargeRate > 0 ? (
           <span className={`mono sm ${margin >= 0 ? 'green' : 'coral'}`}>
             margin {signedPence(margin)}
@@ -336,6 +348,40 @@ export function RoleSection({
             <span className="hint">Buffer is part of the target, not the working headcount.</span>
           </div>
         </div>
+
+        {/* ADR-0079: a client's request for staff of one gender on this role.
+            A hard gate in auto_assign_candidates, so every path that books
+            someone holds to it — rounds, Radar, offers, Accept and a manual
+            invite. */}
+        <div className="f3">
+          <Select
+            label="Staff gender"
+            value={role.requiredGender ?? ''}
+            onChange={(e) =>
+              onChange({
+                requiredGender:
+                  e.target.value === 'M' || e.target.value === 'F' ? e.target.value : null,
+              })
+            }
+            hint={
+              role.requiredGender
+                ? 'Only this gender is invited or sees it on Radar. No gender on file = left out.'
+                : 'Only when the client asks for one gender on this role'
+            }
+          >
+            <option value="">Any</option>
+            <option value="M">{REQUIRED_GENDER_LABEL.M}</option>
+            <option value="F">{REQUIRED_GENDER_LABEL.F}</option>
+          </Select>
+        </div>
+
+        {changed.has('required_gender') && role.requiredGender && booked > 0 ? (
+          <Alert tone="cyan">
+            <b>Already booked staff are not removed.</b> Open invitations stay open but can only be
+            accepted by {role.requiredGender === 'M' ? 'male' : 'female'} staff; withdraw anyone
+            else on the event board.
+          </Alert>
+        ) : null}
 
         {lengthIssue === 'below_minimum_hours' ? (
           <Alert tone="coral">

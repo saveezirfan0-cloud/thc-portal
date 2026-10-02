@@ -323,7 +323,15 @@ export type AcceptRefusal =
   /** A leaver or a removed account (§10.6, §1.7) — no candidate row at all. */
   | 'not_bookable'
   /** RULE-04: self-cancelled off this event. */
-  | 'self_cancelled';
+  | 'self_cancelled'
+  /**
+   * ADR-0079: the role was marked "Male staff only" or "Female staff only"
+   * after the invitation went out. The invitation is left live (never
+   * withdrawn); Accept refuses.
+   */
+  | 'male_only'
+  | 'female_only'
+  | 'gender_not_recorded';
 
 /**
  * RULE-03 (§3.4): "a popup appears in the app: 'Sorry, this shift has been
@@ -374,6 +382,18 @@ export const ACCEPT_REFUSAL_COPY: Record<AcceptRefusal, { title: string; body: s
     title: 'This shift has already ended',
     body: 'It finished before the invitation was answered, so the invitation has closed.',
   },
+  male_only: {
+    title: 'This shift isn’t available to you',
+    body: 'The client has asked for male staff on this role. Please contact the office if you think this is wrong.',
+  },
+  female_only: {
+    title: 'This shift isn’t available to you',
+    body: 'The client has asked for female staff on this role. Please contact the office if you think this is wrong.',
+  },
+  gender_not_recorded: {
+    title: 'This shift isn’t available to you yet',
+    body: 'The client has asked for staff of one gender on this role and we don’t have your gender on file. Please contact the office.',
+  },
 };
 
 /** The refusals `apply_to_shift` can return (§10.4, Radar). */
@@ -388,7 +408,10 @@ export type ApplyRefusal =
   | 'do_not_return'
   | 'self_cancelled'
   | 'booked_elsewhere'
-  | 'wrong_role';
+  | 'wrong_role'
+  | 'male_only'
+  | 'female_only'
+  | 'gender_not_recorded';
 
 export const APPLY_REFUSAL_COPY: Record<ApplyRefusal, { title: string; body: string }> = {
   full: {
@@ -435,6 +458,10 @@ export const APPLY_REFUSAL_COPY: Record<ApplyRefusal, { title: string; body: str
     title: 'This shift isn’t one of your roles',
     body: 'Radar only shows the roles you’re signed off for.',
   },
+  // ADR-0079. Radar does not list the shift to them; this is the race.
+  male_only: ACCEPT_REFUSAL_COPY.male_only,
+  female_only: ACCEPT_REFUSAL_COPY.female_only,
+  gender_not_recorded: ACCEPT_REFUSAL_COPY.gender_not_recorded,
 };
 
 /** One row of `staff_open_shifts()`, as Radar and Open shifts read it. */

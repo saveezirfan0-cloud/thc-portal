@@ -169,6 +169,10 @@
                     <div class="field"><span class="label">Other — dress code for this event only</span><input class="input" value="Black &amp; whites, burgundy bow tie (supplied on site)"><span class="hint">Not saved back to the client's list (§9.7).</span></div>
                     <div class="field"><span class="label">Allocation per hour</span><input class="input mono" value="14"><span class="hint">default 12 + 2</span></div>
                   </div>
+                  <!-- ADR-0079: Staff gender — Any (default) · Male staff only · Female staff only -->
+                  <div class="f3">
+                    <div class="field"><span class="label">Staff gender</span><select class="input"><option>Any</option><option>Male staff only</option><option>Female staff only</option></select><span class="hint">Only when the client asks for one gender on this role</span></div>
+                  </div>
                 </div>
               </div>
 
@@ -332,7 +336,7 @@
       </section>
     </div>
 
-    <div class="wf-note note"><b>Behaviour notes.</b> Order of entry: Client → venue (address → geo point, type → radius) → date/time → roles (§3.2). The overall start/end only pre-fills each role; every role section holds its own start and end, headcount, buffer (absolute, shown "6 (+1)"), charge rate from the client's rate card, pay rate, dress code (client's list for that role + "Other" free text for this event only) and auto-assign allocation (default headcount + buffer, editable; switch default ON, purple — §3.4). Hard validation per role: end must be at least 4 hours after start; after-midnight ends are allowed (§3.2). Time inputs are entered in UK time and say so in the label (§1.8). PO Number is manual, optional, free-format, editable any time (§3.2). On-site contact and notes are visible to staff in the app (§10.4). Break policy and Buffer policy are client-level toggles shown here read-only (§3.2). Editing is allowed only up to the event's start; changing a role's time / date / venue / dress code re-confirms that role's booked staff only (N11, §3.5); headcount below confirmed never auto-removes anyone. Duplicate copies roles, not staff. The derived event window (earliest start → latest end, RULE-18) drives status and the calendar.</div>
+    <div class="wf-note note"><b>Behaviour notes.</b> Order of entry: Client → venue (address → geo point, type → radius) → date/time → roles (§3.2). The overall start/end only pre-fills each role; every role section holds its own start and end, headcount, buffer (absolute, shown "6 (+1)"), charge rate from the client's rate card, pay rate, dress code (client's list for that role + "Other" free text for this event only) and auto-assign allocation (default headcount + buffer, editable; switch default ON, purple — §3.4). Staff gender per role — Any / Male staff only / Female staff only (ADR-0079): only that gender is invited, sees it on Radar or can accept; staff with no gender on file are left out and listed under Unavailable on the event board. Hard validation per role: end must be at least 4 hours after start; after-midnight ends are allowed (§3.2). Time inputs are entered in UK time and say so in the label (§1.8). PO Number is manual, optional, free-format, editable any time (§3.2). On-site contact and notes are visible to staff in the app (§10.4). Break policy and Buffer policy are client-level toggles shown here read-only (§3.2). Editing is allowed only up to the event's start; changing a role's time / date / venue / dress code re-confirms that role's booked staff only (N11, §3.5); headcount below confirmed never auto-removes anyone. Duplicate copies roles, not staff. The derived event window (earliest start → latest end, RULE-18) drives status and the calendar.</div>
   </div>
 </div>
 </body>
