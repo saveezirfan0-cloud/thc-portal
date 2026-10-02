@@ -187,6 +187,72 @@ const GROUPS = {
       },
     ],
   },
+  timesheets: {
+    file: 'THC-Timesheets',
+    kind: 'desktop',
+    label: 'Timesheets',
+    title: 'Timesheets',
+    outro: ['That is timesheets', 'The allocation sheet, sending, the completed sheet and the client’s view'],
+    parts: [
+      {
+        title: 'The Allocation Timesheet',
+        lines: 'One document per event: every column explained,<br>pages and totals',
+        spoken: '',
+        segs: [{ name: 'ts-1-allocation', skipLogin: true }],
+      },
+      {
+        title: 'Sending timesheets',
+        lines: 'Send and Download, who receives it,<br>and the automatic send the day before',
+        spoken: '',
+        segs: [{ name: 'ts-2-sending', skipLogin: true }],
+      },
+      {
+        title: 'The Completed Timesheet',
+        lines: 'Filled in from check-in and check-out,<br>blank cells for a missing check-out, the morning-after send',
+        spoken: '',
+        segs: [{ name: 'ts-3-completed', skipLogin: true }],
+      },
+      {
+        title: 'The client’s side',
+        lines: 'Downloading it from the Client Portal',
+        spoken: '',
+        segs: [{ name: 'ts-4-client', skipLogin: true }],
+      },
+    ],
+  },
+  govuk: {
+    file: 'THC-Right-to-Work-and-Expiry-Dates',
+    kind: 'desktop',
+    label: 'Right to work and expiry dates',
+    title: 'Right to work: the gov.uk check and expiry dates',
+    outro: ['That is the gov.uk check and expiry', 'Share code, automatic check, verify, reminders and blocking'],
+    parts: [
+      {
+        title: 'The worker’s side',
+        lines: 'Documents and expiry dates in the app,<br>and the share code form',
+        spoken: '',
+        segs: [{ name: 'gov-1-worker', skipLogin: true, phone: true }],
+      },
+      {
+        title: 'The automatic gov.uk check',
+        lines: 'What the system does with a share code:<br>the checks monitor, the runner and the four counters',
+        spoken: '',
+        segs: [{ name: 'gov-2-checks', skipLogin: true }],
+      },
+      {
+        title: 'Verify or Reject',
+        lines: 'The date gov.uk returns, comparing photos,<br>and what happens when gov.uk finds no record',
+        spoken: '',
+        segs: [{ name: 'gov-3-decide', skipLogin: true }],
+      },
+      {
+        title: 'Expiry, reminders and blocking',
+        lines: 'The Radar, the reminder ladder<br>and what happens on the expiry day',
+        spoken: '',
+        segs: [{ name: 'gov-4-expiry', skipLogin: true }],
+      },
+    ],
+  },
   office: {
     file: 'THC-Office-Portal-Training',
     kind: 'desktop',

@@ -93,6 +93,17 @@ so record parts 2 and 3 within about 40 minutes), one for a client that does not
 for a strict buffer with its one place already taken. Record 2 and 3 first, then 1 and 4. `80…` ids are
 covered by `cleanup-demo.sql`.
 
+**Timesheets** (`node compose.mjs timesheets`): `ts-prep.mjs` first (downloads the real PDFs through the
+office's own route and renders them with `pdf2png.py`, needs `pip install pymupdf`; set `DEMO_DOCS`), then
+`ts-1-allocation` … `ts-4-client`. Needs the review data (`supabase/demo/review-data.sql`) for the completed
+Lunch Service sheet.
+
+**Right to work and expiry dates** (`node compose.mjs govuk`): `gov-1-worker` (phone), `gov-2-checks`,
+`gov-4-expiry`, then `gov-3-decide` last (it presses the real Verify; `DRY=1` rehearses without it).
+**Danger:** if `settings.rtw_check.enabled` is true and the office app is deployed with the job secret,
+filing a share-code document queues a real check and the runner queries the live gov.uk service. Never file
+demo share codes against such a project. The scripts only open the share-code form, never submit it.
+
 ## Sharp, large text (HD mode)
 
 Playwright records at the page's CSS size and pads anything larger with grey, so its video is
