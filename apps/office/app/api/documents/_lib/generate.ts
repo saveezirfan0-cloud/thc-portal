@@ -143,7 +143,7 @@ export function refusal(message: string): { status: number; message: string } {
 }
 
 export interface DocumentData {
-  /** `nameBadges` (ADR-0081) is absent on a database before 20261002109000. */
+  /** `nameBadges` (ADR-0081) is absent on a database before 20261002112000. */
   event: SheetEvent & { contactEmails: string[]; nameBadges?: boolean };
   rows: SheetPerson[];
 }

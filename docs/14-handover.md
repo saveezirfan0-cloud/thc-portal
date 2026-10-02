@@ -352,6 +352,15 @@ real environment to prove it in.
   the next merge to `main` deploys all fifteen in order with no flag. Types
   (`packages/db/src/types.generated.ts`) are regenerated from the live project
   once they are applied — they do not yet know this round's RPCs.
+- **02.10: #130 merged below the live high-water mark.** #127's
+  `20261002110000` was already live when #130 merged `20261002109000`
+  (name badges), so `deploy-database` on `e85e044` stopped at the dry run
+  with the same refusal and applied nothing, #129's `20261002111000`
+  included. #130's migration is renumbered `20261002112000` (same content;
+  it shares no function, table or trigger with `110000` or `111000`, so the
+  new order changes nothing), and the next merge to `main` deploys both with
+  no flag. A PR whose migration sorts below one merged after it was opened
+  must be renumbered before it merges, not after.
 - **ESLint runs `react-hooks/rules-of-hooks`** (error) and `exhaustive-deps`
   (warning) on every TSX file since 27.09; the tree was clean under both the
   day the rule landed. Step 1's `useId()` after an early return was the case
