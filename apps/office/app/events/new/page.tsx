@@ -28,6 +28,8 @@ const BLANK: EventDraft = {
   onsiteContact: '',
   notes: '',
   autoAssign: true,
+  // ADR-0080: English unless the client asks for another language too.
+  requiredLanguages: ['English'],
   roles: [],
 };
 

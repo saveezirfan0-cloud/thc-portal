@@ -85,6 +85,7 @@ export function ProfileScreen({
   data,
   canCorrectDob = false,
   canEditGender = false,
+  canEditLanguages = false,
   showPayRate = false,
   canEditPayRate = false,
   canMessage = false,
@@ -97,6 +98,8 @@ export function ProfileScreen({
   canCorrectDob?: boolean;
   /** ADR-0079: any office login that may write records a gender. */
   canEditGender?: boolean;
+  /** ADR-0080: any office login that may write records the languages. */
+  canEditLanguages?: boolean;
   /** ADR-0072: `officeCan(role, 'finance')` — the Pay rate card is drawn. */
   showPayRate?: boolean;
   /** ADR-0072: finance and write — Set / Edit / Clear on the Pay rate card. */
@@ -437,6 +440,8 @@ export function ProfileScreen({
             locationStale={data.locationStale === true}
             gender={data.gender}
             canEditGender={canEditGender}
+            languages={data.languages}
+            canEditLanguages={canEditLanguages}
             emergencyContact={data.emergencyContact ?? null}
             emergencyContactProblem={data.emergencyContactProblem ?? null}
             referrals={data.referrals ?? null}

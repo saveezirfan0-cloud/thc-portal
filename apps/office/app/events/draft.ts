@@ -85,6 +85,12 @@ export interface EventDraft {
   onsiteContact: string;
   notes: string;
   autoAssign: boolean;
+  /**
+   * ADR-0080: the languages staff on this event must speak — English
+   * always, plus any the client asked for. Auto-assign, Radar and Accept
+   * then book only people who speak every one (`auto_assign_candidates`).
+   */
+  requiredLanguages: string[];
   roles: RoleDraft[];
 }
 
@@ -237,7 +243,8 @@ export function canRemoveRole(role: RoleDraft, bookedBySectionId: Record<string,
  * roles, NOT the staff)." So a duplicate:
  *   * keeps the client, venue, title, PO, contact, notes and every role
  *     section's times, headcount, buffer, rates, dress code, allocation and
- *     staff gender — that is the client's ask, not the day's (ADR-0079);
+ *     staff gender — that is the client's ask, not the day's (ADR-0079) —
+ *     and the languages the event needs, for the same reason (ADR-0080);
  *   * drops every section id, so saving creates new sections and nothing
  *     booked on the original — confirmed, invited or applied — comes along;
  *   * leaves the DATE empty: a day is the one thing a duplicate must change,
@@ -295,6 +302,7 @@ export function draftFromSaved(
     onsiteContact: event.onsiteContact,
     notes: event.notes,
     autoAssign: duplicate ? true : event.autoAssign,
+    requiredLanguages: [...event.requiredLanguages],
     roles,
   };
 }

@@ -149,6 +149,21 @@ describe('the escalation pool once a section has started (§3.4)', () => {
     expect(list[0]!.label).toBe('Gender not recorded');
     expect(list[0]!.inviteAnyway).toBe(false);
   });
+
+  // ADR-0080: on an event that needs another language, a worker who does
+  // not speak it is no row at all; one never asked is listed, so it gets
+  // recorded.
+  it('an event that needs another language hides non-speakers and lists the never-asked', () => {
+    const list = buildUnavailable(
+      [row('ada', { gate: 'language_not_spoken' }), row('ben', { gate: 'languages_not_recorded' })],
+      [],
+      people,
+      new Set(),
+    );
+    expect(list.map((entry) => entry.staffId)).toEqual(['ben']);
+    expect(list[0]!.label).toBe('Languages not recorded');
+    expect(list[0]!.inviteAnyway).toBe(false);
+  });
 });
 
 describe('attendance on a Confirmed row (wireframe, §5, §9.5)', () => {

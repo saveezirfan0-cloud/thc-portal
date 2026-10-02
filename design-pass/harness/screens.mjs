@@ -170,7 +170,7 @@ const profileDb = {
   clients: R.clientRows,
   profiles: [{ full_name: 'Sarah Mitchell' }],
   'rpc:staff_account_activated': false,
-  staff: [{ home_location_stale: true, gender: null }],
+  staff: [{ home_location_stale: true, gender: null, languages: null }],
   compliance_review_queue_v: [queue[1]],
 };
 const profileTab = (tab) => ({

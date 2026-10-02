@@ -108,12 +108,14 @@ describe('weighted score (§6)', () => {
 });
 
 describe('hard gates (§6, §3.3)', () => {
-  it('has the six the scope names, plus the three of a gender-only section (ADR-0079)', () => {
+  it('has the six the scope names, plus the three of a gender-only section (ADR-0079) and the two of an event that needs another language (ADR-0080)', () => {
     expect([...HARD_GATES]).toEqual([
       'wrong_role',
       'male_only',
       'female_only',
       'gender_not_recorded',
+      'language_not_spoken',
+      'languages_not_recorded',
       'blocked',
       'booked_elsewhere',
       'hours_limit',
@@ -146,10 +148,14 @@ describe('hard gates (§6, §3.3)', () => {
     expect(showsUnderUnavailable('do_not_return')).toBe(true);
   });
 
-  it('wrong role and the other gender produce no row; every other gate shows under Unavailable', () => {
+  it('wrong role, the other gender and a language not spoken produce no row; every other gate shows under Unavailable', () => {
     expect(showsUnderUnavailable('wrong_role')).toBe(false);
     for (const gate of HARD_GATES.filter(
-      (g) => g !== 'wrong_role' && g !== 'male_only' && g !== 'female_only',
+      (g) =>
+        g !== 'wrong_role' &&
+        g !== 'male_only' &&
+        g !== 'female_only' &&
+        g !== 'language_not_spoken',
     )) {
       expect(showsUnderUnavailable(gate)).toBe(true);
     }

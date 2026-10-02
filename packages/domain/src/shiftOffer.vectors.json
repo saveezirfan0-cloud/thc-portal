@@ -244,6 +244,26 @@
         }
       },
       {
+        "name": "gate_language_not_spoken",
+        "input": {
+          "gate": "language_not_spoken"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "language_not_spoken"
+        }
+      },
+      {
+        "name": "gate_languages_not_recorded",
+        "input": {
+          "gate": "languages_not_recorded"
+        },
+        "expect": {
+          "ok": false,
+          "reason": "languages_not_recorded"
+        }
+      },
+      {
         "name": "gate_do_not_return",
         "input": {
           "gate": "do_not_return"
