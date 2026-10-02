@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { StaffRow } from '../types';
 
 /**
- * ADR-0081 on the directory: tick workers, Send push to them. The ticks
+ * ADR-0082 on the directory: tick workers, Send push to them. The ticks
  * are offered only to a login that may write and never on a removed
  * worker; they survive a page turn; the action is handed exactly the ticked
  * ids; a send clears them.
@@ -90,7 +90,7 @@ const click = (el: HTMLElement | null | undefined) => {
   act(() => el!.click());
 };
 
-describe('/staff · Send push to ticked workers (ADR-0081)', () => {
+describe('/staff · Send push to ticked workers (ADR-0082)', () => {
   it('offers no ticks to a login that may not write', () => {
     mount([row('w1', 'Amara K.')], false);
     expect(container.querySelector('input[type="checkbox"]')).toBeNull();

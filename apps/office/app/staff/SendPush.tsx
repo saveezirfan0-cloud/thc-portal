@@ -12,7 +12,7 @@ export interface PushRecipient {
 }
 
 /**
- * Send push — ADR-0081.
+ * Send push — ADR-0082.
  *
  * A push with the manager's own words to hand-picked workers, whatever they
  * are or are not booked on: one from their profile (/staff/:id), or the

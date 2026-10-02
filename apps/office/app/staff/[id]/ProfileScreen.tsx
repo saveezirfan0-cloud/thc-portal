@@ -104,7 +104,7 @@ export function ProfileScreen({
   showPayRate?: boolean;
   /** ADR-0072: finance and write — Set / Edit / Clear on the Pay rate card. */
   canEditPayRate?: boolean;
-  /** ADR-0081: Send push — `canMessageWorker()`, any office login that may write. */
+  /** ADR-0082: Send push — `canMessageWorker()`, any office login that may write. */
   canMessage?: boolean;
 }) {
   const profile = data.profile as ProfileRow;
@@ -298,7 +298,7 @@ export function ProfileScreen({
               </div>
             ) : null}
             <div className="row">
-              {/* ADR-0081: a push in the manager's words to this one worker. */}
+              {/* ADR-0082: a push in the manager's words to this one worker. */}
               {canMessage ? (
                 <SendPush
                   recipients={[{ id: profile.id, name: profile.display_name }]}

@@ -1,5 +1,5 @@
 /**
- * Send push to hand-picked workers (ADR-0081) — the words, without React.
+ * Send push to hand-picked workers (ADR-0082) — the words, without React.
  *
  * The same message as the event board's Message staff (ADR-0069), to one
  * worker from their profile or to the workers ticked in the directory, with

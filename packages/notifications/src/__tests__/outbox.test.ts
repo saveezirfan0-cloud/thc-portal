@@ -72,7 +72,7 @@ describe('push rows', () => {
     });
   });
 
-  it("sends OM2 to one worker with the manager's words untouched, opening the app (ADR-0081)", () => {
+  it("sends OM2 to one worker with the manager's words untouched, opening the app (ADR-0082)", () => {
     const message = 'Please call the office {x} — $& and $1';
     const msg = messageFor(
       push({

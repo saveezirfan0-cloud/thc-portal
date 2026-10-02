@@ -1,4 +1,4 @@
-# ADR-0081 · Send push to hand-picked staff
+# ADR-0082 · Send push to hand-picked staff
 
 **Status:** Accepted (owner request, 02.10.2026: "We should be able to push notify individual staff as well", then "add that as well — several hand picked"). An addition to scope v1.6; §8's register is otherwise unchanged. Builds on ADR-0069.
 
@@ -17,7 +17,7 @@ Both are for any office login that may write (`officeCan(role, 'write')`: owner,
 
 **The form:** who it is to (every name up to four, then "and N more"), and one **Message** field, 1–300 characters. The limit and count are ADR-0069's (`MESSAGE_MAX`, `messageLength`), shared from the event board's model rather than copied. On a profile whose worker has not activated the Staff App yet (`staff_account_activated`), an amber line says the push will not reach them and to phone them instead.
 
-**Who receives it:** the workers on the list, each once. `send_staff_message(p_staff uuid[], p_message)` (20261002109000) takes the ids the manager picked and checks every one of them. It refuses the whole send, never quietly dropping anyone, when the list:
+**Who receives it:** the workers on the list, each once. `send_staff_message(p_staff uuid[], p_message)` (20261002111000) takes the ids the manager picked and checks every one of them. It refuses the whole send, never quietly dropping anyone, when the list:
 
 - is empty: `nobody_to_message`;
 - has more than 200 workers: `too_many_recipients`. This is for hand-picked people, not a broadcast, and the action stops it before the database too;
@@ -43,7 +43,7 @@ It goes through `notification_outbox` like every other send, one row per worker,
 
 **GDPR removal (§1.7):** `remove_worker()` already scrubs the worker's outbox rows by recipient. A message written to a handful of named people is about them in a way a line-up message is not, so a new trigger, `staff_removed_scrub_messages`, drops the text from the removed worker's own `staff.message_sent` rows. The rows keep that a message was sent, and by whom. The text of a message sent to several people is shared data: the other recipients' audit rows and their own OM2 rows keep it under the same message id, as with ADR-0069's line-up messages. So the scrub fully retires the words only when the removed worker was the sole recipient. Managers should not name or describe a worker in a message that goes to others.
 
-Tests: pgTAP 769; `packages/notifications` (templates, outbox); `apps/office/app/staff/__tests__/sendPush.test.ts` (the action and its words) and `pickAndPush.test.tsx` (the directory's ticks).
+Tests: pgTAP 770; `packages/notifications` (templates, outbox); `apps/office/app/staff/__tests__/sendPush.test.ts` (the action and its words) and `pickAndPush.test.tsx` (the directory's ticks).
 
 ## Not done
 
