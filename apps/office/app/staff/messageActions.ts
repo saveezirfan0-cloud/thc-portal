@@ -3,9 +3,9 @@
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@thc/db/server';
-import { sessionIsAdmin } from '../../_lib/sessionRole';
-import { supabaseConfigured } from '../data';
-import { messageSentSummary, staffMessageRefusal } from './message';
+import { sessionIsAdmin } from '../_lib/sessionRole';
+import { supabaseConfigured } from './data';
+import { MAX_RECIPIENTS, messageSentSummary, staffMessageRefusal } from './message';
 
 const NOT_CONFIGURED =
   'This environment has no Supabase project, so nothing can be sent. See docs/04-setup-github-vercel-supabase.md.';
@@ -14,27 +14,32 @@ interface RpcClient {
   auth: { getUser(): PromiseLike<{ data: { user: { id: string } | null } }> };
   rpc(
     fn: string,
-    args?: Record<string, string>,
+    args?: Record<string, unknown>,
   ): PromiseLike<{ data: unknown; error: { message: string; code?: string } | null }>;
 }
 
 /**
- * Send push on /staff/:id (ADR-0081): the manager's own words to this one
- * worker, booked or not, as an OM2 push.
+ * Send push (ADR-0081): the manager's own words to hand-picked workers — one
+ * from their profile, or the ones ticked in the directory — booked or not,
+ * as one OM2 push each.
  *
  * Through the SESSION client, not the service key: send_staff_message() is
  * granted to `authenticated` and decides for itself — admin only, never a
- * viewer — and `auth.uid()` is then the manager its audit row names. The
- * admin check here is the first lock in front of it, because a server
- * action is a public POST endpoint.
+ * viewer, never a removed worker — and `auth.uid()` is then the manager its
+ * audit rows name. The admin check here is the first lock in front of it,
+ * because a server action is a public POST endpoint.
  */
-export async function messageWorker(
-  staffId: string,
+export async function messageStaff(
+  staffIds: readonly string[],
   message: string,
 ): Promise<
   { ok: false; message: string } | { ok: true; summary: string; everyoneReached: boolean }
 > {
   if (!message.trim()) return { ok: false, message: staffMessageRefusal('message_required') };
+  const ids = [...new Set(staffIds)];
+  if (ids.length === 0) return { ok: false, message: staffMessageRefusal('nobody_to_message') };
+  if (ids.length > MAX_RECIPIENTS)
+    return { ok: false, message: staffMessageRefusal('too_many_recipients') };
   if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
 
   const supabase = createClient(await cookies()) as unknown as RpcClient;
@@ -44,7 +49,7 @@ export async function messageWorker(
     return { ok: false, message: 'Only the office can do this.' };
 
   const { data, error } = await supabase.rpc('send_staff_message', {
-    p_staff: staffId,
+    p_staff: ids,
     p_message: message,
   });
   if (error) {
@@ -54,7 +59,7 @@ export async function messageWorker(
       return {
         ok: false,
         message:
-          'Messaging a worker from their profile is not switched on yet — the database update is still pending.',
+          'Sending a push to chosen workers is not switched on yet — the database update is still pending.',
       };
     return { ok: false, message: staffMessageRefusal(error.message) };
   }
@@ -68,8 +73,8 @@ export async function messageWorker(
   if (result.ok !== true)
     return { ok: false, message: staffMessageRefusal(String(result.reason ?? '')) };
 
-  // The History tab shows the send (staff.message_sent).
-  revalidatePath(`/staff/${staffId}`);
+  // Each profile's History tab shows the send (staff.message_sent).
+  for (const id of ids) revalidatePath(`/staff/${id}`);
   const withoutPush = result.withoutPush ?? [];
   return {
     ok: true,

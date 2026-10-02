@@ -4,7 +4,7 @@ import { OfficeShell } from '../../_components/OfficeShell';
 import { currentOfficeRole } from '../../_components/officeUser';
 import { officeCan } from '../../_lib/permissions';
 import { loadProfile } from './data';
-import { canMessageWorker } from './message';
+import { canMessageWorker } from '../message';
 import { ProfileScreen } from './ProfileScreen';
 
 export const metadata = { title: 'Staff profile · THC Back Office' };

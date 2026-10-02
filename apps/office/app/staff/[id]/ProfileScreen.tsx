@@ -31,7 +31,7 @@ import { Availability } from './Availability';
 import { ChangeRequestBanner } from './ChangeRequestBanner';
 import { Documents } from './Documents';
 import { Feedback } from './Feedback';
-import { MessageWorker } from './MessageWorker';
+import { SendPush } from '../SendPush';
 import { Overview } from './Overview';
 import { Qualifications } from './Qualifications';
 import { Shifts } from './Shifts';
@@ -300,10 +300,9 @@ export function ProfileScreen({
             <div className="row">
               {/* ADR-0081: a push in the manager's words to this one worker. */}
               {canMessage ? (
-                <MessageWorker
-                  staffId={profile.id}
-                  name={profile.display_name}
-                  activated={data.activated}
+                <SendPush
+                  recipients={[{ id: profile.id, name: profile.display_name }]}
+                  notActivated={data.activated === false}
                 />
               ) : null}
               {profile.status === 'blocked' ? (
