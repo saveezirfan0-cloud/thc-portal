@@ -31,6 +31,7 @@ import { Availability } from './Availability';
 import { ChangeRequestBanner } from './ChangeRequestBanner';
 import { Documents } from './Documents';
 import { Feedback } from './Feedback';
+import { SendPush } from '../SendPush';
 import { Overview } from './Overview';
 import { Qualifications } from './Qualifications';
 import { Shifts } from './Shifts';
@@ -87,6 +88,7 @@ export function ProfileScreen({
   canEditLanguages = false,
   showPayRate = false,
   canEditPayRate = false,
+  canMessage = false,
 }: {
   data: ProfileData;
   /**
@@ -102,6 +104,8 @@ export function ProfileScreen({
   showPayRate?: boolean;
   /** ADR-0072: finance and write — Set / Edit / Clear on the Pay rate card. */
   canEditPayRate?: boolean;
+  /** ADR-0081: Send push — `canMessageWorker()`, any office login that may write. */
+  canMessage?: boolean;
 }) {
   const profile = data.profile as ProfileRow;
   const [tab, setTab] = useState<Tab>('overview');
@@ -294,6 +298,13 @@ export function ProfileScreen({
               </div>
             ) : null}
             <div className="row">
+              {/* ADR-0081: a push in the manager's words to this one worker. */}
+              {canMessage ? (
+                <SendPush
+                  recipients={[{ id: profile.id, name: profile.display_name }]}
+                  notActivated={data.activated === false}
+                />
+              ) : null}
               {profile.status === 'blocked' ? (
                 <Button
                   size="sm"

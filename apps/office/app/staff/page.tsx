@@ -1,5 +1,7 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
+import { currentOfficeRole } from '../_components/officeUser';
+import { officeCan } from '../_lib/permissions';
 import { loadStaff, supabaseConfigured } from './data';
 import { countPendingChangeRequests } from './requests/data';
 import { StaffScreen } from './StaffScreen';
@@ -15,13 +17,14 @@ export const metadata = { title: 'Staff · THC Back Office' };
  * GDPR removal was meant to retire.
  */
 export default async function Page({ searchParams }: { searchParams: Promise<{ view?: string }> }) {
-  const [{ staff, students, problem }, pendingRequests] = await Promise.all([
+  const [{ staff, students, problem }, pendingRequests, role] = await Promise.all([
     loadStaff(),
     // ADR-0045: "Change requests (N)". A failed count is null — never a
     // claimed 0 (audit D18), never an error over the directory.
     supabaseConfigured()
       ? cookies().then((jar) => countPendingChangeRequests(createClient(jar)))
       : Promise.resolve(0),
+    currentOfficeRole(),
   ]);
   // `/staff?view=student` opens the Student visa view directly — the link
   // /compliance uses for the completion letter requirement's §4 report.
@@ -33,6 +36,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ v
       problem={problem}
       initialView={view === 'student' ? 'student' : 'directory'}
       pendingRequests={pendingRequests}
+      // ADR-0081: tick workers and Send push — any login that may write.
+      canMessage={officeCan(role, 'write')}
     />
   );
 }
