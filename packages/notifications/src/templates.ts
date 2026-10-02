@@ -775,6 +775,20 @@ export const TEMPLATES = {
     // and a second message about the same shift would replace the first.
     tag: 'OM1:{messageId}',
   },
+  // The same, to one worker from their profile (ADR-0081): no event, so the
+  // title is the office's and tapping it opens the app, which sends the
+  // worker wherever their lock allows (the wizard for a candidate).
+  OM2: {
+    code: 'OM2',
+    channel: 'push',
+    title: 'Message from the office',
+    body: '{message}',
+    trigger:
+      'A manager sends a message to one worker from their profile (send_staff_message): anything the office needs to tell that person, booked or not. Not in §8: an addition to scope v1.6, ADR-0081',
+    timing: 'immediately, on send',
+    deepLink: '/',
+    tag: 'OM2:{messageId}',
+  },
 
   // Onboarding chasers (ADR-0071): a candidate whose next onboarding move is
   // their own, reminded daily from a day after their last progress, and it
@@ -951,11 +965,12 @@ export const ADDITION_CODES = [
 ] as const satisfies readonly TemplateCode[];
 
 /**
- * Office messages (ADR-0069): a push whose body the manager writes, sent to
- * an event's line-up from the event board. Kept in a list of its own because
- * it is the one family whose copy is not fixed here.
+ * Office messages: a push whose body the manager writes — OM1 to an event's
+ * line-up from the event board (ADR-0069), OM2 to one worker from their
+ * profile (ADR-0081). Kept in a list of their own because they are the one
+ * family whose copy is not fixed here.
  */
-export const MESSAGE_CODES = ['OM1'] as const satisfies readonly TemplateCode[];
+export const MESSAGE_CODES = ['OM1', 'OM2'] as const satisfies readonly TemplateCode[];
 
 /**
  * Onboarding chasers (ADR-0071): reminders to a candidate whose next

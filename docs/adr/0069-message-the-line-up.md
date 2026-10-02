@@ -48,5 +48,5 @@ The owner: "We also need to be able to message individual staff, for example one
 ## Not done
 
 - **No in-app inbox.** A worker who dismisses the notification cannot read it again in the app. If that is needed, it is a Staff App screen of its own.
-- **No message from a worker's profile**, and no message to staff who are not on an event. One person is messaged from the event they are booked on.
+- **No message from a worker's profile**, and no message to staff who are not on an event. One person is messaged from the event they are booked on. *Since done:* ADR-0081 adds **Send push** on `/staff/:id` (OM2), to one worker whatever they are booked on.
 - **No SMS fallback.** SMS is Willo's job (§1.3).

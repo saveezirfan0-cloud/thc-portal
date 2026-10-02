@@ -59,8 +59,8 @@ const REQUIREMENT_EMAIL_CODES = ['CL3', 'CL4', 'CL5', 'CL6'];
 const ADDITION_PUSH_CODES = ['RC2', 'RC3', 'OF1', 'OF2', 'OF3', 'OF4', 'OF6'];
 const ADDITION_EMAIL_CODES = ['RC1', 'RC4', 'OF5'];
 
-/** Office messages (ADR-0069): the manager writes the body. */
-const MESSAGE_PUSH_CODES = ['OM1'];
+/** Office messages (ADR-0069, ADR-0081): the manager writes the body. */
+const MESSAGE_PUSH_CODES = ['OM1', 'OM2'];
 
 /** Onboarding chasers (ADR-0071): email before sign-up, push after. */
 const CHASER_EMAIL_CODES = ['OC1', 'OC2'];
@@ -1051,6 +1051,49 @@ describe('office message — OM1 (ADR-0069)', () => {
   it('gives every message its own notification, so a second does not replace the first', () => {
     expect(render(template('OM1').tag!, values)).toBe('OM1:m-1');
     expect(render(template('OM1').deepLink!, values)).toBe('/shifts/b-1');
+  });
+});
+
+/**
+ * One worker, from their profile (ADR-0081). No event: the register fixes
+ * the title, opens the app, and gives every message its own tag; the
+ * payload carries exactly the keys `send_staff_message` writes (pgTAP 769).
+ */
+describe('office message to one worker — OM2 (ADR-0081)', () => {
+  const values = {
+    message: 'Your uniform is ready to collect from the office. {not a placeholder}',
+    messageId: 'm-2',
+  };
+
+  it('is a push that says it is not §8 and names its ADR', () => {
+    const entry = template('OM2');
+    expect(entry.channel).toBe('push');
+    expect(entry.trigger).toMatch(/Not in §8/);
+    expect(entry.trigger).toContain('ADR-0081');
+    expect(entry.mandatory).toBeUndefined();
+    expect(SCOPE_CODES as readonly string[]).not.toContain('OM2');
+  });
+
+  it('asks for exactly the keys the sender writes', () => {
+    const entry: Template = TEMPLATES.OM2;
+    const keys = new Set(
+      [entry.title, entry.body ?? '', entry.deepLink ?? '', entry.tag ?? ''].flatMap((t) =>
+        [...t.matchAll(/\{(\w+)\}/g)].map((m) => m[1]),
+      ),
+    );
+    expect([...keys].sort()).toEqual(Object.keys(values).sort());
+  });
+
+  it("sends the manager's words as they were typed, under the office's title", () => {
+    expect(render(template('OM2').title, values)).toBe('Message from the office');
+    expect(render(body('OM2'), values)).toBe(values.message);
+  });
+
+  it('opens the app, and a second message does not replace the first', () => {
+    // `/` sends the worker wherever their lock allows — the wizard for a
+    // candidate, Shifts for everyone else (apps/staff/app/page.tsx).
+    expect(template('OM2').deepLink).toBe('/');
+    expect(render(template('OM2').tag!, values)).toBe('OM2:m-2');
   });
 });
 

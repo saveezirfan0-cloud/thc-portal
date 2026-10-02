@@ -139,6 +139,8 @@ const ACTION_LABEL: Readonly<Record<string, string>> = {
   'booking.application_accepted': 'Accepted shift application',
   'event.cancelled': 'Cancelled event',
   'event.message_sent': 'Messaged the line-up',
+  // ADR-0081: Send push from a worker's profile.
+  'staff.message_sent': 'Sent a push to the worker',
   do_not_return_on: 'Marked do not return',
   do_not_return_off: 'Cleared do not return',
   'profile.updated': 'Updated own profile',
