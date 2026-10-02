@@ -86,6 +86,13 @@ these were made on it was 0.05 s; set `DEMO_AUDIO_OFFSET` if yours differs).
 
 Run one script from this folder with `pnpm exec node <script>.mjs`.
 
+**Buffer and break policies** (`node compose.mjs policies`): `policy-1-office`, `policy-2-breaks`
+(phone, Amara), `policy-3-buffer` (phone, Tom) and `policy-4-office-after`. Run `buffer-break-setup.sql`
+first: it creates two shifts that start 20 minutes from now (check-in locks 30 minutes after the start,
+so record parts 2 and 3 within about 40 minutes), one for a client that does not pay for breaks and one
+for a strict buffer with its one place already taken. Record 2 and 3 first, then 1 and 4. `80…` ids are
+covered by `cleanup-demo.sql`.
+
 ## Sharp, large text (HD mode)
 
 Playwright records at the page's CSS size and pads anything larger with grey, so its video is

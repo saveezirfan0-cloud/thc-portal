@@ -154,6 +154,39 @@ const GROUPS = {
       },
     ],
   },
+  policies: {
+    file: 'THC-Buffer-and-Break-Policies',
+    kind: 'desktop',
+    label: 'Buffer and break policies',
+    title: 'Buffer and break policies',
+    outro: ['That is the buffer and break policies', 'Set once on the client, applied on every event'],
+    parts: [
+      {
+        title: 'The two policies',
+        lines: 'What they mean, and where they are set:<br>the client card, the Shift Builder and the event board',
+        spoken: '',
+        segs: [{ name: 'policy-1-office', skipLogin: true }],
+      },
+      {
+        title: 'Break policy',
+        lines: 'When the client does not pay for breaks:<br>Start break and Finish break on the phone',
+        spoken: '',
+        segs: [{ name: 'policy-2-breaks', skipLogin: true, phone: true }],
+      },
+      {
+        title: 'Buffer policy',
+        lines: 'When the client does not pay for spare staff:<br>first to check in works, the rest are turned away',
+        spoken: '',
+        segs: [{ name: 'policy-3-buffer', skipLogin: true, phone: true }],
+      },
+      {
+        title: 'What the office sees',
+        lines: 'Check-ins and breaks on the live monitor,<br>and the four combinations',
+        spoken: '',
+        segs: [{ name: 'policy-4-office-after', skipLogin: true }],
+      },
+    ],
+  },
   office: {
     file: 'THC-Office-Portal-Training',
     kind: 'desktop',

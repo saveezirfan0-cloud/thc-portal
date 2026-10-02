@@ -19,11 +19,11 @@ begin;
 -- Dependents that do not cascade, before the rows they point at.
 delete from feedback where id::text like '75000000-0000-4000-8000-%';
 
-delete from event_document_autosends where event_id::text like '60000000-0000-4000-8000-%' or event_id::text like '70000000-0000-4000-8000-%';
-delete from event_documents           where event_id::text like '60000000-0000-4000-8000-%' or event_id::text like '70000000-0000-4000-8000-%';
+delete from event_document_autosends where event_id::text like '60000000-0000-4000-8000-%' or event_id::text like '70000000-0000-4000-8000-%' or event_id::text like '80000000-0000-4000-8000-%';
+delete from event_documents           where event_id::text like '60000000-0000-4000-8000-%' or event_id::text like '70000000-0000-4000-8000-%' or event_id::text like '80000000-0000-4000-8000-%';
 
 -- Events, then their sections and bookings (and check-ins, breaks, violations) cascade.
-delete from events where id::text like '60000000-0000-4000-8000-%' or id::text like '70000000-0000-4000-8000-%';
+delete from events where id::text like '60000000-0000-4000-8000-%' or id::text like '70000000-0000-4000-8000-%' or id::text like '80000000-0000-4000-8000-%';
 
 delete from client_qualifications where client_id::text like '40000000-0000-4000-8000-%';
 delete from client_rate_cards     where client_id::text like '40000000-0000-4000-8000-%';
