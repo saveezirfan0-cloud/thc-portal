@@ -90,6 +90,8 @@ export interface StaffOption {
 
 export interface ClientCardData {
   client: Client | null;
+  /** `clients.name_badges` (ADR-0081): badges go with every Allocation Timesheet. */
+  nameBadges: boolean;
   rateCard: RateCardRow[];
   qualified: QualifiedStaffRow[];
   events: ClientEventRow[];

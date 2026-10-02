@@ -7,6 +7,7 @@ import { OfficeShell } from '../../_components/OfficeShell';
 import { RecordHistory } from '../../_components/history/RecordHistory';
 import { ClientModal } from '../ClientModal';
 import { ClientEvents } from './ClientEvents';
+import { NameBadges } from './NameBadges';
 import { QualifiedStaff } from './QualifiedStaff';
 import { RateCard } from './RateCard';
 import { marginTone, newEventHref } from './card';
@@ -35,10 +36,13 @@ import './card.css';
 export function ClientCard({
   data,
   ratesVisible = true,
+  canWrite = true,
 }: {
   data: ClientCardData;
   /** ADR-0061: the viewer's office_can('finance') — no margin, no rate controls without it. */
   ratesVisible?: boolean;
+  /** ADR-0060: office_can('write') — a viewer sees the Name badges state, not the switch. */
+  canWrite?: boolean;
 }) {
   const client = data.client as Client;
   const [editing, setEditing] = useState(false);
@@ -104,6 +108,8 @@ export function ClientCard({
                   <Chip key={email}>{email}</Chip>
                 ))}
               </span>
+              <span className="k">Name badges</span>
+              <NameBadges clientId={client.id} on={data.nameBadges} canWrite={canWrite} />
               <span className="k">Break policy</span>
               <span>
                 {client.pays_breaks ? (

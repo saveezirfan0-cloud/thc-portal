@@ -76,6 +76,8 @@ export interface DocumentEmailHtml {
   closing?: string;
   /** Under each file name on its card. */
   attachmentNote: string;
+  /** Under the name badges' file name (ADR-0081, D1 only); `{nameBadges}` is the count. */
+  badgesNote?: string;
   /** A `mailto:` button to the sender's reply-to, subject "Re: <subject>". */
   replyButton?: string;
 }
@@ -99,11 +101,11 @@ export const DOCUMENT_EMAILS = {
     sender: 'timesheets',
     bucket: 'timesheets',
     title: 'Allocation Timesheet — {event}, {date}{poSuffix}',
-    body: "Hello,\n\nPlease find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}\n\nOn the day, please ask your manager on site to:\n1. fill in each person's finish time, any comments (breaks, early finishes) and hours worked,\n2. print and sign their name at the bottom,\n3. email the signed sheet back to us — just reply to this email.\n\nAny questions, you can reach us the same way.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
+    body: "Hello,\n\nPlease find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}{badgeLine}\n\nOn the day, please ask your manager on site to:\n1. fill in each person's finish time, any comments (breaks, early finishes) and hours worked,\n2. print and sign their name at the bottom,\n3. email the signed sheet back to us — just reply to this email.\n\nAny questions, you can reach us the same way.\n\nBest regards,\nThe Hospitality Company\ntimesheets@thehospitalitycompany.co.uk · www.thehospitalitycompany.co.uk",
     html: {
       eyebrow: 'Allocation Timesheet',
       intro:
-        "Please find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}",
+        "Please find attached the Allocation Timesheet for the {event} on {date}. It lists the {staffCount} staff booked to work, with each person's role and scheduled start and finish times.{poLine}{badgeLine}",
       stepsLead: 'On the day, please ask your manager on site to:',
       steps: [
         "fill in each person's finish time, any comments (breaks, early finishes) and hours worked,",
@@ -112,6 +114,7 @@ export const DOCUMENT_EMAILS = {
       ],
       closing: 'Any questions, you can reach us the same way.',
       attachmentNote: 'Allocation Timesheet · attached',
+      badgesNote: 'Name badges · {nameBadges} to print',
       replyButton: 'Reply with the signed sheet',
     },
     trigger: '"Send allocation sheet" on the Back Office event page (§11.4)',
@@ -148,6 +151,12 @@ export interface Attachment {
   bucket: DocumentBucket;
   path: string;
   filename: string;
+  /**
+   * What the file is when it is not the email's main document: 'badges',
+   * the D1 name badges (ADR-0081). Its card says the template's
+   * `badgesNote` instead of `attachmentNote`.
+   */
+  role?: 'badges';
 }
 
 export interface EmailWithAttachments extends EmailMessage {
@@ -183,7 +192,12 @@ function parseAttachments(raw: unknown, code: DocumentEmailCode): Attachment[] {
     if (typeof a.filename !== 'string' || a.filename.trim() === '') {
       throw new UnsendableRow(`${code}: attachment ${index} has no file name`);
     }
-    return { bucket, path: a.path, filename: a.filename };
+    return {
+      bucket,
+      path: a.path,
+      filename: a.filename,
+      ...(a.role === 'badges' ? { role: 'badges' as const } : {}),
+    };
   });
 }
 
@@ -208,7 +222,19 @@ function derivedValues(
     };
   }
   const po = (values.poNumber ?? '').trim();
-  return { ...values, poLine: po ? ` Your PO number ${po} is on the sheet.` : '' };
+  // ADR-0081: a client with name badges on gets them with the D1 sheet. The
+  // count is in the facts box ("Name badges"), so the sentence needs none.
+  const badges = Number((values.nameBadges ?? '').trim()) || 0;
+  return {
+    ...values,
+    poLine: po ? ` Your PO number ${po} is on the sheet.` : '',
+    badgeLine:
+      badges > 0
+        ? badges === 1
+          ? ' Their THC name badge is attached too, as a second PDF: print it, cut along the dashed lines and slide it into a badge holder.'
+          : ' Their THC name badges are attached too, as a second PDF: print them, cut along the dashed lines and slide each one into a badge holder.'
+        : '',
+  };
 }
 
 /**
@@ -239,6 +265,8 @@ function documentFacts(code: DocumentEmailCode, v: Record<string, string>): Emai
       // "Chef 07:00 – 15:00 · Waiting Staff 17:00 – 23:30": one role a line.
       { label: 'Scheduled', value: get('schedule').split(' · ').join('\n') },
       { label: 'PO number', value: get('poNumber') },
+      // ADR-0081: '' (no badges) drops the row.
+      { label: 'Name badges', value: get('nameBadges') },
     ];
   }
   return [
@@ -262,7 +290,13 @@ function documentHtml(
   const facts: EmailBlock = { kind: 'facts', rows: documentFacts(code, values) };
   const files: EmailBlock = {
     kind: 'attachments',
-    items: attachments.map((a) => ({ filename: a.filename, note: copy.attachmentNote })),
+    items: attachments.map((a) => ({
+      filename: a.filename,
+      note:
+        a.role === 'badges' && copy.badgesNote
+          ? render(copy.badgesNote, values)
+          : copy.attachmentNote,
+    })),
   };
 
   if (!copy.intro) {

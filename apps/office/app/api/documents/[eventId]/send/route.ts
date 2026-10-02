@@ -17,6 +17,8 @@ import {
  * contact email on the client card (§9.7, §9.12) through
  * `queue_event_document_email()`. The email itself goes when the outbox
  * drain (P2) is live; until then it is queued, and the response says so.
+ * For a client with name badges on, the Allocation Timesheet email carries
+ * the badges too (ADR-0081); `badges` is how many.
  */
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -52,6 +54,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ eve
     fileName: result.layout.fileName,
     pages: result.pages,
     rows: result.layout.rowCount,
+    badges: result.badges?.layout.count ?? 0,
     recipients,
   });
 }
