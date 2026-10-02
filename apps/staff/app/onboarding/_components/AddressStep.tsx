@@ -7,9 +7,10 @@ import { addressErrors, formatPostcode, pinInUk } from '@thc/domain';
 import { AddressFields } from '../../_components/AddressFields';
 import { addressLine, homeAddressMissing } from '../../_lib/address';
 import type { HomeAddressParts } from '../../_lib/address';
-import { lookupPostcode, saveAddress } from '../actions';
+import { lookupPostcode, saveAddress, saveLanguages } from '../actions';
 import { DEFAULT_CENTRE } from '../geo';
 import type { LatLng } from '../geo';
+import { LanguagesQuestion } from './LanguagesQuestion';
 import { PinMap } from './PinMap';
 import { WizardFoot, WizardTop } from './Wizard';
 
@@ -21,12 +22,20 @@ import { WizardFoot, WizardTop } from './Wizard';
  * office and payroll read: one box per part (flat, house, street, area,
  * town, postcode), sent to the RPC as its `line, town, postcode`. The
  * postcode search only moves the map, and fills the Postcode box.
+ *
+ * It also asks which languages the worker speaks (ADR-0080): an event can
+ * need staff who speak more than English, and only those who said so are
+ * offered it.
  */
 export function AddressStep({
   initial,
+  languages: initialLanguages,
 }: {
   initial: HomeAddressParts & { lat: number | null; lng: number | null };
+  /** What is on file, or English alone when never asked. */
+  languages: string[];
 }) {
+  const [languages, setLanguages] = useState<string[]>(initialLanguages);
   const router = useRouter();
   const [address, setAddress] = useState<HomeAddressParts>({
     flat: initial.flat,
@@ -96,6 +105,12 @@ export function AddressStep({
     if (!pin) return;
     setError(null);
     start(async () => {
+      // Languages first: saving the address is what completes the step.
+      const spoken = await saveLanguages(languages);
+      if (!spoken.ok) {
+        setError(spoken.message);
+        return;
+      }
       const result = await saveAddress({ address, lat: pin.lat, lng: pin.lng });
       if (!result.ok) setError(result.message);
       else router.push('/onboarding/3');
@@ -136,6 +151,8 @@ export function AddressStep({
       <div className="xs muted">
         You can change your address later in Profile details — the office is notified of the change.
       </div>
+
+      <LanguagesQuestion value={languages} onChange={setLanguages} disabled={pending} />
 
       {error ? <Alert tone="coral">{error}</Alert> : null}
 

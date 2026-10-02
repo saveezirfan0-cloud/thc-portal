@@ -106,6 +106,7 @@ function input(id: string | null, roles: ReturnType<typeof section>[]) {
     onsiteContact: '',
     notes: '',
     autoAssign: true,
+    requiredLanguages: ['English'],
     roles,
   };
 }

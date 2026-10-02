@@ -122,7 +122,7 @@ const data = (over: Partial<CandidateData> = {}): CandidateData => ({
   roles: [],
   rtwChecks: [],
   rtwCheckEnabled: false,
-  facts: { niNumber: 'QQ123456C', belowDegreeLevel: false, visaHourLimit: null },
+  facts: { niNumber: 'QQ123456C', belowDegreeLevel: false, visaHourLimit: null, languages: null },
   problem: null,
   ...over,
 });
