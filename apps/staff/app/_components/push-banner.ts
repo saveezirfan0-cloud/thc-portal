@@ -1,4 +1,4 @@
-import { isIos, pushCopy } from '../../lib/push';
+import { isIos } from '../../lib/push';
 import type { PushState } from '../../lib/push';
 
 /**
@@ -6,19 +6,20 @@ import type { PushState } from '../../lib/push';
  * it can be put away, and for how long. Pure, so every case is a test
  * rather than a phone.
  *
- * Two kinds of banner, and they are not treated alike:
+ * Every banner is one short sentence and at most one action. The how-to
+ * lives on /install and /notifications; the banner only says what is wrong
+ * and points there. Two kinds, told apart by whether they can be put away:
  *
  *   A FAULT — push was working on this device and is not any more: iOS
  *   revoked the subscription (permission still "granted", no subscription
  *   behind it), or the worker switched notifications off after having them
- *   on. That is the silent failure that costs shifts, so it keeps the
- *   original wording and tone and cannot be dismissed.
+ *   on. That is the silent failure that costs shifts, so it cannot be
+ *   dismissed.
  *
  *   ADVICE — push has never worked here: an iPhone in a Safari tab, a
  *   browser with no Push API, a build without VAPID keys, a worker not yet
- *   asked, or one who said no. Accurate for their browser, one compact line,
- *   and dismissible for seven days on this device. It used to fill a fifth
- *   of every screen with advice that was wrong for the phone it was on.
+ *   asked, or one who said no. Accurate for their browser, and dismissible
+ *   for seven days on this device.
  */
 
 export type Browser = 'ios-safari' | 'ios-other' | 'android' | 'other';
@@ -58,66 +59,60 @@ export interface PushBanner {
   /** Stable per message: a dismissal only hides the message it was given for. */
   variant: string;
   tone: BannerTone;
-  headline: string;
-  detail: string;
+  /** One short sentence. */
+  text: string;
   link: { href: '/install' | '/notifications'; label: string } | null;
   dismissible: boolean;
 }
+
+type Message = Omit<PushBanner, 'dismissible'>;
+
+const HOW_TO_INSTALL = { href: '/install', label: 'Show me' } as const;
+
+/** Push worked here and has stopped: permission lapsed or was reset. */
+const STOPPED: Message = {
+  variant: 'stopped',
+  tone: 'cyan',
+  text: 'Notifications have stopped.',
+  link: { href: '/notifications', label: 'Turn on' },
+};
 
 /** What the banner says, or null when there is nothing to say. */
 export function pushBanner(input: BannerInput): PushBanner | null {
   const { state, lapsed, wasOn, browser, standalone } = input;
   if (state === 'granted' && !lapsed) return null;
 
-  if (lapsed || wasOn) {
-    // Unchanged from before this file existed: the same words and tone as
-    // PushStatus always showed, and no way to put it away.
-    const shown: PushState = lapsed ? 'default' : state;
-    const copy = pushCopy(shown);
-    return {
-      variant: `fault:${shown}`,
-      tone: faultTone(shown),
-      headline: copy.headline,
-      detail: copy.detail,
-      link: copy.link ? { href: copy.link, label: 'Show me how' } : null,
-      dismissible: false,
-    };
-  }
-
-  const advice = adviceFor(state, browser, standalone);
-  return advice ? { ...advice, dismissible: true } : null;
+  const fault = lapsed || wasOn;
+  const message =
+    lapsed || (fault && state === 'default') ? STOPPED : messageFor(state, browser, standalone);
+  if (!message) return null;
+  return {
+    ...message,
+    variant: fault ? `fault:${message.variant}` : message.variant,
+    dismissible: !fault,
+  };
 }
 
 /**
- * Coral is for the state the worker is losing shifts to and can fix, or has
- * chosen; `unconfigured` is neither (nobody in the company has push yet,
- * docs/14 O3) and the install step is an instruction, not a fault.
+ * Coral is for the state the worker is losing shifts to and has chosen;
+ * amber for `unconfigured`, which nobody on the phone can fix; cyan for an
+ * instruction.
  */
-function faultTone(state: PushState): BannerTone {
-  return state === 'denied' ? 'coral' : state === 'unconfigured' ? 'amber' : 'cyan';
-}
-
-function adviceFor(
-  state: PushState,
-  browser: Browser,
-  standalone: boolean,
-): Omit<PushBanner, 'dismissible'> | null {
+function messageFor(state: PushState, browser: Browser, standalone: boolean): Message | null {
   switch (state) {
     case 'needs-install':
       return browser === 'ios-safari'
         ? {
             variant: 'install:ios-safari',
             tone: 'cyan',
-            headline: 'Add THC to your Home Screen to get shift alerts:',
-            detail: 'tap Share, then Add to Home Screen.',
-            link: { href: '/install', label: 'Show me how' },
+            text: 'Add THC to your Home Screen to get shift alerts.',
+            link: HOW_TO_INSTALL,
           }
         : {
             variant: 'install:ios-other',
             tone: 'cyan',
-            headline: 'Shift alerts need the app on your Home Screen:',
-            detail: 'open this page in Safari, tap Share, then Add to Home Screen.',
-            link: { href: '/install', label: 'Show me how' },
+            text: 'Open in Safari, then add THC to your Home Screen.',
+            link: HOW_TO_INSTALL,
           };
 
     case 'unsupported':
@@ -126,8 +121,7 @@ function adviceFor(
         return {
           variant: 'unsupported:ios-old',
           tone: 'cyan',
-          headline: 'Shift alerts need iOS 16.4 or later:',
-          detail: 'update in Settings → General → Software Update.',
+          text: 'Shift alerts need iOS 16.4 or later.',
           link: null,
         };
       }
@@ -135,26 +129,22 @@ function adviceFor(
         return {
           variant: 'unsupported:android',
           tone: 'cyan',
-          headline: 'This browser can’t show shift alerts:',
-          detail: 'open THC in Chrome and add it to your home screen.',
-          link: { href: '/install', label: 'Show me how' },
+          text: 'Open THC in Chrome to get shift alerts.',
+          link: HOW_TO_INSTALL,
         };
       }
       return {
         variant: 'unsupported:other',
         tone: 'cyan',
-        headline: 'This browser can’t show shift alerts.',
-        detail:
-          'They work on your phone: Safari on iPhone or Chrome on Android, added to the home screen.',
-        link: { href: '/install', label: 'Show me how' },
+        text: 'Shift alerts work on your phone, not in this browser.',
+        link: HOW_TO_INSTALL,
       };
 
     case 'unconfigured':
       return {
         variant: 'unconfigured',
         tone: 'amber',
-        headline: 'Notifications aren’t available yet.',
-        detail: 'The office is setting them up — check the app for new shifts until then.',
+        text: 'Shift alerts aren’t set up yet — check the app for new shifts.',
         link: null,
       };
 
@@ -162,17 +152,15 @@ function adviceFor(
       return {
         variant: 'denied',
         tone: 'coral',
-        headline: 'Notifications are off.',
-        detail: 'You’ll miss shift invitations and the 12:00 reminder.',
-        link: { href: '/notifications', label: 'Show me how' },
+        text: 'Notifications are off — you’ll miss shifts.',
+        link: { href: '/notifications', label: 'Fix' },
       };
 
     case 'default':
       return {
         variant: 'default',
         tone: 'cyan',
-        headline: 'Turn on notifications',
-        detail: 'so you don’t miss shift invitations and the 12:00 reminder.',
+        text: 'Turn on notifications so you don’t miss shifts.',
         link: { href: '/notifications', label: 'Turn on' },
       };
 

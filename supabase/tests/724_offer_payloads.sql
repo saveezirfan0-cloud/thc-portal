@@ -93,11 +93,13 @@ $$;
 -- ---------------------------------------------------------------------
 -- The six sends, each by its real sender
 -- ---------------------------------------------------------------------
-select set_config('request.jwt.claims', json_build_object('sub', :'uoff', 'role', 'authenticated')::text, true);
-set local role authenticated;
-select offer_shift(:'b1') ->> 'offerId' as o1 \gset
-reset role;
-select set_config('request.jwt.claims', '', true);
+-- A cover request the office opened to the pool — the only pool offer
+-- since 20261002110000 (a worker cannot offer a shift to other workers).
+insert into shift_offers (booking_id, mode, expires_at, decided_by)
+select b.id, 'pool', sr.starts_at, :'admin_uid'
+  from bookings b join shift_requirements sr on sr.id = b.shift_id
+ where b.id = :'b1'
+returning id as o1 \gset
 
 select is(notify_offer_candidates(:'o1', array[:'tk'::uuid]), 1, 'OF1 is sent by an hourly round');
 

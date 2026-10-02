@@ -361,7 +361,7 @@ function confirmedLine(booking: BoardBooking, roleName: string): string {
       : "I'm ready — not yet",
   );
   if (booking.source === 'self') parts.push('self-applied via Radar');
-  // ADR-0046: booked by taking a shift another worker offered up.
+  // ADR-0046: booked by taking a cover request the office opened to the pool.
   if (booking.source === 'offer') parts.push('took an offered shift');
   return parts.join(' · ');
 }
