@@ -73,7 +73,19 @@ export interface SettingsData {
    * are always refused (20260923100200_rota_guard.sql).
    */
   rotaGuardMode: RotaGuardMode;
+  /**
+   * ADR-0083: the register codes switched off on the Notifications tab
+   * (`settings.notification_switches`). Everything else is on.
+   */
+  notificationsOff: string[];
   problem: string | null;
+}
+
+/** The screen's two tabs; `?tab=notifications` opens the second. */
+export type SettingsTab = 'general' | 'notifications';
+
+export function parseSettingsTab(value: unknown): SettingsTab {
+  return value === 'notifications' ? 'notifications' : 'general';
 }
 
 export type RotaGuardMode = 'block' | 'warn';

@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { OFFICE_INBOX_CODES } from '@thc/notifications';
+import { OFFICE_INBOX_CODES, SWITCHED_OFF_ERROR } from '@thc/notifications';
 import type { OfficeInboxCode } from '@thc/notifications';
 import { createClient } from '@thc/db/server';
 import { supabaseConfigured } from '../staff/data';
@@ -64,7 +64,10 @@ export async function loadInbox(filters: InboxFilters, now = new Date()): Promis
     .select('id', { count: 'exact', head: true })
     .eq('channel', 'email')
     .in('template', [...OFFICE_INBOX_CODES])
-    .not('failed_at', 'is', null);
+    .not('failed_at', 'is', null)
+    // An email switched off on /settings → Notifications was not sent on
+    // purpose (ADR-0083); it is listed with its reason, not counted as a failure.
+    .or(`error.is.null,error.neq."${SWITCHED_OFF_ERROR}"`);
   if (since) failed = failed.gte('queued_at', since);
 
   const [rows, failures] = await Promise.all([

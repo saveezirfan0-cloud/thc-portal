@@ -115,3 +115,55 @@
     min-height: var(--tap-min);
   }
 }
+
+/* The General blocks stay mounted behind the Notifications tab, so an
+   unsaved edit survives a look at the other tab; `hidden` has to beat the
+   grid's own display. */
+.settings-grid[hidden] {
+  display: none;
+}
+
+/* ADR-0083 · Notifications: one row per notification — name, code and
+   when on the left, the switch on the right. */
+.notif-tab {
+  margin-top: var(--sp-16);
+}
+.notif-list {
+  display: flex;
+  flex-direction: column;
+}
+.notif-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sp-10);
+  align-items: center;
+  padding: var(--sp-8) 0;
+  border-bottom: 1px solid var(--line);
+}
+.notif-row:last-child {
+  border-bottom: 0;
+}
+.notif-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
+}
+.notif-label {
+  font-size: var(--fs-13);
+  font-weight: 600;
+}
+.notif-code {
+  font-size: var(--fs-11);
+  font-weight: 400;
+  margin-left: var(--sp-4);
+}
+.notif-row.is-off .notif-label {
+  color: var(--muted);
+}
+.notif-warning {
+  color: var(--amber-ink);
+}
+.notif-row > .switch {
+  min-height: var(--tap-min);
+}

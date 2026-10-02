@@ -2,6 +2,7 @@
 
 import { cookies } from 'next/headers';
 import { revalidatePath } from 'next/cache';
+import { isSwitchableCode } from '@thc/notifications';
 import { settingsDb } from './db';
 import { supabaseConfigured } from './data';
 import {
@@ -130,6 +131,41 @@ export async function saveRotaGuardMode(mode: RotaGuardMode): Promise<ActionResu
   const saved = await put('rota_guard_mode', mode);
   if (saved.ok) revalidatePath('/compliance');
   return saved;
+}
+
+/**
+ * ADR-0083: switch one notification on or off. Saved at once — a switch
+ * that waits for a Save button reads as done when it is not.
+ *
+ * The row holds only the codes that are OFF ({"BG08": false}); switching
+ * one back on drops its key. Read, change one key, write: two owners
+ * flicking different switches in the same instant could lose one, and the
+ * screen re-reads after every save, so the loser sees the switch where it
+ * really is.
+ */
+export async function saveNotificationSwitch(code: string, on: boolean): Promise<ActionResult> {
+  if (!isSwitchableCode(code)) return { ok: false, message: `${code} is not a notification.` };
+  if (!supabaseConfigured()) return { ok: false, message: NOT_CONFIGURED };
+
+  const supabase = settingsDb(await cookies());
+  const { data, error } = await supabase
+    .from('settings')
+    .select('value')
+    .eq('key', 'notification_switches')
+    .maybeSingle();
+  if (error) return { ok: false, message: error.message };
+
+  const current: unknown = data?.value;
+  const off: Record<string, false> = {};
+  if (current && typeof current === 'object' && !Array.isArray(current)) {
+    for (const [key, value] of Object.entries(current as Record<string, unknown>)) {
+      if (value === false) off[key] = false;
+    }
+  }
+  if (on) delete off[code];
+  else off[code] = false;
+
+  return put('notification_switches', off);
 }
 
 /**
