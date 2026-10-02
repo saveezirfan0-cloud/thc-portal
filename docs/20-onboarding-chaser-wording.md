@@ -6,6 +6,10 @@ word from the register, `packages/notifications/src/templates.ts`
 (`OC1`, `OC2`, `OC3`). The register is what is actually sent. A change THC
 asks for goes there first, then here.
 
+The PDF sent to THC is `docs/pdfs/THC-Onboarding-Reminders-Wording.pdf`:
+every email rendered as it is sent, the push notifications, and a sign-off
+page.
+
 The examples use the sample candidate from the email previews, **Amara**.
 `{name}` is the candidate's first name.
 
