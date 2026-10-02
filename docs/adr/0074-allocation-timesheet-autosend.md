@@ -1,6 +1,6 @@
 # ADR-0074 · The Allocation Timesheet and the Completed Allocation Timesheet: new names, automatic sending, THC's alcohol-policy column
 
-**Status:** Accepted (THC, 29.09.2026). Agreed deviations from scope v1.6 §11.3 and §11.4. The manual Send and Download buttons stay exactly as §11.4 describes them.
+**Status:** Accepted (THC, 29.09.2026); §3 superseded by [ADR-0080](0080-remove-alcohol-policy-column.md) (02.10.2026). Agreed deviations from scope v1.6 §11.3 and §11.4. The manual Send and Download buttons stay exactly as §11.4 describes them.
 
 ## Context
 
@@ -101,6 +101,8 @@ The new route uses **the same bearer secret as rtw-check**: vault `rtw_job_secre
 The job is registered **enabled**. As with every schedule, it reaches pg_cron the next time `select install_job_schedules();` is run after deploy (docs/16 §4.7).
 
 ### 3 · Alcohol Policy Understood and Agreed
+
+> **Superseded by [ADR-0080](0080-remove-alcohol-policy-column.md) (THC, 02.10.2026):** the column is removed again and the sheet has §11.3's seven columns. The type sizes, no hyphenation and the name clamp below still apply.
 
 THC's paper form has a last column headed **Alcohol Policy Understood and Agreed**. The PDF now has it too, after Hours Worked. It is blank in both states, because the worker initials it by hand on site.
 

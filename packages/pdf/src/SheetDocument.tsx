@@ -50,8 +50,8 @@ export interface SheetPhoto {
 /** Keyed by `SheetRow.photoPath`. A missing key is an empty Photo cell. */
 export type SheetPhotos = ReadonlyMap<string, SheetPhoto>;
 
-/* Words are never hyphenated: "Alcohol Policy Un-derstood" and a split
-   surname read as mistakes on a signed form. A long word that cannot fit
+/* Words are never hyphenated: a split heading or surname reads as a
+   mistake on a signed form. A long word that cannot fit
    simply wraps whole. (react-pdf's hyphenation setting is process-wide;
    this package is its only user in the office app.) */
 Font.registerHyphenationCallback((word) => [word]);
@@ -61,11 +61,11 @@ const MUTED = '#5b5b5b';
 const RULE = '#9a9a9a';
 const SECTION_FILL = '#eeeeee';
 
-/* Column widths inside 28pt margins on A4: 539pt. The wireframe's seven
-   columns (52/196/74/70/118/130/74), narrowed to make room for THC's
-   eighth, Alcohol Policy Understood and Agreed (ADR-0074). Start Time's
-   "07:00 (15:00)" still fits one line at the 8pt body size. */
-const WIDTHS = [36, 130, 56, 44, 72, 82, 44, 75] as const;
+/* Column widths from the wireframe's colgroup (52/196/74/70/118/130/74),
+   scaled to A4 inside 28pt margins: 539pt. ADR-0074's eighth column,
+   Alcohol Policy Understood and Agreed, came off again (ADR-0080), so the
+   seven columns take the full width back. */
+const WIDTHS = [39, 148, 56, 53, 89, 98, 56] as const;
 const ROW_H = 32;
 const PHOTO = 26;
 
@@ -241,7 +241,6 @@ function Row({ row, photos }: { row: SheetRow; photos: SheetPhotos }) {
       <Cell index={6} center>
         {row.hoursWorked}
       </Cell>
-      <Cell index={7}>{row.alcoholPolicy}</Cell>
     </View>
   );
 }

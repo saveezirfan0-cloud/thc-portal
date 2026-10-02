@@ -207,17 +207,19 @@ describe('ordering and naming', () => {
   });
 });
 
-describe('THC form changes of 29.09.2026 (ADR-0074)', () => {
-  it('ends with the Alcohol Policy Understood and Agreed column, after Hours Worked', () => {
-    expect(SHEET_COLUMNS.at(-1)).toBe('Alcohol Policy Understood and Agreed');
-    expect(SHEET_COLUMNS.at(-2)).toBe('Hours Worked');
+describe('THC form changes of 29.09.2026 and 02.10.2026 (ADR-0074, ADR-0080)', () => {
+  it('ends with Hours Worked: the Alcohol Policy column is gone (ADR-0080)', () => {
+    expect(SHEET_COLUMNS.at(-1)).toBe('Hours Worked');
+    expect(SHEET_COLUMNS).toHaveLength(7);
     expect(SHEET_COLUMNS[0]).toBe('Photo');
+    expect(SHEET_COLUMNS.some((c) => /alcohol/i.test(c))).toBe(false);
   });
 
-  it('leaves the Alcohol Policy cell blank in both states — it is initialled by hand', () => {
+  it('prints no Alcohol Policy cell in either state', () => {
     for (const kind of ['allocation', 'signout'] as const) {
       const layout = layoutSheet({ kind, event: GALA, people: signOutPeople() });
-      expect(rows(layout).every((r) => r.alcoholPolicy === '')).toBe(true);
+      expect(sheetText(layout)).not.toMatch(/alcohol/i);
+      expect(rows(layout).every((r) => !('alcoholPolicy' in r))).toBe(true);
     }
   });
 
