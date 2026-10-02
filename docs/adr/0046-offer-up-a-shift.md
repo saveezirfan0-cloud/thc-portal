@@ -1,6 +1,8 @@
 # ADR-0046 · Offer up a shift: the booking is released only when a confirmed replacement takes it
 
-Status: proposed — awaiting THC · 25.09.2026
+Status: proposed — awaiting THC · 25.09.2026 · **amended 02.10.2026: THC rejected worker-initiated
+offers — see the last amendment.** What stands is the office path: Ask the office for cover,
+Open to pool, Decline, and the take.
 
 Addition to Scope v1.6: §3.6 (cause `handed_over`, source `offer`), RULE-04 §7 (a second
 worker-initiated exit from `confirmed` under the same 72 h boundary), §10.4, §3.3, §3.4
@@ -187,3 +189,41 @@ it is held:
    `offerVisibleTo()` takes the viewer's own booking status on the section — only none,
    `invited`, `applied` or `closed` may see an offer, as `staff_open_offers()` filters.
    Vectors in `shiftOffer.vectors.json`; pgTAP 720–724 hold the SQL side.
+
+## Amendment · THC, 02.10.2026 — a worker cannot offer their shift to other workers (`20261002110000_no_worker_shift_offers.sql`)
+
+THC: *"A worker shouldn't be able to offer their shift to other staff members."*
+
+Decision 1 (pool offers by the worker) and decision 5 (peer-to-peer, designed but never
+built) are withdrawn. Q16 and Q17 are answered by it. The rest stands, because it is the
+office's act rather than the worker's:
+
+1. **No "Offer this shift".** `offer_shift(uuid)` is dropped. It was the only way a
+   worker could create a pool offer: the staff role holds no policy on `shift_offers`, and
+   nothing creates a `direct` row. The Staff App loses the button, its dialog, the
+   `offerShift` action and `OFFER_REFUSAL_COPY`. `offerPanel()` no longer has an `offer`
+   state.
+2. **More than 72 h out with auto-assign on, the worker's tool is Cancel shift** (RULE-04),
+   exactly as Scope v1.6 has it: auto-assign refills the slot. The shift detail shows no
+   offer panel there. `request_cover()` refuses that case as `use_cancel`, which pointed at
+   the old button when it was called `use_offer`. The copy reads: "More than 72 hours before
+   the start, use “Cancel shift” and we’ll find someone else."
+3. **Ask the office for cover is unchanged.** It is offered inside 72 h, or with auto-assign
+   off. Other workers never see it. The office opens it to the pool (`decided_by` set),
+   declines it (OF6), or withdraws the booking by hand. Only an office-opened request reaches
+   Radar's "Up for grabs", the OF1 rounds and `take_offered_shift()`, and it runs to the
+   section's start. A completed take still hands the booking over (`handed_over`, Q15
+   unchanged).
+4. **Open worker offers at deploy.** The migration closes any pool offer still open that
+   the office never opened (`decided_by` null): open → `lapsed`, with closed_reason
+   `worker_offers_removed`. The worker was never unbooked, so they stay confirmed. While the
+   section has not started they get OF3 ("Nobody took your … shift — you're still booked"),
+   as for an offer that ran out. Each closed offer is audited.
+5. **Back Office labels.** The Confirmed-row chip for a pool offer now reads "Open to pool ·
+   until {UK}", since only the office opens one. A `handed_over` shift on the staff profile
+   reads "Handed over (cover taken)".
+6. **Tests.** pgTAP 720 asserts that `offer_shift` no longer exists and that a far-out
+   worker gets `use_cancel`. Its withdraw cases run on a cover request. 721 and 724 build
+   their pool offers as office-opened rows. 722 expects `use_cancel`. The domain package
+   keeps `canOfferShift()` (= `canCancelShift()`) and `offerExpiresAt()`, which the take
+   and its vectors still use. The Staff App uses `canCancelShift()` directly.

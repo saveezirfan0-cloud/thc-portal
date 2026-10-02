@@ -74,7 +74,7 @@ export interface PushCopy {
   /** Whether a "Turn on notifications" button can do anything at all. */
   actionable: boolean;
   /**
-   * Where "Show me how" goes, when there is somewhere to go. Separate from
+   * Where the link goes, when there is somewhere to go. Separate from
    * `actionable`: a denied permission cannot be asked for again, but the
    * worker can still be walked through their phone's settings (auth.html,
    * "Notifications blocked").
