@@ -154,6 +154,8 @@ export const SILENT_FIELDS = [
   'auto_assign',
   // ADR-0079: steers who is invited next; nobody booked is re-asked.
   'required_gender',
+  // ADR-0080: the same, for the languages an event needs.
+  'required_languages',
   'title',
 ] as const;
 

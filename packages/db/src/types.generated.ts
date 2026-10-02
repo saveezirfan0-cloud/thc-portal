@@ -1610,6 +1610,7 @@ export type Database = {
           pays_breaks: boolean;
           pays_buffer: boolean;
           po_number: string | null;
+          required_languages: string[];
           title: string;
           venue_address: string;
           venue_id: string | null;
@@ -1633,6 +1634,7 @@ export type Database = {
           pays_breaks: boolean;
           pays_buffer: boolean;
           po_number?: string | null;
+          required_languages?: string[];
           title: string;
           venue_address: string;
           venue_id?: string | null;
@@ -1656,6 +1658,7 @@ export type Database = {
           pays_breaks?: boolean;
           pays_buffer?: boolean;
           po_number?: string | null;
+          required_languages?: string[];
           title?: string;
           venue_address?: string;
           venue_id?: string | null;
@@ -3957,6 +3960,7 @@ export type Database = {
           home_location_stale: boolean;
           home_postcode: string | null;
           id: string;
+          languages: string[] | null;
           last_name: string;
           leave_reason: string | null;
           left_at: string | null;
@@ -4017,6 +4021,7 @@ export type Database = {
           home_location_stale?: boolean;
           home_postcode?: string | null;
           id?: string;
+          languages?: string[] | null;
           last_name: string;
           leave_reason?: string | null;
           left_at?: string | null;
@@ -4077,6 +4082,7 @@ export type Database = {
           home_location_stale?: boolean;
           home_postcode?: string | null;
           id?: string;
+          languages?: string[] | null;
           last_name?: string;
           leave_reason?: string | null;
           left_at?: string | null;
@@ -8503,6 +8509,7 @@ export type Database = {
         Returns: undefined;
       };
       job_run_start: { Args: { p_job: string }; Returns: number };
+      known_languages: { Args: never; Returns: string[] };
       lapse_shift_offers: { Args: { p_now?: string }; Returns: number };
       link_staff_account: {
         Args: { p_staff: string; p_user: string };
@@ -8620,6 +8627,7 @@ export type Database = {
           student_loan: string;
         }[];
       };
+      normalise_languages: { Args: { p_languages: string[] }; Returns: string[] };
       normalise_msisdn: { Args: { p: string }; Returns: string };
       normalise_share_code: { Args: { p: string }; Returns: string };
       notify_offer_candidates: {
@@ -9398,6 +9406,10 @@ export type Database = {
         Args: { p_gender: string | null; p_staff: string };
         Returns: Json;
       };
+      set_staff_languages: {
+        Args: { p_languages: string[] | null; p_staff: string };
+        Returns: Json;
+      };
       set_staff_pay_rate: {
         Args: { p_pay_rate: number | null; p_staff: string };
         Returns: undefined;
@@ -10165,6 +10177,7 @@ export type Database = {
         };
         Returns: Json;
       };
+      staff_save_languages: { Args: { p_languages: string[] }; Returns: Json };
       staff_set_ni_number: { Args: { p_ni: string }; Returns: Json };
       staff_set_photo: { Args: { p_path: string }; Returns: Json };
       staff_shift_detail: {

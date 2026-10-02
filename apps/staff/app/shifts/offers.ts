@@ -187,6 +187,8 @@ const TAKE_REFUSAL_COPY: Readonly<Record<string, Refusal>> = {
   male_only: APPLY_REFUSAL_COPY.male_only,
   female_only: APPLY_REFUSAL_COPY.female_only,
   gender_not_recorded: APPLY_REFUSAL_COPY.gender_not_recorded,
+  language_not_spoken: APPLY_REFUSAL_COPY.language_not_spoken,
+  languages_not_recorded: APPLY_REFUSAL_COPY.languages_not_recorded,
   do_not_return: APPLY_REFUSAL_COPY.do_not_return,
   blocked: APPLY_REFUSAL_COPY.blocked,
   self_cancelled: APPLY_REFUSAL_COPY.self_cancelled,

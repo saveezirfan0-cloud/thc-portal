@@ -8,6 +8,7 @@ import { DobCorrection } from '../../_components/DobCorrection';
 import { ReferralsCard } from './ReferralsCard';
 import { PayRateCard } from './PayRateCard';
 import { GenderField } from './GenderField';
+import { LanguagesField } from './LanguagesField';
 import type {
   DeclarationRow,
   EmergencyContact,
@@ -49,6 +50,8 @@ export function Overview({
   locationStale = false,
   gender,
   canEditGender = false,
+  languages,
+  canEditLanguages = false,
   emergencyContact = null,
   emergencyContactProblem = null,
   referrals = null,
@@ -68,6 +71,10 @@ export function Overview({
   gender?: 'M' | 'F' | null;
   /** Any office login that may write (ADR-0079). */
   canEditGender?: boolean;
+  /** ADR-0080: `staff.languages`; null = never asked, undefined = not read. */
+  languages?: string[] | null;
+  /** Any office login that may write (ADR-0080). */
+  canEditLanguages?: boolean;
   /** ADR-0044 — null reads "Not provided". */
   emergencyContact?: EmergencyContact | null;
   emergencyContactProblem?: string | null;
@@ -109,6 +116,13 @@ export function Overview({
             staffId={profile.id}
             gender={gender}
             editable={canEditGender && !profile.removed}
+            removed={profile.removed}
+          />
+          <span className="k">Languages</span>
+          <LanguagesField
+            staffId={profile.id}
+            languages={languages}
+            editable={canEditLanguages && !profile.removed}
             removed={profile.removed}
           />
           <span className="k">Home address</span>

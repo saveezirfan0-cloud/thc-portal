@@ -150,6 +150,11 @@ export function score(input: ScoreInput, weights: ScoreWeights = DEFAULT_WEIGHTS
  * the same way. `gender_not_recorded` (none on file) does show, because
  * the office can fix it on the staff profile.
  *
+ * `language_not_spoken` and `languages_not_recorded` apply only on an event
+ * that needs a language besides English (ADR-0080), and split the same
+ * way: a worker whose languages are on file without it is hidden, one who
+ * was never asked shows, so the office can record them.
+ *
  * `do_not_return` is the client-level bar from §9.6: "they are not invited in
  * either wave, the shift never appears on their Radar, they cannot be invited
  * manually, and they show under Unavailable → Do not return". It is the one
@@ -161,6 +166,8 @@ export const HARD_GATES = [
   'male_only',
   'female_only',
   'gender_not_recorded',
+  'language_not_spoken',
+  'languages_not_recorded',
   'blocked',
   'booked_elsewhere',
   'hours_limit',
@@ -172,7 +179,12 @@ export type HardGate = (typeof HARD_GATES)[number];
 
 /** True when the gate should still show the worker under Unavailable (§3.3). */
 export function showsUnderUnavailable(gate: HardGate): boolean {
-  return gate !== 'wrong_role' && gate !== 'male_only' && gate !== 'female_only';
+  return (
+    gate !== 'wrong_role' &&
+    gate !== 'male_only' &&
+    gate !== 'female_only' &&
+    gate !== 'language_not_spoken'
+  );
 }
 
 /**

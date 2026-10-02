@@ -611,6 +611,18 @@ const unavailable = [
     tone: 'amber',
     appliedAt: null,
   },
+  // ADR-0080: the event needs Spanish, and this worker was never asked.
+  {
+    staffId: 's10',
+    name: 'Priya N.',
+    roles: ['Waiting staff (silver service)'],
+    reason: 'languages_not_recorded',
+    label: 'Languages not recorded',
+    detail:
+      'this event needs a language besides English and theirs are not on file — record them on their staff profile',
+    tone: 'amber',
+    appliedAt: null,
+  },
 ];
 export const boardEvent = {
   id: '11111111-1111-4111-8111-111111111111',
@@ -624,6 +636,8 @@ export const boardEvent = {
   notes: 'Guests arrive 18:30. Speeches at 21:00 — no service during speeches.',
   onsiteContact: 'Eleanor Whitfield · +44 20 7836 4343',
   autoAssign: true,
+  // ADR-0080: the event needs Spanish speakers too.
+  requiredLanguages: ['English', 'Spanish'],
   paysBreaks: false,
   paysBuffer: false,
   cancelledAt: null,
@@ -726,6 +740,7 @@ export const savedEvent = {
   onsiteContact: 'Eleanor Whitfield · +44 20 7836 4343',
   notes: 'Guests arrive 18:30.',
   autoAssign: true,
+  requiredLanguages: ['English', 'Spanish'],
   cancelledAt: null,
   sections: [
     {

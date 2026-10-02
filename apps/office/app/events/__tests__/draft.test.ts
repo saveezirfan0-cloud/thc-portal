@@ -53,6 +53,7 @@ function event(over: Partial<EventDraft> = {}): EventDraft {
     onsiteContact: 'Marco V.',
     notes: '',
     autoAssign: true,
+    requiredLanguages: ['English'],
     roles: [role()],
     ...over,
   };
@@ -304,6 +305,7 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
     onsiteContact: 'Front desk',
     notes: 'Service lift at the rear',
     autoAssign: false,
+    requiredLanguages: ['English', 'Spanish'],
     cancelledAt: null,
     sections: [
       {
@@ -361,6 +363,16 @@ describe('a saved event reopened, and Duplicate (§3.2)', () => {
         'F',
         'M',
       ]);
+    }
+  });
+
+  // ADR-0080: the languages are the client's ask for the event, so a
+  // duplicate keeps them, and a copy of the array — not the saved one.
+  it('edit and duplicate both keep the languages the event needs', () => {
+    for (const as of ['edit', 'duplicate'] as const) {
+      const draft = draftFromSaved(saved, dressCodes, as);
+      expect(draft.requiredLanguages).toEqual(['English', 'Spanish']);
+      expect(draft.requiredLanguages).not.toBe(saved.requiredLanguages);
     }
   });
 
