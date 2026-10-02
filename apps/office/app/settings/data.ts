@@ -1,6 +1,6 @@
 import { cookies } from 'next/headers';
 import { createClient } from '@thc/db/server';
-import { TEMPLATES } from '@thc/notifications';
+import { TEMPLATES, switchedOff } from '@thc/notifications';
 import { readWeights } from './validate';
 import type { SettingsData, Senders, VenueTypeRadius, WilloStageMap } from './types';
 
@@ -54,6 +54,7 @@ export async function loadSettings(): Promise<SettingsData> {
     escalationRadiusMiles: 3,
     venueTypes: [],
     rotaGuardMode: 'block',
+    notificationsOff: [],
     problem: null,
   };
 
@@ -101,6 +102,8 @@ export async function loadSettings(): Promise<SettingsData> {
     venueTypes: venueTypes.data ?? [],
     // rota_guard_mode() fails closed; so does the screen.
     rotaGuardMode: byKey.get('rota_guard_mode') === 'warn' ? 'warn' : 'block',
+    // Read by the same rule as notification_switched_on(): only a JSON false is off.
+    notificationsOff: switchedOff(byKey.get('notification_switches')),
     problem: null,
   };
 }

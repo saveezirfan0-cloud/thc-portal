@@ -3,6 +3,7 @@ import { currentOfficeRole } from '../_components/officeUser';
 import { officeCan } from '../_lib/permissions';
 import { loadSettings } from './data';
 import { SettingsScreen } from './SettingsScreen';
+import { parseSettingsTab } from './types';
 
 export const metadata = { title: 'System settings · THC Back Office' };
 /** Configuration read on every auto-assign round; a cached copy is a stale rule. */
@@ -16,7 +17,11 @@ export const dynamic = 'force-dynamic';
  * rather than a role check written in this app. That is the same gate
  * /roles and /venues rely on.
  */
-export default async function Page() {
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   // ADR-0056: owners only. Writes to settings and venue_types are refused
   // by restrictive policies for everyone else.
   const role = await currentOfficeRole();
@@ -25,5 +30,6 @@ export default async function Page() {
       <NotAvailable activeHref="/settings" title="System settings" role={role} needs="settings" />
     );
   }
-  return <SettingsScreen data={await loadSettings()} />;
+  const tab = parseSettingsTab((await searchParams)['tab']);
+  return <SettingsScreen data={await loadSettings()} tab={tab} />;
 }

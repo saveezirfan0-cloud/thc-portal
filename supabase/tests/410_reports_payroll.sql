@@ -331,6 +331,10 @@ select is((select count(*)::int from ns where staff_id = :'w6'), 0,
 -- =====================================================================
 -- 40-44 · BG-08 · when it runs
 -- =====================================================================
+-- 20261002113000 ships BG08 switched OFF (ADR-0083). This file is about
+-- the job when it runs, so it switches it on; 771 holds the switch.
+update settings set value = '{}'::jsonb where key = 'notification_switches';
+
 select ok(not finance_reports_due('2025-03-10 08:55+00'), 'BG-08 is not due at 08:55 UK on the Monday');
 select ok(finance_reports_due('2025-03-10 09:00+00'), 'BG-08 is due from 09:00 UK on the Monday');
 select ok(not finance_reports_due('2025-03-31 07:59+00'),

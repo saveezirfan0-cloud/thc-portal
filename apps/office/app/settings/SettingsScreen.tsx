@@ -4,8 +4,9 @@ import { createContext, useCallback, useContext, useEffect, useState, useTransit
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { Alert, Button, Input, Note, Panel, Pill, SaveBar, Select } from '@thc/ui';
+import { Alert, Button, Input, Note, Panel, Pill, SaveBar, Select, Tabs } from '@thc/ui';
 import { OfficeShell } from '../_components/OfficeShell';
+import { NotificationsTab } from './NotificationsTab';
 import {
   saveAutoAssignNumbers,
   saveRotaGuardMode,
@@ -22,6 +23,7 @@ import type {
   RotaGuardMode,
   ScoringWeights,
   SettingsData,
+  SettingsTab,
   Senders,
   WilloStageMap,
 } from './types';
@@ -38,8 +40,28 @@ import './settings.css';
  * the Back Office's existing furniture rather than inventing a style: the
  * `Panel` blocks of /roles, the same field components, the same
  * inline-alert-per-block feedback.
+ *
+ * Two tabs: General (the blocks above) and Notifications (ADR-0083), the
+ * on/off switch for every notification the platform sends.
  */
-export function SettingsScreen({ data }: { data: SettingsData }) {
+export function SettingsScreen({
+  data,
+  tab: initialTab,
+}: {
+  data: SettingsData;
+  tab: SettingsTab;
+}) {
+  const [tab, setTab] = useState<SettingsTab>(initialTab);
+  const choose = (next: SettingsTab) => {
+    setTab(next);
+    // The address follows, so a refresh or a shared link lands on the same tab.
+    window.history.replaceState(
+      null,
+      '',
+      next === 'general' ? '/settings' : `/settings?tab=${next}`,
+    );
+  };
+
   // The save bar (packages/ui SaveBar). A block with unsaved edits moves its
   // own Save button into the bar at the bottom of the screen, so the action
   // is in reach wherever the manager has scrolled to; a clean block keeps it
@@ -66,8 +88,25 @@ export function SettingsScreen({ data }: { data: SettingsData }) {
     >
       {data.problem ? <Alert tone="coral">{data.problem}</Alert> : null}
 
+      <Tabs<SettingsTab>
+        aria-label="Settings section"
+        value={tab}
+        onChange={choose}
+        options={[
+          { value: 'general', label: 'General' },
+          {
+            value: 'notifications',
+            label: 'Notifications',
+            count: data.notificationsOff.length > 0 ? data.notificationsOff.length : undefined,
+            alert: true,
+          },
+        ]}
+      />
+
+      {tab === 'notifications' ? <NotificationsTab off={data.notificationsOff} /> : null}
+
       <SaveSlot.Provider value={{ slot, mark }}>
-        <div className="settings-grid">
+        <div className="settings-grid" hidden={tab !== 'general'}>
           <WeightsBlock weights={data.weights} />
           <AutoAssignBlock
             gapMinutes={data.bookedElsewhereGapMinutes}
