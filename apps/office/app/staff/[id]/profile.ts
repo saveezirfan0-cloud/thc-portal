@@ -261,11 +261,12 @@ export function documentOrder(a: DocumentRow, b: DocumentRow): number {
  */
 export function shiftOutcome(row: ShiftRow): string {
   if (row.booking_status === 'cancelled') {
-    // ADR-0046: the worker offered the shift up and a confirmed replacement
-    // took it. The row also carries self_cancelled (it bars them from the
+    // ADR-0046: the worker asked for cover, the office opened it to the
+    // pool and a confirmed replacement took it (before 02.10.2026 a worker
+    // could also offer it up themselves). The row also carries self_cancelled (it bars them from the
     // event like a self-cancel, Q15), so it is asked first — "Self-cancelled"
     // would tell the office the section lost a worker, and it did not.
-    if (row.cancel_cause === 'handed_over') return 'Handed over (offered up)';
+    if (row.cancel_cause === 'handed_over') return 'Handed over (cover taken)';
     return row.self_cancelled ? 'Self-cancelled' : 'Cancelled';
   }
   if (row.kind === 'turned_away') return 'Turned away (buffer)';

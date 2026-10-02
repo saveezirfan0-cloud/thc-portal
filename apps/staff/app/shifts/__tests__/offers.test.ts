@@ -4,8 +4,6 @@ import {
   COVER_LEAD,
   COVER_REFUSAL_COPY,
   COVER_REQUESTED,
-  OFFER_REFUSAL_COPY,
-  offerDialogBody,
   offeredCardLine,
   offeredChip,
   offerPanel,
@@ -19,8 +17,9 @@ import { HANDED_OVER_COPY } from '../[id]/messages';
 import { isStaticPhase, shiftPhase, shiftScreenReachable } from '../[id]/phase';
 
 /**
- * Offer up a shift in the Staff App — ADR-0046, docs/19 §4,
- * wireframes/staff/offer-shift.html.
+ * Cover requests and office-opened offers in the Staff App — ADR-0046
+ * (amended), docs/19 §4, wireframes/staff/offer-shift.html. A worker
+ * cannot offer a shift to other workers (THC, 02.10.2026).
  */
 
 /** Tue 23 Sep 2026, 16:00 UK (BST). */
@@ -32,8 +31,9 @@ const offerOn = { autoAssign: true, offerId: null, mode: null } as const;
 describe('which offer panel a confirmed shift shows (RULE-04 boundary)', () => {
   const booking = { status: 'confirmed', startsAt: START };
 
-  it('offers it to other workers while MORE than 72 hours remain, auto-assign on', () => {
-    expect(offerPanel(booking, offerOn, hoursBefore(72, 1))).toBe('offer');
+  it('never offers it to other workers: more than 72 hours out, auto-assign on, Cancel shift is the tool', () => {
+    expect(offerPanel(booking, offerOn, hoursBefore(72, 1))).toBe('none');
+    expect(offerPanel(booking, offerOn, hoursBefore(500))).toBe('none');
   });
 
   it('at exactly 72 hours only the office can arrange cover', () => {
@@ -45,7 +45,7 @@ describe('which offer panel a confirmed shift shows (RULE-04 boundary)', () => {
     expect(offerPanel(booking, { ...offerOn, autoAssign: false }, hoursBefore(500))).toBe('cover');
   });
 
-  it('an open offer shows its chip; an open cover request shows "Cover requested"', () => {
+  it('a cover request the office opened to the pool shows its chip; an open one shows "Cover requested"', () => {
     const now = hoursBefore(100);
     expect(offerPanel(booking, { autoAssign: true, offerId: 'o1', mode: 'pool' }, now)).toBe(
       'offered',
@@ -64,12 +64,6 @@ describe('which offer panel a confirmed shift shows (RULE-04 boundary)', () => {
 });
 
 describe('the words, as docs/19 §4 fixes them', () => {
-  it('the Offer dialog, verbatim, closing 72 hours before the start in UK time', () => {
-    expect(offerDialogBody(START)).toBe(
-      "We'll offer this shift to other workers. You stay booked until someone takes it — then it's theirs, and you can't be booked on this event again. Offers close Sun 20 Sep, 16:00 (UK time), 72 hours before the start.",
-    );
-  });
-
   it('the chip and the card line say the close is UK time (wireframe (c), (d), §1.8)', () => {
     const expires = new Date('2026-09-20T15:00:00Z');
     expect(offeredChip(expires)).toBe('Offered · open until Sun 20, 16:00 (UK time)');
@@ -122,18 +116,9 @@ describe('refusals', () => {
     expect(takeRefusalCopy('overlap')).toEqual(APPLY_REFUSAL_COPY.booked_elsewhere);
   });
 
-  it('every offer_shift and request_cover refusal has words', () => {
+  it('every request_cover refusal has words', () => {
     for (const reason of [
-      'too_late',
-      'auto_assign_off',
-      'already_offered',
-      'not_confirmed',
-      'event_cancelled',
-    ]) {
-      expect(OFFER_REFUSAL_COPY[reason], reason).toBeDefined();
-    }
-    for (const reason of [
-      'use_offer',
+      'use_cancel',
       'note_too_long',
       'already_offered',
       'recently_requested',
@@ -143,6 +128,8 @@ describe('refusals', () => {
     ]) {
       expect(COVER_REFUSAL_COPY[reason], reason).toBeDefined();
     }
+    expect(COVER_REFUSAL_COPY['use_offer']).toBeUndefined();
+    expect(COVER_REFUSAL_COPY['use_cancel']!.body).toMatch(/Cancel shift/);
   });
 });
 

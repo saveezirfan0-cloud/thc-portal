@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react';
 import { Alert, Button, MobileCard, Modal, Pill, Textarea } from '@thc/ui';
 import { ActionButton } from '../../_components/ActionButton';
-import { offerShift, requestCover, withdrawShiftOffer } from '../../actions';
+import { requestCover, withdrawShiftOffer } from '../../actions';
 import type { Refusal } from '../../actions';
 import {
   COVER_BUTTON,
@@ -13,11 +13,7 @@ import {
   COVER_LEAD,
   COVER_NOTE_LABEL,
   COVER_REQUESTED,
-  OFFER_BUTTON,
-  OFFER_DIALOG_TITLE,
-  OFFER_LEAD,
   WITHDRAW_OFFER_BUTTON,
-  offerDialogBody,
   offeredChip,
   offeredLine,
   offerPanel,
@@ -26,13 +22,14 @@ import type { BookingOffer } from '../offers';
 import { YourTimeAt } from '../YourTimeAt';
 
 /**
- * Offer this shift / Withdraw offer / Ask the office for cover — ADR-0046,
- * docs/19 §4, `wireframes/staff/offer-shift.html` (a)–(f).
+ * Ask the office for cover / Withdraw — ADR-0046 (amended), docs/19 §4,
+ * `wireframes/staff/offer-shift.html` (c)–(f).
  *
- * Which panel shows is `offerPanel()` (../offers.ts): more than 72 hours
- * out with auto-assign on, the worker offers it to other workers and stays
- * booked until someone takes it; inside 72 hours — or with auto-assign off —
- * they can only ask the office. Cancel shift is unchanged and elsewhere.
+ * Which panel shows is `offerPanel()` (../offers.ts). A worker cannot offer
+ * their shift to other workers (THC, 02.10.2026): more than 72 hours out
+ * with auto-assign on there is no panel — Cancel shift (RULE-04) is
+ * elsewhere on the screen; inside 72 hours, or with auto-assign off, they
+ * can ask the office for cover, and only the office opens it to the pool.
  * The server decides every press; this only shows what it would allow.
  */
 export function OfferPanel({
@@ -52,26 +49,6 @@ export function OfferPanel({
   const panel = offerPanel({ status, startsAt: start }, offer, now);
 
   if (panel === 'none') return null;
-
-  if (panel === 'offer') {
-    return (
-      <MobileCard>
-        <p className="sm">{OFFER_LEAD}</p>
-        <ActionButton
-          label={OFFER_BUTTON}
-          tone="outline"
-          block
-          action={offerShift.bind(null, bookingId)}
-          confirm={{
-            title: OFFER_DIALOG_TITLE,
-            body: offerDialogBody(start),
-            confirmLabel: OFFER_BUTTON,
-            keepLabel: 'Keep it',
-          }}
-        />
-      </MobileCard>
-    );
-  }
 
   if (panel === 'offered' && offer?.offerId && offer.expiresAt) {
     return (

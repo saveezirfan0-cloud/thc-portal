@@ -8658,7 +8658,6 @@ export type Database = {
           shift_id: string;
         }[];
       };
-      offer_shift: { Args: { p_booking: string }; Returns: Json };
       offer_wave1_exhausted: { Args: { p_offer: string }; Returns: boolean };
       office_base_url: { Args: never; Returns: string };
       office_clear_emergency_contact: {
