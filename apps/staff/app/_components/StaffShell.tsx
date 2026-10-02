@@ -49,7 +49,7 @@ export async function StaffShell({
   ignoreLock,
   /**
    * The push-health banner above the content. /notifications turns it off:
-   * its whole body IS that message, and a banner saying "Show me how" would
+   * its whole body IS that message, and a banner saying "Show me" would
    * point at the page it is on (wireframes/staff/auth.html, pre-prompt).
    */
   pushStatus = true,

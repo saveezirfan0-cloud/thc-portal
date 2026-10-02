@@ -165,7 +165,7 @@ export function NotificationsScreen({
 
       {state === 'denied' ? (
         // The one state the app cannot ask its way out of: the switch is in
-        // the phone's settings, so this is the walkthrough "Show me how"
+        // the phone's settings, so this is the walkthrough the banner's "Fix"
         // promised (auth.html, "Notifications blocked").
         <div className="steps" aria-label="Turn notifications back on">
           <div className="step">
