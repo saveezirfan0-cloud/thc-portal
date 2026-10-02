@@ -182,6 +182,28 @@ describe('generateDocument and name badges (ADR-0081)', () => {
     });
   });
 
+  it('ADR-0084: a Send that cannot fingerprint the line-up stops; a Download does not', async () => {
+    const failing = (fn: string) => {
+      const db = fakeDb(false);
+      const rpc = db.rpc.bind(db);
+      db.rpc = (name: string, args: Record<string, unknown>) =>
+        name === fn ? Promise.resolve({ data: null, error: { message: 'boom' } }) : rpc(name, args);
+      return db;
+    };
+    for (const fn of ['event_document_content_signature', 'set_event_document_signature']) {
+      const send = failing(fn);
+      const sent = await generateDocument(EVENT_ID, 'allocation', 'required', {
+        db: send as unknown as Db,
+      });
+      expect(sent.ok, fn).toBe(false);
+      const download = failing(fn);
+      const downloaded = await generateDocument(EVENT_ID, 'allocation', 'best-effort', {
+        db: download as unknown as Db,
+      });
+      expect(downloaded.ok, fn).toBe(true);
+    }
+  });
+
   it('ADR-0084: a Completed Timesheet carries no signature', async () => {
     const db = fakeDb(false);
     await generateDocument(EVENT_ID, 'signout', 'required', { db: db as unknown as Db });

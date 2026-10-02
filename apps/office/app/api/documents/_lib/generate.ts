@@ -242,16 +242,25 @@ export async function generateDocument(
 ): Promise<GenerateResult> {
   const db = options.db ?? (await documentsDb());
   // ADR-0084: what an Allocation Timesheet prints, read BEFORE its rows, so
-  // a change made while the PDF is drawn is never stamped as sent. Best
-  // effort: without it the copy keeps the stamp its insert trigger gave it.
+  // a change made while the PDF is drawn is never stamped as sent. The
+  // insert trigger's stamp is taken after drawing and could hide such a
+  // change, so a Send (or the job) that cannot read or record this one
+  // stops; a Download, which nothing ever emails, goes on without it.
   const signature =
     kind === 'allocation'
-      ? await db
-          .rpc('event_document_content_signature', { p_event: eventId })
+      ? await Promise.resolve(db.rpc('event_document_content_signature', { p_event: eventId }))
           .then(({ data: sig, error: sigError }) =>
             !sigError && typeof sig === 'string' ? sig : null,
           )
+          .catch(() => null)
       : null;
+  const signatureLost = (): GenerateResult => ({
+    ok: false,
+    status: 500,
+    message:
+      'The line-up could not be fingerprinted for the automatic update check, so nothing was sent. Try again.',
+  });
+  if (kind === 'allocation' && signature === null && store === 'required') return signatureLost();
   const { data, error } = await db.rpc('event_document_data', { p_event: eventId });
   if (error) return { ok: false, ...refusal(error.message) };
   const doc = data as DocumentData;
@@ -343,11 +352,12 @@ export async function generateDocument(
   }
   const documentId = recorded.data as string;
   if (signature) {
-    // Not fatal: the trigger's stamp stands if this does not land.
-    await db.rpc('set_event_document_signature', {
-      p_document: documentId,
-      p_signature: signature,
-    });
+    const stamped = await Promise.resolve(
+      db.rpc('set_event_document_signature', { p_document: documentId, p_signature: signature }),
+    ).catch((cause: unknown) => ({ error: { message: String(cause) } }));
+    // A Send stops here, before anything queues; the job releases its claim
+    // and tries again. A Download keeps the copy it hands over.
+    if (stamped.error && store === 'required') return signatureLost();
   }
 
   // ADR-0081: the badges join the copy before anything queues its email. A

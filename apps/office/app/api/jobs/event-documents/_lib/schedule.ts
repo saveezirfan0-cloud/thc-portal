@@ -315,6 +315,9 @@ export function autosendHint(
         : null;
     if (base && update) return `${base} · ${update}`;
     if (state.updatedAt) return `Allocation Timesheet ${update}`;
+    // D1 switched off, updates on: a manager's Send is still followed up.
+    if (!base && update)
+      return 'Re-sent automatically if the line-up or times change after it is sent (at most hourly)';
     return base;
   }
   if (state.sentAt) return `Completed Timesheet sent automatically ${ukShortStamp(state.sentAt)}`;

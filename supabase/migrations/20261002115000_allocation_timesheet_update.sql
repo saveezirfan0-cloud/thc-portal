@@ -134,10 +134,14 @@ begin
   if p_signature is null or p_signature !~ '^[0-9a-f]{32}$' then
     raise exception 'bad_signature' using errcode = '22023';
   end if;
-  -- Only an Allocation Timesheet, and only before its email is queued.
-  update event_documents
+  -- Only an Allocation Timesheet, only before its email is queued, and
+  -- only by whoever drew it: the manager on their own copy, the job (no
+  -- user) on an automatic one.
+  update event_documents d
      set content_signature = p_signature
-   where id = p_document and kind = 'allocation' and queued_at is null;
+   where d.id = p_document and d.kind = 'allocation' and d.queued_at is null
+     and ((auth.uid() is not null and d.generated_by = auth.uid())
+          or (auth.uid() is null and d.automatic));
 end $$;
 
 comment on function public.set_event_document_signature(uuid, text) is
@@ -182,10 +186,11 @@ declare
   -- Read exactly as parseAutosendConfig() reads it.
   v_enabled boolean := case when jsonb_typeof(v_cfg->'enabled') = 'boolean'
                             then (v_cfg->>'enabled')::boolean else true end;
+  -- A whole JSON number, 15–1440; "90.0" is 90, as JSON.parse reads it.
   v_gap     int := case when jsonb_typeof(v_cfg->'gap_minutes') = 'number'
-                         and (v_cfg->>'gap_minutes') ~ '^[0-9]{1,4}$'
-                         and (v_cfg->>'gap_minutes')::int between 15 and 1440
-                        then (v_cfg->>'gap_minutes')::int else 60 end;
+                         and (v_cfg->>'gap_minutes') ~ '^[0-9]{1,4}(\.0+)?$'
+                         and (v_cfg->>'gap_minutes')::numeric between 15 and 1440
+                        then (v_cfg->>'gap_minutes')::numeric::int else 60 end;
   -- 00:00 UK on the day before: the same freshness line as manual_sent.
   v_fresh   timestamptz := (p_event_date - 1)::timestamp at time zone 'Europe/London';
 begin
@@ -277,8 +282,13 @@ begin
      where (p_event is null and e.event_date between v_today - (v_hold + 2) and v_today + 1)
         or e.id = p_event
   ), latest as (
-    -- The latest Allocation Timesheet queued by anyone, per event.
-    select ev.id as event_id, l.id as doc_id, l.queued_at, l.content_signature
+    -- The latest Allocation Timesheet queued by anyone, per event, and —
+    -- once per event, and only while an update could still go (before the
+    -- first shift) — whether the sheet would print differently now.
+    select ev.id as event_id, l.id as doc_id, l.queued_at,
+           case when l.id is null or l.content_signature is null then null
+                when ev.first_start is not null and p_now >= ev.first_start then null
+                else l.content_signature is distinct from event_document_signature(ev.id) end as changed
       from ev
       left join lateral (
         select d.id, d.queued_at, d.content_signature
@@ -305,8 +315,7 @@ begin
                         and (k.kind <> 'allocation_update'
                              or a.baseline_document_id is not distinct from lt.doc_id)), 0) as attempts,
            lt.queued_at as allocation_sent_at,
-           case when lt.doc_id is null or lt.content_signature is null then null
-                else lt.content_signature is distinct from event_document_signature(ev.id) end as changed
+           lt.changed
       from ev
       join latest lt on lt.event_id = ev.id
       cross join (values ('allocation'::text), ('signout'), ('allocation_update')) as k(kind)

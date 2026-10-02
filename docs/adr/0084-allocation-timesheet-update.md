@@ -25,7 +25,9 @@ These are not printed, so they send nothing:
 - a change to the client card's contact emails;
 - a cancel-and-rebook of the same person.
 
-**The race.** The copy is recorded after its PDF is drawn. A signature taken when the copy is recorded would include a change made during drawing that the PDF does not show, and that change would never be re-sent. So `generateDocument()` reads the signature (`event_document_content_signature`) before it reads the rows, and puts it on the copy once recorded (`set_event_document_signature`). A race can therefore only cause one email too many, never a missed change. An insert trigger stamps the copy too, as the fallback.
+**The race.** The copy is recorded after its PDF is drawn. A signature taken when the copy is recorded would include a change made during drawing that the PDF does not show, and that change would never be re-sent. So `generateDocument()` reads the signature (`event_document_content_signature`) before it reads the rows, and puts it on the copy once recorded (`set_event_document_signature`). A race can therefore only cause one email too many, never a missed change.
+
+An insert trigger also stamps the copy, but that stamp is taken after drawing, so it is only good enough for a Download, which is never emailed. If a Send or the job cannot read or store the signature, it **stops** before anything is queued: the manager sees an error, and the job gives its claim back and tries again on the next run. `set_event_document_signature` changes only an unqueued Allocation Timesheet, and only one its caller drew: a manager's own copy, or an automatic copy when no user is signed in (the job).
 
 ### The rule
 
@@ -78,18 +80,21 @@ It lives in `packages/notifications/src/documents.ts` beside D1.
 "update": {"enabled": true, "gap_minutes": 60}
 ```
 
-This sits in `settings.document_autosend`. `gap_minutes` is a JSON number from 15 to 1440; anything else means 60. A missing settings row is still "everything off". There is no /settings control yet, so a change is an SQL edit, as in ADR-0074.
+This sits in `settings.document_autosend`. `gap_minutes` is a whole JSON number from 15 to 1440 (`90.0` reads as 90 in both SQL and TypeScript); anything else means 60.
+
+**Cost.** `event_documents_due()` works out each event's signature once per run, and only for events whose first shift has not started. A missing settings row is still "everything off". There is no /settings control yet, so a change is an SQL edit, as in ADR-0074.
 
 ### The event page
 
 The line under the document buttons now says:
 
 - before or after the 16:00 send: "Sent automatically the day before at 16:00 (UK time) · and again if the line-up or times change (at most hourly)" / "Allocation Timesheet sent automatically 28/09 16:00 · …";
-- once an update has gone: "… · updated automatically 28/09 18:15".
+- once an update has gone: "… · updated automatically 28/09 18:15". This is read from the copies (`outbox_key` `D1U:…`), not from the job's claim row, which is cleared on every new attempt;
+- with the 16:00 send switched off and updates on: "Re-sent automatically if the line-up or times change after it is sent (at most hourly)".
 
 ## Consequences
 
-- **Database:** migration `20261002115000_allocation_timesheet_update.sql`, pgTAP `772` (45 assertions), pgTAP 190's lists of job functions.
+- **Database:** migration `20261002115000_allocation_timesheet_update.sql`, pgTAP `772` (50 assertions), pgTAP 190's lists of job functions.
 - **Office app:** `schedule.ts`, `run.ts`, the job route, `generate.ts` and the event-page hint.
 - **Notifications:** D1U in `documents.ts`.
 - **What the client gets:** one email per hour at most, while the line-up keeps changing, until the first shift starts. Nothing is sent after the first shift starts. On-the-day changes after that are the office's call (manual Send).

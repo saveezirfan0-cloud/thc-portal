@@ -10,7 +10,7 @@
 -- 4. Who may call what.
 -- =====================================================================
 begin;
-select plan(45);
+select plan(50);
 \ir _shared/fixtures.psql
 
 create function pg_temp.uk(p_day date, p_time text) returns timestamptz
@@ -44,6 +44,8 @@ select is(pg_temp.u('2026-07-10 16:00+00'), 'due', 'an hour after it: due');
 select is(pg_temp.u('2026-07-10 15:30+00', '{}', '{"update":{"gap_minutes":30}}'), 'due', 'the gap comes from settings');
 select is(pg_temp.u('2026-07-10 15:30+00', '{}', '{"update":{"gap_minutes":5}}'), 'too_soon',
   'a gap under 15 minutes is ignored: 60');
+select is(pg_temp.u('2026-07-10 15:30+00', '{}', '{"update":{"gap_minutes":30.0}}'), 'due',
+  '30.0 is 30, as the TypeScript twin reads it');
 select is(pg_temp.u('2026-07-10 16:00+00', '{"changed":false}'), 'unchanged', 'nothing printed differs: nothing goes');
 select is(pg_temp.u('2026-07-10 16:00+00', '{"changed":null}'), 'no_baseline',
   'a copy from before this change has nothing to compare: nothing goes');
@@ -221,6 +223,7 @@ reset role;
 -- =====================================================================
 -- 4 · Who may call what
 -- =====================================================================
+select id as u2_id from u2 \gset
 select ok(
   not has_function_privilege('authenticated', 'event_document_update_claim(uuid,timestamptz,int)', 'execute')
   and not has_function_privilege('authenticated', 'record_event_document_update(uuid,text,text,text,int,int)', 'execute')
@@ -241,7 +244,26 @@ select set_config('request.jwt.claims', json_build_object('sub', :'staffa_uid', 
 set local role authenticated;
 select throws_ok(format($$ select event_document_content_signature(%L) $$, :'ev'), '42501', 'admins_only',
   'a worker cannot read a signature');
+select throws_ok(format($$ select set_event_document_signature(%L, %L) $$, :'u2_id', md5('x')),
+  '42501', 'admins_only', 'nor stamp one');
 reset role;
+select set_config('request.jwt.claims', json_build_object('sub', :'clienta_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select throws_ok(format($$ select event_document_content_signature(%L) $$, :'ev'), '42501', 'admins_only',
+  'nor can a client read one');
+select throws_ok(format($$ select set_event_document_signature(%L, %L) $$, :'u2_id', md5('x')),
+  '42501', 'admins_only', 'or stamp one');
+reset role;
+
+-- A manager cannot restamp a copy the job drew and has not queued.
+update event_documents set queued_at = null where id = :'u2_id';
+create temp table u2sig as select content_signature as s from event_documents where id = :'u2_id';
+select set_config('request.jwt.claims', json_build_object('sub', :'admin_uid', 'role', 'authenticated')::text, true);
+set local role authenticated;
+select set_event_document_signature(:'u2_id', md5('x'));
+reset role;
+select is((select content_signature from event_documents where id = :'u2_id'), (select s from u2sig),
+  'a manager stamps only a copy they drew themselves');
 
 select * from finish();
 rollback;

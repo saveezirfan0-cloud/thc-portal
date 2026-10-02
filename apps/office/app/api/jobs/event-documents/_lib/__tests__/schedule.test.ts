@@ -276,6 +276,11 @@ describe('the hint under the event page buttons', () => {
     expect(autosendHint('allocation', CONFIG, { ...idle, updatedAt: '2026-09-28T17:15:02Z' })).toBe(
       'Sent automatically the day before at 16:00 (UK time) · updated automatically 28/09 18:15',
     );
+    expect(
+      autosendHint('allocation', parseAutosendConfig({ allocation: { enabled: false } }), idle),
+    ).toBe(
+      'Re-sent automatically if the line-up or times change after it is sent (at most hourly)',
+    );
     const noUpdates = parseAutosendConfig({ update: { enabled: false } });
     expect(autosendHint('allocation', noUpdates, idle)).toBe(
       'Sent automatically the day before at 16:00 (UK time)',
